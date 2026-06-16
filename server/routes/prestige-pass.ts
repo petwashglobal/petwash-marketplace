@@ -36,6 +36,7 @@ import { logAuditEvent } from '../middleware/auditLog';
 import { z } from 'zod';
 import multer from 'multer';
 import { EmailService } from '../emailService';
+import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken } from '../lib/passTokens';
 import { petwashPassAccounts } from '@shared/schema';
@@ -1602,6 +1603,62 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
     return res.json({ ok: true, emailSent: sent, googleWalletReady: !!googleWalletSaveUrl });
   } catch (err) {
     logger.error('[PrestigePass] /resend-wallet-email error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /send-wallet-sms — text the pass link to the logged-in user's phone
+// ─────────────────────────────────────────────────────────
+const WALLET_SMS_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes between SMS sends per user
+
+router.post('/send-wallet-sms', walletEmailLimiter, async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const userId  = session?.user?.uid;
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    // Resolve phone: session first, then the users table.
+    let phone: string | undefined = session?.user?.phone;
+    if (!phone) {
+      try {
+        const r = await pool.query('SELECT phone FROM users WHERE id = $1 LIMIT 1', [userId]);
+        phone = r.rows?.[0]?.phone || undefined;
+      } catch { /* fall through */ }
+    }
+    if (!phone) return res.status(400).json({ ok: false, error: 'No phone number on file. Add one in your profile first.' });
+
+    const passRef = firestoreDb.collection('prestige_passes').doc(userId);
+    const passDoc = await passRef.get();
+    if (!passDoc.exists) return res.status(404).json({ ok: false, error: 'No Prestige Pass found' });
+    const pass = passDoc.data()!;
+
+    // 15-minute cooldown between SMS sends per user (Twilio costs money)
+    if (pass.smsSentAt) {
+      const since = Date.now() - new Date(pass.smsSentAt).getTime();
+      if (since < WALLET_SMS_COOLDOWN_MS) {
+        const waitMins = Math.ceil((WALLET_SMS_COOLDOWN_MS - since) / 60000);
+        return res.status(429).json({ ok: false, error: `Wait ${waitMins} more minute${waitMins !== 1 ? 's' : ''} before resending the SMS.` });
+      }
+    }
+
+    const appBaseUrl = process.env.APP_BASE_URL || 'https://petwash.co.il';
+    const link = `${appBaseUrl}/wallet-download`;
+    const body = `PetWash™ — הכרטיס שלך ל-Apple/Google Wallet: ${link}`;
+
+    const result = await twilioSMSService.sendSMS(phone, body, {
+      userId,
+      ip: req.ip,
+      ua: req.headers['user-agent'] as string | undefined,
+    });
+
+    if (result.success) {
+      await passRef.update({ smsSentAt: new Date().toISOString() });
+      return res.json({ ok: true, smsSent: true });
+    }
+    return res.status(502).json({ ok: false, error: result.error || 'Could not send SMS right now.' });
+  } catch (err) {
+    logger.error('[PrestigePass] /send-wallet-sms error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });

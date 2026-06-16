@@ -62,6 +62,7 @@ import {
   Cake,
   Timer,
   FileText,
+  Send,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
@@ -485,6 +486,28 @@ export default function MyAccount() {
       description: err?.message || (isHebrew ? 'נסה שוב בעוד דקה.' : 'Try again in a minute.'),
       variant: 'destructive',
     }),
+  });
+
+  // Send the pass by email or SMS (server endpoints are rate-limited).
+  const emailPassMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {});
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || (isHebrew ? 'שליחת המייל נכשלה.' : 'Could not send email.'));
+      return data;
+    },
+    onSuccess: () => toast({ title: isHebrew ? 'נשלח למייל ✓' : 'Sent to email ✓', description: isHebrew ? 'הפאס נשלח עם כפתורי Apple/Google Wallet.' : 'Pass sent with Apple & Google Wallet buttons.' }),
+    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: err?.message, variant: 'destructive' }),
+  });
+  const smsPassMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest('POST', '/api/prestige-pass/send-wallet-sms', {});
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || (isHebrew ? 'שליחת ה-SMS נכשלה.' : 'Could not send SMS.'));
+      return data;
+    },
+    onSuccess: () => toast({ title: isHebrew ? 'נשלח ב-SMS ✓' : 'Sent by SMS ✓', description: isHebrew ? 'בדוק את ההודעות שלך.' : 'Check your messages.' }),
+    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: err?.message, variant: 'destructive' }),
   });
 
   const [activeTab, setActiveTab] = useState('profile');
@@ -1486,6 +1509,26 @@ export default function MyAccount() {
               ? (isHebrew ? 'מכין את הכרטיס…' : 'Preparing your pass…')
               : (isHebrew ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet')}
           </button>
+
+          {/* Or get the pass by email / SMS */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => emailPassMutation.mutate()}
+              disabled={emailPassMutation.isPending}
+              className="flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 bg-white"
+            >
+              <Mail className="w-4 h-4" aria-hidden="true" />
+              {emailPassMutation.isPending ? (isHebrew ? 'שולח…' : 'Sending…') : (isHebrew ? 'שלח למייל' : 'Email it')}
+            </button>
+            <button
+              onClick={() => smsPassMutation.mutate()}
+              disabled={smsPassMutation.isPending}
+              className="flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 bg-white"
+            >
+              <Send className="w-4 h-4" aria-hidden="true" />
+              {smsPassMutation.isPending ? (isHebrew ? 'שולח…' : 'Sending…') : (isHebrew ? 'שלח ב-SMS' : 'Text it')}
+            </button>
+          </div>
 
           {/* ── Wallet Balance Cards ── */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
