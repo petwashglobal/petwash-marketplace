@@ -36,13 +36,13 @@ function isPublicSafePromoImage(src: string): boolean {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const DEFAULT_PROMO: PromoAdConfig = {
-  id: 'petwash-platform-2026-editorial',
+  id: 'petwash-platform-2026-poster-v2',
   template: 'poster',
-  // Editorial splash — no baked image. The previous glossy Smart-Hub PNG
-  // carried a tinted (non-white) background + dated bevelled icons that read
-  // off-brand against the pure-white luxury shell. PosterTemplate now renders a
-  // typographic maison splash (serif wordmark + restrained gold rule) — all
-  // type, no asset, so it's pure-white and crisp on every device.
+  // CEO-approved full-screen brand poster (client/public/petwash-popup.png).
+  // PosterTemplate renders it object-contain on pure white so the WHOLE poster
+  // shows and fills the viewport on iPhone (portrait) and laptop (wide) with
+  // clean white pillar/letterbox — never cropped, never black.
+  imageUrl: '/petwash-popup.png',
   title: 'PetWash™',
   titleHe: 'PetWash™',
   subtitle: 'ONE WORLD. EVERY PET.',
@@ -472,10 +472,23 @@ interface PosterTemplateProps extends TemplateProps {
  * tinted edge sits cleanly on a brand-white field instead of a black
  * frame. Pixel-level audit of the asset is intentionally separate.
  */
-function PosterTemplate({ title, subtitle }: PosterTemplateProps) {
-  // Editorial maison splash — pure white, serif wordmark, restrained gold
-  // hairline. No image asset, so the background is genuinely #FFFFFF on every
-  // device (the prior glossy PNG baked a tint + dated bevels). Type does the work.
+function PosterTemplate({ config, title, subtitle }: PosterTemplateProps) {
+  // Full-screen brand poster: when an imageUrl is set, show the WHOLE poster
+  // object-contain on pure white — fills the viewport on iPhone (portrait) and
+  // laptop (wide), no crop, no black. The shell already provides the floating ✕.
+  if (config?.imageUrl) {
+    return (
+      <div className="absolute inset-0 bg-white flex items-center justify-center">
+        <img
+          src={config.imageUrl}
+          alt={title || 'PetWash'}
+          className="w-full h-full"
+          style={{ objectFit: 'contain' }}
+        />
+      </div>
+    );
+  }
+  // Fallback: editorial maison splash (only used if no imageUrl is configured).
   return (
     <div className="absolute inset-0 bg-white flex flex-col items-center justify-center text-center px-8">
       <div className="flex items-center gap-3 mb-7">
