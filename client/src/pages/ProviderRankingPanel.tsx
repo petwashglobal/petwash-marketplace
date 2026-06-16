@@ -31,7 +31,7 @@ import {
 // ─── Tier config ──────────────────────────────────────────────────────────────
 
 const TIER_CONFIG = {
-  prestige: { label: 'Prestige', labelHe: 'Prestige, icon: Crown, color: 'bg-purple-100 text-purple-700 border-purple-300', barColor: 'bg-purple-500' },
+  prestige: { label: 'Prestige', labelHe: 'Prestige', icon: Crown, color: 'bg-purple-100 text-purple-700 border-purple-300', barColor: 'bg-purple-500' },
   gold:     { label: 'Gold',     labelHe: 'זהב',    icon: Award,  color: 'bg-yellow-100 text-yellow-700 border-yellow-300', barColor: 'bg-yellow-500' },
   silver:   { label: 'Silver',   labelHe: 'כסף',   icon: Shield, color: 'bg-white text-gray-600 border-gray-300',       barColor: 'bg-gray-400' },
   bronze:   { label: 'Bronze',   labelHe: 'ארד',   icon: Zap,    color: 'bg-orange-100 text-orange-700 border-orange-300', barColor: 'bg-orange-500' },

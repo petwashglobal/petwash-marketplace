@@ -226,15 +226,15 @@ const TIER_VARIANT: Record<string, 'black' | 'gold' | 'platinum'> = {
 
 // Prestige tier display names
 const TIER_DISPLAY: Record<string, { en: string; he: string }> = {
-  vip:      { en: 'Prestige Black',    he: 'Prestige + ' שחור' },
-  elite:    { en: 'Prestige Black',    he: 'Prestige + ' שחור' },
-  diamond:  { en: 'Prestige Black',    he: 'Prestige + ' שחור' },
-  black:    { en: 'Prestige Black',    he: 'Prestige + ' שחור' },
-  platinum: { en: 'Prestige Platinum', he: 'Prestige + ' פלטינום' },
-  gold:     { en: 'Prestige Gold',     he: 'Prestige + ' זהב' },
-  silver:   { en: 'Prestige Silver',   he: 'Prestige + ' כסף' },
-  bronze:   { en: 'Prestige Pearl',    he: 'Prestige + ' פנינה' },
-  new:      { en: 'Prestige Pearl',    he: 'Prestige + ' פנינה' },
+  vip:      { en: 'Prestige Black',    he: 'Prestige שחור' },
+  elite:    { en: 'Prestige Black',    he: 'Prestige שחור' },
+  diamond:  { en: 'Prestige Black',    he: 'Prestige שחור' },
+  black:    { en: 'Prestige Black',    he: 'Prestige שחור' },
+  platinum: { en: 'Prestige Platinum', he: 'Prestige פלטינום' },
+  gold:     { en: 'Prestige Gold',     he: 'Prestige זהב' },
+  silver:   { en: 'Prestige Silver',   he: 'Prestige כסף' },
+  bronze:   { en: 'Prestige Pearl',    he: 'Prestige פנינה' },
+  new:      { en: 'Prestige Pearl',    he: 'Prestige פנינה' },
 };
 
 // ─────────────────────────────────────────────────────────
