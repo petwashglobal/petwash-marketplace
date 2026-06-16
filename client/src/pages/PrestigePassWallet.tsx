@@ -1284,6 +1284,24 @@ export default function PrestigePassWallet() {
 
       <div style={{ background:'#FFFFFF', minHeight:'100vh', paddingBottom:'calc(180px + env(safe-area-inset-bottom, 0px))' }}>
 
+        {/* ── Add to Wallet — TOP of page, always visible (CEO: must be obvious) ── */}
+        <div style={{ padding:'16px 16px 0' }}>
+          <button
+            onClick={() => walletDownloadMutation.mutate('apple')}
+            disabled={walletDownloadMutation.isPending}
+            style={{ width:'100%', background:'#000', color:'#fff', padding:'16px', borderRadius:'14px', border:'none', fontWeight:700, fontSize:'0.98rem', cursor: walletDownloadMutation.isPending ? 'wait' : 'pointer' }}
+          >
+            {walletDownloadMutation.isPending ? (he ? 'מכין…' : 'Preparing…') : (he ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet')}
+          </button>
+          <button
+            onClick={() => walletDownloadMutation.mutate('google')}
+            disabled={walletDownloadMutation.isPending}
+            style={{ width:'100%', marginTop:'8px', background:'#FFFFFF', color:'#1a1a1a', border:'1.5px solid #e5e5e5', padding:'14px', borderRadius:'14px', fontWeight:600, fontSize:'0.92rem', cursor:'pointer' }}
+          >
+            {he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet'}
+          </button>
+        </div>
+
         {/* Live wash banner */}
         {washEvent && (
           <div style={{ position:'sticky', top:0, zIndex:50, background:'linear-gradient(90deg,#16a34a,#22c55e)', padding:'12px 20px', display:'flex', alignItems:'center', gap:'12px' }}>
