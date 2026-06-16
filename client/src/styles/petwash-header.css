@@ -32,9 +32,10 @@
 .pw-header-row-logo {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start; /* logo TOP-LEFT always (CEO 2026-06-16) */
+  direction: ltr;              /* stay physically left even in Hebrew/Arabic RTL */
   width: 100%;
-  padding: 0;
+  padding: 0 0 0 16px;         /* small inset from the left edge */
 }
 
 /* ROW 2: Controls bar - social left, nav center, profile+burger right */
