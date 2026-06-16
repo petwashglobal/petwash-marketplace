@@ -42,7 +42,7 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     id: "sitter",
     shortName: "Sitter",
     fullName: "The Sitter Suite",
-    tagLine: "Hotel level pet sitting and house guardians.",
+    tagLine: "Five-star pet sitting and house guardians.",
     accent: "border-rose-400 text-rose-500",
     chipColor: "bg-rose-50 text-rose-500",
     description:
