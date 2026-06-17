@@ -1324,6 +1324,10 @@ if (isProduction) {
       // Cron jobs (dev mode — runs same as production)
       try {
         console.log('[Cron] Initializing automated jobs...');
+        // FREE self-monitoring: watch DB health, alert (email/Slack) on outage.
+        // Would have caught the 2026-06-17 DB DEGRADED incident. No paid vendor.
+        const { startHealthWatchdogCron } = await import('./cron/health-watchdog');
+        startHealthWatchdogCron();
         const { startMonthlySettlementsCron } = await import('./cron/monthly-settlements');
         startMonthlySettlementsCron();
         const { startWinbackCron } = await import('./cron/winback');

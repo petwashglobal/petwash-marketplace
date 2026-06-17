@@ -10833,11 +10833,17 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api', ledRouter);
   
   // Apple Wallet Pass Generation (VIP Cards & E-Vouchers)
-  app.use('/api/wallet', apiLimiter, requireOnboardingComplete, walletRoutes);
-  app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
+  // optionalFirebaseToken populates req.user from the Bearer token so the wallet
+  // routes accept Firebase-authenticated clients (app/Safari), not only the legacy
+  // cookie session — fixes "Add to Apple/Google Wallet → 401" for logged-in users.
+  app.use('/api/wallet', apiLimiter, optionalFirebaseToken, requireOnboardingComplete, walletRoutes);
+  app.use('/api/google-wallet', apiLimiter, optionalFirebaseToken, googleWalletRoutes);
 
   // PetWash Prestige Pass — QR tokens, kiosk redemption, Apple/Google Wallet
-  app.use('/api/prestige-pass', apiLimiter, prestigePassRoutes);
+  // optionalFirebaseToken populates req.user from the Bearer token so the pass
+  // routes work for Firebase-authenticated clients (iOS app / Safari) and not
+  // only the legacy cookie session — fixes "Add to Apple Wallet → 401 Auth required".
+  app.use('/api/prestige-pass', apiLimiter, optionalFirebaseToken, prestigePassRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across
