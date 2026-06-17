@@ -159,6 +159,7 @@ const QrActivatePage = lazy(() => import("@/pages/QrActivatePage"));
 const ClaimVoucher = lazy(() => import("@/pages/ClaimVoucher"));
 const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
 const Inbox = lazy(() => import("@/pages/Inbox"));
+const PetWashInbox = lazy(() => import("@/pages/PetWashInbox")); // unified luxury inbox (Messages + Concierge + Alerts)
 const Pets = lazy(() => import("@/pages/Pets"));
 const PetPassport = lazy(() => import("@/pages/PetPassport"));
 // PR-PET-4: pet onboarding luxury shell. Mounted only when
@@ -766,7 +767,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/booking-chat/inbox">
           {() => (
             <RequireAuth>
-              <BookingChatInbox />
+              <PetWashInbox />
             </RequireAuth>
           )}
         </Route>
@@ -1191,11 +1192,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Protected route - Inbox */}
+        {/* Protected route - Inbox (unified luxury inbox: Messages + Concierge + Alerts) */}
         <Route path="/inbox">
           {() => (
             <RequireAuth>
-              <Inbox />
+              <PetWashInbox />
             </RequireAuth>
           )}
         </Route>
@@ -3367,6 +3368,13 @@ function App() {
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
+  // Let any screen open the AI Concierge (e.g. the unified inbox's Concierge tab).
+  useEffect(() => {
+    const open = () => setIsAIChatOpen(true);
+    window.addEventListener('petwash:open-concierge', open);
+    return () => window.removeEventListener('petwash:open-concierge', open);
+  }, []);
 
   // Route-aware suppression: promo popup and floating FABs must not show on
   // functional/operational pages — only on public marketing pages.
