@@ -14,11 +14,15 @@ import { db } from '../lib/firebase-admin';
 
 const router = express.Router();
 
-// Middleware to verify Firebase authentication
+// Resolve uid from Firebase Bearer token (req.user) OR legacy cookie session.
+function resolveUid(req: express.Request): string | undefined {
+  return (req as any).user?.uid || (req as any).session?.user?.uid;
+}
+
+// Middleware to verify authentication (Firebase Bearer OR legacy cookie session)
 const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   try {
-    const session = req.session as any;
-    if (!session?.user?.uid) {
+    if (!resolveUid(req)) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     next();
@@ -37,7 +41,7 @@ router.post('/vip-card', requireAuth, async (req, res) => {
   try {
     // Get authenticated user from session
     const session = req.session as any;
-    const userId = session?.user?.uid;
+    const userId = resolveUid(req);
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -107,7 +111,7 @@ router.post('/vip-card', requireAuth, async (req, res) => {
 router.post('/e-voucher', requireAuth, async (req, res) => {
   try {
     const session = req.session as any;
-    const userId = session?.user?.uid;
+    const userId = resolveUid(req);
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
