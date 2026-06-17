@@ -5,7 +5,7 @@ import { getApiUrl } from "@/lib/apiConfig";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
+import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { 
   Users, 
   Package, 
@@ -153,11 +153,11 @@ export default function AdminDashboard() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-rose-400 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-white text-lg font-medium">Loading Premium Analytics...</p>
-          <p className="text-purple-300 text-sm mt-2">Preparing your luxury dashboard</p>
+          <div className="w-14 h-14 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-black text-lg font-medium">Loading analytics…</p>
+          <p className="text-black/45 text-sm mt-2">Preparing your dashboard</p>
         </div>
       </div>
     );
@@ -166,145 +166,45 @@ export default function AdminDashboard() {
   const overview = analytics?.data;
 
   return (
-    <div className="min-h-screen luxury-bg-mesh relative overflow-hidden luxury-animate-fade-in">
-      {/* Animated Background Elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        <div className="absolute top-20 left-10 w-72 h-72 bg-purple-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse" />
-        <div className="absolute top-40 right-10 w-72 h-72 bg-rose-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-700" />
-        <div className="absolute -bottom-8 left-20 w-72 h-72 bg-blue-500 rounded-full mix-blend-multiply filter blur-3xl opacity-20 animate-pulse delay-1000" />
+    <DashboardShell role="admin" title="Admin" subtitle="Business management">
+      {/* Section tabs */}
+      <div className="mb-8 -mt-2 border-b border-black/10">
+        <div className="flex gap-1 overflow-x-auto">
+          {[
+            { id: 'overview', label: 'Overview', icon: Activity },
+            { id: 'analytics', label: 'Analytics', icon: BarChart3 },
+            { id: 'payments', label: 'Payments', icon: CreditCard },
+            { id: 'loyalty', label: 'Loyalty', icon: Award },
+            { id: 'inventory', label: 'Inventory', icon: Package },
+            { id: 'hr', label: 'HR Docs', icon: FileText },
+          ].map((section) => {
+            const Icon = section.icon;
+            const active = selectedSection === section.id;
+            return (
+              <button
+                key={section.id}
+                onClick={() => setSelectedSection(section.id as any)}
+                className={`flex items-center gap-2 py-3 px-4 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
+                  active ? 'border-emerald-700 text-black' : 'border-transparent text-black/50 hover:text-black'
+                }`}
+                data-testid={`nav-${section.id}`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{section.label}</span>
+              </button>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Glassmorphism Header */}
-      <header className="backdrop-blur-xl bg-white/10 border-b border-white/20 shadow-2xl relative z-10">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-20">
-            <div className="flex items-center space-x-4">
-              <img 
-                src="/brand/petwash-logo-official.png" 
-                alt="Pet Wash" 
-                className="h-12 w-auto object-contain"
-              />
-              <div>
-                <div className="flex items-center gap-2">
-                  <h1 className="text-2xl font-bold bg-gradient-to-r from-rose-300 via-purple-300 to-blue-300 bg-clip-text text-transparent">
-                    Pet Wash Admin Platform
-                  </h1>
-                  <span className="px-2 py-0.5 text-[8px] tracking-[0.12em] uppercase font-semibold bg-red-500/20 text-red-200 border border-red-400/30 rounded-sm">
-                    Admin
-                  </span>
-                </div>
-                <p className="text-sm text-purple-200 font-medium">Business Management</p>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-6">
-              {/* Live Clock */}
-              <div className="hidden md:flex flex-col items-end">
-                <div className="text-white font-mono text-lg font-bold">
-                  {currentTime.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
-                </div>
-                <div className="text-purple-300 text-xs">
-                  {currentTime.toLocaleDateString('en-US', { weekday: 'short', year: 'numeric', month: 'short', day: 'numeric' })}
-                </div>
-              </div>
-
-              <Link href="/admin/brain">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-amber-300 hover:text-amber-200 hover:bg-white/10 backdrop-blur-sm border border-amber-500/30"
-                  title="Operations Brain — live stations, revenue, alerts, approvals"
-                  data-testid="button-header-brain"
-                >
-                  <Brain className="w-4 h-4 mr-2" />
-                  <span className="hidden md:inline">Brain</span>
-                </Button>
-              </Link>
-              <Link href="/admin/stations">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-purple-300 hover:text-purple-200 hover:bg-white/10 backdrop-blur-sm"
-                  title="Manage Stations"
-                  data-testid="button-header-stations"
-                >
-                  <MapPin className="w-4 h-4 mr-2" />
-                  <span className="hidden lg:inline">Stations</span>
-                </Button>
-              </Link>
-              <Link href="/admin/help">
-                <Button 
-                  variant="ghost" 
-                  size="sm"
-                  className="text-emerald-300 hover:text-emerald-200 hover:bg-white/10 backdrop-blur-sm"
-                  title="View Admin Documentation"
-                  data-testid="button-admin-help"
-                >
-                  <Info className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Help</span>
-                </Button>
-              </Link>
-              <Link href="/admin/financial-monitor">
-                <Button variant="ghost" size="sm" className="text-purple-300 hover:text-purple-200 hover:bg-white/10 backdrop-blur-sm" data-testid="button-financial-monitor">
-                  <Brain className="w-4 h-4 mr-2" />
-                  <span className="hidden sm:inline">Financial AI</span>
-                </Button>
-              </Link>
-              <Button variant="ghost" size="sm" className="text-white hover:bg-white/10 backdrop-blur-sm" data-testid="button-settings">
-                <Settings className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Settings</span>
-              </Button>
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="text-rose-300 hover:text-rose-200 hover:bg-white/10 backdrop-blur-sm" data-testid="button-logout">
-                <LogOut className="w-4 h-4 mr-2" />
-                <span className="hidden sm:inline">Logout</span>
-              </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Glassmorphism Navigation */}
-      <nav className="backdrop-blur-xl bg-white/5 border-b border-white/10 relative z-10">
-        <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex space-x-8 overflow-x-auto">
-            {[
-              { id: 'overview', label: 'Overview', icon: Activity },
-              { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-              { id: 'payments', label: 'Payments', icon: CreditCard },
-              { id: 'loyalty', label: 'Loyalty', icon: Award },
-              { id: 'inventory', label: 'Inventory', icon: Package },
-              { id: 'hr', label: 'HR Docs', icon: FileText },
-            ].map((section) => {
-              const Icon = section.icon;
-              return (
-                <Button
-                  key={section.id}
-                  onClick={() => setSelectedSection(section.id as any)}
-                  className={`flex items-center space-x-2 py-4 px-3 border-b-2 text-sm font-medium transition-all whitespace-nowrap ${
-                    selectedSection === section.id
-                      ? 'border-rose-400 text-white bg-white/5'
-                      : 'border-transparent text-purple-200 hover:text-white hover:border-purple-300/50'
-                  }`}
-                  data-testid={`nav-${section.id}`}
-                >
-                  <Icon className="w-4 h-4" />
-                  <span>{section.label}</span>
-                  {selectedSection === section.id && <Sparkles className="w-3 h-3 text-rose-400" />}
-                </Button>
-              );
-            })}
-          </div>
-        </div>
-      </nav>
-
       {/* Main Content */}
-      <main className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8 py-8 relative z-10">
+      <main>
         {selectedSection === 'overview' && (
           <div className="space-y-8">
             {/* Premium Stats Grid */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
               {/* Revenue Card */}
-              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-1" data-testid="card-revenue">
+              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-1" data-testid="card-revenue">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl">
                     <DollarSign className="h-6 w-6 text-white" />
@@ -316,11 +216,11 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
-                <div className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="text-monthly-revenue">
+                <div className="text-2xl font-semibold text-black text-emerald-700 mb-2" data-testid="text-monthly-revenue">
                   ₪{overview?.revenue.thisMonth.toLocaleString() || 0}
                 </div>
-                <div className="luxury-text-small text-gray-600">Monthly Revenue</div>
-                <div className="mt-4 pt-4 border-t border-purple-200/30">
+                <div className="text-xs text-black/50 text-gray-600">Monthly Revenue</div>
+                <div className="mt-4 pt-4 border-t border-black/10">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-600">Today: ₪{overview?.revenue.today.toLocaleString() || 0}</span>
                     <span className="text-gray-600">Week: ₪{overview?.revenue.thisWeek.toLocaleString() || 0}</span>
@@ -329,7 +229,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Customers Card */}
-              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-2" data-testid="card-customers">
+              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-2" data-testid="card-customers">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
                     <Users className="h-6 w-6 text-white" />
@@ -341,11 +241,11 @@ export default function AdminDashboard() {
                     </div>
                   )}
                 </div>
-                <div className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="text-total-customers">
+                <div className="text-2xl font-semibold text-black text-emerald-700 mb-2" data-testid="text-total-customers">
                   {overview?.customers.total.toLocaleString() || 0}
                 </div>
-                <div className="luxury-text-small text-gray-600">Total Customers</div>
-                <div className="mt-4 pt-4 border-t border-purple-200/30">
+                <div className="text-xs text-black/50 text-gray-600">Total Customers</div>
+                <div className="mt-4 pt-4 border-t border-black/10">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-600">Active: {overview?.customers.active.toLocaleString() || 0}</span>
                     <span className="text-gray-600">New: {overview?.customers.new.toLocaleString() || 0}</span>
@@ -354,28 +254,28 @@ export default function AdminDashboard() {
               </div>
 
               {/* Stations Card */}
-              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-3" data-testid="card-stations">
+              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-3" data-testid="card-stations">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
                     <MapPin className="h-6 w-6 text-white" />
                   </div>
-                  <div className="flex items-center space-x-1 text-purple-600">
+                  <div className="flex items-center space-x-1 text-emerald-700">
                     <Target className="w-4 h-4" />
                     <span className="text-sm font-bold">{overview?.stations.utilizationRate.toFixed(0) || 0}%</span>
                   </div>
                 </div>
-                <div className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="text-total-stations">
+                <div className="text-2xl font-semibold text-black text-emerald-700 mb-2" data-testid="text-total-stations">
                   {overview?.stations.total || 0}
                 </div>
-                <div className="luxury-text-small text-gray-600">Total Stations</div>
-                <div className="mt-4 pt-4 border-t border-purple-200/30">
+                <div className="text-xs text-black/50 text-gray-600">Total Stations</div>
+                <div className="mt-4 pt-4 border-t border-black/10">
                   <div className="flex justify-between text-xs mb-3">
                     <span className="text-gray-600">Online: {overview?.stations.active || 0}</span>
                     <span className="text-gray-600">Offline: {overview?.stations.offline || 0}</span>
                   </div>
                   <Link href="/admin/stations">
                     <Button 
-                      className="luxury-btn-secondary w-full text-sm"
+                      className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg w-full text-sm"
                       data-testid="button-manage-stations"
                     >
                       <Settings className="w-4 h-4 mr-2 inline" />
@@ -386,7 +286,7 @@ export default function AdminDashboard() {
               </div>
 
               {/* Transactions Card */}
-              <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-4" data-testid="card-transactions">
+              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-4" data-testid="card-transactions">
                 <div className="flex items-center justify-between mb-4">
                   <div className="p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl">
                     <Zap className="h-6 w-6 text-white" />
@@ -396,11 +296,11 @@ export default function AdminDashboard() {
                     <span className="text-sm font-bold">{overview?.transactions.successRate.toFixed(1) || 0}%</span>
                   </div>
                 </div>
-                <div className="luxury-heading-lg luxury-text-gradient mb-2" data-testid="text-total-transactions">
+                <div className="text-2xl font-semibold text-black text-emerald-700 mb-2" data-testid="text-total-transactions">
                   {overview?.transactions.total.toLocaleString() || 0}
                 </div>
-                <div className="luxury-text-small text-gray-600">Total Transactions</div>
-                <div className="mt-4 pt-4 border-t border-purple-200/30">
+                <div className="text-xs text-black/50 text-gray-600">Total Transactions</div>
+                <div className="mt-4 pt-4 border-t border-black/10">
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-600">Success: {overview?.transactions.completed || 0}</span>
                     <span className="text-gray-600">Failed: {overview?.transactions.failed || 0}</span>
@@ -412,41 +312,41 @@ export default function AdminDashboard() {
             {/* Charts Section */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 luxury-animate-slide-up luxury-delay-2">
               {/* Revenue Trend Chart */}
-              <div className="luxury-glass-card luxury-shadow-lg" data-testid="chart-revenue-trend">
-                <h3 className="luxury-heading-md mb-6 flex items-center space-x-2">
-                  <BarChart3 className="w-5 h-5 text-purple-600" />
+              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg" data-testid="chart-revenue-trend">
+                <h3 className="text-lg font-semibold text-black mb-6 flex items-center space-x-2">
+                  <BarChart3 className="w-5 h-5 text-emerald-700" />
                   <span>Revenue Trend (30 Days)</span>
                 </h3>
                 {revenueLoading ? (
                   <div className="h-64 flex items-center justify-center">
-                    <div className="text-purple-300">Loading chart...</div>
+                    <div className="text-black/40">Loading chart...</div>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <AreaChart data={revenueData?.data || []}>
                       <defs>
                         <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#f472b6" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#f472b6" stopOpacity={0.1}/>
+                          <stop offset="5%" stopColor="#047857" stopOpacity={0.8}/>
+                          <stop offset="95%" stopColor="#047857" stopOpacity={0.1}/>
                         </linearGradient>
                       </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
-                      <XAxis dataKey="date" stroke="#fff" tick={{ fill: '#fff' }} />
-                      <YAxis stroke="#fff" tick={{ fill: '#fff' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#00000010" />
+                      <XAxis dataKey="date" stroke="#9ca3af" tick={{ fill: '#6b7280' }} />
+                      <YAxis stroke="#9ca3af" tick={{ fill: '#6b7280' }} />
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#1e1b4b', border: '1px solid #ffffff30', borderRadius: '8px' }}
-                        labelStyle={{ color: '#fff' }}
+                        contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #00000020', borderRadius: '8px' }}
+                        labelStyle={{ color: '#111' }}
                       />
-                      <Area type="monotone" dataKey="revenue" stroke="#f472b6" fillOpacity={1} fill="url(#colorRevenue)" />
+                      <Area type="monotone" dataKey="revenue" stroke="#047857" fillOpacity={1} fill="url(#colorRevenue)" />
                     </AreaChart>
                   </ResponsiveContainer>
                 )}
               </div>
 
               {/* Loyalty Distribution */}
-              <div className="luxury-glass-card luxury-shadow-lg" data-testid="chart-loyalty">
-                <h3 className="luxury-heading-md mb-6 flex items-center space-x-2">
-                  <Award className="w-5 h-5 text-purple-600" />
+              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg" data-testid="chart-loyalty">
+                <h3 className="text-lg font-semibold text-black mb-6 flex items-center space-x-2">
+                  <Award className="w-5 h-5 text-emerald-700" />
                   <span>Loyalty Tier Distribution</span>
                 </h3>
                 <div className="space-y-4">
@@ -464,10 +364,10 @@ export default function AdminDashboard() {
                     return (
                       <div key={item.tier} className="space-y-2">
                         <div className="flex justify-between text-sm">
-                          <span className="text-white font-medium">{item.tier}</span>
-                          <span className="text-purple-200">{item.count.toLocaleString()} ({percentage.toFixed(1)}%)</span>
+                          <span className="text-black font-medium">{item.tier}</span>
+                          <span className="text-black/50">{item.count.toLocaleString()} ({percentage.toFixed(1)}%)</span>
                         </div>
-                        <div className="h-3 bg-white/10 rounded-full overflow-hidden">
+                        <div className="h-3 bg-black/10 rounded-full overflow-hidden">
                           <div 
                             className={`h-full bg-gradient-to-r ${item.color} transition-all duration-1000`}
                             style={{ width: `${percentage}%` }}
@@ -481,24 +381,24 @@ export default function AdminDashboard() {
             </div>
 
             {/* Recent Activity */}
-            <div className="luxury-glass-panel luxury-animate-fade-in luxury-delay-3" data-testid="section-recent-activity">
-              <h3 className="luxury-heading-md mb-6 flex items-center space-x-2">
-                <Activity className="w-5 h-5 text-purple-600" />
+            <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-animate-fade-in luxury-delay-3" data-testid="section-recent-activity">
+              <h3 className="text-lg font-semibold text-black mb-6 flex items-center space-x-2">
+                <Activity className="w-5 h-5 text-emerald-700" />
                 <span>Recent Activity</span>
               </h3>
               <div className="space-y-3">
                 {stats?.recentActivity && stats.recentActivity.length > 0 ? (
                   stats.recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between p-4 rounded-xl bg-white/70 backdrop-blur-sm border border-purple-200/30 luxury-hover-lift transition-all" data-testid={`activity-${activity.id}`}>
+                    <div key={activity.id} className="flex items-center justify-between p-4 rounded-xl bg-black/[0.02] border border-black/10 luxury-hover-lift transition-all" data-testid={`activity-${activity.id}`}>
                       <div>
                         <p className="text-sm font-medium text-gray-800">{activity.action}</p>
-                        <p className="luxury-text-small">{activity.resource}</p>
+                        <p className="text-xs text-black/50">{activity.resource}</p>
                       </div>
                       <div className="text-right">
-                        <Badge variant="secondary" className="luxury-badge text-xs">
+                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-800 border border-emerald-100 text-xs">
                           {activity.adminName}
                         </Badge>
-                        <p className="luxury-text-small mt-1">{activity.timestamp}</p>
+                        <p className="text-xs text-black/50 mt-1">{activity.timestamp}</p>
                       </div>
                     </div>
                   ))
@@ -516,24 +416,24 @@ export default function AdminDashboard() {
         {selectedSection === 'analytics' && (
           <div className="space-y-8">
             {/* Advanced Analytics Section */}
-            <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
-              <h2 className="luxury-heading-lg mb-6 flex items-center space-x-3">
+            <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
+              <h2 className="text-2xl font-semibold text-black mb-6 flex items-center space-x-3">
                 <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl">
                   <BarChart3 className="w-6 h-6 text-white" />
                 </div>
                 <span>Advanced Business Intelligence</span>
-                <Badge className="luxury-badge-gold">PREMIUM</Badge>
+                <Badge className="bg-[#D4AF37] text-black">PREMIUM</Badge>
               </h2>
 
               {/* Station Performance */}
               <div className="mb-8">
-                <h3 className="luxury-heading-md mb-4">Top Performing Stations</h3>
+                <h3 className="text-lg font-semibold text-black mb-4">Top Performing Stations</h3>
                 {stationLoading ? (
                   <div className="text-gray-500 text-center py-8">Loading station data...</div>
                 ) : (
                   <div className="space-y-3">
                     {stationData?.data?.slice(0, 5).map((station, index) => (
-                      <div key={station.stationId} className="luxury-glass-minimal luxury-hover-lift p-4" data-testid={`station-${station.stationId}`}>
+                      <div key={station.stationId} className="rounded-xl border border-black/10 bg-white luxury-hover-lift p-4" data-testid={`station-${station.stationId}`}>
                         <div className="flex items-center justify-between">
                           <div className="flex items-center space-x-4">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center font-bold text-white ${
@@ -546,12 +446,12 @@ export default function AdminDashboard() {
                             </div>
                             <div>
                               <div className="text-gray-800 font-medium">{station.stationName}</div>
-                              <div className="luxury-text-small">{station.totalTransactions} transactions</div>
+                              <div className="text-xs text-black/50">{station.totalTransactions} transactions</div>
                             </div>
                           </div>
                           <div className="text-right">
-                            <div className="luxury-heading-sm luxury-text-gradient">₪{station.totalRevenue.toLocaleString()}</div>
-                            <div className="luxury-text-small">Avg: ₪{station.averageTransaction.toFixed(0)}</div>
+                            <div className="text-base font-semibold text-black text-emerald-700">₪{station.totalRevenue.toLocaleString()}</div>
+                            <div className="text-xs text-black/50">Avg: ₪{station.averageTransaction.toFixed(0)}</div>
                           </div>
                         </div>
                       </div>
@@ -562,22 +462,22 @@ export default function AdminDashboard() {
 
               {/* Transaction Volume Chart */}
               <div>
-                <h3 className="luxury-heading-md mb-4">Transaction Volume (30 Days)</h3>
+                <h3 className="text-lg font-semibold text-black mb-4">Transaction Volume (30 Days)</h3>
                 {revenueLoading ? (
                   <div className="h-64 flex items-center justify-center">
-                    <div className="text-purple-300">Loading chart...</div>
+                    <div className="text-black/40">Loading chart...</div>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
                     <BarChart data={revenueData?.data || []}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#ffffff20" />
-                      <XAxis dataKey="date" stroke="#fff" tick={{ fill: '#fff' }} />
-                      <YAxis stroke="#fff" tick={{ fill: '#fff' }} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="#00000010" />
+                      <XAxis dataKey="date" stroke="#9ca3af" tick={{ fill: '#6b7280' }} />
+                      <YAxis stroke="#9ca3af" tick={{ fill: '#6b7280' }} />
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#1e1b4b', border: '1px solid #ffffff30', borderRadius: '8px' }}
-                        labelStyle={{ color: '#fff' }}
+                        contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #00000020', borderRadius: '8px' }}
+                        labelStyle={{ color: '#111' }}
                       />
-                      <Bar dataKey="transactions" fill="#333333" />
+                      <Bar dataKey="transactions" fill="#047857" />
                     </BarChart>
                   </ResponsiveContainer>
                 )}
@@ -587,59 +487,49 @@ export default function AdminDashboard() {
         )}
 
         {selectedSection === 'loyalty' && (
-          <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
-            <h2 className="luxury-heading-lg mb-4">Loyalty Program Dashboard</h2>
-            <p className="luxury-text-body mb-8">Manage customer loyalty, tiers, and rewards</p>
+          <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="text-2xl font-semibold text-black mb-4">Loyalty Program Dashboard</h2>
+            <p className="text-sm text-black/60 mb-8">Manage customer loyalty, tiers, and rewards</p>
             <div className="text-center py-12 text-gray-500">
-              <Award className="w-16 h-16 mx-auto mb-4 opacity-30 text-purple-400" />
-              <p className="luxury-heading-sm">Loyalty Management</p>
-              <p className="luxury-text-small">Advanced loyalty features coming soon</p>
+              <Award className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
+              <p className="text-base font-semibold text-black">Loyalty Management</p>
+              <p className="text-xs text-black/50">Advanced loyalty features coming soon</p>
             </div>
           </div>
         )}
 
         {selectedSection === 'inventory' && (
-          <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
-            <h2 className="luxury-heading-lg mb-4">Inventory Management</h2>
-            <p className="luxury-text-body mb-8">Track stock levels, supplies, and equipment</p>
+          <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="text-2xl font-semibold text-black mb-4">Inventory Management</h2>
+            <p className="text-sm text-black/60 mb-8">Track stock levels, supplies, and equipment</p>
             <div className="text-center py-12 text-gray-500">
-              <Package className="w-16 h-16 mx-auto mb-4 opacity-30 text-purple-400" />
-              <p className="luxury-heading-sm">Inventory Tracker</p>
-              <p className="luxury-text-small">Real-time inventory monitoring coming soon</p>
+              <Package className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
+              <p className="text-base font-semibold text-black">Inventory Tracker</p>
+              <p className="text-xs text-black/50">Real-time inventory monitoring coming soon</p>
             </div>
           </div>
         )}
 
         {selectedSection === 'hr' && (
-          <div className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in">
-            <h2 className="luxury-heading-lg mb-4">HR Document Management</h2>
-            <p className="luxury-text-body mb-8">Manage employee documents, contracts, and records</p>
+          <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="text-2xl font-semibold text-black mb-4">HR Document Management</h2>
+            <p className="text-sm text-black/60 mb-8">Manage employee documents, contracts, and records</p>
             <div className="text-center py-12 text-gray-500">
-              <FileText className="w-16 h-16 mx-auto mb-4 opacity-30 text-purple-400" />
-              <p className="luxury-heading-sm">HR Documents</p>
-              <p className="luxury-text-small">Document management system coming soon</p>
+              <FileText className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
+              <p className="text-base font-semibold text-black">HR Documents</p>
+              <p className="text-xs text-black/50">Document management system coming soon</p>
             </div>
           </div>
         )}
 
         {selectedSection === 'payments' && (
           <div className="space-y-6 luxury-animate-fade-in">
-            <div className="luxury-glass-card luxury-shadow-lg">
+            <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg">
               <NayaxMonitoring />
             </div>
           </div>
         )}
       </main>
-
-      {/* Footer Badge */}
-      <div className="fixed bottom-4 right-4 z-50">
-        <div className="backdrop-blur-xl bg-gradient-to-r from-purple-500/30 to-rose-500/30 border border-white/20 rounded-full px-4 py-2 shadow-2xl">
-          <div className="flex items-center space-x-2">
-            <Sparkles className="w-4 h-4 text-rose-300 animate-pulse" />
-            <span className="text-white text-sm font-medium">Premium 2025-2026</span>
-          </div>
-        </div>
-      </div>
-    </div>
+    </DashboardShell>
   );
 }

@@ -312,8 +312,6 @@ const WalkerDetail = lazy(() => import("@/pages/walk-my-pet/WalkerDetail"));
 const WalkBookingFlow = lazy(() => import("@/pages/walk-my-pet/BookingFlow"));
 const WalkOwnerDashboardPage = lazy(() => import("@/pages/walk-my-pet/OwnerDashboard"));
 
-const WalkerDashboardPage = lazy(() => import("@/pages/WalkerDashboard"));
-
 // ⁦PetTrek™⁩ - Advanced Pet Transport
 const PetTrekOverview = lazy(() => import("@/pages/pettrek/Overview"));
 const PetTrek = lazy(() => import("@/pages/pettrek/BrowseDrivers"));
