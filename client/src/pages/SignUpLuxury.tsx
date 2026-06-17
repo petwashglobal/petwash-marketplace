@@ -995,8 +995,8 @@ function styles(he: boolean) {
       .sl-h1{ font-size:clamp(23px,6vw,28px); line-height:1.04; max-width:352px }
       .sl-sub{ font-size:clamp(13px,3.4vw,15px); line-height:1.32; max-width:344px }
       .sl-divPaw{ display:none }
-      .sl-dogWrap{ padding:0 }
-      .sl-dog{ width:min(42vw, 162px); border-radius:16px; box-shadow:0 14px 38px rgba(0,0,0,.42); object-position:center top }
+      .sl-dogWrap{ padding:0; width:100% }
+      .sl-dog{ width:100%; max-width:none; aspect-ratio:16/10; border-radius:18px; box-shadow:0 18px 44px rgba(0,0,0,.45); object-position:center top }
       .sl-card,.sl-trustCard,.sl-secBadge{ display:none }
       .sl-panel{ padding:16px 14px; border-radius:22px; gap:11px; scroll-margin-top:8px }
       .sl-panelHead{ gap:8px }
@@ -1044,11 +1044,12 @@ function styles(he: boolean) {
       .sl-logo{ width:min(84vw, 352px) }
       .sl-h1{ font-size:clamp(21px,5.7vw,26px) }
       .sl-sub{ font-size:13px }
-      .sl-dog{ width:min(38vw, 142px) }
+      .sl-dog{ width:100%; aspect-ratio:4/3 }
     }
 
     @media(max-width:380px){
-      .sl-dogWrap{ display:none }
+      .sl-dogWrap{ display:flex; width:100% }
+      .sl-dog{ width:100%; aspect-ratio:4/3 }
     }
 
     /* 768-1023 (tablet portrait, iPad mini portrait) — two columns so iPad
