@@ -117,7 +117,7 @@ export default function ProviderOS() {
         </button>
 
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center">
+          <div className="w-7 h-7 rounded-lg bg-[#12936A] flex items-center justify-center">
             <Dog className="w-4 h-4 text-white" />
           </div>
           <span className="font-semibold text-gray-900 text-sm hidden sm:block">Provider OS</span>
@@ -133,7 +133,7 @@ export default function ProviderOS() {
                   onClick={() => setActivePlatform(p.id)}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
                     activePlatform === p.id
-                      ? 'bg-amber-500 text-white'
+                      ? 'bg-[#12936A] text-white'
                       : 'bg-white text-gray-600 hover:bg-white'
                   }`}
                 >
@@ -168,7 +168,7 @@ export default function ProviderOS() {
             )}
           </button>
 
-          <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-xs font-semibold">
+          <div className="w-7 h-7 rounded-full bg-[#E6F3EE] flex items-center justify-center text-[#0C5B3F] text-xs font-semibold">
             {displayName.charAt(0).toUpperCase()}
           </div>
         </div>
@@ -191,11 +191,11 @@ export default function ProviderOS() {
                   onClick={() => navigate(item.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-0.5 ${
                     isActive
-                      ? 'bg-amber-50 text-amber-700'
+                      ? 'bg-[#E6F3EE] text-[#0C5B3F]'
                       : 'text-gray-600 hover:bg-white hover:text-gray-900'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-600' : ''}`} />
+                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#12936A]' : ''}`} />
                   <span className="truncate">{item.label}</span>
                   {item.id === 'notifications' && unreadCount > 0 && (
                     <span className="ms-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
@@ -254,10 +254,10 @@ export default function ProviderOS() {
                       key={item.id}
                       onClick={() => navigate(item.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mb-0.5 ${
-                        isActive ? 'bg-amber-50 text-amber-700' : 'text-gray-700 hover:bg-white'
+                        isActive ? 'bg-[#E6F3EE] text-[#0C5B3F]' : 'text-gray-700 hover:bg-white'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-600' : ''}`} />
+                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-[#12936A]' : ''}`} />
                       {item.label}
                       {item.id === 'notifications' && unreadCount > 0 && (
                         <span className="ms-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
@@ -330,8 +330,8 @@ export default function ProviderOS() {
                 onClick={() => navigate(item.id)}
                 className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors touch-manipulation"
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-amber-500' : 'text-gray-400'}`} />
-                <span className={`text-[10px] font-medium ${isActive ? 'text-amber-500' : 'text-gray-400'}`}>
+                <Icon className={`w-5 h-5 ${isActive ? 'text-[#12936A]' : 'text-gray-400'}`} />
+                <span className={`text-[10px] font-medium ${isActive ? 'text-[#12936A]' : 'text-gray-400'}`}>
                   {item.label}
                 </span>
               </button>
@@ -363,11 +363,11 @@ export default function ProviderOS() {
                       key={item.id}
                       onClick={() => navigate(item.id)}
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors touch-manipulation ${
-                        isActive ? 'bg-amber-50' : 'hover:bg-white'
+                        isActive ? 'bg-[#E6F3EE]' : 'hover:bg-white'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-amber-600' : 'text-gray-600'}`} />
-                      <span className={`text-[10px] font-medium text-center leading-tight ${isActive ? 'text-amber-700' : 'text-gray-600'}`}>
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-[#12936A]' : 'text-gray-600'}`} />
+                      <span className={`text-[10px] font-medium text-center leading-tight ${isActive ? 'text-[#0C5B3F]' : 'text-gray-600'}`}>
                         {item.label}
                       </span>
                     </button>

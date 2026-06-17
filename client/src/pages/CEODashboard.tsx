@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
-import { Crown, Gift, Send, Sparkles, Shield } from "lucide-react";
+import { Crown, Gift, Send, Sparkles, Shield, Lock } from "lucide-react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { routeGuard } from "@/lib/auth-guardian-2025";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
@@ -150,11 +150,11 @@ export default function CEODashboard() {
 
   if (!isCEO) {
     return (
-      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+      <div className="min-h-screen bg-white text-[#111111] flex items-center justify-center">
         <div className="text-center">
-          <Crown className="w-16 h-16 mx-auto mb-4 text-yellow-500" />
-          <h1 className="text-2xl font-bold mb-2">CEO Access Required</h1>
-          <p className="text-gray-400">This dashboard is only accessible to the CEO</p>
+          <Crown className="w-16 h-16 mx-auto mb-4 text-[#D4AF37]" />
+          <h1 className="text-2xl font-bold mb-2 text-[#0C5B3F]">CEO Access Required</h1>
+          <p className="text-gray-500">This dashboard is only accessible to the CEO</p>
         </div>
       </div>
     );
@@ -165,20 +165,20 @@ export default function CEODashboard() {
       variant="dashboard"
       title="CEO Dashboard"
       subtitle="Welcome back, Nir Hadad - Founder & CEO of ⁦PetWash™⁩"
-      icon={<Crown className="w-12 h-12" />}
+      icon={<Crown className="w-12 h-12 text-[#D4AF37]" />}
     >
 
         {/* Issue Free Voucher Card */}
         <div className="max-w-2xl mx-auto luxury-delay-1">
-          <Card className="luxury-glass-card luxury-shadow-lg">
+          <Card className="bg-white border border-gray-200 shadow-lg">
             <CardHeader>
               <div className="flex items-center gap-3">
-                <div className="p-3 rounded-xl bg-gradient-to-br from-yellow-500 to-purple-600">
+                <div className="p-3 rounded-xl bg-[#12936A]">
                   <Gift className="w-6 h-6 text-white" />
                 </div>
                 <div>
-                  <CardTitle className="text-white text-2xl">Issue Complimentary Gift Card</CardTitle>
-                  <CardDescription className="text-gray-400">
+                  <CardTitle className="text-[#0C5B3F] text-2xl">Issue Complimentary Gift Card</CardTitle>
+                  <CardDescription className="text-gray-500">
                     Send free ⁦PetWash™⁩ gift cards to anyone
                   </CardDescription>
                 </div>
@@ -187,53 +187,53 @@ export default function CEODashboard() {
             <CardContent className="space-y-6">
               <div className="space-y-4">
                 <div>
-                  <Label htmlFor="recipientEmail" className="text-white">Recipient Email *</Label>
+                  <Label htmlFor="recipientEmail" className="text-[#111111]">Recipient Email *</Label>
                   <Input
                     id="recipientEmail"
                     type="email"
                     value={recipientEmail}
                     onChange={(e) => setRecipientEmail(e.target.value)}
                     placeholder="client@example.com"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="bg-white border-gray-300 text-[#111111] placeholder:text-gray-400 focus-visible:ring-[#12936A]"
                     data-testid="input-recipient-email"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="recipientName" className="text-white">Recipient Name *</Label>
+                  <Label htmlFor="recipientName" className="text-[#111111]">Recipient Name *</Label>
                   <Input
                     id="recipientName"
                     type="text"
                     value={recipientName}
                     onChange={(e) => setRecipientName(e.target.value)}
                     placeholder="John Smith"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="bg-white border-gray-300 text-[#111111] placeholder:text-gray-400 focus-visible:ring-[#12936A]"
                     data-testid="input-recipient-name"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="amount" className="text-white">Amount (₪) *</Label>
+                  <Label htmlFor="amount" className="text-[#111111]">Amount (₪) *</Label>
                   <Input
                     id="amount"
                     type="number"
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
                     placeholder="100"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500"
+                    className="bg-white border-gray-300 text-[#111111] placeholder:text-gray-400 focus-visible:ring-[#12936A]"
                     data-testid="input-voucher-amount"
                   />
                 </div>
 
                 <div>
-                  <Label htmlFor="message" className="text-white">Personal Message (Optional)</Label>
+                  <Label htmlFor="message" className="text-[#111111]">Personal Message (Optional)</Label>
                   <Textarea
                     id="message"
                     value={message}
                     onChange={(e) => setMessage(e.target.value)}
                     placeholder="Add a personal message..."
                     rows={4}
-                    className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 resize-none"
+                    className="bg-white border-gray-300 text-[#111111] placeholder:text-gray-400 focus-visible:ring-[#12936A] resize-none"
                     data-testid="input-personal-message"
                   />
                 </div>
@@ -264,11 +264,11 @@ export default function CEODashboard() {
               {/* Step 2: Enter verification code and issue */}
               {requestId && (
                 <div className="space-y-4">
-                  <div className="bg-yellow-500/10 border border-yellow-500/30 rounded-lg p-4 flex items-start gap-3">
-                    <Shield className="w-5 h-5 text-yellow-400 mt-0.5" />
-                    <div className="text-sm text-yellow-200">
-                      <p className="font-semibold mb-1">🔐 2FA Required</p>
-                      <p className="text-yellow-300">
+                  <div className="bg-[#12936A]/10 border border-[#12936A]/30 rounded-lg p-4 flex items-start gap-3">
+                    <Lock className="w-5 h-5 text-[#12936A] mt-0.5" />
+                    <div className="text-sm text-[#111111]">
+                      <p className="font-semibold mb-1 text-[#0C5B3F]">2FA Required</p>
+                      <p className="text-gray-700">
                         Check your mobile phone (+972 549 833 355) for a 6-digit security code.
                         This extra layer protects against unauthorized access.
                       </p>
@@ -276,7 +276,7 @@ export default function CEODashboard() {
                   </div>
 
                   <div>
-                    <Label htmlFor="verificationCode" className="text-white">6-Digit Verification Code *</Label>
+                    <Label htmlFor="verificationCode" className="text-[#111111]">6-Digit Verification Code *</Label>
                     <Input
                       id="verificationCode"
                       type="text"
@@ -284,7 +284,7 @@ export default function CEODashboard() {
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value.replace(/\D/g, ''))}
                       placeholder="123456"
-                      className="bg-white/10 border-white/20 text-white placeholder:text-gray-500 text-center text-2xl font-mono tracking-widest"
+                      className="bg-white border-gray-300 text-[#111111] placeholder:text-gray-400 focus-visible:ring-[#12936A] text-center text-2xl font-mono tracking-widest"
                       data-testid="input-verification-code"
                     />
                   </div>
@@ -310,12 +310,12 @@ export default function CEODashboard() {
                 </div>
               )}
 
-              <div className="bg-purple-500/10 border border-purple-500/30 rounded-lg p-4 flex items-start gap-3">
-                <Sparkles className="w-5 h-5 text-purple-400 mt-0.5" />
-                <div className="text-sm text-purple-200">
-                  <p className="font-semibold mb-1">🔒 Enhanced Security</p>
-                  <p className="text-purple-300">
-                    Every free voucher requires mobile 2FA verification sent to your phone. 
+              <div className="bg-[#36C98F]/10 border border-[#36C98F]/40 rounded-lg p-4 flex items-start gap-3">
+                <Sparkles className="w-5 h-5 text-[#12936A] mt-0.5" />
+                <div className="text-sm text-[#111111]">
+                  <p className="font-semibold mb-1 text-[#0C5B3F]">Enhanced Security</p>
+                  <p className="text-gray-700">
+                    Every free voucher requires mobile 2FA verification sent to your phone.
                     This prevents unauthorized issuance even if your account is compromised.
                   </p>
                 </div>

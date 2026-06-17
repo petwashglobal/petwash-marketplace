@@ -28,7 +28,7 @@ const STATUS_STYLES: Record<string, { label: string; color: string; bg: string }
   meet_greet_scheduled: { label: 'Meet & Greet',color: '#92400e', bg: '#fef3c7' },
   payment_pending:      { label: 'Awaiting Pmt',color: '#b45309', bg: '#fef3c7' },
   confirmed:            { label: 'Confirmed',   color: '#065f46', bg: '#d1fae5' },
-  in_progress:          { label: 'In Progress', color: '#7c3aed', bg: '#ede9fe' },
+  in_progress:          { label: 'In Progress', color: '#0C5B3F', bg: '#E6F3EE' },
   completed:            { label: 'Completed',   color: '#374151', bg: '#f3f4f6' },
   reviewed:             { label: 'Reviewed',    color: '#374151', bg: '#f3f4f6' },
   cancelled:            { label: 'Cancelled',   color: '#991b1b', bg: '#fee2e2' },
@@ -158,12 +158,12 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       {(newCount > 0 || todayJobs.length > 0 || activeJobs.length > 0) && (
         <div className="grid grid-cols-3 gap-2">
           <button onClick={() => onNavigate('jobs')}
-            className={`rounded-xl p-3 text-center border transition-colors ${newCount > 0 ? 'bg-amber-50 border-amber-200' : 'bg-white border-gray-200'}`}>
+            className={`rounded-xl p-3 text-center border transition-colors ${newCount > 0 ? 'bg-[#E6F3EE] border-emerald-200' : 'bg-white border-gray-200'}`}>
             <div className="flex items-center justify-center gap-1 mb-0.5">
-              <Inbox className={`w-3.5 h-3.5 ${newCount > 0 ? 'text-amber-600' : 'text-gray-400'}`} />
+              <Inbox className={`w-3.5 h-3.5 ${newCount > 0 ? 'text-[#12936A]' : 'text-gray-400'}`} />
               {newCount > 0 && <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse" />}
             </div>
-            <p className={`text-lg font-bold ${newCount > 0 ? 'text-amber-700' : 'text-gray-900'}`}>{newCount}</p>
+            <p className={`text-lg font-bold ${newCount > 0 ? 'text-[#0C5B3F]' : 'text-gray-900'}`}>{newCount}</p>
             <p className="text-[10px] text-gray-500">New requests</p>
           </button>
           <button onClick={() => onNavigate('jobs')}
@@ -173,9 +173,9 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
             <p className="text-[10px] text-gray-500">Today</p>
           </button>
           <button onClick={() => onNavigate('jobs')}
-            className={`rounded-xl p-3 text-center border transition-colors ${activeJobs.length > 0 ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200'}`}>
-            <Play className={`w-3.5 h-3.5 mx-auto mb-0.5 ${activeJobs.length > 0 ? 'text-purple-600' : 'text-gray-400'}`} />
-            <p className={`text-lg font-bold ${activeJobs.length > 0 ? 'text-purple-700' : 'text-gray-900'}`}>{activeJobs.length}</p>
+            className={`rounded-xl p-3 text-center border transition-colors ${activeJobs.length > 0 ? 'bg-[#E6F3EE] border-emerald-200' : 'bg-white border-gray-200'}`}>
+            <Play className={`w-3.5 h-3.5 mx-auto mb-0.5 ${activeJobs.length > 0 ? 'text-[#0C5B3F]' : 'text-gray-400'}`} />
+            <p className={`text-lg font-bold ${activeJobs.length > 0 ? 'text-[#0C5B3F]' : 'text-gray-900'}`}>{activeJobs.length}</p>
             <p className="text-[10px] text-gray-500">Active now</p>
           </button>
         </div>
@@ -207,13 +207,13 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       <div className="grid grid-cols-3 gap-3">
         {[
           { label: 'Paid out',   value: `₪${paidBalance.toFixed(0)}`,    sub: 'Received to date', icon: Wallet,      color: 'text-green-600', bg: 'bg-green-50' },
-          { label: 'Pending',    value: `₪${pendingBalance.toFixed(0)}`,  sub: 'Awaiting payout',  icon: Clock,       color: 'text-amber-600', bg: 'bg-amber-50' },
+          { label: 'Pending',    value: `₪${pendingBalance.toFixed(0)}`,  sub: 'Awaiting payout',  icon: Clock,       color: 'text-[#0C5B3F]', bg: 'bg-[#E6F3EE]' },
           { label: 'This month', value: `₪${monthTotal.toFixed(0)}`,      sub: 'Earnings MTD',     icon: TrendingUp,  color: 'text-blue-600',  bg: 'bg-blue-50' },
         ].map(card => {
           const Icon = card.icon;
           return (
             <button key={card.label} onClick={() => onNavigate('wallet')}
-              className="bg-white border border-gray-200 rounded-xl p-3 text-start hover:border-amber-300 transition-colors">
+              className="bg-white border border-gray-200 rounded-xl p-3 text-start hover:border-emerald-300 transition-colors">
               <div className={`w-8 h-8 ${card.bg} rounded-lg flex items-center justify-center mb-2`}>
                 <Icon className={`w-4 h-4 ${card.color}`} />
               </div>
@@ -227,7 +227,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       {/* ── KPIs ──────────────────────────────────────────────────── */}
       <div className="grid grid-cols-4 gap-2">
         {[
-          { label: 'Rating',    value: statsLoading ? '—' : `${(stats?.averageRating ?? 0).toFixed(1)}★`,  color: 'text-amber-600' },
+          { label: 'Rating',    value: statsLoading ? '—' : `${(stats?.averageRating ?? 0).toFixed(1)}★`,  color: 'text-[#0C5B3F]' },
           { label: 'Completed', value: statsLoading ? '—' : `${stats?.completedBookings ?? 0}`,            color: 'text-green-600' },
           { label: 'Cancel %',  value: statsLoading ? '—' : `${stats?.completionRate ? (100 - stats.completionRate).toFixed(0) : 0}%`, color: 'text-red-500' },
           { label: 'Reviews',   value: statsLoading ? '—' : `${stats?.totalReviews ?? 0}`,                 color: 'text-blue-600' },
@@ -242,32 +242,32 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       {/* ── Profile completeness ──────────────────────────────────── */}
       {profileData?.exists !== false && profileData?.completeness && profileData.completeness.score < 100 && (
         <button onClick={() => onNavigate('profile')}
-          className="w-full bg-white border border-gray-200 rounded-xl p-4 text-start hover:border-amber-300 transition-colors group">
+          className="w-full bg-white border border-gray-200 rounded-xl p-4 text-start hover:border-emerald-300 transition-colors group">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 rounded-lg bg-amber-50 flex items-center justify-center">
-                <UserCircle className="w-4 h-4 text-amber-500" />
+              <div className="w-7 h-7 rounded-lg bg-[#E6F3EE] flex items-center justify-center">
+                <UserCircle className="w-4 h-4 text-[#12936A]" />
               </div>
               <p className="text-sm font-semibold text-gray-900">Complete your profile</p>
             </div>
             <div className="flex items-center gap-2">
               <span className={`text-sm font-bold ${
                 profileData.completeness.score >= 80 ? 'text-green-600' :
-                profileData.completeness.score >= 50 ? 'text-amber-600' : 'text-red-500'
+                profileData.completeness.score >= 50 ? 'text-[#0C5B3F]' : 'text-red-500'
               }`}>{profileData.completeness.score}%</span>
-              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-amber-500 transition-colors" />
+              <ChevronRight className="w-4 h-4 text-gray-400 group-hover:text-[#12936A] transition-colors" />
             </div>
           </div>
           <div className="w-full bg-white rounded-full h-1.5 mb-2">
             <div className={`h-1.5 rounded-full transition-all duration-500 ${
               profileData.completeness.score >= 80 ? 'bg-green-500' :
-              profileData.completeness.score >= 50 ? 'bg-amber-500' : 'bg-red-400'
+              profileData.completeness.score >= 50 ? 'bg-[#12936A]' : 'bg-red-400'
             }`} style={{ width: `${profileData.completeness.score}%` }} />
           </div>
           {(() => {
             const next = Object.values(profileData.completeness.breakdown).find(c => !c.done);
             return next ? (
-              <p className="text-xs text-gray-500">Next: {next.label} <span className="text-amber-500 font-medium">+{next.weight}%</span></p>
+              <p className="text-xs text-gray-500">Next: {next.label} <span className="text-[#12936A] font-medium">+{next.weight}%</span></p>
             ) : null;
           })()}
         </button>
@@ -275,13 +275,13 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
 
       {/* ── Verification alert ─────────────────────────────────────── */}
       {stats?.platforms?.some((p: any) => p.verificationStatus === 'pending') && (
-        <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-          <AlertTriangle className="w-5 h-5 text-amber-500 shrink-0 mt-0.5" />
+        <div className="bg-[#E6F3EE] border border-emerald-200 rounded-xl p-4 flex items-start gap-3">
+          <AlertTriangle className="w-5 h-5 text-[#12936A] shrink-0 mt-0.5" />
           <div className="flex-1">
-            <p className="text-sm font-semibold text-amber-800">Action required</p>
-            <p className="text-xs text-amber-700 mt-0.5">Documents or verification steps are pending.</p>
+            <p className="text-sm font-semibold text-[#0C5B3F]">Action required</p>
+            <p className="text-xs text-[#0C5B3F] mt-0.5">Documents or verification steps are pending.</p>
           </div>
-          <button onClick={() => onNavigate('documents')} className="text-amber-700 text-xs font-medium flex items-center gap-1">
+          <button onClick={() => onNavigate('documents')} className="text-[#0C5B3F] text-xs font-medium flex items-center gap-1">
             View <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
@@ -292,10 +292,10 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
         <section>
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <span className="w-2 h-2 bg-amber-400 rounded-full animate-pulse" />
+              <span className="w-2 h-2 bg-[#36C98F] rounded-full animate-pulse" />
               New Requests ({newRequests.length})
             </h2>
-            <button onClick={() => onNavigate('jobs')} className="text-xs text-amber-600 font-medium flex items-center gap-1">
+            <button onClick={() => onNavigate('jobs')} className="text-xs text-[#0C5B3F] font-medium flex items-center gap-1">
               All jobs <ChevronRight className="w-3.5 h-3.5" />
             </button>
           </div>
@@ -307,7 +307,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
             ))}
             {newRequests.length > 3 && (
               <button onClick={() => onNavigate('jobs')}
-                className="w-full py-2.5 border border-dashed border-gray-300 rounded-xl text-xs text-gray-500 hover:border-amber-300 hover:text-amber-600 transition-colors">
+                className="w-full py-2.5 border border-dashed border-gray-300 rounded-xl text-xs text-gray-500 hover:border-emerald-300 hover:text-[#0C5B3F] transition-colors">
                 +{newRequests.length - 3} more requests — view all
               </button>
             )}
@@ -319,7 +319,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       {activeJobs.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+            <span className="w-2 h-2 bg-[#12936A] rounded-full animate-pulse" />
             Active Now ({activeJobs.length})
           </h2>
           <div className="space-y-2">
@@ -393,17 +393,17 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
         <h2 className="text-sm font-semibold text-gray-900 mb-3">Quick Actions</h2>
         <div className="grid grid-cols-3 gap-2">
           {[
-            { label: 'Jobs',      icon: Package,      mod: 'jobs' as Module,       color: 'text-amber-600',  bg: 'bg-amber-50' },
+            { label: 'Jobs',      icon: Package,      mod: 'jobs' as Module,       color: 'text-[#0C5B3F]',  bg: 'bg-[#E6F3EE]' },
             { label: 'Calendar',  icon: CalendarDays, mod: 'calendar' as Module,   color: 'text-blue-600',   bg: 'bg-blue-50' },
             { label: 'Wallet',    icon: Wallet,       mod: 'wallet' as Module,     color: 'text-green-600',  bg: 'bg-green-50' },
-            { label: 'Services',  icon: Star,         mod: 'services' as Module,   color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: 'Services',  icon: Star,         mod: 'services' as Module,   color: 'text-[#12936A]',  bg: 'bg-[#E6F3EE]' },
             { label: 'Profile',   icon: UserCircle,   mod: 'profile' as Module,    color: 'text-teal-600',   bg: 'bg-teal-50' },
             { label: 'AI Help',   icon: Zap,          mod: 'assistant' as Module,  color: 'text-indigo-600', bg: 'bg-indigo-50' },
           ].map(action => {
             const Icon = action.icon;
             return (
               <button key={action.label} onClick={() => onNavigate(action.mod)}
-                className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col items-center gap-2 hover:border-amber-300 transition-colors touch-manipulation">
+                className="bg-white border border-gray-200 rounded-xl p-3 flex flex-col items-center gap-2 hover:border-emerald-300 transition-colors touch-manipulation">
                 <div className={`w-9 h-9 ${action.bg} rounded-xl flex items-center justify-center`}>
                   <Icon className={`w-4.5 h-4.5 ${action.color}`} />
                 </div>
@@ -462,9 +462,9 @@ function JobRequestCard({ booking, onAction, isPending }: {
 
 function JobMiniCard({ booking, isActive }: { booking: any; isActive?: boolean }) {
   return (
-    <div className={`bg-white border rounded-xl p-3 flex items-center gap-3 ${isActive ? 'border-purple-200 bg-purple-50' : 'border-gray-200'}`}>
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? 'bg-purple-100' : 'bg-white'}`}>
-        {isActive ? <Play className="w-4 h-4 text-purple-600" /> : <CalendarDays className="w-4 h-4 text-gray-500" />}
+    <div className={`bg-white border rounded-xl p-3 flex items-center gap-3 ${isActive ? 'border-emerald-200 bg-[#E6F3EE]' : 'border-gray-200'}`}>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? 'bg-emerald-100' : 'bg-white'}`}>
+        {isActive ? <Play className="w-4 h-4 text-[#0C5B3F]" /> : <CalendarDays className="w-4 h-4 text-gray-500" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-900 truncate">{booking.serviceType?.replace(/_/g, ' ') || 'Service'}</p>

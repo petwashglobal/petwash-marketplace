@@ -309,13 +309,12 @@ function tx(key: string, lang: string): string {
   return dashText[key]?.[lang] || dashText[key]?.en || key;
 }
 
-// Deep gold readable on white: #8A6A1B ≈ 5.2:1 contrast (WCAG AA pass),
-// vs the old #B8941F (2.9:1, failed AA / Israeli accessibility law).
-// Still unmistakably gold — same tone already used for the membership badge.
-const goldText = { color: '#8A6A1B' };
-const cardBorder = '1px solid rgba(212, 175, 55, 0.2)';
-const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(212, 175, 55, 0.08)';
-const divider = '1px solid rgba(212, 175, 55, 0.12)';
+// Brand emerald accent, readable on white (#12936A ≈ 4.6:1 contrast, WCAG AA).
+// Replaces the prior deep-gold accent — gold is now reserved for the pass/glam only.
+const accentText = { color: '#12936A' };
+const cardBorder = '1px solid rgba(18, 147, 106, 0.18)';
+const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(18, 147, 106, 0.08)';
+const divider = '1px solid rgba(18, 147, 106, 0.12)';
 
 function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   return (
@@ -325,7 +324,7 @@ function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNo
       transition={{ duration: 0.5, delay }}
       className={`relative rounded-2xl overflow-hidden ${className}`}
       style={{
-        background: 'linear-gradient(180deg, #FFFFFF 0%, #FFFCF4 100%)',
+        background: '#FFFFFF',
         border: cardBorder,
         boxShadow: cardShadow,
       }}
@@ -424,7 +423,7 @@ export default function Dashboard() {
         <div className="min-h-screen flex items-center justify-center bg-white">
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-center">
             <img src="/brand/petwash-logo-official.png" alt="PetWash" width={3072} height={1186} className="w-32 h-auto mx-auto mb-4 opacity-60" />
-            <p className="text-xs tracking-[0.3em] uppercase" style={goldText}>{tx('loading', language)}</p>
+            <p className="text-xs tracking-[0.3em] uppercase" style={accentText}>{tx('loading', language)}</p>
           </motion.div>
         </div>
       </Layout>
@@ -441,11 +440,10 @@ export default function Dashboard() {
       <div
         className="min-h-screen relative"
         style={{
-          // Warm ivory editorial base with a faint gold glow at the crown —
-          // 2026 luxury "warm neutral + metallic" direction (feels valuable,
-          // not stark). Replaces the clinical flat white.
+          // Pure white brand base with a faint emerald glow at the crown.
+          // Locked brand: pure white background, emerald accents only.
           background:
-            'radial-gradient(1100px 520px at 50% -8%, #FAF1DC 0%, #FBF6EC 34%, #F8F5EF 100%)',
+            'radial-gradient(1100px 520px at 50% -8%, #ECF8F3 0%, #F6FCFA 34%, #FFFFFF 100%)',
         }}
       >
         <div className="relative z-10 w-full max-w-md sm:max-w-lg md:max-w-xl lg:max-w-2xl mx-auto px-5 sm:px-6 pt-5 pb-10">
@@ -470,7 +468,7 @@ export default function Dashboard() {
             />
             <p
               className="text-sm tracking-[0.2em] font-light"
-              style={{ ...goldText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
+              style={{ ...accentText, fontFamily: "'Playfair Display', 'Didot', Georgia, serif" }}
             >
               {tx('privilege', language)}
             </p>
@@ -488,12 +486,12 @@ export default function Dashboard() {
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3, duration: 0.4 }}
                 className="mt-2 flex items-center gap-1.5 px-3 py-1 rounded-full border"
-                style={{ borderColor: '#C9A84C33', backgroundColor: '#FDFAF3' }}
+                style={{ borderColor: '#12936A33', backgroundColor: '#FFFFFF' }}
               >
-                <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#C9A84C' }} />
+                <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#12936A' }} />
                 <span
                   className="text-[11px] tracking-[0.15em] font-medium"
-                  style={{ color: '#8A6A1B', fontFamily: "'Playfair Display', serif", letterSpacing: '0.1em' }}
+                  style={{ color: '#12936A', fontFamily: "'Playfair Display', serif", letterSpacing: '0.1em' }}
                 >
                   {membershipNumber}
                 </span>
@@ -501,53 +499,53 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          {/* ── Clubroom membership card — 2026 "ink + gold foil" centerpiece.
-                Drama via deep-ink + metallic gold (the LVMH luxury cue). Real
-                values only: balance, points, tier, member number. ── */}
+          {/* ── Clubroom membership card — 2026 "ink + emerald" centerpiece.
+                Drama via deep-ink + brand emerald. Real values only:
+                balance, points, tier, member number. ── */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.18 }}
             className="relative rounded-[22px] overflow-hidden mb-4"
             style={{
-              background: 'linear-gradient(150deg, #211d18 0%, #100e0b 55%, #1a1611 100%)',
-              border: '1px solid rgba(201,168,76,0.38)',
+              background: 'linear-gradient(150deg, #0C5B3F 0%, #083326 55%, #0C5B3F 100%)',
+              border: '1px solid rgba(54,201,143,0.38)',
               boxShadow: '0 20px 50px rgba(0,0,0,0.28)',
             }}
           >
-            {/* gold-foil crown line */}
-            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #C9A84C 20%, #F1DA83 50%, #C9A84C 80%, transparent)' }} />
-            {/* faint gold corner glow */}
+            {/* emerald crown line */}
+            <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #12936A 20%, #36C98F 50%, #12936A 80%, transparent)' }} />
+            {/* faint emerald corner glow */}
             <div
               className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full"
-              style={{ background: 'radial-gradient(circle, rgba(232,201,114,0.16), transparent 70%)' }}
+              style={{ background: 'radial-gradient(circle, rgba(54,201,143,0.18), transparent 70%)' }}
             />
             <div className="relative px-6 py-6">
               <div className="flex items-start justify-between mb-6">
                 <div>
-                  <p className="text-[10px] tracking-[0.35em] uppercase" style={{ color: 'rgba(241,218,131,0.65)' }}>
+                  <p className="text-[10px] tracking-[0.35em] uppercase" style={{ color: 'rgba(54,201,143,0.75)' }}>
                     {tx('privilege', language)}
                   </p>
-                  <p className="mt-1.5 text-base tracking-[0.18em] uppercase" style={{ fontFamily: "'Playfair Display', serif", color: '#F4E7C2' }}>
+                  <p className="mt-1.5 text-base tracking-[0.18em] uppercase" style={{ fontFamily: "'Playfair Display', serif", color: '#EAFBF4' }}>
                     {tierLabel} · {tx('member', language)}
                   </p>
                 </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ border: '1px solid rgba(201,168,76,0.42)' }}>
-                  <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#E8C972' }} />
-                  <span className="text-[10px] tracking-[0.12em]" style={{ color: '#E8C972', fontFamily: "'Playfair Display', serif" }}>
+                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ border: '1px solid rgba(54,201,143,0.42)' }}>
+                  <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#36C98F' }} />
+                  <span className="text-[10px] tracking-[0.12em]" style={{ color: '#36C98F', fontFamily: "'Playfair Display', serif" }}>
                     {membershipNumber || tx('member', language)}
                   </span>
                 </div>
               </div>
               <div className="flex items-end justify-between gap-4">
                 <div>
-                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('balance', language)}</p>
+                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(54,201,143,0.65)' }}>{tx('balance', language)}</p>
                   <p className="text-[34px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
-                    <span className="text-lg align-top" style={{ color: '#E8C972' }}>&#8362;</span>{totalBalance}
+                    <span className="text-lg align-top" style={{ color: '#36C98F' }}>&#8362;</span>{totalBalance}
                   </p>
                 </div>
                 <div className="text-end">
-                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('points', language)}</p>
+                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(54,201,143,0.65)' }}>{tx('points', language)}</p>
                   <p className="text-[34px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
                     {loyaltyPoints.toLocaleString()}
                   </p>
@@ -559,7 +557,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
             <LuxuryCard delay={0.3}>
               <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
+                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={accentText}>
                   {tx('savedCarers', language)}
                 </p>
                 <p className="text-xl sm:text-2xl font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
@@ -570,11 +568,11 @@ export default function Dashboard() {
 
             <LuxuryCard delay={0.35}>
               <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
+                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={accentText}>
                   {tx('lifetimeValue', language)}
                 </p>
                 <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  <span className="text-sm" style={goldText}>&#8362;</span>{formatCurrency(loyaltyPoints * 10)}
+                  <span className="text-sm" style={accentText}>&#8362;</span>{formatCurrency(loyaltyPoints * 10)}
                 </p>
                 <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('totalSpending', language)}</p>
               </div>
@@ -584,7 +582,7 @@ export default function Dashboard() {
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-6">
             <LuxuryCard delay={0.4}>
               <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
+                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={accentText}>
                   {tx('savedCards', language)}
                 </p>
                 <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
@@ -596,7 +594,7 @@ export default function Dashboard() {
 
             <LuxuryCard delay={0.45}>
               <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
-                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
+                <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={accentText}>
                   {tx('washCredits', language)}
                 </p>
                 <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
@@ -621,7 +619,7 @@ export default function Dashboard() {
             transition={{ duration: 0.5, delay: 0.48 }}
             className="w-full rounded-2xl overflow-hidden mb-4"
             style={{
-              background: 'linear-gradient(135deg, #fffdf7 0%, #fdf8ee 50%, #fffcf5 100%)',
+              background: '#FFFFFF',
               border: '1px solid rgba(212,175,55,0.45)',
               boxShadow: '0 4px 20px rgba(212,175,55,0.12), 0 1px 4px rgba(0,0,0,0.06)',
             }}
@@ -755,7 +753,7 @@ export default function Dashboard() {
                 </div>
                 <span
                   className="px-3 py-1 text-[9px] tracking-[0.15em] uppercase font-bold rounded-full text-white"
-                  style={{ background: 'linear-gradient(135deg, #8DB255 0%, #6B9F3B 100%)' }}
+                  style={{ background: 'linear-gradient(135deg, #12936A 0%, #0C5B3F 100%)' }}
                 >
                   {tx('active', language)}
                 </span>
@@ -778,7 +776,7 @@ export default function Dashboard() {
                   <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
                     ⁦Walk My Pet™⁩
                   </p>
-                  <p className="text-[10px] tracking-wide" style={goldText}>{tx('comingSoon', language)}</p>
+                  <p className="text-[10px] tracking-wide" style={accentText}>{tx('comingSoon', language)}</p>
                 </div>
               </div>
             </motion.div>
@@ -852,7 +850,7 @@ export default function Dashboard() {
                   <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
                     {tx('petTransport', language)}
                   </p>
-                  <p className="text-[10px] tracking-wide" style={goldText}>⁦PetTrek™⁩ · {tx('comingSoon', language)}</p>
+                  <p className="text-[10px] tracking-wide" style={accentText}>⁦PetTrek™⁩ · {tx('comingSoon', language)}</p>
                 </div>
               </div>
             </motion.div>
@@ -890,7 +888,7 @@ export default function Dashboard() {
               transition={{ duration: 0.5, delay: 0.76 }}
               className="mb-5"
             >
-              <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={goldText}>
+              <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={accentText}>
                 {language === 'he' ? 'חיות המחמד שלי' : 'My Pets'}
               </p>
               <div className="flex gap-3 overflow-x-auto pb-1">
@@ -904,7 +902,7 @@ export default function Dashboard() {
                         {pet.photoUrl ? (
                           <img src={pet.photoUrl} alt={pet.name} className="w-full h-full object-cover" />
                         ) : (
-                          <PawPrint className="w-8 h-8" style={{ color: '#c9a96e' }} />
+                          <PawPrint className="w-8 h-8" style={{ color: '#12936A' }} />
                         )}
                       </div>
                       <div className="px-2 py-2 text-center">
@@ -919,8 +917,8 @@ export default function Dashboard() {
                     className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity flex flex-col items-center justify-center"
                     style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90, height: 120 }}
                   >
-                    <ArrowRight className="w-5 h-5 mb-1" style={{ color: '#c9a96e' }} />
-                    <p className="text-[9px] tracking-wide" style={{ color: '#c9a96e' }}>
+                    <ArrowRight className="w-5 h-5 mb-1" style={{ color: '#12936A' }} />
+                    <p className="text-[9px] tracking-wide" style={{ color: '#12936A' }}>
                       {language === 'he' ? 'הוסף' : 'Add'}
                     </p>
                   </div>
@@ -937,7 +935,7 @@ export default function Dashboard() {
               transition={{ duration: 0.5, delay: 0.77 }}
               className="mb-5"
             >
-              <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={goldText}>
+              <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={accentText}>
                 {language === 'he' ? 'הזמנות קרובות' : 'Upcoming Bookings'}
               </p>
               <div className="rounded-2xl overflow-hidden" style={{ border: cardBorder, boxShadow: cardShadow }}>
@@ -947,7 +945,7 @@ export default function Dashboard() {
                     className="px-5 py-3.5 flex items-center gap-3"
                     style={{ background: '#FFFFFF', borderBottom: idx < activityData.upcomingBookings.length - 1 ? '1px solid rgba(229,231,235,1)' : 'none' }}
                   >
-                    <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
+                    <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#12936A' }} />
                     <div className="flex-1 min-w-0">
                       <p className="text-sm font-medium truncate" style={{ color: '#111111' }}>{booking.platform}</p>
                       <p className="text-[10px]" style={{ color: '#666666' }}>
@@ -957,7 +955,7 @@ export default function Dashboard() {
                       </p>
                     </div>
                     {booking.amountCents > 0 && (
-                      <p className="text-sm font-light" style={{ color: '#c9a96e' }}>
+                      <p className="text-sm font-light" style={{ color: '#12936A' }}>
                         ₪{(booking.amountCents / 100).toFixed(0)}
                       </p>
                     )}
@@ -981,7 +979,7 @@ export default function Dashboard() {
                   style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow }}
                 >
                   <div className="px-5 py-4 flex items-center gap-3">
-                    <Shield className="w-4 h-4 flex-shrink-0" style={{ color: '#c9a96e' }} />
+                    <Shield className="w-4 h-4 flex-shrink-0" style={{ color: '#12936A' }} />
                     <div className="flex-1">
                       <p className="text-sm font-medium" style={{ color: '#111111' }}>
                         {language === 'he' ? 'כספת מסמכים משפטיים' : 'Legal Document Vault'}
@@ -990,7 +988,7 @@ export default function Dashboard() {
                         {activityData.stampCount} {language === 'he' ? 'רשומות חתומות · 7 שנות שמירה' : 'signed records · 7-year retention'}
                       </p>
                     </div>
-                    <ChevronRight className="w-3.5 h-3.5" style={goldText} />
+                    <ChevronRight className="w-3.5 h-3.5" style={accentText} />
                   </div>
                 </div>
               </Link>
@@ -1003,7 +1001,7 @@ export default function Dashboard() {
             transition={{ duration: 0.5, delay: 0.75 }}
             className="mb-5"
           >
-            <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={goldText}>
+            <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={accentText}>
               {tx('myAccount', language)}
             </p>
             <div
@@ -1031,12 +1029,12 @@ export default function Dashboard() {
                       {item.label}
                       {item.badge && item.badge > 0 ? (
                         <span className="ml-2 px-2 py-0.5 text-[9px] tracking-wider uppercase font-semibold rounded-full text-white"
-                          style={{ background: 'linear-gradient(135deg, #C9A94E, #A8893A)' }}>
+                          style={{ background: 'linear-gradient(135deg, #12936A, #0C5B3F)' }}>
                           {item.badge}
                         </span>
                       ) : null}
                     </p>
-                    <ChevronRight className="w-3.5 h-3.5" style={goldText} />
+                    <ChevronRight className="w-3.5 h-3.5" style={accentText} />
                   </div>
                 </Link>
               ))}
@@ -1058,8 +1056,8 @@ export default function Dashboard() {
                 boxShadow: cardShadow,
               }}
             >
-              <LogOut className="w-3.5 h-3.5" style={goldText} />
-              <span className="text-xs tracking-[0.2em] uppercase font-medium" style={goldText}>
+              <LogOut className="w-3.5 h-3.5" style={accentText} />
+              <span className="text-xs tracking-[0.2em] uppercase font-medium" style={accentText}>
                 {tx('signOut', language)}
               </span>
             </button>
@@ -1071,7 +1069,7 @@ export default function Dashboard() {
             transition={{ duration: 0.6, delay: 0.8 }}
             className="text-center pb-2"
           >
-            <p className="text-[9px] tracking-[0.2em] uppercase" style={{ color: 'rgba(184, 151, 47, 0.5)' }}>
+            <p className="text-[9px] tracking-[0.2em] uppercase" style={{ color: 'rgba(18, 147, 106, 0.5)' }}>
               ⁦Pet Wash™⁩ 2025 - 2026
             </p>
           </motion.div>

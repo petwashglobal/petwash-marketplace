@@ -62,6 +62,24 @@ import {
   Cake,
   Timer,
   FileText,
+  Tag,
+  Handshake,
+  Car,
+  LifeBuoy,
+  Zap,
+  Home,
+  Briefcase,
+  Smartphone,
+  PawPrint,
+  Syringe,
+  Heart,
+  Utensils,
+  Scale,
+  Palette,
+  Bookmark,
+  Hospital,
+  Receipt,
+  ClipboardList,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
@@ -726,7 +744,7 @@ export default function MyAccount() {
       setShowPetForm(false);
       setEditingPet(null);
       setPetFormData(emptyPet);
-      toast({ title: isHebrew ? '✅ חיית המחמד נוספה' : '✅ Pet added' });
+      toast({ title: isHebrew ? 'חיית המחמד נוספה' : 'Pet added' });
     },
     onError: () => toast({ title: isHebrew ? 'שגיאה בהוספת חיית מחמד' : 'Failed to add pet', variant: 'destructive' }),
   });
@@ -739,7 +757,7 @@ export default function MyAccount() {
       setShowPetForm(false);
       setEditingPet(null);
       setPetFormData(emptyPet);
-      toast({ title: isHebrew ? '✅ הפרטים עודכנו' : '✅ Pet profile updated' });
+      toast({ title: isHebrew ? 'הפרטים עודכנו' : 'Pet profile updated' });
     },
     onError: () => toast({ title: isHebrew ? 'שגיאה בעדכון' : 'Failed to update pet', variant: 'destructive' }),
   });
@@ -982,7 +1000,7 @@ export default function MyAccount() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/webauthn/credentials'] });
-      toast({ title: isHebrew ? '✅ Face ID / Passkey נרשם בהצלחה!' : '✅ Passkey registered successfully!' });
+      toast({ title: isHebrew ? 'Face ID / Passkey נרשם בהצלחה!' : 'Passkey registered successfully!' });
     },
     onError: (e: any) => {
       if (e?.name === 'NotAllowedError' || e?.message?.includes('cancelled')) return;
@@ -1490,15 +1508,15 @@ export default function MyAccount() {
           {/* ── Wallet Balance Cards ── */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
-              { label: isHebrew ? 'כרטיסי מתנה' : 'Gift Cards', value: formatCurrency(wallet?.egiftBalanceCents || 0), icon: Gift, emoji: '🎁' },
-              { label: isHebrew ? 'חבילות שטיפה' : 'Wash Packs', value: wallet?.washPackageCredits || 0, icon: Sparkles, emoji: '✨' },
-              { label: isHebrew ? 'נקודות נאמנות' : 'Loyalty Pts', value: wallet?.loyaltyPointsBalance || 0, icon: Star, emoji: '⭐' },
-              { label: isHebrew ? 'קרדיט מבצעים' : 'Promo Credit', value: formatCurrency(wallet?.promoBalanceCents || 0), icon: Gift, emoji: '🏷️' },
-              { label: isHebrew ? 'קרדיט הפניות' : 'Referral', value: formatCurrency(wallet?.referralBalanceCents || 0), icon: User, emoji: '🤝' },
+              { label: isHebrew ? 'כרטיסי מתנה' : 'Gift Cards', value: formatCurrency(wallet?.egiftBalanceCents || 0), icon: Gift },
+              { label: isHebrew ? 'חבילות שטיפה' : 'Wash Packs', value: wallet?.washPackageCredits || 0, icon: Sparkles },
+              { label: isHebrew ? 'נקודות נאמנות' : 'Loyalty Pts', value: wallet?.loyaltyPointsBalance || 0, icon: Star },
+              { label: isHebrew ? 'קרדיט מבצעים' : 'Promo Credit', value: formatCurrency(wallet?.promoBalanceCents || 0), icon: Tag },
+              { label: isHebrew ? 'קרדיט הפניות' : 'Referral', value: formatCurrency(wallet?.referralBalanceCents || 0), icon: Handshake },
             ].map((item, idx) => (
               <div key={idx} className="pw-stat-card">
                 <div className="pw-stat-card-icon-wrap pw-stat-card-icon-wrap-gold">
-                  <span className="text-xl">{item.emoji}</span>
+                  <item.icon className="w-5 h-5 text-[#0C5B3F]" />
                 </div>
                 <p className="pw-stat-value">{item.value}</p>
                 <p className="pw-stat-label">{item.label}</p>
@@ -1509,16 +1527,16 @@ export default function MyAccount() {
           {/* ── Quick Action Buttons — Luxury Noir ── */}
           <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
             {[
-              { icon: Wallet,       label: isHebrew ? 'הארנק שלי' : 'My Wallet',       href: '/my-wallet',        emoji: '💳' },
-              { icon: QrCode,       label: isHebrew ? 'מימוש בתחנה' : 'Redeem',        href: '/stations',         emoji: '📍' },
-              { icon: Award,        label: isHebrew ? 'נאמנות' : 'Loyalty',            href: '/loyalty/dashboard', emoji: '🏆' },
-              { icon: Gift,         label: isHebrew ? 'כרטיס מתנה' : 'Gift Card',      href: '/buy-gift-card',    emoji: '🎁' },
-              { icon: Crown,        label: isHebrew ? 'Prestige' : 'Prestige',          href: '/prestige-club',    emoji: '👑' },
-              { icon: CalendarCheck,label: isHebrew ? 'הזמנות' : 'Bookings',           href: '/bookings',         emoji: '📅' },
+              { icon: Wallet,       label: isHebrew ? 'הארנק שלי' : 'My Wallet',       href: '/my-wallet' },
+              { icon: QrCode,       label: isHebrew ? 'מימוש בתחנה' : 'Redeem',        href: '/stations' },
+              { icon: Award,        label: isHebrew ? 'נאמנות' : 'Loyalty',            href: '/loyalty/dashboard' },
+              { icon: Gift,         label: isHebrew ? 'כרטיס מתנה' : 'Gift Card',      href: '/buy-gift-card' },
+              { icon: Crown,        label: isHebrew ? 'Prestige' : 'Prestige',          href: '/prestige-club' },
+              { icon: CalendarCheck,label: isHebrew ? 'הזמנות' : 'Bookings',           href: '/bookings' },
             ].map((item, idx) => (
               <a key={idx} href={item.href} className="pw-action-btn" style={{ textDecoration: 'none' }}>
                 <div className="pw-action-btn-icon-ring">
-                  <span className="text-lg">{item.emoji}</span>
+                  <item.icon className="w-5 h-5 text-[#0C5B3F]" />
                 </div>
                 <span className="pw-action-btn-label">{item.label}</span>
               </a>
@@ -1593,16 +1611,16 @@ export default function MyAccount() {
 
             <TabsContent value="profile" className="mt-6 space-y-6">
               {verificationStatus && !verificationStatus.isFullyVerified && (
-                <div className="bg-white rounded-2xl border border-amber-200 p-6">
+                <div className="bg-white rounded-2xl border border-emerald-200 p-6">
                   <div className="flex items-start gap-4">
-                    <div className="p-2 rounded-full bg-amber-100">
-                      <Shield className="w-5 h-5 text-amber-700" />
+                    <div className="p-2 rounded-full bg-emerald-100">
+                      <Shield className="w-5 h-5 text-emerald-700" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-amber-900 mb-1">
+                      <h4 className="font-semibold text-emerald-900 mb-1">
                         {isHebrew ? 'אמתו את חשבונכם' : 'Verify Your Account'}
                       </h4>
-                      <p className="text-amber-700 text-sm mb-3">
+                      <p className="text-emerald-700 text-sm mb-3">
                         {isHebrew
                           ? 'אמתו את האימייל והטלפון שלכם כדי לפתוח את כל התכונות כולל תמונת פרופיל, הזמנות ושירותים'
                           : 'Verify your email and phone to unlock all features including profile photo, bookings and services'}
@@ -1610,11 +1628,11 @@ export default function MyAccount() {
                       <div className="flex flex-wrap gap-3">
                         <div className={cn("flex items-center gap-2 text-sm px-3 py-1.5 rounded-full", verificationStatus.emailVerified ? "bg-green-100 text-green-800" : "bg-white text-gray-600")}>
                           {verificationStatus.emailVerified ? <CheckCircle2 className="w-4 h-4" /> : <Mail className="w-4 h-4" />}
-                          {isHebrew ? 'אימייל' : 'Email'} {verificationStatus.emailVerified ? '✓' : ''}
+                          {isHebrew ? 'אימייל' : 'Email'}
                         </div>
                         <div className={cn("flex items-center gap-2 text-sm px-3 py-1.5 rounded-full", verificationStatus.phoneVerified ? "bg-green-100 text-green-800" : "bg-white text-gray-600")}>
                           {verificationStatus.phoneVerified ? <CheckCircle2 className="w-4 h-4" /> : <Phone className="w-4 h-4" />}
-                          {isHebrew ? 'טלפון' : 'Phone'} {verificationStatus.phoneVerified ? '✓' : ''}
+                          {isHebrew ? 'טלפון' : 'Phone'}
                         </div>
                       </div>
                     </div>
@@ -1636,7 +1654,7 @@ export default function MyAccount() {
               <div className="pw-section-card">
                 <div className="pw-section-header">
                   <div className="pw-section-icon-box">
-                    <User className="w-5 h-5 text-amber-400" />
+                    <User className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div className="flex-1">
                     <p className="pw-section-title">{isHebrew ? 'פרטים אישיים' : 'Personal Details'}</p>
@@ -1782,7 +1800,7 @@ export default function MyAccount() {
                   {/* ── Car Plates ── */}
                   <div className="space-y-2">
                     <Label className="text-gray-500 flex items-center gap-2">
-                      🚗 {isHebrew ? 'לוחית רישוי ראשונה' : 'Car Plate 1'}
+                      <Car className="w-4 h-4 text-[#12936A]" /> {isHebrew ? 'לוחית רישוי ראשונה' : 'Car Plate 1'}
                     </Label>
                     {isEditing ? (
                       <Input
@@ -1799,7 +1817,7 @@ export default function MyAccount() {
 
                   <div className="space-y-2">
                     <Label className="text-gray-500 flex items-center gap-2">
-                      🚙 {isHebrew ? 'לוחית רישוי שנייה' : 'Car Plate 2'}
+                      <Car className="w-4 h-4 text-[#12936A]" /> {isHebrew ? 'לוחית רישוי שנייה' : 'Car Plate 2'}
                     </Label>
                     {isEditing ? (
                       <Input
@@ -1817,7 +1835,7 @@ export default function MyAccount() {
                   {/* ── Emergency Contact ── */}
                   <div className="space-y-2">
                     <Label className="text-gray-500 flex items-center gap-2">
-                      🆘 {isHebrew ? 'איש קשר לחירום — שם' : 'Emergency Contact — Name'}
+                      <LifeBuoy className="w-4 h-4 text-[#12936A]" /> {isHebrew ? 'איש קשר לחירום — שם' : 'Emergency Contact — Name'}
                     </Label>
                     {isEditing ? (
                       <Input
@@ -1834,7 +1852,7 @@ export default function MyAccount() {
 
                   <div className="space-y-2">
                     <Label className="text-gray-500 flex items-center gap-2">
-                      📞 {isHebrew ? 'טלפון איש קשר לחירום' : 'Emergency Contact — Phone'}
+                      <Phone className="w-4 h-4 text-[#12936A]" /> {isHebrew ? 'טלפון איש קשר לחירום' : 'Emergency Contact — Phone'}
                     </Label>
                     {isEditing ? (
                       <Input
@@ -1923,7 +1941,7 @@ export default function MyAccount() {
                       <div className="flex items-center gap-2">
                         <Sparkles className="w-4 h-4 text-pink-500" />
                         <span className="text-sm font-semibold text-pink-700">
-                          {isHebrew ? `🎂 קוד הנחה ליום הולדת ${birthdayPromo.year}` : `🎂 ${birthdayPromo.year} Birthday Discount`}
+                          {isHebrew ? `קוד הנחה ליום הולדת ${birthdayPromo.year}` : `${birthdayPromo.year} Birthday Discount`}
                         </span>
                         <Badge className="ml-auto bg-pink-100 text-pink-700 border-0 text-xs">
                           {birthdayPromo.discountPercent}% {isHebrew ? 'הנחה' : 'off'}
@@ -1970,12 +1988,12 @@ export default function MyAccount() {
                   {/* ── Structured Address Form ── */}
                   <div className="md:col-span-2 space-y-3">
                     <Label className="text-gray-500 flex items-center gap-2 text-sm font-semibold">
-                      <MapPin className="w-4 h-4 text-amber-500" />
+                      <MapPin className="w-4 h-4 text-emerald-500" />
                       {isHebrew ? 'כתובת' : 'Address'}
                     </Label>
 
                     {isEditing ? (
-                      <div className="space-y-3 p-4 rounded-2xl border border-amber-100 bg-amber-50/30">
+                      <div className="space-y-3 p-4 rounded-2xl border border-emerald-100 bg-emerald-50/30">
                         {/* Row 1: Google search bar */}
                         <div className="relative">
                           <GooglePlacesAutocomplete
@@ -2010,12 +2028,12 @@ export default function MyAccount() {
                                 longitude: place.lng ?? editedProfile.longitude,
                               });
                             }}
-                            placeholder={isHebrew ? '🔍  חפש כתובת ב-Google...' : '🔍  Search address with Google...'}
+                            placeholder={isHebrew ? 'חפש כתובת ב-Google...' : 'Search address with Google...'}
                             country={['il']}
                             showExtraFields={false}
                           />
-                          <p className="text-[10px] text-amber-600/70 mt-1 flex items-center gap-1">
-                            <span>⚡</span>
+                          <p className="text-[10px] text-emerald-600/70 mt-1 flex items-center gap-1">
+                            <Zap className="w-3 h-3 text-[#12936A]" />
                             {isHebrew
                               ? 'בחר כתובת מהרשימה כדי למלא את השדות אוטומטית — או מלא ידנית למטה'
                               : 'Pick from the list to auto-fill — or fill manually below'}
@@ -2024,11 +2042,11 @@ export default function MyAccount() {
 
                         {/* Divider */}
                         <div className="flex items-center gap-2">
-                          <div className="flex-1 h-px bg-amber-200/60" />
-                          <span className="text-[10px] text-amber-500 font-semibold uppercase tracking-wide">
+                          <div className="flex-1 h-px bg-emerald-200/60" />
+                          <span className="text-[10px] text-emerald-500 font-semibold uppercase tracking-wide">
                             {isHebrew ? 'פרטי כתובת' : 'Address Details'}
                           </span>
-                          <div className="flex-1 h-px bg-amber-200/60" />
+                          <div className="flex-1 h-px bg-emerald-200/60" />
                         </div>
 
                         {/* Row 2: Street name + Building number */}
@@ -2041,7 +2059,7 @@ export default function MyAccount() {
                               value={editedProfile.street || ''}
                               onChange={(e) => setEditedProfile({ ...editedProfile, street: e.target.value })}
                               placeholder={isHebrew ? 'לדוגמה: הרצל' : 'e.g. Herzl St'}
-                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 focus:ring-emerald-400/20 bg-white"
                               style={{ fontSize: '16px' }}
                               dir="rtl"
                             />
@@ -2054,7 +2072,7 @@ export default function MyAccount() {
                               value={editedProfile.streetNumber || ''}
                               onChange={(e) => setEditedProfile({ ...editedProfile, streetNumber: e.target.value } as any)}
                               placeholder={isHebrew ? 'לדוג׳ 18' : 'e.g. 18'}
-                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 focus:ring-emerald-400/20 bg-white"
                               style={{ fontSize: '16px' }}
                               dir="ltr"
                             />
@@ -2071,7 +2089,7 @@ export default function MyAccount() {
                               value={editedProfile.apartment || ''}
                               onChange={(e) => setEditedProfile({ ...editedProfile, apartment: e.target.value } as any)}
                               placeholder={isHebrew ? 'דירה 4, קומה 2' : 'Apt 4, Floor 2'}
-                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 focus:ring-emerald-400/20 bg-white"
                               style={{ fontSize: '16px' }}
                             />
                           </div>
@@ -2083,7 +2101,7 @@ export default function MyAccount() {
                               value={editedProfile.city || ''}
                               onChange={(e) => setEditedProfile({ ...editedProfile, city: e.target.value })}
                               placeholder={isHebrew ? 'תל אביב' : 'Tel Aviv'}
-                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 focus:ring-emerald-400/20 bg-white"
                               style={{ fontSize: '16px' }}
                               dir="rtl"
                             />
@@ -2100,7 +2118,7 @@ export default function MyAccount() {
                               value={editedProfile.postalCode || ''}
                               onChange={(e) => setEditedProfile({ ...editedProfile, postalCode: e.target.value })}
                               placeholder={isHebrew ? 'לדוגמה: 6291302' : 'e.g. 6291302'}
-                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white font-mono"
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 focus:ring-emerald-400/20 bg-white font-mono"
                               style={{ fontSize: '16px' }}
                               inputMode="numeric"
                               dir="ltr"
@@ -2114,7 +2132,7 @@ export default function MyAccount() {
                               value={editedProfile.country || 'ישראל'}
                               onChange={(e) => setEditedProfile({ ...editedProfile, country: e.target.value })}
                               placeholder={isHebrew ? 'ישראל' : 'Israel'}
-                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
+                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 focus:ring-emerald-400/20 bg-white"
                               style={{ fontSize: '16px' }}
                             />
                           </div>
@@ -2124,8 +2142,8 @@ export default function MyAccount() {
                         <div className="mt-3 p-3 rounded-xl border border-blue-100 bg-blue-50/40 space-y-3">
                           <div className="flex items-center justify-between gap-3">
                             <div>
-                              <p className="text-sm font-semibold text-gray-700">
-                                {isHebrew ? '📍 כתובת זמנית' : '📍 Temporary Address'}
+                              <p className="text-sm font-semibold text-gray-700 flex items-center gap-1.5">
+                                <MapPin className="w-4 h-4 text-[#12936A]" />{isHebrew ? 'כתובת זמנית' : 'Temporary Address'}
                               </p>
                               <p className="text-[11px] text-gray-500 mt-0.5">
                                 {isHebrew
@@ -2258,23 +2276,24 @@ export default function MyAccount() {
                 <div className="pw-section-card">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <MapPin className="w-5 h-5 text-amber-400" />
+                      <MapPin className="w-5 h-5 text-emerald-400" />
                       {isHebrew ? 'ספר כתובות' : 'Address Book'}
                     </h3>
                     <span className="text-xs text-gray-400">{savedAddresses.length} {isHebrew ? 'כתובות' : 'saved'}</span>
                   </div>
                   <div className="space-y-2">
                     {savedAddresses.map((addr: any) => {
-                      const icons: Record<string, string> = { home: '🏠', work: '💼', other: '📍', custom: '⭐' };
+                      const icons: Record<string, typeof Home> = { home: Home, work: Briefcase, other: MapPin, custom: Star };
+                      const AddrIcon = icons[addr.label ?? 'other'] ?? MapPin;
                       const labels: Record<string, string> = { home: isHebrew ? 'בית' : 'Home', work: isHebrew ? 'עבודה' : 'Work', other: isHebrew ? 'אחרון' : 'Recent', custom: addr.customLabel || (isHebrew ? 'שמור' : 'Saved') };
                       return (
-                        <div key={addr.id} className="flex items-start gap-2 p-3 rounded-xl border border-gray-100 hover:border-amber-200 hover:bg-amber-50/30 transition-colors group">
-                          <span className="text-lg leading-none mt-0.5">{icons[addr.label ?? 'other'] ?? '📍'}</span>
+                        <div key={addr.id} className="flex items-start gap-2 p-3 rounded-xl border border-gray-100 hover:border-emerald-200 hover:bg-emerald-50/30 transition-colors group">
+                          <AddrIcon className="w-4 h-4 leading-none mt-0.5 text-[#12936A]" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5">
                               <span className="text-[10px] font-bold uppercase tracking-wider text-gray-400">{labels[addr.label ?? 'other']}</span>
                               {addr.isDefault && (
-                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-amber-100 text-amber-700 font-semibold">
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 text-emerald-700 font-semibold">
                                   {isHebrew ? 'ברירת מחדל' : 'Default'}
                                 </span>
                               )}
@@ -2290,16 +2309,16 @@ export default function MyAccount() {
                               <button
                                 type="button"
                                 onClick={() => setDefaultAddressMutation.mutate(addr.id)}
-                                className="text-[10px] text-amber-500 hover:text-amber-700 font-semibold"
+                                className="text-emerald-600 hover:text-emerald-800 font-semibold"
                                 title={isHebrew ? 'הגדר כברירת מחדל' : 'Set default'}
-                              >★</button>
+                              ><Star className="w-3.5 h-3.5" /></button>
                             )}
                             <button
                               type="button"
                               onClick={() => deleteAddressMutation.mutate(addr.id)}
-                              className="text-[10px] text-gray-300 hover:text-red-400"
+                              className="text-gray-300 hover:text-red-400"
                               title={isHebrew ? 'הסר' : 'Remove'}
-                            >✕</button>
+                            ><X className="w-3.5 h-3.5" /></button>
                           </div>
                         </div>
                       );
@@ -2415,9 +2434,9 @@ export default function MyAccount() {
                   <div className="flex items-center gap-4 p-4 rounded-2xl bg-white border border-gray-100">
                     <div className="flex-1">
                       <p className="text-gray-900 font-medium">{profile?.email || firebaseUser?.email}</p>
-                      <p className="text-gray-500 text-sm">
-                        {profile?.emailVerified 
-                          ? (isHebrew ? 'מאומת ✓' : 'Verified ✓')
+                      <p className="text-gray-500 text-sm flex items-center gap-1">
+                        {profile?.emailVerified
+                          ? <><CheckCircle2 className="w-3.5 h-3.5 text-[#12936A]" />{isHebrew ? 'מאומת' : 'Verified'}</>
                           : (isHebrew ? 'לא מאומת' : 'Not verified')
                         }
                       </p>
@@ -2464,9 +2483,9 @@ export default function MyAccount() {
                       <p className="text-gray-900 font-medium">
                         {phoneStatus?.phone || profile?.phone || (isHebrew ? 'לא הוגדר' : 'Not set')}
                       </p>
-                      <p className={cn("text-sm", phoneStatus?.verified ? "text-green-600" : "text-gray-500")}>
-                        {phoneStatus?.verified 
-                          ? (isHebrew ? 'מאומת ✓' : 'Verified ✓')
+                      <p className={cn("text-sm flex items-center gap-1", phoneStatus?.verified ? "text-green-600" : "text-gray-500")}>
+                        {phoneStatus?.verified
+                          ? <><CheckCircle2 className="w-3.5 h-3.5 text-[#12936A]" />{isHebrew ? 'מאומת' : 'Verified'}</>
                           : (isHebrew ? 'לא מאומת' : 'Not verified')
                         }
                       </p>
@@ -2507,7 +2526,7 @@ export default function MyAccount() {
               <div className="pw-section-card">
                 <div className="pw-section-header">
                   <div className="pw-section-icon-box">
-                    <MapPin className="w-5 h-5 text-amber-400" />
+                    <MapPin className="w-5 h-5 text-emerald-400" />
                   </div>
                   <div>
                     <p className="pw-section-title">{isHebrew ? 'כתובת מגורים' : 'Home Address'}</p>
@@ -2515,7 +2534,7 @@ export default function MyAccount() {
                   </div>
                 </div>
 
-                <div className="space-y-3 p-4 rounded-2xl border border-amber-100 bg-amber-50/30">
+                <div className="space-y-3 p-4 rounded-2xl border border-emerald-100 bg-emerald-50/30">
                   {/* Google autocomplete search */}
                   <GooglePlacesAutocomplete
                     value={editedProfile?.address || ''}
@@ -2547,23 +2566,23 @@ export default function MyAccount() {
                         longitude: place.lng ?? prev?.longitude,
                       }));
                     }}
-                    placeholder={isHebrew ? '🔍  חפש כתובת ב-Google...' : '🔍  Search address with Google...'}
+                    placeholder={isHebrew ? 'חפש כתובת ב-Google...' : 'Search address with Google...'}
                     country={['il']}
                     showExtraFields={false}
                   />
-                  <p className="text-[10px] text-amber-600/70 flex items-center gap-1">
-                    <span>⚡</span>
+                  <p className="text-[10px] text-emerald-600/70 flex items-center gap-1">
+                    <Zap className="w-3 h-3 text-[#12936A]" />
                     {isHebrew
                       ? 'בחר מהרשימה למילוי אוטומטי — או מלא ידנית'
                       : 'Select from list to auto-fill — or type manually'}
                   </p>
 
                   <div className="flex items-center gap-2">
-                    <div className="flex-1 h-px bg-amber-200/60" />
-                    <span className="text-[10px] text-amber-500 font-semibold uppercase tracking-wide">
+                    <div className="flex-1 h-px bg-emerald-200/60" />
+                    <span className="text-[10px] text-emerald-500 font-semibold uppercase tracking-wide">
                       {isHebrew ? 'פרטי כתובת' : 'Address Fields'}
                     </span>
-                    <div className="flex-1 h-px bg-amber-200/60" />
+                    <div className="flex-1 h-px bg-emerald-200/60" />
                   </div>
 
                   {/* Street + Number */}
@@ -2574,7 +2593,7 @@ export default function MyAccount() {
                         value={editedProfile?.street || ''}
                         onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, street: e.target.value }))}
                         placeholder={isHebrew ? 'הרצל' : 'e.g. Herzl St'}
-                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 bg-white"
                         style={{ fontSize: '16px' }} dir="rtl"
                       />
                     </div>
@@ -2584,7 +2603,7 @@ export default function MyAccount() {
                         value={(editedProfile as any)?.streetNumber || ''}
                         onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, streetNumber: e.target.value }))}
                         placeholder="18"
-                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 bg-white"
                         style={{ fontSize: '16px' }} dir="ltr"
                       />
                     </div>
@@ -2598,7 +2617,7 @@ export default function MyAccount() {
                         value={(editedProfile as any)?.apartment || ''}
                         onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, apartment: e.target.value }))}
                         placeholder={isHebrew ? 'דירה 4, קומה 2' : 'Apt 4, Floor 2'}
-                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 bg-white"
                         style={{ fontSize: '16px' }}
                       />
                     </div>
@@ -2608,7 +2627,7 @@ export default function MyAccount() {
                         value={editedProfile?.city || ''}
                         onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, city: e.target.value }))}
                         placeholder={isHebrew ? 'תל אביב' : 'Tel Aviv'}
-                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 bg-white"
                         style={{ fontSize: '16px' }} dir="rtl"
                       />
                     </div>
@@ -2622,7 +2641,7 @@ export default function MyAccount() {
                         value={editedProfile?.postalCode || ''}
                         onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, postalCode: e.target.value }))}
                         placeholder="6291302"
-                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white font-mono"
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 bg-white font-mono"
                         style={{ fontSize: '16px' }} inputMode="numeric" dir="ltr"
                       />
                     </div>
@@ -2632,7 +2651,7 @@ export default function MyAccount() {
                         value={editedProfile?.country || 'ישראל'}
                         onChange={(e) => setEditedProfile((prev: any) => ({ ...prev, country: e.target.value }))}
                         placeholder={isHebrew ? 'ישראל' : 'Israel'}
-                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 bg-white"
+                        className="h-10 text-sm rounded-xl border-gray-200 focus:border-emerald-400 bg-white"
                         style={{ fontSize: '16px' }}
                       />
                     </div>
@@ -2669,9 +2688,9 @@ export default function MyAccount() {
                     { key: 'reminderEnabled', label: isHebrew ? 'תזכורות שטיפה' : 'Wash Reminders', desc: isHebrew ? 'תזכורות לשטיפה הבאה' : 'Reminders for next wash', icon: Dog },
                     { key: 'birthdayOffersEnabled', label: isHebrew ? 'הטבות יום הולדת' : 'Birthday Offers', desc: isHebrew ? 'קופון מיוחד ליום ההולדת של החיה' : 'Special coupon for pet birthdays', icon: Sparkles },
                     { key: 'loyaltyUpdatesEnabled', label: isHebrew ? 'עדכוני נאמנות' : 'Loyalty Updates', desc: isHebrew ? 'עדכונים על נקודות ודרגות' : 'Points & tier notifications', icon: Crown },
-                    { key: 'petBirthdayPushEnabled', label: isHebrew ? 'יום הולדת לחיית המחמד 🐾' : 'Pet Birthday Push 🐾', desc: isHebrew ? 'הודעת Push ביום ההולדת של החיה שלך' : 'Push notification on your pet\'s birthday', icon: Bell },
-                    { key: 'worldDogDayEnabled', label: isHebrew ? 'יום הכלב העולמי (26 יולי) 🐶' : 'World Dog Day (Jul 26) 🐶', desc: isHebrew ? 'הצעות ייחודיות ביום הכלב העולמי' : 'Exclusive offers on World Dog Day', icon: Gift },
-                    { key: 'blackFridayEnabled', label: isHebrew ? 'Black Friday 🖤' : 'Black Friday 🖤', desc: isHebrew ? 'עסקאות בלעדיות בבלאק פריידי' : 'Exclusive Black Friday deals on all services', icon: Snowflake },
+                    { key: 'petBirthdayPushEnabled', label: isHebrew ? 'יום הולדת לחיית המחמד' : 'Pet Birthday Push', desc: isHebrew ? 'הודעת Push ביום ההולדת של החיה שלך' : 'Push notification on your pet\'s birthday', icon: Bell },
+                    { key: 'worldDogDayEnabled', label: isHebrew ? 'יום הכלב העולמי (26 יולי)' : 'World Dog Day (Jul 26)', desc: isHebrew ? 'הצעות ייחודיות ביום הכלב העולמי' : 'Exclusive offers on World Dog Day', icon: Gift },
+                    { key: 'blackFridayEnabled', label: isHebrew ? 'Black Friday' : 'Black Friday', desc: isHebrew ? 'עסקאות בלעדיות בבלאק פריידי' : 'Exclusive Black Friday deals on all services', icon: Snowflake },
                   ].map((item) => (
                     <div key={item.key} className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 transition-colors">
                       <div className="flex items-center gap-4">
@@ -2705,7 +2724,7 @@ export default function MyAccount() {
               <div className="pw-section-card">
                 <div className="flex items-center gap-3 mb-5">
                   <div className="w-10 h-10 rounded-2xl bg-gray-900 flex items-center justify-center">
-                    <span className="text-lg">🔑</span>
+                    <KeyRound className="w-5 h-5 text-white" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'Face ID / Passkeys' : 'Face ID / Passkeys'}</h3>
@@ -2717,7 +2736,7 @@ export default function MyAccount() {
                   <div className="py-4 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
                 ) : passkeys.length === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed border-gray-100 p-6 text-center mb-4">
-                    <div className="text-4xl mb-2">🔐</div>
+                    <Lock className="w-9 h-9 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm font-medium text-gray-500">{isHebrew ? 'עדיין לא רשומה שיטת כניסה ביומטרית' : 'No biometric login registered yet'}</p>
                     <p className="text-xs text-gray-400 mt-1">{isHebrew ? 'לחץ על הכפתור למטה כדי לרשום את המכשיר שלך' : 'Tap the button below to register this device'}</p>
                   </div>
@@ -2726,7 +2745,7 @@ export default function MyAccount() {
                     {passkeys.map((pk: any) => (
                       <div key={pk.id} className="flex items-center justify-between px-4 py-3 rounded-xl border border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
-                          <span className="text-xl">{pk.deviceIcon || '📱'}</span>
+                          {pk.deviceIcon ? <span className="text-xl">{pk.deviceIcon}</span> : <Smartphone className="w-5 h-5 text-gray-500" />}
                           <div>
                             <p className="text-sm font-semibold text-gray-800">{pk.deviceName || (isHebrew ? 'מכשיר' : 'Device')}</p>
                             <p className="text-xs text-gray-400">
@@ -2764,7 +2783,7 @@ export default function MyAccount() {
                 >
                   {registerPasskeyMutation.isPending
                     ? <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'ממתין לאישור...' : 'Waiting for approval...'}</>
-                    : <><span className="text-base">🔐</span> {isHebrew ? 'רשום Face ID / טביעת אצבע למכשיר זה' : 'Register Face ID / Fingerprint for this device'}</>}
+                    : <><Lock className="w-4 h-4" /> {isHebrew ? 'רשום Face ID / טביעת אצבע למכשיר זה' : 'Register Face ID / Fingerprint for this device'}</>}
                 </div>
                 {passkeys.length > 0 && (
                   <p className="text-center text-xs text-green-600 font-medium mt-2.5 flex items-center justify-center gap-1">
@@ -3119,8 +3138,8 @@ export default function MyAccount() {
               {/* ── Recent Logins ── */}
               <div className="pw-section-card">
                 <div className="flex items-center gap-3 mb-5">
-                  <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center">
-                    <History className="w-5 h-5 text-amber-600" />
+                  <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                    <History className="w-5 h-5 text-emerald-600" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'כניסות אחרונות' : 'Recent Logins'}</h3>
@@ -3734,9 +3753,9 @@ export default function MyAccount() {
 
               {/* ── Birthday Countdown Hub ── */}
               {(() => {
-                const birthdayEntries: { id: string; name: string; birthday: string; emoji: string; isOwner?: boolean }[] = [];
-                if (profile?.birthdate) birthdayEntries.push({ id: 'owner', name: isHebrew ? 'יום ההולדת שלי' : 'My Birthday', birthday: profile.birthdate, emoji: '🎂', isOwner: true });
-                (petsData?.pets || []).forEach((p: any) => { if (p.birthday) birthdayEntries.push({ id: p.id, name: p.name, birthday: p.birthday, emoji: p.species === 'cat' ? '🐱' : p.species === 'bird' ? '🐦' : p.species === 'fish' ? '🐠' : p.species === 'rabbit' ? '🐰' : '🐶' }); });
+                const birthdayEntries: { id: string; name: string; birthday: string; Icon: typeof Cake; isOwner?: boolean }[] = [];
+                if (profile?.birthdate) birthdayEntries.push({ id: 'owner', name: isHebrew ? 'יום ההולדת שלי' : 'My Birthday', birthday: profile.birthdate, Icon: Cake, isOwner: true });
+                (petsData?.pets || []).forEach((p: any) => { if (p.birthday) birthdayEntries.push({ id: p.id, name: p.name, birthday: p.birthday, Icon: p.species === 'dog' ? Dog : PawPrint }); });
                 const sorted = birthdayEntries.sort((a, b) => daysUntilBirthday(a.birthday) - daysUntilBirthday(b.birthday));
 
                 if (sorted.length === 0) return null;
@@ -3761,10 +3780,10 @@ export default function MyAccount() {
                           return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}`;
                         })();
                         return (
-                          <div key={entry.id} className={`rounded-xl border p-4 flex flex-col gap-2 ${isToday ? 'border-pink-300 bg-pink-50' : isSoon ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-white'}`}>
+                          <div key={entry.id} className={`rounded-xl border p-4 flex flex-col gap-2 ${isToday ? 'border-pink-300 bg-pink-50' : isSoon ? 'border-emerald-200 bg-emerald-50' : 'border-gray-100 bg-white'}`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="text-2xl">{entry.emoji}</span>
+                                <entry.Icon className="w-6 h-6 text-[#12936A]" />
                                 <div>
                                   <p className="text-sm font-semibold text-gray-900">{entry.name}</p>
                                   <p className="text-xs text-gray-500">{dateStr}</p>
@@ -3776,7 +3795,7 @@ export default function MyAccount() {
                                   {isHebrew ? 'היום!' : 'Today!'}
                                 </span>
                               ) : (
-                                <span className={`flex items-center gap-1 text-xs font-semibold rounded-full px-2 py-0.5 ${isSoon ? 'text-amber-700 bg-amber-100' : 'text-gray-600 bg-white'}`}>
+                                <span className={`flex items-center gap-1 text-xs font-semibold rounded-full px-2 py-0.5 ${isSoon ? 'text-emerald-700 bg-emerald-100' : 'text-gray-600 bg-white'}`}>
                                   <Timer className="w-3 h-3" />
                                   {isHebrew ? `עוד ${days} ימים` : `${days}d`}
                                 </span>
@@ -3803,7 +3822,7 @@ export default function MyAccount() {
               <div className="pw-section-card">
                 <div className="flex items-center justify-between mb-5">
                   <div>
-                    <h3 className="text-base font-bold text-gray-900 tracking-tight">{isHebrew ? 'חיות המחמד שלי 🐾' : 'My Pets 🐾'}</h3>
+                    <h3 className="text-base font-bold text-gray-900 tracking-tight flex items-center gap-2"><PawPrint className="w-5 h-5 text-[#12936A]" />{isHebrew ? 'חיות המחמד שלי' : 'My Pets'}</h3>
                     <p className="text-xs text-gray-400 mt-0.5">{isHebrew ? 'פרופיל · חיסונים · יומן הולדת' : 'Profile · Vaccines · Birthday Calendar'}</p>
                   </div>
                   <div
@@ -3877,15 +3896,15 @@ export default function MyAccount() {
 
                           {/* Birthday row */}
                           {pet.birthday && (
-                            <div className={`flex items-center justify-between px-4 py-3 border-t ${birthdayUrgent ? 'bg-amber-50 border-amber-100' : birthdaySoon ? 'bg-orange-50/40 border-orange-100/60' : 'bg-white border-gray-100'}`}>
+                            <div className={`flex items-center justify-between px-4 py-3 border-t ${birthdayUrgent ? 'bg-emerald-50 border-emerald-100' : birthdaySoon ? 'bg-orange-50/40 border-orange-100/60' : 'bg-white border-gray-100'}`}>
                               <div className="flex items-center gap-2">
-                                <span className="text-base">{birthdayUrgent ? '🎉' : '🎂'}</span>
+                                {birthdayUrgent ? <PartyPopper className="w-4 h-4 text-[#12936A]" /> : <Cake className="w-4 h-4 text-[#12936A]" />}
                                 <div>
                                   <p className="text-xs font-semibold text-gray-700">
                                     {isHebrew ? 'יום הולדת' : 'Birthday'} · {bDate}
                                   </p>
-                                  <p className={`text-[11px] font-medium ${birthdayUrgent ? 'text-amber-600' : birthdaySoon ? 'text-orange-500' : 'text-gray-400'}`}>
-                                    {bDays === 0 ? (isHebrew ? '🎊 היום!' : '🎊 Today!') : `${bDays} ${isHebrew ? 'ימים' : 'days'}`}
+                                  <p className={`text-[11px] font-medium ${birthdayUrgent ? 'text-emerald-600' : birthdaySoon ? 'text-orange-500' : 'text-gray-400'}`}>
+                                    {bDays === 0 ? (isHebrew ? 'היום!' : 'Today!') : `${bDays} ${isHebrew ? 'ימים' : 'days'}`}
                                   </p>
                                 </div>
                               </div>
@@ -3911,13 +3930,13 @@ export default function MyAccount() {
                                   const label = VACCINE_LABELS[vKey] ?? { en: vKey, he: vKey };
                                   const isDueSoon = vVal?.dueDate && daysUntilBirthday(vVal.dueDate) <= 30;
                                   return (
-                                    <div key={vKey} className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs border ${isDueSoon ? 'bg-amber-50 border-amber-100' : 'bg-white border-gray-100'}`}>
-                                      <span className="font-semibold text-gray-700">💉 {isHebrew ? label.he : label.en}</span>
+                                    <div key={vKey} className={`flex items-center justify-between rounded-xl px-3 py-2.5 text-xs border ${isDueSoon ? 'bg-emerald-50 border-emerald-100' : 'bg-white border-gray-100'}`}>
+                                      <span className="font-semibold text-gray-700 inline-flex items-center gap-1.5"><Syringe className="w-3.5 h-3.5 text-[#12936A]" />{isHebrew ? label.he : label.en}</span>
                                       <div className="flex items-center gap-2">
                                         {vVal?.lastGiven && <span className="text-gray-400">{isHebrew ? 'ניתן' : 'Given'}: {vVal.lastGiven}</span>}
                                         {vVal?.dueDate && (
                                           <>
-                                            <span className={`font-medium ${isDueSoon ? 'text-amber-600' : 'text-gray-500'}`}>{isHebrew ? 'מועד' : 'Due'}: {vVal.dueDate}</span>
+                                            <span className={`font-medium ${isDueSoon ? 'text-emerald-600' : 'text-gray-500'}`}>{isHebrew ? 'מועד' : 'Due'}: {vVal.dueDate}</span>
                                             <a
                                               href={buildGoogleCalendarUrl(pet.name, isHebrew ? label.he : label.en, vVal.dueDate)}
                                               target="_blank"
@@ -3940,7 +3959,7 @@ export default function MyAccount() {
                           {/* Allergies — always prominent if filled */}
                           {pet.allergies && (
                             <div className="px-4 py-3 border-t border-red-100 bg-red-50">
-                              <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1.5">⚠️ {isHebrew ? 'אלרגיות' : 'Allergies'}</p>
+                              <p className="text-[10px] font-bold text-red-500 uppercase tracking-wider mb-1.5 flex items-center gap-1"><AlertTriangle className="w-3 h-3" />{isHebrew ? 'אלרגיות' : 'Allergies'}</p>
                               <p className="text-xs text-red-700 leading-relaxed">{pet.allergies}</p>
                             </div>
                           )}
@@ -3948,17 +3967,17 @@ export default function MyAccount() {
                           {/* Food preferences */}
                           {(pet.favoriteFoods || pet.dislikedFoods) && (
                             <div className="px-4 py-3 border-t border-gray-100 bg-white">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">🍽️ {isHebrew ? 'העדפות אוכל' : 'Food Preferences'}</p>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><Utensils className="w-3 h-3" />{isHebrew ? 'העדפות אוכל' : 'Food Preferences'}</p>
                               <div className="space-y-1.5">
                                 {pet.favoriteFoods && (
                                   <div className="flex gap-2 text-xs">
-                                    <span className="text-green-600 font-semibold whitespace-nowrap">❤️ {isHebrew ? 'אוהב:' : 'Loves:'}</span>
+                                    <span className="text-green-600 font-semibold whitespace-nowrap inline-flex items-center gap-1"><Heart className="w-3 h-3" />{isHebrew ? 'אוהב:' : 'Loves:'}</span>
                                     <span className="text-gray-600">{pet.favoriteFoods}</span>
                                   </div>
                                 )}
                                 {pet.dislikedFoods && (
                                   <div className="flex gap-2 text-xs">
-                                    <span className="text-gray-400 font-semibold whitespace-nowrap">🚫 {isHebrew ? 'לא אוהב:' : 'Avoids:'}</span>
+                                    <span className="text-gray-400 font-semibold whitespace-nowrap inline-flex items-center gap-1"><Ban className="w-3 h-3" />{isHebrew ? 'לא אוהב:' : 'Avoids:'}</span>
                                     <span className="text-gray-500">{pet.dislikedFoods}</span>
                                   </div>
                                 )}
@@ -3969,7 +3988,7 @@ export default function MyAccount() {
                           {/* Habits & Routine */}
                           {(pet.habits || pet.routine) && (
                             <div className="px-4 py-3 border-t border-gray-100 bg-white">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2">🐾 {isHebrew ? 'אישיות ושגרה' : 'Personality & Routine'}</p>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-2 flex items-center gap-1"><PawPrint className="w-3 h-3" />{isHebrew ? 'אישיות ושגרה' : 'Personality & Routine'}</p>
                               <div className="space-y-2">
                                 {pet.habits && (
                                   <div>
@@ -3991,9 +4010,9 @@ export default function MyAccount() {
                           {(pet.weight || pet.color || pet.microchip) && (
                             <div className="px-4 py-3 border-t border-gray-100 bg-white/50">
                               <div className="flex flex-wrap gap-3 text-xs">
-                                {pet.weight && <span className="text-gray-500">⚖️ {pet.weight} kg</span>}
-                                {pet.color && <span className="text-gray-500">🎨 {pet.color}</span>}
-                                {pet.microchip && <span className="text-gray-500">🔖 {pet.microchip}</span>}
+                                {pet.weight && <span className="text-gray-500 inline-flex items-center gap-1"><Scale className="w-3 h-3" />{pet.weight} kg</span>}
+                                {pet.color && <span className="text-gray-500 inline-flex items-center gap-1"><Palette className="w-3 h-3" />{pet.color}</span>}
+                                {pet.microchip && <span className="text-gray-500 inline-flex items-center gap-1"><Bookmark className="w-3 h-3" />{pet.microchip}</span>}
                               </div>
                             </div>
                           )}
@@ -4001,12 +4020,12 @@ export default function MyAccount() {
                           {/* Vet info */}
                           {(pet.vetName || pet.vetPhone) && (
                             <div className="px-4 py-3 border-t border-gray-100 bg-white">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5">🏥 {isHebrew ? 'וטרינר' : 'Vet'}</p>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1.5 flex items-center gap-1"><Hospital className="w-3 h-3" />{isHebrew ? 'וטרינר' : 'Vet'}</p>
                               <div className="flex items-center gap-4 text-xs">
                                 {pet.vetName && <span className="text-gray-700 font-medium">{pet.vetName}</span>}
                                 {pet.vetPhone && (
-                                  <a href={`tel:${pet.vetPhone}`} className="text-blue-600 hover:underline font-medium">
-                                    📞 {pet.vetPhone}
+                                  <a href={`tel:${pet.vetPhone}`} className="text-blue-600 hover:underline font-medium inline-flex items-center gap-1">
+                                    <Phone className="w-3 h-3" />{pet.vetPhone}
                                   </a>
                                 )}
                               </div>
@@ -4016,7 +4035,7 @@ export default function MyAccount() {
                           {/* Notes */}
                           {pet.notes && (
                             <div className="px-4 py-3 border-t border-gray-100 bg-white">
-                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1">📝 {isHebrew ? 'הערות' : 'Notes'}</p>
+                              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-wider mb-1 flex items-center gap-1"><FileText className="w-3 h-3" />{isHebrew ? 'הערות' : 'Notes'}</p>
                               <p className="text-xs text-gray-500 leading-relaxed">{pet.notes}</p>
                             </div>
                           )}
@@ -4034,8 +4053,9 @@ export default function MyAccount() {
                     {/* Modal header */}
                     <div className="sticky top-0 bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between rounded-t-3xl z-10">
                       <div>
-                        <h3 className="font-bold text-gray-900 text-base">
-                          {editingPet ? (isHebrew ? '✏️ עריכת חיית מחמד' : '✏️ Edit Pet') : (isHebrew ? '🐾 הוספת חיית מחמד' : '🐾 Add a Pet')}
+                        <h3 className="font-bold text-gray-900 text-base flex items-center gap-2">
+                          {editingPet ? <Pencil className="w-4 h-4 text-[#12936A]" /> : <PawPrint className="w-4 h-4 text-[#12936A]" />}
+                          {editingPet ? (isHebrew ? 'עריכת חיית מחמד' : 'Edit Pet') : (isHebrew ? 'הוספת חיית מחמד' : 'Add a Pet')}
                         </h3>
                         <p className="text-xs text-gray-400 mt-0.5">{isHebrew ? 'מלא את פרטי החיה' : 'Fill in your pet\'s details'}</p>
                       </div>
@@ -4093,8 +4113,8 @@ export default function MyAccount() {
 
                       {/* Birthday */}
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
-                          🎂 {isHebrew ? 'יום הולדת' : 'Birthday'}
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                          <Cake className="w-3.5 h-3.5 text-[#12936A]" /> {isHebrew ? 'יום הולדת' : 'Birthday'}
                         </label>
                         <input
                           type="date"
@@ -4113,8 +4133,8 @@ export default function MyAccount() {
 
                       {/* Vaccines */}
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
-                          💉 {isHebrew ? 'חיסונים ותזכורות' : 'Vaccines & Reminders'}
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 mb-3">
+                          <Syringe className="w-3.5 h-3.5 text-[#12936A]" /> {isHebrew ? 'חיסונים ותזכורות' : 'Vaccines & Reminders'}
                         </label>
                         <div className="space-y-2.5">
                           {Object.entries(VACCINE_LABELS).map(([vKey, labels]) => (
@@ -4155,8 +4175,8 @@ export default function MyAccount() {
 
                       {/* ── Physical Details ── */}
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
-                          📋 {isHebrew ? 'פרטים פיזיים' : 'Physical Details'}
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 mb-3">
+                          <ClipboardList className="w-3.5 h-3.5 text-[#12936A]" /> {isHebrew ? 'פרטים פיזיים' : 'Physical Details'}
                         </label>
                         <div className="grid grid-cols-2 gap-3">
                           <div>
@@ -4198,12 +4218,12 @@ export default function MyAccount() {
 
                       {/* ── Allergies & Food ── */}
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
-                          🍽️ {isHebrew ? 'אלרגיות ואוכל' : 'Allergies & Food'}
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 mb-3">
+                          <Utensils className="w-3.5 h-3.5 text-[#12936A]" /> {isHebrew ? 'אלרגיות ואוכל' : 'Allergies & Food'}
                         </label>
                         <div className="space-y-3">
                           <div>
-                            <label className="text-[10px] font-semibold text-red-400 uppercase tracking-wide block mb-1">⚠️ {isHebrew ? 'אלרגיות (חשוב!)' : 'Allergies (important!)'}</label>
+                            <label className="text-[10px] font-semibold text-red-400 uppercase tracking-wide flex items-center gap-1 mb-1"><AlertTriangle className="w-3 h-3" /> {isHebrew ? 'אלרגיות (חשוב!)' : 'Allergies (important!)'}</label>
                             <textarea
                               value={petFormData.allergies}
                               onChange={e => setPetFormData((p: any) => ({ ...p, allergies: e.target.value }))}
@@ -4214,7 +4234,7 @@ export default function MyAccount() {
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-semibold text-green-600 uppercase tracking-wide block mb-1">❤️ {isHebrew ? 'אוכל אהוב' : 'Favorite Foods'}</label>
+                            <label className="text-[10px] font-semibold text-green-600 uppercase tracking-wide flex items-center gap-1 mb-1"><Heart className="w-3 h-3" /> {isHebrew ? 'אוכל אהוב' : 'Favorite Foods'}</label>
                             <textarea
                               value={petFormData.favoriteFoods}
                               onChange={e => setPetFormData((p: any) => ({ ...p, favoriteFoods: e.target.value }))}
@@ -4225,7 +4245,7 @@ export default function MyAccount() {
                             />
                           </div>
                           <div>
-                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide block mb-1">🚫 {isHebrew ? 'לא אוהב לאכול' : 'Dislikes / Avoids'}</label>
+                            <label className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide flex items-center gap-1 mb-1"><Ban className="w-3 h-3" /> {isHebrew ? 'לא אוהב לאכול' : 'Dislikes / Avoids'}</label>
                             <textarea
                               value={petFormData.dislikedFoods}
                               onChange={e => setPetFormData((p: any) => ({ ...p, dislikedFoods: e.target.value }))}
@@ -4240,8 +4260,8 @@ export default function MyAccount() {
 
                       {/* ── Personality & Routine ── */}
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
-                          🐾 {isHebrew ? 'אישיות ושגרה' : 'Personality & Routine'}
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 mb-3">
+                          <PawPrint className="w-3.5 h-3.5 text-[#12936A]" /> {isHebrew ? 'אישיות ושגרה' : 'Personality & Routine'}
                         </label>
                         <div className="space-y-3">
                           <div>
@@ -4271,8 +4291,8 @@ export default function MyAccount() {
 
                       {/* ── Vet Info ── */}
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-3">
-                          🏥 {isHebrew ? 'פרטי וטרינר' : 'Vet Details'}
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 mb-3">
+                          <Hospital className="w-3.5 h-3.5 text-[#12936A]" /> {isHebrew ? 'פרטי וטרינר' : 'Vet Details'}
                         </label>
                         <div className="grid grid-cols-1 gap-3">
                           <div>
@@ -4302,8 +4322,8 @@ export default function MyAccount() {
 
                       {/* ── General Notes ── */}
                       <div>
-                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1.5">
-                          📝 {isHebrew ? 'הערות כלליות' : 'General Notes'}
+                        <label className="text-xs font-bold text-gray-500 uppercase tracking-wider flex items-center gap-1 mb-1.5">
+                          <FileText className="w-3.5 h-3.5 text-[#12936A]" /> {isHebrew ? 'הערות כלליות' : 'General Notes'}
                         </label>
                         <textarea
                           value={petFormData.notes}
@@ -4330,8 +4350,10 @@ export default function MyAccount() {
                         style={{ background: '#000000' }}
                         className="flex-1 py-3 rounded-xl text-sm font-bold text-white flex items-center justify-center gap-2 disabled:opacity-50 transition-opacity"
                       >
-                        {(addPetMutation.isPending || updatePetMutation.isPending) && <Loader2 className="w-4 h-4 animate-spin" />}
-                        {editingPet ? (isHebrew ? '✅ שמור שינויים' : '✅ Save Changes') : (isHebrew ? '🐾 הוסף חיה' : '🐾 Add Pet')}
+                        {(addPetMutation.isPending || updatePetMutation.isPending)
+                          ? <Loader2 className="w-4 h-4 animate-spin" />
+                          : (editingPet ? <Check className="w-4 h-4" /> : <PawPrint className="w-4 h-4" />)}
+                        {editingPet ? (isHebrew ? 'שמור שינויים' : 'Save Changes') : (isHebrew ? 'הוסף חיה' : 'Add Pet')}
                       </button>
                     </div>
                   </div>
@@ -4347,7 +4369,7 @@ export default function MyAccount() {
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center">
-                      <span className="text-lg">🧾</span>
+                      <Receipt className="w-5 h-5 text-blue-600" />
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'חשבוניות מס קבלה' : 'Tax Invoices'}</h3>
@@ -4360,7 +4382,7 @@ export default function MyAccount() {
                   <div className="py-6 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
                 ) : !myTransactions || myTransactions.length === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed border-gray-100 p-8 text-center">
-                    <div className="text-4xl mb-2">📄</div>
+                    <FileText className="w-9 h-9 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm text-gray-500">{isHebrew ? 'אין חשבוניות עדיין' : 'No invoices yet'}</p>
                     <p className="text-xs text-gray-400 mt-1">{isHebrew ? 'לאחר ביצוע הזמנה, חשבוניות יופיעו כאן' : 'After completing a booking, invoices will appear here'}</p>
                   </div>
@@ -4369,7 +4391,7 @@ export default function MyAccount() {
                     {myTransactions.map((tx: any) => (
                       <div key={tx.id} className="flex items-center justify-between p-4 rounded-xl border border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center text-base">🧾</div>
+                          <div className="w-9 h-9 rounded-xl bg-white border border-gray-100 flex items-center justify-center"><Receipt className="w-4 h-4 text-gray-500" /></div>
                           <div>
                             <p className="text-sm font-semibold text-gray-800">
                               {tx.serviceNameHe || tx.serviceName || (isHebrew ? 'שירות PetWash™' : 'PetWash™ Service')}
@@ -4397,7 +4419,7 @@ export default function MyAccount() {
                     <div className="flex items-center justify-between mb-3">
                       <h4 className="text-sm font-bold text-gray-700">{isHebrew ? 'חשבונית מס מלאה' : 'Full Tax Invoice'}</h4>
                       <button onClick={() => setSelectedInvoice(null)} className="text-xs text-gray-400 hover:text-gray-600">
-                        {isHebrew ? 'סגור' : 'Close'} ✕
+                        {isHebrew ? 'סגור' : 'Close'}
                       </button>
                     </div>
                     <IsraeliTaxInvoice
@@ -4417,7 +4439,7 @@ export default function MyAccount() {
               <div className="pw-section-card">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="w-10 h-10 rounded-2xl bg-green-50 flex items-center justify-center">
-                    <span className="text-lg">✍️</span>
+                    <Pencil className="w-5 h-5 text-green-600" />
                   </div>
                   <div>
                     <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'הסכמים חתומים' : 'Signed Agreements'}</h3>
@@ -4426,7 +4448,7 @@ export default function MyAccount() {
                 </div>
                 {!mySignedDocs || mySignedDocs.documents.length === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed border-gray-100 p-6 text-center">
-                    <div className="text-3xl mb-2">📋</div>
+                    <ClipboardList className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm text-gray-500">{isHebrew ? 'אין הסכמים חתומים' : 'No signed agreements'}</p>
                   </div>
                 ) : (
@@ -4434,7 +4456,7 @@ export default function MyAccount() {
                     {mySignedDocs.documents.map((doc: any) => (
                       <div key={doc.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
-                          <span className="text-lg">📄</span>
+                          <FileText className="w-5 h-5 text-gray-500" />
                           <div>
                             <p className="text-sm font-semibold text-gray-800">{doc.documentTitle}</p>
                             <p className="text-xs text-gray-400">{doc.signedDate ? new Date(doc.signedDate).toLocaleDateString(isHebrew ? 'he-IL' : 'en-US') : ''}</p>
@@ -4453,8 +4475,8 @@ export default function MyAccount() {
               <div className="pw-section-card">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-2xl bg-amber-50 flex items-center justify-center">
-                      <span className="text-lg">🐾</span>
+                    <div className="w-10 h-10 rounded-2xl bg-emerald-50 flex items-center justify-center">
+                      <PawPrint className="w-5 h-5 text-[#12936A]" />
                     </div>
                     <div>
                       <h3 className="text-base font-bold text-gray-900">{isHebrew ? 'טפסי קבלה — הצהרות בריאות' : 'Intake Forms — Health Declarations'}</h3>
@@ -4466,7 +4488,7 @@ export default function MyAccount() {
                     style={{ background: '#000' }}
                     className="text-white text-xs font-semibold px-3 py-2 rounded-xl flex items-center gap-1.5"
                   >
-                    <span>+</span> {isHebrew ? 'טופס חדש' : 'New Form'}
+                    <Plus className="w-3.5 h-3.5" /> {isHebrew ? 'טופס חדש' : 'New Form'}
                   </button>
                 </div>
 
@@ -4474,7 +4496,7 @@ export default function MyAccount() {
                   <div className="py-4 flex justify-center"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>
                 ) : !intakeFormsData?.forms || intakeFormsData.forms.length === 0 ? (
                   <div className="rounded-2xl border-2 border-dashed border-gray-100 p-6 text-center">
-                    <div className="text-3xl mb-2">📝</div>
+                    <FileText className="w-8 h-8 mx-auto mb-2 text-gray-300" />
                     <p className="text-sm text-gray-500">{isHebrew ? 'טרם הוגשו טפסי קבלה' : 'No intake forms submitted yet'}</p>
                     <p className="text-xs text-gray-400 mt-1">{isHebrew ? 'לחץ על "טופס חדש" להגשת הצהרת בריאות לפני השירות הבא' : 'Click "New Form" to submit a health declaration before your next service'}</p>
                   </div>
@@ -4483,7 +4505,7 @@ export default function MyAccount() {
                     {intakeFormsData.forms.map((f: any) => (
                       <div key={f.id} className="flex items-center justify-between p-3 rounded-xl border border-gray-100 bg-white">
                         <div className="flex items-center gap-3">
-                          <span className="text-lg">🐾</span>
+                          <PawPrint className="w-5 h-5 text-[#12936A]" />
                           <div>
                             <p className="text-sm font-semibold text-gray-800">{f.petName}</p>
                             <p className="text-xs text-gray-400">
@@ -4508,7 +4530,7 @@ export default function MyAccount() {
                   onComplete={() => {
                     setIntakeFormOpen(false);
                     queryClient.invalidateQueries({ queryKey: ['/api/pets/intake-forms'] });
-                    toast({ title: isHebrew ? '✅ הצהרת הבריאות הוגשה!' : '✅ Health declaration submitted!' });
+                    toast({ title: isHebrew ? 'הצהרת הבריאות הוגשה!' : 'Health declaration submitted!' });
                   }}
                   petName={(petsData?.pets?.[0] as any)?.name || (isHebrew ? 'חיית המחמד שלי' : 'My Pet')}
                   petSpecies={(petsData?.pets?.[0] as any)?.species}
