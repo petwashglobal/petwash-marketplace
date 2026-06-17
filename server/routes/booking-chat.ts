@@ -32,6 +32,7 @@ import {
 import { syncChatToBookingStatus } from '../lib/booking-chat-sync';
 import { auth as firebaseAuth, storage as firebaseStorage } from '../lib/firebase-admin';
 import sgMail from '../lib/sendgrid';
+import { sendPushToUser } from '../lib/fcm-push';
 
 // Multer for in-memory image upload (max 8MB)
 const uploadMiddleware = multer({
@@ -710,40 +711,32 @@ router.post('/:bookingId/send', async (req, res) => {
         createdAt: new Date(),
       }).catch(err => logger.warn('[ChatNotification] In-app record insert failed', err));
 
-      // 9b & 9c. If recipient is offline, try push then email
+      // 9b & 9c. If recipient is offline, push (always — chat is urgent) and email (throttled).
       if (!isUserConnected(recipientUid)) {
+        // 9b. FCM push to ALL of the recipient's devices, read from the REAL token store
+        // (Firestore fcmTokens/{uid}/devices). NO 1h throttle: an offline recipient should
+        // get every new chat message pushed. (The old code read customClaims.fcmToken, which
+        // is never written, so chat pushes never fired.)
+        sendPushToUser(recipientUid, {
+          title: 'New message about your booking',
+          body: `You have a new message for booking ${bookingId}`,
+          data: {
+            type: 'booking_chat_message',
+            bookingId,
+            conversationId: conv.conversationId,
+            actionUrl: `/booking-chat/${bookingId}`,
+          },
+        })
+          .then((sent) => { if (sent > 0) logger.info('[ChatNotification] FCM push sent', { recipientUid, bookingId, devices: sent }); })
+          .catch((fcmErr) => logger.warn('[ChatNotification] FCM push failed', fcmErr));
+
+        // 9c. Email fallback — throttled to at most once per hour per thread so an active
+        // back-and-forth doesn't flood the inbox (push above is not throttled).
         const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
         if (!conv.lastMessageAt || conv.lastMessageAt < oneHourAgo) {
-          const recipient = await firebaseAuth.getUser(recipientUid);
-
-          // 9b. FCM push notification if token available (§9b)
-          const customClaims = recipient.customClaims as Record<string, any> | undefined;
-          const fcmToken = customClaims?.fcmToken;
-          if (fcmToken) {
-            try {
-              const admin = await import('firebase-admin').then(m => m.default);
-              await admin.messaging().send({
-                token: fcmToken,
-                notification: {
-                  title: 'New message about your booking',
-                  body: `You have a new message for booking ${bookingId}`,
-                },
-                data: {
-                  type: 'booking_chat_message',
-                  bookingId,
-                  conversationId: conv.conversationId,
-                  actionUrl: `/booking-chat/${bookingId}`,
-                },
-              });
-              logger.info('[ChatNotification] FCM push sent', { recipientUid, bookingId });
-            } catch (fcmErr) {
-              logger.warn('[ChatNotification] FCM push failed', fcmErr);
-            }
-          }
-
-          // 9c. Email fallback (§9c)
-          if (recipient.email) {
-            try {
+          try {
+            const recipient = await firebaseAuth.getUser(recipientUid);
+            if (recipient.email) {
               await sgMail.send({
                 to: recipient.email,
                 from: 'noreply@petwash.co.il',
@@ -752,9 +745,9 @@ router.post('/:bookingId/send', async (req, res) => {
                 html: `<p>You have a new message about booking <strong>${bookingId}</strong>.</p><p><a href="https://petwash.co.il/booking-chat/${bookingId}">Log in to reply</a>.</p>`,
               });
               logger.info('[ChatNotification] Offline email fallback sent', { recipientUid, bookingId });
-            } catch (emailErr) {
-              logger.warn('[ChatNotification] Email fallback failed', emailErr);
             }
+          } catch (emailErr) {
+            logger.warn('[ChatNotification] Email fallback failed', emailErr);
           }
         }
       }

@@ -30,7 +30,7 @@ import {
 import { useLanguage } from '@/lib/languageStore';
 import { t as ti18n } from '@/lib/i18n';
 import { format } from 'date-fns';
-import { ConversationList, ChatInterface } from '@/components/ChatInterface';
+import BookingChatInbox from '@/pages/BookingChatInbox';
 import { ReviewSubmitDialog } from '@/components/ReviewSubmitDialog';
 
 interface Booking {
@@ -358,36 +358,9 @@ export default function OwnerDashboard() {
             </div>
           </TabsContent>
 
-          {/* ── Messages Tab ── */}
+          {/* ── Messages Tab — canonical booking-chat inbox (real 1:1, Postgres-backed) ── */}
           <TabsContent value="messages" className="space-y-4">
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="lg:col-span-1">
-                <ConversationList
-                  currentUserId={currentUserId}
-                  onSelectConversation={setSelectedConversation}
-                  selectedConversationId={selectedConversation}
-                />
-              </div>
-              <div className="lg:col-span-2">
-                {selectedConversation ? (
-                  <ChatInterface
-                    conversationId={selectedConversation}
-                    currentUserId={currentUserId}
-                    otherParticipantName="Sitter"
-                  />
-                ) : (
-                  <div className="bg-white border border-gray-100 rounded-3xl h-[600px] flex items-center justify-center">
-                    <div className="text-center">
-                      <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center mx-auto mb-5 border border-gray-200">
-                        <MessageCircle className="h-9 w-9 text-pink-300" />
-                      </div>
-                      <p className="text-gray-900 font-bold text-lg mb-1">{t('sitterHub.noConversation')}</p>
-                      <p className="text-gray-400 text-sm">{t('sitterHub.chooseConversation')}</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
+            <BookingChatInbox />
           </TabsContent>
 
           {/* ── Bookings Tab ── */}
