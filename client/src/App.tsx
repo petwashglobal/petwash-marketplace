@@ -12,6 +12,7 @@ import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
+import { useWhoami } from "@/auth/useWhoami";
 import RequireAuth from "@/auth/RequireAuth";
 import StationMembershipGuard from "@/components/StationMembershipGuard";
 import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
@@ -641,8 +642,10 @@ function LegacyProviderRouteRedirect() {
 
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
   const { user, loading } = useFirebaseAuth();
+  const { role, isLoading: roleLoading } = useWhoami();
   const { trackLanguageChange } = useAnalytics();
   const [, setLocation] = useLocation();
+  const [isProviderApp, setIsProviderApp] = useState(false);
   const IS_DEV = import.meta.env.DEV === true;
   
   // Initialize FCM push notifications (auto-registers after login)
@@ -675,25 +678,32 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 
   // APP-FLAVOR ROUTING (2026-06-17): the customer (il.co.petwash.customer) and
   // provider (il.co.petwash.provider) apps ship the SAME web bundle. On a cold
-  // start at root, send the PROVIDER app straight to its own surface so each app
-  // opens to the experience its user actually needs — providers land in Provider
-  // OS (jobs/earnings/onboarding); customers stay on the customer home. Native
-  // only; web is unaffected. Providers can still navigate anywhere afterwards.
+  // Detect the native app flavor once (provider vs customer bundle id). Web stays false.
   useEffect(() => {
     let cancelled = false;
     import('@capacitor/app')
       .then(async ({ App: CapApp }) => {
         try {
           const info = await CapApp.getInfo();
-          const isProviderApp = typeof info?.id === 'string' && info.id.includes('.provider');
-          if (!cancelled && isProviderApp && window.location.pathname === '/') {
-            setLocation('/provider-os');
-          }
+          if (!cancelled) setIsProviderApp(typeof info?.id === 'string' && info.id.includes('.provider'));
         } catch { /* no native app info (web) */ }
       })
       .catch(() => { /* web — no Capacitor plugin */ });
     return () => { cancelled = true; };
-  }, [setLocation]);
+  }, []);
+
+  // Smart app-purpose routing — each app opens to the experience its user needs.
+  // The PROVIDER (driver-style) app serves providers: from the root, a provider
+  // lands in Provider OS (jobs/earnings); a signed-in non-provider is sent to
+  // provider onboarding ("become a provider"); a signed-out user goes to signup.
+  // The CUSTOMER (member) app is left on the member home (isProviderApp=false → no-op).
+  // Only fires at "/" so it never hijacks deliberate navigation. Native only.
+  useEffect(() => {
+    if (!isProviderApp || loading || roleLoading) return;
+    if (window.location.pathname !== '/') return;
+    if (!user) { setLocation('/signup'); return; }
+    setLocation(role === 'provider' ? '/provider-os' : '/provider-onboarding');
+  }, [isProviderApp, user, loading, role, roleLoading, setLocation]);
 
   // Get personalized AI greeting on app launch 🎉
   usePersonalizedGreeting();
