@@ -45,6 +45,16 @@ function rel(d?: string | Date | null): string {
   try { return formatDistanceToNow(new Date(d), { addSuffix: false }); } catch { return ''; }
 }
 
+// Strip HTML tags to a plain-text preview. Loops to a fixed point so a single pass
+// can't leave a tag behind on nested/obfuscated input (e.g. "<scr<script>ipt>") —
+// fixes CodeQL js/incomplete-multi-character-sanitization.
+function stripTags(s: string): string {
+  let prev: string;
+  let out = s;
+  do { prev = out; out = out.replace(/<[^>]*>/g, ''); } while (out !== prev);
+  return out;
+}
+
 interface InboxAlert {
   id: string; title: string; bodyHtml?: string; type?: string;
   createdAt?: string; readAt?: string | null; ctaUrl?: string;
@@ -180,7 +190,7 @@ export default function PetWashInbox() {
               alerts.map(a => {
                 const Icon = ALERT_ICON[a.type || 'system'] ?? Bell;
                 const isVoucher = a.type === 'voucher';
-                const body = (a.bodyHtml || '').replace(/<[^>]+>/g, '').slice(0, 90);
+                const body = stripTags(a.bodyHtml || '').slice(0, 90);
                 const row = (
                   <div className="flex items-center gap-3 px-4 py-2.5 border-b border-gray-50 active:bg-gray-50">
                     <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0"
