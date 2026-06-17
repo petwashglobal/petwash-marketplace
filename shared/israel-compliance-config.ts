@@ -102,6 +102,9 @@ export const SHAAM_THRESHOLD_PHASE0_ILS = 20_000;
 export const SHAAM_THRESHOLD_PHASE1_ILS = 10_000;
 /** Ex-VAT threshold in Phase 2 */
 export const SHAAM_THRESHOLD_PHASE2_ILS = 5_000;
+// NOTE: the canonical "does this invoice need a government allocation number?"
+// helpers are isShaamAllocationRequired() and resolveShaamAllocation() below
+// (line ~244). Do NOT add a parallel threshold helper — import those.
 
 /** PetWash Ltd company tax ID (ח.פ) */
 export const COMPANY_TAX_ID = '517145033';

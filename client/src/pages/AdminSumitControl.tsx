@@ -1,4 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,8 +11,10 @@ import {
   XCircle,
   ChevronLeft,
   ShieldCheck,
+  CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { startSumitCheckout } from "@/lib/sumitCheckout";
 
 type Mode = "off" | "email" | "api" | "csv_export";
 
@@ -70,6 +73,28 @@ export default function AdminSumitControl() {
     },
     refetchInterval: 30_000,
   });
+
+  // Live card-rail test: hits SUMIT's hosted-payment "begin" with ₪1. If SUMIT
+  // accepts our request it redirects to the hosted page (rail works); if it
+  // rejects, we surface the exact reason here so the field can be fixed. No
+  // money moves unless a card is actually entered on SUMIT's page.
+  const [testing, setTesting] = useState(false);
+  const [testError, setTestError] = useState<string | null>(null);
+
+  const runCardTest = async () => {
+    setTesting(true);
+    setTestError(null);
+    const result = await startSumitCheckout({
+      amountIls: 1,
+      description: "PetWash card-rail connectivity test",
+      orderId: `sumit-test-${Date.now()}`,
+    });
+    if (!result.ok) {
+      setTestError(result.error || "Unknown error");
+      setTesting(false);
+    }
+    // On success the browser navigates to SUMIT; no further handling needed.
+  };
 
   return (
     <div
@@ -194,6 +219,35 @@ export default function AdminSumitControl() {
                     <a className="text-blue-700 hover:underline mr-1">חשבוניות ספקים</a>
                   </Link>
                 </div>
+              </CardContent>
+            </Card>
+
+            {/* Card-charging rail test (hosted page) */}
+            <Card className="mt-4 border-slate-200">
+              <CardContent className="pt-5 pb-5">
+                <div className="text-sm font-medium mb-1 flex items-center gap-2">
+                  <CreditCard className="h-4 w-4 text-emerald-700" />
+                  בדיקת סליקת אשראי (עמוד תשלום מאובטח)
+                </div>
+                <p className="text-[12px] text-gray-500 mb-3 leading-relaxed">
+                  לחיצה תפתח בקשת תשלום ב‑SUMIT על סך ₪1. אם SUMIT מקבל את הבקשה —
+                  תועבר לעמוד התשלום המאובטח (הסליקה דרך UPay מתחת). כסף יעבור רק אם
+                  תזין כרטיס בעמוד של SUMIT. אם תופיע שגיאה — היא תוצג כאן.
+                </p>
+                <Button
+                  onClick={runCardTest}
+                  disabled={testing}
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white"
+                  data-testid="button-sumit-card-test"
+                >
+                  {testing ? "פותח עמוד תשלום…" : "בדוק סליקת אשראי (₪1)"}
+                </Button>
+                {testError && (
+                  <div className="mt-3 rounded-lg border border-red-200 bg-red-50 p-3 text-[12px] text-red-800">
+                    <div className="font-semibold mb-1">SUMIT דחה את הבקשה:</div>
+                    <code className="break-all">{testError}</code>
+                  </div>
+                )}
               </CardContent>
             </Card>
           </>

@@ -360,17 +360,21 @@ export class IsraeliDigitalReceiptService {
         logger.warn('[Digital Receipt] Google Sheets backup failed', { receiptNumber });
       }
 
-      // Issue the legal SUMIT tax-invoice-receipt (חשבונית מס/קבלה). This is a
-      // SAFE no-op until the operator sets SUMIT creds (SUMIT_ENABLED + keys) and
-      // connects the Tax Authority — sumitClient.createCustomerReceipt() returns
-      // {wired:false} without any HTTP call. It must NEVER throw here: a SUMIT
-      // hiccup cannot be allowed to fail a receipt for an already-completed
-      // payment. Idempotency key = our sequential receiptNumber, so a retry can't
-      // mint a duplicate tax document. Document id is logged for now (persisting
-      // it on digitalReceipts needs a schema column — follow-up migration).
+      // SMART-ISSUE RULE (Israel "Invoice Israel" / חשבונית ישראל law):
+      // Below the SHAAM threshold (≈ every PetWash sale — ex-VAT ≤ ₪5,000 from
+      // 2026-06) a self-issued חשבונית מס/קבלה with our gapless PW-YYYY-NNNNNN
+      // numbering is FULLY VALID and needs NO government allocation number and
+      // NO SUMIT/ITA call — that receipt is already persisted above. We only
+      // route through SUMIT to obtain the government allocation number (מספר
+      // הקצאה) when the invoice is ABOVE threshold (shaamRequired). This keeps
+      // the common path fast, free and independent of SUMIT.
+      // SAFE no-op even above threshold until SUMIT creds are set —
+      // createCustomerReceipt() returns {wired:false} with no HTTP call. It must
+      // NEVER throw: a SUMIT hiccup cannot fail a receipt for an already-
+      // completed payment. Idempotency key = our sequential receiptNumber.
       try {
         const { sumitClient } = await import('./SumitClient');
-        if (sumitClient.isWired()) {
+        if (shaamRequired && sumitClient.isWired()) {
           const sumitResult = await sumitClient.createCustomerReceipt({
             idempotencyKey: receiptNumber,
             customer: {
