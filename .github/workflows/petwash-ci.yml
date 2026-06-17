@@ -1237,7 +1237,9 @@ jobs:
 
           optional_mappings=(
             "REDIS_URL=REDIS_URL:latest"
+            "SENTRY_DSN=SENTRY_DSN:latest"
             "SLACK_WEBHOOK_URL=SLACK_WEBHOOK_URL:latest"
+            "ALERTS_SLACK_WEBHOOK=ALERTS_SLACK_WEBHOOK:latest"
             # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
             # These were defined ONLY in the legacy .replit file and never
             # made it into Cloud Run. Originally added to required_mappings
@@ -1499,7 +1501,7 @@ jobs:
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=true,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false
+            --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=true,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false,SUMIT_ENABLED=true
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
             --startup-probe=httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,timeoutSeconds=10,failureThreshold=30
