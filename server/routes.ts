@@ -101,7 +101,6 @@ import unifiedVouchersRoutes from "./routes/unified-vouchers";
 import esignRoutes from "./routes/esign";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
-import chatRoutes from "./routes/chat";
 import bookingChatRouter from './routes/booking-chat';
 import onboardingRouter from './routes/onboarding';
 import providerConsoleRouter from './routes/provider-console';
@@ -11182,7 +11181,8 @@ self.addEventListener('notificationclick', (event) => {
   
   // Notifications, Chat, VAT Calculator, and Fee Configuration Services
   app.use('/api/notifications', apiLimiter, notificationsRoutes);
-  app.use('/api/chat-v1', apiLimiter, chatRoutes);
+  // /api/chat-v1 (ChatService) removed 2026-06-17 — orphaned, zero callers; the
+  // canonical 1:1 messaging backend is /api/booking-chat (Postgres).
   app.use('/api/vat', apiLimiter, vatRoutes);
   app.use('/api/fees', apiLimiter, feesRoutes);
   
