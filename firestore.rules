@@ -462,7 +462,8 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin()
       );
-      allow create: if isAuthenticated();
+      // Bind create to the owner so a user can only register their OWN device.
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin()
       );
@@ -473,7 +474,8 @@ service cloud.firestore {
 
     match /wallet_telemetry/{docId} {
       allow read: if isAdmin();
-      allow create: if isAuthenticated();
+      // Server-written (Admin SDK). No client write path exists.
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -485,7 +487,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin() || isStaff()
       );
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin()
       );
@@ -496,7 +498,9 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin()
       );
-      allow create: if isAuthenticated();
+      // Server-written ledger. Owner-binding would let a user forge their OWN
+      // point transactions, so this is admin/server-only.
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -507,7 +511,8 @@ service cloud.firestore {
         request.auth.uid == resource.data.referredId ||
         isAdmin()
       );
-      allow create: if isAuthenticated();
+      // Server grants referral credit; a client must not forge referral records.
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -557,12 +562,17 @@ service cloud.firestore {
     }
 
     match /escrow_payments/{escrowId} {
+      // Server (Admin SDK) writes escrow; clients only READ their own.
+      // Owner fields are customerId/providerId — NOT buyerId/sellerId, which the
+      // server never writes. The old check matched nothing (silently denying the
+      // real owner) AND `create: if isAuthenticated()` let any signed-in user
+      // forge an escrow doc. Both fixed.
       allow read: if isAuthenticated() && (
-        request.auth.uid == resource.data.buyerId ||
-        request.auth.uid == resource.data.sellerId ||
+        request.auth.uid == resource.data.customerId ||
+        request.auth.uid == resource.data.providerId ||
         isAdmin()
       );
-      allow create: if isAuthenticated();
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -574,7 +584,9 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin()
       );
-      allow create: if isAuthenticated() || isAdmin();
+      // A user may only create a notification addressed to THEMSELVES; the
+      // server (admin) creates everything else. Closes cross-user spoofing.
+      allow create: if isAdmin() || (isAuthenticated() && request.auth.uid == request.resource.data.userId);
       allow update: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin()
       );
@@ -588,7 +600,8 @@ service cloud.firestore {
     // ============================================
     match /fraud_detection_logs/{logId} {
       allow read: if isAdmin() || isStaff();
-      allow create: if isAuthenticated();
+      // Server-written audit trail. Clients must not spam/forge fraud logs.
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -602,7 +615,7 @@ service cloud.firestore {
       allow read: if isAuthenticated() && (
         request.auth.uid == resource.data.userId || isAdmin()
       );
-      allow create: if isAuthenticated();
+      allow create: if isAuthenticated() && request.auth.uid == request.resource.data.userId;
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }
@@ -617,7 +630,8 @@ service cloud.firestore {
     // ============================================
     match /station_heartbeats/{heartbeatId} {
       allow read: if isAdmin() || isStaff();
-      allow create: if isAuthenticated();
+      // Station/server telemetry only — not a client write path.
+      allow create: if isAdmin();
       allow update: if isAdmin();
       allow delete: if isAdmin();
     }

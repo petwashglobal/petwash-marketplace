@@ -12,7 +12,7 @@
   top: 0;
   z-index: 9999;
   background: #FFFFFF;
-  border-bottom: 1px solid rgba(212, 175, 55, 0.15);
+  border-bottom: 1px solid rgba(18, 147, 106, 0.15);
   box-shadow: 0 1px 6px rgba(0, 0, 0, 0.04);
 }
 
@@ -32,7 +32,7 @@
 .pw-header-row-logo {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: center; /* logo TOP-CENTER (crown) — DO NOT change (CEO rule) */
   width: 100%;
   padding: 0;
 }
@@ -464,7 +464,7 @@
 }
 
 .pw-mobile-nav-strip-link:hover {
-  color: #B8972F;
+  color: #0C5B3F;
 }
 
 .pw-mobile-nav-strip-dot {
@@ -639,7 +639,7 @@
 }
 
 .pw-mega-link:hover {
-  background: rgba(201, 169, 110, 0.12);
+  background: rgba(18, 147, 106, 0.12);
   color: #1A1712;
 }
 
@@ -1054,7 +1054,7 @@
 }
 
 .pw-mobile-link:hover {
-  background: rgba(201, 169, 110, 0.12);
+  background: rgba(18, 147, 106, 0.12);
   color: #1A1712;
 }
 

@@ -4,6 +4,7 @@ import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { feeConfigService } from './FeeConfigurationService';
+import { isProviderInsuranceCleared } from '../routes/provider-insurance';
 
 /**
  * Financial Payout Ledger Service (2026 Pet Wash™ Model)
@@ -303,6 +304,17 @@ export async function releaseEscrow(earningId: string) {
       throw new Error(`Earning ${earningId} escrow period not yet expired`);
     }
 
+    // INSURANCE CLEARANCE GATE — an uninsured provider's money stays HELD.
+    // Provider is the primary risk-bearer (Rover/Mad Paws model); we do not move
+    // funds toward payout until they hold ACTIVE liability cover + a declaration.
+    // The auto-release cron catches this per-earning, so cleared providers are
+    // unaffected; the held earning simply stays 'in_escrow' until docs clear.
+    if (!(await isProviderInsuranceCleared(earning.contractorId))) {
+      throw new Error(
+        `PAYOUT_BLOCKED_INSURANCE: provider ${earning.contractorId} not insurance-cleared — escrow held (earning ${earningId})`,
+      );
+    }
+
     // Release from escrow
     await db
       .update(contractorEarnings)
@@ -360,6 +372,15 @@ export async function processPayout(
     if (earning.payoutStatus !== 'released') {
       throw new Error(
         `Earning ${earningId} cannot be paid out (status: ${earning.payoutStatus})`
+      );
+    }
+
+    // INSURANCE CLEARANCE GATE — last line before money leaves to the provider's
+    // bank. Even if an earning somehow reached 'released', block the actual
+    // transfer unless the provider is insurance-cleared at payout time.
+    if (!(await isProviderInsuranceCleared(earning.contractorId))) {
+      throw new Error(
+        `PAYOUT_BLOCKED_INSURANCE: provider ${earning.contractorId} not insurance-cleared — bank transfer blocked (earning ${earningId})`,
       );
     }
 

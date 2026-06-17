@@ -42,16 +42,12 @@ export default function SitterDetail() {
   });
 
   // Fetch user's pets
+  // Use the default queryFn (attaches the Firebase Bearer token) — the old custom
+  // fetch sent no auth header, so this requireAuth route 401'd and the pet dropdown
+  // stayed empty (couldn't book). userId goes in the URL so it's the query key.
   const { data: pets } = useQuery<any[]>({
-    queryKey: ['/api/sitter-suite/pets', user?.uid],
-    queryFn: () => {
-      if (!user?.uid) throw new Error('User not authenticated');
-      return fetch(getApiUrl(`/api/sitter-suite/pets?userId=${user.uid}`)).then(res => {
-        if (!res.ok) throw new Error('Failed to fetch pets');
-        return res.json();
-      });
-    },
-    enabled: !!user,
+    queryKey: [`/api/sitter-suite/pets?userId=${user?.uid}`],
+    enabled: !!user?.uid,
   });
 
   // Create booking mutation
@@ -308,7 +304,7 @@ export default function SitterDetail() {
 
           {/* Multi-Pet Booking Wizard CTA */}
           {user && sitter && (
-            <div className="mb-6 p-4 bg-gradient-to-l from-[#C5A55A]/10 to-amber-50 border border-[#C5A55A]/30 rounded-2xl flex items-center justify-between gap-4">
+            <div className="mb-6 p-4 bg-gradient-to-l from-[#12936A]/10 to-amber-50 border border-[#12936A]/30 rounded-2xl flex items-center justify-between gap-4">
               <div>
                 <p className="font-semibold text-gray-900 text-sm">
                   {isHebrew ? "הזמנה עם מספר חיות?" : "Booking multiple pets?"}
@@ -322,7 +318,7 @@ export default function SitterDetail() {
               <Button
                 size="sm"
                 onClick={() => navigate(`/booking/new/pet_sitting/${sitter.userId}`)}
-                className="bg-[#C5A55A] hover:bg-[#b8945a] text-white shrink-0 text-xs px-4"
+                className="bg-[#12936A] hover:bg-[#0C5B3F] text-white shrink-0 text-xs px-4"
               >
                 {isHebrew ? "הזמן ←" : "Book →"}
               </Button>

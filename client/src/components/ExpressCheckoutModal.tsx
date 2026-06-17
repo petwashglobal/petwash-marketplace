@@ -287,7 +287,7 @@ export function ExpressCheckoutModal({
                 onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
                 placeholder={tx('emailPlaceholder', lang)}
                 required
-                className={`${isRtl ? 'pr-9' : 'pl-9'} border-[#ddd] bg-white text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px]`}
+                className={`${isRtl ? 'pr-9' : 'pl-9'} border-[#ddd] bg-white text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#12936A] focus:ring-0 rounded-none text-[16px]`}
                 dir="ltr"
                 autoComplete="email"
                 autoCapitalize="none"
@@ -311,7 +311,7 @@ export function ExpressCheckoutModal({
                       value={formData.recipientName}
                       onChange={(e) => setFormData(prev => ({ ...prev, recipientName: e.target.value }))}
                       placeholder={tx('recipientNamePlaceholder', lang)}
-                      className={`${isRtl ? 'pr-9' : 'pl-9'} border-[#ddd] bg-white text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px]`}
+                      className={`${isRtl ? 'pr-9' : 'pl-9'} border-[#ddd] bg-white text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#12936A] focus:ring-0 rounded-none text-[16px]`}
                       dir={dir}
                       autoComplete="name"
                       autoCapitalize="words"
@@ -333,7 +333,7 @@ export function ExpressCheckoutModal({
                       value={formData.recipientEmail}
                       onChange={(e) => setFormData(prev => ({ ...prev, recipientEmail: e.target.value }))}
                       placeholder={tx('emailPlaceholder', lang)}
-                      className={`${isRtl ? 'pr-9' : 'pl-9'} border-[#ddd] bg-white text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px]`}
+                      className={`${isRtl ? 'pr-9' : 'pl-9'} border-[#ddd] bg-white text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#12936A] focus:ring-0 rounded-none text-[16px]`}
                       dir="ltr"
                       autoComplete="email"
                       autoCapitalize="none"
@@ -353,7 +353,7 @@ export function ExpressCheckoutModal({
                   onChange={(e) => setFormData(prev => ({ ...prev, personalMessage: e.target.value }))}
                   placeholder={tx('messagePlaceholder', lang)}
                   rows={2}
-                  className="mt-1 border-[#ddd] bg-white text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#c9a96e] focus:ring-0 rounded-none text-[16px] resize-none"
+                  className="mt-1 border-[#ddd] bg-white text-[#1a1a1a] placeholder:text-[#bbb] focus:border-[#12936A] focus:ring-0 rounded-none text-[16px] resize-none"
                   dir={dir}
                   autoCapitalize="sentences"
                   spellCheck={true}
@@ -371,9 +371,9 @@ export function ExpressCheckoutModal({
             />
             <label htmlFor="checkout-terms" className="text-[11px] text-[#888] leading-relaxed cursor-pointer select-none">
               {tx('termsAccept', lang)}{' '}
-              <a href="/terms" target="_blank" className="text-[#c9a96e] hover:underline">{tx('termsLink', lang)}</a>
+              <a href="/terms" target="_blank" className="text-[#12936A] hover:underline">{tx('termsLink', lang)}</a>
               {' '}{tx('andPrivacy', lang)}{' '}
-              <a href="/privacy-policy" target="_blank" className="text-[#c9a96e] hover:underline">{tx('privacyLink', lang)}</a>
+              <a href="/privacy-policy" target="_blank" className="text-[#12936A] hover:underline">{tx('privacyLink', lang)}</a>
             </label>
           </div>
 
@@ -409,7 +409,7 @@ export function ExpressCheckoutModal({
 
           <div className="flex flex-col items-center gap-2 pt-2 pb-1">
             <div className="flex items-center gap-1.5">
-              <Shield className="w-3 h-3 text-[#c9a96e]" />
+              <Shield className="w-3 h-3 text-[#12936A]" />
               <span className="text-[10px] text-[#aaa] tracking-wide">
                 {tx('encryptedData', lang)}
               </span>

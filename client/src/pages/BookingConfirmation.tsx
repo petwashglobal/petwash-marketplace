@@ -362,18 +362,18 @@ function RebookPanel({ booking, t, navigate }: { booking: any; t: typeof labels[
   return (
     <div
       className="rounded-2xl p-5 mb-4 flex items-center justify-between gap-4"
-      style={{ background: 'linear-gradient(135deg, #fdf8ee 0%, #fef9f0 100%)', border: '1.5px solid #C5A55A33' }}
+      style={{ background: 'linear-gradient(135deg, #fdf8ee 0%, #fef9f0 100%)', border: '1.5px solid #12936A33' }}
     >
       <div className="flex items-center gap-3 min-w-0">
-        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#C5A55A1A' }}>
-          <RefreshCw className="w-5 h-5" style={{ color: '#C5A55A' }} />
+        <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#12936A1A' }}>
+          <RefreshCw className="w-5 h-5" style={{ color: '#12936A' }} />
         </div>
         <div className="min-w-0">
           <p className="font-bold text-sm text-gray-900 truncate">{providerLabel}</p>
           <p className="text-xs text-gray-500">{t.rebookSub}</p>
         </div>
       </div>
-      <Button onClick={handleRebook} className="flex-shrink-0 font-semibold text-sm px-5 py-2 rounded-xl" style={{ background: '#C5A55A', color: '#fff', border: 'none' }}>
+      <Button onClick={handleRebook} className="flex-shrink-0 font-semibold text-sm px-5 py-2 rounded-xl" style={{ background: '#12936A', color: '#fff', border: 'none' }}>
         {t.rebookBtn}
       </Button>
     </div>

@@ -38,14 +38,14 @@ export default function PrestigeWalletCTA({ language }: PrestigeWalletCTAProps) 
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="max-w-2xl mx-auto text-center">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
-            <Sparkles className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
-            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#12936A]" />
+            <Sparkles className="w-4 h-4 text-[#12936A]" strokeWidth={1.2} />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#12936A]" />
           </div>
 
           <p
             className="text-[10px] sm:text-[11px] tracking-[0.35em] uppercase mb-5 font-medium"
-            style={{ color: '#c9a96e' }}
+            style={{ color: '#12936A' }}
           >
             PetWash Prestige
           </p>
@@ -82,11 +82,11 @@ export default function PrestigeWalletCTA({ language }: PrestigeWalletCTAProps) 
               {/* TODO: swap label markup for official "Add to Google Wallet" badge art */}
               <Link
                 href="/prestige-pass"
-                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 bg-white text-[#1a1a1a] text-sm font-medium tracking-wide border border-[#ddd] hover:border-[#c9a96e] transition-all duration-300"
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2.5 px-7 py-3.5 bg-white text-[#1a1a1a] text-sm font-medium tracking-wide border border-[#ddd] hover:border-[#12936A] transition-all duration-300"
                 style={{ borderRadius: '10px' }}
                 data-testid="cta-google-wallet"
               >
-                <Wallet className="w-5 h-5 text-[#c9a96e]" strokeWidth={1.5} />
+                <Wallet className="w-5 h-5 text-[#12936A]" strokeWidth={1.5} />
                 {isHebrew ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet'}
               </Link>
             </div>

@@ -178,13 +178,13 @@ export default function MobileManagementDashboard() {
       <header className="sticky top-0 z-50 bg-white/90 backdrop-blur-xl border-b border-[#E8E3D9]">
         <div className="px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-br from-[#C9A96E] to-[#d4af37] rounded-xl flex items-center justify-center shadow-lg shadow-[#C9A96E]/20">
+            <div className="w-10 h-10 bg-gradient-to-br from-[#12936A] to-[#12936A] rounded-xl flex items-center justify-center shadow-lg shadow-[#12936A]/20">
               <Crown className="h-5 w-5 text-[#1A1A1A]" />
             </div>
             <div>
               <div className="flex items-center gap-2">
                 <h1 className="text-lg font-bold text-[#1A1A1A]">{isHebrew ? 'מרכז הניהול' : 'Management Hub'}</h1>
-                <span className="px-1.5 py-0.5 text-[7px] tracking-[0.1em] uppercase font-semibold bg-[#C9A96E]/20 text-[#C9A96E] border border-[#C9A96E]/30 rounded-sm">
+                <span className="px-1.5 py-0.5 text-[7px] tracking-[0.1em] uppercase font-semibold bg-[#12936A]/20 text-[#12936A] border border-[#12936A]/30 rounded-sm">
                   Staff
                 </span>
               </div>
@@ -197,7 +197,7 @@ export default function MobileManagementDashboard() {
               className={cn(
                 'p-2.5 rounded-xl transition-colors',
                 activeView === 'providers'
-                  ? 'bg-[#C9A96E]/20 text-[#C9A96E]'
+                  ? 'bg-[#12936A]/20 text-[#12936A]'
                   : 'bg-white text-[#8A8078]'
               )}
               data-testid="toggle-providers-view"
@@ -231,7 +231,7 @@ export default function MobileManagementDashboard() {
           <div className="px-4 pb-3 flex items-center gap-2">
             <Button
               onClick={() => setActiveView('dashboard')}
-              className="flex items-center gap-1 text-xs text-[#C9A96E] hover:text-[#d4af37] transition-colors"
+              className="flex items-center gap-1 text-xs text-[#12936A] hover:text-[#12936A] transition-colors"
             >
               <ArrowLeft className="h-3.5 w-3.5" />
               {isHebrew ? 'חזרה' : 'Back'}
@@ -270,7 +270,7 @@ export default function MobileManagementDashboard() {
               </h3>
               <Button
                 onClick={() => setActiveView('providers')}
-                className="text-xs text-[#C9A96E] hover:text-[#d4af37] flex items-center gap-1 transition-colors"
+                className="text-xs text-[#12936A] hover:text-[#12936A] flex items-center gap-1 transition-colors"
               >
                 {isHebrew ? 'צפה בכולם' : 'View All'} <ChevronRight className="h-3 w-3" />
               </Button>
@@ -282,10 +282,10 @@ export default function MobileManagementDashboard() {
                 { label: isHebrew ? 'נהגים' : 'Drivers', icon: Car, color: 'text-blue-400', bg: 'from-blue-500/15 to-blue-600/5', count: 6, route: '/pettrek' },
                 { label: isHebrew ? 'טיפוח' : 'Groomers', icon: Scissors, color: 'text-rose-400', bg: 'from-rose-500/15 to-rose-600/5', count: 0, route: '/groomers' },
                 { label: isHebrew ? 'מאלפים' : 'Trainers', icon: GraduationCap, color: 'text-cyan-400', bg: 'from-cyan-500/15 to-cyan-600/5', count: 3, route: '/academy' },
-                { label: '⁦K9000™⁩', icon: Droplets, color: 'text-[#C9A96E]', bg: 'from-[#C9A96E]/15 to-[#C9A96E]/5', count: 6, route: '/k9000' },
+                { label: '⁦K9000™⁩', icon: Droplets, color: 'text-[#12936A]', bg: 'from-[#12936A]/15 to-[#12936A]/5', count: 6, route: '/k9000' },
               ].map((p, i) => (
                 <Link key={i} href={p.route}>
-                  <div className={`bg-white border border-[#E8E3D9] shadow-sm rounded-xl p-3 text-center hover:border-[#D4AF37]/30 transition-all cursor-pointer bg-gradient-to-br ${p.bg}`} data-testid={`platform-${p.label.toLowerCase()}`}>
+                  <div className={`bg-white border border-[#E8E3D9] shadow-sm rounded-xl p-3 text-center hover:border-[#12936A]/30 transition-all cursor-pointer bg-gradient-to-br ${p.bg}`} data-testid={`platform-${p.label.toLowerCase()}`}>
                     <div className="w-10 h-10 mx-auto mb-2 rounded-lg flex items-center justify-center">
                       <p.icon className={`h-5 w-5 ${p.color}`} />
                     </div>
@@ -303,7 +303,7 @@ export default function MobileManagementDashboard() {
                 {isHebrew ? 'תחנות K9000' : 'K9000 Stations'}
               </h3>
               <Link href="/admin/stations">
-                <span className="text-xs text-[#C9A96E] hover:text-[#d4af37] cursor-pointer flex items-center gap-1">
+                <span className="text-xs text-[#12936A] hover:text-[#12936A] cursor-pointer flex items-center gap-1">
                   {isHebrew ? 'צפה בהכל' : 'View All'} <ChevronRight className="h-3 w-3" />
                 </span>
               </Link>
@@ -328,7 +328,7 @@ export default function MobileManagementDashboard() {
                 <div className="flex items-center justify-between text-xs">
                   <span className="text-[#8A8078]">{isHebrew ? 'תחנה פופולרית:' : 'Top Station:'}</span>
                   <span className="text-[#1A1A1A] font-medium flex items-center gap-1">
-                    <MapPin className="h-3 w-3 text-[#C9A96E]" /> Tel Aviv Central
+                    <MapPin className="h-3 w-3 text-[#12936A]" /> Tel Aviv Central
                   </span>
                 </div>
               </div>
@@ -345,11 +345,11 @@ export default function MobileManagementDashboard() {
                 return (
                   <Link key={section.id} href={section.route || '#'}>
                     <div
-                      className={`bg-white border border-[#E8E3D9] shadow-sm rounded-2xl p-4 hover:border-[#D4AF37]/30 transition-all cursor-pointer group bg-gradient-to-br ${section.bgGradient}`}
+                      className={`bg-white border border-[#E8E3D9] shadow-sm rounded-2xl p-4 hover:border-[#12936A]/30 transition-all cursor-pointer group bg-gradient-to-br ${section.bgGradient}`}
                       data-testid={`card-${section.id}`}
                     >
                       <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
-                        <Icon className="h-6 w-6 text-[#C9A96E]" />
+                        <Icon className="h-6 w-6 text-[#12936A]" />
                       </div>
                       <h3 className="font-bold text-sm text-[#1A1A1A] mb-1">
                         {isHebrew ? section.label.he : section.label.en}
@@ -358,7 +358,7 @@ export default function MobileManagementDashboard() {
                         {isHebrew ? section.description.he : section.description.en}
                       </p>
                       <div className="flex items-center justify-end mt-2">
-                        <ChevronRight className="h-4 w-4 text-[#CCCCCC] group-hover:text-[#C9A96E] transition-colors" />
+                        <ChevronRight className="h-4 w-4 text-[#CCCCCC] group-hover:text-[#12936A] transition-colors" />
                       </div>
                     </div>
                   </Link>
@@ -371,11 +371,11 @@ export default function MobileManagementDashboard() {
         <div className="px-4 py-4">
           {loadingProviders ? (
             <div className="flex items-center justify-center py-20">
-              <Loader2 className="h-8 w-8 animate-spin text-[#C9A96E]" />
+              <Loader2 className="h-8 w-8 animate-spin text-[#12936A]" />
             </div>
           ) : providers.length === 0 ? (
             <div className="text-center py-20">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.05)] flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[rgba(18,147,106,0.2)] to-[rgba(18,147,106,0.05)] flex items-center justify-center">
                 <Users className="h-8 w-8 text-[#AAAAAA]" />
               </div>
               <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">
@@ -393,7 +393,7 @@ export default function MobileManagementDashboard() {
                 return (
                   <div
                     key={provider.id}
-                    className="bg-white border border-[#E8E3D9] shadow-sm rounded-2xl p-4 hover:border-[#D4AF37]/30 transition-all"
+                    className="bg-white border border-[#E8E3D9] shadow-sm rounded-2xl p-4 hover:border-[#12936A]/30 transition-all"
                   >
                     <div className="flex items-start gap-3">
                       <div className={cn('w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0', pc.bg)}>
@@ -416,8 +416,8 @@ export default function MobileManagementDashboard() {
                         )}
                         {provider.rating && (
                           <div className="flex items-center gap-1 mt-1">
-                            <Star className="h-3 w-3 fill-[#C9A96E] text-[#C9A96E]" />
-                            <span className="text-xs text-[#C9A96E]">{provider.rating.toFixed(1)}</span>
+                            <Star className="h-3 w-3 fill-[#12936A] text-[#12936A]" />
+                            <span className="text-xs text-[#12936A]">{provider.rating.toFixed(1)}</span>
                           </div>
                         )}
                       </div>
@@ -428,10 +428,10 @@ export default function MobileManagementDashboard() {
                               setSelectedProvider(provider);
                               setShowMessageDialog(true);
                             }}
-                            className="w-10 h-10 rounded-xl bg-[#C9A96E]/15 flex items-center justify-center hover:bg-[#C9A96E]/25 transition-colors"
+                            className="w-10 h-10 rounded-xl bg-[#12936A]/15 flex items-center justify-center hover:bg-[#12936A]/25 transition-colors"
                             data-testid={`message-provider-${provider.id}`}
                           >
-                            <MessageSquare className="h-4 w-4 text-[#C9A96E]" />
+                            <MessageSquare className="h-4 w-4 text-[#12936A]" />
                           </Button>
                         ) : (
                           <div className="w-10 h-10 rounded-xl bg-white flex items-center justify-center" title={isHebrew ? 'אין אימייל זמין' : 'No email available'}>
@@ -456,7 +456,7 @@ export default function MobileManagementDashboard() {
       <div className="fixed bottom-6 right-6 flex flex-col gap-3 z-40">
         <Button
           onClick={() => setActiveView('providers')}
-          className="w-14 h-14 bg-gradient-to-br from-[#C9A96E] to-[#d4af37] rounded-full shadow-2xl shadow-[#C9A96E]/30 flex items-center justify-center hover:scale-110 transition-transform"
+          className="w-14 h-14 bg-gradient-to-br from-[#12936A] to-[#12936A] rounded-full shadow-2xl shadow-[#12936A]/30 flex items-center justify-center hover:scale-110 transition-transform"
           data-testid="fab-providers"
         >
           <Users className="h-6 w-6 text-[#1A1A1A]" />
@@ -475,7 +475,7 @@ export default function MobileManagementDashboard() {
         <DialogContent className="max-w-lg !bg-white !border-[#E8E3D9] rounded-2xl mx-4">
           <DialogHeader>
             <DialogTitle className="text-lg font-semibold text-[#1A1A1A] flex items-center gap-2">
-              <Send className="w-5 h-5 text-[#C9A96E]" />
+              <Send className="w-5 h-5 text-[#12936A]" />
               {isHebrew ? 'שלח הודעה לספק' : 'Message Provider'}
             </DialogTitle>
             <DialogDescription className="text-[#7A7068]">
@@ -543,7 +543,7 @@ export default function MobileManagementDashboard() {
                 onClick={handleSendToProvider}
                 disabled={sendMessageMutation.isPending || !messageSubject || !messageBody}
                 className="px-5 py-3 rounded-xl text-white font-semibold flex items-center gap-2 disabled:opacity-50"
-                style={{ background: "linear-gradient(90deg, #c9a96e, #d4af37)" }}
+                style={{ background: "linear-gradient(90deg, #12936A, #12936A)" }}
               >
                 {sendMessageMutation.isPending ? (
                   <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'שולח...' : 'Sending...'}</>
@@ -565,7 +565,7 @@ export default function MobileManagementDashboard() {
             <div className="p-6">
               <div className="flex items-center justify-between mb-8">
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-[#C9A96E] to-[#d4af37] rounded-xl flex items-center justify-center">
+                  <div className="w-12 h-12 bg-gradient-to-br from-[#12936A] to-[#12936A] rounded-xl flex items-center justify-center">
                     <Sparkles className="h-6 w-6 text-[#1A1A1A]" />
                   </div>
                   <div>
@@ -585,17 +585,17 @@ export default function MobileManagementDashboard() {
               <nav className="space-y-2">
                 <Button
                   onClick={() => { setActiveView('providers'); setMobileMenuOpen(false); }}
-                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#C9A96E]/10 hover:bg-[#C9A96E]/15 transition-colors text-left"
+                  className="w-full flex items-center gap-3 p-3 rounded-xl bg-[#12936A]/10 hover:bg-[#12936A]/15 transition-colors text-left"
                   data-testid="menu-providers"
                 >
-                  <div className="w-10 h-10 bg-[#C9A96E]/20 rounded-lg flex items-center justify-center">
-                    <Users className="h-5 w-5 text-[#C9A96E]" />
+                  <div className="w-10 h-10 bg-[#12936A]/20 rounded-lg flex items-center justify-center">
+                    <Users className="h-5 w-5 text-[#12936A]" />
                   </div>
                   <div className="flex-1">
-                    <p className="font-medium text-sm text-[#C9A96E]">{isHebrew ? 'ספקים והודעות' : 'Providers & Messages'}</p>
+                    <p className="font-medium text-sm text-[#12936A]">{isHebrew ? 'ספקים והודעות' : 'Providers & Messages'}</p>
                     <p className="text-xs text-[#8A8078]">{isHebrew ? 'צפה בספקים ושלח הודעות' : 'View & message providers'}</p>
                   </div>
-                  <ChevronRight className="h-4 w-4 text-[#C9A96E]" />
+                  <ChevronRight className="h-4 w-4 text-[#12936A]" />
                 </Button>
 
                 {dashboardSections.map((section) => {
@@ -608,7 +608,7 @@ export default function MobileManagementDashboard() {
                         data-testid={`menu-${section.id}`}
                       >
                         <div className={`w-10 h-10 bg-gradient-to-br ${section.bgGradient} rounded-lg flex items-center justify-center`}>
-                          <Icon className="h-5 w-5 text-[#C9A96E]" />
+                          <Icon className="h-5 w-5 text-[#12936A]" />
                         </div>
                         <div className="flex-1">
                           <p className="font-medium text-sm text-[#4A4A4A]">

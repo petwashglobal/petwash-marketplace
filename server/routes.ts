@@ -47,6 +47,7 @@ import prestigePassRoutes from "./routes/prestige-pass";
 import prestigeJoinRoutes from "./routes/prestige-join";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
+import paymentsSumitRoutes from "./routes/payments-sumit";
 import googleServicesRoutes from "./routes/google-services";
 import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
@@ -101,7 +102,6 @@ import unifiedVouchersRoutes from "./routes/unified-vouchers";
 import esignRoutes from "./routes/esign";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
-import chatRoutes from "./routes/chat";
 import bookingChatRouter from './routes/booking-chat';
 import onboardingRouter from './routes/onboarding';
 import providerConsoleRouter from './routes/provider-console';
@@ -10833,11 +10833,19 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api', ledRouter);
   
   // Apple Wallet Pass Generation (VIP Cards & E-Vouchers)
-  app.use('/api/wallet', apiLimiter, requireOnboardingComplete, walletRoutes);
-  app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
+  // optionalFirebaseToken populates req.user from the Bearer token so the wallet
+  // routes accept Firebase-authenticated clients (app/Safari), not only the legacy
+  // cookie session — fixes "Add to Apple/Google Wallet → 401" for logged-in users.
+  app.use('/api/wallet', apiLimiter, optionalFirebaseToken, requireOnboardingComplete, walletRoutes);
+  app.use('/api/google-wallet', apiLimiter, optionalFirebaseToken, googleWalletRoutes);
 
   // PetWash Prestige Pass — QR tokens, kiosk redemption, Apple/Google Wallet
-  app.use('/api/prestige-pass', apiLimiter, prestigePassRoutes);
+  // optionalFirebaseToken populates req.user from the Bearer token so the pass
+  // routes work for Firebase-authenticated clients (iOS app / Safari) and not
+  // only the legacy cookie session — fixes "Add to Apple Wallet → 401 Auth required".
+  app.use('/api/prestige-pass', apiLimiter, optionalFirebaseToken, prestigePassRoutes);
+  // SUMIT hosted-page payments (PCI-safe; UPay clears underneath). Sandbox until SUMIT_SANDBOX=false.
+  app.use('/api/payments/sumit', apiLimiter, paymentsSumitRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across
@@ -11176,7 +11184,8 @@ self.addEventListener('notificationclick', (event) => {
   
   // Notifications, Chat, VAT Calculator, and Fee Configuration Services
   app.use('/api/notifications', apiLimiter, notificationsRoutes);
-  app.use('/api/chat-v1', apiLimiter, chatRoutes);
+  // /api/chat-v1 (ChatService) removed 2026-06-17 — orphaned, zero callers; the
+  // canonical 1:1 messaging backend is /api/booking-chat (Postgres).
   app.use('/api/vat', apiLimiter, vatRoutes);
   app.use('/api/fees', apiLimiter, feesRoutes);
   

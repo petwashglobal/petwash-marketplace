@@ -8,7 +8,7 @@
 :root {
   --gold-100: #fbf7ec;
   --gold-200: #e6d2a1;
-  --gold-300: #c9a96a;
+  --gold-300: #12936A;
   --gold-400: #b0841c;
   --gold-500: #9c7619;
   --gold-600: #735511;
@@ -82,7 +82,7 @@
 .pw-profile-hero {
   background: linear-gradient(145deg, #111118 0%, #1a1a24 40%, #0f0f18 100%);
   border-radius: 32px;
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  border: 1px solid rgba(18, 147, 106, 0.2);
   box-shadow: var(--gold-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   position: relative;
   overflow: hidden;
@@ -106,7 +106,7 @@
   left: 10%;
   right: 10%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.6), transparent);
+  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.6), transparent);
   pointer-events: none;
 }
 
@@ -141,7 +141,7 @@
 .pw-tier-badge-gold {
   background: var(--gold-gradient);
   color: #3d2b00;
-  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 2px 12px rgba(18, 147, 106, 0.4);
 }
 
 .pw-tier-badge-platinum {
@@ -192,7 +192,7 @@
   height: 100%;
   background: var(--gold-gradient);
   border-radius: 100px;
-  box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
+  box-shadow: 0 0 10px rgba(18, 147, 106, 0.6);
   transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -225,7 +225,7 @@
 .pw-stat-card:hover {
   box-shadow: var(--card-shadow-hover);
   transform: translateY(-3px);
-  border-color: rgba(212, 175, 55, 0.25);
+  border-color: rgba(18, 147, 106, 0.25);
 }
 
 .pw-stat-card::before {
@@ -255,7 +255,7 @@
 
 .pw-stat-card-icon-wrap-gold {
   background: linear-gradient(135deg, #fef9e7, #f5d76e22);
-  box-shadow: 0 2px 10px rgba(212, 175, 55, 0.15);
+  box-shadow: 0 2px 10px rgba(18, 147, 106, 0.15);
 }
 
 .pw-stat-value {
@@ -280,7 +280,7 @@
    ══════════════════════════════════ */
 .pw-action-btn {
   background: linear-gradient(135deg, #111118 0%, #1a1a24 100%);
-  border: 1px solid rgba(212, 175, 55, 0.15);
+  border: 1px solid rgba(18, 147, 106, 0.15);
   border-radius: 20px;
   padding: 20px 16px;
   display: flex;
@@ -307,7 +307,7 @@
 }
 
 .pw-action-btn:hover {
-  border-color: rgba(212, 175, 55, 0.5);
+  border-color: rgba(18, 147, 106, 0.5);
   box-shadow: var(--gold-shadow);
   transform: translateY(-2px);
 }
@@ -323,14 +323,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(212, 175, 55, 0.12);
-  border: 1px solid rgba(212, 175, 55, 0.3);
+  background: rgba(18, 147, 106, 0.12);
+  border: 1px solid rgba(18, 147, 106, 0.3);
   transition: all 0.35s ease;
 }
 
 .pw-action-btn:hover .pw-action-btn-icon-ring {
-  background: rgba(212, 175, 55, 0.2);
-  box-shadow: 0 0 16px rgba(212, 175, 55, 0.3);
+  background: rgba(18, 147, 106, 0.2);
+  box-shadow: 0 0 16px rgba(18, 147, 106, 0.3);
 }
 
 .pw-action-btn-label {
@@ -535,13 +535,13 @@
 
 .pw-row-item:hover {
   background: #f5f3ee;
-  border-color: rgba(212, 175, 55, 0.2);
+  border-color: rgba(18, 147, 106, 0.2);
 }
 
 /* ── Gold Divider ── */
 .pw-gold-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.3), transparent);
   margin: 8px 0;
 }
 
@@ -563,7 +563,7 @@
 .pw-input-luxury:focus {
   border-color: var(--gold-400);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
+  box-shadow: 0 0 0 3px rgba(18, 147, 106, 0.1);
 }
 
 /* ── Save Button — Gold ── */
@@ -578,12 +578,12 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
+  box-shadow: 0 4px 16px rgba(18, 147, 106, 0.3);
   transition: all 0.25s ease;
 }
 
 .pw-btn-gold:hover {
-  box-shadow: 0 6px 24px rgba(212, 175, 55, 0.5);
+  box-shadow: 0 6px 24px rgba(18, 147, 106, 0.5);
   transform: translateY(-1px);
 }
 
@@ -591,7 +591,7 @@
 .pw-btn-noir {
   background: linear-gradient(135deg, #111118, #1a1a24);
   color: #ffffff;
-  border: 1px solid rgba(212, 175, 55, 0.2);
+  border: 1px solid rgba(18, 147, 106, 0.2);
   border-radius: 14px;
   padding: 12px 28px;
   font-weight: 600;
@@ -603,7 +603,7 @@
 }
 
 .pw-btn-noir:hover {
-  border-color: rgba(212, 175, 55, 0.4);
+  border-color: rgba(18, 147, 106, 0.4);
   box-shadow: var(--gold-shadow);
 }
 
@@ -621,8 +621,8 @@
 }
 
 @keyframes gold-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
-  50%       { box-shadow: 0 0 40px rgba(212, 175, 55, 0.4); }
+  0%, 100% { box-shadow: 0 0 20px rgba(18, 147, 106, 0.2); }
+  50%       { box-shadow: 0 0 40px rgba(18, 147, 106, 0.4); }
 }
 
 /* ══════════════════════════════════
@@ -631,7 +631,7 @@
 .pw-passkey-register-btn {
   background: linear-gradient(135deg, #111118 0%, #1a1a24 100%);
   color: #fff;
-  border: 1px solid rgba(212, 175, 55, 0.25);
+  border: 1px solid rgba(18, 147, 106, 0.25);
   border-radius: 16px;
   padding: 16px 20px;
   display: flex;
@@ -647,7 +647,7 @@
 }
 
 .pw-passkey-register-btn:hover {
-  border-color: rgba(212, 175, 55, 0.55);
+  border-color: rgba(18, 147, 106, 0.55);
   box-shadow: var(--gold-shadow);
 }
 
@@ -682,7 +682,7 @@
   left: 15%;
   right: 15%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.5), transparent);
   pointer-events: none;
 }
 
@@ -701,7 +701,7 @@
 }
 
 .pw-invoice-row:hover {
-  border-color: rgba(212, 175, 55, 0.2);
+  border-color: rgba(18, 147, 106, 0.2);
   background: #fef9e7;
 }
 
@@ -715,12 +715,12 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.25);
+  box-shadow: 0 2px 8px rgba(18, 147, 106, 0.25);
   transition: all 0.2s ease;
 }
 
 .pw-view-invoice-btn:hover {
-  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
+  box-shadow: 0 4px 14px rgba(18, 147, 106, 0.4);
   transform: translateY(-1px);
 }
 

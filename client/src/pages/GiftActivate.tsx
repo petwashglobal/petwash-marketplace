@@ -22,7 +22,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useToast } from '@/hooks/use-toast';
 import { queryClient } from '@/lib/queryClient';
 
-const GOLD = '#C5A55A';
+const GOLD = '#12936A';
 
 interface GiftInfo {
   id: string;

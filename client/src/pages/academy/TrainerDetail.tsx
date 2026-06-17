@@ -131,7 +131,7 @@ export default function TrainerDetail() {
     return (
       <Layout>
         <div className="min-h-screen flex items-center justify-center bg-white">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#C5A55A]" />
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#12936A]" />
         </div>
       </Layout>
     );
@@ -142,7 +142,7 @@ export default function TrainerDetail() {
         <div className="min-h-screen flex flex-col items-center justify-center bg-white text-center px-4">
           <div className="text-6xl mb-6">🐾</div>
           <h2 className="text-2xl font-light text-gray-900 mb-4">{isHebrew ? 'המאלף לא נמצא' : 'Trainer not found'}</h2>
-          <Button onClick={() => navigate('/academy')} className="bg-[#C5A55A] hover:bg-[#b8945a] text-white">
+          <Button onClick={() => navigate('/academy')} className="bg-[#12936A] hover:bg-[#0C5B3F] text-white">
             {isHebrew ? 'חזרה לאקדמיה' : 'Back to Academy'}
           </Button>
         </div>
@@ -194,7 +194,7 @@ export default function TrainerDetail() {
       <div className="min-h-screen bg-white">
         {user && (
           <div className="max-w-5xl mx-auto px-4 pt-4">
-            <div className="p-4 bg-gradient-to-l from-[#C5A55A]/10 to-amber-50 border border-[#C5A55A]/30 rounded-2xl flex items-center justify-between gap-4">
+            <div className="p-4 bg-gradient-to-l from-[#12936A]/10 to-amber-50 border border-[#12936A]/30 rounded-2xl flex items-center justify-between gap-4">
               <div>
                 <p className="font-semibold text-gray-900 text-sm">
                   {isHebrew ? "כמה כלבים? תוכנית אישית?" : "Multiple dogs? Custom training plan?"}
@@ -206,7 +206,7 @@ export default function TrainerDetail() {
               <Button
                 size="sm"
                 onClick={() => navigate(`/booking/new/training/${id}`)}
-                className="bg-[#C5A55A] hover:bg-[#b8945a] text-white shrink-0 text-xs px-4"
+                className="bg-[#12936A] hover:bg-[#0C5B3F] text-white shrink-0 text-xs px-4"
               >
                 {isHebrew ? "הזמן ←" : "Book →"}
               </Button>

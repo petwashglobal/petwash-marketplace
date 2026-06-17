@@ -12,6 +12,7 @@ import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
 import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
+import { useWhoami } from "@/auth/useWhoami";
 import RequireAuth from "@/auth/RequireAuth";
 import StationMembershipGuard from "@/components/StationMembershipGuard";
 import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
@@ -157,7 +158,7 @@ const FounderMember = lazy(() => import("@/pages/FounderMember"));
 const QrActivatePage = lazy(() => import("@/pages/QrActivatePage"));
 const ClaimVoucher = lazy(() => import("@/pages/ClaimVoucher"));
 const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
-const Inbox = lazy(() => import("@/pages/Inbox"));
+const PetWashInbox = lazy(() => import("@/pages/PetWashInbox")); // unified luxury inbox (Messages + Concierge + Alerts) — replaced the old Inbox.tsx
 const Pets = lazy(() => import("@/pages/Pets"));
 const PetPassport = lazy(() => import("@/pages/PetPassport"));
 // PR-PET-4: pet onboarding luxury shell. Mounted only when
@@ -639,7 +640,10 @@ function LegacyProviderRouteRedirect() {
 
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
   const { user, loading } = useFirebaseAuth();
+  const { role, isLoading: roleLoading } = useWhoami();
   const { trackLanguageChange } = useAnalytics();
+  const [, setLocation] = useLocation();
+  const [isProviderApp, setIsProviderApp] = useState(false);
   const IS_DEV = import.meta.env.DEV === true;
   
   // Initialize FCM push notifications (auto-registers after login)
@@ -669,6 +673,35 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       .catch(() => { /* web (no Capacitor) — the focus listener covers it */ });
     return () => { window.removeEventListener('focus', refreshLive); removeCap?.(); };
   }, []);
+
+  // APP-FLAVOR ROUTING (2026-06-17): the customer (il.co.petwash.customer) and
+  // provider (il.co.petwash.provider) apps ship the SAME web bundle. On a cold
+  // Detect the native app flavor once (provider vs customer bundle id). Web stays false.
+  useEffect(() => {
+    let cancelled = false;
+    import('@capacitor/app')
+      .then(async ({ App: CapApp }) => {
+        try {
+          const info = await CapApp.getInfo();
+          if (!cancelled) setIsProviderApp(typeof info?.id === 'string' && info.id.includes('.provider'));
+        } catch { /* no native app info (web) */ }
+      })
+      .catch(() => { /* web — no Capacitor plugin */ });
+    return () => { cancelled = true; };
+  }, []);
+
+  // Smart app-purpose routing — each app opens to the experience its user needs.
+  // The PROVIDER (driver-style) app serves providers: from the root, a provider
+  // lands in Provider OS (jobs/earnings); a signed-in non-provider is sent to
+  // provider onboarding ("become a provider"); a signed-out user goes to signup.
+  // The CUSTOMER (member) app is left on the member home (isProviderApp=false → no-op).
+  // Only fires at "/" so it never hijacks deliberate navigation. Native only.
+  useEffect(() => {
+    if (!isProviderApp || loading || roleLoading) return;
+    if (window.location.pathname !== '/') return;
+    if (!user) { setLocation('/signup'); return; }
+    setLocation(role === 'provider' ? '/provider-os' : '/provider-onboarding');
+  }, [isProviderApp, user, loading, role, roleLoading, setLocation]);
 
   // Get personalized AI greeting on app launch 🎉
   usePersonalizedGreeting();
@@ -731,7 +764,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/booking-chat/inbox">
           {() => (
             <RequireAuth>
-              <BookingChatInbox />
+              <PetWashInbox />
             </RequireAuth>
           )}
         </Route>
@@ -1156,11 +1189,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* Protected route - Inbox */}
+        {/* Protected route - Inbox (unified luxury inbox: Messages + Concierge + Alerts) */}
         <Route path="/inbox">
           {() => (
             <RequireAuth>
-              <Inbox />
+              <PetWashInbox />
             </RequireAuth>
           )}
         </Route>
@@ -3332,6 +3365,13 @@ function App() {
   const [isLanguageInitialized, setIsLanguageInitialized] = useState(false);
   const [isConsentManagerOpen, setIsConsentManagerOpen] = useState(false);
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
+
+  // Let any screen open the AI Concierge (e.g. the unified inbox's Concierge tab).
+  useEffect(() => {
+    const open = () => setIsAIChatOpen(true);
+    window.addEventListener('petwash:open-concierge', open);
+    return () => window.removeEventListener('petwash:open-concierge', open);
+  }, []);
 
   // Route-aware suppression: promo popup and floating FABs must not show on
   // functional/operational pages — only on public marketing pages.

@@ -55,7 +55,7 @@ const SIZE_LABELS: Record<PetSize, string> = {
   giant: 'Giant (> 40 kg)',
 };
 
-const GOLD = '#C5A55A';
+const GOLD = '#12936A';
 
 function uid() { return Math.random().toString(36).slice(2, 8); }
 

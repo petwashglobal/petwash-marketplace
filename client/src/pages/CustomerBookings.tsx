@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationBell } from '@/components/NotificationCenterPanel';
 
-const GOLD = '#C5A55A';
+const GOLD = '#12936A';
 
 const TABS = [
   { id: 'pending',  labelHe: 'ממתין',   labelEn: 'Pending'  },
@@ -408,7 +408,7 @@ function ProviderAvatar({ name, size = 44 }: { name: string; size?: number }) {
   return (
     <div
       className="flex items-center justify-center rounded-2xl font-bold text-white flex-shrink-0"
-      style={{ width: size, height: size, background: `linear-gradient(135deg,${GOLD},#d4af37)`, fontSize: size * 0.34 }}
+      style={{ width: size, height: size, background: `linear-gradient(135deg,${GOLD},#12936A)`, fontSize: size * 0.34 }}
     >
       {initials || '?'}
     </div>
@@ -464,7 +464,7 @@ function EmptyState({ tab, isRTL }: { tab: TabId; isRTL: boolean }) {
       <Link href={c.cta_href}>
         <button
           className="mt-6 px-6 py-2.5 rounded-full text-sm font-semibold text-white transition-opacity hover:opacity-90"
-          style={{ background: `linear-gradient(135deg,${GOLD},#d4af37)` }}
+          style={{ background: `linear-gradient(135deg,${GOLD},#12936A)` }}
         >
           {isRTL ? c.cta_he : c.cta_en}
         </button>
@@ -714,7 +714,7 @@ function BookingCard({
               {/* Loyalty credits redeemed badge */}
               {(booking.loyaltyRedeemedCents ?? 0) > 0 && (
                 <div className="mt-2">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C5A55A]/10 text-[#7A5C1E] border border-[#C5A55A]/20">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#12936A]/10 text-[#7A5C1E] border border-[#12936A]/20">
                     <Coins size={9} />
                     {isRTL
                       ? `קרדיטים מומשו ₪${((booking.loyaltyRedeemedCents ?? 0) / 100).toFixed(0)}`

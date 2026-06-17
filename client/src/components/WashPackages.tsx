@@ -174,13 +174,13 @@ export function WashPackages({ language }: WashPackagesProps) {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
         <div className="text-center mb-6 sm:mb-10">
           <div className="flex items-center justify-center gap-3 mb-4">
-            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#c9a96e]" />
-            <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
-            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#c9a96e]" />
+            <div className="w-12 h-px bg-gradient-to-r from-transparent to-[#12936A]" />
+            <Leaf className="w-4 h-4 text-[#12936A]" strokeWidth={1.2} />
+            <div className="w-12 h-px bg-gradient-to-l from-transparent to-[#12936A]" />
           </div>
 
           <p className="text-[10px] sm:text-[11px] tracking-[0.35em] uppercase mb-5 font-medium"
-            style={{ color: '#c9a96e' }}>
+            style={{ color: '#12936A' }}>
             {t('packages.premiumBadge', language)}
           </p>
 
@@ -195,7 +195,7 @@ export function WashPackages({ language }: WashPackagesProps) {
             {t('packages.subtitle', language)}
           </p>
 
-          <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-semibold text-[#c9a96e] mb-1">
+          <p className="text-[10px] sm:text-[11px] tracking-[0.12em] uppercase font-semibold text-[#12936A] mb-1">
             {t('packages.k9000Only', language)}
           </p>
 
@@ -228,14 +228,14 @@ export function WashPackages({ language }: WashPackagesProps) {
                 <div className="relative overflow-hidden transition-all duration-500 bg-white hover:-translate-y-1"
                   style={{ 
                     boxShadow: isPopular
-                      ? '0 0 0 1.5px #c9a96e, 0 12px 40px rgba(201,169,110,0.14)'
+                      ? '0 0 0 1.5px #12936A, 0 12px 40px rgba(18,147,106,0.14)'
                       : '0 4px 24px rgba(0,0,0,0.07)',
                     transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s',
                   }}
                 >
                   {isPopular && (
                     <div className="absolute top-3 start-3 z-10">
-                      <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#c9a96e] text-white font-medium" style={{ borderRadius: '2px' }}>
+                      <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#12936A] text-white font-medium" style={{ borderRadius: '2px' }}>
                         {language === 'he' ? 'מומלץ' : 'Best Value'}
                       </span>
                     </div>
@@ -254,7 +254,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                   <div className="px-3 sm:px-4 py-3 sm:py-4">
                     <div className="flex items-center justify-between mb-1">
                       <span className={`text-[9px] sm:text-[10px] tracking-[0.25em] uppercase font-medium ${
-                        isElite || isPopular ? 'text-[#c9a96e]' : 'text-[#999]'
+                        isElite || isPopular ? 'text-[#12936A]' : 'text-[#999]'
                       }`}>
                         {badgeLabel}
                       </span>
@@ -284,32 +284,32 @@ export function WashPackages({ language }: WashPackagesProps) {
 
                     <div className="border-t border-[#eee] pt-2 space-y-1 text-[#888] mb-3">
                       <div className="flex items-center gap-2">
-                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
-                        <span className="text-[10px] sm:text-[11px] font-medium" style={{ color: '#c9a96e' }}>
+                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#12936A' }} />
+                        <span className="text-[10px] sm:text-[11px] font-medium" style={{ color: '#12936A' }}>
                           {t('packages.k9000Only', language)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#12936A' }} />
                         <span className="text-[10px] sm:text-[11px]">
                           {t('packages.noBookingNeeded', language)}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#12936A' }} />
                         <span className="text-[10px] sm:text-[11px]">
                           {language === 'he' ? 'שמפו טבעי פרימיום' : 'Premium natural shampoo'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                        <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#12936A' }} />
                         <span className="text-[10px] sm:text-[11px]">
                           {language === 'he' ? 'ללא תאריך תפוגה' : 'Never expires'}
                         </span>
                       </div>
                       {pkg.washCount >= 3 && (
                         <div className="flex items-center gap-2">
-                          <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                          <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#12936A' }} />
                           <span className="text-[10px] sm:text-[11px]">
                             {language === 'he' ? 'ניתן להעברה' : 'Transferable'}
                           </span>
@@ -317,7 +317,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                       )}
                       {pkg.washCount >= 10 && (
                         <div className="flex items-center gap-2">
-                          <Sparkles className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#c9a96e' }} />
+                          <Sparkles className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#12936A' }} />
                           <span className="text-[10px] sm:text-[11px]">
                             {language === 'he' ? 'הנחה משפחתית' : 'Family discount'}
                           </span>
@@ -345,7 +345,7 @@ export function WashPackages({ language }: WashPackagesProps) {
 
         <div className="mt-8 sm:mt-10 flex flex-col items-center gap-2">
           <div className="flex items-center gap-2 text-center">
-            <Lock className="w-3 h-3 text-[#c9a96e] shrink-0" strokeWidth={1.5} />
+            <Lock className="w-3 h-3 text-[#12936A] shrink-0" strokeWidth={1.5} />
             <span className="text-[9px] sm:text-[10px] tracking-[0.12em] uppercase text-[#999] font-medium">
               {language === 'he' ? 'אמצעי תשלום מאובטחים' : 'Secure Payment Methods'}
             </span>
@@ -359,14 +359,14 @@ export function WashPackages({ language }: WashPackagesProps) {
         <div className="mt-16 sm:mt-24">
           <div className="flex items-center justify-center gap-4 mb-12">
             <div className="flex-1 max-w-[80px] h-px bg-gradient-to-r from-transparent to-[#ddd]" />
-            <ShieldCheck className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.2} />
+            <ShieldCheck className="w-4 h-4 text-[#12936A]" strokeWidth={1.2} />
             <div className="flex-1 max-w-[80px] h-px bg-gradient-to-l from-transparent to-[#ddd]" />
           </div>
           
           <div className="grid grid-cols-3 gap-8 sm:gap-16 max-w-xl mx-auto">
             <div className="text-center">
               <div className="w-10 h-10 mx-auto mb-3 rounded-full flex items-center justify-center">
-                <Check className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
+                <Check className="w-4 h-4 text-[#12936A]" strokeWidth={1.5} />
               </div>
               <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
                 {t('packages.trust1Title', language)}
@@ -378,7 +378,7 @@ export function WashPackages({ language }: WashPackagesProps) {
             
             <div className="text-center">
               <div className="w-10 h-10 mx-auto mb-3 rounded-full flex items-center justify-center">
-                <Crown className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
+                <Crown className="w-4 h-4 text-[#12936A]" strokeWidth={1.5} />
               </div>
               <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
                 {t('packages.trust2Title', language)}
@@ -390,7 +390,7 @@ export function WashPackages({ language }: WashPackagesProps) {
             
             <div className="text-center">
               <div className="w-10 h-10 mx-auto mb-3 rounded-full flex items-center justify-center">
-                <Leaf className="w-4 h-4 text-[#c9a96e]" strokeWidth={1.5} />
+                <Leaf className="w-4 h-4 text-[#12936A]" strokeWidth={1.5} />
               </div>
               <p className="text-[10px] sm:text-[11px] tracking-[0.08em] text-[#555] font-medium uppercase">
                 {t('packages.trust3Title', language)}

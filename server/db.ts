@@ -30,12 +30,24 @@ if (!isDatabaseAvailable) {
   console.warn('--------------------------------------------------');
 }
 
+// DIAGNOSTIC (2026-06-17): production /api/health showed db.ok:false within minutes of
+// boot — the classic Neon + Cloud Run connection-exhaustion signature. On Neon you MUST
+// use the POOLED endpoint (host contains "-pooler") so autoscaled instances don't blow
+// past Neon's direct-connection cap. Warn loudly if DATABASE_URL is the direct host.
+if (isDatabaseAvailable && process.env.DATABASE_URL && !/-pooler\./.test(process.env.DATABASE_URL)) {
+  console.warn('--------------------------------------------------');
+  console.warn('⚠️ DATABASE_URL does NOT look like a Neon POOLED endpoint (no "-pooler" in host).');
+  console.warn('   Under Cloud Run autoscaling this exhausts Neon connections → db.ok:false.');
+  console.warn('   Fix: set DATABASE_URL to the Neon pooled string (…-pooler.…neon.tech).');
+  console.warn('--------------------------------------------------');
+}
+
 // Create pool with connection resilience settings
 // Uses a dummy connection string if DATABASE_URL is missing to prevent TypeScript errors
 // Actual usage will check isDatabaseAvailable first
-export const pool = new Pool({ 
+export const pool = new Pool({
   connectionString: process.env.DATABASE_URL || 'postgresql://placeholder:placeholder@localhost:5432/placeholder',
-  max: 20, // Maximum connections
+  max: 10, // Cap per-instance connections (was 20) so N Cloud Run instances stay under Neon's limit
   idleTimeoutMillis: 30000, // 30 seconds
   connectionTimeoutMillis: 10000, // 10 seconds (increased for cloud environments)
 });

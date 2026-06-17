@@ -15,7 +15,7 @@ interface EGiftActivationParams {
 
 const TIER_BY_VALUE: Record<string, { min: number; name: string; nameHe: string; gradient: string; cardBg: string; accent: string; accentLight: string; ornament: string; icon: string }> = {
   ELITE: {
-    min: 750, name: 'Maison Prestige', nameHe: 'מזון פרסטיז\'',
+    min: 750, name: 'Maison Prestige', nameHe: 'מזון Prestige\'',
     gradient: 'linear-gradient(145deg, #0D0D0D, #1a1a1a, #2a2a2a)',
     cardBg: 'linear-gradient(145deg, #0a0a0a, #1a1610, #0a0a0a)',
     accent: '#c9a96e',

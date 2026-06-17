@@ -42,7 +42,7 @@ function StepItem({
         }`}
       >
         {status === "complete" ? (
-          <CheckCircle className="w-4 h-4 text-[#c9a96e]" />
+          <CheckCircle className="w-4 h-4 text-[#12936A]" />
         ) : (
           <span
             className={`text-xs font-semibold ${
@@ -226,7 +226,7 @@ export default function AccountActivation() {
   if (isLoading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-[#c9a96e]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[#12936A]" />
       </div>
     );
   }
@@ -238,7 +238,7 @@ export default function AccountActivation() {
         {/* Brand mark */}
         <div className="mb-12">
           <div className="inline-block bg-[#1a1a1a] px-4 py-2 rounded-sm">
-            <span className="text-[#c9a96e] text-xs font-bold tracking-[3px] uppercase">
+            <span className="text-[#12936A] text-xs font-bold tracking-[3px] uppercase">
               PetWash™
             </span>
           </div>
@@ -246,7 +246,7 @@ export default function AccountActivation() {
 
         {/* Headline */}
         <div className="mb-2">
-          <p className="text-xs tracking-[3px] uppercase text-[#c9a96e] font-semibold mb-3">
+          <p className="text-xs tracking-[3px] uppercase text-[#12936A] font-semibold mb-3">
             Account Activation
           </p>
           <h1 className="text-3xl font-light text-[#1a1a1a] tracking-tight mb-3">
@@ -289,7 +289,7 @@ export default function AccountActivation() {
         {/* STEP 2 — Mobile verification */}
         {!mobileComplete && (
           <div className="mb-8 border border-[#e8e8e8] rounded-sm p-6">
-            <p className="text-xs tracking-[2px] uppercase text-[#c9a96e] font-semibold mb-3">
+            <p className="text-xs tracking-[2px] uppercase text-[#12936A] font-semibold mb-3">
               Step 2 — Verify mobile
             </p>
             <p className="text-sm text-[#555] font-light mb-4 leading-relaxed">
@@ -348,7 +348,7 @@ export default function AccountActivation() {
         {/* STEP 3 — Email activation */}
         {!emailComplete && (
           <div className={`mb-8 border rounded-sm p-6 ${mobileComplete ? "border-[#e8e8e8]" : "border-[#f0f0f0] opacity-60"}`}>
-            <p className="text-xs tracking-[2px] uppercase text-[#c9a96e] font-semibold mb-3">
+            <p className="text-xs tracking-[2px] uppercase text-[#12936A] font-semibold mb-3">
               Step 3 — Activate email
             </p>
             <p className="text-sm text-[#555] font-light mb-4 leading-relaxed">
@@ -361,7 +361,7 @@ export default function AccountActivation() {
 
             {emailPollInterval ? (
               <div className="flex items-center gap-3 text-sm text-[#666] font-light">
-                <Loader2 className="w-4 h-4 animate-spin text-[#c9a96e]" />
+                <Loader2 className="w-4 h-4 animate-spin text-[#12936A]" />
                 <span>Waiting for email activation…</span>
               </div>
             ) : (

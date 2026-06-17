@@ -288,22 +288,22 @@ function ProgressBar({ currentStep }: { currentStep: WizardStep }) {
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                   i < idx
-                    ? "bg-[#C5A55A] text-white shadow-sm"
+                    ? "bg-[#12936A] text-white shadow-sm"
                     : i === idx
-                    ? "bg-[#C5A55A] text-white ring-4 ring-[#C5A55A]/20 shadow-md"
+                    ? "bg-[#12936A] text-white ring-4 ring-[#12936A]/20 shadow-md"
                     : "bg-white text-gray-400"
                 }`}
               >
                 {i < idx ? <Check className="w-3.5 h-3.5" /> : i + 1}
               </div>
               <span className={`text-[9px] mt-1 font-medium whitespace-nowrap ${
-                i === idx ? "text-[#C5A55A]" : i < idx ? "text-[#C5A55A]/60" : "text-gray-300"
+                i === idx ? "text-[#12936A]" : i < idx ? "text-[#12936A]/60" : "text-gray-300"
               }`}>
                 {STEP_LABELS[step]}
               </span>
             </div>
             {i < STEPS.length - 1 && (
-              <div className={`h-0.5 flex-1 mx-1 mb-4 rounded-full transition-all duration-300 ${i < idx ? "bg-[#C5A55A]" : "bg-white"}`} />
+              <div className={`h-0.5 flex-1 mx-1 mb-4 rounded-full transition-all duration-300 ${i < idx ? "bg-[#12936A]" : "bg-white"}`} />
             )}
           </div>
         ))}
@@ -324,17 +324,17 @@ interface RebookBannerProps {
 function RebookBanner({ warnings, petCount, addonCount, hasNotes }: RebookBannerProps) {
   const hasPrefill = petCount > 0 || addonCount > 0 || hasNotes;
   return (
-    <div className="mx-4 mt-3 rounded-2xl overflow-hidden border border-[#C5A55A]/25 shadow-sm">
+    <div className="mx-4 mt-3 rounded-2xl overflow-hidden border border-[#12936A]/25 shadow-sm">
 
       {/* ── Header row ─────────────────────────────────────────────────── */}
-      <div className="bg-gradient-to-l from-[#C5A55A]/8 to-[#FAF6EE] px-4 py-3 flex items-start gap-3">
-        <div className="w-8 h-8 rounded-full bg-[#C5A55A]/15 border border-[#C5A55A]/20 flex items-center justify-center shrink-0 mt-0.5">
-          <RefreshCw className="w-3.5 h-3.5 text-[#C5A55A]" />
+      <div className="bg-gradient-to-l from-[#12936A]/8 to-[#FAF6EE] px-4 py-3 flex items-start gap-3">
+        <div className="w-8 h-8 rounded-full bg-[#12936A]/15 border border-[#12936A]/20 flex items-center justify-center shrink-0 mt-0.5">
+          <RefreshCw className="w-3.5 h-3.5 text-[#12936A]" />
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
             <p className="text-xs font-bold text-[#7A5C1E] tracking-wide">הזמנה חוזרת</p>
-            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C5A55A]/15 text-[#8B6914] border border-[#C5A55A]/25">
+            <span className="text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#12936A]/15 text-[#8B6914] border border-[#12936A]/25">
               על בסיס הזמנה קודמת
             </span>
           </div>
@@ -343,19 +343,19 @@ function RebookBanner({ warnings, petCount, addonCount, hasNotes }: RebookBanner
           {hasPrefill && (
             <div className="flex items-center gap-1.5 mt-2 flex-wrap">
               {petCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#C5A55A]/12 px-2 py-0.5 rounded-full border border-[#C5A55A]/20">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#12936A]/12 px-2 py-0.5 rounded-full border border-[#12936A]/20">
                   <PawPrint className="w-2.5 h-2.5" />
                   {petCount === 1 ? 'חיית מחמד אחת הועברה' : `${petCount} חיות מחמד הועברו`}
                 </span>
               )}
               {addonCount > 0 && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#C5A55A]/12 px-2 py-0.5 rounded-full border border-[#C5A55A]/20">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#12936A]/12 px-2 py-0.5 rounded-full border border-[#12936A]/20">
                   <Check className="w-2.5 h-2.5" />
                   {addonCount === 1 ? 'תוספת אחת הועברה' : `${addonCount} תוספות הועברו`}
                 </span>
               )}
               {hasNotes && (
-                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#C5A55A]/12 px-2 py-0.5 rounded-full border border-[#C5A55A]/20">
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium text-[#6B4E1A] bg-[#12936A]/12 px-2 py-0.5 rounded-full border border-[#12936A]/20">
                   <StickyNote className="w-2.5 h-2.5" />
                   הערות הועברו
                 </span>
@@ -394,14 +394,14 @@ function RebookBanner({ warnings, petCount, addonCount, hasNotes }: RebookBanner
 function QuoteMiniBar({ quote, loading }: { quote: any | null; loading: boolean }) {
   if (!quote && !loading) return null;
   return (
-    <div className="bg-[#C5A55A]/10 border-t border-[#C5A55A]/20 px-4 py-2 flex items-center justify-between">
-      <span className="text-xs text-[#C5A55A] font-medium">סה"כ משוער</span>
+    <div className="bg-[#12936A]/10 border-t border-[#12936A]/20 px-4 py-2 flex items-center justify-between">
+      <span className="text-xs text-[#12936A] font-medium">סה"כ משוער</span>
       {loading ? (
         <span className="text-xs text-gray-400 flex items-center gap-1">
           <Loader2 className="w-3 h-3 animate-spin" /> מחשב...
         </span>
       ) : quote ? (
-        <span className="text-sm font-bold text-[#C5A55A]">{formatILS(quote.totals.totalCents)}</span>
+        <span className="text-sm font-bold text-[#12936A]">{formatILS(quote.totals.totalCents)}</span>
       ) : null}
     </div>
   );
@@ -434,15 +434,15 @@ function ScheduleStep({
         {provider?.photoUrl ? (
           <img src={provider.photoUrl} alt={provider.name} className="w-12 h-12 rounded-full object-cover" />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-[#C5A55A]/20 flex items-center justify-center text-xl">🐾</div>
+          <div className="w-12 h-12 rounded-full bg-[#12936A]/20 flex items-center justify-center text-xl">🐾</div>
         )}
         <div>
           <p className="font-semibold text-gray-900">{provider?.name || "בוחר..."}</p>
           <p className="text-xs text-gray-500">{provider?.serviceLabel || serviceTypeLabel(serviceType)}</p>
         </div>
         {provider?.rating && (
-          <div className="mr-auto flex items-center gap-1 text-sm text-[#C5A55A] font-semibold">
-            <Star className="w-3.5 h-3.5 fill-[#C5A55A]" /> {provider.rating}
+          <div className="mr-auto flex items-center gap-1 text-sm text-[#12936A] font-semibold">
+            <Star className="w-3.5 h-3.5 fill-[#12936A]" /> {provider.rating}
           </div>
         )}
       </div>
@@ -462,7 +462,7 @@ function ScheduleStep({
               value={startDate}
               min={new Date().toISOString().split("T")[0]}
               onChange={e => setStartDate(e.target.value)}
-              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#12936A]/30"
             />
           </div>
           {isMultiDay && (
@@ -473,7 +473,7 @@ function ScheduleStep({
                 value={endDate}
                 min={startDate || new Date().toISOString().split("T")[0]}
                 onChange={e => setEndDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#12936A]/30"
               />
             </div>
           )}
@@ -484,7 +484,7 @@ function ScheduleStep({
                 type="time"
                 value={startTime}
                 onChange={e => setStartTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#12936A]/30"
               />
             </div>
           )}
@@ -497,7 +497,7 @@ function ScheduleStep({
                 type="time"
                 value={endTime}
                 onChange={e => setEndTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#12936A]/30"
               />
             </div>
           </div>
@@ -507,12 +507,12 @@ function ScheduleStep({
             <div>
               <Label className="text-xs text-gray-500 mb-1 block">שעת כניסה</Label>
               <input type="time" value={startTime} onChange={e => setStartTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#12936A]/30" />
             </div>
             <div>
               <Label className="text-xs text-gray-500 mb-1 block">שעת יציאה</Label>
               <input type="time" value={endTime} onChange={e => setEndTime(e.target.value)}
-                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30" />
+                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#12936A]/30" />
             </div>
           </div>
         )}
@@ -539,7 +539,7 @@ function PetsStep({
   if (petsLoading) {
     return (
       <div className="p-8 flex items-center justify-center">
-        <Loader2 className="w-6 h-6 animate-spin text-[#C5A55A]" />
+        <Loader2 className="w-6 h-6 animate-spin text-[#12936A]" />
       </div>
     );
   }
@@ -555,7 +555,7 @@ function PetsStep({
         <div className="text-center py-8 space-y-3">
           <div className="text-4xl">🐾</div>
           <p className="text-sm text-gray-500">אין חיות מחמד רשומות</p>
-          <Button variant="outline" size="sm" onClick={() => setLocation("/pets")} className="border-[#C5A55A] text-[#C5A55A]">
+          <Button variant="outline" size="sm" onClick={() => setLocation("/pets")} className="border-[#12936A] text-[#12936A]">
             <Plus className="w-3.5 h-3.5 mr-1" /> הוסף חיית מחמד
           </Button>
         </div>
@@ -569,11 +569,11 @@ function PetsStep({
                 onClick={() => onTogglePet(pet.id)}
                 className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right ${
                   selected
-                    ? "border-[#C5A55A] bg-[#C5A55A]/5"
+                    ? "border-[#12936A] bg-[#12936A]/5"
                     : "border-gray-100 bg-white hover:border-gray-200"
                 }`}
               >
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${selected ? "bg-[#C5A55A]/20" : "bg-white"}`}>
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${selected ? "bg-[#12936A]/20" : "bg-white"}`}>
                   {pet.photoUrl
                     ? <img src={pet.photoUrl} alt={pet.name} className="w-10 h-10 rounded-full object-cover" />
                     : petEmoji(pet.species)
@@ -584,7 +584,7 @@ function PetsStep({
                   <p className="text-xs text-gray-500">{pet.breed || pet.species}</p>
                 </div>
                 <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${
-                  selected ? "bg-[#C5A55A] border-[#C5A55A]" : "border-gray-300"
+                  selected ? "bg-[#12936A] border-[#12936A]" : "border-gray-300"
                 }`}>
                   {selected && <Check className="w-3 h-3 text-white" />}
                 </div>
@@ -594,7 +594,7 @@ function PetsStep({
 
           <button
             onClick={() => setLocation("/pets?return=/booking")}
-            className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-[#C5A55A]/40 hover:text-[#C5A55A] transition-all"
+            className="w-full flex items-center gap-3 p-3 rounded-xl border-2 border-dashed border-gray-200 text-gray-400 hover:border-[#12936A]/40 hover:text-[#12936A] transition-all"
           >
             <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center">
               <Plus className="w-4 h-4" />
@@ -678,7 +678,7 @@ function PetCareForm({
                 onClick={() => onChange({ sizeCategory: s.value })}
                 className={`flex flex-col items-center p-2 rounded-lg border-2 transition-all text-center ${
                   care.sizeCategory === s.value
-                    ? "border-[#C5A55A] bg-[#C5A55A]/5"
+                    ? "border-[#12936A] bg-[#12936A]/5"
                     : "border-gray-100 hover:border-gray-200"
                 }`}
               >
@@ -695,7 +695,7 @@ function PetCareForm({
         <div>
           <Label className="text-sm font-medium text-gray-700 mb-1 block">סוג פרווה</Label>
           <Select value={care.coatType || ""} onValueChange={v => onChange({ coatType: v })}>
-            <SelectTrigger className="border-gray-200 focus:ring-[#C5A55A]/30">
+            <SelectTrigger className="border-gray-200 focus:ring-[#12936A]/30">
               <SelectValue placeholder="בחר סוג פרווה..." />
             </SelectTrigger>
             <SelectContent>
@@ -715,7 +715,7 @@ function PetCareForm({
             type="date"
             value={care.lastGroomedDate || ""}
             onChange={e => onChange({ lastGroomedDate: e.target.value })}
-            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#12936A]/30"
           />
         </div>
       )}
@@ -733,7 +733,7 @@ function PetCareForm({
           <Switch
             checked={care.requiresMedication}
             onCheckedChange={v => onChange({ requiresMedication: v })}
-            className="data-[state=checked]:bg-[#C5A55A]"
+            className="data-[state=checked]:bg-[#12936A]"
           />
         </div>
       )}
@@ -750,7 +750,7 @@ function PetCareForm({
           <Switch
             checked={care.hasBehaviorFlag}
             onCheckedChange={v => onChange({ hasBehaviorFlag: v })}
-            className="data-[state=checked]:bg-[#C5A55A]"
+            className="data-[state=checked]:bg-[#12936A]"
           />
         </div>
       )}
@@ -767,7 +767,7 @@ function PetCareForm({
           <Switch
             checked={care.hasSpecialNeeds}
             onCheckedChange={v => onChange({ hasSpecialNeeds: v })}
-            className="data-[state=checked]:bg-[#C5A55A]"
+            className="data-[state=checked]:bg-[#12936A]"
           />
         </div>
       )}
@@ -781,7 +781,7 @@ function PetCareForm({
           <Switch
             checked={!!care.leashTrained}
             onCheckedChange={v => onChange({ leashTrained: v })}
-            className="data-[state=checked]:bg-[#C5A55A]"
+            className="data-[state=checked]:bg-[#12936A]"
           />
         </div>
       )}
@@ -795,7 +795,7 @@ function PetCareForm({
           <Switch
             checked={!!care.dogParkOk}
             onCheckedChange={v => onChange({ dogParkOk: v })}
-            className="data-[state=checked]:bg-[#C5A55A]"
+            className="data-[state=checked]:bg-[#12936A]"
           />
         </div>
       )}
@@ -808,7 +808,7 @@ function PetCareForm({
             placeholder="כמויות, תדירות, אלרגיות למזון..."
             value={care.feedingInstructions || ""}
             onChange={e => onChange({ feedingInstructions: e.target.value })}
-            className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+            className="text-sm border-gray-200 focus:ring-[#12936A]/30 resize-none"
             rows={2}
           />
         </div>
@@ -821,7 +821,7 @@ function PetCareForm({
             placeholder="ישיבה, עמידה, הליכה..."
             value={care.currentSkills || ""}
             onChange={e => onChange({ currentSkills: e.target.value })}
-            className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+            className="text-sm border-gray-200 focus:ring-[#12936A]/30 resize-none"
             rows={2}
           />
         </div>
@@ -834,7 +834,7 @@ function PetCareForm({
             placeholder="מה תרצה להשיג בסשן הזה?"
             value={care.trainingGoals || ""}
             onChange={e => onChange({ trainingGoals: e.target.value })}
-            className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+            className="text-sm border-gray-200 focus:ring-[#12936A]/30 resize-none"
             rows={2}
           />
         </div>
@@ -847,7 +847,7 @@ function PetCareForm({
             placeholder="כל מה שהמטפל צריך לדעת..."
             value={care.specialNotes || ""}
             onChange={e => onChange({ specialNotes: e.target.value })}
-            className="text-sm border-gray-200 focus:ring-[#C5A55A]/30 resize-none"
+            className="text-sm border-gray-200 focus:ring-[#12936A]/30 resize-none"
             rows={3}
           />
         </div>
@@ -888,7 +888,7 @@ function AddonsStep({
       {bookingAddons.length > 0 && (
         <div className="space-y-2">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-[#C5A55A]" />
+            <div className="w-2 h-2 rounded-full bg-[#12936A]" />
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">🔖 לכל ההזמנה</p>
             <span className="text-[10px] text-gray-400 bg-white px-2 py-0.5 rounded-full">חיוב אחד</span>
           </div>
@@ -899,10 +899,10 @@ function AddonsStep({
                 key={addon.code}
                 onClick={() => onToggleAddon(addon)}
                 className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border-2 transition-all text-right ${
-                  selected ? "border-[#C5A55A] bg-[#C5A55A]/5 shadow-sm" : "border-gray-100 bg-white hover:border-[#C5A55A]/30"
+                  selected ? "border-[#12936A] bg-[#12936A]/5 shadow-sm" : "border-gray-100 bg-white hover:border-[#12936A]/30"
                 }`}
               >
-                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${selected ? "bg-[#C5A55A]/20" : "bg-white"}`}>
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-xl shrink-0 ${selected ? "bg-[#12936A]/20" : "bg-white"}`}>
                   {addon.icon}
                 </div>
                 <div className="flex-1 text-right">
@@ -910,8 +910,8 @@ function AddonsStep({
                   <p className="text-xs text-gray-400">חיוב אחד · כל הזמן ההזמנה</p>
                 </div>
                 <div className="flex flex-col items-end gap-1 shrink-0">
-                  <span className="text-sm font-bold text-[#C5A55A]">{formatILS(addon.unitPriceCents)}</span>
-                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-[#C5A55A] border-[#C5A55A]" : "border-gray-200"}`}>
+                  <span className="text-sm font-bold text-[#12936A]">{formatILS(addon.unitPriceCents)}</span>
+                  <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-[#12936A] border-[#12936A]" : "border-gray-200"}`}>
                     {selected && <Check className="w-3 h-3 text-white" />}
                   </div>
                 </div>
@@ -992,7 +992,7 @@ function QuoteSkeleton() {
       <div className="border-t border-gray-100 pt-3 mt-2">
         <div className="flex justify-between">
           <div className="h-4 bg-white rounded w-20" />
-          <div className="h-5 bg-[#C5A55A]/10 rounded w-16" />
+          <div className="h-5 bg-[#12936A]/10 rounded w-16" />
         </div>
       </div>
     </div>
@@ -1057,15 +1057,15 @@ function ConfirmStep({
           {provider?.photoUrl ? (
             <img src={provider.photoUrl} alt={provider.name} className="w-11 h-11 rounded-full object-cover border border-gray-100" />
           ) : (
-            <div className="w-11 h-11 rounded-full bg-[#C5A55A]/15 flex items-center justify-center text-xl">🐾</div>
+            <div className="w-11 h-11 rounded-full bg-[#12936A]/15 flex items-center justify-center text-xl">🐾</div>
           )}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-gray-900 text-sm truncate">{provider?.name || "—"}</p>
             <p className="text-xs text-gray-500">{serviceTypeLabel(serviceType)}</p>
           </div>
           {provider?.rating && (
-            <div className="flex items-center gap-1 text-xs font-semibold text-[#C5A55A]">
-              <Star className="w-3 h-3 fill-[#C5A55A]" /> {provider.rating}
+            <div className="flex items-center gap-1 text-xs font-semibold text-[#12936A]">
+              <Star className="w-3 h-3 fill-[#12936A]" /> {provider.rating}
             </div>
           )}
         </div>
@@ -1143,7 +1143,7 @@ function ConfirmStep({
               return (
                 <div key={i} className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.scope === "booking" ? "bg-[#C5A55A]" : "bg-blue-400"}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.scope === "booking" ? "bg-[#12936A]" : "bg-blue-400"}`} />
                     <p className="text-sm text-gray-700 truncate">{a.addonName}</p>
                     {petName && (
                       <span className="text-xs text-gray-400 bg-white px-1.5 py-0.5 rounded-full shrink-0">
@@ -1163,13 +1163,13 @@ function ConfirmStep({
       {loyaltyAvailableCents > 0 && (
         <div className="px-5 py-4 space-y-3">
           {/* Balance banner */}
-          <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#C5A55A]/10 border border-[#C5A55A]/20">
-            <div className="w-9 h-9 rounded-full bg-[#C5A55A]/15 flex items-center justify-center shrink-0">
-              <Coins className="w-5 h-5 text-[#C5A55A]" />
+          <div className="flex items-center gap-3 p-3 rounded-2xl bg-[#12936A]/10 border border-[#12936A]/20">
+            <div className="w-9 h-9 rounded-full bg-[#12936A]/15 flex items-center justify-center shrink-0">
+              <Coins className="w-5 h-5 text-[#12936A]" />
             </div>
             <div className="flex-1 min-w-0">
               <p className="text-xs font-bold text-[#7A5C1E]">קרדיטים זמינים</p>
-              <p className="text-sm font-extrabold text-[#C5A55A]">{formatILS(loyaltyAvailableCents)}</p>
+              <p className="text-sm font-extrabold text-[#12936A]">{formatILS(loyaltyAvailableCents)}</p>
               {loyaltyMaxOnBookingCents > 0 && (
                 <p className="text-[11px] text-[#8B6914] mt-0.5">
                   ניתן לממש עד {formatILS(loyaltyMaxOnBookingCents)} בהזמנה זו
@@ -1213,13 +1213,13 @@ function ConfirmStep({
             placeholder="הזן קוד (אופציונלי)"
             value={promoCode}
             onChange={e => setPromoCode(e.target.value.toUpperCase())}
-            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/30"
+            className="flex-1 border border-gray-200 rounded-xl px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-[#12936A]/30"
             dir="ltr"
           />
           <Button
             variant="outline"
             size="sm"
-            className="border-[#C5A55A] text-[#C5A55A] shrink-0 px-4 rounded-xl"
+            className="border-[#12936A] text-[#12936A] shrink-0 px-4 rounded-xl"
             disabled={!promoCode}
             onClick={onApplyPromo}
           >
@@ -1233,7 +1233,7 @@ function ConfirmStep({
         <div className="flex items-center justify-between mb-3">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider">פירוט עלות</p>
           {quoteLoading && (
-            <div className="flex items-center gap-1 text-xs text-[#C5A55A]">
+            <div className="flex items-center gap-1 text-xs text-[#12936A]">
               <Loader2 className="w-3 h-3 animate-spin" /> מחשב...
             </div>
           )}
@@ -1309,7 +1309,7 @@ function ConfirmStep({
                 </div>
               )}
               {(quote.totals.loyaltyRedeemedCents ?? 0) > 0 && (
-                <div className="flex justify-between text-sm text-[#C5A55A] font-medium">
+                <div className="flex justify-between text-sm text-[#12936A] font-medium">
                   <span className="flex items-center gap-1.5">
                     <Coins className="w-3.5 h-3.5" /> קרדיטים מועדון
                   </span>
@@ -1325,9 +1325,9 @@ function ConfirmStep({
             </div>
 
             {/* Final total */}
-            <div className="flex justify-between items-center pt-3 mt-1 border-t-2 border-[#C5A55A]/20">
+            <div className="flex justify-between items-center pt-3 mt-1 border-t-2 border-[#12936A]/20">
               <span className="font-bold text-gray-900 text-base">לתשלום</span>
-              <span className="font-extrabold text-2xl text-[#C5A55A]">{formatILS(quote.totals.totalCents)}</span>
+              <span className="font-extrabold text-2xl text-[#12936A]">{formatILS(quote.totals.totalCents)}</span>
             </div>
 
             {/* Engine warnings */}
@@ -1366,7 +1366,7 @@ function ConfirmStep({
           placeholder="פרטים מיוחדים, שאלות, בקשות... (אופציונלי)"
           value={message}
           onChange={e => setMessage(e.target.value)}
-          className="text-sm border-gray-200 rounded-xl focus:ring-[#C5A55A]/30 resize-none"
+          className="text-sm border-gray-200 rounded-xl focus:ring-[#12936A]/30 resize-none"
           rows={3}
         />
       </div>
@@ -1376,7 +1376,7 @@ function ConfirmStep({
         <Button
           onClick={onSubmit}
           disabled={isSubmitting || quoteLoading || !quote}
-          className="w-full bg-[#C5A55A] hover:bg-[#b8945a] text-white font-bold py-4 rounded-2xl text-base shadow-md shadow-[#C5A55A]/20"
+          className="w-full bg-[#12936A] hover:bg-[#0C5B3F] text-white font-bold py-4 rounded-2xl text-base shadow-md shadow-[#12936A]/20"
         >
           {isSubmitting ? (
             <><Loader2 className="w-4 h-4 animate-spin mr-2" />שולח בקשת הזמנה...</>
@@ -1836,7 +1836,7 @@ export default function MultiPetBookingWizard() {
           <Button
             onClick={goNext}
             disabled={!canGoNext()}
-            className="flex-1 bg-[#C5A55A] hover:bg-[#b8945a] text-white font-semibold"
+            className="flex-1 bg-[#12936A] hover:bg-[#0C5B3F] text-white font-semibold"
           >
             המשך
             <ChevronLeft className="w-4 h-4 mr-1" />

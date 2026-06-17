@@ -403,7 +403,7 @@ export function OnboardingVerification({
             className="h-full rounded-full transition-all duration-500"
             style={{
               width: s < stepNumber ? '100%' : s === stepNumber ? '50%' : '0%',
-              background: s <= stepNumber ? 'linear-gradient(90deg, #1a1a1a, #c9a96e)' : '#e5e7eb',
+              background: s <= stepNumber ? 'linear-gradient(90deg, #1a1a1a, #12936A)' : '#e5e7eb',
             }}
           />
         </div>

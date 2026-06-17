@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { db as firestore } from '../lib/firebase-admin';
+import multer from 'multer';
+import crypto from 'crypto';
+import admin, { db as firestore } from '../lib/firebase-admin';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { z } from 'zod';
 import { FIRESTORE_PATHS, insertPetProfileSchema } from '@shared/firestore-schema';
@@ -13,9 +15,51 @@ import {
 
 const router = Router();
 
+// Pet photo upload — in-memory, image-only, max 5MB.
+const petPhotoUpload = multer({
+  storage: multer.memoryStorage(),
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (_req, file, cb) =>
+    file.mimetype.startsWith('image/') ? cb(null, true) : cb(new Error('Only image files are allowed')),
+});
+
 // ============================================
 // PET PROFILE ROUTES
 // ============================================
+
+// Upload a pet photo → returns { photoUrl } the client then saves on the pet
+// (POST/PATCH /api/pets carries photoUrl, which the schema persists for the Pet Passport).
+router.post('/photo', validateFirebaseToken, (req, res, next) => {
+  petPhotoUpload.single('photo')(req, res, (err: any) => {
+    if (err) {
+      const msg = err?.code === 'LIMIT_FILE_SIZE' ? 'File too large. Maximum size is 5MB.' : (err.message || 'Invalid file');
+      return res.status(400).json({ error: msg });
+    }
+    next();
+  });
+}, async (req, res) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    if (!req.file) return res.status(400).json({ error: 'No photo file provided' });
+
+    const ext = req.file.mimetype === 'image/png' ? 'png' : req.file.mimetype === 'image/webp' ? 'webp' : 'jpg';
+    const bucket = admin.storage().bucket();
+    const fileName = `pet-photos/${uid}/${Date.now()}_${crypto.randomBytes(8).toString('hex')}.${ext}`;
+    const file = bucket.file(fileName);
+
+    await file.save(req.file.buffer, {
+      metadata: { contentType: req.file.mimetype, metadata: { uploadedBy: uid, uploadedAt: new Date().toISOString() } },
+    });
+    try { await file.makePublic(); } catch (e) { logger.warn('[Pets] Could not make pet photo public', e); }
+
+    const photoUrl = `https://storage.googleapis.com/${bucket.name}/${fileName}`;
+    logger.info('[Pets] Pet photo uploaded', { uid, fileName });
+    return res.json({ success: true, photoUrl });
+  } catch (error) {
+    logger.error('[Pets] Pet photo upload failed', error);
+    return res.status(500).json({ error: 'Failed to upload pet photo' });
+  }
+});
 
 // Get all pets for user
 router.get('/', validateFirebaseToken, async (req, res) => {

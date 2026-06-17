@@ -18,6 +18,18 @@ import { Apple, Download, Loader2, Wallet } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { motion } from 'framer-motion';
 import { getApiUrl } from '@/lib/apiConfig';
+import { auth } from '@/lib/firebase';
+
+// The wallet endpoints accept the Firebase Bearer token (optionalFirebaseToken at
+// the mount). Raw fetch must attach it, or the server sees no user → 401.
+async function jsonAuthHeaders(): Promise<Record<string, string>> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+  try {
+    const token = await auth?.currentUser?.getIdToken();
+    if (token) headers['Authorization'] = `Bearer ${token}`;
+  } catch { /* not signed in — server will 401, handled below */ }
+  return headers;
+}
 
 interface AppleWalletButtonProps {
   tier: 'new' | 'silver' | 'gold' | 'platinum' | 'diamond';
@@ -64,9 +76,7 @@ export default function AppleWalletButton({
       // Call API to generate Apple Wallet pass
       const response = await fetch(getApiUrl('/api/wallet/vip-card'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await jsonAuthHeaders(),
         body: JSON.stringify({
           userId,
           userName,
@@ -154,7 +164,7 @@ export default function AppleWalletButton({
           ${sizeClasses[size]}
           ${className}
         `}
-        style={{ background: 'linear-gradient(135deg, #B8941F, #D4AF37)' }}
+        style={{ background: 'linear-gradient(135deg, #0C5B3F, #12936A)' }}
         data-testid="button-add-to-wallet"
       >
         {isLoading ? (
@@ -221,9 +231,7 @@ export function AppleWalletBadge({
 
       const response = await fetch(getApiUrl('/api/wallet/vip-card'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: await jsonAuthHeaders(),
         body: JSON.stringify({
           userId,
           userName,
@@ -283,7 +291,7 @@ export function AppleWalletBadge({
       onClick={handleAddToWallet}
       disabled={isLoading}
       className="inline-flex items-center gap-2 px-4 py-2 text-white rounded-lg transition-all shadow-md hover:shadow-lg"
-      style={{ background: 'linear-gradient(135deg, #B8941F, #D4AF37)' }}
+      style={{ background: 'linear-gradient(135deg, #0C5B3F, #12936A)' }}
       whileHover={{ scale: 1.05 }}
       whileTap={{ scale: 0.95 }}
       data-testid="badge-add-to-wallet"

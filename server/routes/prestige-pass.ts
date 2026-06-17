@@ -36,6 +36,7 @@ import { logAuditEvent } from '../middleware/auditLog';
 import { z } from 'zod';
 import multer from 'multer';
 import { EmailService } from '../emailService';
+import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken } from '../lib/passTokens';
 import { petwashPassAccounts } from '@shared/schema';
@@ -119,6 +120,16 @@ import type { OperatingActionType } from '../../shared/petwash-operating-system'
 import { requireUnifiedPayoutVerification } from '../lib/unifiedPayoutVerification';
 
 const router = Router();
+
+/**
+ * Resolve the caller's uid from EITHER the Firebase Bearer token (req.user, set by
+ * optionalFirebaseToken at the mount) OR the legacy cookie session. The app and
+ * Safari authenticate with Firebase, not the cookie — relying on the session alone
+ * 401'd "Add to Apple Wallet" and the balance fetch for logged-in users.
+ */
+function resolveUid(req: Request): string | undefined {
+  return (req as any).user?.uid || (req as any).session?.user?.uid;
+}
 
 const LEGACY_PRESTIGE_MONEY_ROUTE_GATES: Array<{
   pattern: RegExp;
@@ -225,15 +236,15 @@ const TIER_VARIANT: Record<string, 'black' | 'gold' | 'platinum'> = {
 
 // Prestige tier display names
 const TIER_DISPLAY: Record<string, { en: string; he: string }> = {
-  vip:      { en: 'Prestige Black',    he: 'פרסטיז' + ' שחור' },
-  elite:    { en: 'Prestige Black',    he: 'פרסטיז' + ' שחור' },
-  diamond:  { en: 'Prestige Black',    he: 'פרסטיז' + ' שחור' },
-  black:    { en: 'Prestige Black',    he: 'פרסטיז' + ' שחור' },
-  platinum: { en: 'Prestige Platinum', he: 'פרסטיז' + ' פלטינום' },
-  gold:     { en: 'Prestige Gold',     he: 'פרסטיז' + ' זהב' },
-  silver:   { en: 'Prestige Silver',   he: 'פרסטיז' + ' כסף' },
-  bronze:   { en: 'Prestige Pearl',    he: 'פרסטיז' + ' פנינה' },
-  new:      { en: 'Prestige Pearl',    he: 'פרסטיז' + ' פנינה' },
+  vip:      { en: 'Prestige Black',    he: 'Prestige שחור' },
+  elite:    { en: 'Prestige Black',    he: 'Prestige שחור' },
+  diamond:  { en: 'Prestige Black',    he: 'Prestige שחור' },
+  black:    { en: 'Prestige Black',    he: 'Prestige שחור' },
+  platinum: { en: 'Prestige Platinum', he: 'Prestige פלטינום' },
+  gold:     { en: 'Prestige Gold',     he: 'Prestige זהב' },
+  silver:   { en: 'Prestige Silver',   he: 'Prestige כסף' },
+  bronze:   { en: 'Prestige Pearl',    he: 'Prestige פנינה' },
+  new:      { en: 'Prestige Pearl',    he: 'Prestige פנינה' },
 };
 
 // ─────────────────────────────────────────────────────────
@@ -305,7 +316,7 @@ function verifyToken(token: string): QrPayload | null {
 router.get('/wallet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    let userId = session?.user?.uid;
+    let userId = resolveUid(req);
 
     // Fallback: accept Firebase Bearer token (mobile Safari / fresh sessions)
     if (!userId) {
@@ -418,7 +429,7 @@ const generateSchema = z.object({
 router.post('/token/generate', generateTokenLimiter, async (req: Request, res: Response) => {
   try {
     const session  = (req as any).session;
-    const userId   = session?.user?.uid;
+    const userId   = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = generateSchema.safeParse(req.body);
@@ -671,7 +682,7 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
 router.get('/history', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const [wallet] = await db.select({ walletId: walletAccounts.walletId })
@@ -701,7 +712,7 @@ router.get('/history', async (req: Request, res: Response) => {
 router.get('/division-activity', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    let userId = session?.user?.uid;
+    let userId = resolveUid(req);
 
     // Firebase Bearer token fallback (mobile Safari)
     if (!userId) {
@@ -812,7 +823,7 @@ router.get('/division-activity', async (req: Request, res: Response) => {
 router.get('/apple-wallet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const passDoc = await firestoreDb.collection('prestige_passes').doc(userId).get();
@@ -927,7 +938,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
 router.get('/google-wallet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const passDoc = await firestoreDb.collection('prestige_passes').doc(userId).get();
@@ -1039,7 +1050,7 @@ const topupSchema = z.object({
 router.post('/topup', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = topupSchema.safeParse(req.body);
@@ -1116,7 +1127,7 @@ function buildPrestigeWalletEmail(opts: {
 <head>
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
-<title>הפאס הפרסטיז שלך מוכן — PetWash</title>
+<title>הפאס ה-Prestige שלך מוכן — PetWash</title>
 </head>
 <body style="margin:0;padding:0;background:#0a0a0a;font-family:'Helvetica Neue',Arial,sans-serif;color:#f0f0f0;">
 
@@ -1134,7 +1145,7 @@ function buildPrestigeWalletEmail(opts: {
         <tr>
           <td>
             <div style="font-size:11px;letter-spacing:4px;color:#D4AF37;text-transform:uppercase;margin-bottom:6px;">PetWash™</div>
-            <div style="font-size:22px;font-weight:700;color:#ffffff;">הפאס הפרסטיז שלך מוכן</div>
+            <div style="font-size:22px;font-weight:700;color:#ffffff;">הפאס ה-Prestige שלך מוכן</div>
           </td>
           <td align="left" style="padding-right:16px;">
             <div style="background:linear-gradient(135deg,#D4AF37,#F0D060);color:#0a0a0a;font-size:11px;font-weight:800;letter-spacing:2px;padding:6px 14px;border-radius:20px;white-space:nowrap;">
@@ -1290,7 +1301,7 @@ const activateSchema = z.object({
 router.post('/activate', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = activateSchema.safeParse(req.body);
@@ -1349,7 +1360,7 @@ router.post('/activate', async (req: Request, res: Response) => {
 
       const sent = await EmailService.send({
         to:      recipientEmail,
-        subject: `הפאס הפרסטיז שלך מוכן — ${tierDisplay} 🐾`,
+        subject: `הפאס ה-Prestige שלך מוכן — ${tierDisplay} 🐾`,
         html,
       });
 
@@ -1379,7 +1390,7 @@ router.post('/activate', async (req: Request, res: Response) => {
 router.get('/me', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ authenticated: false, error: 'Auth required' });
 
     const [wallet] = await db
@@ -1439,7 +1450,7 @@ const redeemOnlineSchema = z.object({
 router.post('/redeem-online', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = redeemOnlineSchema.safeParse(req.body);
@@ -1533,7 +1544,7 @@ const WALLET_EMAIL_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes between successiv
 router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     const email   = session?.user?.email;
     if (!userId || !email) return res.status(401).json({ ok: false, error: 'Auth required' });
 
@@ -1591,7 +1602,7 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
 
     const sent = await EmailService.send({
       to:      email,
-      subject: `הפאס הפרסטיז שלך — ${tierDisplay} 🐾`,
+      subject: `הפאס ה-Prestige שלך — ${tierDisplay} 🐾`,
       html,
     });
 
@@ -1602,6 +1613,62 @@ router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res
     return res.json({ ok: true, emailSent: sent, googleWalletReady: !!googleWalletSaveUrl });
   } catch (err) {
     logger.error('[PrestigePass] /resend-wallet-email error:', err);
+    return res.status(500).json({ ok: false, error: 'Internal error' });
+  }
+});
+
+// ─────────────────────────────────────────────────────────
+// POST /send-wallet-sms — text the pass link to the logged-in user's phone
+// ─────────────────────────────────────────────────────────
+const WALLET_SMS_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes between SMS sends per user
+
+router.post('/send-wallet-sms', walletEmailLimiter, async (req: Request, res: Response) => {
+  try {
+    const session = (req as any).session;
+    const userId  = session?.user?.uid;
+    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
+
+    // Resolve phone: session first, then the users table.
+    let phone: string | undefined = session?.user?.phone;
+    if (!phone) {
+      try {
+        const r = await pool.query('SELECT phone FROM users WHERE id = $1 LIMIT 1', [userId]);
+        phone = r.rows?.[0]?.phone || undefined;
+      } catch { /* fall through */ }
+    }
+    if (!phone) return res.status(400).json({ ok: false, error: 'No phone number on file. Add one in your profile first.' });
+
+    const passRef = firestoreDb.collection('prestige_passes').doc(userId);
+    const passDoc = await passRef.get();
+    if (!passDoc.exists) return res.status(404).json({ ok: false, error: 'No Prestige Pass found' });
+    const pass = passDoc.data()!;
+
+    // 15-minute cooldown between SMS sends per user (Twilio costs money)
+    if (pass.smsSentAt) {
+      const since = Date.now() - new Date(pass.smsSentAt).getTime();
+      if (since < WALLET_SMS_COOLDOWN_MS) {
+        const waitMins = Math.ceil((WALLET_SMS_COOLDOWN_MS - since) / 60000);
+        return res.status(429).json({ ok: false, error: `Wait ${waitMins} more minute${waitMins !== 1 ? 's' : ''} before resending the SMS.` });
+      }
+    }
+
+    const appBaseUrl = process.env.APP_BASE_URL || 'https://petwash.co.il';
+    const link = `${appBaseUrl}/wallet-download`;
+    const body = `PetWash™ — הכרטיס שלך ל-Apple/Google Wallet: ${link}`;
+
+    const result = await twilioSMSService.sendSMS(phone, body, {
+      userId,
+      ip: req.ip,
+      ua: req.headers['user-agent'] as string | undefined,
+    });
+
+    if (result.success) {
+      await passRef.update({ smsSentAt: new Date().toISOString() });
+      return res.json({ ok: true, smsSent: true });
+    }
+    return res.status(502).json({ ok: false, error: result.error || 'Could not send SMS right now.' });
+  } catch (err) {
+    logger.error('[PrestigePass] /send-wallet-sms error:', err);
     return res.status(500).json({ ok: false, error: 'Internal error' });
   }
 });
@@ -1668,16 +1735,16 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
     });
 
     const subjectMap: Record<string, string> = {
-      black: '⬛ כרטיס הפרסטיז השחור שלך מוכן — PetWash™',
-      diamond: '💎 כרטיס הפרסטיז יהלום שלך מוכן — PetWash™',
-      royal: '👑 כרטיס הפרסטיז רויאל שלך מוכן — PetWash™',
-      emerald: '💚 כרטיס הפרסטיז אמרלד שלך מוכן — PetWash™',
-      platinum: '💠 כרטיס הפרסטיז פלטינום שלך מוכן — PetWash™',
-      gold: '🥇 כרטיס הפרסטיז זהב שלך מוכן — PetWash™',
-      silver: '🥈 כרטיס הפרסטיז כסף שלך מוכן — PetWash™',
-      pearl: '🪨 כרטיס הפרסטיז פנינה שלך מוכן — PetWash™',
+      black: '⬛ כרטיס ה-Prestige השחור שלך מוכן — PetWash™',
+      diamond: '💎 כרטיס ה-Prestige יהלום שלך מוכן — PetWash™',
+      royal: '👑 כרטיס ה-Prestige רויאל שלך מוכן — PetWash™',
+      emerald: '💚 כרטיס ה-Prestige אמרלד שלך מוכן — PetWash™',
+      platinum: '💠 כרטיס ה-Prestige פלטינום שלך מוכן — PetWash™',
+      gold: '🥇 כרטיס ה-Prestige זהב שלך מוכן — PetWash™',
+      silver: '🥈 כרטיס ה-Prestige כסף שלך מוכן — PetWash™',
+      pearl: '🪨 כרטיס ה-Prestige פנינה שלך מוכן — PetWash™',
     };
-    const subject = subjectMap[d.tier] ?? '🐾 הכרטיס הפרסטיז שלך — PetWash™';
+    const subject = subjectMap[d.tier] ?? '🐾 הכרטיס ה-Prestige שלך — PetWash™';
 
     let sent = await EmailService.send({ to: d.email, subject, html });
     let channel = 'sendgrid';
@@ -1709,7 +1776,7 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
 router.post('/generate-wallet-links', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || 'https://petwash.co.il';
@@ -1743,7 +1810,7 @@ const issueGiftSchema = z.object({
 router.post('/issue-gift', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const senderId = session?.user?.uid;
+    const senderId = resolveUid(req);
     if (!senderId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = issueGiftSchema.safeParse(req.body);
@@ -1821,7 +1888,7 @@ const claimGiftSchema = z.object({
 router.post('/claim-gift', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     const email   = session?.user?.email;
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
@@ -1896,7 +1963,7 @@ router.post('/claim-gift', async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────
 router.get('/session/stream', (req: Request, res: Response) => {
   const session = (req as any).session;
-  const userId  = session?.user?.uid;
+  const userId  = resolveUid(req);
   if (!userId) { res.status(401).end(); return; }
 
   res.setHeader('Content-Type',  'text/event-stream');
@@ -1933,7 +2000,7 @@ const petSchema = z.object({
 router.post('/pet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = petSchema.safeParse(req.body);
@@ -1961,7 +2028,7 @@ router.post('/pet', async (req: Request, res: Response) => {
 router.post('/staff/lookup', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.uid) return res.status(401).json({ ok: false, error: 'Auth required' });
+    if (!resolveUid(req)) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     let { cardId } = req.body as { cardId?: string };
     if (!cardId) return res.status(400).json({ ok: false, error: 'cardId required' });
@@ -2042,7 +2109,7 @@ const staffChargeSchema = z.object({
 router.post('/staff/charge', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.uid) return res.status(401).json({ ok: false, error: 'Auth required' });
+    if (!resolveUid(req)) return res.status(401).json({ ok: false, error: 'Auth required' });
     const staffUserId = session.user.uid;
 
     const parsed = staffChargeSchema.safeParse(req.body);
@@ -2390,16 +2457,16 @@ router.post('/admin/send-founder-pass', async (req: Request, res: Response) => {
     });
 
     const tierSubjects: Record<string, string> = {
-      black:    '⬛ כרטיס הפרסטיז השחור שלך מוכן — PetWash™',
-      diamond:  '💎 כרטיס הפרסטיז יהלום שלך מוכן — PetWash™',
-      royal:    '👑 כרטיס הפרסטיז רויאל שלך מוכן — PetWash™',
-      emerald:  '💚 כרטיס הפרסטיז אמרלד שלך מוכן — PetWash™',
-      platinum: '💠 כרטיס הפרסטיז פלטינום שלך מוכן — PetWash™',
-      gold:     '🥇 כרטיס הפרסטיז זהב שלך מוכן — PetWash™',
-      silver:   '🥈 כרטיס הפרסטיז כסף שלך מוכן — PetWash™',
-      pearl:    '🪨 כרטיס הפרסטיז פנינה שלך מוכן — PetWash™',
+      black:    '⬛ כרטיס ה-Prestige השחור שלך מוכן — PetWash™',
+      diamond:  '💎 כרטיס ה-Prestige יהלום שלך מוכן — PetWash™',
+      royal:    '👑 כרטיס ה-Prestige רויאל שלך מוכן — PetWash™',
+      emerald:  '💚 כרטיס ה-Prestige אמרלד שלך מוכן — PetWash™',
+      platinum: '💠 כרטיס ה-Prestige פלטינום שלך מוכן — PetWash™',
+      gold:     '🥇 כרטיס ה-Prestige זהב שלך מוכן — PetWash™',
+      silver:   '🥈 כרטיס ה-Prestige כסף שלך מוכן — PetWash™',
+      pearl:    '🪨 כרטיס ה-Prestige פנינה שלך מוכן — PetWash™',
     };
-    const subject = tierSubjects[tier] ?? '🐾 הכרטיס הפרסטיז שלך — PetWash™';
+    const subject = tierSubjects[tier] ?? '🐾 הכרטיס ה-Prestige שלך — PetWash™';
 
     let sent = await EmailService.send({ to: DEDICATED_EMAIL, subject, html });
     let channel = 'sendgrid';

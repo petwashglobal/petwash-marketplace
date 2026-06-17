@@ -280,7 +280,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                         <div
                           key={delay}
                           className="h-2 w-2 rounded-full animate-bounce"
-                          style={{ background: '#C9A96E', animationDelay: `${delay}ms` }}
+                          style={{ background: '#12936A', animationDelay: `${delay}ms` }}
                         />
                       ))}
                     </div>

@@ -594,6 +594,17 @@ const AUTH_CSRF_EXEMPT = new Set([
   '/api/auth/post-login',
   '/api/auth/choose-role',
   '/api/auth/complete-profile',
+  // Pre-session / anonymous auth-namespace POSTs that fire DURING sign-in,
+  // before a Firebase Bearer or pw.csrf cookie exists. None mutate
+  // auth-sensitive third-party state:
+  //   • seed-intent  — writes the visitor's OWN signup-intent cookie so
+  //     returning users route to the right onboarding after OAuth. Was 403 →
+  //     returning providers landed on /home instead of /provider-onboarding.
+  //   • client-event / track-error — anonymous auth telemetry into
+  //     auth_events (same safety profile as /api/track/interactions).
+  '/api/auth/seed-intent',
+  '/api/auth/client-event',
+  '/api/auth/track-error',
 ]);
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
@@ -648,7 +659,27 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // is established, and the endpoint only writes the visitor's own consent
     // choices. Same path was returning 403 in production; exempt until a token
     // round-trip helper is added to the client.
-    if (req.path === '/api/consent') return true;
+    // Consent capture — the visitor's OWN consent choices (cookie banner,
+    // biometric/Face-ID consent required by Apple & Google, OAuth consent
+    // audit fired at sign-in, onboarding consent). All run pre/peri-login
+    // with no Bearer, write no auth-sensitive state, and were each returning
+    // 403 EBADCSRFTOKEN in production. Prefix-match covers the sub-paths
+    // (/api/consent/biometric, /oauth, /onboarding) — the old exact-match
+    // only covered the bare cookie-banner POST.
+    if (/^\/api\/consent(\/|$)/.test(req.path)) return true;
+    // Public contact form (client/src/pages/Contact.tsx). Unauthenticated
+    // visitors, Zod-validated, rate-limited (apiLimiter) — same profile as
+    // the already-exempt /api/global-forms and /api/franchise/inquiry.
+    if (req.path === '/api/contact') return true;
+    // Kenzo AI chat widget (client/src/components/AiChatWidget.tsx → POST
+    // /api/ai/chat). Anonymous visitors converse with Kenzo before any login,
+    // so there is no Firebase Bearer and no pw.csrf cookie round-trip. The
+    // endpoint mutates no auth-sensitive state (it returns an AI answer and
+    // logs an anonymous learned-FAQ row) and is already double rate-limited
+    // (aiChatLimiter + aiChatHourlyLimiter). Without this exemption EVERY
+    // Kenzo message returned 403 EBADCSRFTOKEN in production — the reported
+    // "Kenzo stopped working across all devices" regression.
+    if (req.path === '/api/ai/chat') return true;
     // Public lead-capture / marketing forms (server/routes/globalForms.ts mounted
     // at /api/global-forms, and the franchise-prospect inquiry at
     // /api/franchise/inquiry from server/routes/franchise.ts). These accept
@@ -1324,6 +1355,10 @@ if (isProduction) {
       // Cron jobs (dev mode — runs same as production)
       try {
         console.log('[Cron] Initializing automated jobs...');
+        // FREE self-monitoring: watch DB health, alert (email/Slack) on outage.
+        // Would have caught the 2026-06-17 DB DEGRADED incident. No paid vendor.
+        const { startHealthWatchdogCron } = await import('./cron/health-watchdog');
+        startHealthWatchdogCron();
         const { startMonthlySettlementsCron } = await import('./cron/monthly-settlements');
         startMonthlySettlementsCron();
         const { startWinbackCron } = await import('./cron/winback');

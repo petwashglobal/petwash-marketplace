@@ -168,7 +168,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
 
   // ── Real trust stats from backend ────────────────────────────────────────
   const { data: stats, isLoading: statsLoading } = useQuery<ProviderStats>({
-    queryKey: ['/api/providers/stats', providerId],
+    queryKey: [`/api/providers/stats/${providerId}`],
     enabled: !!providerId,
     staleTime: 5 * 60_000,
   });

@@ -449,7 +449,20 @@ export class NayaxPaymentService {
         .where(eq(pendingTransactions.id, pending.id));
 
       logger.info('Payment approved and voucher created', { transactionId: pending.id, voucherId });
-      
+
+      // Issue the customer tax-invoice/receipt via SUMIT — fire-and-forget, fail-safe.
+      // No-op unless SUMIT is wired; never blocks the payment that already succeeded.
+      import('./services/SumitReceiptService').then(({ SumitReceiptService }) =>
+        SumitReceiptService.issueCustomerReceipt({
+          idempotencyKey: `nayax-${pending.id}`,
+          sourceRef: voucherId,
+          customerName: (pending as any).customerName || 'PetWash Customer',
+          customerEmail: pending.customerEmail || undefined,
+          totalAmountIls: Number(pending.amount),
+          description: pending.isGiftCard ? 'PetWash e-Gift card' : 'PetWash payment',
+        }),
+      ).catch(() => { /* receipt is best-effort — never affects the payment */ });
+
       // CRITICAL: Send gift card emails for e-gift purchases
       if (pending.isGiftCard) {
         try {

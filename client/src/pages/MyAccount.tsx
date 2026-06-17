@@ -62,6 +62,7 @@ import {
   Cake,
   Timer,
   FileText,
+  Send,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
@@ -487,6 +488,28 @@ export default function MyAccount() {
     }),
   });
 
+  // Send the pass by email or SMS (server endpoints are rate-limited).
+  const emailPassMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {});
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || (isHebrew ? 'שליחת המייל נכשלה.' : 'Could not send email.'));
+      return data;
+    },
+    onSuccess: () => toast({ title: isHebrew ? 'נשלח למייל ✓' : 'Sent to email ✓', description: isHebrew ? 'הפאס נשלח עם כפתורי Apple/Google Wallet.' : 'Pass sent with Apple & Google Wallet buttons.' }),
+    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: err?.message, variant: 'destructive' }),
+  });
+  const smsPassMutation = useMutation({
+    mutationFn: async () => {
+      const resp = await apiRequest('POST', '/api/prestige-pass/send-wallet-sms', {});
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || (isHebrew ? 'שליחת ה-SMS נכשלה.' : 'Could not send SMS.'));
+      return data;
+    },
+    onSuccess: () => toast({ title: isHebrew ? 'נשלח ב-SMS ✓' : 'Sent by SMS ✓', description: isHebrew ? 'בדוק את ההודעות שלך.' : 'Check your messages.' }),
+    onError: (err: any) => toast({ title: isHebrew ? 'שליחה נכשלה' : 'Send failed', description: err?.message, variant: 'destructive' }),
+  });
+
   const [activeTab, setActiveTab] = useState('profile');
   const [inboxFilter, setInboxFilter] = useState<'all'|'receipt'|'promo'|'voucher'|'system'>('all');
   const [inboxExpanded, setInboxExpanded] = useState<Record<string, boolean>>({});
@@ -533,6 +556,7 @@ export default function MyAccount() {
   const [editingPet, setEditingPet] = useState<any | null>(null);
   const emptyPet = {
     name: '', species: 'dog', breed: '', birthday: '', vaccineDates: {},
+    photoUrl: '',
     weight: '', color: '', microchip: '',
     allergies: '', favoriteFoods: '', dislikedFoods: '',
     habits: '', routine: '',
@@ -797,6 +821,7 @@ export default function MyAccount() {
       setPetFormData({
         name: pet.name || '', species: pet.species || 'dog', breed: pet.breed || '',
         birthday: pet.birthday || '', vaccineDates: pet.vaccineDates || {},
+        photoUrl: pet.photoUrl || '',
         weight: pet.weight || '', color: pet.color || '', microchip: pet.microchip || '',
         allergies: pet.allergies || '', favoriteFoods: pet.favoriteFoods || '', dislikedFoods: pet.dislikedFoods || '',
         habits: pet.habits || '', routine: pet.routine || '',
@@ -815,6 +840,30 @@ export default function MyAccount() {
       updatePetMutation.mutate({ petId: editingPet.id, data: petFormData });
     } else {
       addPetMutation.mutate(petFormData);
+    }
+  }
+
+  const [petPhotoUploading, setPetPhotoUploading] = useState(false);
+  async function uploadPetPhoto(file: File) {
+    if (!user) return;
+    setPetPhotoUploading(true);
+    try {
+      const token = await user.getIdToken();
+      const fd = new FormData();
+      fd.append('photo', file);
+      const res = await fetch(getApiUrl('/api/pets/photo'), {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}` },
+        body: fd,
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data?.error || 'Upload failed');
+      setPetFormData((p: any) => ({ ...p, photoUrl: data.photoUrl }));
+      toast({ title: isHebrew ? 'התמונה הועלתה' : 'Photo uploaded' });
+    } catch (e: any) {
+      toast({ variant: 'destructive', title: isHebrew ? 'העלאה נכשלה' : 'Upload failed', description: e?.message });
+    } finally {
+      setPetPhotoUploading(false);
     }
   }
 
@@ -1487,6 +1536,26 @@ export default function MyAccount() {
               : (isHebrew ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet')}
           </button>
 
+          {/* Or get the pass by email / SMS */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => emailPassMutation.mutate()}
+              disabled={emailPassMutation.isPending}
+              className="flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 bg-white"
+            >
+              <Mail className="w-4 h-4" aria-hidden="true" />
+              {emailPassMutation.isPending ? (isHebrew ? 'שולח…' : 'Sending…') : (isHebrew ? 'שלח למייל' : 'Email it')}
+            </button>
+            <button
+              onClick={() => smsPassMutation.mutate()}
+              disabled={smsPassMutation.isPending}
+              className="flex items-center justify-center gap-2 border border-gray-200 rounded-xl py-2.5 text-sm font-medium text-gray-700 bg-white"
+            >
+              <Send className="w-4 h-4" aria-hidden="true" />
+              {smsPassMutation.isPending ? (isHebrew ? 'שולח…' : 'Sending…') : (isHebrew ? 'שלח ב-SMS' : 'Text it')}
+            </button>
+          </div>
+
           {/* ── Wallet Balance Cards ── */}
           <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
             {[
@@ -1498,7 +1567,7 @@ export default function MyAccount() {
             ].map((item, idx) => (
               <div key={idx} className="pw-stat-card">
                 <div className="pw-stat-card-icon-wrap pw-stat-card-icon-wrap-gold">
-                  <span className="text-xl">{item.emoji}</span>
+                  <item.icon className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <p className="pw-stat-value">{item.value}</p>
                 <p className="pw-stat-label">{item.label}</p>
@@ -1518,7 +1587,7 @@ export default function MyAccount() {
             ].map((item, idx) => (
               <a key={idx} href={item.href} className="pw-action-btn" style={{ textDecoration: 'none' }}>
                 <div className="pw-action-btn-icon-ring">
-                  <span className="text-lg">{item.emoji}</span>
+                  <item.icon className="w-5 h-5" aria-hidden="true" />
                 </div>
                 <span className="pw-action-btn-label">{item.label}</span>
               </a>
@@ -4045,6 +4114,28 @@ export default function MyAccount() {
                     </div>
 
                     <div className="px-6 py-5 space-y-5">
+                      {/* Pet photo — Pet Passport */}
+                      <div className="flex items-center gap-3">
+                        <div className="w-16 h-16 rounded-full overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center shrink-0">
+                          {petFormData.photoUrl
+                            ? <img src={petFormData.photoUrl} alt="" className="w-full h-full object-cover" />
+                            : <Dog className="w-7 h-7 text-gray-300" />}
+                        </div>
+                        <label
+                          className="inline-flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-full border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
+                          style={{ color: '#0C5B3F' }}
+                        >
+                          <Camera className="w-4 h-4" />
+                          {petPhotoUploading
+                            ? (isHebrew ? 'מעלה…' : 'Uploading…')
+                            : (petFormData.photoUrl ? (isHebrew ? 'החלף תמונה' : 'Change photo') : (isHebrew ? 'הוסף תמונה' : 'Add photo'))}
+                          <input
+                            type="file" accept="image/*" className="hidden" disabled={petPhotoUploading}
+                            onChange={e => { const f = e.target.files?.[0]; if (f) uploadPetPhoto(f); e.target.value = ''; }}
+                          />
+                        </label>
+                      </div>
+
                       {/* Name */}
                       <div>
                         <label className="text-xs font-bold text-gray-500 uppercase tracking-wider block mb-1.5">{isHebrew ? 'שם החיה *' : 'Pet Name *'}</label>
