@@ -642,6 +642,7 @@ function LegacyProviderRouteRedirect() {
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
   const { user, loading } = useFirebaseAuth();
   const { trackLanguageChange } = useAnalytics();
+  const [, setLocation] = useLocation();
   const IS_DEV = import.meta.env.DEV === true;
   
   // Initialize FCM push notifications (auto-registers after login)
@@ -671,6 +672,28 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       .catch(() => { /* web (no Capacitor) — the focus listener covers it */ });
     return () => { window.removeEventListener('focus', refreshLive); removeCap?.(); };
   }, []);
+
+  // APP-FLAVOR ROUTING (2026-06-17): the customer (il.co.petwash.customer) and
+  // provider (il.co.petwash.provider) apps ship the SAME web bundle. On a cold
+  // start at root, send the PROVIDER app straight to its own surface so each app
+  // opens to the experience its user actually needs — providers land in Provider
+  // OS (jobs/earnings/onboarding); customers stay on the customer home. Native
+  // only; web is unaffected. Providers can still navigate anywhere afterwards.
+  useEffect(() => {
+    let cancelled = false;
+    import('@capacitor/app')
+      .then(async ({ App: CapApp }) => {
+        try {
+          const info = await CapApp.getInfo();
+          const isProviderApp = typeof info?.id === 'string' && info.id.includes('.provider');
+          if (!cancelled && isProviderApp && window.location.pathname === '/') {
+            setLocation('/provider-os');
+          }
+        } catch { /* no native app info (web) */ }
+      })
+      .catch(() => { /* web — no Capacitor plugin */ });
+    return () => { cancelled = true; };
+  }, [setLocation]);
 
   // Get personalized AI greeting on app launch 🎉
   usePersonalizedGreeting();
