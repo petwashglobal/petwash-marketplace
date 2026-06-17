@@ -906,12 +906,35 @@ router.post('/:bookingId/cancel', requireAuth, async (req, res) => {
     const party = await assertBookingParty(bookingId, userId, userRole, res);
     if (!party) return;
 
+    // Cancellation refund policy. The escrow used to refund 100% on every cancel
+    // (cancel-to-avoid-fee leak). Now: a CUSTOMER cancellation runs through the
+    // tiered policy engine (e.g. <12h before → partial/no refund); a PROVIDER or
+    // ADMIN cancellation always refunds the customer in full (not their fault).
+    // If no policy is configured, refundPercentOverride stays undefined → full
+    // refund (safe default — never under-refund without an explicit policy).
+    let refundPercentOverride: number | undefined;
+    if (party.derivedRole === 'customer' && party.booking.startTime) {
+      try {
+        const { bookingPolicyEngine } = await import('../services/BookingPolicyEngine');
+        const calc = await bookingPolicyEngine.calculateCancellation(
+          party.booking.serviceType || 'all',
+          100, // percent is amount-independent; we only read refundPercent
+          new Date(party.booking.startTime),
+          new Date(),
+        );
+        if (calc.canCancel) refundPercentOverride = calc.refundPercent;
+      } catch (policyErr: any) {
+        logger.warn('[MarketplaceBookings] cancellation policy lookup failed — defaulting to full refund', { bookingId, error: policyErr?.message });
+      }
+    }
+
     await bookingLifecycleService.transitionStatus(
       bookingId,
       'cancelled',
       userId,
       party.derivedRole === 'admin' ? 'system' : party.derivedRole,
-      reason || 'Booking cancelled'
+      reason || 'Booking cancelled',
+      { refundPercentOverride },
     );
 
     // Calendar sync on CANCEL (Phase B1) — non-blocking, idempotent.

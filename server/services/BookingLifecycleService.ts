@@ -418,7 +418,13 @@ class BookingLifecycleService {
     newStatus: BookingLifecycleStatus,
     actorUserId: string,
     actorRole: 'customer' | 'provider' | 'system' | 'admin',
-    reason?: string
+    reason?: string,
+    // refundPercentOverride (0–100): when a booking is cancelled, refund only this
+    // percent of the escrow gross instead of the full amount. Used by the cancel
+    // route to apply the tiered cancellation policy (e.g. a late customer cancel
+    // refunds 50% or 0%). Omitted → full refund (the safe default: provider/admin/
+    // system cancels and any path without a policy still refund 100%).
+    opts?: { refundPercentOverride?: number },
   ): Promise<void> {
     const [booking] = await db.select()
       .from(bookings)
@@ -476,7 +482,7 @@ class BookingLifecycleService {
     // R3: a cancelled/refunded booking must settle (refund) its escrow holding —
     // otherwise held funds are stranded with no release path. Idempotent.
     if (newStatus === 'cancelled' || newStatus === 'refunded') {
-      await this.settleEscrowTerminal(bookingId, actorUserId, actorRole, reason);
+      await this.settleEscrowTerminal(bookingId, actorUserId, actorRole, reason, opts?.refundPercentOverride);
     }
 
     logger.info('[BookingLifecycle] Status transitioned', { 
@@ -604,6 +610,7 @@ class BookingLifecycleService {
     actorUserId?: string,
     actorRole?: string,
     reason?: string,
+    refundPercentOverride?: number,
   ): Promise<void> {
     const [escrow] = await db.select()
       .from(escrowHoldings)
@@ -616,12 +623,18 @@ class BookingLifecycleService {
       return;
     }
 
+    // Apply the cancellation-policy refund percent if provided; otherwise refund
+    // the full gross (safe default). Clamp to [0,100] so a bad value can never
+    // over-refund. Late customer cancels pass e.g. 50 or 0; provider/admin/system
+    // cancels and any no-policy path leave it undefined → 100%.
+    const pct = refundPercentOverride == null ? 100 : Math.max(0, Math.min(100, refundPercentOverride));
+    const refundCents = Math.round((escrow.grossAmountCents * pct) / 100);
     const now = new Date();
     await db.update(escrowHoldings)
       .set({
         status: 'refunded',
         refundProcessedAt: now,
-        refundAmountCents: escrow.grossAmountCents,
+        refundAmountCents: refundCents,
         refundReason: reason ?? 'Booking cancelled',
         updatedAt: now,
       })
@@ -629,12 +642,14 @@ class BookingLifecycleService {
 
     await this.auditMoney(bookingId, 'BOOKING_ESCROW_REFUNDED', actorUserId, actorRole, {
       escrowId: escrow.escrowId,
-      refundAmountCents: escrow.grossAmountCents,
+      refundAmountCents: refundCents,
+      grossAmountCents: escrow.grossAmountCents,
+      refundPercent: pct,
       fromStatus: escrow.status,
       reason: reason ?? 'Booking cancelled',
     });
     logger.info('[BookingLifecycle] Escrow refunded on terminal transition', {
-      bookingId, fromStatus: escrow.status, refundAmountCents: escrow.grossAmountCents,
+      bookingId, fromStatus: escrow.status, refundAmountCents: refundCents, refundPercent: pct,
     });
   }
 
