@@ -69,15 +69,15 @@ export default function DriverDashboard() {
   const [activeTab, setActiveTab] = useState('requests');
   const [isOnline, setIsOnline] = useState(false);
 
-  // Fetch trip requests
+  // Fetch trip requests (server route is /api/pettrek/provider/jobs, not /driver/requests)
   const { data: requests = [] } = useQuery<TripRequest[]>({
-    queryKey: ['/api/pettrek/driver/requests'],
+    queryKey: ['/api/pettrek/provider/jobs'],
     enabled: isOnline,
   });
 
-  // Fetch driver stats
+  // Fetch driver stats (server route is /api/pettrek/provider/stats)
   const { data: stats } = useQuery<DriverStats>({
-    queryKey: ['/api/pettrek/driver/stats'],
+    queryKey: ['/api/pettrek/provider/stats'],
   });
 
   const pendingRequests = requests.filter(r => r.status === 'pending');
