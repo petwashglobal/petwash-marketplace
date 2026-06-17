@@ -124,6 +124,7 @@ router.get('/me', async (req: Request, res: Response) => {
         bio: row.bio ?? '',
         languages: row.languages ?? [],
         serviceCoverage: row.service_coverage ?? {},
+        serviceAreas: (row.service_coverage as any)?.areas ?? [], // cities the provider serves
         availabilityState: row.availability_state ?? 'offline',
         priceFromCents: row.price_from_cents ?? null,
         priceFrom: row.price_from_cents != null ? Math.round(row.price_from_cents / 100) : null,
@@ -211,6 +212,7 @@ const patchSchema = z.object({
   // Languages: whitelist-enforced to the supported set
   languages:        z.array(z.string().refine(l => LANGUAGE_WHITELIST.includes(l), { message: 'Unsupported language' })).optional(),
   availabilityState: z.enum(AVAILABILITY_WHITELIST).optional(),
+  serviceAreas:     z.array(z.string().max(60)).max(50).optional(), // cities served (stored in service_coverage jsonb)
   priceFromCents:   z.number().int().min(0).max(100_000_00).optional().nullable(), // max ₪100,000
   acceptedPets:     z.array(z.enum(PET_WHITELIST)).optional(),
   hasFencedYard:    z.boolean().optional().nullable(),
@@ -255,6 +257,7 @@ router.patch('/me', async (req: Request, res: Response) => {
     if (data.bio !== undefined)              updates.bio = data.bio;
     if (data.languages !== undefined)        updates.languages = data.languages;
     if (data.availabilityState !== undefined) updates.availabilityState = data.availabilityState;
+    if (data.serviceAreas !== undefined)     updates.serviceCoverage = { areas: data.serviceAreas };
     if (data.priceFromCents !== undefined)   updates.priceFromCents = data.priceFromCents;
     if (data.acceptedPets !== undefined)     updates.acceptedPets = data.acceptedPets;
     if (data.hasFencedYard !== undefined)    updates.hasFencedYard = data.hasFencedYard;

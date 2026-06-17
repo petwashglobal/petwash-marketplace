@@ -179,6 +179,7 @@ export default function POSProfile() {
       const p = profileData.profile;
       setBio(p.bio ?? '');
       setLanguages(Array.isArray(p.languages) ? p.languages : []);
+      setServiceAreas(Array.isArray((p as any).serviceAreas) ? (p as any).serviceAreas : ((p as any).serviceCoverage?.areas ?? []));
       setAvailabilityState(p.availabilityState ?? 'offline');
       setPriceFrom(p.priceFrom != null ? String(p.priceFrom) : '');
       setAcceptedPets(p.acceptedPets ?? []);
@@ -200,6 +201,7 @@ export default function POSProfile() {
       return apiRequest('PATCH', '/api/provider-profile/me', {
         bio,
         languages,
+        serviceAreas,
         availabilityState,
         priceFromCents: priceInt,
         acceptedPets,
