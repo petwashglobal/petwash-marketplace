@@ -14,11 +14,14 @@
  *  7. Google Wallet object push-update after debit
  *
  * Endpoints (mounted at /api/pass by routes.ts):
- *   POST /api/pass/redeem          — K9000 kiosk QR scan redemption
- *   POST /api/pass/redeem-online   — Online booking server-side deduction (no QR)
- *   POST /api/pass/topup           — Credit balance top-up (admin / payment)
- *   GET  /api/pass/balance/:passId — Current balance for a pass (admin-only)
- *   GET  /api/pass/ledger/:passId  — Full ledger for a pass (admin-only)
+ *   POST /api/pass/redeem          — K9000 kiosk QR scan redemption (HMAC self-auth)
+ *   POST /api/pass/redeem-online   — DISABLED (410) → use /api/prestige-pass/redeem-online
+ *   POST /api/pass/topup           — DISABLED (410) → use /api/prestige-pass/admin/manual-credit
+ *   GET  /api/pass/balance/:passId — DISABLED (410) → use authenticated /api/prestige-pass
+ *   GET  /api/pass/ledger/:passId  — DISABLED (410) → use authenticated /api/prestige-pass
+ *
+ * topup/balance/ledger were unauthenticated (rate-limit only) and orphaned; removed
+ * 2026-06-17. See the block above each stub for detail.
  */
 
 import { Router, Request, Response } from 'express';
@@ -28,9 +31,8 @@ import { db }                         from '../db';
 import {
   petwashPassAccounts,
   petwashPassNonceRegistry,
-  petwashPassTransactions,
 } from '@shared/schema';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { logger }       from '../lib/logger';
 import {
   verifyQrRedeemToken,
@@ -69,14 +71,6 @@ const redeemOnlineSchema = z.object({
   bookingId:   z.string().min(1).max(200),
   serviceType: z.enum(['SITTER', 'WALKER', 'ACADEMY', 'TRANSPORT', 'GROOMING', 'DAYCARE', 'VET', 'OTHER']),
   amountIls:   z.number().positive().max(50_000),
-});
-
-const topupSchema = z.object({
-  passId:      z.string().min(1).max(100),
-  amountIls:   z.number().positive().max(100_000),
-  sourceType:  z.enum(['TOPUP', 'GIFT', 'PROMO', 'REFUND']),
-  sourceRef:   z.string().max(200).optional(),
-  metadata:    z.record(z.unknown()).optional(),
 });
 
 function verifyScannedPassToken(scannedToken: string): PassTokenPayload {
@@ -392,82 +386,30 @@ router.post('/redeem-online', redeemLimiter, async (req: Request, res: Response)
 });
 
 // ─────────────────────────────────────────────────────────────────────────────
-// POST /api/pass/topup — Credit pass balance (admin / payment)
+// POST /api/pass/topup · GET /api/pass/balance/:passId · GET /api/pass/ledger/:passId
+//
+// ⛔ SECURITY (2026-06-17): REMOVED. These three were mounted at /api/pass with only
+// a rate limiter (`adminLimiter` is NOT auth) — i.e. fully UNAUTHENTICATED and
+// internet-reachable:
+//   • /topup           credited ANY passId by up to ₪100,000 with no caller identity.
+//   • /balance/:passId leaked any pass's balance + tier + owner name by passId.
+//   • /ledger/:passId  leaked any pass's full transaction history by passId.
+// They had ZERO callers (client + server + tests). The canonical, authenticated
+// equivalents live in /api/prestige-pass: /topup checks the session uid;
+// /admin/manual-credit and /revoke-pass check customClaims.admin. Returning 410
+// closes the hole safely. Do NOT re-enable without that session/admin auth.
+// (The kiosk /redeem flow above is unaffected — it self-authenticates via HMAC.)
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/topup', adminLimiter, async (req: Request, res: Response) => {
-  try {
-    const parsed = topupSchema.safeParse(req.body);
-    if (!parsed.success) {
-      return res.status(400).json({ ok: false, error: 'INVALID_INPUT', details: parsed.error.flatten() });
-    }
-    const { passId, amountIls, sourceType, sourceRef, metadata } = parsed.data;
+router.post('/topup', adminLimiter, (_req: Request, res: Response) =>
+  res.status(410).json({ ok: false, error: 'ENDPOINT_DISABLED', use: 'POST /api/prestige-pass/admin/manual-credit' }),
+);
 
-    const { txId, balanceBefore, balanceAfter } = await atomicLedgerEntry({
-      passId,
-      direction: 'CREDIT',
-      amountIls,
-      sourceType,
-      sourceRef,
-      metadata: metadata as Record<string, unknown> | undefined,
-    });
+router.get('/balance/:passId', adminLimiter, (_req: Request, res: Response) =>
+  res.status(410).json({ ok: false, error: 'ENDPOINT_DISABLED', use: 'GET /api/prestige-pass (authenticated)' }),
+);
 
-    logger.info('[PassRedeem] ✅ Topup applied', { passId, amountIls, sourceType, balanceBefore, balanceAfter, txId });
-
-    return res.json({ ok: true, txId, passId, amountIls, balanceBefore, balanceAfterIls: balanceAfter });
-  } catch (err: any) {
-    const status = err?.status || 500;
-    const msg    = err?.message || 'TOPUP_FAILED';
-    if (status < 500) return res.status(status).json({ ok: false, error: msg });
-    logger.error('[PassRedeem] /topup unexpected error', { err });
-    return res.status(500).json({ ok: false, error: 'TOPUP_FAILED' });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/pass/balance/:passId — Current balance (admin)
-// ─────────────────────────────────────────────────────────────────────────────
-router.get('/balance/:passId', adminLimiter, async (req: Request, res: Response) => {
-  try {
-    const [pass] = await db
-      .select({
-        passId:            petwashPassAccounts.passId,
-        ownerName:         petwashPassAccounts.ownerName,
-        tier:              petwashPassAccounts.tier,
-        availableCreditIls: petwashPassAccounts.availableCreditIls,
-        status:            petwashPassAccounts.status,
-        validUntil:        petwashPassAccounts.validUntil,
-        qrTokenVersion:    petwashPassAccounts.qrTokenVersion,
-        updatedAt:         petwashPassAccounts.updatedAt,
-      })
-      .from(petwashPassAccounts)
-      .where(eq(petwashPassAccounts.passId, req.params.passId))
-      .limit(1);
-
-    if (!pass) return res.status(404).json({ ok: false, error: 'PASS_NOT_FOUND' });
-    return res.json({ ok: true, ...pass });
-  } catch (err) {
-    logger.error('[PassRedeem] /balance error', { err });
-    return res.status(500).json({ ok: false, error: 'QUERY_FAILED' });
-  }
-});
-
-// ─────────────────────────────────────────────────────────────────────────────
-// GET /api/pass/ledger/:passId — Full ledger (admin)
-// ─────────────────────────────────────────────────────────────────────────────
-router.get('/ledger/:passId', adminLimiter, async (req: Request, res: Response) => {
-  try {
-    const rows = await db
-      .select()
-      .from(petwashPassTransactions)
-      .where(eq(petwashPassTransactions.passId, req.params.passId))
-      .orderBy(desc(petwashPassTransactions.createdAt))
-      .limit(100);
-
-    return res.json({ ok: true, passId: req.params.passId, count: rows.length, ledger: rows });
-  } catch (err) {
-    logger.error('[PassRedeem] /ledger error', { err });
-    return res.status(500).json({ ok: false, error: 'QUERY_FAILED' });
-  }
-});
+router.get('/ledger/:passId', adminLimiter, (_req: Request, res: Response) =>
+  res.status(410).json({ ok: false, error: 'ENDPOINT_DISABLED', use: 'GET /api/prestige-pass (authenticated)' }),
+);
 
 export default router;
