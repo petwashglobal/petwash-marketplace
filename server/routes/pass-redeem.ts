@@ -38,6 +38,7 @@ import {
   type PassTokenPayload,
 } from '../lib/passTokens';
 import { pushUpdate }   from '../services/GoogleWalletService';
+import { requireAdmin } from '../adminAuth';
 
 const router = Router();
 
@@ -394,7 +395,7 @@ router.post('/redeem-online', redeemLimiter, async (req: Request, res: Response)
 // ─────────────────────────────────────────────────────────────────────────────
 // POST /api/pass/topup — Credit pass balance (admin / payment)
 // ─────────────────────────────────────────────────────────────────────────────
-router.post('/topup', adminLimiter, async (req: Request, res: Response) => {
+router.post('/topup', adminLimiter, requireAdmin, async (req: Request, res: Response) => {
   try {
     const parsed = topupSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -426,7 +427,7 @@ router.post('/topup', adminLimiter, async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/pass/balance/:passId — Current balance (admin)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/balance/:passId', adminLimiter, async (req: Request, res: Response) => {
+router.get('/balance/:passId', adminLimiter, requireAdmin, async (req: Request, res: Response) => {
   try {
     const [pass] = await db
       .select({
@@ -454,7 +455,7 @@ router.get('/balance/:passId', adminLimiter, async (req: Request, res: Response)
 // ─────────────────────────────────────────────────────────────────────────────
 // GET /api/pass/ledger/:passId — Full ledger (admin)
 // ─────────────────────────────────────────────────────────────────────────────
-router.get('/ledger/:passId', adminLimiter, async (req: Request, res: Response) => {
+router.get('/ledger/:passId', adminLimiter, requireAdmin, async (req: Request, res: Response) => {
   try {
     const rows = await db
       .select()
