@@ -10837,7 +10837,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
 
   // PetWash Prestige Pass — QR tokens, kiosk redemption, Apple/Google Wallet
-  app.use('/api/prestige-pass', apiLimiter, prestigePassRoutes);
+  // optionalFirebaseToken populates req.user from the Bearer token so the pass
+  // routes work for Firebase-authenticated clients (iOS app / Safari) and not
+  // only the legacy cookie session — fixes "Add to Apple Wallet → 401 Auth required".
+  app.use('/api/prestige-pass', apiLimiter, optionalFirebaseToken, prestigePassRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across

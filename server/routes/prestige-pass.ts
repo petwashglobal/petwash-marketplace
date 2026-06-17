@@ -120,6 +120,16 @@ import { requireUnifiedPayoutVerification } from '../lib/unifiedPayoutVerificati
 
 const router = Router();
 
+/**
+ * Resolve the caller's uid from EITHER the Firebase Bearer token (req.user, set by
+ * optionalFirebaseToken at the mount) OR the legacy cookie session. The app and
+ * Safari authenticate with Firebase, not the cookie — relying on the session alone
+ * 401'd "Add to Apple Wallet" and the balance fetch for logged-in users.
+ */
+function resolveUid(req: Request): string | undefined {
+  return (req as any).user?.uid || (req as any).session?.user?.uid;
+}
+
 const LEGACY_PRESTIGE_MONEY_ROUTE_GATES: Array<{
   pattern: RegExp;
   actionType: OperatingActionType;
@@ -305,7 +315,7 @@ function verifyToken(token: string): QrPayload | null {
 router.get('/wallet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    let userId = session?.user?.uid;
+    let userId = resolveUid(req);
 
     // Fallback: accept Firebase Bearer token (mobile Safari / fresh sessions)
     if (!userId) {
@@ -418,7 +428,7 @@ const generateSchema = z.object({
 router.post('/token/generate', generateTokenLimiter, async (req: Request, res: Response) => {
   try {
     const session  = (req as any).session;
-    const userId   = session?.user?.uid;
+    const userId   = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = generateSchema.safeParse(req.body);
@@ -671,7 +681,7 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
 router.get('/history', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const [wallet] = await db.select({ walletId: walletAccounts.walletId })
@@ -701,7 +711,7 @@ router.get('/history', async (req: Request, res: Response) => {
 router.get('/division-activity', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    let userId = session?.user?.uid;
+    let userId = resolveUid(req);
 
     // Firebase Bearer token fallback (mobile Safari)
     if (!userId) {
@@ -812,7 +822,7 @@ router.get('/division-activity', async (req: Request, res: Response) => {
 router.get('/apple-wallet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const passDoc = await firestoreDb.collection('prestige_passes').doc(userId).get();
@@ -927,7 +937,7 @@ router.get('/apple-wallet', async (req: Request, res: Response) => {
 router.get('/google-wallet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const passDoc = await firestoreDb.collection('prestige_passes').doc(userId).get();
@@ -1039,7 +1049,7 @@ const topupSchema = z.object({
 router.post('/topup', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = topupSchema.safeParse(req.body);
@@ -1290,7 +1300,7 @@ const activateSchema = z.object({
 router.post('/activate', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = activateSchema.safeParse(req.body);
@@ -1379,7 +1389,7 @@ router.post('/activate', async (req: Request, res: Response) => {
 router.get('/me', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ authenticated: false, error: 'Auth required' });
 
     const [wallet] = await db
@@ -1439,7 +1449,7 @@ const redeemOnlineSchema = z.object({
 router.post('/redeem-online', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = redeemOnlineSchema.safeParse(req.body);
@@ -1533,7 +1543,7 @@ const WALLET_EMAIL_COOLDOWN_MS = 15 * 60 * 1000; // 15 minutes between successiv
 router.post('/resend-wallet-email', walletEmailLimiter, async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     const email   = session?.user?.email;
     if (!userId || !email) return res.status(401).json({ ok: false, error: 'Auth required' });
 
@@ -1709,7 +1719,7 @@ router.post('/send-luxury-demo', async (req: Request, res: Response) => {
 router.post('/generate-wallet-links', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || 'https://petwash.co.il';
@@ -1743,7 +1753,7 @@ const issueGiftSchema = z.object({
 router.post('/issue-gift', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const senderId = session?.user?.uid;
+    const senderId = resolveUid(req);
     if (!senderId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = issueGiftSchema.safeParse(req.body);
@@ -1821,7 +1831,7 @@ const claimGiftSchema = z.object({
 router.post('/claim-gift', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     const email   = session?.user?.email;
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
@@ -1896,7 +1906,7 @@ router.post('/claim-gift', async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────
 router.get('/session/stream', (req: Request, res: Response) => {
   const session = (req as any).session;
-  const userId  = session?.user?.uid;
+  const userId  = resolveUid(req);
   if (!userId) { res.status(401).end(); return; }
 
   res.setHeader('Content-Type',  'text/event-stream');
@@ -1933,7 +1943,7 @@ const petSchema = z.object({
 router.post('/pet', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    const userId  = session?.user?.uid;
+    const userId  = resolveUid(req);
     if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     const parsed = petSchema.safeParse(req.body);
@@ -1961,7 +1971,7 @@ router.post('/pet', async (req: Request, res: Response) => {
 router.post('/staff/lookup', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.uid) return res.status(401).json({ ok: false, error: 'Auth required' });
+    if (!resolveUid(req)) return res.status(401).json({ ok: false, error: 'Auth required' });
 
     let { cardId } = req.body as { cardId?: string };
     if (!cardId) return res.status(400).json({ ok: false, error: 'cardId required' });
@@ -2042,7 +2052,7 @@ const staffChargeSchema = z.object({
 router.post('/staff/charge', async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
-    if (!session?.user?.uid) return res.status(401).json({ ok: false, error: 'Auth required' });
+    if (!resolveUid(req)) return res.status(401).json({ ok: false, error: 'Auth required' });
     const staffUserId = session.user.uid;
 
     const parsed = staffChargeSchema.safeParse(req.body);
