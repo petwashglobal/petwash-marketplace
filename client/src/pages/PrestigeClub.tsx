@@ -45,7 +45,7 @@ const dict: Record<Lang, Record<string, string>> = {
     b2_title: "מתנות דיגיטליות",
     b2_desc: "כרטיס מתנה יוקרתי עם שם מקבל. שליחה מיידית ומימוש פשוט.",
     b3_title: "דרגות ויתרונות",
-    b3_desc: "ככל שמשתמשים יותר, נפתחים יתרונות: הטבות, הצעות, קדימות ואקסקלוסיביות.",
+    b3_desc: "ככל שמשתמשים יותר, נפתחים יתרונות: הטבות, הצעות, קדימות ובלעדיות.",
     b4_title: "התראות חכמות",
     b4_desc: "הודעות על הטבות, מימושים, תזכורות, ומבצעים ממוקדים לפי סטטוס.",
     tiers_title: "The Prestige Collection",
@@ -273,7 +273,7 @@ const TIERS: TierData[] = [
     plateClass: 'pc-plateEmerald',
     hint: 't_priv_hint',
     items: ['t_priv_1', 't_priv_2', 't_priv_3'],
-    desc: { he: 'למשפחות קבועות. יותר הטבות, יותר אקסקלוסיביות.', en: 'For consistent families. More advantages and exclusivity.' },
+    desc: { he: 'למשפחות קבועות. יותר הטבות, יותר בלעדיות.', en: 'For consistent families. More advantages and exclusivity.' },
     bullets: { he: ['הצעות פרימיום', 'קדימות גבוהה', 'הפתעות milestone', 'הטבות שותפים (אופציונלי)'], en: ['Premium offers', 'Higher priority', 'Milestone surprises', 'Partner perks (optional)'] },
   },
   {

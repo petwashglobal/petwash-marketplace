@@ -328,11 +328,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   );
 
   const t = {
-    eyebrow: he ? 'אקוסיסטם חכם לטיפול בחיות מחמד' : 'INTELLIGENT PET-CARE ECOSYSTEM',
-    h1a: he ? 'העתיד של' : 'The Future of',
-    h1b: he ? 'חיי חיות המחמד' : 'Pet Lifestyle',
+    eyebrow: he ? 'עולם חכם לחיות המחמד' : 'INTELLIGENT PET-CARE ECOSYSTEM',
+    h1a: he ? 'העולם של' : 'The World of',
+    h1b: he ? 'חיות המחמד שלך' : 'Your Pets',
     sub1: he ? 'שמונה פלטפורמות מהפכניות.' : 'Eight Revolutionary Platforms.',
-    sub2: he ? 'אקוסיסטם חכם אחד לטיפול בחיות מחמד.' : 'One Intelligent Pet-Care Ecosystem.',
+    sub2: he ? 'עולם אחד חכם לכל חיות המחמד.' : 'One Intelligent Pet-Care Ecosystem.',
     premium: he ? 'חוויית פרמיום' : 'PREMIUM EXPERIENCE',
     premiumSub: he ? 'חכם. מאובטח. חלק.' : 'Intelligent. Secure. Seamless.',
     badges: he
@@ -344,7 +344,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     secureSub: he ? 'הנתונים שלך מוגנים ומוצפנים.' : 'Your data is protected and encrypted.',
 
     create: he ? 'צור את החשבון שלך' : 'Create Your Account',
-    helper: he ? 'הצטרף לעתיד של טיפול חכם בחיות מחמד' : 'Join the future of intelligent pet care',
+    helper: he ? 'הצטרפו לעולם החכם של חיות המחמד' : 'Join the smart world of pet care',
     cwGoogle: he ? 'המשך עם Google' : 'Continue with Google',
     cwApple: he ? 'המשך עם Apple' : 'Continue with Apple',
     cwFb: he ? 'המשך עם Facebook' : 'Continue with Facebook',
@@ -745,7 +745,7 @@ function styles(he: boolean) {
 
     /* Dog can be large and emotional, but it supports the brand identity. */
     .sl-dogWrap{ display:flex; justify-content:center; padding:4px 0 }
-    .sl-dog{ width:min(58%, 340px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
+    .sl-dog{ width:min(58%, 340px); height:auto; aspect-ratio:1/1.05; object-fit:cover; object-position:center top; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
 
     .sl-card{
       border:1px solid var(--line);

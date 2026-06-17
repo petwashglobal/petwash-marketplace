@@ -51,7 +51,7 @@ const controlPoints = [
   {
     icon: BriefcaseBusiness,
     en: 'Providers continue to full onboarding with photo, rates, documents and compliance review.',
-    he: 'ספקי שירות ממשיכים לאונבורדינג מלא עם תמונה, תעריפים, מסמכים ובדיקת ציות.',
+    he: 'ספקי שירות ממשיכים להצטרפות מלאה עם תמונה, תעריפים, מסמכים ובדיקת ציות.',
   },
 ];
 

@@ -304,7 +304,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
           </CardTitle>
           <CardDescription className="text-gray-100 text-base mt-2 font-medium">
             {isHebrew
-              ? '💎 הטבות אקסקלוסיביות, כרטיסי מתנה ופדיון Nayax QR'
+              ? '💎 הטבות בלעדיות, כרטיסי מתנה ופדיון Nayax QR'
               : '💎 Exclusive Benefits, Gift Cards & Nayax QR Redemption'}
           </CardDescription>
         </CardHeader>
