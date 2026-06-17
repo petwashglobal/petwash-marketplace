@@ -10833,8 +10833,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api', ledRouter);
   
   // Apple Wallet Pass Generation (VIP Cards & E-Vouchers)
-  app.use('/api/wallet', apiLimiter, requireOnboardingComplete, walletRoutes);
-  app.use('/api/google-wallet', apiLimiter, googleWalletRoutes);
+  // optionalFirebaseToken populates req.user from the Bearer token so the wallet
+  // routes accept Firebase-authenticated clients (app/Safari), not only the legacy
+  // cookie session — fixes "Add to Apple/Google Wallet → 401" for logged-in users.
+  app.use('/api/wallet', apiLimiter, optionalFirebaseToken, requireOnboardingComplete, walletRoutes);
+  app.use('/api/google-wallet', apiLimiter, optionalFirebaseToken, googleWalletRoutes);
 
   // PetWash Prestige Pass — QR tokens, kiosk redemption, Apple/Google Wallet
   // optionalFirebaseToken populates req.user from the Bearer token so the pass

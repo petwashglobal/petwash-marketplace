@@ -64,12 +64,19 @@ function generateSecureWalletLink(params: {
 // Apply fraud detection to all wallet endpoints
 router.use(walletFraudProtection);
 
-// Middleware to verify Firebase authentication
+/**
+ * Resolve uid from the Firebase Bearer token (req.user, set by optionalFirebaseToken
+ * at the mount) OR the legacy cookie session. The app + Safari authenticate with
+ * Firebase, not the cookie — session-only checks 401'd "Add to Apple Wallet".
+ */
+function resolveUid(req: express.Request): string | undefined {
+  return (req as any).user?.uid || (req as any).session?.user?.uid;
+}
+
+// Middleware to verify authentication (Firebase Bearer OR legacy cookie session)
 const requireAuth = async (req: express.Request, res: express.Response, next: express.NextFunction) => {
   try {
-    // Check if user is authenticated via session
-    const session = req.session as any;
-    if (!session?.user?.uid) {
+    if (!resolveUid(req)) {
       return res.status(401).json({ error: 'Authentication required' });
     }
     next();
@@ -88,7 +95,7 @@ const requireAuth = async (req: express.Request, res: express.Response, next: ex
 router.post('/vip-card/prepare', requireAuth, async (req, res) => {
   try {
     const session = req.session as any;
-    const userId = session?.user?.uid;
+    const userId = resolveUid(req);
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -124,7 +131,7 @@ router.post('/vip-card', requireAuth, async (req, res) => {
   try {
     // Get authenticated user from session (ignore userId from body for security)
     const session = req.session as any;
-    const userId = session?.user?.uid;
+    const userId = resolveUid(req);
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -214,7 +221,7 @@ router.post('/e-voucher', requireAuth, async (req, res) => {
   try {
     // Get authenticated user from session
     const session = req.session as any;
-    const userId = session?.user?.uid;
+    const userId = resolveUid(req);
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -314,7 +321,7 @@ router.post('/update-vip', requireAuth, async (req, res) => {
   try {
     // Get authenticated user from session
     const session = req.session as any;
-    const userId = session?.user?.uid;
+    const userId = resolveUid(req);
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -362,7 +369,7 @@ router.post('/update-vip', requireAuth, async (req, res) => {
 router.post('/my-business-card', requireAuth, async (req, res) => {
   try {
     const session = req.session as any;
-    const userId = session?.user?.uid;
+    const userId = resolveUid(req);
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -636,7 +643,7 @@ router.get('/pass/:linkId', async (req, res) => {
 router.post('/email-cards', requireAuth, async (req, res) => {
   try {
     const session = req.session as any;
-    const userId = session?.user?.uid;
+    const userId = resolveUid(req);
     
     if (!userId) {
       return res.status(401).json({ error: 'User not authenticated' });
@@ -998,7 +1005,7 @@ router.get('/user-passes/:userId', requireAuth, async (req, res) => {
   try {
     const { userId } = req.params;
     const session = req.session as any;
-    const authenticatedUserId = session?.user?.uid;
+    const authenticatedUserId = resolveUid(req);
 
     // Ensure users can only access their own passes
     if (userId !== authenticatedUserId) {
