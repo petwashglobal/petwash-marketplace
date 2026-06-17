@@ -159,18 +159,18 @@ export default function LoyaltyRefer() {
           ))}
         </div>
 
-        <div className="p-8 rounded-2xl bg-white border border-[rgba(201,169,110,0.15)] backdrop-blur-xl mb-10 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
+        <div className="p-8 rounded-2xl bg-white border border-[rgba(18,147,106,0.15)] backdrop-blur-xl mb-10 shadow-[0_0_40px_rgba(18,147,106,0.05)]">
           <h2 className="text-2xl font-bold text-[#1A1A1A] text-center mb-6">
             {isHebrew ? 'קוד ההפניה שלך' : 'Your Referral Code'}
           </h2>
           <div className="max-w-md mx-auto">
-            <div className="flex items-center gap-3 p-4 rounded-xl bg-[#F0EBE0] border border-[rgba(201,169,110,0.2)] mb-6">
+            <div className="flex items-center gap-3 p-4 rounded-xl bg-[#F0EBE0] border border-[rgba(18,147,106,0.2)] mb-6">
               <code className="flex-1 text-2xl font-bold text-center text-[#12936A] tracking-[0.2em] flex items-center justify-center gap-2">
                 {summaryLoading ? <Loader2 className="w-5 h-5 animate-spin text-[#12936A]" /> : displayCode}
               </code>
               <button
                 onClick={handleCopy}
-                className="p-3 rounded-lg bg-[rgba(201,169,110,0.1)] hover:bg-[rgba(201,169,110,0.2)] transition-all duration-300 border border-[rgba(201,169,110,0.2)]"
+                className="p-3 rounded-lg bg-[rgba(18,147,106,0.1)] hover:bg-[rgba(18,147,106,0.2)] transition-all duration-300 border border-[rgba(18,147,106,0.2)]"
               >
                 <Copy className="w-5 h-5 text-[#12936A]" />
               </button>
@@ -201,9 +201,9 @@ export default function LoyaltyRefer() {
             {rewards.map((reward, idx) => (
               <div
                 key={idx}
-                className="p-6 rounded-xl bg-white border border-[#E8E3D9] text-center transition-all duration-300 hover:border-[rgba(201,169,110,0.3)] hover:scale-[1.02]"
+                className="p-6 rounded-xl bg-white border border-[#E8E3D9] text-center transition-all duration-300 hover:border-[rgba(18,147,106,0.3)] hover:scale-[1.02]"
               >
-                <div className="w-10 h-10 rounded-full bg-[rgba(201,169,110,0.1)] flex items-center justify-center mx-auto mb-3">
+                <div className="w-10 h-10 rounded-full bg-[rgba(18,147,106,0.1)] flex items-center justify-center mx-auto mb-3">
                   <TrendingUp className="w-5 h-5 text-[#12936A]" />
                 </div>
                 <p className="font-semibold text-[#1A1A1A] mb-1">{reward.friends}</p>

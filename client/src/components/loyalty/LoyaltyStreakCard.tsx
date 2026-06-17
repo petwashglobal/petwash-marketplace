@@ -139,7 +139,7 @@ export function LoyaltyStreakCard({ data: propData }: Props) {
       <div className="flex items-center justify-between">
         <p className="text-xs font-bold text-gray-800">התקדמות רצף</p>
         <Link href="/loyalty/credits">
-          <a className="text-[11px] text-[#C5A55A] hover:underline">היסטוריה</a>
+          <a className="text-[11px] text-[#12936A] hover:underline">היסטוריה</a>
         </Link>
       </div>
 
@@ -160,11 +160,11 @@ export function LoyaltyStreakCard({ data: propData }: Props) {
       />
 
       <StreakRow
-        icon={<Star className="w-4 h-4 text-[#C5A55A]" />}
+        icon={<Star className="w-4 h-4 text-[#12936A]" />}
         label="הזמנות רצופות — ספק קבוע"
         count={providerCount}
         milestones={PROVIDER_MILESTONES}
-        color="#C5A55A"
+        color="#12936A"
       />
 
       <p className="text-[10px] text-gray-300 text-center">

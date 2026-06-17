@@ -7,7 +7,7 @@ import { useLanguage } from '@/lib/languageStore';
 import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { isImmersiveRoute } from '@/lib/immersive-routes';
 
-const GOLD = '#C5A55A';
+const GOLD = '#12936A';
 const GRAY = '#9CA3AF';
 
 interface NavItem {

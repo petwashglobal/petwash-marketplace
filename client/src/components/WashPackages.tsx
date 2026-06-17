@@ -228,7 +228,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                 <div className="relative overflow-hidden transition-all duration-500 bg-white hover:-translate-y-1"
                   style={{ 
                     boxShadow: isPopular
-                      ? '0 0 0 1.5px #12936A, 0 12px 40px rgba(201,169,110,0.14)'
+                      ? '0 0 0 1.5px #12936A, 0 12px 40px rgba(18,147,106,0.14)'
                       : '0 4px 24px rgba(0,0,0,0.07)',
                     transition: 'transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s',
                   }}

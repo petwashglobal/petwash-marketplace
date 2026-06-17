@@ -375,7 +375,7 @@ export default function MobileManagementDashboard() {
             </div>
           ) : providers.length === 0 ? (
             <div className="text-center py-20">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.05)] flex items-center justify-center">
+              <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-[rgba(18,147,106,0.2)] to-[rgba(18,147,106,0.05)] flex items-center justify-center">
                 <Users className="h-8 w-8 text-[#AAAAAA]" />
               </div>
               <h3 className="text-sm font-semibold text-[#1A1A1A] mb-2">

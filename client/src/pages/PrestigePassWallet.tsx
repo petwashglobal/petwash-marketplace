@@ -150,13 +150,13 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
 
         {/* Privilege label — tightly coupled to logo */}
         <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'5px', marginBottom:'4px' }}>
-          <Shield size={11} color="#C5A55A" />
+          <Shield size={11} color="#12936A" />
           <span style={{ color:'#7A7068', fontSize:'0.6rem', fontWeight:700, letterSpacing:'0.18em', textTransform:'uppercase' }}>
             Official Member
           </span>
         </div>
         <h1 style={{ color:'#1A1A1A', fontSize:'1.15rem', fontWeight:800, letterSpacing:'-0.01em', margin:'0 0 4px' }}>
-          PetWash <span style={{ color:'#C5A55A' }}>Privilege</span>
+          PetWash <span style={{ color:'#12936A' }}>Privilege</span>
         </h1>
 
         {/* User name — balanced with privilege label */}
@@ -202,7 +202,7 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
           <div style={{ fontSize:'0.6rem', fontWeight:600, color:'#9E9E9E', letterSpacing:'0.1em', textTransform:'uppercase' }}>
             {he ? 'נקודות' : 'Points'}
           </div>
-          <div style={{ fontSize:'0.95rem', fontWeight:700, color:'#C5A55A' }}>
+          <div style={{ fontSize:'0.95rem', fontWeight:700, color:'#12936A' }}>
             {balances.loyaltyPoints.toLocaleString()}
           </div>
         </div>
@@ -270,7 +270,7 @@ function BenefitsSection({ he, tier }: { he: boolean; tier: string }) {
   return (
     <div style={{ padding: '24px 20px 0', background: '#FFFFFF' }}>
       <div style={{ marginBottom: '14px', display:'flex', alignItems:'center', gap:'8px' }}>
-        <Users size={15} color="#C5A55A" />
+        <Users size={15} color="#12936A" />
         <h2 style={{ fontSize:'0.78rem', fontWeight:700, color:'#7A7068', letterSpacing:'0.12em', textTransform:'uppercase', margin:0 }}>
           {he ? 'הטבות החברות — כל הפלטפורמות' : 'Membership Benefits — All Platforms'}
         </h2>
@@ -298,7 +298,7 @@ function BenefitsSection({ he, tier }: { he: boolean; tier: string }) {
         ))}
       </div>
 
-      <div style={{ marginTop:'12px', padding:'10px 14px', background:'rgba(197,165,90,0.06)', borderRadius:'12px', border:'1px solid rgba(197,165,90,0.2)' }}>
+      <div style={{ marginTop:'12px', padding:'10px 14px', background:'rgba(18,147,106,0.06)', borderRadius:'12px', border:'1px solid rgba(18,147,106,0.2)' }}>
         <p style={{ margin:0, fontSize:'0.7rem', color:'#7A7068', lineHeight:1.5 }}>
           <strong style={{ color:'#0C5B3F' }}>PetWash Privilege </strong>
           {he
@@ -344,7 +344,7 @@ function DivisionActivitySection({ he }: { he: boolean }) {
     <div style={{ padding: '24px 20px 0', background: '#FFFFFF' }}>
       <div style={{ marginBottom:'14px', display:'flex', alignItems:'center', justifyContent:'space-between' }}>
         <div style={{ display:'flex', alignItems:'center', gap:'8px' }}>
-          <Activity size={15} color="#C5A55A" />
+          <Activity size={15} color="#12936A" />
           <h2 style={{ fontSize:'0.78rem', fontWeight:700, color:'#7A7068', letterSpacing:'0.12em', textTransform:'uppercase', margin:0 }}>
             {he ? 'פעילות לפי מחלקה' : 'Activity by Division'}
           </h2>
@@ -464,7 +464,7 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
   return (
     <div style={{ padding:'24px 20px 0', background:'#FFFFFF' }}>
       <div style={{ marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' }}>
-        <TrendingUp size={15} color="#C5A55A" />
+        <TrendingUp size={15} color="#12936A" />
         <h2 style={{ fontSize:'0.78rem', fontWeight:700, color:'#7A7068', letterSpacing:'0.12em', textTransform:'uppercase', margin:0 }}>
           {he ? 'PetWash Wallet — יתרות' : 'PetWash Wallet — Balances'}
         </h2>
@@ -540,7 +540,7 @@ function WalletBalanceSection({ balances, he }: { balances: WalletData['balances
       )}
 
       {/* Deduction order */}
-      <div style={{ marginTop:'10px', padding:'10px 14px', background:'rgba(197,165,90,0.05)', borderRadius:'10px', border:'1px solid rgba(197,165,90,0.15)' }}>
+      <div style={{ marginTop:'10px', padding:'10px 14px', background:'rgba(18,147,106,0.05)', borderRadius:'10px', border:'1px solid rgba(18,147,106,0.15)' }}>
         <p style={{ margin:0, fontSize:'0.7rem', color:'#7A7068', lineHeight:1.5 }}>
           <strong style={{ color:'#0C5B3F' }}>{he ? 'סדר מימוש: ' : 'Redemption order: '}</strong>
           {he ? 'קרדיט מבצע → eGift → חבילה → ארנק → כרטיס' : 'Promo → eGift → Package → Wallet → Card'}
@@ -574,7 +574,7 @@ function DigitalCardSection({
     <div style={{ padding: '24px 20px 0', background: '#FFFFFF' }}>
       {/* Section header */}
       <div style={{ marginBottom:'14px', display:'flex', alignItems:'center', gap:'8px' }}>
-        <CreditCard size={15} color="#C5A55A" />
+        <CreditCard size={15} color="#12936A" />
         <h2 style={{ fontSize:'0.78rem', fontWeight:700, color:'#7A7068', letterSpacing:'0.12em', textTransform:'uppercase', margin:0 }}>
           {he ? 'כרטיס דיגיטלי ו-K9000' : 'Digital Card & K9000 Kiosk'}
         </h2>
@@ -983,7 +983,7 @@ function PrestigeKioskPass({
               <button onClick={generateQr} style={{
                 display: 'flex', alignItems: 'center', gap: '4px',
                 background: 'none', border: 'none', cursor: 'pointer',
-                color: 'rgba(197,165,90,0.6)', fontSize: '0.65rem', fontWeight: 500, padding: '2px 6px',
+                color: 'rgba(18,147,106,0.6)', fontSize: '0.65rem', fontWeight: 500, padding: '2px 6px',
               }}>
                 <RefreshCw size={10} /> {he ? 'רענן' : 'Refresh'}
               </button>
@@ -1020,7 +1020,7 @@ function PrestigeKioskPass({
             <div style={{ fontSize: '0.55rem', color: '#9E9E9E', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', marginBottom: '3px' }}>
               {he ? 'נקודות' : 'Points'}
             </div>
-            <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#C5A55A' }}>
+            <div style={{ fontSize: '0.88rem', fontWeight: 800, color: '#12936A' }}>
               {balances.loyaltyPoints.toLocaleString()}
             </div>
           </div>
@@ -1219,7 +1219,7 @@ export default function PrestigePassWallet() {
             <p style={{ color:'#9E9E9E', fontSize:'0.85rem', marginBottom:'20px' }}>
               {is401 ? (he ? 'יש להתחבר כדי לגשת ל-PetWash Privilege.' : 'Please sign in to access PetWash Privilege.') : (he ? 'אנא נסה שוב.' : 'Please try again.')}
             </p>
-            <a href="/signin" style={{ display:'inline-block', background:'linear-gradient(135deg,#C5A55A,#12936A)', color:'#fff', fontWeight:600, padding:'10px 28px', borderRadius:'8px', textDecoration:'none', fontSize:'0.95rem' }}>
+            <a href="/signin" style={{ display:'inline-block', background:'linear-gradient(135deg,#12936A,#12936A)', color:'#fff', fontWeight:600, padding:'10px 28px', borderRadius:'8px', textDecoration:'none', fontSize:'0.95rem' }}>
               {he ? 'כניסה לחשבון' : 'Sign In'}
             </a>
           </div>
@@ -1390,7 +1390,7 @@ export default function PrestigePassWallet() {
                   <span style={{ fontSize: '0.65rem', fontWeight: 600, color: '#9E9E9E', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                     {he ? 'התקדמות לדרגה הבאה' : 'Progress to next tier'}
                   </span>
-                  <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#C5A55A' }}>
+                  <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#12936A' }}>
                     {loyaltyProfile.tierProgress.toLocaleString()} / {loyaltyProfile.tierThreshold.toLocaleString()}
                   </span>
                 </div>

@@ -26,7 +26,7 @@ export default function LoyaltyTiers() {
     platinum: 'rgba(139,92,246,0.3)',
     diamond: 'rgba(96,165,250,0.3)',
     emerald: 'rgba(52,211,153,0.3)',
-    royal: 'rgba(201,169,110,0.4)',
+    royal: 'rgba(18,147,106,0.4)',
   };
 
   const currentTierIndex = TIER_CONFIGS.findIndex(t => t.id === currentTier);
@@ -109,14 +109,14 @@ export default function LoyaltyTiers() {
                     w-[280px] md:w-auto p-6 rounded-2xl transition-all duration-500 cursor-pointer
                     bg-white border backdrop-blur-xl
                     ${isActive
-                      ? 'border-[#12936A] shadow-[0_0_30px_rgba(201,169,110,0.15)]'
+                      ? 'border-[#12936A] shadow-[0_0_30px_rgba(18,147,106,0.15)]'
                       : isExpanded
-                        ? `border-[rgba(201,169,110,0.4)]`
-                        : 'border-[#E8E3D9] hover:border-[rgba(201,169,110,0.3)]'
+                        ? `border-[rgba(18,147,106,0.4)]`
+                        : 'border-[#E8E3D9] hover:border-[rgba(18,147,106,0.3)]'
                     }
                     ${isExpanded ? 'scale-[1.02] -translate-y-1' : 'hover:scale-[1.01]'}
                   `}
-                  style={isExpanded ? { boxShadow: `0 0 40px ${tierGlows[tier.id] || 'rgba(201,169,110,0.15)'}` } : undefined}
+                  style={isExpanded ? { boxShadow: `0 0 40px ${tierGlows[tier.id] || 'rgba(18,147,106,0.15)'}` } : undefined}
                 >
                   {isActive && (
                     <div className="mb-3">
@@ -238,21 +238,21 @@ export default function LoyaltyTiers() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             <div className="text-center group">
-              <div className="w-14 h-14 rounded-xl bg-[rgba(201,169,110,0.1)] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[rgba(201,169,110,0.2)] group-hover:scale-110">
+              <div className="w-14 h-14 rounded-xl bg-[rgba(18,147,106,0.1)] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[rgba(18,147,106,0.2)] group-hover:scale-110">
                 <Star className="w-7 h-7 text-[#12936A]" />
               </div>
               <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'כל רחיצה' : 'Every Wash'}</h3>
               <p className="text-[#8A8078] text-sm">{isHebrew ? '10 נקודות לכל ₪1' : '10 points per ₪1 spent'}</p>
             </div>
             <div className="text-center group">
-              <div className="w-14 h-14 rounded-xl bg-[rgba(201,169,110,0.1)] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[rgba(201,169,110,0.2)] group-hover:scale-110">
+              <div className="w-14 h-14 rounded-xl bg-[rgba(18,147,106,0.1)] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[rgba(18,147,106,0.2)] group-hover:scale-110">
                 <Award className="w-7 h-7 text-[#12936A]" />
               </div>
               <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'הפניית חברים' : 'Referrals'}</h3>
               <p className="text-[#8A8078] text-sm">{isHebrew ? '200 נקודות בונוס' : '200 bonus points'}</p>
             </div>
             <div className="text-center group">
-              <div className="w-14 h-14 rounded-xl bg-[rgba(201,169,110,0.1)] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[rgba(201,169,110,0.2)] group-hover:scale-110">
+              <div className="w-14 h-14 rounded-xl bg-[rgba(18,147,106,0.1)] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[rgba(18,147,106,0.2)] group-hover:scale-110">
                 <Gem className="w-7 h-7 text-[#12936A]" />
               </div>
               <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'אתגרים יומיים' : 'Daily Challenges'}</h3>
@@ -261,12 +261,12 @@ export default function LoyaltyTiers() {
           </div>
         </div>
 
-        <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-[rgba(201,169,110,0.08)] to-[rgba(201,169,110,0.03)] border border-[rgba(201,169,110,0.15)] text-center">
+        <div className="mt-8 p-6 rounded-2xl bg-gradient-to-r from-[rgba(18,147,106,0.08)] to-[rgba(18,147,106,0.03)] border border-[rgba(18,147,106,0.15)] text-center">
           <p className="text-[#6A6A6A] text-sm mb-4">
             {isHebrew ? 'רוצים להתחיל לצבור נקודות ולעלות בדרגות?' : 'Ready to start earning points and climbing tiers?'}
           </p>
           <Link href="/sign-in">
-            <a className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#12936A] to-[#12936A] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(201,169,110,0.3)] hover:scale-105 active:scale-95">
+            <a className="inline-flex items-center gap-2 px-8 py-3 bg-gradient-to-r from-[#12936A] to-[#12936A] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(18,147,106,0.3)] hover:scale-105 active:scale-95">
               <Crown className="w-5 h-5" />
               <span>{isHebrew ? 'הצטרפו למועדון VIP' : 'Join VIP Club'}</span>
             </a>

@@ -160,7 +160,7 @@ export default function KenzoAI() {
           <Link href="/">
             <button
               className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-sm transition-all hover:opacity-80"
-              style={{ background: 'rgba(201,169,110,0.15)', color: '#12936A', border: '1px solid rgba(201,169,110,0.3)' }}
+              style={{ background: 'rgba(18,147,106,0.15)', color: '#12936A', border: '1px solid rgba(18,147,106,0.3)' }}
             >
               <ArrowLeft className="w-4 h-4" />
               <span>{labels.back}</span>
@@ -181,9 +181,9 @@ export default function KenzoAI() {
               onClick={() => setLanguage(lang.code)}
               className="px-3 py-1.5 rounded-full text-xs font-medium transition-all"
               style={{
-                background: language === lang.code ? 'rgba(201,169,110,0.25)' : '#FFFFFF',
+                background: language === lang.code ? 'rgba(18,147,106,0.25)' : '#FFFFFF',
                 color: language === lang.code ? '#12936A' : '#6A6A6A',
-                border: language === lang.code ? '1px solid rgba(201,169,110,0.5)' : '1px solid #E8E3D9',
+                border: language === lang.code ? '1px solid rgba(18,147,106,0.5)' : '1px solid #E8E3D9',
               }}
             >
               {lang.flag} {lang.label}
@@ -206,7 +206,7 @@ export default function KenzoAI() {
         {/* Chat Messages */}
         <div
           className="flex-1 overflow-y-auto space-y-3 pb-2 min-h-0"
-          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(201,169,110,0.3) transparent' }}
+          style={{ scrollbarWidth: 'thin', scrollbarColor: 'rgba(18,147,106,0.3) transparent' }}
         >
           {messages.map((msg) => (
             <div
@@ -216,7 +216,7 @@ export default function KenzoAI() {
               {msg.role === 'kenzo' && (
                 <div
                   className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-base"
-                  style={{ background: 'rgba(201,169,110,0.2)', border: '1px solid rgba(201,169,110,0.3)' }}
+                  style={{ background: 'rgba(18,147,106,0.2)', border: '1px solid rgba(18,147,106,0.3)' }}
                 >
                   🐾
                 </div>
@@ -225,10 +225,10 @@ export default function KenzoAI() {
                 className="max-w-[80%] px-4 py-3 rounded-2xl text-sm leading-relaxed whitespace-pre-wrap"
                 style={{
                   background: msg.role === 'user'
-                    ? 'rgba(201,169,110,0.2)'
+                    ? 'rgba(18,147,106,0.2)'
                     : '#FFFFFF',
                   border: msg.role === 'user'
-                    ? '1px solid rgba(201,169,110,0.3)'
+                    ? '1px solid rgba(18,147,106,0.3)'
                     : '1px solid #E8E3D9',
                   backdropFilter: 'blur(12px)',
                   borderRadius: msg.role === 'user'
@@ -246,7 +246,7 @@ export default function KenzoAI() {
             <div className={`flex items-end gap-2 ${isRTL ? 'flex-row-reverse justify-end' : 'flex-row justify-start'}`}>
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-base"
-                style={{ background: 'rgba(201,169,110,0.2)', border: '1px solid rgba(201,169,110,0.3)' }}
+                style={{ background: 'rgba(18,147,106,0.2)', border: '1px solid rgba(18,147,106,0.3)' }}
               >
                 🐾
               </div>
@@ -276,9 +276,9 @@ export default function KenzoAI() {
                 onClick={() => sendMessage(s)}
                 className="px-3 py-1.5 rounded-full text-xs transition-all hover:scale-105"
                 style={{
-                  background: 'rgba(201,169,110,0.1)',
+                  background: 'rgba(18,147,106,0.1)',
                   color: '#12936A',
-                  border: '1px solid rgba(201,169,110,0.25)',
+                  border: '1px solid rgba(18,147,106,0.25)',
                 }}
               >
                 <Sparkles className="w-3 h-3 inline-block mr-1 opacity-60" />
@@ -307,7 +307,7 @@ export default function KenzoAI() {
               color: '#1A1A1A',
               backdropFilter: 'blur(12px)',
             }}
-            onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(201,169,110,0.5)'; }}
+            onFocus={(e) => { e.currentTarget.style.borderColor = 'rgba(18,147,106,0.5)'; }}
             onBlur={(e) => { e.currentTarget.style.borderColor = '#E8E3D9'; }}
           />
           <button
@@ -315,8 +315,8 @@ export default function KenzoAI() {
             disabled={!input.trim() || loading}
             className="w-11 h-11 rounded-full flex items-center justify-center transition-all hover:scale-105 disabled:opacity-30 shrink-0"
             style={{
-              background: input.trim() ? 'rgba(201,169,110,0.3)' : '#FFFFFF',
-              border: '1px solid rgba(201,169,110,0.4)',
+              background: input.trim() ? 'rgba(18,147,106,0.3)' : '#FFFFFF',
+              border: '1px solid rgba(18,147,106,0.4)',
               color: '#12936A',
             }}
           >

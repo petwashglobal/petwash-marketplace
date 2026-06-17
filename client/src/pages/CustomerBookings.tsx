@@ -22,7 +22,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationBell } from '@/components/NotificationCenterPanel';
 
-const GOLD = '#C5A55A';
+const GOLD = '#12936A';
 
 const TABS = [
   { id: 'pending',  labelHe: 'ממתין',   labelEn: 'Pending'  },
@@ -714,7 +714,7 @@ function BookingCard({
               {/* Loyalty credits redeemed badge */}
               {(booking.loyaltyRedeemedCents ?? 0) > 0 && (
                 <div className="mt-2">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#C5A55A]/10 text-[#7A5C1E] border border-[#C5A55A]/20">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#12936A]/10 text-[#7A5C1E] border border-[#12936A]/20">
                     <Coins size={9} />
                     {isRTL
                       ? `קרדיטים מומשו ₪${((booking.loyaltyRedeemedCents ?? 0) / 100).toFixed(0)}`
