@@ -482,6 +482,87 @@ export class SumitClient {
     }
     return crypto.timingSafeEqual(expectedBuf, receivedBuf);
   }
+
+  /**
+   * Begin a SUMIT hosted-page charge (POST /billing/payments/beginredirect/).
+   * This is the PCI-safe, zero-card-form path: we send amount + items + a
+   * RedirectURL, SUMIT returns a hosted payment-page URL, the customer pays
+   * there (cleared via UPay), SUMIT issues the fiscal doc, and redirects back
+   * to RedirectURL with ?Valid&Result&ID. ALWAYS re-verify server-side with
+   * getTransaction() — the querystring is spoofable.
+   *
+   * Safety: no-op (wired:false) without creds; never throws.
+   * FIELDS UNVERIFIED — confirm exact request keys in SANDBOX (SUMIT_SANDBOX=true)
+   * before production (docs/finance/sumit-upay-wiring-readiness-2026-06-11.md §6).
+   */
+  async beginRedirect(input: {
+    externalId: string;        // our order/idempotency id
+    amountIls: number;         // VAT-inclusive gross
+    description: string;
+    redirectUrl: string;       // where SUMIT returns the customer
+    customerName?: string;
+    customerEmail?: string;
+  }): Promise<{ wired: boolean; redirectUrl?: string; reason?: string; rawResponse?: unknown }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, reason: 'SUMIT not enabled' };
+
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      RedirectURL: input.redirectUrl,
+      ExternalIdentifier: input.externalId,
+      Customer: {
+        Name: input.customerName || 'PetWash Customer',
+        EmailAddress: input.customerEmail || undefined,
+      },
+      Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountIls }],
+      VATIncluded: true, // gross amount already includes VAT
+      Language: 'he',
+    };
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/payments/beginredirect/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Idempotency-Key': input.externalId },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) return { wired: true, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      // Response URL field name unverified — try common variants.
+      const url = parsed?.RedirectURL || parsed?.PaymentURL || parsed?.URL || parsed?.Data?.RedirectURL || parsed?.Data?.URL;
+      if (!url) return { wired: true, reason: 'no redirect URL in SUMIT response', rawResponse: parsed };
+      return { wired: true, redirectUrl: String(url), rawResponse: parsed };
+    } catch (err: any) {
+      logger.error('[SumitClient] beginRedirect network error', { externalId: input.externalId, err: err?.message });
+      return { wired: false, reason: `Network error: ${err?.message}` };
+    }
+  }
+
+  /**
+   * Re-verify a transaction server-side (POST /billing/payments/gettransaction/).
+   * The beginredirect querystring is spoofable — this is the authoritative check
+   * before we treat a payment as real. No-op without creds; never throws.
+   */
+  async getTransaction(transactionId: string): Promise<{ wired: boolean; valid: boolean; raw?: unknown; reason?: string }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, valid: false, reason: 'SUMIT not enabled' };
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/payments/gettransaction/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify({ Credentials: { CompanyID: env.companyId, APIKey: env.apiKey }, TransactionID: transactionId }),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) return { wired: true, valid: false, reason: `SUMIT returned ${res.status}`, raw: parsed };
+      // Valid/approved field name unverified — accept common shapes.
+      const valid = parsed?.Valid === true || parsed?.Valid === 1 || parsed?.Data?.Valid === true ||
+        String(parsed?.Status || parsed?.Data?.Status || '').toLowerCase() === 'approved';
+      return { wired: true, valid, raw: parsed };
+    } catch (err: any) {
+      logger.error('[SumitClient] getTransaction network error', { transactionId, err: err?.message });
+      return { wired: false, valid: false, reason: `Network error: ${err?.message}` };
+    }
+  }
 }
 
 export const sumitClient = new SumitClient();

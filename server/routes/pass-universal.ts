@@ -112,6 +112,17 @@ async function lookupWalletBalance(userId: string): Promise<{ tier?: string | nu
   }
 }
 
+// Escape user-controlled values before interpolating into the pass HTML page
+// (ownerName/primaryPetName are user-set → stored XSS without this).
+function escapeHtml(s: unknown): string {
+  return String(s ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 async function ownerNameForUser(userId: string, data: Record<string, unknown>): Promise<string> {
   const explicit = [data.ownerName, data.displayName, data.name].find((value) => typeof value === 'string' && value.trim());
   if (explicit) return String(explicit);
@@ -338,14 +349,14 @@ router.get('/:token', async (req: Request, res: Response) => {
 <div class="card">
   <div class="brand">P E T W A S H ™</div>
   <h1>${isHe ? 'הפאס ה-Prestige שלך' : 'Your Prestige Pass'}</h1>
-  <p>${pass.ownerName}${pass.primaryPetName ? ' · ' + pass.primaryPetName + ' 🐾' : ''}</p>
+  <p>${escapeHtml(pass.ownerName)}${pass.primaryPetName ? ' · ' + escapeHtml(pass.primaryPetName) + ' 🐾' : ''}</p>
   ${appleConfigured
     ? `<a class="btn apple" href="${appleUrl}">${isHe ? 'הוסף ל‑Apple Wallet' : 'Add to Apple Wallet'}</a>`
     : `<div class="btn disabled">${isHe ? 'Apple Wallet — בקרוב' : 'Apple Wallet — Coming Soon'}</div>`}
   ${googleConfigured
     ? `<a class="btn google" href="${googleUrl}">${isHe ? 'הוסף ל‑Google Wallet' : 'Add to Google Wallet'}</a>`
     : `<div class="btn disabled">${isHe ? 'Google Wallet — בקרוב' : 'Google Wallet — Coming Soon'}</div>`}
-  <div class="id">${pass.passId}</div>
+  <div class="id">${escapeHtml(pass.passId)}</div>
 </div>
 </body>
 </html>`);
