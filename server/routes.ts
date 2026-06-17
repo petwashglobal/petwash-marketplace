@@ -47,6 +47,7 @@ import prestigePassRoutes from "./routes/prestige-pass";
 import prestigeJoinRoutes from "./routes/prestige-join";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
+import paymentsSumitRoutes from "./routes/payments-sumit";
 import googleServicesRoutes from "./routes/google-services";
 import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
@@ -10843,6 +10844,8 @@ self.addEventListener('notificationclick', (event) => {
   // routes work for Firebase-authenticated clients (iOS app / Safari) and not
   // only the legacy cookie session — fixes "Add to Apple Wallet → 401 Auth required".
   app.use('/api/prestige-pass', apiLimiter, optionalFirebaseToken, prestigePassRoutes);
+  // SUMIT hosted-page payments (PCI-safe; UPay clears underneath). Sandbox until SUMIT_SANDBOX=false.
+  app.use('/api/payments/sumit', apiLimiter, paymentsSumitRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across
