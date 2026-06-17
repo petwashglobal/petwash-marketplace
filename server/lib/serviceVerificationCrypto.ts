@@ -10,9 +10,9 @@ import { VERIFICATION_CODE_LENGTH } from '@shared/service-verification';
 
 /** Cryptographically-random numeric code (leading zeros preserved). */
 export function generateVerificationCode(): string {
-  const max = 10 ** VERIFICATION_CODE_LENGTH;
-  // Rejection-free: read a 32-bit int, mod into range (bias negligible at 1e6).
-  const n = crypto.randomBytes(4).readUInt32BE(0) % max;
+  // crypto.randomInt is UNBIASED (uses rejection sampling internally) — avoids
+  // the modulo bias of `randomBytes % max` that CodeQL js/biased-cryptographic-random flags.
+  const n = crypto.randomInt(0, 10 ** VERIFICATION_CODE_LENGTH);
   return n.toString().padStart(VERIFICATION_CODE_LENGTH, '0');
 }
 
