@@ -799,6 +799,47 @@ router.get('/:requestId', async (req, res) => {
 });
 
 /**
+ * PATCH /api/booking-requests/:requestId - Pet owner submits a rating/review
+ * after the service is completed. Owner-only; completed bookings only.
+ */
+router.patch('/:requestId', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+    const { requestId } = req.params;
+
+    const ratingNum = Number(req.body?.ownerRating);
+    if (!Number.isFinite(ratingNum) || ratingNum < 1 || ratingNum > 5) {
+      return res.status(400).json({ error: 'ownerRating must be a number 1–5' });
+    }
+    const review = typeof req.body?.ownerReview === 'string'
+      ? req.body.ownerReview.slice(0, 2000)
+      : null;
+
+    const [booking] = await db.select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.ownerId !== userId) {
+      return res.status(403).json({ error: 'Only the pet owner can review this booking' });
+    }
+    if (booking.status !== 'completed') {
+      return res.status(409).json({ error: 'You can only review a completed booking' });
+    }
+
+    await db.update(bookingRequests)
+      .set({ ownerRating: String(ratingNum), ownerReview: review })
+      .where(eq(bookingRequests.requestId, requestId));
+
+    return res.json({ ok: true, requestId, ownerRating: ratingNum, ownerReview: review });
+  } catch (err: any) {
+    logger.error('[BookingRequests] PATCH review error', { err: err?.message });
+    return res.status(500).json({ error: 'Failed to save review' });
+  }
+});
+
+/**
  * POST /api/booking-requests/:requestId/respond - Provider accepts/declines
  */
 router.post('/:requestId/respond', async (req, res) => {
