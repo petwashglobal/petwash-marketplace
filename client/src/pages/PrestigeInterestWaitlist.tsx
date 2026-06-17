@@ -147,9 +147,9 @@ export default function PrestigeInterestWaitlist() {
 
   return (
     <Layout language={appLang} onLanguageChange={() => {}}>
-      <main className="min-h-screen bg-[#f8f7f3] text-[#111111]" dir={isHebrew ? 'rtl' : 'ltr'}>
+      <main className="min-h-screen overflow-x-hidden bg-[#f8f7f3] text-[#111111]" dir={isHebrew ? 'rtl' : 'ltr'}>
         <section className="relative overflow-hidden border-b border-[#d8d1c0] bg-[radial-gradient(circle_at_20%_10%,rgba(184,154,77,0.16),transparent_34%),linear-gradient(135deg,#ffffff_0%,#f8f7f3_44%,#ece7dc_100%)]">
-          <div className="mx-auto grid min-h-[72vh] max-w-7xl grid-cols-1 gap-8 px-5 py-10 sm:px-8 lg:grid-cols-[0.92fr_1.08fr] lg:py-14">
+          <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-5 py-10 sm:px-8 lg:min-h-[72vh] lg:grid-cols-[0.92fr_1.08fr] lg:py-14">
             <div className="flex flex-col justify-between gap-8">
               <div>
                 <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-[#b89a4d]/35 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#7a642e] shadow-sm">
@@ -159,7 +159,7 @@ export default function PrestigeInterestWaitlist() {
                 <h1 className="max-w-2xl text-[clamp(2.25rem,6vw,5.6rem)] font-semibold leading-[0.9] tracking-[-0.04em] text-[#101010]">
                   {isHebrew ? 'בקשת עניין לחברות Prestige' : 'Prestige Interest Application'}
                 </h1>
-                <p className="mt-6 max-w-xl text-base leading-8 text-[#5f5a50] sm:text-lg">
+                <p className="mt-6 max-w-xl break-words text-base leading-8 text-[#5f5a50] sm:text-lg">
                   {isHebrew
                     ? 'מסלול נקי למבוגרים 18+ בלבד: משאירים פרטים, מאמתים מובייל ואימייל, ורק אחרי אישור מופעלים חשבון, כרטיס Wallet והטבות.'
                     : 'A clean adult-only 18+ path: leave interest, verify mobile and email, then activate account, Wallet pass and benefits only after approval.'}
@@ -302,27 +302,27 @@ export default function PrestigeInterestWaitlist() {
 
         <section className="mx-auto grid max-w-7xl gap-4 px-5 py-8 sm:px-8 lg:grid-cols-3">
           <div className="rounded-2xl border border-[#ddd4c1] bg-white p-5">
-            <h3 className="text-lg font-semibold">{isHebrew ? 'חברי Prestige' : 'Prestige members'}</h3>
+            <h3 className="text-lg font-semibold">{isHebrew ? 'גישת חברים תחילה' : 'Members-first access'}</h3>
             <p className="mt-2 text-sm leading-6 text-[#635d54]">
               {isHebrew
-                ? 'משתמשים מאושרים ממשיכים לאימות מובייל/אימייל ואז למסך החברות, ההטבות וה-Wallet.'
-                : 'Approved users continue to mobile/email verification, then membership, benefits and Wallet screens.'}
+                ? 'חברים מאושרים מקבלים את חוויית העמדות, כרטיס ה-Wallet (Apple ו-Google) והטבות לחברים בלבד.'
+                : 'Approved members unlock the station experience, the Apple & Google Wallet pass, and member-only benefits.'}
             </p>
           </div>
           <div className="rounded-2xl border border-[#ddd4c1] bg-white p-5">
-            <h3 className="text-lg font-semibold">{isHebrew ? 'ספקי שירות' : 'Providers'}</h3>
+            <h3 className="text-lg font-semibold">{isHebrew ? 'מאומת ו-18+' : 'Verified & 18+'}</h3>
             <p className="mt-2 text-sm leading-6 text-[#635d54]">
               {isHebrew
-                ? 'ספקים לא מאושרים אוטומטית. יש מסלול נפרד לתמונה, תעריפים, כתובת, מסמכים, בנק, ביטוח ובדיקת ציות.'
-                : 'Providers are not auto-approved. They use a separate path for photo, rates, address, documents, bank, insurance and compliance review.'}
+                ? 'מאמתים את המובייל והאימייל שלך לפני כל הפעלה. החברות למבוגרים 18+ בלבד.'
+                : 'We confirm your mobile and email before anything is activated. Membership is for adults 18 and over.'}
             </p>
           </div>
           <div className="rounded-2xl border border-[#ddd4c1] bg-white p-5">
-            <h3 className="text-lg font-semibold">{isHebrew ? 'מידע ציבורי בלבד' : 'Public-safe wording only'}</h3>
+            <h3 className="text-lg font-semibold">{isHebrew ? 'בכרטיס ה-Wallet שלך' : 'Lives in your Wallet'}</h3>
             <p className="mt-2 text-sm leading-6 text-[#635d54]">
               {isHebrew
-                ? 'נוסח ביטוח/הגנה יוצג רק לאחר אישור. אין באתר פרמיות, עלויות, פוליסות פנימיות או מידע סודי של Pet Wash Ltd.'
-                : 'Insurance/protection wording appears only after approval. The site does not expose premiums, costs, internal policies or Pet Wash Ltd confidential information.'}
+                ? 'לאחר אישור, החברות שלך נשמרת ב-Apple או Google Wallet — קרבה מהירה בכל עמדה.'
+                : 'Once approved, your PetWash membership sits in Apple or Google Wallet — tap to use at any station.'}
             </p>
           </div>
         </section>
