@@ -98,8 +98,8 @@ export default function QrActivatePage() {
       <div className="w-full max-w-md">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#C5A55A]/10 mb-4">
-            <Waves className="w-8 h-8 text-[#C5A55A]" />
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#12936A]/10 mb-4">
+            <Waves className="w-8 h-8 text-[#12936A]" />
           </div>
           <h1 className="text-2xl font-bold text-gray-900">
             {isRtl ? 'הפעלת עמדת שטיפה' : 'Start Wash Session'}
@@ -116,7 +116,7 @@ export default function QrActivatePage() {
           <div className="space-y-4">
             <div className="rounded-2xl border border-gray-200 p-5">
               <div className="flex items-center gap-2 mb-3">
-                <QrCode className="w-4 h-4 text-[#C5A55A]" />
+                <QrCode className="w-4 h-4 text-[#12936A]" />
                 <span className="text-sm font-medium text-gray-700">
                   {isRtl ? 'הדבק נתוני QR' : 'Paste QR data'}
                 </span>
@@ -126,14 +126,14 @@ export default function QrActivatePage() {
                 onChange={e => setRawQr(e.target.value)}
                 placeholder={isRtl ? '{ "machineId": "K9000-IL-001", ... }' : '{ "machineId": "K9000-IL-001", ... }'}
                 rows={5}
-                className="w-full rounded-xl border border-gray-200 p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-[#C5A55A]/40 text-gray-800 bg-white"
+                className="w-full rounded-xl border border-gray-200 p-3 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-[#12936A]/40 text-gray-800 bg-white"
               />
             </div>
 
             <Button
               onClick={handleActivate}
               disabled={isLoading || !rawQr.trim()}
-              className="w-full h-12 bg-[#C5A55A] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
+              className="w-full h-12 bg-[#12936A] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -149,9 +149,9 @@ export default function QrActivatePage() {
         {/* Step: READY */}
         {step === 'ready' && (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-[#C5A55A]/30 bg-[#C5A55A]/5 p-5">
+            <div className="rounded-2xl border border-[#12936A]/30 bg-[#12936A]/5 p-5">
               <div className="flex items-start gap-3">
-                <CheckCircle2 className="w-5 h-5 text-[#C5A55A] mt-0.5 shrink-0" />
+                <CheckCircle2 className="w-5 h-5 text-[#12936A] mt-0.5 shrink-0" />
                 <div className="flex-1">
                   <p className="font-semibold text-gray-900">
                     {machineName || (isRtl ? 'עמדה מאומתת' : 'Station verified')}
@@ -162,7 +162,7 @@ export default function QrActivatePage() {
                 </div>
               </div>
               {priceCents !== null && (
-                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[#C5A55A]/20">
+                <div className="flex items-center gap-2 mt-4 pt-4 border-t border-[#12936A]/20">
                   <CreditCard className="w-4 h-4 text-gray-400" />
                   <span className="text-sm text-gray-600">
                     {isRtl ? 'לחיוב:' : 'Amount charged:'}
@@ -175,7 +175,7 @@ export default function QrActivatePage() {
             <Button
               onClick={start}
               disabled={isLoading}
-              className="w-full h-12 bg-[#C5A55A] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
+              className="w-full h-12 bg-[#12936A] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -277,7 +277,7 @@ export default function QrActivatePage() {
             </div>
             <Button
               onClick={reset}
-              className="w-full h-12 bg-[#C5A55A] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
+              className="w-full h-12 bg-[#12936A] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               {isRtl ? 'נסה שוב' : 'Try again'}

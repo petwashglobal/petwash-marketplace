@@ -641,8 +641,8 @@ export default function POSProfile() {
                   <div
                     className="w-14 h-14 rounded-full flex items-center justify-center border-4 font-bold text-lg"
                     style={{
-                      borderColor: trustStats.trustScore >= 75 ? '#C5A55A' : trustStats.trustScore >= 50 ? '#3b82f6' : '#d1d5db',
-                      color: trustStats.trustScore >= 75 ? '#C5A55A' : trustStats.trustScore >= 50 ? '#3b82f6' : '#6b7280',
+                      borderColor: trustStats.trustScore >= 75 ? '#12936A' : trustStats.trustScore >= 50 ? '#3b82f6' : '#d1d5db',
+                      color: trustStats.trustScore >= 75 ? '#12936A' : trustStats.trustScore >= 50 ? '#3b82f6' : '#6b7280',
                     }}
                   >
                     {trustStats.trustScore}

@@ -178,8 +178,8 @@ export default function FlashDeals() {
               onClick={() => setPetFilter(p)}
               style={{
                 touchAction: 'manipulation',
-                borderColor: petFilter === p ? '#C5A55A' : '#e5e5e5',
-                backgroundColor: petFilter === p ? 'rgba(197,165,90,0.07)' : 'white',
+                borderColor: petFilter === p ? '#12936A' : '#e5e5e5',
+                backgroundColor: petFilter === p ? 'rgba(18,147,106,0.07)' : 'white',
                 color: petFilter === p ? '#8B6914' : '#888',
               }}
               className="flex-1 py-2 rounded-xl border text-[11px] font-medium tracking-wide capitalize transition-all"

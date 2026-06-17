@@ -29,6 +29,7 @@ describe('PetWash brand tokens', () => {
     expect(tokens).not.toMatch(/#D4AF37/i); // bright gold — removed
     expect(tokens).not.toMatch(/#B8860B/i); // deep gold — removed
     expect(tokens).not.toMatch(/#F2D778/i); // gold sheen — removed
+    expect(tokens).not.toMatch(/#C5A55A/i); // washed gold — removed
     expect(tokens).not.toMatch(/#F7F4EE/i); // cream/ivory ground
     expect(tokens).not.toMatch(/#735511/i); // muted antique/olive gold
   });

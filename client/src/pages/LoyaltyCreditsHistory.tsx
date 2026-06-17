@@ -83,7 +83,7 @@ interface EventMeta {
 
 function eventMeta(eventType: string, amountCents: number): EventMeta {
   if (amountCents > 0) return { icon: "✦", color: "text-emerald-600", sign: "positive" };
-  if (eventType === "redeem") return { icon: "🛒", color: "text-[#C5A55A]", sign: "negative" };
+  if (eventType === "redeem") return { icon: "🛒", color: "text-[#12936A]", sign: "negative" };
   if (eventType === "expire") return { icon: "⏰", color: "text-gray-400", sign: "negative" };
   return { icon: "●", color: "text-gray-400", sign: "neutral" };
 }
@@ -92,7 +92,7 @@ function eventMeta(eventType: string, amountCents: number): EventMeta {
 
 function BalanceCard({ balance }: { balance: LoyaltyBalance }) {
   return (
-    <div className="mx-5 mt-5 rounded-3xl overflow-hidden bg-gradient-to-br from-[#C5A55A] to-[#8B6914] text-white shadow-lg shadow-[#C5A55A]/25">
+    <div className="mx-5 mt-5 rounded-3xl overflow-hidden bg-gradient-to-br from-[#12936A] to-[#8B6914] text-white shadow-lg shadow-[#12936A]/25">
       <div className="p-5">
         <div className="flex items-center gap-2 mb-4">
           <Coins className="w-5 h-5 text-white/80" />
@@ -123,7 +123,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
     <div className="flex items-start gap-3 px-5 py-4">
       {/* Icon dot */}
       <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 mt-0.5 text-base
-        ${isPositive ? "bg-emerald-50" : entry.eventType === "redeem" ? "bg-[#C5A55A]/10" : "bg-white"}`}>
+        ${isPositive ? "bg-emerald-50" : entry.eventType === "redeem" ? "bg-[#12936A]/10" : "bg-white"}`}>
         {meta.icon}
       </div>
 
@@ -132,7 +132,7 @@ function EntryRow({ entry }: { entry: LedgerEntry }) {
         <div className="flex items-center justify-between gap-2">
           <span className="text-sm font-semibold text-gray-900">{eventLabel(entry.eventType)}</span>
           <span className={`text-sm font-bold shrink-0 ${
-            isPositive ? "text-emerald-600" : entry.eventType === "expire" ? "text-gray-400" : "text-[#C5A55A]"
+            isPositive ? "text-emerald-600" : entry.eventType === "expire" ? "text-gray-400" : "text-[#12936A]"
           }`}>
             {isPositive ? "+" : "-"}{formatILS(entry.amountIlsCents)}
           </span>
@@ -202,9 +202,9 @@ export default function LoyaltyCreditsHistory() {
   if (!user) {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 p-8">
-        <Coins className="w-12 h-12 text-[#C5A55A]" />
+        <Coins className="w-12 h-12 text-[#12936A]" />
         <p className="text-gray-600 text-center">יש להתחבר כדי לראות את הקרדיטים</p>
-        <Button onClick={() => setLocation("/signin")} className="bg-[#C5A55A] text-white">
+        <Button onClick={() => setLocation("/signin")} className="bg-[#12936A] text-white">
           התחברות
         </Button>
       </div>
@@ -256,10 +256,10 @@ export default function LoyaltyCreditsHistory() {
             </div>
             <div className="bg-white rounded-2xl p-4 shadow-sm">
               <div className="flex items-center gap-2 mb-1">
-                <TrendingDown className="w-4 h-4 text-[#C5A55A]" />
+                <TrendingDown className="w-4 h-4 text-[#12936A]" />
                 <span className="text-xs text-gray-400">מומשו</span>
               </div>
-              <p className="text-lg font-bold text-[#C5A55A]">
+              <p className="text-lg font-bold text-[#12936A]">
                 {formatILS(Math.abs(entries.filter(e => e.eventType === "redeem").reduce((s, e) => s + e.amountIlsCents, 0)))}
               </p>
             </div>
@@ -275,7 +275,7 @@ export default function LoyaltyCreditsHistory() {
                 onClick={() => setActiveFilter(f.id)}
                 className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
                   activeFilter === f.id
-                    ? "bg-[#C5A55A] text-white shadow-sm"
+                    ? "bg-[#12936A] text-white shadow-sm"
                     : "bg-white text-gray-500 border border-gray-100"
                 }`}
               >
@@ -316,7 +316,7 @@ export default function LoyaltyCreditsHistory() {
         </div>
 
         {/* ── Explanation footer ─────────────────────────────────────────── */}
-        <div className="mx-5 mt-4 mb-6 p-4 bg-[#C5A55A]/5 rounded-2xl border border-[#C5A55A]/15">
+        <div className="mx-5 mt-4 mb-6 p-4 bg-[#12936A]/5 rounded-2xl border border-[#12936A]/15">
           <p className="text-xs font-bold text-[#7A5C1E] mb-2">איך זה עובד?</p>
           <ul className="text-xs text-[#8B6914] space-y-1.5 list-none">
             <li>✦ צבור קרדיטים על כל הזמנה שהושלמה</li>

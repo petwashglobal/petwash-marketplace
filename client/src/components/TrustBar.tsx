@@ -1,7 +1,7 @@
 import { Shield, CheckCircle } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 
-const GOLD = '#C5A55A';
+const GOLD = '#12936A';
 
 interface TrustBadge {
   icon: React.ReactNode;

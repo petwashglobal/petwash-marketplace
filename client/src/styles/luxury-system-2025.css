@@ -809,7 +809,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 .luxury-dark-btn-gold:hover {
   background: linear-gradient(135deg, #12936A, #e5c04b);
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(201, 169, 110, 0.3);
+  box-shadow: 0 4px 20px rgba(18, 147, 106, 0.3);
 }
 .luxury-dark-btn-gold:disabled {
   opacity: 0.5;

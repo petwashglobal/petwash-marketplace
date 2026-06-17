@@ -96,9 +96,9 @@ export default function LoyaltyBenefits() {
           {benefits.map((benefit, idx) => (
             <div
               key={idx}
-              className="p-6 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(201,169,110,0.3)] group"
+              className="p-6 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(18,147,106,0.3)] group"
             >
-              <div className="w-12 h-12 rounded-xl bg-[rgba(201,169,110,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(201,169,110,0.2)]">
+              <div className="w-12 h-12 rounded-xl bg-[rgba(18,147,106,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(18,147,106,0.2)]">
                 <benefit.icon className="w-6 h-6 text-[#12936A]" />
               </div>
 
@@ -106,7 +106,7 @@ export default function LoyaltyBenefits() {
               <p className="text-[#9A9088] text-xs mb-3">{benefit.subtitle}</p>
               <p className="text-[#7A7068] text-sm mb-4 leading-relaxed">{benefit.description}</p>
 
-              <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[rgba(201,169,110,0.1)] text-[#12936A] border border-[rgba(201,169,110,0.2)]">
+              <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[rgba(18,147,106,0.1)] text-[#12936A] border border-[rgba(18,147,106,0.2)]">
                 {benefit.tier}
               </span>
             </div>
@@ -121,7 +121,7 @@ export default function LoyaltyBenefits() {
             {isHebrew ? 'הצטרפו למועדון הנאמנות שלנו והתחילו לצבור נקודות והטבות מהרגע הראשון' : 'Join our loyalty club and start earning points and benefits from day one'}
           </p>
           <Link href="/loyalty">
-            <a className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#12936A] to-[#12936A] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(201,169,110,0.3)] hover:scale-105">
+            <a className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#12936A] to-[#12936A] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(18,147,106,0.3)] hover:scale-105">
               <Crown className="w-5 h-5" />
               <span>{isHebrew ? 'הצטרפו עכשיו' : 'Join Now'}</span>
             </a>

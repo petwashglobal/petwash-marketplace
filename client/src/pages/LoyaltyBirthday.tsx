@@ -93,9 +93,9 @@ export default function LoyaltyBirthday() {
           </p>
         </div>
 
-        <div className="p-8 md:p-12 rounded-2xl bg-white border border-[rgba(201,169,110,0.15)] backdrop-blur-xl text-center mb-12 shadow-[0_0_40px_rgba(201,169,110,0.05)]">
+        <div className="p-8 md:p-12 rounded-2xl bg-white border border-[rgba(18,147,106,0.15)] backdrop-blur-xl text-center mb-12 shadow-[0_0_40px_rgba(18,147,106,0.05)]">
           <div className="max-w-2xl mx-auto">
-            <div className="w-20 h-20 rounded-2xl bg-[rgba(201,169,110,0.1)] border border-[rgba(201,169,110,0.2)] flex items-center justify-center mx-auto mb-6">
+            <div className="w-20 h-20 rounded-2xl bg-[rgba(18,147,106,0.1)] border border-[rgba(18,147,106,0.2)] flex items-center justify-center mx-auto mb-6">
               <PartyPopper className="w-10 h-10 text-[#12936A]" />
             </div>
 
@@ -126,7 +126,7 @@ export default function LoyaltyBirthday() {
               </div>
             </div>
 
-            <Button className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#12936A] to-[#12936A] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(201,169,110,0.3)] hover:scale-105">
+            <Button className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#12936A] to-[#12936A] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(18,147,106,0.3)] hover:scale-105">
               <Gift className="w-5 h-5" />
               <span>{isHebrew ? 'הגדירו הטבות יום הולדת' : 'Set Up Birthday Rewards'}</span>
             </Button>
@@ -149,7 +149,7 @@ export default function LoyaltyBirthday() {
                 <h3 className="text-[#1A1A1A] font-bold text-lg mb-1">{reward.title}</h3>
                 <p className="text-[#9A9088] text-xs mb-3">{reward.subtitle}</p>
                 <p className="text-[#7A7068] text-sm mb-4 leading-relaxed">{reward.description}</p>
-                <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[rgba(201,169,110,0.1)] text-[#12936A] border border-[rgba(201,169,110,0.2)]">
+                <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[rgba(18,147,106,0.1)] text-[#12936A] border border-[rgba(18,147,106,0.2)]">
                   {reward.tier}
                 </span>
               </div>

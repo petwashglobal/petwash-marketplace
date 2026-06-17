@@ -200,7 +200,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
     <div className="luxury-dark-card rounded-2xl p-8 mt-6 luxury-animate-scale-in luxury-delay-2">
       <div className="flex items-center justify-between mb-8">
         <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(18,147,106,0.3)] to-[rgba(18,147,106,0.1)]">
             <KeyRound className="h-6 w-6 text-[#b0841c]" />
           </div>
           <div>
@@ -689,7 +689,7 @@ export default function Settings() {
             <TabsContent value="account">
               <div className="luxury-dark-card rounded-2xl p-8 mb-6 luxury-animate-scale-in">
                 <h2 className="luxury-dark-heading-lg text-lg mb-6 flex items-center gap-3">
-                  <div className="p-2 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
+                  <div className="p-2 rounded-xl bg-gradient-to-br from-[rgba(18,147,106,0.3)] to-[rgba(18,147,106,0.1)]">
                     <Shield className="h-5 w-5 text-[#b0841c]" />
                   </div>
                   {t('settings.accountDetails', language)}
@@ -851,7 +851,7 @@ export default function Settings() {
               <div className="luxury-dark-card rounded-2xl p-8 luxury-animate-scale-in luxury-delay-1">
                 <div className="flex items-center justify-between mb-8">
                   <div className="flex items-center gap-4">
-                    <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(201,169,110,0.3)] to-[rgba(201,169,110,0.1)]">
+                    <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(18,147,106,0.3)] to-[rgba(18,147,106,0.1)]">
                       <Fingerprint className="h-6 w-6 text-[#b0841c]" />
                     </div>
                     <div>
@@ -887,7 +887,7 @@ export default function Settings() {
                   </div>
                 ) : devices.length === 0 ? (
                   <div className="text-center py-16 luxury-dark-surface rounded-2xl luxury-animate-fade-in">
-                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[rgba(201,169,110,0.2)] to-[rgba(201,169,110,0.05)] w-20 h-20 mx-auto mb-6 flex items-center justify-center">
+                    <div className="p-4 rounded-2xl bg-gradient-to-br from-[rgba(18,147,106,0.2)] to-[rgba(18,147,106,0.05)] w-20 h-20 mx-auto mb-6 flex items-center justify-center">
                       <Fingerprint className="h-10 w-10 text-[#b0841c]" />
                     </div>
                     <h3 className="luxury-dark-heading-sm mb-3">

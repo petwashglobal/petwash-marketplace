@@ -85,12 +85,12 @@ const TYPE_CONFIG: Record<string, {
   },
   // ── Smart rebook reminders — written by rebook-scheduler.ts ──
   rebook_reminder_post_completion: {
-    label: "Book again?", labelHe: "הזמן שוב?", color: "#C5A55A", Icon: RefreshCw,
+    label: "Book again?", labelHe: "הזמן שוב?", color: "#12936A", Icon: RefreshCw,
     actionLabel: "Book again", actionLabelHe: "הזמן שוב",
     hint: "🐾 One tap to rebook →", hintHe: "🐾 לחיצה אחת להזמנה חוזרת →",
   },
   rebook_reminder_weekly_rebook: {
-    label: "Weekly reminder", labelHe: "תזכורת שבועית", color: "#C5A55A", Icon: RefreshCw,
+    label: "Weekly reminder", labelHe: "תזכורת שבועית", color: "#12936A", Icon: RefreshCw,
     actionLabel: "Book now", actionLabelHe: "הזמן עכשיו",
     hint: "📅 Keep the routine going →", hintHe: "📅 שמרו על השגרה →",
   },

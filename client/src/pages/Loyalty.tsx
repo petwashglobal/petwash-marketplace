@@ -927,7 +927,7 @@ export default function Loyalty() {
                       className="flex items-start gap-4 p-4" 
                       style={{ borderRadius: '2px', background: `${gold}08`, border: `1px solid ${gold}20` }}
                     >
-                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ borderRadius: '2px', background: 'rgba(201,169,110,0.15)' }}>
+                      <div className="w-10 h-10 flex items-center justify-center flex-shrink-0" style={{ borderRadius: '2px', background: 'rgba(18,147,106,0.15)' }}>
                         <Crown className="w-5 h-5" style={{ color: gold }} />
                       </div>
                       <div>
@@ -1018,7 +1018,7 @@ export default function Loyalty() {
         <section className="py-16 border-t border-gray-100">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-6">
-              <div className="relative w-20 h-20 mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #1a1208 0%, #2a1e0a 40%, #1a1208 100%)', borderRadius: '50%', boxShadow: '0 0 0 1px rgba(18,147,106,0.35), 0 8px 32px rgba(201,169,110,0.25)' }}>
+              <div className="relative w-20 h-20 mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(145deg, #1a1208 0%, #2a1e0a 40%, #1a1208 100%)', borderRadius: '50%', boxShadow: '0 0 0 1px rgba(18,147,106,0.35), 0 8px 32px rgba(18,147,106,0.25)' }}>
                 <Crown className="w-9 h-9" style={{ color: '#12936A' }} />
                 <Sparkles className="absolute top-1 right-1 w-3.5 h-3.5" style={{ color: '#12936A', opacity: 0.8 }} />
               </div>
