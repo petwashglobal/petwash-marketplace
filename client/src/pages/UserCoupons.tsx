@@ -257,7 +257,7 @@ export default function UserCoupons() {
   });
 
   const { data: detailsData } = useQuery<CouponDetails>({
-    queryKey: ['/api/coupons/details', detailsCode],
+    queryKey: [`/api/coupons/details/${detailsCode}`],
     enabled: detailsCode !== null,
   });
 
