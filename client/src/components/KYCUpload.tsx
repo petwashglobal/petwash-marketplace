@@ -1,5 +1,6 @@
 import { useState, useRef } from 'react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { auth } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Label } from '@/components/ui/label';
@@ -142,10 +143,14 @@ export function KYCUpload({ language }: KYCUploadProps) {
 
       setUploadProgress(30);
 
+      // Send the Firebase Bearer token — the cookie alone isn't sent from the native
+      // app webview (cross-origin), which 401'd KYC upload on mobile.
+      const idToken = await auth?.currentUser?.getIdToken();
       const res = await fetch('/api/kyc/v2/verify', {
         method: 'POST',
         body: formData,
         credentials: 'include',
+        headers: idToken ? { Authorization: `Bearer ${idToken}` } : undefined,
       });
 
       setUploadProgress(80);

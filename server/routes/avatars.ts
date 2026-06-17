@@ -391,7 +391,7 @@ router.post('/', validateFirebaseToken, runUpload(upload.single('photo')), async
     // Generate unique filename
     const fileId = nanoid();
     const timestamp = Date.now();
-    const bucket = storage().bucket();
+    const bucket = storage.bucket();
     const originalFileName = `avatars/${uid}/${fileId}_${timestamp}_original.jpg`;
     const thumbnailFileName = `avatars/${uid}/${fileId}_${timestamp}_thumb.jpg`;
     
@@ -581,7 +581,7 @@ router.delete('/:avatarId', validateFirebaseToken, async (req, res) => {
     
     // Clean up storage files (best effort, don't fail if they don't exist)
     try {
-      const bucket = storage().bucket();
+      const bucket = storage.bucket();
       if (existing.photoUrl) {
         const photoPath = existing.photoUrl.split(`${bucket.name}/`)[1];
         if (photoPath) await bucket.file(photoPath).delete().catch(() => {});
