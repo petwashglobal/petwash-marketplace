@@ -59,11 +59,21 @@ export const petProfileSchema = z.object({
   uid: z.string(), // Owner's Firebase UID
   name: z.string().min(1),
   photoUrl: z.string().optional(), // owner-uploaded pet photo (GCS URL) — powers the Luxury Pet Passport
-  species: z.enum(["dog", "cat", "bird", "rabbit", "guinea_pig", "hamster", "reptile", "fish", "other"]).default("dog"),
+  species: z.enum(["dog", "cat", "bird", "rabbit", "guinea_pig", "hamster", "reptile", "turtle", "fish", "other"]).default("dog"),
   breed: z.string().optional(),
   gender: z.enum(["male", "female", "unknown"]).optional(),
   birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Birthday must be in YYYY-MM-DD format" }).optional(), // YYYY-MM-DD
   weightKg: z.number().positive().optional(),
+  // Pet Passport fields the create form collects (were silently dropped before — these
+  // must match the keys MyAccount sends on POST /api/pets, same set the EDIT path keeps).
+  weight: z.string().optional(),        // user-typed weight string, e.g. "12 kg"
+  color: z.string().optional(),
+  favoriteFoods: z.string().optional(),
+  dislikedFoods: z.string().optional(),
+  habits: z.string().optional(),
+  routine: z.string().optional(),
+  vetPhone: z.string().optional(),
+  notes: z.string().optional(),
   allergies: z.string().optional(),
   preferredShampoo: z.string().optional(),
   microchip: z.string().optional(),
