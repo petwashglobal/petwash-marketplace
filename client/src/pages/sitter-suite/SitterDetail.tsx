@@ -42,16 +42,12 @@ export default function SitterDetail() {
   });
 
   // Fetch user's pets
+  // Use the default queryFn (attaches the Firebase Bearer token) — the old custom
+  // fetch sent no auth header, so this requireAuth route 401'd and the pet dropdown
+  // stayed empty (couldn't book). userId goes in the URL so it's the query key.
   const { data: pets } = useQuery<any[]>({
-    queryKey: ['/api/sitter-suite/pets', user?.uid],
-    queryFn: () => {
-      if (!user?.uid) throw new Error('User not authenticated');
-      return fetch(getApiUrl(`/api/sitter-suite/pets?userId=${user.uid}`)).then(res => {
-        if (!res.ok) throw new Error('Failed to fetch pets');
-        return res.json();
-      });
-    },
-    enabled: !!user,
+    queryKey: [`/api/sitter-suite/pets?userId=${user?.uid}`],
+    enabled: !!user?.uid,
   });
 
   // Create booking mutation

@@ -23,7 +23,9 @@ export function SmartReceiptViewer() {
   const { transactionId } = useParams<{ transactionId: string }>();
 
   const { data: receipt, isLoading, error } = useQuery<SmartWashReceipt>({
-    queryKey: ['/api/receipts', transactionId],
+    // param must be IN the URL (queryKey[0]) — the default queryFn fetches queryKey[0]
+    // and drops extra elements, so ['/api/receipts', id] hit a bare /api/receipts (404).
+    queryKey: [`/api/receipts/${transactionId}`],
     enabled: !!transactionId,
   });
 

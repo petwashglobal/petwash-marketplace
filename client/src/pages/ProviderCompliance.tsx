@@ -25,7 +25,9 @@ export default function ProviderCompliance() {
 
   // Fetch compliance status
   const { data: compliance, isLoading } = useQuery({
-    queryKey: ['/api/israeli-compliance/compliance-status', providerId],
+    // providerId must be IN the URL (queryKey[0]); the default queryFn drops extra
+    // elements, so the old ['/…/compliance-status', providerId] hit a bare path (404).
+    queryKey: [`/api/israeli-compliance/compliance-status/${providerId}`],
     enabled: !!providerId,
   });
 
@@ -42,7 +44,7 @@ export default function ProviderCompliance() {
         title: 'Tax registration submitted',
         description: 'Your registration is being verified',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/israeli-compliance/compliance-status'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/israeli-compliance/compliance-status/${providerId}`] });
     },
   });
 
@@ -59,7 +61,7 @@ export default function ProviderCompliance() {
         title: 'Independence score updated',
         description: 'Your contractor status has been recalculated',
       });
-      queryClient.invalidateQueries({ queryKey: ['/api/israeli-compliance/compliance-status'] });
+      queryClient.invalidateQueries({ queryKey: [`/api/israeli-compliance/compliance-status/${providerId}`] });
     },
   });
 
