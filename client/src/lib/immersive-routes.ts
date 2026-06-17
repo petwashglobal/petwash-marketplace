@@ -102,6 +102,11 @@ export const IMMERSIVE_ROUTES: readonly string[] = [
   '/join/sitter',
   '/join/trainer',
 
+  // ── Provider OS (the provider "app" shell) ────────────────────────────
+  // Provider OS renders its OWN header + bottom nav (driver-app style). Listing
+  // it here suppresses the GLOBAL MobileBottomNav so the two don't double-stack.
+  '/provider-os',
+
   // ── Loyalty / Prestige join flows ─────────────────────────────────────
   '/prestige-club',
   '/prestige-pass',

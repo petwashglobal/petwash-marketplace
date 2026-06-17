@@ -25,10 +25,15 @@ const CUSTOMER_NAV: NavItem[] = [
   { path: '/my-account',         labelHe: 'חשבון',     labelEn: 'Account',   Icon: User },
 ];
 
+// Provider OS drives its modules via internal state (not URL sub-routes), so the
+// global nav deep-links into it with ?m=<module>. /provider-os/bookings and
+// /provider-os/inbox were dead routes (→ Not Found); ?m=jobs / ?m=notifications
+// open the real modules. (On /provider-os itself this global nav is suppressed —
+// /provider-os is immersive — so these only matter on shared pages.)
 const PROVIDER_NAV: NavItem[] = [
   { path: '/provider-os',                   labelHe: 'בית',    labelEn: 'Home',     Icon: Home },
-  { path: '/provider-os/bookings',          labelHe: 'הזמנות', labelEn: 'Bookings', Icon: CalendarDays },
-  { path: '/provider-os/inbox',             labelHe: 'הודעות', labelEn: 'Messages', Icon: MessageCircle },
+  { path: '/provider-os?m=jobs',            labelHe: 'הזמנות', labelEn: 'Bookings', Icon: CalendarDays },
+  { path: '/provider-os?m=notifications',   labelHe: 'הודעות', labelEn: 'Messages', Icon: MessageCircle },
   { path: '/my-account',                    labelHe: 'חשבון',  labelEn: 'Account',  Icon: User },
 ];
 

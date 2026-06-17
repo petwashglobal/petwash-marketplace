@@ -72,7 +72,15 @@ const MODULE_LABELS: Record<Module, string> = {
 };
 
 export default function ProviderOS() {
-  const [activeModule, setActiveModule] = useState<Module>('dashboard');
+  // Deep-link support: /provider-os?m=jobs opens that module directly (used by the
+  // provider bottom nav so its tabs land on the right module, not a dead route).
+  const [activeModule, setActiveModule] = useState<Module>(() => {
+    if (typeof window !== 'undefined') {
+      const m = new URLSearchParams(window.location.search).get('m');
+      if (m && m in MODULE_LABELS) return m as Module;
+    }
+    return 'dashboard';
+  });
   const [activePlatform, setActivePlatform] = useState<Platform>('all');
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
