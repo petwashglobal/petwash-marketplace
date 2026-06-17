@@ -158,8 +158,7 @@ const FounderMember = lazy(() => import("@/pages/FounderMember"));
 const QrActivatePage = lazy(() => import("@/pages/QrActivatePage"));
 const ClaimVoucher = lazy(() => import("@/pages/ClaimVoucher"));
 const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
-const Inbox = lazy(() => import("@/pages/Inbox"));
-const PetWashInbox = lazy(() => import("@/pages/PetWashInbox")); // unified luxury inbox (Messages + Concierge + Alerts)
+const PetWashInbox = lazy(() => import("@/pages/PetWashInbox")); // unified luxury inbox (Messages + Concierge + Alerts) — replaced the old Inbox.tsx
 const Pets = lazy(() => import("@/pages/Pets"));
 const PetPassport = lazy(() => import("@/pages/PetPassport"));
 // PR-PET-4: pet onboarding luxury shell. Mounted only when
