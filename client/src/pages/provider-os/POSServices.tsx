@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/lib/queryClient';
+import { auth } from '@/lib/firebase';
 import { useToast } from '@/hooks/use-toast';
 import {
   Dog, Moon, MapPin, Scissors, GraduationCap, Home, Clock, Eye,
@@ -53,8 +54,15 @@ function buildDefault(): ServicesConfig {
   );
 }
 
-function fetchWithAuth(url: string, opts?: RequestInit) {
-  return fetch(url, { ...opts, credentials: 'include' }).then(r => r.json());
+async function fetchWithAuth(url: string, opts?: RequestInit) {
+  // Send the Firebase Bearer token — the cookie alone isn't present in the native app
+  // webview, which 401'd provider saves. Falls back to cookie if no token.
+  const token = await auth?.currentUser?.getIdToken().catch(() => null);
+  return fetch(url, {
+    ...opts,
+    credentials: 'include',
+    headers: { ...(opts?.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  }).then(r => r.json());
 }
 
 export default function POSServices() {

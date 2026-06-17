@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useToast } from '@/hooks/use-toast';
+import { auth } from '@/lib/firebase';
 import { Switch } from '@/components/ui/switch';
 import {
   ChevronLeft, ChevronRight, X, Clock,
@@ -9,6 +10,17 @@ import {
 
 const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+
+// Attach the Firebase Bearer token — the cookie alone isn't present in the native app
+// webview, which 401'd availability/console saves. Falls back to cookie if no token.
+async function authFetch(url: string, opts?: RequestInit) {
+  const token = await auth?.currentUser?.getIdToken().catch(() => null);
+  return fetch(url, {
+    ...opts,
+    credentials: 'include',
+    headers: { ...(opts?.headers || {}), ...(token ? { Authorization: `Bearer ${token}` } : {}) },
+  });
+}
 
 const DEFAULT_SCHEDULE: Record<string, { active: boolean; start: string; end: string }> = {
   Sun: { active: false, start: '09:00', end: '18:00' },
@@ -41,14 +53,14 @@ export default function POSCalendar() {
   // Load provider profile for blocked_dates + working_hours
   const { data: profileData, isLoading: profileLoading } = useQuery<any>({
     queryKey: ['/api/provider-profile/me'],
-    queryFn: () => fetch('/api/provider-profile/me', { credentials: 'include' }).then(r => r.json()),
+    queryFn: () => authFetch('/api/provider-profile/me').then(r => r.json()),
     staleTime: 60_000,
   });
 
   // Load console settings for buffer/max-jobs/radius
   const { data: consoleSettings } = useQuery<any>({
     queryKey: ['/api/provider-console/settings'],
-    queryFn: () => fetch('/api/provider-console/settings', { credentials: 'include' }).then(r => r.json()),
+    queryFn: () => authFetch('/api/provider-console/settings').then(r => r.json()),
     staleTime: 60_000,
   });
 
@@ -75,10 +87,9 @@ export default function POSCalendar() {
 
   const profileMutation = useMutation({
     mutationFn: (body: any) =>
-      fetch('/api/provider-profile/me', {
+      authFetch('/api/provider-profile/me', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(body),
       }).then(r => r.json()),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/provider-profile/me'] }),
@@ -86,10 +97,9 @@ export default function POSCalendar() {
 
   const consoleMutation = useMutation({
     mutationFn: (body: any) =>
-      fetch('/api/provider-console/settings', {
+      authFetch('/api/provider-console/settings', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(body),
       }).then(r => r.json()),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ['/api/provider-console/settings'] }),
