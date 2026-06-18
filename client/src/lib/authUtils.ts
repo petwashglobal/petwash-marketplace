@@ -17,9 +17,24 @@ export function normalizePhoneE164(phone: string): string {
   if (digits.startsWith('+')) {
     return digits;
   }
-  // Israeli local format: 0[1-9] followed by 7-8 more digits (9-10 total)
+  // International prefix typed as "00" (e.g. 00972…) → +…
+  if (digits.startsWith('00')) {
+    return '+' + digits.slice(2);
+  }
+  // Israeli country code typed without "+" (e.g. 972501234567) → +972…
+  if (/^972\d{8,9}$/.test(digits)) {
+    return '+' + digits;
+  }
+  // Israeli local format with leading 0: 0[1-9] + 7-8 digits (9-10 total)
   if (/^0[1-9]\d{7,8}$/.test(digits)) {
     return '+972' + digits.slice(1);
+  }
+  // Israeli MOBILE typed WITHOUT the leading 0: 5X + 7 digits (9 total).
+  // BUGFIX 2026-06-18: previously this returned bare "5XXXXXXXX", the server
+  // prepended "+" → "+5XXXXXXXX" which Twilio routed to the WRONG country and
+  // the code never arrived (silent failure). Israeli mobile prefixes are 05[0-9].
+  if (/^5\d{8}$/.test(digits)) {
+    return '+972' + digits;
   }
   // Return the separator-stripped form so downstream validation gets clean digits
   return digits || trimmed;

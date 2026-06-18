@@ -32,8 +32,12 @@ const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
 const ADMIN_ALERT_EMAIL = process.env.SUPER_ADMIN_EMAILS?.split(',')[0]?.trim() || 'admin@petwash.co.il';
 const FROM_EMAIL = 'security@petwash.co.il';
 
-const GLOBAL_HOURLY_LIMIT = parseInt(process.env.SMS_GLOBAL_HOURLY_LIMIT || '80', 10);
-const GLOBAL_DAILY_LIMIT = parseInt(process.env.SMS_GLOBAL_DAILY_LIMIT || '400', 10);
+// LAUNCH-SAFETY 2026-06-18: defaults were 80/hour and 400/day — low enough that a
+// normal launch rush (each login + signup + resend counts) would trip the kill
+// switch and lock out ALL login for everyone. Raised to realistic launch volumes.
+// Still env-overridable; tune up further as traffic grows.
+const GLOBAL_HOURLY_LIMIT = parseInt(process.env.SMS_GLOBAL_HOURLY_LIMIT || '1000', 10);
+const GLOBAL_DAILY_LIMIT = parseInt(process.env.SMS_GLOBAL_DAILY_LIMIT || '6000', 10);
 const ALERT_THRESHOLD_PCT = parseInt(process.env.SMS_ALERT_THRESHOLD_PCT || '60', 10) / 100;
 const ENUMERATION_IP_PHONE_LIMIT = parseInt(process.env.SMS_ENUM_IP_LIMIT || '5', 10);
 
@@ -106,7 +110,11 @@ class SmsAbuseDetector {
   }
 
   private async triggerEmergencyKill(reason: string, hourly: number, daily: number): Promise<void> {
-    await redisSet(KEY_KILL, '1', 7 * 24 * 3600);
+    // LAUNCH-SAFETY 2026-06-18: was a 7-day lockout requiring a manual admin clear —
+    // a single false trip blacked out ALL login for a week. Now auto-recovers after
+    // SMS_KILL_TTL_SECONDS (default 1 hour). An admin can still clearKillSwitch() early.
+    const killTtl = parseInt(process.env.SMS_KILL_TTL_SECONDS || '3600', 10);
+    await redisSet(KEY_KILL, '1', killTtl);
     process.env.SMS_EMERGENCY_DISABLED = 'true';
     logger.error(`[SmsAbuse] 🔴 EMERGENCY KILL SWITCH ACTIVATED: ${reason}`, { hourly, daily });
   }

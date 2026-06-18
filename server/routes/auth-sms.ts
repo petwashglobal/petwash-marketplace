@@ -32,6 +32,22 @@ function maskPhone(phone: unknown): string | undefined {
   return typeof phone === 'string' && phone.length >= 4 ? `••••${phone.slice(-4)}` : undefined;
 }
 
+// Server-side phone normalization — DEFENSE IN DEPTH 2026-06-18. The client util
+// (client/src/lib/authUtils.ts normalizePhoneE164) is the primary normalizer, but
+// not every signup page calls it (SignUpLuxury/SmartSignIn historically didn't), so
+// a number like "541234567" (Israeli mobile, no leading 0) reached Twilio as
+// "+541234567" → wrong country → code silently never arrived. Normalize here too so
+// EVERY entry point is covered. Mirrors the client logic.
+function normalizePhoneServer(raw: string): string {
+  const digits = raw.trim().replace(/[\s\-().]/g, '');
+  if (digits.startsWith('+')) return digits;
+  if (digits.startsWith('00')) return '+' + digits.slice(2);
+  if (/^972\d{8,9}$/.test(digits)) return '+' + digits;
+  if (/^0[1-9]\d{7,8}$/.test(digits)) return '+972' + digits.slice(1); // 0X… Israeli local
+  if (/^5\d{8}$/.test(digits)) return '+972' + digits;                 // 5X… Israeli mobile w/o 0
+  return digits || raw;
+}
+
 export type AuthFlow = 'prestige' | 'provider' | 'guest';
 
 // Post-verify destination per onboarding channel. These are the canonical
@@ -92,14 +108,15 @@ router.get('/status', (_req: Request, res: Response) => {
 // POST /api/auth/sms/start — send a one-time login code to the phone.
 router.post('/start', async (req: Request, res: Response) => {
   const body = req.body ?? {};
-  const phone = body.phone;
+  const rawPhone = body.phone;
   const language = typeof body.language === 'string' ? body.language : 'he';
   const flow = normalizeFlow(body.flow);
   const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : undefined;
 
-  if (!phone || typeof phone !== 'string') {
+  if (!rawPhone || typeof rawPhone !== 'string') {
     return res.status(400).json({ ok: false, error: 'phone_required' });
   }
+  const phone = normalizePhoneServer(rawPhone);
 
   const callerIp = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
 
@@ -203,14 +220,16 @@ router.post('/start', async (req: Request, res: Response) => {
 // per-flow redirect. Session minting stays in the existing chain.
 router.post('/verify', async (req: Request, res: Response) => {
   const body = req.body ?? {};
-  const phone = body.phone;
+  const rawPhone = body.phone;
   const code = body.code;
   const language = typeof body.language === 'string' ? body.language : 'he';
   const flow = normalizeFlow(body.flow);
 
-  if (!phone || !code || typeof phone !== 'string' || typeof code !== 'string') {
+  if (!rawPhone || !code || typeof rawPhone !== 'string' || typeof code !== 'string') {
     return res.status(400).json({ ok: false, error: 'phone_and_code_required' });
   }
+  // Must match the normalization used in /start so the OTP store key lines up.
+  const phone = normalizePhoneServer(rawPhone);
 
   try {
     if (isUnifiedVerificationLoginEnabled()) {

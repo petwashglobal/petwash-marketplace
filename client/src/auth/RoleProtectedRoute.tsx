@@ -25,7 +25,7 @@ interface RoleProtectedRouteProps {
 
 export default function RoleProtectedRoute({ children, minRole, fallbackPath = '/', requiredDashboard }: RoleProtectedRouteProps) {
   const { user, loading } = useFirebaseAuth();
-  const { isLoading: whoamiLoading, isAuthenticated, dashboardsAllowed, role: serverRole } = useWhoami();
+  const { isLoading: whoamiLoading, isError: whoamiError, isAuthenticated, dashboardsAllowed, role: serverRole, refetch } = useWhoami();
   const [, setLocation] = useLocation();
 
   // Show spinner while Firebase or the server whoami check are still in-flight.
@@ -37,17 +37,29 @@ export default function RoleProtectedRoute({ children, minRole, fallbackPath = '
     );
   }
 
+  // BUGFIX 2026-06-18: whoami REQUEST ERRORED (network/5xx/transient) but Firebase
+  // still has a valid user — this is NOT a logout. Previously this collapsed to
+  // !isAuthenticated and kicked the user to /signin on a single blip (e.g. window
+  // refocus refetch). Keep them in place and retry instead of bouncing.
+  if (whoamiError && user) {
+    refetch();
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
+
   // Both Firebase and the server have resolved.
-  // Server `isAuthenticated` is authoritative — trust it even if the Firebase
-  // client state is momentarily stale (e.g. token refresh race on remount).
-  // Only redirect when the server explicitly says the user is NOT authenticated
-  // AND there is also no local Firebase user (fully logged out / expired session).
+  // Only redirect when the server EXPLICITLY says NOT authenticated (clean response,
+  // not an error) — and there is also no local Firebase user (fully logged out).
   if (!isAuthenticated && !user) {
     setLocation('/signin');
     return null;
   }
 
-  // Firebase user exists but server session has expired — force re-login.
+  // Firebase user exists but the server CLEANLY reports the session is gone/expired
+  // (not a transient error — that's handled above) — force re-login.
   if (!isAuthenticated && user) {
     setLocation('/signin');
     return null;

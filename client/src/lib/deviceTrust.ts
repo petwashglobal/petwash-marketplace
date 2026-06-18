@@ -262,3 +262,38 @@ export function extendDeviceTrust(): boolean {
     return false;
   }
 }
+
+/**
+ * Enable 4-digit PIN sign-in on THIS device.
+ * BUGFIX 2026-06-18: the PIN-login UI (SignIn.tsx) only appears when
+ * localStorage['petwash_device_trust_token'] exists — but NO code ever minted it,
+ * so PIN sign-in was permanently invisible even after a user set a PIN. Call this
+ * after a successful full login to mint the server device-trust token (30 days).
+ * Best-effort and fire-and-forget — never blocks or breaks login.
+ */
+export async function enablePinDeviceTrust(): Promise<void> {
+  try {
+    const { auth } = await import('./firebase');
+    const { getApiUrl } = await import('./apiConfig');
+    const user = auth?.currentUser;
+    if (!user) return;
+    let deviceId = localStorage.getItem('petwash_device_id');
+    if (!deviceId) {
+      deviceId = `web-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+      localStorage.setItem('petwash_device_id', deviceId);
+    }
+    const idToken = await user.getIdToken();
+    const res = await fetch(getApiUrl('/api/pin-auth/generate-device-trust'), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${idToken}` },
+      credentials: 'include',
+      body: JSON.stringify({ deviceId }),
+    });
+    const data = await res.json().catch(() => ({}));
+    if (res.ok && data?.deviceTrustToken) {
+      localStorage.setItem('petwash_device_trust_token', data.deviceTrustToken);
+    }
+  } catch (e) {
+    logger.warn('enablePinDeviceTrust failed (non-blocking)', e);
+  }
+}

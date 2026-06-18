@@ -57,6 +57,7 @@ import { useLocation } from 'wouter';
 import {
   signInWithPopup, signInWithRedirect, signInWithCustomToken,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification,
+  getRedirectResult,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider } from '@/lib/iosAuthHandler';
@@ -98,6 +99,35 @@ function destForFlow(flow: Flow): string {
   }
 }
 
+// Redirect marker — SAME key/format as SignIn.tsx so the two pages + AuthProvider
+// coexist (Firebase clears getRedirectResult after the first read). BUGFIX 2026-06-18:
+// /signup previously launched signInWithRedirect with NO marker and NO result handler,
+// so after Google completed and Safari returned to /signup the page just re-rendered
+// the signup form ("pressed Gmail, came back to sign up").
+const REDIRECT_MARKER_KEY = 'pw_redirect_provider';
+const REDIRECT_MARKER_TTL = 5 * 60 * 1000;
+function setSignupRedirectMarker(provider: string): void {
+  const data = JSON.stringify({ provider, ts: Date.now() });
+  try { sessionStorage.setItem(REDIRECT_MARKER_KEY, data); } catch { /* ignore */ }
+  try { localStorage.setItem(REDIRECT_MARKER_KEY, data); } catch { /* ignore */ }
+}
+function getSignupRedirectMarker(): string | null {
+  for (const store of [sessionStorage, localStorage]) {
+    try {
+      const raw = store.getItem(REDIRECT_MARKER_KEY);
+      if (!raw) continue;
+      const { provider, ts } = JSON.parse(raw);
+      if (Date.now() - ts > REDIRECT_MARKER_TTL) { store.removeItem(REDIRECT_MARKER_KEY); continue; }
+      return provider as string;
+    } catch { continue; }
+  }
+  return null;
+}
+function clearSignupRedirectMarker(): void {
+  try { sessionStorage.removeItem(REDIRECT_MARKER_KEY); } catch { /* ignore */ }
+  try { localStorage.removeItem(REDIRECT_MARKER_KEY); } catch { /* ignore */ }
+}
+
 export default function SignUpLuxury({ language = 'en', onLanguageChange }: Props) {
   const [, navigate] = useLocation();
   const { toast } = useToast();
@@ -130,6 +160,53 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
   const { user } = useFirebaseAuth();
   useEffect(() => { if (user) navigate(dest); }, [user, dest, navigate]);
+
+  // BUGFIX 2026-06-18: handle the Google/Apple/Facebook REDIRECT return on /signup
+  // (iOS uses signInWithRedirect). Without this, the user completed sign-in on
+  // Google but landed back on the signup form. Mirrors SignIn.tsx and coexists with
+  // AuthProvider (Firebase clears getRedirectResult after the first read).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const result = await getRedirectResult(auth);
+        if (cancelled) return;
+        if (!result) {
+          // AuthProvider may have consumed the result first. If a redirect was in
+          // flight and we ARE signed in, the user-effect above will navigate.
+          const expected = getSignupRedirectMarker();
+          if (expected) {
+            clearSignupRedirectMarker();
+            if (!auth.currentUser) {
+              // Genuinely lost (Safari ITP cleared cross-origin state) — tell the user
+              // instead of silently leaving them on the signup form.
+              fail(he ? 'ההרשמה לא הושלמה — נסה שוב' : 'Sign-in did not complete. Please try again.');
+            }
+          }
+          return;
+        }
+        clearSignupRedirectMarker();
+        setBusy(true);
+        const idToken = await result.user.getIdToken();
+        const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ idToken }),
+        });
+        if (!sessionRes.ok) {
+          fail(he ? 'יצירת ההתחברות נכשלה — נסה שוב' : 'Could not establish your session. Please try again.');
+          return;
+        }
+        await finishAndRoute();
+      } catch (e: any) {
+        if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') return;
+        logger.error('[signup] redirect result', e);
+      } finally {
+        if (!cancelled) setBusy(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const [method, setMethod] = useState<'mobile' | 'email' | 'other'>('mobile');
   const [phone, setPhone] = useState('');
@@ -241,15 +318,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         which === 'apple'  ? createAppleProvider()  :
                              createFacebookProvider();
       if (getAuthStrategy() === 'redirect') {
+        // Mark which provider we're redirecting to so the on-mount handler can
+        // recover the result when Safari returns the user to /signup.
+        setSignupRedirectMarker(which);
         await signInWithRedirect(auth, provider);
         return;
       }
       const cred = await signInWithPopup(auth, provider);
       const idToken = await cred.user.getIdToken(true);
-      await fetch(getApiUrl('/api/auth/session'), {
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
       });
+      if (!sessionRes.ok) {
+        // Don't route into the app on a hollow session (guards would 401-bounce).
+        const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
+        fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
+        return;
+      }
       await finishAndRoute();
     } catch (e: any) {
       if (e?.code === 'auth/popup-closed-by-user') return;
@@ -307,10 +393,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         } else { throw e; }
       }
       const idToken = await cred.user.getIdToken(true);
-      await fetch(getApiUrl('/api/auth/session'), {
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
       });
+      if (!sessionRes.ok) {
+        // Surface the real failure instead of dropping the user into the app on a
+        // session that will immediately 401-bounce them back here.
+        fail(he ? 'יצירת ההתחברות נכשלה — נסה שוב' : 'Could not establish your session. Please try again.');
+        return;
+      }
       await finishAndRoute();
     } catch (e) { logger.error('[signup] email', e); fail(he ? 'ההתחברות נכשלה' : 'Sign-in failed'); }
     finally { setBusy(false); }

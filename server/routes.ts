@@ -2302,7 +2302,7 @@ self.addEventListener('notificationclick', (event) => {
       const userAgent = req.headers['user-agent'] || 'unknown';
 
       const MAX_SESSION_AGE_ADMIN = 14400;
-      const MAX_SESSION_AGE_USER = 432000;
+      const MAX_SESSION_AGE_USER = 1209600; // 14 days — matches the "remember me" cookie max (was 5d)
       const maxAge = mfaRequired ? MAX_SESSION_AGE_ADMIN : MAX_SESSION_AGE_USER;
       const sessionExpired = sessionAge > maxAge;
 

@@ -18,8 +18,35 @@ export default function VerifyEmail() {
   const [, setLocation] = useLocation();
   const [sending, setSending] = useState(false);
   const [sent, setSent] = useState(false);
+  const [checking, setChecking] = useState(false);
   const [error, setError] = useState("");
   const he = isHebrew();
+
+  // BUGFIX 2026-06-18: this page was an inescapable dead-end — "Back to Home" just
+  // re-ran the gate and bounced the user straight back, with nothing ever reloading
+  // the verified state. Add an explicit "I've verified — continue" that reloads the
+  // Firebase user + force-refreshes the token so the gate re-checks email_verified.
+  const handleContinue = async () => {
+    setChecking(true);
+    setError("");
+    try {
+      const user = auth.currentUser;
+      if (!user) { setLocation("/signin"); return; }
+      await user.reload();
+      await user.getIdToken(true);
+      if (user.emailVerified) {
+        setLocation("/");
+      } else {
+        setError(he
+          ? "האימייל עדיין לא אומת. בדוק את תיבת הדואר ולחץ על הקישור."
+          : "Email not verified yet. Check your inbox and click the link, then try again.");
+      }
+    } catch {
+      setError(he ? "הבדיקה נכשלה. נסה שוב." : "Could not check verification. Please try again.");
+    } finally {
+      setChecking(false);
+    }
+  };
 
   const handleResend = async () => {
     setSending(true);
@@ -75,6 +102,16 @@ export default function VerifyEmail() {
           <div className="flex flex-col gap-3">
             <Button
               className="w-full"
+              onClick={handleContinue}
+              disabled={checking}
+            >
+              {checking
+                ? (he ? "בודק…" : "Checking…")
+                : (he ? "אימתתי — המשך" : "I've verified — Continue")}
+            </Button>
+            <Button
+              variant="outline"
+              className="w-full"
               onClick={handleResend}
               disabled={sending}
             >
@@ -82,7 +119,7 @@ export default function VerifyEmail() {
               {he ? "שלח שוב אימייל אימות" : "Resend Verification Email"}
             </Button>
             <Button
-              variant="outline"
+              variant="ghost"
               className="w-full"
               onClick={() => setLocation("/")}
             >

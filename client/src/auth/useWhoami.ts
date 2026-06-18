@@ -48,7 +48,11 @@ export interface WhoamiResponse {
 export function useWhoami() {
   const query = useQuery<WhoamiResponse>({
     queryKey: ['/api/session/whoami'],
-    retry: false,
+    // BUGFIX 2026-06-18: was retry:false, so a SINGLE transient whoami failure
+    // (cold start, 503, token-refresh race) made guards treat the user as logged
+    // out and bounce them to /signin. Retry transient failures so blips self-heal.
+    retry: 2,
+    retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 4000),
     staleTime: 2 * 60 * 1000,
     refetchOnWindowFocus: true,
     refetchInterval: 5 * 60 * 1000,

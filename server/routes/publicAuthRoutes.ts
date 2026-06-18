@@ -20,9 +20,13 @@ import { storage } from '../storage';
 // Tight window prevents bulk enumeration or accidental spam from a single device.
 // ipKeyGenerator normalises IPv6-mapped IPv4 addresses (e.g. "::ffff:1.2.3.4" → "1.2.3.4")
 // so that IPv4 and IPv6 connections to the same IP share the same rate-limit bucket.
+// LAUNCH-SAFETY 2026-06-18: was max 3 per IP / 10 min. Households, offices, and
+// mobile-carrier CGNAT share one egress IP, so 3-4 real users would lock each other
+// out. Raised to 12; the per-phone caps + 60s cooldown are the correct granularity.
+// env-tunable via SMS_IP_SEND_LIMIT.
 const phoneSendRateLimiter = rateLimit({
   windowMs: 10 * 60 * 1000,
-  max: 3,
+  max: parseInt(process.env.SMS_IP_SEND_LIMIT || '12', 10),
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: ipKeyGenerator,
