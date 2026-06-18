@@ -1,5 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
-import { verifyIdTokenResilient, isHardTokenError } from '../lib/resilientVerify';
+import { verifyIdTokenResilient, verifySessionCookieResilient, isHardTokenError } from '../lib/resilientVerify';
 
 // A fake Firebase Admin verifyIdToken: succeeds only when checkRevoked is the
 // value we say the credential supports.
@@ -85,6 +85,33 @@ describe('verifyIdTokenResilient', () => {
       code: 'auth/argument-error',
     });
     expect(raw).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('verifySessionCookieResilient (every-page-load /api/auth/me-session)', () => {
+  it('FALLS BACK and keeps the user logged in when the revocation lookup fails for infra', async () => {
+    const raw = makeRaw({
+      revokedError: { code: 'auth/internal-error' },
+      decoded: { uid: 'still-logged-in' },
+    });
+    const out = await verifySessionCookieResilient(raw, 'cookie', true);
+    expect(out).toEqual({ uid: 'still-logged-in' });
+    expect(raw).toHaveBeenLastCalledWith('cookie', false);
+  });
+
+  it('STILL REJECTS an expired session cookie', async () => {
+    const raw = makeRaw({ revokedError: { code: 'auth/session-cookie-expired' } });
+    await expect(verifySessionCookieResilient(raw, 'cookie', true)).rejects.toMatchObject({
+      code: 'auth/session-cookie-expired',
+    });
+    expect(raw).toHaveBeenCalledTimes(1);
+  });
+
+  it('STILL REJECTS a revoked session cookie (lookup succeeded, found revocation)', async () => {
+    const raw = makeRaw({ revokedError: { code: 'auth/session-cookie-revoked' } });
+    await expect(verifySessionCookieResilient(raw, 'cookie', true)).rejects.toMatchObject({
+      code: 'auth/session-cookie-revoked',
+    });
   });
 });
 
