@@ -609,7 +609,12 @@ router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (
         totalAmountCents: quote.totalCents || 0,
         vatCents: vatCentsCalc,
         loyaltyDiscountCents: quote.loyaltyDiscountCents || 0,
-        paymentStatus: 'התקבל — מוחזק בנאמנות',
+        // HONESTY 2026-06-18: this flow creates the escrow row as 'pending_payment'
+        // and does NOT capture any money here, so the old "התקבל — מוחזק בנאמנות"
+        // ("received — held in trust") was a lie to the customer and the provider.
+        // State the truth: payment is pending; the booking confirms once paid.
+        // (Deeper fix — actually capture payment in this flow — tracked separately.)
+        paymentStatus: 'ממתין לתשלום — ההזמנה תאושר עם קבלת התשלום',
         escrowReleaseDate: releaseEligibleAt,
         language: 'he'
       }).catch(err => {

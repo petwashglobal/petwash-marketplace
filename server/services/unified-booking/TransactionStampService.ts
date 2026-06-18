@@ -41,6 +41,15 @@ export class TransactionStampService {
     currency?: Currency;
     vatRate?: number;
   }): Promise<UnifiedTransaction> {
+    // MONEY-SAFETY 2026-06-18: a real-money PAID stamp must carry a payment
+    // reference. Without this guard any caller could record a "completed" payment
+    // with no proof it happened. Free/refund/promo/complimentary types are exempt.
+    if (params.type === 'PAID' && params.amount > 0 && (!params.providerRef || String(params.providerRef).trim() === '')) {
+      const err: any = new Error('TransactionStamp: PAID transaction requires a payment reference (providerRef)');
+      err.code = 'PAYMENT_REFERENCE_REQUIRED';
+      throw err;
+    }
+
     const vatRate = params.vatRate ?? ISRAEL_VAT_RATE;
     const vat = this.calculateVAT(params.amount, vatRate);
     const net = Math.round((params.amount - vat) * 100) / 100;

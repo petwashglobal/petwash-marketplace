@@ -232,6 +232,19 @@ export class UnifiedBookingEngine {
       const cashPaidCents = creditBreakdown?.cashPaidCents ?? Math.round(grossAmount * 100);
       const creditsAppliedCents = creditBreakdown?.totalCreditsAppliedCents ?? 0;
 
+      // MONEY-SAFETY 2026-06-18: never mark a booking paid/confirmed without a real
+      // payment reference when cash is actually due. Previously confirm() stamped a
+      // "completed" transaction + paymentStatus:'paid' even with an empty/garbage
+      // reference — providers saw "paid" bookings with no money behind them. A
+      // free (gross 0) or credits-only (cashPaidCents 0) booking legitimately needs
+      // no cash reference. Full reconciliation of the reference against Nayax/SUMIT
+      // stays the webhook's job; this closes the "confirm with no payment" hole.
+      if (cashPaidCents > 0 && (!paymentReference || String(paymentReference).trim() === '')) {
+        const err: any = new Error('Payment reference required: cannot confirm a cash-due booking without a verified payment reference');
+        err.code = 'PAYMENT_REFERENCE_REQUIRED';
+        throw err;
+      }
+
       let transactionType: 'PAID' | 'COMPLIMENTARY' | 'PROMO' = 'PAID';
       if (grossAmount === 0) {
         transactionType = 'COMPLIMENTARY';
