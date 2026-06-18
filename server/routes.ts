@@ -3505,6 +3505,15 @@ self.addEventListener('notificationclick', (event) => {
   app.get('/api/auth/signing-health', authLimiter, async (req, res) => {
     let canSignTokens = false;
     let signError: string | undefined;
+    // canReadUsers (2026-06-18): createCustomToken signs LOCALLY (no network) so
+    // canSignTokens can be true while the Identity-Toolkit network lookup that
+    // verifyIdToken(idToken, checkRevoked=true) depends on is broken. listUsers
+    // exercises that SAME getAccountInfo API. If canReadUsers=false while
+    // canSignTokens=true, that is the EXACT root cause of the INVALID_TOKEN
+    // sign-in rejections — and the resilient verifyIdToken wrapper (firebase-
+    // admin.ts) is what now keeps logins working despite it.
+    let canReadUsers = false;
+    let readUsersError: string | undefined;
     try {
       const firebaseAdmin = (await import('./lib/firebase-admin')).default;
       try {
@@ -3515,6 +3524,14 @@ self.addEventListener('notificationclick', (event) => {
       } catch (e: any) {
         canSignTokens = false;
         signError = e?.code || e?.message || 'sign_failed';
+      }
+      try {
+        // The revocation-lookup capability that checkRevoked=true requires.
+        await firebaseAdmin.auth().listUsers(1);
+        canReadUsers = true;
+      } catch (e: any) {
+        canReadUsers = false;
+        readUsersError = e?.code || e?.message || 'read_users_failed';
       }
       return res.json({
         status: canSignTokens ? 'ok' : 'degraded',
@@ -3531,6 +3548,10 @@ self.addEventListener('notificationclick', (event) => {
         // login fails with INVALID_TOKEN until the credential is fixed.
         canSignTokens,
         signError,
+        // The revocation-lookup capability. canSignTokens=true + canReadUsers=
+        // false ⇒ the historic INVALID_TOKEN bug; now survived via fallback.
+        canReadUsers,
+        readUsersError,
         loginShouldWork: canSignTokens && !!firebaseAdmin.apps.length,
       });
     } catch (error: any) {

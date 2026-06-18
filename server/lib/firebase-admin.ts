@@ -1,5 +1,6 @@
 // Firebase Admin SDK initialization for server-side operations
 import admin from 'firebase-admin';
+import { verifyIdTokenResilient } from './resilientVerify';
 
 // Read project config from environment — never hardcode
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash';
@@ -98,6 +99,47 @@ export function getFirestore() {
 export const db = getFirestore();
 export const storage = firebaseApp.storage();
 export const auth = firebaseApp.auth();
+
+// ──────────────────────────────────────────────────────────────────────────
+// RESILIENT verifyIdToken (ROOT-CAUSE FIX 2026-06-18)
+// ──────────────────────────────────────────────────────────────────────────
+// Symptom (CONFIRMED by CEO, repeatedly): Google/Apple/email sign-in completes
+// on Google's side, then the app shows "Server rejected the sign-in
+// (INVALID_TOKEN) [HTTP 401]" and bounces to signup — on BOTH the admin site
+// and the apps.
+//
+// Why the previous "fix" was a mirage: every privileged path calls
+// verifyIdToken(idToken, /*checkRevoked*/ true). The `true` forces the Admin
+// SDK to make an Identity-Toolkit NETWORK lookup (getAccountInfo) to read the
+// user's tokensValidAfterTime. That lookup needs API/IAM access on the runtime
+// service account. But our health probe used createCustomToken(), which signs a
+// JWT LOCALLY with the private key — zero network, zero IAM. So canSignTokens
+// could be `true` (key loaded) while the revocation lookup silently fails with
+// an infra error (auth/internal-error / insufficient-permission / network) —
+// which verifyIdToken surfaces, and the caller maps to INVALID_TOKEN. Result:
+// EVERY login and EVERY Bearer API call 401'd, while signing-health stayed green.
+//
+// The fix below verifies the token CRYPTOGRAPHICALLY on every call (signature,
+// aud, iss, exp via Google's public certs — no SA API needed, always works).
+// Only the revocation *check* degrades gracefully: if it fails for an infra
+// reason, we re-verify WITHOUT checkRevoked and accept. Genuinely bad tokens
+// (expired / wrong-project / malformed / explicitly-revoked / disabled user)
+// stay REJECTED. The only thing we forgo, and only while the lookup is broken,
+// is rejecting a still-unexpired token that was explicitly revoked — an
+// acceptable trade vs. locking every user out. Because admin.auth(),
+// getAuth(), and this `auth` export all resolve to the SAME default-app Auth
+// instance, wrapping the method here covers all ~80 call sites at once.
+const __rawVerifyIdToken = auth.verifyIdToken.bind(auth);
+(auth as any).verifyIdToken = (idToken: string, checkRevoked?: boolean) =>
+  verifyIdTokenResilient(__rawVerifyIdToken, idToken, checkRevoked, (code) => {
+    console.warn(
+      '[firebase-admin] verifyIdToken: revocation lookup unavailable (' + code +
+      ') — token verified cryptographically WITHOUT checkRevoked. Grant the ' +
+      'runtime service account Identity-Toolkit access (Firebase Authentication ' +
+      'Admin) to restore revocation checks.'
+    );
+  });
+
 // Alias for consistency with some route imports
 export const adminAuth = auth;
 
