@@ -83,7 +83,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
 
   const { data: bookings = [], isLoading, refetch } = useQuery<BookingRequest[]>({
     queryKey: ['/api/booking-requests', 'owner', 'groomers'],
-    queryFn: () => fetch('/api/booking-requests?role=owner', { credentials: 'include' }).then(r => r.json()),
+    queryFn: async () => { const r = await apiRequest('GET', '/api/booking-requests?role=owner'); const d = await r.json(); return Array.isArray(d) ? d : (d?.requests ?? d?.bookings ?? []); },
   });
 
   const confirmMutation = useMutation({

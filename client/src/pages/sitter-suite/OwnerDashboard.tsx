@@ -76,10 +76,10 @@ export default function OwnerDashboard() {
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
   const { data: bookingsData } = useQuery({
-    queryKey: ['/api/bookings/my-bookings', { platform: 'sitter-suite' }],
+    queryKey: ['/api/sitter-suite/bookings?role=owner'],
   });
 
-  const bookings: Booking[] = bookingsData?.bookings || [];
+  const bookings: Booking[] = Array.isArray(bookingsData) ? (bookingsData as Booking[]) : ((bookingsData as any)?.bookings ?? []);
 
   const { data: petsData } = useQuery({
     queryKey: ['/api/pets'],
