@@ -5,7 +5,7 @@ import { logger } from '../lib/logger';
 const router = Router();
 
 const IOS_PROVIDER_BUNDLE_ID = 'il.co.petwash.provider';
-const IOS_CUSTOMER_BUNDLE_ID = 'il.co.petwash.customer';
+const IOS_CUSTOMER_BUNDLE_ID = 'com.petwash.il';
 
 function appleTeamIdentifier(): string {
   return (

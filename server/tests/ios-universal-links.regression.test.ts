@@ -12,7 +12,7 @@ describe("iOS Universal Links", () => {
     expect(firebase).toContain('"source": "/apple-app-site-association"');
     expect(seoRoutes).toContain("apple-app-site-association");
     expect(seoRoutes).toContain("il.co.petwash.provider");
-    expect(seoRoutes).toContain("il.co.petwash.customer");
+    expect(seoRoutes).toContain("com.petwash.il");
     expect(seoRoutes).toContain("APPLE_WALLET_TEAM_ID");
   });
 

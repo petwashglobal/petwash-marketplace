@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from "@capacitor/cli";
 
 const config: CapacitorConfig = {
-  appId: "il.co.petwash.customer",
+  appId: "com.petwash.il",
   appName: "PetWash Customer",
   webDir: "dist/public",
   server: {

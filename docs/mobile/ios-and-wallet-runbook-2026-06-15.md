@@ -29,7 +29,7 @@ This runbook's **§B** is about #2 (the device pass). #1 needs no Xcode/cert wor
 **The apps**
 | App | Folder | Bundle ID |
 |---|---|---|
-| Customer | `ios-customer/App` | `il.co.petwash.customer` |
+| Customer | `ios-customer/App` | `com.petwash.il` |
 | Provider | `ios/App` | `il.co.petwash.provider` |
 
 **Prerequisites (one time)**
@@ -53,7 +53,7 @@ This runbook's **§B** is about #2 (the device pass). #1 needs no Xcode/cert wor
    ```
 3. **Add Firebase config (critical — app crashes without it):**
    - Firebase Console → Project settings → add an **iOS app** for bundle
-     `il.co.petwash.customer` → download **`GoogleService-Info.plist`**.
+     `com.petwash.il` → download **`GoogleService-Info.plist`**.
    - Drag it into Xcode under `App/App/` (check "Copy items if needed").
    - Repeat with a **separate** iOS app for `il.co.petwash.provider` →
      its own `GoogleService-Info.plist` into `ios/App/App/`.

@@ -9,9 +9,9 @@ describe("customer Capacitor foundation", () => {
     const customerConfig = read("config/capacitor/customer.config.ts");
 
     expect(rootConfig).toContain('appId: "il.co.petwash.provider"');
-    expect(rootConfig).not.toContain("il.co.petwash.customer");
+    expect(rootConfig).not.toContain("com.petwash.il");
 
-    expect(customerConfig).toContain('appId: "il.co.petwash.customer"');
+    expect(customerConfig).toContain('appId: "com.petwash.il"');
     expect(customerConfig).toContain('appName: "PetWash Customer"');
     expect(customerConfig).toContain('webDir: "dist/public"');
     expect(customerConfig).toContain('path: "ios-customer"');
@@ -50,10 +50,12 @@ describe("customer Capacitor foundation", () => {
     const iosConfig = read("ios-customer/App/App/capacitor.config.json");
     const androidConfig = read("android-customer/app/src/main/assets/capacitor.config.json");
 
-    expect(xcodeProject).toContain("PRODUCT_BUNDLE_IDENTIFIER = il.co.petwash.customer");
+    expect(xcodeProject).toContain("PRODUCT_BUNDLE_IDENTIFIER = com.petwash.il");
     expect(xcodeProject).not.toContain("DEVELOPMENT_TEAM =");
     expect(iosPackage).toContain('exact: "8.4.0"');
 
+    // Android keeps its own Play applicationId (separate store, not yet shipped).
+    // Only the iOS App Store bundle was migrated to com.petwash.il (2026-06-18).
     expect(androidGradle).toContain('namespace = "il.co.petwash.customer"');
     expect(androidGradle).toContain('applicationId "il.co.petwash.customer"');
     expect(androidManifest).toContain('android:allowBackup="false"');
@@ -69,7 +71,7 @@ describe("customer Capacitor foundation", () => {
     expect(androidTest).not.toContain("com.getcapacitor.myapp");
 
     for (const generatedConfig of [iosConfig, androidConfig]) {
-      expect(generatedConfig).toContain('"appId": "il.co.petwash.customer"');
+      expect(generatedConfig).toContain('"appId": "com.petwash.il"');
       expect(generatedConfig).toContain('"appName": "PetWash Customer"');
       expect(generatedConfig).toContain('"webDir": "dist/public"');
       expect(generatedConfig).not.toContain('"url"');
