@@ -46,6 +46,8 @@ import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import { sumitClient } from '../services/SumitClient';
 import { recordAuditEvent } from '../utils/auditSignature';
+import { activateFromVerifiedPayment } from '../services/PurchaseActivationService';
+import { isCommerceFlagEnabled, COMMERCE_FLAGS } from '@shared/purchase-lifecycle/flags';
 
 const router = Router();
 
@@ -84,6 +86,27 @@ function extractEventId(body: Record<string, unknown> | null): string | null {
   return null;
 }
 
+/**
+ * Allowlist of SUMIT event types that may trigger a Phase-1 activation. ONLY a
+ * payment/charge SUCCESS confirms money was taken — receipt/document/refund/
+ * chargeback/subscription events for the same charge MUST NOT enter the
+ * activation path (a refund or document event carrying a valid txn id would
+ * otherwise activate an order). Matched case-insensitively as a substring so
+ * provider variants (payment.succeeded / charge.approved / transaction-approved)
+ * are covered without knowing the exact swagger casing. Refund/charge-back/void
+ * are explicitly excluded even if they contain "payment".
+ */
+function isPaymentSuccessEvent(eventType: string): boolean {
+  const t = eventType.toLowerCase();
+  // Hard exclusions first — these can contain "payment"/"charge" substrings.
+  if (/(refund|chargeback|charge[-_. ]?back|reversal|void|cancel|fail|declin|expire)/.test(t)) {
+    return false;
+  }
+  const isPaymentish = /(payment|charge|transaction)/.test(t);
+  const isSuccessish = /(succe|approv|paid|complete|captur|confirm)/.test(t);
+  return isPaymentish && isSuccessish;
+}
+
 function extractEventType(body: Record<string, unknown> | null): string | null {
   if (!body || typeof body !== 'object') return null;
   const candidates = [
@@ -93,6 +116,41 @@ function extractEventType(body: Record<string, unknown> | null): string | null {
   ];
   for (const c of candidates) {
     if (typeof c === 'string' && c.trim()) return c.trim();
+  }
+  return null;
+}
+
+/** SUMIT payment/transaction id — the stable idempotency anchor for activation. */
+function extractTransactionId(body: Record<string, unknown> | null): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const b = body as any;
+  const candidates = [
+    b.TransactionID, b.transactionId, b.TransactionId,
+    b.PaymentID, b.paymentId, b.PaymentId,
+    b.Data?.TransactionID, b.data?.transactionId,
+    b.Payment?.ID, b.payment?.id,
+    b.ID, b.id,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) return c.trim();
+    if (typeof c === 'number' && Number.isFinite(c)) return String(c);
+  }
+  return null;
+}
+
+/** Our ExternalIdentifier echoed back (purchases.surfaceRefId). */
+function extractExternalRef(body: Record<string, unknown> | null): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const b = body as any;
+  const candidates = [
+    b.ExternalIdentifier, b.externalIdentifier,
+    b.ExternalId, b.externalId, b.ext,
+    b.OrderId, b.orderId, b.OrderID,
+    b.Data?.ExternalIdentifier, b.data?.externalId,
+  ];
+  for (const c of candidates) {
+    if (typeof c === 'string' && c.trim()) return c.trim();
+    if (typeof c === 'number' && Number.isFinite(c)) return String(c);
   }
   return null;
 }
@@ -191,11 +249,56 @@ router.post(
       eventId, eventType, bodyBytes, elapsedMs: Date.now() - startMs,
     });
 
-    // 200 quickly — SUMIT only retries on non-2xx. We've persisted the
-    // raw payload in the audit chain; downstream processing (matching
-    // event to local supplier_invoices / bookings, updating sumit_status,
-    // etc.) is deferred to a follow-up PR with the verified schema.
-    res.status(200).json({ ok: true, eventId, eventType, received: true });
+    // ── Phase-1 activation (PetWash-owned products only). Gated behind the
+    //    Commerce OS umbrella flag — default OFF. The webhook is the ONLY
+    //    thing that activates a purchase (never the frontend redirect).
+    //    ALWAYS 200 so SUMIT does not retry-storm; the outcome is reported
+    //    in the body and, when it's a not_found, escalated via an audit alert.
+    let activation: { outcome: string; purchaseId?: string; reason?: string } | undefined;
+    // ONLY a verified payment-SUCCESS event may activate. Refund / chargeback /
+    // document / subscription events for the same charge are logged + audited
+    // above but never enter the money path, even if they carry a valid txn id.
+    if (isCommerceFlagEnabled(COMMERCE_FLAGS.enabled) && isPaymentSuccessEvent(eventType)) {
+      const transactionId = extractTransactionId(parsed) || undefined;
+      const externalRef = extractExternalRef(parsed) || undefined;
+      // The idempotency anchor: prefer the SUMIT transaction/payment id;
+      // fall back to the stable event id so a duplicate delivery still dedupes.
+      const providerReference = transactionId || eventId;
+      try {
+        activation = await activateFromVerifiedPayment({
+          providerReference,
+          transactionId,
+          externalRef,
+        });
+      } catch (err: any) {
+        // The service itself never throws, but belt-and-suspenders: a thrown
+        // error must not turn into a non-2xx (which would trigger SUMIT retries).
+        logger.error('[SumitWebhook] activation threw (returning 200)', { eventId, err: err?.message });
+        activation = { outcome: 'failed', reason: 'activation_threw' };
+      }
+
+      if (activation.outcome === 'not_found') {
+        logger.warn('[SumitWebhook] verified payment has no matching purchase', {
+          eventId, transactionId, externalRef,
+        });
+        try {
+          await recordAuditEvent({
+            eventType: 'sumit.webhook.unmatched_payment',
+            customerUid: 'system',
+            metadata: { eventId, transactionId: transactionId ?? null, externalRef: externalRef ?? null, sumitEventType: eventType },
+            ipAddress: req.ip || null,
+            userAgent: '[SumitWebhook]',
+          });
+        } catch (err: any) {
+          logger.error('[SumitWebhook] unmatched-payment audit failed', { err: err?.message });
+        }
+      }
+    }
+
+    // 200 quickly — SUMIT only retries on non-2xx. We've persisted the raw
+    // payload in the audit chain and (when the flag is on) attempted an
+    // idempotent activation. The outcome is echoed for observability.
+    res.status(200).json({ ok: true, eventId, eventType, received: true, activation: activation?.outcome ?? 'skipped' });
   },
 );
 

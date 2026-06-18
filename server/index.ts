@@ -633,6 +633,13 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     if (['GET', 'HEAD', 'OPTIONS'].includes(req.method)) return true;
     // HMAC-verified webhooks are authenticated out-of-band; not CSRF-vulnerable.
     if (/^\/api\/webhooks\//.test(req.path)) return true;
+    // SUMIT's payment/document callback (server/routes/sumit-webhook.ts, mounted
+    // at /api/sumit/webhook). SUMIT is server-to-server and cannot send the
+    // double-submit X-CSRF-Token; the handler HMAC-verifies the raw body with
+    // SUMIT_WEBHOOK_SECRET before doing anything. Without this skip the global
+    // CSRF gate 403s every real SUMIT webhook before activation can run — the
+    // [[csrf-public-post-regression-class]] failure mode.
+    if (req.path === '/api/sumit/webhook') return true;
     // WebAuthn / passkey (Face ID, Touch ID) ceremonies are inherently CSRF-safe:
     // every register/authenticate step requires a SERVER-ISSUED challenge (stored in
     // a signed, HMAC'd cookie) AND the authenticator signs over the page origin, which
