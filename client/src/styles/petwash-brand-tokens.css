@@ -16,14 +16,15 @@
   --pw-ink: #111111;          /* headings + primary text — full black */
   --pw-ink-soft: #333333;     /* secondary text — still high-contrast, NOT faded */
   --pw-hairline: #ECECEC;     /* thin borders on white */
-  --pw-hairline-gold: #CDE9DD;/* emerald-tinted border for featured cards */
+  --pw-hairline-gold: #EFE3B8;/* gold-tinted border for featured cards */
 
-  /* THE ACCENT — hot metallic emerald green. Tweak only here. */
-  --pw-gold: #12936A;         /* the one true accent (emerald core) */
-  --pw-gold-deep: #0C5B3F;    /* gradient start / pressed */
-  --pw-gold-light: #36C98F;   /* gradient highlight (sheen) */
+  /* THE ACCENT — BRIGHT METALLIC GOLD (#D4AF37). Tweak only here.
+     2026-06-18: was emerald #12936A — restored to the real brand metallic gold. */
+  --pw-gold: #D4AF37;         /* the one true accent (metallic gold) */
+  --pw-gold-deep: #B8860B;    /* gradient start / pressed */
+  --pw-gold-light: #F4D77A;   /* gradient highlight (sheen) */
   --pw-gold-grad: linear-gradient(135deg, var(--pw-gold-deep) 0%, var(--pw-gold) 45%, var(--pw-gold-light) 100%);
-  --pw-gold-ink: #FFFFFF;     /* text ON a green fill (white, readable) */
+  --pw-gold-ink: #1A1A1A;     /* text ON a gold fill (near-black, readable) */
 
   /* Status (only place a different color is allowed) */
   --pw-success: #0B6B36;
@@ -42,7 +43,7 @@
 
 /* Metallic-emerald TEXT/ICON via clip (for crowns, +, decorative glyphs only). */
 .pw-gold-text {
-  background: linear-gradient(135deg, #0C5B3F, var(--pw-gold));
+  background: linear-gradient(135deg, #B8860B, var(--pw-gold));
   -webkit-background-clip: text; background-clip: text;
   -webkit-text-fill-color: transparent;
 }

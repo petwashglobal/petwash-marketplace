@@ -58,9 +58,9 @@
 
 .luxury-bg-primary {
   background: linear-gradient(135deg, 
-    #0C5B3F 0%, 
-    #C6A35B 50%,
-    #12936A 100%
+    #B8860B 0%, 
+    #D4AF37 50%,
+    #D4AF37 100%
   ) !important;
 }
 
@@ -86,27 +86,27 @@
    =========================== */
 
 .luxury-icon-gold {
-  background: linear-gradient(135deg, #0C5B3F 0%, #12936A 100%);
+  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
 }
 
 .luxury-icon-gold-soft {
-  background: linear-gradient(135deg, #C6A35B 0%, #E7C978 100%);
+  background: linear-gradient(135deg, #D4AF37 0%, #F4D77A 100%);
 }
 
 .luxury-icon-gold-bright {
-  background: linear-gradient(135deg, #12936A 0%, #E7C978 100%);
+  background: linear-gradient(135deg, #D4AF37 0%, #F4D77A 100%);
 }
 
 .luxury-gradient-gold {
-  background: linear-gradient(135deg, #0C5B3F 0%, #C6A35B 50%, #12936A 100%);
+  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 50%, #D4AF37 100%);
 }
 
 .luxury-gradient-gold-soft {
-  background: linear-gradient(135deg, #C6A35B 0%, #E7C978 100%);
+  background: linear-gradient(135deg, #D4AF37 0%, #F4D77A 100%);
 }
 
 .luxury-gradient-gold-dark {
-  background: linear-gradient(135deg, #0C5B3F 0%, #C6A35B 100%);
+  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
 }
 
 /* ===========================
@@ -170,7 +170,7 @@
    =========================== */
 
 .luxury-btn-primary {
-  background: linear-gradient(135deg, #0C5B3F 0%, #C6A35B 50%, #12936A 100%);
+  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 50%, #D4AF37 100%);
   color: white;
   padding: 12px 32px;
   border-radius: 12px;
@@ -353,7 +353,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 }
 
 .luxury-gradient-text {
-  background: linear-gradient(135deg, #0C5B3F 0%, #12936A 100%);
+  background: linear-gradient(135deg, #B8860B 0%, #D4AF37 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -762,7 +762,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 /* ============================================
    LUXURY DARK THEME SYSTEM 2026
    Ultra-premium dark UI for admin/settings pages
-   Brand: #0A0A0F background, #12936A gold accents
+   Brand: #0A0A0F background, #D4AF37 gold accents
    ============================================ */
 
 .luxury-dark-card {
@@ -798,7 +798,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 }
 
 .luxury-dark-btn-gold {
-  background: linear-gradient(135deg, #12936A, #12936A);
+  background: linear-gradient(135deg, #D4AF37, #D4AF37);
   color: #0A0A0F;
   font-weight: 600;
   border-radius: 0.75rem;
@@ -807,9 +807,9 @@ button[data-testid="button-gmail-signin-quick"]:hover {
   cursor: pointer;
 }
 .luxury-dark-btn-gold:hover {
-  background: linear-gradient(135deg, #12936A, #e5c04b);
+  background: linear-gradient(135deg, #D4AF37, #D4AF37);
   transform: translateY(-1px);
-  box-shadow: 0 4px 20px rgba(18, 147, 106, 0.3);
+  box-shadow: 0 4px 20px rgba(212, 175, 55, 0.3);
 }
 .luxury-dark-btn-gold:disabled {
   opacity: 0.5;
@@ -842,7 +842,7 @@ button[data-testid="button-gmail-signin-quick"]:hover {
   --pc-gold: #C6A75E;
   --pc-gold2: rgba(198,167,94,.26);
   --pc-diamond: #E8C65A;
-  --pc-emerald: #0F5E4A;
+  --pc-emerald: #B8860B;
   --pc-sapphire: #0E2F5A;
   --pc-platinum: #C9C9C9;
   --pc-radiusXL: 28px;
