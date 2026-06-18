@@ -38,17 +38,20 @@ function baseUrl(): string {
 //    takes a bounded, explicit `topupIls` rather than a SKU — the credited
 //    cents equal exactly what we charge SUMIT, and nothing else can reach the
 //    wallet-credit branch in activation.
+// Real CEO prices (2026-06-19). K9000 station washes only. ILS, VAT-inclusive
+// gross (SUMIT issues the fiscal doc on the hosted page).
 const PHASE1_PRODUCTS = {
-  ACCOUNT_CREDIT: { surface: 'wallet_topup' as const },
-  SINGLE_WASH:    { surface: 'kiosk' as const, amountCents: 4500, washCount: 1, description: 'Single wash' },
-  WASH_PACKAGE_5: { surface: 'kiosk' as const, amountCents: 20000, washCount: 5, productType: 'WASH_PACKAGE', description: 'Wash package (5)' },
-  WASH_PACKAGE_10:{ surface: 'kiosk' as const, amountCents: 36000, washCount: 10, productType: 'WASH_PACKAGE', description: 'Wash package (10)' },
+  ACCOUNT_CREDIT:  { surface: 'wallet_topup' as const },
+  SINGLE_WASH:     { surface: 'kiosk' as const, amountCents: 5500,  washCount: 1,  productType: 'SINGLE_WASH',  description: 'Single wash (K9000)' },
+  WASH_PACKAGE_3:  { surface: 'kiosk' as const, amountCents: 15000, washCount: 3,  productType: 'WASH_PACKAGE', description: 'Wash package — 3 washes' },
+  WASH_PACKAGE_5:  { surface: 'kiosk' as const, amountCents: 22000, washCount: 5,  productType: 'WASH_PACKAGE', description: 'Wash package — 5 washes' },
+  WASH_PACKAGE_10: { surface: 'kiosk' as const, amountCents: 44000, washCount: 10, productType: 'WASH_PACKAGE', description: 'Wash package — 10 washes' },
 } as const;
 type Phase1Sku = keyof typeof PHASE1_PRODUCTS;
 
 const beginSchema = z.object({
   // The product is chosen by SKU from the server-owned catalog. NO client price.
-  sku: z.enum(['ACCOUNT_CREDIT', 'SINGLE_WASH', 'WASH_PACKAGE_5', 'WASH_PACKAGE_10']),
+  sku: z.enum(['ACCOUNT_CREDIT', 'SINGLE_WASH', 'WASH_PACKAGE_3', 'WASH_PACKAGE_5', 'WASH_PACKAGE_10']),
   // Only meaningful for ACCOUNT_CREDIT (variable-amount wallet top-up). Bounded.
   topupIls: z.number().positive().max(10_000).optional(),
   orderId: z.string().max(120).optional(),
