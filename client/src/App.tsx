@@ -54,6 +54,7 @@ const MyExpenses = lazy(() => import("@/pages/MyExpenses"));
 const ApproveExpenses = lazy(() => import("@/pages/ApproveExpenses"));
 const AdminSupplierInvoices = lazy(() => import("@/pages/AdminSupplierInvoices"));
 const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoiceDetail"));
+const PaymentReturn = lazy(() => import("@/pages/PaymentReturn"));
 const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
 const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
 const AdminSumitControl = lazy(() => import("@/pages/AdminSumitControl"));
@@ -752,6 +753,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/login">
           {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+        </Route>
+        <Route path="/payment-success">
+          {() => <PaymentReturn language={language} variant="success" />}
+        </Route>
+        <Route path="/payment-failed">
+          {() => <PaymentReturn language={language} variant="failed" />}
         </Route>
         <Route path="/booking-chat/inbox">
           {() => (
