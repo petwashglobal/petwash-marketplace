@@ -146,7 +146,11 @@ vi.mock('../db', () => {
 });
 
 // Import AFTER mocks are registered.
-import { activateFromVerifiedPayment } from '../services/PurchaseActivationService';
+import {
+  activateFromVerifiedPayment,
+  retryActivationForPurchase,
+  resendEgiftEmail,
+} from '../services/PurchaseActivationService';
 
 function seed(p: Partial<PurchaseRow>): PurchaseRow {
   const row: PurchaseRow = {
@@ -343,6 +347,60 @@ describe('activateFromVerifiedPayment — durability (lock does not strand an un
     const second = await activateFromVerifiedPayment({ providerReference: 'evt-11', transactionId: 'txn-11', externalRef: 'ext-11' });
     expect(second.outcome).toBe('already_processed');
     expect(addCredits).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('admin recovery — retryActivationForPurchase', () => {
+  it('not found → not_found, no credit', async () => {
+    const r = await retryActivationForPurchase('nope', 'admin-1');
+    expect(r.outcome).toBe('not_found');
+    expect(addCredits).not.toHaveBeenCalled();
+  });
+
+  it('already activated → already_processed, no re-credit', async () => {
+    seed({ id: 'PUR-R1', productType: 'WASH_PACKAGE', status: 'activated', metadataJson: { washCount: 3 } });
+    const r = await retryActivationForPurchase('PUR-R1', 'admin-1');
+    expect(r.outcome).toBe('already_processed');
+    expect(addCredits).not.toHaveBeenCalled();
+  });
+
+  it('paid-but-not-activated WASH_PACKAGE → activates once', async () => {
+    const row = seed({ id: 'PUR-R2', productType: 'WASH_PACKAGE', status: 'paid', metadataJson: { washCount: 5 } });
+    const r = await retryActivationForPurchase('PUR-R2', 'admin-1');
+    expect(r.outcome).toBe('activated');
+    expect(addCredits).toHaveBeenCalledWith('user-1', 'wash_package', 5, 'sumit_purchase', 'PUR-R2', expect.any(String));
+    expect(row.status).toBe('activated');
+  });
+
+  it('payment_pending (unverified) → NOT retryable, no activation', async () => {
+    seed({ id: 'PUR-R3', productType: 'WASH_PACKAGE', status: 'payment_pending', metadataJson: { washCount: 1 } });
+    const r = await retryActivationForPurchase('PUR-R3', 'admin-1');
+    expect(r.outcome).toBe('failed');
+    expect(addCredits).not.toHaveBeenCalled();
+  });
+});
+
+describe('admin recovery — resendEgiftEmail', () => {
+  it('resends an already-minted gift without re-minting', async () => {
+    seed({
+      id: 'PUR-R4', productType: 'EGIFT_CARD', status: 'activated', amountCents: 10000,
+      metadataJson: {
+        egiftGiftCardId: 'GC-1', egiftPublicCode: 'PUB-1',
+        egiftRecipientEmail: 'dana@example.com', egiftRecipientName: 'Dana',
+      },
+    });
+    const r = await resendEgiftEmail('PUR-R4', 'admin-1');
+    expect(r.ok).toBe(true);
+    expect(sendEGiftConfirmationEmail).toHaveBeenCalledTimes(1);
+    expect(createMultiServiceGiftCard).not.toHaveBeenCalled(); // never re-mints
+  });
+
+  it('refuses when no gift was minted yet', async () => {
+    seed({ id: 'PUR-R5', productType: 'EGIFT_CARD', status: 'paid', metadataJson: { egiftRecipientEmail: 'd@e.com', egiftRecipientName: 'D' } });
+    const r = await resendEgiftEmail('PUR-R5', 'admin-1');
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe('no_gift_to_resend');
+    expect(sendEGiftConfirmationEmail).not.toHaveBeenCalled();
   });
 });
 

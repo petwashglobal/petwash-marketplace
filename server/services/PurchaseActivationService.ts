@@ -321,6 +321,93 @@ export async function activateFromVerifiedPayment(
 }
 
 /**
+ * ADMIN RECOVERY — retry activation for a purchase that was PAID but didn't
+ * finish activating (the "paid-but-not-activated" bucket). Human-triggered from
+ * the admin console; idempotent (activateProduct's per-type dedupe means it
+ * cannot double-credit or double-mint). Only retries a CONFIRMED payment.
+ */
+export async function retryActivationForPurchase(
+  purchaseId: string,
+  actorId = 'admin',
+): Promise<ActivationResult> {
+  const purchase = await reloadPurchase(purchaseId);
+  if (!purchase) return { outcome: 'not_found', reason: 'purchase_not_found' };
+  if (purchase.status === 'activated') {
+    return { outcome: 'already_processed', purchaseId, reason: 'already_activated' };
+  }
+  // Only a confirmed-paid purchase may be re-activated. payment_pending/failed
+  // means the payment itself isn't verified — that needs a payment re-check, not
+  // a blind activation.
+  if (purchase.status !== 'paid') {
+    return { outcome: 'failed', purchaseId, reason: `not_retryable_status:${purchase.status}` };
+  }
+
+  let activated: boolean;
+  try {
+    activated = await activateProduct(purchase);
+  } catch (err) {
+    logger.error('[PurchaseActivation] admin retry activateProduct threw', { purchaseId, err: (err as Error)?.message });
+    await audit('admin.retry_activation_error', purchase, { actorId, error: (err as Error)?.message });
+    return { outcome: 'pending', purchaseId, reason: 'activation_threw' };
+  }
+  if (!activated) {
+    await audit('admin.retry_activation_pending', purchase, { actorId });
+    return { outcome: 'pending', purchaseId, reason: 'activation_pending' };
+  }
+  try {
+    await db.update(purchases).set({ status: 'activated', updatedAt: new Date() }).where(eq(purchases.id, purchase.id));
+  } catch (err) {
+    logger.error('[PurchaseActivation] admin retry mark activated failed', { purchaseId, err: (err as Error)?.message });
+  }
+  await audit('admin.retry_activation', purchase, { actorId, productType: purchase.productType });
+  return { outcome: 'activated', purchaseId };
+}
+
+/**
+ * ADMIN RECOVERY — re-send the eGift email for an ALREADY-MINTED gift (e.g. the
+ * recipient never got it). Never re-mints — it reuses the stored gift id/code.
+ */
+export async function resendEgiftEmail(
+  purchaseId: string,
+  actorId = 'admin',
+): Promise<{ ok: boolean; reason?: string }> {
+  const purchase = await reloadPurchase(purchaseId);
+  if (!purchase) return { ok: false, reason: 'purchase_not_found' };
+  if (String(purchase.productType) !== 'EGIFT_CARD') return { ok: false, reason: 'not_an_egift' };
+
+  const meta = (purchase.metadataJson ?? {}) as Record<string, unknown>;
+  const giftCardId = meta.egiftGiftCardId ? String(meta.egiftGiftCardId) : '';
+  const publicCode = meta.egiftPublicCode ? String(meta.egiftPublicCode) : '';
+  const recipientEmail = String(meta.egiftRecipientEmail ?? '').trim();
+  const recipientName = String(meta.egiftRecipientName ?? '').trim();
+  if (!giftCardId || !recipientEmail) return { ok: false, reason: 'no_gift_to_resend' };
+
+  try {
+    const { sendEGiftConfirmationEmail } = await import('./egiftEmailService');
+    await sendEGiftConfirmationEmail({
+      senderName: String(meta.egiftSenderName ?? '') || 'PetWash',
+      senderEmail: String(meta.egiftPurchaserEmail ?? ''),
+      recipientName,
+      recipientEmail,
+      value: purchase.amountCents / 100,
+      currency: 'ILS',
+      publicCode,
+      giftCardId,
+      occasion: meta.occasion ? String(meta.occasion) : 'justbecause',
+      messageLanguage: meta.messageLanguage ? String(meta.messageLanguage) : 'he',
+      personalMessage: meta.egiftMessage ? String(meta.egiftMessage) : undefined,
+      eligibleServices: ['all'],
+      expiresInMonths: 24,
+    });
+  } catch (err) {
+    logger.error('[PurchaseActivation] admin resend egift failed', { purchaseId, err: (err as Error)?.message });
+    return { ok: false, reason: 'email_send_failed' };
+  }
+  await audit('admin.resend_egift', purchase, { actorId, recipientEmail });
+  return { ok: true };
+}
+
+/**
  * SINGLE switch on productType. Returns true when the product was activated
  * here, false when no safe handler exists yet (caller marks pending + alerts).
  * Each branch is idempotent (wallet credits dedupe on sourceId=purchase.id).
