@@ -917,7 +917,7 @@ function styles(he: boolean) {
       transition:transform .15s ease, border-color .15s ease, box-shadow .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
-    .sl-soc:hover:not(:disabled){ transform:translateY(-1px); border-color:rgba(176,132,28,.45); box-shadow:0 0 0 3px rgba(176,132,28,.10) }
+    .sl-soc:hover:not(:disabled){ transform:translateY(-1px); border-color:rgba(212,175,55,.55); box-shadow:0 0 0 3px rgba(212,175,55,.12) }
     .sl-soc:disabled{ cursor:not-allowed }
     .sl-socLabel{ flex:1; min-width:0; text-align:start; overflow-wrap:normal }
     .sl-gIcon{ width:24px; height:24px; flex:0 0 auto }
