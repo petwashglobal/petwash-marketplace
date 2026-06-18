@@ -2256,13 +2256,14 @@ export default function MyAccount() {
                                     async (pos) => {
                                       const { latitude, longitude } = pos.coords;
                                       try {
+                                        // 2026-06-18: free OSM reverse (was dead Google places-details?latlng).
                                         const res = await fetch(
-                                          `/api/google/places-details?latlng=${latitude},${longitude}`,
+                                          `/api/geocode/reverse?lat=${latitude}&lng=${longitude}`,
                                           { credentials: 'include' }
                                         );
                                         const data = await res.json();
-                                        const formatted = data?.result?.formatted_address || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-                                        const postal = data?.result?.address_components?.find((c: any) => c.types.includes('postal_code'))?.long_name || '';
+                                        const formatted = data?.formattedAddress || `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+                                        const postal = data?.postalCode || '';
                                         setEditedProfile({
                                           ...editedProfile,
                                           addressIsTemporary: true,

@@ -131,13 +131,21 @@ export function GooglePlacesAutocomplete({
   // Prevents the click-outside handler from firing during a selection
   const selectingRef = useRef(false);
 
-  // Update the fixed dropdown position whenever it opens or the window resizes/scrolls
+  // Position the portaled dropdown right under the input.
+  // iOS-SAFARI FIX 2026-06-18: when the soft keyboard opens, the layout/visual
+  // viewports diverge and `window.scrollY` no longer reflects the on-screen offset,
+  // so the dropdown floated away from the field. Anchor to the visualViewport offset
+  // when available, and re-position on visualViewport resize/scroll (the events iOS
+  // actually fires when the keyboard opens) — not just window resize/scroll.
   const updateDropdownPosition = useCallback(() => {
     if (!inputRef.current) return;
     const rect = inputRef.current.getBoundingClientRect();
+    const vv = (typeof window !== 'undefined' ? window.visualViewport : null);
+    const offsetTop = vv ? vv.offsetTop : 0;
+    const offsetLeft = vv ? vv.offsetLeft : 0;
     setDropdownRect({
-      top: rect.bottom + window.scrollY,
-      left: rect.left + window.scrollX,
+      top: rect.bottom + window.scrollY + offsetTop,
+      left: rect.left + window.scrollX + offsetLeft,
       width: rect.width,
     });
   }, []);
@@ -147,9 +155,14 @@ export function GooglePlacesAutocomplete({
     updateDropdownPosition();
     window.addEventListener('resize', updateDropdownPosition);
     window.addEventListener('scroll', updateDropdownPosition, true);
+    const vv = (typeof window !== 'undefined' ? window.visualViewport : null);
+    vv?.addEventListener('resize', updateDropdownPosition);
+    vv?.addEventListener('scroll', updateDropdownPosition);
     return () => {
       window.removeEventListener('resize', updateDropdownPosition);
       window.removeEventListener('scroll', updateDropdownPosition, true);
+      vv?.removeEventListener('resize', updateDropdownPosition);
+      vv?.removeEventListener('scroll', updateDropdownPosition);
     };
   }, [showDropdown, updateDropdownPosition]);
 
@@ -407,7 +420,8 @@ export function GooglePlacesAutocomplete({
                 <button
                   key={pred.placeId}
                   type="button"
-                  className={`w-full text-left px-4 py-3 flex items-start gap-3 border-b border-gray-50 last:border-b-0 ${
+                  dir="auto"
+                  className={`w-full text-start px-4 py-3 flex items-start gap-3 border-b border-gray-50 last:border-b-0 ${
                     idx === highlightIndex ? 'bg-blue-50' : 'active:bg-blue-50'
                   }`}
                   onPointerDown={(e) => {
@@ -487,6 +501,9 @@ export function GooglePlacesAutocomplete({
           ref={inputRef}
           type="text"
           inputMode="text"
+          /* RTL 2026-06-18: follow the document direction so Hebrew addresses align
+             right and Latin street names still read left — was unset (inconsistent). */
+          dir="auto"
           value={value}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
