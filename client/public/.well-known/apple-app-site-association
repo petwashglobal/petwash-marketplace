@@ -10,7 +10,7 @@
         ]
       },
       {
-        "appIDs": ["U22NC3Q5Z4.il.co.petwash.customer"],
+        "appIDs": ["U22NC3Q5Z4.com.petwash.il"],
         "components": [
           { "/": "/*" }
         ]
@@ -19,7 +19,7 @@
   },
   "webcredentials": {
     "apps": [
-      "U22NC3Q5Z4.il.co.petwash.customer",
+      "U22NC3Q5Z4.com.petwash.il",
       "U22NC3Q5Z4.il.co.petwash.provider"
     ]
   }

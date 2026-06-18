@@ -672,7 +672,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     return () => { window.removeEventListener('focus', refreshLive); removeCap?.(); };
   }, []);
 
-  // APP-FLAVOR ROUTING (2026-06-17): the customer (il.co.petwash.customer) and
+  // APP-FLAVOR ROUTING (2026-06-17): the customer (com.petwash.il) and
   // provider (il.co.petwash.provider) apps ship the SAME web bundle. On a cold
   // Detect the native app flavor once (provider vs customer bundle id). Web stays false.
   useEffect(() => {
