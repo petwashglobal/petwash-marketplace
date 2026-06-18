@@ -5,6 +5,7 @@ import { requireAuth } from "../customAuth";
 import { eq, and, desc } from "drizzle-orm";
 import { z } from "zod";
 import { logger } from "../lib/logger";
+import { geocodeAddress } from "../lib/geocode";
 
 const router = Router();
 
@@ -55,6 +56,20 @@ router.post("/", requireAuth, async (req, res) => {
     });
 
     const data = schema.parse(req.body);
+
+    // A2 (2026-06-18): geocode on save so addresses get GPS coordinates, which
+    // proximity matching at booking depends on. Free OpenStreetMap (no Google bill).
+    // Best-effort: if it fails, we still save the address (just without coords).
+    if (data.lat === undefined || data.lng === undefined) {
+      const composed = [data.street && `${data.street} ${data.streetNumber ?? ''}`.trim(), data.city, data.postalCode, 'Israel']
+        .filter(Boolean).join(', ') || data.address;
+      const point = await geocodeAddress(composed);
+      if (point) {
+        data.lat = point.lat;
+        data.lng = point.lng;
+        logger.info('[addresses] geocoded on save', { userId, hasCoords: true });
+      }
+    }
 
     // Load all existing addresses for this user (count is small, JS proximity check is fine)
     const allAddresses = await db
