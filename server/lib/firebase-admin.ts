@@ -1,6 +1,6 @@
 // Firebase Admin SDK initialization for server-side operations
 import admin from 'firebase-admin';
-import { verifyIdTokenResilient } from './resilientVerify';
+import { verifyIdTokenResilient, verifySessionCookieResilient } from './resilientVerify';
 
 // Read project config from environment — never hardcode
 const FIREBASE_PROJECT_ID = process.env.FIREBASE_PROJECT_ID || process.env.VITE_FIREBASE_PROJECT_ID || 'signinpetwash';
@@ -135,6 +135,22 @@ const __rawVerifyIdToken = auth.verifyIdToken.bind(auth);
     console.warn(
       '[firebase-admin] verifyIdToken: revocation lookup unavailable (' + code +
       ') — token verified cryptographically WITHOUT checkRevoked. Grant the ' +
+      'runtime service account Identity-Toolkit access (Firebase Authentication ' +
+      'Admin) to restore revocation checks.'
+    );
+  });
+
+// SAME root cause, SAME fix for SESSION COOKIES. /api/auth/me-session (fired on
+// EVERY page load to restore the session) and ~14 sibling routes call
+// verifySessionCookie(cookie, /*checkRevoked*/ true). The `true` triggers the
+// identical Identity-Toolkit revocation lookup — so when it's broken, users were
+// silently logged out on every refresh. Wrap the shared instance the same way.
+const __rawVerifySessionCookie = auth.verifySessionCookie.bind(auth);
+(auth as any).verifySessionCookie = (sessionCookie: string, checkRevoked?: boolean) =>
+  verifySessionCookieResilient(__rawVerifySessionCookie, sessionCookie, checkRevoked, (code) => {
+    console.warn(
+      '[firebase-admin] verifySessionCookie: revocation lookup unavailable (' + code +
+      ') — cookie verified cryptographically WITHOUT checkRevoked. Grant the ' +
       'runtime service account Identity-Toolkit access (Firebase Authentication ' +
       'Admin) to restore revocation checks.'
     );
