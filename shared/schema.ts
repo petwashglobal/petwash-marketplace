@@ -8,6 +8,7 @@ import {
   index,
   uniqueIndex,
   integer,
+  bigint,
   decimal,
   numeric,
   boolean,
@@ -16129,3 +16130,89 @@ export const paymentDeviceAssignments = pgTable("payment_device_assignments", {
 
 export type PaymentDeviceAssignment = typeof paymentDeviceAssignments.$inferSelect;
 export type InsertPaymentDeviceAssignment = typeof paymentDeviceAssignments.$inferInsert;
+
+// ════════════════════════════════════════════════════════════════════════════
+// COMMERCE OS — unified purchase lifecycle (foundation, additive, INERT in v1)
+// One program with docs/design/2026-05-26-payment-provider-routing-and-lifecycle.md
+// + docs/design/2026-06-18-petwash-commerce-os.md. Nothing reads these yet; the
+// checkout/router/webhook-activation land in later PRs behind ff.commerce.* (default OFF).
+// `purchases` is a SHADOW row in v1 — surface-specific tables stay source of truth
+// until a surface flips to read from it. Migration 0058.
+// ════════════════════════════════════════════════════════════════════════════
+export const purchases = pgTable("purchases", {
+  id:               varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  surface:          text("surface").notNull(),            // shop|booking|gift_card|wallet_topup|franchise_fee|kiosk
+  surfaceRefId:     text("surface_ref_id").notNull(),     // pointer back to the surface row
+  buyerUserId:      text("buyer_user_id").notNull(),
+  receiverUserId:   text("receiver_user_id"),             // when buyer ≠ receiver (gift)
+  productType:      text("product_type").notNull(),       // ProductType (shared/purchase-lifecycle/types)
+  amountCents:      bigint("amount_cents", { mode: "number" }).notNull(),
+  currency:         text("currency").notNull().default("ILS"),
+  status:           text("status").notNull(),             // PurchaseStatus
+  paymentMethod:    text("payment_method").notNull(),     // PaymentMethod
+  segment:          text("segment").notNull(),            // CustomerSegment
+  acquirer:         text("acquirer"),                     // upay_via_sumit|upay_direct|nayax|wallet_only
+  systemOfRecord:   text("system_of_record").notNull().default("sumit"),
+  transactionId:    text("transaction_id"),               // acquirer tx id
+  receiptNumber:    text("receipt_number"),               // SUMIT receipt number (NEVER the same as transaction_id)
+  feeSnapshotJson:  jsonb("fee_snapshot_json"),           // FeeSnapshot at quote time (read-only after payment_pending)
+  vatCents:         bigint("vat_cents", { mode: "number" }).notNull().default(0),
+  ruleSetVersion:   text("rule_set_version"),             // payment_provider_routes snapshot hash
+  metadataJson:     jsonb("metadata_json").notNull().default(sql`'{}'::jsonb`),
+  createdAt:        timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt:        timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  surfaceRefUq: uniqueIndex("purchases_surface_ref_uq").on(t.surface, t.surfaceRefId),
+  buyerIdx:     index("purchases_buyer_idx").on(t.buyerUserId),
+  statusIdx:    index("purchases_status_idx").on(t.status),
+  createdIdx:   index("purchases_created_at_idx").on(t.createdAt),
+}));
+export type Purchase = typeof purchases.$inferSelect;
+export type InsertPurchase = typeof purchases.$inferInsert;
+
+// Unified lifecycle audit — one row per state transition, every surface (shape from
+// the shop_order_events pattern, lifted platform-wide). Distinct from the money ledger.
+export const purchaseEvents = pgTable("purchase_events", {
+  id:                varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  purchaseId:        varchar("purchase_id").notNull(),
+  surface:           text("surface").notNull(),
+  oldStatus:         text("old_status"),
+  newStatus:         text("new_status").notNull(),
+  actorType:         text("actor_type").notNull(),        // system|admin|provider|customer|provider_api|machine
+  actorId:           text("actor_id"),
+  providerName:      text("provider_name"),               // sumit|upay|wolt|aftership|nayax|null
+  providerReference: text("provider_reference"),          // signed external id (idempotency anchor)
+  metadataJson:      jsonb("metadata_json").notNull().default(sql`'{}'::jsonb`),
+  occurredAt:        timestamp("occurred_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  purchaseIdx:   index("purchase_events_purchase_idx").on(t.purchaseId, t.occurredAt),
+  providerRefUq: uniqueIndex("purchase_events_provider_ref_uq").on(t.providerName, t.providerReference),
+}));
+export type PurchaseEvent = typeof purchaseEvents.$inferSelect;
+export type InsertPurchaseEvent = typeof purchaseEvents.$inferInsert;
+
+// Finance-confirmed rate table the payment router reads (SUMIT-aggregated vs UPAY-direct).
+export const paymentProviderRoutes = pgTable("payment_provider_routes", {
+  id:             varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  acquirer:       text("acquirer").notNull(),
+  surface:        text("surface"),                        // null = all surfaces
+  paymentMethod:  text("payment_method"),                 // null = all methods
+  segment:        text("segment"),                        // null = all segments
+  minAmountCents: bigint("min_amount_cents", { mode: "number" }),
+  maxAmountCents: bigint("max_amount_cents", { mode: "number" }),
+  feeBps:         integer("fee_bps").notNull(),
+  feeVatBps:      integer("fee_vat_bps").notNull(),
+  fixedFeeCents:  bigint("fixed_fee_cents", { mode: "number" }).notNull().default(0),
+  source:         text("source").notNull(),               // sumit.co.il/help|upay.co.il|finance_confirmed|manual_override
+  sourceUrl:      text("source_url"),
+  status:         text("status").notNull().default("draft"), // draft|pending_finance|finance_confirmed|superseded|withdrawn
+  effectiveFrom:  timestamp("effective_from", { withTimezone: true }),
+  effectiveTo:    timestamp("effective_to", { withTimezone: true }),
+  createdBy:      text("created_by"),
+  createdAt:      timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  acquirerIdx: index("payment_provider_routes_acquirer_idx").on(t.acquirer),
+  statusIdx:   index("payment_provider_routes_status_idx").on(t.status),
+}));
+export type PaymentProviderRoute = typeof paymentProviderRoutes.$inferSelect;
+export type InsertPaymentProviderRoute = typeof paymentProviderRoutes.$inferInsert;
