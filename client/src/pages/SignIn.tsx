@@ -2400,7 +2400,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 onClick={() => { handleSelectIntent('customer'); handleSocialLogin('apple'); }}
                 disabled={!!socialLoading}
-                className="w-full h-12 text-sm font-medium !bg-black hover:!bg-neutral-900 !text-white border border-black hover:!border-[#D4AF37] rounded-none tracking-wider uppercase transition-all"
+                variant="outline"
+                className="w-full h-12 text-sm font-medium border border-neutral-300 !bg-white hover:!bg-white hover:!border-[#D4AF37] !text-neutral-900 rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-apple-signin-quick"
               >
                 {socialLoading === 'apple' ? (
@@ -2490,7 +2491,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             <Button
               onClick={() => handleSocialLogin('apple')}
               disabled={!!socialLoading}
-              className="w-full h-13 text-sm font-medium !bg-black hover:!bg-neutral-900 !text-white border border-black hover:!border-[#D4AF37] rounded-none tracking-wider uppercase transition-all"
+              variant="outline"
+              className="w-full h-13 text-sm font-medium border border-neutral-300 !bg-white hover:!bg-white hover:!border-[#D4AF37] !text-neutral-900 rounded-none tracking-wider uppercase transition-all"
               data-testid="button-apple-signin"
             >
               {socialLoading === 'apple' ? (
