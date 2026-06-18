@@ -278,6 +278,10 @@ router.post('/:bookingId/confirm', requireAuth, async (req: Request, res: Respon
       creditBreakdown: result.creditBreakdown,
     });
   } catch (error: any) {
+    if (error?.code === 'PAYMENT_REFERENCE_REQUIRED') {
+      logger.warn('[UnifiedBookingAPI] Confirm rejected — no payment reference for cash-due booking', { error: error.message });
+      return res.status(400).json({ success: false, error: error.message, code: 'PAYMENT_REFERENCE_REQUIRED' });
+    }
     logger.error('[UnifiedBookingAPI] Failed to confirm', { error: error.message });
     res.status(500).json({
       success: false,
