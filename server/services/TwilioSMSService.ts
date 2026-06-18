@@ -28,13 +28,20 @@ const VERIFICATION_TOKEN_EXPIRY_MINUTES = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const phoneLockouts = new Map<string, number>();
 
-const MAX_SMS_PER_PHONE_PER_DAY = 5;
+// LAUNCH-SAFETY 2026-06-18: was 5 — a user who mistypes their number or hits a
+// carrier delay burns 5 sends and is locked out until midnight. Raised + env-tunable.
+const MAX_SMS_PER_PHONE_PER_DAY = parseInt(process.env.SMS_PER_PHONE_DAILY_CAP || '10', 10);
 const phoneDailySendCount = new Map<string, { count: number; resetAt: number }>();
 
 const RESEND_COOLDOWN_SECONDS = 60;
 const phoneLastSentAt = new Map<string, number>(); // phone → epoch ms of last send
 
-const MAX_GLOBAL_SMS_PER_DAY = 150;
+// LAUNCH-SAFETY 2026-06-18: was 150 and PER-INSTANCE in-memory — it reset on every
+// deploy, behaved differently across Cloud Run instances ("SMS randomly stops"), and
+// fired BELOW the real Redis-backed abuse detector (SmsAbuseDetector). Raised well
+// above the abuse threshold so the Redis detector is the real global guard; this stays
+// only as a per-instance backstop. env-tunable.
+const MAX_GLOBAL_SMS_PER_DAY = parseInt(process.env.SMS_INSTANCE_DAILY_CAP || '8000', 10);
 let globalDailySmsCount = 0;
 let globalDailyResetAt = Date.now() + 24 * 60 * 60 * 1000;
 
