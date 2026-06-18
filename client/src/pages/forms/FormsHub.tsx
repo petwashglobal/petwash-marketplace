@@ -29,7 +29,7 @@ const FORMS: FormCard[] = [
     title: 'Join Prestige Club',
     titleHe: 'הצטרפות למועדון',
     description: 'Register for Gold, Platinum or Diamond membership with digital card',
-    href: '/forms/club',
+    href: '/loyalty/join',
     color: '#C6A35B',
     tag: 'New',
     tagColor: 'bg-[#C6A35B]/20 text-[#E7C978]',

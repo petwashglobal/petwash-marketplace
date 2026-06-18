@@ -74,7 +74,6 @@ const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
-const SmartSignIn = lazy(() => import("@/pages/SmartSignIn"));
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
@@ -129,7 +128,6 @@ const HRApplicationForm = lazy(() => import("@/pages/forms/HRApplicationForm"));
 const SalesLeadForm = lazy(() => import("@/pages/forms/SalesLeadForm"));
 const CustomerOnboardingForm = lazy(() => import("@/pages/forms/CustomerOnboardingForm"));
 const RefundForm = lazy(() => import("@/pages/forms/RefundForm"));
-const ClubRegistrationForm = lazy(() => import("@/pages/forms/ClubRegistrationForm"));
 // ProviderRegistrationForm retired 2026-06-14 — /forms/provider now redirects to
 // the canonical /provider-onboarding (it was a dead-end form with no KYC/approval).
 const QuickBookingForm = lazy(() => import("@/pages/forms/QuickBookingForm"));
@@ -747,19 +745,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           }}
         </Route>
         <Route path="/signin">
-          {() => import.meta.env.VITE_SMART_SIGNIN_ENABLED === 'true'
-            ? <SmartSignIn language={language} onLanguageChange={handleLanguageChange} />
-            : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/sign-in">
-          {() => import.meta.env.VITE_SMART_SIGNIN_ENABLED === 'true'
-            ? <SmartSignIn language={language} onLanguageChange={handleLanguageChange} />
-            : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/login">
-          {() => import.meta.env.VITE_SMART_SIGNIN_ENABLED === 'true'
-            ? <SmartSignIn language={language} onLanguageChange={handleLanguageChange} />
-            : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/booking-chat/inbox">
           {() => (
@@ -783,9 +775,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/signin-advanced">
-          {() => import.meta.env.VITE_SMART_SIGNIN_ENABLED === 'true'
-            ? <SmartSignIn language={language} onLanguageChange={handleLanguageChange} />
-            : <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/signup">
           {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
@@ -2475,7 +2465,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/forms/sales-lead" component={SalesLeadForm} />
         <Route path="/forms/onboarding" component={CustomerOnboardingForm} />
         <Route path="/forms/refund" component={RefundForm} />
-        <Route path="/forms/club" component={ClubRegistrationForm} />
+        {/* Consolidated 2026-06-18: the separate club-registration form was a THIRD
+            loyalty signup (its own endpoint). Redirect to the canonical loyalty join. */}
+        <Route path="/forms/club">{() => <Redirect to="/loyalty/join" />}</Route>
         {/* /forms/provider was a dead-end form (posted to a no-approval endpoint, no KYC).
             Redirect to the canonical KYC onboarding so nobody submits into a black hole. */}
         <Route path="/forms/provider" component={LegacyProviderRouteRedirect} />
