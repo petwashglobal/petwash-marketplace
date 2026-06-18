@@ -7,6 +7,30 @@ import { useSEO, pageSEO } from '@/lib/seo';
 // Gallery images
 const galleryImages = [
   {
+    src: '/gallery/petwash-community-1.jpg',
+    alt: "Pet Wash™ — Israel's pet community",
+    category: 'branding',
+    featured: true
+  },
+  {
+    src: '/gallery/petwash-community-2.jpg',
+    alt: 'Pet Wash™ community — all pets welcome',
+    category: 'branding',
+    featured: true
+  },
+  {
+    src: '/gallery/petwash-community-3.jpg',
+    alt: 'Pet Wash™ — everything in one hub',
+    category: 'branding',
+    featured: false
+  },
+  {
+    src: '/gallery/petwash-community-4.jpg',
+    alt: 'Pet Wash™ — a place for every pet',
+    category: 'branding',
+    featured: false
+  },
+  {
     src: '/gallery/C4EFE9DA-C7A6-4252-AB3F-7ED77BAC1A9B_1761100129902.png',
     alt: 'Pet Wash™ Station Signage',
     category: 'branding',
