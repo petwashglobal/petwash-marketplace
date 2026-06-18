@@ -5750,61 +5750,23 @@ self.addEventListener('notificationclick', (event) => {
         eligibleServices
       } = parseResult.data;
 
-      const { giftOrchestrationService } = await import('./services/giftOrchestrationService');
-      
-      const result = await giftOrchestrationService.createMultiServiceGiftCard({
-        value,
-        currency,
-        purchaserEmail: senderEmail,
-        recipientEmail,
-        recipientName,
-        senderName,
-        message,
-        eligibleServices,
-        expiresInMonths: 24
+      // SECURITY (2026-06-19): this endpoint USED TO mint stored value (a gift
+      // card) after only checking that Nayax env vars EXIST — it never verified
+      // a real payment. That is a mint-without-payment hole (free ₪1,000 gift
+      // cards the moment the keys are set). eGift purchase has moved to the
+      // verified SUMIT rail: POST /api/payments/sumit/begin → SUMIT hosted
+      // checkout → signed webhook → activation mints the recipient-bound gift
+      // ONLY after a confirmed payment. We REFUSE here so no gift can ever be
+      // created without a verified payment. (Validation above is retained so
+      // the ₪1,500 exemption-cap contract stays asserted.)
+      logger.warn('[Multi-Service Gift] mint-without-payment refused — eGift moved to the SUMIT checkout rail', {
+        value, recipientEmail,
       });
-
-      logger.info('[Multi-Service Gift] Created', { 
-        giftCardId: result.giftCardId, 
-        value, 
-        services: eligibleServices,
-        recipientEmail 
-      });
-
-      // Send animated confirmation email to sender
-      try {
-        const { sendEGiftConfirmationEmail } = await import('./services/egiftEmailService');
-        await sendEGiftConfirmationEmail({
-          senderName,
-          senderEmail,
-          recipientName,
-          recipientEmail,
-          value,
-          currency,
-          publicCode: result.publicCode,
-          giftCardId: result.giftCardId,
-          occasion: occasion || 'justbecause',
-          messageLanguage: messageLanguage || 'he',
-          personalMessage: message,
-          eligibleServices,
-          expiresInMonths: 24
-        });
-      } catch (emailErr) {
-        logger.warn('[Multi-Service Gift] Email send failed (non-blocking):', emailErr);
-      }
-
-      const expiresAt = new Date();
-      expiresAt.setMonth(expiresAt.getMonth() + 24);
-      
-      res.json({
-        success: true,
-        giftCardId: result.giftCardId,
-        publicCode: result.publicCode,
-        qrCodeData: result.qrCodeData,
-        serialNumber: `PWL${result.giftCardId.substring(0, 8).toUpperCase()}`,
-        eligibleServices,
-        expiresAt: expiresAt.toISOString(),
-        message: 'Gift card created successfully'
+      return res.status(503).json({
+        success: false,
+        error: 'eGift purchase has moved to secure checkout. Please retry from the gift page.',
+        useCheckout: true,
+        checkoutPath: '/api/payments/sumit/begin',
       });
 
     } catch (error) {

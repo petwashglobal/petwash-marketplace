@@ -20,6 +20,7 @@ import { db } from '../db';
 import { purchases } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { EGIFT_EXEMPTION_CAP_ILS } from '../lib/egift-denominations';
 
 const router = Router();
 
@@ -60,10 +61,13 @@ const beginSchema = z.object({
   // The product is chosen by SKU from the server-owned catalog. NO client price.
   sku: z.enum([
     'ACCOUNT_CREDIT', 'SINGLE_WASH', 'WASH_PACKAGE_3', 'WASH_PACKAGE_5', 'WASH_PACKAGE_10',
-    'EGIFT_100', 'EGIFT_250', 'EGIFT_500', 'EGIFT_1000',
+    'EGIFT_100', 'EGIFT_250', 'EGIFT_500', 'EGIFT_1000', 'EGIFT',
   ]),
   // Only meaningful for ACCOUNT_CREDIT (variable-amount wallet top-up). Bounded.
   topupIls: z.number().positive().max(10_000).optional(),
+  // Only meaningful for the variable EGIFT sku. Hard-capped at the ₪1,500
+  // payment-services exemption — above it PetWash would need a payment licence.
+  giftIls: z.number().positive().max(EGIFT_EXEMPTION_CAP_ILS).optional(),
   orderId: z.string().max(120).optional(),
   metadata: z.record(z.unknown()).optional(),
   // REQUIRED for eGift: who receives the gift. The gift is bound to this
@@ -82,7 +86,7 @@ const beginSchema = z.object({
  * bounded wallet top-up value, which is credited 1:1 with what we charge).
  * Returns null for anything not purchasable in Phase 1.
  */
-function resolvePhase1Order(sku: Phase1Sku, topupIls?: number):
+function resolvePhase1Order(sku: string, topupIls?: number, giftIls?: number):
   | { amountCents: number; productType: string; surface: string; washCount?: number; description: string }
   | null {
   if (sku === 'ACCOUNT_CREDIT') {
@@ -90,7 +94,15 @@ function resolvePhase1Order(sku: Phase1Sku, topupIls?: number):
     const amountCents = Math.round(topupIls * 100);
     return { amountCents, productType: 'ACCOUNT_CREDIT', surface: 'wallet_topup', description: 'Account credit' };
   }
-  const def = PHASE1_PRODUCTS[sku] as any;
+  // Variable-amount eGift (the gift page allows custom values ₪50–₪1,500).
+  // The hard ₪1,500 cap is enforced both by the zod schema and here, from the
+  // single-source EGIFT_EXEMPTION_CAP_ILS constant — never exceed it.
+  if (sku === 'EGIFT') {
+    if (!giftIls || !Number.isFinite(giftIls) || giftIls < 50 || giftIls > EGIFT_EXEMPTION_CAP_ILS) return null;
+    const amountCents = Math.round(giftIls * 100);
+    return { amountCents, productType: 'EGIFT_CARD', surface: 'gift_card', description: `PetWash eGift — ₪${giftIls}` };
+  }
+  const def = (PHASE1_PRODUCTS as Record<string, any>)[sku];
   if (!def || typeof def.amountCents !== 'number') return null;
   return {
     amountCents: def.amountCents,
@@ -108,14 +120,14 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
 
   const parsed = beginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-  const { sku, topupIls, orderId, metadata, recipient } = parsed.data;
+  const { sku, topupIls, giftIls, orderId, metadata, recipient } = parsed.data;
 
   // SERVER-SIDE price/quantity. The client supplies only a SKU (+ a bounded
   // top-up value for wallet_topup); price, productType, surface and the unit
   // count all come from the server-owned catalog. A request for anything not
   // in the Phase-1 PetWash-owned set is rejected — "provider commerce
   // disabled" is enforced here, not left to a downstream switch default.
-  const order = resolvePhase1Order(sku, topupIls);
+  const order = resolvePhase1Order(sku, topupIls, giftIls);
   if (!order) return res.status(400).json({ error: 'product_not_purchasable' });
   const { amountCents, productType: resolvedProductType, surface: resolvedSurface, washCount, description } = order;
   const amountIls = amountCents / 100;

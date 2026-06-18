@@ -98,6 +98,43 @@ describe('POST /api/payments/sumit/begin', () => {
     expect(insertedValues).toBeNull();
   });
 
+  it('variable eGift (EGIFT + giftIls) is server-priced and recipient-bound', async () => {
+    const res = await request(app())
+      .post('/api/payments/sumit/begin')
+      .send({ sku: 'EGIFT', giftIls: 300, recipient: { name: 'Dana', email: 'dana@example.com' } });
+    expect(res.status).toBe(200);
+    expect(res.body.redirectUrl).toBeTruthy();
+    expect(insertedValues.productType).toBe('EGIFT_CARD');
+    expect(insertedValues.surface).toBe('gift_card');
+    expect(insertedValues.amountCents).toBe(30000);
+    expect(insertedValues.metadataJson.egiftRecipientEmail).toBe('dana@example.com');
+    expect(insertedValues.metadataJson.egiftGiftCardId).toBeNull();
+  });
+
+  it('variable eGift at the ₪1,500 cap boundary is allowed', async () => {
+    const res = await request(app())
+      .post('/api/payments/sumit/begin')
+      .send({ sku: 'EGIFT', giftIls: 1500, recipient: { name: 'Dana', email: 'dana@example.com' } });
+    expect(res.status).toBe(200);
+    expect(insertedValues.amountCents).toBe(150000);
+  });
+
+  it('variable eGift ABOVE the ₪1,500 exemption cap is rejected (licence boundary)', async () => {
+    const res = await request(app())
+      .post('/api/payments/sumit/begin')
+      .send({ sku: 'EGIFT', giftIls: 1501, recipient: { name: 'Dana', email: 'dana@example.com' } });
+    expect(res.status).toBe(400); // zod max(EGIFT_EXEMPTION_CAP_ILS) rejects it
+    expect(insertedValues).toBeNull();
+  });
+
+  it('variable eGift below the ₪50 floor is not purchasable', async () => {
+    const res = await request(app())
+      .post('/api/payments/sumit/begin')
+      .send({ sku: 'EGIFT', giftIls: 30, recipient: { name: 'Dana', email: 'dana@example.com' } });
+    expect(res.status).toBe(400);
+    expect(insertedValues).toBeNull();
+  });
+
   it('wash package uses the server price, not any client value', async () => {
     const res = await request(app())
       .post('/api/payments/sumit/begin')
