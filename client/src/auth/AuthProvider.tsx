@@ -105,22 +105,36 @@ const createDevUser = (): Partial<User> => ({
   toJSON: () => ({})
 });
 
+async function postSession(idToken: string): Promise<Response> {
+  return fetch(getApiUrl('/api/auth/session'), {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'include',
+    body: JSON.stringify({ idToken }),
+  });
+}
+
 async function ensureServerSession(firebaseUser: User): Promise<void> {
   try {
-    const idToken = await firebaseUser.getIdToken();
-    const response = await fetch(getApiUrl('/api/auth/session'), {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ idToken }),
-    });
+    let response = await postSession(await firebaseUser.getIdToken());
+    // BUGFIX 2026-06-18: a 401/INVALID_TOKEN here used to be swallowed, then the
+    // app revealed the user as "logged in" with NO server session — split-brain
+    // where every cookie-authed call 401s and guards bounce the user to /signup.
+    // On a token-rejection, retry ONCE with a force-refreshed token (handles a
+    // stale/expired cached token, the most common cause).
+    if (!response.ok && (response.status === 401 || response.status === 403)) {
+      logger.warn('[AuthProvider] Session 401/403 — retrying with refreshed token', { status: response.status });
+      response = await postSession(await firebaseUser.getIdToken(true));
+    }
     if (response.ok) {
       logger.info('[AuthProvider] Server session created', { uid: firebaseUser.uid });
     } else {
-      logger.warn('[AuthProvider] Server session creation returned non-OK', { status: response.status });
+      // Do NOT force-signout here: a transient 5xx/offline blip shouldn't kick a
+      // returning user. But log loudly so the failure is visible (it used to be silent).
+      logger.error('[AuthProvider] Server session creation FAILED after retry', { status: response.status, uid: firebaseUser.uid });
     }
   } catch (err) {
-    logger.warn('[AuthProvider] Server session creation failed (non-blocking)', err);
+    logger.warn('[AuthProvider] Server session creation network error (non-blocking)', err);
   }
 }
 

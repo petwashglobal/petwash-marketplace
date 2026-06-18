@@ -28,9 +28,20 @@ export function useAdminAuth() {
     retry: false,
     refetchOnWindowFocus: false,
     queryFn: async () => {
-      const res = await fetch(getApiUrl('/api/admin/auth/me'), { credentials: 'include' });
+      // BUGFIX 2026-06-18: this hand-rolled queryFn previously sent ONLY the cookie
+      // (credentials:'include') and dropped the Firebase Bearer token. On Safari ITP /
+      // any moment the session cookie is stripped, /api/admin/auth/me 401'd and the
+      // admin (incl. the CEO) was bounced to /admin/login despite being signed in.
+      // Attach the Bearer like the default queryFn does so admin auth survives cookie loss.
+      const headers: Record<string, string> = {};
+      try {
+        const { auth } = await import('@/lib/firebase');
+        const token = await auth?.currentUser?.getIdToken();
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+      } catch { /* fall back to cookie */ }
+      const res = await fetch(getApiUrl('/api/admin/auth/me'), { credentials: 'include', headers });
       if (!res.ok) {
-        const errorData = await res.json();
+        const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || 'Authentication failed');
       }
       return res.json();
