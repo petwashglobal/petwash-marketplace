@@ -212,9 +212,9 @@ const tierConfig: Record<string, {
   nextTier?: string;
   discount: number;
 }> = {
-  bronze: { 
-    gradient: 'from-amber-700 via-amber-600 to-amber-800',
-    bgGradient: 'from-amber-900/20 to-amber-800/10',
+  bronze: {
+    gradient: 'from-[#B8901E] via-[#D4AF37] to-[#9E7B16]',
+    bgGradient: 'from-[#D4AF37]/15 to-[#B8901E]/10',
     label: 'Bronze Member',
     labelHe: 'חבר ברונזה',
     icon: Star,
@@ -232,9 +232,9 @@ const tierConfig: Record<string, {
     nextTier: 'gold',
     discount: 6
   },
-  gold: { 
-    gradient: 'from-yellow-500 via-yellow-400 to-amber-500',
-    bgGradient: 'from-yellow-900/20 to-amber-800/10',
+  gold: {
+    gradient: 'from-[#D4AF37] via-[#F4D77A] to-[#C9A227]',
+    bgGradient: 'from-[#D4AF37]/15 to-[#C9A227]/10',
     label: 'Gold Member',
     labelHe: 'חבר זהב',
     icon: Crown,
@@ -1390,7 +1390,7 @@ export default function MyAccount() {
                   <div className="pw-avatar-ring-inner">
                     <Avatar className="w-28 h-28">
                       <AvatarImage src={profile?.photoURL ?? undefined} alt={profile?.displayName ?? ''} />
-                      <AvatarFallback className="text-4xl font-bold bg-[#1a1a24] text-amber-300 w-full h-full flex items-center justify-center">
+                      <AvatarFallback className="text-4xl font-bold bg-[#1a1a24] text-[#D4AF37] w-full h-full flex items-center justify-center">
                         <img src="/gold-user-icon.jpeg" alt="avatar" className="w-full h-full object-cover rounded-full opacity-90" />
                       </AvatarFallback>
                     </Avatar>
@@ -1421,7 +1421,7 @@ export default function MyAccount() {
                   <Button
                     onClick={() => photoInputRef.current?.click()}
                     disabled={isUploadingPhoto}
-                    className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md text-amber-900 border-2 border-[#1a1a24] transition-all duration-200 cursor-pointer"
+                    className="absolute -bottom-2 -left-2 p-2.5 rounded-full shadow-md text-[#1a1a1a] border-2 border-[#1a1a24] transition-all duration-200 cursor-pointer"
                     style={{ background: 'var(--gold-gradient)', boxShadow: 'var(--gold-shadow)' }}
                     title={isHebrew ? 'שנה תמונת פרופיל' : 'Change profile photo'}
                   >
@@ -1453,7 +1453,7 @@ export default function MyAccount() {
                 {/* Tier icon medallion */}
                 <div className="absolute -bottom-2 -right-2 p-2 rounded-full shadow-md"
                   style={{ background: 'var(--gold-gradient)', boxShadow: 'var(--gold-glow)' }}>
-                  <TierIcon className="w-4 h-4 text-amber-900" />
+                  <TierIcon className="w-4 h-4 text-[#1a1a1a]" />
                 </div>
               </div>
 
@@ -1474,7 +1474,7 @@ export default function MyAccount() {
                 </span>
 
                 {tierInfo.discount > 0 && (
-                  <p className="text-amber-400/80 mt-3 text-xs font-medium flex items-center gap-1.5" style={{ justifyContent: isHebrew ? 'flex-start' : 'flex-start' }}>
+                  <p className="text-[#D4AF37]/80 mt-3 text-xs font-medium flex items-center gap-1.5" style={{ justifyContent: isHebrew ? 'flex-start' : 'flex-start' }}>
                     <Sparkles className="w-3.5 h-3.5" />
                     {isHebrew
                       ? `${tierInfo.discount}% הנחה קבועה על כל השירותים`
@@ -1488,7 +1488,7 @@ export default function MyAccount() {
 
               {/* Wallet total — gold metallic */}
               {walletLoading ? (
-                <Loader2 className="w-8 h-8 animate-spin text-amber-400/50" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#D4AF37]/50" />
               ) : (
                 <div className="text-center shrink-0">
                   <p className="pw-wallet-total-label mb-1">{isHebrew ? 'סך הזכויות' : 'Total Credits'}</p>
@@ -1506,7 +1506,7 @@ export default function MyAccount() {
                   <span className="text-xs text-white/40 tracking-wide uppercase">
                     {isHebrew ? 'התקדמות לדרגה הבאה' : 'Progress to next tier'}
                   </span>
-                  <span className="text-xs font-semibold text-amber-400">
+                  <span className="text-xs font-semibold text-[#D4AF37]">
                     {wallet?.tierPointsThisYear || 0} / {nextTierInfo.pointsRequired}
                   </span>
                 </div>
@@ -1668,7 +1668,7 @@ export default function MyAccount() {
                       <Shield className="w-5 h-5 text-amber-700" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="font-semibold text-amber-900 mb-1">
+                      <h4 className="font-semibold text-[#1a1a1a] mb-1">
                         {isHebrew ? 'אמתו את חשבונכם' : 'Verify Your Account'}
                       </h4>
                       <p className="text-amber-700 text-sm mb-3">
@@ -1705,7 +1705,7 @@ export default function MyAccount() {
               <div className="pw-section-card">
                 <div className="pw-section-header">
                   <div className="pw-section-icon-box">
-                    <User className="w-5 h-5 text-amber-400" />
+                    <User className="w-5 h-5 text-[#D4AF37]" />
                   </div>
                   <div className="flex-1">
                     <p className="pw-section-title">{isHebrew ? 'פרטים אישיים' : 'Personal Details'}</p>
@@ -2327,7 +2327,7 @@ export default function MyAccount() {
                 <div className="pw-section-card">
                   <div className="flex items-center justify-between mb-4">
                     <h3 className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                      <MapPin className="w-5 h-5 text-amber-400" />
+                      <MapPin className="w-5 h-5 text-[#D4AF37]" />
                       {isHebrew ? 'ספר כתובות' : 'Address Book'}
                     </h3>
                     <span className="text-xs text-gray-400">{savedAddresses.length} {isHebrew ? 'כתובות' : 'saved'}</span>
@@ -2576,7 +2576,7 @@ export default function MyAccount() {
               <div className="pw-section-card">
                 <div className="pw-section-header">
                   <div className="pw-section-icon-box">
-                    <MapPin className="w-5 h-5 text-amber-400" />
+                    <MapPin className="w-5 h-5 text-[#D4AF37]" />
                   </div>
                   <div>
                     <p className="pw-section-title">{isHebrew ? 'כתובת מגורים' : 'Home Address'}</p>
@@ -2915,7 +2915,7 @@ export default function MyAccount() {
 
                 {mfaDisableVerificationChallengeId && (
                   <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50 p-4">
-                    <Label htmlFor="mfa-disable-code" className="text-xs font-semibold text-amber-900">
+                    <Label htmlFor="mfa-disable-code" className="text-xs font-semibold text-[#1a1a1a]">
                       {isHebrew ? 'קוד אימות להסרת 2FA' : 'Verification code to remove 2FA'}
                     </Label>
                     <div className="mt-2 flex gap-2">
@@ -3382,7 +3382,7 @@ export default function MyAccount() {
                   {deleteAccountStep === 'verify' ? (
                     <div className="space-y-4">
                       <div className="p-4 rounded-xl bg-amber-50 border border-amber-200">
-                        <p className="text-sm text-amber-900">
+                        <p className="text-sm text-[#1a1a1a]">
                           {isHebrew
                             ? 'הזן את קוד האימות שנשלח לאימייל שלך כדי להשלים את בקשת המחיקה.'
                             : 'Enter the verification code sent to your email to complete the deletion request.'}

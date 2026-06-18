@@ -6,14 +6,16 @@
 
 /* ── Gold Metallic Gradient Tokens ── */
 :root {
-  --gold-100: #fbf7ec;
-  --gold-200: #e6d2a1;
-  --gold-300: #12936A;
-  --gold-400: #b0841c;
-  --gold-500: #9c7619;
-  --gold-600: #735511;
-  --gold-700: #5b430d;
-  --gold-dark: #3d2b00;
+  /* Brand 2026-06-18: bright METALLIC gold only (#D4AF37). No cream, no antique/
+     bronze gold, no leftover green (#12936A was here). LVMH black + metallic gold. */
+  --gold-100: #F7E9B0;
+  --gold-200: #EBD27E;
+  --gold-300: #D4AF37;
+  --gold-400: #C9A227;
+  --gold-500: #B8901E;
+  --gold-600: #9E7B16;
+  --gold-700: #7E610F;
+  --gold-dark: #5A4408;
 
   --platinum-light: #f4f4f6;
   --platinum-mid: #dcdde1;
@@ -25,9 +27,9 @@
   --noir-600: #22222f;
   --noir-500: #2d2d3e;
 
-  --gold-gradient: linear-gradient(135deg, #6f5112 0%, #b0841c 35%, #d7c18a 52%, #b0841c 72%, #7c5d15 100%);
-  --gold-gradient-v: linear-gradient(180deg, #d7c18a 0%, #b0841c 48%, #735511 100%);
-  --gold-gradient-subtle: linear-gradient(135deg, #fbf7ec 0%, #e6d2a1 42%, #ffffff 100%);
+  --gold-gradient: linear-gradient(135deg, #B8901E 0%, #D4AF37 35%, #F4D77A 52%, #D4AF37 72%, #B8901E 100%);
+  --gold-gradient-v: linear-gradient(180deg, #F4D77A 0%, #D4AF37 48%, #B8901E 100%);
+  --gold-gradient-subtle: linear-gradient(135deg, #ffffff 0%, #EBD27E 42%, #ffffff 100%);
   --platinum-gradient: linear-gradient(135deg, #f4f4f6 0%, #dcdde1 40%, #f4f4f6 100%);
   --noir-gradient: linear-gradient(135deg, #0a0a0f 0%, #1a1a24 50%, #111118 100%);
   --card-noir-gradient: linear-gradient(145deg, #1a1a24 0%, #111118 100%);
@@ -39,8 +41,8 @@
     transparent 70%
   );
 
-  --gold-glow: 0 0 40px rgba(176, 132, 28, 0.24), 0 0 80px rgba(176, 132, 28, 0.08);
-  --gold-shadow: 0 8px 32px rgba(176, 132, 28, 0.14), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --gold-glow: 0 0 40px rgba(212, 175, 55, 0.24), 0 0 80px rgba(212, 175, 55, 0.08);
+  --gold-shadow: 0 8px 32px rgba(212, 175, 55, 0.14), 0 2px 8px rgba(0, 0, 0, 0.2);
   --card-shadow: 0 20px 60px rgba(0, 0, 0, 0.12), 0 4px 16px rgba(0, 0, 0, 0.06);
   --card-shadow-hover: 0 24px 72px rgba(0, 0, 0, 0.16), 0 8px 24px rgba(0, 0, 0, 0.08);
 }
@@ -82,7 +84,7 @@
 .pw-profile-hero {
   background: linear-gradient(145deg, #111118 0%, #1a1a24 40%, #0f0f18 100%);
   border-radius: 32px;
-  border: 1px solid rgba(18, 147, 106, 0.2);
+  border: 1px solid rgba(212, 175, 55, 0.2);
   box-shadow: var(--gold-shadow), inset 0 1px 0 rgba(255, 255, 255, 0.06);
   position: relative;
   overflow: hidden;
@@ -106,7 +108,7 @@
   left: 10%;
   right: 10%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.6), transparent);
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.6), transparent);
   pointer-events: none;
 }
 
@@ -141,7 +143,7 @@
 .pw-tier-badge-gold {
   background: var(--gold-gradient);
   color: #3d2b00;
-  box-shadow: 0 2px 12px rgba(18, 147, 106, 0.4);
+  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.4);
 }
 
 .pw-tier-badge-platinum {
@@ -156,8 +158,9 @@
 }
 
 .pw-tier-badge-bronze {
-  background: linear-gradient(135deg, #cd7f32, #e8a85c, #cd7f32);
-  color: #fff;
+  /* metallic gold (no copper/brown) — entry tier still reads premium */
+  background: linear-gradient(135deg, #C9A227, #E8C766, #C9A227);
+  color: #1a1a1a;
 }
 
 /* ── Wallet Total Display ── */
@@ -192,7 +195,7 @@
   height: 100%;
   background: var(--gold-gradient);
   border-radius: 100px;
-  box-shadow: 0 0 10px rgba(18, 147, 106, 0.6);
+  box-shadow: 0 0 10px rgba(212, 175, 55, 0.6);
   transition: width 1.2s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
@@ -225,7 +228,7 @@
 .pw-stat-card:hover {
   box-shadow: var(--card-shadow-hover);
   transform: translateY(-3px);
-  border-color: rgba(18, 147, 106, 0.25);
+  border-color: rgba(212, 175, 55, 0.25);
 }
 
 .pw-stat-card::before {
@@ -254,8 +257,11 @@
 }
 
 .pw-stat-card-icon-wrap-gold {
-  background: linear-gradient(135deg, #fef9e7, #f5d76e22);
-  box-shadow: 0 2px 10px rgba(18, 147, 106, 0.15);
+  /* LVMH 2026-06-18: noir-black circle + metallic-gold glow (was cream #fef9e7 +
+     green glow). Black-and-gold reads luxury against the white tile. */
+  background: linear-gradient(135deg, #111118, #1a1a24);
+  box-shadow: 0 2px 12px rgba(212, 175, 55, 0.30);
+  border: 1px solid rgba(212, 175, 55, 0.45);
 }
 
 .pw-stat-value {
@@ -280,7 +286,7 @@
    ══════════════════════════════════ */
 .pw-action-btn {
   background: linear-gradient(135deg, #111118 0%, #1a1a24 100%);
-  border: 1px solid rgba(18, 147, 106, 0.15);
+  border: 1px solid rgba(212, 175, 55, 0.15);
   border-radius: 20px;
   padding: 20px 16px;
   display: flex;
@@ -307,7 +313,7 @@
 }
 
 .pw-action-btn:hover {
-  border-color: rgba(18, 147, 106, 0.5);
+  border-color: rgba(212, 175, 55, 0.5);
   box-shadow: var(--gold-shadow);
   transform: translateY(-2px);
 }
@@ -323,14 +329,14 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(18, 147, 106, 0.12);
-  border: 1px solid rgba(18, 147, 106, 0.3);
+  background: rgba(212, 175, 55, 0.12);
+  border: 1px solid rgba(212, 175, 55, 0.3);
   transition: all 0.35s ease;
 }
 
 .pw-action-btn:hover .pw-action-btn-icon-ring {
-  background: rgba(18, 147, 106, 0.2);
-  box-shadow: 0 0 16px rgba(18, 147, 106, 0.3);
+  background: rgba(212, 175, 55, 0.2);
+  box-shadow: 0 0 16px rgba(212, 175, 55, 0.3);
 }
 
 .pw-action-btn-label {
@@ -414,7 +420,7 @@
 }
 
 .pw-command-status-action {
-  background: #fbf7ec;
+  background: #ffffff;
   color: #765810;
   border: 1px solid rgba(176, 132, 28, 0.28);
 }
@@ -535,13 +541,13 @@
 
 .pw-row-item:hover {
   background: #f5f3ee;
-  border-color: rgba(18, 147, 106, 0.2);
+  border-color: rgba(212, 175, 55, 0.2);
 }
 
 /* ── Gold Divider ── */
 .pw-gold-divider {
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.3), transparent);
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.3), transparent);
   margin: 8px 0;
 }
 
@@ -563,7 +569,7 @@
 .pw-input-luxury:focus {
   border-color: var(--gold-400);
   background: #fff;
-  box-shadow: 0 0 0 3px rgba(18, 147, 106, 0.1);
+  box-shadow: 0 0 0 3px rgba(212, 175, 55, 0.1);
 }
 
 /* ── Save Button — Gold ── */
@@ -578,12 +584,12 @@
   letter-spacing: 0.05em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 4px 16px rgba(18, 147, 106, 0.3);
+  box-shadow: 0 4px 16px rgba(212, 175, 55, 0.3);
   transition: all 0.25s ease;
 }
 
 .pw-btn-gold:hover {
-  box-shadow: 0 6px 24px rgba(18, 147, 106, 0.5);
+  box-shadow: 0 6px 24px rgba(212, 175, 55, 0.5);
   transform: translateY(-1px);
 }
 
@@ -591,7 +597,7 @@
 .pw-btn-noir {
   background: linear-gradient(135deg, #111118, #1a1a24);
   color: #ffffff;
-  border: 1px solid rgba(18, 147, 106, 0.2);
+  border: 1px solid rgba(212, 175, 55, 0.2);
   border-radius: 14px;
   padding: 12px 28px;
   font-weight: 600;
@@ -603,7 +609,7 @@
 }
 
 .pw-btn-noir:hover {
-  border-color: rgba(18, 147, 106, 0.4);
+  border-color: rgba(212, 175, 55, 0.4);
   box-shadow: var(--gold-shadow);
 }
 
@@ -621,8 +627,8 @@
 }
 
 @keyframes gold-pulse {
-  0%, 100% { box-shadow: 0 0 20px rgba(18, 147, 106, 0.2); }
-  50%       { box-shadow: 0 0 40px rgba(18, 147, 106, 0.4); }
+  0%, 100% { box-shadow: 0 0 20px rgba(212, 175, 55, 0.2); }
+  50%       { box-shadow: 0 0 40px rgba(212, 175, 55, 0.4); }
 }
 
 /* ══════════════════════════════════
@@ -631,7 +637,7 @@
 .pw-passkey-register-btn {
   background: linear-gradient(135deg, #111118 0%, #1a1a24 100%);
   color: #fff;
-  border: 1px solid rgba(18, 147, 106, 0.25);
+  border: 1px solid rgba(212, 175, 55, 0.25);
   border-radius: 16px;
   padding: 16px 20px;
   display: flex;
@@ -647,7 +653,7 @@
 }
 
 .pw-passkey-register-btn:hover {
-  border-color: rgba(18, 147, 106, 0.55);
+  border-color: rgba(212, 175, 55, 0.55);
   box-shadow: var(--gold-shadow);
 }
 
@@ -682,7 +688,7 @@
   left: 15%;
   right: 15%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.5), transparent);
   pointer-events: none;
 }
 
@@ -701,8 +707,8 @@
 }
 
 .pw-invoice-row:hover {
-  border-color: rgba(18, 147, 106, 0.2);
-  background: #fef9e7;
+  border-color: rgba(212, 175, 55, 0.2);
+  background: #ffffff;
 }
 
 .pw-view-invoice-btn {
@@ -715,12 +721,12 @@
   font-weight: 700;
   letter-spacing: 0.05em;
   cursor: pointer;
-  box-shadow: 0 2px 8px rgba(18, 147, 106, 0.25);
+  box-shadow: 0 2px 8px rgba(212, 175, 55, 0.25);
   transition: all 0.2s ease;
 }
 
 .pw-view-invoice-btn:hover {
-  box-shadow: 0 4px 14px rgba(18, 147, 106, 0.4);
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.4);
   transform: translateY(-1px);
 }
 
