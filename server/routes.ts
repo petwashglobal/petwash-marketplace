@@ -49,6 +49,7 @@ import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
 import googleServicesRoutes from "./routes/google-services";
+import geocodeRoutes from "./routes/geocode";
 import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
 import mobileBiometricRoutes from "./routes/mobile-biometric";
@@ -10897,6 +10898,7 @@ self.addEventListener('notificationclick', (event) => {
   
   // Google Services (Business Profile, Maps Places API, Reviews - 2025)
   app.use('/api/google', apiLimiter, googleServicesRoutes);
+  app.use('/api/geocode', geocodeRoutes); // free OSM address autocomplete (no Google billing)
   
   // Gmail OAuth Integration (Premium Luxury 2025)
   app.use('/api/gmail', apiLimiter, gmailRoutes);

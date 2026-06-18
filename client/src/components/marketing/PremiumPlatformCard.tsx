@@ -15,6 +15,7 @@
  *     paints fake hardware, never embeds an SVG that could be
  *     mistaken for the K9000.
  */
+import { useState } from 'react';
 import { Link } from 'wouter';
 import {
   platformCardAssetFor,
@@ -30,6 +31,7 @@ interface PremiumPlatformCardProps {
 export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) {
   const lang: 'he' | 'en' = locale === 'he' ? 'he' : 'en';
   const assetSrc = platformCardAssetFor(card.id, { explicit: locale });
+  const [imgFailed, setImgFailed] = useState(false);
 
   const title = card.title[lang];
   const headline = card.headline[lang];
@@ -50,18 +52,27 @@ export function PremiumPlatformCard({ card, locale }: PremiumPlatformCardProps) 
           must keep their natural ratio on iPad/mobile/desktop so the
           text, logo, icons, and product imagery never get cut off. */}
       <div className="relative w-full overflow-hidden bg-white">
-        <img
-          src={assetSrc}
-          alt={`${title} — ${headline}`}
-          loading="lazy"
-          decoding="async"
-          className="block h-auto w-full object-contain"
-          onError={(e) => {
-            // Graceful: hide broken image; gradient fallback
-            // shows through.
-            (e.currentTarget as HTMLImageElement).style.visibility = 'hidden';
-          }}
-        />
+        {imgFailed ? (
+          /* 2026-06-18: if the poster .webp 404s (e.g. not deployed), show a branded
+             noir+gold fallback with the headline — NEVER a broken-image icon, empty
+             white, or black box (the live bug). Never fakes the K9000 hardware. */
+          <div
+            className="flex w-full flex-col items-center justify-center gap-2 px-6 py-16 text-center"
+            style={{ background: 'linear-gradient(135deg, #0a0a0f 0%, #1a1a24 100%)' }}
+          >
+            <span className="text-[11px] uppercase tracking-[0.22em]" style={{ color: '#D4AF37' }}>{title}</span>
+            <span className="text-lg font-light text-white">{headline}</span>
+          </div>
+        ) : (
+          <img
+            src={assetSrc}
+            alt={`${title} — ${headline}`}
+            loading="lazy"
+            decoding="async"
+            className="block h-auto w-full object-contain"
+            onError={() => setImgFailed(true)}
+          />
+        )}
 
         {isComingSoon && badgeLabel && (
           <span

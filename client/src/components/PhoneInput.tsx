@@ -107,6 +107,10 @@ export function PhoneInput({
           }}
           defaultCountry={safeDefault as any}
           countries={allowed as any}
+          /* Pin Israel to the top so it's the default/first choice regardless of the
+             user's device locale (e.g. the CEO testing from Australia). Other
+             countries remain selectable. 2026-06-18. */
+          countryOptionsOrder={["IL", "|", ...allowed.filter((c: string) => c !== "IL")] as any}
           value={value || undefined}
           onChange={(v: string | undefined) => onChange(v || "")}
           onBlur={onBlur}
