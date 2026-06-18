@@ -8,7 +8,6 @@ import { getApiUrl } from '@/lib/apiConfig';
 // gate. When the flag is OFF we skip the network call entirely
 // and let the user type freely. The server is the authoritative
 // gate; this check just avoids an unnecessary 503 round-trip.
-import { isGooglePlacesEnabled } from '@/lib/feature-flags/googlePlaces';
 
 function generateSessionToken(): string {
   if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -60,6 +59,13 @@ interface AutocompletePrediction {
   description: string;
   mainText?: string;
   secondaryText?: string;
+  // 2026-06-18: free OSM/Nominatim returns coordinates + parsed parts inline, so no
+  // second "place details" round-trip is needed.
+  lat?: number;
+  lng?: number;
+  city?: string;
+  postalCode?: string;
+  countryCode?: string;
 }
 
 const queryCache = new Map<string, { predictions: AutocompletePrediction[]; ts: number }>();
@@ -159,16 +165,8 @@ export function GooglePlacesAutocomplete({
   }, []);
 
   const fetchPredictions = useCallback(async (input: string) => {
-    // PR-LOCATION-GUARD-PLACES-1: short-circuit when the
-    // client flag is off (mirrors server gate). Surfaces the
-    // existing manual-entry hint so the input stays usable.
-    if (!isGooglePlacesEnabled()) {
-      setPredictions([]);
-      setShowDropdown(false);
-      setShowManualHint(true);
-      return;
-    }
-
+    // 2026-06-18: switched from Google Places (broken in prod / billing) to the FREE
+    // OpenStreetMap Nominatim proxy (/api/geocode/suggest). No client flag gate needed.
     if (input.length < 3) {
       setPredictions([]);
       setShowDropdown(false);
@@ -202,18 +200,12 @@ export function GooglePlacesAutocomplete({
 
     setIsLoading(true);
     try {
-      const params = new URLSearchParams({ input });
-      if (components) params.append('components', components);
-      if (types && types.length > 0) params.append('types', types.join('|'));
+      const lang = (document.documentElement.lang || 'he').slice(0, 2);
+      const params = new URLSearchParams({ q: input, lang });
 
-      const GOOGLE_LANG_MAP: Record<string, string> = { he: 'iw', ar: 'ar', ru: 'ru', fr: 'fr', es: 'es' };
-      const lang = GOOGLE_LANG_MAP[document.documentElement.lang] || 'en';
-      params.append('language', lang);
-
-      const response = await fetch(getApiUrl(`/api/google/places-autocomplete?${params}`), {
+      const response = await fetch(getApiUrl(`/api/geocode/suggest?${params}`), {
         signal: abortRef.current.signal,
         credentials: 'include',
-        headers: { 'x-places-session': sessionTokenRef.current },
       });
 
       if (!response.ok) {
@@ -281,65 +273,25 @@ export function GooglePlacesAutocomplete({
   const selectPrediction = useCallback(async (prediction: AutocompletePrediction) => {
     setShowDropdown(false);
     setPredictions([]);
-    setIsLoading(true);
 
-    try {
-      const GOOGLE_LANG_MAP: Record<string, string> = { he: 'iw', ar: 'ar', ru: 'ru', fr: 'fr', es: 'es' };
-      const lang = GOOGLE_LANG_MAP[document.documentElement.lang] || 'en';
-      const params = new URLSearchParams({
-        placeId: prediction.placeId,
-        language: lang,
-      });
-      const currentSessionToken = sessionTokenRef.current;
-      const response = await fetch(getApiUrl(`/api/google/places-details?${params}`), {
-        credentials: 'include',
-        headers: { 'x-places-session': currentSessionToken },
-      });
-      sessionTokenRef.current = generateSessionToken();
+    // 2026-06-18: Nominatim returns coordinates + parsed parts inline on the
+    // prediction, so we build the address directly — no second round-trip / no Google.
+    const details: PlaceDetails = {
+      formattedAddress: prediction.description,
+      city: prediction.city,
+      postalCode: prediction.postalCode,
+      countryCode: prediction.countryCode,
+      lat: prediction.lat,
+      lng: prediction.lng,
+      placeId: prediction.placeId,
+    };
 
-      if (!response.ok) {
-        throw new Error(`Details fetch failed: ${response.status}`);
-      }
-
-      const data = await response.json();
-
-      const details: PlaceDetails = {
-        formattedAddress: data.formattedAddress || prediction.description,
-        street: data.street,
-        streetNumber: data.streetNumber,
-        city: data.city,
-        state: data.state,
-        postalCode: data.postalCode,
-        country: data.country,
-        countryCode: data.countryCode,
-        lat: data.lat,
-        lng: data.lng,
-        placeId: prediction.placeId,
-      };
-
-      if (details.streetNumber && details.street) {
-        details.street = `${details.street} ${details.streetNumber}`;
-      }
-
-      setSelectedPlace(details);
-      setBuildingNumber(details.streetNumber || '');
-      setApartment('');
-      setPostalCodeState(details.postalCode || '');
-      onChange(details.formattedAddress, details);
-      onPlaceSelected?.(details);
-    } catch (err: any) {
-      console.warn('[Places] Details error:', err.message);
-      const fallback: PlaceDetails = {
-        formattedAddress: prediction.description,
-        placeId: prediction.placeId,
-      };
-      setSelectedPlace(fallback);
-      onChange(prediction.description, fallback);
-      onPlaceSelected?.(fallback);
-    } finally {
-      setIsLoading(false);
-      selectingRef.current = false;
-    }
+    setSelectedPlace(details);
+    setApartment('');
+    setPostalCodeState(details.postalCode || '');
+    onChange(details.formattedAddress, details);
+    onPlaceSelected?.(details);
+    selectingRef.current = false;
   }, [onChange, onPlaceSelected]);
 
   const handleInputChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
