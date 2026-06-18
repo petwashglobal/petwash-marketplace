@@ -142,7 +142,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
             <nav className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
               {groups.map((g) => (
                 <div key={g.group}>
-                  <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700">
+                  <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#B8860B]">
                     {g.group}
                   </p>
                   <div className="space-y-0.5">
@@ -155,11 +155,11 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
                           href={item.path}
                           className={cn(
                             'flex items-start gap-3 rounded-lg px-3 py-2.5 transition-colors',
-                            active ? 'bg-emerald-50 text-emerald-900' : 'text-black hover:bg-black/[0.04]',
+                            active ? 'bg-[#D4AF37]/10 text-[#1A1A1A]' : 'text-black hover:bg-black/[0.04]',
                           )}
                           data-testid={`tool-${item.path}`}
                         >
-                          <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', active ? 'text-emerald-700' : 'text-black/45')} />
+                          <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', active ? 'text-[#B8860B]' : 'text-black/45')} />
                           <span className="min-w-0">
                             <span className="block text-sm font-medium leading-tight">{item.label}</span>
                             {item.hint && <span className="block text-xs text-black/45 leading-tight mt-0.5">{item.hint}</span>}
