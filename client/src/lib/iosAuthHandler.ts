@@ -206,6 +206,51 @@ export async function signInWithAppleNative(auth: Auth): Promise<UserCredential>
 }
 
 /**
+ * True inside ANY native Capacitor app (iOS or Android). Used to pick the native
+ * Google sign-in plugin instead of the web redirect — the redirect can't return to
+ * capacitor://localhost, so web-style Google sign-in silently fails in the app.
+ */
+export function isNativePlatform(): boolean {
+  try {
+    return Capacitor.isNativePlatform();
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Native Google sign-in for the Capacitor app, exchanged into Firebase. 2026-06-18.
+ * The web signInWithRedirect path is broken in the native webview (the OAuth callback
+ * returns to petwash.co.il, never back to capacitor://localhost → getRedirectResult is
+ * always null). Use the native Google plugin → idToken → signInWithCredential, same
+ * UserCredential shape as the web flow so the caller's post-auth logic is identical.
+ *
+ * Plugin: @capacitor-firebase/authentication (Cap-8 + firebase-12 compatible; lazy-
+ * imported so web builds don't pull it). The plugin returns a Google credential; we
+ * sign into the Firebase JS SDK with it so the rest of the app (session exchange,
+ * loyalty, consent) is identical to web. Set { skipNativeAuth: true } in the plugin's
+ * capacitor config so it ONLY returns the credential (the JS SDK owns the session).
+ * Requires native config (iOS: GoogleService-Info.plist + reversed-client-id URL
+ * scheme in Info.plist; Android: google-services.json) — operator/Xcode steps.
+ */
+export async function signInWithGoogleNative(auth: Auth): Promise<UserCredential> {
+  const pluginName = '@capacitor-firebase/authentication';
+  const mod: any = await import(/* @vite-ignore */ pluginName);
+  const FirebaseAuthentication = mod.FirebaseAuthentication;
+  if (!FirebaseAuthentication) {
+    throw new Error('Google sign-in plugin not available (native build only)');
+  }
+  const result: any = await FirebaseAuthentication.signInWithGoogle();
+  const idToken: string | undefined = result?.credential?.idToken;
+  const accessToken: string | undefined = result?.credential?.accessToken;
+  if (!idToken && !accessToken) {
+    throw new Error('Google sign-in returned no credential');
+  }
+  const credential = GoogleAuthProvider.credential(idToken ?? null, accessToken ?? null);
+  return signInWithCredential(auth, credential);
+}
+
+/**
  * Configure Facebook Auth Provider with best practices
  */
 export function createFacebookProvider(): FacebookAuthProvider {
