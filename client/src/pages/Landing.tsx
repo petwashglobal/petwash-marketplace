@@ -8,6 +8,7 @@ import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
 import { PremiumPlatformGrid } from '@/components/marketing/PremiumPlatformGrid';
+import { LuxeMetallicHero } from '@/components/marketing/LuxeMetallicHero';
 import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
@@ -82,6 +83,8 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
       <div className="min-h-screen bg-white">
+        {/* LVMH-grade metallic hero (CEO-approved 2026-06-18) — leads the page */}
+        <LuxeMetallicHero />
         {/* Hero Section with Main Image - Luxury Design with Animations */}
         <section className="luxury-services-hero overflow-hidden">
           <div className="max-w-6xl mx-auto">
