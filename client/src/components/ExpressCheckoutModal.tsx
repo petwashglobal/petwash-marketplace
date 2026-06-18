@@ -15,6 +15,27 @@ import type { Language } from '@/lib/i18n';
 import { useLanguage } from '@/lib/languageStore';
 import { logger } from "@/lib/logger";
 import { getApiUrl } from '@/lib/apiConfig';
+import { startSumitCheckout } from '@/lib/sumitCheckout';
+
+/**
+ * Map a wash package to its SERVER-OWNED SKU. The server resolves the price
+ * from this SKU — the client never sends an amount. Returns null for anything
+ * not in the Phase-1 wash catalog.
+ */
+function washPackageSku(pkg: { price?: string | number; washCount?: number }): string | null {
+  const washes = Number(pkg.washCount);
+  if (washes === 1) return 'SINGLE_WASH';
+  if (washes === 3) return 'WASH_PACKAGE_3';
+  if (washes === 5) return 'WASH_PACKAGE_5';
+  if (washes === 10) return 'WASH_PACKAGE_10';
+  // Fallback by price (₪55 / 150 / 220 / 440).
+  const price = Number(pkg.price);
+  if (price === 55) return 'SINGLE_WASH';
+  if (price === 150) return 'WASH_PACKAGE_3';
+  if (price === 220) return 'WASH_PACKAGE_5';
+  if (price === 440) return 'WASH_PACKAGE_10';
+  return null;
+}
 
 interface CreditPackage {
   id: string;
@@ -147,23 +168,27 @@ export function ExpressCheckoutModal({
         return await response.json();
       }
 
-      // ── Package checkout ──
-      // Real endpoint: POST /api/checkout (requires Firebase session cookie)
-      // Body: { packageId, paymentMethod }  — email is derived from the auth token server-side.
-      const response = await fetch(getApiUrl('/api/checkout'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          packageId: pkg.id,
-          paymentMethod: 'credit_card',
-        }),
-      });
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        throw new Error(err.message || `${response.status}`);
+      // ── Package checkout (verified SUMIT rail) ──
+      // Wash credits go to the signed-in buyer's own wallet. The server resolves
+      // the price from the SKU (client never sends an amount); activation only
+      // happens after the SUMIT webhook confirms payment. startSumitCheckout
+      // navigates the browser to SUMIT's hosted page on success.
+      const sku = washPackageSku(pkg as { price?: string | number; washCount?: number });
+      if (!sku) {
+        throw new Error('This package is not available for purchase right now.');
       }
-      return await response.json();
+      const result = await startSumitCheckout({
+        sku,
+        orderId: `wash-${pkg.id}-${Date.now()}`,
+      });
+      if (result.needsAuth) {
+        throw new Error(ERR_AUTH_REQUIRED);
+      }
+      if (!result.ok) {
+        throw new Error(result.error || `${tx('checkoutFailed', lang)}`);
+      }
+      // On success the browser is already navigating to SUMIT's hosted page.
+      return { redirected: true } as any;
     },
     onSuccess: (data: any) => {
       if (data.redirectUrl || data.paymentUrl) {
