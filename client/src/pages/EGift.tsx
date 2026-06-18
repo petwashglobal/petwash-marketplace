@@ -9,6 +9,7 @@ import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, ShieldCh
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
+import { startSumitCheckout } from '@/lib/sumitCheckout';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
 
@@ -868,57 +869,51 @@ export default function EGift() {
     setIsProcessing(true);
 
     try {
-      const response = await fetch(getApiUrl('/api/multi-service-gift'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          value: finalPrice,
-          currency: 'ILS',
-          recipientName: formData.recipientName,
-          recipientEmail: formData.recipientEmail,
-          senderName: formData.senderName,
-          senderEmail: formData.senderEmail,
-          message: formData.message,
+      // Verified rail: create a PetWash order + SUMIT hosted checkout. The gift
+      // is minted (recipient-bound) ONLY after the SUMIT webhook confirms
+      // payment — never from the redirect. Requires a signed-in buyer.
+      const result = await startSumitCheckout({
+        sku: 'EGIFT',
+        giftIls: finalPrice,
+        orderId: `egift-${Date.now()}`,
+        recipient: {
+          name: formData.recipientName,
+          email: formData.recipientEmail,
+          message: formData.message || undefined,
+        },
+        metadata: {
           occasion: selectedOccasion?.id || 'justbecause',
           messageLanguage: messageLang.code,
-          eligibleServices: selectedServices
-        })
+          eligibleServices: selectedServices,
+        },
       });
 
-      const data = await response.json();
-
-      // Payment gateway offline — surface a clear bilingual message instead of a generic error
-      if (response.status === 503) {
+      if (result.needsAuth) {
         toast({
-          title: lang === 'he' ? 'מערכת התשלום אינה זמינה כרגע' : 'Payment gateway temporarily unavailable',
+          title: lang === 'he' ? 'יש להתחבר כדי לשלוח מתנה' : 'Please sign in to send a gift',
           description: lang === 'he'
-            ? 'אנא צרו קשר עם התמיכה לרכישת כרטיס מתנה.'
-            : 'Please contact support to purchase a gift card.',
+            ? 'התחברו או צרו חשבון PetWash כדי להשלים את הרכישה.'
+            : 'Sign in or create a PetWash account to complete your purchase.',
+          variant: 'destructive',
+        });
+        window.location.assign(`/signin?return=${encodeURIComponent('/egift')}`);
+        return;
+      }
+
+      if (!result.ok) {
+        toast({
+          title: tx('errorCreating', lang),
+          description: result.error || tx('tryAgain', lang),
           variant: 'destructive',
         });
         return;
       }
-
-      if (response.ok && data.success) {
-        setPurchasedGift({
-          giftCardId: data.giftCardId,
-          publicCode: data.publicCode,
-          recipientName: formData.recipientName,
-          amountILS: finalPrice,
-        });
-        setStep('shared');
-      } else {
-        toast({ 
-          title: tx('errorCreating', lang), 
-          description: data.message || data.error || tx('tryAgain', lang),
-          variant: "destructive" 
-        });
-      }
+      // result.ok === true → the browser is navigating to SUMIT's hosted page.
     } catch (error) {
-      toast({ 
-        title: tx('errorProcessing', lang), 
+      toast({
+        title: tx('errorProcessing', lang),
         description: tx('tryAgainLater', lang),
-        variant: "destructive" 
+        variant: 'destructive',
       });
     } finally {
       setIsProcessing(false);

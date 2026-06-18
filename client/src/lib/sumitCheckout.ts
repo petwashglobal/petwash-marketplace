@@ -24,36 +24,55 @@
 import { apiRequest } from '@/lib/queryClient';
 
 export interface SumitCheckoutInput {
-  /** Amount to charge, in ILS (shekels, not agorot). */
-  amountIls: number;
-  /** Human-readable line description shown on the SUMIT page + the fiscal doc. */
-  description: string;
+  /**
+   * Server-owned product SKU (price is resolved server-side — the client never
+   * sets a price): SINGLE_WASH | WASH_PACKAGE_3/5/10 | EGIFT_100/250/500/1000 |
+   * EGIFT (+ giftIls) | ACCOUNT_CREDIT (+ topupIls).
+   */
+  sku: string;
+  /** Variable eGift amount in ILS (only for sku 'EGIFT'; capped server-side at ₪1,500). */
+  giftIls?: number;
+  /** Variable wallet top-up amount in ILS (only for sku 'ACCOUNT_CREDIT'). */
+  topupIls?: number;
   /** Our order/reference id; echoed back on return so the order can be fulfilled. */
   orderId?: string;
+  /** REQUIRED for eGift — the gift is bound to this recipient at activation. */
+  recipient?: { name: string; email: string; phone?: string; message?: string };
+  /** Non-authoritative extras (occasion, language, etc.). Server keys win. */
+  metadata?: Record<string, unknown>;
 }
 
 export interface SumitCheckoutResult {
   ok: boolean;
   /** When ok:false, a human-readable reason (already localized at call sites if needed). */
   error?: string;
+  /** True when the failure was an auth requirement (caller should prompt sign-in). */
+  needsAuth?: boolean;
 }
 
 /**
  * Begin a SUMIT hosted-page payment and redirect the browser to it.
- * Returns { ok:false, error } if the session could not be created (so the
- * caller can show a toast); on success the browser navigates away.
+ * Requires a signed-in buyer (Bearer via apiRequest) — every purchase has a
+ * real owner, receipt and audit trail. Returns { ok:false, error } if the
+ * session could not be created; on success the browser navigates away.
  */
 export async function startSumitCheckout(input: SumitCheckoutInput): Promise<SumitCheckoutResult> {
-  if (!(input.amountIls > 0)) {
-    return { ok: false, error: 'Invalid amount' };
+  if (!input.sku) {
+    return { ok: false, error: 'Invalid product' };
   }
   try {
     const res = await apiRequest('POST', '/api/payments/sumit/begin', {
-      amountIls: input.amountIls,
-      description: input.description,
+      sku: input.sku,
+      giftIls: input.giftIls,
+      topupIls: input.topupIls,
       orderId: input.orderId,
+      recipient: input.recipient,
+      metadata: input.metadata,
     });
     const data = await res.json().catch(() => ({} as any));
+    if (res.status === 401) {
+      return { ok: false, needsAuth: true, error: data?.error || 'Please sign in to continue' };
+    }
     if (!data?.redirectUrl) {
       return { ok: false, error: data?.error || data?.reason || 'Payments are not available right now' };
     }

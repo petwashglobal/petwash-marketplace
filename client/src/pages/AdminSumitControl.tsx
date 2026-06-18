@@ -84,9 +84,11 @@ export default function AdminSumitControl() {
   const runCardTest = async () => {
     setTesting(true);
     setTestError(null);
+    // ₪1 wallet top-up exercises the real hosted-page redirect (server-owned
+    // price via the ACCOUNT_CREDIT sku) without minting anything else.
     const result = await startSumitCheckout({
-      amountIls: 1,
-      description: "PetWash card-rail connectivity test",
+      sku: "ACCOUNT_CREDIT",
+      topupIls: 1,
       orderId: `sumit-test-${Date.now()}`,
     });
     if (!result.ok) {
