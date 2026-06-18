@@ -70,7 +70,14 @@ export function setSessionCookie(res: Response, sessionCookie: string) {
   const cookieOptions: any = {
     httpOnly: true,
     secure: !isDevelopment,    // true in production, false in development
-    sameSite: isDevelopment ? 'lax' : 'none',  // 'none' in production for cross-domain, 'lax' in dev
+    // BUGFIX 2026-06-19: was 'none'. The API is SAME-SITE (petwash.co.il/api/*),
+    // so pw_session is a FIRST-PARTY cookie → must be 'lax'. SameSite=None marks
+    // it cross-site; iOS Safari ITP then drops/partitions it, so after Google
+    // sign-in the cookie wasn't sent on /api/session/whoami → HTTP 401 "session
+    // cookie not accepted". Lax is sent same-site AND on the top-level GET return
+    // from the OAuth redirect, so login completes. (Native apps use Bearer, not
+    // this cookie — no cross-site need.)
+    sameSite: 'lax',
     path: '/',
     maxAge: COOKIE_MAX_AGE,
     domain: cookieDomain  // .petwash.co.il in production, undefined in dev
@@ -95,7 +102,7 @@ export function clearSessionCookie(res: Response) {
   const clearOptions: any = {
     httpOnly: true,
     secure: !isDevelopment,
-    sameSite: isDevelopment ? 'lax' : 'none',  // Must match the set configuration
+    sameSite: 'lax',  // Must match setSessionCookie (changed 'none' → 'lax' 2026-06-19)
     path: '/',
     domain: cookieDomain  // Must match domain from setSessionCookie
   };
