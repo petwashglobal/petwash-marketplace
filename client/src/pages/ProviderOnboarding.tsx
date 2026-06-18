@@ -789,22 +789,8 @@ export default function ProviderOnboarding() {
                           </Label>
                         </div>
                       </div>
-                      <div 
-                        className={`luxury-glass-card p-4 cursor-pointer transition-all ${hasProviderType('station_operator') ? 'ring-2 ring-black bg-black/5' : ''}`} 
-                        onClick={() => toggleProviderType('station_operator')}
-                      >
-                        <div className="flex items-center gap-3">
-                          <Checkbox 
-                            checked={hasProviderType('station_operator')} 
-                            onCheckedChange={() => toggleProviderType('station_operator')}
-                            id="station_operator"
-                          />
-                          <Label htmlFor="station_operator" className="cursor-pointer flex-1 text-center">
-                            <Sparkles className="w-6 h-6 mb-2 mx-auto text-gray-700" aria-hidden="true" />
-                            <span className="font-semibold block">{t.stationOperator}</span>
-                          </Label>
-                        </div>
-                      </div>
+                      {/* Removed 2026-06-18: public "Wash Station Operator (K9000)" provider
+                          option — station operation is internal-only, not a marketplace role. */}
                     </div>
                   </div>
 
@@ -1183,29 +1169,8 @@ export default function ProviderOnboarding() {
                     </>
                   )}
 
-                  {/* Business License (Station Operators) */}
-                  {hasProviderType('station_operator') && (
-                    <div>
-                      <Label htmlFor="businessLicense" className="text-lg font-semibold">
-                        {t.businessLicense}
-                      </Label>
-                      <p className="text-sm text-gray-500 mb-2">{t.businessLicenseOptional}</p>
-                      <Input
-                        id="businessLicense"
-                        type="file"
-                        accept="image/*,application/pdf"
-                        onChange={(e) => setBusinessLicense(e.target.files?.[0] || null)}
-                        className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
-                        data-testid="input-business-license"
-                      />
-                      {businessLicense && (
-                        <p className="text-sm text-green-600 mt-1 flex items-center gap-2">
-                          <CheckCircle2 className="h-4 w-4" />
-                          {t.fileSelected}: {businessLicense.name}
-                        </p>
-                      )}
-                    </div>
-                  )}
+                  {/* Removed 2026-06-18: Station-Operator business-license upload (the
+                      operator provider type is no longer offered to the public). */}
                 </div>
 
                 <div className="flex gap-4">
