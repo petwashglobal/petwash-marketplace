@@ -4,7 +4,11 @@ import { logger } from './logger';
 
 // Mobile-compatible session cookie name (matches production requirements)
 const SESSION_COOKIE_NAME = 'pw_session';
-const COOKIE_MAX_AGE = 432000000; // 5 days in milliseconds (432,000,000ms)
+// "Remember me" duration. 2026-06-18: raised 5d -> 14d, which is the MAXIMUM a
+// Firebase session cookie allows (createSessionCookie hard-caps expiresIn at 14
+// days). A true 30-day "stay signed in" requires silently re-minting the cookie on
+// activity — a larger change tracked separately; 14 days is the longest single cookie.
+const COOKIE_MAX_AGE = 1209600000; // 14 days in milliseconds (Firebase session-cookie max)
 
 // Environment-based cookie domain configuration
 const getCookieDomain = (): string | undefined => {
