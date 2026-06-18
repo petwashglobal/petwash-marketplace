@@ -1090,18 +1090,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/map">
-          {() => <StationMap />}
+          {() => <Layout><StationMap /></Layout>}
         </Route>
         
         {/* Company Pages */}
         <Route path="/story">
-          {() => <Story />}
+          {() => <Layout><Story /></Layout>}
         </Route>
         <Route path="/media">
-          {() => <Media />}
+          {() => <Layout><Media /></Layout>}
         </Route>
         <Route path="/careers">
-          {() => <Careers />}
+          {() => <Layout><Careers /></Layout>}
         </Route>
         <Route path="/careers/my-applications">
           {() => (
@@ -1157,16 +1157,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <LegalTerms />}
         </Route>
         <Route path="/legal/privacy">
-          {() => <LegalPrivacyPolicy />}
+          {() => <Layout><LegalPrivacyPolicy /></Layout>}
         </Route>
         <Route path="/legal/egift-policy">
-          {() => <EGiftPolicy />}
+          {() => <Layout><EGiftPolicy /></Layout>}
         </Route>
         <Route path="/legal/loyalty-terms">
-          {() => <LoyaltyTermsPage />}
+          {() => <Layout><LoyaltyTermsPage /></Layout>}
         </Route>
         <Route path="/legal/cookies">
-          {() => <CookiesPolicy />}
+          {() => <Layout><CookiesPolicy /></Layout>}
         </Route>
         <Route path="/legal/trademarks">
           {() => <Trademarks />}
@@ -1394,6 +1394,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* ⁦Pet Wash Academy™⁩ - Trainer Profile (Legacy) */}
+        {/* Specific route MUST precede the :trainerId param route, else wouter
+            matches "bookings" as a trainerId and renders the wrong page. */}
+        <Route path="/academy/trainer/bookings">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <TrainerBookings />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/academy/trainer/:trainerId">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -1423,15 +1434,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* ⁦Pet Wash Academy™⁩ - Trainer Booking Management */}
-        <Route path="/academy/trainer/bookings">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <TrainerBookings />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
 
         {/* Provider join flows: 302-redirect to canonical /provider-onboarding.
             The dedicated forms were non-functional (missing OTP, self-declaration,
@@ -2238,7 +2240,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RoleProtectedRoute minRole="franchise_owner">
               <Suspense fallback={<PageLoader />}>
-                <GovernancePolicies />
+                <Layout><GovernancePolicies /></Layout>
               </Suspense>
             </RoleProtectedRoute>
           )}
@@ -2389,7 +2391,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
-        <Route path="/locations">{() => <Locations />}</Route>
+        <Route path="/locations">{() => <Layout><Locations /></Layout>}</Route>
         <Route path="/stations/:slug">{(params) => <StationPage slug={params.slug} />}</Route>
         <Route path="/wallet/redeem">
           {() => (

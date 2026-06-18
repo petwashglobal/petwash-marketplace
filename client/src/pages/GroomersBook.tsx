@@ -58,7 +58,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
 
   const { data: pets = [] } = useQuery<any[]>({
     queryKey: ['/api/pets'],
-    queryFn: () => fetch('/api/pets', { credentials: 'include' }).then(r => r.json()).then(d => d.pets || d || []),
+    queryFn: async () => { const r = await apiRequest('GET', '/api/pets'); const d = await r.json(); return d?.pets ?? d ?? []; },
   });
 
   const bookMutation = useMutation({

@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { apiRequest } from "@/lib/queryClient";
 import { Calendar, MapPin, Clock, DollarSign, Star, Bell, MessageCircle, TrendingUp, ChevronRight, Navigation } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -57,10 +58,11 @@ export default function WalkMyPetOwnerDashboard() {
   // browser history).
   const { data: walksData, isLoading } = useQuery<{ success: boolean; bookings: WalkBooking[] }>({
     queryKey: ['/api/walk-my-pet/walks/mine'],
-    queryFn: () =>
-      fetch('/api/walk-my-pet/walks/mine', { credentials: 'include' })
-        .then(r => r.json()),
-    enabled: !!user?.id,
+    queryFn: async () => {
+      const r = await apiRequest('GET', '/api/walk-my-pet/walks/mine');
+      return r.json();
+    },
+    enabled: !!user,
   });
 
   const allWalks: WalkBooking[] = walksData?.bookings || [];
