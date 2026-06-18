@@ -891,6 +891,37 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
     // In-memory burn first (fast, same-process protection)
     consumeNonce(nonce, 120_000);
 
+    // DURABLE FAIL-CLOSED replay guard (2026-06-18). Previously, when Redis was
+    // down the only protection was the per-PROCESS in-memory burn — on multi-instance
+    // Cloud Run the same QR could be redeemed once per instance. Claim the nonce in
+    // Postgres atomically (unique PK + ON CONFLICT DO NOTHING). If the row already
+    // exists, this QR was already redeemed → reject BEFORE any money moves. This works
+    // even with Redis down, and is the source of truth.
+    try {
+      const claim = await db.execute(
+        sql`INSERT INTO k9000_redeemed_nonces (nonce) VALUES (${nonce}) ON CONFLICT (nonce) DO NOTHING RETURNING nonce`
+      );
+      const claimed = (claim as any).rowCount ?? (claim as any).rows?.length ?? 0;
+      if (!claimed) {
+        logger.warn('[K9000 Redeem] DB nonce replay blocked', { nonce, userId, correlationId });
+        return res.status(409).json({
+          error: 'קוד זה כבר שומש. הצג קוד חדש.',
+          errorEn: 'QR code already used. Please generate a new one.',
+          status: 'REPLAYED',
+          correlationId,
+        });
+      }
+    } catch (dbErr: any) {
+      // Fail CLOSED: if we cannot prove the nonce is fresh, do not authorize a wash.
+      logger.error('[K9000 Redeem] DB nonce claim failed — refusing redemption (fail-closed)', { error: dbErr?.message, correlationId });
+      return res.status(503).json({
+        error: 'השירות אינו זמין כעת. נסה שוב.',
+        errorEn: 'Service temporarily unavailable. Please try again.',
+        status: 'NONCE_STORE_UNAVAILABLE',
+        correlationId,
+      });
+    }
+
     // Redis-backed burn for cross-process / post-restart replay protection.
     // Atomic SETNX EX: first writer wins, no race window between GET and SET.
     // Falls back gracefully to in-memory when Redis is unavailable.

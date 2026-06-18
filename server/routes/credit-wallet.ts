@@ -524,9 +524,10 @@ router.post('/redemptions/:sessionId/cancel', async (req, res) => {
     }
 
     const { sessionId } = req.params;
-    
-    const success = await walletService.cancelSession(sessionId);
-    
+
+    // Pass userId so a user can only cancel their OWN session (IDOR fix 2026-06-18).
+    const success = await walletService.cancelSession(sessionId, userId);
+
     res.json({ success, message: success ? 'Session cancelled' : 'Cancel failed' });
   } catch (error: any) {
     logger.error('[Credit Wallet] Cancel session error', { error: error.message });

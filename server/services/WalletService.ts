@@ -619,10 +619,17 @@ class WalletService {
     return true;
   }
 
-  async cancelSession(sessionId: string): Promise<boolean> {
+  async cancelSession(sessionId: string, userId?: string): Promise<boolean> {
+    // SECURITY 2026-06-18: scope to the owner. Was sessionId-only → any authenticated
+    // user could cancel another user's redemption session (IDOR). userId is required
+    // by the route now; the default keeps backward-compat for internal callers.
+    const ownerFilter = userId
+      ? and(eq(redemptionSessions.sessionId, sessionId), eq(redemptionSessions.userId, userId))
+      : eq(redemptionSessions.sessionId, sessionId);
+
     const [session] = await db.select()
       .from(redemptionSessions)
-      .where(eq(redemptionSessions.sessionId, sessionId))
+      .where(ownerFilter)
       .limit(1);
 
     if (!session) {
@@ -638,13 +645,13 @@ class WalletService {
     }
 
     await db.update(redemptionSessions)
-      .set({ 
+      .set({
         status: 'cancelled',
         updatedAt: new Date(),
       })
-      .where(eq(redemptionSessions.sessionId, sessionId));
+      .where(ownerFilter);
 
-    logger.info('[Wallet] Session cancelled', { sessionId });
+    logger.info('[Wallet] Session cancelled', { sessionId, userId });
     return true;
   }
 
