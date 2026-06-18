@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { signInWithEmailAndPassword, sendSignInLinkToEmail, isSignInWithEmailLink, signInWithEmailLink, sendPasswordResetEmail, GoogleAuthProvider, OAuthProvider, linkWithCredential, signInWithPopup, signInWithRedirect, signInWithCustomToken, getAdditionalUserInfo, getRedirectResult } from "firebase/auth";
 import type { OAuthCredential } from "firebase/auth";
-import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo, isNativeApplePlatform, signInWithAppleNative } from "@/lib/iosAuthHandler";
+import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider, getDeviceInfo, isNativeApplePlatform, signInWithAppleNative, isNativePlatform, signInWithGoogleNative } from "@/lib/iosAuthHandler";
 import { signupFlags } from "@/lib/authSignupFlags";
 import { auth } from "../lib/firebase";
 import { getApiUrl } from "@/lib/apiConfig";
@@ -1024,6 +1024,14 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       if (provider === 'apple' && isNativeApplePlatform()) {
         logger.info('[Auth] Native Sign in with Apple (Capacitor iOS)');
         userCredential = await signInWithAppleNative(auth);
+      }
+
+      // Native Google (Capacitor app): the web redirect can't return to
+      // capacitor://localhost (getRedirectResult is always null → silent fail), so use
+      // the native Google plugin → Firebase credential. Web keeps popup/redirect. 2026-06-18.
+      if (!userCredential && provider === 'google' && isNativePlatform()) {
+        logger.info('[Auth] Native Google sign-in (Capacitor app)');
+        userCredential = await signInWithGoogleNative(auth);
       }
 
       // Single canonical strategy resolver: iPhone → redirect, everything else → popup.
