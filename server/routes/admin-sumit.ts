@@ -68,6 +68,16 @@ const requireSuperAdmin = [
   requireSuperAdminGate,
 ];
 
+// Same super-admin gate WITHOUT the supplier-invoice flag. The live
+// connection test must work the moment a key is saved — i.e. before any
+// SUMIT feature flag is flipped — so it cannot sit behind flagGate.
+const requireSuperAdminNoFlag = [
+  validateFirebaseToken,
+  loadUserRole,
+  checkAccessLevel(8),
+  requireSuperAdminGate,
+];
+
 function envFlags() {
   return {
     sumitApiKey: Boolean(process.env.SUMIT_API_KEY),
@@ -300,6 +310,50 @@ router.get('/sync-dryrun', ...requireSuperAdmin, async (_req: Request, res: Resp
   } catch (err: any) {
     logger.error('[AdminSumit] sync-dryrun failed', err);
     return res.status(500).json({ error: 'Sync dry-run failed', message: err.message });
+  }
+});
+
+/**
+ * POST /api/admin/sumit/connection-test
+ *
+ * The REAL "is my SUMIT key working?" check. Fires ONE read-only
+ * authenticated call (fetch VAT rate) to api.sumit.co.il — creates no
+ * document, moves no money. Proves the SUMIT_API_KEY + SUMIT_COMPANY_ID
+ * actually authenticate, which /health (env-presence only) cannot.
+ *
+ * Super-admin only, and deliberately NOT behind the supplier-invoice flag
+ * so it works the moment a key is saved. POST (not GET) so the action is
+ * intentional and audited; no body required.
+ */
+router.post('/connection-test', ...requireSuperAdminNoFlag, async (req: Request, res: Response) => {
+  try {
+    const { sumitClient } = await import('../services/SumitClient');
+    const result = await sumitClient.connectionTest();
+
+    // Audit every test — who pressed it and the outcome (never the key).
+    try {
+      const { recordAuditEvent } = await import('../utils/auditSignature');
+      await recordAuditEvent({
+        eventType: 'sumit.connection_test',
+        customerUid: (req as any).userRecord?.uid || (req as any).firebaseUser?.uid || 'admin',
+        metadata: {
+          ok: result.ok,
+          reachable: result.reachable,
+          authRejected: result.authRejected,
+          httpStatus: result.httpStatus ?? null,
+        },
+        ipAddress: req.ip || null,
+        userAgent: '[AdminSumit.connectionTest]',
+      });
+    } catch (auditErr: any) {
+      logger.warn('[AdminSumit] connection-test audit failed (continuing)', { err: auditErr?.message });
+    }
+
+    // 200 with the structured verdict regardless — the UI renders ok vs reason.
+    return res.json(result);
+  } catch (err: any) {
+    logger.error('[AdminSumit] connection-test failed', err);
+    return res.status(500).json({ ok: false, reachable: false, authRejected: false, reason: 'Connection test crashed' });
   }
 });
 

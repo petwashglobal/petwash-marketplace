@@ -125,12 +125,17 @@ describe('SumitClient — createDocument HTTP shape (sandbox)', () => {
     const body = JSON.parse((init as RequestInit).body as string);
     expect(body.Credentials.APIKey).toBe('sk_test');
     expect(body.Credentials.CompanyID).toBe('co_test');
-    expect(body.Customer.Name).toBe('Acme Supplies Ltd');
-    expect(body.Customer.ExternalIdentifier).toBe('517145033');
+    // Verified OfficeGuy/SUMIT body shape (confirmed against the live
+    // api.sumit.co.il endpoint reference 2026-06-18): Customer is nested
+    // INSIDE Details, Type is the STRING enum 'Invoice' (NOT a flat int
+    // DocumentType), and the idempotency/currency live on Details.
+    expect(body.Details.Type).toBe('Invoice');
+    expect(body.Details.Customer.Name).toBe('Acme Supplies Ltd');
+    expect(body.Details.Customer.ExternalIdentifier).toBe('517145033');
+    expect(body.Details.Currency).toBe('ILS');
+    expect(body.Details.ExternalIdentifier).toBe(sampleInput.idempotencyKey);
     expect(body.Items[0].UnitPrice).toBe(100);
-    expect(body.Items[0].Currency).toBe('ILS');
-    expect(body.ExternalIdentifier).toBe(sampleInput.idempotencyKey);
-    expect(body.DocumentType).toBe(1);
+    expect(body.VATIncluded).toBe(false);
   });
 
   it('switches to production URL when SUMIT_SANDBOX="false"', async () => {

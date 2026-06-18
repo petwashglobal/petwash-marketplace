@@ -450,6 +450,113 @@ export class SumitClient {
   }
 
   /**
+   * READ-ONLY connection test — proves SUMIT_API_KEY + SUMIT_COMPANY_ID
+   * actually authenticate against api.sumit.co.il, WITHOUT creating any
+   * document or moving any money. Calls /accounting/general/getvatrate/
+   * (fetch the company VAT rate), the cheapest authenticated read SUMIT
+   * exposes.
+   *
+   * Deliberately does NOT require SUMIT_ENABLED or SUMIT_WEBHOOK_SECRET — it
+   * reads the credential pair directly so an operator can verify the key the
+   * moment it is saved, BEFORE flipping the rail on. Never throws.
+   *
+   * Interpretation (the admin UI surfaces this verbatim):
+   *   ok:true                 → key authenticated (HTTP 200)
+   *   authRejected:true       → reached SUMIT but credentials rejected (401/403)
+   *   ok:false + reachable    → reached SUMIT, non-auth error (request shape) —
+   *                             the KEY is fine, the call shape isn't
+   *   ok:false + !reachable   → could not reach SUMIT at all (network)
+   */
+  async connectionTest(): Promise<{
+    ok: boolean;
+    reachable: boolean;
+    authRejected: boolean;
+    httpStatus?: number;
+    vatRate?: number;
+    reason: string;
+  }> {
+    const env = readEnv();
+    if (!env.apiKey || !env.companyId) {
+      return {
+        ok: false,
+        reachable: false,
+        authRejected: false,
+        reason: `Missing ${!env.apiKey ? 'SUMIT_API_KEY' : 'SUMIT_COMPANY_ID'} — set it before testing`,
+      };
+    }
+
+    const url = `${env.baseUrl}/accounting/general/getvatrate/`;
+    // getvatrate takes a date; send today so SUMIT returns the current rate.
+    const today = new Date().toISOString().slice(0, 10);
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Date: today,
+    };
+
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (networkErr) {
+      const msg = (networkErr as Error).message;
+      logger.error('[SumitClient] connectionTest network error', { url, err: msg });
+      return {
+        ok: false,
+        reachable: false,
+        authRejected: false,
+        reason: `Could not reach SUMIT: ${msg}`,
+      };
+    }
+
+    let parsed: unknown = null;
+    try { parsed = await res.json(); } catch { /* non-JSON on some error paths */ }
+
+    if (res.status === 401 || res.status === 403) {
+      logger.warn('[SumitClient] connectionTest auth rejected', { httpStatus: res.status });
+      return {
+        ok: false,
+        reachable: true,
+        authRejected: true,
+        httpStatus: res.status,
+        reason: `SUMIT rejected the credentials (HTTP ${res.status}) — check the API key / Company ID`,
+      };
+    }
+
+    if (res.ok) {
+      const b = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+      const rawRate = b.VATRate ?? b.Rate ?? (b.Data as Record<string, unknown> | undefined)?.VATRate;
+      const vatRate = typeof rawRate === 'number' ? rawRate : undefined;
+      logger.info('[SumitClient] connectionTest OK', { httpStatus: res.status, vatRate });
+      return {
+        ok: true,
+        reachable: true,
+        authRejected: false,
+        httpStatus: res.status,
+        vatRate,
+        reason: 'Key authenticated — SUMIT responded 200',
+      };
+    }
+
+    // Reached SUMIT, not an auth rejection (e.g. 400/404/422). The key is
+    // almost certainly valid; the request shape/date is what SUMIT disliked.
+    logger.warn('[SumitClient] connectionTest non-auth error', { httpStatus: res.status });
+    return {
+      ok: false,
+      reachable: true,
+      authRejected: false,
+      httpStatus: res.status,
+      reason: `Reached SUMIT (HTTP ${res.status}) but the call was not accepted — the key likely works; the request shape needs a tweak`,
+    };
+  }
+
+  /**
    * HMAC-verify an inbound SUMIT webhook payload. Returns false when
    * SUMIT_WEBHOOK_SECRET is unset so the receiver can short-circuit and
    * 401 the request. Constant-time compare to defeat timing attacks.
