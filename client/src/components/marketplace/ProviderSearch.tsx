@@ -318,7 +318,7 @@ function GooglePlacesLocationInput({
   const [isGettingLocation, setIsGettingLocation] = useState(false);
   const [locationError, setLocationError] = useState<string | null>(null);
   const [showCitySuggestions, setShowCitySuggestions] = useState(false);
-  const [predictions, setPredictions] = useState<Array<{ placeId: string; description: string; mainText?: string; secondaryText?: string }>>([]);
+  const [predictions, setPredictions] = useState<Array<{ placeId: string; description: string; mainText?: string; secondaryText?: string; lat?: number; lng?: number; city?: string }>>([]);
   const [isLoadingPredictions, setIsLoadingPredictions] = useState(false);
 
   const fetchPredictions = async (input: string) => {
@@ -333,16 +333,15 @@ function GooglePlacesLocationInput({
     setIsLoadingPredictions(true);
 
     try {
+      // 2026-06-18: free OSM Nominatim (was dead Google places-autocomplete). Same
+      // endpoint the shared address component uses, so marketplace browse is unified.
       const params = new URLSearchParams({
-        input,
-        components: 'country:il',
-        language: document.documentElement.lang === 'he' ? 'iw' : 'en',
-        types: 'geocode',
+        q: input,
+        lang: (document.documentElement.lang || 'he').slice(0, 2),
       });
-      const res = await fetch(`/api/google/places-autocomplete?${params}`, {
+      const res = await fetch(`/api/geocode/suggest?${params}`, {
         signal: abortRef.current.signal,
         credentials: 'include',
-        headers: { 'x-places-session': sessionTokenRef.current },
       });
       if (res.ok) {
         const data = await res.json();
@@ -361,31 +360,16 @@ function GooglePlacesLocationInput({
     }
   };
 
-  const selectPrediction = async (pred: { placeId: string; description: string }) => {
+  const selectPrediction = async (pred: { placeId: string; description: string; lat?: number; lng?: number; city?: string }) => {
+    // 2026-06-18: OSM /suggest returns coordinates inline on the prediction — no
+    // second "details" round-trip (the old /api/google/places-details is dead).
     onChange(pred.description);
     setShowCitySuggestions(false);
     setPredictions([]);
-
     try {
-      const params = new URLSearchParams({
-        placeId: pred.placeId,
-        language: document.documentElement.lang === 'he' ? 'iw' : 'en',
-      });
-      const currentToken = sessionTokenRef.current;
-      const res = await fetch(`/api/google/places-details?${params}`, {
-        credentials: 'include',
-        headers: { 'x-places-session': currentToken },
-      });
-      sessionTokenRef.current = crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).slice(2);
-      if (res.ok) {
-        const data = await res.json();
-        if (data.lat && data.lng) onCoordsChange?.(data.lat, data.lng);
-        if (data.formattedAddress) onChange(data.formattedAddress);
-        if (data.street || data.streetNumber) {
-          onAddressDetails?.({ street: data.street || '', streetNumber: data.streetNumber || '' });
-        }
+      if (typeof pred.lat === 'number' && typeof pred.lng === 'number') {
+        onCoordsChange?.(pred.lat, pred.lng);
       }
-    } catch {
     } finally {
       selectingRef.current = false;
     }

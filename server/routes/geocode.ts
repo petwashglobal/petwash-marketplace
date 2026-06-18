@@ -75,4 +75,48 @@ router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
   }
 });
 
+// GET /api/geocode/reverse?lat=..&lng=..&lang=he — coords -> address (free OSM).
+// Replaces the dead Google "use my location" / reverse wires. 2026-06-18.
+router.get('/reverse', suggestLimiter, async (req: Request, res: Response) => {
+  const lat = parseFloat(String(req.query.lat || ''));
+  const lng = parseFloat(String(req.query.lng || ''));
+  const lang = String(req.query.lang || 'he');
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+    return res.status(400).json({ error: 'lat and lng required' });
+  }
+  const cacheKey = `rev:${lang}:${lat.toFixed(5)},${lng.toFixed(5)}`;
+  const hit = cache.get(cacheKey);
+  if (hit && (Date.now() - hit.at) < CACHE_TTL_MS) {
+    return res.json((hit as any).rev);
+  }
+  const params = new URLSearchParams({
+    lat: String(lat), lon: String(lng), format: 'jsonv2', addressdetails: '1', 'accept-language': lang,
+  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
+      headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' },
+      signal: controller.signal,
+    });
+    if (!r.ok) return res.json({ formattedAddress: '', lat, lng });
+    const x: any = await r.json();
+    const out = {
+      formattedAddress: x?.display_name || '',
+      city: x?.address?.city || x?.address?.town || x?.address?.village || x?.address?.municipality,
+      postalCode: x?.address?.postcode,
+      countryCode: (x?.address?.country_code || 'il').toUpperCase(),
+      lat, lng,
+    };
+    if (cache.size >= CACHE_MAX) cache.clear();
+    cache.set(cacheKey, { at: Date.now(), data: [], rev: out } as any);
+    return res.json(out);
+  } catch (err: any) {
+    logger.warn('[geocode/reverse] failed (soft)', { error: err?.message });
+    return res.json({ formattedAddress: '', lat, lng });
+  } finally {
+    clearTimeout(timeout);
+  }
+});
+
 export default router;

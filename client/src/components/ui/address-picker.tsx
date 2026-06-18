@@ -26,6 +26,7 @@ export interface AddressPickerProps {
   isHebrew?: boolean;
   required?: boolean;
   error?: string;
+  country?: string[];           // 2026-06-18: overridable (was hardcoded ['IL'])
 }
 
 export function AddressPicker({
@@ -40,6 +41,7 @@ export function AddressPicker({
   isHebrew = true,
   required,
   error,
+  country = ["il"],
 }: AddressPickerProps) {
   const { user } = useFirebaseAuth();
   const queryClient = useQueryClient();
@@ -266,7 +268,7 @@ export function AddressPicker({
             }}
             onPlaceSelected={handlePlaceSelected}
             placeholder={placeholder ?? (isHebrew ? "חפש כתובת..." : "Search address...")}
-            country={["IL"]}
+            country={country}
           />
         </div>
       ) : (
