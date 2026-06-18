@@ -34,6 +34,16 @@ vi.mock('../utils/auditSignature', () => ({
 const sendAlert = vi.fn(async () => {});
 vi.mock('../monitoring', () => ({ sendAlert: (...a: any[]) => sendAlert(...a) }));
 
+const createMultiServiceGiftCard = vi.fn(async () => ({ giftCardId: 'GC-1', publicCode: 'PUB-1', qrCodeData: 'qr' }));
+vi.mock('../services/giftOrchestrationService', () => ({
+  giftOrchestrationService: { createMultiServiceGiftCard: (...a: any[]) => createMultiServiceGiftCard(...a) },
+}));
+
+const sendEGiftConfirmationEmail = vi.fn(async () => {});
+vi.mock('../services/egiftEmailService', () => ({
+  sendEGiftConfirmationEmail: (...a: any[]) => sendEGiftConfirmationEmail(...a),
+}));
+
 // In-memory DB state the stub reads/writes.
 interface PurchaseRow {
   id: string;
@@ -160,6 +170,8 @@ beforeEach(() => {
   addCredits.mockClear();
   recordAuditEvent.mockClear();
   sendAlert.mockClear();
+  createMultiServiceGiftCard.mockClear();
+  sendEGiftConfirmationEmail.mockClear();
   getTransaction.mockClear();
   isWired.mockReset();
   isWired.mockReturnValue(false);
@@ -216,14 +228,54 @@ describe('activateProduct — per-type behaviour', () => {
     expect(addCredits).toHaveBeenCalledWith('user-1', 'promo_credit', 12000, 'sumit_purchase', 'PUR-4', expect.any(String));
   });
 
-  it('EGIFT_CARD → activation_pending, NO addCredits (recipient-bound is a follow-up)', async () => {
+  it('EGIFT_CARD WITHOUT recipient → pending, NO gift minted, NO addCredits (never faked)', async () => {
     const row = seed({ id: 'PUR-5', surface: 'gift_card', surfaceRefId: 'ext-5', productType: 'EGIFT_CARD' });
     const r = await activateFromVerifiedPayment({ providerReference: 'txn-5', transactionId: 'txn-5', externalRef: 'ext-5' });
     expect(r.outcome).toBe('pending');
+    expect(createMultiServiceGiftCard).not.toHaveBeenCalled();
     expect(addCredits).not.toHaveBeenCalled();
     expect(row.status).toBe('paid'); // recoverable, NOT activated, NOT faked
     expect(row.metadataJson.activation).toBe('pending');
     expect(sendAlert).toHaveBeenCalled();
+  });
+
+  it('EGIFT_CARD WITH recipient → recipient-bound gift minted, buyer NOT credited, idempotent', async () => {
+    const row = seed({
+      id: 'PUR-5b', surface: 'gift_card', surfaceRefId: 'ext-5b', productType: 'EGIFT_CARD', amountCents: 25000,
+      metadataJson: {
+        egiftRecipientName: 'Dana', egiftRecipientEmail: 'dana@example.com',
+        egiftPurchaserEmail: 'nir@example.com', egiftSenderName: 'Nir',
+      },
+    });
+    const r = await activateFromVerifiedPayment({ providerReference: 'txn-5b', transactionId: 'txn-5b', externalRef: 'ext-5b' });
+    expect(r.outcome).toBe('activated');
+    // Gift bound to the RECIPIENT (not the buyer); value derived from server amount.
+    expect(createMultiServiceGiftCard).toHaveBeenCalledWith(expect.objectContaining({
+      value: 250, currency: 'ILS', recipientEmail: 'dana@example.com', recipientName: 'Dana',
+    }));
+    expect(addCredits).not.toHaveBeenCalled(); // the buyer's wallet is NEVER credited for an eGift
+    expect(row.metadataJson.egiftGiftCardId).toBe('GC-1'); // persisted so a retry can't double-mint
+    expect(row.status).toBe('activated');
+
+    // Duplicate webhook (same reference) → purchase-level lock → no second gift.
+    const dup = await activateFromVerifiedPayment({ providerReference: 'txn-5b', transactionId: 'txn-5b', externalRef: 'ext-5b' });
+    expect(dup.outcome).toBe('already_processed');
+    expect(createMultiServiceGiftCard).toHaveBeenCalledTimes(1);
+  });
+
+  it('EGIFT_CARD with egiftGiftCardId already present → belt short-circuits, NO second mint', async () => {
+    // Defence-in-depth idempotency belt: if a gift id is already on the purchase
+    // (server-owned key; the /begin route forces it null so a client can never
+    // inject it), the handler must NOT mint again.
+    seed({
+      id: 'PUR-5c', surface: 'gift_card', surfaceRefId: 'ext-5c', productType: 'EGIFT_CARD', amountCents: 10000,
+      metadataJson: {
+        egiftGiftCardId: 'GC-existing', egiftRecipientName: 'Dana', egiftRecipientEmail: 'dana@example.com',
+      },
+    });
+    const r = await activateFromVerifiedPayment({ providerReference: 'txn-5c', transactionId: 'txn-5c', externalRef: 'ext-5c' });
+    expect(r.outcome).toBe('activated');
+    expect(createMultiServiceGiftCard).not.toHaveBeenCalled(); // belt prevented a second mint
   });
 
   it('provider booking (PET_SITTING_BOOKING) → activation_pending, NO addCredits (provider commerce disabled)', async () => {

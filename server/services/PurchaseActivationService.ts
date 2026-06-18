@@ -337,7 +337,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
   // is the activation-side enforcement of "provider commerce disabled"; the
   // /begin allowlist is the first gate, this is defence-in-depth so a row that
   // somehow carries a non-owned productType can never silently credit a wallet.
-  const OWNED: ReadonlySet<string> = new Set(['ACCOUNT_CREDIT', 'WASH_PACKAGE', 'SINGLE_WASH']);
+  const OWNED: ReadonlySet<string> = new Set(['ACCOUNT_CREDIT', 'WASH_PACKAGE', 'SINGLE_WASH', 'EGIFT_CARD']);
   if (!OWNED.has(String(purchase.productType))) {
     return false;
   }
@@ -388,10 +388,74 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
       return true;
     }
 
-    case 'EGIFT_CARD':
-      // Recipient-bound eGift via giftOrchestrationService is a follow-up.
-      // Do NOT credit the buyer, do NOT fake. Leave pending.
-      return false;
+    case 'EGIFT_CARD': {
+      // Idempotency belt: the purchase-level lock already guarantees single
+      // entry, but if a gift was already minted for this purchase, never mint
+      // a second one.
+      if (meta.egiftGiftCardId) return true;
+
+      // Recipient is mandatory and is captured at /begin. Without a valid
+      // recipient we do NOT credit the buyer and do NOT fake — leave pending.
+      const recipientEmail = String(meta.egiftRecipientEmail ?? '').trim();
+      const recipientName = String(meta.egiftRecipientName ?? '').trim();
+      if (!recipientEmail || !recipientName) {
+        return false;
+      }
+
+      const { giftOrchestrationService } = await import('./giftOrchestrationService');
+      const gift = await giftOrchestrationService.createMultiServiceGiftCard({
+        value: purchase.amountCents / 100,
+        currency: 'ILS',
+        purchaserEmail: String(meta.egiftPurchaserEmail ?? '') || `${purchase.buyerUserId}@petwash.local`,
+        recipientEmail,
+        recipientName,
+        senderName: String(meta.egiftSenderName ?? '') || 'PetWash',
+        message: meta.egiftMessage ? String(meta.egiftMessage) : undefined,
+        eligibleServices: ['all'],
+        expiresInMonths: 24,
+      });
+
+      // Persist the gift id BEFORE anything else so a retry is a no-op (belt).
+      try {
+        await db
+          .update(purchases)
+          .set({
+            metadataJson: { ...meta, egiftGiftCardId: gift.giftCardId, egiftPublicCode: gift.publicCode },
+            updatedAt: new Date(),
+          })
+          .where(eq(purchases.id, purchase.id));
+      } catch (err) {
+        logger.error('[PurchaseActivation] failed to persist egift id', {
+          purchaseId: purchase.id, err: (err as Error)?.message,
+        });
+      }
+
+      // Deliver the gift to the recipient (best-effort — never blocks activation;
+      // the gift already exists and is bound to the recipient).
+      try {
+        const { sendEGiftConfirmationEmail } = await import('./egiftEmailService');
+        await sendEGiftConfirmationEmail({
+          senderName: String(meta.egiftSenderName ?? '') || 'PetWash',
+          senderEmail: String(meta.egiftPurchaserEmail ?? ''),
+          recipientName,
+          recipientEmail,
+          value: purchase.amountCents / 100,
+          currency: 'ILS',
+          publicCode: gift.publicCode,
+          giftCardId: gift.giftCardId,
+          occasion: 'justbecause',
+          messageLanguage: 'he',
+          personalMessage: meta.egiftMessage ? String(meta.egiftMessage) : undefined,
+          eligibleServices: ['all'],
+          expiresInMonths: 24,
+        });
+      } catch (emailErr) {
+        logger.warn('[PurchaseActivation] egift email send failed (non-blocking)', {
+          purchaseId: purchase.id, err: (emailErr as Error)?.message,
+        });
+      }
+      return true;
+    }
 
     case 'MEMBERSHIP':
     case 'SAAS_SUBSCRIPTION':
