@@ -476,14 +476,21 @@ export default function MyAccount() {
       const resp = await apiRequest('POST', '/api/prestige-pass/generate-wallet-links', {});
       const data = await resp.json();
       if (!data.ok || !data.appleWalletUrl) {
-        throw new Error(data.error || (isHebrew ? 'הכרטיס עדיין לא מוכן — נסה שוב בעוד דקה.' : 'Pass not ready yet — try again in a minute.'));
+        // HONESTY 2026-06-18: this is NOT transient — retrying never helps. The pass
+        // record isn't provisioned yet (or PASS_LINK_SECRET is unset). Don't tell the
+        // user to "try again in a minute".
+        throw new Error(data.error || (isHebrew
+          ? 'כרטיס הארנק שלך עדיין לא הוגדר. צוות התמיכה יפעיל אותו עבורך.'
+          : "Your wallet pass isn't set up yet. Our team is activating it for you."));
       }
       return data.appleWalletUrl as string;
     },
     onSuccess: (url) => window.location.assign(url),
     onError: (err: any) => toast({
-      title: isHebrew ? 'Wallet עדיין לא מוכן' : 'Wallet not ready yet',
-      description: err?.message || (isHebrew ? 'נסה שוב בעוד דקה.' : 'Try again in a minute.'),
+      title: isHebrew ? 'הארנק עדיין לא מוכן' : 'Wallet not set up yet',
+      description: err?.message || (isHebrew
+        ? 'כרטיס הארנק שלך עדיין לא הוגדר.'
+        : "Your wallet pass isn't set up yet."),
       variant: 'destructive',
     }),
   });
