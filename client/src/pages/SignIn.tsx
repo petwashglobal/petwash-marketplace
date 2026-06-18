@@ -32,7 +32,7 @@ import { FaceIDLoadingState } from "@/components/FaceIDLoadingState";
 import { executeReCaptcha, preloadReCaptcha } from "@/components/ReCaptcha";
 import { TurnstileWidget, TURNSTILE_CONFIGURED, executeTurnstileInvisible } from "@/components/TurnstileWidget";
 import { trackAuthError } from "@/lib/authErrorTracker";
-import { trustDevice, isDeviceTrusted } from "@/lib/deviceTrust";
+import { trustDevice, isDeviceTrusted, enablePinDeviceTrust } from "@/lib/deviceTrust";
 import { normalizePhoneE164 } from "@/lib/authUtils";
 import { motion, AnimatePresence } from "framer-motion";
 
@@ -407,6 +407,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           
           if (userCredential.user.uid && userCredential.user.email) {
             trustDevice(userCredential.user.uid, userCredential.user.email);
+            void enablePinDeviceTrust(); // enable 4-digit PIN sign-in on this device
             storeLastAuthMethod('magic_link');
           }
           
@@ -465,6 +466,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       if (!sessionResponse.ok) throw new Error('Failed to create session');
       if (userCredential.user.uid && userCredential.user.email) {
         trustDevice(userCredential.user.uid, userCredential.user.email);
+        void enablePinDeviceTrust(); // enable 4-digit PIN sign-in on this device
         storeLastAuthMethod('magic_link');
       }
       const { trackLogin } = await import('@/lib/analytics');
@@ -791,7 +793,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
       return;
     }
 
-    // Check for server-issued trust token (generated via /api/pin-auth/generate-trust-token)
+    // Check for server-issued trust token (minted via /api/pin-auth/generate-device-trust
+    // by enablePinDeviceTrust() after a full login).
     const deviceTrustToken = localStorage.getItem('petwash_device_trust_token');
     if (!deviceTrustToken) {
       toast({
@@ -874,8 +877,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
     }
   };
 
-  // PIN login requires a server-issued trust token (from /api/pin-auth/generate-trust-token)
-  // This is separate from the client-side deviceTrust.ts which tracks 30-day device memory
+  // PIN login requires a server-issued trust token (from /api/pin-auth/generate-device-trust,
+  // minted by enablePinDeviceTrust() after a full login).
   const isPinLoginAvailable = !!localStorage.getItem('petwash_device_trust_token');
 
   type SocialProvider = 'google' | 'apple' | 'facebook';
@@ -1115,6 +1118,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
 
       if (rememberDevice && userCredential.user.uid && userCredential.user.email) {
         trustDevice(userCredential.user.uid, userCredential.user.email);
+        void enablePinDeviceTrust(); // enable 4-digit PIN sign-in on this device
         logger.info('Device trusted after social login');
       }
 
