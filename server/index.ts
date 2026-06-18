@@ -314,6 +314,7 @@ import session from "express-session";
 import { fileURLToPath } from "node:url";
 import cors from "cors";
 import { doubleCsrf } from "csrf-csrf";
+import { initSentry } from "./lib/observability";
 
 // --- CRITICAL: Early startup logging for Cloud Run debugging ---
 console.log('--------------------------------------------------');
@@ -386,6 +387,15 @@ function htmlEncode(s: string): string {
 
 const app = express();
 const PORT = Number(process.env.PORT || 8080);
+
+// OBSERVABILITY 2026-06-18: Sentry was fully built but NEVER initialized at boot, so
+// auth (and all) failures only ever went to stdout and nobody could see them. Wire it
+// now — it safely no-ops when SENTRY_DSN is unset (free tier / self-hosted GlitchTip).
+try {
+  initSentry();
+} catch (e) {
+  console.warn('[startup] Sentry init skipped:', (e as Error)?.message);
+}
 
 // Trust proxy for Replit/Cloud Run deployment
 app.set('trust proxy', 1);

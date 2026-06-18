@@ -100,8 +100,18 @@ export async function validateFirebaseToken(
     req.firebaseUser = user;
     bridgeFirebaseUser(req);
     next();
-  } catch (error) {
-    logger.error('Firebase token validation failed', error);
+  } catch (error: any) {
+    // OBSERVABILITY 2026-06-18: highest-volume auth rejection path — used to log one
+    // generic line, so an expired token looked identical to an infra/IAM outage. Log
+    // the real Firebase code + context (response to the client stays generic).
+    logger.error('Firebase token validation failed', {
+      code: error?.code || error?.errorInfo?.code,
+      message: error?.message,
+      path: req.path,
+      method: req.method,
+      hasBearer: !!req.headers.authorization,
+      hasSessionCookie: !!req.cookies?.pw_session,
+    });
     res.status(401).json({ error: 'Invalid or expired token' });
   }
 }
