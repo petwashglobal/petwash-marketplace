@@ -649,7 +649,7 @@ export class SumitClient {
    * The beginredirect querystring is spoofable — this is the authoritative check
    * before we treat a payment as real. No-op without creds; never throws.
    */
-  async getTransaction(transactionId: string): Promise<{ wired: boolean; valid: boolean; raw?: unknown; reason?: string }> {
+  async getTransaction(transactionId: string): Promise<{ wired: boolean; valid: boolean; amountCents?: number; raw?: unknown; reason?: string }> {
     const env = readEnv();
     if (!isWired()) return { wired: false, valid: false, reason: 'SUMIT not enabled' };
     try {
@@ -664,7 +664,17 @@ export class SumitClient {
       // Valid/approved field name unverified — accept common shapes.
       const valid = parsed?.Valid === true || parsed?.Valid === 1 || parsed?.Data?.Valid === true ||
         String(parsed?.Status || parsed?.Data?.Status || '').toLowerCase() === 'approved';
-      return { wired: true, valid, raw: parsed };
+      // Charged amount (gross, ILS) — field name UNVERIFIED, accept common shapes.
+      // Returned in CENTS so callers can compare against purchases.amountCents
+      // (defence-in-depth against price tampering). undefined when not present.
+      const rawAmount =
+        parsed?.Amount ?? parsed?.Sum ?? parsed?.Total ??
+        parsed?.Data?.Amount ?? parsed?.Data?.Sum ?? parsed?.Data?.Total ??
+        parsed?.Payment?.Amount ?? parsed?.payment?.amount;
+      const amountNum = Number(rawAmount);
+      const amountCents =
+        rawAmount != null && Number.isFinite(amountNum) ? Math.round(amountNum * 100) : undefined;
+      return { wired: true, valid, amountCents, raw: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] getTransaction network error', { transactionId, err: err?.message });
       return { wired: false, valid: false, reason: `Network error: ${err?.message}` };

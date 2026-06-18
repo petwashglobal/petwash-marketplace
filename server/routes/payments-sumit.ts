@@ -16,6 +16,9 @@ import { Router, Request, Response } from 'express';
 import { z } from 'zod';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { sumitClient } from '../services/SumitClient';
+import { db } from '../db';
+import { purchases } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -24,11 +27,58 @@ function baseUrl(): string {
   return process.env.BASE_URL || 'https://petwash.co.il';
 }
 
+// ── Phase-1 server-owned catalog. PROVIDER COMMERCE IS DISABLED — only
+//    PetWash-owned products are purchasable, and their price/quantity are
+//    resolved SERVER-SIDE. The client may NOT supply an amount: a tampered
+//    request can no longer set its own price or launder an arbitrary sum into
+//    spendable wallet credit. A real price-table lookup replaces this map
+//    later, but the contract (server owns price) stays the same.
+//
+//    ACCOUNT_CREDIT (wallet_topup) is the one variable-amount product, so it
+//    takes a bounded, explicit `topupIls` rather than a SKU — the credited
+//    cents equal exactly what we charge SUMIT, and nothing else can reach the
+//    wallet-credit branch in activation.
+const PHASE1_PRODUCTS = {
+  ACCOUNT_CREDIT: { surface: 'wallet_topup' as const },
+  SINGLE_WASH:    { surface: 'kiosk' as const, amountCents: 4500, washCount: 1, description: 'Single wash' },
+  WASH_PACKAGE_5: { surface: 'kiosk' as const, amountCents: 20000, washCount: 5, productType: 'WASH_PACKAGE', description: 'Wash package (5)' },
+  WASH_PACKAGE_10:{ surface: 'kiosk' as const, amountCents: 36000, washCount: 10, productType: 'WASH_PACKAGE', description: 'Wash package (10)' },
+} as const;
+type Phase1Sku = keyof typeof PHASE1_PRODUCTS;
+
 const beginSchema = z.object({
-  amountIls: z.number().positive().max(100_000),
-  description: z.string().min(1).max(200),
+  // The product is chosen by SKU from the server-owned catalog. NO client price.
+  sku: z.enum(['ACCOUNT_CREDIT', 'SINGLE_WASH', 'WASH_PACKAGE_5', 'WASH_PACKAGE_10']),
+  // Only meaningful for ACCOUNT_CREDIT (variable-amount wallet top-up). Bounded.
+  topupIls: z.number().positive().max(10_000).optional(),
   orderId: z.string().max(120).optional(),
+  metadata: z.record(z.unknown()).optional(),
 });
+
+/**
+ * Resolve price, productType, surface and unit count SERVER-SIDE from the
+ * Phase-1 catalog. The client cannot influence the charged amount (except the
+ * bounded wallet top-up value, which is credited 1:1 with what we charge).
+ * Returns null for anything not purchasable in Phase 1.
+ */
+function resolvePhase1Order(sku: Phase1Sku, topupIls?: number):
+  | { amountCents: number; productType: string; surface: string; washCount?: number; description: string }
+  | null {
+  if (sku === 'ACCOUNT_CREDIT') {
+    if (!topupIls || !Number.isFinite(topupIls) || topupIls <= 0) return null;
+    const amountCents = Math.round(topupIls * 100);
+    return { amountCents, productType: 'ACCOUNT_CREDIT', surface: 'wallet_topup', description: 'Account credit' };
+  }
+  const def = PHASE1_PRODUCTS[sku] as any;
+  if (!def || typeof def.amountCents !== 'number') return null;
+  return {
+    amountCents: def.amountCents,
+    productType: def.productType || sku,
+    surface: def.surface,
+    washCount: def.washCount,
+    description: def.description,
+  };
+}
 
 // POST /api/payments/sumit/begin
 router.post('/begin', validateFirebaseToken, async (req: Request, res: Response) => {
@@ -37,9 +87,60 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
 
   const parsed = beginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-  const { amountIls, description, orderId } = parsed.data;
+  const { sku, topupIls, orderId, metadata } = parsed.data;
+
+  // SERVER-SIDE price/quantity. The client supplies only a SKU (+ a bounded
+  // top-up value for wallet_topup); price, productType, surface and the unit
+  // count all come from the server-owned catalog. A request for anything not
+  // in the Phase-1 PetWash-owned set is rejected — "provider commerce
+  // disabled" is enforced here, not left to a downstream switch default.
+  const order = resolvePhase1Order(sku, topupIls);
+  if (!order) return res.status(400).json({ error: 'product_not_purchasable' });
+  const { amountCents, productType: resolvedProductType, surface: resolvedSurface, washCount, description } = order;
+  const amountIls = amountCents / 100;
 
   const externalId = orderId || `pw-${uid}-${Date.now().toString(36)}`;
+
+  // Create the shadow `purchases` row (status 'payment_pending') BEFORE the
+  // redirect so the webhook has something to find via surfaceRefId=externalId.
+  // Idempotent on (surface, surfaceRefId): a retried /begin reuses the row.
+  try {
+    const existing = await db
+      .select({ id: purchases.id })
+      .from(purchases)
+      .where(eq(purchases.surfaceRefId, externalId))
+      .limit(1);
+    if (existing.length === 0) {
+      await db.insert(purchases).values({
+        surface: resolvedSurface,
+        surfaceRefId: externalId,
+        buyerUserId: uid,
+        productType: resolvedProductType,
+        amountCents,
+        currency: 'ILS',
+        status: 'payment_pending',
+        paymentMethod: 'credit_card',
+        segment: 'b2c',
+        acquirer: 'upay_via_sumit',
+        systemOfRecord: 'sumit',
+        // SERVER-OWNED fulfilment facts. washCount comes from the catalog, NOT
+        // the client — activation reads metadataJson.washCount but the client
+        // can no longer influence it. Client `metadata` is spread first so it
+        // can never override the server keys that follow.
+        metadataJson: { ...(metadata ?? {}), description, sku, ...(washCount != null ? { washCount } : {}) },
+      });
+    }
+  } catch (err: any) {
+    // A unique-violation here means a concurrent /begin already created it —
+    // safe to proceed to redirect. Any other error: log but don't block the
+    // customer's payment (the webhook's not_found path stays the safety net).
+    if (err?.code !== '23505') {
+      logger.error('[SumitPay] failed to create purchase row (continuing to redirect)', {
+        externalId, err: err?.message,
+      });
+    }
+  }
+
   const result = await sumitClient.beginRedirect({
     externalId,
     amountIls,
