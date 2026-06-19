@@ -55,6 +55,7 @@ const MyExpenses = lazy(() => import("@/pages/MyExpenses"));
 const ApproveExpenses = lazy(() => import("@/pages/ApproveExpenses"));
 const AdminSupplierInvoices = lazy(() => import("@/pages/AdminSupplierInvoices"));
 const AdminNoLostMoney = lazy(() => import("@/pages/AdminNoLostMoney"));
+const AdminReminderPreview = lazy(() => import("@/pages/AdminReminderPreview"));
 const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoiceDetail"));
 const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
 const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
@@ -252,6 +253,7 @@ const LogisticsDashboard = lazy(() => import("@/pages/LogisticsDashboard"));
 const FinanceDashboard = lazy(() => import("@/pages/FinanceDashboard"));
 const UnifiedEntityManagement = lazy(() => import("@/pages/UnifiedEntityManagement"));
 const PolicyManagementDashboard = lazy(() => import("@/pages/PolicyManagementDashboard"));
+const AdminDeadlines = lazy(() => import("@/pages/AdminDeadlines"));
 const FranchiseManagementDashboard = lazy(() => import("@/pages/FranchiseManagementDashboard"));
 const AdminRouteGuard = lazy(() => import("@/components/AdminRouteGuard").then(m => ({ default: m.AdminRouteGuard })));
 // Maya Stage 2 — admin UI lazy imports
@@ -267,6 +269,7 @@ const AdminMayaAudit = lazy(() => import("@/pages/admin/maya/AdminMayaAudit"));
 
 const AdminSecurityMonitoring = lazy(() => import("@/pages/AdminSecurityMonitoring"));
 const AdminCeoReport = lazy(() => import("@/pages/AdminCeoReport"));
+const AdminRetention = lazy(() => import("@/pages/AdminRetention"));
 const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower"));
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
 const PerformanceMonitoring = lazy(() => import("@/pages/PerformanceMonitoring"));
@@ -2185,6 +2188,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
+        {/* Admin route - Retention & Reviews (Winback §27 + Review Engine §26, read-only) */}
+        <Route path="/admin/retention">
+          {() => (
+            <AdminRouteGuard>
+              <AdminRetention />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
         {/* PetWash Bridge MVP — read-only operator cockpit. */}
         {/* Feature flag: VITE_BRIDGE_MVP_ENABLED='true' required. */}
         {import.meta.env.VITE_BRIDGE_MVP_ENABLED === 'true' && (
@@ -2448,6 +2460,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminNoLostMoney />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/reminder-preview">
+          {() => (
+            <AdminRouteGuard>
+              <AdminReminderPreview />
             </AdminRouteGuard>
           )}
         </Route>
@@ -3366,6 +3385,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <PolicyManagementDashboard />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/deadlines">
+          {() => (
+            <AdminRouteGuard>
+              <AdminDeadlines />
             </AdminRouteGuard>
           )}
         </Route>

@@ -158,6 +158,7 @@ import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami
 import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
+import adminRetentionRouter from "./routes/admin-retention";
 import adminBrainRoutes from "./routes/admin-brain";
 import adminBridgeRoutes from "./routes/admin-bridge";
 import coworkerRoutes from "./routes/coworker";
@@ -229,6 +230,7 @@ import operationsRoutes from "./routes/operations";
 import passportRoutes from "./routes/passport";
 import pawFinderRoutes from "./routes/paw-finder";
 import petsRoutes from "./routes/pets";
+import petCareTimelineRouter from "./routes/pet-care-timeline";
 import pricingRoutes from "./routes/pricing";
 import providerOnboardingRoutes from "./routes/provider-onboarding";
 import onboardingVerificationRoutes from "./routes/onboarding-verification";
@@ -332,6 +334,7 @@ import mayaVoiceWebhookRouter from './routes/maya-voice-webhook';
 import adminMayaVoiceRouter from './routes/admin-maya-voice';
 import aiBookingRouter from './routes/ai-booking';
 import adminPaymentDevicesRouter from './routes/admin-payment-devices';
+import adminDeadlinesRouter from './routes/admin-deadlines';
 import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
 import adminStationHealthRouter from './routes/admin-station-health';
 import adminFaultIntelRouter from './routes/admin-fault-intel';
@@ -11200,6 +11203,7 @@ self.addEventListener('notificationclick', (event) => {
   // Pet Profiles routes
   const petsRoutes = await import('./routes/pets');
   app.use('/api/pets', apiLimiter, petsRoutes.default);
+  app.use('/api', apiLimiter, petCareTimelineRouter); // Pet-Care Timeline (§5) + Smart-Reminders PREVIEW (§6) — read-only
 
   // Business Legal ID documents (compliance-role only — normal users receive 403)
   const businessLegalIdRoutes = await import('./routes/business-legal-id');
@@ -11376,6 +11380,8 @@ self.addEventListener('notificationclick', (event) => {
   // auth (docstring claimed aspirational protection that wasn't wired) —
   // adding validateFirebaseToken here closes that gap.
   app.use('/api/admin/loyalty', validateFirebaseToken, adminLimiter, adminLoyaltyRoutes);
+  // Winback Engine (§27) + Review Engine logic (§26) — READ-ONLY preview. Each route uses requireAdmin internally.
+  app.use('/api/admin', validateFirebaseToken, adminLimiter, adminRetentionRouter);
   // Operations Brain (CEO read-only dashboard).
   // validateFirebaseToken populates req.firebaseUser so requireBrainAccess
   // (inside adminBrainRoutes) can check super-admin email + role.
@@ -11391,6 +11397,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin/coworker', validateFirebaseToken, adminLimiter, coworkerRoutes);
   app.use('/api/admin', validateFirebaseToken, adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', validateFirebaseToken, adminLimiter, adminPawFinderRoutes);
+  app.use('/api/admin', adminLimiter, adminDeadlinesRouter); // READ-ONLY deadlines + insurance-status (auth inside router)
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
   app.use('/api/admin/spam-guard', validateFirebaseToken, adminLimiter, spamGuardRoutes);
 

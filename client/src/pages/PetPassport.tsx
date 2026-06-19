@@ -11,7 +11,7 @@ import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
-import { ArrowLeft, Loader2, ShieldCheck, Syringe, Cake, Stethoscope, Cpu } from 'lucide-react';
+import { ArrowLeft, Loader2, ShieldCheck, Syringe, Cake, Stethoscope, Cpu, Droplets, CalendarClock, Sparkles } from 'lucide-react';
 
 interface Pet {
   id: string;
@@ -25,6 +25,33 @@ interface Pet {
   vetName?: string;
   photoUrl?: string;
   vaccineDates?: { rabies?: string; dhpp?: string; lepto?: string };
+}
+
+interface WashEntry {
+  date: string | null;
+  source: string;
+  status: string | null;
+  program: string | null;
+}
+
+interface CareTimeline {
+  timeline: {
+    lastWashDate: string | null;
+    daysSinceLastWash: number | null;
+    suggestedNextWashDate: string | null;
+    suggestedNextWashIsHeuristic: boolean;
+    nextWashIntervalDays: number;
+    washHistory: WashEntry[];
+    birthday: string | null;
+    daysUntilBirthday: number | null;
+    creditUsed: {
+      egiftRedeemedCents: number | null;
+      washPackageUnitsRedeemed: number | null;
+      walletWashCreditsRemaining: number | null;
+    };
+  };
+  notes?: { washScope?: string; washScopeReason?: string };
+  readOnly?: boolean;
 }
 
 const SPECIES_EMOJI: Record<string, string> = {
@@ -41,6 +68,13 @@ export default function PetPassport() {
 
   const { data: pet, isLoading, isError } = useQuery<Pet>({
     queryKey: [`/api/pets/${petId}`],
+    enabled: !!petId,
+  });
+
+  // Pet-Care Timeline (§5) — read-only. Loads alongside the passport; if it
+  // errors the passport still renders (the section just hides).
+  const { data: care } = useQuery<CareTimeline>({
+    queryKey: [`/api/pet-care-timeline/${petId}`],
     enabled: !!petId,
   });
 
@@ -63,6 +97,14 @@ export default function PetPassport() {
     if (months < 12) return tr(`${months} mo`, `${months} חודשים`);
     const y = Math.floor(months / 12);
     return tr(`${y} ${y === 1 ? 'year' : 'years'}`, `${y} שנים`);
+  };
+
+  // Short date label (locale-aware), or '' when missing/unparseable.
+  const fmtDate = (d?: string | null): string => {
+    if (!d) return '';
+    const dt = new Date(d);
+    if (isNaN(dt.getTime())) return '';
+    return dt.toLocaleDateString(he ? 'he-IL' : 'en-GB', { year: 'numeric', month: 'short', day: 'numeric' });
   };
 
   // A vaccine's next-due = one year after the recorded date (standard annual cadence).
@@ -181,6 +223,90 @@ export default function PetPassport() {
                       </div>
                     ))}
                   </div>
+                </div>
+              )}
+
+              {/* ── Pet-Care Timeline (§5) — read-only, owner-scoped ─────────── */}
+              {care?.timeline && (
+                <div className="px-6 pb-6">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Droplets className="w-4 h-4 text-amber-300/80" />
+                    <span className="text-xs uppercase tracking-wider text-amber-300/80 font-semibold">
+                      {tr('Care timeline', 'ציר טיפוח')}
+                    </span>
+                  </div>
+
+                  {/* Last wash / next suggested wash */}
+                  <div className="grid grid-cols-2 gap-2 mb-3">
+                    <div className="rounded-xl bg-amber-300/[0.04] border border-amber-300/10 px-3 py-2.5">
+                      <div className="text-[10px] uppercase tracking-wider text-gray-400">{tr('Last wash', 'רחצה אחרונה')}</div>
+                      <div className="text-sm text-white mt-0.5">
+                        {care.timeline.lastWashDate ? fmtDate(care.timeline.lastWashDate) : tr('No wash yet', 'אין רחצה עדיין')}
+                      </div>
+                      {care.timeline.daysSinceLastWash != null && (
+                        <div className="text-[10px] text-amber-300/60 mt-0.5">
+                          {tr(`${care.timeline.daysSinceLastWash} days ago`, `לפני ${care.timeline.daysSinceLastWash} ימים`)}
+                        </div>
+                      )}
+                    </div>
+                    <div className="rounded-xl bg-amber-300/[0.04] border border-amber-300/10 px-3 py-2.5">
+                      <div className="flex items-center gap-1 text-[10px] uppercase tracking-wider text-gray-400">
+                        <CalendarClock className="w-3 h-3" />
+                        {tr('Next suggested', 'הבא המומלץ')}
+                      </div>
+                      <div className="text-sm text-white mt-0.5">
+                        {care.timeline.suggestedNextWashDate ? fmtDate(care.timeline.suggestedNextWashDate) : '—'}
+                      </div>
+                      {care.timeline.suggestedNextWashIsHeuristic && care.timeline.suggestedNextWashDate && (
+                        <div className="text-[10px] text-amber-300/60 mt-0.5">
+                          {tr(
+                            `Estimate · every ${care.timeline.nextWashIntervalDays} days`,
+                            `הערכה · כל ${care.timeline.nextWashIntervalDays} ימים`,
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Birthday countdown */}
+                  {care.timeline.daysUntilBirthday != null && (
+                    <div className="flex items-center gap-2 rounded-xl bg-amber-300/[0.04] border border-amber-300/10 px-3 py-2.5 mb-3">
+                      <Sparkles className="w-4 h-4 text-amber-300/80" />
+                      <span className="text-sm text-white">
+                        {care.timeline.daysUntilBirthday === 0
+                          ? tr('Birthday is today! 🎉', 'יום ההולדת היום! 🎉')
+                          : tr(
+                              `Birthday in ${care.timeline.daysUntilBirthday} days`,
+                              `יום הולדת בעוד ${care.timeline.daysUntilBirthday} ימים`,
+                            )}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Recent wash history */}
+                  {care.timeline.washHistory.length > 0 && (
+                    <div className="space-y-1.5">
+                      <div className="text-[10px] uppercase tracking-wider text-gray-400 mb-1">
+                        {tr('Recent washes', 'רחצות אחרונות')}
+                      </div>
+                      {care.timeline.washHistory.slice(0, 5).map((w, i) => (
+                        <div key={i} className="flex items-center justify-between text-xs">
+                          <span className="text-gray-300">{fmtDate(w.date) || '—'}</span>
+                          <span className="text-gray-500">
+                            {w.source === 'kiosk' ? tr('Station', 'עמדה') : tr('Package', 'חבילה')}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Honesty note — wash data is account-wide, not per-pet */}
+                  <p className="text-[10px] text-gray-500 mt-3 leading-relaxed">
+                    {tr(
+                      'Next-wash date is an estimate, not medical advice. Wash records are account-wide.',
+                      'תאריך הרחצה הבא הוא הערכה ואינו ייעוץ וטרינרי. נתוני הרחצה הם ברמת החשבון.',
+                    )}
+                  </p>
                 </div>
               )}
 

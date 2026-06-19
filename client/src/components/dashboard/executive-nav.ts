@@ -56,6 +56,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'CEO Report', labelHe: 'דוח מנכ״ל', path: '/admin/ceo-report', icon: Activity, roles: ['admin', 'ceo'], hint: 'Yesterday digest + eGift intelligence', hintHe: 'תקציר אתמול + מודיעין גיפט' },
       { label: 'CEO Suite', labelHe: 'חדר מנכ״ל', path: '/pet-wash-ltd/executive/ceo', icon: Crown, roles: ['ceo'], hint: 'Founder tools & gift cards', hintHe: 'כלי מייסד וכרטיסי מתנה' },
       { label: 'Operations Brain', labelHe: 'מרכז תפעול', path: '/admin/brain', icon: Bot, roles: ['admin', 'ceo'], hint: 'Live stations, alerts, approvals', hintHe: 'עמדות בזמן אמת, התראות ואישורים' },
+      { label: 'Reminders (preview)', labelHe: 'תזכורות (תצוגה)', path: '/admin/reminder-preview', icon: Activity, roles: ['admin', 'ceo'], hint: 'What smart reminders would be sent — read-only', hintHe: 'אילו תזכורות חכמות היו נשלחות — לקריאה בלבד' },
     ],
   },
   {
@@ -85,6 +86,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'HR', labelHe: 'משאבי אנוש', path: '/admin/hr', icon: Briefcase, roles: ['admin', 'ceo'], hint: 'Hiring, payroll, docs', hintHe: 'גיוס, שכר ומסמכים' },
       { label: 'Recruitment', labelHe: 'גיוס', path: '/admin/recruitment', icon: ClipboardList, roles: ['admin', 'ceo'], hint: 'Job postings & applicants', hintHe: 'משרות ומועמדים' },
       { label: 'Performance Reviews', labelHe: 'הערכות עובדים', path: '/admin/performance-reviews', icon: Star, roles: ['admin', 'ceo'], hint: 'Employee reviews', hintHe: 'הערכות ביצועים לעובדים' },
+      { label: 'Retention & Reviews', labelHe: 'שימור וביקורות', path: '/admin/retention', icon: Users, roles: ['admin', 'ceo'], hint: 'Winback segments & review funnel', hintHe: 'פלחי שימור ומשפך ביקורות' },
     ],
   },
   {
@@ -105,6 +107,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     items: [
       { label: 'KYC Review', labelHe: 'בדיקת זהות (KYC)', path: '/admin/kyc', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Identity & document review', hintHe: 'אימות זהות ובדיקת מסמכים' },
       { label: 'Policy & Compliance', labelHe: 'מדיניות וציות', path: '/admin/policy', icon: FileText, roles: ['admin', 'ceo'], hint: 'Governance docs', hintHe: 'מסמכי ממשל' },
+      { label: 'Deadlines & Insurance', labelHe: 'תזכורות וביטוחים', path: '/admin/deadlines', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Renewal/expiry feed + insurance status', hintHe: 'תזכורות חידוש/תפוגה + סטטוס ביטוח' },
       { label: 'Franchise', labelHe: 'זכיינות', path: '/admin/franchise', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Franchise operations', hintHe: 'תפעול זכיינות' },
       { label: 'JV Partners', labelHe: 'שותפי מיזם', path: '/admin/jv-partners', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Joint-venture management', hintHe: 'ניהול מיזמים משותפים' },
       { label: 'Vouchers', labelHe: 'שוברים', path: '/admin/vouchers', icon: Gift, roles: ['admin', 'ceo'], hint: 'Gift cards & coupons', hintHe: 'כרטיסי מתנה וקופונים' },
