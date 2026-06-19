@@ -207,6 +207,7 @@ const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const ProfileV2 = lazy(() => import("@/pages/ProfileV2"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
 const AdminFaultIntel = lazy(() => import("@/pages/AdminFaultIntel"));
+const AdminReconfirmation = lazy(() => import("@/pages/AdminReconfirmation"));
 const AdminStaffAcademy = lazy(() => import("@/pages/AdminStaffAcademy"));
 const AdminExpansionMarketing = lazy(() => import("@/pages/AdminExpansionMarketing"));
 const AdminStockReports = lazy(() => import("@/pages/AdminStockReports"));
@@ -3163,6 +3164,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<PageLoader />}>
                 <AdminFaultIntel />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/reconfirmation">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminReconfirmation />
               </Suspense>
             </AdminRouteGuard>
           )}
