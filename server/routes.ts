@@ -4964,6 +4964,520 @@ self.addEventListener('notificationclick', (event) => {
     res.json({ generatedAt, salesToday, stations, faults, stock, egift });
   });
 
+  // ════════════════════════════════════════════════════════════════════
+  // CEO DAILY REPORT — read-only "what happened yesterday" digest.
+  //
+  // GET /api/admin/ceo-report  (requireAdmin)
+  //
+  // PURE SELECT. Every metric is computed in its own try/catch and falls
+  // back to `null` on ANY error — the endpoint never 500s. A metric that
+  // has no real backing table is returned as `null` AND listed in
+  // `unavailable[]` so the UI can say "not connected yet" honestly instead
+  // of fabricating a number. `sources` records which real table backs each
+  // metric for audit. No money math, no schema change, no writes.
+  //
+  // "Yesterday" = the full prior UTC calendar day [startOfYesterday, startOfToday).
+  // ════════════════════════════════════════════════════════════════════
+  app.get('/api/admin/ceo-report', requireAdmin, async (_req: any, res) => {
+    const generatedAt = new Date().toISOString();
+
+    const now = new Date();
+    const startOfTodayUtc = new Date(Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0,
+    ));
+    const startOfYesterdayUtc = new Date(startOfTodayUtc.getTime() - 24 * 60 * 60 * 1000);
+    const dayLabel = startOfYesterdayUtc.toISOString().slice(0, 10); // YYYY-MM-DD
+
+    const { db } = await import('./db');
+    const schema = await import('@shared/schema');
+    const { petWashStations, stationBills } = await import('@shared/schema-enterprise');
+    const { sql, gte, lt, and } = await import('drizzle-orm');
+
+    // Tables that have NO real backing table on this platform. Listed up
+    // front so the response is honest even before queries run.
+    const unavailable: string[] = [];
+    // Which real table backs each metric (audit / debugging aid).
+    const sources: Record<string, string | null> = {};
+
+    const yesterday = (col: any) => and(gte(col, startOfYesterdayUtc), lt(col, startOfTodayUtc));
+
+    // 1) Total sales yesterday (₪) — Nayax is the real station-money rail.
+    //    Successful states only: vend_success | settled.
+    let totalSalesYesterdayIls: number | null = null;
+    try {
+      const [row] = await db
+        .select({
+          totalIls: sql<number>`coalesce(sum(${schema.nayaxTransactions.amount}), 0)`,
+          count: sql<number>`count(*)`,
+        })
+        .from(schema.nayaxTransactions)
+        .where(and(
+          yesterday(schema.nayaxTransactions.createdAt),
+          sql`${schema.nayaxTransactions.status} in ('vend_success', 'settled')`,
+        ));
+      totalSalesYesterdayIls = Number(row?.totalIls ?? 0);
+      sources.totalSalesYesterdayIls = 'nayax_transactions';
+    } catch (error: any) {
+      logger.error('[CeoReport] totalSalesYesterday query failed', { error: error?.message });
+      totalSalesYesterdayIls = null;
+      sources.totalSalesYesterdayIls = null;
+    }
+
+    // 2) Best & worst station yesterday — by successful Nayax revenue, with a
+    //    best-effort name lookup. Stations with zero sales are not ranked.
+    let bestStation: { stationId: string; name: string | null; totalIls: number } | null = null;
+    let worstStation: { stationId: string; name: string | null; totalIls: number } | null = null;
+    try {
+      const rows = await db
+        .select({
+          stationId: schema.nayaxTransactions.stationId,
+          totalIls: sql<number>`coalesce(sum(${schema.nayaxTransactions.amount}), 0)`,
+        })
+        .from(schema.nayaxTransactions)
+        .where(and(
+          yesterday(schema.nayaxTransactions.createdAt),
+          sql`${schema.nayaxTransactions.status} in ('vend_success', 'settled')`,
+          sql`${schema.nayaxTransactions.stationId} is not null`,
+        ))
+        .groupBy(schema.nayaxTransactions.stationId)
+        .orderBy(sql`coalesce(sum(${schema.nayaxTransactions.amount}), 0) desc`);
+
+      if (rows.length > 0) {
+        // Best-effort: resolve display names from pet_wash_stations by code.
+        let nameByCode: Record<string, string> = {};
+        try {
+          const stationRows = await db
+            .select({ code: petWashStations.stationCode, name: petWashStations.stationName })
+            .from(petWashStations);
+          nameByCode = Object.fromEntries(
+            stationRows.map((s: any) => [String(s.code), String(s.name)]),
+          );
+        } catch { /* name lookup is optional; leave names null */ }
+
+        const top = rows[0];
+        const bottom = rows[rows.length - 1];
+        bestStation = {
+          stationId: String(top.stationId),
+          name: nameByCode[String(top.stationId)] ?? null,
+          totalIls: Number(top.totalIls ?? 0),
+        };
+        worstStation = {
+          stationId: String(bottom.stationId),
+          name: nameByCode[String(bottom.stationId)] ?? null,
+          totalIls: Number(bottom.totalIls ?? 0),
+        };
+      }
+      sources.bestStation = 'nayax_transactions + pet_wash_stations';
+      sources.worstStation = 'nayax_transactions + pet_wash_stations';
+    } catch (error: any) {
+      logger.error('[CeoReport] best/worst station query failed', { error: error?.message });
+      bestStation = null;
+      worstStation = null;
+      sources.bestStation = null;
+      sources.worstStation = null;
+    }
+
+    // 3) Open faults (currently open, all-time — an open fault is a live problem).
+    let openFaults: number | null = null;
+    try {
+      const [row] = await db
+        .select({ open: sql<number>`count(*) filter (where ${schema.bayFaults.status} = 'open')` })
+        .from(schema.bayFaults);
+      openFaults = Number(row?.open ?? 0);
+      sources.openFaults = 'bay_faults';
+    } catch (error: any) {
+      logger.error('[CeoReport] openFaults query failed', { error: error?.message });
+      openFaults = null;
+      sources.openFaults = null;
+    }
+
+    // 4) Low stock count (current_stock <= min_stock).
+    let lowStockCount: number | null = null;
+    try {
+      const [row] = await db
+        .select({
+          lowCount: sql<number>`count(*) filter (where coalesce(${schema.inventoryItems.currentStock}, 0) <= coalesce(${schema.inventoryItems.minStock}, 0))`,
+        })
+        .from(schema.inventoryItems);
+      lowStockCount = Number(row?.lowCount ?? 0);
+      sources.lowStockCount = 'inventory_items';
+    } catch (error: any) {
+      logger.error('[CeoReport] lowStockCount query failed', { error: error?.message });
+      lowStockCount = null;
+      sources.lowStockCount = null;
+    }
+
+    // 5) Failed payments yesterday (Nayax declined / voided / failed states).
+    let failedPaymentsYesterday: number | null = null;
+    try {
+      const [row] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.nayaxTransactions)
+        .where(and(
+          yesterday(schema.nayaxTransactions.createdAt),
+          sql`${schema.nayaxTransactions.status} in ('failed', 'voided')`,
+        ));
+      failedPaymentsYesterday = Number(row?.count ?? 0);
+      sources.failedPaymentsYesterday = 'nayax_transactions';
+    } catch (error: any) {
+      logger.error('[CeoReport] failedPayments query failed', { error: error?.message });
+      failedPaymentsYesterday = null;
+      sources.failedPaymentsYesterday = null;
+    }
+
+    // 6) Paid-but-not-activated — eGift vouchers issued (paid) but never
+    //    activated/claimed. status=ISSUED and activated_at IS NULL.
+    let paidNotActivated: number | null = null;
+    try {
+      const [row] = await db
+        .select({
+          count: sql<number>`count(*) filter (where ${schema.eVouchers.status} = 'ISSUED' and ${schema.eVouchers.activatedAt} is null)`,
+        })
+        .from(schema.eVouchers);
+      paidNotActivated = Number(row?.count ?? 0);
+      sources.paidNotActivated = 'e_vouchers';
+    } catch (error: any) {
+      logger.error('[CeoReport] paidNotActivated query failed', { error: error?.message });
+      paidNotActivated = null;
+      sources.paidNotActivated = null;
+    }
+
+    // 7) New members yesterday (users created in the window).
+    let newMembersYesterday: number | null = null;
+    try {
+      const [row] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.users)
+        .where(yesterday(schema.users.createdAt));
+      newMembersYesterday = Number(row?.count ?? 0);
+      sources.newMembersYesterday = 'users';
+    } catch (error: any) {
+      logger.error('[CeoReport] newMembers query failed', { error: error?.message });
+      newMembersYesterday = null;
+      sources.newMembersYesterday = null;
+    }
+
+    // 8) eGift sold yesterday (vouchers created in the window).
+    let egiftSoldYesterday: number | null = null;
+    try {
+      const [row] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.eVouchers)
+        .where(yesterday(schema.eVouchers.createdAt));
+      egiftSoldYesterday = Number(row?.count ?? 0);
+      sources.egiftSoldYesterday = 'e_vouchers';
+    } catch (error: any) {
+      logger.error('[CeoReport] egiftSold query failed', { error: error?.message });
+      egiftSoldYesterday = null;
+      sources.egiftSoldYesterday = null;
+    }
+
+    // 9) eGift redeemed yesterday (redemption ledger rows in the window).
+    let egiftRedeemedYesterday: number | null = null;
+    try {
+      const [row] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.eVoucherRedemptions)
+        .where(yesterday(schema.eVoucherRedemptions.createdAt));
+      egiftRedeemedYesterday = Number(row?.count ?? 0);
+      sources.egiftRedeemedYesterday = 'e_voucher_redemptions';
+    } catch (error: any) {
+      logger.error('[CeoReport] egiftRedeemed query failed', { error: error?.message });
+      egiftRedeemedYesterday = null;
+      sources.egiftRedeemedYesterday = null;
+    }
+
+    // 10) Support tickets open — NO dedicated support/tickets table exists on
+    //     this platform. Honest null + listed as unavailable.
+    const supportTicketsOpen: number | null = null;
+    unavailable.push('supportTicketsOpen (no support/tickets table)');
+    sources.supportTicketsOpen = null;
+
+    // 11) Insurance / bills due — station_bills (unpaid or overdue).
+    let billsDue: { total: number; insurance: number } | null = null;
+    try {
+      const [row] = await db
+        .select({
+          total: sql<number>`count(*) filter (where ${stationBills.status} in ('unpaid', 'overdue', 'partially_paid'))`,
+          insurance: sql<number>`count(*) filter (where ${stationBills.status} in ('unpaid', 'overdue', 'partially_paid') and ${stationBills.billType} = 'insurance')`,
+        })
+        .from(stationBills);
+      billsDue = { total: Number(row?.total ?? 0), insurance: Number(row?.insurance ?? 0) };
+      sources.billsDue = 'station_bills';
+    } catch (error: any) {
+      logger.error('[CeoReport] billsDue query failed', { error: error?.message });
+      billsDue = null;
+      sources.billsDue = null;
+    }
+
+    // ── Bilingual plain-words narrative ───────────────────────────────────
+    // Built only from the metrics above. Never invents numbers; a null metric
+    // is described as "not available" rather than guessed.
+    const he: string[] = [];
+    const en: string[] = [];
+    const ils = (n: number) => `₪${Math.round(n).toLocaleString('en-US')}`;
+
+    he.push(`דוח מנכ״ל ליום ${dayLabel}.`);
+    en.push(`CEO report for ${dayLabel}.`);
+
+    if (totalSalesYesterdayIls !== null) {
+      he.push(`סך מכירות אתמול: ${ils(totalSalesYesterdayIls)}.`);
+      en.push(`Total sales yesterday: ${ils(totalSalesYesterdayIls)}.`);
+    } else {
+      he.push('סך מכירות אתמול: לא זמין.');
+      en.push('Total sales yesterday: not available.');
+    }
+
+    if (bestStation) {
+      const bn = bestStation.name ?? bestStation.stationId;
+      he.push(`העמדה המובילה: ${bn} (${ils(bestStation.totalIls)}).`);
+      en.push(`Best station: ${bn} (${ils(bestStation.totalIls)}).`);
+    }
+    if (worstStation && bestStation && worstStation.stationId !== bestStation.stationId) {
+      const wn = worstStation.name ?? worstStation.stationId;
+      he.push(`העמדה החלשה: ${wn} (${ils(worstStation.totalIls)}).`);
+      en.push(`Worst station: ${wn} (${ils(worstStation.totalIls)}).`);
+    }
+
+    if (newMembersYesterday !== null) {
+      he.push(`חברים חדשים אתמול: ${newMembersYesterday}.`);
+      en.push(`New members yesterday: ${newMembersYesterday}.`);
+    }
+
+    if (egiftSoldYesterday !== null || egiftRedeemedYesterday !== null) {
+      he.push(`גיפט: נמכרו ${egiftSoldYesterday ?? '—'}, מומשו ${egiftRedeemedYesterday ?? '—'}.`);
+      en.push(`eGift: ${egiftSoldYesterday ?? '—'} sold, ${egiftRedeemedYesterday ?? '—'} redeemed.`);
+    }
+
+    if (failedPaymentsYesterday !== null && failedPaymentsYesterday > 0) {
+      he.push(`שים לב: ${failedPaymentsYesterday} תשלומים נכשלו אתמול.`);
+      en.push(`Attention: ${failedPaymentsYesterday} payments failed yesterday.`);
+    }
+    if (paidNotActivated !== null && paidNotActivated > 0) {
+      he.push(`${paidNotActivated} שוברים שולמו אך לא הופעלו עדיין.`);
+      en.push(`${paidNotActivated} vouchers paid but not yet activated.`);
+    }
+    if (openFaults !== null && openFaults > 0) {
+      he.push(`${openFaults} תקלות פתוחות דורשות טיפול.`);
+      en.push(`${openFaults} open faults need attention.`);
+    }
+    if (lowStockCount !== null && lowStockCount > 0) {
+      he.push(`${lowStockCount} פריטים במלאי נמוך.`);
+      en.push(`${lowStockCount} items low on stock.`);
+    }
+    if (billsDue !== null && billsDue.total > 0) {
+      he.push(`${billsDue.total} חשבונות לתשלום (מתוכם ${billsDue.insurance} ביטוח).`);
+      en.push(`${billsDue.total} bills due (${billsDue.insurance} insurance).`);
+    }
+
+    if (unavailable.length > 0) {
+      he.push(`מדדים שאינם זמינים (אין טבלה): ${unavailable.length}.`);
+      en.push(`Metrics not available (no backing table): ${unavailable.length}.`);
+    }
+
+    res.json({
+      generatedAt,
+      day: dayLabel,
+      window: { from: startOfYesterdayUtc.toISOString(), to: startOfTodayUtc.toISOString() },
+      metrics: {
+        totalSalesYesterdayIls,
+        bestStation,
+        worstStation,
+        openFaults,
+        lowStockCount,
+        failedPaymentsYesterday,
+        paidNotActivated,
+        newMembersYesterday,
+        egiftSoldYesterday,
+        egiftRedeemedYesterday,
+        supportTicketsOpen,
+        billsDue,
+      },
+      narrative: { he, en },
+      unavailable,
+      sources,
+    });
+  });
+
+  // ════════════════════════════════════════════════════════════════════
+  // eGIFT INTELLIGENCE — read-only health of the e-voucher / gift program.
+  //
+  // GET /api/admin/egift-intelligence  (requireAdmin)
+  //
+  // PURE SELECT over e_vouchers (+ e_voucher_redemptions + credit_transactions).
+  // Each check runs in its own try/catch → null on error, never 500s.
+  // Checks that need a column we don't have are skipped and listed in
+  // `skipped[]`. Lists are capped at 100 rows; the full count is always
+  // returned alongside each capped list. No money math, no writes.
+  // ════════════════════════════════════════════════════════════════════
+  app.get('/api/admin/egift-intelligence', requireAdmin, async (_req: any, res) => {
+    const generatedAt = new Date().toISOString();
+    const LIST_CAP = 100;
+
+    const { db } = await import('./db');
+    const schema = await import('@shared/schema');
+    const { sql, and, isNull, gte, desc } = await import('drizzle-orm');
+
+    const skipped: string[] = [];
+    const now = new Date();
+    const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+    // 1) Headline counts: sold (all issued), redeemed, unredeemed.
+    //    "redeemed" = status REDEEMED; "unredeemed" = anything still spendable.
+    let counts: {
+      sold: number; redeemed: number; unredeemed: number;
+      issuedNotClaimed: number; emailNotConfirmed: number;
+    } | null = null;
+    try {
+      const [row] = await db
+        .select({
+          sold: sql<number>`count(*)`,
+          redeemed: sql<number>`count(*) filter (where ${schema.eVouchers.status} = 'REDEEMED')`,
+          unredeemed: sql<number>`count(*) filter (where ${schema.eVouchers.status} not in ('REDEEMED', 'EXPIRED', 'CANCELLED'))`,
+          // issued but never claimed → still in ISSUED with no owner bound.
+          issuedNotClaimed: sql<number>`count(*) filter (where ${schema.eVouchers.status} = 'ISSUED' and ${schema.eVouchers.ownerUid} is null)`,
+          // recipient email present but voucher never activated (proxy for
+          // "email sent but not confirmed/claimed by recipient").
+          emailNotConfirmed: sql<number>`count(*) filter (where ${schema.eVouchers.recipientEmail} is not null and ${schema.eVouchers.activatedAt} is null)`,
+        })
+        .from(schema.eVouchers);
+      counts = {
+        sold: Number(row?.sold ?? 0),
+        redeemed: Number(row?.redeemed ?? 0),
+        unredeemed: Number(row?.unredeemed ?? 0),
+        issuedNotClaimed: Number(row?.issuedNotClaimed ?? 0),
+        emailNotConfirmed: Number(row?.emailNotConfirmed ?? 0),
+      };
+    } catch (error: any) {
+      logger.error('[EgiftIntel] counts query failed', { error: error?.message });
+      counts = null;
+    }
+
+    // 2) Average days-to-redeem — from issuance (e_vouchers.created_at) to
+    //    first redemption (min e_voucher_redemptions.created_at), per voucher.
+    //    Raw SELECT via db.execute (the codebase pattern for aggregate joins).
+    let avgDaysToRedeem: number | null = null;
+    try {
+      const result: any = await db.execute(sql`
+        SELECT avg(extract(epoch from (r.first_redeem - v.created_at)) / 86400.0) AS avg_days
+        FROM e_vouchers v
+        JOIN (
+          SELECT voucher_id, min(created_at) AS first_redeem
+          FROM e_voucher_redemptions
+          GROUP BY voucher_id
+        ) r ON r.voucher_id = v.id
+      `);
+      const raw = result.rows?.[0]?.avg_days ?? result[0]?.avg_days ?? null;
+      avgDaysToRedeem = raw != null ? Math.round(Number(raw) * 10) / 10 : null;
+    } catch (error: any) {
+      logger.error('[EgiftIntel] avgDaysToRedeem query failed', { error: error?.message });
+      avgDaysToRedeem = null;
+    }
+
+    // 3) High-value (>= ₪250) issued >7 days ago and still not redeemed.
+    //    Count + capped list. initial_amount is the face value.
+    let highValueStale: { count: number; items: any[] } | null = null;
+    try {
+      const where = and(
+        sql`cast(${schema.eVouchers.initialAmount} as numeric) >= 250`,
+        sql`${schema.eVouchers.status} not in ('REDEEMED', 'EXPIRED', 'CANCELLED')`,
+        gte(sql`now()`, sql`${schema.eVouchers.createdAt} + interval '7 days'`),
+      );
+      const [cnt] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.eVouchers)
+        .where(where);
+      const items = await db
+        .select({
+          id: schema.eVouchers.id,
+          codeLast4: schema.eVouchers.codeLast4,
+          initialAmount: schema.eVouchers.initialAmount,
+          remainingAmount: schema.eVouchers.remainingAmount,
+          status: schema.eVouchers.status,
+          purchaserEmail: schema.eVouchers.purchaserEmail,
+          recipientEmail: schema.eVouchers.recipientEmail,
+          createdAt: schema.eVouchers.createdAt,
+        })
+        .from(schema.eVouchers)
+        .where(where)
+        .orderBy(desc(schema.eVouchers.createdAt))
+        .limit(LIST_CAP);
+      highValueStale = { count: Number(cnt?.count ?? 0), items };
+    } catch (error: any) {
+      logger.error('[EgiftIntel] highValueStale query failed', { error: error?.message });
+      highValueStale = null;
+    }
+
+    // 4) Issued-but-not-claimed list (status ISSUED, no owner) — count + cap.
+    let issuedNotClaimedList: { count: number; items: any[] } | null = null;
+    try {
+      const where = and(
+        sql`${schema.eVouchers.status} = 'ISSUED'`,
+        isNull(schema.eVouchers.ownerUid),
+      );
+      const [cnt] = await db
+        .select({ count: sql<number>`count(*)` })
+        .from(schema.eVouchers)
+        .where(where);
+      const items = await db
+        .select({
+          id: schema.eVouchers.id,
+          codeLast4: schema.eVouchers.codeLast4,
+          initialAmount: schema.eVouchers.initialAmount,
+          purchaserEmail: schema.eVouchers.purchaserEmail,
+          recipientEmail: schema.eVouchers.recipientEmail,
+          createdAt: schema.eVouchers.createdAt,
+        })
+        .from(schema.eVouchers)
+        .where(where)
+        .orderBy(desc(schema.eVouchers.createdAt))
+        .limit(LIST_CAP);
+      issuedNotClaimedList = { count: Number(cnt?.count ?? 0), items };
+    } catch (error: any) {
+      logger.error('[EgiftIntel] issuedNotClaimed query failed', { error: error?.message });
+      issuedNotClaimedList = null;
+    }
+
+    // 5) Cross-check: eGift credit_transactions (creditType='egift').
+    //    Only counts — proves the gift-credit ledger is populated. The
+    //    e_vouchers table has no explicit "email confirmed" column, so a
+    //    true email-confirmation check is skipped (noted below).
+    let creditLedger: { egiftIssued: number; egiftRedeemed: number } | null = null;
+    try {
+      const [row] = await db
+        .select({
+          egiftIssued: sql<number>`count(*) filter (where ${schema.creditTransactions.creditType} = 'egift' and ${schema.creditTransactions.transactionType} = 'issue')`,
+          egiftRedeemed: sql<number>`count(*) filter (where ${schema.creditTransactions.creditType} = 'egift' and ${schema.creditTransactions.transactionType} = 'redeem')`,
+        })
+        .from(schema.creditTransactions);
+      creditLedger = {
+        egiftIssued: Number(row?.egiftIssued ?? 0),
+        egiftRedeemed: Number(row?.egiftRedeemed ?? 0),
+      };
+    } catch (error: any) {
+      logger.error('[EgiftIntel] creditLedger query failed', { error: error?.message });
+      creditLedger = null;
+    }
+
+    // e_vouchers has no dedicated "email_confirmed" / "email_delivered"
+    // column — we only know recipientEmail + activatedAt. A literal
+    // email-confirmation check is therefore approximated by emailNotConfirmed
+    // (recipient set but never activated) above, and the precise check is
+    // skipped honestly.
+    skipped.push('email_confirmed (no email-confirmation column on e_vouchers; approximated by recipientEmail set + activatedAt null)');
+
+    res.json({
+      generatedAt,
+      listCap: LIST_CAP,
+      counts,
+      avgDaysToRedeem,
+      highValueStale,
+      issuedNotClaimedList,
+      creditLedger,
+      skipped,
+    });
+  });
+
   // PR-W-RETRY: read-only admin endpoint exposing K9000 permanent-failure
   // and compensation-failure alerts. The MachineCommandService writes these
   // rows when a wallet-funded session times out after all retries (severity

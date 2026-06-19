@@ -53,6 +53,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     groupHe: 'פיקוד',
     items: [
       { label: 'Admin Overview', labelHe: 'סקירת ניהול', path: '/admin/dashboard', icon: LayoutDashboard, roles: ['admin', 'ceo'], hint: 'KPIs, analytics, payments', hintHe: 'מדדים, אנליטיקה ותשלומים' },
+      { label: 'CEO Report', labelHe: 'דוח מנכ״ל', path: '/admin/ceo-report', icon: Activity, roles: ['admin', 'ceo'], hint: 'Yesterday digest + eGift intelligence', hintHe: 'תקציר אתמול + מודיעין גיפט' },
       { label: 'CEO Suite', labelHe: 'חדר מנכ״ל', path: '/pet-wash-ltd/executive/ceo', icon: Crown, roles: ['ceo'], hint: 'Founder tools & gift cards', hintHe: 'כלי מייסד וכרטיסי מתנה' },
       { label: 'Operations Brain', labelHe: 'מרכז תפעול', path: '/admin/brain', icon: Bot, roles: ['admin', 'ceo'], hint: 'Live stations, alerts, approvals', hintHe: 'עמדות בזמן אמת, התראות ואישורים' },
     ],
