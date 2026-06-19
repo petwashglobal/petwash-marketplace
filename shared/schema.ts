@@ -7916,6 +7916,7 @@ export * from "./schema-gemini-watchdog";
 export * from "./schema-integrations";
 export * from "./schema-payroll";
 export * from "./schema-compliance";
+export * from "./schema-member-discount";
 
 // ============================================================================
 // SUPER-APP SCHEMA - 6 PLATFORMS (K9000, Walk My Pet, Sitter Suite, PetTrek, Groomers, Shared Services)
