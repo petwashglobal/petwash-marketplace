@@ -5286,6 +5286,14 @@ export const providerApplications = pgTable("provider_applications", {
   kycDecisionFlags: text("kyc_decision_flags"), // JSON array — flags that forced pending_review (e.g. ["ocr_name_missing","expiry_missing"])
   kycFraudRiskLevel: varchar("kyc_fraud_risk_level", { length: 20 }), // low | medium | high | critical
 
+  // Identity hardening (2026-06-20 — Israeli Privacy Law). The raw national-ID
+  // number is NEVER stored in plaintext. We keep only the redacted last-4 above
+  // (kycIdLastFour) and, optionally, an AES-256-GCM packed ciphertext here.
+  israeliIdEncrypted: text("israeli_id_encrypted"), // base64 of DocumentEncryption.pack(...) — NULL unless retained
+  // Age verification (18+ gate enforced server-side at submit).
+  ageConfirmed18Plus: boolean("age_confirmed_18_plus").default(false),
+  dateOfBirth: date("date_of_birth"), // optional; only set when the form/OCR provides it
+
   // Admin Notes
   internalNotes: text("internal_notes"), // Only visible to admins
   
