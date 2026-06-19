@@ -52,6 +52,7 @@ import { applyTransition, type BookingActor, type BookingStatus } from '@shared/
 import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
 import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
+import { checkBookingProximity, BOOKING_MAX_DISTANCE_KM } from '../lib/proximity';
 import { walletService } from '../services/WalletService';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
@@ -301,6 +302,85 @@ router.post('/', async (req, res) => {
                               ? String(addrSrc.longitude) : null,
       customerPlaceId:      addrSrc.placeId?.toString().slice(0, 200) ?? null,
     } : {};
+
+    // ── Proximity guard at booking creation (FAIL OPEN) ───────────────────────
+    // Search filters providers by distance, but until now nothing re-checked it
+    // when the booking ROW was written — a stale search result (or a provider who
+    // moved) could create an out-of-range booking. Re-check with the SAME
+    // haversine the search uses. FAIL OPEN: only rejects when BOTH customer and
+    // provider have real coords AND distance clearly exceeds the allowed radius
+    // (+ buffer). Missing coords → skip + allow. Admin override via x-admin-booking.
+    // STRICT: no pricing/payment/wallet logic here — pure read-only distance.
+    try {
+      // Customer coords: prefer the SERVICE address captured for this booking,
+      // fall back to the customer's profile coordinates.
+      let cLat: number | string | null =
+        addrSrc && typeof addrSrc.latitude === 'number' ? addrSrc.latitude : null;
+      let cLng: number | string | null =
+        addrSrc && typeof addrSrc.longitude === 'number' ? addrSrc.longitude : null;
+      if (cLat == null || cLng == null) {
+        const [custRow] = await db
+          .select({ lat: users.latitude, lng: users.longitude })
+          .from(users)
+          .where(eq(users.id, userId))
+          .limit(1);
+        cLat = custRow?.lat ?? null;
+        cLng = custRow?.lng ?? null;
+      }
+
+      const [provRow] = await db
+        .select({ lat: users.latitude, lng: users.longitude })
+        .from(users)
+        .where(eq(users.id, data.providerId))
+        .limit(1);
+
+      // Radius: walkers travel to the pet and declare a service radius — use it.
+      // Other domains have no per-provider radius → generous env default.
+      let maxKm: number | null = BOOKING_MAX_DISTANCE_KM;
+      if (String(data.serviceType || '').toLowerCase().includes('walk')) {
+        const [wp] = await db
+          .select({ r: walkerProfiles.serviceRadiusKm })
+          .from(walkerProfiles)
+          .where(eq(walkerProfiles.userId, data.providerId))
+          .limit(1);
+        if (wp?.r != null && wp.r > 0) maxKm = wp.r;
+      }
+
+      // Admin-created bookings may bypass the geofence (e.g. concierge placing a
+      // booking on behalf of a customer). Reversible header flag.
+      const adminBypass = String(req.headers['x-admin-booking'] || '').toLowerCase() === 'true';
+
+      const prox = checkBookingProximity({
+        customerLat: cLat,
+        customerLng: cLng,
+        providerLat: provRow?.lat ?? null,
+        providerLng: provRow?.lng ?? null,
+        maxKm,
+        bypass: adminBypass,
+      });
+
+      if (!prox.ok) {
+        logger.warn('[BookingRequests] proximity reject at creation', {
+          requestId, providerId: data.providerId,
+          distanceKm: Math.round(prox.distanceKm), maxKm: prox.maxKm,
+        });
+        return res.status(400).json({
+          error: 'OUT_OF_RANGE',
+          code: 'OUT_OF_RANGE',
+          message: `This provider serves up to ${prox.maxKm} km, but the booking address is about ${Math.round(prox.distanceKm)} km away. Please choose a closer provider.`,
+          distanceKm: Math.round(prox.distanceKm),
+          maxKm: prox.maxKm,
+        });
+      }
+      if (prox.ok && prox.skipped === 'no-coords') {
+        logger.info('[BookingRequests] proximity check skipped — missing coords (fail open)', { requestId });
+      }
+    } catch (proxErr: any) {
+      // Any unexpected error in the guard must NEVER block a booking.
+      logger.warn('[BookingRequests] proximity check error — fail open', {
+        requestId, error: proxErr?.message,
+      });
+    }
 
     // ── Create booking request row + atomic slot lock ──────────────────────────
     // Wraps both in a single transaction. The slot-lock table has a
