@@ -206,6 +206,7 @@ const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const ProfileV2 = lazy(() => import("@/pages/ProfileV2"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
 const AdminFaultIntel = lazy(() => import("@/pages/AdminFaultIntel"));
+const AdminSupportIncident = lazy(() => import("@/pages/AdminSupportIncident"));
 const StationTimeline = lazy(() => import("@/pages/StationTimeline"));
 const BayTimeline = lazy(() => import("@/pages/BayTimeline"));
 const AdminBayMap = lazy(() => import("@/pages/AdminBayMap"));
@@ -3150,6 +3151,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<PageLoader />}>
                 <AdminFaultIntel />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/support-incident">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminSupportIncident />
               </Suspense>
             </AdminRouteGuard>
           )}

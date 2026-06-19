@@ -105,6 +105,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     group: 'Governance',
     groupHe: 'ממשל',
     items: [
+      { label: 'Support & Incidents', labelHe: 'תמיכה ואירועים', path: '/admin/support-incident', icon: Activity, roles: ['admin', 'ceo'], hint: 'Support scripts + incident mode (read-only)', hintHe: 'תסריטי תמיכה ומצב אירוע (לקריאה בלבד)' },
       { label: 'KYC Review', labelHe: 'בדיקת זהות (KYC)', path: '/admin/kyc', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Identity & document review', hintHe: 'אימות זהות ובדיקת מסמכים' },
       { label: 'Policy & Compliance', labelHe: 'מדיניות וציות', path: '/admin/policy', icon: FileText, roles: ['admin', 'ceo'], hint: 'Governance docs', hintHe: 'מסמכי ממשל' },
       { label: 'Deadlines & Insurance', labelHe: 'תזכורות וביטוחים', path: '/admin/deadlines', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Renewal/expiry feed + insurance status', hintHe: 'תזכורות חידוש/תפוגה + סטטוס ביטוח' },

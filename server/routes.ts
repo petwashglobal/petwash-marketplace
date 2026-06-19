@@ -338,6 +338,7 @@ import adminDeadlinesRouter from './routes/admin-deadlines';
 import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
 import adminStationHealthRouter from './routes/admin-station-health';
 import adminFaultIntelRouter from './routes/admin-fault-intel';
+import adminSupportIncidentRouter from './routes/admin-support-incident';
 import mayaVoiceTwilioRouter from './routes/maya-voice-twilio';
 import mayaWhatsappRouter from './routes/maya-whatsapp';
 
@@ -475,6 +476,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   // full admin security stack (defence in depth).
   app.use('/api/admin/station-health', adminStationHealthRouter);
   app.use('/api/admin', adminFaultIntelRouter); // §11 fault-cost + §12 predictive-maintenance (read-only)
+  app.use('/api/admin', adminSupportIncidentRouter); // §15 support-scripts + §18 incidents (read-only / record-only)
   // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
   // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);
