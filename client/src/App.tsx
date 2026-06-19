@@ -447,6 +447,38 @@ const LegalWalletEGiftTerms = lazy(() => import("@/pages/legal/WalletEGiftTerms"
 const LegalStationUseTerms = lazy(() => import("@/pages/legal/StationUseTerms"));
 const LegalHomeAccess = lazy(() => import("@/pages/legal/HomeAccessPropertyAuthority"));
 const LegalNoInsuranceNotice = lazy(() => import("@/pages/legal/ProtectionNoInsuranceNotice"));
+// Legal full series — Israel 2026 (draft, pending counsel)
+const LegalIndex = lazy(() => import("@/pages/legal/LegalIndex"));
+const LegalPetOwnerResponsibility = lazy(() => import("@/pages/legal/PetOwnerResponsibility"));
+const LegalPetProfileHealthDataNotice = lazy(() => import("@/pages/legal/PetProfileHealthDataNotice"));
+const LegalBookingRules = lazy(() => import("@/pages/legal/BookingRules"));
+const LegalEmergencyVetAuthorisation = lazy(() => import("@/pages/legal/EmergencyVetAuthorisation"));
+const LegalReviewsContentPolicy = lazy(() => import("@/pages/legal/ReviewsContentPolicy"));
+const LegalCommunityGuidelines = lazy(() => import("@/pages/legal/CommunityGuidelines"));
+const LegalSupportIncidentReporting = lazy(() => import("@/pages/legal/SupportIncidentReporting"));
+const LegalProviderIndependentStatus = lazy(() => import("@/pages/legal/ProviderIndependentStatus"));
+const LegalProviderTruthDeclaration = lazy(() => import("@/pages/legal/ProviderTruthDeclaration"));
+const LegalProviderTaxBusinessDeclaration = lazy(() => import("@/pages/legal/ProviderTaxBusinessDeclaration"));
+const LegalProviderPayoutRules = lazy(() => import("@/pages/legal/ProviderPayoutRules"));
+const LegalNoCircumvention = lazy(() => import("@/pages/legal/NoCircumvention"));
+const LegalProviderConfidentiality = lazy(() => import("@/pages/legal/ProviderConfidentiality"));
+const LegalProviderIncidentReporting = lazy(() => import("@/pages/legal/ProviderIncidentReporting"));
+const LegalProviderCancellation = lazy(() => import("@/pages/legal/ProviderCancellation"));
+const LegalProviderDocumentUpload = lazy(() => import("@/pages/legal/ProviderDocumentUpload"));
+const LegalProviderReconfirmation = lazy(() => import("@/pages/legal/ProviderReconfirmation"));
+const LegalProviderInsuranceLicence = lazy(() => import("@/pages/legal/ProviderInsuranceLicence"));
+const LegalProviderBrandUse = lazy(() => import("@/pages/legal/ProviderBrandUse"));
+const LegalSupportProtectionPolicy = lazy(() => import("@/pages/legal/SupportProtectionPolicy"));
+const LegalClaimProcedure = lazy(() => import("@/pages/legal/ClaimProcedure"));
+// Manuals — Israel 2026 (draft, pending counsel)
+const ManualDogWalking = lazy(() => import("@/pages/manuals/DogWalkingManual"));
+const ManualPetSitting = lazy(() => import("@/pages/manuals/PetSittingManual"));
+const ManualHomeVisit = lazy(() => import("@/pages/manuals/HomeVisitManual"));
+const ManualOvernightSitting = lazy(() => import("@/pages/manuals/OvernightSittingManual"));
+const ManualGrooming = lazy(() => import("@/pages/manuals/GroomingManual"));
+const ManualTraining = lazy(() => import("@/pages/manuals/TrainingManual"));
+const ManualIncidentReporting = lazy(() => import("@/pages/manuals/IncidentReportingManual"));
+const ManualProviderSupport = lazy(() => import("@/pages/manuals/ProviderSupportManual"));
 
 // ⁦Walk My Pet™⁩ Pages
 const TrackWalk = lazy(() => import("@/pages/walks/TrackWalk"));
@@ -1237,6 +1269,38 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/legal/protection-no-insurance-notice">
           {() => <LegalNoInsuranceNotice />}
         </Route>
+        {/* Legal full series — Israel 2026 (draft, pending counsel) */}
+        <Route path="/legal">{() => <LegalIndex />}</Route>
+        <Route path="/legal/pet-owner-responsibility">{() => <LegalPetOwnerResponsibility />}</Route>
+        <Route path="/legal/pet-profile-health-data-notice">{() => <LegalPetProfileHealthDataNotice />}</Route>
+        <Route path="/legal/booking-rules">{() => <LegalBookingRules />}</Route>
+        <Route path="/legal/emergency-vet-authorisation">{() => <LegalEmergencyVetAuthorisation />}</Route>
+        <Route path="/legal/reviews-content-policy">{() => <LegalReviewsContentPolicy />}</Route>
+        <Route path="/legal/community-guidelines">{() => <LegalCommunityGuidelines />}</Route>
+        <Route path="/legal/support-incident-reporting">{() => <LegalSupportIncidentReporting />}</Route>
+        <Route path="/legal/provider-independent-status">{() => <LegalProviderIndependentStatus />}</Route>
+        <Route path="/legal/provider-truth-declaration">{() => <LegalProviderTruthDeclaration />}</Route>
+        <Route path="/legal/provider-tax-business-declaration">{() => <LegalProviderTaxBusinessDeclaration />}</Route>
+        <Route path="/legal/provider-payout-rules">{() => <LegalProviderPayoutRules />}</Route>
+        <Route path="/legal/no-circumvention">{() => <LegalNoCircumvention />}</Route>
+        <Route path="/legal/provider-confidentiality">{() => <LegalProviderConfidentiality />}</Route>
+        <Route path="/legal/provider-incident-reporting">{() => <LegalProviderIncidentReporting />}</Route>
+        <Route path="/legal/provider-cancellation">{() => <LegalProviderCancellation />}</Route>
+        <Route path="/legal/provider-document-upload">{() => <LegalProviderDocumentUpload />}</Route>
+        <Route path="/legal/provider-reconfirmation">{() => <LegalProviderReconfirmation />}</Route>
+        <Route path="/legal/provider-insurance-licence">{() => <LegalProviderInsuranceLicence />}</Route>
+        <Route path="/legal/provider-brand-use">{() => <LegalProviderBrandUse />}</Route>
+        <Route path="/legal/support-protection-policy">{() => <LegalSupportProtectionPolicy />}</Route>
+        <Route path="/legal/claim-procedure">{() => <LegalClaimProcedure />}</Route>
+        {/* Manuals — Israel 2026 (draft, pending counsel) */}
+        <Route path="/manuals/dog-walking">{() => <ManualDogWalking />}</Route>
+        <Route path="/manuals/pet-sitting">{() => <ManualPetSitting />}</Route>
+        <Route path="/manuals/home-visit">{() => <ManualHomeVisit />}</Route>
+        <Route path="/manuals/overnight-sitting">{() => <ManualOvernightSitting />}</Route>
+        <Route path="/manuals/grooming">{() => <ManualGrooming />}</Route>
+        <Route path="/manuals/training">{() => <ManualTraining />}</Route>
+        <Route path="/manuals/incident-reporting">{() => <ManualIncidentReporting />}</Route>
+        <Route path="/manuals/provider-support">{() => <ManualProviderSupport />}</Route>
 
         {/* Protected route - ID Verification */}
         <Route path="/verify">
