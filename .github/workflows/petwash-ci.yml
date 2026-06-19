@@ -2238,13 +2238,23 @@ jobs:
 
       - name: Smoke test — live site check
         run: |
-          sleep 20
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://petwash.co.il/" || echo "000")
-          API=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "https://petwash.co.il/api/health" || echo "000")
-          echo "Frontend: HTTP $STATUS | API via Firebase: HTTP $API"
-          if [ "$STATUS" = "200" ] && [ "$API" = "200" ]; then
+          # RETRY: right after a deploy the API can be mid-restart (Cloud Run
+          # revision swap) and briefly return 000. A single-shot check here
+          # falsely failed otherwise-healthy deploys ("API: 000000"), turning
+          # every deploy red. Poll up to ~90s and pass as soon as both are 200.
+          sleep 15
+          OK=0
+          STATUS=000; API=000
+          for i in $(seq 1 12); do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://petwash.co.il/" || echo "000")
+            API=$(curl -s -o /dev/null -w "%{http_code}" --max-time 20 "https://petwash.co.il/api/health" || echo "000")
+            echo "attempt $i/12 — Frontend: HTTP $STATUS | API via Firebase: HTTP $API"
+            if [ "$STATUS" = "200" ] && [ "$API" = "200" ]; then OK=1; break; fi
+            sleep 7
+          done
+          if [ "$OK" = "1" ]; then
             echo "✅ Full stack live check passed"
           else
-            echo "❌ Live check FAILED — frontend: $STATUS, API: $API"
+            echo "❌ Live check FAILED after 12 retries — frontend: $STATUS, API: $API"
             exit 1
           fi
