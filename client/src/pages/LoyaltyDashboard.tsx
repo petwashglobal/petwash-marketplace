@@ -72,9 +72,9 @@ const TIER_VISUAL_CONFIG: Record<string, { color: string; bgColor: string; icon:
     badge: 'bg-emerald-500',
     emoji: '💚'
   },
-  royal: { 
+  royal: {
     color: 'from-stone-950 via-[#b0841c] to-stone-900',
-    bgColor: 'bg-[#fbf7ec] dark:bg-white',
+    bgColor: 'bg-white dark:bg-white',
     icon: Trophy,
     badge: 'bg-gradient-to-r from-stone-950 via-[#b0841c] to-stone-900',
     emoji: '👑'
