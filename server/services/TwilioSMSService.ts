@@ -176,6 +176,16 @@ class TwilioSMSService {
     const fromPhone = process.env.TWILIO_PHONE_NUMBER;
     const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
 
+    // GUARD: a real Twilio Account SID always starts with "AC". A malformed SID
+    // (paste error / wrong secret) once 503'd ALL SMS silently. Catch it here and
+    // log a CLEAR cause instead of a generic init failure. No value is logged —
+    // only the boolean fact that the prefix is wrong.
+    if (accountSid && !accountSid.startsWith('AC')) {
+      logger.error('[TwilioSMS] ❌ TWILIO_ACCOUNT_SID is malformed — it must start with "AC". SMS/OTP is DISABLED until the secret is fixed.');
+      this.isConfigured = false;
+      return;
+    }
+
     if (accountSid && authToken && (fromPhone || messagingServiceSid)) {
       try {
         this.client = twilio(accountSid, authToken);
