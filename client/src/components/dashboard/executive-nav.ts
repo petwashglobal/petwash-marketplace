@@ -100,6 +100,8 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Stations', labelHe: 'עמדות', path: '/admin/stations', icon: MapPin, roles: ['admin', 'ceo'], hint: 'Facilities', hintHe: 'מתקנים' },
       { label: 'Station Registry', labelHe: 'מרשם עמדות', path: '/admin/station-registry', icon: Building2, roles: ['admin', 'ceo'], hint: 'Licensing & taxes', hintHe: 'רישוי ומיסוי' },
       { label: 'Marketplace Intelligence', labelHe: 'מודיעין שוק', path: '/admin/marketplace-intelligence', icon: BarChart3, roles: ['admin', 'ceo'], hint: 'Provider ranking & insights', hintHe: 'דירוג ספקים ותובנות' },
+      { label: 'Expansion & Marketing', labelHe: 'התרחבות ושיווק', path: '/admin/expansion-marketing', icon: MapPin, roles: ['admin', 'ceo'], hint: 'Location scoring model + local marketing', hintHe: 'מודל ניקוד מיקומים + שיווק מקומי' },
+      { label: 'Stock & Reports', labelHe: 'מלאי ודוחות', path: '/admin/stock-reports', icon: Package, roles: ['admin', 'ceo'], hint: 'Smart stock prediction + report digest', hintHe: 'חיזוי מלאי חכם + תקציר דוחות' },
     ],
   },
   {
@@ -112,6 +114,8 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Franchise', labelHe: 'זכיינות', path: '/admin/franchise', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Franchise operations', hintHe: 'תפעול זכיינות' },
       { label: 'JV Partners', labelHe: 'שותפי מיזם', path: '/admin/jv-partners', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Joint-venture management', hintHe: 'ניהול מיזמים משותפים' },
       { label: 'Vouchers', labelHe: 'שוברים', path: '/admin/vouchers', icon: Gift, roles: ['admin', 'ceo'], hint: 'Gift cards & coupons', hintHe: 'כרטיסי מתנה וקופונים' },
+      { label: 'Support & Incidents', labelHe: 'תמיכה ואירועים', path: '/admin/support-incident', icon: Activity, roles: ['admin', 'ceo'], hint: 'Support scripts + incident mode (read-only)', hintHe: 'תסריטי תמיכה ומצב אירוע (לקריאה בלבד)' },
+      { label: 'Buildings & Partner Reports', labelHe: 'בניינים ודוחות שותפים', path: '/admin/buildings-partners', icon: Building2, roles: ['admin', 'ceo'], hint: 'Building/resident program + partner reports', hintHe: 'תוכנית בניינים/דיירים ודוחות שותפים' },
     ],
   },
 ];

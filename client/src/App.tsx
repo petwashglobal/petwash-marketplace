@@ -207,6 +207,10 @@ const ProfileV2 = lazy(() => import("@/pages/ProfileV2"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
 const AdminFaultIntel = lazy(() => import("@/pages/AdminFaultIntel"));
 const AdminStaffAcademy = lazy(() => import("@/pages/AdminStaffAcademy"));
+const AdminExpansionMarketing = lazy(() => import("@/pages/AdminExpansionMarketing"));
+const AdminStockReports = lazy(() => import("@/pages/AdminStockReports"));
+const AdminSupportIncident = lazy(() => import("@/pages/AdminSupportIncident"));
+const AdminBuildingsPartners = lazy(() => import("@/pages/AdminBuildingsPartners"));
 const StationTimeline = lazy(() => import("@/pages/StationTimeline"));
 const BayTimeline = lazy(() => import("@/pages/BayTimeline"));
 const AdminBayMap = lazy(() => import("@/pages/AdminBayMap"));
@@ -3160,6 +3164,42 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <AdminRouteGuard>
               <Suspense fallback={<PageLoader />}>
                 <AdminStaffAcademy />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/expansion-marketing">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminExpansionMarketing />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/stock-reports">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminStockReports />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/support-incident">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminSupportIncident />
+              </Suspense>
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/buildings-partners">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminBuildingsPartners />
               </Suspense>
             </AdminRouteGuard>
           )}

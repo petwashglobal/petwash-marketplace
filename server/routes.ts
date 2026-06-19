@@ -339,6 +339,10 @@ import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
 import adminStationHealthRouter from './routes/admin-station-health';
 import adminFaultIntelRouter from './routes/admin-fault-intel';
 import adminStaffAcademyRouter from './routes/admin-staff-academy';
+import adminExpansionMarketingRouter from './routes/admin-expansion-marketing';
+import adminStockReportsRouter from './routes/admin-stock-reports';
+import adminSupportIncidentRouter from './routes/admin-support-incident';
+import adminBuildingsPartnersRouter from './routes/admin-buildings-partners';
 import mayaVoiceTwilioRouter from './routes/maya-voice-twilio';
 import mayaWhatsappRouter from './routes/maya-whatsapp';
 
@@ -477,6 +481,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/api/admin/station-health', adminStationHealthRouter);
   app.use('/api/admin', adminFaultIntelRouter); // §11 fault-cost + §12 predictive-maintenance (read-only)
   app.use('/api/admin', adminStaffAcademyRouter); // §16 staff-performance + §17 academy (read-only)
+  app.use('/api/admin', adminExpansionMarketingRouter); // §9 location-scoring (model) + §25 marketing-campaigns (read-only)
+  app.use('/api/admin', adminStockReportsRouter); // §10 stock-prediction + §24 reports-summary (read-only)
+  app.use('/api/admin', adminSupportIncidentRouter); // §15 support-scripts + §18 incidents (read-only / record-only)
+  app.use('/api/admin', adminBuildingsPartnersRouter); // §8 buildings/resident + §28 partner-report (read-only)
   // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
   // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);
