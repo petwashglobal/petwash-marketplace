@@ -16,6 +16,7 @@ import { useWhoami } from "@/auth/useWhoami";
 import RequireAuth from "@/auth/RequireAuth";
 import StationMembershipGuard from "@/components/StationMembershipGuard";
 import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
+import AppTermsGate from "@/components/AppTermsGate";
 import { PlatformComingSoon } from "@/components/PlatformComingSoon";
 import { Car } from "lucide-react";
 import { initClientSentry } from "@/lib/sentry";
@@ -438,6 +439,14 @@ const Trademarks = lazy(() => import("@/pages/legal/Trademarks"));
 const AccessibilityStatementPage = lazy(() => import("@/pages/legal/AccessibilityStatement"));
 const MarketplaceTerms = lazy(() => import("@/pages/legal/MarketplaceTerms"));
 const LegalDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));
+// Legal Routes — Israel 2026 set (draft, pending counsel)
+const LegalCustomerTerms = lazy(() => import("@/pages/legal/CustomerTerms"));
+const LegalProviderAgreement = lazy(() => import("@/pages/legal/ProviderAgreement"));
+const LegalCancellationRefund = lazy(() => import("@/pages/legal/CancellationRefundPolicy"));
+const LegalWalletEGiftTerms = lazy(() => import("@/pages/legal/WalletEGiftTerms"));
+const LegalStationUseTerms = lazy(() => import("@/pages/legal/StationUseTerms"));
+const LegalHomeAccess = lazy(() => import("@/pages/legal/HomeAccessPropertyAuthority"));
+const LegalNoInsuranceNotice = lazy(() => import("@/pages/legal/ProtectionNoInsuranceNotice"));
 
 // ⁦Walk My Pet™⁩ Pages
 const TrackWalk = lazy(() => import("@/pages/walks/TrackWalk"));
@@ -919,8 +928,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/dashboard">
           {() => (
             <RequireAuth>
-              {/* DashboardV2 (luxury) behind a flag; legacy Dashboard is the default. */}
-              {import.meta.env.VITE_DASHBOARD_V2_ENABLED === 'true' ? <DashboardV2 /> : <Dashboard />}
+              {/* CUSTOMER-app terms gate (fail-open, native customer flavor only; web/provider pass-through). */}
+              <AppTermsGate flavor="customer" language={language}>
+                {/* DashboardV2 (luxury) behind a flag; legacy Dashboard is the default. */}
+                {import.meta.env.VITE_DASHBOARD_V2_ENABLED === 'true' ? <DashboardV2 /> : <Dashboard />}
+              </AppTermsGate>
             </RequireAuth>
           )}
         </Route>
@@ -1203,7 +1215,29 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/legal/disclaimer">
           {() => <LegalDisclaimer />}
         </Route>
-        
+        {/* Legal Routes — Israel 2026 set (draft, pending counsel) */}
+        <Route path="/legal/customer-terms">
+          {() => <LegalCustomerTerms />}
+        </Route>
+        <Route path="/legal/provider-agreement">
+          {() => <LegalProviderAgreement />}
+        </Route>
+        <Route path="/legal/cancellation-refund-policy">
+          {() => <LegalCancellationRefund />}
+        </Route>
+        <Route path="/legal/wallet-egift-terms">
+          {() => <LegalWalletEGiftTerms />}
+        </Route>
+        <Route path="/legal/station-use-terms">
+          {() => <LegalStationUseTerms />}
+        </Route>
+        <Route path="/legal/home-access-property-authority">
+          {() => <LegalHomeAccess />}
+        </Route>
+        <Route path="/legal/protection-no-insurance-notice">
+          {() => <LegalNoInsuranceNotice />}
+        </Route>
+
         {/* Protected route - ID Verification */}
         <Route path="/verify">
           {() => (
@@ -1625,9 +1659,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/provider-os">
           {() => (
             <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <ProviderOS />
-              </Suspense>
+              {/* PROVIDER-app agreement gate (fail-open, native provider flavor only; web/customer pass-through). */}
+              <AppTermsGate flavor="provider" language={language}>
+                <Suspense fallback={<PageLoader />}>
+                  <ProviderOS />
+                </Suspense>
+              </AppTermsGate>
             </RoleProtectedRoute>
           )}
         </Route>
