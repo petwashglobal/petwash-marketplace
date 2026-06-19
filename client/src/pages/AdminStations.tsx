@@ -11,6 +11,8 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { StationSheet } from "@/components/StationSheet";
+import { useLanguage } from "@/lib/languageStore";
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import {
   MapPin,
   Package,
@@ -86,9 +88,65 @@ interface RenewalAlert extends Alert {
   daysUntilRenewal: number;
 }
 
-type TabType = "list" | "alerts" | "health";
+type TabType = "list" | "alerts" | "health" | "score";
+
+// ── Station Health Score (§2) + Bay Intelligence (§3) ───────────────────────
+interface BayIntel {
+  bayId: string;
+  side: string;
+  label: string | null;
+  labelHe: string | null;
+  status: string;
+  downtime: boolean;
+  washes: number;
+  attempts: number;
+  failedSessions: number;
+  revenueIls: number;
+  nayaxPayments: number;
+  qrRedemptions: number;
+  openFaults: number;
+  openFaultsBySeverity: { critical: number; error: number; warning: number };
+  shampooLevelPct: number | null;
+  conditionerLevelPct: number | null;
+  lastWashAt: string | null;
+  lastFaultAt: string | null;
+  lastHeartbeat: string | null;
+}
+interface StationHealth {
+  stationId: string;
+  stationCode: string | null;
+  name: string;
+  nameHe: string | null;
+  stationStatus: string | null;
+  score: number;
+  band: "excellent" | "healthy" | "attention" | "critical";
+  bayCount: number;
+  factors: {
+    revenueTodayIls: number;
+    washesToday: number;
+    openFaults: number;
+    lastMaintenanceDate: string | null;
+    daysSinceMaintenance: number | null;
+    [k: string]: any;
+  };
+  usedFactors: string[];
+  unavailableFactors: string[];
+  bays: BayIntel[];
+}
+interface StationHealthResponse {
+  wired: boolean;
+  generatedAt: string;
+  stationCount: number;
+  unavailableFactors: string[];
+  factorErrors: string[];
+  bands?: Record<string, string>;
+  stations: StationHealth[];
+  note?: string;
+}
 
 export default function AdminStations() {
+  const { language, dir } = useLanguage();
+  const isHe = language === "he";
   const [, setLocation] = useLocation();
   const [selectedTab, setSelectedTab] = useState<TabType>("list");
   const [searchQuery, setSearchQuery] = useState("");
@@ -136,6 +194,13 @@ export default function AdminStations() {
     queryKey: ['/api/admin/health/stations'],
     enabled: selectedTab === "health",
     refetchInterval: 30000,
+  });
+
+  // Station Health Score (§2) + Bay Intelligence (§3) — read-only.
+  const { data: scoreData, isLoading: scoreLoading } = useQuery<StationHealthResponse>({
+    queryKey: ['/api/admin/station-health'],
+    enabled: selectedTab === "score",
+    refetchInterval: 60000,
   });
 
   const handleLogout = async () => {
@@ -232,9 +297,10 @@ export default function AdminStations() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex space-x-8">
             {[
-              { id: 'list', label: 'Stations List', icon: MapPin },
-              { id: 'alerts', label: 'Alerts', icon: AlertTriangle, badge: alertsData?.summary.totalAlerts },
-              { id: 'health', label: 'Health Overview', icon: Activity },
+              { id: 'list', label: isHe ? 'רשימת תחנות' : 'Stations List', icon: MapPin },
+              { id: 'alerts', label: isHe ? 'התראות' : 'Alerts', icon: AlertTriangle, badge: alertsData?.summary.totalAlerts },
+              { id: 'health', label: isHe ? 'סקירת בריאות' : 'Health Overview', icon: Activity },
+              { id: 'score', label: isHe ? 'ציון בריאות ועמדות' : 'Health Score & Bays', icon: Zap },
             ].map((tab) => {
               const Icon = tab.icon;
               return (
@@ -696,6 +762,173 @@ export default function AdminStations() {
                   </div>
                 </div>
               </>
+            )}
+          </div>
+        )}
+
+        {/* Health Score & Bay Intelligence Tab (§2 + §3) */}
+        {selectedTab === "score" && (
+          <div className="space-y-6" dir={dir}>
+            <div className="luxury-glass-panel luxury-shadow-lg p-6 luxury-animate-fade-in">
+              <h2 className="luxury-heading-sm" style={{ color: "#000" }}>
+                {isHe ? "ציון בריאות תחנה ומודיעין עמדות" : "Station Health Score & Bay Intelligence"}
+              </h2>
+              <p className="luxury-text-small mt-1">
+                {isHe
+                  ? "ציון 0–100 מחושב רק מנתונים אמיתיים. גורמים ללא טבלה מסומנים כ\"לא זמין\" ואינם משפיעים על הציון."
+                  : "0–100 score computed only from real data. Factors with no backing table are marked unavailable and never move the score."}
+              </p>
+              {/* Band legend */}
+              <div className="flex flex-wrap gap-3 mt-4">
+                {([
+                  ["excellent", "90–100", "#1a7f37"],
+                  ["healthy", "70–89", "#B8860B"],
+                  ["attention", "50–69", "#D4AF37"],
+                  ["critical", "0–49", "#b42318"],
+                ] as [string, string, string][]).map(([key, rng, col]) => (
+                  <span key={key} className="flex items-center gap-2 text-xs font-semibold" style={{ color: "#000" }}>
+                    <span className="w-3 h-3 rounded-full" style={{ background: col }} />
+                    {(isHe
+                      ? { excellent: "מצוין", healthy: "תקין", attention: "דורש תשומת לב", critical: "קריטי" }
+                      : { excellent: "Excellent", healthy: "Healthy", attention: "Attention", critical: "Critical" })[key]}{" "}
+                    <span className="text-gray-400">{rng}</span>
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {scoreLoading ? (
+              <div className="luxury-glass-card luxury-shadow-lg p-12 text-center">
+                <div className="luxury-spinner mx-auto mb-4" />
+                <p className="luxury-text-body">{isHe ? "טוען ציוני בריאות..." : "Loading health scores..."}</p>
+              </div>
+            ) : !scoreData || scoreData.stations.length === 0 ? (
+              <div className="luxury-glass-card luxury-shadow-lg p-12 text-center">
+                <Zap className="w-16 h-16 mx-auto mb-4" style={{ color: "#D4AF37" }} />
+                <p className="luxury-heading-sm mb-2" style={{ color: "#000" }}>
+                  {isHe ? "אין נתוני עמדות עדיין" : "No bay data yet"}
+                </p>
+                <p className="luxury-text-small">
+                  {scoreData?.note ||
+                    (isHe
+                      ? "הציון מחושב מטבלאות העמדות. עד שיירשמו עמדות אין מה לדרג."
+                      : "Health is computed from the bay tables. Until bays are registered there is nothing to score.")}
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-6">
+                {scoreData.unavailableFactors.length > 0 && (
+                  <p className="luxury-text-small" style={{ color: "#6b7280" }}>
+                    {isHe ? "גורמים שאינם זמינים (לא מומצאים): " : "Unavailable factors (not faked): "}
+                    {scoreData.unavailableFactors.join(", ")}
+                  </p>
+                )}
+                {scoreData.stations.map((st) => {
+                  const bandColor = { excellent: "#1a7f37", healthy: "#B8860B", attention: "#D4AF37", critical: "#b42318" }[st.band];
+                  const chartData = st.bays.map((b) => ({
+                    name: (isHe ? { left: "שמאל", right: "ימין" } : { left: "Left", right: "Right" })[b.side] || b.side,
+                    [isHe ? "שטיפות" : "Washes"]: b.washes,
+                    [isHe ? "QR" : "QR"]: b.qrRedemptions,
+                    [isHe ? "Nayax" : "Nayax"]: b.nayaxPayments,
+                    [isHe ? "נכשלו" : "Failed"]: b.failedSessions,
+                  }));
+                  return (
+                    <div
+                      key={st.stationId}
+                      className="luxury-glass-card luxury-shadow-lg p-6"
+                      style={{ background: "#fff", borderTop: `3px solid ${bandColor}` }}
+                      data-testid={`station-score-${st.stationId}`}
+                    >
+                      {/* Score header */}
+                      <div className="flex items-start justify-between flex-wrap gap-4 mb-5">
+                        <div>
+                          <h3 className="luxury-heading-sm" style={{ color: "#000" }}>
+                            {isHe && st.nameHe ? st.nameHe : st.name}
+                          </h3>
+                          <p className="luxury-text-small">{st.stationCode || st.stationId}</p>
+                        </div>
+                        <div className="flex items-center gap-4">
+                          <div className="text-center">
+                            <div className="text-4xl font-bold" style={{ color: bandColor }}>{st.score}</div>
+                            <div className="text-xs font-semibold uppercase tracking-wide" style={{ color: bandColor }}>
+                              {(isHe
+                                ? { excellent: "מצוין", healthy: "תקין", attention: "דורש תשומת לב", critical: "קריטי" }
+                                : { excellent: "Excellent", healthy: "Healthy", attention: "Attention", critical: "Critical" })[st.band]}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* KPI strip */}
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                        {[
+                          { lbl: isHe ? "הכנסה היום (₪)" : "Revenue today (₪)", val: st.factors.revenueTodayIls?.toFixed(2) ?? "0.00" },
+                          { lbl: isHe ? "שטיפות היום" : "Washes today", val: st.factors.washesToday ?? 0 },
+                          { lbl: isHe ? "תקלות פתוחות" : "Open faults", val: st.factors.openFaults ?? 0 },
+                          { lbl: isHe ? "ימים מאז תחזוקה" : "Days since maint.", val: st.factors.daysSinceMaintenance ?? (isHe ? "לא ידוע" : "N/A") },
+                        ].map((k, i) => (
+                          <div key={i} className="rounded-lg p-3" style={{ background: "#faf7ef", border: "1px solid #efe6cf" }}>
+                            <div className="text-xs" style={{ color: "#6b7280" }}>{k.lbl}</div>
+                            <div className="text-lg font-bold" style={{ color: "#000" }}>{k.val}</div>
+                          </div>
+                        ))}
+                      </div>
+
+                      {/* Left vs Right bay comparison chart */}
+                      <h4 className="text-sm font-semibold mb-2" style={{ color: "#000" }}>
+                        {isHe ? "השוואת עמדות: שמאל מול ימין (24 שעות)" : "Bay comparison: Left vs Right (last 24h)"}
+                      </h4>
+                      <div style={{ width: "100%", height: 220 }}>
+                        <ResponsiveContainer>
+                          <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                            <CartesianGrid strokeDasharray="3 3" stroke="#eee" />
+                            <XAxis dataKey="name" tick={{ fill: "#000", fontSize: 12 }} />
+                            <YAxis tick={{ fill: "#000", fontSize: 12 }} allowDecimals={false} />
+                            <Tooltip />
+                            <Legend wrapperStyle={{ fontSize: 12 }} />
+                            <Bar dataKey={isHe ? "שטיפות" : "Washes"} fill="#D4AF37" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey={isHe ? "QR" : "QR"} fill="#000000" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey="Nayax" fill="#8a6d1f" radius={[3, 3, 0, 0]} />
+                            <Bar dataKey={isHe ? "נכשלו" : "Failed"} fill="#b42318" radius={[3, 3, 0, 0]} />
+                          </BarChart>
+                        </ResponsiveContainer>
+                      </div>
+
+                      {/* Per-bay detail rows */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mt-4">
+                        {st.bays.map((b) => {
+                          const sideLbl = (isHe ? { left: "עמדה שמאל", right: "עמדה ימין" } : { left: "Left bay", right: "Right bay" })[b.side] || b.side;
+                          return (
+                            <div key={b.bayId} className="rounded-lg p-4" style={{ background: "#fff", border: "1px solid #eee" }} data-testid={`bay-${b.bayId}`}>
+                              <div className="flex items-center justify-between mb-2">
+                                <span className="font-semibold" style={{ color: "#000" }}>{sideLbl}</span>
+                                <span className="text-xs px-2 py-0.5 rounded-full" style={{ background: b.downtime ? "#fee" : "#eefbf0", color: b.downtime ? "#b42318" : "#1a7f37" }}>
+                                  {b.downtime ? (isHe ? "מושבת" : "Downtime") : (isHe ? b.status : b.status)}
+                                </span>
+                              </div>
+                              <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs" style={{ color: "#374151" }}>
+                                <span>{isHe ? "שטיפות" : "Washes"}: <b>{b.washes}</b></span>
+                                <span>{isHe ? "הכנסה ₪" : "Revenue ₪"}: <b>{b.revenueIls.toFixed(2)}</b></span>
+                                <span>Nayax: <b>{b.nayaxPayments}</b></span>
+                                <span>QR: <b>{b.qrRedemptions}</b></span>
+                                <span>{isHe ? "נכשלו" : "Failed"}: <b>{b.failedSessions}</b></span>
+                                <span>{isHe ? "תקלות" : "Faults"}: <b>{b.openFaults}</b></span>
+                                <span>{isHe ? "שטיפה אחרונה" : "Last wash"}: <b>{b.lastWashAt ? new Date(b.lastWashAt).toLocaleDateString() : "—"}</b></span>
+                                <span>{isHe ? "תקלה אחרונה" : "Last fault"}: <b>{b.lastFaultAt ? new Date(b.lastFaultAt).toLocaleDateString() : "—"}</b></span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* Transparency: which factors fed the score */}
+                      <p className="text-xs mt-4" style={{ color: "#9ca3af" }}>
+                        {isHe ? "גורמים בשימוש: " : "Factors used: "}{st.usedFactors.join(", ") || "—"}
+                      </p>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
         )}

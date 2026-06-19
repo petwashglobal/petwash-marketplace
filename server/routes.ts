@@ -332,6 +332,7 @@ import adminMayaVoiceRouter from './routes/admin-maya-voice';
 import aiBookingRouter from './routes/ai-booking';
 import adminPaymentDevicesRouter from './routes/admin-payment-devices';
 import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
+import adminStationHealthRouter from './routes/admin-station-health';
 import mayaVoiceTwilioRouter from './routes/maya-voice-twilio';
 import mayaWhatsappRouter from './routes/maya-whatsapp';
 
@@ -462,6 +463,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   // fallback), surfaces flagged users for HUMAN admin review. NEVER
   // refunds / credits / changes account status / notifies customers.
   app.use('/api/admin/wallet/anomalies', adminWalletAnomaliesRouter);
+  // Station Health Score (§2) + per-bay left-vs-right intelligence (§3).
+  // READ-ONLY pure-SELECT aggregation over station_bays / bay_sessions /
+  // bay_faults / kiosk_machines. No money math, no schema, no runtime change.
+  // Inline requireAdmin inside the router; mounted under /api/admin/* for the
+  // full admin security stack (defence in depth).
+  app.use('/api/admin/station-health', adminStationHealthRouter);
   // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
   // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);
