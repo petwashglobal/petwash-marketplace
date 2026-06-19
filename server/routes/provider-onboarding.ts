@@ -26,6 +26,7 @@ import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFr
 import { decideProviderKyc } from '../services/providerDecisionEngine';
 import { pool } from '../db';
 import { DocumentEncryption } from '../document-security-2025';
+import { isValidIsraeliId, looksLikeIsraeliId, maskId, lastFour as israeliIdLastFour } from '../lib/israeliId';
 import { buildSealedDeclarationAttestation } from '../lib/providerDeclarationAttestation';
 import { requireValidFileContent } from '../lib/fileMagicValidation';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
@@ -72,6 +73,26 @@ function encryptBiometricBuffer(buffer: Buffer): { data: Buffer; contentType: st
   const { encryptedData, iv, authTag, salt } = DocumentEncryption.encrypt(buffer, masterKey);
   const packed = DocumentEncryption.pack(encryptedData, iv, authTag, salt);
   return { data: packed, contentType: 'application/octet-stream+encrypted' };
+}
+
+/**
+ * Encrypt a sensitive plaintext string (the raw national-ID) into a base64
+ * AES-256-GCM blob suitable for the `israeli_id_encrypted` column. Returns null
+ * when there is no encryption key configured (non-prod) — in that case the raw
+ * value is simply NOT retained (only the redacted last-4 is kept). NEVER logs
+ * or echoes the plaintext.
+ */
+function encryptSensitiveString(plaintext: string): string | null {
+  const masterKey = process.env.DOCUMENT_ENCRYPTION_KEY;
+  if (!masterKey || masterKey.length < 32) {
+    // No key → do not retain the full value. Last-4 is stored separately.
+    return null;
+  }
+  const { encryptedData, iv, authTag, salt } = DocumentEncryption.encrypt(
+    Buffer.from(plaintext, 'utf8'),
+    masterKey,
+  );
+  return DocumentEncryption.pack(encryptedData, iv, authTag, salt).toString('base64');
 }
 
 // Allowed MIME types for document uploads
@@ -438,6 +459,9 @@ router.post('/apply', upload.fields([
       lastName,
       phoneNumber,
       idNumber,
+      identityType: rawIdentityType,
+      dateOfBirth: rawDateOfBirth,
+      ageConfirmed18Plus: rawAgeConfirmed18Plus,
       city,
       country,
       providerType: rawProviderType,
@@ -516,6 +540,77 @@ router.post('/apply', upload.fields([
         errorCode: 'SELF_DECLARATION_REQUIRED',
       });
     }
+
+    // ──────────────────────────────────────────────────────────────────────
+    // IDENTITY HARDENING (2026-06-20 — Israeli Privacy Protection Law)
+    // ──────────────────────────────────────────────────────────────────────
+
+    // (1) AGE 18+ GATE — enforced on the BACKEND, not just in the UI.
+    // Prefer a real date-of-birth (form/OCR) and compute age; if DOB is not
+    // available on this path, fall back to the explicit 18+ confirmation
+    // checkbox, which must be true to submit.
+    let dateOfBirth: Date | null = null;
+    if (rawDateOfBirth) {
+      const parsed = new Date(rawDateOfBirth);
+      if (!isNaN(parsed.getTime())) dateOfBirth = parsed;
+    }
+    if (dateOfBirth) {
+      const now = new Date();
+      let age = now.getFullYear() - dateOfBirth.getFullYear();
+      const m = now.getMonth() - dateOfBirth.getMonth();
+      if (m < 0 || (m === 0 && now.getDate() < dateOfBirth.getDate())) age--;
+      if (age < 18) {
+        logger.warn('[Provider Onboarding] Applicant under 18 — rejecting', {
+          traceId, userId: authenticatedUser.uid, age,
+        });
+        return res.status(400).json({
+          error: 'You must be at least 18 years old to become a PetWash provider.',
+          errorCode: 'UNDER_18',
+        });
+      }
+    }
+    const ageConfirmed18Plus =
+      rawAgeConfirmed18Plus === true ||
+      rawAgeConfirmed18Plus === 'true' ||
+      rawAgeConfirmed18Plus === '1';
+    // If we could not verify age from a DOB, the explicit 18+ confirmation is
+    // mandatory — do not allow submission on UI-state alone.
+    if (!dateOfBirth && !ageConfirmed18Plus) {
+      logger.warn('[Provider Onboarding] 18+ not confirmed and no DOB — rejecting', {
+        traceId, userId: authenticatedUser.uid,
+      });
+      return res.status(400).json({
+        error: 'You must confirm that you are at least 18 years old.',
+        errorCode: 'UNDER_18',
+      });
+    }
+
+    // (2) ISRAELI-ID CHECKSUM — validate on the backend when the identity field
+    // is (or looks like) an Israeli national ID. Passports / driver's licences
+    // (which contain letters or are not pure ≤9-digit numbers) are left alone.
+    const identityType = typeof rawIdentityType === 'string' ? rawIdentityType : '';
+    const isIsraeliIdField =
+      identityType === 'israeli_id' ||
+      (!identityType && !!idNumber && looksLikeIsraeliId(String(idNumber)));
+    if (isIsraeliIdField) {
+      if (!idNumber || !isValidIsraeliId(String(idNumber))) {
+        // Log the MASKED id only — never the raw value.
+        logger.warn('[Provider Onboarding] Invalid Israeli ID checksum — rejecting', {
+          traceId, userId: authenticatedUser.uid, idMasked: idNumber ? maskId(String(idNumber)) : null,
+        });
+        return res.status(400).json({
+          error: 'The Israeli ID number you entered is not valid. Please check and try again.',
+          errorCode: 'INVALID_ISRAELI_ID',
+        });
+      }
+    }
+
+    // (3) Prepare redacted + (optionally) encrypted forms of the ID. The raw
+    // value is NEVER persisted in plaintext (see internalNotes write below).
+    const idLastFour = idNumber ? israeliIdLastFour(String(idNumber)) : null;
+    const israeliIdEncrypted = (idNumber && isIsraeliIdField)
+      ? encryptSensitiveString(String(idNumber))
+      : null;
 
     // Compute enhanced-verification reasons. Client may submit explicit
     // reasons (from the UI's "what services will you offer?" picker), but
@@ -802,7 +897,11 @@ router.post('/apply', upload.fields([
       insuranceProvider: insuranceProviderName || null,
       insuranceExpiresAt: insuranceExpiry ? new Date(insuranceExpiry) : null,
       businessLicenseUrl: businessLicenseUrl || null,
-      internalNotes: Object.keys(declarations).length > 0 ? JSON.stringify({ declarations, idNumber: idNumber || null, providerTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })() }) : null,
+      // PRIVACY: the raw ID number is NO LONGER written here. We persist only
+      // the redacted last-4 (kycIdLastFour) and, when retained, an encrypted
+      // blob (israeliIdEncrypted, set in the post-insert UPDATE below).
+      kycIdLastFour: idLastFour,
+      internalNotes: Object.keys(declarations).length > 0 ? JSON.stringify({ declarations, providerTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })() }) : null,
       status: 'pending',
     }).returning();
 
@@ -826,6 +925,29 @@ router.post('/apply', upload.fields([
       } catch (sealPersistErr: any) {
         logger.warn('[Provider Onboarding] Declaration attestation persist skipped (columns not migrated yet?)', {
           applicationId, error: sealPersistErr?.message,
+        });
+      }
+    }
+
+    // ── Persist identity-hardening fields (best-effort, AFTER insert) ──
+    // Same migration-timing safety as the attestation block above: these
+    // columns (israeli_id_encrypted, age_confirmed_18_plus, date_of_birth) are
+    // added via out-of-band drizzle push, so keep them out of the INSERT to
+    // avoid breaking ALL submissions before the columns land. NEVER stores the
+    // raw ID — only the encrypted blob (if a key is configured) + age proof.
+    if (application?.id) {
+      try {
+        await db
+          .update(providerApplications)
+          .set({
+            israeliIdEncrypted,
+            ageConfirmed18Plus,
+            dateOfBirth: dateOfBirth ? dateOfBirth.toISOString().slice(0, 10) : null,
+          })
+          .where(eq(providerApplications.id, application.id));
+      } catch (identityPersistErr: any) {
+        logger.warn('[Provider Onboarding] Identity-hardening persist skipped (columns not migrated yet?)', {
+          applicationId, error: identityPersistErr?.message,
         });
       }
     }
@@ -1495,11 +1617,37 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
     }
 
     if (app.governmentIdUrl) {
-      try {
-        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || process.env.GCS_BUCKET_NAME || '');
-        const [url] = await bucket.file(app.governmentIdUrl).getSignedUrl({ action: 'read', expires: Date.now() + 30 * 60 * 1000 });
-        idSignedUrl = url;
-      } catch { /* non-fatal */ }
+      // PRIVACY: viewing a government-ID document is a sensitive access under
+      // Israeli Privacy Law. Require an explicit access reason and record an
+      // immutable audit entry (who / when / applicationId / reason / doc type)
+      // BEFORE issuing the short-lived signed URL. Without a reason, the ID
+      // image is withheld (the rest of the application still loads).
+      const accessReason = typeof req.query.idAccessReason === 'string'
+        ? req.query.idAccessReason.trim().slice(0, 500)
+        : '';
+      if (!accessReason) {
+        idSignedUrl = null;
+        (app as any).idAccessReasonRequired = true;
+      } else {
+        try {
+          const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || process.env.GCS_BUCKET_NAME || '');
+          const [url] = await bucket.file(app.governmentIdUrl).getSignedUrl({ action: 'read', expires: Date.now() + 30 * 60 * 1000 });
+          idSignedUrl = url;
+          // Audit the sensitive ID-document access (best-effort, non-blocking).
+          writeProviderAudit({
+            applicationId: (app as any).id,
+            eventType: 'id_document_viewed',
+            actorUserId: (req.body?.adminUid as string) || null,
+            actorRole: (req.body?.adminRole as string) || 'support',
+            payload: {
+              applicationId,
+              documentType: app.kycDocumentType || 'government_id',
+              reason: accessReason,
+              actorEmail: (req.body?.adminEmail as string) || null,
+            },
+          }).catch((err) => logger.warn('[Provider Onboarding] id_document_viewed audit failed', { applicationId, err: err?.message }));
+        } catch { /* non-fatal */ }
+      }
     }
 
     // Parse backgroundCheckNotes for OCR + fraud detail
