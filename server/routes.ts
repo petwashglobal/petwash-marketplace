@@ -4972,6 +4972,309 @@ self.addEventListener('notificationclick', (event) => {
     res.json({ generatedAt, salesToday, stations, faults, stock, egift });
   });
 
+  // ────────────────────────────────────────────────────────────────────────
+  // CEO "No Lost Money" — read-only money-leak detector (Business-OS §14).
+  // PURE SELECT. Every check in its own try/catch and degrades to [] on error
+  // (never 500). Each list is capped at LEAK_CAP rows; a cap-hit is logged.
+  // No money math, no writes, no schema. Only checks backed by real tables.
+  // ────────────────────────────────────────────────────────────────────────
+  app.get('/api/admin/no-lost-money', requireAdmin, async (_req: any, res) => {
+    const generatedAt = new Date().toISOString();
+    const LEAK_CAP = 100;
+
+    const { db } = await import('./db');
+    const schema = await import('@shared/schema');
+    const { sql, and, eq, isNull, isNotNull, inArray, lt, notInArray } = await import('drizzle-orm');
+
+    // Helper: log when a check returns exactly the cap (likely truncated).
+    const capLog = (name: string, rows: unknown[]) => {
+      if (rows.length >= LEAK_CAP) {
+        logger.warn('[NoLostMoney] result capped', { check: name, cap: LEAK_CAP });
+      }
+      return rows;
+    };
+
+    // 1) SUMIT/online PAID but product NOT activated.
+    //    purchases.status = 'paid' (webhook-confirmed) but never reached
+    //    'activated'. 'activated' rows are the healthy terminal state.
+    let paidNotActivated: any[] = [];
+    try {
+      const rows = await db
+        .select({
+          id: schema.purchases.id,
+          surface: schema.purchases.surface,
+          surfaceRefId: schema.purchases.surfaceRefId,
+          productType: schema.purchases.productType,
+          amountCents: schema.purchases.amountCents,
+          currency: schema.purchases.currency,
+          status: schema.purchases.status,
+          acquirer: schema.purchases.acquirer,
+          transactionId: schema.purchases.transactionId,
+          createdAt: schema.purchases.createdAt,
+        })
+        .from(schema.purchases)
+        .where(eq(schema.purchases.status, 'paid'))
+        .orderBy(sql`${schema.purchases.createdAt} desc`)
+        .limit(LEAK_CAP);
+      paidNotActivated = capLog('paidNotActivated', rows);
+    } catch (error: any) {
+      logger.error('[NoLostMoney] paidNotActivated failed', { error: error?.message });
+      paidNotActivated = [];
+    }
+
+    // 2) Nayax payment with NO wash session.
+    //    A settled/successful Nayax txn whose nayaxTransactionId never appears
+    //    on a bay_sessions row → customer paid the terminal, no wash recorded.
+    let nayaxNoSession: any[] = [];
+    try {
+      const rows = await db
+        .select({
+          id: schema.nayaxTransactions.id,
+          nayaxTransactionId: schema.nayaxTransactions.nayaxTransactionId,
+          externalTransactionId: schema.nayaxTransactions.externalTransactionId,
+          status: schema.nayaxTransactions.status,
+          amount: schema.nayaxTransactions.amount,
+          currency: schema.nayaxTransactions.currency,
+          stationId: schema.nayaxTransactions.stationId,
+          terminalId: schema.nayaxTransactions.terminalId,
+          customerUid: schema.nayaxTransactions.customerUid,
+          createdAt: schema.nayaxTransactions.createdAt,
+        })
+        .from(schema.nayaxTransactions)
+        .where(
+          and(
+            inArray(schema.nayaxTransactions.status, ['vend_success', 'settled']),
+            isNotNull(schema.nayaxTransactions.nayaxTransactionId),
+            notInArray(
+              schema.nayaxTransactions.nayaxTransactionId,
+              db
+                .select({ id: schema.baySessions.nayaxTransactionId })
+                .from(schema.baySessions)
+                .where(isNotNull(schema.baySessions.nayaxTransactionId)),
+            ),
+          ),
+        )
+        .orderBy(sql`${schema.nayaxTransactions.createdAt} desc`)
+        .limit(LEAK_CAP);
+      nayaxNoSession = capLog('nayaxNoSession', rows);
+    } catch (error: any) {
+      logger.error('[NoLostMoney] nayaxNoSession failed', { error: error?.message });
+      nayaxNoSession = [];
+    }
+
+    // 3) Wash session with NO payment.
+    //    A terminal_card bay_session that completed/activated but carries no
+    //    nayaxTransactionId → wash delivered, no payment captured.
+    let sessionNoPayment: any[] = [];
+    try {
+      const rows = await db
+        .select({
+          id: schema.baySessions.id,
+          bayId: schema.baySessions.bayId,
+          stationId: schema.baySessions.stationId,
+          source: schema.baySessions.source,
+          status: schema.baySessions.status,
+          amountCents: schema.baySessions.amountCents,
+          currency: schema.baySessions.currency,
+          userId: schema.baySessions.userId,
+          startedAt: schema.baySessions.startedAt,
+        })
+        .from(schema.baySessions)
+        .where(
+          and(
+            eq(schema.baySessions.source, 'terminal_card'),
+            inArray(schema.baySessions.status, ['active', 'cleanup', 'completed']),
+            isNull(schema.baySessions.nayaxTransactionId),
+          ),
+        )
+        .orderBy(sql`${schema.baySessions.startedAt} desc`)
+        .limit(LEAK_CAP);
+      sessionNoPayment = capLog('sessionNoPayment', rows);
+    } catch (error: any) {
+      logger.error('[NoLostMoney] sessionNoPayment failed', { error: error?.message });
+      sessionNoPayment = [];
+    }
+
+    // 4) Gift/eGift PAID but delivery never reached the recipient.
+    //    NOTE: there is NO dedicated email-delivery-status column on e_vouchers,
+    //    so this is a best-effort signal on REAL columns: a voucher still in
+    //    ISSUED state with a recipientEmail set and created > 1h ago — i.e.
+    //    paid but never claimed/activated by the recipient (a likely failed/
+    //    undelivered gift email). This is heuristic, not a true bounce flag.
+    let egiftEmailFailed: any[] = [];
+    try {
+      const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000);
+      const rows = await db
+        .select({
+          id: schema.eVouchers.id,
+          codeLast4: schema.eVouchers.codeLast4,
+          type: schema.eVouchers.type,
+          status: schema.eVouchers.status,
+          initialAmount: schema.eVouchers.initialAmount,
+          currency: schema.eVouchers.currency,
+          purchaserEmail: schema.eVouchers.purchaserEmail,
+          recipientEmail: schema.eVouchers.recipientEmail,
+          createdAt: schema.eVouchers.createdAt,
+        })
+        .from(schema.eVouchers)
+        .where(
+          and(
+            eq(schema.eVouchers.status, 'ISSUED'),
+            isNotNull(schema.eVouchers.recipientEmail),
+            lt(schema.eVouchers.createdAt, oneHourAgo),
+          ),
+        )
+        .orderBy(sql`${schema.eVouchers.createdAt} desc`)
+        .limit(LEAK_CAP);
+      egiftEmailFailed = capLog('egiftEmailFailed', rows);
+    } catch (error: any) {
+      logger.error('[NoLostMoney] egiftEmailFailed failed', { error: error?.message });
+      egiftEmailFailed = [];
+    }
+
+    // 5) eGift REDEEMED but wallet not credited.
+    //    A voucher in REDEEMED state with NO matching credit_transactions row
+    //    pointing back at it (source_id = voucher id) → value consumed but the
+    //    customer's wallet ledger never recorded the credit.
+    let egiftRedeemedNotCredited: any[] = [];
+    try {
+      const rows = await db
+        .select({
+          id: schema.eVouchers.id,
+          codeLast4: schema.eVouchers.codeLast4,
+          type: schema.eVouchers.type,
+          status: schema.eVouchers.status,
+          initialAmount: schema.eVouchers.initialAmount,
+          remainingAmount: schema.eVouchers.remainingAmount,
+          currency: schema.eVouchers.currency,
+          ownerUid: schema.eVouchers.ownerUid,
+          activatedAt: schema.eVouchers.activatedAt,
+        })
+        .from(schema.eVouchers)
+        .where(
+          and(
+            eq(schema.eVouchers.status, 'REDEEMED'),
+            notInArray(
+              schema.eVouchers.id,
+              db
+                .select({ id: schema.creditTransactions.sourceId })
+                .from(schema.creditTransactions)
+                .where(
+                  and(
+                    eq(schema.creditTransactions.creditType, 'egift'),
+                    isNotNull(schema.creditTransactions.sourceId),
+                  ),
+                ),
+            ),
+          ),
+        )
+        .orderBy(sql`${schema.eVouchers.activatedAt} desc`)
+        .limit(LEAK_CAP);
+      egiftRedeemedNotCredited = capLog('egiftRedeemedNotCredited', rows);
+    } catch (error: any) {
+      logger.error('[NoLostMoney] egiftRedeemedNotCredited failed', { error: error?.message });
+      egiftRedeemedNotCredited = [];
+    }
+
+    // 6) Order PAID but receipt/document failed.
+    //    purchases that are paid OR activated but carry no receiptNumber (the
+    //    SUMIT receipt that proves a fiscal document was issued).
+    let receiptFailed: any[] = [];
+    try {
+      const rows = await db
+        .select({
+          id: schema.purchases.id,
+          surface: schema.purchases.surface,
+          surfaceRefId: schema.purchases.surfaceRefId,
+          productType: schema.purchases.productType,
+          amountCents: schema.purchases.amountCents,
+          currency: schema.purchases.currency,
+          status: schema.purchases.status,
+          systemOfRecord: schema.purchases.systemOfRecord,
+          transactionId: schema.purchases.transactionId,
+          receiptNumber: schema.purchases.receiptNumber,
+          createdAt: schema.purchases.createdAt,
+        })
+        .from(schema.purchases)
+        .where(
+          and(
+            inArray(schema.purchases.status, ['paid', 'activated']),
+            isNull(schema.purchases.receiptNumber),
+          ),
+        )
+        .orderBy(sql`${schema.purchases.createdAt} desc`)
+        .limit(LEAK_CAP);
+      receiptFailed = capLog('receiptFailed', rows);
+    } catch (error: any) {
+      logger.error('[NoLostMoney] receiptFailed failed', { error: error?.message });
+      receiptFailed = [];
+    }
+
+    // 7) Supplier DUPLICATE invoice — same file hash, OR same supplier+invoice
+    //    number appearing on more than one row. Surfaces the duplicated key and
+    //    the count so the admin can investigate the affected uploads.
+    let duplicateSupplierInvoice: any[] = [];
+    try {
+      const byHash = await db
+        .select({
+          dupKind: sql<string>`'file_hash'`,
+          dupValue: schema.supplierInvoices.fileHash,
+          supplierId: sql<number | null>`null`,
+          count: sql<number>`count(*)`,
+          invoiceIds: sql<number[]>`array_agg(${schema.supplierInvoices.id})`,
+        })
+        .from(schema.supplierInvoices)
+        .where(isNotNull(schema.supplierInvoices.fileHash))
+        .groupBy(schema.supplierInvoices.fileHash)
+        .having(sql`count(*) > 1`)
+        .limit(LEAK_CAP);
+
+      const byNumber = await db
+        .select({
+          dupKind: sql<string>`'invoice_number'`,
+          dupValue: schema.supplierInvoices.ocrInvoiceNumber,
+          supplierId: schema.supplierInvoices.supplierId,
+          count: sql<number>`count(*)`,
+          invoiceIds: sql<number[]>`array_agg(${schema.supplierInvoices.id})`,
+        })
+        .from(schema.supplierInvoices)
+        .where(isNotNull(schema.supplierInvoices.ocrInvoiceNumber))
+        .groupBy(schema.supplierInvoices.supplierId, schema.supplierInvoices.ocrInvoiceNumber)
+        .having(sql`count(*) > 1`)
+        .limit(LEAK_CAP);
+
+      duplicateSupplierInvoice = capLog(
+        'duplicateSupplierInvoice',
+        [...byHash, ...byNumber].slice(0, LEAK_CAP),
+      );
+    } catch (error: any) {
+      logger.error('[NoLostMoney] duplicateSupplierInvoice failed', { error: error?.message });
+      duplicateSupplierInvoice = [];
+    }
+
+    const leaks = {
+      paidNotActivated,
+      nayaxNoSession,
+      sessionNoPayment,
+      egiftEmailFailed,
+      egiftRedeemedNotCredited,
+      receiptFailed,
+      duplicateSupplierInvoice,
+    };
+
+    const counts = {
+      paidNotActivated: paidNotActivated.length,
+      nayaxNoSession: nayaxNoSession.length,
+      sessionNoPayment: sessionNoPayment.length,
+      egiftEmailFailed: egiftEmailFailed.length,
+      egiftRedeemedNotCredited: egiftRedeemedNotCredited.length,
+      receiptFailed: receiptFailed.length,
+      duplicateSupplierInvoice: duplicateSupplierInvoice.length,
+    };
+
+    res.json({ generatedAt, cap: LEAK_CAP, leaks, counts });
+  });
+
   // PR-W-RETRY: read-only admin endpoint exposing K9000 permanent-failure
   // and compensation-failure alerts. The MachineCommandService writes these
   // rows when a wallet-funded session times out after all retries (severity

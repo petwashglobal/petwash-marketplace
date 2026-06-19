@@ -54,6 +54,7 @@ const NewExpense = lazy(() => import("@/pages/NewExpense"));
 const MyExpenses = lazy(() => import("@/pages/MyExpenses"));
 const ApproveExpenses = lazy(() => import("@/pages/ApproveExpenses"));
 const AdminSupplierInvoices = lazy(() => import("@/pages/AdminSupplierInvoices"));
+const AdminNoLostMoney = lazy(() => import("@/pages/AdminNoLostMoney"));
 const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoiceDetail"));
 const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
 const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
@@ -2432,6 +2433,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
 
         {/* Supplier-invoice screening (PR #370 + #375) admin pages */}
+        <Route path="/admin/no-lost-money">
+          {() => (
+            <AdminRouteGuard>
+              <AdminNoLostMoney />
+            </AdminRouteGuard>
+          )}
+        </Route>
         <Route path="/admin/supplier-invoices">
           {() => (
             <AdminRouteGuard>
