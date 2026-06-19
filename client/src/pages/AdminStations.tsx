@@ -313,7 +313,11 @@ export default function AdminStations() {
                   </SelectContent>
                 </Select>
 
-                <Button className="luxury-btn-primary ml-auto" data-testid="button-add-station">
+                <Button
+                  className="luxury-btn-primary ml-auto"
+                  data-testid="button-add-station"
+                  onClick={() => setLocation('/admin/station-registry')}
+                >
                   <Plus className="w-4 h-4 mr-2 inline" />
                   Add Station
                 </Button>

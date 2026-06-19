@@ -69,6 +69,10 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       // Was a "ghost" page: routed at /admin/supplier-invoices but missing from this
       // menu, so admins couldn't reach it. Surfaced here (2026-06-19).
       { label: 'Supplier Invoices', labelHe: 'חשבוניות ספק', path: '/admin/supplier-invoices', icon: FileText, roles: ['admin', 'ceo'], hint: 'Vendor invoices & approval', hintHe: 'חשבוניות ספקים ואישור' },
+      // Routed at /treasury (ExecutiveSuiteGuard, ceo/finance/super_admin tier)
+      // but was missing from this menu, so it was unreachable from the back-office
+      // nav. Surfaced here (2026-06-19) as CEO-only.
+      { label: 'Treasury', labelHe: 'אוצר', path: '/treasury', icon: Banknote, roles: ['ceo'], hint: 'Cash reconciliation & reserves', hintHe: 'התחשבנות מזומן ורזרבות' },
     ],
   },
   {
