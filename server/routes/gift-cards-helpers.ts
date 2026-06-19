@@ -259,8 +259,16 @@ async function sendGiftCardToRecipient(params: {
   `;
 
   try {
-    await EmailService.sendEmail(recipientEmail, emailSubject, emailHtml);
-    logger.info('[E-Gift] Email sent to recipient', { recipientEmail, voucherId: voucher.id, hasWalletPasses: !!(appleWalletUrl || googleWalletUrl) });
+    // sendEmail now returns a boolean (delegates to EmailService.send). false means
+    // SendGrid/Gmail dropped it — the customer paid but the recipient has NO gift
+    // code. Log that LOUD instead of pretending success. Defensive only — no change
+    // to voucher / webhook / money logic.
+    const delivered = await EmailService.sendEmail(recipientEmail, emailSubject, emailHtml);
+    if (delivered) {
+      logger.info('[E-Gift] Email sent to recipient', { recipientEmail, voucherId: voucher.id, hasWalletPasses: !!(appleWalletUrl || googleWalletUrl) });
+    } else {
+      logger.error('[E-Gift] Email NOT delivered to recipient (send returned false) — customer paid, recipient has no code. Needs manual resend.', { recipientEmail, voucherId: voucher.id });
+    }
   } catch (error) {
     logger.error('[E-Gift] Failed to send email to recipient', error, { recipientEmail });
     throw error;
@@ -292,13 +300,17 @@ async function sendPurchaseConfirmationToBuyer(params: {
   });
 
   try {
-    await EmailService.sendEmail(params.senderEmail, emailSubject, emailHtml);
-    logger.info('[E-Gift] Purchase confirmation with wallet passes sent to buyer', {
-      senderEmail: params.senderEmail,
-      voucherId: params.voucherId,
-      hasAppleWallet: !!params.appleWalletUrl,
-      hasGoogleWallet: !!params.googleWalletUrl,
-    });
+    const delivered = await EmailService.sendEmail(params.senderEmail, emailSubject, emailHtml);
+    if (delivered) {
+      logger.info('[E-Gift] Purchase confirmation with wallet passes sent to buyer', {
+        senderEmail: params.senderEmail,
+        voucherId: params.voucherId,
+        hasAppleWallet: !!params.appleWalletUrl,
+        hasGoogleWallet: !!params.googleWalletUrl,
+      });
+    } else {
+      logger.error('[E-Gift] Buyer purchase-confirmation NOT delivered (send returned false)', { senderEmail: params.senderEmail, voucherId: params.voucherId });
+    }
   } catch (error) {
     logger.error('[E-Gift] Failed to send confirmation to buyer', error, { senderEmail: params.senderEmail });
   }
