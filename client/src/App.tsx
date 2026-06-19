@@ -204,6 +204,7 @@ const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const ProfileV2 = lazy(() => import("@/pages/ProfileV2"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
+const AdminFaultIntel = lazy(() => import("@/pages/AdminFaultIntel"));
 const StationTimeline = lazy(() => import("@/pages/StationTimeline"));
 const BayTimeline = lazy(() => import("@/pages/BayTimeline"));
 const AdminBayMap = lazy(() => import("@/pages/AdminBayMap"));
@@ -3122,6 +3123,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminStations />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/fault-intel">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminFaultIntel />
+              </Suspense>
             </AdminRouteGuard>
           )}
         </Route>

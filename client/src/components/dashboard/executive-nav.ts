@@ -92,6 +92,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     groupHe: 'תפעול',
     items: [
       { label: 'Operations', labelHe: 'תפעול', path: '/admin/operations', icon: Activity, roles: ['admin', 'ceo'], hint: 'Station ops & bay scheduling', hintHe: 'תפעול עמדות ושיבוץ תאים' },
+      { label: 'Fault & Maintenance Intel', labelHe: 'תקלות ותחזוקה חכמה', path: '/admin/fault-intel', icon: Activity, roles: ['admin', 'ceo'], hint: 'Fault cost + predictive maintenance', hintHe: 'עלות תקלות ותחזוקה מנבאת' },
       { label: 'Logistics', labelHe: 'לוגיסטיקה', path: '/admin/logistics', icon: Package, roles: ['admin', 'ceo'], hint: 'Fulfilment & shipping', hintHe: 'מימוש הזמנות ומשלוחים' },
       { label: 'Stations', labelHe: 'עמדות', path: '/admin/stations', icon: MapPin, roles: ['admin', 'ceo'], hint: 'Facilities', hintHe: 'מתקנים' },
       { label: 'Station Registry', labelHe: 'מרשם עמדות', path: '/admin/station-registry', icon: Building2, roles: ['admin', 'ceo'], hint: 'Licensing & taxes', hintHe: 'רישוי ומיסוי' },
