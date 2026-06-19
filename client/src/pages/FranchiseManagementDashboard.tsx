@@ -1,10 +1,13 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { 
   Building2, 
@@ -60,9 +63,22 @@ interface RoyaltyPayment {
   paymentReference?: string;
 }
 
+const EMPTY_FRANCHISEE_FORM = {
+  franchiseeId: "",
+  companyName: "",
+  legalName: "",
+  country: "IL",
+  primaryContact: "",
+  email: "",
+  phone: "",
+  contractStartDate: "",
+};
+
 export default function FranchiseManagementDashboard() {
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [selectedCountry, setSelectedCountry] = useState<string>("all");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState({ ...EMPTY_FRANCHISEE_FORM });
   const { toast } = useToast();
 
   // Fetch franchisees
@@ -105,9 +121,64 @@ export default function FranchiseManagementDashboard() {
   const totalStations = Array.isArray(allFranchisees) ? allFranchisees.reduce((sum, f) => sum + (f.numberOfStations || 0), 0) : 0;
   const pendingPayments = Array.isArray(royaltyPayments) ? royaltyPayments.filter(p => p.paymentStatus === 'pending').length : 0;
   const overdueCount = Array.isArray(overduePayments) ? overduePayments.length : 0;
-  const totalMonthlyRevenue = Array.isArray(allFranchisees) 
-    ? allFranchisees.reduce((sum, f) => sum + parseFloat(f.monthlyRevenue || '0'), 0) 
+  const totalMonthlyRevenue = Array.isArray(allFranchisees)
+    ? allFranchisees.reduce((sum, f) => sum + parseFloat(f.monthlyRevenue || '0'), 0)
     : 0;
+
+  // Create a new franchisee/partner via the existing endpoint.
+  const createFranchiseeMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/enterprise/franchise/franchisees', {
+        franchiseeId: form.franchiseeId.trim(),
+        companyName: form.companyName.trim(),
+        legalName: form.legalName.trim() || undefined,
+        country: form.country.trim() || undefined,
+        primaryContact: form.primaryContact.trim(),
+        email: form.email.trim(),
+        phone: form.phone.trim() || undefined,
+        contractStartDate: form.contractStartDate,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/enterprise/franchise/franchisees'] });
+      toast({ title: "Partner created", description: "The franchise partner was added." });
+      setForm({ ...EMPTY_FRANCHISEE_FORM });
+      setCreateOpen(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not create partner", description: err?.message || "Please check the fields and try again.", variant: "destructive" });
+    },
+  });
+
+  const handleCreateFranchisee = () => {
+    if (!form.franchiseeId.trim() || !form.companyName.trim() || !form.primaryContact.trim() || !form.email.trim() || !form.contractStartDate) {
+      toast({ title: "Missing required fields", description: "Partner ID, Company, Primary Contact, Email and Contract Start Date are required.", variant: "destructive" });
+      return;
+    }
+    createFranchiseeMutation.mutate();
+  };
+
+  // Client-side CSV export of the franchisees currently loaded.
+  const handleExport = () => {
+    const rows = Array.isArray(allFranchisees) ? allFranchisees : [];
+    if (rows.length === 0) {
+      toast({ title: "Nothing to export", description: "No partners are loaded.", variant: "destructive" });
+      return;
+    }
+    const headers = ["franchiseeId", "companyName", "country", "primaryContact", "email", "phone", "numberOfStations", "monthlyRevenue", "status"];
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map(f => headers.map(h => esc((f as any)[h])).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `franchise-partners-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <LuxuryPageWrapper
@@ -120,11 +191,11 @@ export default function FranchiseManagementDashboard() {
       <div className="mb-8">
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
-            <Button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-export">
+            <Button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-export" onClick={handleExport}>
               <Download className="w-4 h-4" />
               Export
             </Button>
-            <Button className="luxury-btn-primary flex items-center gap-2" data-testid="button-create-franchisee">
+            <Button className="luxury-btn-primary flex items-center gap-2" data-testid="button-create-franchisee" onClick={() => setCreateOpen(true)}>
               <Plus className="w-4 h-4" />
               New Partner Review
             </Button>
@@ -443,6 +514,56 @@ export default function FranchiseManagementDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Create partner dialog — wired to POST /api/enterprise/franchise/franchisees */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-franchisee">
+          <DialogHeader>
+            <DialogTitle>New Partner</DialogTitle>
+            <DialogDescription>Register a new franchise / joint-venture partner.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+            <div>
+              <Label htmlFor="fr-id">Partner ID *</Label>
+              <Input id="fr-id" placeholder="FR-IL-001" value={form.franchiseeId} onChange={(e) => setForm(f => ({ ...f, franchiseeId: e.target.value }))} data-testid="input-franchisee-id" />
+            </div>
+            <div>
+              <Label htmlFor="fr-country">Country</Label>
+              <Input id="fr-country" placeholder="IL" value={form.country} onChange={(e) => setForm(f => ({ ...f, country: e.target.value }))} data-testid="input-franchisee-country" />
+            </div>
+            <div>
+              <Label htmlFor="fr-company">Company Name *</Label>
+              <Input id="fr-company" value={form.companyName} onChange={(e) => setForm(f => ({ ...f, companyName: e.target.value }))} data-testid="input-franchisee-company" />
+            </div>
+            <div>
+              <Label htmlFor="fr-legal">Legal Name</Label>
+              <Input id="fr-legal" value={form.legalName} onChange={(e) => setForm(f => ({ ...f, legalName: e.target.value }))} data-testid="input-franchisee-legal" />
+            </div>
+            <div>
+              <Label htmlFor="fr-contact">Primary Contact *</Label>
+              <Input id="fr-contact" value={form.primaryContact} onChange={(e) => setForm(f => ({ ...f, primaryContact: e.target.value }))} data-testid="input-franchisee-contact" />
+            </div>
+            <div>
+              <Label htmlFor="fr-email">Email *</Label>
+              <Input id="fr-email" type="email" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))} data-testid="input-franchisee-email" />
+            </div>
+            <div>
+              <Label htmlFor="fr-phone">Phone</Label>
+              <Input id="fr-phone" value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))} data-testid="input-franchisee-phone" />
+            </div>
+            <div>
+              <Label htmlFor="fr-start">Contract Start Date *</Label>
+              <Input id="fr-start" type="date" value={form.contractStartDate} onChange={(e) => setForm(f => ({ ...f, contractStartDate: e.target.value }))} data-testid="input-franchisee-start" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="luxury-btn-ghost" onClick={() => setCreateOpen(false)} data-testid="button-cancel-franchisee">Cancel</Button>
+            <Button className="luxury-btn-primary" onClick={handleCreateFranchisee} disabled={createFranchiseeMutation.isPending} data-testid="button-submit-franchisee">
+              {createFranchiseeMutation.isPending ? "Creating…" : "Create Partner"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </LuxuryPageWrapper>
   );
