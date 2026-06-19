@@ -192,8 +192,8 @@ export default function AdminDashboard() {
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
           <div className="w-14 h-14 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-black text-lg font-medium">Loading analytics…</p>
-          <p className="text-black/45 text-sm mt-2">Preparing your dashboard</p>
+          <p className="text-black text-lg font-medium">{he ? 'טוען נתונים…' : 'Loading analytics…'}</p>
+          <p className="text-black/45 text-sm mt-2">{he ? 'מכינים את לוח הבקרה' : 'Preparing your dashboard'}</p>
         </div>
       </div>
     );
@@ -207,12 +207,12 @@ export default function AdminDashboard() {
       <div className="mb-8 -mt-2 border-b border-black/10">
         <div className="flex gap-1 overflow-x-auto">
           {[
-            { id: 'overview', label: 'Overview', icon: Activity },
-            { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-            { id: 'payments', label: 'Payments', icon: CreditCard },
-            { id: 'loyalty', label: 'Loyalty', icon: Award },
-            { id: 'inventory', label: 'Inventory', icon: Package },
-            { id: 'hr', label: 'HR Docs', icon: FileText },
+            { id: 'overview', label: he ? 'סקירה' : 'Overview', icon: Activity },
+            { id: 'analytics', label: he ? 'אנליטיקה' : 'Analytics', icon: BarChart3 },
+            { id: 'payments', label: he ? 'תשלומים' : 'Payments', icon: CreditCard },
+            { id: 'loyalty', label: he ? 'מועדון לקוחות' : 'Loyalty', icon: Award },
+            { id: 'inventory', label: he ? 'מלאי' : 'Inventory', icon: Package },
+            { id: 'hr', label: he ? 'מסמכי כוח אדם' : 'HR Docs', icon: FileText },
           ].map((section) => {
             const Icon = section.icon;
             const active = selectedSection === section.id;
@@ -505,22 +505,22 @@ export default function AdminDashboard() {
         )}
 
         {selectedSection === 'analytics' && (
-          <div className="space-y-8">
+          <div className="space-y-8" dir={he ? 'rtl' : 'ltr'}>
             {/* Advanced Analytics Section */}
             <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
-              <h2 className="text-2xl font-semibold text-black mb-6 flex items-center space-x-3">
+              <h2 className="text-2xl font-semibold text-black mb-6 flex items-center gap-3">
                 <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-600 rounded-xl">
                   <BarChart3 className="w-6 h-6 text-white" />
                 </div>
-                <span>Advanced Business Intelligence</span>
-                <Badge className="bg-[#D4AF37] text-black">PREMIUM</Badge>
+                <span>{he ? 'בינה עסקית מתקדמת' : 'Advanced Business Intelligence'}</span>
+                <Badge className="bg-[#D4AF37] text-black">{he ? 'פרימיום' : 'PREMIUM'}</Badge>
               </h2>
 
               {/* Station Performance */}
               <div className="mb-8">
-                <h3 className="text-lg font-semibold text-black mb-4">Top Performing Stations</h3>
+                <h3 className="text-lg font-semibold text-black mb-4">{he ? 'העמדות המובילות' : 'Top Performing Stations'}</h3>
                 {stationLoading ? (
-                  <div className="text-gray-500 text-center py-8">Loading station data...</div>
+                  <div className="text-gray-500 text-center py-8">{he ? 'טוען נתוני עמדות…' : 'Loading station data...'}</div>
                 ) : (
                   <div className="space-y-3">
                     {stationData?.data?.slice(0, 5).map((station, index) => (
@@ -537,12 +537,12 @@ export default function AdminDashboard() {
                             </div>
                             <div>
                               <div className="text-gray-800 font-medium">{station.stationName}</div>
-                              <div className="text-xs text-black/50">{station.totalTransactions} transactions</div>
+                              <div className="text-xs text-black/50">{he ? `${station.totalTransactions} עסקאות` : `${station.totalTransactions} transactions`}</div>
                             </div>
                           </div>
                           <div className="text-right">
                             <div className="text-base font-semibold text-black text-emerald-700">₪{station.totalRevenue.toLocaleString()}</div>
-                            <div className="text-xs text-black/50">Avg: ₪{station.averageTransaction.toFixed(0)}</div>
+                            <div className="text-xs text-black/50">{he ? 'ממוצע' : 'Avg'}: ₪{station.averageTransaction.toFixed(0)}</div>
                           </div>
                         </div>
                       </div>
@@ -553,10 +553,10 @@ export default function AdminDashboard() {
 
               {/* Transaction Volume Chart */}
               <div>
-                <h3 className="text-lg font-semibold text-black mb-4">Transaction Volume (30 Days)</h3>
+                <h3 className="text-lg font-semibold text-black mb-4">{he ? 'נפח עסקאות (30 ימים)' : 'Transaction Volume (30 Days)'}</h3>
                 {revenueLoading ? (
                   <div className="h-64 flex items-center justify-center">
-                    <div className="text-black/40">Loading chart...</div>
+                    <div className="text-black/40">{he ? 'טוען גרף…' : 'Loading chart...'}</div>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
@@ -578,37 +578,37 @@ export default function AdminDashboard() {
         )}
 
         {selectedSection === 'loyalty' && (
-          <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
-            <h2 className="text-2xl font-semibold text-black mb-4">Loyalty Program Dashboard</h2>
-            <p className="text-sm text-black/60 mb-8">Manage customer loyalty, tiers, and rewards</p>
+          <div dir={he ? 'rtl' : 'ltr'} className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="text-2xl font-semibold text-black mb-4">{he ? 'לוח מועדון לקוחות' : 'Loyalty Program Dashboard'}</h2>
+            <p className="text-sm text-black/60 mb-8">{he ? 'ניהול נאמנות לקוחות, דרגות ותגמולים' : 'Manage customer loyalty, tiers, and rewards'}</p>
             <div className="text-center py-12 text-gray-500">
               <Award className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
-              <p className="text-base font-semibold text-black">Loyalty Management</p>
-              <p className="text-xs text-black/50">Advanced loyalty features coming soon</p>
+              <p className="text-base font-semibold text-black">{he ? 'ניהול מועדון לקוחות' : 'Loyalty Management'}</p>
+              <p className="text-xs text-black/50">{he ? 'תכונות נאמנות מתקדמות יגיעו בקרוב' : 'Advanced loyalty features coming soon'}</p>
             </div>
           </div>
         )}
 
         {selectedSection === 'inventory' && (
-          <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
-            <h2 className="text-2xl font-semibold text-black mb-4">Inventory Management</h2>
-            <p className="text-sm text-black/60 mb-8">Track stock levels, supplies, and equipment</p>
+          <div dir={he ? 'rtl' : 'ltr'} className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="text-2xl font-semibold text-black mb-4">{he ? 'ניהול מלאי' : 'Inventory Management'}</h2>
+            <p className="text-sm text-black/60 mb-8">{he ? 'מעקב אחר רמות מלאי, אספקה וציוד' : 'Track stock levels, supplies, and equipment'}</p>
             <div className="text-center py-12 text-gray-500">
               <Package className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
-              <p className="text-base font-semibold text-black">Inventory Tracker</p>
-              <p className="text-xs text-black/50">Real-time inventory monitoring coming soon</p>
+              <p className="text-base font-semibold text-black">{he ? 'מעקב מלאי' : 'Inventory Tracker'}</p>
+              <p className="text-xs text-black/50">{he ? 'ניטור מלאי בזמן אמת יגיע בקרוב' : 'Real-time inventory monitoring coming soon'}</p>
             </div>
           </div>
         )}
 
         {selectedSection === 'hr' && (
-          <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
-            <h2 className="text-2xl font-semibold text-black mb-4">HR Document Management</h2>
-            <p className="text-sm text-black/60 mb-8">Manage employee documents, contracts, and records</p>
+          <div dir={he ? 'rtl' : 'ltr'} className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
+            <h2 className="text-2xl font-semibold text-black mb-4">{he ? 'ניהול מסמכי כוח אדם' : 'HR Document Management'}</h2>
+            <p className="text-sm text-black/60 mb-8">{he ? 'ניהול מסמכי עובדים, חוזים ורשומות' : 'Manage employee documents, contracts, and records'}</p>
             <div className="text-center py-12 text-gray-500">
               <FileText className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
-              <p className="text-base font-semibold text-black">HR Documents</p>
-              <p className="text-xs text-black/50">Document management system coming soon</p>
+              <p className="text-base font-semibold text-black">{he ? 'מסמכי כוח אדם' : 'HR Documents'}</p>
+              <p className="text-xs text-black/50">{he ? 'מערכת ניהול מסמכים תגיע בקרוב' : 'Document management system coming soon'}</p>
             </div>
           </div>
         )}

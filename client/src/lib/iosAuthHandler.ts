@@ -11,6 +11,7 @@ import {
   signInWithPopup,
   signInWithRedirect,
   signInWithCredential,
+  updateProfile,
   GoogleAuthProvider,
   FacebookAuthProvider,
   OAuthProvider,
@@ -202,7 +203,30 @@ export async function signInWithAppleNative(auth: Auth): Promise<UserCredential>
   }
   const provider = new OAuthProvider('apple.com');
   const credential = provider.credential({ idToken, rawNonce });
-  return signInWithCredential(auth, credential);
+  const userCredential = await signInWithCredential(auth, credential);
+
+  // Apple sends the user's name ONLY on the very first authorization, and it is
+  // NOT inside the identity token — so Firebase's displayName is null for Apple
+  // users. Capture givenName/familyName from this first credential and persist it
+  // onto the Firebase profile, otherwise the name is lost forever (Apple never
+  // re-sends it on subsequent sign-ins) and every downstream consumer (loyalty
+  // auto-enroll, prestige_passes, the Apple Wallet pass "MEMBER" field) falls back
+  // to "Member". Best-effort: a failure here must not break the sign-in.
+  try {
+    const user = userCredential.user;
+    if (user && !user.displayName) {
+      const given = (result?.response?.givenName || '').trim();
+      const family = (result?.response?.familyName || '').trim();
+      const fullName = `${given} ${family}`.trim();
+      if (fullName) {
+        await updateProfile(user, { displayName: fullName });
+      }
+    }
+  } catch {
+    // Non-fatal — sign-in already succeeded; name persistence is opportunistic.
+  }
+
+  return userCredential;
 }
 
 /**

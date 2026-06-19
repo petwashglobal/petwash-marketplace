@@ -5,6 +5,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { getApiUrl } from "@/lib/apiConfig";
 import { 
@@ -61,9 +65,23 @@ interface ComplianceCertification {
   createdAt: string;
 }
 
+const EMPTY_POLICY_FORM = {
+  policyId: "",
+  title: "",
+  titleHe: "",
+  category: "HR",
+  description: "",
+  documentUrl: "",
+  version: "1.0",
+  effectiveDate: "",
+  targetAudience: "all_employees",
+};
+
 export default function PolicyManagementDashboard() {
   const [selectedCategory, setSelectedCategory] = useState<string>("all");
   const [searchQuery, setSearchQuery] = useState<string>("");
+  const [createOpen, setCreateOpen] = useState(false);
+  const [form, setForm] = useState({ ...EMPTY_POLICY_FORM });
   const { toast } = useToast();
 
   // Fetch policy documents
@@ -105,6 +123,62 @@ export default function PolicyManagementDashboard() {
   const pendingAcknowledgments = Array.isArray(allPolicies) ? allPolicies.filter(p => p.requiresAcknowledgment && p.isActive).length : 0;
   const expiringCount = Array.isArray(expiringCerts) ? expiringCerts.length : 0;
 
+  // Create a new policy document via the existing endpoint.
+  const createPolicyMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest('POST', '/api/enterprise/policy/documents', {
+        policyId: form.policyId.trim(),
+        title: form.title.trim(),
+        titleHe: form.titleHe.trim() || undefined,
+        category: form.category,
+        description: form.description.trim() || undefined,
+        documentUrl: form.documentUrl.trim(),
+        version: form.version.trim(),
+        effectiveDate: form.effectiveDate,
+        targetAudience: form.targetAudience,
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/enterprise/policy/documents'] });
+      toast({ title: "Policy created", description: "The policy document was added." });
+      setForm({ ...EMPTY_POLICY_FORM });
+      setCreateOpen(false);
+    },
+    onError: (err: any) => {
+      toast({ title: "Could not create policy", description: err?.message || "Please check the fields and try again.", variant: "destructive" });
+    },
+  });
+
+  const handleCreatePolicy = () => {
+    if (!form.policyId.trim() || !form.title.trim() || !form.documentUrl.trim() || !form.version.trim() || !form.effectiveDate) {
+      toast({ title: "Missing required fields", description: "Policy ID, Title, Document URL, Version and Effective Date are required.", variant: "destructive" });
+      return;
+    }
+    createPolicyMutation.mutate();
+  };
+
+  // Client-side CSV export of the policy documents currently loaded.
+  const handleExport = () => {
+    const rows = Array.isArray(allPolicies) ? allPolicies : [];
+    if (rows.length === 0) {
+      toast({ title: "Nothing to export", description: "No policy documents are loaded.", variant: "destructive" });
+      return;
+    }
+    const headers = ["policyId", "title", "category", "version", "effectiveDate", "expiryDate", "targetAudience", "isActive"];
+    const esc = (v: unknown) => `"${String(v ?? "").replace(/"/g, '""')}"`;
+    const csv = [
+      headers.join(","),
+      ...rows.map(p => headers.map(h => esc((p as any)[h])).join(",")),
+    ].join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `policies-${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <LuxuryPageWrapper
       variant="dashboard"
@@ -116,11 +190,11 @@ export default function PolicyManagementDashboard() {
       <div className="mb-8 luxury-animate-fade-in">
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
-            <Button className="luxury-btn-secondary px-4 py-2" data-testid="button-export">
+            <Button className="luxury-btn-secondary px-4 py-2" data-testid="button-export" onClick={handleExport}>
               <Download className="w-4 h-4 mr-2 inline" />
               Export
             </Button>
-            <Button className="luxury-btn-primary luxury-shadow-xl px-4 py-2" data-testid="button-create-policy">
+            <Button className="luxury-btn-primary luxury-shadow-xl px-4 py-2" data-testid="button-create-policy" onClick={() => setCreateOpen(true)}>
               <Plus className="w-4 h-4 mr-2 inline" />
               New Policy
             </Button>
@@ -398,6 +472,76 @@ export default function PolicyManagementDashboard() {
           </div>
         </TabsContent>
       </Tabs>
+
+      {/* Create Policy dialog — wired to POST /api/enterprise/policy/documents */}
+      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-policy">
+          <DialogHeader>
+            <DialogTitle>New Policy Document</DialogTitle>
+            <DialogDescription>Register a new governance / compliance policy.</DialogDescription>
+          </DialogHeader>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
+            <div>
+              <Label htmlFor="policy-id">Policy ID *</Label>
+              <Input id="policy-id" placeholder="POL-HR-001" value={form.policyId} onChange={(e) => setForm(f => ({ ...f, policyId: e.target.value }))} data-testid="input-policy-id" />
+            </div>
+            <div>
+              <Label htmlFor="policy-version">Version *</Label>
+              <Input id="policy-version" placeholder="1.0" value={form.version} onChange={(e) => setForm(f => ({ ...f, version: e.target.value }))} data-testid="input-policy-version" />
+            </div>
+            <div>
+              <Label htmlFor="policy-title">Title *</Label>
+              <Input id="policy-title" placeholder="Data Protection Policy" value={form.title} onChange={(e) => setForm(f => ({ ...f, title: e.target.value }))} data-testid="input-policy-title" />
+            </div>
+            <div>
+              <Label htmlFor="policy-title-he">Title (Hebrew)</Label>
+              <Input id="policy-title-he" value={form.titleHe} onChange={(e) => setForm(f => ({ ...f, titleHe: e.target.value }))} data-testid="input-policy-title-he" />
+            </div>
+            <div>
+              <Label>Category *</Label>
+              <Select value={form.category} onValueChange={(v) => setForm(f => ({ ...f, category: v }))}>
+                <SelectTrigger data-testid="select-policy-category"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="HR">HR</SelectItem>
+                  <SelectItem value="Security">Security</SelectItem>
+                  <SelectItem value="Operations">Operations</SelectItem>
+                  <SelectItem value="Legal">Legal</SelectItem>
+                  <SelectItem value="IT">IT</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Target Audience *</Label>
+              <Select value={form.targetAudience} onValueChange={(v) => setForm(f => ({ ...f, targetAudience: v }))}>
+                <SelectTrigger data-testid="select-policy-audience"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all_employees">All Employees</SelectItem>
+                  <SelectItem value="managers">Managers</SelectItem>
+                  <SelectItem value="specific_department">Specific Department</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="policy-effective">Effective Date *</Label>
+              <Input id="policy-effective" type="date" value={form.effectiveDate} onChange={(e) => setForm(f => ({ ...f, effectiveDate: e.target.value }))} data-testid="input-policy-effective" />
+            </div>
+            <div>
+              <Label htmlFor="policy-url">Document URL *</Label>
+              <Input id="policy-url" placeholder="https://…" value={form.documentUrl} onChange={(e) => setForm(f => ({ ...f, documentUrl: e.target.value }))} data-testid="input-policy-url" />
+            </div>
+            <div className="md:col-span-2">
+              <Label htmlFor="policy-description">Description</Label>
+              <Textarea id="policy-description" value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} data-testid="input-policy-description" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button className="luxury-btn-ghost" onClick={() => setCreateOpen(false)} data-testid="button-cancel-policy">Cancel</Button>
+            <Button className="luxury-btn-primary" onClick={handleCreatePolicy} disabled={createPolicyMutation.isPending} data-testid="button-submit-policy">
+              {createPolicyMutation.isPending ? "Creating…" : "Create Policy"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
     </LuxuryPageWrapper>
   );
