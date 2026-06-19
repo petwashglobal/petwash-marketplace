@@ -36,6 +36,7 @@ import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { createHash } from 'crypto';
 
 // Enterprise service integrations
 import EscrowService from '../services/EscrowService';
@@ -73,6 +74,44 @@ function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' |
 }
 
 const ISRAEL_TIMEZONE = 'Asia/Jerusalem';
+
+/**
+ * Deterministic idempotency fingerprint for a booking-create request.
+ *
+ * Double-tap / network-retry protection (booking-hardening 2026-06-20):
+ * if the caller supplies an `Idempotency-Key` header we trust THAT (scoped to
+ * the owner so two users can never collide on the same key). Otherwise we
+ * derive a stable key from the natural identity of the booking
+ * (owner + provider + window + service). Either way the same logical request
+ * maps to the same fingerprint, and the partial-unique index on
+ * booking_requests.booking_fingerprint blocks the duplicate row.
+ *
+ * Always returns a value (≤200 chars). NEVER throws — a fingerprint failure
+ * must not block a booking, so the caller treats a thrown error as "no key".
+ */
+function computeBookingFingerprint(input: {
+  headerKey?: string | null;
+  ownerId: string;
+  providerId: string;
+  startISO: string;
+  endISO: string;
+  serviceType: string;
+}): string {
+  const headerKey = (input.headerKey ?? '').trim();
+  if (headerKey && /^[a-zA-Z0-9\-_]{1,128}$/.test(headerKey)) {
+    // Scope the client key to the owner so a guessed/shared key from another
+    // account can never short-circuit this user's booking.
+    return `idem:${input.ownerId}:${headerKey}`.slice(0, 200);
+  }
+  const basis = [
+    input.ownerId,
+    input.providerId,
+    input.startISO,
+    input.endISO,
+    input.serviceType,
+  ].join('|');
+  return `fp:${createHash('sha256').update(basis).digest('hex')}`; // ~67 chars
+}
 
 function buildEventPayload(booking: any): BookingEventPayload {
   return {
@@ -157,7 +196,61 @@ router.post('/', async (req, res) => {
     if (endDate < startDate) {
       return res.status(400).json({ error: 'End date must be after start date' });
     }
-    
+
+    // ── Idempotency fingerprint + fast-path pre-check (booking-hardening) ──────
+    // Double-tap / network-retry / back-button race protection. Compute a
+    // deterministic key (optional Idempotency-Key header, else hash of the
+    // booking's natural identity) and check for an existing row BEFORE we run
+    // pricing or write anything. On a hit we return the EXISTING booking (200)
+    // — never a duplicate. FAIL-SAFE: if the fingerprint compute or lookup
+    // throws we proceed WITHOUT the fast path; the partial-unique index on the
+    // insert below is the backstop, so the worst case is one extra recompute,
+    // never a duplicate booking.
+    let bookingFingerprint: string | null = null;
+    try {
+      bookingFingerprint = computeBookingFingerprint({
+        headerKey: (req.headers['idempotency-key'] as string | undefined) ?? null,
+        ownerId: userId,
+        providerId: data.providerId,
+        startISO: startDate.toISOString(),
+        endISO: endDate.toISOString(),
+        serviceType: data.serviceType,
+      });
+
+      const [dup] = await db.select()
+        .from(bookingRequests)
+        .where(eq(bookingRequests.bookingFingerprint, bookingFingerprint))
+        .limit(1);
+      if (dup) {
+        logger.info('[BookingRequests] Idempotent replay — returning existing booking', {
+          requestId: dup.requestId, ownerId: userId, providerId: data.providerId,
+        });
+        return res.status(200).json({
+          success: true,
+          idempotent: true,
+          booking: {
+            requestId: dup.requestId,
+            id: dup.id,
+            status: dup.status,
+            totalAmount: (dup.totalCents ?? 0) / 100,
+            currency: dup.currency || 'ILS',
+            startDate: dup.startDate,
+            endDate: dup.endDate,
+            petCount: dup.petCount,
+            loyaltyRedeemedCents: dup.loyaltyRedeemedCents ?? 0,
+          },
+          message: 'This booking request was already submitted — no duplicate was created.',
+        });
+      }
+    } catch (idemErr: any) {
+      // Fail-safe: never block a booking on a fingerprint/lookup error. The
+      // partial-unique index on insert still prevents duplicate rows.
+      logger.warn('[BookingRequests] Idempotency pre-check skipped (non-fatal)', {
+        error: idemErr?.message,
+      });
+      bookingFingerprint = bookingFingerprint ?? null;
+    }
+
     // Check for conflicting bookings with same provider
     const existingRequests = await db.select()
       .from(bookingRequests)
@@ -389,7 +482,7 @@ router.post('/', async (req, res) => {
     // for the same provider fail at the DB level, rolling back the whole
     // transaction (lock + booking). Closes the hostile-audit critical
     // "two customers booking the same provider at the same minute".
-    let booking: typeof bookingRequests.$inferSelect;
+    let booking: typeof bookingRequests.$inferSelect | undefined;
     try {
       booking = await db.transaction(async (tx) => {
         await acquireSlotLock(tx as unknown as typeof db, {
@@ -403,6 +496,7 @@ router.post('/', async (req, res) => {
         const [row] = await tx.insert(bookingRequests).values({
           requestId,
           ownerId: userId,
+          bookingFingerprint, // idempotency key (nullable; partial-unique index)
           providerId: data.providerId,
           providerProfileId: data.providerProfileId || null,
           providerType: data.providerType,
@@ -441,8 +535,19 @@ router.post('/', async (req, res) => {
           ownerMessage: data.message || null,
           specialRequirements: data.specialRequirements || null,
           searchId: data.searchId || null,
-        }).returning();
-        return row;
+        })
+        // ── Idempotency backstop (booking-hardening) ──────────────────────────
+        // If a concurrent request with the SAME fingerprint already inserted a
+        // row, the partial-unique index fires and ON CONFLICT DO NOTHING returns
+        // 0 rows instead of throwing. We detect that below and return the winner.
+        // Only applies when a fingerprint is present (NULL never conflicts).
+        .onConflictDoNothing(
+          bookingFingerprint
+            ? { target: bookingRequests.bookingFingerprint }
+            : undefined,
+        )
+        .returning();
+        return row; // may be undefined when the fingerprint lost the race
       });
     } catch (err) {
       if (err instanceof BookingSlotConflictError) {
@@ -456,7 +561,50 @@ router.post('/', async (req, res) => {
       }
       throw err;
     }
-    
+
+    // ── Idempotency race resolution ─────────────────────────────────────────
+    // The insert was a no-op (ON CONFLICT DO NOTHING) because a concurrent
+    // duplicate won. The slot lock was rolled back with the empty insert's
+    // transaction, so re-fetch the winning row by fingerprint and return it
+    // (200) rather than a duplicate or a 500. FAIL-SAFE: prefers blocking the
+    // duplicate over crashing.
+    if (!booking) {
+      const [winner] = bookingFingerprint
+        ? await db.select()
+            .from(bookingRequests)
+            .where(eq(bookingRequests.bookingFingerprint, bookingFingerprint))
+            .limit(1)
+        : [];
+      if (winner) {
+        logger.info('[BookingRequests] Idempotent insert collision — returning winning booking', {
+          requestId: winner.requestId, ownerId: userId,
+        });
+        return res.status(200).json({
+          success: true,
+          idempotent: true,
+          booking: {
+            requestId: winner.requestId,
+            id: winner.id,
+            status: winner.status,
+            totalAmount: (winner.totalCents ?? 0) / 100,
+            currency: winner.currency || 'ILS',
+            startDate: winner.startDate,
+            endDate: winner.endDate,
+            petCount: winner.petCount,
+            loyaltyRedeemedCents: winner.loyaltyRedeemedCents ?? 0,
+          },
+          message: 'This booking request was already submitted — no duplicate was created.',
+        });
+      }
+      // No fingerprint and no row should be impossible (insert without conflict
+      // target always returns a row). Treat as a transient failure.
+      logger.error('[BookingRequests] Insert returned no row and no fingerprint winner', { requestId });
+      return res.status(409).json({
+        error: 'DUPLICATE_OR_CONFLICT',
+        message: 'Your booking could not be created. If you already submitted it, check your bookings.',
+      });
+    }
+
     // ── Persist multi-pet rows ─────────────────────────────────────────────────
     // Map clientRef → DB row ID so we can attach per-pet addons
     const petRowMap: Record<string, string> = {};

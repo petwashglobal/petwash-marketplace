@@ -271,6 +271,8 @@ router.post('/bookings', requireAuth, async (req, res) => {
         walletHoldCents: holdResult?.heldCents ?? 0,
         walletHoldKey: holdResult?.holdKey ?? null,
         financeState: holdResult ? 'hold_active' : 'none',
+        // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
+        serviceSource: 'pet_training',
       })
       .returning();
     

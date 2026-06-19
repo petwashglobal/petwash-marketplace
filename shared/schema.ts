@@ -4490,6 +4490,13 @@ export const sitterBookings = pgTable("sitter_bookings", {
   reassignmentCount: integer("reassignment_count").default(0),
   previousProviders: text("previous_providers").array(),
   lastReassignedAt: timestamp("last_reassigned_at"),
+
+  // ── Legal source tag (booking-hardening 2026-06-20) ───────────────────────
+  // ⚠️ MIGRATION (CEO-authorized) — migrations/0059_booking_hardening.sql
+  // Records which PetWash platform produced this booking row so legal/audit
+  // can prove provenance per-row. Set to 'pet_sitting' on creation. Nullable +
+  // best-effort write so a deploy that lands BEFORE the migration never crashes.
+  serviceSource: varchar("service_source", { length: 40 }),
 });
 
 // Sitter Reviews (on-demand)
@@ -4924,6 +4931,13 @@ export const walkBookings = pgTable("walk_bookings", {
   // Payment session linkage — correlates a Nayax payment session with this booking.
   // Populated by the Nayax webhook once payment is confirmed.
   paymentSessionId: varchar("payment_session_id", { length: 128 }),
+
+  // ── Legal source tag (booking-hardening 2026-06-20) ───────────────────────
+  // ⚠️ MIGRATION (CEO-authorized) — migrations/0059_booking_hardening.sql
+  // Records which PetWash platform produced this booking row. Set to
+  // 'walk_my_pet' on creation. Nullable + best-effort write so a deploy that
+  // lands BEFORE the migration never crashes.
+  serviceSource: varchar("service_source", { length: 40 }),
 
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -7263,7 +7277,14 @@ export const trainerBookings = pgTable("trainer_bookings", {
   // Audit Trail
   ipAddress: varchar("ip_address"),
   userAgent: varchar("user_agent"),
-  
+
+  // ── Legal source tag (booking-hardening 2026-06-20) ───────────────────────
+  // ⚠️ MIGRATION (CEO-authorized) — migrations/0059_booking_hardening.sql
+  // Records which PetWash platform produced this booking row. Set to
+  // 'pet_training' on creation. Nullable + best-effort write so a deploy that
+  // lands BEFORE the migration never crashes.
+  serviceSource: varchar("service_source", { length: 40 }),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
@@ -10951,11 +10972,28 @@ export const bookingRequests = pgTable("booking_requests", {
   customerLongitude:     decimal("customer_longitude", { precision: 10, scale: 7 }),
   customerPlaceId:       varchar("customer_place_id", { length: 200 }),
 
+  // ── Idempotency fingerprint (booking-hardening 2026-06-20) ────────────────
+  // ⚠️ MIGRATION (CEO-authorized) — migrations/0059_booking_hardening.sql
+  // Deterministic key for double-tap / network-retry protection on the POST
+  // create path. Derived from the client's optional `Idempotency-Key` header,
+  // or (fallback) a hash of ownerId+providerId+startDate+endDate+serviceType.
+  // A PARTIAL UNIQUE INDEX (WHERE booking_fingerprint IS NOT NULL) lets the
+  // INSERT use ON CONFLICT DO NOTHING; if no row is returned we re-fetch and
+  // return the EXISTING booking (200) instead of creating a duplicate. NULL is
+  // allowed so any legacy/edge insert that can't compute a key still works.
+  bookingFingerprint: varchar("booking_fingerprint", { length: 200 }),
+
   // Metadata
   searchId: varchar("search_id", { length: 24 }), // Link to original search
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
-});
+}, (t) => ({
+  // Partial-unique on the fingerprint — enforced in migration 0059. Defined
+  // here too so Drizzle's type/introspection layer is aware of it.
+  bookingFingerprintUniq: uniqueIndex("br_booking_fingerprint_uniq")
+    .on(t.bookingFingerprint)
+    .where(sql`${t.bookingFingerprint} IS NOT NULL`),
+}));
 
 export const insertBookingRequestSchema = createInsertSchema(bookingRequests).omit({
   id: true,
@@ -13427,6 +13465,13 @@ export const walkSlotHolds = pgTable("walk_slot_holds", {
 }, (t) => ({
   walkerIdx:  index("wsh_walker_idx").on(t.walkerId),
   expiryIdx:  index("wsh_expiry_idx").on(t.expiresAt),
+  // ⚠️ MIGRATION (CEO-authorized) — migrations/0059_booking_hardening.sql
+  // UNIQUE (walker_id, slot_id) makes slot-hold acquisition atomic: the hold
+  // INSERT uses ON CONFLICT DO NOTHING and "no row inserted" == slot taken (409).
+  // Removes the read-check-insert race between two concurrent walk bookings for
+  // the SAME slot. Lazy-expiry purge runs before each insert so a stale row for
+  // an expired hold never permanently poisons a slot.
+  walkerSlotUniq: uniqueIndex("wsh_walker_slot_uniq").on(t.walkerId, t.slotId),
 }));
 
 // ╔══════════════════════════════════════════════════════════════════════════════╗

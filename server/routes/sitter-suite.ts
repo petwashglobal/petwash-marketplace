@@ -870,6 +870,8 @@ router.post('/bookings', requireAuth, async (req, res) => {
         serviceAddressText: resolvedAddressText,
         serviceAddressLat: addressLat != null ? String(addressLat) : null,
         serviceAddressLng: addressLng != null ? String(addressLng) : null,
+        // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
+        serviceSource: 'pet_sitting',
       })
       .returning();
     

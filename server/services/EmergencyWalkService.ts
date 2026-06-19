@@ -165,6 +165,8 @@ export class EmergencyWalkService {
         estimatedStartTime,
         estimatedEndTime,
         pickupLocation: request.location as any,
+        // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
+        serviceSource: 'walk_my_pet',
         createdAt: new Date(),
         updatedAt: new Date(),
       } as any);
