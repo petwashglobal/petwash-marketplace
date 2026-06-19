@@ -86,6 +86,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'HR', labelHe: 'משאבי אנוש', path: '/admin/hr', icon: Briefcase, roles: ['admin', 'ceo'], hint: 'Hiring, payroll, docs', hintHe: 'גיוס, שכר ומסמכים' },
       { label: 'Recruitment', labelHe: 'גיוס', path: '/admin/recruitment', icon: ClipboardList, roles: ['admin', 'ceo'], hint: 'Job postings & applicants', hintHe: 'משרות ומועמדים' },
       { label: 'Performance Reviews', labelHe: 'הערכות עובדים', path: '/admin/performance-reviews', icon: Star, roles: ['admin', 'ceo'], hint: 'Employee reviews', hintHe: 'הערכות ביצועים לעובדים' },
+      { label: 'Retention & Reviews', labelHe: 'שימור וביקורות', path: '/admin/retention', icon: Users, roles: ['admin', 'ceo'], hint: 'Winback segments & review funnel', hintHe: 'פלחי שימור ומשפך ביקורות' },
     ],
   },
   {
