@@ -45,6 +45,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
   useEffect(() => { setToolsOpen(false); }, [location]);
 
   const groups = navForRole(role);
+  const he = language === 'he';
 
   const handleLogout = async () => {
     try { await logout?.(); } finally { navigate('/'); }
@@ -178,12 +179,14 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
               {groups.map((g) => (
                 <div key={g.group}>
                   <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#B8860B]">
-                    {g.group}
+                    {he ? (g.groupHe ?? g.group) : g.group}
                   </p>
                   <div className="space-y-0.5">
                     {g.items.map((item) => {
                       const Icon = item.icon;
                       const active = location === item.path || location.startsWith(`${item.path}/`);
+                      const label = he ? (item.labelHe ?? item.label) : item.label;
+                      const hint = he ? (item.hintHe ?? item.hint) : item.hint;
                       return (
                         <Link
                           key={item.path}
@@ -196,8 +199,8 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
                         >
                           <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', active ? 'text-[#B8860B]' : 'text-black/45')} />
                           <span className="min-w-0">
-                            <span className="block text-sm font-medium leading-tight">{item.label}</span>
-                            {item.hint && <span className="block text-xs text-black/45 leading-tight mt-0.5">{item.hint}</span>}
+                            <span className="block text-sm font-medium leading-tight">{label}</span>
+                            {hint && <span className="block text-xs text-black/45 leading-tight mt-0.5">{hint}</span>}
                           </span>
                         </Link>
                       );
