@@ -465,30 +465,32 @@ router.post('/walks/book', requireAuth, async (req, res) => {
       return res.status(400).json({ error: availability.message });
     }
 
-    // SLOT HOLD: prevent double-booking race between availability check and INSERT
+    // SLOT HOLD: prevent double-booking race between availability check and INSERT.
+    // ── ATOMIC (booking-hardening 2026-06-20) ─────────────────────────────────
+    // The hold is acquired via INSERT ... ON CONFLICT DO NOTHING against the
+    // UNIQUE (walker_id, slot_id) constraint (migration 0059). "No row inserted"
+    // means another concurrent booking already holds this exact slot → 409.
+    // This removes the read-check-insert race the old SELECT-then-INSERT had.
     const now = new Date();
-    // Purge expired holds (lazy cleanup)
+    // Purge expired holds (lazy cleanup) so a stale row never poisons the slot.
     await db.delete(walkSlotHolds).where(lt(walkSlotHolds.expiresAt, now));
-    // Check if this walker already has an active hold for overlapping time
-    const [activeHold] = await db
-      .select()
-      .from(walkSlotHolds)
-      .where(and(eq(walkSlotHolds.walkerId, walkerId), gte(walkSlotHolds.expiresAt, now)))
-      .limit(1);
-    if (activeHold) {
-      return res.status(409).json({ error: 'Walker slot is currently being booked. Please try again in a moment.' });
-    }
-    // Acquire slot hold for the duration of this request
     const holdId = `HOLD-${randomBytes(6).toString('hex').toUpperCase()}`;
+    const slotKey = `${walkerId}-${scheduledDate}T${scheduledStartTime}`;
     const holdTtlMs = 5 * 60 * 1000; // 5-minute TTL to cover the booking transaction
     const holdExpiresAt = new Date(Date.now() + holdTtlMs);
-    await db.insert(walkSlotHolds).values({
+    const insertedHold = await db.insert(walkSlotHolds).values({
       holdId,
-      slotId: `${walkerId}-${scheduledDate}T${scheduledStartTime}`,
+      slotId: slotKey,
       walkerId,
       estimatedAmount: '0',
       expiresAt: holdExpiresAt,
-    });
+    })
+      .onConflictDoNothing({ target: [walkSlotHolds.walkerId, walkSlotHolds.slotId] })
+      .returning({ id: walkSlotHolds.id });
+    if (insertedHold.length === 0) {
+      // Slot already held by a concurrent booking — fail closed (no double-hold).
+      return res.status(409).json({ error: 'Walker slot is currently being booked. Please try again in a moment.' });
+    }
 
     // STEP 2: Get pricing quote using LUXURY ENGINE (with loyalty discounts!)
     const clientIP = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || 
@@ -550,6 +552,8 @@ router.post('/walks/book', requireAuth, async (req, res) => {
       geofenceViolationCount: 0,
       emergencyStopTriggered: false,
       ownerNotified: false,
+      // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
+      serviceSource: 'walk_my_pet',
     };
 
     const [newBooking] = await db.insert(walkBookings).values(bookingData).returning();
@@ -971,26 +975,27 @@ router.post('/walks/holds', requireAuth, async (req, res) => {
       return res.status(400).json({ success: false, error: 'slotId and walkerId are required' });
     }
     const now = new Date();
-    // Purge expired holds first (lazy cleanup)
+    // Purge expired holds first (lazy cleanup) so a stale row never poisons the slot.
     await db.delete(walkSlotHolds).where(lt(walkSlotHolds.expiresAt, now));
-    // Check if walker slot is already held by an active hold
-    const [existing] = await db.select()
-      .from(walkSlotHolds)
-      .where(and(eq(walkSlotHolds.walkerId, walkerId), gte(walkSlotHolds.expiresAt, now)))
-      .limit(1);
-    if (existing) {
-      return res.status(409).json({ success: false, error: 'Walker slot currently held by another booking' });
-    }
+    // ── ATOMIC slot-hold acquisition (booking-hardening 2026-06-20) ──────────
+    // INSERT ... ON CONFLICT DO NOTHING against UNIQUE (walker_id, slot_id)
+    // (migration 0059). "No row inserted" == slot already held → 409. Replaces
+    // the old read-check-insert which raced under concurrency.
     const holdId = `HOLD-${randomBytes(6).toString('hex').toUpperCase()}`;
     const ttlMs = (walkDuration || 30) * 60 * 1000 + 5 * 60 * 1000; // walk duration + 5min buffer
     const expiresAt = new Date(Date.now() + ttlMs);
-    await db.insert(walkSlotHolds).values({
+    const inserted = await db.insert(walkSlotHolds).values({
       holdId,
       slotId,
       walkerId,
       estimatedAmount: String(estimatedAmount || 0),
       expiresAt,
-    });
+    })
+      .onConflictDoNothing({ target: [walkSlotHolds.walkerId, walkSlotHolds.slotId] })
+      .returning({ id: walkSlotHolds.id });
+    if (inserted.length === 0) {
+      return res.status(409).json({ success: false, error: 'Walker slot currently held by another booking' });
+    }
     return res.json({ success: true, holdId, slotId, estimatedAmount: estimatedAmount || 0, expiresAt: expiresAt.toISOString() });
   } catch (error: any) {
     console.error('[Walk Holds] Error:', error);
