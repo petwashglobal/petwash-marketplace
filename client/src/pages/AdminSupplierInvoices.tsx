@@ -16,12 +16,15 @@ import {
   SelectItem,
 } from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/lib/languageStore";
 import {
   CheckCircle2,
   RefreshCw,
   Upload,
   Receipt,
   ChevronLeft,
+  ShieldAlert,
+  ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -80,8 +83,154 @@ function RiskBadge({ level }: { level: RiskLevel }) {
   );
 }
 
+// ── Supplier Fraud Control (spec §20) — READ-ONLY detector surface ──────────
+type FraudFlag = {
+  key: string;
+  invoiceIds: number[];
+  reason: { he: string; en: string };
+  severity: "high" | "medium";
+  error?: boolean;
+};
+
+type FraudResponse = {
+  flags: FraudFlag[];
+  flagCount: number;
+  totalFlaggedInvoices: number;
+  statusBuckets: Record<string, number>;
+  skippedChecks: { key: string; reason: { he: string; en: string } }[];
+};
+
+function FraudFlagsSection({ isHe }: { isHe: boolean }) {
+  const [open, setOpen] = useState(false);
+  const { data } = useQuery<FraudResponse>({
+    queryKey: ["/api/admin/supplier-fraud-flags"],
+    queryFn: async () => {
+      const res = await fetch("/api/admin/supplier-fraud-flags", {
+        credentials: "same-origin",
+      });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+    refetchInterval: 60_000,
+  });
+
+  // Honest: render nothing until we have data. No fabricated zero-state.
+  if (!data) return null;
+
+  const realFlags = data.flags.filter((f) => !f.error && f.invoiceIds.length > 0);
+  const erroredCount = data.flags.filter((f) => f.error).length;
+  const flagged = data.totalFlaggedInvoices;
+
+  // Clean state — small green confirmation, no alarm.
+  if (realFlags.length === 0 && erroredCount === 0) {
+    return (
+      <div className="mb-4 rounded-lg border border-emerald-200 bg-emerald-50/60 px-4 py-3 flex items-center gap-2">
+        <ShieldAlert className="h-4 w-4 text-emerald-500 shrink-0" />
+        <span className="text-xs text-emerald-800">
+          {isHe
+            ? "בקרת הונאת ספקים: לא נמצאו דגלים"
+            : "Supplier fraud control: no flags found"}
+        </span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50/70">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-2 px-4 py-3 text-right"
+      >
+        <span className="flex items-center gap-2 min-w-0">
+          <ShieldAlert className="h-4 w-4 text-amber-600 shrink-0" />
+          <span className="text-sm font-medium text-amber-900 truncate">
+            {isHe
+              ? `בקרת הונאת ספקים: ${realFlags.length} דגלים · ${flagged} חשבוניות`
+              : `Supplier fraud control: ${realFlags.length} flags · ${flagged} invoices`}
+            {erroredCount > 0 &&
+              (isHe
+                ? ` · ${erroredCount} בדיקות נכשלו`
+                : ` · ${erroredCount} checks failed`)}
+          </span>
+        </span>
+        <ChevronDown
+          className={cn(
+            "h-4 w-4 text-amber-600 shrink-0 transition-transform",
+            open && "rotate-180",
+          )}
+        />
+      </button>
+
+      {open && (
+        <div className="px-4 pb-4 space-y-2">
+          {data.flags.map((f, i) => (
+            <div
+              key={`${f.key}-${i}`}
+              className={cn(
+                "rounded-md border px-3 py-2 bg-white",
+                f.error
+                  ? "border-slate-200"
+                  : f.severity === "high"
+                  ? "border-red-200"
+                  : "border-amber-200",
+              )}
+            >
+              <div className="flex items-start justify-between gap-2 flex-wrap">
+                <span className="text-xs text-gray-800">
+                  {isHe ? f.reason.he : f.reason.en}
+                </span>
+                {!f.error && (
+                  <Badge
+                    className={cn(
+                      "text-[10px] font-medium",
+                      f.severity === "high"
+                        ? "bg-red-100 text-red-800"
+                        : "bg-amber-100 text-amber-800",
+                    )}
+                  >
+                    {f.severity === "high"
+                      ? isHe
+                        ? "גבוה"
+                        : "High"
+                      : isHe
+                      ? "בינוני"
+                      : "Medium"}
+                  </Badge>
+                )}
+              </div>
+              {f.invoiceIds.length > 0 && (
+                <div className="mt-1.5 flex flex-wrap gap-1.5">
+                  {f.invoiceIds.map((id) => (
+                    <Link key={id} href={`/admin/supplier-invoices/${id}`}>
+                      <span className="text-[11px] font-mono px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 hover:bg-gray-200 cursor-pointer">
+                        #{id}
+                      </span>
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+          ))}
+
+          {data.skippedChecks.length > 0 && (
+            <div className="pt-1 text-[11px] text-gray-400">
+              {isHe ? "בדיקות שלא בוצעו: " : "Checks not run: "}
+              {data.skippedChecks
+                .map((s) => (isHe ? s.reason.he : s.reason.en))
+                .join(" · ")}
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function AdminSupplierInvoices() {
   const { toast } = useToast();
+  const { language } = useLanguage();
+  const isHe = language === "he";
   const [riskFilter, setRiskFilter] = useState<RiskLevel | "all">("all");
   const [statusFilter, setStatusFilter] = useState<string | "all">("all");
   const [uploading, setUploading] = useState(false);
@@ -230,6 +379,8 @@ export default function AdminSupplierInvoices() {
             </div>
           </CardContent>
         </Card>
+
+        <FraudFlagsSection isHe={isHe} />
 
         <div className="flex flex-wrap items-center gap-3 mb-4">
           <div className="flex items-center gap-2">
