@@ -550,6 +550,23 @@ app.use(express.json({ limit: '10mb' })); // Increased limit for base64 image up
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
+// CRITICAL (2026-06-19): Firebase Hosting CDN strips EVERY request cookie except one
+// named exactly `__session` before forwarding to Cloud Run (this is documented Hosting
+// behavior, required for its cache layer). Our session cookie is now minted as `__session`
+// (see server/lib/sessionCookies.ts) so it survives the Hosting → Cloud Run hop. The ~40
+// existing readers still look for `req.cookies.pw_session`, so we alias the forwarded
+// `__session` onto `pw_session` here, once, immediately after the cookie parser. This is
+// why web login returned HTTP 401 "session cookie not accepted on /api/session/whoami":
+// the browser had the cookie, but Hosting deleted it en route to the backend.
+// (Native apps authenticate with a Bearer header and never relied on this cookie.)
+app.use((req, _res, next) => {
+  const c = (req as any).cookies;
+  if (c && c.__session && !c.pw_session) {
+    c.pw_session = c.__session;
+  }
+  next();
+});
+
 // CSRF protection: double-submit cookie pattern via csrf-csrf (OWASP ASVS 4.0 §4.2.3 / CWE-352)
 // Uses csrf-csrf v4 `skipCsrfCheck` to exempt routes that are not CSRF-vulnerable:
 //   • GET / HEAD / OPTIONS — safe methods that never mutate state.

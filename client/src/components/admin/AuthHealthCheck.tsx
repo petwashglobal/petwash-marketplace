@@ -140,20 +140,23 @@ export default function AuthHealthCheck() {
       // 4. Check Session Cookie
       try {
         const cookies = document.cookie.split(';').map(c => c.trim());
-        const pwSessionCookie = cookies.find(c => c.startsWith('pw_session='));
-        
-        if (pwSessionCookie) {
+        // Session cookie is now `__session` (required so Firebase Hosting forwards it to
+        // Cloud Run); `pw_session` is the pre-2026-06-19 legacy name. Both are httpOnly,
+        // so document.cookie cannot read them — absence here is expected, not a failure.
+        const sessionCookie = cookies.find(c => c.startsWith('__session=') || c.startsWith('pw_session='));
+
+        if (sessionCookie) {
           results.push({
             status: 'success',
             message: 'Session Cookie Present',
-            details: 'pw_session cookie is set',
+            details: '__session cookie is set',
             timestamp
           });
         } else {
           results.push({
             status: 'warning',
             message: 'Session Cookie Not Found',
-            details: 'pw_session cookie is missing (may be httpOnly)',
+            details: '__session cookie is missing (expected — it is httpOnly and not readable from JS)',
             timestamp
           });
         }

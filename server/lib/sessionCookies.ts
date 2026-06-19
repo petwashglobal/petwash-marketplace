@@ -2,8 +2,13 @@ import { Response } from 'express';
 import firebaseAdmin from './firebase-admin';
 import { logger } from './logger';
 
-// Mobile-compatible session cookie name (matches production requirements)
-const SESSION_COOKIE_NAME = 'pw_session';
+// Session cookie name. MUST be exactly `__session`: Firebase Hosting forwards ONLY a
+// cookie named `__session` from the browser through its CDN to Cloud Run; any other name
+// (we used `pw_session`) is stripped en route, so the backend never saw it → web login
+// failed with HTTP 401 on /api/session/whoami. server/index.ts aliases the forwarded
+// `__session` back onto `req.cookies.pw_session` so existing readers are unchanged.
+// (Changed 'pw_session' → '__session' 2026-06-19.)
+const SESSION_COOKIE_NAME = '__session';
 // "Remember me" duration. 2026-06-18: raised 5d -> 14d, which is the MAXIMUM a
 // Firebase session cookie allows (createSessionCookie hard-caps expiresIn at 14
 // days). A true 30-day "stay signed in" requires silently re-minting the cookie on
@@ -108,6 +113,9 @@ export function clearSessionCookie(res: Response) {
   };
   
   res.clearCookie(SESSION_COOKIE_NAME, clearOptions);
+  // Also clear the legacy 'pw_session' cookie name (pre-2026-06-19) so a stale
+  // copy in any browser can't shadow the new __session cookie after logout.
+  res.clearCookie('pw_session', clearOptions);
 }
 
 export async function verifySessionCookie(

@@ -1326,12 +1326,12 @@ self.addEventListener('notificationclick', (event) => {
       
       logger.info('[Session] ✅ Session cookie created successfully', {
         traceId,
-        cookie: 'pw_session',
+        cookie: '__session',
         domain: '.petwash.co.il',
-        maxAge: 432000000,
+        maxAge: 1209600000,
         secure: true,
         httpOnly: true,
-        sameSite: 'none'
+        sameSite: 'lax'
       });
       // Signup/login activity trail (best-effort, non-blocking) → audit_events.
       // Method comes from the server-verified sign_in_provider (not client input);
@@ -1347,7 +1347,7 @@ self.addEventListener('notificationclick', (event) => {
           isNewUser: (_syncResult as any)?.isNewUser ?? null,
         },
       });
-      res.json({ ok: true, cookie: 'pw_session', expiresInMs: 432000000 });
+      res.json({ ok: true, cookie: '__session', expiresInMs: 1209600000 });
     } catch (error: any) {
       logger.error('[Session] Session cookie creation error', error, { traceId: req.body?.traceId });
       const errorCode = error.code === 'auth/id-token-expired' ? 'TOKEN_EXPIRED' : 'SESSION_FAILED';
