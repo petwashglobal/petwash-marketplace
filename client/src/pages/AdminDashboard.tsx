@@ -33,6 +33,12 @@ import {
 import { Link, useLocation } from "wouter";
 import NayaxMonitoring from "@/components/admin/NayaxMonitoring";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
+import { useLanguage } from "@/lib/languageStore";
+
+// PetWash brand accent — metallic gold is the ONLY accent on the luxury
+// Overview. #D4AF37 for marks/strokes, #B8860B for darker gold text.
+const GOLD = '#D4AF37';
+const GOLD_DARK = '#B8860B';
 
 // Control Tower — read-only "today" snapshot from /api/admin/control-tower.
 // Each sub-object may be null if its source query failed server-side.
@@ -118,6 +124,8 @@ interface StationPerformance {
 
 export default function AdminDashboard() {
   const [, setLocation] = useLocation();
+  const { language } = useLanguage();
+  const he = language === 'he';
   const [selectedSection, setSelectedSection] = useState<'overview' | 'analytics' | 'loyalty' | 'inventory' | 'hr' | 'payments'>('overview');
   const [currentTime, setCurrentTime] = useState(new Date());
 
@@ -157,6 +165,16 @@ export default function AdminDashboard() {
     queryKey: ['/api/admin/control-tower'],
     refetchInterval: 30000,
   });
+
+  // Real 7-day revenue series for the luxury Overview trend chart. Reuses the
+  // existing /api/admin/analytics/revenue endpoint with ?days=7 — true per-day
+  // totals (no fabricated data). Empty array renders an honest empty state.
+  const { data: revenue7Data, isLoading: revenue7Loading } = useQuery<{ success: boolean; data: RevenueDataPoint[]; days: number }>({
+    queryKey: ['/api/admin/analytics/revenue?days=7'],
+    refetchInterval: 60000,
+  });
+  const revenue7 = revenue7Data?.data ?? [];
+  const revenue7HasData = revenue7.some((d) => (d.revenue ?? 0) > 0);
 
   const handleLogout = async () => {
     try {
@@ -218,316 +236,272 @@ export default function AdminDashboard() {
       {/* Main Content */}
       <main>
         {selectedSection === 'overview' && (
-          <div className="space-y-8">
-            {/* Premium Stats Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Revenue Card */}
-              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-1" data-testid="card-revenue">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-gradient-to-br from-green-500 to-emerald-600 rounded-xl">
-                    <DollarSign className="h-6 w-6 text-white" />
-                  </div>
-                  {overview?.revenue.growthRate !== undefined && (
-                    <div className={`flex items-center space-x-1 ${overview.revenue.growthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {overview.revenue.growthRate >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                      <span className="text-sm font-bold">{Math.abs(overview.revenue.growthRate).toFixed(1)}%</span>
-                    </div>
-                  )}
+          <section dir={he ? 'rtl' : 'ltr'} className="space-y-12" data-testid="overview-control-tower">
+            {/* ── Section header + gold hairline rule ─────────────────────── */}
+            <header>
+              <div className="flex items-baseline justify-between gap-4">
+                <div>
+                  <h2 className="text-2xl font-light tracking-tight text-black">
+                    {he ? 'מגדל הבקרה' : 'Control Tower'}
+                  </h2>
+                  <p className="mt-1 text-sm font-light text-black/45">
+                    {he ? 'תמונת מצב חיה — היום' : 'Live snapshot — today'}
+                  </p>
                 </div>
-                <div className="text-2xl font-semibold text-black text-emerald-700 mb-2" data-testid="text-monthly-revenue">
-                  ₪{overview?.revenue.thisMonth.toLocaleString() || 0}
+                {controlTower?.generatedAt && (
+                  <span className="text-xs font-light text-black/35 whitespace-nowrap" dir="ltr">
+                    {he ? 'עודכן ' : 'Updated '}
+                    {new Date(controlTower.generatedAt).toLocaleTimeString(he ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}
+                  </span>
+                )}
+              </div>
+              {/* single thin gold hairline — the only divider on this surface */}
+              <div className="mt-5 h-px w-full" style={{ backgroundColor: GOLD, opacity: 0.55 }} />
+            </header>
+
+            {/* ── KPI row: big thin figures, muted labels ─────────────────── */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-black/[0.06]">
+              {/* Sales today (₪) */}
+              <div className="bg-white px-6 py-8" data-testid="kpi-sales">
+                <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                  {he ? 'מכירות היום' : 'Sales today'}
                 </div>
-                <div className="text-xs text-black/50 text-gray-600">Monthly Revenue</div>
-                <div className="mt-4 pt-4 border-t border-black/10">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">Today: ₪{overview?.revenue.today.toLocaleString() || 0}</span>
-                    <span className="text-gray-600">Week: ₪{overview?.revenue.thisWeek.toLocaleString() || 0}</span>
-                  </div>
+                <div className="mt-4 text-5xl font-extralight leading-none text-black" dir="ltr">
+                  {controlTower?.salesToday
+                    ? `₪${controlTower.salesToday.totalIls.toLocaleString()}`
+                    : <span className="text-black/25">₪0</span>}
+                </div>
+                <div className="mt-3 text-xs font-light text-black/40">
+                  {controlTower?.salesToday
+                    ? (he
+                        ? `${controlTower.salesToday.count} עסקאות`
+                        : `${controlTower.salesToday.count} payment${controlTower.salesToday.count === 1 ? '' : 's'}`)
+                    : (he ? 'אין נתון' : 'unavailable')}
                 </div>
               </div>
 
-              {/* Customers Card */}
-              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-2" data-testid="card-customers">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl">
-                    <Users className="h-6 w-6 text-white" />
-                  </div>
-                  {overview?.customers.growthRate !== undefined && (
-                    <div className={`flex items-center space-x-1 ${overview.customers.growthRate >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                      {overview.customers.growthRate >= 0 ? <ArrowUpRight className="w-4 h-4" /> : <ArrowDownRight className="w-4 h-4" />}
-                      <span className="text-sm font-bold">{Math.abs(overview.customers.growthRate).toFixed(1)}%</span>
-                    </div>
-                  )}
+              {/* Bays / Stations active */}
+              <div className="bg-white px-6 py-8" data-testid="kpi-bays">
+                <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                  {he ? 'עמדות פעילות' : 'Bays active'}
                 </div>
-                <div className="text-2xl font-semibold text-black text-emerald-700 mb-2" data-testid="text-total-customers">
-                  {overview?.customers.total.toLocaleString() || 0}
+                <div className="mt-4 text-5xl font-extralight leading-none text-black" dir="ltr">
+                  {controlTower?.stations
+                    ? <>{controlTower.stations.active}<span className="text-2xl text-black/30">/{controlTower.stations.total}</span></>
+                    : <span className="text-black/25">—</span>}
                 </div>
-                <div className="text-xs text-black/50 text-gray-600">Total Customers</div>
-                <div className="mt-4 pt-4 border-t border-black/10">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">Active: {overview?.customers.active.toLocaleString() || 0}</span>
-                    <span className="text-gray-600">New: {overview?.customers.new.toLocaleString() || 0}</span>
-                  </div>
+                <div className="mt-3 text-xs font-light text-black/40">
+                  {controlTower?.stations
+                    ? (he
+                        ? `${controlTower.stations.offline} לא מקוונות`
+                        : `${controlTower.stations.offline} offline`)
+                    : (he ? 'אין נתון' : 'unavailable')}
                 </div>
               </div>
 
-              {/* Stations Card */}
-              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-3" data-testid="card-stations">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-600 rounded-xl">
-                    <MapPin className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="flex items-center space-x-1 text-emerald-700">
-                    <Target className="w-4 h-4" />
-                    <span className="text-sm font-bold">{overview?.stations.utilizationRate.toFixed(0) || 0}%</span>
-                  </div>
+              {/* Open faults */}
+              <div className="bg-white px-6 py-8" data-testid="kpi-faults">
+                <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                  {he ? 'תקלות פתוחות' : 'Open faults'}
                 </div>
-                <div className="text-2xl font-semibold text-black text-emerald-700 mb-2" data-testid="text-total-stations">
-                  {overview?.stations.total || 0}
+                <div
+                  className="mt-4 text-5xl font-extralight leading-none"
+                  dir="ltr"
+                  style={{ color: controlTower?.faults && controlTower.faults.critical > 0 ? GOLD_DARK : '#000' }}
+                >
+                  {controlTower?.faults
+                    ? controlTower.faults.open
+                    : <span className="text-black/25">—</span>}
                 </div>
-                <div className="text-xs text-black/50 text-gray-600">Total Stations</div>
-                <div className="mt-4 pt-4 border-t border-black/10">
-                  <div className="flex justify-between text-xs mb-3">
-                    <span className="text-gray-600">Online: {overview?.stations.active || 0}</span>
-                    <span className="text-gray-600">Offline: {overview?.stations.offline || 0}</span>
-                  </div>
-                  <Link href="/admin/stations">
-                    <Button 
-                      className="bg-emerald-700 hover:bg-emerald-800 text-white rounded-lg w-full text-sm"
-                      data-testid="button-manage-stations"
-                    >
-                      <Settings className="w-4 h-4 mr-2 inline" />
-                      Manage Stations
-                    </Button>
-                  </Link>
+                <div className="mt-3 text-xs font-light text-black/40">
+                  {controlTower?.faults
+                    ? (he
+                        ? `${controlTower.faults.critical} קריטיות`
+                        : `${controlTower.faults.critical} critical`)
+                    : (he ? 'אין נתון' : 'unavailable')}
                 </div>
               </div>
 
-              {/* Transactions Card */}
-              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-hover-lift luxury-shadow-md luxury-animate-scale-in luxury-delay-4" data-testid="card-transactions">
-                <div className="flex items-center justify-between mb-4">
-                  <div className="p-3 bg-gradient-to-br from-orange-500 to-red-600 rounded-xl">
-                    <Zap className="h-6 w-6 text-white" />
-                  </div>
-                  <div className="flex items-center space-x-1 text-orange-600">
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="text-sm font-bold">{overview?.transactions.successRate.toFixed(1) || 0}%</span>
-                  </div>
+              {/* eGifts */}
+              <div className="bg-white px-6 py-8" data-testid="kpi-egift">
+                <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                  {he ? 'מתנות' : 'eGifts'}
                 </div>
-                <div className="text-2xl font-semibold text-black text-emerald-700 mb-2" data-testid="text-total-transactions">
-                  {overview?.transactions.total.toLocaleString() || 0}
+                <div className="mt-4 text-5xl font-extralight leading-none text-black" dir="ltr">
+                  {controlTower?.egift
+                    ? controlTower.egift.soldToday
+                    : <span className="text-black/25">0</span>}
                 </div>
-                <div className="text-xs text-black/50 text-gray-600">Total Transactions</div>
-                <div className="mt-4 pt-4 border-t border-black/10">
-                  <div className="flex justify-between text-xs">
-                    <span className="text-gray-600">Success: {overview?.transactions.completed || 0}</span>
-                    <span className="text-gray-600">Failed: {overview?.transactions.failed || 0}</span>
-                  </div>
+                <div className="mt-3 text-xs font-light text-black/40">
+                  {controlTower?.egift
+                    ? (he
+                        ? `נמכרו היום · ${controlTower.egift.unredeemed} לא מומשו`
+                        : `sold today · ${controlTower.egift.unredeemed} unredeemed`)
+                    : (he ? 'אין נתון' : 'unavailable')}
                 </div>
               </div>
             </div>
 
-            {/* Control Tower — today's live business snapshot.
-                Read-only aggregation of existing DB data (/api/admin/control-tower). */}
-            <div>
-              <div className="flex items-baseline justify-between mb-4">
-                <h3 className="text-lg font-semibold text-black flex items-center gap-2">
-                  <Activity className="w-5 h-5 text-emerald-700" />
-                  <span>Control Tower — Today</span>
+            {/* ── 7-day revenue trend (real data) ─────────────────────────── */}
+            <div data-testid="overview-revenue-chart">
+              <div className="flex items-baseline justify-between gap-4 mb-6">
+                <h3 className="text-lg font-light tracking-tight text-black">
+                  {he ? 'מגמת הכנסות — 7 ימים' : 'Revenue — last 7 days'}
                 </h3>
-                {controlTower?.generatedAt && (
-                  <span className="text-xs text-black/40">
-                    Updated {new Date(controlTower.generatedAt).toLocaleTimeString()}
-                  </span>
-                )}
+                <span className="text-xs font-light text-black/35">
+                  {he ? 'כולל מע״מ · ₪' : 'incl. VAT · ₪'}
+                </span>
               </div>
-              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-                {/* Sales today */}
-                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-sales">
-                  <div className="flex items-center gap-2 mb-3">
-                    <DollarSign className="h-5 w-5 text-emerald-700" />
-                    <span className="text-xs font-medium text-black/50">Sales Today</span>
-                  </div>
-                  <div className="text-2xl font-semibold text-black">
-                    {controlTower?.salesToday
-                      ? `₪${controlTower.salesToday.totalIls.toLocaleString()}`
-                      : '—'}
-                  </div>
-                  <div className="mt-1 text-xs text-black/50">
-                    {controlTower?.salesToday
-                      ? `${controlTower.salesToday.count} payment${controlTower.salesToday.count === 1 ? '' : 's'}`
-                      : 'unavailable'}
-                  </div>
-                </div>
 
-                {/* Stations */}
-                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-stations">
-                  <div className="flex items-center gap-2 mb-3">
-                    <MapPin className="h-5 w-5 text-emerald-700" />
-                    <span className="text-xs font-medium text-black/50">Stations</span>
+              {revenue7Loading ? (
+                <div className="h-72 flex items-center justify-center text-sm font-light text-black/30">
+                  {he ? 'טוען…' : 'Loading…'}
+                </div>
+              ) : revenue7HasData ? (
+                <ResponsiveContainer width="100%" height={288}>
+                  <AreaChart data={revenue7} margin={{ top: 8, right: 8, left: 0, bottom: 0 }}>
+                    <defs>
+                      <linearGradient id="ctGold" x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={GOLD} stopOpacity={0.28} />
+                        <stop offset="100%" stopColor={GOLD} stopOpacity={0.02} />
+                      </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="2 6" stroke="#00000010" vertical={false} />
+                    <XAxis
+                      dataKey="date"
+                      tickFormatter={(d: string) => {
+                        try { return new Date(d).toLocaleDateString(he ? 'he-IL' : 'en-GB', { day: '2-digit', month: '2-digit' }); }
+                        catch { return d; }
+                      }}
+                      stroke="#00000020"
+                      tick={{ fill: '#00000066', fontSize: 11, fontWeight: 300 }}
+                      tickLine={false}
+                      axisLine={false}
+                      reversed={he}
+                    />
+                    <YAxis
+                      stroke="#00000020"
+                      tick={{ fill: '#00000066', fontSize: 11, fontWeight: 300 }}
+                      tickLine={false}
+                      axisLine={false}
+                      width={48}
+                      orientation={he ? 'right' : 'left'}
+                      tickFormatter={(v: number) => `₪${Number(v).toLocaleString()}`}
+                    />
+                    <Tooltip
+                      contentStyle={{ background: '#fff', border: '1px solid rgba(0,0,0,0.1)', borderRadius: 12, fontWeight: 300, fontSize: 12 }}
+                      labelStyle={{ color: '#000' }}
+                      formatter={(value: any) => [`₪${Number(value).toLocaleString()}`, he ? 'הכנסה' : 'Revenue']}
+                      labelFormatter={(d: any) => {
+                        try { return new Date(d).toLocaleDateString(he ? 'he-IL' : 'en-GB', { day: '2-digit', month: 'short' }); }
+                        catch { return String(d); }
+                      }}
+                    />
+                    <Area
+                      type="monotone"
+                      dataKey="revenue"
+                      stroke={GOLD_DARK}
+                      strokeWidth={1.5}
+                      fill="url(#ctGold)"
+                      dot={false}
+                      activeDot={{ r: 4, fill: GOLD_DARK, stroke: '#fff', strokeWidth: 2 }}
+                    />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                /* Honest empty state — no revenue yet today/this week. */
+                <div className="h-72 flex flex-col items-center justify-center gap-3 border border-black/[0.06]">
+                  <div className="text-4xl font-extralight text-black" dir="ltr">
+                    {controlTower?.salesToday ? `₪${controlTower.salesToday.totalIls.toLocaleString()}` : '₪0'}
                   </div>
-                  <div className="text-2xl font-semibold text-black">
-                    {controlTower?.stations
-                      ? `${controlTower.stations.active}/${controlTower.stations.total}`
-                      : '—'}
+                  <p className="text-xs font-light text-black/40">
+                    {he ? 'אין הכנסות ב-7 הימים האחרונים עדיין' : 'No revenue in the last 7 days yet'}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            {/* ── Stations & operations (aggregate) ───────────────────────── */}
+            {/* TODO(control-tower): /api/admin/control-tower returns aggregate
+                station/fault counts only. To render per-station cards with each
+                left/right bay (עמדה שמאל / עמדה ימין) status + ₪ + wash count +
+                fault flag, extend the endpoint with a per-bay rows array
+                (e.g. stationsDetail: [{ stationId, name, bays: [{ side, status,
+                salesIls, washCount, hasFault }] }]). Until then we show the
+                honest aggregate below — we do NOT invent per-bay numbers. */}
+            <div data-testid="overview-stations-aggregate">
+              <h3 className="text-lg font-light tracking-tight text-black mb-6">
+                {he ? 'תפעול ומלאי' : 'Operations & stock'}
+              </h3>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-black/[0.06]">
+                {/* Stations online/offline */}
+                <div className="bg-white px-6 py-7" data-testid="ops-stations">
+                  <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                    {he ? 'עמדות' : 'Stations'}
                   </div>
-                  <div className="mt-1 text-xs text-black/50">
+                  <div className="mt-3 text-3xl font-extralight text-black" dir="ltr">
                     {controlTower?.stations
-                      ? `${controlTower.stations.offline} offline`
-                      : 'unavailable'}
+                      ? <>{controlTower.stations.active}<span className="text-lg text-black/30">/{controlTower.stations.total}</span></>
+                      : <span className="text-black/25">—</span>}
+                  </div>
+                  <div className="mt-2 text-xs font-light text-black/40">
+                    {controlTower?.stations
+                      ? (he ? `${controlTower.stations.offline} לא מקוונות` : `${controlTower.stations.offline} offline`)
+                      : (he ? 'אין נתון' : 'unavailable')}
                   </div>
                 </div>
 
                 {/* Open faults */}
-                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-faults">
-                  <div className="flex items-center gap-2 mb-3">
-                    <AlertTriangle className={`h-5 w-5 ${controlTower?.faults && controlTower.faults.critical > 0 ? 'text-red-600' : 'text-emerald-700'}`} />
-                    <span className="text-xs font-medium text-black/50">Open Faults</span>
+                <div className="bg-white px-6 py-7" data-testid="ops-faults">
+                  <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                    {he ? 'תקלות פתוחות' : 'Open faults'}
                   </div>
-                  <div className={`text-2xl font-semibold ${controlTower?.faults && controlTower.faults.open > 0 ? 'text-red-600' : 'text-black'}`}>
-                    {controlTower?.faults ? controlTower.faults.open : '—'}
+                  <div
+                    className="mt-3 text-3xl font-extralight"
+                    dir="ltr"
+                    style={{ color: controlTower?.faults && controlTower.faults.critical > 0 ? GOLD_DARK : '#000' }}
+                  >
+                    {controlTower?.faults ? controlTower.faults.open : <span className="text-black/25">—</span>}
                   </div>
-                  <div className="mt-1 text-xs text-black/50">
+                  <div className="mt-2 text-xs font-light text-black/40">
                     {controlTower?.faults
-                      ? `${controlTower.faults.critical} critical`
-                      : 'unavailable'}
+                      ? (he ? `${controlTower.faults.critical} קריטיות` : `${controlTower.faults.critical} critical`)
+                      : (he ? 'אין נתון' : 'unavailable')}
                   </div>
                 </div>
 
                 {/* Low stock */}
-                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-stock">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Package className={`h-5 w-5 ${controlTower?.stock && controlTower.stock.lowCount > 0 ? 'text-amber-600' : 'text-emerald-700'}`} />
-                    <span className="text-xs font-medium text-black/50">Low Stock</span>
+                <div className="bg-white px-6 py-7" data-testid="ops-stock">
+                  <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                    {he ? 'מלאי נמוך' : 'Low stock'}
                   </div>
-                  <div className={`text-2xl font-semibold ${controlTower?.stock && controlTower.stock.lowCount > 0 ? 'text-amber-600' : 'text-black'}`}>
-                    {controlTower?.stock ? controlTower.stock.lowCount : '—'}
+                  <div
+                    className="mt-3 text-3xl font-extralight"
+                    dir="ltr"
+                    style={{ color: controlTower?.stock && controlTower.stock.lowCount > 0 ? GOLD_DARK : '#000' }}
+                  >
+                    {controlTower?.stock ? controlTower.stock.lowCount : <span className="text-black/25">—</span>}
                   </div>
-                  <div className="mt-1 text-xs text-black/50">
-                    {controlTower?.stock ? 'items at/below min' : 'unavailable'}
-                  </div>
-                </div>
-
-                {/* eGift */}
-                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-egift">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-5 w-5 text-emerald-700" />
-                    <span className="text-xs font-medium text-black/50">eGift</span>
-                  </div>
-                  <div className="text-2xl font-semibold text-black">
-                    {controlTower?.egift ? controlTower.egift.soldToday : '—'}
-                  </div>
-                  <div className="mt-1 text-xs text-black/50">
-                    {controlTower?.egift
-                      ? `sold today · ${controlTower.egift.unredeemed} unredeemed`
-                      : 'unavailable'}
+                  <div className="mt-2 text-xs font-light text-black/40">
+                    {controlTower?.stock
+                      ? (he ? 'פריטים בסף המינימום' : 'items at/below min')
+                      : (he ? 'אין נתון' : 'unavailable')}
                   </div>
                 </div>
               </div>
-            </div>
-
-            {/* Charts Section */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 luxury-animate-slide-up luxury-delay-2">
-              {/* Revenue Trend Chart */}
-              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg" data-testid="chart-revenue-trend">
-                <h3 className="text-lg font-semibold text-black mb-6 flex items-center space-x-2">
-                  <BarChart3 className="w-5 h-5 text-emerald-700" />
-                  <span>Revenue Trend (30 Days)</span>
-                </h3>
-                {revenueLoading ? (
-                  <div className="h-64 flex items-center justify-center">
-                    <div className="text-black/40">Loading chart...</div>
-                  </div>
-                ) : (
-                  <ResponsiveContainer width="100%" height={300}>
-                    <AreaChart data={revenueData?.data || []}>
-                      <defs>
-                        <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                          <stop offset="5%" stopColor="#047857" stopOpacity={0.8}/>
-                          <stop offset="95%" stopColor="#047857" stopOpacity={0.1}/>
-                        </linearGradient>
-                      </defs>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#00000010" />
-                      <XAxis dataKey="date" stroke="#9ca3af" tick={{ fill: '#6b7280' }} />
-                      <YAxis stroke="#9ca3af" tick={{ fill: '#6b7280' }} />
-                      <Tooltip 
-                        contentStyle={{ backgroundColor: '#ffffff', border: '1px solid #00000020', borderRadius: '8px' }}
-                        labelStyle={{ color: '#111' }}
-                      />
-                      <Area type="monotone" dataKey="revenue" stroke="#047857" fillOpacity={1} fill="url(#colorRevenue)" />
-                    </AreaChart>
-                  </ResponsiveContainer>
-                )}
-              </div>
-
-              {/* Loyalty Distribution */}
-              <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg" data-testid="chart-loyalty">
-                <h3 className="text-lg font-semibold text-black mb-6 flex items-center space-x-2">
-                  <Award className="w-5 h-5 text-emerald-700" />
-                  <span>Loyalty Tier Distribution</span>
-                </h3>
-                <div className="space-y-4">
-                  {[
-                    { tier: 'Royal 👑', count: overview?.loyalty.royal || 0, color: 'from-purple-500 to-violet-600', bgColor: 'bg-purple-500/20' },
-                    { tier: 'Emerald 💚', count: overview?.loyalty.emerald || 0, color: 'from-emerald-400 to-green-500', bgColor: 'bg-emerald-500/20' },
-                    { tier: 'Diamond 💎', count: overview?.loyalty.diamond || 0, color: 'from-blue-400 to-cyan-500', bgColor: 'bg-blue-500/20' },
-                    { tier: 'Platinum 💠', count: overview?.loyalty.platinum || 0, color: 'from-slate-200 to-slate-300', bgColor: 'bg-slate-500/20' },
-                    { tier: 'Gold 🥇', count: overview?.loyalty.gold || 0, color: 'from-yellow-400 to-amber-500', bgColor: 'bg-yellow-500/20' },
-                    { tier: 'Silver 🥈', count: overview?.loyalty.silver || 0, color: 'from-gray-300 to-gray-400', bgColor: 'bg-gray-500/20' },
-                    { tier: 'Bronze 🥉', count: overview?.loyalty.bronze || 0, color: 'from-amber-600 to-orange-700', bgColor: 'bg-amber-500/20' },
-                  ].map((item) => {
-                    const total = overview?.loyalty.totalMembers || 1;
-                    const percentage = (item.count / total) * 100;
-                    return (
-                      <div key={item.tier} className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-black font-medium">{item.tier}</span>
-                          <span className="text-black/50">{item.count.toLocaleString()} ({percentage.toFixed(1)}%)</span>
-                        </div>
-                        <div className="h-3 bg-black/10 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full bg-gradient-to-r ${item.color} transition-all duration-1000`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
+              <div className="mt-5">
+                <Link href="/admin/stations">
+                  <button
+                    className="text-sm font-light text-black border-b transition-opacity hover:opacity-60"
+                    style={{ borderColor: GOLD }}
+                    data-testid="button-manage-stations"
+                  >
+                    {he ? 'ניהול עמדות ←' : 'Manage stations →'}
+                  </button>
+                </Link>
               </div>
             </div>
-
-            {/* Recent Activity */}
-            <div className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-animate-fade-in luxury-delay-3" data-testid="section-recent-activity">
-              <h3 className="text-lg font-semibold text-black mb-6 flex items-center space-x-2">
-                <Activity className="w-5 h-5 text-emerald-700" />
-                <span>Recent Activity</span>
-              </h3>
-              <div className="space-y-3">
-                {stats?.recentActivity && stats.recentActivity.length > 0 ? (
-                  stats.recentActivity.map((activity) => (
-                    <div key={activity.id} className="flex items-center justify-between p-4 rounded-xl bg-black/[0.02] border border-black/10 luxury-hover-lift transition-all" data-testid={`activity-${activity.id}`}>
-                      <div>
-                        <p className="text-sm font-medium text-gray-800">{activity.action}</p>
-                        <p className="text-xs text-black/50">{activity.resource}</p>
-                      </div>
-                      <div className="text-right">
-                        <Badge variant="secondary" className="bg-emerald-50 text-emerald-800 border border-emerald-100 text-xs">
-                          {activity.adminName}
-                        </Badge>
-                        <p className="text-xs text-black/50 mt-1">{activity.timestamp}</p>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12 text-gray-500">
-                    <Activity className="w-12 h-12 mx-auto mb-4 opacity-30" />
-                    <p>No recent activity</p>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
+          </section>
         )}
 
         {selectedSection === 'analytics' && (

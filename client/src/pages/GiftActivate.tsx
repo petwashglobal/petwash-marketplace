@@ -324,7 +324,15 @@ export default function GiftActivate() {
                   : 'To claim this gift to your wallet, please sign in first.'}
               </p>
               <Button
-                onClick={() => navigate(`/login?redirect=/gift/activate/${voucherId}`)}
+                onClick={() => {
+                  // Preserve the gift across sign-in so the recipient lands back
+                  // on THIS activation page (not /home) after logging in.
+                  // SignIn honors BOTH `redirect` (unconditional return) and
+                  // `from` (return when post-login lands on a terminal path).
+                  // We pass both for defense-in-depth across every auth path.
+                  const back = `/gift/activate/${voucherId}`;
+                  navigate(`/login?redirect=${encodeURIComponent(back)}&from=${encodeURIComponent(back)}`);
+                }}
                 className="w-full h-12 font-semibold rounded-xl"
                 style={{ background: GOLD, color: '#fff' }}
               >
