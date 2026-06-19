@@ -4838,6 +4838,132 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // ════════════════════════════════════════════════════════════════════
+  // CONTROL TOWER — read-only "today" business snapshot for the admin home
+  //
+  // Aggregates data that ALREADY exists in the DB so the Admin Overview is
+  // not empty. STRICTLY read-only: every query is a pure SELECT (count/sum).
+  // No money/balance/payout/refund logic. No schema changes. Admin-gated via
+  // requireAdmin (same as config-health / pending-payouts above).
+  //
+  // Each sub-aggregation is wrapped in its own try/catch so one failing query
+  // degrades that metric to null instead of 500-ing the whole snapshot. Empty
+  // tables (zero rows) return 0, never crash. Returns no secrets.
+  //
+  // Tables aggregated (verified against shared/schema*.ts):
+  //   • payments          → today's sales count + revenue (amount, created_at)
+  //   • pet_wash_stations → active vs offline (operational_status)
+  //   • bay_faults        → open faults + critical (status, severity)
+  //   • inventory_items   → low stock (current_stock <= min_stock)
+  //   • e_vouchers        → eGift sold today + unredeemed (status, created_at)
+  // ════════════════════════════════════════════════════════════════════
+  app.get('/api/admin/control-tower', requireAdmin, async (_req: any, res) => {
+    const generatedAt = new Date().toISOString();
+
+    // UTC "today" window — no tz lib. Rows created at/after start-of-day UTC.
+    const now = new Date();
+    const startOfTodayUtc = new Date(Date.UTC(
+      now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0, 0,
+    ));
+
+    const { db } = await import('./db');
+    const schema = await import('@shared/schema');
+    // petWashStations lives in the enterprise schema module, not the root.
+    const { petWashStations } = await import('@shared/schema-enterprise');
+    const { sql, gte } = await import('drizzle-orm');
+
+    // 1) Sales today (count + total ILS) from the payments ledger.
+    let salesToday: { count: number; totalIls: number } | null = null;
+    try {
+      const [row] = await db
+        .select({
+          count: sql<number>`count(*)`,
+          totalIls: sql<number>`coalesce(sum(${schema.payments.amount}), 0)`,
+        })
+        .from(schema.payments)
+        .where(gte(schema.payments.createdAt, startOfTodayUtc));
+      salesToday = {
+        count: Number(row?.count ?? 0),
+        totalIls: Number(row?.totalIls ?? 0),
+      };
+    } catch (error: any) {
+      logger.error('[ControlTower] salesToday query failed', { error: error?.message });
+      salesToday = null;
+    }
+
+    // 2) Stations active vs offline.
+    let stations: { active: number; offline: number; total: number } | null = null;
+    try {
+      const [row] = await db
+        .select({
+          active: sql<number>`count(*) filter (where ${petWashStations.operationalStatus} = 'active')`,
+          offline: sql<number>`count(*) filter (where ${petWashStations.operationalStatus} = 'offline')`,
+          total: sql<number>`count(*)`,
+        })
+        .from(petWashStations);
+      stations = {
+        active: Number(row?.active ?? 0),
+        offline: Number(row?.offline ?? 0),
+        total: Number(row?.total ?? 0),
+      };
+    } catch (error: any) {
+      logger.error('[ControlTower] stations query failed', { error: error?.message });
+      stations = null;
+    }
+
+    // 3) Open faults + critical (open faults at severity=critical).
+    let faults: { open: number; critical: number } | null = null;
+    try {
+      const [row] = await db
+        .select({
+          open: sql<number>`count(*) filter (where ${schema.bayFaults.status} = 'open')`,
+          critical: sql<number>`count(*) filter (where ${schema.bayFaults.status} = 'open' and ${schema.bayFaults.severity} = 'critical')`,
+        })
+        .from(schema.bayFaults);
+      faults = {
+        open: Number(row?.open ?? 0),
+        critical: Number(row?.critical ?? 0),
+      };
+    } catch (error: any) {
+      logger.error('[ControlTower] faults query failed', { error: error?.message });
+      faults = null;
+    }
+
+    // 4) Low stock (current_stock <= min_stock).
+    let stock: { lowCount: number } | null = null;
+    try {
+      const [row] = await db
+        .select({
+          lowCount: sql<number>`count(*) filter (where coalesce(${schema.inventoryItems.currentStock}, 0) <= coalesce(${schema.inventoryItems.minStock}, 0))`,
+        })
+        .from(schema.inventoryItems);
+      stock = { lowCount: Number(row?.lowCount ?? 0) };
+    } catch (error: any) {
+      logger.error('[ControlTower] stock query failed', { error: error?.message });
+      stock = null;
+    }
+
+    // 5) eGift sold today + unredeemed (not REDEEMED/EXPIRED/CANCELLED).
+    let egift: { soldToday: number; unredeemed: number } | null = null;
+    try {
+      const [row] = await db
+        .select({
+          soldToday: sql<number>`count(*) filter (where ${schema.eVouchers.createdAt} >= ${startOfTodayUtc})`,
+          unredeemed: sql<number>`count(*) filter (where ${schema.eVouchers.status} not in ('REDEEMED', 'EXPIRED', 'CANCELLED'))`,
+        })
+        .from(schema.eVouchers);
+      egift = {
+        soldToday: Number(row?.soldToday ?? 0),
+        unredeemed: Number(row?.unredeemed ?? 0),
+      };
+    } catch (error: any) {
+      logger.error('[ControlTower] egift query failed', { error: error?.message });
+      egift = null;
+    }
+
+    res.json({ generatedAt, salesToday, stations, faults, stock, egift });
+  });
+
   // PR-W-RETRY: read-only admin endpoint exposing K9000 permanent-failure
   // and compensation-failure alerts. The MachineCommandService writes these
   // rows when a wallet-funded session times out after all retries (severity

@@ -34,6 +34,17 @@ import { Link, useLocation } from "wouter";
 import NayaxMonitoring from "@/components/admin/NayaxMonitoring";
 import { LineChart, Line, AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from 'recharts';
 
+// Control Tower — read-only "today" snapshot from /api/admin/control-tower.
+// Each sub-object may be null if its source query failed server-side.
+interface ControlTower {
+  generatedAt: string;
+  salesToday: { count: number; totalIls: number } | null;
+  stations: { active: number; offline: number; total: number } | null;
+  faults: { open: number; critical: number } | null;
+  stock: { lowCount: number } | null;
+  egift: { soldToday: number; unredeemed: number } | null;
+}
+
 interface DashboardStats {
   totalUsers: number;
   activeSubscriptions: number;
@@ -137,6 +148,13 @@ export default function AdminDashboard() {
   // Legacy stats for backwards compatibility
   const { data: stats, isLoading: statsLoading } = useQuery<DashboardStats>({
     queryKey: ['/api/admin/dashboard/stats'],
+    refetchInterval: 30000,
+  });
+
+  // Control Tower — read-only "today" business snapshot (sales, stations,
+  // faults, low stock, eGift). Aggregates data that already exists in the DB.
+  const { data: controlTower } = useQuery<ControlTower>({
+    queryKey: ['/api/admin/control-tower'],
     refetchInterval: 30000,
   });
 
@@ -304,6 +322,105 @@ export default function AdminDashboard() {
                   <div className="flex justify-between text-xs">
                     <span className="text-gray-600">Success: {overview?.transactions.completed || 0}</span>
                     <span className="text-gray-600">Failed: {overview?.transactions.failed || 0}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Control Tower — today's live business snapshot.
+                Read-only aggregation of existing DB data (/api/admin/control-tower). */}
+            <div>
+              <div className="flex items-baseline justify-between mb-4">
+                <h3 className="text-lg font-semibold text-black flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-emerald-700" />
+                  <span>Control Tower — Today</span>
+                </h3>
+                {controlTower?.generatedAt && (
+                  <span className="text-xs text-black/40">
+                    Updated {new Date(controlTower.generatedAt).toLocaleTimeString()}
+                  </span>
+                )}
+              </div>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                {/* Sales today */}
+                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-sales">
+                  <div className="flex items-center gap-2 mb-3">
+                    <DollarSign className="h-5 w-5 text-emerald-700" />
+                    <span className="text-xs font-medium text-black/50">Sales Today</span>
+                  </div>
+                  <div className="text-2xl font-semibold text-black">
+                    {controlTower?.salesToday
+                      ? `₪${controlTower.salesToday.totalIls.toLocaleString()}`
+                      : '—'}
+                  </div>
+                  <div className="mt-1 text-xs text-black/50">
+                    {controlTower?.salesToday
+                      ? `${controlTower.salesToday.count} payment${controlTower.salesToday.count === 1 ? '' : 's'}`
+                      : 'unavailable'}
+                  </div>
+                </div>
+
+                {/* Stations */}
+                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-stations">
+                  <div className="flex items-center gap-2 mb-3">
+                    <MapPin className="h-5 w-5 text-emerald-700" />
+                    <span className="text-xs font-medium text-black/50">Stations</span>
+                  </div>
+                  <div className="text-2xl font-semibold text-black">
+                    {controlTower?.stations
+                      ? `${controlTower.stations.active}/${controlTower.stations.total}`
+                      : '—'}
+                  </div>
+                  <div className="mt-1 text-xs text-black/50">
+                    {controlTower?.stations
+                      ? `${controlTower.stations.offline} offline`
+                      : 'unavailable'}
+                  </div>
+                </div>
+
+                {/* Open faults */}
+                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-faults">
+                  <div className="flex items-center gap-2 mb-3">
+                    <AlertTriangle className={`h-5 w-5 ${controlTower?.faults && controlTower.faults.critical > 0 ? 'text-red-600' : 'text-emerald-700'}`} />
+                    <span className="text-xs font-medium text-black/50">Open Faults</span>
+                  </div>
+                  <div className={`text-2xl font-semibold ${controlTower?.faults && controlTower.faults.open > 0 ? 'text-red-600' : 'text-black'}`}>
+                    {controlTower?.faults ? controlTower.faults.open : '—'}
+                  </div>
+                  <div className="mt-1 text-xs text-black/50">
+                    {controlTower?.faults
+                      ? `${controlTower.faults.critical} critical`
+                      : 'unavailable'}
+                  </div>
+                </div>
+
+                {/* Low stock */}
+                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-stock">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Package className={`h-5 w-5 ${controlTower?.stock && controlTower.stock.lowCount > 0 ? 'text-amber-600' : 'text-emerald-700'}`} />
+                    <span className="text-xs font-medium text-black/50">Low Stock</span>
+                  </div>
+                  <div className={`text-2xl font-semibold ${controlTower?.stock && controlTower.stock.lowCount > 0 ? 'text-amber-600' : 'text-black'}`}>
+                    {controlTower?.stock ? controlTower.stock.lowCount : '—'}
+                  </div>
+                  <div className="mt-1 text-xs text-black/50">
+                    {controlTower?.stock ? 'items at/below min' : 'unavailable'}
+                  </div>
+                </div>
+
+                {/* eGift */}
+                <div className="rounded-2xl border border-black/10 bg-white p-5 shadow-sm" data-testid="ct-egift">
+                  <div className="flex items-center gap-2 mb-3">
+                    <Sparkles className="h-5 w-5 text-emerald-700" />
+                    <span className="text-xs font-medium text-black/50">eGift</span>
+                  </div>
+                  <div className="text-2xl font-semibold text-black">
+                    {controlTower?.egift ? controlTower.egift.soldToday : '—'}
+                  </div>
+                  <div className="mt-1 text-xs text-black/50">
+                    {controlTower?.egift
+                      ? `sold today · ${controlTower.egift.unredeemed} unredeemed`
+                      : 'unavailable'}
                   </div>
                 </div>
               </div>
