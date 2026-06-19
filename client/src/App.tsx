@@ -55,6 +55,7 @@ const MyExpenses = lazy(() => import("@/pages/MyExpenses"));
 const ApproveExpenses = lazy(() => import("@/pages/ApproveExpenses"));
 const AdminSupplierInvoices = lazy(() => import("@/pages/AdminSupplierInvoices"));
 const AdminNoLostMoney = lazy(() => import("@/pages/AdminNoLostMoney"));
+const AdminReminderPreview = lazy(() => import("@/pages/AdminReminderPreview"));
 const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoiceDetail"));
 const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
 const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
@@ -2447,6 +2448,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminNoLostMoney />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/reminder-preview">
+          {() => (
+            <AdminRouteGuard>
+              <AdminReminderPreview />
             </AdminRouteGuard>
           )}
         </Route>
