@@ -270,6 +270,7 @@ const AdminMayaAudit = lazy(() => import("@/pages/admin/maya/AdminMayaAudit"));
 const AdminSecurityMonitoring = lazy(() => import("@/pages/AdminSecurityMonitoring"));
 const AdminCeoReport = lazy(() => import("@/pages/AdminCeoReport"));
 const AdminRetention = lazy(() => import("@/pages/AdminRetention"));
+const AdminStockReports = lazy(() => import("@/pages/AdminStockReports"));
 const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower"));
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
 const PerformanceMonitoring = lazy(() => import("@/pages/PerformanceMonitoring"));
@@ -2193,6 +2194,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminRetention />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Admin route - Stock Prediction (§10) + Automatic Reports (§24), read-only */}
+        <Route path="/admin/stock-reports">
+          {() => (
+            <AdminRouteGuard>
+              <AdminStockReports />
             </AdminRouteGuard>
           )}
         </Route>
