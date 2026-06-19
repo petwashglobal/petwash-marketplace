@@ -20,6 +20,7 @@ import { db } from '../db';
 import { purchases } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { resolveWashDiscount, applyWashDiscountCents, type WashDiscount } from '../services/memberDiscount';
 
 const router = Router();
 
@@ -99,7 +100,31 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
   // disabled" is enforced here, not left to a downstream switch default.
   const order = resolvePhase1Order(sku, topupIls);
   if (!order) return res.status(400).json({ error: 'product_not_purchasable' });
-  const { amountCents, productType: resolvedProductType, surface: resolvedSurface, washCount, description } = order;
+  const { amountCents: grossCents, productType: resolvedProductType, surface: resolvedSurface, washCount, description } = order;
+
+  // ── Member wash discount (server-authoritative). Applies to K9000 WASH SKUs
+  //    ONLY — single wash + wash packages, which are the catalog's kiosk-surface
+  //    products. NEVER to wallet top-up / eGift / shop / other services. The
+  //    discount percent is resolved server-side from loyalty membership
+  //    (Prestige Basic = automatic 5%) and any admin-approved senior/disability
+  //    record; the client cannot influence it. Capped at 10%.
+  const isWashSku = resolvedSurface === 'kiosk'
+    && (resolvedProductType === 'SINGLE_WASH' || resolvedProductType === 'WASH_PACKAGE');
+  let amountCents = grossCents;
+  let washDiscount: { percent: number; source: WashDiscount['source'] } = { percent: 0, source: 'none' };
+  let discountCents = 0;
+  if (isWashSku) {
+    const resolved = await resolveWashDiscount(uid);
+    if (resolved.percent > 0) {
+      const applied = applyWashDiscountCents(grossCents, resolved.percent);
+      amountCents = applied.netCents;
+      discountCents = applied.discountCents;
+      washDiscount = { percent: applied.percent, source: resolved.source };
+      logger.info('[SumitPay] member wash discount applied', {
+        uid, sku, grossCents, netCents: amountCents, percent: applied.percent, source: resolved.source,
+      });
+    }
+  }
   const amountIls = amountCents / 100;
 
   const externalId = orderId || `pw-${uid}-${Date.now().toString(36)}`;
@@ -130,7 +155,17 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
         // the client — activation reads metadataJson.washCount but the client
         // can no longer influence it. Client `metadata` is spread first so it
         // can never override the server keys that follow.
-        metadataJson: { ...(metadata ?? {}), description, sku, ...(washCount != null ? { washCount } : {}) },
+        metadataJson: {
+          ...(metadata ?? {}),
+          description,
+          sku,
+          ...(washCount != null ? { washCount } : {}),
+          // Discount line-item facts (server-owned). grossCents is the catalog
+          // price before discount; amountCents (above) is what we actually charge.
+          ...(discountCents > 0
+            ? { washDiscount: { percent: washDiscount.percent, source: washDiscount.source, grossCents, discountCents, netCents: amountCents } }
+            : {}),
+        },
       });
     }
   } catch (err: any) {
@@ -155,7 +190,15 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
 
   if (!result.wired) return res.status(503).json({ error: 'Payments not enabled yet', reason: result.reason });
   if (!result.redirectUrl) return res.status(502).json({ error: 'Could not start payment', reason: result.reason });
-  return res.json({ ok: true, redirectUrl: result.redirectUrl, externalId });
+  return res.json({
+    ok: true,
+    redirectUrl: result.redirectUrl,
+    externalId,
+    // Surface the discount as a line item so the client can show the savings.
+    ...(discountCents > 0
+      ? { discount: { percent: washDiscount.percent, source: washDiscount.source, grossCents, discountCents, netCents: amountCents } }
+      : {}),
+  });
 });
 
 // GET /api/payments/sumit/return  (SUMIT redirects the customer back here)

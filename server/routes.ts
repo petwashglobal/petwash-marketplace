@@ -159,6 +159,8 @@ import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami
 import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
+import adminMemberDiscountRoutes from "./routes/admin-member-discount";
+import memberDiscountRoutes from "./routes/member-discount";
 import adminRetentionRouter from "./routes/admin-retention";
 import adminBrainRoutes from "./routes/admin-brain";
 import adminBridgeRoutes from "./routes/admin-bridge";
@@ -11394,6 +11396,10 @@ self.addEventListener('notificationclick', (event) => {
   // auth (docstring claimed aspirational protection that wasn't wired) —
   // adding validateFirebaseToken here closes that gap.
   app.use('/api/admin/loyalty', validateFirebaseToken, adminLimiter, adminLoyaltyRoutes);
+  // Member wash discount engine — set/approve/revoke senior & disability wash
+  // discounts (postal review). requireAdmin inside the router; mutations are
+  // audit-logged. Stores NO ID/passport data — only the approved percent.
+  app.use('/api/admin/member-discount', validateFirebaseToken, adminLimiter, adminMemberDiscountRoutes);
   // Winback Engine (§27) + Review Engine logic (§26) — READ-ONLY preview. Each route uses requireAdmin internally.
   app.use('/api/admin', validateFirebaseToken, adminLimiter, adminRetentionRouter);
   // Operations Brain (CEO read-only dashboard).
@@ -11860,6 +11866,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/prestige-pass', apiLimiter, optionalFirebaseToken, prestigePassRoutes);
   // SUMIT hosted-page payments (PCI-safe; UPay clears underneath). Sandbox until SUMIT_SANDBOX=false.
   app.use('/api/payments/sumit', apiLimiter, paymentsSumitRoutes);
+  // Member self-read of their resolved K9000 wash discount (for the price note).
+  app.use('/api/member', apiLimiter, memberDiscountRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across
