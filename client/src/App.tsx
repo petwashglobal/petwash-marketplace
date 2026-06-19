@@ -57,6 +57,7 @@ const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoi
 const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
 const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
 const AdminSumitControl = lazy(() => import("@/pages/AdminSumitControl"));
+const PaymentSuccess = lazy(() => import("@/pages/PaymentSuccess"));
 const ProviderMyInvoices = lazy(() => import("@/pages/ProviderMyInvoices"));
 const AccountantQueue = lazy(() => import("@/pages/AccountantQueue"));
 const StaffApplication = lazy(() => import("@/pages/StaffApplication"));
@@ -1028,6 +1029,22 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/gift-cards">
           {() => <EGift />}
+        </Route>
+        {/* SUMIT redirects the customer to /payment-success or /payment-failed after
+            the hosted-payment page. These were NOT routed → customers hit a 404 after
+            paying. Route them so the journey completes. (Failed page is honest: no
+            false "success"; deeper ref→voucher detail wiring is a follow-up.) */}
+        <Route path="/payment-success">
+          {() => <PaymentSuccess language={language} />}
+        </Route>
+        <Route path="/payment-failed">
+          {() => (
+            <div dir={language === 'he' ? 'rtl' : 'ltr'} className="min-h-[100dvh] flex flex-col items-center justify-center bg-white text-black px-6 text-center gap-4">
+              <h1 className="text-2xl font-semibold">{language === 'he' ? 'התשלום לא הושלם' : 'Payment not completed'}</h1>
+              <p className="text-black/60 max-w-md">{language === 'he' ? 'התשלום לא הושלם. אם חויבת, פנה לתמיכה. אפשר לנסות שוב.' : 'Your payment was not completed. If you were charged, please contact support. You can try again.'}</p>
+              <a href="/" className="rounded-lg bg-[#047857] text-white px-5 py-2.5 text-sm font-medium">{language === 'he' ? 'חזרה לדף הבית' : 'Back to home'}</a>
+            </div>
+          )}
         </Route>
         <Route path="/e-gifts">
           {() => <EGift />}
