@@ -621,6 +621,43 @@ export async function postLoginDecider(req: Request, res: Response) {
     let effectiveRole = (u as any).role || userRole || 'customer';
     const missingFields = getMissingFields(u, effectiveRole);
 
+    // ── IDENTITY MERGE — SHADOW MODE (observational only) ──────────────────
+    // Mission D shadow probe. The real user resolution above is UNCHANGED:
+    // `u`/`userId` are exactly what the existing logic produced. This block
+    // ONLY READS — it asks "given this Firebase identity, would the unified-
+    // identity flag link this login to a DIFFERENT existing user (by verified
+    // email or verified phone)?" If yes → log + record an audit breadcrumb.
+    // It NEVER merges, NEVER calls loginOrLink/linkIdentity, NEVER flips the
+    // IDENTITY_UNIFIED_ENABLED flag, NEVER mutates any row, and runs
+    // regardless of the flag. Fully wrapped in try/catch — a shadow failure
+    // can never affect login. Fire-and-forget so it never adds latency.
+    try {
+      const fbAdminModule = await import('../lib/firebase-admin');
+      const fbAuth = fbAdminModule.auth;
+      if (fbAuth) {
+        const fbUser = await fbAuth.getUser(userId);
+        const providerId = fbUser.providerData?.[0]?.providerId || (fbUser.email ? 'password' : 'unknown');
+        const { runShadowMergeProbe } = await import('../identity/shadowMergeDetect');
+        // Fire-and-forget: do not await — never delay the login response.
+        void runShadowMergeProbe({
+          currentUserId: userId,
+          provider: providerId,
+          email: fbUser.email ?? null,
+          emailVerified: !!fbUser.emailVerified,
+          phone: fbUser.phoneNumber ?? null,
+          // A Firebase-provisioned phoneNumber is provider-verified by definition.
+          phoneVerified: !!fbUser.phoneNumber,
+          ip: getClientIP(req) || req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          traceId: (req as any).traceId || '',
+        }).catch(() => { /* fail-soft — runShadowMergeProbe already swallows */ });
+      }
+    } catch (shadowErr) {
+      logger.warn('[IdentityShadow] post-login shadow probe skipped (non-blocking)', {
+        userId, error: String(shadowErr),
+      });
+    }
+
     let providerApp: any = null;
     let staffReq: any = null;
 

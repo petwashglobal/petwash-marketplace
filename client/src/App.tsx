@@ -58,6 +58,7 @@ const AdminNoLostMoney = lazy(() => import("@/pages/AdminNoLostMoney"));
 const AdminReminderPreview = lazy(() => import("@/pages/AdminReminderPreview"));
 const AdminSupplierInvoiceDetail = lazy(() => import("@/pages/AdminSupplierInvoiceDetail"));
 const AdminSuppliers = lazy(() => import("@/pages/AdminSuppliers"));
+const AdminIdentityMerge = lazy(() => import("@/pages/AdminIdentityMerge"));
 const AdminSupplierDetail = lazy(() => import("@/pages/AdminSupplierDetail"));
 const AdminSumitControl = lazy(() => import("@/pages/AdminSumitControl"));
 const PaymentSuccess = lazy(() => import("@/pages/PaymentSuccess"));
@@ -2493,6 +2494,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminSuppliers />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/identity-merge">
+          {() => (
+            <AdminRouteGuard>
+              <AdminIdentityMerge />
             </AdminRouteGuard>
           )}
         </Route>

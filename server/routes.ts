@@ -16,6 +16,7 @@ import { GoogleMessagingService } from "./services/GoogleMessagingService";
 import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
+import adminIdentityMergeRoutes from "./routes/admin-identity-merge";
 import adminSumitRoutes from "./routes/admin-sumit";
 import supplierFraudFlagsRoutes from "./routes/supplier-fraud-flags";
 import providerInsuranceRoutes from "./routes/provider-insurance";
@@ -10957,6 +10958,7 @@ self.addEventListener('notificationclick', (event) => {
   // so mounting here is a safe no-op until the flag is flipped.
   app.use('/api/supplier-invoices', supplierInvoiceRoutes);
   app.use('/api/admin/suppliers', adminSuppliersRoutes);
+  app.use('/api/admin', adminIdentityMergeRoutes); // GET /identity-merge-candidates — SHADOW, read-only
   app.use('/api/admin/sumit', adminSumitRoutes);
   // Supplier Fraud Control (spec §20) — READ-ONLY detector. Same flag gate as
   // supplier-invoices (404 when ff.supplier_invoice_control.enabled is OFF).
