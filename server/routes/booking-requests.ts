@@ -2061,6 +2061,11 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
 
     // ENTERPRISE: Send email receipt to owner
     const recipientEmail = validEmail ? ownerEmail : (req.user?.email || req.firebaseUser?.email);
+    // Honest delivery flag. EmailService.send() returns FALSE on failure
+    // (it does NOT throw), so we must read the boolean — reporting
+    // emailSent based only on "an address exists" hides real failures
+    // from a customer who paid and got no receipt.
+    let receiptEmailDelivered = false;
     if (recipientEmail) {
       try {
         const receiptHtml = `
@@ -2096,15 +2101,20 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
             </div>
           </div>`;
 
-        await EmailService.send({
+        const delivered = await EmailService.send({
           to: recipientEmail,
           subject: `Pet Wash™ Booking Receipt - ${requestId}`,
           html: receiptHtml,
           from: 'noreply@petwash.co.il',
         });
-        logger.info('[BookingRequests] Receipt email sent', { requestId, email: recipientEmail });
+        receiptEmailDelivered = delivered;
+        if (delivered) {
+          logger.info('[BookingRequests] Receipt email sent', { requestId, email: recipientEmail });
+        } else {
+          logger.error('[BookingRequests] Receipt email NOT delivered (EmailService returned false)', { requestId, email: recipientEmail });
+        }
       } catch (emailErr: any) {
-        logger.warn('[BookingRequests] Email receipt failed', { error: emailErr.message });
+        logger.error('[BookingRequests] Email receipt failed', { requestId, error: emailErr.message });
       }
     }
     
@@ -2245,6 +2255,9 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
       payoutETA: '72 hours',
       smsSent: !!ownerPhone,
       emailSent: !!recipientEmail,
+      // Honest delivery status: true ONLY when EmailService confirmed the
+      // receipt actually went out (not merely that an address existed).
+      emailDelivered: receiptEmailDelivered,
       message: 'Thank you! Payment has been released to the provider and will be transferred within 72 hours.',
     });
   } catch (error: any) {

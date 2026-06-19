@@ -64,10 +64,10 @@ describe("A. isGooglePlacesServerEnabled — env matrix", () => {
     ).toBe(false);
   });
 
-  it("returns true in production when the flag is unset (preserves current behaviour)", () => {
+  it("returns false in production when the flag is unset (COST GUARD 2026-06-19: paid Places OFF by default)", () => {
     expect(
       isGooglePlacesServerEnabled({ NODE_ENV: "production" } as any),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("returns true when GOOGLE_PLACES_LIVE=true regardless of NODE_ENV", () => {
@@ -115,7 +115,7 @@ describe("A. isGooglePlacesServerEnabled — env matrix", () => {
     ).toBe(false);
   });
 
-  it("any non-true/non-false string falls back to NODE_ENV default", () => {
+  it("any non-'true' string is OFF regardless of NODE_ENV (COST GUARD: only explicit 'true' enables)", () => {
     expect(
       isGooglePlacesServerEnabled({
         NODE_ENV: "development",
@@ -127,7 +127,7 @@ describe("A. isGooglePlacesServerEnabled — env matrix", () => {
         NODE_ENV: "production",
         GOOGLE_PLACES_LIVE: "1",
       } as any),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("flag name constant matches the env var read", () => {
@@ -308,7 +308,7 @@ describe("E. .env.example — flag documented", () => {
     expect(ENV_SRC).toMatch(/PROGRAM\.md\s+§1\.12/);
   });
 
-  it("explains the production-default-on / dev-default-off behaviour", () => {
+  it("documents the default-OFF cost guard and the 503 fallback", () => {
     expect(ENV_SRC).toMatch(/NODE_ENV=production/);
     expect(ENV_SRC).toMatch(/PLACES_DISABLED/);
   });
