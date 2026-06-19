@@ -110,6 +110,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Deadlines & Insurance', labelHe: 'תזכורות וביטוחים', path: '/admin/deadlines', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Renewal/expiry feed + insurance status', hintHe: 'תזכורות חידוש/תפוגה + סטטוס ביטוח' },
       { label: 'Franchise', labelHe: 'זכיינות', path: '/admin/franchise', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Franchise operations', hintHe: 'תפעול זכיינות' },
       { label: 'JV Partners', labelHe: 'שותפי מיזם', path: '/admin/jv-partners', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Joint-venture management', hintHe: 'ניהול מיזמים משותפים' },
+      { label: 'Buildings & Partner Reports', labelHe: 'בניינים ודוחות שותפים', path: '/admin/buildings-partners', icon: Building2, roles: ['admin', 'ceo'], hint: 'Building/resident program + partner reports', hintHe: 'תוכנית בניינים/דיירים ודוחות שותפים' },
       { label: 'Vouchers', labelHe: 'שוברים', path: '/admin/vouchers', icon: Gift, roles: ['admin', 'ceo'], hint: 'Gift cards & coupons', hintHe: 'כרטיסי מתנה וקופונים' },
     ],
   },
