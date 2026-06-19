@@ -78,6 +78,18 @@ export const petProfileSchema = z.object({
   preferredShampoo: z.string().optional(),
   microchip: z.string().optional(),
   vetName: z.string().optional(),
+  // ── PET CARE PROFILE (Phase 1, 2026-06-20) ──────────────────────────────────
+  // SCHEMA-ADD [FLAG]: additive Zod fields. Pets are stored in Firestore
+  // (users/{uid}/pets/{petId}) which is schemaless — NO SQL migration is needed.
+  // These are PRIVATE owner-declared care fields: never public, never marketing.
+  // They are shared with a service provider ONLY when the owner opts in elsewhere
+  // (see pets.medicalShareConsent gating in the Postgres mirror / petPrivacy).
+  sensitiveSkin: z.boolean().optional(),               // calmer wash settings
+  behaviourNotes: z.string().max(1000).optional(),     // temperament/handling free-text
+  aggressionWarning: z.boolean().optional(),           // owner-declared safety flag
+  escapeRisk: z.boolean().optional(),                  // owner-declared safety flag
+  feedingInstructions: z.string().max(1000).optional(),
+  handlingInstructions: z.string().max(1000).optional(),
   vaccineDates: z.object({
     rabies: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" }).optional(), // YYYY-MM-DD
     dhpp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" }).optional(),
@@ -752,7 +764,21 @@ export const FIRESTORE_PATHS = {
   
   PETS: (uid: string, petId?: string) =>
     petId ? `users/${uid}/pets/${petId}` : `users/${uid}/pets`,
-  
+
+  // Pet Passport / Document Vault (Phase 1, 2026-06-20).
+  // Owner-uploaded documents (vaccine card, pedigree, insurance, etc.). The
+  // FILE itself lives in PRIVATE GCS; this Firestore doc holds metadata only
+  // (no public URL). Visibility is owner_only by default.
+  PET_DOCUMENTS: (uid: string, petId: string, docId?: string) =>
+    docId
+      ? `users/${uid}/pets/${petId}/documents/${docId}`
+      : `users/${uid}/pets/${petId}/documents`,
+  // Append-only access log: who viewed/downloaded which pet document, when.
+  PET_DOCUMENT_ACCESS_LOG: (uid: string, petId: string, docId: string, entryId?: string) =>
+    entryId
+      ? `users/${uid}/pets/${petId}/documents/${docId}/accessLog/${entryId}`
+      : `users/${uid}/pets/${petId}/documents/${docId}/accessLog`,
+
   VOUCHERS: (code: string) => `vouchers/${code}`,
   
   CAMPAIGNS: (campaignId?: string) =>

@@ -11219,6 +11219,17 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/pets', apiLimiter, petsRoutes.default);
   app.use('/api', apiLimiter, petCareTimelineRouter); // Pet-Care Timeline (§5) + Smart-Reminders PREVIEW (§6) — read-only
 
+  // Pet Passport — Document Vault (Phase 1). PRIVATE storage + short-lived signed
+  // view URLs + access-logged. Router enforces validateFirebaseToken per-route.
+  const petDocumentsRoutes = await import('./routes/pet-documents');
+  app.use('/api/pet-documents', apiLimiter, petDocumentsRoutes.default);
+
+  // Consent Center + Notification Preferences (Phase 1). Reuses userConsents +
+  // notificationPreferences. validateFirebaseToken populates req.user.id, which
+  // the router's requireAuth + getUserId rely on.
+  const consentCenterRoutes = await import('./routes/consent-center');
+  app.use('/api/consent-center', validateFirebaseToken, apiLimiter, consentCenterRoutes.default);
+
   // Business Legal ID documents (compliance-role only — normal users receive 403)
   const businessLegalIdRoutes = await import('./routes/business-legal-id');
   app.use('/api/business-legal-id', apiLimiter, businessLegalIdRoutes.default);

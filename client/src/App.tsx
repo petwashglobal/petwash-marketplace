@@ -164,6 +164,11 @@ const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
 const PetWashInbox = lazy(() => import("@/pages/PetWashInbox")); // unified luxury inbox (Messages + Concierge + Alerts) — replaced the old Inbox.tsx
 const Pets = lazy(() => import("@/pages/Pets"));
 const PetPassport = lazy(() => import("@/pages/PetPassport"));
+// Pet Owner / Passport / Consent Phase 1 (2026-06-20)
+const PetCareProfile = lazy(() => import("@/pages/PetCareProfile"));
+const PetDocuments = lazy(() => import("@/pages/PetDocuments"));
+const ConsentCenter = lazy(() => import("@/pages/ConsentCenter"));
+const NotificationPreferencesScreen = lazy(() => import("@/pages/NotificationPreferencesScreen"));
 // PR-PET-4: pet onboarding luxury shell. Mounted only when
 // VITE_PET_ONBOARDING_SHELL_ENABLED='true'. Local-state only, no
 // backend persistence, no schema writes. See
@@ -1347,6 +1352,35 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <PetPassport />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Pet Owner / Passport / Consent — Phase 1 (2026-06-20) */}
+        <Route path="/pets/:petId/care">
+          {() => (
+            <RequireAuth>
+              <PetCareProfile />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/pets/:petId/documents">
+          {() => (
+            <RequireAuth>
+              <PetDocuments />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/consent-center">
+          {() => (
+            <RequireAuth>
+              <ConsentCenter />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/notification-preferences">
+          {() => (
+            <RequireAuth>
+              <NotificationPreferencesScreen />
             </RequireAuth>
           )}
         </Route>
