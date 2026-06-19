@@ -15855,10 +15855,16 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
+  // DEPRECATED legacy endpoints — repointed to the canonical Postgres
+  // notification_preferences store (same as /api/consent-center, PR #905). They
+  // previously called notificationConsentManager.getUserNotificationPreferences /
+  // updateNotificationPreferences, which DON'T EXIST on that (Firestore-backed)
+  // class → 500 for every caller. Consolidated here to ONE store. Prefer
+  // /api/consent-center + /api/notification-preferences going forward.
   app.get('/api/monitoring/notifications/preferences/:userId', requireAuth, async (req, res) => {
     try {
-      const preferences = await notificationConsentManager.getUserNotificationPreferences(req.params.userId);
-      res.json(preferences);
+      const { readNotificationPrefs } = await import('./lib/notificationPrefsCompat');
+      res.json(await readNotificationPrefs(req.params.userId));
     } catch (error: any) {
       logger.error('[NotificationConsent] Get preferences failed', error);
       res.status(500).json({ error: error.message });
@@ -15867,7 +15873,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.put('/api/monitoring/notifications/preferences/:userId', requireAuth, async (req, res) => {
     try {
-      await notificationConsentManager.updateNotificationPreferences(req.params.userId, req.body);
+      const { writeNotificationPrefs } = await import('./lib/notificationPrefsCompat');
+      await writeNotificationPrefs(req.params.userId, req.body, { ip: req.ip, actor: (req as any).user?.uid });
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Update preferences failed', error);
@@ -16004,21 +16011,10 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   app.get('/api/user/notification-preferences', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user?.uid || 'anonymous';
-      const preferences = await notificationConsentManager.getUserNotificationPreferences(userId);
-      
-      res.json({
-        success: true,
-        data: {
-          emailEnabled: preferences.email || false,
-          smsEnabled: preferences.sms || false,
-          pushEnabled: preferences.push || false,
-          marketingEmails: preferences.marketing || false,
-          transactionalEmails: true,
-          securityAlerts: true,
-          loyaltyUpdates: preferences.loyalty || false,
-          appointmentReminders: true,
-        }
-      });
+      // Canonical Postgres store (see notificationPrefsCompat). Replaces the
+      // nonexistent notificationConsentManager.getUserNotificationPreferences.
+      const { readNotificationPrefs } = await import('./lib/notificationPrefsCompat');
+      res.json({ success: true, data: await readNotificationPrefs(userId) });
     } catch (error: any) {
       logger.error('[NotificationPreferences] Get preferences failed', error);
       res.status(500).json({ error: error.message });
@@ -16028,28 +16024,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   app.patch('/api/user/notification-preferences', requireAuth, async (req, res) => {
     try {
       const userId = (req as any).user?.uid || 'anonymous';
-      const updates = req.body;
-      
-      const consentMap: Record<string, string> = {
-        emailEnabled: 'email',
-        smsEnabled: 'sms',
-        pushEnabled: 'push',
-        marketingEmails: 'marketing',
-        loyaltyUpdates: 'loyalty',
-      };
-      
-      for (const [key, provider] of Object.entries(consentMap)) {
-        if (key in updates) {
-          await notificationConsentManager.recordConsentChange({
-            userId,
-            provider,
-            action: updates[key] ? 'granted' : 'revoked',
-            method: 'web_settings',
-            ipAddress: req.ip || 'unknown',
-          });
-        }
-      }
-      
+      // Canonical Postgres store + per-channel marketing consent timestamps +
+      // audit (see notificationPrefsCompat). Replaces the nonexistent
+      // notificationConsentManager.recordConsentChange.
+      const { writeNotificationPrefs } = await import('./lib/notificationPrefsCompat');
+      await writeNotificationPrefs(userId, req.body, { ip: req.ip, actor: userId });
       res.json({ success: true, message: 'Preferences updated successfully' });
     } catch (error: any) {
       logger.error('[NotificationPreferences] Update preferences failed', error);
