@@ -252,6 +252,7 @@ const LogisticsDashboard = lazy(() => import("@/pages/LogisticsDashboard"));
 const FinanceDashboard = lazy(() => import("@/pages/FinanceDashboard"));
 const UnifiedEntityManagement = lazy(() => import("@/pages/UnifiedEntityManagement"));
 const PolicyManagementDashboard = lazy(() => import("@/pages/PolicyManagementDashboard"));
+const AdminDeadlines = lazy(() => import("@/pages/AdminDeadlines"));
 const FranchiseManagementDashboard = lazy(() => import("@/pages/FranchiseManagementDashboard"));
 const AdminRouteGuard = lazy(() => import("@/components/AdminRouteGuard").then(m => ({ default: m.AdminRouteGuard })));
 // Maya Stage 2 — admin UI lazy imports
@@ -3366,6 +3367,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <PolicyManagementDashboard />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/deadlines">
+          {() => (
+            <AdminRouteGuard>
+              <AdminDeadlines />
             </AdminRouteGuard>
           )}
         </Route>

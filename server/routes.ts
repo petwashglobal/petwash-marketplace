@@ -332,6 +332,7 @@ import mayaVoiceWebhookRouter from './routes/maya-voice-webhook';
 import adminMayaVoiceRouter from './routes/admin-maya-voice';
 import aiBookingRouter from './routes/ai-booking';
 import adminPaymentDevicesRouter from './routes/admin-payment-devices';
+import adminDeadlinesRouter from './routes/admin-deadlines';
 import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
 import adminStationHealthRouter from './routes/admin-station-health';
 import adminFaultIntelRouter from './routes/admin-fault-intel';
@@ -11391,6 +11392,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin/coworker', validateFirebaseToken, adminLimiter, coworkerRoutes);
   app.use('/api/admin', validateFirebaseToken, adminLimiter, adminNotificationsRoutes);
   app.use('/api/admin/paw-finder', validateFirebaseToken, adminLimiter, adminPawFinderRoutes);
+  app.use('/api/admin', adminLimiter, adminDeadlinesRouter); // READ-ONLY deadlines + insurance-status (auth inside router)
   app.use('/api/admin/system-events', adminLimiter, systemEventsAdminRoutes);
   app.use('/api/admin/spam-guard', validateFirebaseToken, adminLimiter, spamGuardRoutes);
 

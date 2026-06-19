@@ -105,6 +105,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     items: [
       { label: 'KYC Review', labelHe: 'בדיקת זהות (KYC)', path: '/admin/kyc', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Identity & document review', hintHe: 'אימות זהות ובדיקת מסמכים' },
       { label: 'Policy & Compliance', labelHe: 'מדיניות וציות', path: '/admin/policy', icon: FileText, roles: ['admin', 'ceo'], hint: 'Governance docs', hintHe: 'מסמכי ממשל' },
+      { label: 'Deadlines & Insurance', labelHe: 'תזכורות וביטוחים', path: '/admin/deadlines', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Renewal/expiry feed + insurance status', hintHe: 'תזכורות חידוש/תפוגה + סטטוס ביטוח' },
       { label: 'Franchise', labelHe: 'זכיינות', path: '/admin/franchise', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Franchise operations', hintHe: 'תפעול זכיינות' },
       { label: 'JV Partners', labelHe: 'שותפי מיזם', path: '/admin/jv-partners', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Joint-venture management', hintHe: 'ניהול מיזמים משותפים' },
       { label: 'Vouchers', labelHe: 'שוברים', path: '/admin/vouchers', icon: Gift, roles: ['admin', 'ceo'], hint: 'Gift cards & coupons', hintHe: 'כרטיסי מתנה וקופונים' },
