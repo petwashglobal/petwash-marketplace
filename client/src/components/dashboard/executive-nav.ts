@@ -66,6 +66,9 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Sales', labelHe: 'מכירות', path: '/admin/sales', icon: BarChart3, roles: ['admin', 'ceo'], hint: 'Revenue, deals, forecasts', hintHe: 'הכנסות, עסקאות ותחזיות' },
       { label: 'Suppliers', labelHe: 'ספקים', path: '/admin/suppliers', icon: Truck, roles: ['admin', 'ceo'], hint: 'Vendors & invoicing', hintHe: 'ספקים וחשבוניות' },
       { label: 'SUMIT Payments', labelHe: 'תשלומי SUMIT', path: '/admin/sumit', icon: Receipt, roles: ['admin', 'ceo'], hint: 'Invoicing & charge status', hintHe: 'חשבוניות וסטטוס חיובים' },
+      // Was a "ghost" page: routed at /admin/supplier-invoices but missing from this
+      // menu, so admins couldn't reach it. Surfaced here (2026-06-19).
+      { label: 'Supplier Invoices', labelHe: 'חשבוניות ספק', path: '/admin/supplier-invoices', icon: FileText, roles: ['admin', 'ceo'], hint: 'Vendor invoices & approval', hintHe: 'חשבוניות ספקים ואישור' },
     ],
   },
   {
