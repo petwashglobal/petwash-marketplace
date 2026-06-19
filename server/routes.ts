@@ -4822,6 +4822,22 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // LIVE integration fault-detector ("the guard"). Unlike config-health
+  // (presence-only), this runs real bounded probes — DB ping, Firebase token
+  // sign, Twilio SID format, Redis reachability, Maps cost flag, webhook
+  // secrets, the __session cookie name — and returns red/green so ops/CEO can
+  // SEE which integration is silently broken. Never returns a secret value.
+  app.get('/api/admin/integrations-health', requireAdmin, async (_req: any, res) => {
+    try {
+      const { buildIntegrationHealthReport } = await import('./lib/integrationHealth');
+      const report = await buildIntegrationHealthReport();
+      res.json(report);
+    } catch (error: any) {
+      logger.error('[IntegrationHealth endpoint] failed', { error: error?.message });
+      res.status(500).json({ success: false, message: 'Failed to build integration-health report' });
+    }
+  });
+
   // PR-W-RETRY: read-only admin endpoint exposing K9000 permanent-failure
   // and compensation-failure alerts. The MachineCommandService writes these
   // rows when a wallet-funded session times out after all retries (severity
