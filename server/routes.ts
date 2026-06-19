@@ -158,6 +158,7 @@ import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami
 import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
+import adminRetentionRouter from "./routes/admin-retention";
 import adminBrainRoutes from "./routes/admin-brain";
 import adminBridgeRoutes from "./routes/admin-bridge";
 import coworkerRoutes from "./routes/coworker";
@@ -11374,6 +11375,8 @@ self.addEventListener('notificationclick', (event) => {
   // auth (docstring claimed aspirational protection that wasn't wired) —
   // adding validateFirebaseToken here closes that gap.
   app.use('/api/admin/loyalty', validateFirebaseToken, adminLimiter, adminLoyaltyRoutes);
+  // Winback Engine (§27) + Review Engine logic (§26) — READ-ONLY preview. Each route uses requireAdmin internally.
+  app.use('/api/admin', validateFirebaseToken, adminLimiter, adminRetentionRouter);
   // Operations Brain (CEO read-only dashboard).
   // validateFirebaseToken populates req.firebaseUser so requireBrainAccess
   // (inside adminBrainRoutes) can check super-admin email + role.
