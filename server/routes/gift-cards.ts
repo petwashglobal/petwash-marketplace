@@ -111,8 +111,11 @@ async function sendGiftCardToRecipient(
   message: string | undefined,
   qrCodeDataURL: string,
   deliveryMethod: string
-) {
-  const emailSubject = senderName 
+): Promise<{ emailDelivered: boolean }> {
+  // Honest delivery flag — starts true, flipped to false if the email
+  // send is requested but EmailService reports it did NOT go out.
+  let emailDelivered = true;
+  const emailSubject = senderName
     ? `🎁 You received a ⁦PetWash™⁩ E-Gift Card from ${senderName}!`
     : `🎁 You received a ⁦PetWash™⁩ E-Gift Card!`;
 
@@ -229,9 +232,18 @@ async function sendGiftCardToRecipient(
   // Send via Email
   if (deliveryMethod === 'email' || deliveryMethod === 'both') {
     try {
-      await EmailService.send({ to: recipientEmail, subject: emailSubject, html: emailHtml });
-      logger.info('[E-Gift] Email sent to recipient', { recipientEmail, voucherId: voucher.id });
+      // EmailService.send() returns FALSE on failure (it does NOT throw),
+      // so the boolean MUST be checked — a fire-and-forget `await` here
+      // previously logged SUCCESS even when the customer got nothing.
+      const delivered = await EmailService.send({ to: recipientEmail, subject: emailSubject, html: emailHtml });
+      if (delivered) {
+        logger.info('[E-Gift] Email sent to recipient', { recipientEmail, voucherId: voucher.id });
+      } else {
+        emailDelivered = false;
+        logger.error('[E-Gift] Recipient e-gift email NOT delivered (EmailService returned false)', { recipientEmail, voucherId: voucher.id });
+      }
     } catch (error) {
+      emailDelivered = false;
       logger.error('[E-Gift] Failed to send email to recipient', error, { recipientEmail });
     }
   }
@@ -273,6 +285,8 @@ petwash.co.il
       logger.error('[E-Gift] Failed to send WhatsApp to recipient', error, { recipientPhone });
     }
   }
+
+  return { emailDelivered };
 }
 
 // 📧 SEND LUXURY PURCHASE CONFIRMATION TO BUYER
@@ -305,12 +319,24 @@ async function sendPurchaseConfirmationToBuyer(
     language: options?.language || 'he',
   });
 
+  // Honest delivery flag — EmailService.send() returns FALSE on failure
+  // (it does NOT throw), so the boolean MUST be checked rather than
+  // assuming the await means success.
+  let emailDelivered = true;
   try {
-    await EmailService.send({ to: senderEmail, subject: emailSubject, html: emailHtml });
-    logger.info('[E-Gift] Luxury purchase confirmation sent to buyer', { senderEmail, voucherId, theme: options?.seasonalTheme });
+    const delivered = await EmailService.send({ to: senderEmail, subject: emailSubject, html: emailHtml });
+    if (delivered) {
+      logger.info('[E-Gift] Luxury purchase confirmation sent to buyer', { senderEmail, voucherId, theme: options?.seasonalTheme });
+    } else {
+      emailDelivered = false;
+      logger.error('[E-Gift] Buyer confirmation email NOT delivered (EmailService returned false)', { senderEmail, voucherId });
+    }
   } catch (error) {
+    emailDelivered = false;
     logger.error('[E-Gift] Failed to send confirmation to buyer', error, { senderEmail });
   }
+
+  return { emailDelivered };
 }
 
 // 🎁 PURCHASE E-GIFT CARD (PUBLIC - No Auth Required)
