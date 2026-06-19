@@ -229,6 +229,7 @@ import operationsRoutes from "./routes/operations";
 import passportRoutes from "./routes/passport";
 import pawFinderRoutes from "./routes/paw-finder";
 import petsRoutes from "./routes/pets";
+import petCareTimelineRouter from "./routes/pet-care-timeline";
 import pricingRoutes from "./routes/pricing";
 import providerOnboardingRoutes from "./routes/provider-onboarding";
 import onboardingVerificationRoutes from "./routes/onboarding-verification";
@@ -11201,6 +11202,7 @@ self.addEventListener('notificationclick', (event) => {
   // Pet Profiles routes
   const petsRoutes = await import('./routes/pets');
   app.use('/api/pets', apiLimiter, petsRoutes.default);
+  app.use('/api', apiLimiter, petCareTimelineRouter); // Pet-Care Timeline (§5) + Smart-Reminders PREVIEW (§6) — read-only
 
   // Business Legal ID documents (compliance-role only — normal users receive 403)
   const businessLegalIdRoutes = await import('./routes/business-legal-id');
