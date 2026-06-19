@@ -643,6 +643,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   const { trackLanguageChange } = useAnalytics();
   const [, setLocation] = useLocation();
   const [isProviderApp, setIsProviderApp] = useState(false);
+  const [isCustomerApp, setIsCustomerApp] = useState(false);
   const IS_DEV = import.meta.env.DEV === true;
   
   // Initialize FCM push notifications (auto-registers after login)
@@ -682,7 +683,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       .then(async ({ App: CapApp }) => {
         try {
           const info = await CapApp.getInfo();
-          if (!cancelled) setIsProviderApp(typeof info?.id === 'string' && info.id.includes('.provider'));
+          const id = typeof info?.id === 'string' ? info.id : '';
+          if (!cancelled) {
+            const provider = id.includes('.provider');
+            setIsProviderApp(provider);
+            // CUSTOMER flavor = the native app that is NOT the provider build
+            // (com.petwash.il / il.co.petwash.customer). Web has no native id → both false.
+            setIsCustomerApp(id !== '' && !provider);
+          }
         } catch { /* no native app info (web) */ }
       })
       .catch(() => { /* web — no Capacitor plugin */ });
@@ -693,14 +701,23 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   // The PROVIDER (driver-style) app serves providers: from the root, a provider
   // lands in Provider OS (jobs/earnings); a signed-in non-provider is sent to
   // provider onboarding ("become a provider"); a signed-out user goes to signup.
-  // The CUSTOMER (member) app is left on the member home (isProviderApp=false → no-op).
-  // Only fires at "/" so it never hijacks deliberate navigation. Native only.
+  // The CUSTOMER (member) app opens a SIGNED-IN member onto their member home
+  // (/dashboard — loyalty tier + wallet + activity; honors VITE_DASHBOARD_V2_ENABLED),
+  // not the marketing Landing; a signed-out customer stays on Landing to sign up.
+  // Only fires at "/" so it never hijacks deliberate navigation. Native only —
+  // web (both flavors false) is untouched and keeps Landing/Home at "/".
   useEffect(() => {
-    if (!isProviderApp || loading || roleLoading) return;
+    if (loading || roleLoading) return;
     if (window.location.pathname !== '/') return;
-    if (!user) { setLocation('/signup'); return; }
-    setLocation(role === 'provider' ? '/provider-os' : '/provider-onboarding');
-  }, [isProviderApp, user, loading, role, roleLoading, setLocation]);
+    if (isProviderApp) {
+      if (!user) { setLocation('/signup'); return; }
+      setLocation(role === 'provider' ? '/provider-os' : '/provider-onboarding');
+      return;
+    }
+    if (isCustomerApp && user) {
+      setLocation('/dashboard');
+    }
+  }, [isProviderApp, isCustomerApp, user, loading, role, roleLoading, setLocation]);
 
   // Get personalized AI greeting on app launch 🎉
   usePersonalizedGreeting();
