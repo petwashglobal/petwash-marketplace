@@ -2736,7 +2736,35 @@ export default function MyAccount() {
                 <h3 className="text-xl font-semibold text-gray-900 mb-6">
                   {isHebrew ? 'העדפות התראות' : 'Notification Preferences'}
                 </h3>
-                
+
+                {/* Phase 1 — Consent Center + canonical notification preferences */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+                  <button
+                    onClick={() => setLocation('/consent-center')}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 hover:border-amber-300 transition-colors text-start"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Shield className="w-5 h-5 text-amber-500" />
+                      <div>
+                        <p className="text-gray-900 font-medium text-sm">{isHebrew ? 'מרכז הסכמות' : 'Consent Center'}</p>
+                        <p className="text-gray-500 text-xs">{isHebrew ? 'צפייה וביטול הסכמות שיווק' : 'View & withdraw marketing consent'}</p>
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    onClick={() => setLocation('/notification-preferences')}
+                    className="flex items-center justify-between p-4 rounded-2xl bg-white border border-gray-100 hover:border-amber-300 transition-colors text-start"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Bell className="w-5 h-5 text-amber-500" />
+                      <div>
+                        <p className="text-gray-900 font-medium text-sm">{isHebrew ? 'העדפות התראות' : 'Notification Preferences'}</p>
+                        <p className="text-gray-500 text-xs">{isHebrew ? 'Push, טיפוח, שיווק ועוד' : 'Push, care, marketing & more'}</p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
                 <div className="space-y-6">
                   {[
                     { key: 'pushEnabled', label: isHebrew ? 'התראות Push' : 'Push Notifications', desc: isHebrew ? 'קבל התראות מיידיות למכשיר' : 'Receive instant notifications', icon: Bell },
@@ -4097,6 +4125,28 @@ export default function MyAccount() {
                               <p className="text-xs text-gray-500 leading-relaxed">{pet.notes}</p>
                             </div>
                           )}
+
+                          {/* Phase 1 — Passport / Care Profile / Document Vault quick links */}
+                          <div className="grid grid-cols-3 gap-px bg-gray-100 border-t border-gray-100">
+                            <button
+                              onClick={() => setLocation(`/pets/${pet.id}/passport`)}
+                              className="bg-white py-2.5 text-[11px] font-semibold text-gray-600 hover:bg-amber-50 transition-colors"
+                            >
+                              🪪 {isHebrew ? 'דרכון' : 'Passport'}
+                            </button>
+                            <button
+                              onClick={() => setLocation(`/pets/${pet.id}/care`)}
+                              className="bg-white py-2.5 text-[11px] font-semibold text-gray-600 hover:bg-amber-50 transition-colors"
+                            >
+                              🩺 {isHebrew ? 'טיפוח' : 'Care'}
+                            </button>
+                            <button
+                              onClick={() => setLocation(`/pets/${pet.id}/documents`)}
+                              className="bg-white py-2.5 text-[11px] font-semibold text-gray-600 hover:bg-amber-50 transition-colors"
+                            >
+                              📁 {isHebrew ? 'מסמכים' : 'Docs'}
+                            </button>
+                          </div>
                         </div>
                       );
                     })}

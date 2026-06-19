@@ -25,7 +25,7 @@ if (!_rawSuperAdminEmails) {
 /**
  * Helper to extract userId from request
  */
-function getUserId(req: Request): string | null {
+export function getUserId(req: Request): string | null {
   const userId = (req as any).userId || (req as any).user?.id || (req.session as any)?.userId;
   return userId || null;
 }
