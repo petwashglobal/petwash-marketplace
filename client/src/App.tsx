@@ -270,6 +270,7 @@ const AdminMayaAudit = lazy(() => import("@/pages/admin/maya/AdminMayaAudit"));
 const AdminSecurityMonitoring = lazy(() => import("@/pages/AdminSecurityMonitoring"));
 const AdminCeoReport = lazy(() => import("@/pages/AdminCeoReport"));
 const AdminRetention = lazy(() => import("@/pages/AdminRetention"));
+const AdminExpansionMarketing = lazy(() => import("@/pages/AdminExpansionMarketing"));
 const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower"));
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
 const PerformanceMonitoring = lazy(() => import("@/pages/PerformanceMonitoring"));
@@ -2193,6 +2194,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminRetention />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Admin route - Expansion & Marketing (Location Scoring §9 + Local Marketing §25, read-only) */}
+        <Route path="/admin/expansion-marketing">
+          {() => (
+            <AdminRouteGuard>
+              <AdminExpansionMarketing />
             </AdminRouteGuard>
           )}
         </Route>
