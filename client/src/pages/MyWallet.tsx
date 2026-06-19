@@ -27,6 +27,7 @@ import {
   AlertCircle,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
+import { startWalletTopUpCheckout } from '@/lib/sumitCheckout';
 import { Layout } from '@/components/Layout';
 import { useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -127,6 +128,7 @@ export default function MyWallet() {
   const [showTopUp, setShowTopUp] = useState(false);
   const [nayaxTxId, setNayaxTxId] = useState('');
   const [topUpAmountIls, setTopUpAmountIls] = useState('');
+  const [payByCardLoading, setPayByCardLoading] = useState(false);
 
   const { data: walletData, isLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
     queryKey: ['/api/credit-wallet/summary'],
@@ -177,6 +179,9 @@ export default function MyWallet() {
     setTimeout(() => setIsRefreshing(false), 800);
   };
 
+  // Nayax-station path: the user paid at a K9000 station and enters the
+  // confirmation code; the server verifies (userId, nayaxTxId, amount) against
+  // the recorded Nayax transaction before crediting. Requires a code.
   const handleTopUpSubmit = () => {
     const amountCents = Math.round(parseFloat(topUpAmountIls) * 100);
     if (!topUpAmountIls || isNaN(amountCents) || amountCents < 100) {
@@ -188,6 +193,32 @@ export default function MyWallet() {
       return;
     }
     topUpMutation.mutate({ amountCents, nayaxTxId: nayaxTxId || undefined });
+  };
+
+  // Pay-by-card path: charge the customer FIRST via the SUMIT hosted page. The
+  // wallet is credited ONLY by the verified SUMIT webhook flow (server-side),
+  // never on this client request. No balance moves until payment is verified.
+  const handlePayByCard = async () => {
+    const amountIls = parseFloat(topUpAmountIls);
+    if (!topUpAmountIls || isNaN(amountIls) || amountIls < 1) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'סכום לא תקין' : 'Invalid amount',
+        description: isHebrew ? 'הסכום המינימלי הוא ₪1' : 'Minimum amount is ₪1',
+      });
+      return;
+    }
+    setPayByCardLoading(true);
+    const result = await startWalletTopUpCheckout({ amountIls });
+    if (!result.ok) {
+      setPayByCardLoading(false);
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: result.error || (isHebrew ? 'התשלום אינו זמין כעת' : 'Payments are not available right now'),
+      });
+    }
+    // On success the browser navigates to the SUMIT hosted page.
   };
 
   if (isLoading) return <WalletSkeleton />;
@@ -590,25 +621,6 @@ export default function MyWallet() {
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-4 pt-2">
-            <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-800 leading-relaxed">
-              <p className="font-semibold mb-1">{isHebrew ? 'להטענה באמצעות Nayax:' : 'To top up via Nayax:'}</p>
-              <p>{isHebrew
-                ? 'גשו לתחנת K9000, בחרו "טעינת ארנק", שלמו והזינו את קוד האישור'
-                : 'Visit a K9000 station, select "Wallet Top-Up", pay, then enter the confirmation code below'
-              }</p>
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="nayax-tx-id" className="text-sm font-medium text-gray-700">
-                {isHebrew ? 'קוד אישור Nayax' : 'Nayax Confirmation Code'}
-              </Label>
-              <Input
-                id="nayax-tx-id"
-                value={nayaxTxId}
-                onChange={(e) => setNayaxTxId(e.target.value)}
-                placeholder={isHebrew ? 'הזן קוד אישור' : 'Enter confirmation code'}
-                className="h-11"
-              />
-            </div>
             <div className="space-y-1.5">
               <Label htmlFor="topup-amount" className="text-sm font-medium text-gray-700">
                 {isHebrew ? 'סכום לטעינה ₪' : 'Top-Up Amount ₪'}
@@ -624,18 +636,59 @@ export default function MyWallet() {
                 className="h-11"
               />
             </div>
+
+            {/* Primary path: pay by card. The customer is charged on SUMIT's
+                hosted page FIRST; the wallet credits only after the payment is
+                verified server-side. */}
             <Button
-              onClick={handleTopUpSubmit}
-              disabled={topUpMutation.isPending}
+              onClick={handlePayByCard}
+              disabled={payByCardLoading}
               className="w-full h-12 bg-green-600 hover:bg-green-700 text-white font-semibold rounded-xl gap-2"
             >
-              {topUpMutation.isPending ? (
+              {payByCardLoading ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
               ) : (
-                <Plus className="w-4 h-4" />
+                <CreditCard className="w-4 h-4" />
               )}
-              {isHebrew ? 'טען ארנק' : 'Top Up'}
+              {isHebrew ? 'שלם בכרטיס אשראי' : 'Pay by Card'}
             </Button>
+
+            {/* Secondary path: confirm a top-up already paid at a K9000 station.
+                The server verifies the Nayax confirmation code before crediting. */}
+            <div className="pt-2 border-t border-gray-100">
+              <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-800 leading-relaxed mb-3">
+                <p className="font-semibold mb-1">{isHebrew ? 'שילמת בתחנת K9000?' : 'Already paid at a K9000 station?'}</p>
+                <p>{isHebrew
+                  ? 'הזן את קוד האישור של Nayax כדי לזכות את הארנק'
+                  : 'Enter the Nayax confirmation code to credit your wallet'
+                }</p>
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="nayax-tx-id" className="text-sm font-medium text-gray-700">
+                  {isHebrew ? 'קוד אישור Nayax' : 'Nayax Confirmation Code'}
+                </Label>
+                <Input
+                  id="nayax-tx-id"
+                  value={nayaxTxId}
+                  onChange={(e) => setNayaxTxId(e.target.value)}
+                  placeholder={isHebrew ? 'הזן קוד אישור' : 'Enter confirmation code'}
+                  className="h-11"
+                />
+              </div>
+              <Button
+                onClick={handleTopUpSubmit}
+                disabled={topUpMutation.isPending || !nayaxTxId}
+                variant="outline"
+                className="w-full h-11 mt-3 font-semibold rounded-xl gap-2"
+              >
+                {topUpMutation.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4" />
+                )}
+                {isHebrew ? 'אשר טעינת תחנה' : 'Confirm Station Top-Up'}
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

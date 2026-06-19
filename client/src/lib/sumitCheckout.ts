@@ -64,3 +64,38 @@ export async function startSumitCheckout(input: SumitCheckoutInput): Promise<Sum
     return { ok: false, error: err instanceof Error ? err.message : 'Could not start payment' };
   }
 }
+
+/**
+ * Begin a SUMIT hosted-page payment for a WALLET TOP-UP (the server-owned
+ * ACCOUNT_CREDIT product). The server resolves the credit 1:1 with the charged
+ * amount, and the wallet is credited ONLY by the verified SUMIT webhook flow
+ * (server/services/PurchaseActivationService — ACCOUNT_CREDIT + wallet_topup
+ * surface). The customer therefore pays FIRST; no balance moves until the
+ * payment is verified server-side.
+ *
+ * `/sumit/begin` requires `{ sku, topupIls }` (it deliberately rejects a raw
+ * client amount), so this is a distinct call from startSumitCheckout.
+ *
+ * Returns { ok:false, error } so the caller can toast; on success the browser
+ * navigates away to the SUMIT hosted page.
+ */
+export async function startWalletTopUpCheckout(input: { amountIls: number }): Promise<SumitCheckoutResult> {
+  if (!(input.amountIls > 0)) {
+    return { ok: false, error: 'Invalid amount' };
+  }
+  try {
+    const res = await apiRequest('POST', '/api/payments/sumit/begin', {
+      sku: 'ACCOUNT_CREDIT',
+      topupIls: input.amountIls,
+    });
+    const data = await res.json().catch(() => ({} as any));
+    if (!data?.redirectUrl) {
+      return { ok: false, error: data?.error || data?.reason || 'Payments are not available right now' };
+    }
+    // Hand off to SUMIT's hosted payment page; the wallet credits on verified return/webhook.
+    window.location.assign(data.redirectUrl as string);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not start payment' };
+  }
+}
