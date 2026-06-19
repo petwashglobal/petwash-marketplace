@@ -22,8 +22,11 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
+import { useLanguage } from "@/lib/languageStore";
 
 export default function LogisticsDashboard() {
+  const { language } = useLanguage();
+  const he = language === 'he';
   const [showWarehouseDialog, setShowWarehouseDialog] = useState(false);
   const [showInventoryDialog, setShowInventoryDialog] = useState(false);
   const [showFulfillmentDialog, setShowFulfillmentDialog] = useState(false);
@@ -69,10 +72,10 @@ export default function LogisticsDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/warehouses"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/warehouses/utilization"] });
       setShowWarehouseDialog(false);
-      toast({ title: "Success", description: "Warehouse created successfully" });
+      toast({ title: he ? 'הצלחה' : 'Success', description: he ? 'המחסן נוצר בהצלחה' : 'Warehouse created successfully' });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create warehouse", variant: "destructive" });
+      toast({ title: he ? 'שגיאה' : 'Error', description: he ? 'יצירת המחסן נכשלה' : 'Failed to create warehouse', variant: "destructive" });
     },
   });
 
@@ -83,10 +86,10 @@ export default function LogisticsDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/inventory"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/inventory/low-stock"] });
       setShowInventoryDialog(false);
-      toast({ title: "Success", description: "Inventory item created successfully" });
+      toast({ title: he ? 'הצלחה' : 'Success', description: he ? 'פריט המלאי נוצר בהצלחה' : 'Inventory item created successfully' });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create inventory item", variant: "destructive" });
+      toast({ title: he ? 'שגיאה' : 'Error', description: he ? 'יצירת פריט המלאי נכשלה' : 'Failed to create inventory item', variant: "destructive" });
     },
   });
 
@@ -97,10 +100,10 @@ export default function LogisticsDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/fulfillment-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/fulfillment-orders/pending"] });
       setShowFulfillmentDialog(false);
-      toast({ title: "Success", description: "Fulfillment order created successfully" });
+      toast({ title: he ? 'הצלחה' : 'Success', description: he ? 'הזמנת האספקה נוצרה בהצלחה' : 'Fulfillment order created successfully' });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create fulfillment order", variant: "destructive" });
+      toast({ title: he ? 'שגיאה' : 'Error', description: he ? 'יצירת הזמנת האספקה נכשלה' : 'Failed to create fulfillment order', variant: "destructive" });
     },
   });
 
@@ -110,7 +113,7 @@ export default function LogisticsDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/fulfillment-orders"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/fulfillment-orders/pending"] });
-      toast({ title: "Success", description: "Order marked as shipped" });
+      toast({ title: he ? 'הצלחה' : 'Success', description: he ? 'ההזמנה סומנה כנשלחה' : 'Order marked as shipped' });
     },
   });
 
@@ -119,7 +122,7 @@ export default function LogisticsDashboard() {
       apiRequest(`/api/enterprise/logistics/fulfillment-orders/${id}/deliver`, { method: "POST" }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/logistics/fulfillment-orders"] });
-      toast({ title: "Success", description: "Order marked as delivered" });
+      toast({ title: he ? 'הצלחה' : 'Success', description: he ? 'ההזמנה סומנה כנמסרה' : 'Order marked as delivered' });
     },
   });
 
@@ -202,16 +205,16 @@ export default function LogisticsDashboard() {
   return (
     <LuxuryPageWrapper
       variant="dashboard"
-      title="Logistics Management"
-      subtitle="Manage warehouses, inventory, and fulfillment orders"
+      title={he ? 'ניהול לוגיסטיקה' : 'Logistics Management'}
+      subtitle={he ? 'ניהול מחסנים, מלאי והזמנות אספקה' : 'Manage warehouses, inventory, and fulfillment orders'}
     >
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6" dir={he ? 'rtl' : 'ltr'}>
 
       {/* Summary Cards */}
       <div className="luxury-grid-4">
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Total Warehouses</CardTitle>
+            <CardTitle className="text-sm font-medium">{he ? 'סך מחסנים' : 'Total Warehouses'}</CardTitle>
             <Warehouse className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -222,7 +225,7 @@ export default function LogisticsDashboard() {
         </Card>
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Low Stock Items</CardTitle>
+            <CardTitle className="text-sm font-medium">{he ? 'פריטים במלאי נמוך' : 'Low Stock Items'}</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
@@ -231,7 +234,7 @@ export default function LogisticsDashboard() {
         </Card>
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Expiring Soon</CardTitle>
+            <CardTitle className="text-sm font-medium">{he ? 'תוקף קרוב' : 'Expiring Soon'}</CardTitle>
             <AlertCircle className="h-4 w-4 text-orange-500" />
           </CardHeader>
           <CardContent>
@@ -240,7 +243,7 @@ export default function LogisticsDashboard() {
         </Card>
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Pending Orders</CardTitle>
+            <CardTitle className="text-sm font-medium">{he ? 'הזמנות ממתינות' : 'Pending Orders'}</CardTitle>
             <Truck className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -252,24 +255,24 @@ export default function LogisticsDashboard() {
       <Tabs defaultValue="warehouses" className="w-full">
         <TabsList>
           <TabsTrigger value="warehouses" data-testid="tab-warehouses">
-            <Warehouse className="w-4 h-4 mr-2" />
-            Warehouses ({warehouses?.length || 0})
+            <Warehouse className="w-4 h-4 me-2" />
+            {he ? 'מחסנים' : 'Warehouses'} ({warehouses?.length || 0})
           </TabsTrigger>
           <TabsTrigger value="inventory" data-testid="tab-inventory">
-            <Package className="w-4 h-4 mr-2" />
-            Inventory ({inventory?.length || 0})
+            <Package className="w-4 h-4 me-2" />
+            {he ? 'מלאי' : 'Inventory'} ({inventory?.length || 0})
           </TabsTrigger>
           <TabsTrigger value="fulfillment" data-testid="tab-fulfillment">
-            <Truck className="w-4 h-4 mr-2" />
-            Orders ({fulfillmentOrders?.length || 0})
+            <Truck className="w-4 h-4 me-2" />
+            {he ? 'הזמנות' : 'Orders'} ({fulfillmentOrders?.length || 0})
           </TabsTrigger>
         </TabsList>
 
         <TabsContent value="warehouses" className="space-y-4">
           <div className="flex justify-end">
             <Button className="luxury-btn-primary" onClick={() => setShowWarehouseDialog(true)} data-testid="button-create-warehouse">
-              <Plus className="w-4 h-4 mr-2" />
-              New Warehouse
+              <Plus className="w-4 h-4 me-2" />
+              {he ? 'מחסן חדש' : 'New Warehouse'}
             </Button>
           </div>
           {warehousesLoading ? (
@@ -283,11 +286,11 @@ export default function LogisticsDashboard() {
               <CardContent className="pt-6">
                 <div className="text-center py-12">
                   <Warehouse className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No warehouses yet</h3>
-                  <p className="text-muted-foreground mb-4">Create warehouses to manage inventory locations</p>
+                  <h3 className="text-lg font-semibold mb-2">{he ? 'אין מחסנים עדיין' : 'No warehouses yet'}</h3>
+                  <p className="text-muted-foreground mb-4">{he ? 'צרו מחסנים לניהול מיקומי מלאי' : 'Create warehouses to manage inventory locations'}</p>
                   <Button onClick={() => setShowWarehouseDialog(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Warehouse
+                    <Plus className="w-4 h-4 me-2" />
+                    {he ? 'יצירת מחסן' : 'Create Warehouse'}
                   </Button>
                 </div>
               </CardContent>
@@ -302,14 +305,14 @@ export default function LogisticsDashboard() {
                         <div className="flex items-center gap-2 mb-2">
                           <h4 className="font-semibold">{wh.name}</h4>
                           <Badge variant={wh.isActive ? "default" : "destructive"}>
-                            {wh.isActive ? "Active" : "Inactive"}
+                            {wh.isActive ? (he ? 'פעיל' : 'Active') : (he ? 'לא פעיל' : 'Inactive')}
                           </Badge>
                         </div>
                         <p className="text-sm text-muted-foreground mb-2">{wh.address}, {wh.city}</p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>ID: {wh.warehouseId}</span>
-                          <span>Capacity: {wh.capacity || 0}m³</span>
-                          <span>Utilization: {wh.currentUtilization || 0}%</span>
+                          <span>{he ? 'מזהה' : 'ID'}: {wh.warehouseId}</span>
+                          <span>{he ? 'קיבולת' : 'Capacity'}: {wh.capacity || 0}m³</span>
+                          <span>{he ? 'ניצולת' : 'Utilization'}: {wh.currentUtilization || 0}%</span>
                         </div>
                       </div>
                     </div>
@@ -323,8 +326,8 @@ export default function LogisticsDashboard() {
         <TabsContent value="inventory" className="space-y-4">
           <div className="flex justify-end">
             <Button className="luxury-btn-primary" onClick={() => setShowInventoryDialog(true)} data-testid="button-create-inventory">
-              <Plus className="w-4 h-4 mr-2" />
-              New Inventory Item
+              <Plus className="w-4 h-4 me-2" />
+              {he ? 'פריט מלאי חדש' : 'New Inventory Item'}
             </Button>
           </div>
           {inventoryLoading ? (
@@ -338,11 +341,11 @@ export default function LogisticsDashboard() {
               <CardContent className="pt-6">
                 <div className="text-center py-12">
                   <Package className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No inventory yet</h3>
-                  <p className="text-muted-foreground mb-4">Add inventory items to track stock</p>
+                  <h3 className="text-lg font-semibold mb-2">{he ? 'אין מלאי עדיין' : 'No inventory yet'}</h3>
+                  <p className="text-muted-foreground mb-4">{he ? 'הוסיפו פריטי מלאי למעקב אחר המצאי' : 'Add inventory items to track stock'}</p>
                   <Button onClick={() => setShowInventoryDialog(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Add Inventory
+                    <Plus className="w-4 h-4 me-2" />
+                    {he ? 'הוספת מלאי' : 'Add Inventory'}
                   </Button>
                 </div>
               </CardContent>
@@ -362,13 +365,13 @@ export default function LogisticsDashboard() {
                           <Badge variant="outline">{item.category}</Badge>
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>SKU: {item.sku}</span>
-                          {item.locationInWarehouse && <span>Location: {item.locationInWarehouse}</span>}
-                          {item.reorderLevel && <span>Reorder Level: {item.reorderLevel}</span>}
-                          {item.unitCost && <span>Unit Cost: ₪{item.unitCost}</span>}
+                          <span>{he ? 'מק"ט' : 'SKU'}: {item.sku}</span>
+                          {item.locationInWarehouse && <span>{he ? 'מיקום' : 'Location'}: {item.locationInWarehouse}</span>}
+                          {item.reorderLevel && <span>{he ? 'סף הזמנה מחדש' : 'Reorder Level'}: {item.reorderLevel}</span>}
+                          {item.unitCost && <span>{he ? 'עלות ליחידה' : 'Unit Cost'}: ₪{item.unitCost}</span>}
                         </div>
                         {item.quantity <= item.reorderLevel && (
-                          <p className="text-xs text-red-600 mt-2">⚠️ Low stock - reorder needed</p>
+                          <p className="text-xs text-red-600 mt-2">⚠️ {he ? 'מלאי נמוך - נדרשת הזמנה מחדש' : 'Low stock - reorder needed'}</p>
                         )}
                       </div>
                     </div>
@@ -382,8 +385,8 @@ export default function LogisticsDashboard() {
         <TabsContent value="fulfillment" className="space-y-4">
           <div className="flex justify-end">
             <Button className="luxury-btn-primary" onClick={() => setShowFulfillmentDialog(true)} data-testid="button-create-fulfillment">
-              <Plus className="w-4 h-4 mr-2" />
-              New Order
+              <Plus className="w-4 h-4 me-2" />
+              {he ? 'הזמנה חדשה' : 'New Order'}
             </Button>
           </div>
           {ordersLoading ? (
@@ -397,11 +400,11 @@ export default function LogisticsDashboard() {
               <CardContent className="pt-6">
                 <div className="text-center py-12">
                   <Truck className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No fulfillment orders yet</h3>
-                  <p className="text-muted-foreground mb-4">Create orders to manage deliveries and shipments</p>
+                  <h3 className="text-lg font-semibold mb-2">{he ? 'אין הזמנות אספקה עדיין' : 'No fulfillment orders yet'}</h3>
+                  <p className="text-muted-foreground mb-4">{he ? 'צרו הזמנות לניהול משלוחים ואספקה' : 'Create orders to manage deliveries and shipments'}</p>
                   <Button onClick={() => setShowFulfillmentDialog(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Order
+                    <Plus className="w-4 h-4 me-2" />
+                    {he ? 'יצירת הזמנה' : 'Create Order'}
                   </Button>
                 </div>
               </CardContent>
@@ -420,13 +423,13 @@ export default function LogisticsDashboard() {
                           <Badge variant="outline">{order.orderType}</Badge>
                         </div>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground mb-2">
-                          {order.stationId && <span>Station: {order.stationId}</span>}
-                          <span>Items: {Array.isArray(order.items) ? order.items.length : 0}</span>
-                          <span>Ordered: {new Date(order.orderDate).toLocaleDateString()}</span>
-                          {order.trackingNumber && <span>Tracking: {order.trackingNumber}</span>}
+                          {order.stationId && <span>{he ? 'עמדה' : 'Station'}: {order.stationId}</span>}
+                          <span>{he ? 'פריטים' : 'Items'}: {Array.isArray(order.items) ? order.items.length : 0}</span>
+                          <span>{he ? 'הוזמן' : 'Ordered'}: {new Date(order.orderDate).toLocaleDateString(he ? 'he-IL' : 'en-GB')}</span>
+                          {order.trackingNumber && <span>{he ? 'מעקב' : 'Tracking'}: {order.trackingNumber}</span>}
                         </div>
                         {order.deliveryAddress && (
-                          <p className="text-sm text-muted-foreground">Delivery: {order.deliveryAddress}</p>
+                          <p className="text-sm text-muted-foreground">{he ? 'משלוח' : 'Delivery'}: {order.deliveryAddress}</p>
                         )}
                       </div>
                       <div className="flex gap-2">
@@ -434,15 +437,15 @@ export default function LogisticsDashboard() {
                           <Button
                             size="sm"
                             onClick={() => {
-                              const trackingNumber = prompt("Enter tracking number:");
-                              const carrier = prompt("Enter carrier:");
+                              const trackingNumber = prompt(he ? 'הזינו מספר מעקב:' : 'Enter tracking number:');
+                              const carrier = prompt(he ? 'הזינו חברת שילוח:' : 'Enter carrier:');
                               if (trackingNumber && carrier) {
                                 shipOrderMutation.mutate({ id: order.id, trackingNumber, carrier });
                               }
                             }}
                             data-testid={`button-ship-${order.id}`}
                           >
-                            Ship
+                            {he ? 'שליחה' : 'Ship'}
                           </Button>
                         )}
                         {order.status === "shipped" && (
@@ -451,8 +454,8 @@ export default function LogisticsDashboard() {
                             onClick={() => deliverOrderMutation.mutate(order.id)}
                             data-testid={`button-deliver-${order.id}`}
                           >
-                            <CheckCircle2 className="w-4 h-4 mr-1" />
-                            Deliver
+                            <CheckCircle2 className="w-4 h-4 me-1" />
+                            {he ? 'מסירה' : 'Deliver'}
                           </Button>
                         )}
                       </div>
@@ -467,22 +470,22 @@ export default function LogisticsDashboard() {
 
       {/* Create Warehouse Dialog */}
       <Dialog open={showWarehouseDialog} onOpenChange={setShowWarehouseDialog}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-create-warehouse">
+        <DialogContent className="max-w-2xl" dir={he ? 'rtl' : 'ltr'} data-testid="dialog-create-warehouse">
           <DialogHeader>
-            <DialogTitle>Create Warehouse</DialogTitle>
+            <DialogTitle>{he ? 'יצירת מחסן' : 'Create Warehouse'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateWarehouse} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <Label htmlFor="warehouseId">Warehouse ID *</Label>
+                <Label htmlFor="warehouseId">{he ? 'מזהה מחסן *' : 'Warehouse ID *'}</Label>
                 <Input id="warehouseId" name="warehouseId" required placeholder="WH-IL-001" data-testid="input-warehouse-id" />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="name">Name *</Label>
+                <Label htmlFor="name">{he ? 'שם *' : 'Name *'}</Label>
                 <Input id="name" name="name" required data-testid="input-warehouse-name" />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="address">Address *</Label>
+                <Label htmlFor="address">{he ? 'כתובת *' : 'Address *'}</Label>
                 <GooglePlacesAutocomplete
                   value={warehouseAddress}
                   onChange={(val) => setWarehouseAddress(val)}
@@ -493,7 +496,7 @@ export default function LogisticsDashboard() {
                     if (cityInput && place.city) cityInput.value = place.city;
                     if (countryInput && place.country) countryInput.value = place.country;
                   }}
-                  placeholder="Start typing warehouse address..."
+                  placeholder={he ? 'התחילו להקליד כתובת מחסן…' : 'Start typing warehouse address...'}
                   country={['il']}
                   required
                   data-testid="input-warehouse-address"
@@ -501,19 +504,19 @@ export default function LogisticsDashboard() {
                 <input type="hidden" name="address" value={warehouseAddress} />
               </div>
               <div>
-                <Label htmlFor="city">City *</Label>
+                <Label htmlFor="city">{he ? 'עיר *' : 'City *'}</Label>
                 <Input id="city" name="city" required data-testid="input-warehouse-city" />
               </div>
               <div>
-                <Label htmlFor="country">Country</Label>
+                <Label htmlFor="country">{he ? 'מדינה' : 'Country'}</Label>
                 <Input id="country" name="country" defaultValue="IL" data-testid="input-warehouse-country" />
               </div>
               <div>
-                <Label htmlFor="capacity">Capacity (m³)</Label>
+                <Label htmlFor="capacity">{he ? 'קיבולת (מ"ק)' : 'Capacity (m³)'}</Label>
                 <Input id="capacity" name="capacity" type="number" data-testid="input-warehouse-capacity" />
               </div>
               <div>
-                <Label htmlFor="currentUtilization">Current Utilization (%)</Label>
+                <Label htmlFor="currentUtilization">{he ? 'ניצולת נוכחית (%)' : 'Current Utilization (%)'}</Label>
                 <Input id="currentUtilization" name="currentUtilization" defaultValue="0" data-testid="input-warehouse-utilization" />
               </div>
             </div>
@@ -524,10 +527,10 @@ export default function LogisticsDashboard() {
                 onClick={() => setShowWarehouseDialog(false)}
                 data-testid="button-cancel-warehouse"
               >
-                Cancel
+                {he ? 'ביטול' : 'Cancel'}
               </Button>
               <Button type="submit" disabled={createWarehouseMutation.isPending} data-testid="button-submit-warehouse">
-                {createWarehouseMutation.isPending ? "Creating..." : "Create Warehouse"}
+                {createWarehouseMutation.isPending ? (he ? 'יוצר…' : 'Creating...') : (he ? 'יצירת מחסן' : 'Create Warehouse')}
               </Button>
             </div>
           </form>
@@ -536,60 +539,60 @@ export default function LogisticsDashboard() {
 
       {/* Create Inventory Dialog */}
       <Dialog open={showInventoryDialog} onOpenChange={setShowInventoryDialog}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-create-inventory">
+        <DialogContent className="max-w-2xl" dir={he ? 'rtl' : 'ltr'} data-testid="dialog-create-inventory">
           <DialogHeader>
-            <DialogTitle>Create Inventory Item</DialogTitle>
+            <DialogTitle>{he ? 'יצירת פריט מלאי' : 'Create Inventory Item'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateInventory} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="sku">SKU *</Label>
+                <Label htmlFor="sku">{he ? 'מק"ט *' : 'SKU *'}</Label>
                 <Input id="sku" name="sku" required placeholder="SHMP-ORG-001" data-testid="input-sku" />
               </div>
               <div>
-                <Label htmlFor="productName">Product Name *</Label>
+                <Label htmlFor="productName">{he ? 'שם מוצר *' : 'Product Name *'}</Label>
                 <Input id="productName" name="productName" required data-testid="input-product-name" />
               </div>
               <div>
-                <Label htmlFor="productNameHe">Product Name (Hebrew)</Label>
+                <Label htmlFor="productNameHe">{he ? 'שם מוצר (עברית)' : 'Product Name (Hebrew)'}</Label>
                 <Input id="productNameHe" name="productNameHe" data-testid="input-product-name-he" />
               </div>
               <div>
-                <Label>Category</Label>
+                <Label>{he ? 'קטגוריה' : 'Category'}</Label>
                 <Select value={inventoryCategory} onValueChange={setInventoryCategory}>
                   <SelectTrigger data-testid="select-inventory-category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="shampoo">Shampoo</SelectItem>
-                    <SelectItem value="equipment">Equipment</SelectItem>
-                    <SelectItem value="supplies">Supplies</SelectItem>
-                    <SelectItem value="parts">Parts</SelectItem>
+                    <SelectItem value="shampoo">{he ? 'שמפו' : 'Shampoo'}</SelectItem>
+                    <SelectItem value="equipment">{he ? 'ציוד' : 'Equipment'}</SelectItem>
+                    <SelectItem value="supplies">{he ? 'אספקה' : 'Supplies'}</SelectItem>
+                    <SelectItem value="parts">{he ? 'חלפים' : 'Parts'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="quantity">Quantity *</Label>
+                <Label htmlFor="quantity">{he ? 'כמות *' : 'Quantity *'}</Label>
                 <Input id="quantity" name="quantity" type="number" required defaultValue="0" data-testid="input-quantity" />
               </div>
               <div>
-                <Label htmlFor="unit">Unit</Label>
+                <Label htmlFor="unit">{he ? 'יחידה' : 'Unit'}</Label>
                 <Input id="unit" name="unit" defaultValue="units" data-testid="input-unit" />
               </div>
               <div>
-                <Label htmlFor="reorderLevel">Reorder Level</Label>
+                <Label htmlFor="reorderLevel">{he ? 'סף הזמנה מחדש' : 'Reorder Level'}</Label>
                 <Input id="reorderLevel" name="reorderLevel" type="number" defaultValue="0" data-testid="input-reorder-level" />
               </div>
               <div>
-                <Label htmlFor="reorderQuantity">Reorder Quantity</Label>
+                <Label htmlFor="reorderQuantity">{he ? 'כמות הזמנה מחדש' : 'Reorder Quantity'}</Label>
                 <Input id="reorderQuantity" name="reorderQuantity" type="number" defaultValue="0" data-testid="input-reorder-quantity" />
               </div>
               <div>
-                <Label htmlFor="unitCost">Unit Cost (₪)</Label>
+                <Label htmlFor="unitCost">{he ? 'עלות ליחידה (₪)' : 'Unit Cost (₪)'}</Label>
                 <Input id="unitCost" name="unitCost" data-testid="input-unit-cost" />
               </div>
               <div>
-                <Label htmlFor="locationInWarehouse">Location</Label>
+                <Label htmlFor="locationInWarehouse">{he ? 'מיקום' : 'Location'}</Label>
                 <Input id="locationInWarehouse" name="locationInWarehouse" placeholder="A1-S3" data-testid="input-location" />
               </div>
             </div>
@@ -600,10 +603,10 @@ export default function LogisticsDashboard() {
                 onClick={() => setShowInventoryDialog(false)}
                 data-testid="button-cancel-inventory"
               >
-                Cancel
+                {he ? 'ביטול' : 'Cancel'}
               </Button>
               <Button type="submit" disabled={createInventoryMutation.isPending} data-testid="button-submit-inventory">
-                {createInventoryMutation.isPending ? "Creating..." : "Create Item"}
+                {createInventoryMutation.isPending ? (he ? 'יוצר…' : 'Creating...') : (he ? 'יצירת פריט' : 'Create Item')}
               </Button>
             </div>
           </form>
@@ -612,53 +615,53 @@ export default function LogisticsDashboard() {
 
       {/* Create Fulfillment Order Dialog */}
       <Dialog open={showFulfillmentDialog} onOpenChange={setShowFulfillmentDialog}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-create-fulfillment">
+        <DialogContent className="max-w-2xl" dir={he ? 'rtl' : 'ltr'} data-testid="dialog-create-fulfillment">
           <DialogHeader>
-            <DialogTitle>Create Fulfillment Order</DialogTitle>
+            <DialogTitle>{he ? 'יצירת הזמנת אספקה' : 'Create Fulfillment Order'}</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateFulfillment} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <Label htmlFor="orderId">Order ID *</Label>
+                <Label htmlFor="orderId">{he ? 'מזהה הזמנה *' : 'Order ID *'}</Label>
                 <Input id="orderId" name="orderId" required placeholder="FO-2025-0001" data-testid="input-order-id" />
               </div>
               <div>
-                <Label>Order Type</Label>
+                <Label>{he ? 'סוג הזמנה' : 'Order Type'}</Label>
                 <Select value={fulfillmentOrderType} onValueChange={setFulfillmentOrderType}>
                   <SelectTrigger data-testid="select-order-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="station_restock">Station Restock</SelectItem>
-                    <SelectItem value="customer_delivery">Customer Delivery</SelectItem>
-                    <SelectItem value="franchise_shipment">Franchise Shipment</SelectItem>
+                    <SelectItem value="station_restock">{he ? 'חידוש מלאי עמדה' : 'Station Restock'}</SelectItem>
+                    <SelectItem value="customer_delivery">{he ? 'משלוח ללקוח' : 'Customer Delivery'}</SelectItem>
+                    <SelectItem value="franchise_shipment">{he ? 'משלוח זכיינות' : 'Franchise Shipment'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Priority</Label>
+                <Label>{he ? 'עדיפות' : 'Priority'}</Label>
                 <Select value={fulfillmentPriority} onValueChange={setFulfillmentPriority}>
                   <SelectTrigger data-testid="select-priority">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="normal">Normal</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="low">{he ? 'נמוכה' : 'Low'}</SelectItem>
+                    <SelectItem value="normal">{he ? 'רגילה' : 'Normal'}</SelectItem>
+                    <SelectItem value="high">{he ? 'גבוהה' : 'High'}</SelectItem>
+                    <SelectItem value="urgent">{he ? 'דחופה' : 'Urgent'}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="stationId">Station ID</Label>
+                <Label htmlFor="stationId">{he ? 'מזהה עמדה' : 'Station ID'}</Label>
                 <Input id="stationId" name="stationId" data-testid="input-station-id" />
               </div>
               <div>
-                <Label htmlFor="warehouseId">Warehouse ID</Label>
+                <Label htmlFor="warehouseId">{he ? 'מזהה מחסן' : 'Warehouse ID'}</Label>
                 <Input id="warehouseId" name="warehouseId" type="number" data-testid="input-fulfillment-warehouse-id" />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="items">Items (JSON) *</Label>
+                <Label htmlFor="items">{he ? 'פריטים (JSON) *' : 'Items (JSON) *'}</Label>
                 <Textarea
                   id="items"
                   name="items"
@@ -669,23 +672,23 @@ export default function LogisticsDashboard() {
                 />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="deliveryAddress">Delivery Address</Label>
+                <Label htmlFor="deliveryAddress">{he ? 'כתובת משלוח' : 'Delivery Address'}</Label>
                 <GooglePlacesAutocomplete
                   value={deliveryAddress}
                   onChange={(val) => setDeliveryAddress(val)}
                   onPlaceSelected={(place) => setDeliveryAddress(place.formattedAddress)}
-                  placeholder="Start typing delivery address..."
+                  placeholder={he ? 'התחילו להקליד כתובת משלוח…' : 'Start typing delivery address...'}
                   country={['il']}
                   data-testid="input-delivery-address"
                 />
                 <input type="hidden" name="deliveryAddress" value={deliveryAddress} />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="deliveryNotes">Delivery Notes</Label>
+                <Label htmlFor="deliveryNotes">{he ? 'הערות משלוח' : 'Delivery Notes'}</Label>
                 <Textarea id="deliveryNotes" name="deliveryNotes" rows={2} data-testid="textarea-delivery-notes" />
               </div>
               <div>
-                <Label htmlFor="estimatedDelivery">Estimated Delivery</Label>
+                <Label htmlFor="estimatedDelivery">{he ? 'מועד משלוח משוער' : 'Estimated Delivery'}</Label>
                 <Input id="estimatedDelivery" name="estimatedDelivery" type="date" data-testid="input-estimated-delivery" />
               </div>
             </div>
@@ -696,10 +699,10 @@ export default function LogisticsDashboard() {
                 onClick={() => setShowFulfillmentDialog(false)}
                 data-testid="button-cancel-fulfillment"
               >
-                Cancel
+                {he ? 'ביטול' : 'Cancel'}
               </Button>
               <Button type="submit" disabled={createFulfillmentMutation.isPending} data-testid="button-submit-fulfillment">
-                {createFulfillmentMutation.isPending ? "Creating..." : "Create Order"}
+                {createFulfillmentMutation.isPending ? (he ? 'יוצר…' : 'Creating...') : (he ? 'יצירת הזמנה' : 'Create Order')}
               </Button>
             </div>
           </form>
