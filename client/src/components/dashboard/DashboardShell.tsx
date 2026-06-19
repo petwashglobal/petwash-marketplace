@@ -12,6 +12,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { Link, useLocation } from 'wouter';
 import { Menu, X, Home, LogOut, Clock } from 'lucide-react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useLanguage } from '@/lib/languageStore';
 import { navForRole, type DashRole } from './executive-nav';
 import { cn } from '@/lib/utils';
 
@@ -29,6 +30,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
   const [, navigate] = useLocation();
   const [location] = useLocation();
   const { logout } = useFirebaseAuth();
+  const { language, setLanguage } = useLanguage();
   const [toolsOpen, setToolsOpen] = useState(false);
   const [now, setNow] = useState<Date | null>(null);
 
@@ -43,6 +45,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
   useEffect(() => { setToolsOpen(false); }, [location]);
 
   const groups = navForRole(role);
+  const he = language === 'he';
 
   const handleLogout = async () => {
     try { await logout?.(); } finally { navigate('/'); }
@@ -61,7 +64,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
               data-testid="button-open-tools"
             >
               <Menu className="w-5 h-5" />
-              <span className="hidden sm:inline">Tools</span>
+              <span className="hidden sm:inline">{language === 'he' ? 'כלים' : 'Tools'}</span>
             </button>
 
             <Link href="/" className="pw-logo-link" aria-label="PetWash home">
@@ -73,6 +76,39 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
             </Link>
 
             <div className="absolute right-0 flex items-center gap-1">
+              {/* Live Hebrew⇄English swap. Reuses the app-wide languageStore, so the
+                  whole UI (and RTL/LTR direction) flips instantly and the choice
+                  persists in localStorage (pw_lang). Hebrew is the default. */}
+              <div
+                className="flex items-center rounded-lg border border-black/10 overflow-hidden text-xs font-semibold mr-1"
+                role="group"
+                aria-label="Language / שפה"
+              >
+                <button
+                  type="button"
+                  onClick={() => setLanguage('he')}
+                  className={cn(
+                    'px-2.5 py-1.5 transition-colors',
+                    language === 'he' ? 'bg-[#047857] text-white' : 'text-black/60 hover:bg-black/[0.04]',
+                  )}
+                  aria-pressed={language === 'he'}
+                  data-testid="lang-he"
+                >
+                  עב
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLanguage('en')}
+                  className={cn(
+                    'px-2.5 py-1.5 transition-colors',
+                    language === 'en' ? 'bg-[#047857] text-white' : 'text-black/60 hover:bg-black/[0.04]',
+                  )}
+                  aria-pressed={language === 'en'}
+                  data-testid="lang-en"
+                >
+                  EN
+                </button>
+              </div>
               {now && (
                 <div className="hidden md:flex items-center gap-1.5 text-xs text-black/50 font-mono mr-2">
                   <Clock className="w-3.5 h-3.5" />
@@ -85,7 +121,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
                 data-testid="link-home"
               >
                 <Home className="w-4 h-4" />
-                <span className="hidden lg:inline">Home</span>
+                <span className="hidden lg:inline">{language === 'he' ? 'בית' : 'Home'}</span>
               </Link>
               <button
                 onClick={handleLogout}
@@ -93,7 +129,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
                 data-testid="button-logout"
               >
                 <LogOut className="w-4 h-4" />
-                <span className="hidden lg:inline">Log out</span>
+                <span className="hidden lg:inline">{language === 'he' ? 'התנתקות' : 'Log out'}</span>
               </button>
             </div>
           </div>
@@ -129,7 +165,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
           />
           <div className="absolute left-0 top-0 h-full w-[88%] max-w-sm bg-white shadow-2xl flex flex-col animate-in slide-in-from-left duration-200">
             <div className="flex items-center justify-between px-5 h-16 border-b border-black/10">
-              <span className="text-sm font-semibold uppercase tracking-[0.14em] text-black/60">Tools</span>
+              <span className="text-sm font-semibold uppercase tracking-[0.14em] text-black/60">{language === 'he' ? 'כלים' : 'Tools'}</span>
               <button
                 onClick={() => setToolsOpen(false)}
                 className="rounded-lg p-2 text-black/60 hover:bg-black/[0.04]"
@@ -143,12 +179,14 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
               {groups.map((g) => (
                 <div key={g.group}>
                   <p className="px-3 mb-1.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#B8860B]">
-                    {g.group}
+                    {he ? (g.groupHe ?? g.group) : g.group}
                   </p>
                   <div className="space-y-0.5">
                     {g.items.map((item) => {
                       const Icon = item.icon;
                       const active = location === item.path || location.startsWith(`${item.path}/`);
+                      const label = he ? (item.labelHe ?? item.label) : item.label;
+                      const hint = he ? (item.hintHe ?? item.hint) : item.hint;
                       return (
                         <Link
                           key={item.path}
@@ -161,8 +199,8 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
                         >
                           <Icon className={cn('w-4 h-4 mt-0.5 shrink-0', active ? 'text-[#B8860B]' : 'text-black/45')} />
                           <span className="min-w-0">
-                            <span className="block text-sm font-medium leading-tight">{item.label}</span>
-                            {item.hint && <span className="block text-xs text-black/45 leading-tight mt-0.5">{item.hint}</span>}
+                            <span className="block text-sm font-medium leading-tight">{label}</span>
+                            {hint && <span className="block text-xs text-black/45 leading-tight mt-0.5">{hint}</span>}
                           </span>
                         </Link>
                       );
