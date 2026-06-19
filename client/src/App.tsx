@@ -265,6 +265,7 @@ const AdminMayaEscalations = lazy(() => import("@/pages/admin/maya/AdminMayaEsca
 const AdminMayaAudit = lazy(() => import("@/pages/admin/maya/AdminMayaAudit"));
 
 const AdminSecurityMonitoring = lazy(() => import("@/pages/AdminSecurityMonitoring"));
+const AdminCeoReport = lazy(() => import("@/pages/AdminCeoReport"));
 const ComplianceControlTower = lazy(() => import("@/pages/ComplianceControlTower"));
 const GeminiWatchdogDashboard = lazy(() => import("@/pages/GeminiWatchdogDashboard"));
 const PerformanceMonitoring = lazy(() => import("@/pages/PerformanceMonitoring"));
@@ -2165,6 +2166,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Protected route - Blockchain Audit Trail [LEGACY: redirects to Executive Suite] */}
         <Route path="/audit-trail">{() => <Redirect to="/pet-wash-ltd/executive/audit" />}</Route>
         
+        {/* Admin route - CEO Daily Report + eGift Intelligence (read-only) */}
+        <Route path="/admin/ceo-report">
+          {() => (
+            <AdminRouteGuard>
+              <AdminCeoReport />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
         {/* Admin route - Loyalty Rules & Analytics */}
         <Route path="/admin/loyalty">
           {() => (
