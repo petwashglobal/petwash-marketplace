@@ -23,6 +23,12 @@ import { twilioSMSService } from '../services/TwilioSMSService';
 import { assignProviderMembership } from '../services/MembershipService';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { isSuperAdmin } from '../middleware/rbac';
+import {
+  seedProviderServicesOnApproval,
+  setProviderServiceLevel,
+  type ServiceLevel,
+} from '../services/providerServiceApproval';
+import { writeProviderAudit } from '../services/providerAudit';
 
 const submissionRateMap = new Map<string, { count: number; resetAt: number }>();
 const MAX_SUBMISSIONS_PER_IP_PER_HOUR = 3;
@@ -1227,6 +1233,39 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
       })
       .where(eq(providerApplicants.id, applicationId));
 
+    // ── PER-SERVICE APPROVAL SEED (legal-spec core rule) ─────────────────────
+    // Approval at the application level only grants WAITLIST per service. Booking
+    // and payout are NOT enabled here — they are advanced explicitly, one service
+    // at a time, via the per-service admin endpoint below. provider_services is
+    // keyed by the Firebase UID (application.userId), matching contractor_earnings
+    // and the gate lookups. Idempotent: re-approval never downgrades a service.
+    let approvedServices: Array<{ serviceType: string; serviceStatus: string; bookingEnabled: boolean; payoutEnabled: boolean }> = [];
+    if (application.userId) {
+      try {
+        approvedServices = await seedProviderServicesOnApproval(
+          application.userId,
+          application.serviceTypes as string[] | null,
+        );
+        await writeProviderAudit({
+          applicationId,
+          eventType: 'provider_services_seeded',
+          actorUserId: user.uid,
+          actorRole: 'admin',
+          payload: { services: approvedServices.map((s) => s.serviceType), level: 'waitlist' },
+        });
+        logger.info('[ProviderApplication] provider_services seeded at waitlist', {
+          userId: application.userId,
+          services: approvedServices.map((s) => s.serviceType),
+        });
+      } catch (seedErr) {
+        // Fail-OPEN on the seed itself (so approval + email still succeed), but
+        // log loudly. The gate is fail-CLOSED on payout regardless, and the
+        // booking gate is fail-OPEN only for providers with NO rows — so a missed
+        // seed degrades to legacy-allow on booking, never to an un-gated payout.
+        logger.error('[ProviderApplication] Failed to seed provider_services (non-fatal)', { seedErr, userId: application.userId });
+      }
+    }
+
     // Set Firebase custom claims so the provider can access /provider/dashboard
     if (application.userId) {
       try {
@@ -1236,6 +1275,15 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
           role: 'provider',
           accountType: 'provider',
           providerApprovedAt: new Date().toISOString(),
+          // Per-service approval metadata (waitlist at approval time). The global
+          // role is kept so existing provider-dashboard access is unchanged; this
+          // array is the authoritative per-service map the gates also enforce.
+          approvedServices: approvedServices.map((s) => ({
+            serviceType: s.serviceType,
+            serviceStatus: s.serviceStatus,
+            bookingEnabled: s.bookingEnabled,
+            payoutEnabled: s.payoutEnabled,
+          })),
         });
         logger.info('[ProviderApplication] Firebase claims set for approved provider', { userId: application.userId });
       } catch (claimsErr) {
@@ -1360,6 +1408,99 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
     const traceId = req.traceId || '';
     logger.error('[ProviderApplication] Approve error', { error, traceId });
     res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to approve application', traceId });
+  }
+});
+
+// POST /api/provider-applications/admin/:applicationId/service/:serviceType/approve
+// Advance ONE service for a provider to a level: waitlist | profile | booking | payout.
+// This is the per-service multi-stage approval ladder the legal spec mandates — a
+// provider approved for one service is NOT approved for another, and approved-for-
+// booking is NOT approved-for-payout. Admin-only. Writes an audit event.
+const ALLOWED_SERVICE_LEVELS: ServiceLevel[] = ['waitlist', 'profile', 'booking', 'payout'];
+router.post('/admin/:applicationId/service/:serviceType/approve', async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).firebaseUser;
+    if (!callerIsAdmin(req)) {
+      return res.status(403).json({ error: 'Admin access required' });
+    }
+
+    const applicationId = parseInt(req.params.applicationId);
+    const serviceType = req.params.serviceType;
+    const { level, reason } = req.body || {};
+
+    if (!ALLOWED_SERVICE_LEVELS.includes(level)) {
+      return res.status(400).json({
+        error: 'INVALID_LEVEL',
+        message: `level must be one of: ${ALLOWED_SERVICE_LEVELS.join(', ')}`,
+      });
+    }
+    if (!reason || String(reason).trim().length < 3) {
+      return res.status(400).json({ error: 'REASON_REQUIRED', message: 'A reason is required for service approval changes.' });
+    }
+
+    const [application] = await db.select()
+      .from(providerApplicants)
+      .where(eq(providerApplicants.id, applicationId))
+      .limit(1);
+
+    if (!application) {
+      return res.status(404).json({ error: 'Application not found' });
+    }
+    if (!application.userId) {
+      return res.status(400).json({ error: 'APPLICATION_NO_USER', message: 'Application has no linked user; cannot set service level.' });
+    }
+    // The service must be one the applicant actually applied for.
+    const appliedServices = (application.serviceTypes as string[] | null) || [];
+    const { normalizeServiceType } = await import('@shared/provider-service-levels');
+    const canonicalRequested = normalizeServiceType(serviceType);
+    const canonicalApplied = appliedServices.map((s) => normalizeServiceType(s));
+    if (!canonicalApplied.includes(canonicalRequested)) {
+      return res.status(400).json({
+        error: 'SERVICE_NOT_APPLIED',
+        message: `Applicant did not apply for service "${serviceType}".`,
+        appliedServices: canonicalApplied,
+      });
+    }
+
+    const updated = await setProviderServiceLevel(application.userId, serviceType, level as ServiceLevel);
+
+    // Reflect the new per-service map in Firebase claims (best-effort).
+    try {
+      const { providerServices } = await import('@shared/schema-provider-services');
+      const allRows = await db.select().from(providerServices).where(eq(providerServices.providerId, application.userId));
+      const existingClaims = (await firebaseAuth.getUser(application.userId)).customClaims || {};
+      await firebaseAuth.setCustomUserClaims(application.userId, {
+        ...existingClaims,
+        role: 'provider',
+        accountType: 'provider',
+        approvedServices: allRows.map((r) => ({
+          serviceType: r.serviceType,
+          serviceStatus: r.serviceStatus,
+          bookingEnabled: r.bookingEnabled,
+          payoutEnabled: r.payoutEnabled,
+        })),
+      });
+    } catch (claimsErr) {
+      logger.warn('[ProviderApplication] Could not refresh claims after service-level change (non-fatal)', { claimsErr, userId: application.userId });
+    }
+
+    await writeProviderAudit({
+      applicationId,
+      eventType: 'provider_service_level_changed',
+      actorUserId: user.uid,
+      actorRole: 'admin',
+      payload: { serviceType: updated.serviceType, level, newStatus: updated.serviceStatus, reason: String(reason).slice(0, 500), approvedBy: user.email },
+    });
+
+    logger.info('[ProviderApplication] Per-service level changed', {
+      applicationId, providerId: application.userId, serviceType: updated.serviceType, level, newStatus: updated.serviceStatus,
+    });
+
+    return res.json({ success: true, service: updated });
+  } catch (error) {
+    const traceId = req.traceId || '';
+    logger.error('[ProviderApplication] Service-level change error', { error, traceId });
+    return res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to change service level', traceId });
   }
 });
 

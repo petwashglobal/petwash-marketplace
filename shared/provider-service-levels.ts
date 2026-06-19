@@ -22,6 +22,48 @@ export const BLOCKED_STATUSES = new Set([
   'paused_by_provider', 'paused_by_admin',
 ]);
 
+/**
+ * Canonical service-type keys for provider_services rows.
+ *
+ * The codebase has divergent service-type vocabularies (a known issue — see the
+ * three booking engines): provider APPLICATIONS use long forms
+ * (`dog_walking`, `pet_sitting`, `grooming`, `pet_training`, `pet_transport`),
+ * while marketplace BOOKINGS use short forms (`sitting`, `walking`, `training`,
+ * `pettrek`). If provider_services rows were keyed by one vocabulary and the gate
+ * looked up by the other, the gate would silently never match — either blocking
+ * every new provider or being bypassed entirely. Both are money/trust hazards.
+ *
+ * normalizeServiceType collapses every known alias to ONE canonical key so the
+ * INSERT-on-approval and the gate lookups always agree. Unknown values are
+ * lower-cased and passed through unchanged (never throws) so the system degrades
+ * predictably rather than crashing a booking or payout.
+ */
+export type CanonicalServiceType =
+  | 'pet_sitting' | 'dog_walking' | 'pet_training' | 'pet_transport' | 'grooming';
+
+const SERVICE_TYPE_ALIASES: Record<string, CanonicalServiceType> = {
+  // pet sitting
+  pet_sitting: 'pet_sitting', petsitting: 'pet_sitting', sitting: 'pet_sitting',
+  sitter: 'pet_sitting', petsitter: 'pet_sitting', boarding: 'pet_sitting',
+  // dog walking
+  dog_walking: 'dog_walking', dogwalking: 'dog_walking', walking: 'dog_walking',
+  walk: 'dog_walking', walker: 'dog_walking', walkers: 'dog_walking',
+  // training
+  pet_training: 'pet_training', training: 'pet_training', trainer: 'pet_training',
+  academy: 'pet_training',
+  // transport
+  pet_transport: 'pet_transport', transport: 'pet_transport', pettrek: 'pet_transport',
+  driver: 'pet_transport', driving: 'pet_transport',
+  // grooming
+  grooming: 'grooming', groomer: 'grooming',
+};
+
+export function normalizeServiceType(serviceType?: string | null): string {
+  if (!serviceType) return '';
+  const key = String(serviceType).trim().toLowerCase();
+  return SERVICE_TYPE_ALIASES[key] ?? key;
+}
+
 export interface ServiceApprovalResult { ok: boolean; status: string | null; reason?: string; }
 export interface ServiceRowLike {
   serviceStatus: string;
