@@ -16,6 +16,7 @@ import { useWhoami } from "@/auth/useWhoami";
 import RequireAuth from "@/auth/RequireAuth";
 import StationMembershipGuard from "@/components/StationMembershipGuard";
 import RoleProtectedRoute from "@/auth/RoleProtectedRoute";
+import AppTermsGate from "@/components/AppTermsGate";
 import { PlatformComingSoon } from "@/components/PlatformComingSoon";
 import { Car } from "lucide-react";
 import { initClientSentry } from "@/lib/sentry";
@@ -902,8 +903,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/dashboard">
           {() => (
             <RequireAuth>
-              {/* DashboardV2 (luxury) behind a flag; legacy Dashboard is the default. */}
-              {import.meta.env.VITE_DASHBOARD_V2_ENABLED === 'true' ? <DashboardV2 /> : <Dashboard />}
+              {/* CUSTOMER-app terms gate (fail-open, native customer flavor only; web/provider pass-through). */}
+              <AppTermsGate flavor="customer" language={language}>
+                {/* DashboardV2 (luxury) behind a flag; legacy Dashboard is the default. */}
+                {import.meta.env.VITE_DASHBOARD_V2_ENABLED === 'true' ? <DashboardV2 /> : <Dashboard />}
+              </AppTermsGate>
             </RequireAuth>
           )}
         </Route>
@@ -1608,9 +1612,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/provider-os">
           {() => (
             <RoleProtectedRoute minRole="provider">
-              <Suspense fallback={<PageLoader />}>
-                <ProviderOS />
-              </Suspense>
+              {/* PROVIDER-app agreement gate (fail-open, native provider flavor only; web/customer pass-through). */}
+              <AppTermsGate flavor="provider" language={language}>
+                <Suspense fallback={<PageLoader />}>
+                  <ProviderOS />
+                </Suspense>
+              </AppTermsGate>
             </RoleProtectedRoute>
           )}
         </Route>
