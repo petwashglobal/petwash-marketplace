@@ -18,17 +18,15 @@
  * and /api/google/places-details). This guard adds the missing
  * explicit toggle without removing the integration:
  *
- *   - production + flag unset      → ON (preserves current
- *                                       behaviour; emits a
- *                                       deprecation log so ops
- *                                       can see the unguarded
- *                                       posture)
- *   - production + flag = 'true'   → ON
- *   - production + flag = 'false'  → OFF (graceful 503 fallback)
- *   - any non-production env       → OFF (matches §1.12 literally
- *                                       so dev / test / staging
- *                                       never spend live budget)
- *   - explicit 'true' / 'false'    → always wins
+ *   - flag = 'true'                → ON (deliberate opt-in)
+ *   - flag unset / 'false' / other → OFF (graceful 503 fallback)
+ *
+ * COST GUARD (2026-06-19): the default is now OFF in EVERY env,
+ * including production. Previously production-with-flag-unset
+ * defaulted ON, and the paid Google Places/Geocoding meter caused
+ * a ~$1000 surprise bill. The client already uses the FREE OSM /
+ * Nominatim proxy (/api/geocode/suggest + /api/geocode/reverse) for
+ * all address entry, so paid Places staying OFF does not break UX.
  *
  * Boundaries:
  *   - This module does NOT read auth, payment, wallet, K9000,
@@ -53,11 +51,18 @@ export function isGooglePlacesServerEnabled(
 ): boolean {
   const raw = (env.GOOGLE_PLACES_LIVE || "").toLowerCase().trim();
   if (raw === "true") return true;
-  if (raw === "false") return false;
-  // Unset → conservative posture per PROGRAM.md §1.12:
-  //   OFF everywhere except production, where we preserve
-  //   today's behaviour until a future PR flips the default.
-  return (env.NODE_ENV || "").toLowerCase() === "production";
+  // COST GUARD (2026-06-19): the default is now OFF in EVERY environment,
+  // including production. The paid Google Places / autocomplete / details /
+  // geocoding meter previously defaulted ON in production, which caused a
+  // ~$1000 surprise Google bill. The client already uses the FREE
+  // OpenStreetMap / Nominatim proxy (/api/geocode/suggest +
+  // /api/geocode/reverse) for ALL address entry, so leaving paid Places
+  // OFF does NOT break address UX — gated routes return the existing
+  // graceful 503 PLACES_DISABLED fallback (the client handles it with a
+  // manual-entry hint). Paid Google Places only turns on when
+  // GOOGLE_PLACES_LIVE === 'true' is EXPLICITLY set (deliberate opt-in).
+  // Any other value (including 'false', unset, or garbage) → OFF.
+  return false;
 }
 
 /**

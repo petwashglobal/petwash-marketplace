@@ -187,17 +187,18 @@ function probeMapsCost(): ProbeResult {
   if (!keyPresent) {
     return { ...base, state: 'ok', detail: 'no Maps key — zero Google billing (app uses free OSM)' };
   }
-  // GOOGLE_PLACES_LIVE gates the PAID Places autocomplete/details proxy. If it
-  // is anything other than an explicit "false", the paid meter is running.
-  const placesLive = String(process.env.GOOGLE_PLACES_LIVE).toLowerCase() !== 'false';
+  // GOOGLE_PLACES_LIVE gates the PAID Places autocomplete/details proxy.
+  // COST GUARD (2026-06-19): the paid meter is OFF by default in every env;
+  // it runs ONLY when GOOGLE_PLACES_LIVE is explicitly "true".
+  const placesLive = String(process.env.GOOGLE_PLACES_LIVE).toLowerCase().trim() === 'true';
   if (placesLive) {
     return {
       ...base,
       state: 'warn',
-      detail: 'Maps key present AND GOOGLE_PLACES_LIVE not "false" — paid Places/Geocoding is ON (cost risk)',
+      detail: 'Maps key present AND GOOGLE_PLACES_LIVE="true" — paid Places/Geocoding is ON (cost risk)',
     };
   }
-  return { ...base, state: 'ok', detail: 'Maps key present but GOOGLE_PLACES_LIVE=false (paid Places disabled)' };
+  return { ...base, state: 'ok', detail: 'Maps key present but GOOGLE_PLACES_LIVE not "true" — paid Places disabled (free OSM in use)' };
 }
 
 function probeWebhookSecrets(): ProbeResult {

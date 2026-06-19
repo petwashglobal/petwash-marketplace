@@ -127,6 +127,23 @@ export class EmailService {
   }
 
   /**
+   * Positional back-compat adapter for `sendEmail(to, subject, html, locale?)`.
+   *
+   * BUGFIX 2026-06-19: this method was called in 7+ live call sites (e-gift
+   * delivery via the Nayax webhook, admin notices, campaigns, meetings) but was
+   * NEVER defined on EmailService — only `send({to,subject,html})` exists. Because
+   * the build uses esbuild (no type-check gate), `EmailService.sendEmail(...)`
+   * compiled fine but threw `TypeError: ... is not a function` at RUNTIME, so those
+   * emails silently never sent (a customer could pay for an e-gift and the recipient
+   * got nothing). This adapter delegates to the canonical `send()` and returns its
+   * boolean so callers can detect a failed delivery. `locale` is accepted for
+   * signature compatibility (send() has no locale param today).
+   */
+  static async sendEmail(to: string, subject: string, html: string, _locale?: string): Promise<boolean> {
+    return EmailService.send({ to, subject, html });
+  }
+
+  /**
    * Check if customer consents to receiving emails
    */
   static async checkEmailConsent(email: string, messageType: 'transactional' | 'marketing' | 'reminder'): Promise<boolean> {
