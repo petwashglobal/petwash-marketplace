@@ -5,6 +5,7 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { feeConfigService } from './FeeConfigurationService';
 import { isProviderInsuranceCleared } from '../routes/provider-insurance';
+import { checkPayoutGates } from './payoutGate';
 
 /**
  * Financial Payout Ledger Service (2026 Pet Wash™ Model)
@@ -313,6 +314,24 @@ export async function releaseEscrow(earningId: string) {
       throw new Error(
         `PAYOUT_BLOCKED_INSURANCE: provider ${earning.contractorId} not insurance-cleared — escrow held (earning ${earningId})`,
       );
+    }
+
+    // ── PAYOUT GATE CHAIN (fail-CLOSED) ──────────────────────────────────────
+    // Completion + refund-window + tax-verified + no-open-dispute + per-service
+    // payout approval. contractor_earnings is keyed by Firebase UID and bookingId
+    // here is the marketplace requestId. ANY failure HOLDS the earning in escrow
+    // (status unchanged) — money is never released on an unprovable gate. The
+    // auto-release cron simply retries on the next pass once the holds clear.
+    const gate = await checkPayoutGates({
+      providerUid: earning.contractorId,
+      bookingId: earning.bookingId,
+      contractorType: earning.contractorType,
+    });
+    if (!gate.ok) {
+      logger.warn('[PayoutLedger] Escrow release HELD by payout gate (fail-closed)', {
+        earningId, reason: gate.reason, message: gate.message,
+      });
+      throw new Error(`PAYOUT_HELD_GATE:${gate.reason} — ${gate.message} (earning ${earningId})`);
     }
 
     // Release from escrow

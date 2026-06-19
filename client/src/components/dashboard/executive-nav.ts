@@ -110,6 +110,7 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     items: [
       { label: 'KYC Review', labelHe: 'בדיקת זהות (KYC)', path: '/admin/kyc', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Identity & document review', hintHe: 'אימות זהות ובדיקת מסמכים' },
       { label: 'Identity Merge (shadow)', labelHe: 'איחוד זהויות (צל)', path: '/admin/identity-merge', icon: Users, roles: ['admin', 'ceo'], hint: 'Accounts that would merge — read-only, nothing is merged', hintHe: 'חשבונות שהיו מתאחדים — לקריאה בלבד, שום דבר לא מאוחד' },
+      { label: 'Provider Reconfirmation', labelHe: 'אישור מחדש לנותני שירות', path: '/admin/reconfirmation', icon: ClipboardList, roles: ['admin', 'ceo'], hint: 'Who is due/overdue for the 6-month reconfirmation — read-only', hintHe: 'מי בתוקף/באיחור באישור המחדש ל-6 חודשים — לקריאה בלבד' },
       { label: 'Policy & Compliance', labelHe: 'מדיניות וציות', path: '/admin/policy', icon: FileText, roles: ['admin', 'ceo'], hint: 'Governance docs', hintHe: 'מסמכי ממשל' },
       { label: 'Deadlines & Insurance', labelHe: 'תזכורות וביטוחים', path: '/admin/deadlines', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Renewal/expiry feed + insurance status', hintHe: 'תזכורות חידוש/תפוגה + סטטוס ביטוח' },
       { label: 'Franchise', labelHe: 'זכיינות', path: '/admin/franchise', icon: Handshake, roles: ['admin', 'ceo'], hint: 'Franchise operations', hintHe: 'תפעול זכיינות' },

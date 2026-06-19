@@ -40,6 +40,7 @@ import { nanoid } from 'nanoid';
 // Enterprise service integrations
 import EscrowService from '../services/EscrowService';
 import { createEarningRecord } from '../services/payoutLedger';
+import { assertServiceApproved, providerHasAnyServiceRows } from '../services/providerServiceApproval';
 import { dispatchNotification } from '../lib/notificationDispatcher';
 import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
 import { twilioSMSService } from '../services/TwilioSMSService';
@@ -954,6 +955,50 @@ router.post('/:requestId/respond', async (req, res) => {
           error: 'BACKGROUND_CHECK_REQUIRED',
           message: 'Your background check must be approved before you can accept bookings.',
         });
+      }
+
+      // ── PER-SERVICE BOOKING GATE (legal-spec core rule) ───────────────────
+      // The provider must be approved-for-booking FOR THIS SPECIFIC SERVICE.
+      // provider_services is keyed by Firebase UID, which is exactly booking.providerId
+      // (== userId) here, and we normalise the service vocabulary inside the gate.
+      //
+      // LEGACY FAIL-OPEN (intentional): providers approved BEFORE this per-service
+      // system existed have zero provider_services rows. Blocking them would break
+      // live providers, so absence-of-rows ⇒ allow. But a provider who IS in the
+      // system (has rows) and is NOT approved-for-booking on this service ⇒ BLOCK.
+      // This is the ONLY fail-open in the chain; payout is strictly fail-closed.
+      try {
+        const gate = await assertServiceApproved(userId!, booking.serviceType, 'booking');
+        if (!gate.ok) {
+          const hasRows = await providerHasAnyServiceRows(userId!);
+          if (hasRows) {
+            logger.warn('[BookingRequests] Provider accept blocked — service not approved for booking', {
+              providerId: userId, serviceType: booking.serviceType, reason: gate.reason, status: gate.status,
+            });
+            return res.status(403).json({
+              error: 'SERVICE_NOT_APPROVED_FOR_BOOKING',
+              message: 'This service is not yet approved for bookings on your account. Contact PetWash support.',
+              reason: gate.reason,
+            });
+          }
+          // No rows at all → legacy provider → allow (log for visibility).
+          logger.info('[BookingRequests] Provider has no provider_services rows — legacy fail-open allow', {
+            providerId: userId, serviceType: booking.serviceType,
+          });
+        }
+      } catch (gateErr) {
+        // A genuine lookup failure should NOT silently allow on a money-adjacent
+        // gate; but to avoid breaking live providers on an infra blip we mirror
+        // the legacy fail-open ONLY when the provider has no rows, else block.
+        logger.error('[BookingRequests] Booking-gate lookup error', { gateErr, providerId: userId, serviceType: booking.serviceType });
+        try {
+          const hasRows = await providerHasAnyServiceRows(userId!);
+          if (hasRows) {
+            return res.status(503).json({ error: 'SERVICE_GATE_UNAVAILABLE', message: 'Could not verify service approval. Please retry.' });
+          }
+        } catch {
+          // double failure → fall through to legacy-allow (no rows assumed)
+        }
       }
     }
 

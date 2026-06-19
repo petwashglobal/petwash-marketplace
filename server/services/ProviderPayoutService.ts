@@ -21,6 +21,7 @@ import { FinancialDocumentService } from "./FinancialDocumentService";
 import { TreasuryConfigService } from "./TreasuryConfigService";
 import { dispatchNotifications, buildPayoutIssuedSms } from "./PetWashNotificationEngine";
 import { isProviderInsuranceCleared } from "../routes/provider-insurance";
+import { checkPayoutGates } from "./payoutGate";
 
 export class ProviderPayoutService {
   
@@ -156,6 +157,33 @@ export class ProviderPayoutService {
         return {
           success: false,
           error: 'PAYOUT_BLOCKED_INSURANCE: provider not insurance-cleared (active liability cover + declaration required)',
+        };
+      }
+
+      // ── PAYOUT GATE CHAIN (fail-CLOSED) ────────────────────────────────────
+      // Completion + refund-window + tax-verified + no-open-dispute + per-service
+      // payout approval. super_app_payouts.providerId is the NUMERIC providers.id,
+      // so we pass the resolved provider.userId (Firebase UID) — provider_services
+      // and tax checks are keyed by UID. ANY failure HOLDS the payout: we keep it
+      // in escrow (status unchanged) and stamp the reason, never paying out on an
+      // unprovable gate. The auto-release cron retries once holds clear.
+      const gate = await checkPayoutGates({
+        providerUid: provider.userId,
+        bookingId: payout.bookingId,
+      });
+      if (!gate.ok) {
+        logger.warn('[ProviderPayout] BLOCKED — payout gate (fail-closed)', {
+          payoutId, providerUid: provider.userId, reason: gate.reason,
+        });
+        // Hold: keep in_escrow, record the failure reason for ops visibility.
+        // We do NOT set 'failed' (that implies a permanent error); the cron will
+        // re-evaluate on the next pass once the gate condition clears.
+        await db.update(superAppPayouts)
+          .set({ failureReason: `HELD: ${gate.reason} — ${gate.message}`, updatedAt: new Date() })
+          .where(eq(superAppPayouts.id, payoutId));
+        return {
+          success: false,
+          error: `PAYOUT_HELD_GATE:${gate.reason} — ${gate.message}`,
         };
       }
 

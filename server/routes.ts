@@ -339,6 +339,7 @@ import adminDeadlinesRouter from './routes/admin-deadlines';
 import adminWalletAnomaliesRouter from './routes/admin-wallet-anomalies';
 import adminStationHealthRouter from './routes/admin-station-health';
 import adminFaultIntelRouter from './routes/admin-fault-intel';
+import adminReconfirmationRouter from './routes/admin-reconfirmation';
 import adminStaffAcademyRouter from './routes/admin-staff-academy';
 import adminExpansionMarketingRouter from './routes/admin-expansion-marketing';
 import adminStockReportsRouter from './routes/admin-stock-reports';
@@ -486,6 +487,7 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/api/admin', adminStockReportsRouter); // §10 stock-prediction + §24 reports-summary (read-only)
   app.use('/api/admin', adminSupportIncidentRouter); // §15 support-scripts + §18 incidents (read-only / record-only)
   app.use('/api/admin', adminBuildingsPartnersRouter); // §8 buildings/resident + §28 partner-report (read-only)
+  app.use('/api', adminReconfirmationRouter); // §17 provider 6-month reconfirmation: GET /admin/reconfirmation (read-only) + POST /provider/reconfirm (1 additive insert). Auth enforced inside the router.
   // Maya Voice public webhook (Stage 3A) — provider-signature auth, NOT admin.
   // Lives under /api/maya/voice so Twilio/Vapi/Retell can call it directly.
   app.use('/api/maya/voice', mayaVoiceWebhookRouter);

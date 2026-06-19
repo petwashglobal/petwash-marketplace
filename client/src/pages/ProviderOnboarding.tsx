@@ -132,8 +132,32 @@ export default function ProviderOnboarding() {
   const [phoneOtpVerifying, setPhoneOtpVerifying] = useState(false);
   const [phoneOtpError, setPhoneOtpError] = useState('');
   const [idNumber, setIdNumber] = useState('');
+  const [ageConfirmed18Plus, setAgeConfirmed18Plus] = useState(false);
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('IL');
+
+  // Light client-side Israeli-ID checksum (the backend is the source of truth;
+  // this is only to give immediate feedback). Mirrors server/lib/israeliId.ts.
+  const isValidIsraeliIdClient = (id: string): boolean => {
+    const digits = (id || '').replace(/\D/g, '');
+    if (digits.length === 0 || digits.length > 9 || /^0+$/.test(digits)) return false;
+    const padded = digits.padStart(9, '0');
+    let sum = 0;
+    for (let i = 0; i < 9; i++) {
+      let n = parseInt(padded[i], 10) * ((i % 2) + 1);
+      if (n > 9) n -= 9;
+      sum += n;
+    }
+    return sum % 10 === 0;
+  };
+  // Treat a pure ≤9-digit string as an Israeli-ID candidate (passports/licences
+  // contain letters and are left alone).
+  const looksLikeIsraeliIdClient = (id: string): boolean => {
+    const cleaned = (id || '').replace(/[\s-]/g, '');
+    return /^\d+$/.test(cleaned) && cleaned.length > 0 && cleaned.length <= 9;
+  };
+  const israeliIdInvalid =
+    !!idNumber && looksLikeIsraeliIdClient(idNumber) && !isValidIsraeliIdClient(idNumber);
   
   // Files
   const [selfiePhoto, setSelfiePhoto] = useState<File | null>(null);
@@ -329,6 +353,8 @@ export default function ProviderOnboarding() {
     phone: isHebrew ? 'טלפון' : 'Phone Number',
     idNumber: isHebrew ? 'תעודת זהות / פספורט / רישיון נהיגה' : 'ID / Passport / Driver\'s License Number',
     idNumberPlaceholder: isHebrew ? 'מספר תעודת זהות, פספורט או רישיון נהיגה' : 'ID, passport or driver\'s license number',
+    idNumberInvalid: isHebrew ? 'מספר תעודת הזהות אינו תקין. בדוק ונסה שוב.' : 'This Israeli ID number is not valid. Please check and try again.',
+    age18Confirm: isHebrew ? 'אני מאשר/ת שאני בן/בת 18 ומעלה' : 'I confirm that I am at least 18 years old',
     city: isHebrew ? 'עיר' : 'City',
     country: isHebrew ? 'מדינה' : 'Country',
     biometricKyc: isHebrew ? 'אימות ביומטרי (רמת בנקאות)' : 'Biometric Verification (Banking-Level)',
@@ -462,6 +488,7 @@ export default function ProviderOnboarding() {
       formData.append('lastName', lastName);
       formData.append('phoneNumber', phoneNumber);
       formData.append('idNumber', idNumber);
+      formData.append('ageConfirmed18Plus', ageConfirmed18Plus ? 'true' : 'false');
       formData.append('city', city);
       formData.append('country', country);
       formData.append('providerType', providerTypes[0]);
@@ -922,7 +949,22 @@ export default function ProviderOnboarding() {
                     className="bg-white !text-gray-900 border border-gray-200 rounded-xl placeholder:text-gray-400"
                     data-testid="input-id-number"
                   />
+                  {israeliIdInvalid && (
+                    <p className="text-sm text-red-600 mt-1" data-testid="error-id-number">
+                      {t.idNumberInvalid}
+                    </p>
+                  )}
                 </div>
+
+                <label className="flex items-start gap-3 cursor-pointer">
+                  <Checkbox
+                    checked={ageConfirmed18Plus}
+                    onCheckedChange={(checked) => setAgeConfirmed18Plus(!!checked)}
+                    className="mt-1"
+                    data-testid="checkbox-age-18"
+                  />
+                  <span className="text-sm text-gray-700">{t.age18Confirm}</span>
+                </label>
 
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
@@ -980,7 +1022,7 @@ export default function ProviderOnboarding() {
                   <Button 
                     onClick={() => setStep(2)} 
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
-                    disabled={!firstName || !lastName || !phoneNumber || !phoneVerified || !idNumber || !city || providerTypes.length === 0}
+                    disabled={!firstName || !lastName || !phoneNumber || !phoneVerified || !idNumber || israeliIdInvalid || !ageConfirmed18Plus || !city || providerTypes.length === 0}
                     data-testid="button-next-step2"
                   >
                     {t.next}
