@@ -438,6 +438,14 @@ const Trademarks = lazy(() => import("@/pages/legal/Trademarks"));
 const AccessibilityStatementPage = lazy(() => import("@/pages/legal/AccessibilityStatement"));
 const MarketplaceTerms = lazy(() => import("@/pages/legal/MarketplaceTerms"));
 const LegalDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));
+// Legal Routes — Israel 2026 set (draft, pending counsel)
+const LegalCustomerTerms = lazy(() => import("@/pages/legal/CustomerTerms"));
+const LegalProviderAgreement = lazy(() => import("@/pages/legal/ProviderAgreement"));
+const LegalCancellationRefund = lazy(() => import("@/pages/legal/CancellationRefundPolicy"));
+const LegalWalletEGiftTerms = lazy(() => import("@/pages/legal/WalletEGiftTerms"));
+const LegalStationUseTerms = lazy(() => import("@/pages/legal/StationUseTerms"));
+const LegalHomeAccess = lazy(() => import("@/pages/legal/HomeAccessPropertyAuthority"));
+const LegalNoInsuranceNotice = lazy(() => import("@/pages/legal/ProtectionNoInsuranceNotice"));
 
 // ⁦Walk My Pet™⁩ Pages
 const TrackWalk = lazy(() => import("@/pages/walks/TrackWalk"));
@@ -1186,7 +1194,29 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/legal/disclaimer">
           {() => <LegalDisclaimer />}
         </Route>
-        
+        {/* Legal Routes — Israel 2026 set (draft, pending counsel) */}
+        <Route path="/legal/customer-terms">
+          {() => <LegalCustomerTerms />}
+        </Route>
+        <Route path="/legal/provider-agreement">
+          {() => <LegalProviderAgreement />}
+        </Route>
+        <Route path="/legal/cancellation-refund-policy">
+          {() => <LegalCancellationRefund />}
+        </Route>
+        <Route path="/legal/wallet-egift-terms">
+          {() => <LegalWalletEGiftTerms />}
+        </Route>
+        <Route path="/legal/station-use-terms">
+          {() => <LegalStationUseTerms />}
+        </Route>
+        <Route path="/legal/home-access-property-authority">
+          {() => <LegalHomeAccess />}
+        </Route>
+        <Route path="/legal/protection-no-insurance-notice">
+          {() => <LegalNoInsuranceNotice />}
+        </Route>
+
         {/* Protected route - ID Verification */}
         <Route path="/verify">
           {() => (
