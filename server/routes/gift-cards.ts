@@ -883,6 +883,29 @@ router.post('/:voucherId/activate-wallet', async (req, res) => {
 
     const { voucherId } = req.params;
 
+    // ── SECURITY: recipient binding ───────────────────────────────────────────
+    // A gift bound to a recipient email may be redeemed ONLY by that recipient.
+    // Without this, ANY signed-in user could redeem ANY gift by id (theft via
+    // id enumeration). An unbound gift (no recipientEmail) stays open to claim.
+    {
+      const [bind] = await db
+        .select({ recipientEmail: eVouchers.recipientEmail })
+        .from(eVouchers)
+        .where(eq(eVouchers.id, voucherId))
+        .limit(1);
+      if (!bind) {
+        return res.status(404).json({ error: 'Gift card not found' });
+      }
+      const boundEmail = (bind.recipientEmail || '').toLowerCase().trim();
+      const tokenEmail = (decoded.email || '').toLowerCase().trim();
+      if (boundEmail && tokenEmail !== boundEmail) {
+        return res.status(403).json({
+          error: 'This gift was sent to a different email address. Please sign in with that email to redeem it.',
+          reasonCode: 'EGIFT_RECIPIENT_MISMATCH',
+        });
+      }
+    }
+
     if (isUnifiedVerificationEgiftRedeemEnabled()) {
       const verificationChallengeId = typeof req.body?.verificationChallengeId === 'string'
         ? req.body.verificationChallengeId.trim()
