@@ -508,6 +508,8 @@ export const customerPets = pgTable("customer_pets", {
   customerId: integer("customer_id").references(() => customers.id).notNull(),
   name: varchar("name").notNull(),
   breed: varchar("breed").notNull(),
+  sex: varchar("sex").default("unknown"),          // male | female | unknown
+  desexed: varchar("desexed").default("unknown"),  // yes | no | unknown (neutered/spayed)
   age: integer("age"),
   dateOfBirth: date("date_of_birth"), // Pet birthday for birthday discount (10% off)
   weight: varchar("weight"),
