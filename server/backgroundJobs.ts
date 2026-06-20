@@ -752,6 +752,16 @@ export class BackgroundJobProcessor {
               profileData?.petName || profileData?.dogName
             );
             
+            // §30א gate: the birthday email carries a discount voucher → it is a
+            // דבר פרסומת and MUST NOT be sent without prior marketing-email consent.
+            // Canonical gate (notification_preferences.marketing_email_consent_at);
+            // fail-closed. Unifies with the rest of PetWash's marketing sends.
+            const emailConsented = await assertMarketingConsent(uid, 'email');
+            if (!emailConsented) {
+              logger.info(`[Birthday] Skipped email — no marketing email consent: ${uid}`);
+              continue;
+            }
+
             // Send birthday email
             const emailSent = await EmailService.sendBirthdayDiscount({
               email: profileData?.email || '',
