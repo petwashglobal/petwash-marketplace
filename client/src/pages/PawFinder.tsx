@@ -41,6 +41,9 @@ interface PawPost {
   area?: string;
   description: string;
   reward_amount?: string;
+  /** Owner's phone — present ONLY when they chose 'public_phone' (max-reach). Anyone can ring. */
+  public_phone?: string | null;
+  contact_preference?: string;
   event_date: string;
   status: string;
   matched_post_count: number;
@@ -195,7 +198,17 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
           {post.description}
         </p>
 
-        <div className="mt-4">
+        <div className="mt-4 space-y-2">
+          {/* Owner opted into public phone → ANYONE can ring directly, no login. */}
+          {post.public_phone && (
+            <a
+              href={`tel:${post.public_phone}`}
+              className="w-full py-2.5 rounded-2xl bg-emerald-600 text-white text-sm font-bold hover:bg-emerald-700 active:scale-95 transition-all flex items-center justify-center gap-2 shadow-sm"
+              dir="ltr"
+            >
+              <Phone className="w-3.5 h-3.5" /> {post.public_phone}
+            </a>
+          )}
           {user ? (
             <button
               onClick={onContact}
@@ -203,14 +216,14 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
             >
               <Phone className="w-3.5 h-3.5" /> צור קשר עם הבעלים
             </button>
-          ) : (
+          ) : !post.public_phone ? (
             <button
               onClick={() => window.location.href = '/sign-in?redirect=/paw-finder'}
               className="w-full py-2.5 rounded-2xl bg-slate-100 text-slate-600 text-sm font-semibold hover:bg-slate-200 transition-all flex items-center justify-center gap-2"
             >
               <AlertCircle className="w-3.5 h-3.5" /> התחבר כדי ליצור קשר
             </button>
-          )}
+          ) : null}
         </div>
       </div>
     </div>
@@ -894,9 +907,11 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
         <div>
           <label className={labelCls}>העדפת יצירת קשר</label>
           <select value={form.contactPreference} onChange={set('contactPreference')} className={inputCls}>
-            <option value="inbox_first">הודעה פנימית תחילה</option>
+            <option value="inbox_first">הודעה פנימית תחילה (פרטי)</option>
             <option value="reveal_phone_after_accept">חשוף טלפון לאחר אישור</option>
+            <option value="public_phone">הצג טלפון לכולם — חשיפה מקסימלית 📣</option>
           </select>
+          <p className="text-xs text-slate-500 mt-1">לחיה אבודה — "הצג טלפון לכולם" מאפשר לכל אחד להתקשר ישירות, גם בלי חשבון. כמו מודעה על עץ, רק עם הרבה יותר טווח.</p>
         </div>
       </div>
 
