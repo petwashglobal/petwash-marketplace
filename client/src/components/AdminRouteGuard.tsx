@@ -36,9 +36,9 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
 
     if (whoamiHasAccess || adminHasAccess || claimsHasAccess) return;
 
-    if (!adminLoading && !whoamiLoading) {
-      setLocation("/admin/login");
-    }
+    // Logged in but NOT an admin → do NOT bounce to /admin/login (that loops a
+    // signed-in non-admin). Fall through to render the friendly access-denied
+    // screen below (spec §21). Only the not-logged-in case redirects to login.
   }, [firebaseLoading, firebaseUser, adminLoading, admin, isError, setLocation, claims, claimsLoading, whoami, whoamiLoading, isSuperAdmin, whoamiRole, allLoading]);
 
   if (allLoading) {
@@ -68,5 +68,33 @@ export function AdminRouteGuard({ children }: AdminRouteGuardProps) {
     return <>{children}</>;
   }
 
-  return null;
+  // Signed in, but this account is NOT authorised for the PetWash admin backend.
+  // Show a clear message (never a blank screen or a redirect loop) — Google/mobile
+  // login proves identity, not admin authorization.
+  const he = language === 'he';
+  const ar = language === 'ar';
+  return (
+    <div dir={he || ar ? 'rtl' : 'ltr'} className="min-h-screen bg-white flex items-center justify-center px-6">
+      <div className="max-w-md text-center">
+        <div className="text-4xl mb-4">🔒</div>
+        <h1 className="text-2xl font-semibold text-black mb-3">
+          {he ? 'אין הרשאת גישה' : ar ? 'لا يوجد إذن بالوصول' : 'Access not authorised'}
+        </h1>
+        <p className="text-black/60 leading-relaxed mb-6">
+          {he
+            ? 'החשבון הזה אינו מורשה לאזור הניהול של PetWash. התחברות עם Google או נייד מאמתת זהות בלבד — גישת מנהל ניתנת רק לצוות מאושר.'
+            : ar
+            ? 'هذا الحساب غير مخوّل للوحة إدارة PetWash. تسجيل الدخول يثبت الهوية فقط — صلاحية الإدارة للموظفين المعتمدين.'
+            : 'This account is not authorised for the PetWash admin area. Signing in with Google or mobile proves your identity — admin access is granted only to approved staff.'}
+        </p>
+        <button
+          onClick={() => setLocation('/')}
+          className="px-6 py-3 rounded-xl bg-black text-white font-medium hover:opacity-90 transition-opacity"
+          data-testid="button-admin-denied-home"
+        >
+          {he ? 'חזרה לדף הבית' : ar ? 'العودة إلى الصفحة الرئيسية' : 'Back to homepage'}
+        </button>
+      </div>
+    </div>
+  );
 }
