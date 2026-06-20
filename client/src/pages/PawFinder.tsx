@@ -1236,7 +1236,7 @@ export default function PawFinder({ language }: PawFinderProps) {
         <div className="relative max-w-7xl mx-auto px-4 pt-10 pb-8">
           {/* Top label */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">PetWash™ · שירות קהילתי חינמי</span>
+            <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">PetWash™ · פורטל חיפוש חברתי חינמי</span>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
@@ -1246,10 +1246,10 @@ export default function PawFinder({ language }: PawFinderProps) {
                 🐾 Paw Finder
               </h1>
               <p className="text-white/90 text-xl md:text-2xl font-semibold mt-2 leading-snug">
-                הפלטפורמה הקהילתית לחיות אבודות ונמצאות
+                לכל החיות האבודות מגיע לחזור הביתה.
               </p>
               <p className="text-white/75 text-base mt-2 max-w-xl leading-relaxed">
-                אנחנו מאמינים שכל חיית מחמד ראויה לחזור הביתה. Paw Finder הוא שירות חינמי לחלוטין עבור כל חברי הקהילה שלנו — פרסמו, גלו, ועזרו לחיות אבודות למצוא את הדרך הביתה.
+                אנחנו פה בשביל זה. פורטל חיפוש חברתי חינמי לחלוטין — פרסמו, גלו, ועזרו לחיות אבודות למצוא את הדרך הביתה.
               </p>
               <p className="text-white/60 text-sm mt-1">
                 Free community service · Serving Tel Aviv, Ramat Gan & all Israel · Powered by PetWash™
