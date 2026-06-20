@@ -298,7 +298,7 @@ export function WashPackages({ language }: WashPackagesProps) {
                       <div className="flex items-center gap-2">
                         <Check className="w-3 h-3 shrink-0" strokeWidth={1.5} style={{ color: '#12936A' }} />
                         <span className="text-[10px] sm:text-[11px]">
-                          {language === 'he' ? 'שמפו טבעי פרימיום' : 'Premium natural shampoo'}
+                          {language === 'he' ? 'שמפו, מרכך ושמן עץ התה האוסטרלי' : 'Australian shampoo, conditioner & tea tree oil'}
                         </span>
                       </div>
                       <div className="flex items-center gap-2">
