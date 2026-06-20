@@ -121,7 +121,18 @@ export async function computeChecklist(idOrUser: string): Promise<VerificationCh
   // opened (by APP-id or by UID), so reviews/documents never fork.
   const applicationId: string = app.application_id;
 
-  const review = await getOrCreateReview(applicationId, app.user_id);
+  // READ-ONLY: do NOT create a review row just for viewing the checklist —
+  // otherwise merely opening a provider's verification page would arm the soft
+  // approval/payout gate and surprise-block their inbox "Approve". A review is
+  // created only when an admin actively patches/decides (patchReview/setReviewDecision).
+  const [existingReview] = await db.select().from(providerVerificationReviews)
+    .where(eq(providerVerificationReviews.applicationId, applicationId))
+    .orderBy(desc(providerVerificationReviews.createdAt)).limit(1);
+  const review = existingReview ?? ({
+    reviewStatus: "pending_review",
+    nameMatch: "pending", dobMatch: "pending", documentNumberMatch: "pending",
+    selfiePhotoMatch: "pending", contractNameMatch: "pending",
+  } as ProviderVerificationReview);
   const userV = await loadUserVerification(app.user_id);
 
   // Latest official document row (if any).
