@@ -428,6 +428,7 @@ const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
 const ProviderListings = lazy(() => import("@/pages/ProviderListings"));
 const PlatformShowcase = lazy(() => import("@/pages/PlatformShowcase"));
 const PawFinder = lazy(() => import("@/pages/PawFinder"));
+const AdoptionMaison = lazy(() => import("@/pages/AdoptionMaison"));
 const ServiceStatus = lazy(() => import("@/pages/ServiceStatus"));
 
 // ⁦Pet Wash™⁩ 2025 Global Architecture - Octopus Model Routes
@@ -2652,6 +2653,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/service-status">{() => <ServiceStatus language={language} />}</Route>
         {/* PR-NAV-2: removed duplicate /status registration (was unreachable — wouter takes first match at the SystemStatus route above) */}
         <Route path="/paw-finder">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
+        <Route path="/adoption">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><AdoptionMaison /></Layout>}</Route>
         <Route path="/find-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/lost-pet">{() => <Layout language={language} onLanguageChange={handleLanguageChange}><PawFinder language={language} /></Layout>}</Route>
         <Route path="/franchise">{() => <Franchise language={language} onLanguageChange={handleLanguageChange} />}</Route>
