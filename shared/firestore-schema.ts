@@ -62,6 +62,7 @@ export const petProfileSchema = z.object({
   species: z.enum(["dog", "cat", "bird", "rabbit", "guinea_pig", "hamster", "reptile", "turtle", "fish", "other"]).default("dog"),
   breed: z.string().optional(),
   gender: z.enum(["male", "female", "unknown"]).optional(),
+  desexed: z.enum(["yes", "no", "unknown"]).optional(), // neutered / spayed — from the Pet Owner spec
   birthday: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Birthday must be in YYYY-MM-DD format" }).optional(), // YYYY-MM-DD
   weightKg: z.number().positive().optional(),
   // Pet Passport fields the create form collects (were silently dropped before — these
