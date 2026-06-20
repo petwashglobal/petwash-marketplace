@@ -56,6 +56,8 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'CEO Report', labelHe: 'דוח מנכ״ל', path: '/admin/ceo-report', icon: Activity, roles: ['admin', 'ceo'], hint: 'Yesterday digest + eGift intelligence', hintHe: 'תקציר אתמול + מודיעין גיפט' },
       { label: 'CEO Suite', labelHe: 'חדר מנכ״ל', path: '/pet-wash-ltd/executive/ceo', icon: Crown, roles: ['ceo'], hint: 'Founder tools & gift cards', hintHe: 'כלי מייסד וכרטיסי מתנה' },
       { label: 'Operations Brain', labelHe: 'מרכז תפעול', path: '/admin/brain', icon: Bot, roles: ['admin', 'ceo'], hint: 'Live stations, alerts, approvals', hintHe: 'עמדות בזמן אמת, התראות ואישורים' },
+      // Control Tower (2026-06-20): unified "what needs attention" triage queue.
+      { label: 'Alerts Center', labelHe: 'מרכז התראות', path: '/admin/alerts', icon: ShieldAlert, roles: ['admin', 'ceo'], hint: 'What needs attention — paid-not-activated, faults, failed jobs', hintHe: 'מה דורש טיפול — שולם ולא הופעל, תקלות, משימות שנכשלו' },
       { label: 'Reminders (preview)', labelHe: 'תזכורות (תצוגה)', path: '/admin/reminder-preview', icon: Activity, roles: ['admin', 'ceo'], hint: 'What smart reminders would be sent — read-only', hintHe: 'אילו תזכורות חכמות היו נשלחות — לקריאה בלבד' },
     ],
   },

@@ -166,6 +166,7 @@ import adminPaymentsControlRoutes from "./routes/admin-payments-control";
 import adminProviderControlRoutes from "./routes/admin-provider-control";
 import adminCustomerDetailRoutes from "./routes/admin-customer-detail";
 import adminBayControlRoutes from "./routes/admin-bay-control";
+import adminAlertsRoutes from "./routes/admin-alerts";
 import adminRetentionRouter from "./routes/admin-retention";
 import adminBrainRoutes from "./routes/admin-brain";
 import adminBridgeRoutes from "./routes/admin-bridge";
@@ -11422,6 +11423,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin/provider-control', validateFirebaseToken, adminLimiter, adminProviderControlRoutes);
   app.use('/api/admin/customer-detail', validateFirebaseToken, adminLimiter, adminCustomerDetailRoutes);
   app.use('/api/admin/bay-control', validateFirebaseToken, adminLimiter, adminBayControlRoutes);
+  app.use('/api/admin/alerts', validateFirebaseToken, adminLimiter, adminAlertsRoutes);
   // Winback Engine (§27) + Review Engine logic (§26) — READ-ONLY preview. Each route uses requireAdmin internally.
   app.use('/api/admin', validateFirebaseToken, adminLimiter, adminRetentionRouter);
   // Operations Brain (CEO read-only dashboard).
