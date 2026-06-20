@@ -123,7 +123,7 @@ const createPostSchema = z.object({
   sex: z.enum(['male', 'female', 'unknown']).default('unknown'),
   description: z.string().min(10).max(2000),
   rewardAmount: z.number().min(0).max(10000).optional(),
-  contactPreference: z.enum(['inbox_first', 'reveal_phone_after_accept']).default('inbox_first'),
+  contactPreference: z.enum(['inbox_first', 'reveal_phone_after_accept', 'public_phone']).default('inbox_first'),
   contactPhone: z.string().max(32).optional(),
   city: z.string().min(1).max(100),
   area: z.string().max(100).optional(),
@@ -234,6 +234,11 @@ router.get('/posts', async (req, res) => {
          p.breed, p.color_primary, p.size_category, p.sex,
          p.city, p.area, p.description, p.reward_amount,
          p.event_date, p.status, p.matched_post_count,
+         p.contact_preference,
+         -- Phone is exposed to the public ONLY when the owner opted into
+         -- 'public_phone' (max-reach, tree-poster style). Otherwise NULL — the
+         -- privacy-first default routes contact through the in-app inbox.
+         CASE WHEN p.contact_preference = 'public_phone' THEN p.contact_phone ELSE NULL END AS public_phone,
          ROUND(p.latitude::numeric,  2) AS latitude,
          ROUND(p.longitude::numeric, 2) AS longitude,
          p.published_at,
