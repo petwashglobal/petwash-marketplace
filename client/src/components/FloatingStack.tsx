@@ -51,8 +51,17 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
       const buttons = stack.querySelectorAll('.pw-float');
       buttons.forEach((btn: Element) => {
         const htmlBtn = btn as HTMLElement;
-        const baseBottom = parseInt(htmlBtn.getAttribute('data-base-bottom') || '0');
-        htmlBtn.style.bottom = `${baseBottom + extraOffset}px`;
+        if (extraOffset > 0) {
+          // Keyboard open — lift the FABs above it.
+          const baseBottom = parseInt(htmlBtn.getAttribute('data-base-bottom') || '0');
+          htmlBtn.style.bottom = `${baseBottom + extraOffset}px`;
+        } else {
+          // Keyboard closed — clear the inline override so the stylesheet's
+          // calc(base + --pw-bottom-nav-offset + safe-area) positions the FABs.
+          // (The inline value omitted the 56px bottom-nav offset, which made the
+          //  blue chat button sit on top of the bottom nav / "חשבון".)
+          htmlBtn.style.bottom = '';
+        }
       });
     }
 
