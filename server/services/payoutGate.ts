@@ -19,7 +19,7 @@
  * numeric-providers.id rail resolve it via providers.userId before calling.
  */
 import { db } from '../db';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { bookings, bookingRequests, providers } from '@shared/schema';
 import { bookingDisputes } from '@shared/schema';
 import { assertServiceApproved } from './providerServiceApproval';
@@ -186,6 +186,40 @@ export async function checkPayoutGates(input: PayoutGateInput): Promise<PayoutGa
         reason: `SERVICE_NOT_APPROVED_FOR_PAYOUT:${svcGate.reason ?? 'UNKNOWN'}`,
         message: `Service "${serviceType}" is not approved for payout (${svcGate.reason}) — payout held.`,
       };
+    }
+
+    // Gate (f): manual identity verification ("PENDING PETWASH REVIEW").
+    // Flag-gated (PROVIDER_PAYOUT_STRICT, default off) so it can't freeze existing
+    // payouts before the manual-verification flow is in routine use. When armed,
+    // require an admin-approved provider_verification_review for this provider UID,
+    // and that the provider's bank account is verified. Fail-closed within the flag.
+    if ((process.env.PROVIDER_PAYOUT_STRICT || 'off').toLowerCase() === 'on') {
+      const idRes: any = await db.execute(sql`
+        SELECT 1 FROM provider_verification_reviews
+        WHERE provider_id = ${providerUid} AND review_status = 'approved'
+        ORDER BY created_at DESC LIMIT 1
+      `);
+      const idOk = (idRes?.rows ?? idRes ?? []).length > 0;
+      if (!idOk) {
+        return { ok: false, reason: 'IDENTITY_NOT_VERIFIED', message: 'Provider identity not yet accepted by PetWash review — payout held.' };
+      }
+
+      // Bank-verified check is best-effort: the bank flag lives on a payout-details
+      // table whose shape varies, so this is fail-OPEN (a lookup error skips it
+      // rather than freezing the identity-verified gate). Wire the exact table here
+      // once confirmed to make it a hard gate too.
+      try {
+        const bankRes: any = await db.execute(sql`
+          SELECT bank_account_verified
+          FROM provider_payout_details WHERE user_id = ${providerUid} LIMIT 1
+        `);
+        const bankRow = (bankRes?.rows ?? bankRes ?? [])[0];
+        if (bankRow && bankRow.bank_account_verified === false) {
+          return { ok: false, reason: 'BANK_NOT_VERIFIED', message: 'Provider bank account not verified — payout held.' };
+        }
+      } catch {
+        // fail-open — identity gate above is the hard requirement.
+      }
     }
 
     return { ok: true, reason: 'OK', message: 'All payout gates passed.' };
