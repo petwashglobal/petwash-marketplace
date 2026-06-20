@@ -239,11 +239,25 @@ router.post('/verify', async (req: Request, res: Response) => {
         code,
         actor: requestActor(req, body),
       });
+      // Defensive: a malformed unified-verification result must surface as a
+      // typed, handled error — NOT a generic Error that falls through to a raw 500
+      // (which read as "Something went wrong" to the user after a correct code).
+      if (!result || !result.action) {
+        throw new UnifiedVerificationError(
+          'INVALID_VERIFICATION_RESPONSE',
+          'Verification could not be completed. Please request a new code and try again.',
+          500,
+        );
+      }
       const verificationToken = typeof result.action.verificationToken === 'string'
         ? result.action.verificationToken
         : undefined;
       if (!verificationToken) {
-        throw new Error('Unified verification completed without verificationToken');
+        throw new UnifiedVerificationError(
+          'VERIFICATION_TOKEN_GENERATION_FAILED',
+          'Verification could not be completed. Please request a new code and try again.',
+          500,
+        );
       }
       void logAuditEvent({
         actionType: 'SIGNUP_AUTH_VERIFIED',
