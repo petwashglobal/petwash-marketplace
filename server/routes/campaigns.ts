@@ -19,6 +19,41 @@ import { replaceTemplates, validateTemplate, type TemplateContext } from '../lib
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { z } from 'zod';
+import { assertMarketingConsent } from '../services/CampaignDeliveryService';
+
+/**
+ * Israel Spam Law §30א consent gate for bulk marketing blasts.
+ *
+ * Resolves the recipient's user_id (recipients may arrive with only an email
+ * from the `customers` table) then applies the canonical marketing consent
+ * gate. FAIL-CLOSED: if we cannot resolve a user_id, we cannot verify consent,
+ * so the send is blocked — never blast someone we can't prove consented.
+ *
+ * `testMode` recipients (single explicit test send by an operator to their own
+ * address) are exempt — they are not a marketing blast to a customer list.
+ */
+async function recipientMayReceive(
+  recipient: { email: string; userId?: string },
+  channel: 'email' | 'sms',
+  testMode: boolean,
+): Promise<boolean> {
+  if (testMode) return true;
+  let userId = recipient.userId;
+  if (!userId && recipient.email) {
+    try {
+      const [u] = await db
+        .select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, recipient.email))
+        .limit(1);
+      userId = u?.id;
+    } catch {
+      return false; // fail-closed
+    }
+  }
+  if (!userId) return false; // cannot verify consent → do not send
+  return assertMarketingConsent(userId, channel);
+}
 
 const router = Router();
 
@@ -272,6 +307,7 @@ router.post('/send', async (req: Request, res: Response) => {
       emailsFailed: 0,
       smsSent: 0,
       smsFailed: 0,
+      blockedNoConsent: 0,
       errors: [] as string[],
     };
     
@@ -291,6 +327,11 @@ router.post('/send', async (req: Request, res: Response) => {
         
         // ===== SEND EMAIL =====
         if (emailTemplate && recipient.email) {
+          // Israel Spam Law §30א — block unless recipient consented to marketing email
+          if (!(await recipientMayReceive(recipient, 'email', campaign.testMode))) {
+            results.blockedNoConsent++;
+            logger.info(`[Campaign ${correlationId}] Email blocked — no marketing consent`, { email: recipient.email });
+          } else
           try {
             // Personalize subject and content
             const personalizedSubject = replaceTemplates(emailTemplate.subject, context, campaign.locale);
@@ -334,6 +375,11 @@ router.post('/send', async (req: Request, res: Response) => {
         
         // ===== SEND SMS =====
         if (smsTemplate && recipient.phone) {
+          // Israel Spam Law §30א — block unless recipient consented to marketing SMS
+          if (!(await recipientMayReceive(recipient, 'sms', campaign.testMode))) {
+            results.blockedNoConsent++;
+            logger.info(`[Campaign ${correlationId}] SMS blocked — no marketing consent`, { phone: recipient.phone });
+          } else
           try {
             // Personalize SMS content
             const personalizedSms = replaceTemplates(smsTemplate.content, context, campaign.locale);

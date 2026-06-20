@@ -276,6 +276,14 @@ async function sendTierUpgradeNotification(
   discount: number
 ) {
   try {
+    // Israel Spam Law §30א: this push announces a discount → promotional.
+    // Gate on marketing push consent before sending. Fail-closed.
+    const { assertMarketingConsent } = await import('../services/CampaignDeliveryService');
+    if (!(await assertMarketingConsent(userId, 'push'))) {
+      logger.info('[LoyaltySync] Tier upgrade push blocked — no marketing push consent', { userId });
+      return;
+    }
+
     // Get user's FCM token from Firestore
     const firestore = admin.firestore();
     const userDoc = await firestore.collection('users').doc(userId).get();

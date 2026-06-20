@@ -3747,6 +3747,19 @@ router.post('/admin/wallet/refund', async (req: Request, res: Response) => {
       txnId: result.txnId, adminUid: uid, reason,
     });
 
+    // Audit ledger (dangerous admin money action) — survives beyond app logs.
+    await logAuditEvent({
+      actorUserId: uid,
+      actorRole: 'admin',
+      actionType: 'ADMIN_WALLET_REFUND',
+      targetType: 'wallet',
+      targetId: booking.user_id,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: { bookingId, refundCents, newFinanceState: newState, txnId: result.txnId, reason },
+      severity: 'warning',
+    });
+
     return res.json({ ok: true, txnId: result.txnId, refundedCents: refundCents, newFinanceState: newState });
   } catch (err: any) {
     logger.error('[AdminWallet][Refund] error', { error: err.message });
@@ -3791,6 +3804,19 @@ router.post('/admin/wallet/adjust', async (req: Request, res: Response) => {
 
     logger.info('[AdminWallet][Adjust] Adjustment applied', {
       userId, amountCents, type, txnId: result.txnId, adminUid: uid, reason,
+    });
+
+    // Audit ledger (dangerous admin money action — manual credit/debit).
+    await logAuditEvent({
+      actorUserId: uid,
+      actorRole: 'admin',
+      actionType: 'ADMIN_WALLET_ADJUST',
+      targetType: 'wallet',
+      targetId: userId,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: { amountCents, type, txnId: result.txnId, reason },
+      severity: 'warning',
     });
 
     return res.json({ ok: true, txnId: result.txnId, adjustedCents: amountCents, type });
@@ -3988,6 +4014,15 @@ router.post('/admin/wallet/support/issue-refund', async (req: Request, res: Resp
         bookingId, bookingType, holdCents, txnId: result.txnId, adminUid: uid,
       });
 
+      await logAuditEvent({
+        actorUserId: uid, actorRole: 'admin',
+        actionType: 'ADMIN_WALLET_SUPPORT_REFUND',
+        targetType: 'wallet', targetId: booking.user_id,
+        ip: req.ip, userAgent: req.headers['user-agent'],
+        metadata: { bookingId, bookingType, actionTaken: 'release', amountCents: holdCents, txnId: result.txnId, reason },
+        severity: 'warning',
+      });
+
       const walletSnapshot = await fetchSupportWalletSnapshot(booking.user_id);
       return res.json({
         ok: true, actionTaken: 'release',
@@ -4051,6 +4086,15 @@ router.post('/admin/wallet/support/issue-refund', async (req: Request, res: Resp
 
     logger.info('[Support][IssueRefund] Refund issued', {
       bookingId, bookingType, refundCents, newState, txnId: result.txnId, adminUid: uid,
+    });
+
+    await logAuditEvent({
+      actorUserId: uid, actorRole: 'admin',
+      actionType: 'ADMIN_WALLET_SUPPORT_REFUND',
+      targetType: 'wallet', targetId: booking.user_id,
+      ip: req.ip, userAgent: req.headers['user-agent'],
+      metadata: { bookingId, bookingType, actionTaken: 'refund', amountCents: refundCents, newFinanceState: newState, txnId: result.txnId, reason },
+      severity: 'warning',
     });
 
     const walletSnapshot = await fetchSupportWalletSnapshot(booking.user_id);

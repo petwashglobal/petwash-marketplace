@@ -94,6 +94,48 @@ function isChannelAllowed(channel: DeliveryChannel, consent: ConsentRecord | nul
   }
 }
 
+/**
+ * Israel Spam Law §30א consent gate — the SINGLE reusable chokepoint.
+ *
+ * Loads notification_preferences for `userId` and applies the exact same
+ * isChannelAllowed() semantics used by campaign delivery. Any MARKETING /
+ * promotional SMS / email / push send (outside this service) MUST call this
+ * first and bail when it returns false.
+ *
+ * FAIL-CLOSED: if no preferences row exists, or the DB lookup fails, the only
+ * channel allowed is 'in_app' — sms/email/push are blocked. Never gate
+ * transactional messages (OTP, booking confirmation, receipts) with this.
+ *
+ * @returns true if the marketing message may be sent on `channel`.
+ */
+export async function assertMarketingConsent(
+  userId: string,
+  channel: DeliveryChannel,
+): Promise<boolean> {
+  // in_app never requires consent — short-circuit without a DB round-trip.
+  if (channel === 'in_app') return true;
+  if (!userId) return false;
+
+  try {
+    const { rows } = await pool.query(
+      `SELECT marketing_sms_consent_at, marketing_push_consent_at,
+              marketing_email_consent_at, push_device_permission_status
+         FROM notification_preferences
+        WHERE user_id = $1
+        LIMIT 1`,
+      [userId],
+    );
+    const consent = (rows[0] as ConsentRecord | undefined) ?? null;
+    return isChannelAllowed(channel, consent);
+  } catch (err: any) {
+    // Fail-closed: never send a marketing message we couldn't verify consent for.
+    logger.error('[MarketingConsent] consent lookup failed — blocking send', {
+      userId, channel, error: err?.message,
+    });
+    return false;
+  }
+}
+
 // ─────────────────────────────────────────────────────────────
 // MESSAGE TEMPLATES (Hebrew / production-ready)
 // ─────────────────────────────────────────────────────────────

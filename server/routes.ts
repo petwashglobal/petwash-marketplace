@@ -161,6 +161,11 @@ import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
 import adminMemberDiscountRoutes from "./routes/admin-member-discount";
 import memberDiscountRoutes from "./routes/member-discount";
+// Control Tower admin panels (2026-06-20) — read-only views over existing ledgers/engines.
+import adminPaymentsControlRoutes from "./routes/admin-payments-control";
+import adminProviderControlRoutes from "./routes/admin-provider-control";
+import adminCustomerDetailRoutes from "./routes/admin-customer-detail";
+import adminBayControlRoutes from "./routes/admin-bay-control";
 import adminRetentionRouter from "./routes/admin-retention";
 import adminBrainRoutes from "./routes/admin-brain";
 import adminBridgeRoutes from "./routes/admin-bridge";
@@ -11411,6 +11416,12 @@ self.addEventListener('notificationclick', (event) => {
   // discounts (postal review). requireAdmin inside the router; mutations are
   // audit-logged. Stores NO ID/passport data — only the approved percent.
   app.use('/api/admin/member-discount', validateFirebaseToken, adminLimiter, adminMemberDiscountRoutes);
+  // Control Tower panels — Payments ledger view, Provider approval ladder, Customer detail.
+  // Each router enforces requireAdmin (isSuperAdmin) internally and audit-logs sensitive reads.
+  app.use('/api/admin/payments-control', validateFirebaseToken, adminLimiter, adminPaymentsControlRoutes);
+  app.use('/api/admin/provider-control', validateFirebaseToken, adminLimiter, adminProviderControlRoutes);
+  app.use('/api/admin/customer-detail', validateFirebaseToken, adminLimiter, adminCustomerDetailRoutes);
+  app.use('/api/admin/bay-control', validateFirebaseToken, adminLimiter, adminBayControlRoutes);
   // Winback Engine (§27) + Review Engine logic (§26) — READ-ONLY preview. Each route uses requireAdmin internally.
   app.use('/api/admin', validateFirebaseToken, adminLimiter, adminRetentionRouter);
   // Operations Brain (CEO read-only dashboard).
