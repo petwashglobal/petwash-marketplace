@@ -37,8 +37,12 @@ vi.mock('../lib/logger', () => ({
 
 import { assertMarketingConsent } from '../services/CampaignDeliveryService';
 
-/** Helper: make pool.query resolve to a single notification_preferences row. */
+/** Helper: make the NEXT pool.query resolve to a notification_preferences row. */
 function prefsRow(row: Record<string, any> | null) {
+  query.mockResolvedValueOnce({ rows: row ? [row] : [] });
+}
+/** Helper: make the NEXT pool.query (the suppression veto) resolve to a users row. */
+function suppRow(row: Record<string, any> | null) {
   query.mockResolvedValueOnce({ rows: row ? [row] : [] });
 }
 
@@ -65,6 +69,7 @@ describe('assertMarketingConsent — Israel Spam Law §30א gate', () => {
       marketing_push_consent_at: null,
       push_device_permission_status: 'not_determined',
     });
+    suppRow(null); // no legacy suppression
     expect(await assertMarketingConsent('user-2', 'sms')).toBe(true);
   });
 
@@ -86,6 +91,7 @@ describe('assertMarketingConsent — Israel Spam Law §30א gate', () => {
       marketing_push_consent_at: null,
       push_device_permission_status: 'not_determined',
     });
+    suppRow(null);
     expect(await assertMarketingConsent('user-4', 'email')).toBe(true);
   });
 
@@ -117,7 +123,36 @@ describe('assertMarketingConsent — Israel Spam Law §30א gate', () => {
       marketing_push_consent_at: new Date('2026-03-03T00:00:00Z'),
       push_device_permission_status: 'granted',
     });
+    suppRow(null);
     expect(await assertMarketingConsent('user-7', 'push')).toBe(true);
+  });
+
+  // ── UNIFICATION: legacy suppression store can veto even with new consent ────
+  it('BLOCKS a consented send when the legacy suppression_list.all is true', async () => {
+    prefsRow({
+      marketing_sms_consent_at: new Date(), marketing_email_consent_at: null,
+      marketing_push_consent_at: null, push_device_permission_status: 'not_determined',
+    });
+    suppRow({ suppression_list: { all: true }, communication_preferences: {} });
+    expect(await assertMarketingConsent('user-supp', 'sms')).toBe(false);
+  });
+
+  it('BLOCKS a consented send when legacy communication_preferences.marketingConsent is false', async () => {
+    prefsRow({
+      marketing_sms_consent_at: null, marketing_email_consent_at: new Date(),
+      marketing_push_consent_at: null, push_device_permission_status: 'not_determined',
+    });
+    suppRow({ suppression_list: {}, communication_preferences: { marketingConsent: false } });
+    expect(await assertMarketingConsent('user-optout', 'email')).toBe(false);
+  });
+
+  it('ALLOWS when consented and legacy store has a per-channel flag for a DIFFERENT channel', async () => {
+    prefsRow({
+      marketing_sms_consent_at: new Date(), marketing_email_consent_at: null,
+      marketing_push_consent_at: null, push_device_permission_status: 'not_determined',
+    });
+    suppRow({ suppression_list: { email: true }, communication_preferences: {} });
+    expect(await assertMarketingConsent('user-mixed', 'sms')).toBe(true);
   });
 
   // ── in_app — always allowed, never hits the DB ────────────────────────────

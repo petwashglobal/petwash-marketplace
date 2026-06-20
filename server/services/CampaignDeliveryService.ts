@@ -116,6 +116,7 @@ export async function assertMarketingConsent(
   if (channel === 'in_app') return true;
   if (!userId) return false;
 
+  let allowed: boolean;
   try {
     const { rows } = await pool.query(
       `SELECT marketing_sms_consent_at, marketing_push_consent_at,
@@ -126,7 +127,7 @@ export async function assertMarketingConsent(
       [userId],
     );
     const consent = (rows[0] as ConsentRecord | undefined) ?? null;
-    return isChannelAllowed(channel, consent);
+    allowed = isChannelAllowed(channel, consent);
   } catch (err: any) {
     // Fail-closed: never send a marketing message we couldn't verify consent for.
     logger.error('[MarketingConsent] consent lookup failed — blocking send', {
@@ -134,6 +135,33 @@ export async function assertMarketingConsent(
     });
     return false;
   }
+  if (!allowed) return false;
+
+  // UNIFICATION: also honor the LEGACY unsubscribe store (users.suppression_list /
+  // communication_preferences) used by EmailService/dispatchNotifications. If the
+  // user opted out there, block — even though the new consent timestamps allow.
+  // Either store can veto (fail-SAFE). Veto lookup fails OPEN (the hard consent
+  // requirement above already passed), so a transient users-table error can't
+  // silently suppress a legitimately-consented send.
+  try {
+    const { rows } = await pool.query(
+      `SELECT suppression_list, communication_preferences FROM users WHERE id = $1 LIMIT 1`,
+      [userId],
+    );
+    const u = rows[0];
+    if (u) {
+      const list  = (u.suppression_list as any) || {};
+      const prefs = (u.communication_preferences as any) || {};
+      const key = channel === 'sms' ? 'sms' : channel === 'email' ? 'email' : 'push';
+      if (list.all === true || list[key] === true) return false;
+      if (prefs.marketingConsent === false) return false;
+    }
+  } catch (err: any) {
+    logger.warn('[MarketingConsent] suppression-list veto lookup failed (fail-open)', {
+      userId, channel, error: err?.message,
+    });
+  }
+  return true;
 }
 
 // ─────────────────────────────────────────────────────────────
