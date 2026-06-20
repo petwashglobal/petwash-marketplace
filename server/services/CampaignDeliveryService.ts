@@ -29,6 +29,7 @@ import { dispatchNotifications } from './PetWashNotificationEngine';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
+import { logNotificationEvent } from './notificationAudit';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -340,6 +341,14 @@ export class CampaignDeliveryService {
         if (allowedChannels.length === 0) {
           result.skipped++;
           logger.debug('[Campaign] All channels blocked by consent', { userId, campaignType });
+          // §30א audit: record that we blocked this marketing send for lack of consent.
+          for (const ch of channels.filter(c => c !== 'in_app')) {
+            await logNotificationEvent({
+              userId, channel: ch, category: 'marketing', templateKey: campaignType,
+              consentChecked: true, consentResult: 'blocked_no_consent', status: 'blocked_no_consent',
+              metadata: { campaignType, couponId },
+            });
+          }
           continue;
         }
 
@@ -421,6 +430,14 @@ export class CampaignDeliveryService {
             } catch { /* non-blocking */ }
           }
           result.byChannel[ch]++;
+          if (ch !== 'in_app') {
+            // §30א audit: this marketing send went out only AFTER consent was verified.
+            await logNotificationEvent({
+              userId, channel: ch, category: 'marketing', templateKey: campaignType,
+              consentChecked: true, consentResult: 'allowed', status: 'sent',
+              providerMessageId: chanMsgId, metadata: { campaignType, couponId },
+            });
+          }
         }
 
         // Log trigger (de-dupe anchor)
