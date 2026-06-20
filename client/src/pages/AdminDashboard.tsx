@@ -193,7 +193,7 @@ export default function AdminDashboard() {
         <div className="text-center">
           <div className="w-14 h-14 border-4 border-emerald-700 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
           <p className="text-black text-lg font-medium">{he ? 'טוען נתונים…' : 'Loading analytics…'}</p>
-          <p className="text-black/45 text-sm mt-2">{he ? 'מכינים את לוח הבקרה' : 'Preparing your dashboard'}</p>
+          <p className="text-black/70 text-sm mt-2">{he ? 'מכינים את לוח הבקרה' : 'Preparing your dashboard'}</p>
         </div>
       </div>
     );
@@ -221,7 +221,7 @@ export default function AdminDashboard() {
                 key={section.id}
                 onClick={() => setSelectedSection(section.id as any)}
                 className={`flex items-center gap-2 py-3 px-4 border-b-2 text-sm font-medium transition-colors whitespace-nowrap ${
-                  active ? 'border-emerald-700 text-black' : 'border-transparent text-black/50 hover:text-black'
+                  active ? 'border-emerald-700 text-black' : 'border-transparent text-black/65 hover:text-black'
                 }`}
                 data-testid={`nav-${section.id}`}
               >
@@ -244,12 +244,12 @@ export default function AdminDashboard() {
                   <h2 className="text-2xl font-light tracking-tight text-black">
                     {he ? 'מגדל הבקרה' : 'Control Tower'}
                   </h2>
-                  <p className="mt-1 text-sm font-light text-black/45">
+                  <p className="mt-1 text-sm font-light text-black/70">
                     {he ? 'תמונת מצב חיה — היום' : 'Live snapshot — today'}
                   </p>
                 </div>
                 {controlTower?.generatedAt && (
-                  <span className="text-xs font-light text-black/35 whitespace-nowrap" dir="ltr">
+                  <span className="text-xs font-light text-black/60 whitespace-nowrap" dir="ltr">
                     {he ? 'עודכן ' : 'Updated '}
                     {new Date(controlTower.generatedAt).toLocaleTimeString(he ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit' })}
                   </span>
@@ -263,15 +263,15 @@ export default function AdminDashboard() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-px bg-black/[0.06]">
               {/* Sales today (₪) */}
               <div className="bg-white px-6 py-8" data-testid="kpi-sales">
-                <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                   {he ? 'מכירות היום' : 'Sales today'}
                 </div>
-                <div className="mt-4 text-5xl font-extralight leading-none text-black" dir="ltr">
+                <div className="mt-4 text-5xl font-bold leading-none text-black" dir="ltr">
                   {controlTower?.salesToday
                     ? `₪${controlTower.salesToday.totalIls.toLocaleString()}`
-                    : <span className="text-black/25">₪0</span>}
+                    : <span className="text-black/55">₪0</span>}
                 </div>
-                <div className="mt-3 text-xs font-light text-black/40">
+                <div className="mt-3 text-xs font-light text-black/65">
                   {controlTower?.salesToday
                     ? (he
                         ? `${controlTower.salesToday.count} עסקאות`
@@ -282,15 +282,15 @@ export default function AdminDashboard() {
 
               {/* Bays / Stations active */}
               <div className="bg-white px-6 py-8" data-testid="kpi-bays">
-                <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                   {he ? 'עמדות פעילות' : 'Bays active'}
                 </div>
-                <div className="mt-4 text-5xl font-extralight leading-none text-black" dir="ltr">
+                <div className="mt-4 text-5xl font-bold leading-none text-black" dir="ltr">
                   {controlTower?.stations
-                    ? <>{controlTower.stations.active}<span className="text-2xl text-black/30">/{controlTower.stations.total}</span></>
-                    : <span className="text-black/25">—</span>}
+                    ? <>{controlTower.stations.active}<span className="text-2xl text-black/55">/{controlTower.stations.total}</span></>
+                    : <span className="text-black/55">—</span>}
                 </div>
-                <div className="mt-3 text-xs font-light text-black/40">
+                <div className="mt-3 text-xs font-light text-black/65">
                   {controlTower?.stations
                     ? (he
                         ? `${controlTower.stations.offline} לא מקוונות`
@@ -301,19 +301,19 @@ export default function AdminDashboard() {
 
               {/* Open faults */}
               <div className="bg-white px-6 py-8" data-testid="kpi-faults">
-                <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                   {he ? 'תקלות פתוחות' : 'Open faults'}
                 </div>
                 <div
-                  className="mt-4 text-5xl font-extralight leading-none"
+                  className="mt-4 text-5xl font-bold leading-none"
                   dir="ltr"
                   style={{ color: controlTower?.faults && controlTower.faults.critical > 0 ? GOLD_DARK : '#000' }}
                 >
                   {controlTower?.faults
                     ? controlTower.faults.open
-                    : <span className="text-black/25">—</span>}
+                    : <span className="text-black/55">—</span>}
                 </div>
-                <div className="mt-3 text-xs font-light text-black/40">
+                <div className="mt-3 text-xs font-light text-black/65">
                   {controlTower?.faults
                     ? (he
                         ? `${controlTower.faults.critical} קריטיות`
@@ -324,15 +324,15 @@ export default function AdminDashboard() {
 
               {/* eGifts */}
               <div className="bg-white px-6 py-8" data-testid="kpi-egift">
-                <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                   {he ? 'מתנות' : 'eGifts'}
                 </div>
-                <div className="mt-4 text-5xl font-extralight leading-none text-black" dir="ltr">
+                <div className="mt-4 text-5xl font-bold leading-none text-black" dir="ltr">
                   {controlTower?.egift
                     ? controlTower.egift.soldToday
-                    : <span className="text-black/25">0</span>}
+                    : <span className="text-black/55">0</span>}
                 </div>
-                <div className="mt-3 text-xs font-light text-black/40">
+                <div className="mt-3 text-xs font-light text-black/65">
                   {controlTower?.egift
                     ? (he
                         ? `נמכרו היום · ${controlTower.egift.unredeemed} לא מומשו`
@@ -348,13 +348,13 @@ export default function AdminDashboard() {
                 <h3 className="text-lg font-light tracking-tight text-black">
                   {he ? 'מגמת הכנסות — 7 ימים' : 'Revenue — last 7 days'}
                 </h3>
-                <span className="text-xs font-light text-black/35">
+                <span className="text-xs font-light text-black/60">
                   {he ? 'כולל מע״מ · ₪' : 'incl. VAT · ₪'}
                 </span>
               </div>
 
               {revenue7Loading ? (
-                <div className="h-72 flex items-center justify-center text-sm font-light text-black/30">
+                <div className="h-72 flex items-center justify-center text-sm font-light text-black/55">
                   {he ? 'טוען…' : 'Loading…'}
                 </div>
               ) : revenue7HasData ? (
@@ -411,10 +411,10 @@ export default function AdminDashboard() {
               ) : (
                 /* Honest empty state — no revenue yet today/this week. */
                 <div className="h-72 flex flex-col items-center justify-center gap-3 border border-black/[0.06]">
-                  <div className="text-4xl font-extralight text-black" dir="ltr">
+                  <div className="text-4xl font-bold text-black" dir="ltr">
                     {controlTower?.salesToday ? `₪${controlTower.salesToday.totalIls.toLocaleString()}` : '₪0'}
                   </div>
-                  <p className="text-xs font-light text-black/40">
+                  <p className="text-xs font-light text-black/65">
                     {he ? 'אין הכנסות ב-7 הימים האחרונים עדיין' : 'No revenue in the last 7 days yet'}
                   </p>
                 </div>
@@ -436,15 +436,15 @@ export default function AdminDashboard() {
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-px bg-black/[0.06]">
                 {/* Stations online/offline */}
                 <div className="bg-white px-6 py-7" data-testid="ops-stations">
-                  <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                  <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                     {he ? 'עמדות' : 'Stations'}
                   </div>
-                  <div className="mt-3 text-3xl font-extralight text-black" dir="ltr">
+                  <div className="mt-3 text-3xl font-bold text-black" dir="ltr">
                     {controlTower?.stations
-                      ? <>{controlTower.stations.active}<span className="text-lg text-black/30">/{controlTower.stations.total}</span></>
-                      : <span className="text-black/25">—</span>}
+                      ? <>{controlTower.stations.active}<span className="text-lg text-black/55">/{controlTower.stations.total}</span></>
+                      : <span className="text-black/55">—</span>}
                   </div>
-                  <div className="mt-2 text-xs font-light text-black/40">
+                  <div className="mt-2 text-xs font-light text-black/65">
                     {controlTower?.stations
                       ? (he ? `${controlTower.stations.offline} לא מקוונות` : `${controlTower.stations.offline} offline`)
                       : (he ? 'אין נתון' : 'unavailable')}
@@ -453,17 +453,17 @@ export default function AdminDashboard() {
 
                 {/* Open faults */}
                 <div className="bg-white px-6 py-7" data-testid="ops-faults">
-                  <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                  <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                     {he ? 'תקלות פתוחות' : 'Open faults'}
                   </div>
                   <div
-                    className="mt-3 text-3xl font-extralight"
+                    className="mt-3 text-3xl font-bold"
                     dir="ltr"
                     style={{ color: controlTower?.faults && controlTower.faults.critical > 0 ? GOLD_DARK : '#000' }}
                   >
-                    {controlTower?.faults ? controlTower.faults.open : <span className="text-black/25">—</span>}
+                    {controlTower?.faults ? controlTower.faults.open : <span className="text-black/55">—</span>}
                   </div>
-                  <div className="mt-2 text-xs font-light text-black/40">
+                  <div className="mt-2 text-xs font-light text-black/65">
                     {controlTower?.faults
                       ? (he ? `${controlTower.faults.critical} קריטיות` : `${controlTower.faults.critical} critical`)
                       : (he ? 'אין נתון' : 'unavailable')}
@@ -472,17 +472,17 @@ export default function AdminDashboard() {
 
                 {/* Low stock */}
                 <div className="bg-white px-6 py-7" data-testid="ops-stock">
-                  <div className="text-xs font-medium uppercase tracking-wider text-black/45">
+                  <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                     {he ? 'מלאי נמוך' : 'Low stock'}
                   </div>
                   <div
-                    className="mt-3 text-3xl font-extralight"
+                    className="mt-3 text-3xl font-bold"
                     dir="ltr"
                     style={{ color: controlTower?.stock && controlTower.stock.lowCount > 0 ? GOLD_DARK : '#000' }}
                   >
-                    {controlTower?.stock ? controlTower.stock.lowCount : <span className="text-black/25">—</span>}
+                    {controlTower?.stock ? controlTower.stock.lowCount : <span className="text-black/55">—</span>}
                   </div>
-                  <div className="mt-2 text-xs font-light text-black/40">
+                  <div className="mt-2 text-xs font-light text-black/65">
                     {controlTower?.stock
                       ? (he ? 'פריטים בסף המינימום' : 'items at/below min')
                       : (he ? 'אין נתון' : 'unavailable')}
@@ -520,7 +520,7 @@ export default function AdminDashboard() {
               <div className="mb-8">
                 <h3 className="text-lg font-semibold text-black mb-4">{he ? 'העמדות המובילות' : 'Top Performing Stations'}</h3>
                 {stationLoading ? (
-                  <div className="text-gray-500 text-center py-8">{he ? 'טוען נתוני עמדות…' : 'Loading station data...'}</div>
+                  <div className="text-black/70 text-center py-8">{he ? 'טוען נתוני עמדות…' : 'Loading station data...'}</div>
                 ) : (
                   <div className="space-y-3">
                     {stationData?.data?.slice(0, 5).map((station, index) => (
@@ -536,13 +536,13 @@ export default function AdminDashboard() {
                               #{index + 1}
                             </div>
                             <div>
-                              <div className="text-gray-800 font-medium">{station.stationName}</div>
-                              <div className="text-xs text-black/50">{he ? `${station.totalTransactions} עסקאות` : `${station.totalTransactions} transactions`}</div>
+                              <div className="text-black font-medium">{station.stationName}</div>
+                              <div className="text-xs text-black/65">{he ? `${station.totalTransactions} עסקאות` : `${station.totalTransactions} transactions`}</div>
                             </div>
                           </div>
                           <div className="text-right">
                             <div className="text-base font-semibold text-black text-emerald-700">₪{station.totalRevenue.toLocaleString()}</div>
-                            <div className="text-xs text-black/50">{he ? 'ממוצע' : 'Avg'}: ₪{station.averageTransaction.toFixed(0)}</div>
+                            <div className="text-xs text-black/65">{he ? 'ממוצע' : 'Avg'}: ₪{station.averageTransaction.toFixed(0)}</div>
                           </div>
                         </div>
                       </div>
@@ -556,7 +556,7 @@ export default function AdminDashboard() {
                 <h3 className="text-lg font-semibold text-black mb-4">{he ? 'נפח עסקאות (30 ימים)' : 'Transaction Volume (30 Days)'}</h3>
                 {revenueLoading ? (
                   <div className="h-64 flex items-center justify-center">
-                    <div className="text-black/40">{he ? 'טוען גרף…' : 'Loading chart...'}</div>
+                    <div className="text-black/65">{he ? 'טוען גרף…' : 'Loading chart...'}</div>
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height={300}>
@@ -581,10 +581,10 @@ export default function AdminDashboard() {
           <div dir={he ? 'rtl' : 'ltr'} className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
             <h2 className="text-2xl font-semibold text-black mb-4">{he ? 'לוח מועדון לקוחות' : 'Loyalty Program Dashboard'}</h2>
             <p className="text-sm text-black/60 mb-8">{he ? 'ניהול נאמנות לקוחות, דרגות ותגמולים' : 'Manage customer loyalty, tiers, and rewards'}</p>
-            <div className="text-center py-12 text-gray-500">
-              <Award className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
+            <div className="text-center py-12 text-black/70">
+              <Award className="w-16 h-16 mx-auto mb-4 opacity-60 text-emerald-600" />
               <p className="text-base font-semibold text-black">{he ? 'ניהול מועדון לקוחות' : 'Loyalty Management'}</p>
-              <p className="text-xs text-black/50">{he ? 'תכונות נאמנות מתקדמות יגיעו בקרוב' : 'Advanced loyalty features coming soon'}</p>
+              <p className="text-xs text-black/65">{he ? 'תכונות נאמנות מתקדמות יגיעו בקרוב' : 'Advanced loyalty features coming soon'}</p>
             </div>
           </div>
         )}
@@ -593,10 +593,10 @@ export default function AdminDashboard() {
           <div dir={he ? 'rtl' : 'ltr'} className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
             <h2 className="text-2xl font-semibold text-black mb-4">{he ? 'ניהול מלאי' : 'Inventory Management'}</h2>
             <p className="text-sm text-black/60 mb-8">{he ? 'מעקב אחר רמות מלאי, אספקה וציוד' : 'Track stock levels, supplies, and equipment'}</p>
-            <div className="text-center py-12 text-gray-500">
-              <Package className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
+            <div className="text-center py-12 text-black/70">
+              <Package className="w-16 h-16 mx-auto mb-4 opacity-60 text-emerald-600" />
               <p className="text-base font-semibold text-black">{he ? 'מעקב מלאי' : 'Inventory Tracker'}</p>
-              <p className="text-xs text-black/50">{he ? 'ניטור מלאי בזמן אמת יגיע בקרוב' : 'Real-time inventory monitoring coming soon'}</p>
+              <p className="text-xs text-black/65">{he ? 'ניטור מלאי בזמן אמת יגיע בקרוב' : 'Real-time inventory monitoring coming soon'}</p>
             </div>
           </div>
         )}
@@ -605,10 +605,10 @@ export default function AdminDashboard() {
           <div dir={he ? 'rtl' : 'ltr'} className="rounded-2xl border border-black/10 bg-white p-6 shadow-sm luxury-shadow-lg luxury-animate-fade-in">
             <h2 className="text-2xl font-semibold text-black mb-4">{he ? 'ניהול מסמכי כוח אדם' : 'HR Document Management'}</h2>
             <p className="text-sm text-black/60 mb-8">{he ? 'ניהול מסמכי עובדים, חוזים ורשומות' : 'Manage employee documents, contracts, and records'}</p>
-            <div className="text-center py-12 text-gray-500">
-              <FileText className="w-16 h-16 mx-auto mb-4 opacity-30 text-emerald-600" />
+            <div className="text-center py-12 text-black/70">
+              <FileText className="w-16 h-16 mx-auto mb-4 opacity-60 text-emerald-600" />
               <p className="text-base font-semibold text-black">{he ? 'מסמכי כוח אדם' : 'HR Documents'}</p>
-              <p className="text-xs text-black/50">{he ? 'מערכת ניהול מסמכים תגיע בקרוב' : 'Document management system coming soon'}</p>
+              <p className="text-xs text-black/65">{he ? 'מערכת ניהול מסמכים תגיע בקרוב' : 'Document management system coming soon'}</p>
             </div>
           </div>
         )}

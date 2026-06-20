@@ -142,7 +142,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
           <div className="flex items-end justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight text-black">{title}</h1>
-              {subtitle && <p className="mt-1 text-sm text-black/55">{subtitle}</p>}
+              {subtitle && <p className="mt-1 text-sm text-black/70">{subtitle}</p>}
             </div>
             {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
           </div>
