@@ -113,7 +113,7 @@ async function compressIfNeeded(filePath: string): Promise<void> {
 ----------------------------------------------------------------------- */
 
 const createPostSchema = z.object({
-  postType: z.enum(['lost', 'found']),
+  postType: z.enum(['lost', 'found', 'adoption']),
   petType: z.enum(['dog', 'cat', 'bird', 'other']),
   petName: z.string().max(100).optional(),
   breed: z.string().max(100).optional(),
