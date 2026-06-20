@@ -7,6 +7,7 @@ import { Router } from 'express';
 import { FCMService } from '../services/FCMService';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
+import { recordPushDevice } from '../services/notificationAudit';
 
 const router = Router();
 
@@ -24,7 +25,12 @@ router.post('/register-token', requireAuth, async (req, res) => {
     }
     
     await FCMService.registerToken(userId, token);
-    
+
+    // Canonical Postgres token record (hashed + audited). Non-fatal — never blocks
+    // registration. Fills push_devices so the §30א audit / token lifecycle is queryable.
+    const { deviceType, deviceName, appVersion, locale, timezone } = req.body ?? {};
+    await recordPushDevice({ userId, token, deviceType, deviceName, appVersion, locale, timezone });
+
     res.json({
       success: true,
       message: 'FCM token registered successfully',
