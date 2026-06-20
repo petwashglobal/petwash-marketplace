@@ -378,6 +378,7 @@ const AdminProviderControl = lazy(() => import("@/pages/admin/AdminProviderContr
 const AdminCustomerDetail = lazy(() => import("@/pages/admin/AdminCustomerDetail"));
 const AdminBayControl = lazy(() => import("@/pages/admin/AdminBayControl"));
 const AdminAlertsCenter = lazy(() => import("@/pages/admin/AdminAlertsCenter"));
+const AdminProviderVerification = lazy(() => import("@/pages/admin/AdminProviderVerification"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDashboard"));
@@ -2276,6 +2277,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminAlertsCenter />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Provider full identity verification — manual matching checklist (by applicationId) */}
+        <Route path="/admin/provider-verification/:id">
+          {() => (
+            <AdminRouteGuard>
+              <AdminProviderVerification />
             </AdminRouteGuard>
           )}
         </Route>
