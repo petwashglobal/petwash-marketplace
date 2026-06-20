@@ -29,6 +29,7 @@ import {
   type ServiceLevel,
 } from '../services/providerServiceApproval';
 import { writeProviderAudit } from '../services/providerAudit';
+import { isProviderFullyVerifiedByUser, hasVerificationRecordByUser } from '../services/providerFullVerification';
 
 const submissionRateMap = new Map<string, { count: number; resetAt: number }>();
 const MAX_SUBMISSIONS_PER_IP_PER_HOUR = 3;
@@ -1211,7 +1212,37 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
     if (application.status !== 'pending') {
       return res.status(400).json({ error: 'Application already processed' });
     }
-    
+
+    // ── IDENTITY ACCEPTANCE GATE ──────────────────────────────────────────────
+    // A provider card must NOT be created until an admin has recorded identity
+    // acceptance in the verification checklist (/admin/provider-verification).
+    // Keyed by the Firebase UID (the only id shared by both provider-application
+    // subsystems). Env PROVIDER_VERIFY_GATE controls it:
+    //   'hard' = block unless an approved verification review exists.
+    //   'soft' = block only if a verification record EXISTS and is not approved
+    //            (legacy applicants with no record pass, recorded in the audit).
+    //   'off'  = current behaviour — gate wired but not armed.
+    // Default SOFT: a provider you have NOT started verifying still approves
+    // normally (no record → no breakage), but the moment you open their
+    // verification checklist, you must mark it approved before the card is
+    // created. Set PROVIDER_VERIFY_GATE=hard to require verification for ALL,
+    // or =off to disable entirely.
+    const gateMode = (process.env.PROVIDER_VERIFY_GATE || 'soft').toLowerCase();
+    if ((gateMode === 'hard' || gateMode === 'soft') && application.userId) {
+      const verified = await isProviderFullyVerifiedByUser(application.userId);
+      if (!verified) {
+        const hasRecord = await hasVerificationRecordByUser(application.userId);
+        if (gateMode === 'hard' || hasRecord) {
+          return res.status(409).json({
+            error: 'Identity not yet accepted',
+            message: 'Record identity acceptance in the verification checklist before creating this provider.',
+            messageHe: 'יש לאשר את זהות נותן השירות במרכז האימות לפני יצירת הכרטיס.',
+            gateMode,
+          });
+        }
+      }
+    }
+
     // Generate invitation token
     const invitationToken = generateToken();
     const expiresAt = new Date();

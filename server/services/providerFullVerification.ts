@@ -27,8 +27,12 @@ import {
 
 function rows(res: any): any[] { return res?.rows ?? res ?? []; }
 
-/** Best-effort read of the provider application row (resilient to absent columns). */
-async function loadApplication(applicationId: string): Promise<any | null> {
+/**
+ * Best-effort read of the provider application row. Resolves by application_id
+ * OR user_id — the gate keys on the Firebase UID, so the checklist must open the
+ * same record whether addressed by APP-… id or by UID.
+ */
+async function loadApplication(idOrUser: string): Promise<any | null> {
   try {
     const res = await db.execute(sql`
       SELECT application_id, user_id, status, email, phone_number, first_name, last_name,
@@ -37,7 +41,8 @@ async function loadApplication(applicationId: string): Promise<any | null> {
              biometric_status, biometric_match_score, declaration_signature_sha256,
              reviewed_by, reviewed_at
       FROM provider_applications
-      WHERE application_id = ${applicationId}
+      WHERE application_id = ${idOrUser} OR user_id = ${idOrUser}
+      ORDER BY (application_id = ${idOrUser}) DESC
       LIMIT 1
     `);
     return rows(res)[0] ?? null;
@@ -65,12 +70,19 @@ async function loadUserVerification(userId: string | null): Promise<{ emailVerif
   }
 }
 
-export async function getOrCreateReview(applicationId: string, providerId?: string | null): Promise<ProviderVerificationReview> {
+/** Normalize an APP-id-or-UID to the canonical { applicationId, providerId }. */
+export async function resolveCanonical(idOrUser: string, providerIdHint?: string | null): Promise<{ applicationId: string; providerId: string | null }> {
+  const app = await loadApplication(idOrUser);
+  if (app) return { applicationId: app.application_id, providerId: app.user_id ?? null };
+  return { applicationId: idOrUser, providerId: providerIdHint ?? null };
+}
+
+export async function getOrCreateReview(idOrUser: string, providerIdHint?: string | null): Promise<ProviderVerificationReview> {
+  const { applicationId, providerId } = await resolveCanonical(idOrUser, providerIdHint);
   const [existing] = await db.select().from(providerVerificationReviews)
     .where(eq(providerVerificationReviews.applicationId, applicationId))
     .orderBy(desc(providerVerificationReviews.createdAt)).limit(1);
-  if (existing && existing.reviewStatus !== "approved" && existing.reviewStatus !== "rejected") return existing;
-  if (existing && (existing.reviewStatus === "approved" || existing.reviewStatus === "rejected")) return existing;
+  if (existing) return existing;
   const [created] = await db.insert(providerVerificationReviews)
     .values({ applicationId, providerId: providerId ?? null })
     .returning();
@@ -101,9 +113,13 @@ export interface VerificationChecklist {
   notes: string[];
 }
 
-export async function computeChecklist(applicationId: string): Promise<VerificationChecklist | null> {
-  const app = await loadApplication(applicationId);
+export async function computeChecklist(idOrUser: string): Promise<VerificationChecklist | null> {
+  const app = await loadApplication(idOrUser);
   if (!app) return null;
+
+  // Canonical key — always the real APP-… id, regardless of how the page was
+  // opened (by APP-id or by UID), so reviews/documents never fork.
+  const applicationId: string = app.application_id;
 
   const review = await getOrCreateReview(applicationId, app.user_id);
   const userV = await loadUserVerification(app.user_id);
@@ -157,6 +173,40 @@ export async function isProviderFullyVerified(applicationId: string): Promise<bo
   }
 }
 
+/**
+ * Same gate keyed by the provider's Firebase UID — the only id shared by both
+ * provider-application subsystems (provider_applicants ↔ provider_applications).
+ * Used by the /admin/:id/approve endpoint so a provider card cannot be created
+ * until an admin has recorded identity acceptance. Fail-closed.
+ */
+export async function isProviderFullyVerifiedByUser(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const [review] = await db.select().from(providerVerificationReviews)
+      .where(eq(providerVerificationReviews.providerId, userId))
+      .orderBy(desc(providerVerificationReviews.createdAt)).limit(1);
+    return review?.reviewStatus === "approved";
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Has the admin reviewed this provider AT ALL (any non-terminal/terminal review row)?
+ * Lets the approve endpoint distinguish "rejected/pending verification" (block)
+ * from "no verification record yet" (legacy flow) when the gate runs in soft mode.
+ */
+export async function hasVerificationRecordByUser(userId: string): Promise<boolean> {
+  if (!userId) return false;
+  try {
+    const [review] = await db.select().from(providerVerificationReviews)
+      .where(eq(providerVerificationReviews.providerId, userId)).limit(1);
+    return !!review;
+  } catch {
+    return false;
+  }
+}
+
 type ReviewPatch = Partial<Pick<ProviderVerificationReview,
   "typedDetailsChecked" | "selfieChecked" | "officialDocumentChecked" | "contractChecked" |
   "nameMatch" | "dobMatch" | "documentNumberMatch" | "selfiePhotoMatch" | "contractNameMatch" | "notes">>;
@@ -193,12 +243,13 @@ export async function setReviewDecision(
 // ── Official-document lifecycle ────────────────────────────────────────────────
 
 export async function recordDocument(
-  applicationId: string, adminId: string,
+  idOrUser: string, adminId: string,
   input: { documentType: string; submissionMethod: string; providerId?: string | null; fileId?: string | null; physicalReceived?: boolean },
   ip?: string, ua?: string,
 ): Promise<number> {
+  const { applicationId, providerId } = await resolveCanonical(idOrUser, input.providerId);
   const [created] = await db.insert(providerOfficialDocuments).values({
-    applicationId, providerId: input.providerId ?? null,
+    applicationId, providerId: providerId ?? null,
     documentType: input.documentType, submissionMethod: input.submissionMethod,
     fileId: input.fileId ?? null,
     physicalReceived: input.physicalReceived ?? false,
