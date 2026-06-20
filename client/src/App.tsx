@@ -377,6 +377,7 @@ const AdminPaymentsControl = lazy(() => import("@/pages/admin/AdminPaymentsContr
 const AdminProviderControl = lazy(() => import("@/pages/admin/AdminProviderControl"));
 const AdminCustomerDetail = lazy(() => import("@/pages/admin/AdminCustomerDetail"));
 const AdminBayControl = lazy(() => import("@/pages/admin/AdminBayControl"));
+const AdminAlertsCenter = lazy(() => import("@/pages/admin/AdminAlertsCenter"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDashboard"));
@@ -2266,6 +2267,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminBayControl />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Control Tower - Alerts Center ("what needs attention") */}
+        <Route path="/admin/alerts">
+          {() => (
+            <AdminRouteGuard>
+              <AdminAlertsCenter />
             </AdminRouteGuard>
           )}
         </Route>

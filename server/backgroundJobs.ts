@@ -16,6 +16,7 @@ import { IsraeliVATReclaimService } from './services/IsraeliVATReclaimService';
 import { WalletTelemetryService } from './services/WalletTelemetryService';
 import { GeminiUpdateAdvisor } from './services/GeminiUpdateAdvisor';
 import { startAutoVoidCron } from './cron/auto-void-expired-payments';
+import { runAlertSweep } from './services/AlertEngine';
 import { runWashReminderCron } from './cron/wash-reminder';
 import { assertMarketingConsent } from './services/CampaignDeliveryService';
 import ProviderPayoutService from './services/ProviderPayoutService';
@@ -141,6 +142,20 @@ export class BackgroundJobProcessor {
           await runWashReminderCron();
         } finally {
           this.releaseLock('washReminder');
+        }
+      }
+    }, {
+      timezone: 'Asia/Jerusalem'
+    });
+
+    // Alerts Center sweep — reconcile the admin_alerts queue with reality
+    // (paid-not-activated, bay fault/offline, failed SUMIT/email jobs). Hourly.
+    cron.schedule('0 * * * *', async () => {
+      if (await this.acquireLock('alertSweep')) {
+        try {
+          await runAlertSweep();
+        } finally {
+          this.releaseLock('alertSweep');
         }
       }
     }, {
