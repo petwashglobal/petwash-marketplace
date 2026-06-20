@@ -1243,7 +1243,7 @@ export default function PawFinder({ language }: PawFinderProps) {
             {/* Headline block */}
             <div className="flex-1">
               <h1 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tight drop-shadow-sm">
-                🐾 Paw Finder
+                🐾 PawFinder
               </h1>
               <p className="text-white/90 text-xl md:text-2xl font-semibold mt-2 leading-snug">
                 לכל החיות האבודות מגיע לחזור הביתה.
