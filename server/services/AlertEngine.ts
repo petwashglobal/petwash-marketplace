@@ -192,6 +192,87 @@ async function detectFailedAsyncJobs(): Promise<{ created: number; resolved: num
   return { created: keys.length, resolved };
 }
 
+/** Spare part at/below its reorder point. */
+async function detectLowStock(): Promise<{ created: number; resolved: number }> {
+  const PREFIX = "stock_low:";
+  const res = await db.execute(sql`
+    SELECT id, part_name, part_number, quantity_in_stock, reorder_point
+    FROM spare_parts
+    WHERE quantity_in_stock <= reorder_point
+    ORDER BY quantity_in_stock ASC
+    LIMIT 500
+  `);
+  const rows = rowsOf(res);
+  const keys: string[] = [];
+  for (const r of rows) {
+    const key = `${PREFIX}${r.id}`;
+    keys.push(key);
+    const qty = Number(r.quantity_in_stock);
+    await createOrUpdateAlert({
+      dedupeKey: key, category: "stock",
+      severity: qty <= 0 ? "critical" : "warning",
+      title: qty <= 0 ? "מלאי אזל" : "מלאי נמוך",
+      message: `${r.part_name ?? r.part_number ?? r.id}: ${qty} במלאי (נקודת הזמנה ${r.reorder_point}).`,
+      linkedEntityType: "item", linkedEntityId: String(r.id),
+      metadata: { partNumber: r.part_number, quantityInStock: qty, reorderPoint: Number(r.reorder_point) },
+    });
+  }
+  const resolved = await resolveClearedByPrefix(PREFIX, keys);
+  return { created: keys.length, resolved };
+}
+
+/** Station offline / out of service. */
+async function detectStationOffline(): Promise<{ created: number; resolved: number }> {
+  const PREFIX = "station_offline:";
+  const res = await db.execute(sql`
+    SELECT id, name, status FROM stations
+    WHERE status IN ('offline','out_of_service')
+    LIMIT 500
+  `);
+  const rows = rowsOf(res);
+  const keys: string[] = [];
+  for (const r of rows) {
+    const key = `${PREFIX}${r.id}`;
+    keys.push(key);
+    await createOrUpdateAlert({
+      dedupeKey: key, category: "station",
+      severity: "critical",
+      title: "תחנה לא מקוונת",
+      message: `תחנה ${r.name ?? r.id} במצב ${r.status}.`,
+      linkedEntityType: "station", linkedEntityId: String(r.id),
+      metadata: { status: r.status },
+    });
+  }
+  const resolved = await resolveClearedByPrefix(PREFIX, keys);
+  return { created: keys.length, resolved };
+}
+
+/** Provider 6-month reconfirmation overdue. */
+async function detectReconfirmationOverdue(): Promise<{ created: number; resolved: number }> {
+  const PREFIX = "reconfirmation_overdue:";
+  const res = await db.execute(sql`
+    SELECT id, provider_id, due_at FROM reconfirmation_records
+    WHERE completed_at IS NULL AND status <> 'completed' AND due_at < NOW()
+    LIMIT 500
+  `);
+  const rows = rowsOf(res);
+  const keys: string[] = [];
+  for (const r of rows) {
+    const key = `${PREFIX}${r.id}`;
+    keys.push(key);
+    await createOrUpdateAlert({
+      dedupeKey: key, category: "expiry",
+      severity: "warning",
+      title: "אישור מחדש של ספק חורג",
+      message: `אישור מחדש (6 חודשים) לספק ${r.provider_id} עבר את מועד היעד.`,
+      linkedEntityType: "provider", linkedEntityId: String(r.provider_id),
+      metadata: { dueAt: r.due_at },
+    });
+  }
+  const resolved = await resolveClearedByPrefix(PREFIX, keys);
+  return { created: keys.length, resolved };
+}
+
 export interface SweepResult {
   ran: boolean;
   detectors: Record<string, { created: number; resolved: number } | { error: string }>;
@@ -213,6 +294,9 @@ export async function runAlertSweep(): Promise<SweepResult> {
   await run("paidNotActivated", detectPaidNotActivated);
   await run("bayStatus", detectBayStatus);
   await run("failedAsyncJobs", detectFailedAsyncJobs);
+  await run("lowStock", detectLowStock);
+  await run("stationOffline", detectStationOffline);
+  await run("reconfirmationOverdue", detectReconfirmationOverdue);
 
   let totalActive = 0;
   try {
