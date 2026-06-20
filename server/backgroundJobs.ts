@@ -16,6 +16,8 @@ import { IsraeliVATReclaimService } from './services/IsraeliVATReclaimService';
 import { WalletTelemetryService } from './services/WalletTelemetryService';
 import { GeminiUpdateAdvisor } from './services/GeminiUpdateAdvisor';
 import { startAutoVoidCron } from './cron/auto-void-expired-payments';
+import { runWashReminderCron } from './cron/wash-reminder';
+import { assertMarketingConsent } from './services/CampaignDeliveryService';
 import ProviderPayoutService from './services/ProviderPayoutService';
 import DataRetentionService from './services/DataRetentionService';
 import FinancialReconciliationService from './services/FinancialReconciliationService';
@@ -125,6 +127,20 @@ export class BackgroundJobProcessor {
           await this.processVaccineReminders();
         } finally {
           this.releaseLock('vaccineReminders');
+        }
+      }
+    }, {
+      timezone: 'Asia/Jerusalem'
+    });
+
+    // Wash reminder — "your pet is due for a wash" nudge. Daily 10:00 Asia/Jerusalem.
+    // §30א marketing-consent gated + idempotent + OFF by default (WASH_REMINDER_CRON_ENABLED).
+    cron.schedule('0 10 * * *', async () => {
+      if (await this.acquireLock('washReminder')) {
+        try {
+          await runWashReminderCron();
+        } finally {
+          this.releaseLock('washReminder');
         }
       }
     }, {
@@ -853,6 +869,15 @@ export class BackgroundJobProcessor {
               `${code}\n` +
               `🔗 ${promoUrl}\n` +
               `תקף עד ${expiresStr}. חד-פעמי, לשימוש אישי בלבד.`;
+
+            // §30א gate: this SMS carries a 10% discount → it is a דבר פרסומת and
+            // MUST NOT be sent without prior marketing-SMS consent. Fail-closed.
+            const smsConsented = await assertMarketingConsent(uid, 'sms');
+            if (!smsConsented) {
+              skipped++;
+              logger.info('[PetBirthdaySMS] Skipped — no marketing SMS consent', { uid, petName });
+              continue;
+            }
 
             const result = await twilioSMSService.sendSMS(phone, smsBody, { userId: uid });
             if (result.success) {

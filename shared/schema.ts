@@ -712,6 +712,9 @@ export const coupons = pgTable("coupons", {
   totalRedemptions: integer("total_redemptions").default(0),
   createdByUserId: varchar("created_by_user_id"),
   updatedAt: timestamp("updated_at").defaultNow(),
+  // Reason captured when an admin disables a coupon (audit + ops visibility).
+  // CouponService.deactivateWithReason() writes this; migration 0061 adds the column.
+  deactivateReason: text("deactivate_reason"),
 });
 
 // User coupon usage (legacy — kept for backward compatibility)

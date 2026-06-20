@@ -18,7 +18,7 @@ import type { ComponentType } from 'react';
 import {
   LayoutDashboard, BarChart3, Wallet, Users, Banknote, Building2, Bot,
   Truck, Briefcase, Star, ClipboardList, ShieldCheck, Handshake, MapPin,
-  Package, FileText, Crown, Gift, Receipt, Activity, ShieldAlert,
+  Package, FileText, Crown, Gift, Receipt, Activity, ShieldAlert, CreditCard, Wrench,
 } from 'lucide-react';
 
 export type DashRole = 'admin' | 'ceo';
@@ -69,6 +69,8 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Sales', labelHe: 'מכירות', path: '/admin/sales', icon: BarChart3, roles: ['admin', 'ceo'], hint: 'Revenue, deals, forecasts', hintHe: 'הכנסות, עסקאות ותחזיות' },
       { label: 'Suppliers', labelHe: 'ספקים', path: '/admin/suppliers', icon: Truck, roles: ['admin', 'ceo'], hint: 'Vendors & invoicing', hintHe: 'ספקים וחשבוניות' },
       { label: 'SUMIT Payments', labelHe: 'תשלומי SUMIT', path: '/admin/sumit', icon: Receipt, roles: ['admin', 'ceo'], hint: 'Invoicing & charge status', hintHe: 'חשבוניות וסטטוס חיובים' },
+      // Control Tower (2026-06-20): unified payments ledger across SUMIT/uPay/Nayax/wallet.
+      { label: 'Payments Control', labelHe: 'תשלומים', path: '/admin/payments', icon: CreditCard, roles: ['admin', 'ceo'], hint: 'Unified ledger — provider, status, paid-not-activated', hintHe: 'ספר תשלומים מאוחד — מעבד, סטטוס, שולם ולא הופעל' },
       // Was a "ghost" page: routed at /admin/supplier-invoices but missing from this
       // menu, so admins couldn't reach it. Surfaced here (2026-06-19).
       { label: 'Supplier Invoices', labelHe: 'חשבוניות ספק', path: '/admin/supplier-invoices', icon: FileText, roles: ['admin', 'ceo'], hint: 'Vendor invoices & approval', hintHe: 'חשבוניות ספקים ואישור' },
@@ -100,6 +102,10 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Stations', labelHe: 'עמדות', path: '/admin/stations', icon: MapPin, roles: ['admin', 'ceo'], hint: 'Facilities', hintHe: 'מתקנים' },
       { label: 'Station Registry', labelHe: 'מרשם עמדות', path: '/admin/station-registry', icon: Building2, roles: ['admin', 'ceo'], hint: 'Licensing & taxes', hintHe: 'רישוי ומיסוי' },
       { label: 'Marketplace Intelligence', labelHe: 'מודיעין שוק', path: '/admin/marketplace-intelligence', icon: BarChart3, roles: ['admin', 'ceo'], hint: 'Provider ranking & insights', hintHe: 'דירוג ספקים ותובנות' },
+      // Control Tower (2026-06-20): per-service provider approval ladder UI.
+      { label: 'Provider Control', labelHe: 'בקרת נותני שירות', path: '/admin/providers', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Per-service approval ladder + payout gates', hintHe: 'סולם אישור פר-שירות + שערי תשלום' },
+      // Control Tower (2026-06-20): K9000 bay status / fault / Nayax-link (DB state only, not hardware).
+      { label: 'Bay Control', labelHe: 'בקרת תאים', path: '/admin/bays', icon: Wrench, roles: ['admin', 'ceo'], hint: 'Enable/disable bays, faults, Nayax link', hintHe: 'השבתה/הפעלה של תאים, תקלות וקישור Nayax' },
       { label: 'Expansion & Marketing', labelHe: 'התרחבות ושיווק', path: '/admin/expansion-marketing', icon: MapPin, roles: ['admin', 'ceo'], hint: 'Location scoring model + local marketing', hintHe: 'מודל ניקוד מיקומים + שיווק מקומי' },
       { label: 'Stock & Reports', labelHe: 'מלאי ודוחות', path: '/admin/stock-reports', icon: Package, roles: ['admin', 'ceo'], hint: 'Smart stock prediction + report digest', hintHe: 'חיזוי מלאי חכם + תקציר דוחות' },
     ],

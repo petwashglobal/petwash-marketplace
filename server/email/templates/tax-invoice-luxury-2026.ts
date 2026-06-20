@@ -34,7 +34,9 @@ const VAT_RATE    = ISRAEL_VAT_RATE;
 const BUSINESS_HE = 'פט ווש בע"מ';
 const BUSINESS_EN = 'Pet Wash Ltd';
 const COMPANY_REG = COMPANY_TAX_ID;
-const COMPANY_ADDRESS_HE = 'ישראל';
+// Registered address (VAT Law §4(a) — required on every חשבונית מס)
+const COMPANY_ADDRESS_HE = 'עוזי חיטמן 8, ראש העין, 4806859, ישראל';
+const COMPANY_ADDRESS_EN = '8 Uzi Hitman St, Rosh HaAyin 4806859, Israel';
 const NOREPLY     = SUPPORT_EMAIL;
 
 function escapeHtml(value: unknown): string {
@@ -193,6 +195,7 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
               <strong>${BUSINESS_HE}</strong><br/>
               ${BUSINESS_EN}<br/>
               ${isHe ? 'ח.פ.' : 'Reg. No.'}: <strong>${COMPANY_REG}</strong><br/>
+              ${isHe ? COMPANY_ADDRESS_HE : COMPANY_ADDRESS_EN}<br/>
               ${NOREPLY}
             </div>
           </td>

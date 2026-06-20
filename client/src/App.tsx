@@ -372,6 +372,11 @@ const GroomingReviews = lazy(() => import("@/pages/GroomingReviews"));
 
 const AuditTrail = lazy(() => import("@/pages/AuditTrail"));
 const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
+// Control Tower panels (2026-06-20)
+const AdminPaymentsControl = lazy(() => import("@/pages/admin/AdminPaymentsControl"));
+const AdminProviderControl = lazy(() => import("@/pages/admin/AdminProviderControl"));
+const AdminCustomerDetail = lazy(() => import("@/pages/admin/AdminCustomerDetail"));
+const AdminBayControl = lazy(() => import("@/pages/admin/AdminBayControl"));
 const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDashboard"));
@@ -2225,6 +2230,42 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminLoyaltyRules />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Control Tower - Payments ledger view (SUMIT/uPay/Nayax/wallet) */}
+        <Route path="/admin/payments">
+          {() => (
+            <AdminRouteGuard>
+              <AdminPaymentsControl />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Control Tower - Provider per-service approval ladder */}
+        <Route path="/admin/providers">
+          {() => (
+            <AdminRouteGuard>
+              <AdminProviderControl />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Control Tower - Customer detail (overview/consents/notifications/payments) */}
+        <Route path="/admin/customers/:id">
+          {() => (
+            <AdminRouteGuard>
+              <AdminCustomerDetail />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Control Tower - K9000 bay control (status / fault / Nayax link) */}
+        <Route path="/admin/bays">
+          {() => (
+            <AdminRouteGuard>
+              <AdminBayControl />
             </AdminRouteGuard>
           )}
         </Route>

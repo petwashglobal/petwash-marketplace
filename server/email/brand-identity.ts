@@ -32,9 +32,14 @@ export const BRAND_NAME = 'Pet Wash™';
 /** Company registration number (ח.פ.) issued by Israel Companies Registrar */
 export const COMPANY_TAX_ID = '517145033';
 
-/** Registered address */
-export const COMPANY_ADDRESS_HE = 'ישראל';
-export const COMPANY_ADDRESS_EN = 'Israel';
+/**
+ * Registered address (כתובת רשומה) — exact address on file with the Israel
+ * Companies Registrar. Israeli VAT Law §4(a) requires this to appear on every
+ * חשבונית מס; it is also the sole address used for official correspondence/posting.
+ * Single source of truth: server/company-registration-secure.ts → registeredAddress.
+ */
+export const COMPANY_ADDRESS_HE = 'עוזי חיטמן 8, ראש העין, 4806859, ישראל';
+export const COMPANY_ADDRESS_EN = '8 Uzi Hitman St, Rosh HaAyin 4806859, Israel';
 
 // ─── Sender identity matrix ───────────────────────────────────────────────────
 
@@ -222,6 +227,7 @@ export function buildLegalFooter(opts: LegalFooterOptions = {}): string {
                font-family:${DESIGN.fontStack};text-align:${isRTL ? 'right' : 'left'};">
       <strong style="color:#999;">${BRAND_NAME}</strong> &mdash; ${LEGAL_NAME_HE} / ${LEGAL_NAME_EN}<br>
       ח.פ. / Company No. ${COMPANY_TAX_ID}<br>
+      ${language === 'he' ? COMPANY_ADDRESS_HE : COMPANY_ADDRESS_EN}<br>
       <a href="${SITE}" style="color:#bbb;text-decoration:none;">${SITE.replace('https://', '')}</a>
       &nbsp;·&nbsp;
       <a href="mailto:${SUPPORT_EMAIL}" style="color:#bbb;text-decoration:none;">${SUPPORT_EMAIL}</a>
@@ -307,7 +313,8 @@ export function buildFinanceHeader(opts: FinanceHeaderOptions): string {
       <div style="font-family:${DESIGN.fontStack};font-size:11px;color:#888;line-height:1.8;
                   text-align:${isRTL ? 'right' : 'left'};">
         ${LEGAL_NAME_HE} / ${LEGAL_NAME_EN}<br>
-        ח.פ. ${COMPANY_TAX_ID}
+        ח.פ. ${COMPANY_TAX_ID}<br>
+        ${isRTL ? COMPANY_ADDRESS_HE : COMPANY_ADDRESS_EN}
       </div>
     </td>
     <td style="text-align:${isRTL ? 'left' : 'right'};vertical-align:top;">

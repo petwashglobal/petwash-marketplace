@@ -617,7 +617,14 @@ export default function CustomerManagement() {
                             </div>
                           </TableCell>
                           <TableCell>
-                            <Button variant="ghost" size="sm" data-testid={`customer-actions-${customer.id}`}>
+                            {/* Opens the full Control Tower detail page (overview/consents/notifications/payments). */}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`customer-actions-${customer.id}`}
+                              title={language === 'he' ? 'פרופיל מלא' : 'Full profile'}
+                              onClick={(e) => { e.stopPropagation(); setLocation(`/admin/customers/${customer.id}`); }}
+                            >
                               <MoreHorizontal className="w-4 h-4" />
                             </Button>
                           </TableCell>
