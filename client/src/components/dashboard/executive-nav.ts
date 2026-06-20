@@ -105,6 +105,8 @@ export const EXECUTIVE_NAV: NavGroup[] = [
       { label: 'Station Registry', labelHe: 'מרשם עמדות', path: '/admin/station-registry', icon: Building2, roles: ['admin', 'ceo'], hint: 'Licensing & taxes', hintHe: 'רישוי ומיסוי' },
       { label: 'Marketplace Intelligence', labelHe: 'מודיעין שוק', path: '/admin/marketplace-intelligence', icon: BarChart3, roles: ['admin', 'ceo'], hint: 'Provider ranking & insights', hintHe: 'דירוג ספקים ותובנות' },
       // Control Tower (2026-06-20): per-service provider approval ladder UI.
+      // The application INBOX — review & approve new providers (was reachable only by typed URL).
+      { label: 'Provider Applications', labelHe: 'בקשות נותני שירות', path: '/admin/provider-review', icon: ClipboardList, roles: ['admin', 'ceo'], hint: 'Review & approve new applications', hintHe: 'בדיקה ואישור בקשות חדשות' },
       { label: 'Provider Control', labelHe: 'בקרת נותני שירות', path: '/admin/providers', icon: ShieldCheck, roles: ['admin', 'ceo'], hint: 'Per-service approval ladder + payout gates', hintHe: 'סולם אישור פר-שירות + שערי תשלום' },
       // Control Tower (2026-06-20): K9000 bay status / fault / Nayax-link (DB state only, not hardware).
       { label: 'Bay Control', labelHe: 'בקרת תאים', path: '/admin/bays', icon: Wrench, roles: ['admin', 'ceo'], hint: 'Enable/disable bays, faults, Nayax link', hintHe: 'השבתה/הפעלה של תאים, תקלות וקישור Nayax' },
