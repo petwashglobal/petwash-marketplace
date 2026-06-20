@@ -1236,38 +1236,40 @@ export default function PawFinder({ language }: PawFinderProps) {
         <div className="relative max-w-7xl mx-auto px-4 pt-10 pb-8">
           {/* Top label */}
           <div className="flex items-center gap-2 mb-4">
-            <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">PetWash™ · שירות קהילתי חינמי</span>
+            <span className="text-xs font-bold uppercase tracking-[0.22em] text-white/70">{isHe ? 'PetWash™ · פורטל חיפוש חברתי ללא עלות' : 'PetWash™ · Community Search Portal · No Cost'}</span>
           </div>
 
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             {/* Headline block */}
             <div className="flex-1">
               <h1 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tight drop-shadow-sm">
-                🐾 Paw Finder
+                🐾 PawFinder
               </h1>
               <p className="text-white/90 text-xl md:text-2xl font-semibold mt-2 leading-snug">
-                הפלטפורמה הקהילתית לחיות אבודות ונמצאות
+                {isHe ? 'לכל החיות האבודות מגיע לחזור הביתה.' : 'Every lost pet deserves to come home.'}
               </p>
               <p className="text-white/75 text-base mt-2 max-w-xl leading-relaxed">
-                אנחנו מאמינים שכל חיית מחמד ראויה לחזור הביתה. Paw Finder הוא שירות חינמי לחלוטין עבור כל חברי הקהילה שלנו — פרסמו, גלו, ועזרו לחיות אבודות למצוא את הדרך הביתה.
+                {isHe
+                  ? 'אנחנו פה בשביל זה. פורטל חיפוש חברתי ללא עלות — פרסמו, גלו, ועזרו לחיות אבודות למצוא את הדרך הביתה. אפשר גם להציע פרס כלשהו למוצא.'
+                  : "We're here for that. A community search portal at no cost — post, discover, and help lost pets find their way home. You can even offer a reward to the finder."}
               </p>
               <p className="text-white/60 text-sm mt-1">
-                Free community service · Serving Tel Aviv, Ramat Gan & all Israel · Powered by PetWash™
+                {isHe ? 'שירות קהילתי ללא עלות · תל אביב, רמת גן וכל ישראל · מבית PetWash™' : 'Free community service · Tel Aviv, Ramat Gan & all Israel · Powered by PetWash™'}
               </p>
 
               {/* Live stats */}
               <div className="flex items-center gap-4 mt-5 flex-wrap">
                 <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
                   <Heart className="w-4 h-4 text-white" />
-                  <span className="text-white font-semibold text-sm">{posts.filter(p => p.post_type === 'lost').length} חיות אבודות</span>
+                  <span className="text-white font-semibold text-sm">{posts.filter(p => p.post_type === 'lost').length} {isHe ? 'חיות אבודות' : 'lost'}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
                   <CheckCircle2 className="w-4 h-4 text-white" />
-                  <span className="text-white font-semibold text-sm">{posts.filter(p => p.post_type === 'found').length} נמצאו</span>
+                  <span className="text-white font-semibold text-sm">{posts.filter(p => p.post_type === 'found').length} {isHe ? 'נמצאו' : 'found'}</span>
                 </div>
                 <div className="flex items-center gap-2 bg-white/20 backdrop-blur-sm rounded-2xl px-4 py-2.5">
                   <MapPin className="w-4 h-4 text-white" />
-                  <span className="text-white font-semibold text-sm">תל אביב, רמת גן וסביבה</span>
+                  <span className="text-white font-semibold text-sm">{isHe ? 'תל אביב, רמת גן וסביבה' : 'Tel Aviv, Ramat Gan & nearby'}</span>
                 </div>
               </div>
             </div>
@@ -1276,9 +1278,11 @@ export default function PawFinder({ language }: PawFinderProps) {
             <div className="flex-shrink-0 bg-white/95 backdrop-blur-sm rounded-3xl p-6 shadow-2xl w-full lg:w-80">
               <div className="text-center mb-4">
                 <div className="text-3xl mb-1">🆓</div>
-                <div className="font-bold text-slate-900 text-lg leading-tight">פרסום מודעה — חינמי לגמרי</div>
+                <div className="font-bold text-slate-900 text-lg leading-tight">{isHe ? 'פרסום מודעה — ללא עלות' : 'Post a notice — no cost'}</div>
                 <p className="text-slate-500 text-sm mt-1 leading-relaxed">
-                  חבר קהילה? פרסם מיד. אבדה לך חיית מחמד? פרסם בחינם תוך דקה.
+                  {isHe
+                    ? 'חברי מועדון PetWash מאומתים בלבד. התחבר, פרסם תוך דקה — וכל פוסט עובר בדיקת בטיחות לפני פרסום.'
+                    : 'Verified PetWash members only. Sign in, post in a minute — every post is safety-checked before it goes live.'}
                 </p>
               </div>
               <button
@@ -1286,13 +1290,13 @@ export default function PawFinder({ language }: PawFinderProps) {
                 className="w-full py-3 rounded-2xl font-bold text-white text-base shadow-lg hover:opacity-90 active:scale-95 transition-all"
                 style={{ background: 'linear-gradient(135deg, #6366f1, #0ea5e9)' }}
               >
-                📢 פרסם מודעה עכשיו
+                {isHe ? '📢 פרסם מודעה עכשיו' : '📢 Post a notice now'}
               </button>
               <button
                 onClick={() => setTab('browse')}
                 className="w-full py-3 rounded-2xl font-semibold text-slate-700 text-sm mt-2 bg-slate-100 hover:bg-slate-200 transition-colors"
               >
-                🗺️ חפש בפוסטים הפעילים
+                {isHe ? '🗺️ חפש בפוסטים הפעילים' : '🗺️ Browse active posts'}
               </button>
             </div>
           </div>
@@ -1302,11 +1306,15 @@ export default function PawFinder({ language }: PawFinderProps) {
         <div className="relative bg-white/10 backdrop-blur-sm border-t border-white/20">
           <div className="max-w-7xl mx-auto px-4 py-4">
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              {[
-                { icon: '📸', title: 'צלם ופרסם', desc: 'העלה תמונה, תאר את החיה ואת המיקום — הפוסט עולה לאוויר תוך שניות.' },
-                { icon: '🗺️', title: 'מפה חיה', desc: 'כל הפוסטים מופיעים על מפה אינטראקטיבית. ראה מיד מה קורה בסביבתך.' },
-                { icon: '🤝', title: 'קישור קהילתי', desc: 'המערכת מתאימה אוטומטית בין דיווחי "אבוד" ו"נמצא" ומחברת בין האנשים הנכונים.' },
-              ].map(({ icon, title, desc }) => (
+              {(isHe ? [
+                { icon: '🆓', title: 'פרסום ללא עלות', desc: 'חברי מועדון PetWash מאומתים מפרסמים חיה אבודה או שנמצאה — בחינם, תוך דקה.' },
+                { icon: '🛡️', title: 'בטוח ומאומת', desc: 'הפרסום פתוח רק לחברים מחוברים ומאומתים (כולל אימות SMS), וכל פוסט עובר סריקת בטיחות לפני שעולה לאוויר.' },
+                { icon: '🤝', title: 'התאמה קהילתית + פרס', desc: 'המערכת מתאימה אוטומטית בין "אבוד" ל"נמצא" ומחברת בין האנשים הנכונים. אפשר גם להציע פרס למוצא.' },
+              ] : [
+                { icon: '🆓', title: 'Post at no cost', desc: 'Verified PetWash members post a lost or found pet — free, in under a minute.' },
+                { icon: '🛡️', title: 'Safe & verified', desc: 'Posting is for logged-in, verified members only (incl. SMS), and every post passes a safety scan before it goes live.' },
+                { icon: '🤝', title: 'Community matching + reward', desc: 'We auto-match “lost” and “found” and connect the right people. You can also offer a reward to the finder.' },
+              ]).map(({ icon, title, desc }) => (
                 <div key={title} className="flex items-start gap-3 text-white">
                   <span className="text-2xl flex-shrink-0">{icon}</span>
                   <div>
