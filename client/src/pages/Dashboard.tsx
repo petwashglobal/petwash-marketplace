@@ -417,6 +417,48 @@ export default function Dashboard() {
   const cardSerial: string | null =
     passCard?.pass?.serialNumber || passCard?.cardId || membershipNumber || null;
 
+  // ── Platinum-Privilege physical-card display values ──────────────────────
+  // Prefer server-provided fields; otherwise derive STABLE (deterministic, not
+  // random) display values from the user's pass serial so the card is identical
+  // on every render. These are membership identifiers only (the card states it
+  // is not a credit/bank card).
+  const tierCode = (() => {
+    const t = (tierLabel || '').toLowerCase();
+    if (t.includes('platinum') || t.includes('פלטינ')) return 'PLT';
+    if (t.includes('gold') || t.includes('זהב')) return 'GLD';
+    if (t.includes('founder') || t.includes('מייסד')) return 'FDR';
+    if (t.includes('vip')) return 'VIP';
+    if (t.includes('bronze') || t.includes('ארד')) return 'BRZ';
+    return 'STD';
+  })();
+  const _stableSeed =
+    cardSerial || cardNumber || membershipNumber || firebaseUser?.uid || 'PETWASH';
+  const _digitsFromSeed = (seed: string, n: number) => {
+    let h = 0;
+    for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+    let out = '';
+    let x = h || 1;
+    while (out.length < n) {
+      x = (x * 1103515245 + 12345) >>> 0;
+      out += (x % 10).toString();
+    }
+    return out.slice(0, n);
+  };
+  const cardNumberDisplay: string =
+    (passCard as any)?.cardNumberDisplay ||
+    _digitsFromSeed(_stableSeed, 16).replace(/(\d{4})(?=\d)/g, '$1 ');
+  const memberIdPretty: string =
+    membershipNumber && /^PW-/i.test(membershipNumber)
+      ? membershipNumber
+      : `PW-${tierCode}-${_digitsFromSeed(_stableSeed, 6)}`;
+  const validThru: string = (() => {
+    const issued = (passCard as any)?.pass?.issuedAt
+      ? new Date((passCard as any).pass.issuedAt)
+      : new Date();
+    const exp = new Date(issued.getFullYear() + 5, issued.getMonth(), 1);
+    return `${String(exp.getMonth() + 1).padStart(2, '0')}/${String(exp.getFullYear()).slice(-2)}`;
+  })();
+
   // Fade the floating accessibility/WhatsApp/AI stack while the member dashboard
   // is mounted — it was covering the Privilege card and the dashboard already has
   // its own bottom navigation. Mirrors the egift-hero suppression pattern.
@@ -530,87 +572,96 @@ export default function Dashboard() {
             )}
           </motion.div>
 
-          {/* ── Clubroom membership card — 2026 "ink + gold foil" centerpiece.
-                Drama via deep-ink + metallic gold (the LVMH luxury cue). Real
-                values only: balance, points, tier, member number. ── */}
+          {/* ── PetWash Ltd · Platinum Privilege card — 2026 brand-correct
+                centerpiece: PURE WHITE + black text + metallic gold (#D4AF37)
+                accents only (no black card, no green). Reads like a real card:
+                chip, grouped card number, member name, member id, valid-thru. ── */}
           <motion.div
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.6, delay: 0.18 }}
             className="relative rounded-[22px] overflow-hidden mb-4"
             style={{
-              background: 'linear-gradient(150deg, #211d18 0%, #100e0b 55%, #1a1611 100%)',
-              border: '1px solid rgba(201,168,76,0.38)',
-              boxShadow: '0 20px 50px rgba(0,0,0,0.28)',
+              background: '#FFFFFF',
+              border: '1px solid rgba(212,175,55,0.55)',
+              boxShadow: '0 18px 44px rgba(0,0,0,0.12)',
             }}
+            data-testid="card-privilege"
           >
-            {/* gold-foil crown line */}
+            {/* gold crown hairline */}
             <div style={{ height: 2, background: 'linear-gradient(90deg, transparent, #D4AF37 20%, #F1DA83 50%, #D4AF37 80%, transparent)' }} />
-            {/* faint gold corner glow */}
-            <div
-              className="pointer-events-none absolute -top-16 -right-10 w-48 h-48 rounded-full"
-              style={{ background: 'radial-gradient(circle, rgba(232,201,114,0.16), transparent 70%)' }}
-            />
+            {/* gold wave accent (bottom-right), subtle */}
+            <svg className="pointer-events-none absolute bottom-0 right-0" width="280" height="150" viewBox="0 0 280 150" fill="none" aria-hidden style={{ opacity: 0.9 }}>
+              <path d="M0 120 C 80 90, 150 150, 280 70 L 280 150 L 0 150 Z" fill="url(#pwgold)" opacity="0.12" />
+              <path d="M20 128 C 110 96, 170 150, 280 84" stroke="#D4AF37" strokeWidth="2" fill="none" opacity="0.5" />
+              <defs>
+                <linearGradient id="pwgold" x1="0" y1="0" x2="1" y2="1">
+                  <stop offset="0" stopColor="#F1DA83" />
+                  <stop offset="1" stopColor="#D4AF37" />
+                </linearGradient>
+              </defs>
+            </svg>
+
             <div className="relative px-6 py-6">
               <div className="flex items-start justify-between mb-5">
-                <div>
-                  <p className="text-[10px] tracking-[0.35em] uppercase" style={{ color: 'rgba(241,218,131,0.65)' }}>
+                <div className="flex items-center gap-3">
+                  {/* EMV-style gold chip */}
+                  <div
+                    aria-hidden
+                    style={{ width: 38, height: 28, borderRadius: 6, background: 'linear-gradient(135deg, #F1DA83, #D4AF37 60%, #B8902F)', boxShadow: 'inset 0 0 0 1px rgba(0,0,0,0.08)' }}
+                  />
+                  <span className="text-[13px] tracking-[0.04em]" style={{ fontFamily: "'Playfair Display', serif", color: '#111111', fontWeight: 700 }}>
+                    PetWash<span style={{ fontSize: '0.7em', verticalAlign: 'super' }}>™</span> <span style={{ fontWeight: 400, fontSize: '0.8em', color: '#444' }}>Ltd</span>
+                  </span>
+                </div>
+                <div className="text-end">
+                  <p className="text-[13px] tracking-[0.28em] uppercase leading-none" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
+                    {tierLabel}
+                  </p>
+                  <p className="mt-1 text-[8px] tracking-[0.4em] uppercase" style={{ color: '#8A6A1B' }}>
                     {tx('privilege', language)}
                   </p>
-                  <p className="mt-1.5 text-base tracking-[0.18em] uppercase" style={{ fontFamily: "'Playfair Display', serif", color: '#F4E7C2' }}>
-                    {tierLabel} · {tx('member', language)}
-                  </p>
-                </div>
-                <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full" style={{ border: '1px solid rgba(201,168,76,0.42)' }}>
-                  <BadgeCheck className="h-3.5 w-3.5" style={{ color: '#E8C972' }} />
-                  <span className="text-[10px] tracking-[0.12em]" style={{ color: '#E8C972', fontFamily: "'Playfair Display', serif" }}>
-                    {membershipNumber || tx('member', language)}
-                  </span>
                 </div>
               </div>
 
-              {/* Card number — credit-card style, letter-spaced. Always present
-                  (pass serial is generated server-side even without a member #). */}
-              {cardNumber && (
-                <p
-                  dir="ltr"
-                  className="mb-5 text-[19px] sm:text-[21px]"
-                  style={{ fontFamily: "'Playfair Display', serif", letterSpacing: '0.22em', color: '#F4E7C2' }}
-                  data-testid="text-card-number"
-                >
-                  {cardNumber}
-                </p>
-              )}
+              {/* Card number — grouped, monospaced, black */}
+              <p
+                dir="ltr"
+                className="mb-5 text-[20px] sm:text-[24px]"
+                style={{ fontFamily: "ui-monospace, 'SF Mono', Menlo, monospace", letterSpacing: '0.12em', color: '#111111', fontWeight: 600 }}
+                data-testid="text-card-number"
+              >
+                {cardNumberDisplay}
+              </p>
 
               <div className="flex items-end justify-between gap-3">
-                {/* Cardholder name + serial (left, like a real card) */}
+                {/* Member name + member id (left) */}
                 <div className="min-w-0">
-                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1" style={{ color: 'rgba(241,218,131,0.55)' }}>
-                    {language === 'he' ? 'בעל הכרטיס' : language === 'ar' ? 'حامل البطاقة' : 'Cardholder'}
+                  <p className="text-[8px] tracking-[0.28em] uppercase mb-0.5" style={{ color: '#8A6A1B' }}>
+                    {language === 'he' ? 'שם חבר' : language === 'ar' ? 'اسم العضو' : 'Member Name'}
                   </p>
-                  <p className="text-sm truncate" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF', letterSpacing: '0.04em' }} data-testid="text-cardholder">
+                  <p className="text-sm truncate uppercase" style={{ fontFamily: "'Playfair Display', serif", color: '#111111', letterSpacing: '0.06em' }} data-testid="text-cardholder">
                     {cardHolderName || (language === 'he' ? 'חבר פטוואש' : 'PetWash Member')}
                   </p>
-                  {cardSerial && (
-                    <p dir="ltr" className="mt-0.5 text-[10px] tracking-[0.14em]" style={{ color: 'rgba(241,218,131,0.5)' }} data-testid="text-card-serial">
-                      {cardSerial}
-                    </p>
-                  )}
+                  <p className="text-[8px] tracking-[0.28em] uppercase mt-2 mb-0.5" style={{ color: '#8A6A1B' }}>
+                    {language === 'he' ? 'מספר חבר' : language === 'ar' ? 'رقم العضوية' : 'Member ID'}
+                  </p>
+                  <p dir="ltr" className="text-xs" style={{ color: '#111111', letterSpacing: '0.08em' }} data-testid="text-card-serial">
+                    {memberIdPretty}
+                  </p>
                 </div>
-                {/* Balance + points (right) */}
-                <div className="flex items-end gap-4 shrink-0">
-                  <div className="text-end">
-                    <p className="text-[9px] tracking-[0.24em] uppercase mb-1" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('balance', language)}</p>
-                    <p className="text-[24px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
-                      <span className="text-sm align-top" style={{ color: '#E8C972' }}>&#8362;</span>{totalBalance}
-                    </p>
-                  </div>
-                  <div className="text-end">
-                    <p className="text-[9px] tracking-[0.24em] uppercase mb-1" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('points', language)}</p>
-                    <p className="text-[24px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
-                      {loyaltyPoints.toLocaleString()}
-                    </p>
-                  </div>
+                {/* Valid-thru + balance/points (right) */}
+                <div className="text-end shrink-0">
+                  <p className="text-[8px] tracking-[0.28em] uppercase mb-0.5" style={{ color: '#8A6A1B' }}>
+                    {language === 'he' ? 'בתוקף עד' : language === 'ar' ? 'صالحة حتى' : 'Valid Thru'}
+                  </p>
+                  <p dir="ltr" className="text-sm" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>{validThru}</p>
+                  <p className="text-[8px] tracking-[0.24em] uppercase mt-2 mb-0.5" style={{ color: '#8A6A1B' }}>
+                    {tx('balance', language)} · {tx('points', language)}
+                  </p>
+                  <p dir="ltr" className="text-sm" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
+                    <span style={{ color: '#B8902F' }}>&#8362;</span>{totalBalance} · {loyaltyPoints.toLocaleString()}
+                  </p>
                 </div>
               </div>
             </div>
