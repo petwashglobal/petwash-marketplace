@@ -960,6 +960,12 @@ export const k9000WashEvents = pgTable("k9000_wash_events", {
   // Idempotency — prevent double-logging on webhook retry
   idempotencyKey: varchar("idempotency_key").unique(),
 
+  // SUMIT tax-invoice/receipt id — populated ONLY for a direct Nayax card sale
+  // (transaction_source='nayax'), the one K9000 flow that is a NEW taxable cash
+  // sale. Credit/package redemptions (transaction_source='petwash') were already
+  // taxed at purchase, so they intentionally carry NO sumit document here.
+  sumitDocumentId: varchar("sumit_document_id"),
+
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
   index("idx_k9000_wash_source").on(table.transactionSource),
