@@ -78,6 +78,9 @@ export default function K9000Redeem() {
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState('');
   const [failureReason, setFailureReason] = useState('');
+  // True when the wash failed AFTER payment: a refund is OWED but NOT yet sent
+  // (it sits in the admin compensation queue). The wallet has NOT been credited.
+  const [needsCompensation, setNeedsCompensation] = useState(false);
 
   // DEMO MODE GUARD (item 21): Query machine status so the confirmation screen can warn
   // the customer if the physical machine was NOT commanded (MACHINE_ACTIVATION_URL not set).
@@ -116,6 +119,7 @@ export default function K9000Redeem() {
     } else if (st === 'failed' || st === 'compensation_required') {
       const reason = (statusData as any)?.failureReason ?? (statusData as any)?.reason ?? '';
       setFailureReason(reason);
+      setNeedsCompensation(st === 'compensation_required');
       setStep('failed');
       queryClient.invalidateQueries({ queryKey: ['/api/credit-wallet/summary'] });
     }
@@ -674,12 +678,18 @@ export default function K9000Redeem() {
                     </div>
                     <div>
                       <p className="text-sm font-semibold text-emerald-800">
-                        {isHebrew ? 'הכסף מוחזר לארנקך' : 'Refund Issued to Your Wallet'}
+                        {needsCompensation
+                          ? (isHebrew ? 'בקשת זיכוי נפתחה' : 'Refund Being Processed')
+                          : (isHebrew ? 'הכסף מוחזר לארנקך' : 'Refund Issued to Your Wallet')}
                       </p>
                       <p className="text-xs text-emerald-700 mt-0.5">
-                        {isHebrew
-                          ? `${formatCurrency(redemption.cashDueCents > 0 ? WASH_PRICE_CENTS - redemption.cashDueCents : WASH_PRICE_CENTS)} יוחזרו לארנק תוך דקות ספורות`
-                          : `${formatCurrency(WASH_PRICE_CENTS)} will be returned to your wallet shortly`
+                        {needsCompensation
+                          ? (isHebrew
+                              ? `${formatCurrency(redemption.cashDueCents > 0 ? WASH_PRICE_CENTS - redemption.cashDueCents : WASH_PRICE_CENTS)} — הזיכוי בטיפול הצוות ויוחזר לארנק בהקדם. נעדכן בסיום.`
+                              : `${formatCurrency(WASH_PRICE_CENTS)} — your refund is being processed by our team and will be returned to your wallet. We'll update you when it's done.`)
+                          : (isHebrew
+                              ? `${formatCurrency(redemption.cashDueCents > 0 ? WASH_PRICE_CENTS - redemption.cashDueCents : WASH_PRICE_CENTS)} יוחזרו לארנק תוך דקות ספורות`
+                              : `${formatCurrency(WASH_PRICE_CENTS)} will be returned to your wallet shortly`)
                         }
                       </p>
                       <p className="text-[10px] text-emerald-600 mt-1 font-mono">

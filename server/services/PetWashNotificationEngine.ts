@@ -440,6 +440,24 @@ export function buildRefundIssuedSms(params: {
   );
 }
 
+/**
+ * Honest "refund request received" SMS. Use this when a cancellation has opened a
+ * refund that is NOT yet sent (e.g. the Nayax refund is still manual) — it must NOT
+ * claim the money was transferred. buildRefundIssuedSms (past tense, "הועבר") may
+ * only be sent once the refund has actually been executed.
+ */
+export function buildRefundPendingSms(params: {
+  bookingRef: string;
+  refundAmount: string;
+}): string {
+  return (
+    `PetWash™ - בקשת זיכוי התקבלה\n` +
+    `מס' הזמנה: ${params.bookingRef}\n` +
+    `סכום: ${params.refundAmount} ₪\n` +
+    `הבקשה בבדיקה ותטופל ע"י הצוות. נעדכן בסיום.`
+  );
+}
+
 export function buildBookingCancelledSms(params: {
   bookingRef: string;
   serviceName: string;
