@@ -43,6 +43,17 @@ const DELIVERY_RATES = {
 
 const GIFT_WRAP_CENTS = 990; // ₪9.90
 
+// ─── Hidden packaging / handling cost ───────────────────────────────────────
+// The branded mailer + treat pouch + seal sticker cost money to source. Per CEO
+// direction this is recovered INSIDE the price (one per-order amount folded into
+// the goods subtotal), NEVER shown to the customer as a separate "packaging"
+// line. It is part of the VAT-inclusive goods price they see and pay. Override
+// per real supplier cost via SHOP_PACKAGING_HANDLING_CENTS.
+const PACKAGING_HANDLING_CENTS = (() => {
+  const v = Number(process.env.SHOP_PACKAGING_HANDLING_CENTS);
+  return Number.isFinite(v) && v >= 0 ? v : 600; // ₪6 default per shipment
+})();
+
 // Cities with same-day express delivery available
 const EXPRESS_CITIES = new Set([
     'תל אביב', 'tel aviv', 'רמת גן', 'גבעתיים', 'בני ברק',
@@ -242,7 +253,11 @@ export class ShopService {
               lineTotalCents: (item.price_cents + (item.price_delta_cents ?? 0)) * item.quantity,
       }));
 
-      const subtotalCents = enrichedItems.reduce((sum, i) => sum + i.lineTotalCents, 0);
+      const goodsCents = enrichedItems.reduce((sum, i) => sum + i.lineTotalCents, 0);
+        // Fold the hidden per-order packaging cost into the goods price (only when
+        // the cart has items). Customer sees ONE goods price that already includes
+        // it — no separate packaging line. VAT is computed on the inclusive amount.
+        const subtotalCents = goodsCents > 0 ? goodsCents + PACKAGING_HANDLING_CENTS : 0;
         const vatCents = Math.round(subtotalCents * ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE));
         const netCents = subtotalCents - vatCents;
 
@@ -369,7 +384,7 @@ export class ShopService {
 
   // ─── Delivery ─────────────────────────────────────────────────────────────
 
-  estimateDelivery(params: { city: string; zipCode: string; totalGrams: number; subtotalCents?: number; wantsFast?: boolean }) {
+  estimateDelivery(params: { city: string; zipCode: string; totalGrams: number; subtotalCents?: number; wantsFast?: boolean; signatureRequired?: boolean }) {
         const cityNorm = (params.city || '').trim().toLowerCase();
         const hasExpress = EXPRESS_CITIES.has(cityNorm) || EXPRESS_CITIES.has(params.city.trim());
 
@@ -387,6 +402,7 @@ export class ShopService {
               totalGrams: params.totalGrams,
               subtotalCents: params.subtotalCents ?? 0,
               wantsFast: params.wantsFast,
+              signatureRequired: params.signatureRequired,
       });
 
       return {
