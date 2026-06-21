@@ -4,7 +4,7 @@ import { SMS_TEMPLATES, renderSms } from '../services/smsTemplates';
 describe('SMS template registry', () => {
   it('interpolates {{vars}} and trims', () => {
     const r = renderSms('otp_login', { code: '123456' });
-    expect(r?.body).toBe('קוד האימות שלך ל-PetWash הוא: 123456. הקוד תקף ל-10 דקות.');
+    expect(r?.body).toBe('קוד האימות שלך ל-PetWash הוא: 123456. הקוד תקף ל-5 דקות.');
     expect(r?.category).toBe('transactional');
   });
 
@@ -28,6 +28,17 @@ describe('SMS template registry', () => {
       expect(t.he, `${key} must have Hebrew copy`).toBeTruthy();
       expect(t.he.length, `${key} Hebrew copy non-empty`).toBeGreaterThan(0);
     }
+  });
+
+  it('provider_application_submitted (wired live) keeps the name + membership data', () => {
+    // Guards against the live call site in provider-applications.ts losing data.
+    const r = renderSms('provider_application_submitted', { name: 'דנה', membership: 'PW-PRO-2026-000123' }, 'he');
+    expect(r?.body).toContain('דנה');
+    expect(r?.body).toContain('PW-PRO-2026-000123');
+    expect(r?.body).not.toMatch(/\{\{/);
+    const en = renderSms('provider_application_submitted', { name: 'Dana', membership: 'PW-PRO-2026-000123' }, 'en');
+    expect(en?.body).toContain('Dana');
+    expect(en?.body).toContain('PW-PRO-2026-000123');
   });
 
   it('covers all three audiences (user + provider + admin)', () => {

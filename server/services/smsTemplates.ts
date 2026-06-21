@@ -28,7 +28,9 @@ export interface SmsTemplate {
 /** Keyed by event. Values are the CEO's approved copy. */
 export const SMS_TEMPLATES: Record<string, SmsTemplate> = {
   // ── User ──────────────────────────────────────────────────────────────────
-  otp_login: { category: 'transactional', he: 'קוד האימות שלך ל-PetWash הוא: {{code}}. הקוד תקף ל-10 דקות.' },
+  // NOTE: 5 min matches the live OTP TTL (OTP_TTL_SEC=300 in every OTP service).
+  // Do NOT change to 10 min without also raising the server TTL, or the SMS lies.
+  otp_login: { category: 'transactional', he: 'קוד האימות שלך ל-PetWash הוא: {{code}}. הקוד תקף ל-5 דקות.' },
   account_created: { category: 'transactional', he: 'ברוכים הבאים ל-PetWash. החשבון שלך נוצר בהצלחה. להשלמת הפרופיל: {{link}}' },
   email_verify_reminder: { category: 'transactional', he: 'כמעט סיימנו. נא לאמת את כתובת האימייל שלך כדי להפעיל את החשבון: {{link}}' },
   add_pet_reminder: { category: 'transactional', he: 'החשבון שלך פעיל. הוסף/י את פרטי חיית המחמד כדי להשתמש בכל שירותי PetWash: {{link}}' },
@@ -62,7 +64,11 @@ export const SMS_TEMPLATES: Record<string, SmsTemplate> = {
   // ── Provider ──────────────────────────────────────────────────────────────
   provider_application_started: { category: 'transactional', he: 'התחלת בקשת הצטרפות כספק PetWash. להמשך התהליך: {{link}}' },
   provider_otp: { category: 'transactional', he: 'קוד האימות שלך ל-PetWash Provider הוא: {{code}}.' },
-  provider_application_submitted: { category: 'transactional', he: 'בקשת ההצטרפות שלך כספק התקבלה ונמצאת בבדיקה.' },
+  provider_application_submitted: {
+    category: 'transactional',
+    he: 'Pet Wash™ - ברוכים הבאים! 🐾\nשלום {{name}}, הבקשה שלך כספק התקבלה. מספר חברות: {{membership}}. הצוות יבדוק ויחזור אליך תוך 48 שעות.',
+    en: 'Pet Wash™ - Welcome! 🐾\nHi {{name}}, your provider application was received. Membership #: {{membership}}. Our team will review and reply within 48 hours.',
+  },
   provider_pending: { category: 'transactional', he: 'בקשת הספק שלך ממתינה לאימות. חסר עוד שלב אחד להשלמת התהליך: {{link}}' },
   provider_missing_documents: { category: 'transactional', he: 'חסרים מסמכים בבקשת הספק שלך. להשלמה: {{link}}' },
   provider_document_rejected: { category: 'transactional', he: 'מסמך שהעלית לא אושר. נא להעלות מסמך ברור ועדכני כאן: {{link}}' },
