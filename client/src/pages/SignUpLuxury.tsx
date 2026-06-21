@@ -158,8 +158,31 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const safeRedirect = redirectParam && /^\/(?!\/)/.test(redirectParam) ? redirectParam : null;
   const dest = safeRedirect ?? destForFlow(flow);
 
+  // Only the EXPLICIT ?flow=/?intent= the user actually arrived with (not the
+  // 'prestige' default) — passed to the decider so a deliberate "become provider"
+  // deep-link still routes to onboarding.
+  const explicitIntent = params.get('flow') || params.get('intent') || undefined;
   const { user } = useFirebaseAuth();
-  useEffect(() => { if (user) navigate(dest); }, [user, dest, navigate]);
+  // Already signed in on /signup → route by the user's ACTUAL role/status via the
+  // server post-login decider: returning approved provider → /provider-os, member →
+  // /home, mid-application provider → /provider-onboarding, admin → /admin/dashboard.
+  // (Was a STATIC flow→dest map that sent a returning provider to /home.) Mirrors
+  // SignIn.tsx. ?redirect= still wins; falls back to dest on any error.
+  useEffect(() => {
+    if (!user) return;
+    if (safeRedirect) { navigate(safeRedirect); return; }
+    let cancelled = false;
+    (async () => {
+      try {
+        const { resolvePostLogin } = await import('@/lib/postLoginCoordinator');
+        const data: any = await resolvePostLogin({ body: explicitIntent ? { intent: explicitIntent } : undefined });
+        if (!cancelled) navigate(data?.nextUrl || data?.redirectTo || dest);
+      } catch {
+        if (!cancelled) navigate(dest);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [user, safeRedirect, explicitIntent, dest, navigate]);
 
   // BUGFIX 2026-06-18: handle the Google/Apple/Facebook REDIRECT return on /signup
   // (iOS uses signInWithRedirect). Without this, the user completed sign-in on
