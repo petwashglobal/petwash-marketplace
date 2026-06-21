@@ -30,17 +30,26 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
   const isRTL = language === 'he';
 
   useEffect(() => {
-    // Extract transaction details from URL params
+    // Extract transaction details from URL params.
     const urlParams = new URLSearchParams(window.location.search);
-    const transactionId = urlParams.get('transaction_id');
+    // SUMIT's /api/payments/sumit/return redirects here as `?ref=<externalId>`
+    // ONLY after a server-side verification, and passes no `status` — so arriving
+    // with a `ref` IS a confirmed success. Older Nayax flows used
+    // `?transaction_id=&status=success`. Accept both, and never get stuck.
+    const ref = urlParams.get('ref');
+    const transactionId = ref || urlParams.get('transaction_id');
     const status = urlParams.get('status');
+    const isSuccess = status === 'success' || (!!ref && status !== 'failed');
 
-    if (status === 'success' && transactionId) {
-      // Fetch voucher details and track successful purchase
-      fetchVoucherDetails(transactionId);
-      // Show confetti on success
+    if (isSuccess) {
+      // Show the confirmation immediately (confetti). Detail fetch is best-effort.
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3000);
+      if (transactionId) {
+        fetchVoucherDetails(transactionId);
+      } else {
+        setLoading(false);
+      }
     } else {
       setLoading(false);
     }
