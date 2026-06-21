@@ -26,8 +26,21 @@
 // CERTAIN CONSTANTS (official sources, safe to hard-code)
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Israeli VAT rate (מע"מ) — 18% effective 1 January 2025 (ITA circular) */
-export const ISRAEL_VAT_RATE = 0.18;
+/**
+ * Israeli VAT rate (מע"מ) — 18% effective 1 January 2025 (ITA circular).
+ *
+ * FUTURE-PROOF: the rate defaults to 0.18 but can be overridden at runtime by
+ * setting the `VAT_RATE` env var (e.g. VAT_RATE=0.19) — so the next statutory
+ * change is an ops env flip, NO code deploy. Browser-safe: the `typeof process`
+ * guard means client bundles that import this constant never crash on a missing
+ * `process`, they just use the 0.18 default. When the rate genuinely changes,
+ * also add a dated entry to VAT_RATE_SCHEDULE below so historical documents
+ * still resolve the rate that applied on their own date.
+ */
+const _vatEnvOverride =
+  typeof process !== 'undefined' && process.env ? Number(process.env.VAT_RATE) : NaN;
+export const ISRAEL_VAT_RATE =
+  Number.isFinite(_vatEnvOverride) && _vatEnvOverride > 0 ? _vatEnvOverride : 0.18;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // EFFECTIVE-DATED VAT SCHEDULE (PR-1) — resolve "the default rate as of date D"

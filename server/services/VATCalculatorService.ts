@@ -45,22 +45,22 @@ import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { COMPANY_TAX_ID } from '@shared/finance-identity';
+import {
+  type FiscalPlatform,
+  COMMISSION_RATE_BY_PLATFORM,
+  DEFAULT_COMMISSION_RATE,
+} from '@shared/serviceDivisions';
 
 // Re-exported for downstream consumers that already import this name from
 // VATCalculatorService. The single source of truth is
 // shared/israel-compliance-config.ts (PR-W13).
 export const ISRAELI_VAT_RATE = ISRAEL_VAT_RATE;
-export const PLATFORM_COMMISSION_RATE = 0.15;
+export const PLATFORM_COMMISSION_RATE = DEFAULT_COMMISSION_RATE;
 
-const PLATFORM_COMMISSION_RATES: Record<string, number> = {
-  'sitter-suite': 0.15,
-  'walk-my-pet': 0.15,
-  'pettrek': 0.15,
-  'pet-wash-hub': 0.15,
-  'paw-finder': 0.15,
-  'plush-lab': 0.15,
-  'enterprise': 0.15,
-};
+// Platform commission rates now come from the canonical service registry
+// (shared/serviceDivisions.ts) — which includes 'academy', so Academy/trainer
+// revenue is finally attributable instead of mis-filed under 'sitter-suite'.
+const PLATFORM_COMMISSION_RATES: Record<string, number> = COMMISSION_RATE_BY_PLATFORM;
 
 function ils(n: number): number {
   return Math.round(n * 100) / 100;
@@ -100,7 +100,7 @@ export type VATBreakdown = DirectSaleVAT | MarketplaceVAT;
 
 export interface PLedgerEntry {
   id: string;
-  platform: "sitter-suite" | "walk-my-pet" | "pettrek" | "pet-wash-hub" | "paw-finder" | "plush-lab" | "enterprise";
+  platform: FiscalPlatform;
   transactionId: string;
   bookingId?: string;
   date: Date;

@@ -344,7 +344,7 @@ export default function AccountingDashboard() {
                         {isHebrew ? 'מע"מ לתשלום' : 'VAT Payable'}
                       </CardTitle>
                       <CardDescription>
-                        {isHebrew ? 'מס ערך מוסף 17%' : 'Value Added Tax 17%'}
+                        {isHebrew ? 'מס ערך מוסף 18%' : 'Value Added Tax 18%'}
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
@@ -423,7 +423,7 @@ export default function AccountingDashboard() {
                           <CheckCircle className="h-5 w-5 text-green-500" />
                           <div>
                             <p className="font-medium">{isHebrew ? 'חוק מס ערך מוסף' : 'VAT Law (חוק מע"מ)'}</p>
-                            <p className="text-sm text-gray-500">{isHebrew ? 'שיעור 17% על עמלות שירות' : '17% rate on service fees'}</p>
+                            <p className="text-sm text-gray-500">{isHebrew ? 'שיעור 18% על עמלות שירות' : '18% rate on service fees'}</p>
                           </div>
                         </div>
                         <span className="text-sm text-green-600 font-medium">{isHebrew ? 'תואם' : 'Compliant'}</span>

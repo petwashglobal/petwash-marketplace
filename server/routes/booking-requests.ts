@@ -62,6 +62,7 @@ import { eventBus } from '../services/EventBus';
 import { recomputeCustomerProfile, advanceJourneyState } from '../services/CustomerIntelligenceService';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 import VATCalculatorService from '../services/VATCalculatorService';
+import { providerTypeToFiscalPlatform } from '@shared/serviceDivisions';
 
 function getDivisionCode(serviceType?: string | null): 'petsitter' | 'walkers' | 'academy' | 'pettrek' | 'general' {
   switch (serviceType) {
@@ -2473,11 +2474,9 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     // understatement in recordTransaction().
     // Non-blocking — a failure here must never roll back the confirmed booking.
     {
-      const vatPlatform = (
-        booking.providerType === 'sitter' ? 'sitter-suite' :
-        booking.providerType === 'walker' ? 'walk-my-pet' :
-        'sitter-suite' // default for trainer and other service types
-      ) as 'sitter-suite' | 'walk-my-pet' | 'pettrek' | 'pet-wash-hub' | 'paw-finder' | 'plush-lab' | 'enterprise';
+      // Canonical mapping (shared/serviceDivisions.ts): trainer → 'academy'
+      // (was mis-filed as 'sitter-suite', attributing Academy revenue to sitting).
+      const vatPlatform = providerTypeToFiscalPlatform(booking.providerType);
       const grossCollectedILS = (booking.totalCents || booking.subtotalCents || 0) / 100;
       try {
         await VATCalculatorService.recordTransactionFromGross(
