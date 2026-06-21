@@ -176,6 +176,8 @@ export default function ProviderOnboarding() {
   const [insuranceExpiry, setInsuranceExpiry] = useState('');
   const [insurancePolicyNumber, setInsurancePolicyNumber] = useState('');
   const [insuranceProvider, setInsuranceProvider] = useState('');
+  // Israeli business/tax classification captured at application time (compliance).
+  const [taxStatus, setTaxStatus] = useState('');
 
   // Background check (2026 spec)
   const [residentialHistory, setResidentialHistory] = useState<string[]>(['']);
@@ -537,7 +539,8 @@ export default function ProviderOnboarding() {
       if (insurancePolicyNumber) formData.append('insurancePolicyNumber', insurancePolicyNumber);
       if (insuranceProvider) formData.append('insuranceProvider', insuranceProvider);
       if (insuranceExpiry) formData.append('insuranceExpiry', insuranceExpiry);
-      
+      if (taxStatus) formData.append('taxStatus', taxStatus);
+
       if (petFirstAidCert) formData.append('petFirstAidCert', petFirstAidCert);
       if (petFirstAidNumber) formData.append('petFirstAidNumber', petFirstAidNumber);
       if (petFirstAidExpiry) formData.append('petFirstAidExpiry', petFirstAidExpiry);
@@ -1124,7 +1127,28 @@ export default function ProviderOnboarding() {
                             />
                           </div>
                         </div>
-                        
+
+                        {/* Israeli business / tax classification — compliance: captured
+                            at application time, not only after approval. */}
+                        <div>
+                          <Label htmlFor="taxStatus" className="text-sm">
+                            {isHebrew ? 'סטטוס עוסק / מס' : 'Business / Tax Status'}
+                          </Label>
+                          <select
+                            id="taxStatus"
+                            value={taxStatus}
+                            onChange={(e) => setTaxStatus(e.target.value)}
+                            className="w-full bg-white text-gray-900 border border-gray-200 rounded-xl px-3 py-2"
+                            data-testid="select-tax-status"
+                          >
+                            <option value="">{isHebrew ? 'בחר/י…' : 'Select…'}</option>
+                            <option value="osek_patur">{isHebrew ? 'עוסק פטור' : 'Osek Patur (exempt dealer)'}</option>
+                            <option value="osek_murshe">{isHebrew ? 'עוסק מורשה' : 'Osek Murshe (licensed dealer)'}</option>
+                            <option value="company">{isHebrew ? 'חברה בע״מ' : 'Company (Ltd)'}</option>
+                            <option value="not_registered">{isHebrew ? 'עדיין לא רשום/לא בטוח' : 'Not registered yet / unsure'}</option>
+                          </select>
+                        </div>
+
                         <div>
                           <Label htmlFor="insuranceExpiry" className="text-sm">{t.expiryDate}</Label>
                           <DatePicker
