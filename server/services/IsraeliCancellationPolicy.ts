@@ -65,3 +65,68 @@ export function customerCancellationRefundCents(input: {
   const feeCents = statutoryCancellationFeeCents(amount);
   return { refundCents: Math.max(0, amount - feeCents), feeCents, basis: 'statutory_fee' };
 }
+
+// ─── Statutory cancellation WINDOW (distance-sale right) ─────────────────────
+// Israeli Consumer Protection Law distance-sale cancellation for a SERVICE: the
+// consumer may cancel within 14 days of the transaction, provided the
+// cancellation is made at least 2 days (that are not rest days) BEFORE the date
+// the service is due. The effective deadline is the EARLIER of those two. For a
+// good / no service date, only the 14-day window applies. This is what lets the
+// admin refund review show "within the legal window? deadline = X" (the gap).
+
+export const STATUTORY_COOLING_OFF_DAYS = 14;
+/** Business days before the service the consumer must cancel by. */
+export const SERVICE_CANCELLATION_NOTICE_BUSINESS_DAYS = 2;
+
+function addCalendarDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  r.setDate(r.getDate() + n);
+  return r;
+}
+
+/** Subtract N business days, skipping the Israeli weekend (Fri=5, Sat=6). */
+function subtractBusinessDays(d: Date, n: number): Date {
+  const r = new Date(d);
+  let left = n;
+  while (left > 0) {
+    r.setDate(r.getDate() - 1);
+    const day = r.getDay(); // 0=Sun … 5=Fri, 6=Sat
+    if (day !== 5 && day !== 6) left--;
+  }
+  return r;
+}
+
+export interface CancellationDeadline {
+  /** Last moment the consumer can cancel under the statutory distance-sale right. */
+  deadline: Date;
+  /** Which constraint set the deadline. */
+  basis: 'cooling_off_14d' | 'service_notice';
+}
+
+/**
+ * The statutory cancellation deadline. For a service with a date, it is the
+ * EARLIER of (purchase + 14 days) and (serviceDate − 2 business days). Without a
+ * service date, it is purchase + 14 days. (Israeli weekend = Fri/Sat; public
+ * holidays are not modelled here — treat the result as a floor.)
+ */
+export function statutoryCancellationDeadline(input: {
+  purchaseDate: Date;
+  serviceDate?: Date | null;
+}): CancellationDeadline {
+  const coolingOff = addCalendarDays(input.purchaseDate, STATUTORY_COOLING_OFF_DAYS);
+  if (!input.serviceDate) return { deadline: coolingOff, basis: 'cooling_off_14d' };
+  const serviceCutoff = subtractBusinessDays(input.serviceDate, SERVICE_CANCELLATION_NOTICE_BUSINESS_DAYS);
+  return coolingOff.getTime() <= serviceCutoff.getTime()
+    ? { deadline: coolingOff, basis: 'cooling_off_14d' }
+    : { deadline: serviceCutoff, basis: 'service_notice' };
+}
+
+/** Is `now` still within the statutory cancellation window? */
+export function isWithinStatutoryCancellation(input: {
+  purchaseDate: Date;
+  serviceDate?: Date | null;
+  now?: Date;
+}): boolean {
+  const now = input.now ?? new Date();
+  return now.getTime() <= statutoryCancellationDeadline(input).deadline.getTime();
+}
