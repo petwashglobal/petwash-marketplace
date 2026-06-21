@@ -82,15 +82,18 @@ describe('KNOWN GAPS — pinned until fixed (flip the assertion when wired)', ()
     expect(src('server/routes/k9000.ts')).not.toMatch(/generateReceipt|createCustomerReceipt/);
   });
 
-  it('Trainer/academy captures payment but issues NO fiscal receipt', () => {
-    expect(src('server/routes/academy.ts')).not.toMatch(/generateReceipt|createCustomerReceipt|IsraeliInvoice/);
+  it('Trainer/academy NOW issues a fiscal receipt on confirm (gap fixed)', () => {
+    expect(src('server/routes/academy.ts')).toMatch(/generateReceipt/);
   });
 
   it('Walk receipt hardcodes nayaxTransactionId: undefined (no txn linkage)', () => {
     expect(src('server/routes/walk-my-pet.ts')).toMatch(/nayaxTransactionId:\s*undefined/);
   });
 
-  it("Walk receipt hardcodes customerEmail: '' (email never delivers)", () => {
-    expect(src('server/routes/walk-my-pet.ts')).toMatch(/customerEmail:\s*['"]['"]/);
+  it('Walk + sitter receipts NOW resolve the real customer email (gap fixed)', () => {
+    // The empty-string default that silently dropped the receipt email is gone;
+    // both routes look up the owner's email from the users table.
+    expect(src('server/routes/walk-my-pet.ts')).toMatch(/customerEmail:\s*ownerEmail/);
+    expect(src('server/routes/sitter-suite.ts')).toMatch(/customerEmail:\s*owner\?\.email/);
   });
 });

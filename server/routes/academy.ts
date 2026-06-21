@@ -15,6 +15,7 @@ import {
   insertTrainerBookingSchema,
   providerApprovalQueue,
   PETWASH_COMMISSION_RATE,
+  users,
   type Trainer,
   type TrainerBooking,
 } from '@shared/schema';
@@ -28,6 +29,7 @@ import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walletService } from '../services/WalletService';
 import { dispatchAcademySms } from '../services/academySmsHelper';
+import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 
 const router = Router();
 
@@ -559,6 +561,42 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       .returning();
 
     logger.info('[Academy] Booking confirmed', { bookingId, trainerId: booking.trainerId });
+
+    // Israeli digital receipt for the training service (non-blocking). Academy
+    // previously issued NO fiscal document — this closes that gap, consistent
+    // with the sitter/walk marketplace flows. VAT is derived from totalAmount by
+    // the receipt service; the fee/payout figures are informational.
+    try {
+      const totalAmount = (booking.walletHoldCents || 0) / 100;
+      if (totalAmount > 0) {
+        const [cust] = await db
+          .select({ email: users.email, first: users.firstName, last: users.lastName })
+          .from(users).where(eq(users.firebaseUid, booking.userId)).limit(1);
+        const [trn] = await db
+          .select({ first: users.firstName, last: users.lastName })
+          .from(users).where(eq(users.firebaseUid, booking.trainerUserId)).limit(1);
+        const platformFeeAmount = Math.round(totalAmount * PETWASH_COMMISSION_RATE * 100) / 100;
+        await IsraeliDigitalReceiptService.generateReceipt({
+          platform: 'academy',
+          bookingId,
+          customerEmail: cust?.email || '',
+          customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
+          providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
+          providerId: String(booking.trainerId),
+          providerType: 'trainer',
+          serviceDescription: 'Pet Wash Academy training session',
+          serviceDescriptionHe: 'מפגש אימון פט וואש אקדמי',
+          subtotalAmount: totalAmount,
+          platformFeeAmount,
+          totalAmount,
+          paymentMethod: 'PetWash Wallet',
+          providerPayoutAmount: Math.round((totalAmount - platformFeeAmount) * 100) / 100,
+          brokerCommissionAmount: platformFeeAmount,
+        });
+      }
+    } catch (receiptErr) {
+      logger.warn('[Academy] Receipt generation on confirm failed (non-blocking)', receiptErr);
+    }
 
     // 2.7C/D — fire-and-forget SMS to trainer + customer
     dispatchAcademySms({
