@@ -471,12 +471,13 @@ router.post('/orders/:id/cancel', apiLimiter, requireAuth, async (req: Request, 
           const result = await shopService.cancelOrder(orderId, uid);
           if (!result.success) return res.status(400).json({ error: result.reason });
 
-      // Release escrow and refund wallet
+      // Release escrow and refund wallet — refundCents already has the statutory
+      // cancellation fee deducted (was a flat 100% refund = money leak).
       await EscrowService.cancel(uid, 'shop_order', orderId);
           await walletService.creditWallet(uid, result.refundCents, 'shop_refund', { orderId });
-          await logAuditEvent({ actorUserId: uid, actorRole: 'customer', actionType: 'shop.order.cancelled', targetType: 'shop_order', targetId: String(orderId), metadata: { refundCents: result.refundCents } });
+          await logAuditEvent({ actorUserId: uid, actorRole: 'customer', actionType: 'shop.order.cancelled', targetType: 'shop_order', targetId: String(orderId), metadata: { refundCents: result.refundCents, cancellationFeeCents: result.cancellationFeeCents } });
 
-      res.json({ status: 'cancelled', refundCents: result.refundCents });
+      res.json({ status: 'cancelled', refundCents: result.refundCents, cancellationFeeCents: result.cancellationFeeCents });
     } catch (err: any) {
     logger.error('[Shop] cancelOrder error', { uid, err: err.message });
           res.status(500).json({ error: 'Failed to cancel order' });
