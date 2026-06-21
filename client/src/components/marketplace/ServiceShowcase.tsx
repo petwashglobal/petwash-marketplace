@@ -31,8 +31,8 @@ const serviceData = [
     nameHe: "פנסיון לחיות מחמד",
     description: "Overnight care in a loving sitter's home",
     descriptionHe: "טיפול לילי בבית מארח אוהב",
-    features: ["24/7 supervision", "Photo updates", "₪25K guarantee"],
-    featuresHe: ["השגחה 24/7", "עדכוני תמונות", "ערבות ₪25,000"],
+    features: ["24/7 supervision", "Photo updates", "Secure payments"],
+    featuresHe: ["השגחה 24/7", "עדכוני תמונות", "תשלום מאובטח"],
     priceFrom: 165,
     route: "/sitter-suite",
     image: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=600&h=400&fit=crop",
@@ -277,7 +277,7 @@ export function ServiceShowcase({ variant = "grid", showPricing = true, classNam
         <div className="flex items-center gap-8 text-sm text-gray-500">
           <div className="flex items-center gap-2">
             <Shield className="h-5 w-5 text-emerald-600" />
-            <span>{isRTL ? "ערבות ₪25,000" : "₪25,000 Guarantee"}</span>
+            <span>{isRTL ? "תשלום מאובטח" : "Secure payments"}</span>
           </div>
           <div className="flex items-center gap-2">
             <Star className="h-5 w-5 text-emerald-600" />

@@ -296,7 +296,7 @@ export function UnifiedSearchWidget({ variant = "hero", className }: UnifiedSear
         <div className="flex items-center justify-center gap-6 pt-4 border-t border-gray-100">
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <div className="w-2 h-2 bg-emerald-500 rounded-full" />
-            {isRTL ? "₪25,000 ערבות" : "₪25,000 Guarantee"}
+            {isRTL ? "תשלום מאובטח" : "Secure payments"}
           </div>
           <div className="flex items-center gap-2 text-sm text-gray-500">
             <div className="w-2 h-2 bg-emerald-500 rounded-full" />

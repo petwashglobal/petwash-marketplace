@@ -197,7 +197,7 @@ export function HowItWorks({ variant = "horizontal", showCTA = true, className }
               <div className="space-y-3">
                 {[
                   isRTL ? "אלפי מטפלים מאומתים" : "Thousands of verified caregivers",
-                  isRTL ? "ערבות ₪25,000" : "₪25,000 guarantee",
+                  isRTL ? "תשלום מאובטח ותמיכה במחלוקות" : "Secure payments & dispute support",
                   isRTL ? "הזמנה קלה ומהירה" : "Easy and fast booking",
                 ].map((item, idx) => (
                   <div key={idx} className="flex items-center gap-3">
