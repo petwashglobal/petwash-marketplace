@@ -90,63 +90,10 @@ export interface CreateBookingInput {
 }
 
 class BookingLifecycleService {
-  private async getCustomerLoyaltyInfo(customerId?: string): Promise<LoyaltyInfo | null> {
-    if (!customerId) return null;
-
-    try {
-      const [statsRow, userRow] = await Promise.all([
-        db.select({
-          completedCount: sql<number>`COUNT(*) FILTER (WHERE status = 'completed')`,
-          averageRating: sql<number>`COALESCE(AVG(customer_rating) FILTER (WHERE status = 'completed' AND customer_rating IS NOT NULL), 0)`,
-        })
-        .from(bookings)
-        .where(eq(bookings.userId, customerId))
-        .then((r) => r[0]),
-
-        // Read the canonical loyalty_tier persisted by the points-based loyalty
-        // system (loyaltySync.updateLoyalty). A customer who earned tier 'gold'
-        // through K9000 washes should get the gold discount at marketplace checkout
-        // even if they have fewer than 15 completed marketplace bookings.
-        db.select({ loyaltyTier: users.loyaltyTier })
-          .from(users)
-          .where(eq(users.id, customerId))
-          .limit(1)
-          .then((r) => r[0] ?? null),
-      ]);
-
-      const completedBookings = Number(statsRow?.completedCount) || 0;
-      const averageRating = Number(statsRow?.averageRating) || 0;
-
-      // Determine tier from booking-count history (original logic)
-      let tier = 'none';
-      let discountPercent = 0;
-      for (const [tierName, thresholds] of Object.entries(LOYALTY_TIERS).reverse()) {
-        if (completedBookings >= thresholds.minBookings && averageRating >= thresholds.minRating) {
-          tier = tierName;
-          discountPercent = thresholds.discountPercent;
-          break;
-        }
-      }
-
-      // Compare with the stored loyalty tier — use whichever gives the better discount.
-      // The stored tier reflects the points-based system (K9000 washes, referrals, etc.)
-      // so a customer who earned a higher tier outside of marketplace bookings still
-      // receives their entitled discount at checkout.
-      if (userRow?.loyaltyTier) {
-        const storedTier = userRow.loyaltyTier.toLowerCase();
-        const storedConfig = LOYALTY_TIERS[storedTier as keyof typeof LOYALTY_TIERS];
-        if (storedConfig && storedConfig.discountPercent > discountPercent) {
-          tier = storedTier;
-          discountPercent = storedConfig.discountPercent;
-        }
-      }
-
-      return { tier, completedBookings, averageRating, discountPercent };
-    } catch (error) {
-      logger.warn('[BookingLifecycle] Could not fetch loyalty info', { customerId, error });
-      return null;
-    }
-  }
+  // NOTE: getCustomerLoyaltyInfo() was removed (2026-06-22). It mapped a customer's
+  // K9000-earned loyalty tier into a marketplace-checkout discount — but per policy
+  // the club/senior discount applies ONLY to K9000 station washes, never to
+  // marketplace/platform services. See the loyaltyDiscountCents=0 note in calculateQuote.
 
   private calculateComboDiscount(petCount: number, nights: number): { discountPercent: number; discountName: string | null } {
     // Check for combo discounts (multi-pet + long-stay)
@@ -257,15 +204,16 @@ class BookingLifecycleService {
       appliedDiscounts.push(combo.discountName);
     }
 
-    // Loyalty discount (based on customer history)
-    const loyaltyInfo = await this.getCustomerLoyaltyInfo(customerId);
+    // POLICY (CEO, 2026-06-22): the loyalty CLUB / senior discounts apply ONLY to
+    // K9000 self-service dual-station washes — NEVER to marketplace/platform
+    // services (pet-sitting, walk-my-pet, PetWash Academy, pet training, grooming).
+    // Applying the K9000-earned tier discount here was leaking club perks into
+    // marketplace pricing and silently reducing BOTH provider earnings and platform
+    // commission on services that are not eligible for it. Force it to 0.
+    // (Provider-defined duration + multi-pet combo package discounts above still apply —
+    //  those are the provider's own pricing, not the club discount.)
     const postComboTotal = preComboTotal - comboDiscountCents;
-    const loyaltyDiscountCents = loyaltyInfo && loyaltyInfo.discountPercent > 0
-      ? Math.round(postComboTotal * (loyaltyInfo.discountPercent / 100))
-      : 0;
-    if (loyaltyInfo && loyaltyInfo.tier !== 'none') {
-      appliedDiscounts.push(`${loyaltyInfo.tier.charAt(0).toUpperCase() + loyaltyInfo.tier.slice(1)} member bonus (${loyaltyInfo.discountPercent}% off)`);
-    }
+    const loyaltyDiscountCents = 0;
 
     const subtotalCents = postComboTotal - loyaltyDiscountCents;
     

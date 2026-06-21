@@ -65,8 +65,8 @@ export default function PlatformShowcase() {
         "Bank Reconciliation - Mizrahi-Tefahot API integration",
         "Automated Monthly Invoicing - Tax authority API filing",
         "E-Voucher System - Apple Wallet + Google Wallet integration",
-        "7-Tier Luxury Loyalty Program - Progressive discounts (Bronze→Royal, up to 50% off)",
-        "Special Discounts - Disability (15% extra) & Senior (10% extra) programs"
+        "7-Tier Luxury Loyalty Club - 5% member discount on K9000 station washes, with escalating points & perks (Bronze→Royal)",
+        "Special Discounts - verified Senior & Disability up to 10% on K9000 station washes (hard cap 10%)"
       ]
     },
     {
