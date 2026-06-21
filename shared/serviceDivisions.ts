@@ -99,6 +99,29 @@ export function serviceTypeToFiscalPlatform(serviceType?: string | null): Fiscal
 }
 
 /**
+ * SUMIT (OfficeGuy) document types we issue. One canonical mapping so every
+ * service issues the RIGHT fiscal document for the same economic event — before
+ * this, eGift sent a bare 'Invoice' while a sitter booking sent
+ * 'InvoiceAndReceipt' for the identical "customer already paid" situation.
+ *
+ *   InvoiceAndReceipt — חשבונית מס/קבלה — a B2C sale already paid (DEFAULT).
+ *   Receipt           — קבלה            — money received against an existing invoice.
+ *   Invoice           — חשבונית מס       — a charge not yet receipted (rare for us).
+ *   CreditInvoice     — חשבונית זיכוי    — refund / reversal.
+ */
+export type SumitDocType = 'InvoiceAndReceipt' | 'Receipt' | 'Invoice' | 'CreditInvoice';
+
+/**
+ * The fiscal document type for a customer-facing, already-paid PetWash sale.
+ * Every paid service (K9000 wash, eGift, sitter, walk, Academy, shop) issues
+ * the same חשבונית מס/קבלה. Refunds use 'CreditInvoice' explicitly at the call
+ * site — this helper is for the forward (charge) direction only.
+ */
+export function sumitDocTypeForPaidSale(_platform?: FiscalPlatform | string | null): SumitDocType {
+  return 'InvoiceAndReceipt';
+}
+
+/**
  * Legacy wallet-ledger `divisionCode` per fiscal platform (bridge until the
  * wallet ledgers adopt FiscalPlatform directly). Mirrors the strings documented
  * on `wallet_ledger_entries.divisionCode`.

@@ -452,16 +452,34 @@ export class NayaxPaymentService {
 
       // Issue the customer tax-invoice/receipt via SUMIT — fire-and-forget, fail-safe.
       // No-op unless SUMIT is wired; never blocks the payment that already succeeded.
-      import('./services/SumitReceiptService').then(({ SumitReceiptService }) =>
-        SumitReceiptService.issueCustomerReceipt({
-          idempotencyKey: `nayax-${pending.id}`,
-          sourceRef: voucherId,
-          customerName: (pending as any).customerName || 'PetWash Customer',
-          customerEmail: pending.customerEmail || undefined,
-          totalAmountIls: Number(pending.amount),
-          description: pending.isGiftCard ? 'PetWash e-Gift card' : 'PetWash payment',
-        }),
-      ).catch(() => { /* receipt is best-effort — never affects the payment */ });
+      // The eGift purchase details (recipient + voucher serial) go on the
+      // document description so the buyer's receipt names what was bought, and
+      // the returned SUMIT document id is persisted back onto the voucher so the
+      // official document is retrievable later.
+      {
+        const recipient = pending.recipientEmail && pending.recipientEmail !== pending.customerEmail
+          ? ` to ${pending.recipientEmail}`
+          : '';
+        const receiptDescription = pending.isGiftCard
+          ? `PetWash e-Gift card${recipient} · ${(pending.voucherCode || '').slice(-4) ? `#…${(pending.voucherCode || '').slice(-4)}` : voucherId}`
+          : 'PetWash payment';
+        import('./services/SumitReceiptService').then(async ({ SumitReceiptService }) => {
+          const r = await SumitReceiptService.issueCustomerReceipt({
+            idempotencyKey: `nayax-${pending.id}`,
+            sourceRef: voucherId,
+            customerName: (pending as any).customerName || 'PetWash Customer',
+            customerEmail: pending.customerEmail || undefined,
+            totalAmountIls: Number(pending.amount),
+            description: receiptDescription,
+          });
+          if (r.ok && r.sumitDocumentId) {
+            await db.update(eVouchers)
+              .set({ sumitDocumentId: r.sumitDocumentId })
+              .where(eq(eVouchers.id, voucherId))
+              .catch(() => { /* doc still issued; linkage best-effort */ });
+          }
+        }).catch(() => { /* receipt is best-effort — never affects the payment */ });
+      }
 
       // CRITICAL: Send gift card emails for e-gift purchases
       if (pending.isGiftCard) {

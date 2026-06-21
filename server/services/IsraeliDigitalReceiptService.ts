@@ -390,6 +390,17 @@ export class IsraeliDigitalReceiptService {
             context: { platform: params.platform, bookingId: params.bookingId, receiptNumber },
           });
           if (sumitResult.sumitDocumentId) {
+            // Persist the SUMIT document id back onto the receipt so the official
+            // document is retrievable later (was previously only logged → lost).
+            try {
+              await db.update(digitalReceipts)
+                .set({ sumitDocumentId: sumitResult.sumitDocumentId })
+                .where(eq(digitalReceipts.id, receipt.id));
+            } catch (persistErr: any) {
+              logger.warn('[Digital Receipt] could not persist sumitDocumentId (doc still issued)', {
+                receiptNumber, sumitDocumentId: sumitResult.sumitDocumentId, error: persistErr?.message,
+              });
+            }
             logger.info('[Digital Receipt] SUMIT document issued', {
               receiptNumber, sumitDocumentId: sumitResult.sumitDocumentId, platform: params.platform,
             });
