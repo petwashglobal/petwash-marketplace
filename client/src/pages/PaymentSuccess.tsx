@@ -27,6 +27,10 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
   const [voucherDetails, setVoucherDetails] = useState<VoucherDetails | null>(null);
   const [loading, setLoading] = useState(true);
   const [showConfetti, setShowConfetti] = useState(false);
+  // True once we know the payment succeeded — even if the itemised voucher
+  // details can't be fetched (no detail endpoint yet). Drives a SUCCESS view
+  // instead of the failed view when details are absent.
+  const [paymentConfirmed, setPaymentConfirmed] = useState(false);
   const isRTL = language === 'he';
 
   useEffect(() => {
@@ -43,6 +47,7 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
 
     if (isSuccess) {
       // Show the confirmation immediately (confetti). Detail fetch is best-effort.
+      setPaymentConfirmed(true);
       setShowConfetti(true);
       setTimeout(() => setShowConfetti(false), 3000);
       if (transactionId) {
@@ -100,6 +105,34 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="luxury-spinner" />
+      </div>
+    );
+  }
+
+  // Confirmed success but no itemised voucher details (the detail endpoint isn't
+  // built yet) — show a clean SUCCESS confirmation, NOT the failed screen.
+  if (!voucherDetails && paymentConfirmed) {
+    return (
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center px-4">
+        <div className="text-center max-w-md mx-auto p-8 luxury-glass-card luxury-shadow-lg luxury-animate-scale-in">
+          <div className="w-20 h-20 bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+            <CheckCircle className="w-12 h-12 text-white" strokeWidth={2.5} />
+          </div>
+          <h1 className="luxury-heading-lg mb-3">
+            {t('payment.successTitle', language)}
+          </h1>
+          <p className="luxury-text-body mb-6">
+            {t('payment.voucherReady', language)}
+          </p>
+          <button
+            onClick={() => setLocation('/dashboard')}
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-black text-white font-medium hover:opacity-90 transition-opacity"
+            data-testid="button-payment-success-home"
+          >
+            <Home className="w-4 h-4" />
+            {t('common.home', language) || (isRTL ? 'לדף הבית' : 'Home')}
+          </button>
+        </div>
       </div>
     );
   }
