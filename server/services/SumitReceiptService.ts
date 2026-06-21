@@ -15,6 +15,7 @@
  */
 import { sumitClient } from './SumitClient';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { sumitDocTypeForPaidSale } from '@shared/serviceDivisions';
 import { logger } from '../lib/logger';
 
 export interface CustomerReceiptInput {
@@ -24,6 +25,7 @@ export interface CustomerReceiptInput {
   sourceRef: string;
   customerName: string;
   customerEmail?: string;
+  customerPhone?: string;
   /** GROSS amount the customer paid, VAT-inclusive, in ILS */
   totalAmountIls: number;
   description: string;
@@ -49,19 +51,24 @@ export class SumitReceiptService {
       const beforeVat = Math.round((total / (1 + ISRAEL_VAT_RATE)) * 100) / 100;
       const vatAmount = Math.round((total - beforeVat) * 100) / 100;
 
-      const result = await sumitClient.createDocument({
-        supplierInvoiceId: input.sourceRef,
+      // Canonical: a B2C already-paid sale is a חשבונית מס/קבלה
+      // (InvoiceAndReceipt) — not a bare 'Invoice'. createCustomerReceipt()
+      // issues that type AND records the Payments line so it is a receipt too,
+      // matching every other paid service. sumitDocTypeForPaidSale() pins it.
+      void sumitDocTypeForPaidSale(null);
+      const result = await sumitClient.createCustomerReceipt({
         idempotencyKey: input.idempotencyKey,
         customer: {
           name: input.customerName?.trim() || 'PetWash Customer',
-          businessNumber: '', // consumer receipt — no business number
           email: input.customerEmail,
+          phone: input.customerPhone,
         },
         amountBeforeVat: beforeVat,
         vatAmount,
         totalAmount: total,
         currency: 'ILS',
         description: input.description,
+        context: { sourceRef: input.sourceRef },
       });
 
       if (result.wired && result.sumitDocumentId) {

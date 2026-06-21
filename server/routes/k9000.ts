@@ -55,7 +55,7 @@ import {
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { z } from 'zod';
 import { db } from '../db';
-import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands, kioskMachines } from '@shared/schema';
+import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands, kioskMachines, users } from '@shared/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -620,6 +620,49 @@ router.post('/wash/start_cycle', async (req, res) => {
       });
     } catch (washLogErr: any) {
       logger.error('[K9000 Wash] Failed to write k9000WashEvents', { error: washLogErr.message, washId });
+    }
+
+    // === STEP 4.8b: SUMIT tax-invoice/receipt — DIRECT Nayax card sale only ===
+    // A walk-up Nayax CARD tap is a NEW taxable cash sale, so Pet Wash Ltd must
+    // issue a חשבונית מס/קבלה. Credit/package/eGift redemptions go through Flow B
+    // and were already taxed when the stored value was purchased — issuing again
+    // here would DOUBLE the VAT, so they intentionally do NOT receipt here.
+    // Fire-and-forget + fail-safe: no-op until SUMIT is wired, and a receipt
+    // failure can never affect the wash that already ran. Idempotent on the txn.
+    if (washEventId && nayaxAmountCents > 0) {
+      void (async () => {
+        try {
+          // Identify the buyer only when an app user was linked at the bay; an
+          // anonymous tap gets an UNNAMED receipt (valid for an unattended sale).
+          let customerEmail: string | undefined;
+          let customerName: string | undefined;
+          if (customerUid) {
+            const [u] = await db
+              .select({ email: users.email, first: users.firstName, last: users.lastName })
+              .from(users)
+              .where(eq(users.id, customerUid))
+              .limit(1);
+            customerEmail = u?.email || undefined;
+            customerName = [u?.first, u?.last].filter(Boolean).join(' ') || undefined;
+          }
+          const { SumitReceiptService } = await import('../services/SumitReceiptService');
+          const r = await SumitReceiptService.issueCustomerReceipt({
+            idempotencyKey: `k9000-${transactionId || washId}`,
+            sourceRef: washEventId,
+            customerName: customerName || 'PetWash Customer',
+            customerEmail,
+            totalAmountIls: nayaxAmountCents / 100,
+            description: `PetWash K9000 wash${washType ? ` — ${washType}` : ''}`,
+          });
+          if (r.ok && r.sumitDocumentId) {
+            await db.update(k9000WashEvents)
+              .set({ sumitDocumentId: r.sumitDocumentId })
+              .where(eq(k9000WashEvents.id, washEventId));
+          }
+        } catch (e: any) {
+          logger.error('[K9000 Wash] SUMIT receipt failed (wash unaffected)', { washId, error: e?.message });
+        }
+      })();
     }
 
     // === STEP 4.9: OPEN BAY SESSION (FLOW A) ===

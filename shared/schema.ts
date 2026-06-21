@@ -554,6 +554,7 @@ export const eVouchers = pgTable("e_vouchers", {
   purchaserUid: text("purchaser_uid"), // Firebase UID (optional)
   ownerUid: text("owner_uid"), // Bound user after claim; NULL until claimed
   nayaxTxId: text("nayax_tx_id"), // Origin purchase reference
+  sumitDocumentId: text("sumit_document_id"), // SUMIT tax-invoice/receipt id for the purchase (retrievable from the SUMIT panel; NULL while SUMIT dormant)
   eligibleServices: jsonb("eligible_services").default(['all']), // Services this voucher can be used for: wash, sitter, walk, trek, all
   expiresAt: timestamp("expires_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
@@ -958,6 +959,12 @@ export const k9000WashEvents = pgTable("k9000_wash_events", {
 
   // Idempotency — prevent double-logging on webhook retry
   idempotencyKey: varchar("idempotency_key").unique(),
+
+  // SUMIT tax-invoice/receipt id — populated ONLY for a direct Nayax card sale
+  // (transaction_source='nayax'), the one K9000 flow that is a NEW taxable cash
+  // sale. Credit/package redemptions (transaction_source='petwash') were already
+  // taxed at purchase, so they intentionally carry NO sumit document here.
+  sumitDocumentId: varchar("sumit_document_id"),
 
   createdAt: timestamp("created_at").defaultNow(),
 }, (table) => [
@@ -12137,6 +12144,13 @@ export const digitalReceipts = pgTable("digital_receipts", {
   //   ₪10,000 from 1.1.2026 | ₪5,000 from 1.6.2026
   shaamRequired: boolean("shaam_required").default(false).notNull(),
   shaamAllocationNumber: varchar("shaam_allocation_number"), // Obtained from ITA SHAAM API once integrated
+
+  // SUMIT (OfficeGuy) document linkage — populated when the receipt is also
+  // issued as an official SUMIT document, so it can be retrieved later from the
+  // SUMIT panel. NULL while SUMIT is dormant (SUMIT_ENABLED=false) or below the
+  // SHAAM threshold (self-issued only). The document id is the canonical key.
+  sumitDocumentId: varchar("sumit_document_id"),
+  sumitDocumentUrl: varchar("sumit_document_url"),
 
   issuedAt: timestamp("issued_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
