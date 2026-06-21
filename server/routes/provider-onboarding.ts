@@ -475,6 +475,9 @@ router.post('/apply', upload.fields([
       insurancePolicyNumber,
       insuranceProvider: insuranceProviderName,
       insuranceExpiry,
+      // Israeli business/tax classification captured at application time (compliance):
+      // osek_patur | osek_murshe | company | not_registered.
+      taxStatus,
       petFirstAidNumber,
       petFirstAidExpiry,
       drivingLicenseNumber,
@@ -896,6 +899,7 @@ router.post('/apply', upload.fields([
       insurancePolicyNumber: insurancePolicyNumber || null,
       insuranceProvider: insuranceProviderName || null,
       insuranceExpiresAt: insuranceExpiry ? new Date(insuranceExpiry) : null,
+      taxStatus: taxStatus || null,
       businessLicenseUrl: businessLicenseUrl || null,
       // PRIVACY: the raw ID number is NO LONGER written here. We persist only
       // the redacted last-4 (kycIdLastFour) and, when retained, an encrypted

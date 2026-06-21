@@ -5283,7 +5283,10 @@ export const providerApplications = pgTable("provider_applications", {
   
   businessLicenseUrl: varchar("business_license_url"), // Required for station operators
   businessLicenseExpiresAt: timestamp("business_license_expires_at"),
-  
+  // Israeli business/tax classification, captured at application time (compliance):
+  // osek_patur (עוסק פטור) | osek_murshe (עוסק מורשה) | company (חברה בע״מ) | not_registered.
+  taxStatus: varchar("tax_status", { length: 20 }),
+
   // Additional Certifications
   certificationUrls: text("certification_urls").array(), // Pet first aid, training certs, etc
   certificationExpiryDates: text("certification_expiry_dates").array(), // Parallel array with expiry dates
