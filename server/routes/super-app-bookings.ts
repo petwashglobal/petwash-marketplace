@@ -8,7 +8,7 @@ import { FinancialDocumentService } from '../services/FinancialDocumentService';
 import {
   dispatchNotifications,
   buildBookingCancelledSms,
-  buildRefundIssuedSms,
+  buildRefundPendingSms,
 } from '../services/PetWashNotificationEngine';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
@@ -1144,10 +1144,35 @@ router.post(
       const { eq } = await import('drizzle-orm');
       const ProviderPayoutService = (await import('../services/ProviderPayoutService')).default;
 
+      // Look up the escrow payout FIRST so the booking's payment status can be honest.
+      const [payout] = await db.select()
+        .from(superAppPayouts)
+        .where(eq(superAppPayouts.bookingId, bookingId))
+        .limit(1);
+
+      // Cancel escrow (stops the provider being paid) and capture the result.
+      // IMPORTANT: cancelEscrowAndRefund flips the escrow to 'failed', but the
+      // customer refund itself is NOT automated yet (the Nayax refund webhook is a
+      // TODO). A successful escrow-cancel therefore means a refund is now DUE and
+      // PENDING — it has NOT been sent. We must never tell the customer it was
+      // transferred, and we must never mark the booking 'refunded'.
+      let refundPending = false;
+      if (payout && payout.status === 'in_escrow') {
+        const escrowResult = await ProviderPayoutService.cancelEscrowAndRefund(payout.id, reason);
+        refundPending = escrowResult.success === true;
+        if (!escrowResult.success) {
+          logger.warn('[Booking] Escrow cancel failed during cancellation', {
+            bookingId, payoutId: payout.id, error: escrowResult.error,
+          });
+        }
+      }
+
       const [updatedBooking] = await db.update(bookings)
         .set({
           status: 'cancelled',
-          paymentStatus: 'refunded',
+          // Honest status: a refund is only pending when an in-escrow payout was
+          // actually cancelled. Otherwise nothing is owed back, so just 'cancelled'.
+          paymentStatus: refundPending ? 'refund_pending' : 'cancelled',
           cancellationReason: reason,
           cancelledBy: isCustomer ? 'customer' : 'provider',
           cancelledAt: new Date(),
@@ -1156,17 +1181,7 @@ router.post(
         .where(eq(bookings.id, bookingId))
         .returning();
 
-      // Cancel escrow and trigger refund
-      const [payout] = await db.select()
-        .from(superAppPayouts)
-        .where(eq(superAppPayouts.bookingId, bookingId))
-        .limit(1);
-
       const refundAmount = payout?.amount ?? updatedBooking.totalPrice ?? '0';
-
-      if (payout && payout.status === 'in_escrow') {
-        await ProviderPayoutService.cancelEscrowAndRefund(payout.id, reason);
-      }
 
       logger.info('Booking cancelled', {
         bookingId,
@@ -1233,7 +1248,7 @@ router.post(
             push: {
               userId: updatedBooking.userId,
               title: `הזמנה בוטלה – Pet Wash™`,
-              body: `הזמנה מס׳ ${bookingRef} בוטלה. ${payout ? 'זיכוי יועבר תוך 5-7 ימי עסקים.' : ''}`,
+              body: `הזמנה מס׳ ${bookingRef} בוטלה.${refundPending ? ' בקשת זיכוי נפתחה ותטופל ע"י הצוות.' : ''}`,
               data: { bookingId, documentRef: cancellationDocRef, type: 'booking_cancelled' },
             },
             debugPayload: {
@@ -1245,59 +1260,84 @@ router.post(
             },
           });
 
-          // ── Refund receipt (only when a payout was in escrow) ──
-          if (payout) {
-            const refundHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
-<h2>PetWash™ — אישור זיכוי</h2>
+          // ── Refund request acknowledgement (only when a refund is genuinely
+          //    pending — i.e. an in-escrow payout was cancelled). We do NOT issue a
+          //    "refund receipt" here: the money has NOT moved yet (Nayax auto-refund
+          //    is a TODO), so an official receipt would be a false financial record.
+          //    Instead we (a) tell the customer truthfully that the request is under
+          //    review, and (b) raise an admin alert so a human actually executes it.
+          if (refundPending) {
+            const ackHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
+<h2>PetWash™ — בקשת זיכוי התקבלה</h2>
 <table style="border-collapse:collapse;width:100%;max-width:480px;">
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ הזמנה</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${bookingRef}</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום זיכוי</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#1a7a1a;">₪${refundILS}</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עיבוד זיכוי</td><td style="padding:8px;border-bottom:1px solid #eee;">5-7 ימי עסקים</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום מבוקש</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">₪${refundILS}</td></tr>
+  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סטטוס</td><td style="padding:8px;border-bottom:1px solid #eee;">בבדיקה — יטופל ע"י הצוות</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
+<p style="margin-top:12px;font-size:12px;color:#555;">זוהי הודעת קבלה בלבד ואינה אישור זיכוי. נעדכן אותך ברגע שהזיכוי יבוצע בפועל.</p>
+<p style="margin-top:8px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
 
             const refundDocRef = await FinancialDocumentService.create({
               userId: updatedBooking.userId,
               bookingId,
-              transactionId: payout.id,
-              documentType: 'refund_receipt',
+              transactionId: payout!.id,
+              documentType: 'refund_request',
               issuedByEntity: 'PetWash',
               documentPayloadJson: {
                 bookingRef,
                 refundAmount: refundILS,
-                currency: payout.currency || 'ILS',
-                payoutId: payout.id,
+                currency: payout!.currency || 'ILS',
+                payoutId: payout!.id,
                 reason,
+                status: 'pending_manual_processing',
               },
-              renderedHtml: refundHtml,
-              idempotencyKey: `refund_receipt:${bookingId}:${updatedBooking.userId}`,
+              renderedHtml: ackHtml,
+              idempotencyKey: `refund_request:${bookingId}:${updatedBooking.userId}`,
             });
+
+            // Route the actual refund to a human until Nayax auto-refund exists.
+            try {
+              const { createOrUpdateAlert } = await import('../services/AlertEngine');
+              await createOrUpdateAlert({
+                dedupeKey: `refund_pending:${bookingId}`,
+                category: 'payment',
+                severity: 'warning',
+                title: `זיכוי ממתין לביצוע — ₪${refundILS}`,
+                message: `הזמנה ${bookingRef} בוטלה. יש לבצע זיכוי של ₪${refundILS} ללקוח (אין עדיין זיכוי אוטומטי).`,
+                linkedEntityType: 'booking',
+                linkedEntityId: String(bookingId),
+                source: 'cancellation',
+                metadata: { bookingRef, refundAmount: refundILS, payoutId: payout!.id, reason },
+              });
+            } catch (alertErr: any) {
+              logger.error('[Booking] Failed to raise refund-pending alert', { bookingId, error: alertErr?.message });
+            }
 
             await dispatchNotifications({
               userId: updatedBooking.userId,
-              eventType: 'refund_issued',
-              templateKey: 'customer_refund_issued',
+              eventType: 'refund_pending',
+              templateKey: 'customer_refund_pending',
               bookingId,
-              transactionId: payout.id,
+              transactionId: payout!.id,
               channels: ['sms', 'push'],
               sms: customer?.phone ? {
                 to: customer.phone,
-                text: buildRefundIssuedSms({ bookingRef, refundAmount: refundILS }),
+                text: buildRefundPendingSms({ bookingRef, refundAmount: refundILS }),
               } : undefined,
               push: {
                 userId: updatedBooking.userId,
-                title: `זיכוי יועבר – Pet Wash™ ↩️`,
-                body: `זיכוי של ₪${refundILS} עבור הזמנה ${bookingRef} יועבר תוך 5-7 ימי עסקים`,
-                data: { bookingId, documentRef: refundDocRef, type: 'refund_issued' },
+                title: `בקשת זיכוי התקבלה – Pet Wash™`,
+                body: `בקשת זיכוי של ₪${refundILS} עבור הזמנה ${bookingRef} התקבלה ונמצאת בבדיקה. נעדכן בסיום.`,
+                data: { bookingId, documentRef: refundDocRef, type: 'refund_pending' },
               },
               debugPayload: {
                 bookingRef,
                 refundAmount: refundILS,
-                smsText: buildRefundIssuedSms({ bookingRef, refundAmount: refundILS }),
-                pushTitle: `זיכוי יועבר – Pet Wash™ ↩️`,
-                pushBody: `זיכוי ₪${refundILS} עבור הזמנה ${bookingRef}`,
+                smsText: buildRefundPendingSms({ bookingRef, refundAmount: refundILS }),
+                pushTitle: `בקשת זיכוי התקבלה – Pet Wash™`,
+                pushBody: `בקשת זיכוי ₪${refundILS} עבור הזמנה ${bookingRef} בבדיקה`,
                 documentRef: refundDocRef,
               },
             });
@@ -1307,10 +1347,13 @@ router.post(
         }
       })();
 
-      res.json({ 
+      res.json({
         success: true,
         booking: updatedBooking,
-        message: 'Booking cancelled. Refund will be processed within 5-7 business days.',
+        refundPending,
+        message: refundPending
+          ? 'Booking cancelled. Your refund request has been received and is under review by our team.'
+          : 'Booking cancelled.',
       });
     } catch (error: any) {
       logger.error('Failed to cancel booking', {
