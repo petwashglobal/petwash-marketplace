@@ -398,6 +398,15 @@ export default function Dashboard() {
     retry: 1,
   });
 
+  // The real membership credential (PW-PLT-000128, card number, barcode). Calling
+  // it get-or-creates the card, so the displayed values are the stored ones.
+  const { data: membershipCardData } = useQuery<any>({
+    queryKey: ['/api/membership/card'],
+    enabled: !!firebaseUser,
+    retry: 1,
+  });
+  const memberCard = (membershipCardData as any)?.ok ? (membershipCardData as any) : null;
+
   const wallet = walletData?.wallet || null;
   const userProfile = (profileData as any)?.user;
   const userName = userProfile?.firstName || firebaseUser?.displayName?.split(' ')[0] || '';
@@ -423,7 +432,9 @@ export default function Dashboard() {
   // on every render. These are membership identifiers only (the card states it
   // is not a credit/bank card).
   const tierCode = (() => {
-    const t = (tierLabel || '').toLowerCase();
+    // Derive from the raw loyalty tier (available early) — NOT tierLabel, which is
+    // declared later in the component (referencing it here is a TDZ crash).
+    const t = String((wallet as any)?.loyaltyTier || membershipNumber || '').toLowerCase();
     if (t.includes('platinum') || t.includes('פלטינ')) return 'PLT';
     if (t.includes('gold') || t.includes('זהב')) return 'GLD';
     if (t.includes('founder') || t.includes('מייסד')) return 'FDR';
@@ -445,12 +456,14 @@ export default function Dashboard() {
     return out.slice(0, n);
   };
   const cardNumberDisplay: string =
+    memberCard?.cardNumberDisplay ||
     (passCard as any)?.cardNumberDisplay ||
     _digitsFromSeed(_stableSeed, 16).replace(/(\d{4})(?=\d)/g, '$1 ');
   const memberIdPretty: string =
-    membershipNumber && /^PW-/i.test(membershipNumber)
+    memberCard?.memberId ||
+    (membershipNumber && /^PW-/i.test(membershipNumber)
       ? membershipNumber
-      : `PW-${tierCode}-${_digitsFromSeed(_stableSeed, 6)}`;
+      : `PW-${tierCode}-${_digitsFromSeed(_stableSeed, 6)}`);
   const validThru: string = (() => {
     const issued = (passCard as any)?.pass?.issuedAt
       ? new Date((passCard as any).pass.issuedAt)

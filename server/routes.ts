@@ -131,6 +131,8 @@ import nayaxMonyxEventsRoutes from "./routes/nayax-monyx-events";
 // import webauthnRoutes from "./routes/webauthn"; // v1 legacy — disabled, client uses /api/webauthn/* (inline handlers)
 import gpsTrackingRoutes from "./routes/gps-tracking";
 import fcmRoutes from "./routes/fcm";
+import membershipCardRoutes, { membershipAdminRouter } from "./routes/membership-cards";
+import { MembershipCardService } from "./services/MembershipCardService";
 import birthdayPromoRoutes from "./routes/birthday-promo";
 import enterpriseCorporateRoutes from "./routes/enterprise-corporate";
 import enterprisePolicyRoutes from "./routes/enterprise-policy";
@@ -12186,6 +12188,18 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/calendar', apiLimiter, calendarRoutes);
   app.use('/api/gps', apiLimiter, gpsTrackingRoutes);
   app.use('/api/fcm', apiLimiter, fcmRoutes);
+  app.use('/api/membership', apiLimiter, membershipCardRoutes);
+  app.use('/api/admin/membership', apiLimiter, membershipAdminRouter);
+  // Public QR scan landing — the QR encodes https://petwash.co.il/m/{token}.
+  // A station/app reader hits this; we verify + return JSON (logged every scan).
+  app.get('/m/:token', apiLimiter, async (req, res) => {
+    const result = await MembershipCardService.verifyScan({
+      token: req.params.token,
+      scanType: (req.query.type as 'qr' | 'barcode' | 'nfc') || 'qr',
+      stationId: (req.query.stationId as string) || null,
+    });
+    res.status(result.ok ? 200 : result.status === 'expired' ? 410 : 403).json(result);
+  });
   app.use('/api/promo', apiLimiter, birthdayPromoRoutes);
   app.use('/api/gift-cards', requireOnboardingComplete, giftCardsRoutes);
   
