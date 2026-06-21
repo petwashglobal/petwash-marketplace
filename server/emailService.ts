@@ -2391,8 +2391,8 @@ export class EmailService {
             </tr>
             <tr>
               <td style="padding:16px 0;border-top:1px solid #f0f0f0;">
-                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">תוכנית נאמנות — 5 רמות</p>
-                <p style="font-size:13px;color:#6b7280;">NEW → SILVER → GOLD → PLATINUM → DIAMOND עם הנחות עד 25%</p>
+                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">תוכנית נאמנות — 7 רמות</p>
+                <p style="font-size:13px;color:#6b7280;">ברונזה → כסף → זהב → פלטינום → יהלום → אמרלד → מלכותי — 5% הנחת חבר על רחיצות K9000 (גיל הזהב/מוגבלות עד 10%)</p>
               </td>
             </tr>
             <tr>
@@ -2475,8 +2475,8 @@ export class EmailService {
             </tr>
             <tr>
               <td style="padding:16px 0;border-top:1px solid #f0f0f0;">
-                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">5-Tier Loyalty Program</p>
-                <p style="font-size:13px;color:#6b7280;">NEW → SILVER → GOLD → PLATINUM → DIAMOND with up to 25% discounts</p>
+                <p style="font-size:13px;font-weight:600;color:#1a1a1a;margin-bottom:4px;">7-Tier Loyalty Program</p>
+                <p style="font-size:13px;color:#6b7280;">Bronze → Silver → Gold → Platinum → Diamond → Emerald → Royal — 5% member discount on K9000 washes (seniors/disability up to 10%)</p>
               </td>
             </tr>
             <tr>

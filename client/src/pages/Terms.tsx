@@ -182,7 +182,7 @@ export default function Terms() {
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold">•</span>
-                          <span>4-Pack Bundle: ₪220 (includes VAT, 10% savings)</span>
+                          <span>5-Pack Bundle: ₪220 (includes VAT, 20% savings)</span>
                         </li>
                       </ul>
                       <p className="luxury-text-small">
@@ -801,7 +801,7 @@ export default function Terms() {
                         </li>
                         <li className="flex items-start gap-3">
                           <span className="text-purple-600 font-bold">•</span>
-                          <span>חבילת 4: ₪220 (כולל מע"מ, 10% חיסכון)</span>
+                          <span>חבילת 5: ₪220 (כולל מע"מ, 20% חיסכון)</span>
                         </li>
                       </ul>
                       <p className="luxury-text-small">

@@ -70,22 +70,26 @@ const KENZO_KNOWLEDGE_2026 = `
 - No hidden fees, no time limits per wash session
 - E-gift cards available in ₪100, ₪250, ₪500, ₪1000 denominations
 
-🎁 SPECIAL DISCOUNTS (verified via app):
-- Senior citizens (65+): 15% discount on all services
-- Disability ID holders: 15% discount
-- IDF soldiers (active): 10% discount
-- Multi-pet households (3+ pets registered): 10% discount
-- Loyalty program members: progressive discounts up to 50% at Royal tier
+🎁 SPECIAL DISCOUNTS (verified via app — NEVER quote a higher number):
+IMPORTANT SCOPE: ALL discounts below apply ONLY to K9000 self-service dual-station washes
+(K9000 is 100% PetWash-owned). They NEVER apply to marketplace/platform services
+(pet-sitting, walk-my-pet, PetWash Academy, pet training, grooming) — those are public-provider
+bookings on which PetWash takes a 15% commission and carries NO customer discount.
+- Loyalty / club members: 5% off K9000 station washes (automatic for ANY member, every tier)
+- Verified senior citizens: up to 10% off K9000 station washes
+- Verified disability ID holders: up to 10% off K9000 station washes
+- IDF soldiers / military (verified): 5% off K9000 station washes
+- First responders (fire/MDA, verified): 5% off K9000 station washes
+HARD CAP: no standard discount EVER exceeds 10%. There is NO multi-pet discount. Never promise
+any discount on platform/marketplace services. Only a special promo code (e.g. a "Black" code)
+may reach 15%, and only if the customer actually holds such a code — never assume one exists.
 
-⭐ 7-STAR LOYALTY PROGRAM - VIP CLUB:
-- Bronze (0 pts): Welcome tier - earn 1 point per ₪1 spent
-- Silver (500 pts): 5% discount, priority booking
-- Gold (1,500 pts): 10% discount, free birthday wash, 1.5x points
-- Platinum (3,000 pts): 15% discount, free monthly wash, 2x points, priority support
-- Diamond (5,000 pts): 20% discount, exclusive events, 2.5x points, concierge service
-- Emerald (10,000 pts): 30% discount, VIP events, 3x points, personal account manager
-- Royal (25,000 pts): 50% discount, unlimited premium access, 5x points, red carpet treatment
-- Birthday rewards at every tier, referral bonuses, exclusive member events
+⭐ 7-TIER LOYALTY CLUB (Bronze→Royal): higher tiers reward you with MORE POINTS PER ₪ and PERKS
+(priority booking, free birthday wash, concierge) — NOT a bigger wash discount. The wash discount
+is a flat 5% for every member tier (up to 10% only with a verified senior/disability certificate).
+- Bronze (0 pts) → Silver (2,500) → Gold (7,500) → Platinum (15,000) → Diamond (25,000)
+  → Emerald (40,000) → Royal (50,000). Each step up = more points multiplier + more perks.
+- Birthday rewards at every tier, referral bonuses, exclusive member events.
 
 🐾 PET WASH™ PLATFORMS & SERVICES:
 - ⁦K9000™⁩ Wash Stations: Self-service premium wash (our core service)
