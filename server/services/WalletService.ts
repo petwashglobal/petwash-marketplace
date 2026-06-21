@@ -14,6 +14,7 @@ import { eq, and, desc, sql, gte } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
+import { creditTypeToServiceTag } from '@shared/serviceDivisions';
 
 function getWalletSecret(): string {
   const secret = process.env.WALLET_LINK_SECRET;
@@ -661,7 +662,11 @@ class WalletService {
     amount: number,
     sourceType: string,
     sourceId?: string,
-    description?: string
+    description?: string,
+    // Service the credit belongs to (k9000 / egift / loyalty / promo / referral /
+    // account_credit). Optional — defaults from the reliable creditType enum so
+    // EVERY credit row names its service (was always NULL → ambiguous).
+    platform?: string,
   ): Promise<void> {
     // SECURITY (hostile audit T01): Use atomic SQL increments instead of
     // read-compute-write. The old pattern had a race window: two concurrent
@@ -751,6 +756,7 @@ class WalletService {
         balanceAfterUnits: isUnits ? balanceAfter : undefined,
         sourceType,
         sourceId,
+        platform: platform || creditTypeToServiceTag(creditType),
         description: description || `${creditType} credit issued`,
         initiatedBy: 'system',
       });

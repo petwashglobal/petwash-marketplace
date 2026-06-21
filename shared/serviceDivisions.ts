@@ -99,6 +99,31 @@ export function serviceTypeToFiscalPlatform(serviceType?: string | null): Fiscal
 }
 
 /**
+ * Wallet-ledger service tag (`credit_transactions.platform`) derived from the
+ * RELIABLE `creditType` enum. Before this, addCredits never set `platform`, so a
+ * wash credit was only inferable from a free-text, overloaded `sourceType` — you
+ * could not tell "is this credit for K9000 or pet-sitting?" from one row. The
+ * creditType enum answers it unambiguously: a wash_package credit IS a K9000
+ * credit. Values match the taxonomy documented on credit_transactions.platform.
+ */
+export function creditTypeToServiceTag(creditType: string): string {
+  switch (creditType) {
+    case 'wash_package':
+      return 'k9000';
+    case 'egift':
+      return 'egift';
+    case 'loyalty_points':
+      return 'loyalty';
+    case 'promo_credit':
+      return 'promo';
+    case 'referral_credit':
+      return 'referral';
+    default:
+      return 'account_credit';
+  }
+}
+
+/**
  * SUMIT (OfficeGuy) document types we issue. One canonical mapping so every
  * service issues the RIGHT fiscal document for the same economic event — before
  * this, eGift sent a bare 'Invoice' while a sitter booking sent
