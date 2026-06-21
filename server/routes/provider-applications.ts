@@ -19,7 +19,7 @@ import { z } from 'zod';
 import { logger } from '../lib/logger';
 import { sendProviderEnrollmentConfirmation, sendLuxuryEmail } from '../email/luxury-email-service';
 import { logProviderApplication } from '../services/googleSheetsIntegration';
-import { twilioSMSService } from '../services/TwilioSMSService';
+import { sendSmsTemplate } from '../services/smsTemplates';
 import { assignProviderMembership } from '../services/MembershipService';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { isSuperAdmin } from '../middleware/rbac';
@@ -489,14 +489,13 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
       logger.error('[ProviderApplication] Failed to send admin notification', { adminEmailError, applicationId: application.id });
     }
 
-    // Send confirmation SMS with membership number
+    // Send confirmation SMS with membership number (via the central SMS registry)
     try {
-      const isHebrew = req.headers['accept-language']?.includes('he');
-      const smsBody = isHebrew
-        ? `Pet Wash™ - ברוכים הבאים! 🐾\n\nשלום ${formData.firstName},\nהבקשה שלך התקבלה בהצלחה.\n\nמספר חברות: ${membershipNumber}\n\nהצוות שלנו יבדוק את הבקשה ויחזור אליך תוך 48 שעות.\n\nPet Wash™ - Premium Pet Care`
-        : `Pet Wash™ - Welcome! 🐾\n\nHi ${formData.firstName},\nYour application has been received.\n\nMembership #: ${membershipNumber}\n\nOur team will review your application and get back to you within 48 hours.\n\nPet Wash™ - Premium Pet Care`;
-      
-      const smsResult = await twilioSMSService.sendSMS(formData.phoneNumber, smsBody);
+      const lang = req.headers['accept-language']?.includes('he') ? 'he' : 'en';
+      const smsResult = await sendSmsTemplate('provider_application_submitted', formData.phoneNumber, {
+        name: formData.firstName,
+        membership: membershipNumber,
+      }, { lang });
       if (smsResult.success) {
         logger.info('[ProviderApplication] Confirmation SMS sent', { phone: formData.phoneNumber.slice(0, 6) + '****', applicationId: application.id });
       } else {
