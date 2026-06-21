@@ -182,20 +182,30 @@ export default function AppTermsGate({
     try {
       const controller = new AbortController();
       const timer = setTimeout(() => controller.abort(), 8000);
-      await fetch(getApiUrl('/api/consent/accept'), {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        signal: controller.signal,
-        body: JSON.stringify({
-          consentType: doc,
-          version: CONSENT_VERSION,
-          locale: lang,
-          method: 'in_app',
-        }),
-      }).catch(() => {
-        /* fail-open: proceed even if the record didn't persist */
-      });
+      // The single "I Accept" covers the full legal set (the Terms document AND
+      // the Privacy Policy). Record consent evidence for BOTH — previously only
+      // the flavor's terms doc was recorded, so there was no stored proof the
+      // user accepted the privacy policy. Additive: it does not change what the
+      // gate REQUIRES, so no existing user is re-blocked.
+      const acceptDocs = Array.from(new Set([doc, 'privacy']));
+      await Promise.all(
+        acceptDocs.map((d) =>
+          fetch(getApiUrl('/api/consent/accept'), {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              consentType: d,
+              version: CONSENT_VERSION,
+              locale: lang,
+              method: 'in_app',
+            }),
+          }).catch(() => {
+            /* fail-open: proceed even if a record didn't persist */
+          }),
+        ),
+      );
       clearTimeout(timer);
     } finally {
       // Always proceed — never trap the user on the gate.
