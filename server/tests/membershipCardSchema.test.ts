@@ -8,11 +8,11 @@ import {
 } from '@shared/schema-membership-cards';
 
 describe('membership credential constants', () => {
-  it('every tier has a short code used in the member id (PW-{code}-{n})', () => {
+  it('every tier has a short display code (member id itself is year-based: PW-2026-000123)', () => {
     for (const tier of CARD_TIERS) {
       expect(TIER_CODE[tier]).toMatch(/^[A-Z]{3}$/);
     }
-    expect(TIER_CODE.platinum).toBe('PLT'); // PW-PLT-000128
+    expect(TIER_CODE.platinum).toBe('PLT');
     expect(TIER_CODE.founder).toBe('FDR');
   });
 

@@ -12,7 +12,6 @@ import { db } from "../db";
 import {
   membershipCards,
   cardScanEvents,
-  TIER_CODE,
   CARD_TIERS,
   type MembershipCard,
 } from "@shared/schema-membership-cards";
@@ -53,14 +52,18 @@ export class MembershipCardService {
       .limit(1);
     if (existing) return existing;
 
-    const code = TIER_CODE[tier] ?? "STD";
+    // Year-based, NOT tier-based: a member id must be stable for life. A
+    // tier-based id (PW-PLT-…) would change when the member upgrades
+    // (Platinum→Founder), breaking the "permanent membership number". The join
+    // year does not change. Format: PW-2026-000123. (tier is stored separately.)
+    const year = new Date().getFullYear();
     // Retry on the (rare) unique collision of a generated id/token.
     for (let attempt = 0; attempt < 6; attempt++) {
       const memberDigits = randomDigits(6);
-      const memberId = `PW-${code}-${memberDigits}`;
+      const memberId = `PW-${year}-${memberDigits}`;
       const cardNumberDisplay = randomDigits(16).replace(/(\d{4})(?=\d)/g, "$1 ");
       const qrToken = crypto.randomBytes(24).toString("base64url");
-      const barcodeValue = `PW${code}${memberDigits}${checkChars(`${code}${memberDigits}`)}`;
+      const barcodeValue = `PW${year}${memberDigits}${checkChars(`${year}${memberDigits}`)}`;
       try {
         const [card] = await db
           .insert(membershipCards)
