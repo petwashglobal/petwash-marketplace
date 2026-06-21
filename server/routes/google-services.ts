@@ -621,7 +621,7 @@ router.get('/places-details', requireGooglePlacesEnabled, placesDetailsLimiter, 
  * GET /api/google/reverse-geocode - Convert GPS coordinates to a human-readable location name
  * Used by the "Use my location" button to show real address instead of hardcoded text
  */
-router.get('/reverse-geocode', placesDetailsLimiter, async (req, res) => {
+router.get('/reverse-geocode', requireGooglePlacesEnabled, placesDetailsLimiter, async (req, res) => {
   const traceId = randomUUID().slice(0, 12);
   try {
     // Issue #153 Mission 5 PR-A: same origin allowlist as
