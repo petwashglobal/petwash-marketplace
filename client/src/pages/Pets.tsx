@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link } from 'wouter';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
@@ -342,6 +342,9 @@ export default function Pets() {
   const { toast } = useToast();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPet, setEditingPet] = useState<Pet | null>(null);
+  // When the user chose "Save & add another", keep the dialog open + reset the
+  // form after a successful create so several pets can be added in a row.
+  const addAnotherRef = useRef(false);
   const [deletingPet, setDeletingPet] = useState<Pet | null>(null);
   const [authToken, setAuthToken] = useState<string | null>(null);
   const [expandedHealthPet, setExpandedHealthPet] = useState<string | null>(null);
@@ -414,8 +417,15 @@ export default function Pets() {
         title: t('pets.addedSuccess'),
         description: t('pets.addedDescription'),
       });
-      setIsDialogOpen(false);
-      form.reset();
+      // "Save & add another" → clear the form but keep the dialog open so the
+      // owner can add their next pet immediately (multi-pet households).
+      if (addAnotherRef.current) {
+        addAnotherRef.current = false;
+        form.reset();
+      } else {
+        setIsDialogOpen(false);
+        form.reset();
+      }
     },
     onError: (error: any) => {
       toast({
@@ -920,14 +930,25 @@ export default function Pets() {
                 <Button type="button" variant="outline" onClick={() => setIsDialogOpen(false)}>
                   {t('pets.cancel')}
                 </Button>
-                <Button 
-                  type="submit" 
+                {!editingPet && (
+                  <Button
+                    type="submit"
+                    variant="outline"
+                    disabled={createMutation.isPending}
+                    onClick={() => { addAnotherRef.current = true; }}
+                    data-testid="button-save-add-another-pet"
+                  >
+                    {language === 'he' ? 'שמירה והוספת חיה נוספת' : 'Save & add another'}
+                  </Button>
+                )}
+                <Button
+                  type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
                   data-testid="button-save-pet"
                   className="bg-blue-600 hover:bg-blue-700 text-white"
                 >
-                  {(createMutation.isPending || updateMutation.isPending) 
-                    ? t('pets.saving') 
+                  {(createMutation.isPending || updateMutation.isPending)
+                    ? t('pets.saving')
                     : t('pets.save')
                   }
                 </Button>
