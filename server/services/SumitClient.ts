@@ -680,6 +680,67 @@ export class SumitClient {
       return { wired: false, valid: false, reason: `Network error: ${err?.message}` };
     }
   }
+
+  /**
+   * POST /billing/recurring/charge/ — charge a customer AND create a recurring
+   * standing order (הוראת קבע) for subscription renewals (membership / packages).
+   *
+   * Requires an existing SUMIT CustomerID that has a SAVED payment method (set via
+   * /billing/paymentmethods/setforcustomer on the first payment). SUMIT then
+   * auto-charges per the recurring-product cadence configured in the account.
+   *
+   * `UpdateCustomerByEmail: true` is REQUIRED per SUMIT docs so the fiscal
+   * document (חשבונית מס/קבלה) is emailed to the customer after each recurring
+   * charge — otherwise renewals charge silently with no receipt.
+   *
+   * No-op until wired (SUMIT_ENABLED + creds); never throws. BODY SHAPE is
+   * best-known but UNVERIFIED vs the live swagger — confirm in SUMIT_SANDBOX
+   * before SUMIT_SANDBOX=false. This is the building block for auto-renewal;
+   * the renewal scheduler + saved-card capture are wired separately.
+   */
+  async chargeRecurring(input: {
+    idempotencyKey: string;
+    sumitCustomerId: number | string;   // existing SUMIT customer with a saved card
+    description: string;
+    amountIls: number;                  // VAT-inclusive gross per cycle
+    recurrenceMonths?: number;          // e.g. 12 (SUMIT charges per the recurring product)
+  }): Promise<{ wired: boolean; sumitDocumentId?: string; recurringId?: string; reason?: string; rawResponse?: unknown }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, reason: 'SUMIT not enabled' };
+
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Customer: { ID: input.sumitCustomerId },
+      Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountIls }],
+      VATIncluded: true,        // gross already includes VAT
+      Language: 'he',
+      ExternalIdentifier: input.idempotencyKey,
+      // REQUIRED (SUMIT docs): email the fiscal doc after each recurring charge.
+      UpdateCustomerByEmail: true,
+      ...(input.recurrenceMonths ? { RecurrenceMonths: input.recurrenceMonths } : {}),
+    };
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/recurring/charge/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Idempotency-Key': input.idempotencyKey },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) return { wired: true, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      const sumitDocumentId = extractDocumentId(parsed);
+      const recurringRaw = parsed?.RecurringID ?? parsed?.RecurringPaymentID ?? parsed?.Data?.RecurringID;
+      return {
+        wired: true,
+        sumitDocumentId,
+        recurringId: recurringRaw != null ? String(recurringRaw) : undefined,
+        rawResponse: parsed,
+      };
+    } catch (err: any) {
+      logger.error('[SumitClient] chargeRecurring network error', { idempotencyKey: input.idempotencyKey, err: err?.message });
+      return { wired: false, reason: `Network error: ${err?.message}` };
+    }
+  }
 }
 
 export const sumitClient = new SumitClient();
