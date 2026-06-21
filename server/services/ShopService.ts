@@ -13,6 +13,7 @@ import { logger } from '../lib/logger';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { IsraeliInvoiceGenerator } from './IsraeliInvoiceGenerator';
 import { getDeliveryOptions, getDeliveryLegalNote } from './shop/DeliveryRouter';
+import { customerCancellationRefundCents } from './IsraeliCancellationPolicy';
 import { addDeliveryDays } from './shop/israeliDeliveryCalendar';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { twilioSMSService } from './TwilioSMSService';
@@ -592,13 +593,13 @@ export class ShopService {
         return { ...order, items, deliveryAddress };
   }
 
-  async cancelOrder(orderId: number, uid: string): Promise<{ success: boolean; reason?: string; refundCents: number }> {
+  async cancelOrder(orderId: number, uid: string): Promise<{ success: boolean; reason?: string; refundCents: number; cancellationFeeCents: number }> {
         const result = await db.execute(sql`SELECT * FROM shop_orders WHERE id = ${orderId} AND user_id = ${uid}`);
-        if (!result.rows.length) return { success: false, reason: 'Order not found', refundCents: 0 };
+        if (!result.rows.length) return { success: false, reason: 'Order not found', refundCents: 0, cancellationFeeCents: 0 };
 
       const order = result.rows[0] as any;
         if (!['pending', 'confirmed', 'payment_required'].includes(order.status)) {
-                return { success: false, reason: `Cannot cancel order in status: ${order.status}`, refundCents: 0 };
+                return { success: false, reason: `Cannot cancel order in status: ${order.status}`, refundCents: 0, cancellationFeeCents: 0 };
         }
 
       await db.execute(sql`
@@ -613,7 +614,17 @@ export class ShopService {
                               `).catch(() => {});
         }
 
-      return { success: true, refundCents: order.total_cents };
+      // Refund the customer the legally-correct amount — NOT a flat 100%. Money
+      // was only collected once the order is 'confirmed' (wallet-paid); an unpaid
+      // 'pending'/'payment_required' order refunds nothing. A confirmed order
+      // refunds the total MINUS the statutory cancellation fee (min 5% / ₪100).
+      const totalCents = Number(order.total_cents) || 0;
+      const wasPaid = order.status === 'confirmed';
+      const { refundCents, feeCents } = wasPaid
+        ? customerCancellationRefundCents({ amountCents: totalCents, reason: 'customer' })
+        : { refundCents: 0, feeCents: 0 };
+
+      return { success: true, refundCents, cancellationFeeCents: feeCents };
   }
 
   async adminListOrders(params: { page: number; limit: number; status?: string }) {

@@ -17,6 +17,7 @@ import { eq, and, sql as drizzleSql } from "drizzle-orm";
 import { resolveStationRole } from "../middleware/stationAuth";
 import { bookingLimiter } from "../middleware/rateLimiter";
 import { bookingPolicyEngine } from "../services/BookingPolicyEngine";
+import { customerCancellationRefundCents } from "../services/IsraeliCancellationPolicy";
 import { dispatchNotifications, buildBookingCancelledSms } from "../services/PetWashNotificationEngine";
 import { calendarIntegrationService } from "../services/CalendarIntegrationService";
 import { logAuditEvent } from "../middleware/auditLog";
@@ -719,15 +720,22 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
       serviceType,
       bookingAmount,
       bookingDate,
-    ).catch(() => ({
-      canCancel: true,
-      refundPercent: 100,
-      refundAmount: bookingAmount,
-      cancellationFee: 0,
-      refundMethod: "wallet",
-      processingDays: 1,
-      policyTier: "flexible",
-    }));
+    ).catch(() => {
+      // FAIL-CLOSED to the Israeli statutory refund (amount minus min 5% / ₪100),
+      // NOT a free 100% refund. A policy-engine error must never gift the customer
+      // the full amount — that was a money leak.
+      const amountCents = Math.round((bookingAmount || 0) * 100);
+      const { refundCents, feeCents } = customerCancellationRefundCents({ amountCents, reason: 'customer' });
+      return {
+        canCancel: true,
+        refundPercent: amountCents > 0 ? Math.round((refundCents / amountCents) * 100) : 0,
+        refundAmount: refundCents / 100,
+        cancellationFee: feeCents / 100,
+        refundMethod: "wallet",
+        processingDays: 1,
+        policyTier: "statutory_fallback",
+      };
+    });
 
     const netRefundILS = Math.max(0, cancellationResult.refundAmount);
     const netRefundCents = Math.round(netRefundILS * 100);
