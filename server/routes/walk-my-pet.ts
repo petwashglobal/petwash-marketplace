@@ -744,12 +744,21 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         const totalAmount = parseFloat(booking.totalCost || '0');
         const platformFeeAmount = parseFloat(booking.platformFeeOwner || '0') + parseFloat(booking.platformFeeSitter || '0');
         const walkerPayoutAmount = parseFloat(booking.walkerPayout || '0');
+        // Resolve the real customer so the receipt actually reaches them (was '',
+        // so the receipt email silently went nowhere). ownerId is the Firebase uid.
+        const [owner] = await db
+          .select({ email: users.email, first: users.firstName, last: users.lastName })
+          .from(users)
+          .where(eq(users.firebaseUid, booking.ownerId))
+          .limit(1);
+        const ownerEmail = owner?.email || '';
+        const ownerName = [owner?.first, owner?.last].filter(Boolean).join(' ');
         await IsraeliDigitalReceiptService.generateReceipt({
           platform: 'walk-my-pet',
           bookingId: booking.bookingId,
           nayaxTransactionId: undefined,
-          customerEmail: '',
-          customerName: '',
+          customerEmail: ownerEmail,
+          customerName: ownerName,
           providerName: walker.businessName || `Walker ${walker.walkerId}`,
           providerId: walker.walkerId,
           providerType: 'walker',

@@ -20,6 +20,7 @@ import {
   octopusLedger,
   octopusInvoices,
   providerApprovalQueue,
+  users,
   type SitterProfile,
   type PetProfileForSitting,
   type SitterBooking,
@@ -1099,12 +1100,19 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
 
       // Generate Israeli digital receipt (non-blocking)
       try {
+        // Resolve the real customer so the receipt actually reaches them (was '',
+        // so the receipt email silently went nowhere). ownerId is the Firebase uid.
+        const [owner] = await db
+          .select({ email: users.email, first: users.firstName, last: users.lastName })
+          .from(users)
+          .where(eq(users.firebaseUid, booking.ownerId))
+          .limit(1);
         await IsraeliDigitalReceiptService.generateReceipt({
           platform: 'sitter-suite',
           bookingId: booking.bookingId,
           nayaxTransactionId: paymentResult.nayaxTransactionId,
-          customerEmail: '',
-          customerName: '',
+          customerEmail: owner?.email || '',
+          customerName: [owner?.first, owner?.last].filter(Boolean).join(' '),
           providerName: `${sitter.firstName} ${sitter.lastName}`,
           providerId: sitter.id.toString(),
           providerType: 'sitter',
