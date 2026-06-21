@@ -860,7 +860,7 @@ router.post('/bookings', requireAuth, async (req, res) => {
         basePriceCents: Math.round(pricing.subtotal * 100),
         platformServiceFeeCents: Math.round(pricing.platformFee * 100),
         brokerCutCents: Math.round(pricing.platformFee * 100),
-        sitterPayoutCents: Math.round(pricing.providerPayout * 100),
+        sitterPayoutCents: Math.round(pricing.sitterPayout * 100),
         totalChargeCents: Math.round(pricing.totalPrice * 100),
         paymentStatus: 'pending',
         urgencyScore: triageResult.urgencyScore,

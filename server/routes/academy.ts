@@ -571,10 +571,10 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       if (totalAmount > 0) {
         const [cust] = await db
           .select({ email: users.email, first: users.firstName, last: users.lastName })
-          .from(users).where(eq(users.firebaseUid, booking.userId)).limit(1);
+          .from(users).where(eq(users.id, booking.userId)).limit(1);
         const [trn] = await db
           .select({ first: users.firstName, last: users.lastName })
-          .from(users).where(eq(users.firebaseUid, booking.trainerUserId)).limit(1);
+          .from(users).where(eq(users.id, booking.trainerUserId)).limit(1);
         const platformFeeAmount = Math.round(totalAmount * PETWASH_COMMISSION_RATE * 100) / 100;
         await IsraeliDigitalReceiptService.generateReceipt({
           platform: 'academy',

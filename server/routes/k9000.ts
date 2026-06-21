@@ -154,7 +154,7 @@ router.post('/wash/start_cycle', async (req, res) => {
       logger.info('[K9000 Wash] QR code detected - checking loyalty/voucher');
       
       try {
-        const qrResult = await NayaxSparkService.redeemQRCode({
+        const qrResult = await NayaxSparkService.redeemQrCode({
           qrCode,
           customerUid: customerUid || 'anonymous',
           stationId: stationInfo?.stationId || machineId,
