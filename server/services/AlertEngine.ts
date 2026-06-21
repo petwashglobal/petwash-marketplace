@@ -273,6 +273,47 @@ async function detectReconfirmationOverdue(): Promise<{ created: number; resolve
   return { created: keys.length, resolved };
 }
 
+/**
+ * Provider insurance expiring or expired. Israeli marketplace providers must carry
+ * their own cover; a lapsed policy is a payout-gate + liability risk. Surfaces in
+ * the admin Alerts Center so ops can chase a renewal. Only providers who actually
+ * uploaded a policy (insurance_cert_url) and whose expiry is within 30 days (or
+ * past) are flagged. The provider-facing renewal SMS/email is a separate piece —
+ * this is the admin-side detector the sweep was missing.
+ */
+async function detectInsuranceExpiring(): Promise<{ created: number; resolved: number }> {
+  const PREFIX = "insurance_expiring:";
+  const res = await db.execute(sql`
+    SELECT id, insurance_expires_at, insurance_expires_at < NOW() AS expired
+    FROM provider_applications
+    WHERE insurance_expires_at IS NOT NULL
+      AND insurance_cert_url IS NOT NULL
+      AND insurance_expires_at < NOW() + INTERVAL '30 days'
+    LIMIT 500
+  `);
+  const rows = rowsOf(res);
+  const keys: string[] = [];
+  for (const r of rows) {
+    const key = `${PREFIX}${r.id}`;
+    keys.push(key);
+    const expired = r.expired === true || r.expired === "t" || r.expired === 1;
+    await createOrUpdateAlert({
+      dedupeKey: key,
+      category: "expiry",
+      severity: expired ? "critical" : "warning",
+      title: expired ? "ביטוח ספק פג" : "ביטוח ספק עומד לפוג",
+      message: expired
+        ? `הביטוח של ספק ${r.id} פג. יש לחסום תשלום ולבקש חידוש.`
+        : `הביטוח של ספק ${r.id} עומד לפוג בקרוב (${r.insurance_expires_at}).`,
+      linkedEntityType: "provider",
+      linkedEntityId: String(r.id),
+      metadata: { insuranceExpiresAt: r.insurance_expires_at, expired },
+    });
+  }
+  const resolved = await resolveClearedByPrefix(PREFIX, keys);
+  return { created: keys.length, resolved };
+}
+
 export interface SweepResult {
   ran: boolean;
   detectors: Record<string, { created: number; resolved: number } | { error: string }>;
@@ -297,6 +338,7 @@ export async function runAlertSweep(): Promise<SweepResult> {
   await run("lowStock", detectLowStock);
   await run("stationOffline", detectStationOffline);
   await run("reconfirmationOverdue", detectReconfirmationOverdue);
+  await run("insuranceExpiring", detectInsuranceExpiring);
 
   let totalActive = 0;
   try {
