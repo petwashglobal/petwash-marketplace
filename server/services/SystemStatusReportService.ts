@@ -6,6 +6,7 @@
 import { logger } from '../lib/logger';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { db as firestoreDb } from '../lib/firebase-admin';
+import { PETWASH_LOGO_BASE64 } from '../email/templates/logo-base64';
 
 interface SystemStatusReport {
   timestamp: string;
@@ -98,7 +99,9 @@ class SystemStatusReportService {
    * Generate beautiful HTML report email
    */
   private generateReportHTML(report: SystemStatusReport): string {
-    const logoPath = '/brand/petwash-logo-official.png';
+    // Absolute hosted URL (was a root-relative path that renders as a broken
+    // question-mark icon in every email client — no base URL in email).
+    const logoPath = PETWASH_LOGO_BASE64;
     const timestamp = new Date(report.timestamp).toLocaleString('he-IL');
 
     return `

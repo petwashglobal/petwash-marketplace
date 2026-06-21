@@ -348,7 +348,7 @@ export function buildPrestigePassLuxuryEmail(p: PrestigePassEmailParams): string
                   <table role="presentation" cellspacing="0" cellpadding="0">
                     <tr>
                       <td align="center" style="background:rgba(255,255,255,.96);border-radius:10px;padding:6px;">
-                        <img src="${p.qrDataUrl}" width="72" height="72" alt=""
+                        <img src="${p.qrDataUrl}" width="72" height="72" alt="${isHe ? 'קוד QR לפדיון רחיצת K9000' : 'K9000 wash redemption QR code'}"
                              style="display:block;border-radius:5px;"/>
                         <div style="font-size:7px;letter-spacing:2px;color:#666;text-transform:uppercase;margin-top:3px;text-align:center;">K9000</div>
                       </td>

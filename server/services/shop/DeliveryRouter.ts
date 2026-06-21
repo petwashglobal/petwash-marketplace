@@ -18,6 +18,7 @@
  */
 
 import { addDeliveryDays, nextDispatchDate, DELIVERY_LEGAL_NOTE } from './israeliDeliveryCalendar';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 export type CarrierId = 'israel_post' | 'wolt' | 'pickup';
 
@@ -61,8 +62,7 @@ export interface DeliveryOption {
 // ── Free-shipping threshold (Israel Post only; Wolt is premium, never free) ──
 export const FREE_ISRAEL_POST_THRESHOLD_CENTS = 15000; // ₪150
 
-// ── Israel VAT (18%) back-calc helper ──
-const ISRAEL_VAT_RATE = 0.18;
+// ── Israel VAT back-calc helper — rate from the canonical single source ──
 const vatPortion = (gross: number) => Math.round((gross * ISRAEL_VAT_RATE) / (1 + ISRAEL_VAT_RATE));
 
 // ── Israel Post domestic parcel — STUB weight tiers (VAT-incl agorot) ──

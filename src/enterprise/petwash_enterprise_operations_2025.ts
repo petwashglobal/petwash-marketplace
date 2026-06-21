@@ -551,7 +551,7 @@ export interface Payout {
 }
 
 const PLATFORM_FEE_PERCENT = 15; // 15% platform fee
-const VAT_PERCENT = 17; // 17% Israeli VAT
+const VAT_PERCENT = 18; // 18% Israeli VAT — effective 1.1.2025 (was 17%). Canonical: shared/israel-compliance-config.ts ISRAEL_VAT_RATE
 
 export async function createEscrowPayout(
   bookingId: string,

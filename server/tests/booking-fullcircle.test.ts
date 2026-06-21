@@ -31,9 +31,11 @@ describe('VAT math (Israeli 18%, VAT-inclusive split)', () => {
     return { net, vat };
   };
 
-  it('VAT rate constant is 18%', () => {
+  it('VAT rate constant defaults to 18% (env-overridable via VAT_RATE)', () => {
     const cfg = src('shared/israel-compliance-config.ts');
-    expect(cfg).toMatch(/ISRAEL_VAT_RATE\s*=\s*0\.18/);
+    // The constant is now env-aware (VAT_RATE override) but still defaults to 0.18.
+    expect(cfg).toMatch(/export const ISRAEL_VAT_RATE\s*=/);
+    expect(cfg).toMatch(/:\s*0\.18;/);
   });
 
   it.each([100, 117, 250, 1500, 5500 / 100])('net+vat reconstructs the gross for ₪%s', (total) => {

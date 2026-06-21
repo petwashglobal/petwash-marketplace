@@ -58,9 +58,13 @@ describe('PR-W13 — VAT rate single source of truth', () => {
     expect(ISRAEL_VAT_RATE).toBe(0.18);
   });
 
-  it('canonical constant lives at shared/israel-compliance-config.ts', () => {
+  it('canonical constant lives at shared/israel-compliance-config.ts and defaults to 0.18', () => {
     const text = fs.readFileSync(CANONICAL, 'utf8');
-    expect(text).toMatch(/^export const ISRAEL_VAT_RATE\s*=\s*0\.18;/m);
+    // The constant is env-aware (VAT_RATE override) but MUST still default to
+    // the 0.18 literal. Pin both: the declaration exists and the 0.18 fallback
+    // is present in its definition.
+    expect(text).toMatch(/export const ISRAEL_VAT_RATE\s*=/m);
+    expect(text).toMatch(/_vatEnvOverride[\s\S]*?:\s*0\.18;/m);
   });
 
   it('NO server/shared file (except the canonical) declares a duplicate VAT rate constant', () => {
