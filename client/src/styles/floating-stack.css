@@ -46,6 +46,18 @@ body[data-pw-egift-hero-visible="true"] .pw-float {
   pointer-events: none !important;
 }
 
+/* Member dashboard — the customer dashboard has its OWN persistent bottom
+   navigation (account / messages / bookings / pawfinder / home), so the
+   floating accessibility / WhatsApp / AI stack is both duplicative AND was
+   covering the PetWash Privilege member card on iPhone. Dashboard.tsx sets
+   data-pw-member-dashboard="true" on <body> while mounted; the stack fades
+   out there only and returns on every other route. */
+body[data-pw-member-dashboard="true"] .pw-float-stack,
+body[data-pw-member-dashboard="true"] .pw-float {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
 /* Respect prefers-reduced-motion for both suppression paths — the
    fade becomes instant rather than animated for users who request
    reduced motion. */

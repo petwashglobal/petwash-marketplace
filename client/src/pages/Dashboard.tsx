@@ -389,11 +389,43 @@ export default function Dashboard() {
     enabled: !!firebaseUser,
   });
 
+  // Best-effort: the prestige-pass wallet supplies a stable, always-generated
+  // card number + serial for the member card (works even when membershipNumber
+  // is null). Failure is non-fatal — the card falls back to membershipNumber.
+  const { data: passData } = useQuery<any>({
+    queryKey: ['/api/prestige-pass/wallet'],
+    enabled: !!firebaseUser,
+    retry: 1,
+  });
+
   const wallet = walletData?.wallet || null;
   const userProfile = (profileData as any)?.user;
   const userName = userProfile?.firstName || firebaseUser?.displayName?.split(' ')[0] || '';
   const membershipNumber: string | null = userProfile?.membershipNumber || null;
   const unreadCount = unreadData?.count || 0;
+
+  // Member-card identity (credit-card style): cardholder name + card number + serial.
+  const passCard = (passData as any)?.ok ? (passData as any) : null;
+  const cardHolderName =
+    passCard?.displayName ||
+    [userProfile?.firstName, userProfile?.lastName].filter(Boolean).join(' ') ||
+    firebaseUser?.displayName ||
+    userName ||
+    '';
+  const cardNumber: string | null =
+    passCard?.cardDisplay || (membershipNumber ? `PW · ${membershipNumber}` : null);
+  const cardSerial: string | null =
+    passCard?.pass?.serialNumber || passCard?.cardId || membershipNumber || null;
+
+  // Fade the floating accessibility/WhatsApp/AI stack while the member dashboard
+  // is mounted — it was covering the Privilege card and the dashboard already has
+  // its own bottom navigation. Mirrors the egift-hero suppression pattern.
+  useEffect(() => {
+    document.body.dataset.pwMemberDashboard = 'true';
+    return () => {
+      delete document.body.dataset.pwMemberDashboard;
+    };
+  }, []);
 
   const getTimeGreeting = (lang: string): string => {
     const hour = new Date().getHours();
@@ -520,7 +552,7 @@ export default function Dashboard() {
               style={{ background: 'radial-gradient(circle, rgba(232,201,114,0.16), transparent 70%)' }}
             />
             <div className="relative px-6 py-6">
-              <div className="flex items-start justify-between mb-6">
+              <div className="flex items-start justify-between mb-5">
                 <div>
                   <p className="text-[10px] tracking-[0.35em] uppercase" style={{ color: 'rgba(241,218,131,0.65)' }}>
                     {tx('privilege', language)}
@@ -536,18 +568,49 @@ export default function Dashboard() {
                   </span>
                 </div>
               </div>
-              <div className="flex items-end justify-between gap-4">
-                <div>
-                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('balance', language)}</p>
-                  <p className="text-[34px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
-                    <span className="text-lg align-top" style={{ color: '#E8C972' }}>&#8362;</span>{totalBalance}
+
+              {/* Card number — credit-card style, letter-spaced. Always present
+                  (pass serial is generated server-side even without a member #). */}
+              {cardNumber && (
+                <p
+                  dir="ltr"
+                  className="mb-5 text-[19px] sm:text-[21px]"
+                  style={{ fontFamily: "'Playfair Display', serif", letterSpacing: '0.22em', color: '#F4E7C2' }}
+                  data-testid="text-card-number"
+                >
+                  {cardNumber}
+                </p>
+              )}
+
+              <div className="flex items-end justify-between gap-3">
+                {/* Cardholder name + serial (left, like a real card) */}
+                <div className="min-w-0">
+                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1" style={{ color: 'rgba(241,218,131,0.55)' }}>
+                    {language === 'he' ? 'בעל הכרטיס' : language === 'ar' ? 'حامل البطاقة' : 'Cardholder'}
                   </p>
+                  <p className="text-sm truncate" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF', letterSpacing: '0.04em' }} data-testid="text-cardholder">
+                    {cardHolderName || (language === 'he' ? 'חבר פטוואש' : 'PetWash Member')}
+                  </p>
+                  {cardSerial && (
+                    <p dir="ltr" className="mt-0.5 text-[10px] tracking-[0.14em]" style={{ color: 'rgba(241,218,131,0.5)' }} data-testid="text-card-serial">
+                      {cardSerial}
+                    </p>
+                  )}
                 </div>
-                <div className="text-end">
-                  <p className="text-[9px] tracking-[0.28em] uppercase mb-1.5" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('points', language)}</p>
-                  <p className="text-[34px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
-                    {loyaltyPoints.toLocaleString()}
-                  </p>
+                {/* Balance + points (right) */}
+                <div className="flex items-end gap-4 shrink-0">
+                  <div className="text-end">
+                    <p className="text-[9px] tracking-[0.24em] uppercase mb-1" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('balance', language)}</p>
+                    <p className="text-[24px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
+                      <span className="text-sm align-top" style={{ color: '#E8C972' }}>&#8362;</span>{totalBalance}
+                    </p>
+                  </div>
+                  <div className="text-end">
+                    <p className="text-[9px] tracking-[0.24em] uppercase mb-1" style={{ color: 'rgba(241,218,131,0.55)' }}>{tx('points', language)}</p>
+                    <p className="text-[24px] leading-none font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#FFFFFF' }}>
+                      {loyaltyPoints.toLocaleString()}
+                    </p>
+                  </div>
                 </div>
               </div>
             </div>
