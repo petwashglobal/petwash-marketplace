@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import fs from 'node:fs';
+import path from 'node:path';
 import { SumitReceiptService } from '../services/SumitReceiptService';
 
 // SUMIT is not enabled in the test env (no SUMIT_ENABLED/creds), so the service
@@ -26,5 +28,16 @@ describe('SumitReceiptService.issueCustomerReceipt — fail-safe', () => {
       description: '',
     });
     expect(res.ok).toBe(false);
+  });
+
+  it('issues the canonical חשבונית מס/קבלה (createCustomerReceipt = InvoiceAndReceipt), not a bare Invoice', () => {
+    // A paid eGift is the same economic event as a paid booking, so it must use
+    // the same document type. This pins the fix away from createDocument('Invoice').
+    const src = fs.readFileSync(
+      path.resolve(__dirname, '..', 'services', 'SumitReceiptService.ts'),
+      'utf8',
+    );
+    expect(src).toMatch(/createCustomerReceipt\(/);
+    expect(src).not.toMatch(/createDocument\(/);
   });
 });
