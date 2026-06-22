@@ -242,7 +242,7 @@ export function TransactionOTPModal({
                     setOtpValue('');
                     sendOTP();
                   }}
-                  className="bg-[#D9B84C] hover:bg-[#B8860B] text-white"
+                  className="bg-[#D9B84C] hover:bg-[#B8860B] text-[#0a0a0a]"
                 >
                   {isHebrew ? 'נסו שנית' : 'Try Again'}
                 </Button>

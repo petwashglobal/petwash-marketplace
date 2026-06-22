@@ -243,7 +243,7 @@ export default function AdminBackendPanel() {
                   onClick={() => setActiveTab(tab.id)}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition-all ${
                     activeTab === tab.id
-                      ? "bg-[#c6a664] text-white shadow-md"
+                      ? "bg-[#c6a664] text-[#0a0a0a] shadow-md"
                       : "bg-white text-gray-600 hover:bg-white"
                   }`}
                 >

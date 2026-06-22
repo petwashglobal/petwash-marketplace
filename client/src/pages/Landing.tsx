@@ -137,7 +137,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 {user ? (
                   <Button 
                     onClick={() => handleAuthNavigate()}
-                    className="gold-shimmer-btn text-white px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
+                    className="gold-shimmer-btn text-[#0a0a0a] px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
                   >
                     {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
                   </Button>
@@ -145,7 +145,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                   <div className="flex justify-center items-center">
                     <Button
                       onClick={() => setLocation('/choose-role')}
-                      className="gold-shimmer-btn text-white px-10 py-4 text-sm uppercase tracking-[0.2em] font-light w-full sm:w-auto rounded-none"
+                      className="gold-shimmer-btn text-[#0a0a0a] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light w-full sm:w-auto rounded-none"
                       data-testid="button-signin-or-signup-hero"
                     >
                       {t('landing.signinOrSignup', language)}
@@ -445,7 +445,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             <div className="mt-12 text-center">
               <Button
                 onClick={() => user ? handleAuthNavigate() : setLocation('/choose-role')}
-                className="h-14 px-12 rounded-none text-white text-sm font-semibold tracking-widest uppercase"
+                className="h-14 px-12 rounded-none text-[#0a0a0a] text-sm font-semibold tracking-widest uppercase"
                 style={{
                   background: 'linear-gradient(135deg,#C6A664 0%,#D9B84C 50%,#C6A664 100%)',
                   backgroundSize: '200% 200%',
