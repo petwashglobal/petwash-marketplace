@@ -1550,7 +1550,7 @@ router.get('/admin/applications/pending-review', requireSupport, async (req: Req
               q.status       AS queue_status
          FROM provider_applications pa
          LEFT JOIN provider_review_queue q ON q.application_id = pa.id
-        WHERE pa.status = 'pending_review'
+        WHERE pa.status IN ('pending', 'pending_review')
         ORDER BY
           CASE q.priority WHEN 'urgent' THEN 1 WHEN 'high' THEN 2 WHEN 'normal' THEN 3 ELSE 4 END ASC,
           pa.created_at DESC
