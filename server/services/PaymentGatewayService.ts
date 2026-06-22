@@ -653,20 +653,15 @@ export class PaymentGatewayService {
   // ==================== PLATFORM-SPECIFIC PROCESSORS ====================
 
   private static async processSitterPayment(request: UnifiedPaymentRequest): Promise<UnifiedPaymentResponse> {
-    // Use NayaxSitterMarketplaceService
-    // This is simplified - in reality you'd extract booking params
-    return {
-      success: true,
-      transactionId: `SITTER_${nanoid(16)}`,
-    };
+    // FAIL-CLOSED (no-fake-charge rule): there is no real sitter web-charge rail yet.
+    // Returning fake success here would report a paid booking with no money taken, so
+    // we refuse instead. Wire the real Nayax charge before enabling this path.
+    return { success: false, error: 'Sitter web payment is not implemented — refusing to issue a fake charge.' };
   }
 
   private static async processWalkPayment(request: UnifiedPaymentRequest): Promise<UnifiedPaymentResponse> {
-    // Use NayaxWalkMarketplaceService
-    return {
-      success: true,
-      transactionId: `WALK_${nanoid(16)}`,
-    };
+    // FAIL-CLOSED — same as processSitterPayment: no real walk web-charge rail yet.
+    return { success: false, error: 'Walk web payment is not implemented — refusing to issue a fake charge.' };
   }
 
   private static async processPetTrekPayment(request: UnifiedPaymentRequest): Promise<UnifiedPaymentResponse> {
