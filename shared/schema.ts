@@ -11203,7 +11203,17 @@ export const providerRateCards = pgTable("provider_rate_cards", {
   // Weekend/Holiday Surcharges
   weekendSurchargePercent: integer("weekend_surcharge_percent").default(0),
   holidaySurchargePercent: integer("holiday_surcharge_percent").default(0),
-  
+
+  // Long-stay rate engine (Build C) — all default OFF; per-provider config, no behavior change until set
+  biweeklyDiscountPercent: integer("biweekly_discount_percent").default(0), // 14-29 nights (between weekly & monthly)
+  cleaningFeeCents: integer("cleaning_fee_cents").default(0), // one-time, overnight/per-night stays only
+  securityDepositPercent: integer("security_deposit_percent").default(0), // refundable HOLD, not part of the charge total
+  // Tiered nightly rate as % of base per stay-length bucket; null = flat rate (current behaviour)
+  // Shape: { night1Percent, nights2to7Percent, nights8to30Percent, night31PlusPercent } — 100 = full base rate
+  nightlyRateProgression: jsonb("nightly_rate_progression"),
+  // Provider/admin peak periods; [] = none. Shape: [{ start: 'YYYY-MM-DD', end: 'YYYY-MM-DD', surchargePercent }]
+  peakDateRanges: jsonb("peak_date_ranges").default(sql`'[]'::jsonb`),
+
   // Pet Type Pricing (some pets cost more)
   petTypePricing: jsonb("pet_type_pricing").default(sql`'{}'::jsonb`), // {"cat": 0, "large_dog": 2000, "exotic": 5000}
   
