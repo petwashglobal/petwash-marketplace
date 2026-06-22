@@ -67,12 +67,12 @@ interface Props {
 const fmt = (cents: number) => `₪${(cents / 100).toFixed(0)}`;
 
 const TIER_LABEL: Record<string, { label: string; color: string }> = {
-  black:    { label: 'PetWash Privilege Black',    color: '#12936A' },
-  elite:    { label: 'PetWash Privilege Black',    color: '#12936A' },
-  diamond:  { label: 'PetWash Privilege Black',    color: '#12936A' },
-  vip:      { label: 'PetWash Privilege Black',    color: '#12936A' },
+  black:    { label: 'PetWash Privilege Black',    color: '#0a0a0a' },
+  elite:    { label: 'PetWash Privilege Black',    color: '#0a0a0a' },
+  diamond:  { label: 'PetWash Privilege Black',    color: '#0a0a0a' },
+  vip:      { label: 'PetWash Privilege Black',    color: '#0a0a0a' },
   platinum: { label: 'PetWash Privilege Platinum', color: '#B8BCC8' },
-  gold:     { label: 'PetWash Privilege Gold',     color: '#12936A' },
+  gold:     { label: 'PetWash Privilege Gold',     color: '#0a0a0a' },
   silver:   { label: 'PetWash Privilege Silver',   color: '#9CA3AF' },
   bronze:   { label: 'PetWash Privilege Pearl',    color: '#CD7F32' },
   new:      { label: 'PetWash Privilege Pearl',    color: '#CD7F32' },
@@ -146,12 +146,12 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       >
         <div className="p-5">
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex items-center justify-center h-10 w-10 rounded-full" style={{ background: 'rgba(18,147,106,0.15)' }}>
-              <CheckCircle className="h-5 w-5" style={{ color: '#12936A' }} />
+            <div className="flex items-center justify-center h-10 w-10 rounded-full" style={{ background: 'rgba(217, 184, 76,0.15)' }}>
+              <CheckCircle className="h-5 w-5" style={{ color: '#0a0a0a' }} />
             </div>
             <div>
               <div className="font-semibold text-white text-sm">PetWash Privilege — תשלום בוצע</div>
-              <div className="text-xs" style={{ color: 'rgba(18,147,106,0.8)' }}>#{txnResult.txnId}</div>
+              <div className="text-xs" style={{ color: 'rgba(217, 184, 76,0.8)' }}>#{txnResult.txnId}</div>
             </div>
           </div>
 
@@ -159,22 +159,22 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
             {txnResult.deductionBreakdown.promo > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 <span>קרדיטים פרומו</span>
-                <span style={{ color: '#12936A' }}>-{fmt(txnResult.deductionBreakdown.promo)}</span>
+                <span style={{ color: '#0a0a0a' }}>-{fmt(txnResult.deductionBreakdown.promo)}</span>
               </div>
             )}
             {txnResult.deductionBreakdown.gift > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 <span>כרטיס מתנה</span>
-                <span style={{ color: '#12936A' }}>-{fmt(txnResult.deductionBreakdown.gift)}</span>
+                <span style={{ color: '#0a0a0a' }}>-{fmt(txnResult.deductionBreakdown.gift)}</span>
               </div>
             )}
             {txnResult.deductionBreakdown.wallet > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.7)' }}>
                 <span>ארנק מזומן</span>
-                <span style={{ color: '#12936A' }}>-{fmt(txnResult.deductionBreakdown.wallet)}</span>
+                <span style={{ color: '#0a0a0a' }}>-{fmt(txnResult.deductionBreakdown.wallet)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2" style={{ borderColor: 'rgba(18,147,106,0.2)', color: '#12936A' }}>
+            <div className="flex justify-between text-sm font-semibold border-t pt-2 mt-2" style={{ borderColor: 'rgba(217, 184, 76,0.2)', color: '#0a0a0a' }}>
               <span>סה"כ שולם</span>
               <span>{fmt(txnResult.deductionBreakdown.totalCovered)}</span>
             </div>
@@ -195,8 +195,8 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       className="rounded-2xl border overflow-hidden cursor-pointer transition-all duration-200"
       style={{
         background:   'linear-gradient(135deg, #0a0a0a 0%, #1c1a0f 100%)',
-        borderColor:  expanded ? 'rgba(18,147,106,0.5)' : 'rgba(18,147,106,0.25)',
-        boxShadow:    expanded ? '0 4px 24px rgba(18,147,106,0.12)' : 'none',
+        borderColor:  expanded ? 'rgba(217, 184, 76,0.5)' : 'rgba(217, 184, 76,0.25)',
+        boxShadow:    expanded ? '0 4px 24px rgba(217, 184, 76,0.12)' : 'none',
       }}
       onClick={() => !redeemed && setExpanded(!expanded)}
     >
@@ -204,9 +204,9 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       <div className="flex items-center gap-3 p-4">
         <div
           className="flex items-center justify-center h-10 w-10 rounded-full flex-shrink-0"
-          style={{ background: 'rgba(18,147,106,0.12)' }}
+          style={{ background: 'rgba(217, 184, 76,0.12)' }}
         >
-          <Wallet className="h-5 w-5" style={{ color: '#12936A' }} />
+          <Wallet className="h-5 w-5" style={{ color: '#0a0a0a' }} />
         </div>
 
         <div className="flex-1 min-w-0">
@@ -214,9 +214,9 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
             <span className="text-sm font-semibold text-white">Pay with PetWash Privilege</span>
             <Badge
               style={{
-                background:   'rgba(18,147,106,0.15)',
+                background:   'rgba(217, 184, 76,0.15)',
                 color:        tierInfo.color,
-                borderColor:  'rgba(18,147,106,0.3)',
+                borderColor:  'rgba(217, 184, 76,0.3)',
                 fontSize:     '10px',
                 padding:      '1px 6px',
               }}
@@ -225,13 +225,13 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
               {tierInfo.label}
             </Badge>
           </div>
-          <div className="text-xs mt-0.5" style={{ color: 'rgba(18,147,106,0.7)' }}>
+          <div className="text-xs mt-0.5" style={{ color: 'rgba(217, 184, 76,0.7)' }}>
             יתרה זמינה: {fmt(totalAvailableCents)}
             {balances.washes > 0 && ` · ${balances.washes} שטיפות`}
           </div>
         </div>
 
-        <div style={{ color: 'rgba(18,147,106,0.6)' }}>
+        <div style={{ color: 'rgba(217, 184, 76,0.6)' }}>
           {expanded ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </div>
       </div>
@@ -240,7 +240,7 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
       {expanded && (
         <div
           className="border-t px-4 pb-4 pt-3 space-y-3"
-          style={{ borderColor: 'rgba(18,147,106,0.15)' }}
+          style={{ borderColor: 'rgba(217, 184, 76,0.15)' }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Balance breakdown */}
@@ -248,27 +248,27 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
             {balances.promo > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 <span className="flex items-center gap-1.5">
-                  <Star className="h-3 w-3" style={{ color: '#12936A' }} />
+                  <Star className="h-3 w-3" style={{ color: '#0a0a0a' }} />
                   קרדיטים פרומו
                 </span>
-                <span style={{ color: '#12936A' }}>{fmt(balances.promo)}</span>
+                <span style={{ color: '#0a0a0a' }}>{fmt(balances.promo)}</span>
               </div>
             )}
             {balances.gift > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 <span>כרטיס מתנה (eGift)</span>
-                <span style={{ color: '#12936A' }}>{fmt(balances.gift)}</span>
+                <span style={{ color: '#0a0a0a' }}>{fmt(balances.gift)}</span>
               </div>
             )}
             {balances.wallet > 0 && (
               <div className="flex justify-between text-xs" style={{ color: 'rgba(255,255,255,0.65)' }}>
                 <span>ארנק מזומן</span>
-                <span style={{ color: '#12936A' }}>{fmt(balances.wallet)}</span>
+                <span style={{ color: '#0a0a0a' }}>{fmt(balances.wallet)}</span>
               </div>
             )}
             <div
               className="flex justify-between text-sm font-semibold border-t pt-2"
-              style={{ borderColor: 'rgba(18,147,106,0.2)', color: '#12936A' }}
+              style={{ borderColor: 'rgba(217, 184, 76,0.2)', color: '#0a0a0a' }}
             >
               <span>סה"כ זמין</span>
               <span>{fmt(totalAvailableCents)}</span>
@@ -279,12 +279,12 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
           <div
             className="rounded-xl p-3 text-xs leading-relaxed"
             style={{
-              background: canCover ? 'rgba(18,147,106,0.08)' : 'rgba(239,68,68,0.08)',
-              borderColor: canCover ? 'rgba(18,147,106,0.2)' : 'rgba(239,68,68,0.2)',
+              background: canCover ? 'rgba(217, 184, 76,0.08)' : 'rgba(239,68,68,0.08)',
+              borderColor: canCover ? 'rgba(217, 184, 76,0.2)' : 'rgba(239,68,68,0.2)',
             }}
           >
             {canCover ? (
-              <span style={{ color: 'rgba(18,147,106,0.9)' }}>
+              <span style={{ color: 'rgba(217, 184, 76,0.9)' }}>
                 ✓ יתרתך מכסה את כל סכום ההזמנה ({fmt(amountGross)})
               </span>
             ) : (
@@ -299,10 +299,10 @@ export function PrestigePassPaymentOption({ bookingId, serviceType, amountGross,
           <Button
             className="w-full h-11 text-sm font-semibold rounded-xl transition-all"
             style={{
-              background:    'linear-gradient(90deg, #0C5B3F 0%, #12936A 50%, #F0D060 100%)',
+              background:    'linear-gradient(90deg, #B8860B 0%, #D9B84C 50%, #F0D060 100%)',
               color:         '#0a0a0a',
               border:        'none',
-              boxShadow:     '0 4px 16px rgba(18,147,106,0.3)',
+              boxShadow:     '0 4px 16px rgba(217, 184, 76,0.3)',
               opacity:       redeemMutation.isPending ? 0.7 : 1,
             }}
             onClick={() => redeemMutation.mutate()}

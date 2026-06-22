@@ -104,7 +104,7 @@ export function TransactionOTPModal({
     <Dialog open={open} onOpenChange={(o) => { if (!o) handleClose(); }}>
       <DialogContent className="sm:max-w-[440px] bg-white p-0 overflow-hidden" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <div className="bg-gradient-to-br from-slate-900 via-slate-800 to-slate-700 px-6 py-5 relative">
-          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#12936A] via-[#e8d5a3] to-[#12936A]" />
+          <div className="absolute top-0 left-0 right-0 h-[3px] bg-gradient-to-r from-[#D9B84C] via-[#e8d5a3] to-[#D9B84C]" />
           <DialogHeader className="space-y-1.5">
             <DialogTitle className="text-white text-lg font-normal flex items-center gap-2 font-serif">
               <Shield className="w-5 h-5 text-[#e8d5a3]" />
@@ -119,7 +119,7 @@ export function TransactionOTPModal({
         <div className="px-6 py-5 space-y-5">
           {phase === 'sending' && (
             <div className="flex flex-col items-center gap-3 py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-[#12936A]" />
+              <Loader2 className="w-8 h-8 animate-spin text-[#0a0a0a]" />
               <p className="text-sm text-slate-600">
                 {isHebrew ? 'שולח קוד אימות...' : 'Sending verification code...'}
               </p>
@@ -156,15 +156,15 @@ export function TransactionOTPModal({
                   ref={inputRef}
                 >
                   <InputOTPGroup>
-                    <InputOTPSlot index={0} className="w-12 h-14 text-xl border-[#12936A]/30 focus:border-[#12936A]" />
-                    <InputOTPSlot index={1} className="w-12 h-14 text-xl border-[#12936A]/30 focus:border-[#12936A]" />
-                    <InputOTPSlot index={2} className="w-12 h-14 text-xl border-[#12936A]/30 focus:border-[#12936A]" />
+                    <InputOTPSlot index={0} className="w-12 h-14 text-xl border-[#D9B84C]/30 focus:border-[#D9B84C]" />
+                    <InputOTPSlot index={1} className="w-12 h-14 text-xl border-[#D9B84C]/30 focus:border-[#D9B84C]" />
+                    <InputOTPSlot index={2} className="w-12 h-14 text-xl border-[#D9B84C]/30 focus:border-[#D9B84C]" />
                   </InputOTPGroup>
                   <div className="mx-1" />
                   <InputOTPGroup>
-                    <InputOTPSlot index={3} className="w-12 h-14 text-xl border-[#12936A]/30 focus:border-[#12936A]" />
-                    <InputOTPSlot index={4} className="w-12 h-14 text-xl border-[#12936A]/30 focus:border-[#12936A]" />
-                    <InputOTPSlot index={5} className="w-12 h-14 text-xl border-[#12936A]/30 focus:border-[#12936A]" />
+                    <InputOTPSlot index={3} className="w-12 h-14 text-xl border-[#D9B84C]/30 focus:border-[#D9B84C]" />
+                    <InputOTPSlot index={4} className="w-12 h-14 text-xl border-[#D9B84C]/30 focus:border-[#D9B84C]" />
+                    <InputOTPSlot index={5} className="w-12 h-14 text-xl border-[#D9B84C]/30 focus:border-[#D9B84C]" />
                   </InputOTPGroup>
                 </InputOTP>
               </div>
@@ -193,7 +193,7 @@ export function TransactionOTPModal({
                   size="sm"
                   onClick={resendOTP}
                   disabled={cooldown > 0}
-                  className="text-[#12936A] hover:text-[#0C5B3F] text-xs"
+                  className="text-[#0a0a0a] hover:text-[#B8860B] text-xs"
                 >
                   <RefreshCw className="w-3.5 h-3.5 me-1" />
                   {cooldown > 0
@@ -209,7 +209,7 @@ export function TransactionOTPModal({
 
           {phase === 'verifying' && (
             <div className="flex flex-col items-center gap-3 py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-[#12936A]" />
+              <Loader2 className="w-8 h-8 animate-spin text-[#0a0a0a]" />
               <p className="text-sm text-slate-600">
                 {isHebrew ? 'מאמת...' : 'Verifying...'}
               </p>
@@ -242,7 +242,7 @@ export function TransactionOTPModal({
                     setOtpValue('');
                     sendOTP();
                   }}
-                  className="bg-[#12936A] hover:bg-[#0C5B3F] text-white"
+                  className="bg-[#D9B84C] hover:bg-[#B8860B] text-white"
                 >
                   {isHebrew ? 'נסו שנית' : 'Try Again'}
                 </Button>

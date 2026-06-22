@@ -5,7 +5,7 @@ import { Star, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import TrustBar from '@/components/TrustBar';
 
-const GOLD = '#12936A';
+const GOLD = '#D9B84C';
 
 const CITY_MAP: Record<string, { he: string; en: string; region: string }> = {
   'tel-aviv':     { he: 'תל אביב',      en: 'Tel Aviv',      region: 'tel-aviv' },

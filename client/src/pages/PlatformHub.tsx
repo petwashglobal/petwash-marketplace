@@ -628,7 +628,7 @@ export default function PlatformHub() {
                     className="text-5xl font-light mb-4"
                     style={{
                       fontFamily: serif,
-                      background: 'linear-gradient(135deg,#C6A664 0%,#E8D5A0 50%,#0C5B3F 100%)',
+                      background: 'linear-gradient(135deg,#C6A664 0%,#E8D5A0 50%,#B8860B 100%)',
                       WebkitBackgroundClip: 'text',
                       WebkitTextFillColor: 'transparent',
                       backgroundClip: 'text',

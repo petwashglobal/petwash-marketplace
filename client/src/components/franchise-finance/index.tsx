@@ -260,7 +260,7 @@ export function FinanceSummaryPanel({ data, ownerType, isLoading }: FinanceSumma
             key={t.label}
             className={cn(
               'border-0 shadow-sm transition-all',
-              t.highlight && 'ring-1 ring-[#12936A] ring-offset-1',
+              t.highlight && 'ring-1 ring-[#D9B84C] ring-offset-1',
               t.dimmed && 'opacity-60'
             )}
           >

@@ -191,7 +191,7 @@ function RulesTab() {
             <div className="flex items-center gap-3 px-4 py-3">
               <button
                 onClick={() => patchMut.mutate({ ruleKey: rule.ruleKey, updates: { enabled: !rule.enabled } })}
-                className="text-gray-400 hover:text-[#12936A] transition-colors"
+                className="text-gray-400 hover:text-[#0a0a0a] transition-colors"
                 title={rule.enabled ? "Disable rule" : "Enable rule"}
               >
                 {rule.enabled
@@ -204,7 +204,7 @@ function RulesTab() {
                   <Badge className={`text-[10px] px-2 py-0.5 ${rule.enabled ? "bg-emerald-100 text-emerald-700" : "bg-white text-gray-500"}`}>
                     {rule.enabled ? "פעיל" : "כבוי"}
                   </Badge>
-                  <Badge className="text-[10px] px-2 py-0.5 bg-[#12936A]/10 text-[#7A5C1E]">
+                  <Badge className="text-[10px] px-2 py-0.5 bg-[#D9B84C]/10 text-[#7A5C1E]">
                     {ils(rule.rewardIlsCents)}
                   </Badge>
                 </div>
@@ -214,7 +214,7 @@ function RulesTab() {
               </div>
               <button
                 onClick={() => isEditing ? setEditingKey(null) : startEdit(rule)}
-                className="text-xs text-[#12936A] font-semibold hover:underline"
+                className="text-xs text-[#0a0a0a] font-semibold hover:underline"
               >
                 {isEditing ? "ביטול" : "עריכה"}
               </button>
@@ -314,7 +314,7 @@ function RulesTab() {
                 <div className="col-span-2 flex justify-end">
                   <Button
                     size="sm"
-                    className="bg-[#12936A] hover:bg-[#8B6914] text-white"
+                    className="bg-[#D9B84C] hover:bg-[#8B6914] text-white"
                     onClick={() => saveEdit(rule.ruleKey)}
                     disabled={patchMut.isPending}
                   >
@@ -356,7 +356,7 @@ function ReportingTab() {
       <div className="grid grid-cols-2 gap-3">
         <KpiCard icon={<TrendingUp className="w-4 h-4 text-emerald-500" />}
           label="נצבר (90י׳)" value={ils(summary.totalEarnedCents)} />
-        <KpiCard icon={<TrendingDown className="w-4 h-4 text-[#12936A]" />}
+        <KpiCard icon={<TrendingDown className="w-4 h-4 text-[#0a0a0a]" />}
           label="מומש (90י׳)" value={ils(summary.totalRedeemedCents)} />
         <KpiCard icon={<Users className="w-4 h-4 text-blue-500" />}
           label="משתמשים פעילים" value={String(summary.activeUsers)} />
@@ -398,10 +398,10 @@ function ReportingTab() {
             {ruleClaims.map(r => (
               <div key={r.ruleKey} className="flex items-center gap-2">
                 <span className="text-xs text-gray-600 flex-1">{r.ruleKey}</span>
-                <span className="text-xs font-bold text-[#12936A]">{r.claims}</span>
-                <div className="h-1.5 rounded-full bg-[#12936A]/20 w-20 overflow-hidden">
+                <span className="text-xs font-bold text-[#0a0a0a]">{r.claims}</span>
+                <div className="h-1.5 rounded-full bg-[#D9B84C]/20 w-20 overflow-hidden">
                   <div
-                    className="h-full bg-[#12936A] rounded-full"
+                    className="h-full bg-[#D9B84C] rounded-full"
                     style={{ width: `${Math.min(100, (r.claims / (ruleClaims[0]?.claims || 1)) * 100)}%` }}
                   />
                 </div>
@@ -542,7 +542,7 @@ function AdjustmentsTab() {
         </div>
 
         <Button
-          className="w-full bg-[#12936A] hover:bg-[#8B6914] text-white"
+          className="w-full bg-[#D9B84C] hover:bg-[#8B6914] text-white"
           onClick={handleSubmit}
           disabled={adjustMut.isPending}
         >
@@ -1397,7 +1397,7 @@ function OpsTab() {
         action={
           <button
             onClick={() => qc.invalidateQueries({ queryKey: ['/api/admin/loyalty/queue-health'] })}
-            className="text-[10px] text-[#12936A] hover:underline"
+            className="text-[10px] text-[#0a0a0a] hover:underline"
           >
             רענן
           </button>
@@ -1472,7 +1472,7 @@ function OpsTab() {
               disabled={proofMut.isPending}
               className={`text-right rounded-lg border px-3 py-2 text-[11px] transition-colors ${
                 activeScenario === s.id
-                  ? 'bg-[#12936A]/10 border-[#12936A] text-[#12936A]'
+                  ? 'bg-[#D9B84C]/10 border-[#D9B84C] text-[#0a0a0a]'
                   : 'bg-white border-gray-100 text-gray-600 hover:bg-white'
               }`}
             >
@@ -1503,7 +1503,7 @@ function OpsTab() {
         action={
           <button
             onClick={() => qc.invalidateQueries({ queryKey: ['/api/admin/loyalty/deployment-checklist'] })}
-            className="text-[10px] text-[#12936A] hover:underline"
+            className="text-[10px] text-[#0a0a0a] hover:underline"
           >
             רענן
           </button>
@@ -1549,14 +1549,14 @@ function LedgerTab() {
     <div className="p-4">
       <div className="flex items-center justify-between mb-3">
         <p className="text-xs text-gray-400">100 פעולות אחרונות</p>
-        <button onClick={() => refetch()} className="text-xs text-[#12936A] hover:underline">רענן</button>
+        <button onClick={() => refetch()} className="text-xs text-[#0a0a0a] hover:underline">רענן</button>
       </div>
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 divide-y divide-gray-50 overflow-hidden">
         {data.entries.map(entry => (
           <div key={entry.id} className="flex items-start gap-3 px-4 py-3">
             <div className={`w-2 h-2 rounded-full mt-1.5 shrink-0 ${
               entry.amountIlsCents > 0 ? "bg-emerald-400" :
-              entry.eventType === "redeem" ? "bg-[#12936A]" : "bg-gray-300"
+              entry.eventType === "redeem" ? "bg-[#D9B84C]" : "bg-gray-300"
             }`} />
             <div className="flex-1 min-w-0">
               <div className="flex items-center justify-between gap-2">
@@ -1564,7 +1564,7 @@ function LedgerTab() {
                   {entry.userName ?? entry.userId.slice(0, 12) + "…"}
                 </span>
                 <span className={`text-xs font-bold ${
-                  entry.amountIlsCents > 0 ? "text-emerald-600" : "text-[#12936A]"
+                  entry.amountIlsCents > 0 ? "text-emerald-600" : "text-[#0a0a0a]"
                 }`}>
                   {entry.amountIlsCents > 0 ? "+" : ""}{ils(entry.amountIlsCents)}
                 </span>
@@ -1640,7 +1640,7 @@ export default function AdminLoyaltyRules() {
       {/* Header */}
       <div className="sticky top-0 z-10 bg-white border-b border-gray-100 shadow-sm">
         <div className="flex items-center gap-3 px-4 py-4">
-          <Coins className="w-5 h-5 text-[#12936A]" />
+          <Coins className="w-5 h-5 text-[#0a0a0a]" />
           <h1 className="text-base font-bold text-gray-900">ניהול קרדיטי נאמנות</h1>
           <span className="mr-auto text-[10px] text-gray-300">Admin 6.7</span>
         </div>
@@ -1653,7 +1653,7 @@ export default function AdminLoyaltyRules() {
               onClick={() => setTab(id)}
               className={`flex items-center gap-1.5 px-4 py-3 text-xs font-semibold shrink-0 border-b-2 transition-colors ${
                 tab === id
-                  ? "border-[#12936A] text-[#12936A]"
+                  ? "border-[#D9B84C] text-[#0a0a0a]"
                   : "border-transparent text-gray-400 hover:text-gray-600"
               }`}
             >

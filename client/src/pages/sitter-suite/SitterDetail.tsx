@@ -304,7 +304,7 @@ export default function SitterDetail() {
 
           {/* Multi-Pet Booking Wizard CTA */}
           {user && sitter && (
-            <div className="mb-6 p-4 bg-gradient-to-l from-[#12936A]/10 to-amber-50 border border-[#12936A]/30 rounded-2xl flex items-center justify-between gap-4">
+            <div className="mb-6 p-4 bg-gradient-to-l from-[#D9B84C]/10 to-amber-50 border border-[#D9B84C]/30 rounded-2xl flex items-center justify-between gap-4">
               <div>
                 <p className="font-semibold text-gray-900 text-sm">
                   {isHebrew ? "הזמנה עם מספר חיות?" : "Booking multiple pets?"}
@@ -318,7 +318,7 @@ export default function SitterDetail() {
               <Button
                 size="sm"
                 onClick={() => navigate(`/booking/new/pet_sitting/${sitter.userId}`)}
-                className="bg-[#12936A] hover:bg-[#0C5B3F] text-white shrink-0 text-xs px-4"
+                className="bg-[#D9B84C] hover:bg-[#B8860B] text-white shrink-0 text-xs px-4"
               >
                 {isHebrew ? "הזמן ←" : "Book →"}
               </Button>

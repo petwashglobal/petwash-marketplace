@@ -10,7 +10,7 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useSavedProviders, type SavedProviderItem } from '@/hooks/useSavedProviders';
 
-const GOLD = '#12936A';
+const GOLD = '#D9B84C';
 
 const TABS = [
   { id: 'shortlisted', labelHe: 'מועדפים',      labelEn: 'Shortlisted'       },

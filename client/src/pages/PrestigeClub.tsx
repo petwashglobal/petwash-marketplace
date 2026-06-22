@@ -289,7 +289,7 @@ const TIERS: TierData[] = [
 ];
 
 const TIER_CYCLE = [
-  { label: 'CHAMPAGNE DIAMOND', badge: 'Elite', color: '#0C5B3F' },
+  { label: 'CHAMPAGNE DIAMOND', badge: 'Elite', color: '#B8860B' },
   { label: 'EMERALD STONE', badge: 'Privilege', color: '#0F5E4A' },
   { label: 'SAPPHIRE CRYSTAL', badge: 'Signature', color: '#0E2F5A' },
   { label: 'PLATINUM', badge: 'Signature', color: '#C9C9C9' },

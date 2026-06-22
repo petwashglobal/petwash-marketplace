@@ -12,16 +12,16 @@ interface PetWashDivisionsProps {
 const platformStyles = [
   {
     gradient: 'linear-gradient(135deg, #1a1a1a 0%, #2d2d2d 30%, #3a3a3a 50%, #2d2d2d 70%, #1a1a1a 100%)',
-    shimmer: 'linear-gradient(135deg, rgba(18,147,106,0.15) 0%, rgba(18,147,106,0.05) 50%, rgba(18,147,106,0.15) 100%)',
-    iconBg: 'linear-gradient(135deg, #12936A, #e8d5a8)',
+    shimmer: 'linear-gradient(135deg, rgba(217, 184, 76,0.15) 0%, rgba(217, 184, 76,0.05) 50%, rgba(217, 184, 76,0.15) 100%)',
+    iconBg: 'linear-gradient(135deg, #D9B84C, #e8d5a8)',
     iconColor: '#1a1a1a',
     textColor: '#FFFFFF',
-    taglineColor: 'rgba(18,147,106,0.9)',
+    taglineColor: 'rgba(217, 184, 76,0.9)',
     descColor: 'rgba(255,255,255,0.65)',
-    borderColor: 'rgba(18,147,106,0.3)',
-    borderHover: 'rgba(18,147,106,0.6)',
-    ctaColor: '#12936A',
-    dividerColor: 'rgba(18,147,106,0.2)',
+    borderColor: 'rgba(217, 184, 76,0.3)',
+    borderHover: 'rgba(217, 184, 76,0.6)',
+    ctaColor: '#D9B84C',
+    dividerColor: 'rgba(217, 184, 76,0.2)',
   },
   {
     gradient: 'linear-gradient(135deg, #8B1A4A 0%, #A0325E 30%, #B84874 50%, #A0325E 70%, #8B1A4A 100%)',

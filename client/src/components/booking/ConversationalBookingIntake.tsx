@@ -62,9 +62,9 @@ interface ApiResponse {
 const INK = '#0B0B0B';
 const INK_SOFT = '#5C5C5C';
 const INK_MUTED = '#9A958C';
-const GOLD = '#12936A';
-const GOLD_SOFT = 'rgba(18,147,106,0.08)';
-const GOLD_LINE = 'rgba(18,147,106,0.35)';
+const GOLD = '#D9B84C';
+const GOLD_SOFT = 'rgba(217, 184, 76,0.08)';
+const GOLD_LINE = 'rgba(217, 184, 76,0.35)';
 
 const COPY = {
   en: {

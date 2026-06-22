@@ -4181,7 +4181,7 @@ export default function MyAccount() {
                         </div>
                         <label
                           className="inline-flex items-center gap-2 text-[13px] font-medium px-3 py-2 rounded-full border border-gray-200 cursor-pointer hover:bg-gray-50 transition-colors"
-                          style={{ color: '#0C5B3F' }}
+                          style={{ color: '#B8860B' }}
                         >
                           <Camera className="w-4 h-4" />
                           {petPhotoUploading

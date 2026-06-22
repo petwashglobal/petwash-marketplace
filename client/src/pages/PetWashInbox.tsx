@@ -7,7 +7,7 @@
  *  • Alerts    → vouchers / receipts / system messages (userInbox, /api/inbox/user).
  *  • Concierge → the Kenzo AI assistant (opens the global widget).
  *
- * Brand: pure white, emerald accents (#12936A/#0C5B3F/#36C98F), gold only for Prestige.
+ * Brand: pure white, emerald accents (#D9B84C/#B8860B/#F4D77A), gold only for Prestige.
  * Layout is intentionally DENSE — compact rows, 13–14px text, minimal padding, no dead space.
  */
 import { useState } from 'react';
@@ -21,8 +21,8 @@ import {
   Gift, Receipt, Megaphone, Inbox as InboxIcon, MessageSquare,
 } from 'lucide-react';
 
-const EMERALD = '#12936A';
-const EMERALD_DEEP = '#0C5B3F';
+const EMERALD = '#D9B84C';
+const EMERALD_DEEP = '#B8860B';
 const EMERALD_TINT = '#E6F3EE';
 const GOLD = '#8a6a12';
 const GOLD_TINT = '#FBF3DC';
@@ -159,7 +159,7 @@ export default function PetWashInbox() {
         {tab === 'concierge' && (
           <div className="px-4 py-4">
             <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: EMERALD_DEEP }}>
-              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: '#36C98F' }}>
+              <div className="w-10 h-10 rounded-full flex items-center justify-center shrink-0" style={{ background: '#F4D77A' }}>
                 <Sparkles className="w-5 h-5" style={{ color: '#06372a' }} />
               </div>
               <div className="min-w-0">

@@ -136,7 +136,7 @@ export default function GroomerDetail() {
     <Layout>
       {user && (
         <div className="max-w-5xl mx-auto px-4 pt-4">
-          <div className="p-4 bg-gradient-to-l from-[#12936A]/10 to-amber-50 border border-[#12936A]/30 rounded-2xl flex items-center justify-between gap-4">
+          <div className="p-4 bg-gradient-to-l from-[#D9B84C]/10 to-amber-50 border border-[#D9B84C]/30 rounded-2xl flex items-center justify-between gap-4">
             <div>
               <p className="font-semibold text-gray-900 text-sm">
                 {isHebrew ? "מספר חיות? שירותים נוספים?" : "Multiple pets or extra services?"}
@@ -148,7 +148,7 @@ export default function GroomerDetail() {
             <Button
               size="sm"
               onClick={() => navigate(`/booking/new/grooming/${groomer.userId}`)}
-              className="bg-[#12936A] hover:bg-[#0C5B3F] text-white shrink-0 text-xs px-4"
+              className="bg-[#D9B84C] hover:bg-[#B8860B] text-white shrink-0 text-xs px-4"
             >
               {isHebrew ? "הזמן ←" : "Book →"}
             </Button>

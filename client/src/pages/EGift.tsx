@@ -592,7 +592,7 @@ function LuxuryGiftCard({
           border: selected 
             ? '2px solid #b0841c'
             : '1px solid #E8E3D9',
-          boxShadow: selected ? '0 0 20px rgba(18,147,106,0.25)' : '0 2px 12px rgba(0,0,0,0.08)',
+          boxShadow: selected ? '0 0 20px rgba(217, 184, 76,0.25)' : '0 2px 12px rgba(0,0,0,0.08)',
         }}
       >
         {selected && (
@@ -999,7 +999,7 @@ export default function EGift() {
               <button
                 onClick={handleCopy}
                 className="text-xs font-bold px-3 py-1.5 rounded-lg text-white flex-shrink-0"
-                style={{ background: '#12936A' }}
+                style={{ background: '#D9B84C' }}
               >
                 {isRtl ? 'העתק' : 'Copy'}
               </button>
@@ -1067,7 +1067,7 @@ export default function EGift() {
                 setPurchasedGift(null);
               }}
               className="text-sm font-medium underline"
-              style={{ color: '#12936A' }}
+              style={{ color: '#0a0a0a' }}
             >
               {isRtl ? 'שלח מתנה נוספת' : 'Send another gift'}
             </button>
