@@ -75,7 +75,7 @@ const PLATFORMS = [
   { name: '⁦Wash Hub™⁩', icon: '💎' },
 ];
 
-const gold = '#85C4CE';
+const gold = '#D9B84C'; // brand gold (was teal #85C4CE — a var literally named "gold" holding teal)
 
 // Full Hebrew month names for the iOS-style date wheel (member must be 18+).
 const MONTHS_HE_FULL = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
