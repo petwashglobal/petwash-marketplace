@@ -93,7 +93,6 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [activeActivityIndex, setActiveActivityIndex] = useState(0);
-  const [animatedStats, setAnimatedStats] = useState({ members: 0, providers: 0, services: 0 });
 
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -161,24 +160,9 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
     }
   }, [user]);
 
-  useEffect(() => {
-    const duration = 2000;
-    const steps = 60;
-    const targets = { members: 10247, providers: 342, services: 87500 };
-    let step = 0;
-    const interval = setInterval(() => {
-      step++;
-      const progress = Math.min(step / steps, 1);
-      const ease = 1 - Math.pow(1 - progress, 3);
-      setAnimatedStats({
-        members: Math.floor(targets.members * ease),
-        providers: Math.floor(targets.providers * ease),
-        services: Math.floor(targets.services * ease),
-      });
-      if (step >= steps) clearInterval(interval);
-    }, duration / steps);
-    return () => clearInterval(interval);
-  }, []);
+  // Removed: the fabricated "10,247 members / 342 providers / 87,500 services" stat
+  // animation. The display band was already taken out (2026-06-13); this deletes the
+  // dead code so the invented numbers don't live in the source at all.
 
   useEffect(() => {
     const interval = setInterval(() => setActiveActivityIndex(prev => (prev + 1) % 5), 3000);
