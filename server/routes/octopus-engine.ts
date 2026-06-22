@@ -768,7 +768,7 @@ const brainRedeemSchema = z.object({
   idempotencyKey: z.string().min(1),
 });
 
-router.post("/v1/brain/redeem", async (req: Request, res: Response) => {
+router.post("/v1/brain/redeem", requireAuth, async (req: Request, res: Response) => {
   try {
     const body = brainRedeemSchema.parse(req.body);
     const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
@@ -926,7 +926,7 @@ const egiftPurchaseSchema = z.object({
   idempotencyKey: z.string().min(1),
 });
 
-router.post("/v1/egift/purchase", async (req: Request, res: Response) => {
+router.post("/v1/egift/purchase", requireAuth, async (req: Request, res: Response) => {
   try {
     const body = egiftPurchaseSchema.parse(req.body);
     const result = await egiftFinancialService.purchaseEgift(body);
