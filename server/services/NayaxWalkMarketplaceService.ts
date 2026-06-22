@@ -193,11 +193,16 @@ export class NayaxWalkMarketplaceService {
         paymentGateway: 'Nayax Israel',
       });
       
+      // FAIL-CLOSED (no-fake-money rule): the real Nayax payout/transfer API is not
+      // wired yet, so we refuse to report a successful transfer that didn't happen.
+      // The request is logged above for manual processing; the caller must treat this
+      // as 'pending', never 'paid'.
       return {
-        success: true,
+        success: false,
+        error: 'Walker payout not transferred — real Nayax payout API not wired yet (logged for manual processing).',
         payoutReference: `WALK_PAYOUT_${params.walkId}_${nanoid(10)}`,
       };
-      
+
     } catch (error) {
       logger.error('[⁦Walk My Pet™⁩] Payout processing error', error);
       
@@ -293,11 +298,13 @@ export class NayaxWalkMarketplaceService {
         gateway: 'Nayax Israel',
       });
       
+      // FAIL-CLOSED — real Nayax refund API not wired yet; never report a fake refund.
       return {
-        success: true,
+        success: false,
+        error: 'Walk refund not executed — real Nayax refund API not wired yet (logged for manual processing).',
         refundReference: `WALK_REFUND_${nanoid(12)}`,
       };
-      
+
     } catch (error) {
       logger.error('[⁦Walk My Pet™⁩] Refund processing error', error);
       

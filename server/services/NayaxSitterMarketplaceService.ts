@@ -263,9 +263,13 @@ export class NayaxSitterMarketplaceService {
         transactionId: nayaxTransactionId,
         amountILS: (amountCents / 100).toFixed(2),
       });
-      
+
+      // FAIL-CLOSED (no-fake-money rule): the real Nayax refund API is not wired yet,
+      // so we refuse to report a successful refund that didn't happen. Logged above for
+      // manual processing; the caller must treat this as 'pending', never 'refunded'.
       return {
-        success: true,
+        success: false,
+        error: 'Sitter refund not executed — real Nayax refund API not wired yet (logged for manual processing).',
         refundReference: `REFUND_${nanoid(12)}`,
       };
       
