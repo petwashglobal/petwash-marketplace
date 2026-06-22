@@ -1464,14 +1464,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* TALENT MARKETPLACE - 7-Platform ⁦Pet Wash™⁩ Directory */}
+        {/* /talent renders hardcoded DEMO sitters (fake names/ratings/prices). Gated OFF
+            in production → real marketplace; flag on for demos only. No fake providers to users. */}
         <Route path="/talent">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <TalentMarketplace />
-            </Suspense>
-          )}
+          {() =>
+            import.meta.env.VITE_TALENT_DEMO === 'true' ? (
+              <Suspense fallback={<PageLoader />}>
+                <TalentMarketplace />
+              </Suspense>
+            ) : (
+              <Redirect to="/marketplace" />
+            )
+          }
         </Route>
-        
+
         {/* PLATFORM HUB - Unified Service Discovery */}
         <Route path="/services">
           {() => (
