@@ -116,7 +116,9 @@ export default function AdminInbox() {
   const { language, dir } = useLanguage();
   const { toast } = useToast();
   
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(mockMessages[0]);
+  // No fake default — the detail pane stays empty until a real message is selected.
+  // (Was mockMessages[0], which showed the fabricated "18% revenue growth" report.)
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [selectedMessages, setSelectedMessages] = useState<number[]>([]);
   const [showCompose, setShowCompose] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'important' | 'archived'>('all');
