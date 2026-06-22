@@ -33,7 +33,7 @@
 import React, { useEffect, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from "react-icons/si";
-import { Bell } from "lucide-react";
+import { Bell, IdCard } from "lucide-react";
 import { useFirebaseAuth } from "../auth/AuthProvider";
 import { useAccountNavigation, getLiveFirebaseUser } from "../hooks/useAccountNavigation";
 import { useWhoami } from "../auth/useWhoami";
@@ -166,6 +166,7 @@ const T: Record<string, Record<string, string>> = {
   "signup": { en: "Sign up", he: "הרשמה", ru: "Регистрация", fr: "S'inscrire", es: "Registrarse", ar: "إنشاء حساب" },
   "mydashboard": { en: "My Dashboard", he: "הלוח שלי", ru: "Мой кабинет", fr: "Mon tableau de bord", es: "Mi panel", ar: "لوحتي" },
   "myaccount": { en: "My account", he: "החשבון שלי", ru: "Мой аккаунт", fr: "Mon compte", es: "Mi cuenta", ar: "حسابي" },
+  "mypass": { en: "My Pass", he: "הכרטיס שלי", ru: "Мой пропуск", fr: "Mon Pass", es: "Mi Pase", ar: "بطاقتي" },
   "logout": { en: "Log out", he: "התנתק", ru: "Выйти", fr: "Déconnexion", es: "Cerrar sesión", ar: "تسجيل الخروج" },
 };
 
@@ -521,6 +522,20 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           </nav>
 
           <div className="pw-header-right">
+            {/* My Pass — quick access to the in-app member pass (QR), visible when logged in */}
+            {user && (
+              <button
+                type="button"
+                className="pw-header-icon-btn"
+                style={{ position: 'relative', touchAction: 'manipulation', cursor: 'pointer', background: 'none', border: 'none', padding: '6px', borderRadius: '50%' }}
+                onClick={() => handleNavigate('/prestige-pass')}
+                aria-label={t('mypass', currentLanguage)}
+                title={t('mypass', currentLanguage)}
+                data-testid="button-header-my-pass"
+              >
+                <IdCard size={22} style={{ color: 'var(--pw-icon-color, #fff)' }} />
+              </button>
+            )}
             {/* Notification bell — visible when user is logged in */}
             {user && (
               <button
@@ -818,6 +833,15 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             </div>
             {user ? (
               <>
+                <button
+                  type="button"
+                  className="pw-mobile-link"
+                  style={{ touchAction: 'manipulation', cursor: 'pointer' }}
+                  onClick={() => handleNavigate("/prestige-pass")}
+                  data-testid="button-mobile-menu-my-pass"
+                >
+                  {t("mypass", currentLanguage)}
+                </button>
                 <button
                   type="button"
                   className="pw-mobile-link"
