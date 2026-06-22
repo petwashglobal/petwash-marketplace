@@ -385,7 +385,7 @@ export default function Packages() {
 
                     {isPopular && (
                       <div className="absolute top-3 start-3 z-10">
-                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#D9B84C] text-white font-medium" style={{ borderRadius: '2px' }}>
+                        <span className="text-[8px] sm:text-[9px] tracking-[0.15em] uppercase px-2.5 py-1 bg-[#D9B84C] text-[#0a0a0a] font-medium" style={{ borderRadius: '2px' }}>
                           {isHe ? 'מומלץ' : 'Best'}
                         </span>
                       </div>

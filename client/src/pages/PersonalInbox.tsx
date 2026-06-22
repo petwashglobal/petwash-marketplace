@@ -262,7 +262,7 @@ export default function PersonalInbox() {
               )}
               <Dialog open={isComposing} onOpenChange={setIsComposing}>
                 <DialogTrigger asChild>
-                  <Button className="bg-[#D9B84C] hover:bg-[#B8860B] text-white px-5 py-3 flex items-center gap-2 rounded-xl" data-testid="button-compose-message">
+                  <Button className="bg-[#D9B84C] hover:bg-[#B8860B] text-[#0a0a0a] px-5 py-3 flex items-center gap-2 rounded-xl" data-testid="button-compose-message">
                     <Plus className="w-4 h-4" />
                     {isHebrew ? 'הודעה חדשה' : 'Compose'}
                   </Button>
@@ -329,7 +329,7 @@ export default function PersonalInbox() {
                       <Button type="button" className="bg-white text-gray-700 hover:bg-white px-5 py-3 border border-gray-200 rounded-xl" onClick={() => setIsComposing(false)}>
                         {isHebrew ? 'ביטול' : 'Cancel'}
                       </Button>
-                      <Button type="submit" disabled={sendMessageMutation.isPending} className="bg-[#D9B84C] hover:bg-[#B8860B] text-white px-5 py-3 flex items-center gap-2 rounded-xl">
+                      <Button type="submit" disabled={sendMessageMutation.isPending} className="bg-[#D9B84C] hover:bg-[#B8860B] text-[#0a0a0a] px-5 py-3 flex items-center gap-2 rounded-xl">
                         {sendMessageMutation.isPending ? (
                           <><Loader2 className="w-4 h-4 animate-spin" /> {isHebrew ? 'שולח...' : 'Sending...'}</>
                         ) : (

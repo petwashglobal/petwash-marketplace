@@ -288,9 +288,9 @@ function ProgressBar({ currentStep }: { currentStep: WizardStep }) {
               <div
                 className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-200 ${
                   i < idx
-                    ? "bg-[#D9B84C] text-white shadow-sm"
+                    ? "bg-[#D9B84C] text-[#0a0a0a] shadow-sm"
                     : i === idx
-                    ? "bg-[#D9B84C] text-white ring-4 ring-[#D9B84C]/20 shadow-md"
+                    ? "bg-[#D9B84C] text-[#0a0a0a] ring-4 ring-[#D9B84C]/20 shadow-md"
                     : "bg-white text-gray-400"
                 }`}
               >
@@ -1376,7 +1376,7 @@ function ConfirmStep({
         <Button
           onClick={onSubmit}
           disabled={isSubmitting || quoteLoading || !quote}
-          className="w-full bg-[#D9B84C] hover:bg-[#B8860B] text-white font-bold py-4 rounded-2xl text-base shadow-md shadow-[#D9B84C]/20"
+          className="w-full bg-[#D9B84C] hover:bg-[#B8860B] text-[#0a0a0a] font-bold py-4 rounded-2xl text-base shadow-md shadow-[#D9B84C]/20"
         >
           {isSubmitting ? (
             <><Loader2 className="w-4 h-4 animate-spin mr-2" />שולח בקשת הזמנה...</>
@@ -1836,7 +1836,7 @@ export default function MultiPetBookingWizard() {
           <Button
             onClick={goNext}
             disabled={!canGoNext()}
-            className="flex-1 bg-[#D9B84C] hover:bg-[#B8860B] text-white font-semibold"
+            className="flex-1 bg-[#D9B84C] hover:bg-[#B8860B] text-[#0a0a0a] font-semibold"
           >
             המשך
             <ChevronLeft className="w-4 h-4 mr-1" />

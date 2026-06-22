@@ -133,7 +133,7 @@ export default function QrActivatePage() {
             <Button
               onClick={handleActivate}
               disabled={isLoading || !rawQr.trim()}
-              className="w-full h-12 bg-[#D9B84C] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
+              className="w-full h-12 bg-[#D9B84C] hover:bg-[#b0943d] text-[#0a0a0a] font-semibold rounded-xl text-base"
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -175,7 +175,7 @@ export default function QrActivatePage() {
             <Button
               onClick={start}
               disabled={isLoading}
-              className="w-full h-12 bg-[#D9B84C] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
+              className="w-full h-12 bg-[#D9B84C] hover:bg-[#b0943d] text-[#0a0a0a] font-semibold rounded-xl text-base"
             >
               {isLoading ? (
                 <><Loader2 className="w-4 h-4 animate-spin mr-2" />
@@ -277,7 +277,7 @@ export default function QrActivatePage() {
             </div>
             <Button
               onClick={reset}
-              className="w-full h-12 bg-[#D9B84C] hover:bg-[#b0943d] text-white font-semibold rounded-xl text-base"
+              className="w-full h-12 bg-[#D9B84C] hover:bg-[#b0943d] text-[#0a0a0a] font-semibold rounded-xl text-base"
             >
               <RotateCcw className="w-4 h-4 mr-2" />
               {isRtl ? 'נסה שוב' : 'Try again'}

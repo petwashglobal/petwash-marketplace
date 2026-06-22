@@ -320,7 +320,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                 <Shield className="w-4 h-4" /><span>{t('privilege.secureNote', language)}</span>
               </div>
               <Link href="/login">
-                <Button className="mt-4 px-8 py-3 text-white font-bold" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
+                <Button className="mt-4 px-8 py-3 text-[#0a0a0a] font-bold" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
                   {t('privilege.signInHere', language)}
                 </Button>
               </Link>
@@ -389,7 +389,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
               </motion.div>
 
               <div className="flex flex-wrap justify-center gap-3 pt-4">
-                <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white" style={{ background: 'linear-gradient(90deg, #D9B84C, #D9B84C)', borderRadius: '2px' }}>
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-[#0a0a0a]" style={{ background: 'linear-gradient(90deg, #D9B84C, #D9B84C)', borderRadius: '2px' }}>
                   <Sparkles className="w-4 h-4" style={{ color: gold }} />{t('privilege.freeExclusive', language)}
                 </span>
                 <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 border border-gray-200" style={{ borderRadius: '2px' }}>
@@ -871,11 +871,11 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                     </Button>
                   ) : <div />}
                   {currentStep < TOTAL_STEPS ? (
-                    <Button type="button" onClick={nextStep} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
+                    <Button type="button" onClick={nextStep} className="flex items-center gap-2 font-bold text-[#0a0a0a]" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
                       {t('privilege.next', language)}{isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </Button>
                   ) : (
-                    <Button type="button" onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
+                    <Button type="button" onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 font-bold text-[#0a0a0a]" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
                       {loading ? (
                         <span className="flex items-center gap-2">
                           <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}><Sparkles className="w-4 h-4" /></motion.div>
