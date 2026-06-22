@@ -163,9 +163,18 @@ class BookingLifecycleService {
       baseAmountCents = card.baseRatePerVisitCents;
     }
 
-    const additionalPetsCents = petCount > 1 
+    // Additional-pet surcharge. For overnight (per-night) bookings it must apply for
+    // EVERY night — the base rate above is per-night × nights, so the surcharge has to
+    // mirror it, otherwise a multi-pet, multi-night stay is silently undercharged
+    // (e.g. 2 pets × 5 nights would bill the surcharge once instead of 5×). For
+    // per-hour / per-visit services the surcharge is a single charge.
+    const isPerNightBooking = !!(card.baseRatePerNightCents && nights > 0);
+    const additionalPetUnitCents = petCount > 1
       ? (petCount - 1) * (card.additionalPetSurchargeCents || 0)
       : 0;
+    const additionalPetsCents = isPerNightBooking
+      ? additionalPetUnitCents * nights
+      : additionalPetUnitCents;
 
     let addonsCents = 0;
     const addonPricing = card.addonPricing as Record<string, number> || {};
