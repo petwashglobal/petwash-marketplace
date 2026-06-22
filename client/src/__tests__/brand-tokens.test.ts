@@ -1,8 +1,9 @@
 /**
  * Brand design tokens — the single source of truth for the PetWash look:
- * pure white · black text · HOT METALLIC EMERALD GREEN accents. Gold was removed
- * 2026-06-16 (read too cheap/yellow). This guard prevents the rejected palettes
- * (cream/ivory, and ANY gold) from creeping back, and confirms it's wired globally.
+ * pure white · black text · METALLIC GOLD accent. Base gold #D4AF37, primary tone
+ * warmed to #D9B84C toward Cartier yellow-gold (CEO 2026-06-22). This guard keeps
+ * the rejected palettes (cream/ivory, and the dead emerald #12936A) from creeping
+ * back, and confirms the tokens are wired globally.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -13,25 +14,26 @@ const tokens = fs.readFileSync(path.join(ROOT, 'styles', 'petwash-brand-tokens.c
 const indexCss = fs.readFileSync(path.join(ROOT, 'index.css'), 'utf8');
 
 describe('PetWash brand tokens', () => {
-  it('ground is pure white, ink is black, accent is the emerald reference', () => {
+  it('ground is pure white, ink is black, accent is the warm Cartier-leaning gold', () => {
     expect(tokens).toMatch(/--pw-white:\s*#FFFFFF/i);
     expect(tokens).toMatch(/--pw-ink:\s*#111111/i);
-    expect(tokens).toMatch(/--pw-gold:\s*#12936A/i); // legacy var name, emerald value
+    expect(tokens).toMatch(/--pw-gold:\s*#D9B84C/i); // warm Cartier-leaning gold
   });
 
-  it('uses the emerald gradient (deep / light) and white text on the fill', () => {
-    expect(tokens).toMatch(/--pw-gold-deep:\s*#0C5B3F/i);
-    expect(tokens).toMatch(/--pw-gold-light:\s*#36C98F/i);
-    expect(tokens).toMatch(/--pw-gold-ink:\s*#FFFFFF/i); // white text on a green fill
+  it('keeps the base gold and the metallic sheen gradient (deep / base / light)', () => {
+    expect(tokens).toMatch(/--pw-gold-base:\s*#D4AF37/i); // original base gold, retained
+    expect(tokens).toMatch(/--pw-gold-deep:\s*#B8860B/i);
+    expect(tokens).toMatch(/--pw-gold-light:\s*#F4D77A/i);
+    expect(tokens).toMatch(/--pw-gold-grad:\s*linear-gradient/i); // sheen, not flat
+    expect(tokens).toMatch(/--pw-gold-ink:\s*#1A1A1A/i); // near-black text on a gold fill
   });
 
-  it('does NOT contain gold or the rejected cream / antique-gold values', () => {
-    expect(tokens).not.toMatch(/#D4AF37/i); // bright gold — removed
-    expect(tokens).not.toMatch(/#B8860B/i); // deep gold — removed
-    expect(tokens).not.toMatch(/#F2D778/i); // gold sheen — removed
-    expect(tokens).not.toMatch(/#C5A55A/i); // washed gold — removed
-    expect(tokens).not.toMatch(/#F7F4EE/i); // cream/ivory ground
-    expect(tokens).not.toMatch(/#735511/i); // muted antique/olive gold
+  it('does NOT contain the dead emerald or the rejected cream / antique values', () => {
+    expect(tokens).not.toMatch(/#12936A/i); // emerald — removed for good
+    expect(tokens).not.toMatch(/#0C5B3F/i); // emerald deep — removed
+    expect(tokens).not.toMatch(/#36C98F/i); // emerald light — removed
+    expect(tokens).not.toMatch(/#F7F4EE/i); // cream/ivory ground — never
+    expect(tokens).not.toMatch(/#735511/i); // muted antique/olive gold — never
   });
 
   it('is imported globally in index.css', () => {
