@@ -1,7 +1,7 @@
 import { Star, TrendingUp, Users, RotateCcw } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 
-const GOLD = '#12936A';
+const GOLD = '#D9B84C';
 
 export interface ProviderStats {
   rating?: number;
