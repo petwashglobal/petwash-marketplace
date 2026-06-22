@@ -204,7 +204,7 @@ export default function LoyaltyCreditsHistory() {
       <div className="min-h-screen bg-white flex flex-col items-center justify-center gap-4 p-8">
         <Coins className="w-12 h-12 text-[#0a0a0a]" />
         <p className="text-gray-600 text-center">יש להתחבר כדי לראות את הקרדיטים</p>
-        <Button onClick={() => setLocation("/signin")} className="bg-[#D9B84C] text-white">
+        <Button onClick={() => setLocation("/signin")} className="bg-[#D9B84C] text-[#0a0a0a]">
           התחברות
         </Button>
       </div>
@@ -275,7 +275,7 @@ export default function LoyaltyCreditsHistory() {
                 onClick={() => setActiveFilter(f.id)}
                 className={`shrink-0 px-4 py-2 rounded-full text-xs font-semibold transition-all ${
                   activeFilter === f.id
-                    ? "bg-[#D9B84C] text-white shadow-sm"
+                    ? "bg-[#D9B84C] text-[#0a0a0a] shadow-sm"
                     : "bg-white text-gray-500 border border-gray-100"
                 }`}
               >

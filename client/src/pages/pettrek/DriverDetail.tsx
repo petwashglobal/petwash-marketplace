@@ -147,7 +147,7 @@ export default function DriverDetail() {
             <Button
               size="sm"
               onClick={() => navigate(`/booking/new/pet_taxi/${driver.userId}`)}
-              className="bg-[#D9B84C] hover:bg-[#B8860B] text-white shrink-0 text-xs px-4"
+              className="bg-[#D9B84C] hover:bg-[#B8860B] text-[#0a0a0a] shrink-0 text-xs px-4"
             >
               {isHebrew ? "הזמן ←" : "Book →"}
             </Button>

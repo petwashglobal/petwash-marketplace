@@ -314,7 +314,7 @@ function RulesTab() {
                 <div className="col-span-2 flex justify-end">
                   <Button
                     size="sm"
-                    className="bg-[#D9B84C] hover:bg-[#8B6914] text-white"
+                    className="bg-[#D9B84C] hover:bg-[#8B6914] text-[#0a0a0a]"
                     onClick={() => saveEdit(rule.ruleKey)}
                     disabled={patchMut.isPending}
                   >
@@ -542,7 +542,7 @@ function AdjustmentsTab() {
         </div>
 
         <Button
-          className="w-full bg-[#D9B84C] hover:bg-[#8B6914] text-white"
+          className="w-full bg-[#D9B84C] hover:bg-[#8B6914] text-[#0a0a0a]"
           onClick={handleSubmit}
           disabled={adjustMut.isPending}
         >
