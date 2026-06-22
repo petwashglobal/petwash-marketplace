@@ -56,13 +56,13 @@ const COUNTRIES = [
 const TOTAL_STEPS = 5;
 
 const TIER_DATA = [
-  { id: 'bronze', label: 'Bronze', points: '0', color: '#8E9EA8', bg: 'from-slate-400/10 to-slate-300/5' },
-  { id: 'silver', label: 'Silver', points: '1,000', color: '#B0BEC5', bg: 'from-slate-300/10 to-slate-200/5' },
-  { id: 'gold', label: 'Gold', points: '5,000', color: '#C5BFA0', bg: 'from-stone-300/10 to-stone-200/5' },
-  { id: 'platinum', label: 'Platinum', points: '15,000', color: '#A8C0CC', bg: 'from-cyan-200/10 to-sky-200/5' },
-  { id: 'diamond', label: 'Diamond', points: '30,000', color: '#7BC4D4', bg: 'from-cyan-400/10 to-teal-300/5' },
-  { id: 'royal_black', label: 'Royal Black', points: '50,000', color: '#2E3A4A', bg: 'from-gray-800/10 to-gray-700/5' },
-  { id: 'crown', label: 'Crown', points: '100,000', color: '#85C4CE', bg: 'from-teal-300/10 to-cyan-200/5' },
+  { id: 'bronze', label: 'Member', points: '0', color: '#7B2D9E', bg: 'from-purple-400/10 to-purple-300/5' },
+  { id: 'silver', label: 'Signature', points: '2,500', color: '#4F8FA0', bg: 'from-slate-300/10 to-slate-200/5' },
+  { id: 'gold', label: 'Elite', points: '7,500', color: '#1B8A45', bg: 'from-green-300/10 to-emerald-200/5' },
+  { id: 'platinum', label: 'Privilege', points: '15,000', color: '#15407A', bg: 'from-blue-300/10 to-sky-200/5' },
+  { id: 'diamond', label: 'Diamond', points: '25,000', color: '#6E899E', bg: 'from-slate-200/10 to-slate-100/5' },
+  { id: 'royal_black', label: 'Black Reserve', points: '40,000', color: '#2E3A4A', bg: 'from-gray-800/10 to-gray-700/5' },
+  { id: 'crown', label: 'Crown', points: '50,000', color: '#D9B84C', bg: 'from-amber-200/10 to-yellow-100/5' },
 ];
 
 const PLATFORMS = [
