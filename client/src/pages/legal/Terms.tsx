@@ -149,6 +149,22 @@ export default function TermsAndConditions() {
                     All bookings are subject to availability. Payments are processed through our secure payment
                     gateway (Nayax Israel) with 72-hour escrow protection.
                   </p>
+                  <p className="luxury-text-body">
+                    All prices are shown inclusive of VAT and every mandatory charge, as a single total, before
+                    you confirm — in line with the Consumer Protection Law (including section 17a). We do not add
+                    hidden fees at checkout. For marketplace bookings, a 15% platform commission is already
+                    included in the total you see; you pay one price. Discounts and promo codes apply to K9000
+                    self-service washes only.
+                  </p>
+                  <div className="luxury-glass-panel p-6 border-l-4 border-amber-500">
+                    <p className="luxury-heading-sm mb-3">Important — PetWash is not an insurer</p>
+                    <p className="luxury-text-body">
+                      PetWash is a platform that connects you with independent providers; it is not an insurer and
+                      provides no insurance. Independent providers are responsible for their own service and
+                      insurance. Nothing on PetWash is a contract of insurance. See our Disclaimer and the
+                      service-specific terms for details.
+                    </p>
+                  </div>
                   <div className="luxury-glass-panel p-6 border-l-4 border-blue-500">
                     <p className="luxury-heading-sm mb-3">Accepted Payment Methods</p>
                     <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
