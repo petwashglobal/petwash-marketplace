@@ -1628,13 +1628,23 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <Redirect to="/provider-onboarding?role=trainer" />}
         </Route>
 
-        {/* Provider Matching Flow — luxury real-time matching experience */}
+        {/* Provider Matching Flow — luxury real-time matching experience.
+            DEFAULT OFF: the live matching backend (/ws/match) is not built yet, so the
+            screen can only reveal fabricated DEMO_MATCHES providers with "Verified by
+            PetWash" pills — fake data must never reach real customers. Until live
+            matching ships, /find-provider redirects to the real marketplace (real
+            providers). Set VITE_PROVIDER_MATCHING_DEMO='true' to show the demo screen
+            for investor walkthroughs only. Nothing links here today (orphan route). */}
         <Route path="/find-provider">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ProviderMatchScreen />
-            </Suspense>
-          )}
+          {() =>
+            import.meta.env.VITE_PROVIDER_MATCHING_DEMO === 'true' ? (
+              <Suspense fallback={<PageLoader />}>
+                <ProviderMatchScreen />
+              </Suspense>
+            ) : (
+              <Redirect to="/marketplace" />
+            )
+          }
         </Route>
 
         {/* Flash Deals — provider limited-time discount marketplace */}
