@@ -3950,7 +3950,10 @@ console.log("Build: 1769350182889");
               {showMobileNav && <MobileBottomNav />}
           </AuthProvider>
           
-          {/* PWA Install Prompt disabled by user preference */}
+          {/* PWA "Save PetWash to your phone" — consented install prompt (iOS add-to-home / Android install).
+              Gated by showMobileNav so it NEVER renders on auth/onboarding/KYC/form routes (where it previously
+              bled behind the iOS keyboard and stole taps). Self-suppresses in standalone/native + 7-day cooldown. */}
+          {showMobileNav && <PWAInstallPrompt />}
           
           {/* GDPR-compliant cookie consent system */}
           <CookieConsent 

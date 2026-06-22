@@ -85,7 +85,7 @@ export default function ProviderOS() {
   const [moreMenuOpen, setMoreMenuOpen] = useState(false);
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [isAvailable, setIsAvailable] = useState(true);
-  const { user } = useFirebaseAuth();
+  const { user, logout } = useFirebaseAuth();
 
   // Real unread notification count from API
   const { data: notifications } = useQuery<any[]>({
@@ -222,12 +222,15 @@ export default function ProviderOS() {
             </div>
           </nav>
           <div className="px-4 py-3 border-t border-gray-100">
-            <Link href="/">
-              <a className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors">
-                <LogOut className="w-3.5 h-3.5" />
-                Back to site
-              </a>
-            </Link>
+            <button
+              type="button"
+              onClick={() => logout()}
+              className="flex items-center gap-2 text-xs text-gray-400 hover:text-gray-600 transition-colors"
+              data-testid="button-provideros-logout"
+            >
+              <LogOut className="w-3.5 h-3.5" />
+              Log out
+            </button>
           </div>
         </aside>
 
@@ -287,11 +290,14 @@ export default function ProviderOS() {
                 </div>
               </nav>
               <div className="px-4 py-3 border-t border-gray-100">
-                <Link href="/">
-                  <a className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700">
-                    <LogOut className="w-4 h-4" /> Back to site
-                  </a>
-                </Link>
+                <button
+                  type="button"
+                  onClick={() => logout()}
+                  className="flex items-center gap-2 text-sm text-gray-500 hover:text-gray-700"
+                  data-testid="button-provideros-logout-mobile"
+                >
+                  <LogOut className="w-4 h-4" /> Log out
+                </button>
               </div>
             </aside>
           </div>

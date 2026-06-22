@@ -2570,8 +2570,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <Button
                 onClick={handlePasskeySignIn}
                 disabled={passkeyLoading}
-                className="w-full h-13 text-sm font-medium text-white rounded-none tracking-wider uppercase transition-all border-0"
-                style={{ background: 'linear-gradient(135deg, #B8860B, #D9B84C)' }}
+                className="w-full h-13 text-sm font-medium text-[#0a0a0a] rounded-none tracking-wider uppercase transition-all border-0"
+                style={{ background: 'linear-gradient(135deg, #D4AF37, #F4D77A)' }}
                 data-testid="button-passkey-signin"
               >
                 {passkeyLoading ? (
