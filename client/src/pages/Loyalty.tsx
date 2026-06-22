@@ -75,6 +75,18 @@ const PRESTIGE_TIERS = [
     benefits: ['privilege.tierPrivilegeBenefit1', 'privilege.tierPrivilegeBenefit2'],
   },
   {
+    key: 'diamond',
+    nameKey: 'privilege.tierDiamond',
+    descKey: 'privilege.tierDiamondDesc',
+    cardBg: 'linear-gradient(145deg, #EAF2F7 0%, #CBD9E3 22%, #AEC2D0 48%, #92A9BA 72%, #7A93A6 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.40) 35%, rgba(255,255,255,0.50) 42%, transparent 55%)',
+    labelColor: '#3A4D5A',
+    tierNameColor: '#1F2D38',
+    borderColor: 'rgba(110,137,158,0.35)',
+    shadowMain: '0 25px 60px rgba(110,137,158,0.35), 0 10px 25px rgba(110,137,158,0.22)',
+    benefits: ['privilege.tierDiamondBenefit1', 'privilege.tierDiamondBenefit2'],
+  },
+  {
     key: 'blackReserve',
     nameKey: 'privilege.tierBlackReserve',
     descKey: 'privilege.tierBlackReserveDesc',
@@ -87,16 +99,29 @@ const PRESTIGE_TIERS = [
     isInviteOnly: true,
     benefits: ['privilege.tierBlackReserveBenefit1', 'privilege.tierBlackReserveBenefit2'],
   },
+  {
+    key: 'crown',
+    nameKey: 'privilege.tierCrown',
+    descKey: 'privilege.tierCrownDesc',
+    cardBg: 'linear-gradient(145deg, #F4D77A 0%, #D9B84C 30%, #D4AF37 55%, #B8860B 80%, #9C7209 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.30) 35%, rgba(255,255,255,0.42) 42%, transparent 55%)',
+    labelColor: '#4A3808',
+    tierNameColor: '#2E2204',
+    borderColor: 'rgba(184,134,11,0.45)',
+    shadowMain: '0 25px 60px rgba(156,114,9,0.40), 0 10px 25px rgba(156,114,9,0.28)',
+    isInviteOnly: true,
+    benefits: ['privilege.tierCrownBenefit1', 'privilege.tierCrownBenefit2'],
+  },
 ];
 
 const COMPARISON_ROWS = [
-  { key: 'privilege.compareBonusCredit', values: ['-', '+5%', '+10%', '+15%', '+15%'] },
-  { key: 'privilege.comparePriorityBooking', values: [false, true, true, true, true] },
-  { key: 'privilege.compareBirthdayReward', values: [true, true, true, true, true] },
-  { key: 'privilege.compareExclusiveOffers', values: [false, true, true, true, true] },
-  { key: 'privilege.compareFreeWashMilestone', values: [false, false, true, true, true] },
-  { key: 'privilege.compareConcierge', values: [false, false, false, true, true] },
-  { key: 'privilege.compareInviteOnly', values: [false, false, false, false, true] },
+  { key: 'privilege.compareBonusCredit', values: ['-', '+5%', '+10%', '+15%', '+15%', '+15%', '+15%'] },
+  { key: 'privilege.comparePriorityBooking', values: [false, true, true, true, true, true, true] },
+  { key: 'privilege.compareBirthdayReward', values: [true, true, true, true, true, true, true] },
+  { key: 'privilege.compareExclusiveOffers', values: [false, true, true, true, true, true, true] },
+  { key: 'privilege.compareFreeWashMilestone', values: [false, false, true, true, true, true, true] },
+  { key: 'privilege.compareConcierge', values: [false, false, false, true, true, true, true] },
+  { key: 'privilege.compareInviteOnly', values: [false, false, false, false, false, true, true] },
 ];
 
 function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL: boolean }) {
@@ -348,7 +373,9 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                           {tier.key === 'signature' && <Star className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
                           {tier.key === 'elite' && <Crown className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
                           {tier.key === 'privilege' && <Diamond className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'diamond' && <Sparkles className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
                           {tier.key === 'blackReserve' && <Shield className="w-3.5 h-3.5" style={{ color: gold }} />}
+                          {tier.key === 'crown' && <Crown className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
                         </div>
                       </div>
                       <div>
@@ -504,7 +531,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             className="bg-white rounded-xl shadow-sm border border-gray-100"
           >
             {/* Header row */}
-            <div className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
+            <div className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr' }}>
               <div className="p-2 sm:p-3" style={{ borderBottom: '1px solid #f0f0f0' }} />
               {PRESTIGE_TIERS.map((tier) => {
                 const headerColors: Record<string, string> = {
@@ -512,7 +539,9 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                   signature: '#937225',
                   elite: '#1B8A45',
                   privilege: '#15407A',
+                  diamond: '#6E899E',
                   blackReserve: '#1a1a1a',
+                  crown: '#9C7209',
                 };
                 const c = headerColors[tier.key] || '#6b7280';
                 return (
@@ -534,7 +563,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             </div>
             {/* Data rows */}
             {COMPARISON_ROWS.map((row, ri) => (
-              <div key={ri} className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr' }}>
+              <div key={ri} className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr' }}>
                 <div className="p-2 sm:p-3 text-[11px] sm:text-sm text-gray-600 font-medium flex items-center" style={{ borderBottom: '1px solid #f5f5f5' }}>
                   {t(row.key, language)}
                 </div>
