@@ -23,7 +23,7 @@ import { useLocation, Link } from "wouter";
 import diamondLogo from "@assets/IMG_3257_1771244654511.png";
 import diamondLogoBlack from "@assets/IMG_3269_1771249415226.png";
 
-const gold = '#85C4CE';
+const gold = '#D9B84C'; // brand gold (was teal #85C4CE — a var named "gold" holding teal)
 
 const PRESTIGE_TIERS = [
   {
@@ -969,7 +969,7 @@ export default function Loyalty() {
                     const tierColors: Record<LoyaltyTier, { accent: string }> = {
                       bronze: { accent: '#8E9EA8' },
                       silver: { accent: '#94A3B8' },
-                      gold: { accent: '#85C4CE' },
+                      gold: { accent: '#D9B84C' },
                       platinum: { accent: '#9CA3AF' },
                       diamond: { accent: '#3B82F6' },
                       emerald: { accent: '#10B981' },
