@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
 import { eq, and, desc, sql } from 'drizzle-orm';
+import { validateProviderRates } from '@shared/providerMinPrices';
 import {
   providerOperationalSettings,
   providerBlockedList,
@@ -311,6 +312,19 @@ router.put('/pricing/:platform', async (req, res) => {
       sizeSmallAdjustment, sizeLargeAdjustment, sizeXlargeAdjustment,
       minBookingAmountCents,
     } = req.body;
+
+    // PLATFORM PRICE FLOOR: providers set their own rate, but cannot undercut the
+    // sensible minimum for the service (no ₪0.02 / ₪10 jobs). Reject below-floor.
+    const priceCheck = validateProviderRates(platform, [
+      baseRatePerHourCents, baseRatePerVisitCents, baseRatePerNightCents, minBookingAmountCents,
+    ]);
+    if (!priceCheck.ok) {
+      return res.status(400).json({
+        error: 'PRICE_TOO_LOW',
+        message: priceCheck.message,
+        minPriceCents: priceCheck.minPriceCents,
+      });
+    }
 
     const patch = {
       providerId: uid,
