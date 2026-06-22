@@ -185,7 +185,7 @@ import israeliCompliance2025Routes from "./routes/israeli-compliance-2025";
 import platformApiRoutes from "./routes/platform-api";
 import { resolvePlatformMiddleware } from "./middleware/platformContext";
 import { auditMiddleware } from "./middleware/auditLogger";
-import { requireRole, requireStaffApproved, requireProviderActive, requireSuperAdmin, requireMfaEnrolled } from "./middleware/gates";
+import { requireRole, requireStaffApproved, requireProviderActive, requireSuperAdmin, requireMfaEnrolled, enforceReadOnlyMutations } from "./middleware/gates";
 import { ADMIN_ROLES, ADMIN_ROLES_ARRAY } from '@shared/adminRoles';
 import { blockDuringIncident } from './middleware/incidentGuard';
 import { activateIncidentMode, deactivateIncidentMode, getIncidentStatus } from './services/incidentMode';
@@ -472,6 +472,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   // ADMIN_ROLES is the single canonical list — imported from @shared/adminRoles.
   // requireStaffApproved skips the staff_active status check for elevated roles (admin/management/etc).
   app.use('/api/admin/', requireRole(...ADMIN_ROLES_ARRAY), requireStaffApproved, requireMfaEnrolled);
+  // READ-ONLY enforcement: 'viewer' accounts (external accountants, observers like
+  // ido.s@petwash.co.il) pass the role gate above and can VIEW every admin screen,
+  // but every mutating request is rejected here. Nir (super admin) is never blocked.
+  app.use('/api/admin/', enforceReadOnlyMutations);
   // Maya Voice admin review routes (Stage 3A) — gated by ff.maya.voice.enabled.
   // Mounted BEFORE /api/admin/maya so /voice/* routes through this voice gate first.
   app.use('/api/admin/maya/voice', adminMayaVoiceRouter);
