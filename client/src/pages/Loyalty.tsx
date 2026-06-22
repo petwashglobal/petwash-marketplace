@@ -528,10 +528,10 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             initial={{ opacity: 0, y: 16 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            className="bg-white rounded-xl shadow-sm border border-gray-100"
+            className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-x-auto"
           >
             {/* Header row */}
-            <div className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr' }}>
+            <div className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', minWidth: '620px' }}>
               <div className="p-2 sm:p-3" style={{ borderBottom: '1px solid #f0f0f0' }} />
               {PRESTIGE_TIERS.map((tier) => {
                 const headerColors: Record<string, string> = {
@@ -563,7 +563,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             </div>
             {/* Data rows */}
             {COMPARISON_ROWS.map((row, ri) => (
-              <div key={ri} className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr' }}>
+              <div key={ri} className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', minWidth: '620px' }}>
                 <div className="p-2 sm:p-3 text-[11px] sm:text-sm text-gray-600 font-medium flex items-center" style={{ borderBottom: '1px solid #f5f5f5' }}>
                   {t(row.key, language)}
                 </div>
