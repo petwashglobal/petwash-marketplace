@@ -90,7 +90,7 @@ const PRESTIGE_TIERS = [
 ];
 
 const COMPARISON_ROWS = [
-  { key: 'privilege.compareBonusCredit', values: ['-', '+5%', '+10%', '+15%', '+25%'] },
+  { key: 'privilege.compareBonusCredit', values: ['-', '+5%', '+10%', '+15%', '+15%'] },
   { key: 'privilege.comparePriorityBooking', values: [false, true, true, true, true] },
   { key: 'privilege.compareBirthdayReward', values: [true, true, true, true, true] },
   { key: 'privilege.compareExclusiveOffers', values: [false, true, true, true, true] },
