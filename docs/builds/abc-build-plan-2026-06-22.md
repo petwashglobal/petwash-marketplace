@@ -103,3 +103,35 @@ actual numbers (cleaning fee ₪?, deposit %?, nightly-rate tiers?). (c) approve
 4. **C full engine** — after you approve features + numbers + migration.
 
 *Reply with the decisions and I build each exactly to them — no guessing on your money.*
+
+---
+
+## DECISIONS CONFIRMED (CEO, 22 Jun 2026) + what shipped
+
+- **A — member home:** keep marketing home, add a "My Pass" button. ✅ SHIPPED — `PetWashHeader.tsx`
+  now shows a "My Pass" entry (header icon next to the bell + mobile drawer) → `/prestige-pass`,
+  bilingual. No layout change.
+- **C — multi-pet bug:** fix per-night. ✅ SHIPPED — `BookingLifecycleService.ts` now multiplies the
+  additional-pet surcharge by nights for per-night bookings. Quote tests pass.
+- **B — tier names:** unified 7-tier ladder = **Member · Signature · Elite · Privilege · Diamond ·
+  Black Reserve · Crown**.
+- **B — the +25% row:** it's a discount → **cap at 15%**. ✅ SHIPPED — `Loyalty.tsx`
+  `compareBonusCredit` top column +25% → +15% (removes the impossible claim).
+
+### B — remaining work (NOT yet built; needs a careful, mockup-first session)
+
+The 5 current tiers (`Loyalty.tsx` PRESTIGE_TIERS) must grow to the 7 confirmed names by inserting
+**Diamond** (between Privilege and Black Reserve) and **Crown** (top). This requires:
+1. **Mockup-first** the two NEW cards (Diamond = icy platinum/silver; Crown = brand gold sheen) and
+   get CEO approval before coding — per the brand rule (never build a visual unapproved).
+2. New i18n keys: `privilege.tierDiamond(/Desc/Benefit1/2)`, `privilege.tierCrown(...)` across all
+   6 languages, plus 2 extra values in every `COMPARISON_ROWS` array.
+3. Re-point `PrivilegeSignup.tsx` (its 7 ids bronze→crown) to the confirmed luxury names.
+4. Decide whether the canonical `schema-loyalty.ts` enum (Bronze→Royal) is renamed too — that's a
+   DB enum/migration with backend blast radius; recommend keeping the schema keys stable and mapping
+   display names in the UI layer (no migration) unless CEO wants the DB values renamed.
+5. Confirm the real per-tier discount % for all 7 (must respect: member 5%, ≤10% standard, 15% only
+   via Black code) before any number reaches the UI.
+
+Recommendation: build B's visual expansion in a dedicated mockup→approve→implement pass, not at the
+tail of a long session.
