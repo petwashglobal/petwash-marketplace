@@ -133,6 +133,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const { toast } = useToast();
   const he = language === 'he';
 
+  // Consent — both UNCHECKED by default (active opt-in is a legal requirement;
+  // pre-ticked consent is unlawful under Israeli privacy law). Submit + every
+  // social method is blocked until both are ticked. Terms/Privacy are clickable.
+  const [agreedTerms, setAgreedTerms] = useState(false);
+  const [over18, setOver18] = useState(false);
+  const consentOk = agreedTerms && over18;
+
   useEffect(() => {
     const root = document.getElementById('root');
     document.documentElement.setAttribute('data-pw-page', 'signup');
@@ -661,17 +668,33 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${phone}` : `Enter the code sent to ${phone}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verify(c); }} loading={busy} language={he ? 'he' : 'en'} />
-              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+              <button className="sl-btn" disabled={busy || !consentOk} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
             </>
           )}
 
           {!sent && (
             <>
-              <button className="sl-cta" disabled={!readyForSubmit}
+              <div className="sl-consent" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 6px', fontSize: '13px', lineHeight: 1.6, textAlign: he ? 'right' : 'left' }}>
+                <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', flexShrink: 0 }} />
+                  <span>
+                    {he ? 'אני מסכים/ה ל' : 'I agree to the '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
+                    {he ? ' ול' : ' and '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'מדיניות הפרטיות' : 'Privacy Policy'}</a>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer', marginTop: '8px' }}>
+                  <input type="checkbox" checked={over18} onChange={(e) => setOver18(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', flexShrink: 0 }} />
+                  <span>{he ? 'אני מאשר/ת שאני בן/בת 18 ומעלה' : 'I confirm I am 18 years or older'}</span>
+                </label>
+              </div>
+              <button className="sl-cta" disabled={!readyForSubmit || !consentOk}
                 onClick={() => ((method === 'email' || method === 'other') ? void emailSubmit() : void sendCode())}>
                 <FaLock aria-hidden /> {ctaLabel}
               </button>
               {!readyForSubmit && <div className="sl-hint sl-submitHint">{t.completeFields}</div>}
+              {readyForSubmit && !consentOk && <div className="sl-hint sl-submitHint">{he ? 'יש לאשר את התנאים וגיל 18+' : 'Please accept the terms and confirm you are 18+'}</div>}
 
               <div className="sl-bank">
                 <FaShieldAlt aria-hidden /> <span>{t.bank}</span>
@@ -686,26 +709,26 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {/* === Social tiles — real auth alternatives, below phone-first signup. === */}
               <div className="sl-social4">
                 {signupFlags.googleSignin && (
-                  <button className="sl-soc" disabled={busy} onClick={() => social('google')}>
+                  <button className="sl-soc" disabled={busy || !consentOk} onClick={() => social('google')}>
                     <GoogleIcon /> <span className="sl-socLabel">{t.cwGoogle}</span>
                   </button>
                 )}
 
                 {signupFlags.appleSignin && (
-                  <button className="sl-soc sl-soc--apple" disabled={busy} onClick={() => social('apple')}>
+                  <button className="sl-soc sl-soc--apple" disabled={busy || !consentOk} onClick={() => social('apple')}>
                     <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
                   </button>
                 )}
 
                 {signupFlags.facebookSignin && (
-                  <button className="sl-soc sl-soc--fb" disabled={busy} onClick={() => social('facebook')}>
+                  <button className="sl-soc sl-soc--fb" disabled={busy || !consentOk} onClick={() => social('facebook')}>
                     <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
                     <span className="sl-socLabel">{t.cwFb}</span>
                   </button>
                 )}
 
                 {signupFlags.instagramSignin && (
-                  <button className="sl-soc sl-soc--ig" disabled={busy} onClick={() => socialExternal('instagram')}>
+                  <button className="sl-soc sl-soc--ig" disabled={busy || !consentOk} onClick={() => socialExternal('instagram')}>
                     <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
                     <span className="sl-socLabel">{t.cwIg}</span>
                   </button>
