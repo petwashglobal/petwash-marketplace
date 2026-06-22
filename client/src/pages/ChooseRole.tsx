@@ -18,6 +18,16 @@ export default function ChooseRole() {
   const lang = localStorage.getItem("i18nextLng") || "he";
   const isHe = lang === "he";
 
+  // Pre-signup fallback: when the visitor has no account yet, /api/auth/choose-role
+  // (requireAuth) returns 401 with no destination — so we route them straight to the
+  // right signup based on their pick. This makes the gate work BEFORE signup (the
+  // customer/provider fork) as well as after login. No one gets stranded.
+  const PRE_SIGNUP_ROUTE: Record<SignupIntent, string> = {
+    [SIGNUP_INTENT.CUSTOMER]: "/signup",
+    [SIGNUP_INTENT.PROVIDER]: "/become-provider",
+    [SIGNUP_INTENT.STAFF]: "/signup",
+  };
+
   const handleChoice = async (intent: SignupIntent) => {
     if (loading) return;
     setLoading(intent);
@@ -28,16 +38,13 @@ export default function ChooseRole() {
         credentials: "include",
         body: JSON.stringify({ intent }),
       });
-      const data = await res.json();
-      const destination = data.redirectTo || data.nextUrl;
-      if (destination) {
-        navigate(destination);
-      } else {
-        setLoading(null);
-      }
+      const data = await res.json().catch(() => ({}));
+      const destination = data.redirectTo || data.nextUrl || PRE_SIGNUP_ROUTE[intent];
+      navigate(destination);
     } catch (err) {
       console.error("[ChooseRole] Error:", err);
-      setLoading(null);
+      // Network/endpoint failure — still send them to the right signup, never strand.
+      navigate(PRE_SIGNUP_ROUTE[intent]);
     }
   };
 

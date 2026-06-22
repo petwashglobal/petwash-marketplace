@@ -884,14 +884,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/booking/intake">{() => <Redirect to={`/booking${window.location.search}`} />}</Route>
         <Route path="/guest/checkout">{() => <Redirect to={`/egift${window.location.search}`} />}</Route>
 
-        {/* Post-login role routing pages — all require auth */}
+        {/* Dual-purpose gate: PUBLIC so it works as the pre-signup customer/provider
+            fork (anonymous → /signup or /become-provider via the component's fallback)
+            AND as the post-login role chooser (authed → /api/auth/choose-role redirect). */}
         <Route path="/choose-role">
           {() => (
-            <RequireAuth>
+            <Suspense fallback={<PageLoader />}>
               <ChooseRole />
-            </RequireAuth>
+            </Suspense>
           )}
         </Route>
+        {/* Other post-login role routing pages still require auth */}
         <Route path="/complete-profile">
           {() => (
             <RequireAuth>
