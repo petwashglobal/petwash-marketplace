@@ -112,7 +112,6 @@ const EGift = lazy(() => import("@/pages/EGift"));
 const GiftActivate = lazy(() => import("@/pages/GiftActivate"));
 const Vouchers = lazy(() => import("@/pages/Vouchers"));
 const Verify = lazy(() => import("@/pages/Verify"));
-const Privacy = lazy(() => import("@/pages/Privacy"));
 const PrivacyPolicy = lazy(() => import("@/pages/PrivacyPolicy"));
 const AccountDeletionResource = lazy(() => import("@/pages/AccountDeletionResource"));
 const Terms = lazy(() => import("@/pages/Terms"));
@@ -149,7 +148,6 @@ const AdminSystemLogs = lazy(() => import("@/pages/AdminSystemLogs"));
 const AdminVouchers = lazy(() => import("@/pages/AdminVouchers"));
 const AdminCoupons = lazy(() => import("@/pages/AdminCoupons"));
 const UserCoupons = lazy(() => import("@/pages/UserCoupons"));
-const AdminFinancial = lazy(() => import("@/pages/AdminFinancial"));
 const AdminWalletDashboard = lazy(() => import("@/pages/AdminWalletDashboard"));
 const MoneyFlow = lazy(() => import("@/pages/MoneyFlow"));
 const CrmDashboard = lazy(() => import("@/pages/CrmDashboard"));
@@ -179,7 +177,6 @@ const EnterpriseFeaturesShowcase = lazy(() => import("@/pages/EnterpriseFeatures
 const PetWashCircle = lazy(() => import("@/pages/PetWashCircle"));
 // DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use)
 // const PlushLab = lazy(() => import("@/pages/PlushLab"));
-const StandaloneDivisions = lazy(() => import("@/pages/StandaloneDivisions"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const SecurityStatus = lazy(() => import("@/pages/SecurityStatus"));
@@ -223,7 +220,6 @@ const BayTimeline = lazy(() => import("@/pages/BayTimeline"));
 const AdminBayMap = lazy(() => import("@/pages/AdminBayMap"));
 const AdminCommandLog = lazy(() => import("@/pages/AdminCommandLog"));
 const AdminCompensation = lazy(() => import("@/pages/AdminCompensation"));
-const ProviderTimeline = lazy(() => import("@/pages/ProviderTimeline"));
 const CustomerTimeline = lazy(() => import("@/pages/CustomerTimeline"));
 const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
 const AdminTeamInvitations = lazy(() => import("@/pages/AdminTeamInvitations"));
@@ -332,12 +328,7 @@ const WalkBookingFlow = lazy(() => import("@/pages/walk-my-pet/BookingFlow"));
 const WalkOwnerDashboardPage = lazy(() => import("@/pages/walk-my-pet/OwnerDashboard"));
 
 // ⁦PetTrek™⁩ - Advanced Pet Transport
-const PetTrekOverview = lazy(() => import("@/pages/pettrek/Overview"));
 const PetTrek = lazy(() => import("@/pages/pettrek/BrowseDrivers"));
-const DriverDetail = lazy(() => import("@/pages/pettrek/DriverDetail"));
-const PetTrekBookingFlow = lazy(() => import("@/pages/pettrek/BookingFlow"));
-const PetTrekCustomerDashboard = lazy(() => import("@/pages/pettrek/CustomerDashboard"));
-const PetTrekDriverDashboard = lazy(() => import("@/pages/pettrek/DriverDashboard"));
 
 // Grooming Marketplace - Professional Pet Grooming Services
 const GroomersOverview = lazy(() => import("@/pages/groomers/Overview"));
@@ -426,7 +417,6 @@ const Meetings = lazy(() => import("@/pages/Meetings"));
 const PlatformLegalFramework = lazy(() => import("@/pages/PlatformLegalFramework"));
 const ProviderOnboarding = lazy(() => import("@/pages/ProviderOnboarding"));
 const ProviderListings = lazy(() => import("@/pages/ProviderListings"));
-const PlatformShowcase = lazy(() => import("@/pages/PlatformShowcase"));
 const PawFinder = lazy(() => import("@/pages/PawFinder"));
 const AdoptionMaison = lazy(() => import("@/pages/AdoptionMaison"));
 const ServiceStatus = lazy(() => import("@/pages/ServiceStatus"));
@@ -462,7 +452,6 @@ const EGiftPolicy = lazy(() => import("@/pages/legal/EGiftPolicy"));
 const LoyaltyTermsPage = lazy(() => import("@/pages/legal/LoyaltyTerms"));
 const CookiesPolicy = lazy(() => import("@/pages/legal/Cookies"));
 const Trademarks = lazy(() => import("@/pages/legal/Trademarks"));
-const AccessibilityStatementPage = lazy(() => import("@/pages/legal/AccessibilityStatement"));
 const MarketplaceTerms = lazy(() => import("@/pages/legal/MarketplaceTerms"));
 const LegalDisclaimer = lazy(() => import("@/pages/legal/Disclaimer"));
 // Legal Routes — Israel 2026 set (draft, pending counsel)
@@ -507,9 +496,7 @@ const ManualIncidentReporting = lazy(() => import("@/pages/manuals/IncidentRepor
 const ManualProviderSupport = lazy(() => import("@/pages/manuals/ProviderSupportManual"));
 
 // ⁦Walk My Pet™⁩ Pages
-const TrackWalk = lazy(() => import("@/pages/walks/TrackWalk"));
 const BookingChat = lazy(() => import("@/pages/BookingChat"));
-const BookingChatInbox = lazy(() => import("@/pages/BookingChatInbox"));
 const AdminBookingChat = lazy(() => import("@/pages/admin/AdminBookingChat"));
 
 // ⁦PetTrek™⁩ Pages
@@ -527,9 +514,6 @@ const WalkTracking = lazy(() => import("@/pages/WalkTracking"));
 const TrackMyPetLive = lazy(() => import("@/pages/WalkTracking"));
 
 // ⁦PetTrek™⁩ - Legacy/Alias Pages
-const PetTrekBooking = lazy(() => import("@/pages/pettrek/BookTrip")); // Alias
-const PetTrekTracking = lazy(() => import("@/pages/pettrek/TrackTrip")); // Alias
-const PetTrekProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDashboard")); // Alias
 
 // Unified Provider Dashboard (Pet Wash™ style)
 
@@ -539,7 +523,6 @@ const PetTrekProviderDashboard = lazy(() => import("@/pages/pettrek/ProviderDash
 const ProviderOS = lazy(() => import("@/pages/provider-os/ProviderOS"));
 
 // E-Signature System
-const DocumentSigning = lazy(() => import("@/pages/DocumentSigning"));
 
 // Personal Secure Inbox
 const PersonalInbox = lazy(() => import("@/pages/PersonalInbox"));
