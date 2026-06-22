@@ -1507,12 +1507,17 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
       return res.status(500).json({ error: 'Payout failed' });
     }
     
-    // STEP 3: Update booking status
+    // STEP 3: Update booking status.
+    // HONESTY (no-fake-data rule): the SERVICE is completed, but processSitterPayout
+    // does NOT actually transfer money yet (real Nayax payout rail is a TODO). So the
+    // payout is 'pending' (owed, not sent) — never 'completed' — until a real transfer
+    // exists. The settlement + VAT records above are correct (the taxable supply is the
+    // completed service, independent of when the sitter is actually paid).
     const [updatedBooking] = await db
       .update(sitterBookings)
       .set({
         status: 'completed',
-        payoutStatus: 'completed',
+        payoutStatus: 'pending',
         completedAt: new Date(),
         updatedAt: new Date(),
       })
