@@ -2177,7 +2177,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
           animate={{ opacity: 1, y: 0 }}
           className="text-center space-y-6"
         >
-          <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #12936A, #12936A)' }}>
+          <div className="w-16 h-16 rounded-full mx-auto flex items-center justify-center" style={{ background: 'linear-gradient(135deg, #D9B84C, #D9B84C)' }}>
             <Sparkles className="w-8 h-8 text-white" />
           </div>
           <div className="space-y-2">
@@ -2190,7 +2190,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             <Button
               onClick={() => navigatePostLogin()}
               className="text-white rounded-full px-8"
-              style={{ background: 'linear-gradient(90deg, #12936A, #12936A)' }}
+              style={{ background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}
               data-testid="button-go-to-dashboard"
             >
               {t('auth.goToDashboard', language)}
@@ -2571,7 +2571,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 onClick={handlePasskeySignIn}
                 disabled={passkeyLoading}
                 className="w-full h-13 text-sm font-medium text-white rounded-none tracking-wider uppercase transition-all border-0"
-                style={{ background: 'linear-gradient(135deg, #0C5B3F, #12936A)' }}
+                style={{ background: 'linear-gradient(135deg, #B8860B, #D9B84C)' }}
                 data-testid="button-passkey-signin"
               >
                 {passkeyLoading ? (

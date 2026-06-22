@@ -102,7 +102,7 @@ import {
 } from "@/components/ui/select";
 import { Link } from "wouter";
 
-const GOLD = "#12936A";
+const GOLD = "#D9B84C";
 
 function centsToILS(cents: number): string {
   return (cents / 100).toLocaleString("he-IL", { style: "currency", currency: "ILS", minimumFractionDigits: 2 });

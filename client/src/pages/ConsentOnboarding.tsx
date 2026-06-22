@@ -112,11 +112,11 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
           {/* Gold circle background */}
           <div
             className="w-48 h-48 rounded-full flex items-center justify-center"
-            style={{ backgroundColor: '#ffffff', border: '1.5px solid rgba(18,147,106,0.25)', borderRadius: '50%' }}
+            style={{ backgroundColor: '#ffffff', border: '1.5px solid rgba(217, 184, 76,0.25)', borderRadius: '50%' }}
           >
             <div
               className="w-36 h-36 rounded-full flex items-center justify-center"
-              style={{ backgroundColor: '#12936A' }}
+              style={{ backgroundColor: '#D9B84C' }}
             >
               <PawPrint className="w-20 h-20 text-white" strokeWidth={1.5} />
             </div>
@@ -143,7 +143,7 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold underline"
-            style={{ color: '#12936A' }}
+            style={{ color: '#0a0a0a' }}
           >
             {t.terms}
           </a>
@@ -153,7 +153,7 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
             target="_blank"
             rel="noopener noreferrer"
             className="font-semibold underline"
-            style={{ color: '#12936A' }}
+            style={{ color: '#0a0a0a' }}
           >
             {t.privacy}
           </a>
@@ -179,8 +179,8 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
             <div
               className="w-6 h-6 rounded border-2 flex items-center justify-center transition-colors"
               style={{
-                borderColor: marketingConsent ? '#12936A' : '#d1d5db',
-                backgroundColor: marketingConsent ? '#12936A' : 'white',
+                borderColor: marketingConsent ? '#D9B84C' : '#d1d5db',
+                backgroundColor: marketingConsent ? '#D9B84C' : 'white',
               }}
             >
               {marketingConsent && (
@@ -201,7 +201,7 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
           disabled={loading}
           data-testid="button-agree-and-continue"
           className="w-full h-14 rounded-2xl font-bold text-base tracking-wide text-white flex items-center justify-center gap-2 transition-opacity disabled:opacity-60"
-          style={{ backgroundColor: '#12936A' }}
+          style={{ backgroundColor: '#D9B84C' }}
         >
           {loading ? (
             <div className="w-5 h-5 rounded-full border-2 border-white border-t-transparent animate-spin" />

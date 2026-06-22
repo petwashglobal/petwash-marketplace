@@ -250,7 +250,7 @@ const isActive = location === path
   || location.startsWith(path + '/')
   || (path === '/paw-finder' && pawFinderAliases.some(...));
 ```
-Works for `/my-account` exactly. Active style colors icon + label gold (`#12936A`). When `MyAccount` crashes, the bottom nav still renders if the `AppErrorBoundary` is **outside** the Router — but in this app `AppErrorBoundary` wraps the WHOLE app at `main.tsx:62-66`. So the crash UI replaces the entire tree; bottom nav disappears. **Result:** the user is stranded with only "Reload" / "Go Home". This is a UX regression worth noting.
+Works for `/my-account` exactly. Active style colors icon + label gold (`#D9B84C`). When `MyAccount` crashes, the bottom nav still renders if the `AppErrorBoundary` is **outside** the Router — but in this app `AppErrorBoundary` wraps the WHOLE app at `main.tsx:62-66`. So the crash UI replaces the entire tree; bottom nav disappears. **Result:** the user is stranded with only "Reload" / "Go Home". This is a UX regression worth noting.
 
 ### 5.2 Logged-out vs logged-in visibility
 `MobileBottomNav.tsx:44`: `if (loading || roleLoading || !user) return null`. Hidden when logged out. ✓

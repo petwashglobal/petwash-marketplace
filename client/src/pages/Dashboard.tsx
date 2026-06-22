@@ -310,12 +310,12 @@ function tx(key: string, lang: string): string {
 }
 
 // Deep gold readable on white: #8A6A1B ≈ 5.2:1 contrast (WCAG AA pass),
-// vs the old #0C5B3F (2.9:1, failed AA / Israeli accessibility law).
+// vs the old #B8860B (2.9:1, failed AA / Israeli accessibility law).
 // Still unmistakably gold — same tone already used for the membership badge.
 const goldText = { color: '#8A6A1B' };
-const cardBorder = '1px solid rgba(18, 147, 106, 0.2)';
-const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(18, 147, 106, 0.08)';
-const divider = '1px solid rgba(18, 147, 106, 0.12)';
+const cardBorder = '1px solid rgba(217, 184, 76, 0.2)';
+const cardShadow = '0 2px 16px rgba(0, 0, 0, 0.07), 0 0 0 0.5px rgba(217, 184, 76, 0.08)';
+const divider = '1px solid rgba(217, 184, 76, 0.12)';
 
 function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNode; className?: string; delay?: number }) {
   return (
@@ -746,8 +746,8 @@ export default function Dashboard() {
             className="w-full rounded-2xl overflow-hidden mb-4"
             style={{
               background: 'linear-gradient(135deg, #fffdf7 0%, #fdf8ee 50%, #fffcf5 100%)',
-              border: '1px solid rgba(18,147,106,0.45)',
-              boxShadow: '0 4px 20px rgba(18,147,106,0.12), 0 1px 4px rgba(0,0,0,0.06)',
+              border: '1px solid rgba(217, 184, 76,0.45)',
+              boxShadow: '0 4px 20px rgba(217, 184, 76,0.12), 0 1px 4px rgba(0,0,0,0.06)',
             }}
           >
             {/* Gold shimmer top bar */}
@@ -782,7 +782,7 @@ export default function Dashboard() {
                 </div>
                 <div className="flex items-center gap-2">
                   <span className="text-xs px-2 py-0.5 rounded-full font-semibold"
-                    style={{ background: 'rgba(18,147,106,0.15)', color: '#D4AF37', border: '1px solid rgba(18,147,106,0.3)' }}>
+                    style={{ background: 'rgba(217, 184, 76,0.15)', color: '#D4AF37', border: '1px solid rgba(217, 184, 76,0.3)' }}>
                     {he ? 'פתח' : 'Open'}
                   </span>
                   <ChevronRight className="w-4 h-4 opacity-40 group-hover:opacity-80 transition-opacity" style={{ color: '#D4AF37' }} />
@@ -791,7 +791,7 @@ export default function Dashboard() {
             </button>
 
             {/* Divider */}
-            <div style={{ height: '1px', background: 'rgba(18,147,106,0.12)', marginInline: '16px' }} />
+            <div style={{ height: '1px', background: 'rgba(217, 184, 76,0.12)', marginInline: '16px' }} />
 
             {/* Add to Mobile Wallet buttons */}
             <div className="px-4 py-3 flex gap-2">
@@ -845,7 +845,7 @@ export default function Dashboard() {
                 style={{
                   background: 'transparent',
                   color: '#D4AF37',
-                  border: '1px solid rgba(18,147,106,0.4)',
+                  border: '1px solid rgba(217, 184, 76,0.4)',
                   cursor: sendWalletEmailMutation.isPending ? 'wait' : 'pointer',
                   opacity: sendWalletEmailMutation.isPending ? 0.6 : 1,
                   flexShrink: 0,

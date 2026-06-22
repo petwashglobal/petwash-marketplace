@@ -52,8 +52,8 @@ export function LoyaltyWalletCard({ data: propData, compact = false }: Props) {
   if (compact) {
     return (
       <Link href="/loyalty/credits">
-        <a className="inline-flex items-center gap-2 bg-[#12936A]/10 rounded-xl px-3 py-1.5 text-sm font-semibold text-[#7A5C1E] hover:bg-[#12936A]/20 transition-colors">
-          <Coins className="w-4 h-4 text-[#12936A]" />
+        <a className="inline-flex items-center gap-2 bg-[#D9B84C]/10 rounded-xl px-3 py-1.5 text-sm font-semibold text-[#7A5C1E] hover:bg-[#D9B84C]/20 transition-colors">
+          <Coins className="w-4 h-4 text-[#0a0a0a]" />
           {isLoading ? "…" : balance ? `₪${balance.ils}` : "₪0.00"}
         </a>
       </Link>
@@ -62,8 +62,8 @@ export function LoyaltyWalletCard({ data: propData, compact = false }: Props) {
 
   return (
     <Link href="/loyalty/credits">
-      <a className="block rounded-3xl overflow-hidden shadow-md shadow-[#12936A]/20 hover:shadow-lg hover:shadow-[#12936A]/30 transition-all">
-        <div className="bg-gradient-to-br from-[#12936A] to-[#8B6914] p-5 text-white">
+      <a className="block rounded-3xl overflow-hidden shadow-md shadow-[#D9B84C]/20 hover:shadow-lg hover:shadow-[#D9B84C]/30 transition-all">
+        <div className="bg-gradient-to-br from-[#D9B84C] to-[#8B6914] p-5 text-white">
           {/* Header */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">

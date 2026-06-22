@@ -274,11 +274,11 @@ body {
 .gold-shimmer-text {
   background: linear-gradient(
     90deg,
-    #12936A 0%,
+    #D9B84C 0%,
     #e8d5a3 25%,
-    #12936A 50%,
+    #D9B84C 50%,
     #a08050 75%,
-    #12936A 100%
+    #D9B84C 100%
   );
   background-size: 200% auto;
   -webkit-background-clip: text;
@@ -291,7 +291,7 @@ body {
 .gold-shimmer-btn {
   position: relative;
   overflow: hidden;
-  background: linear-gradient(135deg, #12936A 0%, #36C98F 50%, #12936A 100%);
+  background: linear-gradient(135deg, #D9B84C 0%, #F4D77A 50%, #D9B84C 100%);
   transition: all 0.4s ease;
 }
 
@@ -387,7 +387,7 @@ body {
   left: 50%;
   width: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, #12936A, transparent);
+  background: linear-gradient(90deg, transparent, #D9B84C, transparent);
   transition: all 0.4s ease;
   transform: translateX(-50%);
 }
@@ -577,34 +577,34 @@ h1, h2, h3, h4, h5, h6,
   --color-muted: #666666;
   
   /* LUXURY GOLD PALETTE - True Cartier 18k Yellow Gold */
-  --cartier-gold: #12936A;           /* Primary: true 18k yellow gold */
+  --cartier-gold: #D9B84C;           /* Primary: true 18k yellow gold */
   --cartier-gold-light: #F0D060;     /* Bright gold reflection / highlight */
-  --cartier-gold-dark: #0C5B3F;      /* Deep gold shadow */
+  --cartier-gold-dark: #B8860B;      /* Deep gold shadow */
   --cartier-gold-highlight: #F5E68A; /* Shimmer / specular */
   --cartier-gold-shadow: #8B6914;    /* Darkest gold shadow */
-  --gold-metallic: #12936A;          /* Metallic gold */
-  --color-gold: #12936A;             /* Primary gold reference */
-  --color-gold-2: #0C5B3F;           /* Secondary / deep gold */
+  --gold-metallic: #D9B84C;          /* Metallic gold */
+  --color-gold: #D9B84C;             /* Primary gold reference */
+  --color-gold-2: #B8860B;           /* Secondary / deep gold */
   
   /* LUXURY GOLD GRADIENTS - True 18k Yellow Gold */
-  --gradient-gold: linear-gradient(145deg, #F5E68A 0%, #F0D060 20%, #12936A 50%, #0C5B3F 75%, #8B6914 100%);
+  --gradient-gold: linear-gradient(145deg, #F5E68A 0%, #F0D060 20%, #D9B84C 50%, #B8860B 75%, #8B6914 100%);
   --gradient-gold-shine: linear-gradient(90deg, transparent 0%, rgba(244,224,96,0.5) 50%, transparent 100%);
   --gradient-black: linear-gradient(135deg, #000000 0%, #1a1a1a 100%);
   
   /* Effects - GOLD GLOW for luxury feel */
-  --gold-glow-light: rgba(18, 147, 106, 0.15);
-  --gold-glow-medium: rgba(18, 147, 106, 0.28);
-  --gold-glow-heavy: rgba(18, 147, 106, 0.45);
-  --shadow-gold: 0 8px 24px rgba(18, 147, 106, 0.30);
+  --gold-glow-light: rgba(217, 184, 76, 0.15);
+  --gold-glow-medium: rgba(217, 184, 76, 0.28);
+  --gold-glow-heavy: rgba(217, 184, 76, 0.45);
+  --shadow-gold: 0 8px 24px rgba(217, 184, 76, 0.30);
   --shadow-default: 0 8px 32px rgba(0, 0, 0, 0.08);
   
   /* ===== 2025 LUXURY GOLD GRADIENTS - Fashion House Style ===== */
   
   /* METALLIC GOLD VARIANTS */
-  --gradient-metallic-gold: linear-gradient(135deg, #F5E68A 0%, #F0D060 20%, #12936A 50%, #0C5B3F 75%, #8B6914 100%);
-  --gradient-gold-rich: linear-gradient(135deg, #F0D060 0%, #12936A 50%, #0C5B3F 100%);
-  --gradient-gold-royal: linear-gradient(to right, #F5E68A 0%, #12936A 50%, #8B6914 100%);
-  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F5E68A, #12936A 50%, #0C5B3F);
+  --gradient-metallic-gold: linear-gradient(135deg, #F5E68A 0%, #F0D060 20%, #D9B84C 50%, #B8860B 75%, #8B6914 100%);
+  --gradient-gold-rich: linear-gradient(135deg, #F0D060 0%, #D9B84C 50%, #B8860B 100%);
+  --gradient-gold-royal: linear-gradient(to right, #F5E68A 0%, #D9B84C 50%, #8B6914 100%);
+  --gradient-gold-pure: radial-gradient(circle at 30% 30%, #F5E68A, #D9B84C 50%, #B8860B);
   
   /* Diamond & Crystal Effects - Keep white/light */
   --gradient-diamond: linear-gradient(135deg, #FFFFFF 0%, #F8F8F8 20%, #F0F0F0 40%, #E8E8E8 60%, #F0F0F0 80%, #FFFFFF 100%);
@@ -628,7 +628,7 @@ h1, h2, h3, h4, h5, h6,
   
   /* Premium Button Gradients - LUXURY GOLD + BLACK */
   --gradient-luxury-primary: linear-gradient(135deg, #000000 0%, #1a1a1a 50%, #000000 100%);
-  --gradient-luxury-gold-button: linear-gradient(135deg, #F0D060 0%, #12936A 50%, #0C5B3F 100%);
+  --gradient-luxury-gold-button: linear-gradient(135deg, #F0D060 0%, #D9B84C 50%, #B8860B 100%);
   --gradient-luxury-rose-button: linear-gradient(135deg, #e8c4b8 0%, #d4a394 50%, #c9967a 100%);
   --gradient-luxury-platinum-button: linear-gradient(135deg, #E5E4E2 0%, #D8D8D8 50%, #E5E4E2 100%);
   
@@ -2087,14 +2087,14 @@ html[lang="en"] *,
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(135deg, rgba(18, 147, 106, 0.1) 0%, rgba(18, 147, 106, 0.05) 100%);
+  background: linear-gradient(135deg, rgba(217, 184, 76, 0.1) 0%, rgba(217, 184, 76, 0.05) 100%);
   opacity: 0;
   transition: opacity 0.4s ease;
 }
 
 .luxury-tab-button:hover {
   color: rgba(30, 30, 30, 0.9);
-  border-color: rgba(18, 147, 106, 0.3);
+  border-color: rgba(217, 184, 76, 0.3);
 }
 
 .luxury-tab-button:hover::before {
@@ -2103,9 +2103,9 @@ html[lang="en"] *,
 
 .luxury-tab-button.active {
   color: #1A1A1A;
-  background: linear-gradient(135deg, rgba(18, 147, 106, 0.15) 0%, rgba(18, 147, 106, 0.08) 100%);
-  border: 1px solid rgba(18, 147, 106, 0.5);
-  box-shadow: 0 4px 20px rgba(18, 147, 106, 0.12);
+  background: linear-gradient(135deg, rgba(217, 184, 76, 0.15) 0%, rgba(217, 184, 76, 0.08) 100%);
+  border: 1px solid rgba(217, 184, 76, 0.5);
+  box-shadow: 0 4px 20px rgba(217, 184, 76, 0.12);
 }
 
 .luxury-tab-button.active::before {
@@ -2116,7 +2116,7 @@ html[lang="en"] *,
   font-size: 1.25rem;
   position: relative;
   z-index: 1;
-  filter: drop-shadow(0 2px 4px rgba(18, 147, 106, 0.2));
+  filter: drop-shadow(0 2px 4px rgba(217, 184, 76, 0.2));
 }
 
 .luxury-tab-label {
@@ -2139,8 +2139,8 @@ html[lang="en"] *,
   position: absolute;
   inset: 0;
   background: 
-    radial-gradient(ellipse at 20% 30%, rgba(18, 147, 106, 0.04) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 70%, rgba(18, 147, 106, 0.03) 0%, transparent 50%);
+    radial-gradient(ellipse at 20% 30%, rgba(217, 184, 76, 0.04) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 70%, rgba(217, 184, 76, 0.03) 0%, transparent 50%);
   pointer-events: none;
 }
 
@@ -2162,7 +2162,7 @@ html[lang="en"] *,
   font-weight: 600;
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #1A1A1A 0%, #12936A 100%);
+  background: linear-gradient(135deg, #1A1A1A 0%, #D9B84C 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -2228,7 +2228,7 @@ html[lang="en"] *,
 
 .luxury-feature-card {
   background: #ffffff;
-  border: 1px solid rgba(18, 147, 106, 0.25);
+  border: 1px solid rgba(217, 184, 76, 0.25);
   border-radius: 1.25rem;
   padding: 2rem;
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
@@ -2241,14 +2241,14 @@ html[lang="en"] *,
   transform: translateY(-6px) scale(1.02);
   box-shadow: 
     0 12px 40px rgba(0, 0, 0, 0.1),
-    0 0 0 1px rgba(18, 147, 106, 0.4);
-  border-color: rgba(18, 147, 106, 0.45);
+    0 0 0 1px rgba(217, 184, 76, 0.4);
+  border-color: rgba(217, 184, 76, 0.45);
 }
 
 .luxury-feature-icon {
   font-size: 2rem;
   margin-bottom: 1rem;
-  filter: drop-shadow(0 4px 8px rgba(18, 147, 106, 0.3));
+  filter: drop-shadow(0 4px 8px rgba(217, 184, 76, 0.3));
 }
 
 .luxury-feature-title {
@@ -2274,7 +2274,7 @@ html[lang="en"] *,
 
 .luxury-product-card {
   background: #ffffff;
-  border: 1px solid rgba(18, 147, 106, 0.2);
+  border: 1px solid rgba(217, 184, 76, 0.2);
   border-radius: 1.5rem;
   padding: 2.5rem;
   text-align: center;
@@ -2288,7 +2288,7 @@ html[lang="en"] *,
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at top, rgba(18, 147, 106, 0.05) 0%, transparent 70%);
+  background: radial-gradient(ellipse at top, rgba(217, 184, 76, 0.05) 0%, transparent 70%);
   pointer-events: none;
 }
 
@@ -2296,16 +2296,16 @@ html[lang="en"] *,
   transform: translateY(-10px) scale(1.03);
   box-shadow: 
     0 40px 80px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(18, 147, 106, 0.35),
-    0 0 80px rgba(18, 147, 106, 0.1);
-  border-color: rgba(18, 147, 106, 0.4);
+    0 0 0 1px rgba(217, 184, 76, 0.35),
+    0 0 80px rgba(217, 184, 76, 0.1);
+  border-color: rgba(217, 184, 76, 0.4);
 }
 
 .luxury-product-icon {
   font-size: 3rem;
   margin-bottom: 1.25rem;
   display: block;
-  filter: drop-shadow(0 6px 12px rgba(18, 147, 106, 0.25));
+  filter: drop-shadow(0 6px 12px rgba(217, 184, 76, 0.25));
 }
 
 .luxury-product-title {
@@ -2335,7 +2335,7 @@ html[lang="en"] *,
   align-items: flex-start;
   gap: 1.25rem;
   background: #ffffff !important;
-  border: 1px solid rgba(18, 147, 106, 0.2) !important;
+  border: 1px solid rgba(217, 184, 76, 0.2) !important;
   position: relative;
 }
 
@@ -2346,14 +2346,14 @@ html[lang="en"] *,
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.4), transparent);
+  background: linear-gradient(90deg, transparent, rgba(217, 184, 76, 0.4), transparent);
 }
 
 .luxury-feature-metallic::after {
   content: '';
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at top left, rgba(18, 147, 106, 0.04) 0%, transparent 60%);
+  background: radial-gradient(ellipse at top left, rgba(217, 184, 76, 0.04) 0%, transparent 60%);
   pointer-events: none;
   border-radius: inherit;
 }
@@ -2365,12 +2365,12 @@ html[lang="en"] *,
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, rgba(18, 147, 106, 0.12) 0%, rgba(18, 147, 106, 0.05) 100%);
-  border: 1px solid rgba(18, 147, 106, 0.25);
+  background: linear-gradient(145deg, rgba(217, 184, 76, 0.12) 0%, rgba(217, 184, 76, 0.05) 100%);
+  border: 1px solid rgba(217, 184, 76, 0.25);
   border-radius: 1rem;
   position: relative;
   z-index: 1;
-  box-shadow: 0 4px 16px rgba(18, 147, 106, 0.12);
+  box-shadow: 0 4px 16px rgba(217, 184, 76, 0.12);
 }
 
 .luxury-feature-text {
@@ -2391,7 +2391,7 @@ html[lang="en"] *,
   transform: translateX(-50%);
   width: 60%;
   height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.5), transparent);
+  background: linear-gradient(90deg, transparent, rgba(217, 184, 76, 0.5), transparent);
 }
 
 .luxury-product-icon-metallic {
@@ -2400,23 +2400,23 @@ html[lang="en"] *,
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(145deg, rgba(18, 147, 106, 0.1) 0%, rgba(18, 147, 106, 0.03) 100%);
-  border: 1px solid rgba(18, 147, 106, 0.2);
+  background: linear-gradient(145deg, rgba(217, 184, 76, 0.1) 0%, rgba(217, 184, 76, 0.03) 100%);
+  border: 1px solid rgba(217, 184, 76, 0.2);
   border-radius: 1.25rem;
   margin: 0 auto 1.5rem;
   position: relative;
   z-index: 1;
   box-shadow: 
-    0 8px 24px rgba(18, 147, 106, 0.1),
+    0 8px 24px rgba(217, 184, 76, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition: all 0.4s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 .luxury-product-card:hover .luxury-product-icon-metallic {
   box-shadow: 
-    0 12px 32px rgba(18, 147, 106, 0.2),
+    0 12px 32px rgba(217, 184, 76, 0.2),
     inset 0 1px 0 rgba(255, 255, 255, 0.08);
-  border-color: rgba(18, 147, 106, 0.4);
+  border-color: rgba(217, 184, 76, 0.4);
 }
 
 .luxury-product-badge {
@@ -2427,9 +2427,9 @@ html[lang="en"] *,
   font-weight: 600;
   text-transform: uppercase;
   letter-spacing: 0.15em;
-  color: rgba(18, 147, 106, 0.9);
-  background: linear-gradient(135deg, rgba(18, 147, 106, 0.1) 0%, rgba(18, 147, 106, 0.05) 100%);
-  border: 1px solid rgba(18, 147, 106, 0.25);
+  color: rgba(217, 184, 76, 0.9);
+  background: linear-gradient(135deg, rgba(217, 184, 76, 0.1) 0%, rgba(217, 184, 76, 0.05) 100%);
+  border: 1px solid rgba(217, 184, 76, 0.25);
   border-radius: 2rem;
   position: relative;
   z-index: 1;
@@ -2439,12 +2439,12 @@ html[lang="en"] *,
   position: relative;
   border-radius: 1.25rem;
   overflow: hidden;
-  border: 2px solid rgba(18, 147, 106, 0.3);
+  border: 2px solid rgba(217, 184, 76, 0.3);
   background: #ffffff;
   padding: 3px;
   box-shadow: 
     0 12px 40px rgba(0, 0, 0, 0.08),
-    0 0 0 1px rgba(18, 147, 106, 0.1);
+    0 0 0 1px rgba(217, 184, 76, 0.1);
 }
 
 .luxury-tech-image img {
@@ -3023,7 +3023,7 @@ html[lang="en"] *,
   color: #ffffff;
   margin-bottom: 1rem;
   letter-spacing: -0.02em;
-  background: linear-gradient(135deg, #ffffff 0%, rgba(18, 147, 106, 0.9) 100%);
+  background: linear-gradient(135deg, #ffffff 0%, rgba(217, 184, 76, 0.9) 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -3051,7 +3051,7 @@ html[lang="en"] *,
   text-align: center;
   box-shadow: 
     0 25px 50px rgba(0, 0, 0, 0.5),
-    0 0 0 1px rgba(18, 147, 106, 0.15),
+    0 0 0 1px rgba(217, 184, 76, 0.15),
     inset 0 1px 0 rgba(255, 255, 255, 0.05);
   transition: all 0.5s cubic-bezier(0.25, 0.8, 0.25, 1);
   position: relative;
@@ -3064,7 +3064,7 @@ html[lang="en"] *,
   content: '';
   position: absolute;
   inset: 0;
-  background: linear-gradient(135deg, transparent 40%, rgba(18, 147, 106, 0.03) 50%, transparent 60%);
+  background: linear-gradient(135deg, transparent 40%, rgba(217, 184, 76, 0.03) 50%, transparent 60%);
   pointer-events: none;
 }
 
@@ -3072,8 +3072,8 @@ html[lang="en"] *,
   transform: translateY(-8px) scale(1.02);
   box-shadow: 
     0 35px 70px rgba(0, 0, 0, 0.6),
-    0 0 0 1px rgba(18, 147, 106, 0.3),
-    0 0 60px rgba(18, 147, 106, 0.1),
+    0 0 0 1px rgba(217, 184, 76, 0.3),
+    0 0 60px rgba(217, 184, 76, 0.1),
     inset 0 1px 0 rgba(255, 255, 255, 0.1);
 }
 
@@ -3084,7 +3084,7 @@ html[lang="en"] *,
   left: 0;
   right: 0;
   height: 2px;
-  background: linear-gradient(90deg, transparent, rgba(18, 147, 106, 0.8), transparent);
+  background: linear-gradient(90deg, transparent, rgba(217, 184, 76, 0.8), transparent);
   opacity: 0;
   transition: opacity 0.5s ease;
 }

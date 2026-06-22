@@ -69,7 +69,7 @@ interface ActivityItem {
   referenceId: string | null;
 }
 
-const GOLD = '#12936A';
+const GOLD = '#D9B84C';
 
 const formatCurrency = (cents: number) =>
   `₪${(cents / 100).toLocaleString('en-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

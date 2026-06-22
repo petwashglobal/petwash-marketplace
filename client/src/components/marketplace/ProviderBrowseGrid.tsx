@@ -569,7 +569,7 @@ export function ProviderBrowseGrid({
                         {/* Top-left: Ranking + New + Background check badges */}
                         <div className="absolute top-3 left-3 flex gap-1.5 flex-wrap max-w-[calc(100%-3.5rem)]">
                           {showTopProvider && (
-                            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white shadow-md" style={{ background: 'linear-gradient(135deg, #12936A, #a8893e)' }}>
+                            <div className="flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-semibold text-white shadow-md" style={{ background: 'linear-gradient(135deg, #D9B84C, #a8893e)' }}>
                               <Zap className="w-3 h-3" />
                               {isHebrew ? 'ספק מוביל' : 'Top Provider'}
                             </div>

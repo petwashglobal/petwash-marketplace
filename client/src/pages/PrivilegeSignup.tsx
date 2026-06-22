@@ -324,7 +324,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
             <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} transition={{ duration: 0.6, type: 'spring' }} className="text-center space-y-8">
               <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ delay: 0.3, type: 'spring', stiffness: 200 }}
                 className="w-28 h-28 mx-auto flex items-center justify-center"
-                style={{ background: 'linear-gradient(135deg, #12936A 0%, #12936A 50%, #0C5B3F 100%)', borderRadius: '2px' }}
+                style={{ background: 'linear-gradient(135deg, #D9B84C 0%, #D9B84C 50%, #B8860B 100%)', borderRadius: '2px' }}
               >
                 <Crown className="w-14 h-14 text-white" />
               </motion.div>
@@ -336,7 +336,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                 <Shield className="w-4 h-4" /><span>{t('privilege.secureNote', language)}</span>
               </div>
               <Link href="/login">
-                <Button className="mt-4 px-8 py-3 text-white font-bold" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #12936A, #12936A)' }}>
+                <Button className="mt-4 px-8 py-3 text-white font-bold" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
                   {t('privilege.signInHere', language)}
                 </Button>
               </Link>
@@ -405,7 +405,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
               </motion.div>
 
               <div className="flex flex-wrap justify-center gap-3 pt-4">
-                <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white" style={{ background: 'linear-gradient(90deg, #12936A, #12936A)', borderRadius: '2px' }}>
+                <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-bold text-white" style={{ background: 'linear-gradient(90deg, #D9B84C, #D9B84C)', borderRadius: '2px' }}>
                   <Sparkles className="w-4 h-4" style={{ color: gold }} />{t('privilege.freeExclusive', language)}
                 </span>
                 <span className="inline-flex items-center gap-2 px-5 py-2.5 text-sm font-medium text-gray-600 border border-gray-200" style={{ borderRadius: '2px' }}>
@@ -652,7 +652,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                     whileTap={{ scale: 0.97 }}
                     onClick={() => setShowForm(true)}
                     className="w-full flex items-center justify-center gap-3 px-6 py-3 text-sm font-medium text-white"
-                    style={{ background: 'linear-gradient(90deg, #12936A, #12936A)', borderRadius: '2px' }}
+                    style={{ background: 'linear-gradient(90deg, #D9B84C, #D9B84C)', borderRadius: '2px' }}
                   >
                     {language === 'he' ? 'המשך עם טופס' : 'Continue with form'}
                     <ArrowRight className="w-4 h-4" />
@@ -685,7 +685,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                   </div>
                   <div className="flex gap-1">
                     {Array.from({ length: TOTAL_STEPS }, (_, i) => (
-                      <div key={i} className="h-1.5 flex-1 transition-all duration-300" style={{ borderRadius: '2px', background: i < currentStep ? '#12936A' : '#f0f0f0' }} />
+                      <div key={i} className="h-1.5 flex-1 transition-all duration-300" style={{ borderRadius: '2px', background: i < currentStep ? '#D9B84C' : '#f0f0f0' }} />
                     ))}
                   </div>
                 </div>
@@ -887,11 +887,11 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                     </Button>
                   ) : <div />}
                   {currentStep < TOTAL_STEPS ? (
-                    <Button type="button" onClick={nextStep} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #12936A, #12936A)' }}>
+                    <Button type="button" onClick={nextStep} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
                       {t('privilege.next', language)}{isRTL ? <ArrowLeft className="w-4 h-4" /> : <ArrowRight className="w-4 h-4" />}
                     </Button>
                   ) : (
-                    <Button type="button" onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #12936A, #12936A)' }}>
+                    <Button type="button" onClick={handleSubmit} disabled={loading} className="flex items-center gap-2 font-bold text-white" style={{ borderRadius: '2px', background: 'linear-gradient(90deg, #D9B84C, #D9B84C)' }}>
                       {loading ? (
                         <span className="flex items-center gap-2">
                           <motion.div animate={{ rotate: 360 }} transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}><Sparkles className="w-4 h-4" /></motion.div>

@@ -302,8 +302,8 @@ export default function ProviderDetail() {
                         <div
                           className="ms-auto w-12 h-12 rounded-full border-4 flex items-center justify-center font-bold text-base"
                           style={{
-                            borderColor: trustStats.trustScore >= 75 ? '#12936A' : '#3b82f6',
-                            color: trustStats.trustScore >= 75 ? '#12936A' : '#3b82f6',
+                            borderColor: trustStats.trustScore >= 75 ? '#D9B84C' : '#3b82f6',
+                            color: trustStats.trustScore >= 75 ? '#D9B84C' : '#3b82f6',
                           }}
                         >
                           {trustStats.trustScore}

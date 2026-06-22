@@ -109,11 +109,11 @@ export default function StaffScan() {
           padding: '32px 20px 24px',
         }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '10px', maxWidth: '480px', margin: '0 auto' }}>
-            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(18,147,106,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-              <Scan size={22} color="#12936A" />
+            <div style={{ width: '40px', height: '40px', borderRadius: '10px', background: 'rgba(217, 184, 76,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+              <Scan size={22} color="#D9B84C" />
             </div>
             <div>
-              <div style={{ color: '#12936A', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>Staff POS</div>
+              <div style={{ color: '#0a0a0a', fontWeight: 800, fontSize: '1.1rem', letterSpacing: '-0.01em' }}>Staff POS</div>
               <div style={{ color: 'rgba(255,255,255,0.45)', fontSize: '0.72rem' }}>PetWash™ Prestige Card Scanner</div>
             </div>
           </div>
@@ -123,7 +123,7 @@ export default function StaffScan() {
 
           {/* ── Scanner Input ── */}
           <div style={{
-            background: '#FFFFFF', border: '2px solid rgba(18,147,106,0.3)', borderRadius: '16px',
+            background: '#FFFFFF', border: '2px solid rgba(217, 184, 76,0.3)', borderRadius: '16px',
             padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', marginBottom: '20px',
           }}>
             <p style={{ margin: '0 0 10px', fontSize: '0.78rem', fontWeight: 700, color: '#7A7068', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -138,7 +138,7 @@ export default function StaffScan() {
                 placeholder="PW-45872043  or scan with QR reader…"
                 style={{
                   flex: 1, padding: '12px 14px', borderRadius: '10px',
-                  border: '1.5px solid rgba(18,147,106,0.3)', fontSize: '0.9rem',
+                  border: '1.5px solid rgba(217, 184, 76,0.3)', fontSize: '0.9rem',
                   fontFamily: 'monospace', outline: 'none', color: '#1A1A1A',
                   background: '#ffffff',
                 }}
@@ -148,7 +148,7 @@ export default function StaffScan() {
                 disabled={loading || !input}
                 style={{
                   padding: '12px 18px', borderRadius: '10px', border: 'none',
-                  background: '#12936A', color: '#FFFFFF', fontWeight: 700,
+                  background: '#D9B84C', color: '#FFFFFF', fontWeight: 700,
                   fontSize: '0.85rem', cursor: loading ? 'wait' : 'pointer',
                   opacity: !input ? 0.5 : 1,
                   display: 'flex', alignItems: 'center', gap: '6px',
@@ -192,14 +192,14 @@ export default function StaffScan() {
           {profile && (
             <>
               <div style={{
-                background: '#FFFFFF', border: '1.5px solid rgba(18,147,106,0.25)',
+                background: '#FFFFFF', border: '1.5px solid rgba(217, 184, 76,0.25)',
                 borderRadius: '16px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.06)', marginBottom: '16px',
               }}>
                 {/* Customer header */}
                 <div style={{ display: 'flex', alignItems: 'center', gap: '14px', marginBottom: '16px' }}>
                   <div style={{
                     width: '52px', height: '52px', borderRadius: '14px', flexShrink: 0,
-                    background: 'linear-gradient(135deg, #12936A, #C6A35B)',
+                    background: 'linear-gradient(135deg, #D9B84C, #C6A35B)',
                     display: 'flex', alignItems: 'center', justifyContent: 'center',
                     fontSize: '22px',
                   }}>
@@ -218,8 +218,8 @@ export default function StaffScan() {
                 {/* Pet profile */}
                 {profile.pet.petName && (
                   <div style={{
-                    background: 'rgba(18,147,106,0.06)', borderRadius: '12px', padding: '12px 14px',
-                    border: '1px solid rgba(18,147,106,0.15)', marginBottom: '14px',
+                    background: 'rgba(217, 184, 76,0.06)', borderRadius: '12px', padding: '12px 14px',
+                    border: '1px solid rgba(217, 184, 76,0.15)', marginBottom: '14px',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <span style={{ fontSize: '22px' }}>{PET_EMOJI[profile.pet.petType ?? 'dog'] ?? '🐾'}</span>
@@ -258,7 +258,7 @@ export default function StaffScan() {
 
               {/* ── Service Buttons ── */}
               <div style={{
-                background: '#FFFFFF', border: '1.5px solid rgba(18,147,106,0.2)',
+                background: '#FFFFFF', border: '1.5px solid rgba(217, 184, 76,0.2)',
                 borderRadius: '16px', padding: '20px', boxShadow: '0 4px 20px rgba(0,0,0,0.04)',
               }}>
                 <p style={{ margin: '0 0 14px', fontSize: '0.78rem', fontWeight: 700, color: '#7A7068', letterSpacing: '0.1em', textTransform: 'uppercase' }}>
@@ -303,7 +303,7 @@ export default function StaffScan() {
                         {/* Confirmation row */}
                         {isSelected && (
                           <div style={{
-                            background: 'rgba(18,147,106,0.06)', borderRadius: '0 0 12px 12px',
+                            background: 'rgba(217, 184, 76,0.06)', borderRadius: '0 0 12px 12px',
                             padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '10px',
                             border: `1px solid ${svc.color}30`, borderTop: 'none',
                           }}>
@@ -317,7 +317,7 @@ export default function StaffScan() {
                                   placeholder="Enter amount"
                                   style={{
                                     flex: 1, padding: '8px 10px', borderRadius: '8px',
-                                    border: '1.5px solid rgba(18,147,106,0.3)', fontSize: '0.9rem',
+                                    border: '1.5px solid rgba(217, 184, 76,0.3)', fontSize: '0.9rem',
                                     outline: 'none', fontFamily: 'monospace',
                                   }}
                                 />

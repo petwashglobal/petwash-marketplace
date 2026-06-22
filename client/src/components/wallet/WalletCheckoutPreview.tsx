@@ -18,7 +18,7 @@ import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { useDebounced } from "@/hooks/useDebounced";
 import { useLanguage } from "@/lib/languageStore";
 
-const GOLD = "#12936A";
+const GOLD = "#D9B84C";
 
 const ils = (cents: number) =>
   (cents / 100).toLocaleString("he-IL", {

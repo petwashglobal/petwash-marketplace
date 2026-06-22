@@ -96,9 +96,9 @@ export function BookingFinancialSummary({
         <Row
           label={t.loyalty}
           value={`-${fmtIls(loyaltyRedeemedCents)}`}
-          accentBg="bg-[#12936A]/5"
+          accentBg="bg-[#D9B84C]/5"
           accentText="text-[#7A5C1E]"
-          icon={<Coins className="w-4 h-4 text-[#12936A]" />}
+          icon={<Coins className="w-4 h-4 text-[#0a0a0a]" />}
         />
       )}
 

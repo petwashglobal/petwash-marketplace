@@ -1,14 +1,16 @@
 /**
  * PetWash™ Brand Design Tokens — the single source of truth.
  *
- * THE LOOK (locked with the CEO, 2026-06-16): pure WHITE ground · BLACK text ·
- * HOT METALLIC EMERALD-GREEN accents only. Gold was removed 2026-06-16 (read too
- * cheap/yellow). Never cream/ivory/off-white, never a dark card, never body-text
- * accents. The accent is jewelry, not paint.
+ * THE LOOK (locked with the CEO): pure WHITE ground · BLACK text · METALLIC GOLD
+ * accent only. Base gold #D4AF37, mid-tone warmed to #D9B84C toward Cartier
+ * yellow-gold (2026-06-22). Never cream/ivory/off-white, never a dark page ground,
+ * never body-text accents. The accent is jewelry, not paint — prefer the SHEEN
+ * gradient (--pw-gold-grad) on the jewelry moments (member card, badges, dividers)
+ * over a flat fill.
  *
- * The token names below are still `--pw-gold*` (legacy, kept to avoid a repo-wide
- * rename) but they now hold the EMERALD values. Change the accent ONCE here → the
- * whole app updates. That is the point.
+ * Change the accent ONCE here → the whole app updates. That is the point.
+ * (Note: ~70 components still hardcode the old emerald teal — being migrated to
+ * these tokens in a separate, visually-QA'd PR.)
  */
 :root {
   /* Ground + ink */
@@ -18,12 +20,14 @@
   --pw-hairline: #ECECEC;     /* thin borders on white */
   --pw-hairline-gold: #EFE3B8;/* gold-tinted border for featured cards */
 
-  /* THE ACCENT — BRIGHT METALLIC GOLD (#D4AF37). Tweak only here.
-     2026-06-18: was emerald #12936A — restored to the real brand metallic gold. */
-  --pw-gold: #D4AF37;         /* the one true accent (metallic gold) */
+  /* THE ACCENT — METALLIC GOLD. Base #D4AF37; primary tone warmed to #D9B84C
+     toward Cartier yellow-gold (CEO 2026-06-22). Use --pw-gold-grad (the sheen)
+     on jewelry moments, not a flat fill. Tweak only here. */
+  --pw-gold: #D9B84C;         /* the one true accent — warm Cartier-leaning gold */
+  --pw-gold-base: #D4AF37;    /* original base gold, kept in the family + gradient */
   --pw-gold-deep: #B8860B;    /* gradient start / pressed */
   --pw-gold-light: #F4D77A;   /* gradient highlight (sheen) */
-  --pw-gold-grad: linear-gradient(135deg, var(--pw-gold-deep) 0%, var(--pw-gold) 45%, var(--pw-gold-light) 100%);
+  --pw-gold-grad: linear-gradient(135deg, var(--pw-gold-deep) 0%, var(--pw-gold-base) 38%, var(--pw-gold) 62%, var(--pw-gold-light) 100%);
   --pw-gold-ink: #1A1A1A;     /* text ON a gold fill (near-black, readable) */
 
   /* Status (only place a different color is allowed) */
@@ -38,10 +42,11 @@
 
 /* ── Luxury utility classes — apply the system, no dead area, mobile-first ── */
 
-/* Metallic-emerald FILL (icon chips, badges, accent bars). Text on it = --pw-gold-ink (white). */
+/* Metallic-gold SHEEN FILL (icon chips, badges, accent bars) — the jewelry moment.
+   Text on it = --pw-gold-ink (near-black, readable on gold). */
 .pw-gold-fill { background: var(--pw-gold-grad); color: var(--pw-gold-ink); }
 
-/* Metallic-emerald TEXT/ICON via clip (for crowns, +, decorative glyphs only). */
+/* Metallic-gold TEXT/ICON via clip (for crowns, +, decorative glyphs only). */
 .pw-gold-text {
   background: linear-gradient(135deg, #B8860B, var(--pw-gold));
   -webkit-background-clip: text; background-clip: text;

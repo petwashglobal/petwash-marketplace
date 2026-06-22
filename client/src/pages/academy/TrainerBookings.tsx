@@ -33,7 +33,7 @@ import {
 } from "lucide-react";
 import { Link } from "wouter";
 
-const GOLD = "#12936A";
+const GOLD = "#D9B84C";
 
 function centsToILS(cents: number): string {
   return `₪${(cents / 100).toFixed(2)}`;

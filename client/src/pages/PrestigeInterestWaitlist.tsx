@@ -152,7 +152,7 @@ export default function PrestigeInterestWaitlist() {
           <div className="mx-auto grid max-w-7xl grid-cols-1 gap-8 px-5 py-10 sm:px-8 lg:min-h-[72vh] lg:grid-cols-[0.92fr_1.08fr] lg:py-14">
             <div className="flex flex-col justify-between gap-8">
               <div>
-                <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-[#0C5B3F]/35 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#7a642e] shadow-sm">
+                <div className="mb-8 inline-flex items-center gap-3 rounded-full border border-[#B8860B]/35 bg-white/70 px-4 py-2 text-xs font-semibold uppercase tracking-[0.24em] text-[#7a642e] shadow-sm">
                   <Crown className="h-4 w-4" />
                   PetWash Prestige
                 </div>
@@ -182,7 +182,7 @@ export default function PrestigeInterestWaitlist() {
             <div className="rounded-[28px] border border-[#c7b98c] bg-[#10100f] p-4 shadow-2xl shadow-[#1d1604]/20 sm:p-6">
               {leadId ? (
                 <div className="flex min-h-[560px] flex-col justify-center rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,#111,#1b1914)] p-7 text-white">
-                  <CheckCircle2 className="mb-5 h-14 w-14 text-[#0C5B3F]" />
+                  <CheckCircle2 className="mb-5 h-14 w-14 text-[#B8860B]" />
                   <h2 className="text-3xl font-semibold tracking-[-0.03em]">
                     {isHebrew ? 'הבקשה נשמרה לבדיקת צוות' : 'Saved for team review'}
                   </h2>
@@ -196,7 +196,7 @@ export default function PrestigeInterestWaitlist() {
                   </p>
                   <div className="mt-8 flex flex-col gap-3 sm:flex-row">
                     <Link href="/signup?intent=prestige">
-                      <Button className="h-12 rounded-xl bg-[#0C5B3F] px-6 font-semibold text-black hover:bg-[#c7ae62]">
+                      <Button className="h-12 rounded-xl bg-[#B8860B] px-6 font-semibold text-black hover:bg-[#c7ae62]">
                         {isHebrew ? 'יצירת חשבון מאומת' : 'Create verified account'}
                       </Button>
                     </Link>
@@ -213,7 +213,7 @@ export default function PrestigeInterestWaitlist() {
                 <form onSubmit={submit} className="rounded-[22px] border border-white/10 bg-[linear-gradient(145deg,#111,#1b1914)] p-5 text-white sm:p-7">
                   <div className="mb-6 flex items-start justify-between gap-5">
                     <div>
-                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#0C5B3F]">
+                      <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#B8860B]">
                         {isHebrew ? 'רשימת עניין 18+' : '18+ interest list'}
                       </p>
                       <h2 className="mt-2 text-3xl font-semibold tracking-[-0.04em]">
@@ -229,11 +229,11 @@ export default function PrestigeInterestWaitlist() {
                       <Input required value={form.fullName} onChange={setText('fullName')} className="h-12 rounded-xl border-white/12 bg-white text-black" />
                     </label>
                     <label className="space-y-2">
-                      <Label className="flex items-center gap-2 text-white"><Mail className="h-4 w-4 text-[#0C5B3F]" />{isHebrew ? 'אימייל' : 'Email'}</Label>
+                      <Label className="flex items-center gap-2 text-white"><Mail className="h-4 w-4 text-[#B8860B]" />{isHebrew ? 'אימייל' : 'Email'}</Label>
                       <Input required type="email" value={form.email} onChange={setText('email')} className="h-12 rounded-xl border-white/12 bg-white text-black" />
                     </label>
                     <label className="space-y-2">
-                      <Label className="flex items-center gap-2 text-white"><Phone className="h-4 w-4 text-[#0C5B3F]" />{isHebrew ? 'מובייל' : 'Mobile'}</Label>
+                      <Label className="flex items-center gap-2 text-white"><Phone className="h-4 w-4 text-[#B8860B]" />{isHebrew ? 'מובייל' : 'Mobile'}</Label>
                       <Input required inputMode="tel" value={form.phone} onChange={setText('phone')} placeholder="+972 50 000 0000" className="h-12 rounded-xl border-white/12 bg-white text-black" />
                     </label>
                     <label className="space-y-2">
@@ -278,21 +278,21 @@ export default function PrestigeInterestWaitlist() {
                         <Checkbox
                           checked={Boolean(form[key as 'over18' | 'verifyLater' | 'publicOnly'])}
                           onCheckedChange={(checked) => setForm((current) => ({ ...current, [key]: checked === true }))}
-                          className="mt-1 border-white/30 data-[state=checked]:bg-[#0C5B3F] data-[state=checked]:text-black"
+                          className="mt-1 border-white/30 data-[state=checked]:bg-[#B8860B] data-[state=checked]:text-black"
                         />
                         <span>{text}</span>
                       </label>
                     ))}
                   </div>
 
-                  <Button type="submit" disabled={loading} className="mt-6 h-14 w-full rounded-xl bg-[#0C5B3F] text-base font-semibold text-black hover:bg-[#c7ae62]">
+                  <Button type="submit" disabled={loading} className="mt-6 h-14 w-full rounded-xl bg-[#B8860B] text-base font-semibold text-black hover:bg-[#c7ae62]">
                     {loading ? (isHebrew ? 'שולח...' : 'Submitting...') : (isHebrew ? 'שליחת בקשת עניין' : 'Submit interest')}
                     {!loading && <ArrowRight className={`ms-2 h-4 w-4 ${isHebrew ? 'rotate-180' : ''}`} />}
                   </Button>
 
                   <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-xs text-white/45">
-                    <span className="inline-flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-[#0C5B3F]" />{isHebrew ? 'אימות לפני אישור' : 'Verify before approval'}</span>
-                    <span className="inline-flex items-center gap-2"><Wallet className="h-3.5 w-3.5 text-[#0C5B3F]" />{isHebrew ? 'אין Wallet מזויף' : 'No fake Wallet pass'}</span>
+                    <span className="inline-flex items-center gap-2"><ShieldCheck className="h-3.5 w-3.5 text-[#B8860B]" />{isHebrew ? 'אימות לפני אישור' : 'Verify before approval'}</span>
+                    <span className="inline-flex items-center gap-2"><Wallet className="h-3.5 w-3.5 text-[#B8860B]" />{isHebrew ? 'אין Wallet מזויף' : 'No fake Wallet pass'}</span>
                   </div>
                 </form>
               )}
