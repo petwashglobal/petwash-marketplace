@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { logger } from '../lib/logger';
 import { logSecurityEvent } from '../services/securityEventsService';
+import { isReadOnlyAdminRole } from '@shared/adminRoles';
 
 // SECURITY: Super-admin email list loaded from environment variable.
 // BEFORE: Hard-coded personal Gmail addresses — if any leaked (GitHub, CI logs,
@@ -144,6 +145,49 @@ export function requireRole(...roles: string[]) {
       return res.status(403).json({ error: 'ROLE_REQUIRED', requiredRoles: roles });
     }
   };
+}
+
+const READ_ONLY_SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
+
+/**
+ * Middleware: enforce READ-ONLY admin roles (e.g. 'viewer' — external accountants,
+ * observers like ido.s@petwash.co.il). Such accounts can VIEW every admin screen
+ * (they pass the admin role gate) but must never change anything, so any mutating
+ * request (POST/PUT/PATCH/DELETE) is rejected with 403 READ_ONLY_ACCESS.
+ *
+ * Resolves the role from Firebase custom claims, identically to requireRole, so it
+ * stays consistent with the gate it sits behind. The single super admin (Nir, via
+ * SUPER_ADMIN_EMAILS) is NEVER read-only and always passes. Mount this AFTER the
+ * admin role gate on /api/admin so non-admins are already rejected.
+ */
+export function enforceReadOnlyMutations(req: Request, res: Response, next: NextFunction) {
+  // Reads are always allowed.
+  if (READ_ONLY_SAFE_METHODS.has(req.method)) return next();
+
+  // Super admins are never read-only.
+  const reqEmail = ((req as any).firebaseUser?.email || '').toLowerCase();
+  if (reqEmail && SUPER_ADMINS.includes(reqEmail)) return next();
+
+  const fbUser = (req as any).firebaseUser;
+  const claimsRole: string = fbUser?.claims?.role || fbUser?.role || '';
+  if (isReadOnlyAdminRole(claimsRole)) {
+    logger.warn(`[enforceReadOnlyMutations] Blocked ${req.method} ${req.originalUrl} for read-only role '${claimsRole}' (${reqEmail || fbUser?.uid || 'unknown'})`);
+    logSecurityEvent({
+      userId: fbUser?.uid,
+      eventType: 'readonly_mutation_blocked',
+      ip: req.ip || '',
+      userAgent: req.headers['user-agent'] || '',
+      riskScore: 40,
+      metadata: { role: claimsRole, method: req.method, endpoint: req.originalUrl },
+    });
+    return res.status(403).json({
+      error: 'READ_ONLY_ACCESS',
+      message: 'This account has read-only (viewer) access and cannot make changes.',
+      role: claimsRole,
+    });
+  }
+
+  return next();
 }
 
 /**

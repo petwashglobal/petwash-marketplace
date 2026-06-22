@@ -21,13 +21,30 @@ export const ADMIN_ROLES = [
   'hr',
   'finance',
   'ceo',
+  // READ-ONLY: can VIEW every admin screen but cannot change anything. Used for
+  // external accountants and observers (e.g. ido.s@petwash.co.il). Writes are
+  // blocked server-side by enforceReadOnlyMutations on /api/admin. See
+  // READ_ONLY_ADMIN_ROLES below.
+  'viewer',
 ] as const;
 
 export type AdminRole = (typeof ADMIN_ROLES)[number];
 
+/**
+ * Admin roles that are READ-ONLY — granted full admin visibility but blocked from
+ * any mutating request (POST/PUT/PATCH/DELETE) on admin APIs. The single super
+ * admin (Nir, via SUPER_ADMIN_EMAILS) is never read-only.
+ */
+export const READ_ONLY_ADMIN_ROLES: string[] = ['viewer'];
+
 /** Returns true if the given role string grants admin-level access. */
 export function isAdminRole(role: string): boolean {
   return (ADMIN_ROLES as readonly string[]).includes(role);
+}
+
+/** Returns true if the role can view admin but must never write (viewer/observer). */
+export function isReadOnlyAdminRole(role: string | undefined | null): boolean {
+  return !!role && READ_ONLY_ADMIN_ROLES.includes(role.toLowerCase());
 }
 
 /**
