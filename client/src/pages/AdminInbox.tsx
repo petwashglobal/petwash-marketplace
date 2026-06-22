@@ -116,7 +116,9 @@ export default function AdminInbox() {
   const { language, dir } = useLanguage();
   const { toast } = useToast();
   
-  const [selectedMessage, setSelectedMessage] = useState<Message | null>(mockMessages[0]);
+  // No fake default — the detail pane stays empty until a real message is selected.
+  // (Was mockMessages[0], which showed the fabricated "18% revenue growth" report.)
+  const [selectedMessage, setSelectedMessage] = useState<Message | null>(null);
   const [selectedMessages, setSelectedMessages] = useState<number[]>([]);
   const [showCompose, setShowCompose] = useState(false);
   const [filterStatus, setFilterStatus] = useState<'all' | 'unread' | 'important' | 'archived'>('all');
@@ -201,19 +203,20 @@ export default function AdminInbox() {
     setSelectedMessages([]);
   };
 
+  // HONEST DATA: this admin inbox is not wired to a real message backend yet, so we
+  // show zeros and an empty list instead of fabricated content. The old hardcoded
+  // figures ("23% engagement / 18% revenue growth", "Total 156 / Unread 12") were
+  // fake metrics shown to the CEO — removed per the no-fake-data-in-production rule.
   const stats = [
-    { label: 'Total Messages', value: '156', icon: Mail },
-    { label: 'Unread', value: '12', icon: Inbox },
-    { label: 'Urgent', value: '3', icon: AlertCircle },
-    { label: 'Today', value: '8', icon: Clock },
+    { label: 'Total Messages', value: '0', icon: Mail },
+    { label: 'Unread', value: '0', icon: Inbox },
+    { label: 'Urgent', value: '0', icon: AlertCircle },
+    { label: 'Today', value: '0', icon: Clock },
   ];
 
-  const filteredMessages = mockMessages.filter(msg => {
-    if (filterStatus === 'unread' && msg.isRead) return false;
-    if (filterStatus === 'important' && !msg.isImportant) return false;
-    if (searchQuery && !msg.subject.toLowerCase().includes(searchQuery.toLowerCase())) return false;
-    return true;
-  });
+  // No fabricated inbox messages — render an empty inbox until the real feed is wired.
+  // (mockMessages above is retained only as the Message shape reference for that work.)
+  const filteredMessages: Message[] = [];
 
   const getPriorityBadge = (priority: string) => {
     switch (priority) {
