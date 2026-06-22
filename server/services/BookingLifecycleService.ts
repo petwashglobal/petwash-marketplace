@@ -63,10 +63,13 @@ export interface QuoteCalculation {
   addonsCents: number;
   weekendSurchargeCents: number;
   holidaySurchargeCents: number;
+  peakSurchargeCents: number;
   durationDiscountCents: number;
   comboDiscountCents: number;
   loyaltyDiscountCents: number;
+  cleaningFeeCents: number;
   subtotalCents: number;
+  depositCents: number;
   platformFeeCents: number;
   vatCents: number;
   totalCents: number;
@@ -154,9 +157,25 @@ class BookingLifecycleService {
     const nights = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60 * 24));
     const hours = Math.ceil((endDate.getTime() - startDate.getTime()) / (1000 * 60 * 60));
 
+    const perNightRate = card.baseRatePerNightCents || 0;
     let baseAmountCents = 0;
-    if (card.baseRatePerNightCents && nights > 0) {
-      baseAmountCents = card.baseRatePerNightCents * nights;
+    if (perNightRate && nights > 0) {
+      // Tiered nightly progression (Build C): when configured, each night is priced by its
+      // stay-length bucket as a % of the base rate; otherwise flat rate × nights (unchanged).
+      const prog = card.nightlyRateProgression as
+        | { night1Percent?: number; nights2to7Percent?: number; nights8to30Percent?: number; night31PlusPercent?: number }
+        | null;
+      if (prog && (prog.night1Percent || prog.nights2to7Percent || prog.nights8to30Percent || prog.night31PlusPercent)) {
+        for (let n = 1; n <= nights; n++) {
+          const pct = n === 1 ? (prog.night1Percent ?? 100)
+            : n <= 7 ? (prog.nights2to7Percent ?? 100)
+            : n <= 30 ? (prog.nights8to30Percent ?? 100)
+            : (prog.night31PlusPercent ?? 100);
+          baseAmountCents += Math.round(perNightRate * (pct / 100));
+        }
+      } else {
+        baseAmountCents = perNightRate * nights;
+      }
     } else if (card.baseRatePerHourCents && hours > 0) {
       baseAmountCents = card.baseRatePerHourCents * hours;
     } else if (card.baseRatePerVisitCents) {
@@ -191,6 +210,22 @@ class BookingLifecycleService {
       : 0;
 
     const holidaySurchargeCents = 0;
+
+    // Per-day peak surcharge (Build C): applied for each night that falls in a configured peak range.
+    let peakSurchargeCents = 0;
+    const peakRanges = (card.peakDateRanges as Array<{ start: string; end: string; surchargePercent: number }>) || [];
+    if (isPerNightBooking && peakRanges.length && perNightRate) {
+      for (let n = 0; n < nights; n++) {
+        const d = new Date(startDate.getTime() + n * 24 * 60 * 60 * 1000);
+        const ymd = d.toISOString().slice(0, 10);
+        const hit = peakRanges.find(r => r && r.start && r.end && ymd >= r.start && ymd <= r.end && r.surchargePercent > 0);
+        if (hit) peakSurchargeCents += Math.round(perNightRate * (hit.surchargePercent / 100));
+      }
+    }
+
+    // One-time cleaning fee (Build C): overnight/per-night stays only; flat, not discountable.
+    const cleaningFeeCents = isPerNightBooking ? (card.cleaningFeeCents || 0) : 0;
+
     const appliedDiscounts: string[] = [];
 
     // Duration discount (provider-defined)
@@ -198,6 +233,9 @@ class BookingLifecycleService {
     if (nights >= 30 && card.monthlyDiscountPercent) {
       durationDiscountCents = Math.round(baseAmountCents * (card.monthlyDiscountPercent / 100));
       appliedDiscounts.push(`Monthly stay discount (${card.monthlyDiscountPercent}% off)`);
+    } else if (nights >= 14 && card.biweeklyDiscountPercent) {
+      durationDiscountCents = Math.round(baseAmountCents * (card.biweeklyDiscountPercent / 100));
+      appliedDiscounts.push(`Bi-weekly stay discount (${card.biweeklyDiscountPercent}% off)`);
     } else if (nights >= 7 && card.weeklyDiscountPercent) {
       durationDiscountCents = Math.round(baseAmountCents * (card.weeklyDiscountPercent / 100));
       appliedDiscounts.push(`Weekly stay discount (${card.weeklyDiscountPercent}% off)`);
@@ -205,7 +243,7 @@ class BookingLifecycleService {
 
     // Combo discount (multi-pet + long-stay)
     const combo = this.calculateComboDiscount(petCount, nights);
-    const preComboTotal = baseAmountCents + additionalPetsCents + addonsCents + weekendSurchargeCents - durationDiscountCents;
+    const preComboTotal = baseAmountCents + additionalPetsCents + addonsCents + weekendSurchargeCents + peakSurchargeCents - durationDiscountCents;
     const comboDiscountCents = combo.discountPercent > 0 
       ? Math.round(preComboTotal * (combo.discountPercent / 100))
       : 0;
@@ -224,8 +262,13 @@ class BookingLifecycleService {
     const postComboTotal = preComboTotal - comboDiscountCents;
     const loyaltyDiscountCents = 0;
 
-    const subtotalCents = postComboTotal - loyaltyDiscountCents;
-    
+    // Cleaning fee is a flat, non-discountable line added after all discounts.
+    const subtotalCents = postComboTotal - loyaltyDiscountCents + cleaningFeeCents;
+
+    // Refundable security deposit (Build C): a HOLD, returned after the stay — NOT part of
+    // the charge total, commission or VAT. Surfaced separately for the UI/payment hold.
+    const depositCents = Math.round(subtotalCents * ((card.securityDepositPercent || 0) / 100));
+
     const platformFeeCents = Math.round(subtotalCents * PETWASH_COMMISSION_RATE);
     const vatCents = Math.round(platformFeeCents * VAT_RATE);
     const totalCents = subtotalCents + vatCents;
@@ -237,16 +280,23 @@ class BookingLifecycleService {
       addonsCents,
       weekendSurchargeCents,
       holidaySurchargeCents,
+      peakSurchargeCents,
       durationDiscountCents,
       comboDiscountCents,
       loyaltyDiscountCents,
+      cleaningFeeCents,
       subtotalCents,
+      depositCents,
       platformFeeCents,
       vatCents,
       totalCents,
       providerEarningsCents,
       appliedDiscounts,
-      loyaltyInfo: loyaltyInfo || undefined
+      // loyaltyInfo intentionally omitted: the K9000 club discount never applies to
+      // marketplace services (loyaltyDiscountCents is forced to 0 above), and the old
+      // getCustomerLoyaltyInfo() lookup was removed 2026-06-22. The dangling
+      // `loyaltyInfo: loyaltyInfo` reference here threw ReferenceError on EVERY quote
+      // (latent only because marketplace bookings are off pre-launch).
     };
   }
 
