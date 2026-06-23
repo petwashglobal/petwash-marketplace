@@ -11,17 +11,19 @@
  * For the luxury white-card look (spec §13), wrap it: <span class="petwash-icon-card">.
  */
 import { useState } from 'react';
-import { resolvePetWashIcon, DEFAULT_PETWASH_ICON, type PetWashIconName } from '@/lib/petwash-icons';
+import { resolvePetWashIcon, DEFAULT_PETWASH_ICON, type PetWashIconName, type IconMode } from '@/lib/petwash-icons';
 
 export interface PetWashIconProps {
   name: PetWashIconName | string;
   size?: number;
   label?: string;
   className?: string;
+  /** 'gold' = Mode A line-art (nav/admin/forms); default 'colour' (Mode B). */
+  mode?: IconMode;
 }
 
-export function PetWashIcon({ name, size = 32, label, className }: PetWashIconProps) {
-  const [src, setSrc] = useState(() => resolvePetWashIcon(name));
+export function PetWashIcon({ name, size = 32, label, className, mode = 'colour' }: PetWashIconProps) {
+  const [src, setSrc] = useState(() => resolvePetWashIcon(name, mode));
   const alt = label || String(name).replace(/^[a-z]+_/, '').replace(/_/g, ' ');
   return (
     <img

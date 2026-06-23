@@ -45,6 +45,11 @@ const BOARDS = {
     { top: 491, bottom: 661, cols: [['paw',61,192],['pet-owner',248,394],['botanical-leaf',442,556],['shampoo',626,697],['conditioner',769,841],['bubbles',923,1053],['water-droplet',1124,1211],['grooming-brush',1281,1408],['towel',1466,1616]] },
     { top: 745, bottom: 885, cols: [['collar',328,511],['treat',599,748],['sparkle',846,961],['natural-ingredients',1066,1217],['pet-safe',1280,1399]] },
   ] },
+  // "Luxury Icon System" GOLD line-art 1672x941 (16 icons, Mode A) → gold/ mirror
+  gold: { outSub: 'gold', rows: [
+    { top: 417, bottom: 576, cols: [['dog',79,211],['cat',282,392],['paw',463,587],['pet-owner',662,811],['botanical-leaf',905,1011],['shampoo',1101,1168],['conditioner',1291,1358],['bubbles',1459,1580]] },
+    { top: 663, bottom: 802, cols: [['water-droplet',88,178],['grooming-brush',279,393],['towel',460,597],['collar',662,811],['treat',882,1004],['sparkle',1088,1182],['natural-ingredients',1266,1392],['pet-safe',1463,1590]] },
+  ] },
   // "Colour Luxury Icon Collection" 1448x1086 (43 icons) — auto-detected boxes
   collection: { rows: [
     { top: 251, bottom: 397, cols: [['dog',30,162],['cat',188,294],['rabbit',337,439],['guinea-pig',472,582],['snake',611,719],['pony',746,889],['horse',912,1046],['bird',1069,1171],['fish',1184,1297],['turtle',1306,1438]] },
@@ -59,7 +64,7 @@ function cells(board) {
   const out = [];
   for (const row of board.rows)
     for (const [name, x0, x1] of row.cols)
-      out.push({ name, left: Math.max(0, x0 - PAD), top: Math.max(0, row.top - PAD), width: (x1 - x0) + PAD * 2, height: (row.bottom - row.top) + PAD * 2 });
+      out.push({ name, outSub: board.outSub, left: Math.max(0, x0 - PAD), top: Math.max(0, row.top - PAD), width: (x1 - x0) + PAD * 2, height: (row.bottom - row.top) + PAD * 2 });
   return out;
 }
 
@@ -89,7 +94,7 @@ async function extractOne(board, cell) {
   // Trim transparent margin → fit into the inner box on WHITE → pad to square white tile.
   const innerBuf = await sharp(cut).trim({ threshold: 1 }).resize(inner, inner, { fit: 'contain', background: { r: 255, g: 255, b: 255, alpha: 1 } }).png().toBuffer();
   const [key, category] = KEY_MAP[cell.name] || [cell.name, 'misc'];
-  const dir = path.join(ICON_ROOT, category);
+  const dir = path.join(ICON_ROOT, cell.outSub || '', category);
   await fs.mkdir(dir, { recursive: true });
   const outPath = path.join(dir, `${key}.png`);
   await sharp(innerBuf).extend({ top: pad, bottom: pad, left: pad, right: pad, background: { r: 255, g: 255, b: 255, alpha: 1 } }).png().toFile(outPath);

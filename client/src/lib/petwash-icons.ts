@@ -83,9 +83,24 @@ export type PlannedIconKey =
 
 export type PetWashIconName = keyof typeof PETWASH_ICONS | PlannedIconKey;
 
+/**
+ * Keys that also have a GOLD line-art (Mode A) variant under /petwash/gold/...
+ * Mode A = app nav / admin / forms / legal; Mode B (colour, default) = marketing.
+ */
+export const GOLD_ICON_KEYS = new Set<string>([
+  'animal_dog', 'animal_cat', 'brand_paw', 'brand_pet_owner', 'nature_leaf',
+  'product_shampoo', 'product_conditioner', 'nature_bubbles', 'nature_water_drop',
+  'product_grooming_brush', 'product_towel', 'product_collar', 'product_treat',
+  'brand_sparkle', 'nature_natural_ingredients', 'trust_pet_safe',
+]);
+
+export type IconMode = 'colour' | 'gold';
+
 /** Resolve an icon_key to its asset path, or the luxury default (never an emoji). */
-export function resolvePetWashIcon(name: PetWashIconName | string): string {
-  return (PETWASH_ICONS as Record<string, string>)[name] ?? DEFAULT_PETWASH_ICON;
+export function resolvePetWashIcon(name: PetWashIconName | string, mode: IconMode = 'colour'): string {
+  const base = (PETWASH_ICONS as Record<string, string>)[name] ?? DEFAULT_PETWASH_ICON;
+  if (mode === 'gold' && GOLD_ICON_KEYS.has(name)) return base.replace('/petwash/', '/petwash/gold/');
+  return base;
 }
 
 /** Whether a real (non-default) asset exists for this key. */
