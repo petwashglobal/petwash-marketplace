@@ -81,6 +81,7 @@ const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
+const PrestigeWelcome = lazy(() => import("@/pages/prestige/PrestigeWelcome"));
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
@@ -819,10 +820,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         */}
         {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
           <Route path="/prestige/welcome">
-            {/* Signed-out member entry — re-hosts the existing SignIn (auth is
-                immersive, so no shell chrome). Fixes the "customer app opens to
-                marketing Landing" gap. */}
-            {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+            {/* Signed-out member entry — the premium PrestigeWelcome (CEO-approved
+                mockup v2). Its CTAs route into the existing auth flow and return
+                to /prestige. Fixes the "customer app opens to marketing Landing"
+                gap with an app-native screen, not a re-used web page. */}
+            {() => <PrestigeWelcome />}
           </Route>
         )}
         {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (

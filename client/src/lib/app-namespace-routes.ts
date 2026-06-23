@@ -54,7 +54,7 @@ export interface ScreenRoute {
 
 /** Prestige (customer) app — 23 screens, SDD §6.1. */
 export const PRESTIGE_SCREENS: ScreenRoute[] = [
-  { id: 'prestige-welcome',     app: 'prestige', ceoNumber: 1,  ceoLabel: 'Welcome/Login',          newPath: '/prestige/welcome',           oldPath: null,                 status: 'missing', note: 'signed-out member welcome — new (mockup-first)' },
+  { id: 'prestige-welcome',     app: 'prestige', ceoNumber: 1,  ceoLabel: 'Welcome/Login',          newPath: '/prestige/welcome',           oldPath: null,                 status: 'missing', note: 'built natively as PrestigeWelcome (Stage 4); no old route to alias — CTAs route into existing auth' },
   { id: 'prestige-pass',        app: 'prestige', ceoNumber: 2,  ceoLabel: 'Member Card / QR',        newPath: '/prestige/pass',              oldPath: '/prestige-pass',     status: 'rehost' },
   { id: 'prestige-home',        app: 'prestige', ceoNumber: 3,  ceoLabel: 'Home Dashboard',          newPath: '/prestige',                   oldPath: '/dashboard',         status: 'rehost' },
   { id: 'prestige-pets',        app: 'prestige', ceoNumber: 4,  ceoLabel: 'Pet Profiles',            newPath: '/prestige/pets',              oldPath: '/pets',              status: 'rehost' },
