@@ -12,6 +12,8 @@ import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/componen
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
 import { smartGreeting, type GreetLang } from '@/lib/smartGreeting';
+import { useQuery } from '@tanstack/react-query';
+import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
@@ -26,6 +28,20 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
   const { user } = useFirebaseAuth();
   const { getAccountRoute } = useAccountNavigation();
   const [, setLocation] = useLocation();
+
+  // Birthday context for the smart greeting (owner DOB + pets' DOBs). Only when
+  // signed in; falls back silently to the time-of-day greeting if it can't load.
+  const { data: greetCtx } = useQuery<{ birthday: string | null; pets: Array<{ name: string; dob: string | null }> }>({
+    queryKey: ['/api/me/greeting-context'],
+    enabled: !!user,
+    staleTime: 6 * 60 * 60 * 1000,
+    queryFn: async () => {
+      const res = await fetch(getApiUrl('/api/me/greeting-context'), { credentials: 'include' });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return res.json();
+    },
+  });
+  const greetOpts = { birthday: greetCtx?.birthday ?? null, petBirthdays: greetCtx?.pets ?? [] };
 
   /** Navigate to the user's account destination.
    *  getAccountRoute() returns '#' while auth is loading — we no-op in that case
@@ -140,7 +156,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                     onClick={() => handleAuthNavigate()}
                     className="gold-shimmer-btn text-[#0a0a0a] px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
                   >
-                    {smartGreeting(user.displayName?.split(' ')[0], language as GreetLang)}
+                    {smartGreeting(user.displayName?.split(' ')[0], language as GreetLang, greetOpts)}
                   </Button>
                 ) : (
                   <div className="flex justify-center items-center">
@@ -456,7 +472,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 }}
               >
                 {user
-                  ? smartGreeting(user.displayName?.split(' ')[0], language as GreetLang)
+                  ? smartGreeting(user.displayName?.split(' ')[0], language as GreetLang, greetOpts)
                   : t('loyalty.signUp', language)
                 }
               </Button>

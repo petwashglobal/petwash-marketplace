@@ -58,6 +58,16 @@ function pick(p: Phrase, lang: GreetLang): string {
   return p[lang] ?? p.en;
 }
 
+/** Join pet names naturally per language: "Rexy & Luna" / "רקסי ולונה". */
+function joinNames(names: string[], lang: GreetLang): string {
+  if (names.length <= 1) return names[0] ?? '';
+  const head = names.slice(0, -1);
+  const last = names[names.length - 1];
+  if (lang === 'he') return `${head.join(', ')} ו${last}`; // Hebrew vav attaches to the last name
+  if (lang === 'ar') return `${head.join('، ')} و${last}`;
+  return `${head.join(', ')} & ${last}`;
+}
+
 /** True when the given date's day+month equals the reference date's day+month. */
 function isSameDayMonth(dobStr: string | null | undefined, ref: Date): boolean {
   if (!dobStr) return false;
@@ -89,10 +99,11 @@ export function smartGreetingParts(
   if (isSameDayMonth(opts.birthday, now)) {
     return { text: pick(BIRTHDAY, lang), celebration: true, emoji: '🎂' };
   }
-  // 2. Pet birthday.
-  const pet = (opts.petBirthdays ?? []).find((p) => isSameDayMonth(p.dob, now));
-  if (pet) {
-    return { text: pick(PET_BIRTHDAY, lang).replace('{pet}', pet.name), celebration: true, emoji: '🐾' };
+  // 2. Pet birthday — an owner can have several pets, and more than one could
+  //    share a birthday today. Greet ALL of them in one warm line.
+  const petsToday = (opts.petBirthdays ?? []).filter((p) => isSameDayMonth(p.dob, now)).map((p) => p.name);
+  if (petsToday.length > 0) {
+    return { text: pick(PET_BIRTHDAY, lang).replace('{pet}', joinNames(petsToday, lang)), celebration: true, emoji: '🐾' };
   }
   // 3. Civil New Year (Jan 1).
   if (now.getMonth() === 0 && now.getDate() === 1) {

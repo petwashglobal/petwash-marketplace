@@ -47,6 +47,7 @@ import couponRoutes, { adminCouponRouter } from "./routes/coupons";
 import googleWalletRoutes from "./routes/google-wallet";
 import prestigePassRoutes from "./routes/prestige-pass";
 import prestigeJoinRoutes from "./routes/prestige-join";
+import meGreetingRoutes from "./routes/me-greeting";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
@@ -11911,6 +11912,11 @@ self.addEventListener('notificationclick', (event) => {
   // loyalty_profiles, privilege_members, and Firestore prestige_passes in one call.
   app.use('/api/prestige', validateFirebaseToken, apiLimiter, prestigeJoinRoutes);
   logger.info('[Routes] ✅ Prestige Join coordinator registered at /api/prestige/join');
+
+  // Smart-greeting context — owner birthday + pets' birthdays for the homepage
+  // greeting. optionalFirebaseToken: returns an empty context (not 401) when
+  // signed out, so the client falls back to the time-of-day greeting.
+  app.use('/api/me/greeting-context', optionalFirebaseToken, apiLimiter, meGreetingRoutes);
 
   // Universal Pass Distribution — UA-aware link + Apple update web service
   // Mounts at /api/pass (universal link) and /api/pass/apple/v1/* (Apple wallet update service)
