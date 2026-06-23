@@ -7,6 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Calendar, Droplets, AlertCircle, CheckCircle2, CloudRain, Sun, Snowflake, Thermometer, Sparkles, Heart, Star, Gift, QrCode, Download, Award, TrendingUp } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { useToast } from '@/hooks/use-toast';
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { queryClient, apiRequest } from '@/lib/queryClient';
@@ -413,7 +414,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                       <div className="flex justify-between items-start mb-3">
                         <div>
                           <h3 className="font-bold text-2xl text-metallic-rose flex items-center gap-2">
-                            🐾 {pet.name}
+                            <PetWashIcon name="brand_paw" size={22} label="" /> {pet.name}
                           </h3>
                           <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
                             <Star className="h-4 w-4 text-yellow-500" />
@@ -622,7 +623,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-bold text-xl flex items-center gap-2">
-                          🐾 {schedule.petName}
+                          <PetWashIcon name="brand_paw" size={22} label="" /> {schedule.petName}
                         </p>
                         <p className="text-sm text-muted-foreground mt-1 flex items-center gap-2">
                           <Calendar className="h-4 w-4" />

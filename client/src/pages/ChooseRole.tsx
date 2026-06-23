@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Loader2, Paw, Briefcase, ChevronDown } from "lucide-react";
+import { PetWashIcon } from "@/components/PetWashIcon";
 import { getApiUrl } from "@/lib/apiConfig";
 import { SIGNUP_INTENT, type SignupIntent } from "@shared/lib/onboardingIntent";
 
@@ -59,7 +60,7 @@ export default function ChooseRole() {
         {/* Header */}
         <div className="text-center mb-6">
           <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-400/10 mb-4">
-            <span className="text-3xl">🐾</span>
+            <PetWashIcon name="brand_paw" size={30} label="PetWash" />
           </div>
           <h1 className="text-2xl font-semibold text-white mb-1">
             {isHe ? "ברוכים הבאים ל-PetWash™" : "Welcome to PetWash™"}
@@ -79,7 +80,7 @@ export default function ChooseRole() {
             <div className="flex-shrink-0 bg-black/10 rounded-xl p-3">
               {loading === SIGNUP_INTENT.CUSTOMER
                 ? <Loader2 className="h-7 w-7 animate-spin" />
-                : <span className="text-2xl">🛁</span>}
+                : <PetWashIcon name="product_organic_soap" size={24} label="Book pet services" />}
             </div>
             <div className="flex-1 min-w-0">
               <p className="font-bold text-lg leading-tight">

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import type { AvatarState } from '@/services/KenzoAvatarChatService';
 
@@ -102,8 +103,8 @@ export function PetAvatarDisplay({
       <div className={`${sizeClasses[size]} ${className}`}>
         <div className="relative w-full h-full">
           <div className="absolute inset-0 bg-gradient-to-br from-amber-400 via-pink-400 to-blue-400 rounded-full animate-pulse" />
-          <div className="absolute inset-2 bg-white dark:bg-white rounded-full flex items-center justify-center text-4xl">
-            🐾
+          <div className="absolute inset-2 bg-white dark:bg-white rounded-full flex items-center justify-center">
+            <PetWashIcon name="brand_paw" size={34} label="Kenzo" />
           </div>
         </div>
       </div>

@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLocation } from "wouter";
 import { useAuth } from "@/hooks/useAuth";
+import { PetWashIcon } from "@/components/PetWashIcon";
 
 interface WalkBooking {
   id: number;
@@ -89,8 +90,9 @@ export default function WalkMyPetOwnerDashboard() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between mb-6">
             <div>
-              <h1 className="text-3xl md:text-4xl font-bold mb-2 bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent" data-testid="page-title">
-                🐾 Walk My Pet™
+              <h1 className="text-3xl md:text-4xl font-bold mb-2 inline-flex items-center gap-2" data-testid="page-title">
+                <PetWashIcon name="brand_paw" size={34} label="Paw" />
+                <span className="bg-gradient-to-r from-amber-600 via-yellow-500 to-amber-600 bg-clip-text text-transparent">Walk My Pet™</span>
               </h1>
               <p className="text-slate-600 text-lg" data-testid="page-subtitle">לוח בעלי כלבים / Owner Dashboard</p>
             </div>
@@ -149,7 +151,7 @@ export default function WalkMyPetOwnerDashboard() {
               <div className="flex items-center gap-3">
                 <div className="relative">
                   <div className="h-12 w-12 rounded-full bg-gradient-to-br from-amber-400 to-yellow-600 flex items-center justify-center text-white font-bold text-lg">
-                    🐕
+                    <PetWashIcon name="animal_dog" size={28} label="Dog" />
                   </div>
                   <div className="absolute -bottom-1 -right-1 h-4 w-4 bg-green-500 rounded-full border-2 border-white animate-pulse"></div>
                 </div>

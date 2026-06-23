@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { Cake, Gift, Sparkles, Heart, PartyPopper, Star, ArrowLeft, Crown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 export default function LoyaltyBirthday() {
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
@@ -115,12 +116,12 @@ export default function LoyaltyBirthday() {
                 <p className="text-[#8A8078] text-xs">{isHebrew ? 'הטבות חברי מועדון' : 'Special member rewards'}</p>
               </div>
               <div className="p-4 rounded-xl bg-white border border-[#E8E3D9]">
-                <p className="text-3xl mb-2">🐾</p>
+                <p className="mb-2"><PetWashIcon name="brand_paw" size={30} label={isHebrew ? 'יום הולדת חיית מחמד' : "Pet's Birthday"} /></p>
                 <p className="font-semibold text-[#1A1A1A] text-sm">{isHebrew ? 'יום הולדת חיית מחמד' : "Pet's Birthday"}</p>
                 <p className="text-[#8A8078] text-xs">{isHebrew ? 'חטיפים וצעצועים' : 'Treats & toys included'}</p>
               </div>
               <div className="p-4 rounded-xl bg-white border border-[#E8E3D9]">
-                <p className="text-3xl mb-2">✨</p>
+                <p className="mb-2"><PetWashIcon name="brand_sparkle" size={30} label={isHebrew ? 'אוטומטי' : 'Automatic'} /></p>
                 <p className="font-semibold text-[#1A1A1A] text-sm">{isHebrew ? 'אוטומטי' : 'Automatic'}</p>
                 <p className="text-[#8A8078] text-xs">{isHebrew ? 'ללא צורך בפעולה' : 'No action needed'}</p>
               </div>

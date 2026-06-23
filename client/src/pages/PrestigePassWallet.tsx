@@ -750,7 +750,9 @@ function DigitalCardSection({
       {/* Pet Profile */}
       <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(217, 184, 76,0.15)', borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
         <div onClick={() => setPetEditOpen((o: boolean) => !o)} style={{ display:'flex', alignItems:'center', gap:'10px', cursor:'pointer' }}>
-          <span style={{ fontSize:'18px' }}>{walletData?.pet?.petName ? '🐾' : '➕'}</span>
+          {walletData?.pet?.petName
+            ? <PetWashIcon name="brand_paw" size={18} label={walletData.pet.petName} />
+            : <span style={{ fontSize:'18px' }}>➕</span>}
           <div style={{ flex:1 }}>
             <div style={{ fontWeight:700, fontSize:'0.85rem', color:'#1A1A1A' }}>
               {walletData?.pet?.petName
@@ -1353,7 +1355,7 @@ export default function PrestigePassWallet() {
                 border: '1px solid rgba(217, 184, 76,0.18)', borderRadius: '14px',
                 padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
               }}>
-                <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>🐾</span>
+                <PetWashIcon name="brand_paw" size={22} label={he ? 'שטיפות סה״כ' : 'Total washes'} />
                 <div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A1A', lineHeight: 1 }}>
                     {loyaltyProfile.totalWashes}
@@ -1371,7 +1373,7 @@ export default function PrestigePassWallet() {
                   border: '1px solid rgba(217, 184, 76,0.18)', borderRadius: '14px',
                   padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
-                  <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>✨</span>
+                  <PetWashIcon name="brand_sparkle" size={22} label={he ? 'אבן דרך הבאה' : 'Next milestone'} />
                   <div>
                     <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A1A', lineHeight: 1 }}>
                       {loyaltyProfile.tierThreshold - loyaltyProfile.tierProgress}

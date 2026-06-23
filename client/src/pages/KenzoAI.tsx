@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import { getApiUrl } from '@/lib/apiConfig';
 import { Kenzo3DRealistic } from '@/components/Kenzo3DRealistic';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { Send, ArrowLeft, Globe, Sparkles, Loader2 } from 'lucide-react';
 import { Link } from 'wouter';
 
@@ -218,7 +219,7 @@ export default function KenzoAI() {
                   className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-base"
                   style={{ background: 'rgba(217, 184, 76,0.2)', border: '1px solid rgba(217, 184, 76,0.3)' }}
                 >
-                  🐾
+                  <PetWashIcon name="brand_paw" size={18} label="Kenzo" />
                 </div>
               )}
               <div
@@ -248,7 +249,7 @@ export default function KenzoAI() {
                 className="w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-base"
                 style={{ background: 'rgba(217, 184, 76,0.2)', border: '1px solid rgba(217, 184, 76,0.3)' }}
               >
-                🐾
+                <PetWashIcon name="brand_paw" size={18} label="Kenzo" />
               </div>
               <div
                 className="px-4 py-3 rounded-2xl flex items-center gap-1"

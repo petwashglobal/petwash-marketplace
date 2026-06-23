@@ -131,7 +131,7 @@ export default function PetPassport() {
     return (
       <Layout>
         <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 luxury-bg-mesh">
-          <div className="text-6xl mb-6">🐾</div>
+          <div className="mb-6"><PetWashIcon name="brand_paw" size={56} label={tr('Pet not found', 'חיית המחמד לא נמצאה')} /></div>
           <h2 className="text-2xl font-light text-white mb-4">{tr('Pet not found', 'חיית המחמד לא נמצאה')}</h2>
           <button onClick={() => navigate('/pets')} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-neutral-950 font-medium">
             {tr('Back to my pets', 'חזרה לחיות שלי')}

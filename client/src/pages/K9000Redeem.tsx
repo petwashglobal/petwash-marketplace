@@ -25,6 +25,7 @@ import { Layout } from '@/components/Layout';
 import { ProgressCircle } from '@/components/LuxuryWidgets';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { apiRequest } from '@/lib/queryClient';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import QRCode from 'qrcode';
 
 const WASH_PRICE_CENTS = 5500;
@@ -249,8 +250,9 @@ export default function K9000Redeem() {
               <ArrowLeft className="w-5 h-5" />
             </Button>
             <div>
-              <h1 className="text-xl font-bold text-gray-900">
-                {isHebrew ? '🐾 מימוש בתחנת K9000' : '🐾 K9000 Station Redeem'}
+              <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                <PetWashIcon name="brand_paw" size={20} label="PetWash" />
+                {isHebrew ? 'מימוש בתחנת K9000' : 'K9000 Station Redeem'}
               </h1>
               <p className="text-sm text-gray-500">
                 {isHebrew ? 'שטיפה עצמית לחיית המחמד שלך' : 'Self-service pet wash station'}

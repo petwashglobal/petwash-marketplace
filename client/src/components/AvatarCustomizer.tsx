@@ -12,9 +12,10 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { 
+import {
   Sparkles, Shirt, Crown, Glasses, Diamond, Wand2, Star, Lock, Palette, Layers
 } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { 
   OUTFIT_LIBRARY, 
   ACCESSORY_LIBRARY,
@@ -137,10 +138,10 @@ export function AvatarCustomizer({
                 onClick={() => onCharacterTypeChange(type)}
                 data-testid={`button-character-${type}`}
               >
-                {type === 'pet' && '🐾'}
+                {type === 'pet' && <PetWashIcon name="brand_paw" size={18} label="Pet" />}
                 {type === 'person' && '👤'}
                 {type === 'superhero' && '🦸'}
-                {type === 'custom' && '✨'}
+                {type === 'custom' && <PetWashIcon name="brand_sparkle" size={18} label="Custom" />}
                 <span className="ml-2 capitalize">{type}</span>
               </Button>
             ))}

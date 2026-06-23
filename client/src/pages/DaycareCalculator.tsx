@@ -11,6 +11,7 @@ import { useMutation } from '@tanstack/react-query';
 import { Plus, Trash2, Calculator, Sparkles, ChevronLeft, Info } from 'lucide-react';
 import { Link } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { useToast } from '@/hooks/use-toast';
 import { COMPANY_TAX_ID } from '@shared/finance-identity';
 
@@ -185,7 +186,7 @@ export default function DaycareCalculator() {
                 className="flex items-center gap-3 px-4 py-3 rounded-2xl"
                 style={{ border: '1px solid #f0f0f0', backgroundColor: '#ffffff' }}
               >
-                <span className="text-[18px]">{pet.type === 'dog' ? '🐕' : '🐈'}</span>
+                <PetWashIcon name={pet.type === 'dog' ? 'animal_dog' : 'animal_cat'} size={18} label={pet.type === 'dog' ? 'Dog' : 'Cat'} />
                 <div className="flex-1 grid grid-cols-2 gap-2">
                   <input
                     value={pet.name}

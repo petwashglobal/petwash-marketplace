@@ -1,5 +1,6 @@
 import { useLocation } from 'wouter';
 import { Crown, Briefcase, Star, ScrollText, Calendar, FileText, RefreshCcw, Users, TrendingUp, Shield } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 interface FormCard {
   emoji: string;
   title: string;
@@ -116,7 +117,7 @@ export default function FormsHub() {
         style={{ paddingTop: 'max(16px, env(safe-area-inset-top))' }}
       >
         <div className="max-w-lg mx-auto flex items-center gap-3 pt-3">
-          <span className="text-2xl">🐾</span>
+          <PetWashIcon name="brand_paw" size={24} label="PetWash Forms" />
           <div>
             <h1 className="text-lg font-bold">PetWash™ Forms</h1>
             <p className="text-[#C6A35B] text-xs" dir="rtl">כל הטפסים במקום אחד</p>

@@ -11,6 +11,7 @@ import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 import pinkCard from '@assets/IMG_3094_1770832584882.png';
 import greenCard from '@assets/IMG_3091_1770832584882.png';
@@ -980,7 +981,7 @@ export default function EGift() {
         <div className="min-h-screen flex items-center justify-center px-4 py-12" style={{ background: '#FFFFFF' }}>
           <div className="max-w-md w-full text-center">
             {/* Celebration graphic */}
-            <div className="text-7xl mb-6">🎁</div>
+            <div className="mb-6 flex justify-center"><PetWashIcon name="product_gift_box" size={72} label={isRtl ? 'מתנה' : 'Gift'} /></div>
             <h1 className="text-3xl font-bold mb-2" style={{ fontFamily: "'Playfair Display', Georgia, serif", color: '#1A1A1A' }}>
               {isRtl ? 'המתנה נשלחה!' : 'Gift Sent!'}
             </h1>

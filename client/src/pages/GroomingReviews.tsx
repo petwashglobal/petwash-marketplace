@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/lib/languageStore";
+import { PetWashIcon } from "@/components/PetWashIcon";
 import { getApiUrl } from "@/lib/apiConfig";
 
 function StarDisplay({ rating, size = 16 }: { rating: number; size?: number }) {
@@ -71,7 +72,7 @@ function ReviewCard({ review, t, language }: { review: any; t: (key: string) => 
     day: "numeric",
   });
 
-  const petIcon = review.petType === "cat" ? "🐱" : review.petType === "dog" ? "🐕" : "🐾";
+  const petIconKey = review.petType === "cat" ? "animal_cat" : review.petType === "dog" ? "animal_dog" : "brand_paw";
 
   return (
     <Card className="border-amber-100/50 dark:border-amber-900/20 bg-white/60 dark:bg-white/60 backdrop-blur-sm">
@@ -83,8 +84,8 @@ function ReviewCard({ review, t, language }: { review: any; t: (key: string) => 
                 {review.customerName || t("groomingFeedback.anonymous")}
               </span>
               {review.petName && (
-                <Badge variant="outline" className="text-xs border-amber-300 dark:border-amber-700">
-                  {petIcon} {review.petName}
+                <Badge variant="outline" className="text-xs border-amber-300 dark:border-amber-700 inline-flex items-center gap-1">
+                  <PetWashIcon name={petIconKey} size={16} label={review.petType || 'Pet'} /> {review.petName}
                 </Badge>
               )}
             </div>

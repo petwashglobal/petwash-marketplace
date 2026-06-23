@@ -12,8 +12,9 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar } from "@/components/ui/calendar";
 import { format, addDays } from "date-fns";
 import { useLanguage } from "@/lib/languageStore";
+import { PetWashIcon } from "@/components/PetWashIcon";
 
-type ServiceType = 
+type ServiceType =
   | 'boarding' 
   | 'house-sitting' 
   | 'daycare' 
@@ -46,10 +47,10 @@ const SERVICES: ServiceOption[] = [
 ];
 
 const PET_TYPES = [
-  { id: 'dog' as PetType, name: 'Dog', nameHe: 'כלב', icon: Dog, emoji: '🐕' },
-  { id: 'cat' as PetType, name: 'Cat', nameHe: 'חתול', icon: Cat, emoji: '🐈' },
-  { id: 'bird' as PetType, name: 'Bird', nameHe: 'ציפור', icon: Bird, emoji: '🦜' },
-  { id: 'other' as PetType, name: 'Other', nameHe: 'אחר', icon: Dog, emoji: '🐾' },
+  { id: 'dog' as PetType, name: 'Dog', nameHe: 'כלב', icon: Dog, iconKey: 'animal_dog' },
+  { id: 'cat' as PetType, name: 'Cat', nameHe: 'חתול', icon: Cat, iconKey: 'animal_cat' },
+  { id: 'bird' as PetType, name: 'Bird', nameHe: 'ציפור', icon: Bird, iconKey: 'animal_bird' },
+  { id: 'other' as PetType, name: 'Other', nameHe: 'אחר', icon: Dog, iconKey: 'brand_paw' },
 ];
 
 const CITIES = [
@@ -182,7 +183,7 @@ export function LuxuryHeroSearch({
                       : 'bg-white/80 text-black border-black/10 hover:border-black/30'
                   }`}
                 >
-                  <span>{pet.emoji}</span>
+                  <PetWashIcon name={pet.iconKey} size={18} label={isHebrew ? pet.nameHe : pet.name} />
                   <span className="text-sm font-light tracking-wide">
                     {isHebrew ? pet.nameHe : pet.name}
                   </span>
