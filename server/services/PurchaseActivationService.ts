@@ -29,13 +29,51 @@
  */
 
 import { db } from '../db';
-import { purchases, purchaseEvents, type Purchase } from '@shared/schema';
+import { purchases, purchaseEvents, users, type Purchase } from '@shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { walletService } from './WalletService';
 import { sumitClient } from './SumitClient';
 import { recordAuditEvent } from '../utils/auditSignature';
 import { sendAlert } from '../monitoring';
 import { logger } from '../lib/logger';
+import { IsraeliDigitalReceiptService } from './IsraeliDigitalReceiptService';
+import { PETWASH_INCOME_ITEMS } from '@shared/petwashIncomeItems';
+
+/**
+ * Issue a customer tax receipt for a DIRECT PetWash wash sale (package / single)
+ * bought via SUMIT. Reuses the live IsraeliDigitalReceiptService (writes
+ * digital_receipts + emails the customer) — the same engine academy/sitter/walk use.
+ *
+ * The accounting audit found wash-package purchases on the SUMIT path issued NO
+ * receipt (the one un-documented sale). This closes that gap. Direct PetWash sale →
+ * no provider, no marketplace commission. NON-BLOCKING: a receipt failure must never
+ * block the credit grant or risk a double-charge — it logs, like the other modules.
+ */
+async function issueWashSaleReceipt(purchase: Purchase, incomeCode: string): Promise<void> {
+  try {
+    const item = PETWASH_INCOME_ITEMS[incomeCode];
+    if (!item) return;
+    const total = (purchase.amountCents ?? 0) / 100;
+    if (total <= 0) return;
+    const [buyer] = await db
+      .select({ email: users.email, first: users.firstName, last: users.lastName })
+      .from(users).where(eq(users.id, purchase.buyerUserId)).limit(1);
+    await IsraeliDigitalReceiptService.generateReceipt({
+      platform: item.module,                 // 'wash_package' | 'self_service_wash'
+      bookingId: `sumit:${purchase.id}`,
+      customerEmail: buyer?.email || '',
+      customerName: [buyer?.first, buyer?.last].filter(Boolean).join(' '),
+      serviceDescription: item.en,
+      serviceDescriptionHe: item.he,
+      subtotalAmount: total,
+      platformFeeAmount: 0,                   // direct PetWash sale — no marketplace commission
+      totalAmount: total,
+      paymentMethod: 'Credit Card (SUMIT)',
+    });
+  } catch (err) {
+    logger.warn('[PurchaseActivation] Wash-sale receipt failed (non-blocking)', { purchaseId: purchase.id, error: (err as any)?.message });
+  }
+}
 
 export type ActivationOutcome =
   | 'activated'
@@ -371,6 +409,8 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
         purchase.id,
         'Wash package via SUMIT',
       );
+      // Close the audit gap: issue the customer receipt for the package sale.
+      await issueWashSaleReceipt(purchase, washCount === 5 ? 'PW_WASH_PACKAGE_5' : washCount === 10 ? 'PW_WASH_PACKAGE_10' : 'PW_WASH_PACKAGE_CUSTOM');
       return true;
     }
 
@@ -385,6 +425,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
         purchase.id,
         'Single wash via SUMIT',
       );
+      await issueWashSaleReceipt(purchase, 'PW_SELF_SERVICE_DOG_WASH_SINGLE');
       return true;
     }
 
