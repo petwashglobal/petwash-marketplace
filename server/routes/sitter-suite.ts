@@ -243,8 +243,9 @@ router.get('/sitters', async (req, res) => {
         userId: sitterProfiles.userId,
         firstName: sitterProfiles.firstName,
         lastName: sitterProfiles.lastName,
-        email: sitterProfiles.email,
-        phone: sitterProfiles.phone,
+        // SECURITY: email + phone deliberately NOT exposed on these public (no-auth)
+        // listing endpoints — contact details are shared only after a booking, like
+        // the other public provider/groomer listings. (Leaked raw PII before.)
         city: sitterProfiles.city,
         bio: sitterProfiles.bio,
         yearsOfExperience: sitterProfiles.yearsOfExperience,
@@ -307,8 +308,9 @@ router.get('/sitters/:id', async (req, res) => {
         userId: sitterProfiles.userId,
         firstName: sitterProfiles.firstName,
         lastName: sitterProfiles.lastName,
-        email: sitterProfiles.email,
-        phone: sitterProfiles.phone,
+        // SECURITY: email + phone deliberately NOT exposed on these public (no-auth)
+        // listing endpoints — contact details are shared only after a booking, like
+        // the other public provider/groomer listings. (Leaked raw PII before.)
         city: sitterProfiles.city,
         bio: sitterProfiles.bio,
         yearsOfExperience: sitterProfiles.yearsOfExperience,

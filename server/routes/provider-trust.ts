@@ -72,6 +72,14 @@ function getUid(req: Request): string | null {
 router.get('/providers/stats/:userId', async (req: Request, res: Response) => {
   const { userId } = req.params;
 
+  // SECURITY: require a signed-in viewer. This route returns trust metrics +
+  // backgroundCheckStatus for ANY provider userId and was fully enumerable while
+  // anonymous. Gate behind a valid session (getUid → null when no token).
+  const viewerUid = getUid(req);
+  if (!viewerUid) {
+    return res.status(401).json({ error: 'Sign in to view provider trust details' });
+  }
+
   try {
     // Check cache freshness: refresh if older than 6 hours or missing
     const [profile] = await db
