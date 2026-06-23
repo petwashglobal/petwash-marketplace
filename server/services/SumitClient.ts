@@ -645,18 +645,26 @@ export class SumitClient {
   }
 
   /**
-   * Re-verify a transaction server-side (POST /billing/payments/gettransaction/).
-   * The beginredirect querystring is spoofable — this is the authoritative check
-   * before we treat a payment as real. No-op without creds; never throws.
+   * Re-verify a redirect payment server-side. The beginredirect querystring is
+   * spoofable — this is the authoritative check before we treat a payment as real.
+   * No-op without creds; never throws.
+   *
+   * ENDPOINT FIX (2026-06-23): was POST /billing/payments/gettransaction/ which is
+   * NOT in the official OfficeGuy API (it would 404 → verification always failed).
+   * Our redirect flow is /billing/payments/beginredirect/, so the namespace-correct
+   * "get" is POST /billing/payments/get/ ("Get payment details"). ⚠️ The request
+   * field (PaymentID vs TransactionID) + the Valid/Amount response field names are
+   * still UNVERIFIED — confirm in SUMIT sandbox before go-live. We send both id
+   * fields and accept multiple response shapes as defence-in-depth.
    */
   async getTransaction(transactionId: string): Promise<{ wired: boolean; valid: boolean; amountCents?: number; raw?: unknown; reason?: string }> {
     const env = readEnv();
     if (!isWired()) return { wired: false, valid: false, reason: 'SUMIT not enabled' };
     try {
-      const res = await fetch(`${env.baseUrl}/billing/payments/gettransaction/`, {
+      const res = await fetch(`${env.baseUrl}/billing/payments/get/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
-        body: JSON.stringify({ Credentials: { CompanyID: env.companyId, APIKey: env.apiKey }, TransactionID: transactionId }),
+        body: JSON.stringify({ Credentials: { CompanyID: env.companyId, APIKey: env.apiKey }, PaymentID: transactionId, TransactionID: transactionId }),
       });
       let parsed: any = null;
       try { parsed = await res.json(); } catch { /* non-JSON */ }
