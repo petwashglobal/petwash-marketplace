@@ -760,8 +760,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       setLocation(role === 'provider' ? '/provider-os' : '/provider-onboarding');
       return;
     }
-    if (isCustomerApp && user) {
-      setLocation('/dashboard');
+    if (isCustomerApp) {
+      // APP-STRUCTURE REBUILD — Stage 1 entry flip. When the Prestige shell is
+      // enabled, the customer app opens to the member home (signed-in) or the
+      // member welcome (signed-out) — NEVER the marketing Landing. With the flag
+      // off, preserve the prior behavior (signed-in → /dashboard; signed-out
+      // stays on Landing).
+      const prestigeShellOn =
+        import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' &&
+        import.meta.env.VITE_PRESTIGE_SHELL_ENABLED === 'true';
+      if (prestigeShellOn) {
+        setLocation(user ? '/prestige' : '/prestige/welcome');
+      } else if (user) {
+        setLocation('/dashboard');
+      }
     }
   }, [isProviderApp, isCustomerApp, user, loading, role, roleLoading, setLocation]);
 
@@ -788,21 +800,83 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       
       <Switch>
         {/*
-          APP-STRUCTURE REBUILD — Stage 0 scaffolding (SDD
-          docs/design/2026-06-24-three-frontend-app-structure-rebuild.md).
-          The Prestige (customer) app shell is mounted here ONLY behind
-          VITE_APP_STRUCTURE_V2_ENABLED (default OFF) so this ships completely
-          dark — with the flag off the route never resolves and the live apps
-          are untouched. Stage 1 wires the existing member surfaces into the
-          shell outlet and flips the customer-app cold-start entry to /prestige.
+          APP-STRUCTURE REBUILD — Prestige (customer) app namespace (SDD
+          docs/design/2026-06-24-three-frontend-app-structure-rebuild.md §6.1).
+          Mounted ONLY behind VITE_APP_STRUCTURE_V2_ENABLED (default OFF) so it
+          ships dark; the customer-app cold-start ENTRY only flips to these when
+          VITE_PRESTIGE_SHELL_ENABLED is also on. Each screen is RE-HOSTED — the
+          SAME existing component with the SAME feature flags, wrapped in the
+          PrestigeShell chrome (header + 5-tab nav). Money screens (wallet, shop)
+          are pure aliases: no component, API, or flag change. Old paths keep
+          working unchanged.
         */}
         {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
+          <Route path="/prestige/welcome">
+            {/* Signed-out member entry — re-hosts the existing SignIn (auth is
+                immersive, so no shell chrome). Fixes the "customer app opens to
+                marketing Landing" gap. */}
+            {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          </Route>
+        )}
+        {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
           <Route path="/prestige">
-            <PrestigeShell>
-              <div className="flex items-center justify-center" style={{ minHeight: '50dvh' }}>
-                <p className="text-sm text-gray-500">Prestige app shell — Stage 0 scaffold</p>
-              </div>
-            </PrestigeShell>
+            {() => (
+              <RequireAuth>
+                <AppTermsGate flavor="customer" language={language}>
+                  <PrestigeShell>
+                    {import.meta.env.VITE_DASHBOARD_V2_ENABLED === 'true' ? <DashboardV2 /> : <Dashboard />}
+                  </PrestigeShell>
+                </AppTermsGate>
+              </RequireAuth>
+            )}
+          </Route>
+        )}
+        {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
+          <Route path="/prestige/book">
+            {() => (
+              <PrestigeShell>
+                <Suspense fallback={<PageLoader />}>
+                  <PlatformHub />
+                </Suspense>
+              </PrestigeShell>
+            )}
+          </Route>
+        )}
+        {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
+          <Route path="/prestige/shop">
+            {() => (
+              <PrestigeShell>
+                {import.meta.env.VITE_SHOP_LIVE_ENABLED === 'true'
+                  ? <ShopStore language={language} onLanguageChange={handleLanguageChange} />
+                  : <Shop />}
+              </PrestigeShell>
+            )}
+          </Route>
+        )}
+        {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
+          <Route path="/prestige/wallet">
+            {() => (
+              <RequireAuth>
+                <PrestigeShell>
+                  <MyWallet />
+                </PrestigeShell>
+              </RequireAuth>
+            )}
+          </Route>
+        )}
+        {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
+          <Route path="/prestige/account">
+            {() => (
+              <RequireAuth>
+                <PrestigeShell>
+                  <RouteErrorBoundary routeName="/prestige/account">
+                    <Suspense fallback={<PageLoader />}>
+                      {import.meta.env.VITE_PROFILE_V2_ENABLED === 'true' ? <ProfileV2 /> : <MyAccount />}
+                    </Suspense>
+                  </RouteErrorBoundary>
+                </PrestigeShell>
+              </RequireAuth>
+            )}
           </Route>
         )}
         {/* Public routes */}
@@ -3776,7 +3850,16 @@ function App() {
   const PROMO_OPERATIONAL_PATTERN =
     /^\/(paw-finder|admin|provider|dashboard|booking|my-account|my-wallet|my-bookings|marketplace\/booking|marketplace\/review|report-problem|payment|control-panel|management|accounting|receipt|ops|ceo|franchise|station|legal-agreement)(\/|$)/;
 
-  const isImmersive = isImmersiveRoute(currentPath);
+  // APP-STRUCTURE REBUILD — the PrestigeShell renders its OWN header + bottom
+  // nav, so the GLOBAL shell chrome must be suppressed on /prestige/* shell
+  // routes (otherwise the navs double-stack). Flag-gated: with
+  // VITE_APP_STRUCTURE_V2_ENABLED off this is always false, so the live shell
+  // behavior (and routes like /prestige/waitlist) are untouched.
+  const onPrestigeShell =
+    import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' &&
+    (currentPath === '/prestige' || currentPath.startsWith('/prestige/'));
+
+  const isImmersive = isImmersiveRoute(currentPath) || onPrestigeShell;
   const showPromoPopup = !isImmersive && !PROMO_OPERATIONAL_PATTERN.test(currentPath);
   const showFloatingStack = !isImmersive;
   const showMobileNav = !isImmersive;
