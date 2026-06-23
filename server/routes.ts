@@ -10902,7 +10902,12 @@ self.addEventListener('notificationclick', (event) => {
     try {
       const { enhancedChatWithLearning } = await import('./ai-enhanced-chat');
       const { message, language, sessionId, userId, previousMessage, timeSpentOnPreviousAnswer } = req.body;
-      
+      // SECURITY/COST: cap message length before it reaches the LLM — an uncapped
+      // message is a token-cost amplification vector (body limit is 10MB).
+      if (typeof message === 'string' && message.length > 4000) {
+        return res.status(400).json({ error: 'Message too long (max 4000 characters)' });
+      }
+
       if (!message) {
         return res.status(400).json({ error: "Message is required" });
       }
@@ -13812,12 +13817,20 @@ self.addEventListener('notificationclick', (event) => {
       
       // Validate required fields
       if (!name || !email || !message) {
-        return res.status(400).json({ 
-          success: false, 
-          error: 'Name, email, and message are required' 
+        return res.status(400).json({
+          success: false,
+          error: 'Name, email, and message are required'
         });
       }
-      
+
+      // SECURITY: this route has no Zod schema — cap field lengths so a single
+      // field can't absorb the whole 10MB body. (Backstop for DoS / abuse.)
+      if (String(name).length > 200 || String(email).length > 254 ||
+          String(subject ?? '').length > 300 || String(message).length > 5000 ||
+          String(phone ?? '').length > 32) {
+        return res.status(400).json({ success: false, error: 'One or more fields exceed the allowed length' });
+      }
+
       // Validate email format (bounded character classes prevent ReDoS)
       const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
       if (!emailRegex.test(email)) {
