@@ -378,18 +378,24 @@ export default function AdminFinancial({ language }: AdminFinancialProps) {
                   <>
                     <div className="space-y-4 mb-8">
                       {cashFlow.map((month: any) => {
-                        const maxVal = Math.max(...cashFlow.map((m: any) => Math.max(m.income, m.costs, 1)));
-                        const incomeWidth = maxVal > 0 ? (month.income / maxVal) * 100 : 0;
-                        const costsWidth = maxVal > 0 ? (month.costs / maxVal) * 100 : 0;
+                        // Coerce every figure to a safe number — the API can omit fields or
+                        // return them as strings; an undefined.toLocaleString() would crash the
+                        // whole admin app via the global error boundary.
+                        const mIncome = Number(month?.income) || 0;
+                        const mCosts = Number(month?.costs) || 0;
+                        const mNet = Number(month?.net) || 0;
+                        const maxVal = Math.max(...cashFlow.map((m: any) => Math.max(Number(m?.income) || 0, Number(m?.costs) || 0, 1)));
+                        const incomeWidth = maxVal > 0 ? (mIncome / maxVal) * 100 : 0;
+                        const costsWidth = maxVal > 0 ? (mCosts / maxVal) * 100 : 0;
                         return (
                           <div key={month.month} className="luxury-glass-minimal p-4 rounded-xl">
                             <div className="flex items-center justify-between mb-3">
                               <span className="font-semibold text-gray-700 w-12">{month.monthName}</span>
                               <div className="flex items-center gap-4">
-                                <span className="text-sm text-green-600 font-medium">+₪{month.income.toLocaleString()}</span>
-                                <span className="text-sm text-red-500 font-medium">-₪{month.costs.toLocaleString()}</span>
-                                <span className={`text-sm font-bold ${month.net >= 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                  {month.net >= 0 ? '+' : ''}₪{month.net.toLocaleString()}
+                                <span className="text-sm text-green-600 font-medium">+₪{mIncome.toLocaleString()}</span>
+                                <span className="text-sm text-red-500 font-medium">-₪{mCosts.toLocaleString()}</span>
+                                <span className={`text-sm font-bold ${mNet >= 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                  {mNet >= 0 ? '+' : ''}₪{mNet.toLocaleString()}
                                 </span>
                               </div>
                             </div>

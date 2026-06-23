@@ -360,7 +360,7 @@ export default function AdminVouchers() {
               </div>
             </div>
             <div className="luxury-heading-lg luxury-text-gradient mb-1">
-              ₪{stats.totalValue.toLocaleString()}
+              ₪{(Number(stats?.totalValue) || 0).toLocaleString()}
             </div>
             <div className="luxury-text-small">Value Distributed</div>
           </div>

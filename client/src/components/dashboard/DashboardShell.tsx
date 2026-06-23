@@ -110,9 +110,16 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
                 </button>
               </div>
               {now && (
-                <div className="hidden md:flex items-center gap-1.5 text-xs text-black/50 font-mono mr-2">
-                  <Clock className="w-3.5 h-3.5" />
-                  {now.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
+                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-black/55 font-mono mr-2" data-testid="shell-live-clock" title={now.toLocaleString(he ? 'he-IL' : 'en-GB')}>
+                  <Clock className="w-3.5 h-3.5 shrink-0" />
+                  <div className="leading-tight text-right">
+                    <div className="hidden sm:block text-black/45">
+                      {now.toLocaleDateString(he ? 'he-IL' : 'en-GB', { weekday: 'long', day: 'numeric', month: 'long' })}
+                    </div>
+                    <div className="font-semibold tracking-tight tabular-nums">
+                      {now.toLocaleTimeString(he ? 'he-IL' : 'en-GB', { hour: '2-digit', minute: '2-digit', second: '2-digit' })}
+                    </div>
+                  </div>
                 </div>
               )}
               <Link

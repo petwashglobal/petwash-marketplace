@@ -32,6 +32,38 @@ export function initClientSentry() {
   }
 }
 
+/**
+ * Capture a top-level render crash caught by AppErrorBoundary, tagged with the
+ * user-facing referenceId so a "Reference: abc123" the user quotes can be found
+ * directly in Sentry. No-op when no DSN is configured.
+ */
+export function trackBoundaryCrash(
+  error: Error,
+  context: {
+    referenceId?: string;
+    errorKind?: string;
+    componentStack?: string;
+    url?: string;
+    userId?: string;
+    userRole?: string;
+  }
+) {
+  Sentry.captureException(error, {
+    tags: {
+      error_type: 'render_crash',
+      reference_id: context.referenceId || 'unknown',
+      error_kind: context.errorKind || 'render',
+      user_role: context.userRole || 'unknown',
+    },
+    extra: {
+      componentStack: context.componentStack,
+      url: context.url,
+      userId: context.userId,
+    },
+    level: 'fatal',
+  });
+}
+
 export function trackAuthError(
   error: Error,
   context: {

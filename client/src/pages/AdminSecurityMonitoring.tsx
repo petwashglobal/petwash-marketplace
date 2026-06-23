@@ -218,7 +218,7 @@ export default function AdminSecurityMonitoring() {
                   {biometric?.data?.totalAttempts || 0}
                 </div>
                 <p className="luxury-text-small">
-                  {biometric?.data?.successRate?.toFixed(1) || 0}% success rate
+                  {(Number(biometric?.data?.successRate) || 0).toFixed(1)}% success rate
                 </p>
                 <div className="mt-3">
                   <span className="luxury-badge" data-testid="badge-biometric-anomalies">
@@ -295,7 +295,7 @@ export default function AdminSecurityMonitoring() {
             ) : (
               <div>
                 <div className="luxury-heading-lg luxury-text-gradient mb-1" data-testid="text-consent-rate">
-                  {Math.min(99.9, biometric?.data?.successRate || 99).toFixed(1)}%
+                  {Math.min(99.9, Number(biometric?.data?.successRate) || 99).toFixed(1)}%
                 </div>
                 <p className="luxury-text-small">
                   {consent?.data?.totalUsers || 0} active users
