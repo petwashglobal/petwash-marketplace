@@ -23,6 +23,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { getApiUrl } from '@/lib/apiConfig';
+import { getAppFlavor } from '@/lib/app-flavor';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import type { Language } from '@/lib/i18n';
 import { Button } from '@/components/ui/button';
@@ -88,17 +89,12 @@ type GateState = 'checking' | 'needs_accept' | 'pass';
 /**
  * Resolve the running native app flavor exactly once. Returns 'web' when there
  * is no Capacitor runtime (browser) — the gate is then a pass-through.
+ *
+ * Delegates to the single source of truth in client/src/lib/app-flavor.ts so the
+ * bundle-id → flavor mapping lives in exactly one place (SDD §3.2).
  */
 async function detectFlavor(): Promise<AppFlavor | 'web'> {
-  try {
-    const { App: CapApp } = await import('@capacitor/app');
-    const info = await CapApp.getInfo();
-    const id = typeof info?.id === 'string' ? info.id : '';
-    if (!id) return 'web';
-    return id.includes('.provider') ? 'provider' : 'customer';
-  } catch {
-    return 'web'; // browser / no Capacitor plugin
-  }
+  return getAppFlavor();
 }
 
 export default function AppTermsGate({
