@@ -8,7 +8,7 @@ import { globalConfig } from './SitterGlobalConfig';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sitterBookings, sitterProfiles } from '@shared/schema';
-import { eq, and, gte, lte } from 'drizzle-orm';
+import { eq, and, gte, lte, inArray } from 'drizzle-orm';
 // Loyalty discount intentionally NOT imported — pet-sitting is a 15%-commission
 // JV service; discounts are K9000-only (see pricing block below).
 import { bookingPolicyEngine, type CancellationResult } from './BookingPolicyEngine';
@@ -41,12 +41,19 @@ export class SitterAdvancedBookingEngine {
    * - Capacity limits (boarding only)
    * - Overlapping booking prevention
    */
-  async checkAvailability(
-    sitterId: string,
-    serviceType: string,
-    startDate: Date,
-    endDate: Date
-  ): Promise<AvailabilityResult> {
+  async checkAvailability(params: {
+    providerId: string;
+    serviceType: string;
+    startDate: Date;
+    endDate: Date;
+    metadata?: any;
+  }): Promise<AvailabilityResult> {
+    // The route (sitter-suite.ts) calls this with a params OBJECT (matching the
+    // BaseLuxuryBookingEngine interface), not positional args. Previously the
+    // signature was positional, so `sitterId` received the whole object, the
+    // profile lookup never matched, and EVERY sitter booking failed at
+    // "Sitter not found" before pricing. Accept the object shape like quotePrice.
+    const { providerId: sitterId, serviceType, startDate, endDate } = params;
     try {
       // 1. Check if sitter profile exists and is available
       const sitter = await db.query.sitterProfiles.findFirst({
@@ -76,10 +83,12 @@ export class SitterAdvancedBookingEngine {
             eq(sitterBookings.sitterId, sitterId),
             gte(sitterBookings.endDate, startDate),
             lte(sitterBookings.startDate, endDate),
-            // Only count confirmed/active bookings
-            and(
-              eq(sitterBookings.bookingStatus, 'confirmed'),
-            )
+            // Count every booking that actively holds the slot. A slot is taken
+            // from the moment it is created (status 'pending_provider', awaiting
+            // acceptance) through 'confirmed'/'in_progress'. The old query checked
+            // a non-existent `bookingStatus` column AND only counted 'confirmed',
+            // so pending bookings never blocked the slot → double-booking.
+            inArray(sitterBookings.status, ['pending_provider', 'confirmed', 'in_progress']),
           )
         );
 
@@ -396,9 +405,12 @@ export class SitterAdvancedBookingEngine {
 
     if (!booking) return false;
 
-    // Service is complete if end date has passed and no disputes
+    // Service is complete if end date has passed and no disputes.
+    // NB: the column is `status`, not `bookingStatus` — the old code read an
+    // undefined field, so `!== 'disputed'` was always true and a DISPUTED
+    // booking would still release from escrow. Read the real column.
     const now = new Date();
-    return booking.endDate < now && booking.bookingStatus !== 'disputed';
+    return booking.endDate < now && booking.status !== 'disputed';
   }
 
   private async getEscrowAmount(bookingId: string): Promise<number> {
