@@ -24,25 +24,40 @@ const KEY_MAP = {
   dog: ['animal_dog', 'animals'], cat: ['animal_cat', 'animals'], rabbit: ['animal_rabbit', 'animals'],
   'guinea-pig': ['animal_guinea_pig', 'animals'], snake: ['animal_snake', 'animals'], pony: ['animal_pony', 'animals'],
   horse: ['animal_horse', 'animals'], bird: ['animal_bird', 'animals'], fish: ['animal_fish', 'animals'], turtle: ['animal_turtle', 'animals'],
+  hamster: ['animal_hamster', 'animals'], ferret: ['animal_ferret', 'animals'], lizard: ['animal_lizard', 'animals'],
+  hedgehog: ['animal_hedgehog', 'animals'], chick: ['animal_chick', 'animals'], swan: ['animal_swan', 'animals'], butterfly: ['animal_butterfly', 'animals'],
   paw: ['brand_paw', 'brand'], 'pet-owner': ['brand_pet_owner', 'brand'], 'botanical-leaf': ['nature_leaf', 'nature'],
+  'organic-sprig': ['nature_botanical_sprig', 'nature'], 'organic-soap': ['product_organic_soap', 'products'],
   shampoo: ['product_shampoo', 'products'], conditioner: ['product_conditioner', 'products'], bubbles: ['nature_bubbles', 'nature'],
   'water-droplet': ['nature_water_drop', 'nature'], 'grooming-brush': ['product_grooming_brush', 'products'], towel: ['product_towel', 'products'],
-  collar: ['product_collar', 'products'], treat: ['product_treat', 'products'], sparkle: ['brand_sparkle', 'brand'],
+  collar: ['product_collar', 'products'], 'engraved-tag': ['product_engraved_tag', 'products'], treat: ['product_treat', 'products'], sparkle: ['brand_sparkle', 'brand'],
   'natural-ingredients': ['nature_natural_ingredients', 'nature'], 'pet-safe': ['trust_pet_safe', 'trust'],
+  comb: ['product_comb', 'products'], scissors: ['product_scissors', 'products'], perfume: ['product_perfume_mist', 'products'],
+  'gift-box': ['product_gift_box', 'products'], heart: ['brand_heart', 'brand'], bone: ['product_bone', 'products'],
+  leash: ['product_leash', 'products'], 'pet-bed': ['product_pet_bed', 'products'], 'carrier-bag': ['product_carrier_bag', 'products'],
 };
 
 const PAD = 6;
-const BOARD_1 = {
-  rows: [
+const BOARDS = {
+  // "Colour Luxury Icon System" 1672x941 (24 icons)
+  board1: { rows: [
     { top: 261, bottom: 430, cols: [['dog',68,202],['cat',254,385],['rabbit',441,553],['guinea-pig',599,726],['snake',765,886],['pony',922,1054],['horse',1085,1224],['bird',1257,1349],['fish',1377,1481],['turtle',1501,1650]] },
     { top: 491, bottom: 661, cols: [['paw',61,192],['pet-owner',248,394],['botanical-leaf',442,556],['shampoo',626,697],['conditioner',769,841],['bubbles',923,1053],['water-droplet',1124,1211],['grooming-brush',1281,1408],['towel',1466,1616]] },
     { top: 745, bottom: 885, cols: [['collar',328,511],['treat',599,748],['sparkle',846,961],['natural-ingredients',1066,1217],['pet-safe',1280,1399]] },
-  ],
+  ] },
+  // "Colour Luxury Icon Collection" 1448x1086 (43 icons) — auto-detected boxes
+  collection: { rows: [
+    { top: 251, bottom: 397, cols: [['dog',30,162],['cat',188,294],['rabbit',337,439],['guinea-pig',472,582],['snake',611,719],['pony',746,889],['horse',912,1046],['bird',1069,1171],['fish',1184,1297],['turtle',1306,1438]] },
+    { top: 447, bottom: 574, cols: [['hamster',51,145],['ferret',197,316],['lizard',343,486],['hedgehog',528,643],['chick',681,755],['swan',800,928],['butterfly',953,1094],['paw',1126,1228],['pet-owner',1277,1408]] },
+    { top: 610, bottom: 747, cols: [['botanical-leaf',49,152],['organic-sprig',212,305],['shampoo',386,450],['conditioner',508,574],['organic-soap',630,727],['bubbles',779,896],['water-droplet',958,1055],['grooming-brush',1101,1210],['towel',1256,1394]] },
+    { top: 796, bottom: 895, cols: [['collar',54,189],['engraved-tag',249,325],['treat',387,494],['sparkle',589,678],['pet-safe',785,887],['natural-ingredients',951,1074],['comb',1146,1197],['scissors',1216,1390]] },
+    { top: 934, bottom: 1050, cols: [['perfume',51,156],['gift-box',241,354],['heart',427,534],['bone',601,725],['leash',795,951],['pet-bed',999,1154],['carrier-bag',1207,1370]] },
+  ] },
 };
 
-function cells() {
+function cells(board) {
   const out = [];
-  for (const row of BOARD_1.rows)
+  for (const row of board.rows)
     for (const [name, x0, x1] of row.cols)
       out.push({ name, left: Math.max(0, x0 - PAD), top: Math.max(0, row.top - PAD), width: (x1 - x0) + PAD * 2, height: (row.bottom - row.top) + PAD * 2 });
   return out;
@@ -82,9 +97,12 @@ async function extractOne(board, cell) {
 }
 
 const [boardPath, ...flags] = process.argv.slice(2);
-if (!boardPath) { console.error('usage: node scripts/extract-pet-icons.mjs <board.png> [--preview]'); process.exit(1); }
+if (!boardPath) { console.error('usage: node scripts/extract-pet-icons.mjs <board.png> [--board=board1|collection] [--preview]'); process.exit(1); }
+const boardName = (flags.find(f => f.startsWith('--board=')) || '--board=board1').split('=')[1];
+const board = BOARDS[boardName];
+if (!board) { console.error(`unknown board "${boardName}"; known: ${Object.keys(BOARDS).join(', ')}`); process.exit(1); }
 
-const list = cells();
+const list = cells(board);
 const results = [];
 for (const cell of list) {
   try { const r = await extractOne(boardPath, cell); results.push(r); console.log('✓', r.key, '→', r.outPath); }
