@@ -1487,6 +1487,15 @@ if (isProduction) {
     import('./jobs/exception-email').then(m => m.startExceptionEmailJob()).catch((e) => console.error('[ExceptionEmail] Failed to initialize:', e));
     import('./jobs/daily-close-reminder').then(m => m.startDailyCloseReminder()).catch((e) => console.error('[DailyCloseReminder] Failed to initialize:', e));
 
+    // BackgroundJobProcessor — the ~19 cron jobs in backgroundJobs.ts (daily Firestore
+    // backup, hourly Alerts-Center sweep, monthly financial reconciliation, weekly
+    // data-integrity check, birthday processing, etc.) were defined inside static
+    // start() but start() was NEVER called — the whole scheduler was dead, so none of
+    // these ran in production. Wire it here at boot like the other schedulers.
+    // (Two paid-AI sub-jobs DO live in this class but self-gate behind AI_CRONS_ENABLED
+    //  internally, so starting the scheduler does NOT trigger any paid AI unless that flag is set.)
+    import('./backgroundJobs').then(m => m.BackgroundJobProcessor.start()).catch((e) => console.error('[BackgroundJobs] Failed to start scheduler:', e));
+
     // Email Spend Guard — wire alarm callback so budget alerts reach nir.h@petwash.co.il
     import('./services/EmailSpendGuard').then(async ({ emailSpendGuard }) => {
       const { sendSecurityAlert } = await import('./services/alerts');
