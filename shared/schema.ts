@@ -8027,6 +8027,9 @@ export const pets = pgTable("pets", {
   size: varchar("size"),
   color: varchar("color"),
   microchipId: varchar("microchip_id"),
+  // Country where the pet was born (ISO-ish free text, e.g. 'Australia'). Useful
+  // for import/relocation readiness (e.g. a dog born abroad moving to Israel).
+  countryOfBirth: varchar("country_of_birth"),
   // Photo upload is optional — no facial/AI recognition is implied or performed.
   photoUrl: varchar("photo_url"),
 
