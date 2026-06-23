@@ -40,6 +40,8 @@ import { PromoAdPopup } from "@/components/PromoAdPopup";
 import { Layout } from "@/components/Layout";
 import { isStickyAccountPath } from "@/lib/sticky-account-paths";
 import { isImmersiveRoute } from "@/lib/immersive-routes";
+import { getAppFlavor } from "@/lib/app-flavor";
+import PrestigeShell from "@/components/prestige-shell/PrestigeShell";
 
 // CRITICAL: Only the two entry-point pages stay eager (everything else lazy)
 import Landing from "@/pages/Landing";
@@ -730,21 +732,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   // Detect the native app flavor once (provider vs customer bundle id). Web stays false.
   useEffect(() => {
     let cancelled = false;
-    import('@capacitor/app')
-      .then(async ({ App: CapApp }) => {
-        try {
-          const info = await CapApp.getInfo();
-          const id = typeof info?.id === 'string' ? info.id : '';
-          if (!cancelled) {
-            const provider = id.includes('.provider');
-            setIsProviderApp(provider);
-            // CUSTOMER flavor = the native app that is NOT the provider build
-            // (com.petwash.il / il.co.petwash.customer). Web has no native id → both false.
-            setIsCustomerApp(id !== '' && !provider);
-          }
-        } catch { /* no native app info (web) */ }
-      })
-      .catch(() => { /* web — no Capacitor plugin */ });
+    // Single source of truth for bundle-id → flavor (client/src/lib/app-flavor.ts).
+    getAppFlavor().then((flavor) => {
+      if (cancelled) return;
+      // CUSTOMER (Prestige) flavor = the native customer build; web (flavor==='web')
+      // leaves both false so the web experience is untouched.
+      setIsProviderApp(flavor === 'provider');
+      setIsCustomerApp(flavor === 'customer');
+    });
     return () => { cancelled = true; };
   }, []);
 
@@ -792,6 +787,24 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       {showOneTap && <GoogleOneTap enabled={true} autoPrompt={true} />}
       
       <Switch>
+        {/*
+          APP-STRUCTURE REBUILD — Stage 0 scaffolding (SDD
+          docs/design/2026-06-24-three-frontend-app-structure-rebuild.md).
+          The Prestige (customer) app shell is mounted here ONLY behind
+          VITE_APP_STRUCTURE_V2_ENABLED (default OFF) so this ships completely
+          dark — with the flag off the route never resolves and the live apps
+          are untouched. Stage 1 wires the existing member surfaces into the
+          shell outlet and flips the customer-app cold-start entry to /prestige.
+        */}
+        {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
+          <Route path="/prestige">
+            <PrestigeShell>
+              <div className="flex items-center justify-center" style={{ minHeight: '50dvh' }}>
+                <p className="text-sm text-gray-500">Prestige app shell — Stage 0 scaffold</p>
+              </div>
+            </PrestigeShell>
+          </Route>
+        )}
         {/* Public routes */}
         <Route path="/">
           {() => {
