@@ -1,4 +1,5 @@
 import { QRCodeSVG } from 'qrcode.react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 interface PremiumMemberCardProps {
   ownerName: string;
@@ -9,8 +10,9 @@ interface PremiumMemberCardProps {
   petType?: string | null;
 }
 
-const PET_EMOJI: Record<string, string> = {
-  dog: '🐶', cat: '🐱', rabbit: '🐰', bird: '🐦', other: '🐾',
+// Luxury asset icons (never emoji) keyed by pet type — gold line-art to match the card.
+const PET_ICON: Record<string, string> = {
+  dog: 'animal_dog', cat: 'animal_cat', rabbit: 'animal_rabbit', bird: 'animal_bird', other: 'brand_paw',
 };
 
 function EmvChip() {
@@ -61,7 +63,7 @@ function PetWashLogo() {
 
 export function PremiumMemberCard({ ownerName, balanceCents, cardDisplay, cardId, petName, petType }: PremiumMemberCardProps) {
   const balanceILS = (balanceCents / 100).toLocaleString('he-IL', { maximumFractionDigits: 0 });
-  const petEmoji   = PET_EMOJI[petType ?? 'dog'] ?? '🐾';
+  const petIconKey = PET_ICON[petType ?? 'dog'] ?? 'brand_paw';
 
   return (
     <div style={{
@@ -96,8 +98,9 @@ export function PremiumMemberCard({ ownerName, balanceCents, cardDisplay, cardId
               {ownerName || 'Member'}
             </div>
             {petName && (
-              <div style={{ fontSize: '11px', color: '#9E9E9E', marginTop: '2px', fontWeight: 500 }}>
-                {petEmoji} {petName}
+              <div style={{ display: 'flex', alignItems: 'center', gap: '5px', fontSize: '11px', color: '#9E9E9E', marginTop: '2px', fontWeight: 500 }}>
+                <PetWashIcon name={petIconKey} size={14} mode="gold" label={petName} />
+                <span>{petName}</span>
               </div>
             )}
           </div>

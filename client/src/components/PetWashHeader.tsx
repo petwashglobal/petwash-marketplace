@@ -39,6 +39,7 @@ import { useAccountNavigation, getLiveFirebaseUser } from "../hooks/useAccountNa
 import { useWhoami } from "../auth/useWhoami";
 import { accountButtonView, accountLabel } from "../lib/accountButton";
 import { isStickyAccountPath } from "../lib/sticky-account-paths";
+import { PetWashIcon } from "@/components/PetWashIcon";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
 type LangDir = "ltr" | "rtl";
@@ -108,9 +109,9 @@ const T: Record<string, Record<string, string>> = {
   "stations.label": { en: "Pet Wash Stations", he: "תחנות ⁦Pet Wash™⁩", ru: "Станции ⁦Pet Wash™⁩", fr: "Stations ⁦Pet Wash™⁩", es: "Estaciones ⁦Pet Wash™⁩", ar: "محطات ⁦Pet Wash™⁩" },
   "stations.desc": { en: "Self service K9000 natural wash locations", he: "תחנות שטיפה טבעית ⁦K9000™⁩ בשירות עצמי", ru: "Станции натуральной мойки ⁦K9000™⁩ самообслуживания", fr: "Stations de lavage naturel ⁦K9000™⁩ en libre-service", es: "Estaciones de lavado natural ⁦K9000™⁩ de autoservicio", ar: "محطات غسيل طبيعي ⁦K9000™⁩ ذاتية الخدمة" },
   "sitter.label": { en: "Pet Sitter", he: "שמרטף לחיות מחמד", ru: "Няня для питомцев", fr: "Garde d'animaux", es: "Cuidador de mascotas", ar: "جليس حيوانات أليفة" },
-  "sitter.desc": { en: "Trusted pet and home sitting in your neighborhood", he: "שמרטפות אמינות לחיות מחמד ולבית", ru: "Надёжный присмотр за питомцами и домом", fr: "Garde de confiance pour animaux et maison", es: "Cuidado confiable de mascotas y hogar", ar: "رعاية موثوقة للحيوانات الأليفة والمنزل" },
+  "sitter.desc": { en: "Trusted sitters next door — your home or theirs. Pets & plants cared for, short or long stays, so you travel with a clear mind.", he: "מטפלים אמינים מהשכונה — אצלך בבית או אצלם. טיפול בחיות ובצמחים, לטווח קצר או ארוך, שתצא לדרך בראש שקט.", ru: "Надёжные няни по соседству — у вас дома или у них. Уход за питомцами и растениями, на короткий или долгий срок — путешествуйте спокойно.", fr: "Des gardiens de confiance tout près — chez vous ou chez eux. Animaux et plantes choyés, courts ou longs séjours, l'esprit tranquille.", es: "Cuidadores de confianza cerca — en tu casa o la suya. Mascotas y plantas atendidas, estancias cortas o largas, viaja tranquilo.", ar: "جلساء موثوقون بالجوار — في بيتك أو بيتهم. عناية بالحيوانات والنباتات، إقامات قصيرة أو طويلة، فتسافر مطمئنًا." },
   "walker.label": { en: "Pet Walker", he: "מטייל עם חיות מחמד", ru: "Выгул питомцев", fr: "Promeneur d'animaux", es: "Paseador de mascotas", ar: "مشّاي حيوانات أليفة" },
-  "walker.desc": { en: "Walks, play time and outdoor activities", he: "טיולים, משחקים ופעילויות חוץ", ru: "Прогулки, игры и активный отдых", fr: "Promenades, jeux et activités en plein air", es: "Paseos, juegos y actividades al aire libre", ar: "نزهات، وقت لعب وأنشطة خارجية" },
+  "walker.desc": { en: "Vetted local walkers for daily walks, play and fresh-air adventures — with live GPS and photo updates.", he: "מטיילים מקומיים מאומתים לטיולים יומיים, משחק והרפתקאות באוויר הפתוח — עם מעקב GPS חי ועדכוני תמונות.", ru: "Проверенные местные выгульщики для прогулок, игр и приключений на свежем воздухе — с GPS и фото-отчётами.", fr: "Des promeneurs locaux vérifiés pour balades, jeux et aventures au grand air — avec GPS en direct et photos.", es: "Paseadores locales verificados para paseos, juegos y aventuras al aire libre — con GPS en vivo y fotos.", ar: "مشّاؤون محليون موثّقون لنزهات يومية ولعب ومغامرات في الهواء الطلق — مع تتبّع GPS وصور مباشرة." },
   "transport.label": { en: "Pet Transport", he: "הסעות חיות מחמד", ru: "Перевозка питомцев", fr: "Transport d'animaux", es: "Transporte de mascotas", ar: "نقل حيوانات أليفة" },
   "transport.desc": { en: "Pet taxi between home, sitter and stations (coming soon)", he: "מונית לחיות מחמד בין הבית, המטפל והתחנות (בקרוב)", ru: "Такси для питомцев между домом, няней и станциями (скоро)", fr: "Taxi pour animaux entre domicile, gardien et stations (bientôt)", es: "Taxi para mascotas entre hogar, cuidador y estaciones (próximamente)", ar: "تاكسي حيوانات بين المنزل والجليس والمحطات (قريبًا)" },
   "pawfinder.label": { en: "PawFinder™ – Lost & Found", he: "PawFinder™ – מציאת חיות", ru: "PawFinder™ – Потерянные и найденные", fr: "PawFinder™ – Animaux perdus & trouvés", es: "PawFinder™ – Perdidos y encontrados", ar: "PawFinder™ – المفقود والموجود" },
@@ -118,7 +119,7 @@ const T: Record<string, Record<string, string>> = {
   "adoption.label": { en: "Adoption", he: "אימוץ", ru: "Усыновление", fr: "Adoption", es: "Adopción", ar: "التبني" },
   "adoption.desc": { en: "Pets looking for a forever home — free, every listing checked", he: "חיות הממתינות לבית קבוע — ללא עלות, כל פוסט נבדק", ru: "Питомцы в поиске дома — бесплатно, всё проверено", fr: "Des animaux en quête d'un foyer — gratuit, vérifié", es: "Mascotas que buscan hogar — gratis, verificado", ar: "حيوانات تبحث عن بيت — مجاناً، مع فحص" },
   "academy.label": { en: "Pet Wash Academy", he: "אקדמיית ⁦Pet Wash™⁩", ru: "Академия ⁦Pet Wash™⁩", fr: "Académie ⁦Pet Wash™⁩", es: "Academia ⁦Pet Wash™⁩", ar: "أكاديمية ⁦Pet Wash™⁩" },
-  "academy.desc": { en: "Training, certification and education for pros", he: "הכשרה, הסמכה וחינוך למקצוענים", ru: "Обучение, сертификация и образование для профессионалов", fr: "Formation, certification et éducation pour professionnels", es: "Formación, certificación y educación para profesionales", ar: "تدريب وشهادات وتعليم للمحترفين" },
+  "academy.desc": { en: "Full pet training with certified trainers — from puppy basics to advanced obedience and behaviour.", he: "אילוף מלא לחיות מחמד עם מאמנים מוסמכים — מיסודות לגורים ועד ציות והתנהגות מתקדמים.", ru: "Полное обучение питомцев с сертифицированными тренерами — от азов для щенков до продвинутого послушания.", fr: "Éducation complète avec des dresseurs certifiés — des bases du chiot à l'obéissance et au comportement avancés.", es: "Adiestramiento completo con entrenadores certificados — desde lo básico del cachorro hasta obediencia avanzada.", ar: "تدريب كامل للحيوانات مع مدرّبين معتمدين — من أساسيات الجراء إلى الطاعة والسلوك المتقدّم." },
   "shop.label": { en: "Pet Wash Shop", he: "חנות ⁦Pet Wash™⁩", ru: "Магазин ⁦Pet Wash™⁩", fr: "Boutique ⁦Pet Wash™⁩", es: "Tienda ⁦Pet Wash™⁩", ar: "متجر ⁦Pet Wash™⁩" },
   "shop.desc": { en: "Personalised accessories and pet care — open to browse", he: "אביזרים בהזמנה אישית ומוצרי טיפוח — פתוח לעיון", ru: "Персонализированные аксессуары и уход — открыто для просмотра", fr: "Accessoires personnalisés et soins — ouvert à la découverte", es: "Accesorios personalizados y cuidado — abierto para explorar", ar: "إكسسوارات مخصصة ومنتجات عناية — متاح للتصفح" },
   "avatar.label": { en: "Avatar Studio", he: "סטודיו אווטאר", ru: "Студия аватаров", fr: "Studio Avatar", es: "Estudio Avatar", ar: "استوديو أفاتار" },
@@ -175,19 +176,19 @@ function t(key: string, lang: string): string {
 }
 
 const PLATFORM_ITEMS = [
-  { id: "hub", labelKey: "hub.label", descKey: "hub.desc", href: "/hub", frozen: false },
-  { id: "stations", labelKey: "stations.label", descKey: "stations.desc", href: "/stations", frozen: false },
-  { id: "pawfinder", labelKey: "pawfinder.label", descKey: "pawfinder.desc", href: "/paw-finder", frozen: false },
-  { id: "adoption", labelKey: "adoption.label", descKey: "adoption.desc", href: "/adoption", frozen: false },
-  { id: "sitter", labelKey: "sitter.label", descKey: "sitter.desc", href: "/sitter-suite", frozen: false },
-  { id: "walker", labelKey: "walker.label", descKey: "walker.desc", href: "/walk-my-pet", frozen: false },
-  { id: "transport", labelKey: "transport.label", descKey: "transport.desc", href: "/pettrek/book", frozen: true },
+  { id: "hub", labelKey: "hub.label", descKey: "hub.desc", href: "/hub", frozen: false, iconKey: "brand_pet_owner" },
+  { id: "stations", labelKey: "stations.label", descKey: "stations.desc", href: "/stations", frozen: false, iconKey: "nature_water_drop" },
+  { id: "pawfinder", labelKey: "pawfinder.label", descKey: "pawfinder.desc", href: "/paw-finder", frozen: false, iconKey: "brand_paw" },
+  { id: "adoption", labelKey: "adoption.label", descKey: "adoption.desc", href: "/adoption", frozen: false, iconKey: "brand_heart" },
+  { id: "sitter", labelKey: "sitter.label", descKey: "sitter.desc", href: "/sitter-suite", frozen: false, iconKey: "product_pet_bed" },
+  { id: "walker", labelKey: "walker.label", descKey: "walker.desc", href: "/walk-my-pet", frozen: false, iconKey: "product_leash" },
+  { id: "transport", labelKey: "transport.label", descKey: "transport.desc", href: "/pettrek/book", frozen: true, iconKey: "product_carrier_bag" },
 ];
 
 const PARTNER_ITEMS = [
-  { id: "academy", labelKey: "academy.label", descKey: "academy.desc", href: "/academy", frozen: false },
-  { id: "shop", labelKey: "shop.label", descKey: "shop.desc", href: "/shop", frozen: false },
-  { id: "avatar", labelKey: "avatar.label", descKey: "avatar.desc", href: "#", frozen: true },
+  { id: "academy", labelKey: "academy.label", descKey: "academy.desc", href: "/academy", frozen: false, iconKey: "trust_pet_safe" },
+  { id: "shop", labelKey: "shop.label", descKey: "shop.desc", href: "/shop", frozen: false, iconKey: "product_gift_box" },
+  { id: "avatar", labelKey: "avatar.label", descKey: "avatar.desc", href: "#", frozen: true, iconKey: "brand_sparkle" },
 ];
 
 const PLATFORM_GROUPS = [
@@ -489,18 +490,24 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                             key={item.id}
                             role="menuitem"
                             className={"pw-mega-link" + (item.frozen ? " pw-mega-link-frozen" : "")}
-                            style={{ touchAction: 'manipulation', cursor: item.frozen ? 'default' : 'pointer' }}
+                            style={{ touchAction: 'manipulation', cursor: item.frozen ? 'default' : 'pointer', display: 'flex', alignItems: 'flex-start', gap: 10, textAlign: 'start' }}
                             disabled={item.frozen}
                             onClick={() => { if (item.frozen) return; handleNavigate(item.href); }}
                           >
-                            <span>{t(item.labelKey, currentLanguage)}</span>
-                            {item.frozen ? (
-                              <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
-                            ) : (
-                              <span style={{ opacity: 0.6, fontSize: 11, marginInlineStart: 8 }}>
+                            <span className="petwash-icon-card" style={{ flex: '0 0 auto', marginTop: 1 }}>
+                              <PetWashIcon name={item.iconKey} size={26} label={t(item.labelKey, currentLanguage)} />
+                            </span>
+                            <span style={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 0 }}>
+                              <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                                {t(item.labelKey, currentLanguage)}
+                                {item.frozen && (
+                                  <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
+                                )}
+                              </span>
+                              <span style={{ opacity: 0.62, fontSize: 11, lineHeight: 1.35 }}>
                                 {t(item.descKey, currentLanguage)}
                               </span>
-                            )}
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -727,16 +734,26 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                         "pw-mobile-link" +
                         (item.frozen ? " pw-mega-link-frozen" : "")
                       }
-                      style={{ touchAction: 'manipulation', cursor: item.frozen ? 'default' : 'pointer' }}
+                      style={{ touchAction: 'manipulation', cursor: item.frozen ? 'default' : 'pointer', display: 'flex', alignItems: 'flex-start', justifyContent: 'flex-start', gap: 12, textAlign: 'start' }}
                       onClick={() => {
                         if (item.frozen) return;
                         handleNavigate(item.href);
                       }}
                     >
-                      <span>{t(item.labelKey, currentLanguage)}</span>
-                      {item.frozen && (
-                        <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
-                      )}
+                      <span className="petwash-icon-card" style={{ flex: '0 0 auto', marginTop: 1 }}>
+                        <PetWashIcon name={item.iconKey} size={30} label={t(item.labelKey, currentLanguage)} />
+                      </span>
+                      <span style={{ display: 'flex', flexDirection: 'column', gap: 3, minWidth: 0 }}>
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 600 }}>
+                          {t(item.labelKey, currentLanguage)}
+                          {item.frozen && (
+                            <span className="pw-pill-frozen">{t("frozen", currentLanguage)}</span>
+                          )}
+                        </span>
+                        <span style={{ opacity: 0.6, fontSize: 12, lineHeight: 1.4, whiteSpace: 'normal' }}>
+                          {t(item.descKey, currentLanguage)}
+                        </span>
+                      </span>
                     </button>
                   ))}
                 </div>

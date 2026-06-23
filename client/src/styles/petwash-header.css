@@ -5,6 +5,29 @@
  */
 
 /* ===========================
+   LUXURY ICON TILE
+   White rounded tile with a soft gold ring — the premium look for menu
+   service icons (Smart Luxury Icon System §13). Asset-based, never an emoji.
+   =========================== */
+.petwash-icon-card {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: #FFFFFF;
+  border: 1px solid rgba(212, 175, 55, 0.35);
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(26, 23, 18, 0.06);
+  overflow: hidden;
+}
+.pw-mega-link:hover .petwash-icon-card,
+.pw-mobile-link:hover .petwash-icon-card {
+  border-color: rgba(212, 175, 55, 0.6);
+  box-shadow: 0 4px 14px rgba(212, 175, 55, 0.22);
+}
+
+/* ===========================
    HEADER CONTAINER
    =========================== */
 .pw-header {
