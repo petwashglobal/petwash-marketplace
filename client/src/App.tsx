@@ -142,6 +142,7 @@ const AdminAccessDenied = lazy(() => import("@/pages/AdminAccessDenied"));
 const GroupStatusMonitor = lazy(() => import("@/pages/admin/GroupStatusMonitor"));
 const BrainDashboard = lazy(() => import("@/pages/admin/BrainDashboard"));
 const PetWashBridge = lazy(() => import("@/pages/admin/PetWashBridge"));
+const AdminLiveOps = lazy(() => import("@/pages/admin/AdminLiveOps"));
 const CEODashboard = lazy(() => import("@/pages/CEODashboard"));
 const AdminKYC = lazy(() => import("@/pages/AdminKYC"));
 const AdminSystemLogs = lazy(() => import("@/pages/AdminSystemLogs"));
@@ -2298,6 +2299,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminRetention />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Live Ops review screen — all-platform bookings + KPIs + alerts. */}
+        {/* NOT feature-flagged: the CEO's "one place to review everything". */}
+        <Route path="/admin/live-ops">
+          {() => (
+            <AdminRouteGuard>
+              <AdminLiveOps />
             </AdminRouteGuard>
           )}
         </Route>
