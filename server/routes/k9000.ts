@@ -619,7 +619,25 @@ router.post('/wash/start_cycle', async (req, res) => {
         baySide: resolvedSide,
       });
     } catch (washLogErr: any) {
-      logger.error('[K9000 Wash] Failed to write k9000WashEvents', { error: washLogErr.message, washId });
+      // CRITICAL: this row is the REVENUE + receipt record for a Flow A Nayax card
+      // sale that was ALREADY charged at the terminal. Swallowing it silently loses
+      // the revenue record AND the SUMIT receipt (gated on washEventId below). We do
+      // NOT 5xx here — the wash/charge already happened and a caller retry could
+      // re-activate — instead we make it LOUD + recoverable: a critical log with the
+      // full payload + an ops alert. Idempotency key nayax:${transactionId} makes a
+      // manual replay safe (no double-count).
+      logger.error('[K9000 Wash] CRITICAL: failed to write k9000WashEvents — revenue/receipt record lost', {
+        error: washLogErr.message, washId, transactionId,
+        nayaxAmountCents, stationId: stationInfo?.stationId ?? machineId, baySide: resolvedSide,
+      });
+      import('../services/alerts').then(({ sendSecurityAlert }) => sendSecurityAlert(
+        'K9000 revenue record FAILED to save (Flow A card sale)',
+        `<p>A Flow A Nayax card wash was charged but its k9000WashEvents revenue/receipt row failed to insert.</p>
+         <ul><li>washId: ${washId}</li><li>nayaxTransactionId: ${transactionId ?? 'n/a'}</li>
+         <li>amountCents: ${nayaxAmountCents}</li><li>station: ${stationInfo?.stationId ?? machineId}</li>
+         <li>side: ${resolvedSide}</li><li>error: ${washLogErr.message}</li></ul>
+         <p>Reconstruct manually — idempotency key nayax:${transactionId ?? washId}.</p>`
+      )).catch(() => {});
     }
 
     // === STEP 4.8b: SUMIT tax-invoice/receipt — DIRECT Nayax card sale only ===
