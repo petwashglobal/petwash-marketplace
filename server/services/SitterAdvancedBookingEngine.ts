@@ -9,7 +9,8 @@ import { logger } from '../lib/logger';
 import { db } from '../db';
 import { sitterBookings, sitterProfiles } from '@shared/schema';
 import { eq, and, gte, lte } from 'drizzle-orm';
-import { getLoyaltyStatus, type LoyaltyUser } from './loyalty';
+// Loyalty discount intentionally NOT imported — pet-sitting is a 15%-commission
+// JV service; discounts are K9000-only (see pricing block below).
 import { bookingPolicyEngine, type CancellationResult } from './BookingPolicyEngine';
 import { countCalendarDays } from '../lib/calendar-days';
 import escrowService from './EscrowService';
@@ -164,23 +165,16 @@ export class SitterAdvancedBookingEngine {
       logger.info('[Dynamic Pricing] Holiday surge applied', { sitterId, surge: holidaySurge });
     }
 
-    // ADDED: Apply loyalty tier discount (UNIFIED across all platforms)
-    let loyaltyDiscount = 0;
-    if (userId) {
-      const loyaltyUser = await getLoyaltyStatus(userId);
-      if (loyaltyUser) {
-        const discountPercent = loyaltyUser.discount; // 0%, 5%, 10%, 15%, 20%
-        loyaltyDiscount = (subtotal * discountPercent) / 100;
-        subtotal -= loyaltyDiscount;
-        logger.info('[Sitter Booking] Loyalty discount applied', {
-          userId,
-          tier: loyaltyUser.tier,
-          discount: loyaltyDiscount,
-        });
-      }
-    }
+    // Loyalty discounts are NOT allowed on pet-sitting — it is a marketplace JV
+    // service PetWash takes a 15% commission on, not a 100%-owned K9000 wash.
+    // Discounting here loses real commission AND comes out of the sitter's payout
+    // (sitterPayout = subtotal below). Per the canonical discount policy, loyalty/
+    // member discounts apply to K9000 washes ONLY (see schema-member-discount.ts +
+    // the PR #949 fix that removed the same leak from BookingLifecycleService).
+    // Kept as 0 so the return shape (loyaltyDiscount field) is unchanged.
+    const loyaltyDiscount = 0;
 
-    // Platform fee (10% transparent to customer)
+    // Platform commission (rate from SitterGlobalConfig — transparent to customer)
     const platformFee = subtotal * globalConfig.getCommissionRate();
 
     // Tax (country-specific VAT/GST)
@@ -189,7 +183,7 @@ export class SitterAdvancedBookingEngine {
     // Total price to customer
     const totalPrice = subtotal + platformFee + tax;
 
-    // Sitter payout (gets full subtotal after loyalty discount)
+    // Sitter payout (gets full subtotal — no loyalty discount carved out of it)
     const sitterPayout = subtotal;
 
     return {
