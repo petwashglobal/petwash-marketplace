@@ -1334,17 +1334,42 @@ router.post('/walks/:bookingId/gps', requireAuth, async (req, res) => {
 });
 
 // Get live GPS tracking data
-router.get('/walks/:bookingId/gps/live', async (req, res) => {
+router.get('/walks/:bookingId/gps/live', requireAuth, async (req, res) => {
   try {
     const { bookingId } = req.params;
+    const userId = (req as any).user?.uid;
     const { limit = 50 } = req.query;
 
+    // SECURITY: live GPS of a pet/walker is sensitive — only the pet owner or the
+    // assigned walker may read it. Was anonymous + enumerable by bookingId before.
+    const [booking] = await db
+      .select({ ownerId: walkBookings.ownerId, walkerId: walkBookings.walkerId })
+      .from(walkBookings)
+      .where(eq(walkBookings.bookingId, bookingId))
+      .limit(1);
+    if (!booking) return res.status(404).json({ error: 'Walk not found' });
+
+    let authorized = booking.ownerId === userId;
+    if (!authorized && booking.walkerId) {
+      // walkerId is a walker-profile id, not a Firebase uid — resolve the caller's
+      // walker profile and compare.
+      const [w] = await db
+        .select({ walkerId: walkerProfiles.walkerId })
+        .from(walkerProfiles)
+        .where(eq(walkerProfiles.userId, userId))
+        .limit(1);
+      authorized = !!w && w.walkerId === booking.walkerId;
+    }
+    if (!authorized) return res.status(403).json({ error: 'Not authorized to view this walk' });
+
+    // Clamp the limit (was unbounded → could dump the whole GPS history).
+    const cappedLimit = Math.min(Math.max(parseInt(limit as string) || 50, 1), 200);
     const gpsPoints = await db
       .select()
       .from(walkGpsTracking)
       .where(eq(walkGpsTracking.bookingId, bookingId))
       .orderBy(desc(walkGpsTracking.recordedAt))
-      .limit(parseInt(limit as string));
+      .limit(cappedLimit);
 
     res.json({ success: true, gpsPoints: gpsPoints.reverse() });
   } catch (error: any) {
