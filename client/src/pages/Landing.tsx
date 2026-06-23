@@ -11,6 +11,7 @@ import { PremiumPlatformGrid } from '@/components/marketing/PremiumPlatformGrid'
 import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
+import { smartGreeting, type GreetLang } from '@/lib/smartGreeting';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
@@ -139,7 +140,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                     onClick={() => handleAuthNavigate()}
                     className="gold-shimmer-btn text-[#0a0a0a] px-8 py-4 text-sm uppercase tracking-[0.15em] font-light rounded-none"
                   >
-                    {`${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`}
+                    {smartGreeting(user.displayName?.split(' ')[0], language as GreetLang)}
                   </Button>
                 ) : (
                   <div className="flex justify-center items-center">
@@ -455,7 +456,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 }}
               >
                 {user
-                  ? `${t('nav.welcome', language)} ${user.displayName?.split(' ')[0] || ''}!`
+                  ? smartGreeting(user.displayName?.split(' ')[0], language as GreetLang)
                   : t('loyalty.signUp', language)
                 }
               </Button>
