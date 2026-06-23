@@ -27,6 +27,21 @@ describe('smartGreeting — occasions override time of day', () => {
     expect(smartGreeting('NIR', 'he', { now: at('2026-06-23T08:00:00'), birthday: '1985-06-23', petBirthdays: [{ name: 'רקסי', dob: '2020-06-23' }] }))
       .toBe('יום הולדת שמח NIR! 🎂');
   });
+  it('two pets sharing a birthday are greeted together (Hebrew)', () => {
+    expect(smartGreeting('NIR', 'he', { now: at('2026-06-23T08:00:00'), petBirthdays: [
+      { name: 'רקסי', dob: '2020-06-23' }, { name: 'לונה', dob: '2021-06-23' },
+    ] })).toBe('יום הולדת שמח לרקסי ולונה 🐾');
+  });
+  it('two pets sharing a birthday are greeted together (English)', () => {
+    expect(smartGreeting('Nir', 'en', { now: at('2026-06-23T08:00:00'), petBirthdays: [
+      { name: 'Rexy', dob: '2020-06-23' }, { name: 'Luna', dob: '2021-06-23' },
+    ] })).toBe('Happy Birthday to Rexy & Luna 🐾');
+  });
+  it('only the pet whose birthday is today is greeted', () => {
+    expect(smartGreeting('Nir', 'en', { now: at('2026-06-23T08:00:00'), petBirthdays: [
+      { name: 'Rexy', dob: '2020-06-23' }, { name: 'Luna', dob: '2021-12-01' },
+    ] })).toBe('Happy Birthday to Rexy 🐾');
+  });
   it('civil New Year', () => {
     expect(smartGreeting('Nir', 'en', { now: at('2026-01-01T08:00:00') })).toBe('Happy New Year Nir! 🎉');
   });
