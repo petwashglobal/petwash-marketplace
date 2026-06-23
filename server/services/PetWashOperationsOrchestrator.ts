@@ -1227,7 +1227,7 @@ Signature ID: ${opts.signatureId}
 Agreement: ${opts.agreementTitle} (${opts.agreementVersion})
 Agreement ID: ${opts.agreementId}
 Signed By: ${opts.fullName}
-ID Number: ${opts.idNumber}
+ID Number: ${opts.idNumber ? '****' + String(opts.idNumber).slice(-4) : '—'}  [PII redacted]
 Email: ${opts.email}
 Department: ${opts.department || '—'}
 Company: ${opts.company || '—'}
@@ -1242,7 +1242,7 @@ ${opts.agreementContent}
 ${'='.repeat(60)}
 DIGITAL SIGNATURE RECORD
 Signatory: ${opts.fullName}
-ID: ${opts.idNumber}
+ID: ${opts.idNumber ? '****' + String(opts.idNumber).slice(-4) : '—'}  [PII redacted]
 Signed: ${opts.signedAt}
 Signature ID: ${opts.signatureId}
 ${'='.repeat(60)}`;

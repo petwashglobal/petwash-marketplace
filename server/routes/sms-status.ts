@@ -44,6 +44,11 @@ router.use(express.urlencoded({ extended: false }));
 function validateTwilioSignature(req: Request, res: Response, next: NextFunction) {
   const authToken = process.env.TWILIO_AUTH_TOKEN;
   if (!authToken) {
+    // SECURITY: fail CLOSED in production — never accept unsigned webhooks live.
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[SMSStatus] TWILIO_AUTH_TOKEN unset in production — rejecting webhook');
+      return res.status(503).send('Webhook not configured');
+    }
     logger.warn('[SMSStatus] TWILIO_AUTH_TOKEN not configured — skipping signature check (DEV ONLY)');
     return next();
   }

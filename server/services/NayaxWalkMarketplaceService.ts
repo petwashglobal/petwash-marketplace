@@ -189,7 +189,7 @@ export class NayaxWalkMarketplaceService {
         walkId: params.walkId,
         walkerId: params.walkerId,
         amountILS: (params.walkerPayoutCents / 100).toFixed(2),
-        bankAccount: params.walkerBankAccount,
+        bankAccountLast4: params.walkerBankAccount ? '****' + String(params.walkerBankAccount).slice(-4) : null,
         paymentGateway: 'Nayax Israel',
       });
       
