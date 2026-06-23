@@ -157,7 +157,14 @@ router.post('/nayax-events',
 
     // 1. Validate signature
     const sigHeader = req.headers['x-nayax-signature'] as string | undefined;
-    if (WEBHOOK_SECRET && !validateSignature(rawBody, sigHeader)) {
+    // SECURITY: fail CLOSED in production — never process unsigned webhooks live.
+    if (!WEBHOOK_SECRET) {
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('[NayaxEvents] NAYAX_WEBHOOK_SECRET unset in production — rejecting webhook');
+        return res.status(503).json({ error: 'Webhook not configured' });
+      }
+      logger.warn('[NayaxEvents] NAYAX_WEBHOOK_SECRET unset — skipping signature check (DEV ONLY)');
+    } else if (!validateSignature(rawBody, sigHeader)) {
       logger.warn('[NayaxEvents] Invalid signature', { ip: req.ip });
       return res.status(401).json({ error: 'Invalid signature' });
     }

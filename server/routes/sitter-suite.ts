@@ -142,7 +142,7 @@ router.post('/upload/profile-photo', upload.single('photo'), async (req: Request
 
     const [signedUrl] = await fileRef.getSignedUrl({
       action: 'read',
-      expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+      expires: Date.now() + 30 * 60 * 1000, // 30 minutes (was 1 year — hardening)
     });
 
     logger.info('[Sitter Suite] Profile photo uploaded (AI approved)', { userId: user.uid, fileName, safetyScore: moderationResult?.safetyScore });
@@ -194,7 +194,7 @@ router.post('/upload/document', upload.single('document'), async (req: Request, 
 
     const [signedUrl] = await fileRef.getSignedUrl({
       action: 'read',
-      expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+      expires: Date.now() + 30 * 60 * 1000,
     });
 
     logger.info('[Sitter Suite] Document uploaded', { userId: user.uid, docType, fileName });

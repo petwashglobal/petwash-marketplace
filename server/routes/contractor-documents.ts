@@ -115,7 +115,7 @@ router.post("/upload", upload.single("file"), async (req: any, res) => {
 
     const [url] = await blob.getSignedUrl({
       action: "read",
-      expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+      expires: Date.now() + 30 * 60 * 1000,
     });
 
     const [document] = await db

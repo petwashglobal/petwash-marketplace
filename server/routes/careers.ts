@@ -570,7 +570,7 @@ router.post('/applications/:applicationId/documents', upload.single('document'),
     
     const [signedUrl] = await file.getSignedUrl({
       action: 'read',
-      expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+      expires: Date.now() + 30 * 60 * 1000, // 30 minutes (was 1 year — hardening)
     });
     
     // Save document record

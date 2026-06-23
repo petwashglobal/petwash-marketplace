@@ -164,7 +164,7 @@ export class FieldOperationsService {
         // Generate signed URL (valid for 1 year)
         const [signedUrl] = await fileUpload.getSignedUrl({
           action: 'read',
-          expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year
+          expires: Date.now() + 30 * 60 * 1000, // 30 minutes (was 1 year — hardening)
         });
 
         // Save photo record to database

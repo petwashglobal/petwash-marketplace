@@ -166,7 +166,7 @@ export class NayaxSitterMarketplaceService {
         bookingId: params.bookingId,
         sitterId: params.sitterId,
         amountILS: (params.sitterPayoutCents / 100).toFixed(2),
-        bankAccount: params.sitterBankAccount,
+        bankAccountLast4: params.sitterBankAccount ? '****' + String(params.sitterBankAccount).slice(-4) : null,
       });
       
       return {
