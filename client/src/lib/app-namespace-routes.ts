@@ -69,7 +69,7 @@ export const PRESTIGE_SCREENS: ScreenRoute[] = [
   { id: 'prestige-product',     app: 'prestige', ceoNumber: 13, ceoLabel: 'Product Details',         newPath: '/prestige/shop/:id',          oldPath: '/shop/:id',          status: 'rehost' },
   { id: 'prestige-cart',        app: 'prestige', ceoNumber: 14, ceoLabel: 'Cart',                    newPath: '/prestige/cart',              oldPath: '/cart',              status: 'rehost', money: true },
   { id: 'prestige-checkout',    app: 'prestige', ceoNumber: 15, ceoLabel: 'Checkout',                newPath: '/prestige/checkout',          oldPath: '/checkout',          status: 'rehost', money: true },
-  { id: 'prestige-wallet',      app: 'prestige', ceoNumber: 16, ceoLabel: 'Wallet / Credits',        newPath: '/prestige/wallet',            oldPath: '/wallet',            status: 'rehost', money: true },
+  { id: 'prestige-wallet',      app: 'prestige', ceoNumber: 16, ceoLabel: 'Wallet / Credits',        newPath: '/prestige/wallet',            oldPath: '/my-wallet',         status: 'rehost', money: true, note: '/wallet is the Apple-pass download; member wallet is /my-wallet (MyWallet)' },
   { id: 'prestige-rewards',     app: 'prestige', ceoNumber: 17, ceoLabel: 'Rewards',                 newPath: '/prestige/rewards',           oldPath: '/loyalty/dashboard', status: 'rehost' },
   { id: 'prestige-receipts',    app: 'prestige', ceoNumber: 18, ceoLabel: 'Receipts / Invoices',     newPath: '/prestige/receipts',          oldPath: '/receipts',          status: 'rehost', money: true },
   { id: 'prestige-bookings',    app: 'prestige', ceoNumber: 19, ceoLabel: 'Booking History',         newPath: '/prestige/bookings',          oldPath: '/bookings',          status: 'rehost' },
