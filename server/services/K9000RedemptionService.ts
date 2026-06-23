@@ -1036,9 +1036,21 @@ async function debitAndLog(input: DebitInput): Promise<DebitResult> {
       },
     });
   } catch (auditErr: any) {
-    logger.error('[K9000Redemption] Audit ledger write failed (non-fatal)', {
-      auditId, error: auditErr.message, correlationId,
+    // The audit-ledger row is the legal/compliance hash record of a completed
+    // wallet redemption (money already debited + wash run). It's intentionally
+    // outside the money tx so a ledger failure can't block the wash — but it must
+    // NOT be silently lost. Make it loud + recoverable (payload below + the
+    // deterministic auditId/currentHash allow a safe manual replay).
+    logger.error('[K9000Redemption] CRITICAL: audit-ledger write failed — compliance record lost', {
+      auditId, error: auditErr.message, correlationId, userId, washId, redemptionType, side: bay.side, currentHash,
     });
+    import('./alerts').then(({ sendSecurityAlert }) => sendSecurityAlert(
+      'K9000 audit-ledger record FAILED (wallet redemption)',
+      `<p>A completed K9000 wallet redemption's audit-ledger (compliance hash) row failed to insert.</p>
+       <ul><li>auditId: ${auditId}</li><li>userId: ${userId}</li><li>washId: ${washId}</li>
+       <li>type: ${redemptionType}</li><li>side: ${bay.side}</li><li>hash: ${currentHash}</li>
+       <li>error: ${auditErr.message}</li></ul>`
+    )).catch(() => {});
   }
 
   return { sessionId, remainingBalance, remainingUnit, auditId };
