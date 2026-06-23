@@ -416,6 +416,15 @@ export class BackgroundJobProcessor {
       timezone: 'Asia/Jerusalem'
     });
 
+    // GCS Backup: Daily PostgreSQL dump to GCS at 3 AM Israel time. Postgres is the
+    // SOURCE OF TRUTH (users, bookings, money) and was previously NOT backed up
+    // anywhere — only Firestore + code were. This is the launch-critical gap.
+    cron.schedule('0 3 * * *', async () => {
+      await this.performPostgresBackup();
+    }, {
+      timezone: 'Asia/Jerusalem'
+    });
+
     // Legal Compliance: Check for overdue reviews daily at 8 AM Israel time
     cron.schedule('0 8 * * *', async () => {
       await this.checkLegalCompliance();
@@ -1814,6 +1823,28 @@ export class BackgroundJobProcessor {
       }
     } catch (error) {
       logger.error('[GCS] Error in Firestore export:', error);
+    }
+  }
+
+  private static async performPostgresBackup(): Promise<void> {
+    try {
+      const { performPostgresBackup, isGcsConfigured } = await import('./services/gcsBackupService');
+
+      if (!isGcsConfigured()) {
+        logger.warn('[GCS] Postgres backup skipped: GCS not configured');
+        return;
+      }
+
+      logger.info('[GCS] Starting PostgreSQL backup...');
+      const result = await performPostgresBackup();
+
+      if (result.success) {
+        logger.info(`[GCS] ✅ PostgreSQL backup complete: ${result.size} → ${result.gcsUrl}`);
+      } else {
+        logger.error(`[GCS] ❌ PostgreSQL backup failed: ${result.error}`);
+      }
+    } catch (error) {
+      logger.error('[GCS] Error in PostgreSQL backup:', error);
     }
   }
 

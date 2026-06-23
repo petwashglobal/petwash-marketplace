@@ -176,6 +176,107 @@ export async function performWeeklyCodeBackup(): Promise<{
   }
 }
 
+const POSTGRES_BUCKET = process.env.GCS_POSTGRES_BUCKET || 'petwash-postgres-backups';
+
+/**
+ * Nightly PostgreSQL logical backup → GCS.
+ *
+ * Postgres (Neon) is the source of truth — users, bookings, money, providers,
+ * loyalty — yet until now ONLY Firestore + code were backed up. A Neon incident
+ * had no independent recovery copy. This runs pg_dump in PostgreSQL's portable
+ * custom format (compressed, restorable with pg_restore), uploads it to GCS with
+ * a SHA-256 integrity hash, and logs the result.
+ *
+ * IMPORTANT — fails LOUDLY: if DATABASE_URL/credentials are missing, or the
+ * pg_dump binary isn't in the runtime image, this does NOT silently succeed.
+ * It records a failed backup_log, emails the summary, and fires a security alert,
+ * so a non-working backup is always visible (the opposite of the dead scheduler).
+ * Neon's own point-in-time recovery (PITR) remains the first-line safety net —
+ * this GCS dump is the independent second copy.
+ */
+export async function performPostgresBackup(): Promise<{
+  success: boolean;
+  backupFile?: string;
+  size?: string;
+  gcsUrl?: string;
+  error?: string;
+}> {
+  const startTime = Date.now();
+  const date = new Date().toISOString().split('T')[0];
+  const stamp = `${date}_${Date.now()}`;
+  const backupFile = `petwash-postgres-${stamp}.dump`;
+  const localPath = path.join(TEMP_DIR, backupFile);
+  const dbUrl = process.env.DATABASE_URL;
+
+  async function recordFailure(error: string) {
+    logger.error('[GCS] 🚨 PostgreSQL backup FAILED — database has NO fresh GCS copy', { error });
+    try {
+      await db.collection('backup_logs').add({ type: 'postgres', status: 'failed', error, timestamp: new Date().toISOString() });
+    } catch { /* best effort */ }
+    try {
+      const { sendSecurityAlert } = await import('./alerts');
+      await sendSecurityAlert(
+        'PostgreSQL nightly backup FAILED',
+        `<p><strong>The nightly PostgreSQL backup did not produce a fresh GCS copy.</strong></p>` +
+        `<p>Date: ${date}<br/>Error: ${error}</p>` +
+        `<p>Impact: the source-of-truth database has no fresh independent backup for this run. ` +
+        `Confirm Neon PITR is enabled, check DATABASE_URL, and ensure pg_dump is present in the runtime image.</p>`,
+      );
+    } catch { /* best effort */ }
+    if (fs.existsSync(localPath)) { try { fs.unlinkSync(localPath); } catch { /* noop */ } }
+  }
+
+  try {
+    if (!dbUrl) { await recordFailure('DATABASE_URL not set'); return { success: false, error: 'DATABASE_URL not set' }; }
+    if (!isGcsConfigured()) { await recordFailure('GCS credentials not configured'); return { success: false, error: 'GCS not configured' }; }
+
+    if (!fs.existsSync(TEMP_DIR)) fs.mkdirSync(TEMP_DIR, { recursive: true });
+
+    logger.info('[GCS] Starting PostgreSQL backup (pg_dump custom format)...');
+    // execFile (no shell) — the URL is passed as an argv element, not interpolated
+    // into a shell string, so there is no injection surface. -Fc = compressed,
+    // restorable custom format; --no-owner/--no-privileges for clean cross-env restore.
+    try {
+      await execFileAsync('pg_dump', ['-Fc', '--no-owner', '--no-privileges', '-f', localPath, dbUrl], {
+        maxBuffer: 1024 * 1024 * 200,
+        env: { ...process.env },
+      });
+    } catch (dumpErr: any) {
+      const missing = dumpErr?.code === 'ENOENT';
+      await recordFailure(missing ? 'pg_dump binary not found in runtime image' : `pg_dump failed: ${dumpErr?.message}`);
+      return { success: false, error: missing ? 'pg_dump not installed' : dumpErr?.message };
+    }
+
+    const stats = fs.statSync(localPath);
+    const sizeMB = (stats.size / (1024 * 1024)).toFixed(2);
+    const fileHash = calculateFileHash(localPath);
+    logger.info(`[GCS] pg_dump complete: ${sizeMB} MB, sha256 ${fileHash.slice(0, 12)}…`);
+
+    const storageClient = getStorageClient();
+    const destination = `daily/${date}/${backupFile}`;
+    await storageClient.bucket(POSTGRES_BUCKET).upload(localPath, {
+      destination,
+      metadata: { metadata: { project: 'petwash', type: 'postgres-backup', date, sha256: fileHash } },
+    });
+
+    const gcsUrl = `gs://${POSTGRES_BUCKET}/${destination}`;
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+    const timestamp = new Date().toISOString();
+    logger.info(`[GCS] ✅ PostgreSQL backup complete in ${duration}s: ${gcsUrl}`);
+
+    fs.unlinkSync(localPath);
+    await db.collection('backup_logs').add({
+      type: 'postgres', status: 'success', backupFile, sizeMB: parseFloat(sizeMB), gcsUrl,
+      sha256: fileHash, duration: parseFloat(duration), timestamp,
+    });
+
+    return { success: true, backupFile, size: `${sizeMB} MB`, gcsUrl };
+  } catch (error: any) {
+    await recordFailure(error?.message || 'Unknown error');
+    return { success: false, error: error?.message || 'Unknown error' };
+  }
+}
+
 /**
  * Export Firestore collections to GCS
  */
