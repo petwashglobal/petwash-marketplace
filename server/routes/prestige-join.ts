@@ -161,8 +161,13 @@ router.post('/join', async (req: Request, res: Response) => {
         } as any);
       }
     } catch (privilegeErr: any) {
-      logger.error('[PrestigeJoin] Privilege step failed', { error: privilegeErr?.message, userId });
-      // Non-fatal — continue to prestige pass step
+      // FATAL: the privilege_members row IS the membership record. If it fails to
+      // save we must NOT continue and return ok:true with a JS-generated memberId
+      // that was never persisted — that reports a join that never happened (same
+      // silent-data-loss class as the provider-onboarding 42703 bug). Fail loud so
+      // the user sees an error and can retry, instead of a phantom membership.
+      logger.error('[PrestigeJoin] Privilege member insert FAILED — membership NOT saved', { error: privilegeErr?.message, userId });
+      return res.status(500).json({ ok: false, error: 'Could not complete your membership — please try again', code: 'PRESTIGE_JOIN_FAILED' });
     }
 
     // ── Step 3: Firestore prestige_passes doc ────────────────────────────────
