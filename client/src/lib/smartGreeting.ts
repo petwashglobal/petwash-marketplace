@@ -25,6 +25,12 @@ export interface SmartGreetOpts {
   birthday?: string | null;
   /** Pets with optional DOBs — first one whose day+month is today wins. */
   petBirthdays?: Array<{ name: string; dob?: string | null }>;
+  /**
+   * A calendar occasion for today (Israeli holiday, World Dog Day, …), computed
+   * by the caller (see israelOccasions.ts). Takes priority over the civil New
+   * Year and time-of-day, but a personal birthday still wins over it.
+   */
+  occasion?: { text: string; emoji?: string } | null;
 }
 
 type Phrase = Record<GreetLang, string>;
@@ -105,7 +111,11 @@ export function smartGreetingParts(
   if (petsToday.length > 0) {
     return { text: pick(PET_BIRTHDAY, lang).replace('{pet}', joinNames(petsToday, lang)), celebration: true, emoji: '🐾' };
   }
-  // 3. Civil New Year (Jan 1).
+  // 3. Caller-supplied occasion (Israeli holiday, World Dog Day, …).
+  if (opts.occasion && opts.occasion.text) {
+    return { text: opts.occasion.text, celebration: true, emoji: opts.occasion.emoji || '🎉' };
+  }
+  // 4. Civil New Year (Jan 1).
   if (now.getMonth() === 0 && now.getDate() === 1) {
     return { text: pick(NEW_YEAR, lang), celebration: true, emoji: '🎉' };
   }

@@ -1,5 +1,5 @@
 import { useLocation, Link } from 'wouter';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WashPackages } from '@/components/WashPackages';
 import { GiftCards } from '@/components/GiftCards';
@@ -12,6 +12,7 @@ import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/componen
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
 import { smartGreeting, type GreetLang } from '@/lib/smartGreeting';
+import { israelOccasion } from '@/lib/israelOccasions';
 import { useQuery } from '@tanstack/react-query';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
@@ -41,7 +42,9 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
       return res.json();
     },
   });
-  const greetOpts = { birthday: greetCtx?.birthday ?? null, petBirthdays: greetCtx?.pets ?? [] };
+  // Today's Israeli-holiday / World-Dog-Day greeting (computed once per render cycle).
+  const occasion = useMemo(() => israelOccasion(language as GreetLang), [language]);
+  const greetOpts = { birthday: greetCtx?.birthday ?? null, petBirthdays: greetCtx?.pets ?? [], occasion };
 
   /** Navigate to the user's account destination.
    *  getAccountRoute() returns '#' while auth is loading — we no-op in that case

@@ -47,6 +47,7 @@
     "@google-cloud/vision": "^5.3.4",
     "@google/genai": "^1.28.0",
     "@googlemaps/google-maps-services-js": "^3.4.2",
+    "@hebcal/core": "^6.6.0",
     "@hono/node-server": "^1.19.10",
     "@hookform/resolvers": "^3.10.0",
     "@hubspot/api-client": "^13.4.0",
