@@ -416,22 +416,31 @@ router.post('/sitters', async (req, res) => {
  * PATCH /api/sitter-suite/sitters/:id - Update sitter profile
  * Supports updating profile photo and other profile fields
  */
-router.patch('/sitters/:id', async (req, res) => {
+router.patch('/sitters/:id', requireAuth, async (req: any, res) => {
   try {
     const idParam = req.params.id;
     const numericId = parseInt(idParam);
     const isNumeric = !isNaN(numericId) && String(numericId) === idParam;
-    
+
     // Find the sitter first
     const [existingSitter] = await db
       .select()
       .from(sitterProfiles)
       .where(isNumeric ? eq(sitterProfiles.id, numericId) : eq(sitterProfiles.userId, idParam));
-    
+
     if (!existingSitter) {
       return res.status(404).json({ error: 'Sitter not found' });
     }
-    
+
+    // SECURITY: only the sitter who owns this profile (or a super admin) may edit
+    // it. Without this check the route was anonymous → anyone could rewrite any
+    // sitter's name/phone/price/active state (profile takeover).
+    const callerUid = req.user!.uid;
+    const callerEmail = req.user?.email || '';
+    if (existingSitter.userId !== callerUid && !isSuperAdmin(callerEmail)) {
+      return res.status(403).json({ error: 'You can only edit your own sitter profile' });
+    }
+
     // Extract allowed update fields
     const {
       firstName,
@@ -713,13 +722,16 @@ router.get('/pets', requireAuth, async (req: any, res) => {
 /**
  * POST /api/sitter-suite/pets - Create pet profile for sitting
  */
-router.post('/pets', async (req, res) => {
+router.post('/pets', requireAuth, async (req: any, res) => {
   try {
     const validatedData = insertPetProfileForSittingSchema.parse(req.body);
-    
+
+    // SECURITY: the pet always belongs to the authenticated caller — never trust a
+    // body-supplied userId (the route was anonymous and accepted any userId, so a
+    // caller could create pet records under someone else's account).
     const [newPet] = await db
       .insert(petProfilesForSitting)
-      .values(validatedData)
+      .values({ ...validatedData, userId: req.user!.uid })
       .returning();
     
     logger.info('[Sitter Suite] Pet profile created', {
