@@ -13,6 +13,7 @@ import admin from '../lib/firebase-admin';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { MEMBER_DISCOUNT_MAX_PERCENT } from '@shared/schema-member-discount';
 
 /**
  * Loyalty tier thresholds — aligned with shared/schema-loyalty.ts LOYALTY_TIER_THRESHOLDS
@@ -53,7 +54,13 @@ function getTierDiscount(tier: string): number {
     EMERALD:  25,
     ROYAL:    30,
   };
-  return discounts[tier.toUpperCase()] ?? 0;
+  // Clamp to the canonical K9000 discount cap. The raw ladder ran up to 30% and
+  // that value was written to the DB (loyaltyDiscountPercent) + pushed as a
+  // "you get X% off" notification + shown on the wallet/Apple-Pass card — while
+  // the actual charge caps at MEMBER_DISCOUNT_MAX_PERCENT (10%). Advertising more
+  // than is charged is a false-discount promise (same class as the +25% display
+  // fix). Never surface more than the real cap.
+  return Math.min(discounts[tier.toUpperCase()] ?? 0, MEMBER_DISCOUNT_MAX_PERCENT);
 }
 
 /**
