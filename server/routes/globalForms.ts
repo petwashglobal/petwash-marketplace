@@ -21,11 +21,11 @@ const router = Router();
 // CONTACT FORM (All Platforms)
 // =========================
 const contactFormSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().optional(),
-  subject: z.string().min(5, 'Subject must be at least 5 characters'),
-  message: z.string().min(10, 'Message must be at least 10 characters'),
+  name: z.string().min(2, 'Name must be at least 2 characters').max(200),
+  email: z.string().email('Invalid email address').max(254),
+  phone: z.string().max(32).optional(),
+  subject: z.string().min(5, 'Subject must be at least 5 characters').max(300),
+  message: z.string().min(10, 'Message must be at least 10 characters').max(5000),
   platform: z.enum(['K9000', 'SITTER', 'WALKER', 'PETTREK', 'ACADEMY', 'PLUSH', 'WASH', 'CLUB']),
 });
 
@@ -79,8 +79,8 @@ const feedbackSchema = z.object({
   platform: z.enum(['K9000', 'SITTER', 'WALKER', 'PETTREK', 'ACADEMY', 'PLUSH', 'WASH', 'CLUB']),
   serviceType: z.string(),
   rating: z.number().min(1).max(5),
-  reviewTitle: z.string().min(5),
-  reviewText: z.string().min(20),
+  reviewTitle: z.string().min(5).max(200),
+  reviewText: z.string().min(20).max(5000),
   wouldRecommend: z.boolean(),
 });
 
@@ -144,8 +144,8 @@ const franchiseInquirySchema = z.object({
   city: z.string().min(2),
   investmentBudget: z.enum(['50k-100k', '100k-250k', '250k-500k', '500k+']),
   timeline: z.enum(['immediate', '3-months', '6-months', '1-year']),
-  experience: z.string().min(20),
-  message: z.string().min(20),
+  experience: z.string().min(20).max(3000),
+  message: z.string().min(20).max(5000),
 });
 
 router.post('/franchise-inquiry', async (req, res) => {
@@ -276,7 +276,7 @@ const hrJobApplicationSchema = z.object({
   linkedinUrl: z.string().optional(),
   expectedSalary: z.string().optional(),
   startDate: z.string().optional(),
-  coverLetter: z.string().min(50, 'Cover letter must be at least 50 characters'),
+  coverLetter: z.string().min(50, 'Cover letter must be at least 50 characters').max(8000),
   referencesAvailable: z.string().optional(),
   referralSource: z.string().optional(),
 });
@@ -335,7 +335,7 @@ const salesLeadSchema = z.object({
   serviceInterest: z.string(),
   estimatedVolume: z.string().optional(),
   numberOfPets: z.string().optional(),
-  description: z.string().min(20),
+  description: z.string().min(20).max(5000),
   bestContactTime: z.string().optional(),
   referralSource: z.string().optional(),
 });
@@ -389,7 +389,7 @@ const refundRequestSchema = z.object({
   amountPaid: z.string().min(1, 'Amount is required'),
   refundAmount: z.string().min(1, 'Refund amount is required'),
   reason: z.string(),
-  description: z.string().min(20),
+  description: z.string().min(20).max(5000),
   refundMethod: z.string(),
 });
 
@@ -448,7 +448,7 @@ const customerOnboardingSchema = z.object({
   vetName: z.string().optional(),
   vetPhone: z.string().optional(),
   allergies: z.string().optional(),
-  medicalNotes: z.string().optional(),
+  medicalNotes: z.string().max(3000).optional(),
   vaccinationsUpToDate: z.string(),
   referralSource: z.string().optional(),
 });

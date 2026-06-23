@@ -386,7 +386,7 @@ router.get('/:platform/:providerId', async (req: Request, res: Response) => {
         )
       )
       .orderBy(desc(contractorReviews.createdAt))
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit) || 20, 50)); // clamp — was unbounded (?limit=99999999 dumped all)
 
     const totalReviews = reviews.length;
     const avgOverallRating = totalReviews > 0
@@ -439,7 +439,7 @@ router.get('/:subjectId', async (req: Request, res: Response) => {
         )
       )
       .orderBy(desc(contractorReviews.createdAt))
-      .limit(Number(limit));
+      .limit(Math.min(Number(limit) || 20, 50)); // clamp — was unbounded (?limit=99999999 dumped all)
 
     // Calculate average ratings
     const totalReviews = reviews.length;
