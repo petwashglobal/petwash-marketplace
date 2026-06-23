@@ -27,15 +27,33 @@ export const PETWASH_ICONS = {
   animal_bird: '/assets/icons/petwash/animals/animal_bird.png',
   animal_fish: '/assets/icons/petwash/animals/animal_fish.png',
   animal_turtle: '/assets/icons/petwash/animals/animal_turtle.png',
+  animal_hamster: '/assets/icons/petwash/animals/animal_hamster.png',
+  animal_ferret: '/assets/icons/petwash/animals/animal_ferret.png',
+  animal_lizard: '/assets/icons/petwash/animals/animal_lizard.png',
+  animal_hedgehog: '/assets/icons/petwash/animals/animal_hedgehog.png',
+  animal_chick: '/assets/icons/petwash/animals/animal_chick.png',
+  animal_swan: '/assets/icons/petwash/animals/animal_swan.png',
+  animal_butterfly: '/assets/icons/petwash/animals/animal_butterfly.png',
   // products
   product_shampoo: '/assets/icons/petwash/products/product_shampoo.png',
   product_conditioner: '/assets/icons/petwash/products/product_conditioner.png',
+  product_organic_soap: '/assets/icons/petwash/products/product_organic_soap.png',
   product_towel: '/assets/icons/petwash/products/product_towel.png',
   product_grooming_brush: '/assets/icons/petwash/products/product_grooming_brush.png',
+  product_comb: '/assets/icons/petwash/products/product_comb.png',
+  product_scissors: '/assets/icons/petwash/products/product_scissors.png',
   product_collar: '/assets/icons/petwash/products/product_collar.png',
+  product_engraved_tag: '/assets/icons/petwash/products/product_engraved_tag.png',
   product_treat: '/assets/icons/petwash/products/product_treat.png',
+  product_perfume_mist: '/assets/icons/petwash/products/product_perfume_mist.png',
+  product_gift_box: '/assets/icons/petwash/products/product_gift_box.png',
+  product_bone: '/assets/icons/petwash/products/product_bone.png',
+  product_leash: '/assets/icons/petwash/products/product_leash.png',
+  product_pet_bed: '/assets/icons/petwash/products/product_pet_bed.png',
+  product_carrier_bag: '/assets/icons/petwash/products/product_carrier_bag.png',
   // nature
   nature_leaf: '/assets/icons/petwash/nature/nature_leaf.png',
+  nature_botanical_sprig: '/assets/icons/petwash/nature/nature_botanical_sprig.png',
   nature_bubbles: '/assets/icons/petwash/nature/nature_bubbles.png',
   nature_water_drop: '/assets/icons/petwash/nature/nature_water_drop.png',
   nature_natural_ingredients: '/assets/icons/petwash/nature/nature_natural_ingredients.png',
@@ -45,6 +63,7 @@ export const PETWASH_ICONS = {
   brand_paw: '/assets/icons/petwash/brand/brand_paw.png',
   brand_pet_owner: '/assets/icons/petwash/brand/brand_pet_owner.png',
   brand_sparkle: '/assets/icons/petwash/brand/brand_sparkle.png',
+  brand_heart: '/assets/icons/petwash/brand/brand_heart.png',
 } as const;
 
 /**
@@ -53,10 +72,9 @@ export const PETWASH_ICONS = {
  * extracted, so callers can reference them now without an emoji ever appearing.
  */
 export type PlannedIconKey =
-  | 'animal_hamster' | 'animal_ferret' | 'animal_lizard' | 'animal_hedgehog' | 'animal_goat' | 'animal_sheep' | 'animal_chick' | 'animal_swan' | 'animal_butterfly'
+  | 'animal_goat' | 'animal_sheep' | 'animal_pig'
   | 'service_self_wash' | 'service_grooming' | 'service_mobile_wash' | 'service_pet_sitting' | 'service_dog_walking' | 'service_pet_hosting' | 'service_pet_transport' | 'service_training' | 'service_vet_care' | 'service_pet_shop'
-  | 'product_organic_soap' | 'product_comb' | 'product_scissors' | 'product_engraved_tag' | 'product_pet_bed' | 'product_carrier_bag' | 'product_perfume_mist'
-  | 'nature_botanical_sprig' | 'nature_tea_tree' | 'nature_aloe_vera' | 'nature_oatmeal' | 'nature_coconut' | 'nature_organic' | 'nature_plant_based'
+  | 'nature_tea_tree' | 'nature_aloe_vera' | 'nature_oatmeal' | 'nature_coconut' | 'nature_organic' | 'nature_plant_based'
   | 'trust_id_verified' | 'trust_insured' | 'trust_background_checked' | 'trust_top_provider' | 'trust_paw_care_certified' | 'trust_5_star' | 'trust_24_7_support'
   | 'app_wallet' | 'app_qr' | 'app_booking' | 'app_live_tracking' | 'app_rewards' | 'app_support' | 'app_notification' | 'app_location' | 'app_calendar' | 'app_upload_document'
   | 'station_smart_hub' | 'station_k9000_dual_bay' | 'station_uv_sanitized' | 'station_paw_dryer' | 'station_hydro_massage' | 'station_aroma_spa' | 'station_flea_tick_care' | 'station_dental_care' | 'station_maintenance'
