@@ -1048,29 +1048,24 @@ const topupSchema = z.object({
 });
 
 router.post('/topup', async (req: Request, res: Response) => {
-  try {
-    const session = (req as any).session;
-    const userId  = resolveUid(req);
-    if (!userId) return res.status(401).json({ ok: false, error: 'Auth required' });
-
-    const parsed = topupSchema.safeParse(req.body);
-    if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
-    const { amountCents, source, reference } = parsed.data;
-
-    const { txnId, newBalanceCents } = await topUpCashWallet(userId, amountCents, source, reference);
-
-    logger.info('[PrestigePass] Top-up applied', { userId, amountCents, source, txnId, newBalanceCents });
-
-    return res.json({
-      ok:              true,
-      cashWalletCents: newBalanceCents,
-      added:           amountCents,
-      txnId,
-    });
-  } catch (err) {
-    logger.error('[PrestigePass] /topup error:', err);
-    return res.status(500).json({ ok: false, error: 'Internal error' });
-  }
+  // DISABLED (410) — SECURITY: this route called topUpCashWallet() directly, which
+  // is a pure ledger credit with NO payment capture and NO proof the referenced
+  // charge occurred. Any authenticated user could mint up to ₪10,000 into their own
+  // wallet. The canonical, hardened top-up is POST /api/credit-wallet/topup, which
+  // verifies a real Nayax transaction (amount + user) and is idempotent. The client
+  // does not use this legacy route. Neutered rather than deleted so any stray caller
+  // gets a clear error instead of a silent 404.
+  logger.warn('[PrestigePass] BLOCKED legacy /topup mint attempt', {
+    userId: resolveUid(req) || 'anon',
+    amountCents: req.body?.amountCents,
+    source: req.body?.source,
+  });
+  return res.status(410).json({
+    ok: false,
+    error: 'This endpoint is disabled. Wallet top-ups must go through the verified payment flow.',
+    code: 'TOPUP_ROUTE_DISABLED',
+    use: '/api/credit-wallet/topup',
+  });
 });
 
 // ─────────────────────────────────────────────────────────
