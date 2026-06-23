@@ -111,7 +111,12 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 }`}
                 style={{ transitionDelay: '0ms' }}
               >
-                <span className="gold-shimmer-text">{t('hero.k9000Tech', language)}</span>
+                {/* Eyebrow: readable dark text with a gold ACCENT dot. Gold is an
+                    accent in the brand, never body text — gold-on-white was unreadable. */}
+                <span className="inline-flex items-center gap-2 text-[#1a1a1a] font-semibold uppercase tracking-[0.22em] text-xs sm:text-sm">
+                  <span aria-hidden="true" style={{ width: 6, height: 6, borderRadius: 1, background: '#D4AF37', display: 'inline-block' }} />
+                  {t('hero.k9000Tech', language)}
+                </span>
               </div>
               
               {/* Animated Title */}
