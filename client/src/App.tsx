@@ -757,7 +757,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     if (window.location.pathname !== '/') return;
     if (isProviderApp) {
       if (!user) { setLocation('/signup'); return; }
-      setLocation(role === 'provider' ? '/provider-os' : '/provider-onboarding');
+      // APP-STRUCTURE REBUILD — Stage 2 entry flip. Approved providers open to
+      // the new /provider canonical home when the provider shell is enabled;
+      // otherwise the prior /provider-os. Non-providers still go to onboarding.
+      const providerShellOn =
+        import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' &&
+        import.meta.env.VITE_PROVIDER_SHELL_V2_ENABLED === 'true';
+      const providerHome = providerShellOn ? '/provider' : '/provider-os';
+      setLocation(role === 'provider' ? providerHome : '/provider-onboarding');
       return;
     }
     if (isCustomerApp) {
@@ -876,6 +883,29 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                   </RouteErrorBoundary>
                 </PrestigeShell>
               </RequireAuth>
+            )}
+          </Route>
+        )}
+        {/*
+          APP-STRUCTURE REBUILD — Provider app namespace (SDD §6.2). The
+          Provider OS already IS an app-native shell (own header + bottom nav),
+          so /provider re-hosts it directly. Mounted behind
+          VITE_APP_STRUCTURE_V2_ENABLED; the provider-app cold-start entry only
+          flips to /provider when VITE_PROVIDER_SHELL_V2_ENABLED is also on. The
+          legacy /provider-os and all standalone /provider/* pages keep working
+          unchanged (no redirect yet — preserves the ?m= deep links the global
+          PROVIDER_NAV relies on).
+        */}
+        {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
+          <Route path="/provider">
+            {() => (
+              <RoleProtectedRoute minRole="provider">
+                <AppTermsGate flavor="provider" language={language}>
+                  <Suspense fallback={<PageLoader />}>
+                    <ProviderOS />
+                  </Suspense>
+                </AppTermsGate>
+              </RoleProtectedRoute>
             )}
           </Route>
         )}
@@ -3858,8 +3888,15 @@ function App() {
   const onPrestigeShell =
     import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' &&
     (currentPath === '/prestige' || currentPath.startsWith('/prestige/'));
+  // /provider re-hosts Provider OS, which renders its OWN shell; suppress the
+  // global chrome there too (exact match only — the legacy /provider/* pages
+  // keep the global shell). Flag-gated, so dark when off. (/provider-os is
+  // already handled by immersive-routes.)
+  const onProviderShell =
+    import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' &&
+    currentPath === '/provider';
 
-  const isImmersive = isImmersiveRoute(currentPath) || onPrestigeShell;
+  const isImmersive = isImmersiveRoute(currentPath) || onPrestigeShell || onProviderShell;
   const showPromoPopup = !isImmersive && !PROMO_OPERATIONAL_PATTERN.test(currentPath);
   const showFloatingStack = !isImmersive;
   const showMobileNav = !isImmersive;
