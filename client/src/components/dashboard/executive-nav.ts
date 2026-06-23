@@ -52,6 +52,10 @@ export const EXECUTIVE_NAV: NavGroup[] = [
     group: 'Command',
     groupHe: 'פיקוד',
     items: [
+      // Live Ops review screen (2026-06-23): one place to see ALL live bookings
+      // across every platform + today's KPIs + open alerts + jump-links to money
+      // and health. Reads all 4 booking tables. Read-only, not feature-flagged.
+      { label: 'Live Ops — All Bookings', labelHe: 'מרכז בקרה — הזמנות חיות', path: '/admin/live-ops', icon: Activity, roles: ['admin', 'ceo'], hint: 'All platforms: live bookings, money today, alerts', hintHe: 'כל הפלטפורמות: הזמנות חיות, כסף היום, התראות' },
       { label: 'Admin Overview', labelHe: 'סקירת ניהול', path: '/admin/dashboard', icon: LayoutDashboard, roles: ['admin', 'ceo'], hint: 'KPIs, analytics, payments', hintHe: 'מדדים, אנליטיקה ותשלומים' },
       { label: 'CEO Report', labelHe: 'דוח מנכ״ל', path: '/admin/ceo-report', icon: Activity, roles: ['admin', 'ceo'], hint: 'Yesterday digest + eGift intelligence', hintHe: 'תקציר אתמול + מודיעין גיפט' },
       { label: 'CEO Suite', labelHe: 'חדר מנכ״ל', path: '/pet-wash-ltd/executive/ceo', icon: Crown, roles: ['ceo'], hint: 'Founder tools & gift cards', hintHe: 'כלי מייסד וכרטיסי מתנה' },

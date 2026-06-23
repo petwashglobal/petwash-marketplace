@@ -173,6 +173,7 @@ import adminProviderVerificationRoutes from "./routes/admin-provider-verificatio
 import adminRetentionRouter from "./routes/admin-retention";
 import adminBrainRoutes from "./routes/admin-brain";
 import adminBridgeRoutes from "./routes/admin-bridge";
+import adminLiveOpsRoutes from "./routes/admin-live-ops";
 import coworkerRoutes from "./routes/coworker";
 import adminNotificationsRoutes from "./routes/admin-notifications";
 import adminPawFinderRoutes from "./routes/admin-paw-finder";
@@ -11444,6 +11445,9 @@ self.addEventListener('notificationclick', (event) => {
   // (BRIDGE_MVP_ENABLED, default OFF). requireAdmin inside the router; the
   // router 404s entirely when the flag is off. Read-only — no mutations.
   app.use('/api/admin/bridge', validateFirebaseToken, adminLimiter, requireAdmin, adminBridgeRoutes);
+  // Unified live-ops review screen (all-platform bookings + KPIs + alerts). NOT
+  // feature-flagged — the CEO's "one place to review everything" surface.
+  app.use('/api/admin/live-ops', validateFirebaseToken, adminLimiter, requireAdmin, adminLiveOpsRoutes);
   // PR-20: AI Coworker Agents scaffold. Same gate as /admin/brain
   // (validateFirebaseToken at mount + requireBrainAccess inside the router).
   // Read-only — every family returns wired:false until PR-21+ implements it.
