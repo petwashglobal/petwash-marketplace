@@ -16,14 +16,29 @@ export interface PushPayload {
   data?: Record<string, string>;
 }
 
+/**
+ * App flavor a push is intended for. Matches the value the client writes onto
+ * the device token (client/src/lib/fcm-notifications.ts) and the route
+ * namespace: the customer/Prestige app is 'prestige'.
+ */
+export type PushFlavor = 'prestige' | 'provider';
+
 /** All FCM device tokens for a user (across devices). Empty array on error/none. */
-export async function getUserFcmTokens(userId: string): Promise<Array<{ token: string; deviceId: string }>> {
+export async function getUserFcmTokens(
+  userId: string,
+): Promise<Array<{ token: string; deviceId: string; appFlavor?: string }>> {
   try {
     const snap = await firestore.collection('fcmTokens').doc(userId).collection('devices').get();
-    const tokens: Array<{ token: string; deviceId: string }> = [];
+    const tokens: Array<{ token: string; deviceId: string; appFlavor?: string }> = [];
     snap.forEach((doc) => {
       const data = doc.data();
-      if (data?.token) tokens.push({ token: data.token, deviceId: doc.id });
+      if (data?.token) {
+        tokens.push({
+          token: data.token,
+          deviceId: doc.id,
+          appFlavor: typeof data?.appFlavor === 'string' ? data.appFlavor : undefined,
+        });
+      }
     });
     return tokens;
   } catch (err) {
@@ -41,10 +56,29 @@ const INVALID_TOKEN_CODES = new Set([
 /**
  * Send a push to every device a user has registered. Prunes tokens FCM reports as
  * invalid. Never throws — returns the number of devices the push was delivered to.
+ *
+ * APP-STRUCTURE REBUILD (SDD §6.6): an optional `requiredFlavor` routes the push
+ * to only the matching app's devices (so a provider job alert never lands on the
+ * customer's phone). Backward-compatible and OFF by default:
+ *   - callers that omit `requiredFlavor` are unaffected;
+ *   - filtering only applies when PUSH_FLAVOR_ROUTING_ENABLED === 'true';
+ *   - devices registered before flavor tagging (appFlavor missing) are treated as
+ *     eligible so no notification is lost during the transition;
+ *   - if filtering would leave zero devices, we fall back to all devices rather
+ *     than silently dropping the only delivery path.
  */
-export async function sendPushToUser(userId: string, payload: PushPayload): Promise<number> {
-  const devices = await getUserFcmTokens(userId);
+export async function sendPushToUser(
+  userId: string,
+  payload: PushPayload,
+  requiredFlavor?: PushFlavor,
+): Promise<number> {
+  let devices = await getUserFcmTokens(userId);
   if (devices.length === 0) return 0;
+
+  if (process.env.PUSH_FLAVOR_ROUTING_ENABLED === 'true' && requiredFlavor) {
+    const matched = devices.filter((d) => !d.appFlavor || d.appFlavor === requiredFlavor);
+    if (matched.length > 0) devices = matched;
+  }
 
   try {
     const resp = await admin.messaging().sendEachForMulticast({

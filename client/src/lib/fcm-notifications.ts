@@ -3,6 +3,7 @@ import { app } from './firebase';
 import { logger } from './logger';
 import { db as firestore } from './firebase';
 import { doc, setDoc, deleteDoc, collection, getDocs, query, where } from 'firebase/firestore';
+import { getAppFlavor } from './app-flavor';
 
 let messagingInstance: Messaging | null = null;
 
@@ -134,13 +135,22 @@ async function saveFCMToken(userId: string, token: string): Promise<void> {
   try {
     const deviceId = getDeviceId();
     const deviceName = getDeviceName();
-    
+
+    // APP-STRUCTURE REBUILD (SDD §6.6): tag the device with its app flavor so the
+    // server can route Prestige vs Provider push to the right device (a provider
+    // job alert must not land on a customer's phone). Uses the same product
+    // vocabulary as the route namespace: customer flavor → 'prestige'. Additive
+    // Firestore field (no migration); server filtering is flag-gated.
+    const rawFlavor = await getAppFlavor();
+    const appFlavor = rawFlavor === 'customer' ? 'prestige' : rawFlavor; // 'prestige' | 'provider' | 'web'
+
     const deviceTokenRef = doc(firestore, 'fcmTokens', userId, 'devices', deviceId);
     await setDoc(deviceTokenRef, {
       token,
       userId,
       deviceId,
       deviceName,
+      appFlavor,
       createdAt: new Date(),
       updatedAt: new Date(),
       lastUsed: new Date(),
