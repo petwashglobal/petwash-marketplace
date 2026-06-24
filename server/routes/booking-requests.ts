@@ -51,6 +51,7 @@ import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../uti
 import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { applyTransition, type BookingActor, type BookingStatus } from '@shared/lib/bookingStateMachine';
+import { maskCustomerLocationForProvider } from '@shared/lib/bookingPii';
 import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
 import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
@@ -1015,12 +1016,13 @@ router.get('/:requestId', async (req, res) => {
     }
     
     res.json({
-      booking: {
+      // Gate precise customer location for a provider who hasn't accepted yet.
+      booking: maskCustomerLocationForProvider({
         ...booking,
         providerName,
         petIds: (booking.petIds as string[] | null) || [],
         addonCodes,
-      }
+      }, userId)
     });
   } catch (error: any) {
     logger.error('[BookingRequests] Error fetching booking', { error: error.message });
