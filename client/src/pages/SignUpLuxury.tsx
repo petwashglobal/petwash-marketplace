@@ -648,7 +648,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <label className="sl-label">{t.pwd}</label>
                 <div className="sl-inputWrap">
                   <FaLock className="sl-inputIcon" aria-hidden />
-                  <input className="sl-input sl-input--icon" type="password" autoComplete="new-password"
+                  <input className="sl-input sl-input--icon" type="password" name="password" id="signup-password" autoComplete="new-password"
                     value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
                 </div>
               </div>
@@ -656,7 +656,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <label className="sl-label">{t.pwd2}</label>
                 <div className="sl-inputWrap">
                   <FaLock className="sl-inputIcon" aria-hidden />
-                  <input className="sl-input sl-input--icon" type="password" autoComplete="new-password"
+                  <input className="sl-input sl-input--icon" type="password" name="confirm-password" id="signup-confirm-password" autoComplete="new-password"
                     value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
                 </div>
               </div>

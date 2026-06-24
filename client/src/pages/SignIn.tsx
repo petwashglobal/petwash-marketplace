@@ -3194,6 +3194,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
               <div>
                 <Input
                   type="password"
+                  name="password"
+                  id="signin-password"
                   placeholder={t('signin.passwordPlaceholder', language)}
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
