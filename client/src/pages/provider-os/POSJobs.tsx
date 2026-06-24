@@ -21,7 +21,7 @@ import {
   CalendarDays, Hash, Star, MapPin,
 } from 'lucide-react';
 
-type Platform = 'all' | 'petsitter' | 'walkpet' | 'petwash' | 'academy';
+type Platform = 'all' | 'petsitter' | 'walkpet' | 'academy' | 'pettrek';
 
 const STATUSES = [
   { id: 'all',         label: 'All' },
@@ -67,7 +67,7 @@ const PAYMENT_METHODS = [
 
 const PLATFORM_LABELS: Record<string, string> = {
   petsitter: 'Sitter Suite', walkpet: 'Walk My Pet',
-  petwash: 'K9000', academy: 'PetWash Academy', all: 'PetWash',
+  academy: 'PetWash Academy', all: 'All Services',
 };
 
 const EMPTY_STATES: Record<string, { icon: any; title: string; sub: string }> = {
