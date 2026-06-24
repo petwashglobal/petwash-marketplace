@@ -243,7 +243,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [terms, setTerms] = useState(false);
+  // (legacy top `terms` checkbox removed — consent is agreedTerms + over18)
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -438,7 +438,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     finally { setBusy(false); }
   }
 
-  const readyForSubmit = terms && !busy && (
+  const readyForSubmit = !busy && (
     method === 'mobile'
       ? phone.length > 4
       : email.length > 3 && password.length > 0
@@ -583,17 +583,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             )}
           </header>
 
-          {!sent && (
-            <label className="sl-terms sl-terms--quick">
-              <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-              <span>
-                {t.iAgree}
-                <a href="/terms" target="_blank" rel="noreferrer">{t.termsLink}</a>
-                {t.andTo}
-                <a href="/privacy-policy" target="_blank" rel="noreferrer">{t.privLink}</a>
-              </span>
-            </label>
-          )}
+          {/* Duplicate top consent removed (2026-06-24): it required a SEPARATE
+              `terms` checkbox on top of the labeled agreedTerms + over18 below,
+              so checking the visible bottom boxes left the CTA disabled = "dead
+              buttons" on iPhone. Consent is now the single labeled block lower
+              down (agreedTerms + over18 → consentOk). */}
 
           {inlineError && (
             <p className="sl-inlineError" role="alert">{inlineError}</p>
