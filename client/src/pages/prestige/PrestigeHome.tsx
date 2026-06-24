@@ -22,7 +22,7 @@ import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   QrCode, Wallet, Star, CalendarHeart, Scan, Sun, Gift,
-  Home as HomeIcon, Footprints, ShoppingBag, Package, GraduationCap, PawPrint,
+  Home as HomeIcon, Footprints, ShoppingBag, Package, GraduationCap, PawPrint, MapPin,
 } from 'lucide-react';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
@@ -65,7 +65,7 @@ const COPY = {
     bays: '2 עמדות · רחצה ~5–7 דק׳',
     washCredits: 'קרדיט רחצה', walletL: 'ארנק', points: 'נקודות', nextBooking: 'הזמנה',
     quickTitle: 'פעולות מהירות',
-    redeemWash: 'מימוש רחצה', petSitter: 'Pet Sitter', walk: 'Walk My Pet', shop: 'חנות',
+    redeemWash: 'מימוש רחצה', stations: 'תחנות', petSitter: 'Pet Sitter', walk: 'Walk My Pet', shop: 'חנות',
     sendGift: 'שליחת מתנה', buyPackage: 'רכישת חבילה', topUp: 'טעינת ארנק', academy: 'Academy',
     safetyTitle: 'טיפ בטיחות להיום',
     safetyBody: 'בימים חמים מומלץ לטייל בבוקר או בערב ולבדוק שחום המדרכה נעים לכפות.',
@@ -82,7 +82,7 @@ const COPY = {
     bays: '2 bays · wash ~5–7 min',
     washCredits: 'Wash credits', walletL: 'Wallet', points: 'Points', nextBooking: 'Booking',
     quickTitle: 'Quick actions',
-    redeemWash: 'Redeem wash', petSitter: 'Pet Sitter', walk: 'Walk My Pet', shop: 'Shop',
+    redeemWash: 'Redeem wash', stations: 'Stations', petSitter: 'Pet Sitter', walk: 'Walk My Pet', shop: 'Shop',
     sendGift: 'Send a gift', buyPackage: 'Buy package', topUp: 'Top up wallet', academy: 'Academy',
     safetyTitle: "Today's care tip",
     safetyBody: 'On hot days, walk in the morning or evening and check the pavement is cool for paws.',
@@ -120,6 +120,7 @@ export default function PrestigeHome() {
 
   const quickActions = [
     { label: t.redeemWash, Icon: QrCode, tint: '#E6F1EC', color: EMERALD, to: '/prestige/pass' },
+    { label: t.stations, Icon: MapPin, tint: '#E9F3F2', color: TEAL, to: '/locations' },
     { label: t.petSitter, Icon: HomeIcon, tint: '#FBEFE2', color: GOLD_DEEP, to: '/prestige/book/sitter' },
     { label: t.walk, Icon: Footprints, tint: '#E9F3F2', color: TEAL, to: '/prestige/book/walk' },
     { label: t.shop, Icon: ShoppingBag, tint: '#F7E7EC', color: ROSE, to: '/prestige/shop' },
