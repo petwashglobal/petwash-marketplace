@@ -194,7 +194,7 @@ export default function PrestigeHome() {
           </button>
 
           {/* Membership card — dark emerald + gold, live QR */}
-          <div className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #0c3b32 0%, #0a4a3c 60%, #0c3b32 100%)', border: `1px solid ${GOLD}55` }}>
+          <div className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>
             <div className="flex items-start justify-between">
               <div className="flex flex-col">
                 <img src="/brand/petwash-logo-white.png" alt="PetWash" className="h-6 object-contain self-start" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
