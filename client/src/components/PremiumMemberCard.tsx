@@ -39,23 +39,17 @@ function EmvChip() {
   );
 }
 
+// Logo rule (HARD): use the REAL official PetWash logo asset ONLY — never a
+// recreated paw/droplet + wordmark. The card is white, so the official
+// black-on-white logo renders correctly.
 function PetWashLogo() {
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-      <svg width="36" height="36" viewBox="0 0 24 24" fill="none">
-        <ellipse cx="5" cy="7" rx="2.2" ry="3" fill="#C6A35B" />
-        <ellipse cx="9.5" cy="4.5" rx="2" ry="2.8" fill="#C6A35B" />
-        <ellipse cx="14.5" cy="4.5" rx="2" ry="2.8" fill="#C6A35B" />
-        <ellipse cx="19" cy="7" rx="2.2" ry="3" fill="#C6A35B" />
-        <path d="M12 9.5c-4.2 0-7.5 2.8-7.5 6 0 3 2.8 5.5 7.5 5.5s7.5-2.5 7.5-5.5c0-3.2-3.3-6-7.5-6z" fill="#C6A35B" />
-      </svg>
-      <span style={{
-        fontFamily: "'SF Pro Display', 'Helvetica Neue', Helvetica, sans-serif",
-        fontSize: '26px', fontWeight: 700, color: '#C6A35B', letterSpacing: '-0.02em', lineHeight: 1,
-      }}>
-        Pet<span style={{ fontWeight: 800 }}>Wash</span>™
-      </span>
-    </div>
+    <img
+      src="/brand/petwash-logo-official.png"
+      alt="PetWash"
+      style={{ height: '34px', width: 'auto', objectFit: 'contain' }}
+      draggable={false}
+    />
   );
 }
 
