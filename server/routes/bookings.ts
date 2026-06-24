@@ -43,6 +43,18 @@ interface BookingRequest {
 
 router.post("/create", requireAuth, async (req, res) => {
   try {
+    // DEPRECATED (audit 2026-06-24 finding #33): this legacy endpoint trusted a
+    // client-supplied `baseAmount`, allowing price tampering (book a ₪100 service
+    // for ₪0.01). It has ZERO callers in the app — the real, server-priced flows
+    // are /api/walk-my-pet/walks/book and /api/sitter-suite/bookings. Disabled
+    // (410 GONE) to close the fraud vector without affecting any live flow.
+    return res.status(410).json({
+      error: 'endpoint_deprecated',
+      code: 'BOOKINGS_CREATE_GONE',
+      message: 'This booking endpoint is no longer available. Use the per-service booking flow.',
+    });
+
+    // eslint-disable-next-line no-unreachable
     const customerId = req.user!.uid;
     const booking: BookingRequest = req.body;
 
@@ -437,6 +449,10 @@ router.get("/availability", async (req, res) => {
     const availableSlots = slots
       .filter((slot) => {
         if (slot.status === 'booked') return false;
+        // audit 2026-06-24 finding #23: a slot already tied to a booking is TAKEN
+        // even if its status lags (held→booked transition delay / DB lag) — never
+        // surface it as available, or two customers can race the same slot.
+        if (slot.bookingId) return false;
         if (slot.status === 'held' && slot.lockExpiresAt && new Date(slot.lockExpiresAt) > now) return false;
         return true;
       })
