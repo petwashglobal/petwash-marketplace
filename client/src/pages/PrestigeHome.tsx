@@ -1,0 +1,389 @@
+/**
+ * PrestigeHome — the luxury CUSTOMER (Prestige) app home.
+ *
+ * Built to the CEO's 2026-06-24 design: pure white + black + bright metallic gold
+ * (#D4AF37), real PetWash logo as the top-center crown, a dark-emerald/gold
+ * membership card with a live QR, a stats strip, a quick-actions grid, care tip,
+ * pets, rewards, recommended, and an elevated center "QR / Card" redeem button.
+ *
+ * RULES honoured:
+ *   - No fake data: every number reads from a real endpoint; missing data renders
+ *     as 0 / — / an honest empty state (never invented).
+ *   - Currency is ₪ (Israel), VAT-inclusive amounts as stored.
+ *   - The K9000 wash is REDEEM-by-QR (not bookable): "Book Wash" + the center
+ *     QR/Card button open the redeem/stations flow, not a booking engine.
+ *   - Dark rollout: routed at /prestige/home; does not replace the entry yet.
+ */
+import { useState } from 'react';
+import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
+import { QRCodeSVG } from 'qrcode.react';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useLanguage } from '@/lib/languageStore';
+import { getApiUrl } from '@/lib/apiConfig';
+import { apiRequest } from '@/lib/queryClient';
+import {
+  Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
+  Home as HomeIcon, CalendarDays, ShoppingBag, Wallet as WalletIcon, User,
+  Droplets, Dog, Footprints, Gift, CreditCard, GraduationCap, PawPrint, Mountain,
+  Star, Award,
+} from 'lucide-react';
+
+const GOLD = '#D4AF37';
+
+function ils(cents: number | null | undefined): string {
+  const n = typeof cents === 'number' && Number.isFinite(cents) ? cents : 0;
+  return `₪${(n / 100).toLocaleString('en-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+interface PrestigeSummary {
+  displayName?: string;
+  tier?: string;
+  memberId?: string;
+  washCredits?: number;
+  pointsBalance?: number;
+  cashCents?: number;
+  giftCents?: number;
+  giftCount?: number;
+  rewardsCount?: number;
+  nextBooking?: { date?: string; time?: string } | null;
+}
+
+/** Defensive: the real endpoints return slightly different field names across
+ *  versions — read every plausible key so the UI shows real data, not blanks. */
+function normalizeSummary(me: any, sum: any): PrestigeSummary {
+  const g = (...keys: [any, string][]) => {
+    for (const [obj, k] of keys) {
+      const v = obj?.[k];
+      if (v !== undefined && v !== null) return v;
+    }
+    return undefined;
+  };
+  return {
+    displayName: g([me, 'displayName'], [me, 'name'], [me, 'firstName']),
+    tier: g([me, 'tier'], [me, 'loyaltyTier'], [sum, 'tier']) ?? 'Member',
+    memberId: g([me, 'memberId'], [me, 'passId'], [me, 'passNumber'], [sum, 'memberId']),
+    washCredits: Number(g([sum, 'washCredits'], [sum, 'washPackageCredits'], [me, 'washCredits']) ?? 0),
+    pointsBalance: Number(g([sum, 'pointsBalance'], [sum, 'loyaltyPointsBalance'], [me, 'points'], [me, 'pointsBalance']) ?? 0),
+    cashCents: Number(g([sum, 'cashCents'], [sum, 'cashWalletBalanceCents'], [sum, 'walletBalanceCents']) ?? 0),
+    giftCents: Number(g([sum, 'giftCents'], [sum, 'egiftBalanceCents'], [sum, 'giftBalanceCents']) ?? 0),
+    giftCount: Number(g([sum, 'giftCount'], [sum, 'giftCardCount']) ?? 0),
+    rewardsCount: Number(g([sum, 'rewardsCount'], [sum, 'rewards']) ?? 0),
+    nextBooking: g([sum, 'nextBooking'], [me, 'nextBooking']) ?? null,
+  };
+}
+
+export default function PrestigeHome() {
+  const [, navigate] = useLocation();
+  const { user } = useFirebaseAuth();
+  const { language } = useLanguage();
+  const isHe = language === 'he';
+  const [copied, setCopied] = useState(false);
+
+  const { data: me } = useQuery({
+    queryKey: ['/api/prestige-pass/me'],
+    queryFn: async () => {
+      const r = await fetch(getApiUrl('/api/prestige-pass/me'), { credentials: 'include' });
+      return r.ok ? r.json() : {};
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const { data: sum } = useQuery({
+    queryKey: ['/api/prestige-pass/summary'],
+    queryFn: async () => {
+      const r = await fetch(getApiUrl('/api/prestige-pass/summary'), { credentials: 'include' });
+      return r.ok ? r.json() : {};
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  const { data: petsData } = useQuery({
+    queryKey: ['/api/pets'],
+    queryFn: async () => {
+      const r = await fetch(getApiUrl('/api/pets'), { credentials: 'include' });
+      return r.ok ? r.json() : {};
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
+  // Live, short-lived QR token for the membership card (same rail the kiosk reads).
+  const { data: qr } = useQuery({
+    queryKey: ['/api/prestige-pass/token/generate'],
+    queryFn: async () => {
+      try {
+        const r = await apiRequest('POST', '/api/prestige-pass/token/generate', {});
+        return r.ok ? r.json() : {};
+      } catch { return {}; }
+    },
+    enabled: !!user,
+    staleTime: 90_000,
+    refetchInterval: 110_000,
+  });
+
+  const s = normalizeSummary(me, sum);
+  const pets: any[] = Array.isArray(petsData?.pets) ? petsData.pets : Array.isArray(petsData) ? petsData : [];
+  const firstName = s.displayName || user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || (isHe ? 'חבר' : 'Member');
+  const qrToken: string | undefined = qr?.token || qr?.qrToken || qr?.value;
+  const memberId = s.memberId || '—';
+
+  const copyMemberId = async () => {
+    try { await navigator.clipboard.writeText(memberId); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { /* clipboard blocked */ }
+  };
+
+  const actions: { label: string; labelHe: string; icon: any; to: string; soon?: boolean }[] = [
+    { label: 'Book Wash',     labelHe: 'שטיפה',    icon: Droplets,      to: '/stations' },
+    { label: 'Pet Sitter',    labelHe: 'פט סיטר',  icon: Dog,           to: '/sitter-suite' },
+    { label: 'Walk My Pet',   labelHe: 'טיולים',   icon: Footprints,    to: '/walk-my-pet' },
+    { label: 'PetWash Shop',  labelHe: 'חנות',     icon: ShoppingBag,   to: '/shop' },
+    { label: 'Send a Gift',   labelHe: 'שליחת מתנה', icon: Gift,        to: '/buy-gift-card' },
+    { label: 'Buy Package',   labelHe: 'רכישת חבילה', icon: CreditCard, to: '/packages' },
+    { label: 'Wallet Top Up', labelHe: 'טעינת ארנק', icon: WalletIcon,  to: '/my-wallet' },
+    { label: 'Academy',       labelHe: 'אקדמיה',   icon: GraduationCap, to: '/academy' },
+    { label: 'My Pets',       labelHe: 'החיות שלי', icon: PawPrint,     to: '/pets' },
+    { label: 'PetTrek',       labelHe: 'PetTrek',  icon: Mountain,      to: '#', soon: true },
+  ];
+
+  const stats = [
+    { label: isHe ? 'קרדיט שטיפות' : 'Wash Credits', value: String(s.washCredits ?? 0), sub: isHe ? 'זמין' : 'Available', icon: Droplets, color: '#1d9e9e' },
+    { label: isHe ? 'נקודות Prestige' : 'Prestige Points', value: String(s.pointsBalance ?? 0), sub: isHe ? 'הטבות' : 'Benefits', icon: Star, color: GOLD },
+    { label: isHe ? 'יתרת ארנק' : 'Wallet', value: ils(s.cashCents), sub: isHe ? 'טעינה' : 'Top up', icon: WalletIcon, color: '#e0607e' },
+    { label: isHe ? 'יתרת מתנות' : 'Gift Balance', value: ils(s.giftCents), sub: `${s.giftCount ?? 0} ${isHe ? 'כרטיסים' : 'cards'}`, icon: Gift, color: '#3a7bd5' },
+  ];
+
+  return (
+    <div className="min-h-[100dvh] bg-white" dir={isHe ? 'rtl' : 'ltr'} style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
+      <div className="max-w-md mx-auto pb-28">
+
+        {/* Header: real logo crown */}
+        <header className="px-4 pt-3 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="w-20" />
+            <div className="flex flex-col items-center">
+              <img src="/brand/petwash-logo-official.png" alt="PetWash" className="h-7 object-contain" loading="eager" />
+              <span className="text-[9px] tracking-[0.3em] text-[#9a8a5c] mt-0.5">PRESTIGE</span>
+            </div>
+            <div className="w-20 flex items-center justify-end gap-3">
+              <button onClick={() => navigate('/notifications')} className="relative text-gray-700" aria-label="Notifications">
+                <Bell className="w-5 h-5" />
+              </button>
+              <button onClick={() => navigate('/inbox')} className="text-gray-700" aria-label="Messages">
+                <MessageCircle className="w-5 h-5" />
+              </button>
+              <button onClick={() => navigate('/my-account')} className="w-8 h-8 rounded-full bg-[#FBF6E7] border border-[#ECDFB4] flex items-center justify-center text-[#9a7d2e] text-xs font-semibold" aria-label="Account">
+                {firstName.charAt(0).toUpperCase()}
+              </button>
+            </div>
+          </div>
+        </header>
+
+        {/* Greeting + membership card */}
+        <section className="px-4 pt-1">
+          <p className="text-xl text-gray-500">{isHe ? 'שלום,' : 'Welcome back,'}</p>
+          <h1 className="text-3xl font-semibold text-emerald-800 leading-tight">{firstName} 👋</h1>
+          <button
+            onClick={() => navigate('/prestige-club')}
+            className="mt-2 inline-flex items-center gap-2 rounded-full border border-[#ECDFB4] bg-[#FFFDF7] px-3 py-1.5"
+          >
+            <Crown className="w-4 h-4" style={{ color: GOLD }} />
+            <span className="text-sm font-medium text-[#9a7d2e]">{isHe ? `חבר ${s.tier}` : `Prestige ${s.tier} Member`}</span>
+            <ChevronRight className="w-4 h-4 text-[#c9b88a]" />
+          </button>
+
+          {/* Membership card — dark emerald + gold, live QR */}
+          <div className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>
+            <div className="flex items-start justify-between">
+              <div className="flex flex-col">
+                <img src="/brand/petwash-logo-white.png" alt="PetWash" className="h-6 object-contain self-start" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                <span className="text-[9px] tracking-[0.3em] mt-1" style={{ color: GOLD }}>PRESTIGE</span>
+              </div>
+              <Crown className="w-5 h-5" style={{ color: GOLD }} />
+            </div>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <div className="bg-white rounded-xl p-2.5">
+                {qrToken ? (
+                  <QRCodeSVG value={qrToken} size={104} level="M" includeMargin={false} />
+                ) : (
+                  <div className="w-[104px] h-[104px] flex items-center justify-center text-gray-300"><QrCode className="w-10 h-10" /></div>
+                )}
+              </div>
+              <div className="text-right flex-1">
+                <p className="text-[10px] uppercase tracking-wider" style={{ color: `${GOLD}cc` }}>{isHe ? 'מספר חבר' : 'Member ID'}</p>
+                <button onClick={copyMemberId} className="inline-flex items-center gap-1.5 text-white font-mono text-sm mt-0.5">
+                  {memberId}
+                  {copied ? <Check className="w-3.5 h-3.5 text-emerald-300" /> : <Copy className="w-3.5 h-3.5 opacity-70" />}
+                </button>
+                <p className="text-[10px] text-white/50 mt-2">{isHe ? 'הצג/י בעמדה למימוש' : 'Show at the bay to redeem'}</p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Stats strip */}
+        <section className="px-4 mt-4">
+          <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
+            {stats.map((st) => {
+              const Icon = st.icon;
+              return (
+                <div key={st.label} className="min-w-[112px] flex-1 rounded-2xl border border-gray-100 shadow-sm p-3">
+                  <Icon className="w-5 h-5 mb-1" style={{ color: st.color }} />
+                  <div className="text-lg font-semibold text-gray-900 leading-none">{st.value}</div>
+                  <div className="text-[11px] text-gray-500 mt-0.5">{st.label}</div>
+                  <div className="text-[10px] mt-0.5" style={{ color: GOLD }}>{st.sub}</div>
+                </div>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Quick actions */}
+        <section className="px-4 mt-5">
+          <h2 className="text-base font-semibold text-gray-900 mb-3">{isHe ? 'פעולות מהירות' : 'Quick Actions'}</h2>
+          <div className="grid grid-cols-4 gap-y-4 gap-x-2">
+            {actions.map((a) => {
+              const Icon = a.icon;
+              return (
+                <button
+                  key={a.label}
+                  onClick={() => !a.soon && navigate(a.to)}
+                  disabled={a.soon}
+                  className="flex flex-col items-center gap-1.5 group"
+                >
+                  <span className={`w-14 h-14 rounded-2xl flex items-center justify-center border ${a.soon ? 'border-dashed border-gray-200 bg-gray-50' : 'border-[#F0E9D4] bg-[#FFFDF7] group-active:scale-95'} transition-transform`}>
+                    <Icon className="w-6 h-6" style={{ color: a.soon ? '#bbb' : GOLD }} />
+                  </span>
+                  <span className={`text-[10.5px] text-center leading-tight ${a.soon ? 'text-gray-400' : 'text-gray-700'}`}>
+                    {isHe ? a.labelHe : a.label}
+                    {a.soon && <span className="block text-[8.5px] text-gray-400">{isHe ? 'בקרוב' : 'Soon'}</span>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+
+        {/* Today's care tip (real safety tip — no fabricated weather) */}
+        <section className="px-4 mt-5">
+          <div className="rounded-2xl border border-[#F0E9D4] bg-[#FFFDF7] p-4 flex items-start gap-3">
+            <Sun className="w-6 h-6 shrink-0" style={{ color: GOLD }} />
+            <div>
+              <p className="text-sm font-semibold text-gray-900">{isHe ? 'טיפ הטיפוח היומי' : "Today's Care Tip"}</p>
+              <p className="text-xs text-gray-600 mt-0.5">
+                {isHe
+                  ? 'בימים חמים — טיילו בבוקר או בערב ובדקו את חום המדרכה לפני שיוצאים.'
+                  : 'On hot days, walk your dog in the morning or evening and check the pavement temperature before heading out.'}
+              </p>
+            </div>
+          </div>
+        </section>
+
+        {/* Your pets */}
+        <section className="px-4 mt-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-gray-900">{isHe ? 'החיות שלי' : 'Your Pets'}</h2>
+            <button onClick={() => navigate('/pets')} className="text-xs font-medium" style={{ color: GOLD }}>{isHe ? 'הצג הכל' : 'View all'}</button>
+          </div>
+          {pets.length === 0 ? (
+            <button onClick={() => navigate('/pets')} className="w-full rounded-2xl border border-dashed border-gray-200 p-5 text-center">
+              <PawPrint className="w-6 h-6 mx-auto mb-1" style={{ color: GOLD }} />
+              <p className="text-sm text-gray-600">{isHe ? 'הוסיפו את החיה הראשונה שלכם' : 'Add your first pet'}</p>
+            </button>
+          ) : (
+            <div className="flex gap-3 overflow-x-auto pb-1">
+              {pets.slice(0, 6).map((p: any, i: number) => (
+                <div key={p.id ?? i} className="min-w-[150px] rounded-2xl border border-gray-100 shadow-sm p-3 flex items-center gap-3">
+                  <div className="w-11 h-11 rounded-full bg-[#FBF6E7] border border-[#ECDFB4] flex items-center justify-center overflow-hidden">
+                    {p.photoUrl ? <img src={p.photoUrl} alt={p.name} className="w-full h-full object-cover" /> : <Dog className="w-5 h-5 text-[#9a7d2e]" />}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900 truncate">{p.name ?? '—'}</p>
+                    <p className="text-[11px] text-gray-500 truncate">{p.breed ?? p.species ?? ''}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+
+        {/* Rewards & wallet */}
+        <section className="px-4 mt-5">
+          <h2 className="text-base font-semibold text-gray-900 mb-3">{isHe ? 'הטבות וארנק' : 'Rewards & Wallet'}</h2>
+          <div className="grid grid-cols-3 gap-2">
+            <button onClick={() => navigate('/loyalty/dashboard')} className="rounded-2xl border border-gray-100 shadow-sm p-3 text-left">
+              <Award className="w-5 h-5 mb-1" style={{ color: GOLD }} />
+              <div className="text-base font-semibold text-gray-900">{s.pointsBalance ?? 0}</div>
+              <div className="text-[10.5px] text-gray-500">{isHe ? 'נקודות' : 'Points'}</div>
+            </button>
+            <button onClick={() => navigate('/my-wallet')} className="rounded-2xl border border-gray-100 shadow-sm p-3 text-left">
+              <WalletIcon className="w-5 h-5 mb-1 text-[#e0607e]" />
+              <div className="text-base font-semibold text-gray-900">{ils(s.cashCents)}</div>
+              <div className="text-[10.5px] text-gray-500">{isHe ? 'ארנק' : 'Wallet'}</div>
+            </button>
+            <button onClick={() => navigate('/loyalty/dashboard')} className="rounded-2xl border border-gray-100 shadow-sm p-3 text-left">
+              <Gift className="w-5 h-5 mb-1 text-emerald-600" />
+              <div className="text-base font-semibold text-gray-900">{s.rewardsCount ?? 0}</div>
+              <div className="text-[10.5px] text-gray-500">{isHe ? 'הטבות' : 'Rewards'}</div>
+            </button>
+          </div>
+        </section>
+
+        {/* Recommended */}
+        <section className="px-4 mt-5">
+          <h2 className="text-base font-semibold text-gray-900 mb-3">{isHe ? 'מומלצים עבורך' : 'Recommended For You'}</h2>
+          <div className="grid grid-cols-2 gap-3">
+            {[
+              { t: isHe ? 'חבילת 5 שטיפות' : '5 Wash Package', s: isHe ? 'חיסכון משתלם' : 'Save more', cta: isHe ? 'רכישה' : 'Buy Now', to: '/buy-package', icon: Droplets },
+              { t: isHe ? 'מתנת שטיפה' : 'Gift a Wash', s: isHe ? 'שתפו דאגה' : 'Share the care', cta: isHe ? 'שליחה' : 'Send Gift', to: '/buy-gift-card', icon: Gift },
+              { t: isHe ? 'מוצרי החנות' : 'Shop Bestsellers', s: isHe ? 'הנבחרים' : 'Top picks', cta: isHe ? 'לחנות' : 'Shop Now', to: '/shop', icon: ShoppingBag },
+              { t: isHe ? 'קורסי אקדמיה' : 'Academy Courses', s: isHe ? 'למדו וטפחו' : 'Learn. Care.', cta: isHe ? 'גילוי' : 'Explore', to: '/academy', icon: GraduationCap },
+            ].map((c) => {
+              const Icon = c.icon;
+              return (
+                <button key={c.t} onClick={() => navigate(c.to)} className="rounded-2xl border border-gray-100 shadow-sm p-3 text-left">
+                  <Icon className="w-5 h-5 mb-2" style={{ color: GOLD }} />
+                  <p className="text-sm font-semibold text-gray-900 leading-tight">{c.t}</p>
+                  <p className="text-[11px] text-gray-500 mt-0.5">{c.s}</p>
+                  <span className="inline-flex items-center gap-0.5 text-[11px] font-medium mt-2" style={{ color: GOLD }}>{c.cta}<ChevronRight className="w-3 h-3" /></span>
+                </button>
+              );
+            })}
+          </div>
+        </section>
+      </div>
+
+      {/* Bottom nav with elevated center QR / Card */}
+      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
+        <div className="max-w-md mx-auto relative flex items-stretch justify-between h-16 px-2">
+          <NavBtn icon={HomeIcon} label={isHe ? 'בית' : 'Home'} active onClick={() => navigate('/prestige/home')} />
+          <NavBtn icon={CalendarDays} label={isHe ? 'הזמנות' : 'Book'} onClick={() => navigate('/bookings')} />
+          <div className="w-16" />
+          <NavBtn icon={WalletIcon} label={isHe ? 'ארנק' : 'Wallet'} onClick={() => navigate('/my-wallet')} />
+          <NavBtn icon={User} label={isHe ? 'חשבון' : 'Account'} onClick={() => navigate('/my-account')} />
+
+          {/* Center: QR / Card = redeem at the bay */}
+          <button
+            onClick={() => navigate('/prestige-pass')}
+            className="absolute left-1/2 -translate-x-1/2 -top-5 w-16 h-16 rounded-full flex flex-col items-center justify-center text-white shadow-lg"
+            style={{ background: `linear-gradient(135deg, ${GOLD}, #c79a2e)` }}
+            aria-label={isHe ? 'מימוש QR / כרטיס' : 'QR / Card redeem'}
+          >
+            <QrCode className="w-6 h-6" />
+            <span className="text-[8.5px] mt-0.5">QR / Card</span>
+          </button>
+        </div>
+      </nav>
+    </div>
+  );
+}
+
+function NavBtn({ icon: Icon, label, active, onClick }: { icon: any; label: string; active?: boolean; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex-1 flex flex-col items-center justify-center gap-0.5">
+      <Icon className="w-5 h-5" style={{ color: active ? GOLD : '#9ca3af' }} />
+      <span className="text-[10px]" style={{ color: active ? GOLD : '#9ca3af' }}>{label}</span>
+    </button>
+  );
+}
