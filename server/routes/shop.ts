@@ -27,12 +27,14 @@
  *   GET    /api/shop/admin/orders              — all orders (paged)
  *   PATCH  /api/shop/admin/orders/:id/status   — update dispatch/delivery status
  *
- * Financial flow:
- *   1. Checkout deducts amount from user wallet (or initiates Nayax / credit-card)
- *   2. EscrowService holds funds until dispatch confirmed
- *   3. On delivery: EscrowService.release() → company ledger
+ * Financial flow (owned-inventory direct sale — NO provider escrow):
+ *   1. Checkout captures payment from the user wallet via the real ledger
+ *      (atomic + idempotent on the cart), or initiates Nayax / credit-card.
+ *   2. Order is created atomically with a guarded stock decrement (no oversell);
+ *      if order creation fails after a wallet capture, the payment is refunded.
+ *   3. Reversal: cancel → statutory refund (fee-deducted) + stock restored.
  *   4. VAT (18%) auto-calculated and stored on every order line
- *   5. Israeli חשבונית מס generated on completion (IsraeliInvoiceGenerator)
+ *   5. Israeli חשבונית מס (IsraeliInvoiceGenerator) — STAGED to move to sale-time
  *   6. Email: shop-order-confirmation-2026 sent to buyer
  *   7. CRM log written via UnifiedMessagingHub
  */
@@ -44,17 +46,12 @@ import { requireAuth } from '../customAuth';
 import { requireAdmin } from '../adminAuth';
 import { logger } from '../lib/logger';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
-// ⚠️ CRITICAL for commerce launch: walletService.deductFromWallet /
-// creditWallet below DO NOT EXIST on WalletService — fictional like the
-// escrow calls. Unreachable behind SHOP_CHECKOUT_ENABLED. Real wallet
-// integration is part of the commerce-launch design (CEO approval gate).
-import { walletService } from '../services/WalletService';
-// DEFAULT export (singleton). ⚠️ CRITICAL for commerce launch: the three
-// EscrowService.hold/.cancel/.release calls below are FICTIONAL — the real
-// service exposes createEscrowPayment/releaseEscrowPayment/refundEscrowPayment
-// (booking-shaped). Unreachable today (SHOP_CHECKOUT_ENABLED hard-block), but
-// a real shop<->escrow integration MUST be designed before checkout opens.
-import EscrowService from '../services/EscrowService';
+// Real wallet money rail (atomic, idempotent, fraud-guarded). The shop is an
+// OWNED-INVENTORY direct sale: payment is captured to the company at checkout —
+// there is no provider-escrow hold (escrow is for marketplace bookings). Reversal
+// is handled by refund-on-cancel via refundToWallet. (Replaces the prior fictional
+// wallet + escrow stubs that did not exist on their services.)
+import { deductFromWallet as ledgerDeduct, refundToWallet as ledgerRefund } from '../services/WalletLedger';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { shopOrderConfirmation } from '../email/templates/shop-order-confirmation-2026';
 import { ShopService } from '../services/ShopService';
@@ -321,16 +318,27 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
           const netCents = grossCents - vatCents;
           const totalCents = grossCents;
 
-      // 5. Process payment
+      // 5. Process payment. Wallet path captures NOW via the real ledger
+      //    (atomic, idempotent on the cart). Card path returns a payment URL.
       let paymentRef: string;
           if (body.paymentMethod === 'wallet') {
-                  const result = await walletService.deductFromWallet(uid, totalCents, 'shop_purchase', {
-                            cartId: body.cartId,
-                            itemCount: cart.items.length,
+                  const ded = await ledgerDeduct({
+                            userId:         uid,
+                            amountCents:    totalCents,
+                            isKioskWash:    false,
+                            serviceType:    'shop',
+                            sourceType:     'shop_purchase',
+                            endpoint:       '/api/shop/checkout',
+                            idempotencyKey: `shop-checkout:${body.cartId}`,
+                            description:    `PetWash Shop order (${cart.items.length} item${cart.items.length === 1 ? '' : 's'})`,
+                            ipAddress:      req.ip ?? null,
+                            userAgent:      (req.headers['user-agent'] as string) ?? null,
                   });
-                  paymentRef = result.transactionId;
+                  paymentRef = ded.txnId;
           } else {
-                  // Nayax / credit card: create pending order and return payment URL
+                  // Nayax / credit card: create pending order and return payment URL.
+                  // STAGED: this still creates the order before capture (audit #10) —
+                  // move to capture-then-create via the Nayax webhook before enabling cards.
             const pendingOrder = await shopService.createPendingOrder(uid, cart, {
                       discountAmountCents,
                       deliveryCents,
@@ -348,24 +356,49 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
                   });
           }
 
-      // 6. Create confirmed order
-      const order = await shopService.createOrder(uid, cart, {
-              paymentRef,
-              paymentMethod: body.paymentMethod,
-              discountAmountCents,
-              deliveryCents,
-              giftWrap: body.giftWrap,
-              deliveryMethod: body.deliveryMethod,
-              deliveryAddressId: body.deliveryAddressId,
-              notes: body.notes,
-              language: body.language,
-              netCents,
-              vatCents,
-              totalCents,
-      });
+      // 6. Create the confirmed order ATOMICALLY (re-checks + decrements stock).
+      //    If it fails (e.g. a concurrent buyer took the last unit) the wallet was
+      //    already charged → compensate with an idempotent refund so money is never
+      //    captured without an order.
+      let order;
+      try {
+              order = await shopService.createOrder(uid, cart, {
+                      paymentRef,
+                      paymentMethod: body.paymentMethod,
+                      discountAmountCents,
+                      deliveryCents,
+                      giftWrap: body.giftWrap,
+                      deliveryMethod: body.deliveryMethod,
+                      deliveryAddressId: body.deliveryAddressId,
+                      notes: body.notes,
+                      language: body.language,
+                      netCents,
+                      vatCents,
+                      totalCents,
+              });
+      } catch (orderErr: any) {
+              if (paymentRef) {
+                      try {
+                              await ledgerRefund({
+                                        userId:         uid,
+                                        amountCents:    totalCents,
+                                        idempotencyKey: `shop-refund:${body.cartId}`,
+                                        endpoint:       '/api/shop/checkout',
+                                        reason:         'shop_order_creation_failed',
+                              } as any);
+                              logger.warn('[Shop] order creation failed after wallet capture — refunded', { uid, cartId: body.cartId, err: orderErr?.message });
+                      } catch (refErr: any) {
+                              logger.error('[Shop] CRITICAL: refund after failed order FAILED — manual reconciliation needed', { uid, totalCents, cartId: body.cartId, err: refErr?.message });
+                      }
+              }
+              if (typeof orderErr?.message === 'string' && orderErr.message.startsWith('OUT_OF_STOCK')) {
+                      return res.status(409).json({ error: 'One or more items just sold out. Your payment was refunded.', code: 'OUT_OF_STOCK' });
+              }
+              throw orderErr;
+      }
 
-      // 7. Hold in escrow until dispatch
-      await EscrowService.hold(uid, totalCents, 'shop_order', order.id);
+      // 7. Owned-inventory direct sale: payment is already captured to the company.
+      //    No provider-escrow hold (reversal = refund-on-cancel).
 
       // 8. Send luxury confirmation email
       try {
@@ -417,6 +450,10 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
 
     } catch (err: any) {
     if (err.name === 'ZodError') return res.status(400).json({ error: 'Validation error', details: err.errors });
+          const msg = typeof err?.message === 'string' ? err.message : '';
+          // Map wallet ledger errors to honest HTTP codes (no money moved on these).
+          if (msg.startsWith('INSUFFICIENT_FUNDS')) return res.status(402).json({ error: 'Insufficient wallet balance for this order.', code: 'INSUFFICIENT_FUNDS' });
+          if (msg.startsWith('IDEMPOTENCY_CONFLICT')) return res.status(409).json({ error: 'This cart is already being checked out.', code: 'CHECKOUT_IN_FLIGHT' });
           logger.error('[Shop] checkout error', { uid, err: err.message, stack: err.stack });
           res.status(500).json({ error: 'Checkout failed. Please try again.' });
     }
@@ -471,10 +508,20 @@ router.post('/orders/:id/cancel', apiLimiter, requireAuth, async (req: Request, 
           const result = await shopService.cancelOrder(orderId, uid);
           if (!result.success) return res.status(400).json({ error: result.reason });
 
-      // Release escrow and refund wallet — refundCents already has the statutory
-      // cancellation fee deducted (was a flat 100% refund = money leak).
-      await EscrowService.cancel(uid, 'shop_order', orderId);
-          await walletService.creditWallet(uid, result.refundCents, 'shop_refund', { orderId });
+      // Refund the customer the statutory amount (cancellationFee already deducted
+      // by cancelOrder; was a flat 100% refund = money leak). Owned-inventory sale →
+      // no escrow to cancel; return funds to the wallet via the real ledger,
+      // idempotent on the order so a retry can't double-refund. cancelOrder already
+      // restored stock.
+      if (result.refundCents > 0) {
+              await ledgerRefund({
+                        userId:         uid,
+                        amountCents:    result.refundCents,
+                        idempotencyKey: `shop-cancel-refund:${orderId}`,
+                        endpoint:       '/api/shop/orders/cancel',
+                        reason:         'shop_order_cancelled',
+              } as any);
+          }
           await logAuditEvent({ actorUserId: uid, actorRole: 'customer', actionType: 'shop.order.cancelled', targetType: 'shop_order', targetId: String(orderId), metadata: { refundCents: result.refundCents, cancellationFeeCents: result.cancellationFeeCents } });
 
       res.json({ status: 'cancelled', refundCents: result.refundCents, cancellationFeeCents: result.cancellationFeeCents });
@@ -598,9 +645,11 @@ router.patch('/admin/orders/:id/status', adminLimiter, requireAdmin, async (req:
       const order = await shopService.updateOrderStatus(orderId, newStatus, { trackingNumber, trackingUrl });
 
       if (newStatus === 'delivered') {
-              // Release escrow to company wallet
-            await EscrowService.release(order.userId, 'shop_order', orderId);
-              // Generate חשבונית מס
+              // Owned-inventory sale: revenue was already captured at checkout, so
+              // there is no escrow to release on delivery.
+              // STAGED (audit #11): the tax invoice should be issued at SALE, not on
+              // delivery — move generateTaxInvoice into the checkout flow (with the
+              // tax-sequence concurrency guard) before enabling cards.
             await shopService.generateTaxInvoice(orderId);
       }
 
