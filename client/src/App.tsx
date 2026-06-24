@@ -204,6 +204,7 @@ const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
 const PrestigePassWallet = lazy(() => import("@/pages/PrestigePassWallet"));
+const PrestigeHome = lazy(() => import("@/pages/PrestigeHome"));
 const StaffScan = lazy(() => import("@/pages/staff/StaffScan"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
@@ -1024,6 +1025,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <PrestigePassWallet />
+            </RequireAuth>
+          )}
+        </Route>
+
+        {/* Luxury customer (Prestige) home — dark rollout, reachable for preview */}
+        <Route path="/prestige/home">
+          {() => (
+            <RequireAuth>
+              <PrestigeHome />
             </RequireAuth>
           )}
         </Route>
