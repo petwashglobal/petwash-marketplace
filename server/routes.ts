@@ -17129,6 +17129,16 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       status,
     });
 
+    // SELF-AWARE faults (2026-06-24): every 5xx → GCP Error Reporting (with the
+    // file:line) + a deduped admin_alert (Octopus Control Tower) + alert to
+    // Nir+Ido. Fire-and-forget + fully guarded — NEVER blocks the response.
+    // (4xx are client errors and are intentionally not reported.)
+    if (status >= 500) {
+      void import('./lib/faultReporter')
+        .then((m) => m.reportFault(err, { source: 'express', method: req.method, url: req.url, traceId: String(traceId), statusCode: status }))
+        .catch(() => { /* the reporter must never break the error path */ });
+    }
+
     if (!res.headersSent) {
       res.status(status).json({
         error: err.code || 'SERVER_ERROR',
