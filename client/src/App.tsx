@@ -83,6 +83,7 @@ const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
 const PrestigeWelcome = lazy(() => import("@/pages/prestige/PrestigeWelcome"));
 const PrestigeHome = lazy(() => import("@/pages/prestige/PrestigeHome"));
+const PrestigeRedeem = lazy(() => import("@/pages/prestige/PrestigeRedeem"));
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
@@ -819,6 +820,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           are pure aliases: no component, API, or flag change. Old paths keep
           working unchanged.
         */}
+        {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
+          <Route path="/prestige/pass">
+            {/* Redeem-at-bay (centre Card/QR tab + home redeem tile). Full-screen
+                focused flow; reuses the real pass token + live session stream. */}
+            {() => (
+              <RequireAuth>
+                <PrestigeRedeem />
+              </RequireAuth>
+            )}
+          </Route>
+        )}
         {import.meta.env.VITE_APP_STRUCTURE_V2_ENABLED === 'true' && (
           <Route path="/prestige/welcome">
             {/* Signed-out member entry — the premium PrestigeWelcome (CEO-approved
