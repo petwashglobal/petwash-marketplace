@@ -136,14 +136,14 @@ export default function PrestigeHome() {
 
   const actions: { label: string; labelHe: string; icon: any; to: string; soon?: boolean }[] = [
     { label: 'Book Wash',     labelHe: 'שטיפה',    icon: Droplets,      to: '/stations' },
-    { label: 'Pet Sitter',    labelHe: 'פט סיטר',  icon: Dog,           to: '/petsitter' },
+    { label: 'Pet Sitter',    labelHe: 'פט סיטר',  icon: Dog,           to: '/sitter-suite' },
     { label: 'Walk My Pet',   labelHe: 'טיולים',   icon: Footprints,    to: '/walk-my-pet' },
     { label: 'PetWash Shop',  labelHe: 'חנות',     icon: ShoppingBag,   to: '/shop' },
     { label: 'Send a Gift',   labelHe: 'שליחת מתנה', icon: Gift,        to: '/buy-gift-card' },
-    { label: 'Buy Package',   labelHe: 'רכישת חבילה', icon: CreditCard, to: '/buy-package' },
+    { label: 'Buy Package',   labelHe: 'רכישת חבילה', icon: CreditCard, to: '/packages' },
     { label: 'Wallet Top Up', labelHe: 'טעינת ארנק', icon: WalletIcon,  to: '/my-wallet' },
     { label: 'Academy',       labelHe: 'אקדמיה',   icon: GraduationCap, to: '/academy' },
-    { label: 'My Pets',       labelHe: 'החיות שלי', icon: PawPrint,     to: '/my-account' },
+    { label: 'My Pets',       labelHe: 'החיות שלי', icon: PawPrint,     to: '/pets' },
     { label: 'PetTrek',       labelHe: 'PetTrek',  icon: Mountain,      to: '#', soon: true },
   ];
 
@@ -284,10 +284,10 @@ export default function PrestigeHome() {
         <section className="px-4 mt-5">
           <div className="flex items-center justify-between mb-3">
             <h2 className="text-base font-semibold text-gray-900">{isHe ? 'החיות שלי' : 'Your Pets'}</h2>
-            <button onClick={() => navigate('/my-account')} className="text-xs font-medium" style={{ color: GOLD }}>{isHe ? 'הצג הכל' : 'View all'}</button>
+            <button onClick={() => navigate('/pets')} className="text-xs font-medium" style={{ color: GOLD }}>{isHe ? 'הצג הכל' : 'View all'}</button>
           </div>
           {pets.length === 0 ? (
-            <button onClick={() => navigate('/my-account')} className="w-full rounded-2xl border border-dashed border-gray-200 p-5 text-center">
+            <button onClick={() => navigate('/pets')} className="w-full rounded-2xl border border-dashed border-gray-200 p-5 text-center">
               <PawPrint className="w-6 h-6 mx-auto mb-1" style={{ color: GOLD }} />
               <p className="text-sm text-gray-600">{isHe ? 'הוסיפו את החיה הראשונה שלכם' : 'Add your first pet'}</p>
             </button>
