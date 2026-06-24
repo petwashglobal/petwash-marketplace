@@ -82,6 +82,7 @@ const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
 const SignIn = lazy(() => import("@/pages/SignIn"));
 const PrestigeWelcome = lazy(() => import("@/pages/prestige/PrestigeWelcome"));
+const PrestigeHome = lazy(() => import("@/pages/prestige/PrestigeHome"));
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
@@ -833,7 +834,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
               <RequireAuth>
                 <AppTermsGate flavor="customer" language={language}>
                   <PrestigeShell>
-                    {import.meta.env.VITE_DASHBOARD_V2_ENABLED === 'true' ? <DashboardV2 /> : <Dashboard />}
+                    <PrestigeHome />
                   </PrestigeShell>
                 </AppTermsGate>
               </RequireAuth>

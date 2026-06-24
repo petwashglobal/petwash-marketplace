@@ -1,43 +1,50 @@
 /**
- * PrestigeShell — the app-native chrome for the Prestige (customer/loyalty) app.
+ * PrestigeShell — the luxury app-native chrome for the Prestige (customer/loyalty)
+ * app (CEO-approved mockup, 2026-06-24).
  *
- * App-structure rebuild, Stage 0 (SDD §5.3). This is a THIN wrapper, not new
- * screens: it owns the Prestige header (real PetWash logo, top-center) and the
- * 5-tab bottom navigation the CEO specified — Home, Book, Shop, Wallet, Account —
- * and renders the existing member surfaces inside `children`.
+ * Owns the Prestige header (the REAL official PetWash logo image, top-centre —
+ * never a recreated droplet/wordmark) and the 5-tab bottom navigation with an
+ * elevated centre Card/QR tab. Member surfaces render inside `children`.
  *
- * DARK BY DEFAULT: this component is only mounted behind
- * `VITE_APP_STRUCTURE_V2_ENABLED` in App.tsx. With the flag off it never renders,
- * so the live apps are untouched. Wiring the member surfaces into the outlet and
- * flipping the customer-app entry happen in Stage 1.
+ * DARK BY DEFAULT: mounted only behind VITE_APP_STRUCTURE_V2_ENABLED in App.tsx,
+ * so with the flag off the live apps are untouched.
  *
- * Brand rules honored: pure-white background, black text, metallic-gold accents,
- * the REAL logo asset only (/brand/petwash-logo-official.png) top-center, never
- * recreated. Hebrew-first / RTL via useLanguage. Mobile-first: 100dvh, safe-area
- * insets, bottom nav hidden on desktop.
+ * Brand: pearl-white background (#FAF8F3), black text, metallic-gold (#C9A24A)
+ * hairline accents, emerald (#006B4F) active state. Real logo asset only, centred.
+ * Hebrew-first / RTL via useLanguage. Mobile-first: 100dvh, safe-area insets,
+ * bottom nav hidden on desktop.
  */
 
 import { useLocation, Link } from 'wouter';
-import { Home, CalendarPlus, ShoppingBag, Wallet, User } from 'lucide-react';
+import { Home, CalendarDays, QrCode, Wallet, User } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 
-const GOLD = '#D4AF37';
+const PEARL = '#FAF8F3';
+const EMERALD = '#006B4F';
 const GRAY = '#9CA3AF';
+const GOLD = '#C9A24A';
+const GOLD_HAIR = 'rgba(201,162,74,0.30)';
 
 interface PrestigeNavItem {
   path: string;
   labelHe: string;
   labelEn: string;
   Icon: React.ElementType;
+  /** Center tab is rendered as an elevated Card/QR action. */
+  center?: boolean;
 }
 
-/** CEO-specified Prestige bottom tabs: Home, Book, Shop, Wallet, Account. */
+/**
+ * Prestige bottom tabs (approved mockup): Home · Book · [Card/QR] · Wallet ·
+ * Account. The center Card/QR opens the member pass (redeem at K9000 + platforms).
+ * Shop lives in the home quick-actions grid rather than the tab bar.
+ */
 const PRESTIGE_NAV: PrestigeNavItem[] = [
-  { path: '/prestige',          labelHe: 'בית',   labelEn: 'Home',    Icon: Home },
-  { path: '/prestige/book',     labelHe: 'הזמנה', labelEn: 'Book',    Icon: CalendarPlus },
-  { path: '/prestige/shop',     labelHe: 'חנות',  labelEn: 'Shop',    Icon: ShoppingBag },
-  { path: '/prestige/wallet',   labelHe: 'ארנק',  labelEn: 'Wallet',  Icon: Wallet },
-  { path: '/prestige/account',  labelHe: 'חשבון', labelEn: 'Account', Icon: User },
+  { path: '/prestige',         labelHe: 'בית',     labelEn: 'Home',    Icon: Home },
+  { path: '/prestige/book',    labelHe: 'הזמנה',   labelEn: 'Book',    Icon: CalendarDays },
+  { path: '/prestige/pass',    labelHe: 'כרטיס',   labelEn: 'Card',    Icon: QrCode, center: true },
+  { path: '/prestige/wallet',  labelHe: 'ארנק',    labelEn: 'Wallet',  Icon: Wallet },
+  { path: '/prestige/account', labelHe: 'חשבון',   labelEn: 'Account', Icon: User },
 ];
 
 export function PrestigeShell({ children }: { children: React.ReactNode }) {
@@ -48,16 +55,17 @@ export function PrestigeShell({ children }: { children: React.ReactNode }) {
   return (
     <div
       dir={isRTL ? 'rtl' : 'ltr'}
-      className="flex flex-col bg-white text-black"
-      style={{ minHeight: '100dvh' }}
+      className="flex flex-col text-black"
+      style={{ minHeight: '100dvh', background: PEARL }}
     >
-      {/* Header — real PetWash logo, top-center (logo rule: never recreate). */}
+      {/* Header — real official PetWash logo image, top-centre (never recreated). */}
       <header
-        className="sticky top-0 z-30 flex items-center justify-center bg-white"
+        className="sticky top-0 z-30 flex items-center justify-center"
         style={{
+          background: PEARL,
           paddingTop: 'max(0.5rem, env(safe-area-inset-top))',
           paddingBottom: '0.5rem',
-          borderBottom: '1px solid #F1F1F1',
+          borderBottom: `1px solid ${GOLD_HAIR}`,
         }}
       >
         <img
@@ -68,27 +76,27 @@ export function PrestigeShell({ children }: { children: React.ReactNode }) {
         />
       </header>
 
-      {/* Member surface outlet. Stage 1 wires the existing member screens here. */}
-      <main className="flex-1" style={{ paddingBottom: '4rem' }}>
+      {/* Member surface outlet. */}
+      <main className="flex-1" style={{ paddingBottom: '4.5rem' }}>
         {children}
       </main>
 
-      {/* Prestige bottom navigation. */}
+      {/* Luxury bottom navigation with an elevated centre Card/QR tab. */}
       <nav
         aria-label={isRTL ? 'ניווט ראשי' : 'Main navigation'}
         dir={isRTL ? 'rtl' : 'ltr'}
         className="fixed bottom-0 left-0 right-0 z-40 md:hidden"
         style={{
           background: '#FFFFFF',
-          borderTop: '1px solid #E5E7EB',
+          borderTop: `1px solid ${GOLD_HAIR}`,
           paddingBottom: 'max(0px, env(safe-area-inset-bottom))',
         }}
       >
-        <ul className="flex items-stretch h-14">
-          {PRESTIGE_NAV.map(({ path, labelHe, labelEn, Icon }) => {
+        <ul className="flex items-stretch" style={{ height: '3.5rem' }}>
+          {PRESTIGE_NAV.map(({ path, labelHe, labelEn, Icon, center }) => {
             const isActive = location === path || location.startsWith(`${path}/`);
             const label = isRTL ? labelHe : labelEn;
-            const color = isActive ? GOLD : GRAY;
+            const color = isActive ? EMERALD : GRAY;
             return (
               <li key={path} className="flex-1">
                 <Link href={path}>
@@ -98,10 +106,33 @@ export function PrestigeShell({ children }: { children: React.ReactNode }) {
                     aria-current={isActive ? 'page' : undefined}
                     className="flex flex-col items-center justify-center w-full h-full gap-0.5 transition-colors"
                   >
-                    <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} style={{ color }} />
-                    <span className="text-[10px] font-medium leading-none" style={{ color }}>
-                      {label}
-                    </span>
+                    {center ? (
+                      <>
+                        <span
+                          className="flex items-center justify-center"
+                          style={{
+                            width: 46,
+                            height: 46,
+                            marginTop: -18,
+                            borderRadius: '50%',
+                            background: 'linear-gradient(135deg,#0B0B0B,#083D32)',
+                            border: `1.5px solid ${GOLD}`,
+                          }}
+                        >
+                          <Icon size={22} style={{ color: '#E9CE84' }} />
+                        </span>
+                        <span className="text-[10px] font-medium leading-none" style={{ color: GOLD, marginTop: 2 }}>
+                          {label}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <Icon size={22} strokeWidth={isActive ? 2.2 : 1.8} style={{ color }} />
+                        <span className="text-[10px] font-medium leading-none" style={{ color }}>
+                          {label}
+                        </span>
+                      </>
+                    )}
                   </button>
                 </Link>
               </li>
