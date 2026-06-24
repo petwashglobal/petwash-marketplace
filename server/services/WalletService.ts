@@ -913,26 +913,31 @@ class WalletService {
         break;
     }
 
-    // Update wallet balance
-    await db.update(walletAccounts)
-      .set(updates)
-      .where(eq(walletAccounts.walletId, wallet.walletId));
+    // ATOMIC balance + ledger (audit 2026-06-24 finding #4): previously two
+    // separate awaits — a crash between them moved the balance with NO audit
+    // row, leaving an unreconcilable credit. Wrap both in one transaction.
+    await db.transaction(async (tx) => {
+      // Update wallet balance
+      await tx.update(walletAccounts)
+        .set(updates)
+        .where(eq(walletAccounts.walletId, wallet.walletId));
 
-    // Create credit transaction with admin injection marker
-    await db.insert(creditTransactions).values({
-      transactionId,
-      walletId: wallet.walletId,
-      creditType,
-      transactionType: 'issue',
-      amountCents: isUnits ? undefined : amount,
-      amountUnits: isUnits ? amount : undefined,
-      balanceAfterCents: isUnits ? undefined : balanceAfter,
-      balanceAfterUnits: isUnits ? balanceAfter : undefined,
-      sourceType: 'admin_injection',
-      sourceId: auditId,
-      description: `Admin credit injection: ${reason}`,
-      initiatedBy: adminUserId,
-      expiresAt: expiresAt,
+      // Create credit transaction with admin injection marker
+      await tx.insert(creditTransactions).values({
+        transactionId,
+        walletId: wallet.walletId,
+        creditType,
+        transactionType: 'issue',
+        amountCents: isUnits ? undefined : amount,
+        amountUnits: isUnits ? amount : undefined,
+        balanceAfterCents: isUnits ? undefined : balanceAfter,
+        balanceAfterUnits: isUnits ? balanceAfter : undefined,
+        sourceType: 'admin_injection',
+        sourceId: auditId,
+        description: `Admin credit injection: ${reason}`,
+        initiatedBy: adminUserId,
+        expiresAt: expiresAt,
+      });
     });
 
     // Log comprehensive audit trail
