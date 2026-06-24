@@ -129,6 +129,7 @@ import marketplaceRoutes from "./routes/marketplace";
 import identityServiceRoutes from "./routes/identity-service";
 import nayaxWebhooksRoutes from "./routes/nayax-webhooks";
 import nayaxMonyxEventsRoutes from "./routes/nayax-monyx-events";
+import nayaxCortinaRoutes from "./routes/nayax-cortina";
 // import webauthnRoutes from "./routes/webauthn"; // v1 legacy — disabled, client uses /api/webauthn/* (inline handlers)
 import gpsTrackingRoutes from "./routes/gps-tracking";
 import fcmRoutes from "./routes/fcm";
@@ -12086,6 +12087,12 @@ self.addEventListener('notificationclick', (event) => {
   // Endpoint: POST /api/webhooks/nayax-events
   // Identity link: POST /api/webhooks/nayax-events/identity-link
   app.use('/api/webhooks', nayaxMonyxEventsRoutes);
+
+  // Nayax Cortina (StaticQR) PRE-PAID redemption at the K9000 bay. DARK until
+  // NAYAX_CORTINA_ENABLED=true. CSRF-exempt via the /api/webhooks/ prefix.
+  //   POST /api/webhooks/nayax/cortina/authorize  — verify pre-paid credit on a bay
+  //   POST /api/webhooks/nayax/cortina/settlement — debit our ledger on vend (no card)
+  app.use('/api/webhooks/nayax/cortina', nayaxCortinaRoutes);
   
   // Section 14 Finance Guards — enforce transaction type integrity on all finance mutations
   // Block: payout without providerId, egift with providerId, direct_sale with payout, negative wallet, missing VAT
