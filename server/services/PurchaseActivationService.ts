@@ -32,6 +32,7 @@ import { db } from '../db';
 import { purchases, purchaseEvents, users, type Purchase } from '@shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { walletService } from './WalletService';
+import { GiftOrchestrationService } from './giftOrchestrationService';
 import { sumitClient } from './SumitClient';
 import { recordAuditEvent } from '../utils/auditSignature';
 import { sendAlert } from '../monitoring';
@@ -375,7 +376,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
   // is the activation-side enforcement of "provider commerce disabled"; the
   // /begin allowlist is the first gate, this is defence-in-depth so a row that
   // somehow carries a non-owned productType can never silently credit a wallet.
-  const OWNED: ReadonlySet<string> = new Set(['ACCOUNT_CREDIT', 'WASH_PACKAGE', 'SINGLE_WASH']);
+  const OWNED: ReadonlySet<string> = new Set(['ACCOUNT_CREDIT', 'WASH_PACKAGE', 'SINGLE_WASH', 'EGIFT']);
   if (!OWNED.has(String(purchase.productType))) {
     return false;
   }
@@ -430,9 +431,36 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
     }
 
     case 'EGIFT_CARD':
-      // Recipient-bound eGift via giftOrchestrationService is a follow-up.
-      // Do NOT credit the buyer, do NOT fake. Leave pending.
+      // Legacy/Nayax-era productType. The live rail is 'EGIFT' (below) via SUMIT.
       return false;
+
+    case 'EGIFT': {
+      // Recipient-bound eGift, paid via SUMIT/UPay (rail moved OFF Nayax). Reached
+      // exactly once per the activation idempotency lock (same single-delivery
+      // guarantee that protects addCredits). We create + deliver the recipient's
+      // voucher — NEVER credit the buyer's wallet.
+      const value = Math.round(purchase.amountCents) / 100;
+      const recipientEmail = String(meta.recipientEmail ?? (meta as any).recipient_email ?? '').trim();
+      if (!recipientEmail) return false; // no recipient → leave pending + alert (don't lose value)
+      const recipientName  = String(meta.recipientName ?? (meta as any).recipient_name ?? 'Friend').trim() || 'Friend';
+      const senderName     = String(meta.senderName ?? (meta as any).sender_name ?? 'A friend').trim() || 'A friend';
+      const purchaserEmail = String(meta.senderEmail ?? meta.purchaserEmail ?? recipientEmail).trim();
+      const message        = meta.message ? String(meta.message) : undefined;
+      const eligibleServices = Array.isArray(meta.eligibleServices) && (meta.eligibleServices as unknown[]).length
+        ? (meta.eligibleServices as any)
+        : ['all']; // eGift is redeemable at K9000 + all platforms (CEO)
+      await new GiftOrchestrationService().createMultiServiceGiftCard({
+        value,
+        currency: (purchase as any).currency ?? 'ILS',
+        purchaserEmail,
+        recipientEmail,
+        recipientName,
+        senderName,
+        message,
+        eligibleServices,
+      });
+      return true;
+    }
 
     case 'MEMBERSHIP':
     case 'SAAS_SUBSCRIPTION':
