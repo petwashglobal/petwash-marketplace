@@ -204,6 +204,7 @@ const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
 const PrestigePassWallet = lazy(() => import("@/pages/PrestigePassWallet"));
+const PrestigeHome = lazy(() => import("@/pages/PrestigeHome"));
 const StaffScan = lazy(() => import("@/pages/staff/StaffScan"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
@@ -522,6 +523,7 @@ const TrackMyPetLive = lazy(() => import("@/pages/WalkTracking"));
 
 // Provider OS — Full Operating System
 const ProviderOS = lazy(() => import("@/pages/provider-os/ProviderOS"));
+const ProviderHome = lazy(() => import("@/pages/ProviderHome"));
 
 // E-Signature System
 
@@ -1024,6 +1026,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <PrestigePassWallet />
+            </RequireAuth>
+          )}
+        </Route>
+
+        {/* Luxury customer (Prestige) home — dark rollout, reachable for preview */}
+        <Route path="/prestige/home">
+          {() => (
+            <RequireAuth>
+              <PrestigeHome />
             </RequireAuth>
           )}
         </Route>
@@ -1787,6 +1798,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                   <ProviderOS />
                 </Suspense>
               </AppTermsGate>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* Luxury provider home — dark rollout, reachable for preview */}
+        <Route path="/provider/home">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderHome />
+              </Suspense>
             </RoleProtectedRoute>
           )}
         </Route>

@@ -16053,8 +16053,27 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         metadata: errorReport.metadata,
       });
 
-      // You can optionally store critical errors in database
-      // await db.insert(errorLogs).values(errorReport);
+      // SELF-AWARE client faults (2026-06-24): route genuine client crashes into
+      // the fault pipeline → GCP Error Reporting (file:line) + admin_alert
+      // (Octopus Control Tower) + alert. This is what makes a white-screen /
+      // crash on a customer's phone visible to us automatically. Filter benign
+      // browser noise (ResizeObserver, cross-origin "Script error", transient
+      // network / chunk-load blips) so we never alert on non-actionable events;
+      // reportFault also dedupes + throttles per signature.
+      const clientMsg = String(errorReport?.message || '');
+      const isNoise = /ResizeObserver loop|^Script error\.?$|Load failed|Failed to fetch|NetworkError|ChunkLoadError|Loading chunk [\w-]+ failed/i.test(clientMsg);
+      if (clientMsg && !isNoise) {
+        const clientErr: any = new Error(clientMsg);
+        clientErr.name = 'ClientError';
+        clientErr.stack = errorReport?.stack || clientMsg;
+        void import('./lib/faultReporter')
+          .then((m) => m.reportFault(clientErr, {
+            source: `client:${errorReport?.context || 'app'}`,
+            url: errorReport?.url,
+            traceId: errorReport?.userId,
+          }))
+          .catch(() => { /* reporter must never break the log endpoint */ });
+      }
 
       res.json({ success: true });
     } catch (error: any) {
@@ -17128,6 +17147,16 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       ip: req.ip,
       status,
     });
+
+    // SELF-AWARE faults (2026-06-24): every 5xx → GCP Error Reporting (with the
+    // file:line) + a deduped admin_alert (Octopus Control Tower) + alert to
+    // Nir+Ido. Fire-and-forget + fully guarded — NEVER blocks the response.
+    // (4xx are client errors and are intentionally not reported.)
+    if (status >= 500) {
+      void import('./lib/faultReporter')
+        .then((m) => m.reportFault(err, { source: 'express', method: req.method, url: req.url, traceId: String(traceId), statusCode: status }))
+        .catch(() => { /* the reporter must never break the error path */ });
+    }
 
     if (!res.headersSent) {
       res.status(status).json({

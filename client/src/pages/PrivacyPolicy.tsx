@@ -173,7 +173,7 @@ export default function PrivacyPolicy() {
                 <div className="mt-6 p-4 luxury-glass-minimal rounded-xl">
                   <p className="font-semibold">כיצד לממש את זכויותיך:</p>
                   <p className="mt-2">שלח בקשה ל: <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient font-semibold underline">Support@PetWash.co.il</a></p>
-                  <p className="mt-2">או השתמש בעמוד <a href="/data-rights" className="luxury-text-gradient font-semibold underline">זכויות מידע</a></p>
+                  <p className="mt-2">או השתמש בעמוד <a href="/account-deletion" className="luxury-text-gradient font-semibold underline">זכויות מידע</a></p>
                   <p className="mt-2 luxury-text-small">נענה תוך 30 יום</p>
                 </div>
               </CardContent>
@@ -242,7 +242,7 @@ export default function PrivacyPolicy() {
                   <li><strong>עוגיות שיווק:</strong> Facebook Pixel, Google Ads (עם הסכמה)</li>
                 </ul>
                 <p className="mt-4 luxury-text-small">
-                  ניתן לנהל עוגיות דרך הגדרות הדפדפן או <a href="/cookie-settings" className="luxury-text-gradient font-semibold underline">מרכז העדפות עוגיות</a>
+                  ניתן לנהל עוגיות דרך הגדרות הדפדפן או <a href="/legal/cookies" className="luxury-text-gradient font-semibold underline">מרכז העדפות עוגיות</a>
                 </p>
               </CardContent>
               </Card>
@@ -518,7 +518,7 @@ export default function PrivacyPolicy() {
                 <div className="mt-6 p-4 luxury-glass-minimal rounded-xl">
                   <p className="font-semibold">How to Exercise Your Rights:</p>
                   <p className="mt-2">Email: <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient font-semibold underline">Support@PetWash.co.il</a></p>
-                  <p className="mt-2">Or use our <a href="/data-rights" className="luxury-text-gradient font-semibold underline">Data Rights Portal</a></p>
+                  <p className="mt-2">Or use our <a href="/account-deletion" className="luxury-text-gradient font-semibold underline">Data Rights Portal</a></p>
                   <p className="mt-2 luxury-text-small">We respond within 30 days</p>
                 </div>
               </CardContent>
@@ -587,7 +587,7 @@ export default function PrivacyPolicy() {
                   <li><strong>Marketing:</strong> Facebook Pixel, Google Ads (with consent)</li>
                 </ul>
                 <p className="mt-4 luxury-text-small">
-                  Manage cookies via browser settings or <a href="/cookie-settings" className="luxury-text-gradient font-semibold underline">Cookie Preferences Center</a>
+                  Manage cookies via browser settings or <a href="/legal/cookies" className="luxury-text-gradient font-semibold underline">Cookie Preferences Center</a>
                 </p>
               </CardContent>
             </Card>
