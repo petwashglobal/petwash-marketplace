@@ -21,8 +21,10 @@ describe('native Sign in with Apple', () => {
     expect(handler).toMatch(/export async function signInWithAppleNative\(/);
   });
 
-  it('exchanges the native Apple token into Firebase with a raw nonce (Apple gets the hash)', () => {
-    expect(handler).toMatch(/sha256Hex\(rawNonce\)/);
+  it('exchanges the native Apple token into Firebase via the Capacitor-8 firebase plugin', () => {
+    // Apple Sign In now goes through @capacitor-firebase/authentication (Cap-8),
+    // which generates the nonce + sends Apple the hash and returns the raw nonce.
+    expect(handler).toMatch(/FirebaseAuthentication\.signInWithApple/);
     expect(handler).toMatch(/new OAuthProvider\('apple\.com'\)/);
     expect(handler).toMatch(/provider\.credential\(\{ idToken, rawNonce \}\)/);
     expect(handler).toMatch(/signInWithCredential\(auth, credential\)/);

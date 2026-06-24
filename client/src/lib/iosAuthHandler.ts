@@ -172,32 +172,34 @@ async function sha256Hex(input: string): Promise<string> {
  * the identity token. Returns the same UserCredential shape as signInWithPopup,
  * so the caller's post-auth flow (session exchange, loyalty, consent) is identical.
  *
- * The native sheet comes from @capacitor-community/apple-sign-in (loaded lazily so
- * web builds never pull it). Requires the "Sign in with Apple" capability added to
- * the iOS target in Xcode + an Apple Service ID — operator/Xcode steps.
+ * The native sheet comes from @capacitor-firebase/authentication (Capacitor-8,
+ * loaded lazily so web builds never pull it). Requires the "Sign in with Apple"
+ * capability on the iOS target in Xcode + Apple provider enabled in Firebase —
+ * operator/Xcode steps.
  */
 export async function signInWithAppleNative(auth: Auth): Promise<UserCredential> {
-  // Bundler-ignored + variable specifier: the web build never tries to resolve
-  // this (it isn't a web dependency); it resolves only inside the native iOS app
-  // where `npm install @capacitor-community/apple-sign-in` + cap sync put it.
-  const pluginName = '@capacitor-community/apple-sign-in';
+  // Apple Sign In via @capacitor-firebase/authentication (Capacitor-8 native) —
+  // the SAME plugin Google-native uses. This replaces @capacitor-community/
+  // apple-sign-in, which only supported Capacitor 7: it pinned capacitor-swift-pm
+  // to v7 and broke the iOS SPM graph against the Cap-8 plugins, blocking EVERY
+  // iOS build. The plugin returns the Apple credential and the Firebase JS SDK
+  // owns the session, so the post-auth flow stays identical to web + Google.
+  // Bundler-ignored + variable specifier so the web build never resolves it.
+  const pluginName = '@capacitor-firebase/authentication';
   const mod: any = await import(/* @vite-ignore */ pluginName);
-  const SignInWithApple = mod.SignInWithApple;
-  if (!SignInWithApple) {
+  const FirebaseAuthentication = mod.FirebaseAuthentication;
+  if (!FirebaseAuthentication) {
     throw new Error('Apple sign-in plugin not available (native build only)');
   }
-  const rawNonce =
-    typeof (crypto as any).randomUUID === 'function'
-      ? (crypto as any).randomUUID()
-      : `${Math.random().toString(36).slice(2)}${Date.now().toString(36)}`;
-  const hashedNonce = await sha256Hex(rawNonce);
 
-  const result: any = await SignInWithApple.authorize({
-    requestedScopes: ['email', 'name'] as any,
-    nonce: hashedNonce,
-  } as any);
+  // The plugin generates the nonce, sends Apple the SHA-256 hash, and returns the
+  // RAW nonce so Firebase can verify the identity token.
+  const result: any = await FirebaseAuthentication.signInWithApple({
+    scopes: ['email', 'name'],
+  });
 
-  const idToken: string | undefined = result?.response?.identityToken;
+  const idToken: string | undefined = result?.credential?.idToken;
+  const rawNonce: string | undefined = result?.credential?.nonce;
   if (!idToken) {
     throw new Error('Apple sign-in returned no identity token');
   }
@@ -215,8 +217,9 @@ export async function signInWithAppleNative(auth: Auth): Promise<UserCredential>
   try {
     const user = userCredential.user;
     if (user && !user.displayName) {
-      const given = (result?.response?.givenName || '').trim();
-      const family = (result?.response?.familyName || '').trim();
+      // The Firebase plugin surfaces Apple's first-time name on result.user.
+      const given = (result?.user?.givenName || result?.user?.displayName || '').toString().trim();
+      const family = (result?.user?.familyName || '').toString().trim();
       const fullName = `${given} ${family}`.trim();
       if (fullName) {
         await updateProfile(user, { displayName: fullName });
