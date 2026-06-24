@@ -437,6 +437,10 @@ router.get("/availability", async (req, res) => {
     const availableSlots = slots
       .filter((slot) => {
         if (slot.status === 'booked') return false;
+        // audit 2026-06-24 finding #23: a slot already tied to a booking is TAKEN
+        // even if its status lags (held→booked transition delay / DB lag) — never
+        // surface it as available, or two customers can race the same slot.
+        if (slot.bookingId) return false;
         if (slot.status === 'held' && slot.lockExpiresAt && new Date(slot.lockExpiresAt) > now) return false;
         return true;
       })
