@@ -6,7 +6,7 @@ import {
   Download, Building2, FileText, Info, Loader2, BadgeCheck,
 } from 'lucide-react';
 
-type Platform = 'all' | 'petsitter' | 'walkpet' | 'petwash' | 'academy';
+type Platform = 'all' | 'petsitter' | 'walkpet' | 'academy' | 'pettrek';
 
 const PAYOUT_STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
   paid:     { label: 'Paid',       color: '#065f46', bg: '#d1fae5' },
@@ -16,7 +16,7 @@ const PAYOUT_STATUS_STYLES: Record<string, { label: string; color: string; bg: s
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
-  petsitter: 'PetSitter', walkpet: 'Walk My Pet', petwash: 'PetWash', academy: 'Academy',
+  petsitter: 'PetSitter', walkpet: 'Walk My Pet', academy: 'Academy',
 };
 
 const FMT_ILS = (n: number) => `₪${n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
