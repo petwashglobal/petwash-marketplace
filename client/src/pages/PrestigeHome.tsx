@@ -14,7 +14,7 @@
  *     QR/Card button open the redeem/stations flow, not a booking engine.
  *   - Dark rollout: routed at /prestige/home; does not replace the entry yet.
  */
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
@@ -79,6 +79,23 @@ export default function PrestigeHome() {
   const { language } = useLanguage();
   const isHe = language === 'he';
   const [copied, setCopied] = useState(false);
+  const [codeCopied, setCodeCopied] = useState(false);
+
+  // Phase 3: a campaign push/SMS/email deep-links here as
+  // /prestige/home?campaign=<key>&code=<theUserCode>. Surface a premium banner
+  // and stash the code so the next checkout/redeem auto-applies it.
+  const [offer, setOffer] = useState<{ campaign: string; code: string } | null>(null);
+  useEffect(() => {
+    try {
+      const p = new URLSearchParams(window.location.search);
+      const code = p.get('code');
+      const campaign = p.get('campaign') || 'offer';
+      if (code) {
+        setOffer({ campaign, code });
+        localStorage.setItem('pw_pending_coupon', code); // checkout/redeem reads this
+      }
+    } catch { /* noop */ }
+  }, []);
 
   const { data: me } = useQuery({
     queryKey: ['/api/prestige-pass/me'],
@@ -179,6 +196,27 @@ export default function PrestigeHome() {
             </div>
           </div>
         </header>
+
+        {/* Phase 3: campaign offer banner — the user's own code, ready to use */}
+        {offer && (
+          <section className="px-4 pt-1">
+            <div className="rounded-2xl p-4 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #FFFDF7, #FBF3DA)', border: `1px solid ${GOLD}` }}>
+              <Gift className="w-7 h-7 shrink-0" style={{ color: GOLD }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{isHe ? 'הטבה אישית מחכה לך 🎁' : 'A gift is waiting for you 🎁'}</p>
+                <p className="text-xs text-gray-600">{isHe ? 'הקוד האישי שלך (לא ניתן לשיתוף):' : 'Your personal code (not shareable):'}</p>
+                <button
+                  onClick={async () => { try { await navigator.clipboard.writeText(offer.code); setCodeCopied(true); setTimeout(() => setCodeCopied(false), 1500); } catch { /* noop */ } }}
+                  className="mt-1 inline-flex items-center gap-1.5 font-mono text-sm font-semibold text-[#9a7d2e] bg-white border border-[#ECDFB4] rounded-lg px-2.5 py-1"
+                >
+                  {offer.code}
+                  {codeCopied ? <Check className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5 opacity-60" />}
+                </button>
+              </div>
+              <button onClick={() => setOffer(null)} className="text-gray-400 text-lg leading-none px-1" aria-label="Dismiss">×</button>
+            </div>
+          </section>
+        )}
 
         {/* Greeting + membership card */}
         <section className="px-4 pt-1">
