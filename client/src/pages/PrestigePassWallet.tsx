@@ -13,8 +13,10 @@ import {
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/hooks/use-toast';
-import prestigeLogoDiamond from '@assets/prestige-logo-diamond.png';
-import petWashBrandLogo from '@assets/CE834507-240F-494E-9540-CEC964F3A22E_1774629703208.jpeg';
+// Logo rule (HARD): the ONLY brand mark is the official asset
+// /brand/petwash-logo-official.png. The previous prestige-diamond and
+// UUID-named jpeg "logos" were non-official recreations and have been removed.
+const OFFICIAL_LOGO = '/brand/petwash-logo-official.png';
 import { PremiumMemberCard } from '@/components/PremiumMemberCard';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -135,9 +137,9 @@ function PrivilegeHeroSection({ wallet, walletData, he }: { wallet: WalletData; 
       {/* Hero header — logo + privilege label + name as ONE UNIT */}
       <div style={{ padding: '16px 20px 20px', textAlign: 'center', background: '#FFFFFF' }}>
 
-        {/* LOGO — dominant focal point */}
+        {/* LOGO — dominant focal point (official asset only) */}
         <img
-          src={petWashBrandLogo}
+          src={OFFICIAL_LOGO}
           alt="PetWash™"
           style={{
             width: 'min(210px, 58vw)',
@@ -618,8 +620,7 @@ function DigitalCardSection({
         {qrToken ? (
           <div className="prestige-qr-wrap" style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'12px' }}>
             <div style={{ background:'#FFFFFF', padding:'16px', borderRadius:'16px', border:'1.5px solid rgba(217, 184, 76,0.15)', boxShadow:'0 2px 16px rgba(0,0,0,0.06)' }}>
-              <QRCodeSVG value={qrToken.token} size={200} level="H"
-                imageSettings={{ src: prestigeLogoDiamond, height:32, width:32, excavate:true }} />
+              <QRCodeSVG value={qrToken.token} size={200} level="H" />
             </div>
             <div style={{ background:'#FFFFFF', border:'1px solid rgba(217, 184, 76,0.2)', borderRadius:'10px', padding:'8px 20px', textAlign:'center' }}>
               <p style={{ margin:0, fontSize:'0.6rem', color:'#9E9E9E', fontWeight:600, letterSpacing:'0.1em', textTransform:'uppercase' }}>
@@ -959,7 +960,6 @@ function PrestigeKioskPass({
                     value={qrToken.token}
                     size={210}
                     level="H"
-                    imageSettings={{ src: prestigeLogoDiamond, height: 38, width: 38, excavate: true }}
                   />
                 </div>
               </div>
