@@ -523,6 +523,7 @@ const TrackMyPetLive = lazy(() => import("@/pages/WalkTracking"));
 
 // Provider OS — Full Operating System
 const ProviderOS = lazy(() => import("@/pages/provider-os/ProviderOS"));
+const ProviderHome = lazy(() => import("@/pages/ProviderHome"));
 
 // E-Signature System
 
@@ -1797,6 +1798,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                   <ProviderOS />
                 </Suspense>
               </AppTermsGate>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* Luxury provider home — dark rollout, reachable for preview */}
+        <Route path="/provider/home">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderHome />
+              </Suspense>
             </RoleProtectedRoute>
           )}
         </Route>
