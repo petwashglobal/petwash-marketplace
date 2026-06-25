@@ -16,6 +16,7 @@
     "cap:customer:open:android": "node scripts/mobile/run-capacitor-app.mjs customer open:android",
     "start": "NODE_ENV=production tsx server/index.ts",
     "check": "node --max-old-space-size=8192 ./node_modules/typescript/bin/tsc",
+    "typecheck:gate": "node scripts/typecheck-gate.mjs",
     "db:push": "drizzle-kit push",
     "db:migrate": "drizzle-kit migrate",
     "scan:ui": "tsx scripts/petwash-preflight.ts",
