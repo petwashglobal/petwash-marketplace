@@ -118,9 +118,8 @@ export default function AdminApplicationsDashboard() {
           <div className="divide-y divide-gray-100">
             {queue.map((q) => {
               const rs = RISK_STYLE[q.riskScore];
-              // Provider rows deep-link to the Provider Control panel. Discount
-              // review has API (#1054) but no dedicated page yet → informational.
-              const target = q.appKind === 'provider' ? '/admin/providers' : null;
+              // Deep-link each kind to its review panel.
+              const target = q.appKind === 'provider' ? '/admin/providers' : '/admin/member-discounts';
               return (
                 <button
                   key={`${q.appKind}-${q.id}`}
