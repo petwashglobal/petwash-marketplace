@@ -159,22 +159,11 @@ router.get('/dashboard/stations', async (req, res) => {
           }
         }
         
-        // Parse supply levels from telemetry — including new sensor columns
-        let fleaRinse = 100, disinfectant = 100, saltKg = 25;
-        if (telemetry[0]?.terminalId) {
-          const sensorRow = await db.execute(sql`
-            SELECT flea_rinse_level, disinfectant_level, salt_level_kg
-            FROM nayax_telemetry
-            WHERE terminal_id = ${telemetry[0].terminalId}
-            ORDER BY created_at DESC LIMIT 1
-          `);
-          const s = sensorRow.rows[0] as any;
-          if (s) {
-            fleaRinse    = parseInt(s.flea_rinse_level   ?? '100');
-            disinfectant = parseInt(s.disinfectant_level  ?? '100');
-            saltKg       = parseFloat(s.salt_level_kg     ?? '25');
-          }
-        }
+        // Flea-rinse / disinfectant / salt sensors are NOT exposed by the K9000
+        // hardware (Nayax-MDB vending unit) — those columns were never added to
+        // nayax_telemetry and the raw query for them 500'd this whole route.
+        // Removed; show safe defaults until/unless real sensor telemetry exists.
+        const fleaRinse = 100, disinfectant = 100, saltKg = 25;
         const supplyLevels: SupplyLevels = {
           shampoo:      parseInt((telemetry[0]?.shampooLevel    ?? 100) as unknown as string),
           conditioner:  parseInt((telemetry[0]?.conditionerLevel ?? 100) as unknown as string),
@@ -453,17 +442,10 @@ router.get('/dashboard/salt-report', async (req, res) => {
           .orderBy(desc(nayaxTelemetry.createdAt))
           .limit(1);
         
-        // Fetch sensor columns (added via raw SQL migration)
-        let sensorRow: any = null;
-        if (telemetry[0]?.terminalId) {
-          const sr = await db.execute(sql`
-            SELECT flea_rinse_level, disinfectant_level, salt_level_kg
-            FROM nayax_telemetry
-            WHERE terminal_id = ${telemetry[0].terminalId}
-            ORDER BY created_at DESC LIMIT 1
-          `);
-          sensorRow = sr.rows[0] ?? null;
-        }
+        // Flea/disinfectant/salt sensors are NOT exposed by the K9000 hardware —
+        // those nayax_telemetry columns never existed and this raw query 500'd the
+        // route. Left null so the `?? default` fallbacks below render safe values.
+        const sensorRow: any = null;
 
         const supplyData = {
           stationId: station.stationId,
@@ -548,66 +530,25 @@ router.get('/dashboard/salt-report', async (req, res) => {
   }
 });
 
-// ==================== DISCOUNT APPLICATION ====================
+// ==================== DISCOUNT APPLICATION (RETIRED) ====================
 /**
- * POST /api/k9000/dashboard/apply-discount
- * Apply discount or coupon to specific station/hardware unit
+ * POST /api/k9000/dashboard/apply-discount — RETIRED 2026-06-26.
+ *
+ * This wrote free-form per-station discounts to `k9000_station_discounts` — a
+ * table that was NEVER migrated (so every call 500'd), AND it bypassed the HARD
+ * discount rule: discounts are K9000-wash-only, capped at 10%, governed solely
+ * by the canonical member-discount engine (memberWashDiscounts /
+ * member_discount_applications, see admin /api/admin/member-discount). A
+ * free-form station discount route is a money-leak. It now returns 410 Gone and
+ * writes nothing. Manage discounts via the member-discount admin instead.
  */
-router.post('/dashboard/apply-discount', async (req, res) => {
-  try {
-    const { stationId, discountType, discountValue, expiresAt, oneTimeCode } = req.body;
-    
-    if (!stationId || !discountType) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'stationId and discountType required' 
-      });
-    }
-    
-    // Generate one-time coupon code if requested
-    const couponCode = oneTimeCode 
-      ? `K9000-${nanoid(8).toUpperCase()}` 
-      : null;
-    
-    // Persist discount in k9000_station_discounts table
-    const discountId = nanoid();
-    const createdBy  = req.firebaseUser?.uid || (req as any).user?.uid || 'admin';
-    await db.execute(sql`
-      INSERT INTO k9000_station_discounts (id, station_id, discount_type, discount_value, coupon_code, expires_at, active, created_by, created_at, updated_at)
-      VALUES (
-        ${discountId}, ${stationId}, ${discountType}, ${discountValue ?? 0},
-        ${couponCode}, ${expiresAt ? new Date(expiresAt) : null},
-        true, ${createdBy}, NOW(), NOW()
-      )
-    `);
-
-    const discountRecord = { id: discountId, stationId, discountType, discountValue, couponCode, expiresAt, createdBy };
-    logger.info('[K9000 Dashboard] Discount persisted', discountRecord);
-    
-    // Log to audit trail
-    await db.insert(auditLedger).values({
-      id: nanoid(),
-      userId: req.firebaseUser?.uid || req.user?.uid || 'admin',
-      action: 'k9000_apply_discount',
-      resourceType: 'station',
-      resourceId: stationId,
-      details: JSON.stringify(discountRecord),
-      ipAddress: req.ip,
-      userAgent: req.get('user-agent'),
-      timestamp: new Date()
-    });
-    
-    res.json({
-      success: true,
-      message: 'Discount applied successfully',
-      discount: discountRecord,
-      couponCode: couponCode || undefined
-    });
-    
-  } catch (error) {
-    logger.error('[K9000 Dashboard] Error applying discount', error);
-    res.status(500).json({ success: false, error: 'Failed to apply discount' });
-  }
+router.post('/dashboard/apply-discount', async (_req, res) => {
+  return res.status(410).json({
+    success: false,
+    error: 'route_retired',
+    message:
+      'Per-station discounts are retired. Discounts are K9000-wash-only (≤10%) and managed by the member-discount engine (/api/admin/member-discount).',
+  });
 });
 
 // ==================== VITAL STATISTICS ====================
