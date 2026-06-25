@@ -1116,6 +1116,17 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
     return;
   }
 
+  // IDEMPOTENCY (audit 2026-06-24 finding #19/#20): this function sets
+  // status='timed_out' once it has compensated. A SECOND call (a stale
+  // MachineCommandService retry or a manual admin trigger) must NOT re-credit
+  // the wallet — otherwise a ₪55 charge gets refunded twice (₪110). Bail out if
+  // the session has already been compensated. (A conditional check-and-set on
+  // the status would additionally close the rare concurrent-double-call window.)
+  if (session.status === 'timed_out') {
+    logger.info('[AutoCompensation] Session already compensated (status=timed_out) — skipping to avoid double refund', { sessionId });
+    return;
+  }
+
   // Only compensate wallet-funded (Flow B) sources
   const WALLET_SOURCES = ['wash_package', 'wallet_balance', 'gift_credit', 'loyalty_benefit', 'promo_coupon'];
   if (!session.userId || !WALLET_SOURCES.includes(session.source)) {

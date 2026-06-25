@@ -24,7 +24,7 @@
 
 import { db } from '../db';
 import { walletAccounts, creditTransactions } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { and, eq, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { randomBytes } from 'crypto';
 import { deductFromWallet, topUpWithLedger } from './WalletLedger';
@@ -377,8 +377,33 @@ export async function adminManualCredit(params: {
   units?:       number;
   reason:       string;
   adminUserId:  string;
-}): Promise<{ txnId: string }> {
+  // Audit #28: stable idempotency key. When supplied, a repeat call (admin
+  // double-click / network retry) with the same key returns the original txn
+  // instead of crediting twice. Stored as the ledger row's source_id.
+  idempotencyKey?: string;
+}): Promise<{ txnId: string; idempotent?: boolean }> {
   const wallet = await getOrCreateWallet(params.userId);
+
+  // Audit #28: idempotency guard. If a credit was already recorded for this
+  // (wallet, source=admin, idempotencyKey), return it without re-crediting.
+  // Mirrors WalletService.addCredits' dedup pattern. Best-effort sequential
+  // protection (the realistic double-submit vector); a fully concurrency-proof
+  // guarantee would need a unique index on (wallet_id, source_type, source_id).
+  if (params.idempotencyKey) {
+    const [existing] = await db
+      .select({ transactionId: creditTransactions.transactionId })
+      .from(creditTransactions)
+      .where(and(
+        eq(creditTransactions.walletId, wallet.walletId),
+        eq(creditTransactions.sourceType, 'admin'),
+        eq(creditTransactions.sourceId, params.idempotencyKey),
+      ))
+      .limit(1);
+    if (existing) {
+      return { txnId: existing.transactionId, idempotent: true };
+    }
+  }
+
   const updates: Partial<typeof walletAccounts.$inferSelect> = { updatedAt: new Date() };
 
   if (params.creditType === 'promo' && params.amountCents) {
@@ -403,6 +428,7 @@ export async function adminManualCredit(params: {
     amountCents:     params.amountCents ?? null,
     amountUnits:     params.units ?? null,
     sourceType:      'admin',
+    sourceId:        params.idempotencyKey ?? null,
     initiatedBy:     'admin',
     initiatedByUserId: params.adminUserId,
     description:     `Admin credit — ${params.reason}`,

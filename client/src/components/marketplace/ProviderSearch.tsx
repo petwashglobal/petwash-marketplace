@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useLocation } from "wouter";
+import { PetWashIcon } from "@/components/PetWashIcon";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calendar } from "@/components/ui/calendar";
@@ -33,19 +34,20 @@ interface PetTypeOption {
   name: string;
   nameHe: string;
   emoji: string;
+  iconKey: string;
   description: string;
   descriptionHe: string;
 }
 
 const PET_TYPES: PetTypeOption[] = [
-  { id: 'puppy', name: 'Puppy', nameHe: 'גור', emoji: '🐶', description: 'Under 6 months', descriptionHe: 'עד 6 חודשים' },
-  { id: 'dog', name: 'Dog', nameHe: 'כלב', emoji: '🐕', description: 'Over 6 months', descriptionHe: 'מעל 6 חודשים' },
-  { id: 'cat', name: 'Cat', nameHe: 'חתול', emoji: '🐈', description: 'Including kittens', descriptionHe: 'כולל גורים' },
-  { id: 'bird', name: 'Bird', nameHe: 'ציפור', emoji: '🦜', description: 'All birds', descriptionHe: 'כל הציפורים' },
-  { id: 'rabbit', name: 'Rabbit', nameHe: 'ארנב', emoji: '🐰', description: 'Bunnies & rabbits', descriptionHe: 'ארנבים וארנבונים' },
-  { id: 'fish', name: 'Fish', nameHe: 'דגים', emoji: '🐠', description: 'Aquarium care', descriptionHe: 'טיפול באקווריום' },
-  { id: 'reptile', name: 'Reptile', nameHe: 'זוחל', emoji: '🦎', description: 'Lizards, snakes', descriptionHe: 'לטאות, נחשים' },
-  { id: 'other', name: 'Other', nameHe: 'אחר', emoji: '🐾', description: 'Small animals', descriptionHe: 'חיות קטנות' },
+  { id: 'puppy', name: 'Puppy', nameHe: 'גור', emoji: '🐶', iconKey: 'animal_dog', description: 'Under 6 months', descriptionHe: 'עד 6 חודשים' },
+  { id: 'dog', name: 'Dog', nameHe: 'כלב', emoji: '🐕', iconKey: 'animal_dog', description: 'Over 6 months', descriptionHe: 'מעל 6 חודשים' },
+  { id: 'cat', name: 'Cat', nameHe: 'חתול', emoji: '🐈', iconKey: 'animal_cat', description: 'Including kittens', descriptionHe: 'כולל גורים' },
+  { id: 'bird', name: 'Bird', nameHe: 'ציפור', emoji: '🦜', iconKey: 'animal_bird', description: 'All birds', descriptionHe: 'כל הציפורים' },
+  { id: 'rabbit', name: 'Rabbit', nameHe: 'ארנב', emoji: '🐰', iconKey: 'animal_rabbit', description: 'Bunnies & rabbits', descriptionHe: 'ארנבים וארנבונים' },
+  { id: 'fish', name: 'Fish', nameHe: 'דגים', emoji: '🐠', iconKey: 'animal_fish', description: 'Aquarium care', descriptionHe: 'טיפול באקווריום' },
+  { id: 'reptile', name: 'Reptile', nameHe: 'זוחל', emoji: '🦎', iconKey: 'animal_lizard', description: 'Lizards, snakes', descriptionHe: 'לטאות, נחשים' },
+  { id: 'other', name: 'Other', nameHe: 'אחר', emoji: '🐾', iconKey: 'brand_paw', description: 'Small animals', descriptionHe: 'חיות קטנות' },
 ];
 
 interface SpecialService {
@@ -880,7 +882,7 @@ export function ProviderSearch({
                           }`}
                           data-testid={`option-pet-${pet.id}`}
                         >
-                          <span className="text-xl">{pet.emoji}</span>
+                          <PetWashIcon name={pet.iconKey} size={26} label={isHebrew ? pet.nameHe : pet.name} />
                           <div className="flex-1">
                             <span className={`font-medium text-sm block ${isSelected ? '' : 'text-gray-700'}`}>
                               {isHebrew ? pet.nameHe : pet.name}

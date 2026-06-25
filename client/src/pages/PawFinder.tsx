@@ -20,7 +20,7 @@ import {
   Dog, Cat, Bird, Footprints, Star, Clock, Eye,
   Upload, Camera, Bell, BellDot, X, Filter,
 } from 'lucide-react';
-import { apiRequest } from '@/lib/queryClient';
+import { apiRequest, getFirebaseBearerToken } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
 import { PetWashIcon } from '@/components/PetWashIcon';
 
@@ -474,9 +474,10 @@ function ContactModal({ post, onClose }: { post: PawPost; onClose: () => void })
     }
     setSubmitting(true);
     try {
+      const bt = await getFirebaseBearerToken(); // Bearer → CSRF-exempt (cookie-only POST was 403'ing in prod)
       const r = await fetch(`/api/paw-finder/posts/${post.id}/contact`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(bt ? { Authorization: `Bearer ${bt}` } : {}) },
         credentials: 'include',
         body: JSON.stringify({ messageText: message.trim() }),
       });
@@ -579,8 +580,10 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       const fd = new FormData();
       fd.append('photo', file);
 
+      const bt = await getFirebaseBearerToken(); // Bearer → CSRF-exempt
       const r = await fetch('/api/paw-finder/upload', {
         method: 'POST',
+        headers: bt ? { Authorization: `Bearer ${bt}` } : {},
         credentials: 'include',
         body: fd,
       });
@@ -666,9 +669,10 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
         mediaFiles: [{ filePath: uploadedFilePath, mediaRole: 'primary' }],
       };
 
+      const bt = await getFirebaseBearerToken(); // Bearer → CSRF-exempt
       const r = await fetch('/api/paw-finder/posts', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(bt ? { Authorization: `Bearer ${bt}` } : {}) },
         credentials: 'include',
         body: JSON.stringify(body),
       });

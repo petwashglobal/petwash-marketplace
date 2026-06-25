@@ -230,22 +230,6 @@ const hubText: Record<string, Record<string, string>> = {
     fr: 'Taxi pour animaux entre sites',
     es: 'Taxi de mascotas entre ubicaciones',
   },
-  plushLab: {
-    en: '⁦The Plush Lab™⁩',
-    he: '⁦The Plush Lab™⁩',
-    ar: '⁦The Plush Lab™⁩',
-    ru: '⁦The Plush Lab™⁩',
-    fr: '⁦The Plush Lab™⁩',
-    es: '⁦The Plush Lab™⁩',
-  },
-  plushLabDesc: {
-    en: 'Premium pet boutique',
-    he: 'בוטיק פרמיום לחיות מחמד',
-    ar: 'بوتيك فاخر للحيوانات الأليفة',
-    ru: 'Премиум бутик для питомцев',
-    fr: 'Boutique premium pour animaux',
-    es: 'Boutique premium para mascotas',
-  },
   academy: {
     en: 'Academy',
     he: 'אקדמיה',
@@ -435,14 +419,6 @@ export default function Hub() {
       href: "#",
       comingSoon: true,
       gradient: "from-purple-500 to-pink-500",
-    },
-    {
-      icon: ShoppingBag,
-      nameKey: "plushLab",
-      descKey: "plushLabDesc",
-      href: "#",
-      comingSoon: true,
-      gradient: "from-rose-500 to-red-500",
     },
     {
       icon: GraduationCap,

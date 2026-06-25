@@ -214,6 +214,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     let unsubscribe: (() => void) | undefined;
 
+    // RESILIENCE (2026-06-24): never let the app hang on a blank "Loading…".
+    // If Firebase auth never resolves on native (init failure, no network, or a
+    // hung server-session call), force-reveal the app (signed-out) after a few
+    // seconds instead of spinning forever. This NEVER grants access — a real
+    // user still signs in normally; it only kills the infinite loader.
+    const revealWatchdog = setTimeout(() => {
+      logger.warn('[AuthProvider] auth unresolved after 8s — revealing app to avoid infinite loader');
+      setLoading(false);
+      setClaimsLoading(false);
+    }, 8000);
+
     (async () => {
       await setPersistenceWithFallback();
 
@@ -231,12 +242,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        clearTimeout(revealWatchdog); // auth resolved — cancel the infinite-loader backstop
         if (firebaseUser) {
           // Ensure server session is created BEFORE marking auth as ready,
           // so API calls using session cookies don't race ahead of the cookie.
           if (sessionCreatedForUid.current !== firebaseUser.uid) {
-            await ensureServerSession(firebaseUser);
-            sessionCreatedForUid.current = firebaseUser.uid;
+            // Don't let a hung server-session call block the reveal forever
+            // (native __session cookie / network). Cap at 6s; only mark done if
+            // it actually completed, so a later auth event (and whoami) can retry.
+            let sessionDone = false;
+            await Promise.race([
+              ensureServerSession(firebaseUser).then(() => { sessionDone = true; }),
+              new Promise<void>((resolve) => setTimeout(resolve, 6000)),
+            ]);
+            if (sessionDone) sessionCreatedForUid.current = firebaseUser.uid;
           }
 
           try {
@@ -270,6 +289,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })();
 
     return () => {
+      clearTimeout(revealWatchdog);
       if (unsubscribe) unsubscribe();
     };
   }, [isDevMode]);

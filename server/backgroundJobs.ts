@@ -72,6 +72,40 @@ export class BackgroundJobProcessor {
     // Start auto-void cron for expired payment authorizations (every 5 minutes)
     startAutoVoidCron();
 
+    // K9000 Cortina pre-paid redemption — release sweep (every minute) + daily
+    // reconciliation. The release sweep is the RELEASE half of the reserve→commit
+    // →release model: the K9000 emits no "wash finished" signal, so we expire
+    // stale reservations (no debit happened) and close bays past max_wash_seconds
+    // so a bay can never hang 'busy'. Both are cheap, indexed, and no-op until
+    // there are Cortina reservations to act on. See routes/nayax-cortina.ts.
+    cron.schedule('* * * * *', async () => {
+      if (await this.acquireLock('cortinaReleaseSweep')) {
+        try {
+          const { releaseStaleCortinaReservations } = await import('./routes/nayax-cortina');
+          const r = await releaseStaleCortinaReservations();
+          if (r.expired || r.released) logger.info('[Cortina] release sweep', r);
+        } catch (e: any) {
+          logger.error('[Cortina] release sweep failed', { error: e?.message });
+        } finally {
+          this.releaseLock('cortinaReleaseSweep');
+        }
+      }
+    });
+    // Daily K9000 reconciliation at 02:30 — writes k9000_reconciliation_breaks.
+    cron.schedule('30 2 * * *', async () => {
+      if (await this.acquireLock('k9000Reconciliation')) {
+        try {
+          const { runK9000Reconciliation } = await import('./services/K9000ReconciliationService');
+          await runK9000Reconciliation();
+        } catch (e: any) {
+          logger.error('[K9000Recon] cron failed', { error: e?.message });
+        } finally {
+          this.releaseLock('k9000Reconciliation');
+        }
+      }
+    });
+    logger.info('[Cortina] release sweep (1m) + K9000 reconciliation (daily 02:30) scheduled');
+
     // Phase 12.10 — SLA breach detection + auto-escalation (every 5 minutes)
     import('./jobs/sla-monitor').then(({ runSlaMonitor }) => {
       cron.schedule('*/5 * * * *', async () => {

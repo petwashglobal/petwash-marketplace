@@ -1173,6 +1173,20 @@ router.post(
       }
 
       if (payload.event === 'payment.success') {
+        // ── Status gate (audit 2026-06-24 finding #6) ──────────────────────────
+        // Only confirm a booking that is actually AWAITING payment. Without this,
+        // a late/stale Nayax webhook (e.g. a 72h retry) could REVIVE a cancelled/
+        // declined/refunded booking back to 'confirmed' with escrow held →
+        // double-charge. ('confirmed'/'in_progress' already short-circuited above
+        // via the idempotency check.) The sibling /nayax/payment webhook enforces
+        // the same gate; mirror it here.
+        if (booking.status !== 'payment_pending') {
+          logger.warn('[BookingReqWebhook] Status gate: booking not in payment_pending — ignoring payment.success', {
+            bookingId: payload.bookingId, currentStatus: booking.status,
+          });
+          return res.status(200).json({ received: true, note: 'status_gate_blocked', currentStatus: booking.status });
+        }
+
         // Amount validation (1-agora tolerance)
         const bookingTotalCents = booking.totalCents;
         if (Math.abs(payload.amountCents - bookingTotalCents) > 1) {

@@ -377,7 +377,7 @@ function PrestigeAccountCommandCenter({
       description: isHebrew
         ? 'הורדת Apple Wallet / Google Wallet, QR אישי, סטטוס חברות וזיכויים נפרדים.'
         : 'Apple Wallet / Google Wallet pass, unique QR, member status and separated balances.',
-      href: '/wallet-download',
+      href: '/wallet',
       status: walletReady ? 'ready' : 'action',
       statusLabel: walletReady ? readyLabel : actionLabel,
       Icon: Wallet,

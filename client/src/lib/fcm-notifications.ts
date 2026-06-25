@@ -226,9 +226,22 @@ function setupForegroundMessageHandler(messaging: Messaging): void {
       requireInteraction: false,
     };
 
-    // Show browser notification
+    // Show browser notification — tapping it deep-links into the app (e.g. a
+    // campaign push carries data.deepLink = /prestige/home?campaign=&code=, so
+    // the tap opens the offer screen and the code auto-applies).
     if (Notification.permission === 'granted') {
-      new Notification(notificationTitle, notificationOptions);
+      const n = new Notification(notificationTitle, notificationOptions);
+      const target = payload.data?.deepLink || payload.data?.link;
+      if (target) {
+        n.onclick = (ev) => {
+          ev.preventDefault();
+          try { window.focus(); } catch { /* noop */ }
+          // SPA-friendly navigate (wouter/history) without a full reload.
+          window.history.pushState({}, '', target);
+          window.dispatchEvent(new PopStateEvent('popstate'));
+          n.close();
+        };
+      }
     }
 
     // Optionally trigger a custom event for UI updates

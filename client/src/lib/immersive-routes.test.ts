@@ -38,7 +38,6 @@ describe('isImmersiveRoute behaviour', () => {
     expect(isImmersiveRoute('/home')).toBe(false);
     expect(isImmersiveRoute('/booking/123')).toBe(false);
     expect(isImmersiveRoute('/admin/dashboard')).toBe(false);
-    expect(isImmersiveRoute('/provider-os')).toBe(false);
     expect(isImmersiveRoute('/my-account')).toBe(false);
     expect(isImmersiveRoute('/franchise/dashboard')).toBe(false);
   });
@@ -103,6 +102,9 @@ describe('isImmersiveRoute behaviour', () => {
     expect(isImmersiveRoute('/pet-wash-ltd/executive/kyc')).toBe(true);
     expect(isImmersiveRoute('/access-pending')).toBe(true);
     expect(isImmersiveRoute('/staff-pending')).toBe(true);
+    // Provider OS renders its OWN header + bottom nav (driver-app style), so the
+    // GLOBAL shell must be suppressed there — /provider-os is immersive.
+    expect(isImmersiveRoute('/provider-os')).toBe(true);
   });
 
   it('9. the Firebase email-link return route is immersive', () => {

@@ -488,44 +488,63 @@ export class ShopService {
   async createOrder(uid: string, cart: any, opts: any): Promise<ShopOrder & { items: ShopOrderItem[]; deliveryAddress: any }> {
         const orderNumber = this._generateOrderNumber();
 
-      const result = await db.execute(sql`
-            INSERT INTO shop_orders (
-                    order_number, user_id, cart_id, status,
-                            payment_ref, payment_method,
-                                    subtotal_cents, discount_cents, delivery_cents,
-                                            gift_wrap_cents, net_cents, vat_cents, total_cents,
-                                                    delivery_method, delivery_address_id,
-                                                            coupon_code, notes, language, created_at, updated_at
-                                                                  ) VALUES (
-                                                                          ${orderNumber}, ${uid}, ${cart.id}, 'confirmed',
-                                                                                  ${opts.paymentRef}, ${opts.paymentMethod},
-                                                                                          ${cart.subtotalCents}, ${opts.discountAmountCents}, ${opts.deliveryCents},
-                                                                                                  ${opts.giftWrap ? GIFT_WRAP_CENTS : 0},
-                                                                                                          ${opts.netCents}, ${opts.vatCents}, ${opts.totalCents},
-                                                                                                                  ${opts.deliveryMethod}, ${opts.deliveryAddressId ?? null},
-                                                                                                                          ${opts.couponCode ?? null}, ${opts.notes ?? null},
-                                                                                                                                  ${opts.language ?? 'he'}, NOW(), NOW()
-                                                                                                                                        )
-                                                                                                                                              RETURNING *
-                                                                                                                                                  `);
+      // Atomic checkout (audit #1/#3/#10): re-check + decrement stock, create the
+      // order + line items, mark the cart, and bump coupon use — all in ONE
+      // transaction. The guarded decrement (`stock_quantity >= qty`) is serialised
+      // by the DB, so two concurrent buyers can't oversell. If ANY line is short,
+      // the whole transaction aborts → no order row, no partial stock change, and
+      // the caller (route) compensates the already-captured payment.
+      const order = await (db as any).transaction(async (tx: any) => {
+            for (const item of cart.items) {
+                    const qty = Number(item.quantity) || 0;
+                    const dec: any = await tx.execute(sql`
+                          UPDATE shop_products
+                                SET stock_quantity = stock_quantity - ${qty},
+                                            sales_count    = COALESCE(sales_count, 0) + ${qty}
+                                                WHERE id = ${item.product_id} AND stock_quantity >= ${qty}
+                                                      RETURNING id
+                                                          `);
+                    if (!((dec?.rows ?? dec ?? []).length)) {
+                            const label = item.name_he || item.name_en || `#${item.product_id}`;
+                            throw new Error(`OUT_OF_STOCK: ${label}`);
+                    }
+            }
 
-      const order = result.rows[0] as any;
+            const result: any = await tx.execute(sql`
+                  INSERT INTO shop_orders (
+                          order_number, user_id, cart_id, status,
+                                  payment_ref, payment_method,
+                                          subtotal_cents, discount_cents, delivery_cents,
+                                                  gift_wrap_cents, net_cents, vat_cents, total_cents,
+                                                          delivery_method, delivery_address_id,
+                                                                  coupon_code, notes, language, created_at, updated_at
+                                                                        ) VALUES (
+                                                                                ${orderNumber}, ${uid}, ${cart.id}, 'confirmed',
+                                                                                        ${opts.paymentRef}, ${opts.paymentMethod},
+                                                                                                ${cart.subtotalCents}, ${opts.discountAmountCents}, ${opts.deliveryCents},
+                                                                                                        ${opts.giftWrap ? GIFT_WRAP_CENTS : 0},
+                                                                                                                ${opts.netCents}, ${opts.vatCents}, ${opts.totalCents},
+                                                                                                                        ${opts.deliveryMethod}, ${opts.deliveryAddressId ?? null},
+                                                                                                                                ${opts.couponCode ?? null}, ${opts.notes ?? null},
+                                                                                                                                        ${opts.language ?? 'he'}, NOW(), NOW()
+                                                                                                                                              )
+                                                                                                                                                    RETURNING *
+                                                                                                                                                        `);
+            const ord = result.rows[0] as any;
 
-      // Insert line items with VAT breakdown per line
-      await this._insertOrderItems(order.id, cart.items);
+            // Line items with per-line VAT (same transaction).
+            await this._insertOrderItems(ord.id, cart.items, tx);
 
-      // Mark cart as checked_out
-      await db.execute(sql`UPDATE shop_carts SET status = 'checked_out', updated_at = NOW() WHERE id = ${cart.id}`);
+            // Close the cart so it can't be checked out twice.
+            await tx.execute(sql`UPDATE shop_carts SET status = 'checked_out', updated_at = NOW() WHERE id = ${cart.id}`);
 
-      // Increment coupon uses
-      if (opts.couponCode) {
-              await db.execute(sql`UPDATE coupons SET uses_count = uses_count + 1 WHERE code = ${opts.couponCode.toUpperCase()}`).catch(() => {});
-      }
+            // Coupon use (inside the tx so it can't be double-counted on retry).
+            if (opts.couponCode) {
+                    await tx.execute(sql`UPDATE coupons SET uses_count = uses_count + 1 WHERE code = ${opts.couponCode.toUpperCase()}`);
+            }
 
-      // Increment product sales counts
-      for (const item of cart.items) {
-              await db.execute(sql`UPDATE shop_products SET sales_count = sales_count + ${item.quantity} WHERE id = ${item.productId}`).catch(() => {});
-      }
+            return ord;
+      });
 
       const items = await this._getOrderItems(order.id);
         const deliveryAddress = opts.deliveryAddressId
@@ -535,12 +554,12 @@ export class ShopService {
       return { ...order, items, deliveryAddress };
   }
 
-  private async _insertOrderItems(orderId: number, items: any[]) {
+  private async _insertOrderItems(orderId: number, items: any[], exec: any = db) {
         for (const item of items) {
                 const effectiveCents = item.effectivePriceCents ?? item.price_cents;
                 const lineCents = effectiveCents * item.quantity;
                 const lineVatCents = Math.round(lineCents * ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE));
-                await db.execute(sql`
+                await exec.execute(sql`
                         INSERT INTO shop_order_items (
                                   order_id, product_id, variant_id, quantity,
                                             unit_price_cents, line_total_cents, vat_cents,
@@ -606,11 +625,16 @@ export class ShopService {
             UPDATE shop_orders SET status = 'cancelled', updated_at = NOW(), cancelled_at = NOW() WHERE id = ${orderId}
                 `);
 
-      // Restore stock
+      // Restore stock (audit #12). NOTE: shop_order_items rows expose product_id
+      // (snake_case) — the prior code read item.productId (undefined) so stock was
+      // silently never restored on cancellation.
       const items = await this._getOrderItems(orderId);
         for (const item of items) {
+                const pid = (item as any).product_id;
+                const qty = (item as any).quantity;
+                if (!pid) continue;
                 await db.execute(sql`
-                        UPDATE shop_products SET stock_quantity = stock_quantity + ${item.quantity} WHERE id = ${item.productId}
+                        UPDATE shop_products SET stock_quantity = stock_quantity + ${qty} WHERE id = ${pid}
                               `).catch(() => {});
         }
 
