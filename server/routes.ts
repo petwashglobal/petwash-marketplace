@@ -11335,8 +11335,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/finance', validateFirebaseToken, apiLimiter, financeRoutes.default);
 
   // Phase 12.20 — Expansion Decision & Board Pack
+  // SECURITY 2026-06-25: board-confidential P&L / station economics / treasury flags
+  // were anonymous-reachable (apiLimiter only). Gate with admin auth.
   const expansionRoutes = await import('./routes/expansion');
-  app.use('/api/expansion', apiLimiter, expansionRoutes.default);
+  app.use('/api/expansion', validateFirebaseToken, requireAdmin, adminLimiter, expansionRoutes.default);
 
   // Phase 12.21 — Intervention & Decision Tracking
   // Phase 12.22 — Outcome Measurement (outcomes/summary endpoint inside this router)
@@ -13822,7 +13824,7 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Contact Form Submission Endpoint
-  app.post('/api/contact', async (req, res) => {
+  app.post('/api/contact', apiLimiter, async (req, res) => { // SECURITY 2026-06-25: was unthrottled + CSRF-exempt → spam/DoS amplifier
     try {
       const { name, email, phone, subject, message, language } = req.body;
       
@@ -16337,9 +16339,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // ==================================================================
 
   // Get all wash schedules for a user
-  app.get('/api/pet-care/wash-schedules', async (req, res) => {
+  app.get('/api/pet-care/wash-schedules', requireAuth, async (req, res) => {
     try {
-      // Mock data for now - will integrate with database in production
+      // SECURITY 2026-06-25: was anonymous + returns MOCK data ("Buddy", fixed date,
+      // fake weather). Gated with requireAuth so it's not a public fake-data surface;
+      // TODO replace the mock body with real per-user schedules before launch.
       const mockSchedules = [
         {
           id: 1,
@@ -16365,8 +16369,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
   // Schedule a wash with ADVANCED AI decision engine (weather + pollen + coat condition)
-  app.post('/api/pet-care/schedule-wash', async (req, res) => {
+  app.post('/api/pet-care/schedule-wash', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-06-25: was anonymous + fabricates pollen via Math.random and a
+      // 'Pet' placeholder ("mock — will save in production"). Gated with requireAuth;
+      // TODO replace mock AI body with the real engine + DB persistence before launch.
       const { petId, date, city, coatCondition = 'good', daysSinceLastWash = 7 } = req.body;
 
       if (!petId || !date || !city) {
