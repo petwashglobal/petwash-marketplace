@@ -15816,7 +15816,14 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Biometric Authentication Monitoring
   app.post('/api/monitoring/biometric/event', requireAuth, async (req, res) => {
     try {
-      await biometricSecurityMonitor.recordAuthenticationEvent(req.body);
+      // Identity from the verified token, NOT the body — a body-supplied userId let
+      // any user forge another user's auth-audit records (7-yr compliance trail).
+      await biometricSecurityMonitor.recordAuthenticationEvent({
+        ...req.body,
+        userId: (req as any).firebaseUser?.uid,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[BiometricMonitor] Record event failed', error);
@@ -15826,6 +15833,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/biometric/insights/:userId', requireAuth, async (req, res) => {
     try {
+      // Self-only: was IDOR — any authed user could read any user's auth insights.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const insights = await biometricSecurityMonitor.getSecurityInsights(req.params.userId);
       res.json(insights);
     } catch (error: any) {
@@ -15847,6 +15856,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Loyalty Activity & Fraud Monitoring
   app.get('/api/monitoring/loyalty/activity/:userId', requireAuth, async (req, res) => {
     try {
+      // Self-only: was IDOR — any authed user could read any user's loyalty activity.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const activity = await loyaltyActivityMonitor.trackUserActivity(req.params.userId);
       res.json(activity);
     } catch (error: any) {
@@ -15879,7 +15890,15 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // OAuth Certificate Monitoring
   app.post('/api/monitoring/oauth/consent', requireAuth, async (req, res) => {
     try {
-      await oauthCertificateMonitor.recordOAuthConsent(req.body);
+      // Identity from the verified token, NOT the body — body userId/email were
+      // spoofable, letting any user fabricate/suppress another user's consent record.
+      await oauthCertificateMonitor.recordOAuthConsent({
+        ...req.body,
+        userId: (req as any).firebaseUser?.uid,
+        email: (req as any).firebaseUser?.email ?? req.body?.email,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[OAuthMonitor] Record consent failed', error);
@@ -15900,6 +15919,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/oauth/history/:userId', requireAuth, async (req, res) => {
     try {
+      // Self-only: was IDOR — any authed user could read any user's OAuth consent
+      // history (email, IP, user-agent) by changing the :userId path param.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const history = await oauthCertificateMonitor.getUserConsentHistory(req.params.userId);
       res.json(history);
     } catch (error: any) {
@@ -15911,7 +15933,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Notification Consent Management
   app.post('/api/monitoring/notifications/consent', requireAuth, async (req, res) => {
     try {
-      await notificationConsentManager.recordNotificationConsent(req.body);
+      // Identity from the verified token, NOT the body (anti-spoof, same class as above).
+      await notificationConsentManager.recordNotificationConsent({
+        ...req.body,
+        userId: (req as any).firebaseUser?.uid,
+      });
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Record consent failed', error);
