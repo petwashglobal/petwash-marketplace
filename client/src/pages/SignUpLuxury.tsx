@@ -270,7 +270,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }, []);
 
   const requireTerms = () => {
-    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return false; }
+    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return false; }
     return true;
   };
 
@@ -339,7 +339,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function social(which: 'google' | 'apple' | 'facebook') {
-    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
+    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return; }
     setInlineError(null);
     setBusy(true);
     try {
@@ -380,7 +380,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   /** Server-mediated OAuth (Instagram / TikTok / etc.). The backend builds the
    *  authorize URL with provider secrets and we redirect the browser there. */
   async function socialExternal(which: 'instagram' | 'tiktok') {
-    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
+    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return; }
     setInlineError(null);
     setBusy(true);
     try {
