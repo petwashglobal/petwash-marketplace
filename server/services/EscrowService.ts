@@ -12,6 +12,14 @@ import NotificationService from "./NotificationService";
 // never blocks an escrow transition. No new dependency: this module already
 // ships in server/middleware/auditLog.ts.
 import { logAuditEvent } from "../middleware/auditLog";
+// §7 payout gate (fail-CLOSED, never throws): completion + refund-window +
+// dispute + provider-verified + per-service approval. The SQL payout rails
+// (payoutLedger, ProviderPayoutService) already enforce it; this Firestore
+// escrow rail was the one UNGATED money-release path. We run the same gate
+// here. Enforcement is behind ESCROW_PAYOUT_GATE_ENFORCE so it ships in shadow
+// mode (logs what it WOULD hold) and can be flipped on once verified — no
+// finance behavior change by default.
+import { checkPayoutGates } from "./payoutGate";
 
 export interface CreditPaymentBreakdown {
   egiftCents: number;
@@ -162,8 +170,58 @@ class EscrowService {
     return result.escrow;
   }
 
-  async releaseEscrowPayment(escrowId: string, releasedBy: string): Promise<void> {
+  async releaseEscrowPayment(
+    escrowId: string,
+    releasedBy: string,
+    opts?: { bypassGate?: boolean },
+  ): Promise<void> {
     const escrowRef = this.db.collection("escrow_payments").doc(escrowId);
+
+    // ── §7 payout gate (fail-CLOSED) — applied to this Firestore rail so it
+    // matches the SQL rails. Runs BEFORE the release transaction. An explicit
+    // audited admin override (opts.bypassGate) can skip it. Enforcement is
+    // gated by ESCROW_PAYOUT_GATE_ENFORCE: default OFF = shadow mode (log only,
+    // behavior unchanged); ON = HOLD (throw) on any failed gate. ──────────────
+    if (!opts?.bypassGate) {
+      // Peek the escrow to resolve provider/booking for the gate (no mutation).
+      const peek = await escrowRef.get();
+      if (peek.exists) {
+        const e = peek.data() as EscrowPayment;
+        if (e.status === "held") {
+          const gate = await checkPayoutGates({
+            providerUid: e.providerId,
+            bookingId: e.bookingId,
+            serviceType: (e.metadata as any)?.serviceType ?? null,
+          });
+          if (!gate.ok) {
+            const enforce = process.env.ESCROW_PAYOUT_GATE_ENFORCE === "true";
+            console.warn(
+              `[Escrow] payout gate ${enforce ? "HELD" : "WOULD HOLD (shadow)"} ` +
+                `escrow ${escrowId} — ${gate.reason}: ${gate.message}`,
+            );
+            await logAuditEvent({
+              actorUserId: releasedBy,
+              actionType: enforce ? "ESCROW_GATE_HELD" : "ESCROW_GATE_WOULD_HOLD",
+              targetType: "escrow_payment",
+              targetId: escrowId,
+              metadata: {
+                bookingId: e.bookingId,
+                providerId: e.providerId,
+                reason: gate.reason,
+                message: gate.message,
+                enforced: enforce,
+              },
+            });
+            if (enforce) {
+              const err: any = new Error(`PAYOUT_HELD_GATE: ${gate.reason}`);
+              err.code = "PAYOUT_HELD_GATE";
+              err.gateReason = gate.reason;
+              throw err;
+            }
+          }
+        }
+      }
+    }
 
     // Issue #153 PR-C — read+check+update inside a Firestore transaction so
     // concurrent release calls cannot both pass the status === "held" check
