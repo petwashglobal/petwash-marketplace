@@ -53,7 +53,7 @@ router.post('/start', async (req: Request, res: Response) => {
   const { email, purpose, language } = parsed.data;
 
   try {
-    const result = await unifiedVerificationService.startVerification({
+    const result = await unifiedVerificationService.startChallenge({
       purpose,
       channel: 'email',
       destination: email.toLowerCase(),
