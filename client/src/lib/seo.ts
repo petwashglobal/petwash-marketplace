@@ -99,12 +99,6 @@ export const pageSEO: Record<string, SEOConfig> = {
     keywords: 'pet transport Israel, dog taxi, pet shuttle, vet transport, הסעות כלבים, מונית לחיות מחמד',
     ogType: 'website',
   },
-  plushLab: {
-    title: '⁦The Plush Lab™⁩ - AI Pet Avatar Creator | יוצר דמויות דיגיטליות',
-    description: 'Create AI-powered 3D avatars of your pet — landmark detection, multilingual voices, custom animations. צרו דמות דיגיטלית תלת-ממדית מהחיה שלכם.',
-    keywords: 'pet avatar, AI pet photo, 3D pet model, digital pet, דמות דיגיטלית, אווטאר כלב',
-    ogType: 'product',
-  },
   groomingMarketplace: {
     title: 'Grooming Marketplace - Pet Grooming Bookings | הזמנת גרומינג לכלבים',
     description: 'Book vetted pet groomers in Israel — full grooming, nail trimming, specialty cuts. Home service available from select providers. הזמינו גרומינג לכלבים — טיפוח מלא, גזיזת ציפורניים ותספורות.',
