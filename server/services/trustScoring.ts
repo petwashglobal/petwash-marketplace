@@ -156,7 +156,7 @@ async function calculateReviewScore(contractorId: string): Promise<{
     const reviews = await db
       .select()
       .from(contractorReviews)
-      .where(eq(contractorReviews.revieweeId, contractorId));
+      .where(eq(contractorReviews.subjectId, contractorId));
 
     if (reviews.length === 0) {
       return {

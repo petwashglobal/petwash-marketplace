@@ -10680,8 +10680,8 @@ self.addEventListener('notificationclick', (event) => {
           // Render the template now so the stored audit record (and the
           // commented-out send code below, when it gets uncommented) sees
           // substituted content instead of raw {{firstName}} tokens.
-          const renderedSubject = renderTemplateContent(template.subject ?? '', recipient, customData);
-          const renderedContent = renderTemplateContent(template.content ?? '', recipient, customData);
+          const renderedSubject = renderTemplateContent(template.subject ?? '', recipient);
+          const renderedContent = renderTemplateContent(template.content ?? '', recipient);
 
           // Create communication record
           const communication = await storage.createCommunication({
@@ -10777,7 +10777,7 @@ self.addEventListener('notificationclick', (event) => {
         try {
           // Render the template now so the stored audit record reflects
           // the substituted content instead of raw {{firstName}} tokens.
-          const renderedContent = renderTemplateContent(template.content ?? '', recipient, customData);
+          const renderedContent = renderTemplateContent(template.content ?? '', recipient);
 
           // Create communication record
           const communication = await storage.createCommunication({
@@ -15927,7 +15927,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   app.get('/api/monitoring/oauth/certificates', requireAdmin, async (req, res) => {
     try {
       const provider = req.query.provider as string;
-      const status = await oauthCertificateMonitor.verifyProviderCertificate(provider);
+      const status = await oauthCertificateMonitor.verifyProviderCertificates();
       res.json(status);
     } catch (error: any) {
       logger.error('[OAuthMonitor] Verify certificate failed', error);

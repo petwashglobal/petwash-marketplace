@@ -456,7 +456,7 @@ router.get('/:contractorId/dashboard', requireAuth, async (req: any, res) => {
       db
         .select()
         .from(contractorReviews)
-        .where(eq(contractorReviews.revieweeId, contractorId))
+        .where(eq(contractorReviews.subjectId, contractorId))
         .orderBy(desc(contractorReviews.createdAt))
         .limit(5),
     ]);

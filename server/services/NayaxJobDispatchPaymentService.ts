@@ -201,7 +201,7 @@ export class NayaxJobDispatchPaymentService {
         return { success: false, error: `Payment already ${intent.status}` };
       }
 
-      if (!intent.authorizationId) {
+      if (!intent.nayaxAuthorizationId) {
         return { success: false, error: 'Missing authorization ID' };
       }
 
@@ -216,15 +216,15 @@ export class NayaxJobDispatchPaymentService {
 
       logger.info('[Nayax Job Dispatch] Capturing payment', {
         paymentIntentId: params.paymentIntentId,
-        authorizationId: intent.authorizationId,
+        authorizationId: intent.nayaxAuthorizationId,
         amountILS: (intent.amountCents / 100).toFixed(2),
       });
 
       // Prepare capture request
       const captureRequest: NayaxCaptureRequest = {
-        AuthorizationId: intent.authorizationId,
+        AuthorizationId: intent.nayaxAuthorizationId,
         Amount: params.amountCents, // Optional partial capture
-        ExternalTransactionId: `CAPTURE_${intent.platform.toUpperCase()}_${intent.bookingId}_${nanoid(8)}`,
+        ExternalTransactionId: `CAPTURE_${intent.platformId.toUpperCase()}_${intent.bookingId}_${nanoid(8)}`,
       };
 
       // Call Nayax capture endpoint
@@ -306,19 +306,19 @@ export class NayaxJobDispatchPaymentService {
         return { success: false, error: `Payment already ${intent.status}` };
       }
 
-      if (!intent.authorizationId) {
+      if (!intent.nayaxAuthorizationId) {
         return { success: false, error: 'Missing authorization ID' };
       }
 
       logger.info('[Nayax Job Dispatch] Voiding authorization', {
         paymentIntentId: params.paymentIntentId,
-        authorizationId: intent.authorizationId,
+        authorizationId: intent.nayaxAuthorizationId,
         reason: params.reason,
       });
 
       // Prepare void request
       const voidRequest: NayaxVoidRequest = {
-        AuthorizationId: intent.authorizationId,
+        AuthorizationId: intent.nayaxAuthorizationId,
         Reason: params.reason,
       };
 

@@ -374,13 +374,13 @@ class ElectronicInvoicingService {
       },
       totalInvoices: filtered.length,
       b2bOver25k: {
-        total: b2bOver25k.length,
+        total: b2bRequiringAllocation.length,
         submitted: submitted.length,
         pending: pending.length,
         failed: failed.length,
       },
-      complianceRate: b2bOver25k.length > 0 
-        ? ((submitted.length / b2bOver25k.length) * 100).toFixed(2) + '%'
+      complianceRate: b2bRequiringAllocation.length > 0 
+        ? ((submitted.length / b2bRequiringAllocation.length) * 100).toFixed(2) + '%'
         : '100%',
       failedInvoices: failed.map(inv => ({
         invoiceId: inv.invoiceId,
