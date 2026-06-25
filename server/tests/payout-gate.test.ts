@@ -18,6 +18,7 @@ const H = vi.hoisted(() => {
     BOOKINGS, BOOKING_REQUESTS, PROVIDERS, BOOKING_DISPUTES,
     tableRows: new Map<any, any[]>(),
     svc: { result: { ok: true, status: 'approved_for_payout' } as { ok: boolean; status: string | null; reason?: string } },
+    reconfirm: { overdue: false },
   };
 });
 const { BOOKINGS, BOOKING_REQUESTS, PROVIDERS, BOOKING_DISPUTES } = H;
@@ -50,6 +51,11 @@ vi.mock('../services/providerServiceApproval', () => ({
   assertServiceApproved: vi.fn(async () => H.svc.result),
 }));
 
+// Mock the reconfirmation engine so we control gate (g) independently.
+vi.mock('../services/reconfirmationService', () => ({
+  isReconfirmationOverdue: vi.fn(async () => H.reconfirm.overdue),
+}));
+
 import { checkPayoutGates } from '../services/payoutGate';
 
 const HOURS = 60 * 60 * 1000;
@@ -64,6 +70,8 @@ function setupHappyPath() {
   H.tableRows.set(BOOKING_DISPUTES, []); // no dispute
   H.tableRows.set(PROVIDERS, [{ verificationStatus: 'verified' }]);
   H.svc.result = { ok: true, status: 'approved_for_payout' };
+  H.reconfirm.overdue = false;
+  delete process.env.RECONFIRMATION_ENFORCE;
 }
 
 describe('checkPayoutGates — fail-CLOSED chain', () => {
@@ -121,6 +129,21 @@ describe('checkPayoutGates — fail-CLOSED chain', () => {
     H.tableRows.set(PROVIDERS, []);
     const r = await checkPayoutGates({ providerUid: 'uid1', bookingId: 'bk1' });
     expect(r).toMatchObject({ ok: false, reason: 'PROVIDER_NOT_FOUND' });
+  });
+
+  it('PASSES (shadow) when reconfirmation overdue but RECONFIRMATION_ENFORCE off (gate g)', async () => {
+    H.reconfirm.overdue = true;
+    delete process.env.RECONFIRMATION_ENFORCE;
+    const r = await checkPayoutGates({ providerUid: 'uid1', bookingId: 'bk1' });
+    expect(r).toMatchObject({ ok: true, reason: 'OK' });
+  });
+
+  it('HOLDS when reconfirmation overdue and RECONFIRMATION_ENFORCE on (gate g)', async () => {
+    H.reconfirm.overdue = true;
+    process.env.RECONFIRMATION_ENFORCE = 'on';
+    const r = await checkPayoutGates({ providerUid: 'uid1', bookingId: 'bk1' });
+    expect(r).toMatchObject({ ok: false, reason: 'RECONFIRMATION_OVERDUE' });
+    delete process.env.RECONFIRMATION_ENFORCE;
   });
 
   it('HOLDS when service not approved for payout (gate e)', async () => {
