@@ -6715,15 +6715,19 @@ self.addEventListener('notificationclick', (event) => {
   // Payment itself remains the real gate (Nayax) + paymentLimiter throttles abuse.
   app.post('/api/multi-service-gift', optFirebase, paymentLimiter, async (req, res) => {
     try {
-      // SECURITY: Nayax payment must be confirmed before creating any gift card.
-      // Until NAYAX_API_KEY is configured in env, gate this endpoint the same way
-      // /api/gift-cards/purchase does — return 503 so the client surfaces a clear message.
-      const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;
-      if (!nayaxEnabled) {
-        return res.status(503).json({
+      // SECURITY 2026-06-25: this legacy route MINTED a full-value voucher WITHOUT
+      // taking payment — it only checked that Nayax env vars EXISTED, never charged,
+      // then returned the spendable publicCode. A free-money hole that arms the moment
+      // Nayax keys land. The canonical, payment-VERIFIED eGift rail is now SUMIT:
+      //   POST /api/payments/sumit/begin (EGIFT_* SKUs) → signed sumit-webhook →
+      //   PurchaseActivationService EGIFT branch creates the recipient-bound voucher
+      //   ONLY after the charge is verified server-side.
+      // Disabled unless explicitly re-enabled; do NOT re-enable without two-phase pay-first.
+      if (process.env.LEGACY_MULTI_SERVICE_GIFT_ENABLED !== 'true') {
+        return res.status(410).json({
           success: false,
-          error: 'Payment gateway temporarily unavailable. Please contact support.',
-          developerNote: 'NAYAX_API_KEY and NAYAX_MERCHANT_ID required in environment variables',
+          error: 'This gift checkout has moved — please use the in-app eGift checkout.',
+          developerNote: 'Disabled 2026-06-25 (minted value with no verified payment). Canonical rail: /api/payments/sumit/begin EGIFT_* → sumit-webhook → PurchaseActivationService.',
         });
       }
       const parseResult = multiServiceGiftSchema.safeParse({
