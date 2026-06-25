@@ -23,6 +23,7 @@ import { and, eq, sql } from 'drizzle-orm';
 import { bookings, bookingRequests, providers } from '@shared/schema';
 import { bookingDisputes } from '@shared/schema';
 import { assertServiceApproved } from './providerServiceApproval';
+import { isReconfirmationOverdue } from './reconfirmationService';
 import { logger } from '../lib/logger';
 
 export const REFUND_WINDOW_HOURS = Number(process.env.PAYOUT_REFUND_WINDOW_HOURS || 48);
@@ -219,6 +220,29 @@ export async function checkPayoutGates(input: PayoutGateInput): Promise<PayoutGa
         }
       } catch {
         // fail-open — identity gate above is the hard requirement.
+      }
+    }
+
+    // Gate (g): 6-month re-confirmation current (CEO spec §7 — provider must
+    // re-confirm legal/tax/status declarations every 6 months). Self-healing:
+    // recording a reconfirmation advances the clock so this passes again with no
+    // status to restore. Flag-gated (RECONFIRMATION_ENFORCE, default off): off =
+    // SHADOW (log what it WOULD hold, payout proceeds); on = HOLD. isReconfirm-
+    // ationOverdue is itself fail-safe(false) so an infra hiccup never freezes pay.
+    {
+      const overdue = await isReconfirmationOverdue(providerUid);
+      if (overdue) {
+        const enforce = (process.env.RECONFIRMATION_ENFORCE || 'off').toLowerCase() === 'on';
+        logger.warn(
+          `[PayoutGate] reconfirmation ${enforce ? 'HOLD' : 'WOULD HOLD (shadow)'} for ${providerUid}`,
+        );
+        if (enforce) {
+          return {
+            ok: false,
+            reason: 'RECONFIRMATION_OVERDUE',
+            message: 'Provider 6-month re-confirmation is overdue — payout held until re-confirmed.',
+          };
+        }
       }
     }
 

@@ -18,6 +18,7 @@ import { GeminiUpdateAdvisor } from './services/GeminiUpdateAdvisor';
 import { startAutoVoidCron } from './cron/auto-void-expired-payments';
 import { runAlertSweep } from './services/AlertEngine';
 import { runWashReminderCron } from './cron/wash-reminder';
+import { runReconfirmationCron } from './cron/reconfirmation-enforcer';
 import { assertMarketingConsent } from './services/CampaignDeliveryService';
 import ProviderPayoutService from './services/ProviderPayoutService';
 import DataRetentionService from './services/DataRetentionService';
@@ -223,6 +224,19 @@ export class BackgroundJobProcessor {
     // Daily revenue report at 9 AM Israel time
     cron.schedule('0 9 * * *', async () => {
       await this.generateDailyRevenueReport();
+    }, {
+      timezone: 'Asia/Jerusalem'
+    });
+
+    // Provider 6-month re-confirmation sweep — daily 7 AM Israel time.
+    // Sends reminders + audits overdue providers. Enforcement is dynamic
+    // (payoutGate gate g + booking-accept), behind RECONFIRMATION_ENFORCE.
+    cron.schedule('0 7 * * *', async () => {
+      try {
+        await runReconfirmationCron();
+      } catch (err: any) {
+        console.error('[BackgroundJobs] reconfirmation sweep failed', err?.message);
+      }
     }, {
       timezone: 'Asia/Jerusalem'
     });

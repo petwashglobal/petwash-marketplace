@@ -42,6 +42,7 @@ import { createHash } from 'crypto';
 import EscrowService from '../services/EscrowService';
 import { createEarningRecord } from '../services/payoutLedger';
 import { assertServiceApproved, providerHasAnyServiceRows } from '../services/providerServiceApproval';
+import { isReconfirmationOverdue } from '../services/reconfirmationService';
 import { dispatchNotification } from '../lib/notificationDispatcher';
 import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
 import { twilioSMSService } from '../services/TwilioSMSService';
@@ -1151,6 +1152,26 @@ router.post('/:requestId/respond', async (req, res) => {
           // double failure → fall through to legacy-allow (no rows assumed)
         }
       }
+
+      // ── 6-MONTH RE-CONFIRMATION GATE (CEO spec §7) ────────────────────────
+      // A provider whose 6-month legal/tax/status re-confirmation is overdue may
+      // not accept NEW jobs until they re-confirm. Self-healing (recording a
+      // reconfirmation clears it). Flag-gated (RECONFIRMATION_ENFORCE, default
+      // off = SHADOW log; on = BLOCK). Fail-safe: isReconfirmationOverdue returns
+      // false on any lookup error, so an infra hiccup never blocks a live job.
+      try {
+        const overdue = await isReconfirmationOverdue(userId!);
+        if (overdue) {
+          const enforce = (process.env.RECONFIRMATION_ENFORCE || 'off').toLowerCase() === 'on';
+          logger.warn(`[BookingRequests] reconfirmation ${enforce ? 'BLOCK' : 'WOULD BLOCK (shadow)'} accept`, { providerId: userId });
+          if (enforce) {
+            return res.status(403).json({
+              error: 'RECONFIRMATION_REQUIRED',
+              message: 'Please re-confirm your provider declarations (required every 6 months) before accepting new bookings.',
+            });
+          }
+        }
+      } catch { /* fail-open: advisory gate must never break a live accept on infra error */ }
     }
 
     const statusHistory = (booking.statusHistory as any[]) || [];
