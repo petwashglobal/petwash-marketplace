@@ -331,7 +331,7 @@ export async function syncStationsToGoogleSheets(): Promise<void> {
     // ── Tab 3: Alerts (station_alerts) ─────────────────────────────────────
     const alertsResult = await pool.query(`
       SELECT sa.station_id, s.name AS station_name, sa.alert_type, sa.severity,
-             sa.message, sa.resolved, sa.created_at
+             sa.message, (sa.status = 'resolved') AS resolved, sa.created_at
       FROM station_alerts sa
       LEFT JOIN stations s ON s.id::text = sa.station_id::text
       WHERE sa.created_at >= NOW() - INTERVAL '7 days'
