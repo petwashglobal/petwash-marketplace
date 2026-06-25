@@ -11609,7 +11609,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/enterprise/franchise', validateFirebaseToken, adminLimiter, requireAdminMfa, enterpriseFranchiseRoutes);
   
   // Logistics & Fleet Management routes (Field Operations - Phase 2)
-  app.use('/api/logistics', optionalFirebaseToken, apiLimiter, logisticsRoutes);
+  app.use('/api/logistics', validateFirebaseToken, apiLimiter, logisticsRoutes); // SECURITY 2026-06-25: was optionalFirebaseToken → anonymous reads+writes; now requires auth
   
   // Chat History routes (PostgreSQL-backed AI chat history - Nov 2025)
   const chatHistoryRoutes = await import('./routes/chat-history');
