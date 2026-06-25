@@ -176,8 +176,6 @@ const PetOnboardingShell = lazy(() => import("@/pages/onboarding/PetOnboardingSh
 const PetCarePlanner = lazy(() => import("@/pages/PetCarePlanner"));
 const EnterpriseFeaturesShowcase = lazy(() => import("@/pages/EnterpriseFeaturesShowcase"));
 const PetWashCircle = lazy(() => import("@/pages/PetWashCircle"));
-// DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use)
-// const PlushLab = lazy(() => import("@/pages/PlushLab"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const SecurityStatus = lazy(() => import("@/pages/SecurityStatus"));
@@ -1528,12 +1526,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use) */}
-        {/* <Route path="/plush-lab">
-          <Suspense fallback={<PageLoader />}>
-            <PlushLab />
-          </Suspense>
-        </Route> */}
         
         {/* Premium Meeting Scheduler - 7-Star Experience */}
         <Route path="/meetings">
