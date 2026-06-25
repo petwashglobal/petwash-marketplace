@@ -367,6 +367,7 @@ const FraudDashboard = lazy(() => import("@/pages/admin/FraudDashboard"));
 // Control Tower panels (2026-06-20)
 const AdminPaymentsControl = lazy(() => import("@/pages/admin/AdminPaymentsControl"));
 const AdminProviderControl = lazy(() => import("@/pages/admin/AdminProviderControl"));
+const AdminApplicationsDashboard = lazy(() => import("@/pages/admin/AdminApplicationsDashboard"));
 const AdminCustomerDetail = lazy(() => import("@/pages/admin/AdminCustomerDetail"));
 const AdminBayControl = lazy(() => import("@/pages/admin/AdminBayControl"));
 const AdminAlertsCenter = lazy(() => import("@/pages/admin/AdminAlertsCenter"));
@@ -2260,6 +2261,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminPaymentsControl />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Smart Admin Panel - unified Applications Dashboard (risk-scored queue) */}
+        <Route path="/admin/applications">
+          {() => (
+            <AdminRouteGuard>
+              <AdminApplicationsDashboard />
             </AdminRouteGuard>
           )}
         </Route>

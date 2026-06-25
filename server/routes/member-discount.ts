@@ -24,7 +24,7 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { resolveWashDiscount } from '../services/memberDiscount';
 import { db } from '../db';
 import { memberDiscountApplications } from '../../shared/schema';
-import { encryptField } from '../services/secretFieldCrypto';
+import { encryptField, blindIndex } from '../services/secretFieldCrypto';
 import { EmailService } from '../emailService';
 import { logAuditEvent } from '../middleware/auditLog';
 import { logger } from '../lib/logger';
@@ -136,6 +136,8 @@ router.post('/wash-discount/apply', validateFirebaseToken, async (req: Request, 
       dateOfBirth: dob,
       idType: b.idType,
       idNumberEnc: encryptField(b.idNumber),
+      // Deterministic blind index for DUPLICATE_ID detection (one-way; never the raw ID).
+      idHash: blindIndex(b.idNumber),
       idCountry: b.idCountry,
       idIssueDate: parseDate(b.idIssueDate),
       disabilityRefEnc: b.disabilityRef ? encryptField(b.disabilityRef) : null,

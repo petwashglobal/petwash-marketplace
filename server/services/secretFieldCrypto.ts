@@ -161,6 +161,46 @@ export function isEncrypted(value: string): boolean {
   return typeof value === 'string' && value.startsWith(ENCRYPTED_PREFIX);
 }
 
+// ── Blind index (deterministic, for equality search over encrypted PII) ─────────
+// AES-GCM ciphertext uses a random IV, so two encryptions of the SAME id produce
+// DIFFERENT ciphertext — you cannot find "same ID on two accounts" by comparing
+// idNumberEnc. A blind index is a deterministic keyed HMAC of the NORMALIZED value:
+// equal inputs → equal hash, so duplicates are detectable WITHOUT decrypting and
+// without weakening the reversible ciphertext (the hash is one-way).
+//
+// The key must be STABLE across restarts (or historical hashes won't match), so it
+// is ID_BLIND_INDEX_KEY when set, else derived deterministically from the treasury
+// key. Never the raw value — only the keyed hash is stored.
+
+let _blindKeyCache: Buffer | null = null;
+function blindIndexKey(): Buffer {
+  if (_blindKeyCache) return _blindKeyCache;
+  const explicit = process.env.ID_BLIND_INDEX_KEY;
+  if (explicit && explicit.length >= 32) {
+    _blindKeyCache = Buffer.from(explicit, 'utf8');
+    return _blindKeyCache;
+  }
+  // Derive a stable, separate sub-key from the treasury key (domain-separated).
+  _blindKeyCache = crypto.createHmac('sha256', getKey()).update('petwash:id-blind-index:v1').digest();
+  return _blindKeyCache;
+}
+
+/** Normalize an ID/passport so trivial formatting differences still match. */
+export function normalizeIdForIndex(value: string): string {
+  return String(value || '').trim().toLowerCase().replace(/[\s\-./]/g, '');
+}
+
+/**
+ * Deterministic blind index for an ID/passport number. Returns a lowercase hex
+ * HMAC-SHA256 of the normalized value. Equal IDs → equal output. One-way (cannot
+ * be reversed to the ID). Returns '' for empty input.
+ */
+export function blindIndex(value: string): string {
+  const norm = normalizeIdForIndex(value);
+  if (!norm) return '';
+  return crypto.createHmac('sha256', blindIndexKey()).update(norm).digest('hex');
+}
+
 // ── Display masking helpers ───────────────────────────────────────────────────
 // These operate on PLAINTEXT (after decryption) and produce safe display strings.
 // They must never be called with ciphertext.

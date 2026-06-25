@@ -131,6 +131,9 @@ export const memberDiscountApplications = pgTable(
     idType: varchar('id_type', { length: 16 }),
     // ENCRYPTED national-ID / passport number — never plaintext.
     idNumberEnc: text('id_number_enc'),
+    // Deterministic blind index (HMAC of normalized ID) — for DUPLICATE_ID
+    // detection without decrypting. Never the raw value. See secretFieldCrypto.blindIndex.
+    idHash: varchar('id_hash', { length: 64 }),
     idCountry: varchar('id_country', { length: 64 }),
     idIssueDate: timestamp('id_issue_date', { mode: 'date' }),
     // Disability-specific (nullable for senior). ENCRYPTED.
