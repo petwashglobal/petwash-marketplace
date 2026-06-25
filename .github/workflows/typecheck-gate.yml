@@ -1,0 +1,37 @@
+name: Typecheck Gate (no new type errors)
+
+# The app builds with esbuild (no typecheck), so type errors — wrong method
+# names, renamed DB columns, dropped imports — ship silently and crash at
+# runtime (caused real HTTP 500s). This gate baselines the existing backlog and
+# blocks PRs that INTRODUCE new type errors. Ratchet .typecheck-baseline down as
+# the backlog is fixed.
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '.claude/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: typecheck-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  typecheck-gate:
+    name: Gate — no new type errors
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: 'npm'
+      - name: Install dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Run typecheck ratchet gate
+        run: node scripts/typecheck-gate.mjs
