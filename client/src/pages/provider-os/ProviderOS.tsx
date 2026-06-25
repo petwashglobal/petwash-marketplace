@@ -3,6 +3,7 @@ import { Link, useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
+import { FollowUsBar } from '@/components/FollowUsBar';
 import { Button } from '@/components/ui/button';
 import {
   Home, Briefcase, CalendarDays, Wallet, User,
@@ -336,6 +337,7 @@ export default function ProviderOS() {
             {activeModule === 'notifications' && <POSNotifications />}
             {activeModule === 'safety' && <POSSafety />}
             {activeModule === 'assistant' && <POSAssistant />}
+            <FollowUsBar />
           </div>
         </main>
       </div>

@@ -3,6 +3,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
+import { FollowUsBar } from '@/components/FollowUsBar';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
 import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail, BadgeCheck } from 'lucide-react';
@@ -1188,6 +1189,8 @@ export default function Dashboard() {
               </span>
             </button>
           </motion.div>
+
+          <FollowUsBar />
 
           <motion.div
             initial={{ opacity: 0 }}
