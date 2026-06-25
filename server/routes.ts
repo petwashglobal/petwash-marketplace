@@ -166,6 +166,7 @@ import adminLoyaltyRoutes from "./routes/admin-loyalty";
 import adminMemberDiscountRoutes from "./routes/admin-member-discount";
 import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
+import meStatusRoutes from "./routes/me-status";
 // Control Tower admin panels (2026-06-20) — read-only views over existing ledgers/engines.
 import adminPaymentsControlRoutes from "./routes/admin-payments-control";
 import adminProviderControlRoutes from "./routes/admin-provider-control";
@@ -11930,6 +11931,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/payments/sumit', apiLimiter, paymentsSumitRoutes);
   // Member self-read of their resolved K9000 wash discount (for the price note).
   app.use('/api/member', apiLimiter, memberDiscountRoutes);
+  // Single status source-of-truth (MASTER BIBLE §3/§9): GET /api/me/status
+  app.use('/api/me', apiLimiter, meStatusRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across
