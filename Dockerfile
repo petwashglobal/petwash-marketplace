@@ -51,8 +51,18 @@ ENV NPM_CONFIG_FETCH_RETRIES=5 \
     NPM_CONFIG_AUDIT=false \
     NPM_CONFIG_FUND=false
 
-# Install dumb-init for proper signal handling (SIGTERM on Cloud Run scale-down)
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init \
+# dumb-init for signal handling (SIGTERM on Cloud Run scale-down) + postgresql-client
+# for the nightly pg_dump → GCS backup (gcsBackupService). The Debian default client
+# is v15, which refuses to dump a newer Neon server ("server version mismatch"); pull
+# postgresql-client-17 from the official PGDG repo (a newer pg_dump can dump older
+# servers, so 17 safely covers PG15/16/17). Without this, the backup cron alerts
+# "pg_dump binary not found in runtime image" and we keep NO fresh independent backup.
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init curl ca-certificates gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends postgresql-client-17 \
+    && apt-get purge -y --auto-remove curl gnupg \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy only what the server needs at runtime
