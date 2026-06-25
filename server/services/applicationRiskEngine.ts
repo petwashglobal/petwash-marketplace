@@ -53,6 +53,8 @@ export interface RiskInput {
   duplicateEmailCount?: number;
   /** other accounts sharing this phone (excluding the applicant). */
   duplicatePhoneCount?: number;
+  /** other accounts sharing this ID/passport (via blind index, excl. applicant). */
+  duplicateIdCount?: number;
   /** provider reconfirmation overdue. */
   reconfirmationOverdue?: boolean;
   /** provider previously suspended. */
@@ -87,6 +89,9 @@ export function computeRiskFlags(input: RiskInput): RiskFlag[] {
   }
   if ((input.duplicatePhoneCount ?? 0) > 0) {
     flags.push({ code: 'DUPLICATE_PHONE', severity: 'high', message: 'This mobile number is used by another account.' });
+  }
+  if ((input.duplicateIdCount ?? 0) > 0) {
+    flags.push({ code: 'DUPLICATE_ID', severity: 'high', message: 'This ID/passport number is used on another account.' });
   }
 
   // ── Provider-specific ────────────────────────────────────────────────────
@@ -182,6 +187,21 @@ export async function assessProviderApplication(app: {
   return { score: scoreFromFlags(flags), flags };
 }
 
+/** Count OTHER accounts (distinct userId) that share this ID blind-index. */
+export async function duplicateIdCount(idHash: string | null | undefined, userId: string): Promise<number> {
+  if (!idHash) return 0;
+  try {
+    const [row] = await db
+      .select({ n: sql<number>`count(distinct ${memberDiscountApplications.userId})::int` })
+      .from(memberDiscountApplications)
+      .where(and(eq(memberDiscountApplications.idHash, idHash), ne(memberDiscountApplications.userId, userId)));
+    return row?.n ?? 0;
+  } catch (err: any) {
+    logger.warn('[RiskEngine] duplicate-ID lookup failed', { err: err?.message });
+    return 0;
+  }
+}
+
 /** Assess a senior/disability discount application row → flags + score. */
 export async function assessDiscountApplication(app: {
   userId: string;
@@ -189,6 +209,7 @@ export async function assessDiscountApplication(app: {
   status?: string | null;
   dateOfBirth?: Date | string | null;
   submittedAt?: Date | null;
+  idHash?: string | null;
 }): Promise<RiskAssessment> {
   // Discount applicant's contact comes from their user record.
   let email: string | null = null;
@@ -199,6 +220,7 @@ export async function assessDiscountApplication(app: {
     phone = u?.phone ?? null;
   } catch { /* best-effort */ }
   const { duplicateEmailCount, duplicatePhoneCount } = await duplicateContactCounts(app.userId, email, phone);
+  const dupId = await duplicateIdCount(app.idHash, app.userId);
 
   const flags = computeRiskFlags({
     kind: 'discount',
@@ -208,6 +230,7 @@ export async function assessDiscountApplication(app: {
     submittedAt: app.submittedAt ?? null,
     duplicateEmailCount,
     duplicatePhoneCount,
+    duplicateIdCount: dupId,
   });
   return { score: scoreFromFlags(flags), flags };
 }

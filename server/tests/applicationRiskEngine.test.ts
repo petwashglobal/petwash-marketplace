@@ -72,4 +72,29 @@ describe('computeRiskFlags', () => {
     const flags = computeRiskFlags({ kind: 'provider', age: null, taxStatus: 'osek_patur', status: 'pending_review' });
     expect(flags.some((f) => f.code === 'AGE_UNVERIFIED')).toBe(true);
   });
+
+  it('flags DUPLICATE_ID (high) when same ID on another account', () => {
+    const flags = computeRiskFlags({ kind: 'discount', age: 70, discountType: 'senior', status: 'pending_review', duplicateIdCount: 1 });
+    expect(flags.some((f) => f.code === 'DUPLICATE_ID')).toBe(true);
+    expect(scoreFromFlags(flags)).toBe('high');
+  });
+
+  it('does NOT flag DUPLICATE_ID when unique', () => {
+    const flags = computeRiskFlags({ kind: 'discount', age: 70, discountType: 'senior', status: 'pending_review', duplicateIdCount: 0 });
+    expect(flags.some((f) => f.code === 'DUPLICATE_ID')).toBe(false);
+  });
+});
+
+describe('blindIndex', () => {
+  it('is deterministic, format-insensitive, one-way', async () => {
+    const { blindIndex, normalizeIdForIndex } = await import('../services/secretFieldCrypto');
+    const a = blindIndex('123456782');
+    const b = blindIndex(' 123-456-782 ');
+    expect(a).toBe(b);                          // same ID, different formatting → same hash
+    expect(a).toHaveLength(64);                 // hex sha256
+    expect(a).not.toContain('123456782');       // one-way, never the raw value
+    expect(blindIndex('999999999')).not.toBe(a);// different ID → different hash
+    expect(blindIndex('')).toBe('');            // empty → empty
+    expect(normalizeIdForIndex(' 12-34.56 ')).toBe('123456');
+  });
 });

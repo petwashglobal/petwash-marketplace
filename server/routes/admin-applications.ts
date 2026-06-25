@@ -78,6 +78,7 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
         status: memberDiscountApplications.status,
         dateOfBirth: memberDiscountApplications.dateOfBirth,
         submittedAt: memberDiscountApplications.submittedAt,
+        idHash: memberDiscountApplications.idHash,
       })
       .from(memberDiscountApplications)
       .where(inArray(memberDiscountApplications.status, ACTIVE_DISCOUNT_STATUSES))
@@ -94,6 +95,15 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
       for (const row of (pr as any).rows ?? pr ?? []) if (row.v) dupPhones.add(String(row.v));
     } catch (e: any) {
       logger.warn('[AdminApplications] duplicate bulk scan failed', { err: e?.message });
+    }
+
+    // Bulk DUPLICATE-ID: id_hash blind-indexes appearing on >1 DISTINCT account.
+    const dupIdHashes = new Set<string>();
+    try {
+      const ir = await db.execute(sql`SELECT id_hash AS v FROM member_discount_applications WHERE id_hash IS NOT NULL GROUP BY id_hash HAVING count(distinct user_id) > 1`);
+      for (const row of (ir as any).rows ?? ir ?? []) if (row.v) dupIdHashes.add(String(row.v));
+    } catch (e: any) {
+      logger.warn('[AdminApplications] duplicate-ID bulk scan failed', { err: e?.message });
     }
 
     // Names for discount applicants (provider apps already carry names).
@@ -152,6 +162,7 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
         submittedAt: d.submittedAt ?? null,
         duplicateEmailCount: u?.email && dupEmails.has(u.email.toLowerCase()) ? 1 : 0,
         duplicatePhoneCount: u?.phone && dupPhones.has(u.phone) ? 1 : 0,
+        duplicateIdCount: d.idHash && dupIdHashes.has(d.idHash) ? 1 : 0,
       });
       queue.push({
         appKind: 'discount',
@@ -180,7 +191,7 @@ router.get('/dashboard', async (_req: Request, res: Response) => {
       critical: queue.filter((q) => q.riskScore === 'critical').length,
       overdue: queue.filter((q) => q.flags.some((f) => f.code === 'PENDING_TOO_LONG')).length,
       needsMoreInfo: queue.filter((q) => q.status === 'needs_more_info').length,
-      duplicateContact: queue.filter((q) => q.flags.some((f) => f.code === 'DUPLICATE_EMAIL' || f.code === 'DUPLICATE_PHONE')).length,
+      duplicateContact: queue.filter((q) => q.flags.some((f) => f.code === 'DUPLICATE_EMAIL' || f.code === 'DUPLICATE_PHONE' || f.code === 'DUPLICATE_ID')).length,
     };
 
     return res.json({ ok: true, cards, queue, generatedAt: new Date().toISOString() });
