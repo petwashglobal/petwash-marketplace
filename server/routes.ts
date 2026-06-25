@@ -1466,6 +1466,16 @@ self.addEventListener('notificationclick', (event) => {
     logger.error('[routes] Failed to mount /api/auth/sms — feature degraded, server continues', mountErr);
   }
 
+  // Email-code OTP front door (matched code, mirrors SMS). Same hardened limiter
+  // stack (authLimiter + otpLimiter) so bots can't burn the email quota.
+  try {
+    const authEmailRoutes = (await import('./routes/auth-email')).default;
+    app.use('/api/auth/email', authLimiter, otpLimiter, authEmailRoutes);
+    logger.info('[routes] Mounted /api/auth/email (email-code OTP)');
+  } catch (mountErr) {
+    logger.error('[routes] Failed to mount /api/auth/email — feature degraded, server continues', mountErr);
+  }
+
   // GET /api/auth/health - Health check for mobile auth system
   app.get('/api/auth/health', (_req, res) => {
     res.json({ ok: true });
