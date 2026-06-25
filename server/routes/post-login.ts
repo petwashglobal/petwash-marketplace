@@ -1105,6 +1105,7 @@ export async function completeProfile(req: Request, res: Response) {
       lastName,
       phone,
       dateOfBirth,
+      gender,
       address,
       city,
       postalCode,
@@ -1156,8 +1157,24 @@ export async function completeProfile(req: Request, res: Response) {
     if (dateOfBirth) {
       const dob = new Date(dateOfBirth);
       if (!isNaN(dob.getTime()) && dob < now) {
+        // 18+ is a hard gate for PetWash membership (Prestige is over-18 only).
+        // Enforce server-side from the DOB — not just the client checkbox.
+        let age = now.getFullYear() - dob.getFullYear();
+        const m = now.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && now.getDate() < dob.getDate())) age--;
+        if (age < 18) {
+          return res.status(400).json({
+            error: "UNDER_18",
+            message: "You must be 18 or older to join PetWash.",
+          });
+        }
         updates.dateOfBirth = dateOfBirth;
       }
+    }
+
+    // Sex/gender (optional) — male | female | other | prefer_not_to_say.
+    if (typeof gender === 'string' && ['male', 'female', 'other', 'prefer_not_to_say'].includes(gender)) {
+      updates.gender = gender;
     }
 
     if (termsAccepted) {

@@ -91,6 +91,7 @@ export default function CompleteProfile() {
   const [lastName, setLastName] = useState("");
   const [phone, setPhone] = useState("");
   const [dateOfBirth, setDateOfBirth] = useState("");
+  const [gender, setGender] = useState(""); // optional: male | female | other | prefer_not_to_say
   const [address, setAddress] = useState("");
   const [city, setCity] = useState("");
   const [postalCode, setPostalCode] = useState("");
@@ -175,6 +176,7 @@ export default function CompleteProfile() {
       if (needs("lastName")) payload.lastName = lastName.trim();
       if (needs("phone")) payload.phone = phone;
       if (needs("dateOfBirth")) payload.dateOfBirth = dateOfBirth;
+      if (gender) payload.gender = gender;
       if (needs("termsAcceptedAt")) {
         payload.termsAccepted = termsAccepted;
         payload.privacyAccepted = privacyAccepted;
@@ -200,8 +202,14 @@ export default function CompleteProfile() {
         const serverNext = postLoginData.nextUrl || postLoginData.redirectTo;
         const isLoop = serverNext && serverNext.startsWith('/complete-profile');
         navigate(fromParam || (!isLoop ? serverNext : null) || "/home");
+      } else if (data.error === "UNDER_18") {
+        toast({
+          variant: "destructive",
+          title: isHe ? "יש להיות בני 18 ומעלה" : "You must be 18 or older",
+          description: isHe ? "הצטרפות ל-PetWash מותרת מגיל 18." : "PetWash membership is for ages 18 and over.",
+        });
       } else {
-        toast({ variant: "destructive", title: data.error || "Error saving profile" });
+        toast({ variant: "destructive", title: data.message || data.error || "Error saving profile" });
       }
     } catch {
       toast({ variant: "destructive", title: isHe ? "שגיאה בשמירת הפרופיל" : "Error saving profile" });
@@ -296,6 +304,22 @@ export default function CompleteProfile() {
                 )}
               </div>
             )}
+
+            {/* Sex / gender — optional. */}
+            <div>
+              <Label>{isHe ? "מין (אופציונלי)" : "Sex (optional)"}</Label>
+              <select
+                value={gender}
+                onChange={(e) => setGender(e.target.value)}
+                className="mt-1 w-full rounded-md border border-gray-300 bg-white px-3 py-2 text-sm"
+                data-testid="select-gender"
+              >
+                <option value="">{isHe ? "לא לציין" : "Prefer not to say"}</option>
+                <option value="female">{isHe ? "נקבה" : "Female"}</option>
+                <option value="male">{isHe ? "זכר" : "Male"}</option>
+                <option value="other">{isHe ? "אחר" : "Other"}</option>
+              </select>
+            </div>
 
             <div>
               <Label>{isHe ? "כתובת" : "Address"}</Label>
