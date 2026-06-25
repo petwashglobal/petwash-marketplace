@@ -164,6 +164,7 @@ import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
 import adminMemberDiscountRoutes from "./routes/admin-member-discount";
+import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
 // Control Tower admin panels (2026-06-20) — read-only views over existing ledgers/engines.
 import adminPaymentsControlRoutes from "./routes/admin-payments-control";
@@ -11438,6 +11439,7 @@ self.addEventListener('notificationclick', (event) => {
   // discounts (postal review). requireAdmin inside the router; mutations are
   // audit-logged. Stores NO ID/passport data — only the approved percent.
   app.use('/api/admin/member-discount', validateFirebaseToken, adminLimiter, adminMemberDiscountRoutes);
+  app.use('/api/admin/applications', validateFirebaseToken, adminLimiter, adminApplicationsRoutes);
   // Control Tower panels — Payments ledger view, Provider approval ladder, Customer detail.
   // Each router enforces requireAdmin (isSuperAdmin) internally and audit-logs sensitive reads.
   app.use('/api/admin/payments-control', validateFirebaseToken, adminLimiter, adminPaymentsControlRoutes);
