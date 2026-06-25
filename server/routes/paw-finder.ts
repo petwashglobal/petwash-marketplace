@@ -253,8 +253,8 @@ router.get('/posts', async (req, res) => {
          AND ($2::text IS NULL OR LOWER(p.city)  = LOWER($2))
          AND ($3::text IS NULL OR p.pet_type     = $3)
          AND ($4::text IS NULL OR LOWER(COALESCE(p.breed,'')) ILIKE '%' || LOWER($4) || '%')
-         AND ($5::date IS NULL OR p.event_date  >= $5::date)
-         AND ($6::date IS NULL OR p.event_date  <= $6::date)
+         AND ($5::date IS NULL OR NULLIF(p.event_date,'')::date >= $5::date)
+         AND ($6::date IS NULL OR NULLIF(p.event_date,'')::date <= $6::date)
          AND (NOT $7::bool OR p.reward_amount IS NOT NULL AND p.reward_amount > 0)
          AND (NOT $8::bool OR p.status = 'matched')
        ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
