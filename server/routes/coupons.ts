@@ -452,7 +452,9 @@ adminCouponRouter.post('/:id/issue-to-user', async (req: AuthenticatedRequest, r
   const adminId = req.firebaseUser?.uid ?? 'unknown';
   try {
     const result = await couponService.issueToUser(couponId, userId, adminId, expiresAt);
-    return res.status(201).json({ success: true, issuanceId: result.issuanceId });
+    // Return the unique per-user code so the campaign can deliver THIS user's
+    // own un-spreadable code (push/SMS/email).
+    return res.status(201).json({ success: true, issuanceId: result.issuanceId, code: result.code });
   } catch (err: any) {
     return res.status(500).json({ error: 'שגיאה בהנפקה' });
   }

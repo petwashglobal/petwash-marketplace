@@ -344,4 +344,62 @@ router.patch('/:bayId/nayax', async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/bay-control/reconciliation-breaks?status=open ─────────────
+// Triage queue for the daily K9000 reconciliation (k9000_reconciliation_breaks,
+// written by K9000ReconciliationService). Read-only.
+router.get('/reconciliation-breaks', async (req: Request, res: Response) => {
+  const status = typeof req.query.status === 'string' ? req.query.status : 'open';
+  try {
+    const { pool } = await import('../db');
+    const rows = await pool.query(
+      `SELECT id, recon_date, break_type, severity, station_id, bay_id, nayax_ref,
+              petwash_session_id, sumit_doc_id, expected_json, observed_json,
+              status, resolved_by, resolved_at, created_at
+         FROM k9000_reconciliation_breaks
+        WHERE ($1 = 'all' OR status = $1)
+        ORDER BY (severity = 'critical') DESC, created_at DESC
+        LIMIT 500`,
+      [status],
+    );
+    return res.json({ ok: true, count: rows.rowCount, breaks: rows.rows });
+  } catch (err: any) {
+    logger.error('[AdminBayControl] list recon breaks failed', { err: err?.message });
+    return res.status(500).json({ error: 'recon_breaks_read_failed' });
+  }
+});
+
+// ── POST /api/admin/bay-control/reconciliation-breaks/:id/resolve ────────────
+// Close a break (resolved | accepted). Audit-logged.
+router.post('/reconciliation-breaks/:id/resolve', async (req: Request, res: Response) => {
+  const id = req.params.id;
+  const parsed = z.object({ status: z.enum(['resolved', 'accepted']), note: z.string().max(1000).optional() }).safeParse(req.body);
+  if (!parsed.success) return res.status(400).json({ error: 'status must be resolved|accepted' });
+  const a = actor(req);
+  try {
+    const { pool } = await import('../db');
+    const r = await pool.query(
+      `UPDATE k9000_reconciliation_breaks
+          SET status = $1, resolved_by = $2, resolved_at = NOW()
+        WHERE id = $3 AND status = 'open'
+        RETURNING id, break_type, severity`,
+      [parsed.data.status, a.adminEmail || a.adminId, id],
+    );
+    if ((r.rowCount ?? 0) === 0) return res.status(404).json({ error: 'break_not_found_or_already_closed' });
+    await logAuditEvent({
+      actorUserId: a.adminId,
+      actorRole: 'admin',
+      actionType: 'K9000_RECON_BREAK_RESOLVE',
+      targetType: 'k9000_reconciliation_break',
+      targetId: id,
+      ip: a.ip, userAgent: a.userAgent,
+      metadata: { status: parsed.data.status, note: parsed.data.note, breakType: r.rows[0].break_type, severity: r.rows[0].severity, adminEmail: a.adminEmail },
+      severity: 'info',
+    }).catch(() => {});
+    return res.json({ ok: true, id, status: parsed.data.status });
+  } catch (err: any) {
+    logger.error('[AdminBayControl] resolve recon break failed', { id, err: err?.message });
+    return res.status(500).json({ error: 'recon_break_resolve_failed' });
+  }
+});
+
 export default router;

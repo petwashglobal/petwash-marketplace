@@ -75,7 +75,7 @@ export function requireRole(...roles: string[]) {
       // DEV-ONLY: Playwright / curl test bypass — x-test-user-role must be in the required set.
       // Uses TEST_BYPASS_TOKEN env var so that no secret is hardcoded in source code.
       // Bypass is completely disabled when the env var is not set (fail-closed).
-      const bypassToken = process.env.TEST_BYPASS_TOKEN;
+      const bypassToken = process.env.NODE_ENV === 'production' ? undefined : process.env.TEST_BYPASS_TOKEN; // SECURITY 2026-06-25: never in prod
       if (bypassToken && req.headers['x-test-user-bypass'] === bypassToken) {
         const testRole = ((req.headers['x-test-user-role'] as string) || 'customer').toLowerCase();
         if (roles.includes(testRole)) {
@@ -271,7 +271,7 @@ export async function requireProviderActive(req: Request, res: Response, next: N
 export async function requireStaffApproved(req: Request, res: Response, next: NextFunction) {
   try {
     // DEV-ONLY bypass — uses TEST_BYPASS_TOKEN env var (no hardcoded string)
-    const bypassToken = process.env.TEST_BYPASS_TOKEN;
+    const bypassToken = process.env.NODE_ENV === 'production' ? undefined : process.env.TEST_BYPASS_TOKEN; // SECURITY 2026-06-25: never in prod
     if (bypassToken && req.headers['x-test-user-bypass'] === bypassToken) {
       const testRole   = ((req.headers['x-test-user-role']   as string) || 'customer').toLowerCase();
       const testStatus = ((req.headers['x-test-user-status'] as string) || 'active').toLowerCase();
@@ -337,7 +337,7 @@ export async function requireStaffApproved(req: Request, res: Response, next: Ne
 export async function requireMfaEnrolled(req: Request, res: Response, next: NextFunction) {
   try {
     // DEV-ONLY bypass — uses TEST_BYPASS_TOKEN env var (no hardcoded string)
-    const bypassToken = process.env.TEST_BYPASS_TOKEN;
+    const bypassToken = process.env.NODE_ENV === 'production' ? undefined : process.env.TEST_BYPASS_TOKEN; // SECURITY 2026-06-25: never in prod
     if (bypassToken && req.headers['x-test-user-bypass'] === bypassToken) {
       logger.debug('[requireMfaEnrolled] DEV bypass: MFA check skipped for test user');
       return next();

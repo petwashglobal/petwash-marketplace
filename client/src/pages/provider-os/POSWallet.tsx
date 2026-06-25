@@ -6,7 +6,7 @@ import {
   Download, Building2, FileText, Info, Loader2, BadgeCheck,
 } from 'lucide-react';
 
-type Platform = 'all' | 'petsitter' | 'walkpet' | 'petwash' | 'academy';
+type Platform = 'all' | 'petsitter' | 'walkpet' | 'academy' | 'pettrek';
 
 const PAYOUT_STATUS_STYLES: Record<string, { label: string; color: string; bg: string }> = {
   paid:     { label: 'Paid',       color: '#065f46', bg: '#d1fae5' },
@@ -16,7 +16,7 @@ const PAYOUT_STATUS_STYLES: Record<string, { label: string; color: string; bg: s
 };
 
 const PLATFORM_LABELS: Record<string, string> = {
-  petsitter: 'PetSitter', walkpet: 'Walk My Pet', petwash: 'PetWash', academy: 'Academy',
+  petsitter: 'PetSitter', walkpet: 'Walk My Pet', academy: 'Academy',
 };
 
 const FMT_ILS = (n: number) => `₪${n.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
@@ -130,6 +130,38 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
   };
 
   const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+  // Real client-side export of the loaded payouts (no backend needed). The CSV
+  // opens directly in Excel/Sheets; the BOM keeps ₪/Hebrew intact. Replaces the
+  // prior toast-only placeholder buttons.
+  const downloadEarningsCsv = () => {
+    if (!recentPayouts.length) {
+      toast({ title: 'Nothing to export', description: 'No completed payouts yet.' });
+      return;
+    }
+    const header = ['Booking', 'Service', 'Date', 'Gross (ILS)', 'Platform fee (ILS)', 'Your net (ILS)', 'Payout status'];
+    const esc = (v: any) => `"${String(v ?? '').replace(/"/g, '""')}"`;
+    const lines = recentPayouts.map((p: any) => [
+      p.bookingNumber ?? p.requestId ?? '',
+      p.serviceType ?? '',
+      p.date ? new Date(p.date).toLocaleDateString('en-IL') : '',
+      p.gross ?? p.amount ?? 0,
+      p.platformFee ?? 0,
+      p.amount ?? 0,
+      p.payoutStatus ?? 'pending',
+    ].map(esc).join(','));
+    const csv = '﻿' + [header.map(esc).join(','), ...lines].join('\n');
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `petwash-earnings-${new Date().getFullYear()}-${String(selectedMonth + 1).padStart(2, '0')}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    URL.revokeObjectURL(url);
+    toast({ title: 'Report exported', description: `${MONTHS[selectedMonth]} earnings — CSV downloaded` });
+  };
 
   return (
     <div className="space-y-4">
@@ -388,12 +420,12 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
             )}
 
             <div className="flex gap-2">
-              <button onClick={() => toast({ title: 'Report exported', description: `${MONTHS[selectedMonth]} CSV ready` })}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-white transition-colors">
+              <button onClick={downloadEarningsCsv}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                 <Download className="w-3.5 h-3.5" /> CSV
               </button>
-              <button onClick={() => toast({ title: 'Report exported', description: `${MONTHS[selectedMonth]} Excel ready` })}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-white transition-colors">
+              <button onClick={downloadEarningsCsv}
+                className="flex-1 flex items-center justify-center gap-2 py-2.5 border border-gray-200 rounded-xl text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors">
                 <Download className="w-3.5 h-3.5" /> Excel
               </button>
             </div>

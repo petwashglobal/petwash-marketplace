@@ -3,9 +3,10 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
+import { FollowUsBar } from '@/components/FollowUsBar';
 import { Link, useLocation } from 'wouter';
 import { motion } from 'framer-motion';
-import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail, BadgeCheck } from 'lucide-react';
+import { LogOut, ChevronRight, PawPrint, CalendarCheck, Clock, Shield, ArrowRight, Mail, BadgeCheck, Search, Package, Wallet, GraduationCap, ShoppingBag, Gift } from 'lucide-react';
 import { LoyaltyWalletCard } from '@/components/loyalty/LoyaltyWalletCard';
 import { LoyaltyStreakCard } from '@/components/loyalty/LoyaltyStreakCard';
 import { LoyaltyWinbackCard } from '@/components/loyalty/LoyaltyWinbackCard';
@@ -302,6 +303,78 @@ const dashText: Record<string, Record<string, string>> = {
     es: 'ACTIVO',
     fr: 'ACTIF',
     ru: 'АКТИВНЫЙ',
+  },
+  quickActions: {
+    en: 'Quick Actions',
+    he: 'פעולות מהירות',
+    ar: 'إجراءات سريعة',
+    es: 'Acciones Rápidas',
+    fr: 'Actions Rapides',
+    ru: 'Быстрые Действия',
+  },
+  pawFinder: {
+    en: 'Paw Finder',
+    he: 'איתור חיות',
+    ar: 'باحث المخالب',
+    es: 'Buscador',
+    fr: 'Paw Finder',
+    ru: 'Поиск Питомца',
+  },
+  walletTopUp: {
+    en: 'Top Up',
+    he: 'טעינת ארנק',
+    ar: 'شحن المحفظة',
+    es: 'Recargar',
+    fr: 'Recharger',
+    ru: 'Пополнить',
+  },
+  academy: {
+    en: 'Academy',
+    he: 'אקדמיה',
+    ar: 'الأكاديمية',
+    es: 'Academia',
+    fr: 'Académie',
+    ru: 'Академия',
+  },
+  shop: {
+    en: 'Shop',
+    he: 'חנות',
+    ar: 'المتجر',
+    es: 'Tienda',
+    fr: 'Boutique',
+    ru: 'Магазин',
+  },
+  sendGift: {
+    en: 'Send a Gift',
+    he: 'שלח מתנה',
+    ar: 'أرسل هدية',
+    es: 'Enviar Regalo',
+    fr: 'Offrir',
+    ru: 'Подарить',
+  },
+  buyPackage: {
+    en: 'Buy Package',
+    he: 'קנה חבילה',
+    ar: 'شراء باقة',
+    es: 'Comprar Paquete',
+    fr: 'Acheter Forfait',
+    ru: 'Купить Пакет',
+  },
+  myPets: {
+    en: 'My Pets',
+    he: 'החיות שלי',
+    ar: 'حيواناتي',
+    es: 'Mis Mascotas',
+    fr: 'Mes Animaux',
+    ru: 'Мои Питомцы',
+  },
+  viewAll: {
+    en: 'View all',
+    he: 'הצג הכל',
+    ar: 'عرض الكل',
+    es: 'Ver todo',
+    fr: 'Voir tout',
+    ru: 'Все',
   },
 };
 
@@ -731,6 +804,50 @@ export default function Dashboard() {
             </LuxuryCard>
           </div>
 
+          {/* ── Quick Actions grid (mockup parity) ──────────────────────────
+                Every tile wires to an existing, live route. Icon-led, gold-on-
+                white, 4-up on phones. Mirrors the CEO's approved home mockup. */}
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5, delay: 0.46 }}
+            className="mb-6"
+          >
+            <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={goldText}>
+              {tx('quickActions', language)}
+            </p>
+            <div className="grid grid-cols-4 gap-2.5 sm:gap-3">
+              {[
+                { key: 'pawFinder', label: tx('pawFinder', language), href: '/paw-finder', Icon: Search },
+                { key: 'walletTopUp', label: tx('walletTopUp', language), href: '/my-wallet', Icon: Wallet },
+                { key: 'buyPackage', label: tx('buyPackage', language), href: '/packages', Icon: Package },
+                { key: 'academy', label: tx('academy', language), href: '/academy', Icon: GraduationCap },
+                { key: 'shop', label: tx('shop', language), href: '/shop', Icon: ShoppingBag },
+                { key: 'sendGift', label: tx('sendGift', language), href: '/gift-cards', Icon: Gift },
+                { key: 'myPets', label: tx('myPets', language), href: '/pets', Icon: PawPrint },
+                { key: 'loyalty', label: tx('viewLoyalty', language), href: '/loyalty/benefits', Icon: BadgeCheck },
+              ].map((tile) => (
+                <button
+                  key={tile.key}
+                  onClick={() => setLocation(tile.href)}
+                  data-testid={`quick-${tile.key}`}
+                  className="flex flex-col items-center justify-center gap-1.5 py-3.5 rounded-2xl transition-all hover:scale-[1.03] active:scale-95"
+                  style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow }}
+                >
+                  <span
+                    className="flex items-center justify-center rounded-full"
+                    style={{ width: 38, height: 38, background: 'rgba(212,175,55,0.10)' }}
+                  >
+                    <tile.Icon className="w-[18px] h-[18px]" style={{ color: '#B8902F' }} />
+                  </span>
+                  <span className="text-[10px] sm:text-[11px] font-medium text-center leading-tight px-1" style={{ color: '#111111' }}>
+                    {tile.label}
+                  </span>
+                </button>
+              ))}
+            </div>
+          </motion.div>
+
           {/* ── Loyalty Credits Section ─────────────────────────────────── */}
           <div className="space-y-4 mb-6">
             <LoyaltyWinbackCard />
@@ -1019,7 +1136,7 @@ export default function Dashboard() {
               </p>
               <div className="flex gap-3 overflow-x-auto pb-1">
                 {activityData.pets.map((pet) => (
-                  <Link key={pet.id} href="/sitter-suite">
+                  <Link key={pet.id} href="/pets">
                     <div
                       className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity"
                       style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90 }}
@@ -1038,7 +1155,7 @@ export default function Dashboard() {
                     </div>
                   </Link>
                 ))}
-                <Link href="/my-account">
+                <Link href="/pets">
                   <div
                     className="flex-shrink-0 rounded-2xl overflow-hidden cursor-pointer hover:opacity-80 transition-opacity flex flex-col items-center justify-center"
                     style={{ background: '#FFFFFF', border: cardBorder, boxShadow: cardShadow, minWidth: 90, height: 120 }}
@@ -1061,15 +1178,28 @@ export default function Dashboard() {
               transition={{ duration: 0.5, delay: 0.77 }}
               className="mb-5"
             >
-              <p className="text-[10px] tracking-[0.25em] uppercase font-medium mb-3 text-center" style={goldText}>
-                {language === 'he' ? 'הזמנות קרובות' : 'Upcoming Bookings'}
-              </p>
+              <div className="flex items-center justify-between mb-3 px-1">
+                <p className="text-[10px] tracking-[0.25em] uppercase font-medium" style={goldText}>
+                  {language === 'he' ? 'הזמנות קרובות' : 'Upcoming Bookings'}
+                </p>
+                <button
+                  onClick={() => setLocation('/bookings')}
+                  data-testid="bookings-view-all"
+                  className="flex items-center gap-0.5 text-[10px] tracking-wide font-medium"
+                  style={goldText}
+                >
+                  {tx('viewAll', language)}
+                  <ChevronRight className="w-3 h-3" />
+                </button>
+              </div>
               <div className="rounded-2xl overflow-hidden" style={{ border: cardBorder, boxShadow: cardShadow }}>
                 {activityData.upcomingBookings.slice(0, 3).map((booking, idx) => (
-                  <div
+                  <button
                     key={booking.id}
-                    className="px-5 py-3.5 flex items-center gap-3"
-                    style={{ background: '#FFFFFF', borderBottom: idx < activityData.upcomingBookings.length - 1 ? '1px solid rgba(229,231,235,1)' : 'none' }}
+                    onClick={() => setLocation('/bookings')}
+                    data-testid={`booking-row-${booking.id}`}
+                    className="w-full px-5 py-3.5 flex items-center gap-3 text-left transition-colors hover:bg-[rgba(212,175,55,0.04)]"
+                    style={{ background: '#FFFFFF', borderBottom: idx < Math.min(activityData.upcomingBookings.length, 3) - 1 ? '1px solid rgba(229,231,235,1)' : 'none' }}
                   >
                     <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#D4AF37' }} />
                     <div className="flex-1 min-w-0">
@@ -1085,7 +1215,8 @@ export default function Dashboard() {
                         ₪{(booking.amountCents / 100).toFixed(0)}
                       </p>
                     )}
-                  </div>
+                    <ChevronRight className="w-3.5 h-3.5 flex-shrink-0" style={goldText} />
+                  </button>
                 ))}
               </div>
             </motion.div>
@@ -1188,6 +1319,8 @@ export default function Dashboard() {
               </span>
             </button>
           </motion.div>
+
+          <FollowUsBar />
 
           <motion.div
             initial={{ opacity: 0 }}

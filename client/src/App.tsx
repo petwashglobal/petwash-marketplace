@@ -176,8 +176,6 @@ const PetOnboardingShell = lazy(() => import("@/pages/onboarding/PetOnboardingSh
 const PetCarePlanner = lazy(() => import("@/pages/PetCarePlanner"));
 const EnterpriseFeaturesShowcase = lazy(() => import("@/pages/EnterpriseFeaturesShowcase"));
 const PetWashCircle = lazy(() => import("@/pages/PetWashCircle"));
-// DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use)
-// const PlushLab = lazy(() => import("@/pages/PlushLab"));
 const Settings = lazy(() => import("@/pages/Settings"));
 const SecuritySettings = lazy(() => import("@/pages/SecuritySettings"));
 const SecurityStatus = lazy(() => import("@/pages/SecurityStatus"));
@@ -204,6 +202,7 @@ const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
 const PrestigePassWallet = lazy(() => import("@/pages/PrestigePassWallet"));
+const PrestigeHome = lazy(() => import("@/pages/PrestigeHome"));
 const StaffScan = lazy(() => import("@/pages/staff/StaffScan"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
@@ -522,6 +521,7 @@ const TrackMyPetLive = lazy(() => import("@/pages/WalkTracking"));
 
 // Provider OS — Full Operating System
 const ProviderOS = lazy(() => import("@/pages/provider-os/ProviderOS"));
+const ProviderHome = lazy(() => import("@/pages/ProviderHome"));
 
 // E-Signature System
 
@@ -1028,6 +1028,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
 
+        {/* Luxury customer (Prestige) home — dark rollout, reachable for preview */}
+        <Route path="/prestige/home">
+          {() => (
+            <RequireAuth>
+              <PrestigeHome />
+            </RequireAuth>
+          )}
+        </Route>
+
         {/* PetWash Privilege - Public registration */}
         <Route path="/privilege">
           {() => <PrivilegeSignup language={language} onLanguageChange={handleLanguageChange} />}
@@ -1517,12 +1526,6 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* DISABLED: PlushLab - Pet Avatar Creator (frozen for now, keep for future use) */}
-        {/* <Route path="/plush-lab">
-          <Suspense fallback={<PageLoader />}>
-            <PlushLab />
-          </Suspense>
-        </Route> */}
         
         {/* Premium Meeting Scheduler - 7-Star Experience */}
         <Route path="/meetings">
@@ -1787,6 +1790,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                   <ProviderOS />
                 </Suspense>
               </AppTermsGate>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* Luxury provider home — dark rollout, reachable for preview */}
+        <Route path="/provider/home">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderHome />
+              </Suspense>
             </RoleProtectedRoute>
           )}
         </Route>

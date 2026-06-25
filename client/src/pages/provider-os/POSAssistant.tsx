@@ -66,7 +66,7 @@ Provider context:
 - Active bookings: ${active}
 - Pending payout: ₪${(pending / 100).toFixed(2)}
 - Platform: PetWash™ Israel (Hebrew/RTL market, ILS currency, VAT 18%)
-- Services: PetSitter, Walk My Pet, PetWash, Academy
+- Services: PetSitter, Walk My Pet, Academy (PetTrek coming soon)
 
 Be helpful, concise, and practical. Answer in English unless the user writes in Hebrew. Focus on actionable advice for Israeli pet care providers.`;
   };

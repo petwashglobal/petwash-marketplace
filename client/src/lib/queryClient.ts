@@ -2,7 +2,7 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAppCheckToken } from "./firebase";
 import { getApiUrl } from "./apiConfig";
 
-async function getFirebaseBearerToken(): Promise<string | null> {
+export async function getFirebaseBearerToken(): Promise<string | null> {
   try {
     const { auth } = await import("./firebase");
     const user = auth?.currentUser;

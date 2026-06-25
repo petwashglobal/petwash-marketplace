@@ -129,6 +129,7 @@ import marketplaceRoutes from "./routes/marketplace";
 import identityServiceRoutes from "./routes/identity-service";
 import nayaxWebhooksRoutes from "./routes/nayax-webhooks";
 import nayaxMonyxEventsRoutes from "./routes/nayax-monyx-events";
+import nayaxCortinaRoutes from "./routes/nayax-cortina";
 // import webauthnRoutes from "./routes/webauthn"; // v1 legacy — disabled, client uses /api/webauthn/* (inline handlers)
 import gpsTrackingRoutes from "./routes/gps-tracking";
 import fcmRoutes from "./routes/fcm";
@@ -6714,15 +6715,19 @@ self.addEventListener('notificationclick', (event) => {
   // Payment itself remains the real gate (Nayax) + paymentLimiter throttles abuse.
   app.post('/api/multi-service-gift', optFirebase, paymentLimiter, async (req, res) => {
     try {
-      // SECURITY: Nayax payment must be confirmed before creating any gift card.
-      // Until NAYAX_API_KEY is configured in env, gate this endpoint the same way
-      // /api/gift-cards/purchase does — return 503 so the client surfaces a clear message.
-      const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;
-      if (!nayaxEnabled) {
-        return res.status(503).json({
+      // SECURITY 2026-06-25: this legacy route MINTED a full-value voucher WITHOUT
+      // taking payment — it only checked that Nayax env vars EXISTED, never charged,
+      // then returned the spendable publicCode. A free-money hole that arms the moment
+      // Nayax keys land. The canonical, payment-VERIFIED eGift rail is now SUMIT:
+      //   POST /api/payments/sumit/begin (EGIFT_* SKUs) → signed sumit-webhook →
+      //   PurchaseActivationService EGIFT branch creates the recipient-bound voucher
+      //   ONLY after the charge is verified server-side.
+      // Disabled unless explicitly re-enabled; do NOT re-enable without two-phase pay-first.
+      if (process.env.LEGACY_MULTI_SERVICE_GIFT_ENABLED !== 'true') {
+        return res.status(410).json({
           success: false,
-          error: 'Payment gateway temporarily unavailable. Please contact support.',
-          developerNote: 'NAYAX_API_KEY and NAYAX_MERCHANT_ID required in environment variables',
+          error: 'This gift checkout has moved — please use the in-app eGift checkout.',
+          developerNote: 'Disabled 2026-06-25 (minted value with no verified payment). Canonical rail: /api/payments/sumit/begin EGIFT_* → sumit-webhook → PurchaseActivationService.',
         });
       }
       const parseResult = multiServiceGiftSchema.safeParse({
@@ -11330,8 +11335,10 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/finance', validateFirebaseToken, apiLimiter, financeRoutes.default);
 
   // Phase 12.20 — Expansion Decision & Board Pack
+  // SECURITY 2026-06-25: board-confidential P&L / station economics / treasury flags
+  // were anonymous-reachable (apiLimiter only). Gate with admin auth.
   const expansionRoutes = await import('./routes/expansion');
-  app.use('/api/expansion', apiLimiter, expansionRoutes.default);
+  app.use('/api/expansion', validateFirebaseToken, requireAdmin, adminLimiter, expansionRoutes.default);
 
   // Phase 12.21 — Intervention & Decision Tracking
   // Phase 12.22 — Outcome Measurement (outcomes/summary endpoint inside this router)
@@ -11608,7 +11615,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/enterprise/franchise', validateFirebaseToken, adminLimiter, requireAdminMfa, enterpriseFranchiseRoutes);
   
   // Logistics & Fleet Management routes (Field Operations - Phase 2)
-  app.use('/api/logistics', optionalFirebaseToken, apiLimiter, logisticsRoutes);
+  app.use('/api/logistics', validateFirebaseToken, apiLimiter, logisticsRoutes); // SECURITY 2026-06-25: was optionalFirebaseToken → anonymous reads+writes; now requires auth
   
   // Chat History routes (PostgreSQL-backed AI chat history - Nov 2025)
   const chatHistoryRoutes = await import('./routes/chat-history');
@@ -12086,6 +12093,12 @@ self.addEventListener('notificationclick', (event) => {
   // Endpoint: POST /api/webhooks/nayax-events
   // Identity link: POST /api/webhooks/nayax-events/identity-link
   app.use('/api/webhooks', nayaxMonyxEventsRoutes);
+
+  // Nayax Cortina (StaticQR) PRE-PAID redemption at the K9000 bay. DARK until
+  // NAYAX_CORTINA_ENABLED=true. CSRF-exempt via the /api/webhooks/ prefix.
+  //   POST /api/webhooks/nayax/cortina/authorize  — verify pre-paid credit on a bay
+  //   POST /api/webhooks/nayax/cortina/settlement — debit our ledger on vend (no card)
+  app.use('/api/webhooks/nayax/cortina', nayaxCortinaRoutes);
   
   // Section 14 Finance Guards — enforce transaction type integrity on all finance mutations
   // Block: payout without providerId, egift with providerId, direct_sale with payout, negative wallet, missing VAT
@@ -13811,7 +13824,7 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Contact Form Submission Endpoint
-  app.post('/api/contact', async (req, res) => {
+  app.post('/api/contact', apiLimiter, async (req, res) => { // SECURITY 2026-06-25: was unthrottled + CSRF-exempt → spam/DoS amplifier
     try {
       const { name, email, phone, subject, message, language } = req.body;
       
@@ -15809,7 +15822,14 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Biometric Authentication Monitoring
   app.post('/api/monitoring/biometric/event', requireAuth, async (req, res) => {
     try {
-      await biometricSecurityMonitor.recordAuthenticationEvent(req.body);
+      // Identity from the verified token, NOT the body — a body-supplied userId let
+      // any user forge another user's auth-audit records (7-yr compliance trail).
+      await biometricSecurityMonitor.recordAuthenticationEvent({
+        ...req.body,
+        userId: (req as any).firebaseUser?.uid,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[BiometricMonitor] Record event failed', error);
@@ -15819,6 +15839,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/biometric/insights/:userId', requireAuth, async (req, res) => {
     try {
+      // Self-only: was IDOR — any authed user could read any user's auth insights.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const insights = await biometricSecurityMonitor.getSecurityInsights(req.params.userId);
       res.json(insights);
     } catch (error: any) {
@@ -15840,6 +15862,8 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Loyalty Activity & Fraud Monitoring
   app.get('/api/monitoring/loyalty/activity/:userId', requireAuth, async (req, res) => {
     try {
+      // Self-only: was IDOR — any authed user could read any user's loyalty activity.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const activity = await loyaltyActivityMonitor.trackUserActivity(req.params.userId);
       res.json(activity);
     } catch (error: any) {
@@ -15872,7 +15896,15 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // OAuth Certificate Monitoring
   app.post('/api/monitoring/oauth/consent', requireAuth, async (req, res) => {
     try {
-      await oauthCertificateMonitor.recordOAuthConsent(req.body);
+      // Identity from the verified token, NOT the body — body userId/email were
+      // spoofable, letting any user fabricate/suppress another user's consent record.
+      await oauthCertificateMonitor.recordOAuthConsent({
+        ...req.body,
+        userId: (req as any).firebaseUser?.uid,
+        email: (req as any).firebaseUser?.email ?? req.body?.email,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      });
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[OAuthMonitor] Record consent failed', error);
@@ -15893,6 +15925,9 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/oauth/history/:userId', requireAuth, async (req, res) => {
     try {
+      // Self-only: was IDOR — any authed user could read any user's OAuth consent
+      // history (email, IP, user-agent) by changing the :userId path param.
+      if (req.params.userId !== (req as any).firebaseUser?.uid) return res.status(403).json({ error: 'forbidden' });
       const history = await oauthCertificateMonitor.getUserConsentHistory(req.params.userId);
       res.json(history);
     } catch (error: any) {
@@ -15904,7 +15939,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Notification Consent Management
   app.post('/api/monitoring/notifications/consent', requireAuth, async (req, res) => {
     try {
-      await notificationConsentManager.recordNotificationConsent(req.body);
+      // Identity from the verified token, NOT the body (anti-spoof, same class as above).
+      await notificationConsentManager.recordNotificationConsent({
+        ...req.body,
+        userId: (req as any).firebaseUser?.uid,
+      });
       res.json({ success: true });
     } catch (error: any) {
       logger.error('[NotificationConsent] Record consent failed', error);
@@ -16053,8 +16092,27 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         metadata: errorReport.metadata,
       });
 
-      // You can optionally store critical errors in database
-      // await db.insert(errorLogs).values(errorReport);
+      // SELF-AWARE client faults (2026-06-24): route genuine client crashes into
+      // the fault pipeline → GCP Error Reporting (file:line) + admin_alert
+      // (Octopus Control Tower) + alert. This is what makes a white-screen /
+      // crash on a customer's phone visible to us automatically. Filter benign
+      // browser noise (ResizeObserver, cross-origin "Script error", transient
+      // network / chunk-load blips) so we never alert on non-actionable events;
+      // reportFault also dedupes + throttles per signature.
+      const clientMsg = String(errorReport?.message || '');
+      const isNoise = /ResizeObserver loop|^Script error\.?$|Load failed|Failed to fetch|NetworkError|ChunkLoadError|Loading chunk [\w-]+ failed/i.test(clientMsg);
+      if (clientMsg && !isNoise) {
+        const clientErr: any = new Error(clientMsg);
+        clientErr.name = 'ClientError';
+        clientErr.stack = errorReport?.stack || clientMsg;
+        void import('./lib/faultReporter')
+          .then((m) => m.reportFault(clientErr, {
+            source: `client:${errorReport?.context || 'app'}`,
+            url: errorReport?.url,
+            traceId: errorReport?.userId,
+          }))
+          .catch(() => { /* reporter must never break the log endpoint */ });
+      }
 
       res.json({ success: true });
     } catch (error: any) {
@@ -16281,9 +16339,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // ==================================================================
 
   // Get all wash schedules for a user
-  app.get('/api/pet-care/wash-schedules', async (req, res) => {
+  app.get('/api/pet-care/wash-schedules', requireAuth, async (req, res) => {
     try {
-      // Mock data for now - will integrate with database in production
+      // SECURITY 2026-06-25: was anonymous + returns MOCK data ("Buddy", fixed date,
+      // fake weather). Gated with requireAuth so it's not a public fake-data surface;
+      // TODO replace the mock body with real per-user schedules before launch.
       const mockSchedules = [
         {
           id: 1,
@@ -16309,8 +16369,11 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   });
 
   // Schedule a wash with ADVANCED AI decision engine (weather + pollen + coat condition)
-  app.post('/api/pet-care/schedule-wash', async (req, res) => {
+  app.post('/api/pet-care/schedule-wash', requireAuth, async (req, res) => {
     try {
+      // SECURITY 2026-06-25: was anonymous + fabricates pollen via Math.random and a
+      // 'Pet' placeholder ("mock — will save in production"). Gated with requireAuth;
+      // TODO replace mock AI body with the real engine + DB persistence before launch.
       const { petId, date, city, coatCondition = 'good', daysSinceLastWash = 7 } = req.body;
 
       if (!petId || !date || !city) {
@@ -17128,6 +17191,16 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       ip: req.ip,
       status,
     });
+
+    // SELF-AWARE faults (2026-06-24): every 5xx → GCP Error Reporting (with the
+    // file:line) + a deduped admin_alert (Octopus Control Tower) + alert to
+    // Nir+Ido. Fire-and-forget + fully guarded — NEVER blocks the response.
+    // (4xx are client errors and are intentionally not reported.)
+    if (status >= 500) {
+      void import('./lib/faultReporter')
+        .then((m) => m.reportFault(err, { source: 'express', method: req.method, url: req.url, traceId: String(traceId), statusCode: status }))
+        .catch(() => { /* the reporter must never break the error path */ });
+    }
 
     if (!res.headersSent) {
       res.status(status).json({

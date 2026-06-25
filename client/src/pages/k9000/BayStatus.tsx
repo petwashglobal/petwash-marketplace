@@ -220,7 +220,7 @@ export default function K9000BayStatus() {
             </p>
             <Button
               className="luxury-btn-primary w-full mt-2"
-              onClick={() => setLocation('/k9000/redeem')}
+              onClick={() => setLocation('/wallet/redeem')}
               data-testid="button-redeem-wash"
             >
               <Waves className="h-4 w-4 mr-2" />

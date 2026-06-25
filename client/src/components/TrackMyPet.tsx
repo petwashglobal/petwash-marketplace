@@ -167,7 +167,7 @@ export default function TrackMyPet() {
 
           {/* Call to Action */}
           <div className="space-y-2">
-            <Link href="/auth/login">
+            <Link href="/login">
               <Button className="w-full bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 hover:from-purple-700 hover:via-blue-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-lg py-6">
                 <MapPin className="h-5 w-5 mr-2" />
                 {isHebrew ? '🔐 התחבר לצפייה במעקב חי' : '🔐 Login to View Live Tracking'}

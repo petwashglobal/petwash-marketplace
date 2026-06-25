@@ -418,11 +418,14 @@ export abstract class BaseLuxuryBookingEngine {
    * Calculate loyalty tier discount
    * Progressive: BRONZE 0%, SILVER 5%, GOLD 10%, PLATINUM 15%, DIAMOND 20%
    */
-  private calculateLoyaltyDiscount(subtotal: number, loyaltyUser: LoyaltyUser | null): number {
-    if (!loyaltyUser) return 0;
-
-    const discountPercent = loyaltyUser.discount; // From loyalty service
-    return (subtotal * discountPercent) / 100;
+  private calculateLoyaltyDiscount(_subtotal: number, _loyaltyUser: LoyaltyUser | null): number {
+    // POLICY 2026-06-25 (hard rule): loyalty/tier discounts apply to K9000-OWNED
+    // washes ONLY (capped 10% via memberDiscount.ts, applied server-side in
+    // payments-sumit). They must NEVER apply to JV marketplace platforms
+    // (PetSitter/Walk/Academy/PetTrek) — those carry a 15% provider commission and
+    // the discount was being funded out of the provider's payout. This base engine
+    // serves Walk + PetTrek, so it returns 0. (Sitter already hard-codes 0.)
+    return 0;
   }
 
   /**

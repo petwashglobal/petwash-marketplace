@@ -19,6 +19,7 @@ import {
 } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 
 const router = express.Router();
 
@@ -339,11 +340,18 @@ router.post('/nayax-events',
 // ─── Identity Link Endpoint ───────────────────────────────────────────────────
 // Called when a PetWash user links their Monyx account or phone number.
 // Maps future Nayax events to this PetWash UID for loyalty award.
-router.post('/nayax-events/identity-link', async (req, res) => {
+router.post('/nayax-events/identity-link', validateFirebaseToken, async (req, res) => {
   try {
-    const { petwashUserId, monyxCustomerId, phoneNumber } = req.body;
-    if (!petwashUserId || (!monyxCustomerId && !phoneNumber)) {
-      return res.status(400).json({ error: 'petwashUserId + monyxCustomerId or phoneNumber required' });
+    // SECURITY 2026-06-25: this is a USER action (link MY Monyx/phone), but it had
+    // NO auth and sat on the CSRF-exempt /api/webhooks prefix — so anyone could POST
+    // a victim's phone/Monyx id with their OWN petwashUserId and steal the victim's
+    // historical Nayax loyalty points. Now requires the user's Firebase token and the
+    // linked UID is FORCED to that token (body petwashUserId is ignored).
+    const petwashUserId = (req as any).firebaseUser?.uid;
+    if (!petwashUserId) return res.status(401).json({ error: 'unauthenticated' });
+    const { monyxCustomerId, phoneNumber } = req.body;
+    if (!monyxCustomerId && !phoneNumber) {
+      return res.status(400).json({ error: 'monyxCustomerId or phoneNumber required' });
     }
 
     const phoneHash = phoneNumber

@@ -216,6 +216,45 @@ async function loadAlerts() {
   return { wired: true, total: result.value.length, alerts: result.value };
 }
 
+// ─── System faults (live runtime errors captured by faultReporter) ────────────
+// Reads the canonical admin_alerts table for category='system' faults written by
+// server/lib/faultReporter.ts (5xx handler + client /api/errors/log). Surfaces
+// the "line of fault" + first-seen→last-seen so the CEO SEES live crashes in the
+// Octopus Control Tower instead of them being buried in Cloud Run logs. Read-only.
+async function loadSystemFaults() {
+  const result = await safeQuery(async () => {
+    const rows = await db.execute(sql`
+      SELECT
+        a.id,
+        a.severity,
+        a.status,
+        a.title,
+        a.message,
+        a.source,
+        a.metadata ->> 'faultLine'  AS "faultLine",
+        a.created_at  AS "firstSeenAt",
+        a.updated_at  AS "lastSeenAt"
+      FROM admin_alerts a
+      WHERE a.category = 'system'
+        AND a.status IN ('open', 'acknowledged')
+      ORDER BY
+        CASE a.severity
+          WHEN 'critical' THEN 0
+          WHEN 'warning'  THEN 1
+          ELSE 2
+        END,
+        a.updated_at DESC
+      LIMIT 50
+    `);
+    return (rows as any).rows;
+  }, 'loadSystemFaults');
+
+  if (!result.ok) {
+    return notWired('admin_alerts table not reachable');
+  }
+  return { wired: true, total: result.value.length, faults: result.value };
+}
+
 // ─── Activity feed (recent payments + recent applications, merged) ────────────
 async function loadActivity() {
   const since = new Date(Date.now() - ms.day);
@@ -340,11 +379,12 @@ async function loadAgreements() {
 
 // ─── GET /api/admin/brain/summary ────────────────────────────────────────────
 router.get('/summary', async (_req: Request, res: Response) => {
-  const [stations, revenue, approvals, alerts, activity, agreements] = await Promise.all([
+  const [stations, revenue, approvals, alerts, systemFaults, activity, agreements] = await Promise.all([
     loadStations(),
     loadRevenue(),
     loadApprovals(),
     loadAlerts(),
+    loadSystemFaults(),
     loadActivity(),
     loadAgreements(),
   ]);
@@ -354,6 +394,7 @@ router.get('/summary', async (_req: Request, res: Response) => {
   if (!('wired' in revenue) || revenue.wired === false) gaps.push('revenue');
   if (!('wired' in approvals) || approvals.wired === false) gaps.push('approvals');
   if (!('wired' in alerts) || alerts.wired === false) gaps.push('alerts');
+  if (!('wired' in systemFaults) || systemFaults.wired === false) gaps.push('systemFaults');
   if (!('wired' in activity) || activity.wired === false) gaps.push('activity');
   if (!('wired' in agreements) || agreements.wired === false) gaps.push('agreements');
 
@@ -364,6 +405,7 @@ router.get('/summary', async (_req: Request, res: Response) => {
     revenue,
     approvals,
     alerts,
+    systemFaults,
     activity,
     agreements,
   });

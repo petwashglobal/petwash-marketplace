@@ -846,7 +846,9 @@ router.get('/:voucherId/info', async (req, res) => {
         initialAmount: eVouchers.initialAmount,
         status:        eVouchers.status,
         expiresAt:     eVouchers.expiresAt,
-        recipientEmail: eVouchers.recipientEmail,
+        // recipientEmail intentionally NOT selected (audit 2026-06-24 finding #16):
+        // this is a PUBLIC unauthenticated endpoint; returning it enabled email
+        // enumeration by guessing voucher ids.
       })
       .from(eVouchers)
       .where(eq(eVouchers.id, voucherId));
@@ -860,7 +862,6 @@ router.get('/:voucherId/info', async (req, res) => {
       amountIls:     parseFloat(voucher.initialAmount),
       status:        voucher.status,
       expired:       !!expired,
-      recipientEmail: voucher.recipientEmail,
     });
   } catch (err: any) {
     logger.error('[E-Gift] info fetch error', { error: err.message });

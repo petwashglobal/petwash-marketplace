@@ -51,8 +51,20 @@ ENV NPM_CONFIG_FETCH_RETRIES=5 \
     NPM_CONFIG_AUDIT=false \
     NPM_CONFIG_FUND=false
 
-# Install dumb-init for proper signal handling (SIGTERM on Cloud Run scale-down)
-RUN apt-get update && apt-get install -y --no-install-recommends dumb-init \
+# dumb-init for signal handling (SIGTERM on Cloud Run scale-down) + postgresql-client
+# for the nightly pg_dump → GCS backup (gcsBackupService). The Debian default client
+# is v15, which refuses to dump a newer Neon server ("server version mismatch"); pull
+# postgresql-client-18 from the official PGDG repo. The recovered production DB is
+# Neon Postgres 18 — pg_dump 17 REFUSES a PG18 server ("server version mismatch"),
+# so the client must be >= the server major (18 also dumps older servers fine).
+# Without this, the backup cron alerts "pg_dump binary not found" / version-mismatch
+# and we keep NO fresh independent backup (the 2026-06-25 data-loss lesson).
+RUN apt-get update && apt-get install -y --no-install-recommends dumb-init curl ca-certificates gnupg \
+    && install -d /usr/share/postgresql-common/pgdg \
+    && curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc \
+    && echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt bookworm-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
+    && apt-get update && apt-get install -y --no-install-recommends postgresql-client-18 \
+    && apt-get purge -y --auto-remove curl gnupg \
     && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # Copy only what the server needs at runtime

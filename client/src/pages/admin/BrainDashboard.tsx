@@ -9,7 +9,7 @@
  * Single fetch:
  *   GET /api/admin/brain/summary
  *
- * Six panels: stations · revenue · approvals · alerts · activity · agreements
+ * Panels: stations · revenue · approvals · alerts · system faults · activity · agreements
  *
  * Auth gate is server-side (requireBrainAccess). The page itself is wrapped
  * in <AdminRouteGuard> in App.tsx — that's the client-side Firebase auth
@@ -21,7 +21,7 @@ import { Layout } from '@/components/Layout';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { getApiUrl } from '@/lib/apiConfig';
 import {
-  Activity, AlertTriangle, Banknote, FileSignature, MapPin,
+  Activity, AlertTriangle, Banknote, Bug, FileSignature, MapPin,
   Server, ShieldCheck, Users, Loader2, RefreshCw,
 } from 'lucide-react';
 
@@ -100,6 +100,21 @@ interface AlertsPanel {
   }>;
 }
 
+interface SystemFaultsPanel {
+  total: number;
+  faults: Array<{
+    id: number;
+    severity: 'info' | 'warning' | 'critical';
+    status: string;
+    title: string;
+    message: string;
+    source: string;
+    faultLine: string | null;
+    firstSeenAt: string;
+    lastSeenAt: string;
+  }>;
+}
+
 interface ActivityPanel {
   sources: { payments: number; applications: number };
   events: Array<{
@@ -138,6 +153,7 @@ interface BrainSummary {
   revenue: Wired<RevenuePanel>;
   approvals: Wired<ApprovalsPanel>;
   alerts: Wired<AlertsPanel>;
+  systemFaults: Wired<SystemFaultsPanel>;
   activity: Wired<ActivityPanel>;
   agreements: Wired<AgreementsPanel>;
 }
@@ -345,6 +361,29 @@ export default function BrainDashboard() {
             </PanelShell>
           </div>
 
+          {/* System faults — live runtime errors captured by faultReporter */}
+          <PanelShell
+            title="System Faults (live)"
+            icon={Bug}
+            right={
+              data.systemFaults.wired ? (
+                data.systemFaults.total === 0 ? (
+                  <span className="text-xs text-emerald-600 font-semibold">All clear · no active faults</span>
+                ) : (
+                  <span className="text-xs text-red-600 font-semibold">
+                    {data.systemFaults.total} active fault{data.systemFaults.total === 1 ? '' : 's'}
+                  </span>
+                )
+              ) : undefined
+            }
+          >
+            {data.systemFaults.wired ? (
+              <SystemFaultsList panel={data.systemFaults} />
+            ) : (
+              <NotWiredYet reason={data.systemFaults.reason} />
+            )}
+          </PanelShell>
+
           {/* Activity feed */}
           <PanelShell title="Live Activity (last 24h)" icon={Activity}>
             {data.activity.wired ? (
@@ -481,6 +520,35 @@ function AlertsList({ panel }: { panel: AlertsPanel }) {
           </div>
           <div className="text-xs mt-1 opacity-80">{a.message}</div>
           <div className="text-[10px] mt-1 opacity-60">station #{a.stationId} · {ago(a.triggeredAt)}</div>
+        </li>
+      ))}
+    </ul>
+  );
+}
+
+function SystemFaultsList({ panel }: { panel: SystemFaultsPanel }) {
+  if (panel.faults.length === 0) {
+    return (
+      <p className="text-sm text-emerald-700 bg-emerald-50/60 border border-emerald-100 rounded-lg px-3 py-2">
+        No active runtime faults. Server 5xx errors and client crashes land here automatically.
+      </p>
+    );
+  }
+  return (
+    <ul className="space-y-2">
+      {panel.faults.map(f => (
+        <li key={f.id} className={`rounded-lg border px-3 py-2 ${sev(f.severity)}`}>
+          <div className="flex items-center justify-between gap-2">
+            <div className="font-semibold text-xs">{f.title}</div>
+            <span className="text-[10px] uppercase tracking-wider opacity-70">{f.source}</span>
+          </div>
+          <div className="text-xs mt-1 opacity-80 whitespace-pre-line">{f.message}</div>
+          {f.faultLine && (
+            <div className="text-[10px] mt-1 font-mono opacity-70 break-all">↳ {f.faultLine}</div>
+          )}
+          <div className="text-[10px] mt-1 opacity-60">
+            first seen {ago(f.firstSeenAt)} · last seen {ago(f.lastSeenAt)}
+          </div>
         </li>
       ))}
     </ul>

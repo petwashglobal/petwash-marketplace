@@ -8,6 +8,7 @@ import { syncUserToHubSpot, trackHubSpotEvent } from '../hubspot';
 import multer from 'multer';
 import admin from '../lib/firebase-admin';
 import crypto from 'crypto';
+import { encryptField } from '../services/secretFieldCrypto';
 
 const router = Router();
 
@@ -187,7 +188,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
         ${address || null},
         ${JSON.stringify(parsedPets)}::jsonb,
         ${idType || null},
-        ${idNumber || null},
+        ${idNumber ? encryptField(String(idNumber)) : null},
         ${idDocumentUrl},
         ${referralSource || null},
         ${referralCode || null},
@@ -313,7 +314,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
               <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">City</td><td style="padding:8px 0">${city || '—'}, ${country || 'Israel'}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Date of Birth</td><td style="padding:8px 0">${dob || '—'}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Pets</td><td style="padding:8px 0">${petsDisplay}</td></tr>
-              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">ID Type</td><td style="padding:8px 0">${idType || '—'} ${idNumber ? `(${idNumber})` : ''}</td></tr>
+              <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">ID Type</td><td style="padding:8px 0">${idType || '—'} ${idNumber ? '(on file — encrypted)' : ''}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">ID Document</td><td style="padding:8px 0">${idDocumentUrl ? '✅ Uploaded' : '❌ Not uploaded'}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Referral</td><td style="padding:8px 0">${referralSource || '—'} ${referralCode ? `(code: ${referralCode})` : ''}</td></tr>
               <tr><td style="padding:8px 0;color:#6b7280;font-size:13px">Language</td><td style="padding:8px 0">${language || 'en'}</td></tr>
@@ -359,14 +360,15 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
 router.get('/check/:email', async (req: Request, res: Response) => {
   try {
     const { email } = req.params;
+    // SECURITY 2026-06-25: this endpoint is unauthenticated. It previously returned
+    // member_id + tier + status for any email → membership enumeration / PII leak.
+    // Return ONLY a boolean existence flag (the signup flow's only real need); no
+    // member_id/tier is exposed. (Rate-limited at mount.)
     const result = await db.execute(sql`
-      SELECT member_id, tier, status FROM privilege_members
+      SELECT 1 FROM privilege_members
       WHERE email = ${email.trim().toLowerCase()} LIMIT 1
     `);
-    if (result.rows && result.rows.length > 0) {
-      return res.json({ exists: true, member: result.rows[0] });
-    }
-    res.json({ exists: false });
+    res.json({ exists: !!(result.rows && result.rows.length > 0) });
   } catch (error) {
     res.status(500).json({ error: 'Check failed', errorCode: 'CHECK_FAILED' });
   }

@@ -25,6 +25,7 @@ import {
 } from '../../shared/schema';
 import { notificationPreferences } from '../../shared/schema-unified-platform';
 import { logger } from '../lib/logger';
+import { randomBytes } from 'crypto';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -184,11 +185,34 @@ export class CouponService {
       return { valid: false, errorCode: 'RATE_LIMITED', error: 'יותר מדי ניסיונות. נסה שוב מאוחר יותר.' };
     }
 
-    const [coupon] = await db
-      .select()
-      .from(coupons)
-      .where(eq(coupons.code, code.trim().toUpperCase()))
-      .limit(1);
+    // Resolve the code: it can be a UNIQUE PER-USER code (coupon_issuances.code)
+    // or a shared campaign/public code (coupons.code).
+    const normCode = code.trim().toUpperCase();
+    let coupon: any;
+    let boundIssuanceId: number | undefined;
+
+    const issByCode = await pool.query(
+      `SELECT * FROM coupon_issuances WHERE code = $1 LIMIT 1`,
+      [normCode],
+    );
+    if (issByCode.rows.length) {
+      const iss = issByCode.rows[0];
+      // ANTI-SPREAD: a unique per-user code belongs to exactly ONE user. If
+      // anyone else enters it (posted online / guessed / forwarded), block it
+      // and fraud-log — it can never work for a different account.
+      if (String(iss.user_id) !== String(userId)) {
+        await this.trackAttempt({ userId, ipAddress, deviceFingerprint, code, result: 'blocked', errorCode: 'CODE_NOT_YOURS' });
+        return { valid: false, errorCode: 'CODE_NOT_YOURS', error: 'קוד זה שייך לחשבון אחר ואינו ניתן לשיתוף' };
+      }
+      if (iss.is_active === false || iss.redeemed_at || (iss.expires_at && new Date(iss.expires_at) < new Date())) {
+        await this.trackAttempt({ userId, ipAddress, deviceFingerprint, code, result: 'invalid', errorCode: 'CODE_USED_OR_EXPIRED' });
+        return { valid: false, errorCode: 'CODE_USED_OR_EXPIRED', error: 'הקוד כבר נוצל או שפג תוקפו' };
+      }
+      boundIssuanceId = iss.id;
+      [coupon] = await db.select().from(coupons).where(eq(coupons.id, iss.coupon_id)).limit(1);
+    } else {
+      [coupon] = await db.select().from(coupons).where(eq(coupons.code, normCode)).limit(1);
+    }
 
     if (!coupon) {
       await this.trackAttempt({ userId, ipAddress, deviceFingerprint, code, result: 'invalid', errorCode: 'COUPON_NOT_FOUND' });
@@ -236,10 +260,11 @@ export class CouponService {
       return { valid: false, errorCode: 'PER_USER_LIMIT_REACHED', error: 'כבר מימשת קופון זה' };
     }
 
-    // Issued coupon type — must have an issuance record
-    let issuanceId: number | undefined;
+    // Issued coupon type — must have an issuance record. If the user entered
+    // their unique per-user code we already resolved + bound the issuance above.
+    let issuanceId: number | undefined = boundIssuanceId;
     const couponType = (coupon as any).coupon_type ?? 'campaign';
-    if (couponType === 'issued') {
+    if (couponType === 'issued' && !issuanceId) {
       const iss = await pool.query(
         `SELECT id FROM coupon_issuances WHERE coupon_id = $1 AND user_id = $2 AND is_active = true AND redeemed_at IS NULL AND (expires_at IS NULL OR expires_at > NOW())`,
         [coupon.id, userId]
@@ -559,21 +584,51 @@ export class CouponService {
   // ADMIN OPERATIONS
   // ───────────────────────────────────────────
 
-  async issueToUser(couponId: number, userId: string, adminId: string, expiresAt?: Date): Promise<{ issuanceId: number }> {
+  /**
+   * Generate a unique, hard-to-guess, user-bound code, e.g. "BLACK-7F3A9K".
+   * Prefix derives from the campaign so it still reads as a real gift; the random
+   * suffix + DB unique index make it un-guessable and un-spreadable.
+   */
+  private genIssuanceCode(prefix: string): string {
+    const clean = (prefix || 'PW').toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6) || 'PW';
+    const rand = randomBytes(8).toString('base64').replace(/[^A-Z0-9]/gi, '').toUpperCase().slice(0, 6);
+    return `${clean}-${rand}`;
+  }
+
+  async issueToUser(couponId: number, userId: string, adminId: string, expiresAt?: Date): Promise<{ issuanceId: number; code: string | null }> {
     const existing = await pool.query(
-      `SELECT id FROM coupon_issuances WHERE coupon_id = $1 AND user_id = $2`,
+      `SELECT id, code FROM coupon_issuances WHERE coupon_id = $1 AND user_id = $2`,
       [couponId, userId]
     );
     if (existing.rows.length > 0) {
-      return { issuanceId: existing.rows[0].id };
+      return { issuanceId: existing.rows[0].id, code: existing.rows[0].code ?? null };
     }
-    const inserted = await pool.query(
-      `INSERT INTO coupon_issuances (coupon_id, user_id, issued_by_admin, expires_at)
-       VALUES ($1, $2, $3, $4) RETURNING id`,
-      [couponId, userId, adminId, expiresAt ?? null]
-    );
-    await this.writeAudit({ couponId, adminUserId: adminId, action: 'issued_to_user', details: { userId, expiresAt } });
-    return { issuanceId: inserted.rows[0].id };
+
+    // Prefix from the campaign so the personal code still feels like a gift.
+    const parent = await pool.query(`SELECT code, campaign_name FROM coupons WHERE id = $1`, [couponId]);
+    const prefix = parent.rows[0]?.campaign_name || parent.rows[0]?.code || 'PW';
+
+    // Mint a unique code (retry on the rare collision against the unique index).
+    let issuanceId: number | undefined;
+    let code: string | undefined;
+    for (let attempt = 0; attempt < 6 && issuanceId === undefined; attempt++) {
+      const candidate = this.genIssuanceCode(prefix);
+      try {
+        const inserted = await pool.query(
+          `INSERT INTO coupon_issuances (coupon_id, user_id, issued_by_admin, expires_at, code)
+           VALUES ($1, $2, $3, $4, $5) RETURNING id, code`,
+          [couponId, userId, adminId, expiresAt ?? null, candidate]
+        );
+        issuanceId = inserted.rows[0].id;
+        code = inserted.rows[0].code;
+      } catch (e: any) {
+        if (!/duplicate key|unique/i.test(String(e?.message))) throw e; // only retry on code collision
+      }
+    }
+    if (issuanceId === undefined) throw new Error('COUPON_CODE_MINT_FAILED');
+
+    await this.writeAudit({ couponId, adminUserId: adminId, action: 'issued_to_user', details: { userId, expiresAt, code } });
+    return { issuanceId, code: code ?? null };
   }
 
   async cloneCampaign(sourceCouponId: number, newCode: string, adminId: string): Promise<{ newCouponId: number }> {

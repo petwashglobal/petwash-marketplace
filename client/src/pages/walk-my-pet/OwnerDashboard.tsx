@@ -167,7 +167,7 @@ export default function WalkMyPetOwnerDashboard() {
               <Button
                 className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white shadow-lg hover:shadow-xl"
                 data-testid="button-track-live"
-                onClick={() => setLocation(`/walks/track/${activeWalk.bookingId}`)}
+                onClick={() => setLocation(`/walk-tracking/${activeWalk.bookingId}`)}
               >
                 <Navigation className="h-4 w-4" />
                 Track Live / עקוב
@@ -261,7 +261,7 @@ export default function WalkMyPetOwnerDashboard() {
                           size="sm"
                           className="gap-2 shadow-sm"
                           data-testid={`button-chat-${walk.bookingId}`}
-                          onClick={() => setLocation(`/chat/${walk.bookingId}`)}
+                          onClick={() => setLocation(`/booking-chat/${walk.bookingId}`)}
                         >
                           <MessageCircle className="h-4 w-4" />
                           Chat
@@ -270,7 +270,7 @@ export default function WalkMyPetOwnerDashboard() {
                           size="sm"
                           className="gap-2 bg-gradient-to-r from-amber-500 to-yellow-600 text-white"
                           data-testid={`button-track-${walk.bookingId}`}
-                          onClick={() => setLocation(`/walks/track/${walk.bookingId}`)}
+                          onClick={() => setLocation(`/walk-tracking/${walk.bookingId}`)}
                         >
                           <Navigation className="h-4 w-4" />
                           Track
