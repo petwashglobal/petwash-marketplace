@@ -243,7 +243,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirm, setConfirm] = useState('');
-  const [terms, setTerms] = useState(false);
+  // (legacy top `terms` checkbox removed — consent is agreedTerms + over18)
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
@@ -270,7 +270,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }, []);
 
   const requireTerms = () => {
-    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return false; }
+    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return false; }
     return true;
   };
 
@@ -339,7 +339,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function social(which: 'google' | 'apple' | 'facebook') {
-    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
+    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return; }
     setInlineError(null);
     setBusy(true);
     try {
@@ -380,7 +380,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   /** Server-mediated OAuth (Instagram / TikTok / etc.). The backend builds the
    *  authorize URL with provider secrets and we redirect the browser there. */
   async function socialExternal(which: 'instagram' | 'tiktok') {
-    if (!terms) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות' : 'Please accept the Terms and Privacy Policy to continue.'); return; }
+    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return; }
     setInlineError(null);
     setBusy(true);
     try {
@@ -438,7 +438,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     finally { setBusy(false); }
   }
 
-  const readyForSubmit = terms && !busy && (
+  const readyForSubmit = !busy && (
     method === 'mobile'
       ? phone.length > 4
       : email.length > 3 && password.length > 0
@@ -583,17 +583,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             )}
           </header>
 
-          {!sent && (
-            <label className="sl-terms sl-terms--quick">
-              <input type="checkbox" checked={terms} onChange={(e) => setTerms(e.target.checked)} />
-              <span>
-                {t.iAgree}
-                <a href="/terms" target="_blank" rel="noreferrer">{t.termsLink}</a>
-                {t.andTo}
-                <a href="/privacy-policy" target="_blank" rel="noreferrer">{t.privLink}</a>
-              </span>
-            </label>
-          )}
+          {/* Duplicate top consent removed (2026-06-24): it required a SEPARATE
+              `terms` checkbox on top of the labeled agreedTerms + over18 below,
+              so checking the visible bottom boxes left the CTA disabled = "dead
+              buttons" on iPhone. Consent is now the single labeled block lower
+              down (agreedTerms + over18 → consentOk). */}
 
           {inlineError && (
             <p className="sl-inlineError" role="alert">{inlineError}</p>
@@ -648,7 +642,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <label className="sl-label">{t.pwd}</label>
                 <div className="sl-inputWrap">
                   <FaLock className="sl-inputIcon" aria-hidden />
-                  <input className="sl-input sl-input--icon" type="password" autoComplete="new-password"
+                  <input className="sl-input sl-input--icon" type="password" name="password" id="signup-password" autoComplete="new-password"
                     value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
                 </div>
               </div>
@@ -656,7 +650,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <label className="sl-label">{t.pwd2}</label>
                 <div className="sl-inputWrap">
                   <FaLock className="sl-inputIcon" aria-hidden />
-                  <input className="sl-input sl-input--icon" type="password" autoComplete="new-password"
+                  <input className="sl-input sl-input--icon" type="password" name="confirm-password" id="signup-confirm-password" autoComplete="new-password"
                     value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
                 </div>
               </div>

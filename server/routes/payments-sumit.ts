@@ -47,12 +47,20 @@ const PHASE1_PRODUCTS = {
   WASH_PACKAGE_3:  { surface: 'kiosk' as const, amountCents: 15000, washCount: 3,  productType: 'WASH_PACKAGE', description: 'Wash package — 3 washes' },
   WASH_PACKAGE_5:  { surface: 'kiosk' as const, amountCents: 22000, washCount: 5,  productType: 'WASH_PACKAGE', description: 'Wash package — 5 washes' },
   WASH_PACKAGE_10: { surface: 'kiosk' as const, amountCents: 44000, washCount: 10, productType: 'WASH_PACKAGE', description: 'Wash package — 10 washes' },
+  // eGift cards — the four CEO-confirmed tiers, server-owned prices (no client
+  // amount = no tampering). Rail moved OFF Nayax → SUMIT/UPay. Recipient/sender
+  // details ride in the client `metadata` (spread into the purchase row) and are
+  // fulfilled on the SUMIT webhook by activateProduct → GiftOrchestrationService.
+  EGIFT_100:       { surface: 'egift' as const, amountCents: 10000,  productType: 'EGIFT', description: 'eGift card — ₪100' },
+  EGIFT_250:       { surface: 'egift' as const, amountCents: 25000,  productType: 'EGIFT', description: 'eGift card — ₪250' },
+  EGIFT_500:       { surface: 'egift' as const, amountCents: 50000,  productType: 'EGIFT', description: 'eGift card — ₪500' },
+  EGIFT_1000:      { surface: 'egift' as const, amountCents: 100000, productType: 'EGIFT', description: 'eGift card — ₪1000' },
 } as const;
 type Phase1Sku = keyof typeof PHASE1_PRODUCTS;
 
 const beginSchema = z.object({
   // The product is chosen by SKU from the server-owned catalog. NO client price.
-  sku: z.enum(['ACCOUNT_CREDIT', 'SINGLE_WASH', 'WASH_PACKAGE_3', 'WASH_PACKAGE_5', 'WASH_PACKAGE_10']),
+  sku: z.enum(['ACCOUNT_CREDIT', 'SINGLE_WASH', 'WASH_PACKAGE_3', 'WASH_PACKAGE_5', 'WASH_PACKAGE_10', 'EGIFT_100', 'EGIFT_250', 'EGIFT_500', 'EGIFT_1000']),
   // Only meaningful for ACCOUNT_CREDIT (variable-amount wallet top-up). Bounded.
   topupIls: z.number().positive().max(10_000).optional(),
   orderId: z.string().max(120).optional(),

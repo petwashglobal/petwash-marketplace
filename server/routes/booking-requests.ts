@@ -51,6 +51,7 @@ import { awardLoyaltyCredit, getStreakCounts, redeemLoyaltyCredit } from '../uti
 import { updateLoyalty } from '../actions/loyaltySync';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { applyTransition, type BookingActor, type BookingStatus } from '@shared/lib/bookingStateMachine';
+import { maskCustomerLocationForProvider } from '@shared/lib/bookingPii';
 import { cityKey, stripHebrewStreetPrefix, normalizeIsraeliPostalCode } from '@shared/lib/address';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
 import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
@@ -1015,12 +1016,13 @@ router.get('/:requestId', async (req, res) => {
     }
     
     res.json({
-      booking: {
+      // Gate precise customer location for a provider who hasn't accepted yet.
+      booking: maskCustomerLocationForProvider({
         ...booking,
         providerName,
         petIds: (booking.petIds as string[] | null) || [],
         addonCodes,
-      }
+      }, userId)
     });
   } catch (error: any) {
     logger.error('[BookingRequests] Error fetching booking', { error: error.message });
@@ -2069,7 +2071,22 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     if (booking.status !== 'provider_marked_complete') {
       return res.status(400).json({ error: `Cannot confirm booking with status: ${booking.status}. Provider must mark the service as complete first.` });
     }
-    
+
+    // PAYOUT SAFETY (audit 2026-06-24 finding #5): never create an earning record
+    // or release escrow for a booking that was never actually paid. A booking
+    // should only reach provider_marked_complete AFTER payment (paymentHeldAt is
+    // set by the Nayax confirm webhook). If it's missing, refuse to pay out —
+    // otherwise a provider could be paid from escrow that never existed.
+    if (!booking.paymentHeldAt) {
+      logger.error('[BookingRequests] Confirm-completion blocked — no payment was held for this booking', {
+        requestId, providerId: booking.providerId, status: booking.status,
+      });
+      return res.status(409).json({
+        error: 'NO_PAYMENT_HELD',
+        message: 'This booking has no held payment, so no payout can be released. Please contact PetWash support.',
+      });
+    }
+
     // ENTERPRISE: Create earning record via payoutLedger
     const platformFeePercent = 15; // 15% platform fee
     try {

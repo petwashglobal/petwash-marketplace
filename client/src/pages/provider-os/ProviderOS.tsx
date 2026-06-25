@@ -3,12 +3,13 @@ import { Link, useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useQuery } from '@tanstack/react-query';
 import { Badge } from '@/components/ui/badge';
+import { FollowUsBar } from '@/components/FollowUsBar';
 import { Button } from '@/components/ui/button';
 import {
   Home, Briefcase, CalendarDays, Wallet, User,
   Bell, Settings, FileText, Shield, Bot,
   Menu, X, ChevronRight, Power, LogOut,
-  Dog, MapPin, Scissors, GraduationCap, Star,
+  Dog, MapPin, Car, GraduationCap, Star,
   DollarSign, ClipboardList, ShieldCheck, ThumbsUp, TrendingUp,
 } from 'lucide-react';
 import POSDashboard from './POSDashboard';
@@ -24,14 +25,17 @@ import POSAssistant from './POSAssistant';
 import POSServices from './POSServices';
 
 type Module = 'dashboard' | 'jobs' | 'calendar' | 'wallet' | 'profile' | 'services' | 'settings' | 'documents' | 'notifications' | 'safety' | 'assistant';
-type Platform = 'all' | 'petsitter' | 'walkpet' | 'petwash' | 'academy';
+// Providers serve exactly the SaaS service platforms — PetSitter, Walk My Pet,
+// Academy (+ PetTrek, coming soon). NO K9000 wash: the wash is PetWash Ltd
+// in-house staff, not a provider/contractor service.
+type Platform = 'all' | 'petsitter' | 'walkpet' | 'academy' | 'pettrek';
 
-const PLATFORMS: { id: Platform; label: string; labelHe: string; icon: React.ComponentType<any> }[] = [
+const PLATFORMS: { id: Platform; label: string; labelHe: string; icon: React.ComponentType<any>; soon?: boolean }[] = [
   { id: 'all', label: 'All Services', labelHe: 'כל השירותים', icon: Dog },
   { id: 'petsitter', label: 'PetSitter', labelHe: 'PetSitter', icon: Dog },
   { id: 'walkpet', label: 'Walk My Pet', labelHe: 'Walk My Pet', icon: MapPin },
-  { id: 'petwash', label: 'PetWash', labelHe: 'PetWash', icon: Scissors },
   { id: 'academy', label: 'Academy', labelHe: 'Academy', icon: GraduationCap },
+  { id: 'pettrek', label: 'PetTrek', labelHe: 'PetTrek', icon: Car, soon: true },
 ];
 
 const BOTTOM_NAV = [
@@ -107,34 +111,46 @@ export default function ProviderOS() {
 
   return (
     <div className="min-h-screen bg-white flex flex-col" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-      {/* Top header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40 h-14 flex items-center px-4 gap-3">
+      {/* Brand crown + utility bar — sticky together */}
+      <div className="sticky top-0 z-40 bg-white border-b border-gray-200">
+      {/* Real PetWash™ logo, top-center crown (brand rule: never recreate, always centered) */}
+      <div className="flex flex-col items-center pt-2 pb-1.5">
+        <img src="/brand/petwash-logo-official.png" alt="PetWash" className="h-6 object-contain" loading="eager" />
+        <span className="text-[8px] tracking-[0.3em] text-[#9a8a5c] mt-0.5">PROVIDER</span>
+      </div>
+      <header className="h-14 flex items-center px-4 gap-3 border-t border-gray-50">
         <button
-          className="lg:hidden p-1.5 rounded-md text-gray-500 hover:bg-white transition-colors"
+          className="lg:hidden p-1.5 rounded-md text-gray-500 hover:bg-gray-50 transition-colors"
           onClick={() => setSidebarOpen(true)}
         >
           <Menu className="w-5 h-5" />
         </button>
 
-        <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-lg bg-amber-500 flex items-center justify-center">
-            <Dog className="w-4 h-4 text-white" />
-          </div>
-          <span className="font-semibold text-gray-900 text-sm hidden sm:block">Provider OS</span>
-        </div>
-
         <div className="flex-1 overflow-x-auto">
           <div className="flex gap-1 min-w-max">
             {PLATFORMS.map(p => {
               const Icon = p.icon;
+              if (p.soon) {
+                return (
+                  <span
+                    key={p.id}
+                    className="px-2.5 py-1 rounded-full text-xs font-medium whitespace-nowrap flex items-center gap-1 border border-dashed border-gray-300 text-gray-400"
+                    title="Coming soon"
+                  >
+                    <Icon className="w-3 h-3" />
+                    {p.label}
+                    <span className="text-[9px] uppercase tracking-wide">· soon</span>
+                  </span>
+                );
+              }
               return (
                 <button
                   key={p.id}
                   onClick={() => setActivePlatform(p.id)}
                   className={`px-2.5 py-1 rounded-full text-xs font-medium transition-all whitespace-nowrap flex items-center gap-1 ${
                     activePlatform === p.id
-                      ? 'bg-amber-500 text-white'
-                      : 'bg-white text-gray-600 hover:bg-white'
+                      ? 'bg-[#D4AF37] text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
                   }`}
                 >
                   <Icon className="w-3 h-3" />
@@ -168,11 +184,12 @@ export default function ProviderOS() {
             )}
           </button>
 
-          <div className="w-7 h-7 rounded-full bg-amber-100 flex items-center justify-center text-amber-700 text-xs font-semibold">
+          <div className="w-7 h-7 rounded-full bg-[#FBF6E7] border border-[#ECDFB4] flex items-center justify-center text-[#9a7d2e] text-xs font-semibold">
             {displayName.charAt(0).toUpperCase()}
           </div>
         </div>
       </header>
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Desktop sidebar */}
@@ -191,11 +208,11 @@ export default function ProviderOS() {
                   onClick={() => navigate(item.id)}
                   className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium transition-all mb-0.5 ${
                     isActive
-                      ? 'bg-amber-50 text-amber-700'
+                      ? 'bg-[#FBF6E7] text-[#9a7d2e]'
                       : 'text-gray-600 hover:bg-white hover:text-gray-900'
                   }`}
                 >
-                  <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-600' : ''}`} />
+                  <Icon className={`w-4 h-4 shrink-0 `} />
                   <span className="truncate">{item.label}</span>
                   {item.id === 'notifications' && unreadCount > 0 && (
                     <span className="ms-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
@@ -257,10 +274,10 @@ export default function ProviderOS() {
                       key={item.id}
                       onClick={() => navigate(item.id)}
                       className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all mb-0.5 ${
-                        isActive ? 'bg-amber-50 text-amber-700' : 'text-gray-700 hover:bg-white'
+                        isActive ? 'bg-[#FBF6E7] text-[#9a7d2e]' : 'text-gray-700 hover:bg-white'
                       }`}
                     >
-                      <Icon className={`w-4 h-4 shrink-0 ${isActive ? 'text-amber-600' : ''}`} />
+                      <Icon className={`w-4 h-4 shrink-0 `} />
                       {item.label}
                       {item.id === 'notifications' && unreadCount > 0 && (
                         <span className="ms-auto bg-red-500 text-white text-[9px] font-bold rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
@@ -320,6 +337,7 @@ export default function ProviderOS() {
             {activeModule === 'notifications' && <POSNotifications />}
             {activeModule === 'safety' && <POSSafety />}
             {activeModule === 'assistant' && <POSAssistant />}
+            <FollowUsBar />
           </div>
         </main>
       </div>
@@ -336,8 +354,8 @@ export default function ProviderOS() {
                 onClick={() => navigate(item.id)}
                 className="flex-1 flex flex-col items-center justify-center gap-0.5 transition-colors touch-manipulation"
               >
-                <Icon className={`w-5 h-5 ${isActive ? 'text-amber-500' : 'text-gray-400'}`} />
-                <span className={`text-[10px] font-medium ${isActive ? 'text-amber-500' : 'text-gray-400'}`}>
+                <Icon className={`w-5 h-5 ${isActive ? 'text-[#D4AF37]' : 'text-gray-400'}`} />
+                <span className={`text-[10px] font-medium ${isActive ? 'text-[#D4AF37]' : 'text-gray-400'}`}>
                   {item.label}
                 </span>
               </button>
@@ -369,11 +387,11 @@ export default function ProviderOS() {
                       key={item.id}
                       onClick={() => navigate(item.id)}
                       className={`flex flex-col items-center gap-1.5 p-3 rounded-xl transition-colors touch-manipulation ${
-                        isActive ? 'bg-amber-50' : 'hover:bg-white'
+                        isActive ? 'bg-[#FBF6E7]' : 'hover:bg-gray-50'
                       }`}
                     >
-                      <Icon className={`w-5 h-5 ${isActive ? 'text-amber-600' : 'text-gray-600'}`} />
-                      <span className={`text-[10px] font-medium text-center leading-tight ${isActive ? 'text-amber-700' : 'text-gray-600'}`}>
+                      <Icon className={`w-5 h-5 ${isActive ? 'text-[#D4AF37]' : 'text-gray-600'}`} />
+                      <span className={`text-[10px] font-medium text-center leading-tight ${isActive ? 'text-[#9a7d2e]' : 'text-gray-600'}`}>
                         {item.label}
                       </span>
                     </button>

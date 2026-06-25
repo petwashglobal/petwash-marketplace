@@ -39,7 +39,7 @@ import { EmailService } from '../emailService';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken } from '../lib/passTokens';
-import { petwashPassAccounts } from '@shared/schema';
+import { petwashPassAccounts, users } from '@shared/schema';
 
 // Multer: in-memory storage for CSV reconciliation uploads (max 4 MB)
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
@@ -52,23 +52,76 @@ const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 
  * Falls back to a null-safe tuple so callers can always destructure
  * { appleWalletUrl, googleWalletUrl } without changing existing code.
  */
+/**
+ * Get-or-create the member's PetWash pass account. Every signed-in member should
+ * have one so the Wallet pass + the in-app QR card work (the table requires
+ * passId / ownerName / appleSerialNumber / googleObjectId, which is why nothing
+ * auto-created it before → null wallet URLs). Idempotent on the unique userId;
+ * retries only on a rare passId/serial collision.
+ *
+ * NOTE: producing a SIGNED .pkpass still needs the Apple Pass Type ID cert + the
+ * pass signing env (CEO ops). This fix makes the pass RECORD + URL exist; signing
+ * is the separate ops step.
+ */
+async function ensurePassAccount(userId: string): Promise<{ passId: string; qrTokenVersion: number } | null> {
+  try {
+    const [existing] = await db
+      .select({ passId: petwashPassAccounts.passId, qrTokenVersion: petwashPassAccounts.qrTokenVersion })
+      .from(petwashPassAccounts)
+      .where(eq(petwashPassAccounts.userId, userId))
+      .limit(1);
+    if (existing?.passId) return existing;
+
+    const [u] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
+    const ownerName = (
+      (u as any)?.displayName ||
+      [(u as any)?.firstName, (u as any)?.lastName].filter(Boolean).join(' ') ||
+      (u as any)?.email ||
+      'PetWash Member'
+    ).toString().trim() || 'PetWash Member';
+    const ownerEmail = (u as any)?.email ?? null;
+    const issuer = process.env.GOOGLE_WALLET_ISSUER_ID || 'petwash';
+
+    for (let attempt = 0; attempt < 5; attempt++) {
+      const passId = `PW-${Math.floor(1000 + Math.random() * 9000)}-${Math.floor(1000 + Math.random() * 9000)}`;
+      const appleSerialNumber = `APPLE-${passId}-${randomBytes(3).toString('hex').toUpperCase()}`;
+      const googleObjectId = `${issuer}.${passId.replace(/-/g, '')}`;
+      try {
+        await db.insert(petwashPassAccounts).values({
+          passId, userId, ownerName, ownerEmail,
+          tier: 'PREMIUM', appleSerialNumber, googleObjectId,
+        }).onConflictDoNothing();
+      } catch (e: any) {
+        if (!/duplicate key|unique/i.test(String(e?.message))) throw e; // retry only on id collision
+      }
+      // Re-select by userId — covers our insert AND a concurrent insert.
+      const [row] = await db
+        .select({ passId: petwashPassAccounts.passId, qrTokenVersion: petwashPassAccounts.qrTokenVersion })
+        .from(petwashPassAccounts)
+        .where(eq(petwashPassAccounts.userId, userId))
+        .limit(1);
+      if (row?.passId) return row;
+    }
+    return null;
+  } catch (err) {
+    logger.error('[PrestigePass] ensurePassAccount failed', { userId, err: (err as Error)?.message });
+    return null;
+  }
+}
+
 async function buildPrestigePassWalletUrls(
   userId: string,
   baseUrl: string
 ): Promise<{ appleWalletUrl: string | null; googleWalletUrl: string | null }> {
   try {
-    const [acc] = await db
-      .select({
-        passId: petwashPassAccounts.passId,
-        qrTokenVersion: petwashPassAccounts.qrTokenVersion,
-      })
-      .from(petwashPassAccounts)
-      .where(eq(petwashPassAccounts.userId, userId))
-      .limit(1);
+    // Auto-provision a pass for this member if they don't have one yet — the
+    // root cause of "wallet id has issues": members had no petwash_pass_accounts
+    // row, so the wallet URL was always null and nothing was downloadable.
+    const acc = await ensurePassAccount(userId);
 
     const passId = acc?.passId;
     if (!passId) {
-      logger.warn('[PrestigePass] buildPrestigePassWalletUrls — no pass record for userId', { userId });
+      logger.warn('[PrestigePass] buildPrestigePassWalletUrls — could not provision pass for userId', { userId });
       return { appleWalletUrl: null, googleWalletUrl: null };
     }
 
@@ -114,6 +167,7 @@ import { dispatchAcademySms } from '../services/academySmsHelper';
 import { GoogleGenAI } from '@google/genai';
 import { getVertexAIConfig } from '../lib/gemini-client';
 import { isValidAdminSecret } from '../lib/admin-secret';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 import { assertOperatingControl } from '../lib/petwashOperatingControlGateway';
 import type { OperatingActionType } from '../../shared/petwash-operating-system';
@@ -2232,20 +2286,31 @@ const adminCreditSchema = z.object({
   amountCents:  z.number().int().min(1).optional(),
   units:        z.number().int().min(1).optional(),
   reason:       z.string().min(1).max(500),
+  // Audit #28: required stable idempotency key — a repeat submit (double-click /
+  // retry) with the same key returns the original txn instead of double-crediting.
+  idempotencyKey: z.string().min(8).max(128),
 });
 
 router.post('/admin/manual-credit', async (req: Request, res: Response) => {
   try {
+    // Audit #27: this endpoint MINTS wallet credit (real money value). The shared
+    // static x-admin-secret header alone is not sufficient — anyone who learns the
+    // secret could mint unlimited credit attributed to a generic "admin". Require
+    // BOTH the secret AND a Firebase-verified super-admin identity (defense in
+    // depth), and attribute the credit to that verified uid.
     if (!isValidAdminSecret(req)) {
       return res.status(403).json({ ok: false, error: 'Admin authorization required' });
     }
+    if (!isSuperAdminVerified(req)) {
+      return res.status(403).json({ ok: false, error: 'Verified super-admin Firebase session required' });
+    }
 
-    const session = (req as any).session;
-    const adminUserId = session?.user?.uid || 'admin';
+    const adminUserId =
+      (req.firebaseUser as any)?.uid || (req as any).session?.user?.uid || 'admin';
 
     const parsed = adminCreditSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input', details: parsed.error.flatten() });
-    const { targetUserId, creditType, amountCents, units, reason } = parsed.data;
+    const { targetUserId, creditType, amountCents, units, reason, idempotencyKey } = parsed.data;
 
     if (creditType !== 'wash_package' && !amountCents) {
       return res.status(400).json({ ok: false, error: 'amountCents required for monetary credit types' });
@@ -2254,7 +2319,14 @@ router.post('/admin/manual-credit', async (req: Request, res: Response) => {
       return res.status(400).json({ ok: false, error: 'units required for wash_package credit type' });
     }
 
-    const { txnId } = await adminManualCredit({ userId: targetUserId, creditType, amountCents, units, reason, adminUserId });
+    const { txnId, idempotent } = await adminManualCredit({ userId: targetUserId, creditType, amountCents, units, reason, adminUserId, idempotencyKey });
+
+    if (idempotent) {
+      // Replay of an already-applied credit — do NOT re-log/re-audit as a new action.
+      logger.info('[PrestigePass] Admin manual credit idempotent replay', { targetUserId, idempotencyKey, txnId });
+      const balancesAfter = await getWalletBalances(targetUserId);
+      return res.json({ ok: true, txnId, idempotent: true, targetUserId, creditType, amountCents, units, balancesAfter });
+    }
 
     logger.info('[PrestigePass] Admin manual credit applied', { targetUserId, creditType, amountCents, units, txnId, reason });
 

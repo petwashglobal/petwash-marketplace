@@ -12,7 +12,7 @@ import {
 } from 'lucide-react';
 
 type Module = 'dashboard' | 'jobs' | 'calendar' | 'wallet' | 'profile' | 'settings' | 'services' | 'documents' | 'notifications' | 'safety' | 'assistant';
-type Platform = 'all' | 'petsitter' | 'walkpet' | 'petwash' | 'academy';
+type Platform = 'all' | 'petsitter' | 'walkpet' | 'academy' | 'pettrek';
 
 interface Props {
   activePlatform: Platform;

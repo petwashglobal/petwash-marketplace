@@ -98,8 +98,10 @@ router.get("/sitters/:sitterId", async (req, res) => {
 //   the security hole without that risk. Stripped keys are logged at warn
 //   level so attempts surface in Cloud Logging.
 const PROFILE_DENY_FIELDS = new Set([
-  // privilege & status
-  'kycVerified', 'verified', 'featured', 'approved', 'active',
+  // privilege & status (isVerified/badgeLevel/tier added 2026-06-25: a provider could
+  // self-set them and show a fake "verified" badge + inflated tier in the public directory)
+  'kycVerified', 'verified', 'isVerified', 'featured', 'approved', 'active',
+  'badgeLevel', 'verifiedAt', 'verificationStatus', 'tier',
   'status', 'userStatus', 'accountStatus', 'role', 'isAdmin', 'isStaff', 'isSuperAdmin',
   // rating manipulation
   'rating', 'ratingCount', 'ratingSum', 'reviewCount', 'averageRating',

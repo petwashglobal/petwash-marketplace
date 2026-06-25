@@ -196,7 +196,7 @@ function LoyaltyOperatingStrip({ isHebrew }: { isHebrew: boolean }) {
             {isHebrew ? 'נאמנות שהיא מוצר אמיתי, לא רק נקודות' : 'Loyalty as a real product, not just points'}
           </h2>
         </div>
-        <a href="/wallet-download" className="inline-flex items-center justify-center px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white bg-gray-950 no-underline" style={{ borderRadius: '6px' }}>
+        <a href="/wallet" className="inline-flex items-center justify-center px-4 py-3 text-xs font-bold uppercase tracking-[0.14em] text-white bg-gray-950 no-underline" style={{ borderRadius: '6px' }}>
           {isHebrew ? 'הורד Pass' : 'Download Pass'}
         </a>
       </div>
