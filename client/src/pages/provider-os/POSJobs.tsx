@@ -14,6 +14,7 @@ import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { NavigationButton } from '@/components/NavigationButton';
 import {
   CheckCircle2, XCircle, MessageSquare, Play, Square,
   AlertTriangle, Clock, Dog, Loader2, RefreshCw, CreditCard,
@@ -506,11 +507,22 @@ function JobCard({
               </div>
             )}
 
-            {/* Address */}
+            {/* Address + turn-by-turn navigation (Waze / Google / Apple) */}
             {booking.address && (
-              <div className="flex items-start gap-2">
-                <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
-                <p className="text-xs text-gray-700">{booking.address}</p>
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-start gap-2 min-w-0">
+                  <MapPin className="w-3.5 h-3.5 text-gray-400 mt-0.5 shrink-0" />
+                  <p className="text-xs text-gray-700">{booking.address}</p>
+                </div>
+                <NavigationButton
+                  latitude={typeof booking.latitude === 'number' ? booking.latitude : undefined}
+                  longitude={typeof booking.longitude === 'number' ? booking.longitude : undefined}
+                  address={booking.address}
+                  size="sm"
+                  variant="outline"
+                  className="shrink-0 h-7 px-2.5 text-xs"
+                  testId={`button-navigate-${booking.id}`}
+                />
               </div>
             )}
 

@@ -21,8 +21,11 @@ import {
 import { useLanguage } from '@/lib/languageStore';
 
 interface NavigationButtonProps {
-  latitude: number;
-  longitude: number;
+  // lat/lng are optional: when omitted, navigation falls back to an address
+  // text query (Waze/Google/Apple all support destination-by-address). This lets
+  // job cards that only carry a typed address still offer turn-by-turn nav.
+  latitude?: number;
+  longitude?: number;
   address?: string;
   placeName?: string;
   variant?: 'default' | 'outline' | 'ghost' | 'link';
@@ -47,11 +50,20 @@ export function NavigationButton({
   const [isOpen, setIsOpen] = useState(false);
 
   const label = placeName || address || t('Destination');
+  const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
+  const q = encodeURIComponent(address || placeName || '');
 
-  // Generate navigation links
-  const wazeLink = `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes&zoom=17`;
-  const googleMapsLink = `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&destination_place_id=${encodeURIComponent(label)}`;
-  const appleMapsLink = `maps://?daddr=${latitude},${longitude}&q=${encodeURIComponent(label)}`;
+  // Generate navigation links — by coordinates when available (most precise),
+  // otherwise by address text query.
+  const wazeLink = hasCoords
+    ? `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes&zoom=17`
+    : `https://waze.com/ul?q=${q}&navigate=yes`;
+  const googleMapsLink = hasCoords
+    ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&destination_place_id=${encodeURIComponent(label)}`
+    : `https://www.google.com/maps/dir/?api=1&destination=${q}`;
+  const appleMapsLink = hasCoords
+    ? `maps://?daddr=${latitude},${longitude}&q=${encodeURIComponent(label)}`
+    : `maps://?daddr=${q}`;
 
   // Detect device/platform
   const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
@@ -149,9 +161,11 @@ export function NavigationButton({
               <div className="text-xs font-medium text-gray-900 dark:text-black break-words">
                 {address || placeName}
               </div>
-              <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                {latitude.toFixed(6)}, {longitude.toFixed(6)}
-              </div>
+              {hasCoords && (
+                <div className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                  {latitude!.toFixed(6)}, {longitude!.toFixed(6)}
+                </div>
+              )}
             </div>
           </>
         )}
