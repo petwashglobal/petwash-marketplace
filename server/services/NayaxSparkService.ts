@@ -756,36 +756,19 @@ export class NayaxSparkService {
       let washType = 'standard';
       let isFreeWash = false;
       
-      // Handle different QR types
-      switch (type.toUpperCase()) {
-        case 'VOUCHER':
-          // Fixed amount discount (ILS)
-          discountAmount = value;
-          break;
-        
-        case 'LOYALTY':
-          // Percentage discount based on tier
-          discountPercent = value;
-          break;
-        
-        case 'GIFT':
-          // Gift card - full amount discount
-          discountAmount = value;
-          break;
-        
-        case 'FREE':
-          // Free wash (e.g., promotional, employee perk)
-          isFreeWash = true;
-          washType = id; // premium, standard, basic
-          discountPercent = 100;
-          break;
-        
-        default:
-          return {
-            success: false,
-            message: `Unknown QR code type: ${type}`,
-          };
-      }
+      // SECURITY 2026-06-25: client-asserted QR types are NO LONGER honored.
+      // These branches trusted the VALUE straight from the scanned/posted string
+      // (FREE/VOUCHER/LOYALTY/GIFT), so anyone could POST "FREE:premium:0" and get a
+      // free wash, or "VOUCHER:x:9999" for arbitrary discount — no signature, no
+      // issued-voucher lookup, no debit (same class as the removed /cortina/inquiry
+      // backdoor). Real redemption goes through the signed, DB-backed, atomically-
+      // decremented voucher system (unifiedVoucherService → /api/vouchers/redeem) and
+      // the signed K9000 pass-token flow (verifyPassLinkToken). This path grants nothing.
+      void value; void id; void isFreeWash; void washType; void discountAmount; void discountPercent;
+      return {
+        success: false,
+        message: 'qr_type_not_supported: redeem via the PetWash app (signed voucher/pass).',
+      };
       
       // Log redemption attempt
       const redemptionId = `qr_${Date.now()}_${nanoid(12)}`;

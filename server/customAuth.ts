@@ -168,7 +168,10 @@ export async function requireAuth(req: Request, res: Response, next: any) {
     // This mirrors the fix already applied in firebase-auth.ts. If TEST_BYPASS_TOKEN is not set,
     // bypass is completely disabled (fail closed). Set it only in test environments.
     const bypassHeader = req.headers['x-test-user-bypass'] as string | undefined;
-    const bypassToken = process.env.TEST_BYPASS_TOKEN; // NO default — must be explicitly set
+    // SECURITY 2026-06-25: hard prod guard — sibling firebase-auth.ts gates this on
+    // NODE_ENV but this block didn't. If TEST_BYPASS_TOKEN ever leaked/got set in prod,
+    // the entire auth layer was bypassable via curl headers. Never allow the bypass in prod.
+    const bypassToken = process.env.NODE_ENV === 'production' ? undefined : process.env.TEST_BYPASS_TOKEN;
     if (bypassToken && bypassHeader === bypassToken) {
       const testUserId = req.headers['x-test-user-id'] as string || 'test-user-default';
       const testEmail = req.headers['x-test-user-email'] as string || `${testUserId}@test.petwash.local`;
