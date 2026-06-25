@@ -42,6 +42,7 @@ import {
   ArrowUpDown,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 interface SearchFilters {
   serviceType: string;
@@ -753,8 +754,10 @@ export default function BookingSearch() {
                       setFilters(p => ({ ...p, serviceType: 'grooming' }));
                       handleSearch();
                     }}
+                    className="inline-flex items-center gap-2"
                   >
-                    ✂️ {isHebrew ? 'עבור לטיפוח' : 'Browse groomers'}
+                    <PetWashIcon name="product_scissors" size={18} label={isHebrew ? 'טיפוח' : 'Grooming'} />
+                    {isHebrew ? 'עבור לטיפוח' : 'Browse groomers'}
                   </Button>
                 )}
                 {filters.serviceType !== 'dog_walking' && (
@@ -764,8 +767,10 @@ export default function BookingSearch() {
                       setFilters(p => ({ ...p, serviceType: 'dog_walking' }));
                       handleSearch();
                     }}
+                    className="inline-flex items-center gap-2"
                   >
-                    🐕 {isHebrew ? 'עבור להליכות' : 'Browse dog walkers'}
+                    <PetWashIcon name="animal_dog" size={18} label={isHebrew ? 'כלב' : 'Dog'} />
+                    {isHebrew ? 'עבור להליכות' : 'Browse dog walkers'}
                   </Button>
                 )}
                 {filters.serviceType !== 'pet_sitting' && (

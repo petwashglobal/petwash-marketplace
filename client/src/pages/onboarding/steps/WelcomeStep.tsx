@@ -3,15 +3,16 @@
  * One sentence + Continue. No state read. Read-only intro.
  */
 import type { TFn } from '../shellTypes';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 export function WelcomeStep({ t }: { t: TFn }) {
   return (
     <div className="flex flex-col items-center justify-center text-center px-6">
       <div
         aria-hidden="true"
-        className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-8 text-3xl"
+        className="w-20 h-20 rounded-full bg-slate-50 flex items-center justify-center mb-8"
       >
-        🐾
+        <PetWashIcon name="brand_paw" size={36} label="" />
       </div>
       <h1 className="text-3xl font-light tracking-tight text-slate-900 mb-4">
         {t('petOnboarding.start.addPet')}

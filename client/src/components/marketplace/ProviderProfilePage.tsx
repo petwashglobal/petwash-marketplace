@@ -32,6 +32,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { InsuranceTrustChip } from './InsuranceTrustChip';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -656,7 +657,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                         </div>
                       </div>
                       <p className="text-sm text-gray-600 line-clamp-4">{review.text}</p>
-                      {review.petType && <div className="mt-3 text-xs text-gray-400">🐾 {review.petType}</div>}
+                      {review.petType && <div className="mt-3 text-xs text-gray-400 flex items-center gap-1"><PetWashIcon name="brand_paw" size={14} label="Pet" /> {review.petType}</div>}
                     </article>
                   ))}
                 </div>

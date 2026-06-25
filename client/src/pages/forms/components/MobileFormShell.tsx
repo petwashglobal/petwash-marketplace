@@ -1,4 +1,5 @@
 import { ArrowRight, ArrowLeft } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 interface MobileFormShellProps {
   title: string;
@@ -33,7 +34,7 @@ export function MobileFormShell({
               <ArrowLeft className="w-4 h-4" />
             </button>
           )}
-          <span className="text-xl">🐾</span>
+          <PetWashIcon name="brand_paw" size={20} label="PetWash" />
           <div className="flex-1 min-w-0">
             <div className="flex items-baseline gap-2">
               {emoji && <span className="text-lg">{emoji}</span>}

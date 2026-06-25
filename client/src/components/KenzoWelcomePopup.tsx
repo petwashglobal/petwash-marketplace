@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { X, Heart, Sparkles } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { Button } from '@/components/ui/button';
 import { type Language } from '@/lib/i18n';
 
@@ -155,8 +156,8 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
             </div>
 
             {/* Paw Prints Decoration */}
-            <div className="absolute bottom-2 left-4 text-4xl opacity-20 rotate-12">🐾</div>
-            <div className="absolute top-20 right-8 text-3xl opacity-20 -rotate-12">🐾</div>
+            <div className="absolute bottom-2 left-4 opacity-20 rotate-12"><PetWashIcon name="brand_paw" size={34} label="" /></div>
+            <div className="absolute top-20 right-8 opacity-20 -rotate-12"><PetWashIcon name="brand_paw" size={34} label="" /></div>
           </div>
         </div>
       </div>

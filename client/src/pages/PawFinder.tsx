@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import { apiRequest, getFirebaseBearerToken } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 /* -------------------------------------------------------------------------
    TYPES
@@ -135,7 +136,7 @@ const DEMO_PETS: PawPost[] = [
 ------------------------------------------------------------------------- */
 
 function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?: () => void; user: any }) {
-  const petEmoji: Record<string, string> = { dog: '🐕', cat: '🐈', bird: '🦜', other: '🐾' };
+  const petIcon: Record<string, string> = { dog: 'animal_dog', cat: 'animal_cat', bird: 'animal_bird', other: 'brand_paw' };
   const rewardNum = post.reward_amount ? Number(post.reward_amount) : 0;
   const [imageFailed, setImageFailed] = useState(false);
   const mediaUrl = sanitizeUrl(post.primary_media);
@@ -152,8 +153,8 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
             onError={() => setImageFailed(true)}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center text-5xl bg-rose-50">
-            {petEmoji[post.pet_type] ?? '🐾'}
+          <div className="w-full h-full flex items-center justify-center bg-rose-50">
+            <PetWashIcon name={petIcon[post.pet_type] ?? 'brand_paw'} size={64} label={post.pet_name || ''} />
           </div>
         )}
         {/* Status badge over photo */}
@@ -176,8 +177,8 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
       <div className="p-4 flex flex-col flex-1">
         <div className="flex items-start justify-between gap-2 mb-1">
           <div>
-            <h3 className="text-lg font-extrabold text-slate-900 leading-tight">
-              {petEmoji[post.pet_type] ?? '🐾'} {post.pet_name}
+            <h3 className="text-lg font-extrabold text-slate-900 leading-tight flex items-center gap-2">
+              <PetWashIcon name={petIcon[post.pet_type] ?? 'brand_paw'} size={20} label="" /> {post.pet_name}
             </h3>
             {post.breed && (
               <p className="text-sm text-slate-500 font-medium">{post.breed}</p>
@@ -1245,10 +1246,10 @@ export default function PawFinder({ language }: PawFinderProps) {
         >
         {/* decorative paw prints */}
         <div className="absolute inset-0 opacity-10 select-none pointer-events-none overflow-hidden" aria-hidden>
-          {['top-4 left-8 text-7xl rotate-12','bottom-6 right-12 text-8xl -rotate-12',
-            'top-1/2 left-1/4 text-6xl rotate-6','top-8 right-1/3 text-5xl -rotate-6',
-            'bottom-4 left-1/2 text-9xl rotate-3'].map((cls, i) => (
-            <span key={i} className={`absolute ${cls}`}>🐾</span>
+          {[{ pos: 'top-4 left-8 rotate-12', size: 96 },{ pos: 'bottom-6 right-12 -rotate-12', size: 112 },
+            { pos: 'top-1/2 left-1/4 rotate-6', size: 80 },{ pos: 'top-8 right-1/3 -rotate-6', size: 64 },
+            { pos: 'bottom-4 left-1/2 rotate-3', size: 128 }].map(({ pos, size }, i) => (
+            <span key={i} className={`absolute ${pos}`}><PetWashIcon name="brand_paw" size={size} label="" /></span>
           ))}
         </div>
 
@@ -1261,8 +1262,8 @@ export default function PawFinder({ language }: PawFinderProps) {
           <div className="flex flex-col lg:flex-row lg:items-end lg:justify-between gap-6">
             {/* Headline block */}
             <div className="flex-1">
-              <h1 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tight drop-shadow-sm">
-                🐾 PawFinder
+              <h1 className="text-5xl md:text-6xl font-black text-white leading-tight tracking-tight drop-shadow-sm flex items-center gap-3">
+                <PetWashIcon name="brand_paw" size={52} label="" /> PawFinder
               </h1>
               <p className="text-white/90 text-xl md:text-2xl font-semibold mt-2 leading-snug">
                 {isHe ? 'לכל החיות האבודות מגיע לחזור הביתה.' : 'Every lost pet deserves to come home.'}

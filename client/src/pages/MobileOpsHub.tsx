@@ -21,6 +21,7 @@ import {
   Bell,
   Activity
 } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 interface QuickAction {
   id: string;
@@ -149,7 +150,7 @@ export default function MobileOpsHub() {
         <div className="px-6 py-5">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="luxury-heading-lg">🐾 Operations Hub</h1>
+              <h1 className="luxury-heading-lg flex items-center gap-2"><PetWashIcon name="brand_paw" size={24} label="PetWash" /> Operations Hub</h1>
               <p className="luxury-text-small mt-1">
                 Quick access to all backend tools
               </p>

@@ -21,6 +21,7 @@ import {
   Banknote, Smartphone, ChevronDown, Receipt, Phone, Mail,
   CalendarDays, Hash, Star, MapPin,
 } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 type Platform = 'all' | 'petsitter' | 'walkpet' | 'academy' | 'pettrek';
 
@@ -343,7 +344,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
               <div className="bg-white rounded-xl p-3 space-y-1">
                 <p className="text-xs text-gray-500">Client</p>
                 <p className="text-sm font-medium text-gray-900">{finishModal.booking.clientName || 'Customer'}</p>
-                {finishModal.booking.petName && <p className="text-xs text-gray-500">🐾 {finishModal.booking.petName}</p>}
+                {finishModal.booking.petName && <p className="text-xs text-gray-500 flex items-center gap-1"><PetWashIcon name="brand_paw" size={12} label="Pet" /> {finishModal.booking.petName}</p>}
                 <p className="text-xs text-gray-500">{finishModal.booking.serviceName || finishModal.booking.serviceType || 'Service'}</p>
               </div>
               <div>

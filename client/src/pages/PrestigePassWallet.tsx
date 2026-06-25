@@ -18,6 +18,7 @@ import { useToast } from '@/hooks/use-toast';
 // UUID-named jpeg "logos" were non-official recreations and have been removed.
 const OFFICIAL_LOGO = '/brand/petwash-logo-official.png';
 import { PremiumMemberCard } from '@/components/PremiumMemberCard';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 interface WalletData {
@@ -80,13 +81,13 @@ const fmtDate = (iso: string) => {
 
 const QR_TTL = 45;
 
-const DIVISION_CONFIG: Record<string, { iconEn: string; labelEn: string; labelHe: string; color: string }> = {
-  station_k9000: { iconEn: '🐾',  labelEn: 'K9000 Dog Wash',   labelHe: 'K9000 שטיפת כלבים',  color: '#22c55e' },
-  petsitter:     { iconEn: '🏠',  labelEn: 'Pet Sitter / Care', labelHe: 'פנסיון ומטפל',        color: '#8b5cf6' },
-  walkers:       { iconEn: '🐕',  labelEn: 'Walk My Pet',       labelHe: 'מטייל כלבים',         color: '#0ea5e9' },
-  academy:       { iconEn: '🎓',  labelEn: 'Academy',           labelHe: 'אקדמיה',              color: '#f59e0b' },
-  pettrek:       { iconEn: '🚐',  labelEn: 'PetTrek Transport', labelHe: 'PetTrek הסעות',       color: '#06b6d4' },
-  general:       { iconEn: '💳',  labelEn: 'General',           labelHe: 'כללי',                color: '#0a0a0a' },
+const DIVISION_CONFIG: Record<string, { iconKey: string; labelEn: string; labelHe: string; color: string }> = {
+  station_k9000: { iconKey: 'nature_water_drop',  labelEn: 'K9000 Dog Wash',   labelHe: 'K9000 שטיפת כלבים',  color: '#22c55e' },
+  petsitter:     { iconKey: 'product_pet_bed',    labelEn: 'Pet Sitter / Care', labelHe: 'פנסיון ומטפל',        color: '#8b5cf6' },
+  walkers:       { iconKey: 'product_leash',      labelEn: 'Walk My Pet',       labelHe: 'מטייל כלבים',         color: '#0ea5e9' },
+  academy:       { iconKey: 'trust_pet_safe',     labelEn: 'Academy',           labelHe: 'אקדמיה',              color: '#f59e0b' },
+  pettrek:       { iconKey: 'product_carrier_bag', labelEn: 'PetTrek Transport', labelHe: 'PetTrek הסעות',       color: '#06b6d4' },
+  general:       { iconKey: 'brand_paw',          labelEn: 'General',           labelHe: 'כללי',                color: '#0a0a0a' },
 };
 
 // ─── CountdownRing ────────────────────────────────────────────────────────────
@@ -370,8 +371,9 @@ function DivisionActivitySection({ he }: { he: boolean }) {
                 background:`${cfg.color}10`, border:`1px solid ${cfg.color}30`,
                 textAlign:'center', minWidth:'80px',
               }}>
-                <div style={{ fontSize:'0.65rem', color:'#9E9E9E', marginBottom:'2px' }}>
-                  {cfg.iconEn} {he ? cfg.labelHe : cfg.labelEn}
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'center', gap:'4px', fontSize:'0.65rem', color:'#9E9E9E', marginBottom:'2px' }}>
+                  <PetWashIcon name={cfg.iconKey} size={16} label={he ? cfg.labelHe : cfg.labelEn} />
+                  {he ? cfg.labelHe : cfg.labelEn}
                 </div>
                 <div style={{ fontSize:'0.88rem', fontWeight:700, color: cfg.color }}>
                   {fmt(total)}
@@ -431,9 +433,8 @@ function DivisionActivitySection({ he }: { he: boolean }) {
                   width:'34px', height:'34px', borderRadius:'10px', flexShrink:0,
                   background:`${div.color}12`,
                   display:'flex', alignItems:'center', justifyContent:'center',
-                  fontSize:'16px',
                 }}>
-                  {div.iconEn}
+                  <PetWashIcon name={div.iconKey} size={20} label={he ? div.labelHe : div.labelEn} />
                 </div>
                 <div style={{ flex:1, minWidth:0 }}>
                   <div style={{ fontSize:'0.82rem', fontWeight:600, color:'#1A1A1A' }}>
@@ -750,7 +751,9 @@ function DigitalCardSection({
       {/* Pet Profile */}
       <div style={{ background:'#FFFFFF', border:'1.5px solid rgba(217, 184, 76,0.15)', borderRadius:'16px', padding:'16px', marginBottom:'16px' }}>
         <div onClick={() => setPetEditOpen((o: boolean) => !o)} style={{ display:'flex', alignItems:'center', gap:'10px', cursor:'pointer' }}>
-          <span style={{ fontSize:'18px' }}>{walletData?.pet?.petName ? '🐾' : '➕'}</span>
+          {walletData?.pet?.petName
+            ? <PetWashIcon name="brand_paw" size={18} label={walletData.pet.petName} />
+            : <span style={{ fontSize:'18px' }}>➕</span>}
           <div style={{ flex:1 }}>
             <div style={{ fontWeight:700, fontSize:'0.85rem', color:'#1A1A1A' }}>
               {walletData?.pet?.petName
@@ -778,8 +781,8 @@ function DigitalCardSection({
             ))}
             <div style={{ display:'flex', gap:'6px' }}>
               {(['dog','cat','rabbit','bird','other'] as const).map(t => (
-                <button key={t} onClick={() => setPetForm((f: any) => ({ ...f, petType: t }))} style={{ padding:'6px 10px', borderRadius:'100px', border:'none', cursor:'pointer', background: petForm.petType === t ? 'rgba(217, 184, 76,0.15)' : 'rgba(0,0,0,0.04)', outline: petForm.petType === t ? '1.5px solid #D9B84C' : 'none', color: petForm.petType === t ? '#B8860B' : '#7A7068', fontWeight: petForm.petType === t ? 700 : 400, fontSize:'0.72rem' }}>
-                  {t === 'dog' ? '🐶' : t === 'cat' ? '🐱' : t === 'rabbit' ? '🐰' : t === 'bird' ? '🐦' : '🐾'} {t}
+                <button key={t} onClick={() => setPetForm((f: any) => ({ ...f, petType: t }))} style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'6px 10px', borderRadius:'100px', border:'none', cursor:'pointer', background: petForm.petType === t ? 'rgba(217, 184, 76,0.15)' : 'rgba(0,0,0,0.04)', outline: petForm.petType === t ? '1.5px solid #D9B84C' : 'none', color: petForm.petType === t ? '#B8860B' : '#7A7068', fontWeight: petForm.petType === t ? 700 : 400, fontSize:'0.72rem' }}>
+                  <PetWashIcon name={t === 'dog' ? 'animal_dog' : t === 'cat' ? 'animal_cat' : t === 'rabbit' ? 'animal_rabbit' : t === 'bird' ? 'animal_bird' : 'brand_paw'} size={16} label={t} /> {t}
                 </button>
               ))}
             </div>
@@ -1352,7 +1355,7 @@ export default function PrestigePassWallet() {
                 border: '1px solid rgba(217, 184, 76,0.18)', borderRadius: '14px',
                 padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
               }}>
-                <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>🐾</span>
+                <PetWashIcon name="brand_paw" size={22} label={he ? 'שטיפות סה״כ' : 'Total washes'} />
                 <div>
                   <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A1A', lineHeight: 1 }}>
                     {loyaltyProfile.totalWashes}
@@ -1370,7 +1373,7 @@ export default function PrestigePassWallet() {
                   border: '1px solid rgba(217, 184, 76,0.18)', borderRadius: '14px',
                   padding: '12px 14px', display: 'flex', alignItems: 'center', gap: '8px',
                 }}>
-                  <span style={{ fontSize: '1.4rem', lineHeight: 1 }}>✨</span>
+                  <PetWashIcon name="brand_sparkle" size={22} label={he ? 'אבן דרך הבאה' : 'Next milestone'} />
                   <div>
                     <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#1A1A1A', lineHeight: 1 }}>
                       {loyaltyProfile.tierThreshold - loyaltyProfile.tierProgress}

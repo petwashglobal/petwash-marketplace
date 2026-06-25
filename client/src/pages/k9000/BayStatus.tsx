@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { useLanguage } from "@/lib/languageStore";
 import { t } from "@/lib/i18n";
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 /**
  * K9000 Self-Service Bay Status page.
@@ -97,8 +98,9 @@ export default function K9000BayStatus() {
             <ChevronLeft className="h-4 w-4 mr-2" />
             {isHebrew ? 'חזרה לתחנות' : 'Back to Stations'}
           </button>
-          <h1 className="luxury-heading-md luxury-text-gradient" data-testid="page-title">
-            {isHebrew ? '🐾 תחנת K9000™' : '🐾 K9000™ Wash Station'}
+          <h1 className="luxury-heading-md luxury-text-gradient flex items-center gap-2" data-testid="page-title">
+            <PetWashIcon name="brand_paw" size={24} label="PetWash" />
+            {isHebrew ? 'תחנת K9000™' : 'K9000™ Wash Station'}
           </h1>
           <p className="luxury-text-body mt-1 opacity-70">
             {isHebrew

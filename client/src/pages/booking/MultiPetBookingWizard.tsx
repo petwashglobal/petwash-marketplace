@@ -28,6 +28,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { InsuranceTrustChip } from "@/components/marketplace/InsuranceTrustChip";
+import { PetWashIcon } from "@/components/PetWashIcon";
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
@@ -171,12 +172,12 @@ const CARE_FIELDS_BY_SERVICE: Record<string, string[]> = {
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
-function petEmoji(species: string): string {
-  if (species === "dog") return "🐕";
-  if (species === "cat") return "🐈";
-  if (species === "rabbit") return "🐇";
-  if (species === "bird") return "🐦";
-  return "🐾";
+function petIconKey(species: string): string {
+  if (species === "dog") return "animal_dog";
+  if (species === "cat") return "animal_cat";
+  if (species === "rabbit") return "animal_rabbit";
+  if (species === "bird") return "animal_bird";
+  return "brand_paw";
 }
 
 function speciesToPetType(species: string): PetType {
@@ -434,7 +435,7 @@ function ScheduleStep({
         {provider?.photoUrl ? (
           <img src={provider.photoUrl} alt={provider.name} className="w-12 h-12 rounded-full object-cover" />
         ) : (
-          <div className="w-12 h-12 rounded-full bg-[#D9B84C]/20 flex items-center justify-center text-xl">🐾</div>
+          <div className="w-12 h-12 rounded-full bg-[#D9B84C]/20 flex items-center justify-center"><PetWashIcon name="brand_paw" size={22} label="PetWash" /></div>
         )}
         <div>
           <p className="font-semibold text-gray-900">{provider?.name || "בוחר..."}</p>
@@ -553,7 +554,7 @@ function PetsStep({
 
       {pets.length === 0 ? (
         <div className="text-center py-8 space-y-3">
-          <div className="text-4xl">🐾</div>
+          <div className="flex justify-center"><PetWashIcon name="brand_paw" size={40} label="חיות מחמד" /></div>
           <p className="text-sm text-gray-500">אין חיות מחמד רשומות</p>
           <Button variant="outline" size="sm" onClick={() => setLocation("/pets")} className="border-[#D9B84C] text-[#0a0a0a]">
             <Plus className="w-3.5 h-3.5 mr-1" /> הוסף חיית מחמד
@@ -576,7 +577,7 @@ function PetsStep({
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center text-lg ${selected ? "bg-[#D9B84C]/20" : "bg-white"}`}>
                   {pet.photoUrl
                     ? <img src={pet.photoUrl} alt={pet.name} className="w-10 h-10 rounded-full object-cover" />
-                    : petEmoji(pet.species)
+                    : <PetWashIcon name={petIconKey(pet.species)} size={22} label={pet.name} />
                   }
                 </div>
                 <div className="flex-1 text-right">
@@ -636,7 +637,7 @@ function CareStep({
               value={pc.clientRef}
               className="flex-1 text-xs data-[state=active]:bg-white data-[state=active]:shadow-sm rounded-lg"
             >
-              <span className="mr-1">{petEmoji(pc.petType)}</span>
+              <span className="mr-1 inline-flex"><PetWashIcon name={petIconKey(pc.petType)} size={16} label={pc.petName} /></span>
               {pc.petName.split(" ")[0]}
             </TabsTrigger>
           ))}
@@ -775,7 +776,7 @@ function PetCareForm({
       {fields.includes("leash_trained") && (
         <div className="flex items-center justify-between p-3 bg-white rounded-xl">
           <div className="flex items-center gap-2">
-            <span className="text-base">🐕</span>
+            <PetWashIcon name="animal_dog" size={18} label="כלב" />
             <p className="text-sm font-medium text-gray-800">מאולף לרצועה</p>
           </div>
           <Switch
@@ -933,7 +934,7 @@ function AddonsStep({
             <div key={pc.clientRef} className="space-y-2">
               {/* Pet header */}
               <div className="flex items-center gap-2 px-1 py-1">
-                <span className="text-base">{petEmoji(pc.petType)}</span>
+                <PetWashIcon name={petIconKey(pc.petType)} size={18} label={pc.petName} />
                 <span className="text-sm font-semibold text-gray-700">{pc.petName}</span>
                 <div className="flex-1 h-px bg-white" />
               </div>
@@ -970,7 +971,7 @@ function AddonsStep({
 
       {bookingAddons.length === 0 && petAddons.length === 0 && (
         <div className="text-center py-10 text-gray-400">
-          <div className="text-3xl mb-2">✨</div>
+          <div className="flex justify-center mb-2"><PetWashIcon name="brand_sparkle" size={34} label="תוספות" /></div>
           <p className="text-sm">אין תוספות זמינות לשירות זה</p>
         </div>
       )}
@@ -1057,7 +1058,7 @@ function ConfirmStep({
           {provider?.photoUrl ? (
             <img src={provider.photoUrl} alt={provider.name} className="w-11 h-11 rounded-full object-cover border border-gray-100" />
           ) : (
-            <div className="w-11 h-11 rounded-full bg-[#D9B84C]/15 flex items-center justify-center text-xl">🐾</div>
+            <div className="w-11 h-11 rounded-full bg-[#D9B84C]/15 flex items-center justify-center"><PetWashIcon name="brand_paw" size={20} label="PetWash" /></div>
           )}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-gray-900 text-sm truncate">{provider?.name || "—"}</p>
@@ -1104,7 +1105,7 @@ function ConfirmStep({
         <div className="space-y-2">
           {petCares.map(pc => (
             <div key={pc.clientRef} className="flex items-center gap-3 bg-white rounded-xl px-3 py-2.5">
-              <span className="text-lg">{petEmoji(pc.petType)}</span>
+              <PetWashIcon name={petIconKey(pc.petType)} size={22} label={pc.petName} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-medium text-gray-800">{pc.petName}</p>
                 <p className="text-xs text-gray-400">{pc.sizeCategory} · {pc.petType}</p>
@@ -1256,8 +1257,8 @@ function ConfirmStep({
             <div className="space-y-2 pb-3">
               {quote.lineItems?.pets?.map((li: any, i: number) => (
                 <div key={i} className="flex justify-between text-sm">
-                  <span className="text-gray-600">
-                    {petEmoji(li.clientRef === "0" ? petCares[0]?.petType || "dog" : petCares[parseInt(li.clientRef)]?.petType || "dog")} {li.petName}
+                  <span className="text-gray-600 inline-flex items-center gap-1">
+                    <PetWashIcon name={petIconKey(li.clientRef === "0" ? petCares[0]?.petType || "dog" : petCares[parseInt(li.clientRef)]?.petType || "dog")} size={16} label={li.petName} /> {li.petName}
                     <span className="text-xs text-gray-400 mr-1">({li.label})</span>
                   </span>
                   <span className="font-medium text-gray-800">{formatILS(li.subtotalPriceCents)}</span>

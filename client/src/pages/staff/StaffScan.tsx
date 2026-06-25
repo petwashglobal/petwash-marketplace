@@ -3,6 +3,7 @@ import { Layout } from '@/components/Layout';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { Scan, User, CheckCircle, AlertCircle, CreditCard, Loader2, RotateCcw } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 // ─── Service catalogue with ILS prices ───────────────────────────────────────
 const SERVICES = [
@@ -14,7 +15,7 @@ const SERVICES = [
   { id: 'retail',     label: 'Retail / Store', labelHe: 'חנות',         price: 0,     color: '#6b7280', custom: true },
 ] as const;
 
-const PET_EMOJI: Record<string, string> = { dog: '🐶', cat: '🐱', rabbit: '🐰', bird: '🐦', other: '🐾' };
+const PET_ICON: Record<string, string> = { dog: 'animal_dog', cat: 'animal_cat', rabbit: 'animal_rabbit', bird: 'animal_bird', other: 'brand_paw' };
 const fmt = (cents: number) => `₪${(cents / 100).toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
 
 interface Profile {
@@ -222,7 +223,7 @@ export default function StaffScan() {
                     border: '1px solid rgba(217, 184, 76,0.15)', marginBottom: '14px',
                   }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <span style={{ fontSize: '22px' }}>{PET_EMOJI[profile.pet.petType ?? 'dog'] ?? '🐾'}</span>
+                      <PetWashIcon name={PET_ICON[profile.pet.petType ?? 'dog'] ?? 'brand_paw'} size={22} label={profile.pet.petType ?? 'Pet'} />
                       <div>
                         <div style={{ fontWeight: 700, fontSize: '0.92rem', color: '#1A1A1A' }}>
                           {profile.pet.petName}

@@ -10,6 +10,7 @@
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { useLanguage } from '@/lib/languageStore';
 import { ArrowLeft, Loader2, ShieldCheck, Syringe, Cake, Stethoscope, Cpu, Droplets, CalendarClock, Sparkles } from 'lucide-react';
 
@@ -54,9 +55,10 @@ interface CareTimeline {
   readOnly?: boolean;
 }
 
-const SPECIES_EMOJI: Record<string, string> = {
-  dog: '🐕', cat: '🐈', bird: '🐦', rabbit: '🐰', guinea_pig: '🐹',
-  hamster: '🐹', reptile: '🦎', fish: '🐠', other: '🐾',
+// Luxury asset icons (never emoji) keyed by species — Smart Luxury Icon System.
+const SPECIES_ICON: Record<string, string> = {
+  dog: 'animal_dog', cat: 'animal_cat', bird: 'animal_bird', rabbit: 'animal_rabbit', guinea_pig: 'animal_guinea_pig',
+  hamster: 'animal_hamster', reptile: 'animal_lizard', fish: 'animal_fish', other: 'brand_paw',
 };
 
 export default function PetPassport() {
@@ -129,7 +131,7 @@ export default function PetPassport() {
     return (
       <Layout>
         <div className="min-h-screen flex flex-col items-center justify-center text-center px-4 luxury-bg-mesh">
-          <div className="text-6xl mb-6">🐾</div>
+          <div className="mb-6"><PetWashIcon name="brand_paw" size={56} label={tr('Pet not found', 'חיית המחמד לא נמצאה')} /></div>
           <h2 className="text-2xl font-light text-white mb-4">{tr('Pet not found', 'חיית המחמד לא נמצאה')}</h2>
           <button onClick={() => navigate('/pets')} className="px-6 py-2.5 rounded-xl bg-gradient-to-r from-amber-300 to-amber-500 text-neutral-950 font-medium">
             {tr('Back to my pets', 'חזרה לחיות שלי')}
@@ -181,7 +183,7 @@ export default function PetPassport() {
                   <div className="w-full h-full rounded-full overflow-hidden bg-neutral-800 flex items-center justify-center">
                     {pet.photoUrl
                       ? <img src={pet.photoUrl} alt={pet.name} className="w-full h-full object-cover" />
-                      : <span className="text-5xl">{SPECIES_EMOJI[pet.species || 'other'] || '🐾'}</span>}
+                      : <span className="petwash-icon-card" style={{ width: 80, height: 80 }}><PetWashIcon name={SPECIES_ICON[pet.species || 'other'] || 'brand_paw'} size={56} label={pet.name} /></span>}
                   </div>
                 </div>
                 <h1 className="text-2xl font-semibold text-white">{pet.name}</h1>

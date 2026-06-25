@@ -20,6 +20,7 @@ import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { AddressPicker } from "@/components/ui/address-picker";
 import { NavigationButton } from "@/components/NavigationButton";
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 type BookingStep = "details" | "summary" | "pending_match" | "confirmation";
 
@@ -363,8 +364,8 @@ export default function WalkBookingFlow() {
       {/* 24/7 Availability Banner */}
       <div className="max-w-3xl mx-auto px-4 pt-4">
         <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 rounded-xl p-3 border border-emerald-200/50 text-center">
-          <p className="text-sm text-emerald-800 font-medium">
-            🐾 שירות 24/7 כל השנה
+          <p className="text-sm text-emerald-800 font-medium inline-flex items-center justify-center gap-2">
+            <PetWashIcon name="brand_paw" size={16} label="Paw" /> שירות 24/7 כל השנה
           </p>
         </div>
       </div>

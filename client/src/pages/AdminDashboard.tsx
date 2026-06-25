@@ -266,7 +266,7 @@ export default function AdminDashboard() {
                 <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                   {he ? 'מכירות היום' : 'Sales today'}
                 </div>
-                <div className="mt-4 text-5xl font-bold leading-none text-black" dir="ltr">
+                <div className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold leading-none text-black truncate" dir="ltr">
                   {controlTower?.salesToday
                     ? `₪${controlTower.salesToday.totalIls.toLocaleString()}`
                     : <span className="text-black/55">₪0</span>}
@@ -285,7 +285,7 @@ export default function AdminDashboard() {
                 <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                   {he ? 'עמדות פעילות' : 'Bays active'}
                 </div>
-                <div className="mt-4 text-5xl font-bold leading-none text-black" dir="ltr">
+                <div className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold leading-none text-black truncate" dir="ltr">
                   {controlTower?.stations
                     ? <>{controlTower.stations.active}<span className="text-2xl text-black/55">/{controlTower.stations.total}</span></>
                     : <span className="text-black/55">—</span>}
@@ -305,7 +305,7 @@ export default function AdminDashboard() {
                   {he ? 'תקלות פתוחות' : 'Open faults'}
                 </div>
                 <div
-                  className="mt-4 text-5xl font-bold leading-none"
+                  className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold leading-none truncate"
                   dir="ltr"
                   style={{ color: controlTower?.faults && controlTower.faults.critical > 0 ? GOLD_DARK : '#000' }}
                 >
@@ -327,7 +327,7 @@ export default function AdminDashboard() {
                 <div className="text-xs font-medium uppercase tracking-wider text-black/70">
                   {he ? 'מתנות' : 'eGifts'}
                 </div>
-                <div className="mt-4 text-5xl font-bold leading-none text-black" dir="ltr">
+                <div className="mt-4 text-3xl sm:text-4xl lg:text-5xl font-bold leading-none text-black truncate" dir="ltr">
                   {controlTower?.egift
                     ? controlTower.egift.soldToday
                     : <span className="text-black/55">0</span>}

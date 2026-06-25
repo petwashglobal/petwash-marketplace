@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { AlertCircle, RefreshCw } from "lucide-react";
 import { getApiUrl } from "@/lib/apiConfig";
+import { trackBoundaryCrash } from "@/lib/sentry";
 
 interface Props {
   children: ReactNode;
@@ -123,6 +124,21 @@ export class AppErrorBoundary extends Component<Props, State> {
     const referenceId = this.state.referenceId ?? generateReferenceId();
     const isChunk = this.state.isChunkError ?? isChunkLoadError(error);
     const errorKind = isChunk ? "chunk-load" : "render";
+
+    // Tag the crash in Sentry with the user-facing referenceId so a quoted
+    // "Reference: abc123" is directly findable (no-op without a DSN).
+    try {
+      trackBoundaryCrash(error, {
+        referenceId,
+        errorKind,
+        componentStack: errorInfo.componentStack,
+        url: context.url,
+        userId: context.userId,
+        userRole: context.userRole,
+      });
+    } catch {
+      /* never throw inside the boundary */
+    }
 
     // Log to server — /api/errors/log is the correct endpoint
     fetch(getApiUrl("/api/errors/log"), {

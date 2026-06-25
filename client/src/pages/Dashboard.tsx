@@ -272,6 +272,14 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Sécurité et Face ID',
     ru: 'Безопасность и Face ID',
   },
+  accessibilityDiscount: {
+    en: 'Senior / Accessibility Discount',
+    he: 'הנחת אזרח ותיק / נכות',
+    ar: 'خصم كبار السن / الإعاقة',
+    es: 'Descuento Senior / Discapacidad',
+    fr: 'Réduction Senior / Handicap',
+    ru: 'Скидка для Пожилых / Инвалидов',
+  },
   member: {
     en: 'Member',
     he: 'חבר',
@@ -1271,15 +1279,16 @@ export default function Dashboard() {
                 { label: tx('giftCards', language), href: '/gift-cards' },
                 { label: tx('packages', language), href: '/packages' },
                 { label: tx('inbox', language), href: '/personal-inbox', badge: unreadCount },
+                { label: tx('accessibilityDiscount', language), href: '/discount-application' },
                 { label: tx('myAccount', language), href: '/my-account' },
                 { label: tx('securitySettings', language), href: '/settings/security' },
-              ].map((item, idx) => (
+              ].map((item, idx, arr) => (
                 <Link key={item.href} href={item.href}>
                   <div
                     className="px-5 py-3.5 flex items-center justify-between transition-colors cursor-pointer"
                     style={{
                       background: '#FFFFFF',
-                      borderBottom: idx < 6 ? divider : 'none',
+                      borderBottom: idx < arr.length - 1 ? divider : 'none',
                     }}
                   >
                     <p className="text-sm" style={{ color: '#111111' }}>

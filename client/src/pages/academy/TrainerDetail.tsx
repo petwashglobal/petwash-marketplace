@@ -13,6 +13,7 @@ import {
   type AddOn,
   type Review
 } from "@/components/marketplace";
+import { PetWashIcon } from "@/components/PetWashIcon";
 
 const trainerServices: ServiceItem[] = [
   {
@@ -140,7 +141,7 @@ export default function TrainerDetail() {
     return (
       <Layout>
         <div className="min-h-screen flex flex-col items-center justify-center bg-white text-center px-4">
-          <div className="text-6xl mb-6">🐾</div>
+          <div className="mb-6 flex justify-center"><PetWashIcon name="brand_paw" size={64} label="Paw" /></div>
           <h2 className="text-2xl font-light text-gray-900 mb-4">{isHebrew ? 'המאלף לא נמצא' : 'Trainer not found'}</h2>
           <Button onClick={() => navigate('/academy')} className="bg-[#D9B84C] hover:bg-[#B8860B] text-[#0a0a0a]">
             {isHebrew ? 'חזרה לאקדמיה' : 'Back to Academy'}

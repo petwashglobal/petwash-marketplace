@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Sparkles } from 'lucide-react';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/lib/languageStore';
@@ -109,10 +110,10 @@ export function PersonalizedGreeting() {
                     repeat: Infinity,
                     repeatDelay: 1
                   }}
-                  className="text-5xl sm:text-6xl flex-shrink-0"
+                  className="flex-shrink-0"
                   data-testid="kenzo-avatar"
                 >
-                  🐕
+                  <PetWashIcon name="animal_dog" size={56} label="Kenzo" />
                 </motion.div>
 
                 <div className="flex-1 min-w-0">

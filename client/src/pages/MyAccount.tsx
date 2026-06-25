@@ -8,6 +8,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { useToast } from '@/hooks/use-toast';
 import { Layout } from '@/components/Layout';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -807,19 +808,20 @@ export default function MyAccount() {
     return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&dates=${dateStr}/${dateStr}&details=${details}&recur=RRULE:FREQ=YEARLY`;
   }
 
-  const PET_SPECIES: { value: string; labelHe: string; labelEn: string; emoji: string }[] = [
-    { value: 'dog',     labelHe: 'כלב',      labelEn: 'Dog',      emoji: '🐶' },
-    { value: 'cat',     labelHe: 'חתול',     labelEn: 'Cat',      emoji: '🐱' },
-    { value: 'rabbit',  labelHe: 'ארנב',     labelEn: 'Rabbit',   emoji: '🐰' },
-    { value: 'bird',    labelHe: 'ציפור',    labelEn: 'Bird',     emoji: '🐦' },
-    { value: 'fish',    labelHe: 'דג',       labelEn: 'Fish',     emoji: '🐠' },
-    { value: 'hamster', labelHe: 'אוגר',     labelEn: 'Hamster',  emoji: '🐹' },
-    { value: 'turtle',  labelHe: 'צב',       labelEn: 'Turtle',   emoji: '🐢' },
-    { value: 'other',   labelHe: 'אחר',      labelEn: 'Other',    emoji: '🐾' },
+  // Luxury asset icons (never emoji) — Smart Luxury Icon System.
+  const PET_SPECIES: { value: string; labelHe: string; labelEn: string; iconKey: string }[] = [
+    { value: 'dog',     labelHe: 'כלב',      labelEn: 'Dog',      iconKey: 'animal_dog' },
+    { value: 'cat',     labelHe: 'חתול',     labelEn: 'Cat',      iconKey: 'animal_cat' },
+    { value: 'rabbit',  labelHe: 'ארנב',     labelEn: 'Rabbit',   iconKey: 'animal_rabbit' },
+    { value: 'bird',    labelHe: 'ציפור',    labelEn: 'Bird',     iconKey: 'animal_bird' },
+    { value: 'fish',    labelHe: 'דג',       labelEn: 'Fish',     iconKey: 'animal_fish' },
+    { value: 'hamster', labelHe: 'אוגר',     labelEn: 'Hamster',  iconKey: 'animal_hamster' },
+    { value: 'turtle',  labelHe: 'צב',       labelEn: 'Turtle',   iconKey: 'animal_turtle' },
+    { value: 'other',   labelHe: 'אחר',      labelEn: 'Other',    iconKey: 'brand_paw' },
   ];
 
-  function getPetEmoji(species: string): string {
-    return PET_SPECIES.find(s => s.value === species)?.emoji ?? '🐾';
+  function getPetIconKey(species: string): string {
+    return PET_SPECIES.find(s => s.value === species)?.iconKey ?? 'brand_paw';
   }
 
   function handleOpenPetForm(pet?: any) {
@@ -3839,9 +3841,9 @@ export default function MyAccount() {
 
               {/* ── Birthday Countdown Hub ── */}
               {(() => {
-                const birthdayEntries: { id: string; name: string; birthday: string; emoji: string; isOwner?: boolean }[] = [];
-                if (profile?.birthdate) birthdayEntries.push({ id: 'owner', name: isHebrew ? 'יום ההולדת שלי' : 'My Birthday', birthday: profile.birthdate, emoji: '🎂', isOwner: true });
-                (petsData?.pets || []).forEach((p: any) => { if (p.birthday) birthdayEntries.push({ id: p.id, name: p.name, birthday: p.birthday, emoji: p.species === 'cat' ? '🐱' : p.species === 'bird' ? '🐦' : p.species === 'fish' ? '🐠' : p.species === 'rabbit' ? '🐰' : '🐶' }); });
+                const birthdayEntries: { id: string; name: string; birthday: string; iconKey: string; isOwner?: boolean }[] = [];
+                if (profile?.birthdate) birthdayEntries.push({ id: 'owner', name: isHebrew ? 'יום ההולדת שלי' : 'My Birthday', birthday: profile.birthdate, iconKey: 'brand_heart', isOwner: true });
+                (petsData?.pets || []).forEach((p: any) => { if (p.birthday) birthdayEntries.push({ id: p.id, name: p.name, birthday: p.birthday, iconKey: getPetIconKey(p.species) }); });
                 const sorted = birthdayEntries.sort((a, b) => daysUntilBirthday(a.birthday) - daysUntilBirthday(b.birthday));
 
                 if (sorted.length === 0) return null;
@@ -3869,7 +3871,7 @@ export default function MyAccount() {
                           <div key={entry.id} className={`rounded-xl border p-4 flex flex-col gap-2 ${isToday ? 'border-pink-300 bg-pink-50' : isSoon ? 'border-amber-200 bg-amber-50' : 'border-gray-100 bg-white'}`}>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
-                                <span className="text-2xl">{entry.emoji}</span>
+                                <PetWashIcon name={entry.iconKey} size={28} label={entry.name} />
                                 <div>
                                   <p className="text-sm font-semibold text-gray-900">{entry.name}</p>
                                   <p className="text-xs text-gray-500">{dateStr}</p>
@@ -3939,7 +3941,7 @@ export default function MyAccount() {
                 ) : (
                   <div className="space-y-4">
                     {petsData.pets.map((pet: any) => {
-                      const emoji = getPetEmoji(pet.species);
+                      const petIconKey = getPetIconKey(pet.species);
                       const bDays = pet.birthday ? daysUntilBirthday(pet.birthday) : -1;
                       const bDate = pet.birthday ? nextBirthdayDate(pet.birthday) : '';
                       const birthdayUrgent = bDays >= 0 && bDays <= 7;
@@ -3950,8 +3952,8 @@ export default function MyAccount() {
                           {/* Card header */}
                           <div className="flex items-center justify-between px-4 py-3.5 bg-white/70">
                             <div className="flex items-center gap-3">
-                              <div className="w-11 h-11 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center text-2xl select-none">
-                                {emoji}
+                              <div className="w-11 h-11 rounded-full bg-white border border-gray-100 shadow-sm flex items-center justify-center select-none">
+                                <PetWashIcon name={petIconKey} size={28} label={pet.name} />
                               </div>
                               <div>
                                 <p className="font-bold text-gray-900 text-sm leading-tight">{pet.name}</p>
@@ -3995,7 +3997,7 @@ export default function MyAccount() {
                                 </div>
                               </div>
                               <a
-                                href={buildPetBirthdayCalendarUrl(pet.name, pet.birthday, emoji)}
+                                href={buildPetBirthdayCalendarUrl(pet.name, pet.birthday, '🐾')}
                                 target="_blank"
                                 rel="noopener noreferrer"
                                 className="flex items-center gap-1.5 text-[11px] font-semibold text-blue-600 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-1.5 hover:bg-blue-100 transition-colors"
@@ -4220,7 +4222,7 @@ export default function MyAccount() {
                               onClick={() => setPetFormData((p: any) => ({ ...p, species: sp.value }))}
                               className={`flex flex-col items-center gap-1 py-3 rounded-xl border-2 transition-all text-center ${petFormData.species === sp.value ? 'border-black bg-black/5' : 'border-gray-100 bg-white hover:border-gray-300'}`}
                             >
-                              <span className="text-xl">{sp.emoji}</span>
+                              <PetWashIcon name={sp.iconKey} size={26} label={isHebrew ? sp.labelHe : sp.labelEn} />
                               <span className="text-[10px] font-semibold text-gray-600">{isHebrew ? sp.labelHe : sp.labelEn}</span>
                             </button>
                           ))}

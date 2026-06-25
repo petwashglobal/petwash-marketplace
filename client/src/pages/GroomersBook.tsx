@@ -11,18 +11,19 @@ import {
   ChevronRight, ChevronLeft, DollarSign, Info, Sparkles,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 import { apiRequest } from '@/lib/queryClient';
 import { format, addDays } from 'date-fns';
 
 const SERVICES = [
-  { key: 'bath_blow', en: 'Bath & Blow Dry', he: 'אמבטיה וייבוש', emoji: '🛁', price: 120, duration: '60 min', desc: 'Full wash, blow dry & brush out' },
-  { key: 'full_groom', en: 'Full Groom', he: 'טיפוח מלא', emoji: '✂️', price: 180, duration: '90 min', desc: 'Bath, trim, nail, ear & teeth' },
+  { key: 'bath_blow', en: 'Bath & Blow Dry', he: 'אמבטיה וייבוש', emoji: '🛁', iconKey: 'product_organic_soap', price: 120, duration: '60 min', desc: 'Full wash, blow dry & brush out' },
+  { key: 'full_groom', en: 'Full Groom', he: 'טיפוח מלא', emoji: '✂️', iconKey: 'product_scissors', price: 180, duration: '90 min', desc: 'Bath, trim, nail, ear & teeth' },
   { key: 'nail_trim', en: 'Nail Trim', he: 'קיצוץ ציפורניים', emoji: '💅', price: 60, duration: '20 min', desc: 'Nail clipping & filing' },
-  { key: 'spa_treatment', en: 'Spa Treatment', he: 'טיפול ספא', emoji: '🧴', price: 220, duration: '120 min', desc: 'Premium spa with conditioning mask' },
-  { key: 'puppy_groom', en: 'Puppy Groom', he: 'טיפוח לגורים', emoji: '🐾', price: 140, duration: '75 min', desc: 'Gentle first groom for puppies' },
-  { key: 'de_shed', en: 'De-Shedding', he: 'הסרת שערות', emoji: '🪮', price: 150, duration: '60 min', desc: 'Reduce shedding by up to 90%' },
+  { key: 'spa_treatment', en: 'Spa Treatment', he: 'טיפול ספא', emoji: '🧴', iconKey: 'product_shampoo', price: 220, duration: '120 min', desc: 'Premium spa with conditioning mask' },
+  { key: 'puppy_groom', en: 'Puppy Groom', he: 'טיפוח לגורים', emoji: '🐾', iconKey: 'brand_paw', price: 140, duration: '75 min', desc: 'Gentle first groom for puppies' },
+  { key: 'de_shed', en: 'De-Shedding', he: 'הסרת שערות', emoji: '🪮', iconKey: 'product_grooming_brush', price: 150, duration: '60 min', desc: 'Reduce shedding by up to 90%' },
   { key: 'teeth_cleaning', en: 'Teeth Cleaning', he: 'ניקוי שיניים', emoji: '🦷', price: 80, duration: '30 min', desc: 'Safe dental cleaning' },
   { key: 'ear_cleaning', en: 'Ear Cleaning', he: 'ניקוי אוזניים', emoji: '👂', price: 60, duration: '20 min', desc: 'Ear canal cleaning & inspection' },
 ];
@@ -31,9 +32,15 @@ const TIME_SLOTS = ['09:00', '10:00', '11:00', '12:00', '13:00', '14:00', '15:00
 
 const PET_SIZES = [
   { key: 'small', label: 'Small', labelHe: 'קטן', desc: 'Under 10kg', emoji: '🐩' },
-  { key: 'medium', label: 'Medium', labelHe: 'בינוני', desc: '10–25kg', emoji: '🦮' },
-  { key: 'large', label: 'Large', labelHe: 'גדול', desc: 'Over 25kg', emoji: '🐕' },
+  { key: 'medium', label: 'Medium', labelHe: 'בינוני', desc: '10–25kg', emoji: '🦮', iconKey: 'animal_dog' },
+  { key: 'large', label: 'Large', labelHe: 'גדול', desc: 'Over 25kg', emoji: '🐕', iconKey: 'animal_dog' },
 ];
+
+/** Renders the PetWash luxury icon when a service/size has an iconKey, else the original emoji. */
+function ServiceGlyph({ iconKey, emoji, size, label }: { iconKey?: string; emoji: string; size: number; label: string }) {
+  if (iconKey) return <PetWashIcon name={iconKey} size={size} label={label} />;
+  return <span style={{ fontSize: `${size}px` }}>{emoji}</span>;
+}
 
 interface GroomersBookProps {
   language?: string;
@@ -137,7 +144,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2.5">
-                      <span className="text-2xl">{svc.emoji}</span>
+                      <ServiceGlyph iconKey={svc.iconKey} emoji={svc.emoji} size={24} label={isHebrew ? svc.he : svc.en} />
                       <div>
                         <p className="font-semibold text-gray-900 dark:text-black text-sm">{isHebrew ? svc.he : svc.en}</p>
                         <p className="text-xs text-gray-500 mt-0.5">{svc.desc}</p>
@@ -160,7 +167,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
             <h2 className="luxury-heading-md">{isHebrew ? 'בחר תאריך ושעה' : 'Pick Date & Time'}</h2>
             {selectedSvc && (
               <div className="luxury-glass-card p-4 flex items-center gap-3 bg-purple-50/50 dark:bg-white">
-                <span className="text-2xl">{selectedSvc.emoji}</span>
+                <ServiceGlyph iconKey={selectedSvc.iconKey} emoji={selectedSvc.emoji} size={24} label={isHebrew ? selectedSvc.he : selectedSvc.en} />
                 <div>
                   <p className="font-semibold text-sm text-gray-900 dark:text-black">{isHebrew ? selectedSvc.he : selectedSvc.en}</p>
                   <p className="text-xs text-gray-500">{selectedSvc.duration} · ₪{selectedSvc.price}</p>
@@ -201,7 +208,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 <Label className="text-sm font-medium">Quick fill from saved pets</Label>
                 {pets.slice(0,3).map((pet: any) => (
                   <button key={pet.id} onClick={() => { setPetName(pet.name || ''); setPetBreed(pet.breed || ''); }} className="w-full luxury-glass-card p-3 flex items-center gap-3 text-left hover:bg-purple-50/50 dark:hover:bg-purple-900/20 transition-colors">
-                    <span className="text-xl">🐾</span>
+                    <PetWashIcon name="brand_paw" size={20} label={pet.name || 'Pet'} />
                     <div><p className="font-medium text-sm text-gray-900 dark:text-black">{pet.name}</p><p className="text-xs text-gray-500">{pet.breed}</p></div>
                   </button>
                 ))}
@@ -225,7 +232,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 {PET_SIZES.map(size => (
                   <button key={size.key} onClick={() => setPetSize(size.key)}
                     className={`py-3 rounded-xl text-center transition-all ${petSize === size.key ? 'bg-purple-600 text-white shadow-md' : 'luxury-glass-card hover:bg-purple-50 dark:hover:bg-purple-900/20'}`}>
-                    <div className="text-2xl mb-1">{size.emoji}</div>
+                    <div className="mb-1 flex justify-center"><ServiceGlyph iconKey={size.iconKey} emoji={size.emoji} size={24} label={isHebrew ? size.labelHe : size.label} /></div>
                     <p className="text-xs font-medium">{isHebrew ? size.labelHe : size.label}</p>
                     <p className="text-xs text-current opacity-70">{size.desc}</p>
                   </button>
@@ -246,7 +253,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
 
             <div className="luxury-glass-card p-5 space-y-4">
               <div className="flex items-center gap-3 pb-4 border-b border-gray-100 dark:border-gray-700">
-                <span className="text-3xl">{selectedSvc.emoji}</span>
+                <ServiceGlyph iconKey={selectedSvc.iconKey} emoji={selectedSvc.emoji} size={30} label={isHebrew ? selectedSvc.he : selectedSvc.en} />
                 <div>
                   <p className="font-bold text-gray-900 dark:text-black">{isHebrew ? selectedSvc.he : selectedSvc.en}</p>
                   <p className="text-sm text-gray-500">{selectedSvc.duration}</p>

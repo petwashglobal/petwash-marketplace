@@ -11,6 +11,7 @@ import { Zap, Clock, MapPin, Dog, Star, Filter, CheckCircle2, AlertCircle, Chevr
 import { Link } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 type ServiceFilter = 'all' | 'grooming' | 'walking' | 'daycare' | 'k9000';
 type PetFilter = 'all' | 'dog' | 'cat';
@@ -184,7 +185,10 @@ export default function FlashDeals() {
               }}
               className="flex-1 py-2 rounded-xl border text-[11px] font-medium tracking-wide capitalize transition-all"
             >
-              {p === 'all' ? '🐾 All pets' : p === 'dog' ? '🐕 Dogs' : '🐈 Cats'}
+              <span className="inline-flex items-center gap-1">
+                <PetWashIcon name={p === 'all' ? 'brand_paw' : p === 'dog' ? 'animal_dog' : 'animal_cat'} size={14} label={p === 'all' ? 'All pets' : p === 'dog' ? 'Dogs' : 'Cats'} />
+                {p === 'all' ? 'All pets' : p === 'dog' ? 'Dogs' : 'Cats'}
+              </span>
             </button>
           ))}
         </div>
@@ -214,7 +218,7 @@ export default function FlashDeals() {
           </div>
         ) : deals.length === 0 ? (
           <div className="text-center py-16">
-            <p className="text-3xl mb-3">🐾</p>
+            <p className="mb-3 flex justify-center"><PetWashIcon name="brand_paw" size={30} label="No deals" /></p>
             <p className="text-[14px] font-light text-gray-600">No deals match your filters right now</p>
             <p className="text-[12px] text-gray-400 mt-1">Check back soon — new offers appear daily</p>
           </div>
@@ -297,8 +301,14 @@ export default function FlashDeals() {
                           <MapPin size={10} />
                           <span className="text-[10px]">{deal.location}</span>
                         </div>
-                        <span className="text-[10px] text-gray-400">
-                          {deal.petTypes.includes('all') ? '🐾 All pets' : deal.petTypes.map(p => p === 'dog' ? '🐕' : '🐈').join(' ')}
+                        <span className="text-[10px] text-gray-400 inline-flex items-center gap-1">
+                          {deal.petTypes.includes('all') ? (
+                            <><PetWashIcon name="brand_paw" size={12} label="All pets" /> All pets</>
+                          ) : (
+                            deal.petTypes.map((p, idx) => (
+                              <PetWashIcon key={idx} name={p === 'dog' ? 'animal_dog' : 'animal_cat'} size={12} label={p === 'dog' ? 'Dog' : 'Cat'} />
+                            ))
+                          )}
                         </span>
                       </div>
 

@@ -12,6 +12,7 @@ import {
   Navigation2, Shield,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
+import { PetWashIcon } from '@/components/PetWashIcon';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
@@ -45,16 +46,22 @@ interface BookingRequest {
   updatedAt: string;
 }
 
-const SERVICE_LABELS: Record<string, { en: string; he: string; emoji: string }> = {
-  bath_blow: { en: 'Bath & Blow Dry', he: 'אמבטיה וייבוש', emoji: '🛁' },
-  full_groom: { en: 'Full Groom', he: 'טיפוח מלא', emoji: '✂️' },
+const SERVICE_LABELS: Record<string, { en: string; he: string; emoji: string; iconKey?: string }> = {
+  bath_blow: { en: 'Bath & Blow Dry', he: 'אמבטיה וייבוש', emoji: '🛁', iconKey: 'product_organic_soap' },
+  full_groom: { en: 'Full Groom', he: 'טיפוח מלא', emoji: '✂️', iconKey: 'product_scissors' },
   nail_trim: { en: 'Nail Trim', he: 'קיצוץ ציפורניים', emoji: '💅' },
-  spa_treatment: { en: 'Spa Treatment', he: 'טיפול ספא', emoji: '🧴' },
-  puppy_groom: { en: 'Puppy Groom', he: 'טיפוח לגורים', emoji: '🐾' },
+  spa_treatment: { en: 'Spa Treatment', he: 'טיפול ספא', emoji: '🧴', iconKey: 'product_shampoo' },
+  puppy_groom: { en: 'Puppy Groom', he: 'טיפוח לגורים', emoji: '🐾', iconKey: 'brand_paw' },
   teeth_cleaning: { en: 'Teeth Cleaning', he: 'ניקוי שיניים', emoji: '🦷' },
   ear_cleaning: { en: 'Ear Cleaning', he: 'ניקוי אוזניים', emoji: '👂' },
-  de_shed: { en: 'De-Shedding', he: 'הסרת שערות', emoji: '🪮' },
+  de_shed: { en: 'De-Shedding', he: 'הסרת שערות', emoji: '🪮', iconKey: 'product_grooming_brush' },
 };
+
+/** Renders the PetWash luxury icon when a service has an iconKey, else the original emoji. */
+function ServiceGlyph({ svc, size, label }: { svc: { emoji: string; iconKey?: string }; size: number; label: string }) {
+  if (svc.iconKey) return <PetWashIcon name={svc.iconKey} size={size} label={label} />;
+  return <span style={{ fontSize: `${size}px` }}>{svc.emoji}</span>;
+}
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: 'Awaiting Groomer', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
@@ -176,7 +183,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
       <div className="luxury-glass-card luxury-shadow-md p-5 luxury-animate-fade-in">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-600 flex items-center justify-center text-xl">{svc.emoji}</div>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-600 flex items-center justify-center"><ServiceGlyph svc={svc} size={20} label={isHebrew ? svc.he : svc.en} /></div>
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-black">{isHebrew ? svc.he : svc.en}</h3>
               <p className="text-sm text-gray-500 flex items-center gap-1"><PawPrint className="w-3.5 h-3.5" />{petName}</p>

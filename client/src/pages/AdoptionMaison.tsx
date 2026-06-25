@@ -14,6 +14,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { Heart } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 const GOLD = '#D4AF37';
 
@@ -78,7 +79,7 @@ export default function AdoptionMaison() {
           <div className="py-20 text-center text-sm text-black/55">{isHe ? 'לא הצלחנו לטעון כרגע. נסו שוב.' : 'Could not load right now. Please try again.'}</div>
         ) : posts.length === 0 ? (
           <div className="py-20 text-center">
-            <div className="text-3xl mb-2">🐾</div>
+            <div className="mb-2 flex justify-center"><PetWashIcon name="brand_paw" size={30} label="" /></div>
             <p className="text-sm text-black/60">{isHe ? 'אין כרגע חיות הממתינות לאימוץ. בקרו שוב בקרוב.' : 'No pets awaiting adoption right now. Check back soon.'}</p>
           </div>
         ) : (
@@ -88,7 +89,7 @@ export default function AdoptionMaison() {
                 <div className="h-44 bg-[#F4F1EA] flex items-center justify-center overflow-hidden">
                   {p.primary_media
                     ? <img src={p.primary_media} alt={p.pet_name || ''} className="w-full h-full object-cover" />
-                    : <span className="text-4xl" style={{ color: '#CBB682' }}>🐾</span>}
+                    : <PetWashIcon name="brand_paw" size={40} label={p.pet_name || 'Pet'} />}
                 </div>
                 <div className="p-4">
                   <div className="font-serif text-lg leading-tight">{p.pet_name || (isHe ? 'חיה לאימוץ' : 'For adoption')}</div>

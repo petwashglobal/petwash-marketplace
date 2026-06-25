@@ -6,6 +6,7 @@ import { ProviderProfilePage, getFAQsForPlatform } from '@/components/marketplac
 import { useLanguage } from '@/lib/languageStore';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { PetWashIcon } from '@/components/PetWashIcon';
 
 interface Walker {
   id: number;
@@ -96,7 +97,7 @@ export default function WalkerDetail() {
       <Layout>
         <div className="min-h-screen flex items-center justify-center bg-white">
           <div className="text-center">
-            <div className="text-6xl mb-6">🐕</div>
+            <div className="mb-6 flex justify-center"><PetWashIcon name="animal_dog" size={64} label="Dog" /></div>
             <h2 className="text-2xl font-light text-gray-900 mb-2">
               {isHebrew ? 'מטייל לא נמצא' : 'Walker not found'}
             </h2>
