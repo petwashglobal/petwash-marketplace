@@ -616,6 +616,11 @@ const AUTH_CSRF_EXEMPT = new Set([
   // /api/auth/sms/start and /api/auth/sms/verify directly.
   '/api/auth/sms/start',
   '/api/auth/sms/verify',
+  // Email-code OTP front door (server/routes/auth-email.ts) — same pre-session
+  // origin as the SMS pair; the matched code IS the auth proof. Without these,
+  // SignUpLuxury's "send email code" gets EBADCSRFTOKEN before any session exists.
+  '/api/auth/email/start',
+  '/api/auth/email/verify',
   // Post-login role-routing and onboarding steps — all require a valid Firebase
   // session cookie (requireAuth) which already scopes them to the authenticated user.
   '/api/auth/post-login',

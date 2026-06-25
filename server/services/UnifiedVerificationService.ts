@@ -432,6 +432,10 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
       || challenge.purpose === "enable_2fa"
       || challenge.purpose === "disable_2fa"
       || challenge.purpose === "payout"
+      // 2026-06-25: email-code sign-up / sign-in (matched code, recorded live —
+      // same UX as the SMS OTP). Easy Rover-style Prestige join.
+      || challenge.purpose === "login"
+      || challenge.purpose === "signup"
     )
     && challenge.channel === "email"
   ) {

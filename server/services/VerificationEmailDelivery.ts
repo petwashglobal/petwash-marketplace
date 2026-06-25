@@ -4,7 +4,7 @@ import { EmailService } from "../emailService";
 export interface VerificationEmailCodeInput {
   to: string;
   code: string;
-  purpose: "change_email" | "close_account" | "enable_2fa" | "disable_2fa" | "payout";
+  purpose: "change_email" | "close_account" | "enable_2fa" | "disable_2fa" | "payout" | "login" | "signup";
 }
 
 export async function sendVerificationEmailCode(input: VerificationEmailCodeInput): Promise<boolean> {
@@ -12,6 +12,8 @@ export async function sendVerificationEmailCode(input: VerificationEmailCodeInpu
   const isEnable2fa = input.purpose === "enable_2fa";
   const isDisable2fa = input.purpose === "disable_2fa";
   const isPayout = input.purpose === "payout";
+  const isSignup = input.purpose === "signup";
+  const isLogin = input.purpose === "login";
   const subject = isCloseAccount
     ? "Confirm your PetWash account deletion request"
     : isEnable2fa
@@ -29,6 +31,10 @@ export async function sendVerificationEmailCode(input: VerificationEmailCodeInpu
         ? "Confirm two-step verification removal"
         : isPayout
           ? "Confirm payout release"
+    : isSignup
+      ? "Welcome to PetWash — verify your email"
+      : isLogin
+        ? "Your PetWash sign-in code"
     : "Verify your PetWash email change";
   const body = isCloseAccount
     ? "Use this one-time code to confirm your account deletion request."
@@ -38,6 +44,10 @@ export async function sendVerificationEmailCode(input: VerificationEmailCodeInpu
         ? "Use this one-time code to confirm removal of a two-step verification method from your PetWash account."
         : isPayout
           ? "Use this one-time code to confirm a sensitive payout release or settlement payment action."
+    : isSignup
+      ? "Use this one-time code to verify your email and join the PetWash family."
+      : isLogin
+        ? "Use this one-time code to sign in to PetWash."
     : "Use this one-time code to confirm your new email address.";
   const warning = isCloseAccount
     ? "If you did not request account deletion, do not share the code and contact"
