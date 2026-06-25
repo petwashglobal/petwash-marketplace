@@ -34,7 +34,6 @@ import { initializeInteractionTracking } from "@/lib/interactionTracker";
 import { useFCMNotifications } from "@/hooks/useFCMNotifications";
 import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
-import { OnboardingChecklist } from "@/components/OnboardingChecklist";
 import { ActivationBanner } from "@/components/ActivationBanner";
 import { PromoAdPopup } from "@/components/PromoAdPopup";
 import { Layout } from "@/components/Layout";
@@ -3959,10 +3958,10 @@ console.log("Build: 1769350182889");
           </svg>
           
           <Toaster />
-          {/* PR Phase A: suppress post-login overlay on immersive flows.
-              OnboardingChecklist is `fixed bottom-24 right-4 z-40` and
-              covered form CTAs on iPhone Safari onboarding pages. */}
-          {!isImmersive && <OnboardingChecklist />}
+          {/* OnboardingChecklist REMOVED 2026-06-26 (CEO): the generic
+              "add address / complete first booking / leave review / join loyalty"
+              popup is not correct PetWash logic. Post-signup we surface 3 explicit
+              cards (Add Pet / Apply Discount / Become Provider), not a checklist. */}
           {showFloatingStack && (
           <FloatingStack 
             language={currentLanguage}

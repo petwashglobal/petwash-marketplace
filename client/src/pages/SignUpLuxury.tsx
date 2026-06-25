@@ -465,8 +465,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     secure: he ? 'מאובטח · פרטי · מוצפן' : 'SECURE · PRIVATE · ENCRYPTED',
     secureSub: he ? 'הנתונים שלך מוגנים ומוצפנים.' : 'Your data is protected and encrypted.',
 
-    create: he ? 'צור את החשבון שלך' : 'Create Your Account',
-    helper: he ? 'הצטרף לעתיד של טיפול חכם בחיות מחמד' : 'Join the future of intelligent pet care',
+    create: he ? 'צור את חשבון PetWash שלך' : 'Create your PetWash account',
+    helper: he
+      ? 'הצטרף ל־PetWash Prestige וקבל 5% תגמול על כל רחיצה זכאית במכונת K9000.'
+      : 'Join PetWash Prestige and earn 5% rewards on every eligible K9000 wash.',
     cwGoogle: he ? 'המשך עם Google' : 'Continue with Google',
     cwApple: he ? 'המשך עם Apple' : 'Continue with Apple',
     cwFb: he ? 'המשך עם Facebook' : 'Continue with Facebook',
@@ -604,11 +606,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <FaEnvelope aria-hidden /> {t.tabEmail}
                 </button>
               )}
-              {signupFlags.emailPassword && (
-                <button type="button" className="sl-tab" role="tab" aria-selected={method === 'other'} onClick={() => setMethod('other')}>
-                  <FaEnvelope aria-hidden /> {t.tabOther}
-                </button>
-              )}
             </div>
           )}
 
@@ -627,7 +624,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </>
           )}
 
-          {(method === 'email' || method === 'other') && !sent && (
+          {method === 'email' && !sent && (
             <>
               <div className="sl-field">
                 <label className="sl-label">{t.emailLabel}</label>
@@ -635,7 +632,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <FaEnvelope className="sl-inputIcon" aria-hidden />
                   <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                     value={email} onChange={(e) => setEmail(e.target.value)}
-                    placeholder={method === 'other' ? (he ? 'Outlook, Yahoo, ProtonMail, אחר…' : 'Outlook, Yahoo, ProtonMail, other…') : t.emailPh} />
+                    placeholder={t.emailPh} />
                 </div>
               </div>
               <div className="sl-field">
@@ -684,7 +681,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 </label>
               </div>
               <button className="sl-cta" disabled={!readyForSubmit || !consentOk}
-                onClick={() => ((method === 'email' || method === 'other') ? void emailSubmit() : void sendCode())}>
+                onClick={() => (method === 'email' ? void emailSubmit() : void sendCode())}>
                 <FaLock aria-hidden /> {ctaLabel}
               </button>
               {!readyForSubmit && <div className="sl-hint sl-submitHint">{t.completeFields}</div>}
