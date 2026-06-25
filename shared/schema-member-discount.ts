@@ -83,3 +83,78 @@ export const insertMemberWashDiscountSchema = createInsertSchema(memberWashDisco
   updatedAt: true,
 });
 export type InsertMemberWashDiscount = z.infer<typeof insertMemberWashDiscountSchema>;
+
+// ──────────────────────────────────────────────────────────────────────────
+// SENIOR / DISABILITY DISCOUNT APPLICATION — self-service apply flow.
+//
+// CEO "FINAL CORRECTION" (2026-06-25): the senior (65+) / disability discount
+// is an OPTIONAL, manually-reviewed application. The member applies IN-APP;
+// support reviews; only on APPROVAL is the discount activated (a row is written
+// to memberWashDiscounts above, which the price engine reads). This table holds
+// only the APPLICATION — applicant-supplied data + the full status lifecycle.
+//
+// PRIVACY: id_number / disability_ref are ENCRYPTED (secretFieldCrypto), never
+// plaintext, never in email. Backed by migration 0077_member_discount_applications.
+// ──────────────────────────────────────────────────────────────────────────
+
+/** Application discount categories (Prestige Basic is automatic, not applied for). */
+export const DISCOUNT_APPLICATION_TYPES = ['senior', 'disability'] as const;
+export type DiscountApplicationType = (typeof DISCOUNT_APPLICATION_TYPES)[number];
+
+/** ID document kinds accepted on an application. */
+export const DISCOUNT_APPLICATION_ID_TYPES = ['national_id', 'passport'] as const;
+export type DiscountApplicationIdType = (typeof DISCOUNT_APPLICATION_ID_TYPES)[number];
+
+/** Full application lifecycle (spec §3). */
+export const DISCOUNT_APPLICATION_STATUSES = [
+  'draft',
+  'submitted',
+  'pending_review',
+  'needs_more_info',
+  'approved',
+  'rejected',
+  'expired',
+  'suspended',
+] as const;
+export type DiscountApplicationStatus = (typeof DISCOUNT_APPLICATION_STATUSES)[number];
+
+export const memberDiscountApplications = pgTable(
+  'member_discount_applications',
+  {
+    id: serial('id').primaryKey(),
+    userId: varchar('user_id', { length: 255 }).notNull(),
+    discountType: varchar('discount_type', { length: 16 }).notNull(),
+    status: varchar('status', { length: 24 }).notNull().default('pending_review'),
+
+    // Applicant-supplied data
+    dateOfBirth: timestamp('date_of_birth', { mode: 'date' }),
+    idType: varchar('id_type', { length: 16 }),
+    // ENCRYPTED national-ID / passport number — never plaintext.
+    idNumberEnc: text('id_number_enc'),
+    idCountry: varchar('id_country', { length: 64 }),
+    idIssueDate: timestamp('id_issue_date', { mode: 'date' }),
+    // Disability-specific (nullable for senior). ENCRYPTED.
+    disabilityRefEnc: text('disability_ref_enc'),
+    disabilityIssueDate: timestamp('disability_issue_date', { mode: 'date' }),
+    disabilityExpiryDate: timestamp('disability_expiry_date', { mode: 'date' }),
+    issuingAuthority: varchar('issuing_authority', { length: 160 }),
+
+    declarationSignedAt: timestamp('declaration_signed_at'),
+    declarationVersion: varchar('declaration_version', { length: 32 }),
+
+    submittedAt: timestamp('submitted_at'),
+    reviewedByAdminId: varchar('reviewed_by_admin_id', { length: 255 }),
+    reviewedAt: timestamp('reviewed_at'),
+    reviewNote: text('review_note'),
+    approvedPercent: integer('approved_percent'),
+
+    createdAt: timestamp('created_at').notNull().defaultNow(),
+    updatedAt: timestamp('updated_at').notNull().defaultNow(),
+  },
+  (table) => ({
+    userIdx: index('idx_member_discount_apps_user').on(table.userId),
+    statusIdx: index('idx_member_discount_apps_status').on(table.status),
+  }),
+);
+
+export type MemberDiscountApplication = typeof memberDiscountApplications.$inferSelect;
