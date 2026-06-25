@@ -233,8 +233,10 @@ export class UnifiedMessagingHub {
    * Check if message should be sent based on preferences
    */
   private shouldSend(channel: Message['channel'], preferences: NotificationPreferences, platform?: string): boolean {
-    // Check channel preference
-    if (!preferences[channel]) {
+    // Check channel preference. The Message channel union uses the kebab key
+    // 'in-app' but NotificationPreferences stores it camelCase as 'inApp'.
+    const prefKey = (channel === 'in-app' ? 'inApp' : channel) as keyof NotificationPreferences;
+    if (!preferences[prefKey]) {
       return false;
     }
 

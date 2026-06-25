@@ -1559,8 +1559,8 @@ router.get('/provider/:providerId/availability', async (req, res) => {
       const dateStr = new Date(slot.date).toISOString().split('T')[0];
       dateMap[dateStr] = {
         available: slot.isAvailable || false,
-        price: slot.customPriceCents ? slot.customPriceCents / 100 : undefined,
-        bookingsCount: slot.currentBookingsCount || 0
+        price: slot.customRateCents ? slot.customRateCents / 100 : undefined,
+        bookingsCount: slot.currentBookings || 0
       };
     });
 
@@ -1626,7 +1626,7 @@ router.post('/provider/:providerId/availability', requireAuth, async (req, res) 
         await db.update(providerAvailability)
           .set({
             isAvailable,
-            customPriceCents: customPrice ? Math.round(customPrice * 100) : null,
+            customRateCents: customPrice ? Math.round(customPrice * 100) : null,
             maxBookingsPerDay: maxBookings,
             notes,
             updatedAt: new Date()

@@ -228,7 +228,7 @@ export function providerPayout(p: ProviderPayoutParams): string {
         ${isHe ? `פרטי תשלום` : 'PAYMENT DETAILS'}
       </div>
       <div style="font-size:13px;color:${TEXT_PRI};direction:rtl">
-        ${p.paymentMethod}${p.bankLast4 ? ` (**** ${p.bankLast4})` : ``}
+        ${p.payoutMethod}${p.bankLast4 ? ` (**** ${p.bankLast4})` : ``}
       </div>
     </td>
   </tr>

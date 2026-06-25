@@ -39,7 +39,7 @@ import { TRANSACTION_TYPES } from '@shared/finance-flow-types';
 import VATCalculator, { ISRAELI_VAT_RATE } from './VATCalculatorService';
 import { applyDeduction, topUpCashWallet } from './WalletEngine';
 import { logger } from '../lib/logger';
-import { issueTaxDocument } from './TaxDocumentService';
+import { issueTaxDocument, getTaxDocByPaymentId } from './TaxDocumentService';
 
 // ── Per-Vertical Commercial Model Config ─────────────────────────────────────
 

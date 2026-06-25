@@ -29,6 +29,7 @@ import {
 import { eq, and, desc, sql, gte, lt } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { twilioSMSService } from '../services/TwilioSMSService';
 import { GoogleMessagingService } from '../services/GoogleMessagingService';
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { getBayHealth } from '../services/K9000RedemptionService';
@@ -765,11 +766,8 @@ router.post('/dashboard/send-maintenance-alert', async (req, res) => {
     // 1. Send SMS to technician
     if (process.env.TECH_PHONE_NUMBER) {
       try {
-        await SmsService.sendSMS({
-          to: process.env.TECH_PHONE_NUMBER,
-          message: alertMessage
-        });
-        smsDelivered = true;
+        const smsRes = await twilioSMSService.sendSMS(process.env.TECH_PHONE_NUMBER, alertMessage);
+        smsDelivered = !!smsRes?.success;
         logger.info('[K9000 Dashboard] SMS alert sent successfully', { stationId, alertType });
       } catch (error) {
         logger.error('[K9000 Dashboard] Failed to send SMS alert', error, { stationId, alertType });

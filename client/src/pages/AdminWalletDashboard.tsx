@@ -25,6 +25,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import {
+  Shield,
   ShieldCheck,
   Loader2,
   Search,
