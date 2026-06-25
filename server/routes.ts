@@ -15886,7 +15886,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/loyalty/fraud/:userId', requireAdmin, async (req, res) => {
     try {
-      const fraud = await loyaltyActivityMonitor.detectFraudulentActivity(req.params.userId);
+      const fraud = await loyaltyActivityMonitor.detectFraud(req.params.userId);
       res.json(fraud);
     } catch (error: any) {
       logger.error('[LoyaltyMonitor] Fraud detection failed', error);
