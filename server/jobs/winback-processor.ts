@@ -315,7 +315,7 @@ async function runInitialPass(guards: Guards): Promise<{ awarded: number; errors
 
       // Phase 6.13: Offer sizing — scale credit by LTV tier
       const { multiplier, ltv } = await getLtvMultiplier(userId);
-      const rawCreditCents = Math.round(rule.rewardCents * multiplier);
+      const rawCreditCents = Math.round((rule.rewardIlsCents ?? 0) * multiplier);
       const creditIls      = (rawCreditCents / 100).toFixed(0);
 
       await awardLoyaltyCredit({ userId, ruleKey: trigger, fingerprint: `${trigger}:${userId}` });
@@ -399,7 +399,7 @@ async function runSmsEscalationPass(): Promise<{ sent: number; skipped: number; 
 
       if (!user?.phone) { skipped++; continue; }
 
-      const [rule] = await db.select({ rewardCents: loyaltyRules.rewardCents })
+      const [rule] = await db.select({ rewardCents: loyaltyRules.rewardIlsCents })
         .from(loyaltyRules).where(eq(loyaltyRules.ruleKey, trigger)).limit(1);
 
       const { multiplier } = await getLtvMultiplier(userId);
@@ -474,7 +474,7 @@ async function runWhatsAppEscalationPass(): Promise<{ sent: number; skipped: num
 
       if (!user?.phone) { skipped++; continue; }
 
-      const [rule] = await db.select({ rewardCents: loyaltyRules.rewardCents })
+      const [rule] = await db.select({ rewardCents: loyaltyRules.rewardIlsCents })
         .from(loyaltyRules).where(eq(loyaltyRules.ruleKey, trigger)).limit(1);
 
       const { multiplier } = await getLtvMultiplier(userId);
