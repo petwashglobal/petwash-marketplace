@@ -128,7 +128,7 @@ export default function MobileOpsHub() {
       id: 'ops-dashboard',
       title: 'Ops Dashboard',
       icon: Zap,
-      path: '/ops/dashboard',
+      path: '/ops-dashboard',
       color: '#f59e0b',
       description: 'Full operations panel'
     },

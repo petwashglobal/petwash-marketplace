@@ -270,7 +270,7 @@ export default function WalkerDashboard() {
                       {(booking.status === 'confirmed' || booking.status === 'in_progress') && (
                         <Button
                           className="luxury-btn-primary w-full"
-                          onClick={() => setLocation(`/walks/track/${booking.bookingId}`)}
+                          onClick={() => setLocation(`/walk-tracking/${booking.bookingId}`)}
                         >
                           <MapPin className="w-4 h-4 mr-2" />
                           {booking.status === 'in_progress' ? 'Track Live / עקוב' : 'Start Walk / התחל טיול'}

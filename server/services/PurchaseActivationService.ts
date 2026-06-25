@@ -449,7 +449,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
       const eligibleServices = Array.isArray(meta.eligibleServices) && (meta.eligibleServices as unknown[]).length
         ? (meta.eligibleServices as any)
         : ['all']; // eGift is redeemable at K9000 + all platforms (CEO)
-      await new GiftOrchestrationService().createMultiServiceGiftCard({
+      const gift = await new GiftOrchestrationService().createMultiServiceGiftCard({
         value,
         currency: (purchase as any).currency ?? 'ILS',
         purchaserEmail,
@@ -459,6 +459,31 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
         message,
         eligibleServices,
       });
+      // Deliver the eGift email to recipient + buyer. The live SUMIT/UPay rail
+      // previously created the voucher but sent NOTHING (only the legacy
+      // /api/multi-service-gift route emailed) — a paid gift the recipient never
+      // heard about. Best-effort: never fail the (idempotent) activation on a
+      // mail error; the voucher already exists and admin alerting covers misses.
+      try {
+        const { sendEGiftConfirmationEmail } = await import('./egiftEmailService');
+        await sendEGiftConfirmationEmail({
+          senderName,
+          senderEmail: purchaserEmail,
+          recipientName,
+          recipientEmail,
+          value,
+          currency: (purchase as any).currency ?? 'ILS',
+          publicCode: gift.publicCode,
+          giftCardId: gift.giftCardId,
+          occasion: String((meta as any).occasion ?? 'gift'),
+          messageLanguage: String((meta as any).language ?? (meta as any).messageLanguage ?? 'he'),
+          personalMessage: message,
+          eligibleServices,
+          expiresInMonths: 24,
+        });
+      } catch (mailErr: any) {
+        logger.warn('[Activation] eGift email send failed (non-fatal; voucher already created)', { err: mailErr?.message, giftCardId: gift.giftCardId });
+      }
       return true;
     }
 
