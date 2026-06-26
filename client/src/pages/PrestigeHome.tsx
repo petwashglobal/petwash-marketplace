@@ -165,10 +165,10 @@ export default function PrestigeHome() {
   ];
 
   const stats = [
-    { label: isHe ? 'קרדיט שטיפות' : 'Wash Credits', value: String(s.washCredits ?? 0), sub: isHe ? 'זמין' : 'Available', icon: Droplets, color: '#1d9e9e' },
+    { label: isHe ? 'קרדיט שטיפות' : 'Wash Credits', value: String(s.washCredits ?? 0), sub: isHe ? 'זמין' : 'Available', icon: Droplets, color: GOLD },
     { label: isHe ? 'נקודות Prestige' : 'Prestige Points', value: String(s.pointsBalance ?? 0), sub: isHe ? 'הטבות' : 'Benefits', icon: Star, color: GOLD },
-    { label: isHe ? 'יתרת ארנק' : 'Wallet', value: ils(s.cashCents), sub: isHe ? 'טעינה' : 'Top up', icon: WalletIcon, color: '#e0607e' },
-    { label: isHe ? 'יתרת מתנות' : 'Gift Balance', value: ils(s.giftCents), sub: `${s.giftCount ?? 0} ${isHe ? 'כרטיסים' : 'cards'}`, icon: Gift, color: '#3a7bd5' },
+    { label: isHe ? 'יתרת ארנק' : 'Wallet', value: ils(s.cashCents), sub: isHe ? 'טעינה' : 'Top up', icon: WalletIcon, color: GOLD },
+    { label: isHe ? 'יתרת מתנות' : 'Gift Balance', value: ils(s.giftCents), sub: `${s.giftCount ?? 0} ${isHe ? 'כרטיסים' : 'cards'}`, icon: Gift, color: GOLD },
   ];
 
   return (
