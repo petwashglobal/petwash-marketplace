@@ -150,7 +150,7 @@ export default function SitterEditProfile() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white">
-        <Loader2 className="h-12 w-12 animate-spin text-purple-600" />
+        <Loader2 className="h-12 w-12 animate-spin text-[#D4AF37]" />
       </div>
     );
   }
@@ -159,16 +159,16 @@ export default function SitterEditProfile() {
 
   return (
     <div className={`min-h-screen bg-white ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
-      <header className="sticky top-0 z-50 bg-white/80 dark:bg-white/80 backdrop-blur-xl border-b border-purple-100 dark:border-purple-900/30">
+      <header className="sticky top-0 z-50 bg-white/80 dark:bg-white/80 backdrop-blur-xl border-b border-[#D4AF37]/20 dark:border-zinc-900/30">
         <div className="max-w-3xl mx-auto px-6 py-4">
           <div className="flex items-center gap-4">
             <Button 
               onClick={() => setLocation('/sitter-suite/sitter/dashboard')}
-              className="p-2 hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-xl transition-all"
+              className="p-2 hover:bg-[#D4AF37]/10 dark:hover:bg-zinc-900/30 rounded-xl transition-all"
             >
-              <ArrowLeft className="h-6 w-6 text-purple-600" />
+              <ArrowLeft className="h-6 w-6 text-[#D4AF37]" />
             </Button>
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-2xl font-bold bg-gradient-to-r from-[#D4AF37] to-[#B8932F] bg-clip-text text-transparent">
               {t.title}
             </h1>
           </div>
@@ -177,10 +177,10 @@ export default function SitterEditProfile() {
 
       <main className="max-w-3xl mx-auto px-6 py-8">
         <div className="bg-white dark:bg-white rounded-3xl shadow-xl overflow-hidden">
-          <div className="relative bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 p-8">
+          <div className="relative bg-gradient-to-r from-[#D4AF37] via-[#C9A536] to-orange-500 p-8">
             <div className="flex flex-col items-center">
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-br from-purple-400 to-pink-400 rounded-full blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
+                <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37] to-[#B8932F] rounded-full blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
                 <div className="relative h-32 w-32 rounded-full border-4 border-white shadow-2xl overflow-hidden bg-white">
                   {currentPhoto ? (
                     <img 
@@ -189,8 +189,8 @@ export default function SitterEditProfile() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-purple-100 to-pink-100">
-                      <User className="h-16 w-16 text-purple-400" />
+                    <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/10">
+                      <User className="h-16 w-16 text-[#D4AF37]" />
                     </div>
                   )}
                   
@@ -203,10 +203,10 @@ export default function SitterEditProfile() {
                 
                 <Button
                   onClick={() => fileInputRef.current?.click()}
-                  className="absolute bottom-0 right-0 p-3 bg-white dark:bg-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-purple-200"
+                  className="absolute bottom-0 right-0 p-3 bg-white dark:bg-white rounded-full shadow-lg hover:shadow-xl transition-all hover:scale-110 border-2 border-[#D4AF37]/20"
                   disabled={isUploading}
                 >
-                  <Camera className="h-5 w-5 text-purple-600" />
+                  <Camera className="h-5 w-5 text-[#D4AF37]" />
                 </Button>
                 
                 <input
@@ -243,7 +243,7 @@ export default function SitterEditProfile() {
                   id="firstName"
                   value={formData.firstName || profile?.firstName || ''}
                   onChange={(e) => setFormData({ ...formData, firstName: e.target.value })}
-                  className="h-12 rounded-xl border-purple-200 focus:border-purple-500 focus:ring-purple-500"
+                  className="h-12 rounded-xl border-[#D4AF37]/20 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]"
                 />
               </div>
               
@@ -255,7 +255,7 @@ export default function SitterEditProfile() {
                   id="lastName"
                   value={formData.lastName || profile?.lastName || ''}
                   onChange={(e) => setFormData({ ...formData, lastName: e.target.value })}
-                  className="h-12 rounded-xl border-purple-200 focus:border-purple-500 focus:ring-purple-500"
+                  className="h-12 rounded-xl border-[#D4AF37]/20 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]"
                 />
               </div>
             </div>
@@ -270,7 +270,7 @@ export default function SitterEditProfile() {
                   id="phone"
                   value={formData.phone || profile?.phone || ''}
                   onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="h-12 rounded-xl border-purple-200 focus:border-purple-500 focus:ring-purple-500"
+                  className="h-12 rounded-xl border-[#D4AF37]/20 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]"
                   dir="ltr"
                 />
               </div>
@@ -295,7 +295,7 @@ export default function SitterEditProfile() {
                   }}
                   placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city or address...'}
                   country={['il']}
-                  inputClassName="h-12 rounded-xl border-purple-200 focus:border-purple-500"
+                  inputClassName="h-12 rounded-xl border-[#D4AF37]/20 focus:border-[#D4AF37]/40"
                 />
               </div>
             </div>
@@ -309,7 +309,7 @@ export default function SitterEditProfile() {
                 value={formData.bio || profile?.bio || ''}
                 onChange={(e) => setFormData({ ...formData, bio: e.target.value })}
                 placeholder={t.bioPlaceholder}
-                className="min-h-[120px] rounded-xl border-purple-200 focus:border-purple-500 focus:ring-purple-500 resize-none"
+                className="min-h-[120px] rounded-xl border-[#D4AF37]/20 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37] resize-none"
               />
             </div>
 
@@ -326,7 +326,7 @@ export default function SitterEditProfile() {
                   max="50"
                   value={formData.yearsOfExperience || profile?.yearsOfExperience || 0}
                   onChange={(e) => setFormData({ ...formData, yearsOfExperience: parseInt(e.target.value) || 0 })}
-                  className="h-12 rounded-xl border-purple-200 focus:border-purple-500 focus:ring-purple-500"
+                  className="h-12 rounded-xl border-[#D4AF37]/20 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]"
                 />
               </div>
               
@@ -341,17 +341,17 @@ export default function SitterEditProfile() {
                   min="0"
                   value={Math.round((formData.pricePerDayCents || profile?.pricePerDayCents || 0) / 100)}
                   onChange={(e) => setFormData({ ...formData, pricePerDayCents: (parseInt(e.target.value) || 0) * 100 })}
-                  className="h-12 rounded-xl border-purple-200 focus:border-purple-500 focus:ring-purple-500"
+                  className="h-12 rounded-xl border-[#D4AF37]/20 focus:border-[#D4AF37]/40 focus:ring-[#D4AF37]"
                   dir="ltr"
                 />
               </div>
             </div>
 
-            <div className="pt-6 border-t border-purple-100 dark:border-purple-900/30">
+            <div className="pt-6 border-t border-[#D4AF37]/20 dark:border-zinc-900/30">
               <Button
                 onClick={handleSave}
                 disabled={updateMutation.isPending}
-                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-purple-600 via-pink-600 to-orange-500 hover:from-purple-700 hover:via-pink-700 hover:to-orange-600 rounded-2xl shadow-lg hover:shadow-xl transition-all"
+                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-[#D4AF37] via-[#C9A536] to-orange-500 hover:from-[#D4AF37] hover:via-[#C9A536] hover:to-orange-600 rounded-2xl shadow-lg hover:shadow-xl transition-all"
               >
                 {updateMutation.isPending ? (
                   <>
