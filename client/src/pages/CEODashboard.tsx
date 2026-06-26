@@ -8,6 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Crown, Gift, Send, Sparkles, Shield } from "lucide-react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { useWhoami } from "@/auth/useWhoami";
 import { routeGuard } from "@/lib/auth-guardian-2025";
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
 import { useLocation } from 'wouter';
@@ -28,7 +29,15 @@ export default function CEODashboard() {
   const [verificationCode, setVerificationCode] = useState('');
   const [codeExpiry, setCodeExpiry] = useState<number | null>(null);
 
-  const isCEO = user?.email === 'nirhadad1@gmail.com' || user?.email === 'nir.h@petwash.co.il';
+  // Role-aware gate (server still enforces via ExecutiveSuiteGuard). Prefer the
+  // whoami role / super-admin flag so access doesn't silently break if the CEO's
+  // email ever changes; keep the known emails as a belt-and-suspenders fallback.
+  const { role, whoami } = useWhoami();
+  const isCEO =
+    role === 'ceo' ||
+    !!whoami?.isSuperAdmin ||
+    user?.email === 'nirhadad1@gmail.com' ||
+    user?.email === 'nir.h@petwash.co.il';
 
   // Auth Guardian route protection
   useEffect(() => {
