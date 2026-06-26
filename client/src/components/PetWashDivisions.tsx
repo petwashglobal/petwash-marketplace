@@ -108,7 +108,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     {
       id: 2,
       name: '⁦The Sitter Suite™⁩',
-      nameHe: 'סוויטת השמרטפים',
+      nameHe: '⁦The Sitter Suite™⁩',
       tagline: t('divisions.sitterSuite.tagline', language),
       description: t('divisions.sitterSuite.description', language),
       icon: Heart,
@@ -117,7 +117,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     {
       id: 3,
       name: '⁦Walk My Pet™⁩',
-      nameHe: 'טיילו את חיית המחמד שלי',
+      nameHe: '⁦Walk My Pet™⁩',
       tagline: t('divisions.walkMyPet.tagline', language),
       description: t('divisions.walkMyPet.description', language),
       icon: MapPin,
@@ -126,7 +126,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     {
       id: 4,
       name: '⁦PawFinder™⁩',
-      nameHe: '⁦PawFinder™⁩ – מציאת חיות',
+      nameHe: '⁦PawFinder™⁩',
       tagline: language === 'he' ? 'שירות חינמי לאיתור חיות אבודות' : 'FREE Lost & Found Pet Recovery',
       description: language === 'he'
         ? 'שלחו התראה לכל הקהילה תוך שניות. זיהוי AI מתקדם + מעקב GPS. 100% חינמי לנצח.'
@@ -138,7 +138,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
     {
       id: 5,
       name: '⁦PetTrek™⁩',
-      nameHe: 'פט-טרק',
+      nameHe: '⁦PetTrek™⁩',
       tagline: t('divisions.petTrek.tagline', language),
       description: t('divisions.petTrek.description', language),
       icon: Zap,
