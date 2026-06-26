@@ -487,6 +487,23 @@ export default function BookingConfirmation() {
     onError: () => toast({ title: 'Error', description: 'Failed to cancel booking', variant: 'destructive' }),
   });
 
+  /* Meet & Greet request (customer asks for a pre-payment intro; provider confirms a time) */
+  const [mgType, setMgType] = useState<'video' | 'phone' | 'public'>('video');
+  const meetGreetMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/meet-greet`, { action: 'request', type: mgType });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
+      toast({
+        title: isRTL ? 'בקשת פגישת היכרות נשלחה' : 'Meet & Greet requested',
+        description: isRTL ? 'הספק יאשר זמן בקרוב.' : 'The provider will confirm a time soon.',
+      });
+    },
+    onError: (e: any) => toast({ title: isRTL ? 'שגיאה' : 'Error', description: e?.message || 'Failed', variant: 'destructive' }),
+  });
+
   /* ── Quick-action handlers ── */
   const handleShare = async () => {
     const text = isRTL
@@ -550,7 +567,8 @@ export default function BookingConfirmation() {
   const showAlertPanel = isOwner && ['declined', 'cancelled'].includes(booking.status);
   const canModify      = isOwner && ['pending', 'confirmed'].includes(booking.status);
   const canCancel      = isOwner && ['pending', 'confirmed'].includes(booking.status) && !showCancelConfirm;
-  const isEnquirySent  = isOwner && booking.status === 'pending';
+  const isEnquirySent  = isOwner && (booking.status === 'pending' || booking.status === 'meet_greet_requested');
+  const meetGreetRequested = booking.status === 'meet_greet_requested';
   const infoItems      = importantInfo[booking.serviceType] ?? importantInfo['pet_sitting'];
 
   const startDateObj   = booking.startDate ? new Date(booking.startDate) : null;
@@ -621,6 +639,48 @@ export default function BookingConfirmation() {
                   {isRTL ? 'ספקים נוספים' : 'More sitters'}
                 </button>
               </div>
+
+              {/* Meet & Greet request — optional pre-payment intro (Sitter/Walk) */}
+              <div className="mt-3 rounded-2xl border border-gray-100 p-4">
+                {meetGreetRequested ? (
+                  <div className="flex items-center gap-2 text-sm font-medium text-emerald-700">
+                    <CheckCircle2 className="w-5 h-5 shrink-0" />
+                    {isRTL ? 'פגישת היכרות התבקשה — הספק יאשר זמן.' : 'Meet & Greet requested — the provider will confirm a time.'}
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm font-semibold text-gray-900 mb-1">
+                      {isRTL ? 'פגישת היכרות (מומלץ)' : 'Meet & Greet (recommended)'}
+                    </p>
+                    <p className="text-xs text-gray-500 mb-3">
+                      {isRTL
+                        ? 'מפגש קצר לפני התשלום כדי לוודא התאמה. בחר/י סוג:'
+                        : "A short intro before you pay, to make sure it's a good fit. Choose a type:"}
+                    </p>
+                    <div className="flex gap-2 mb-3">
+                      {([['video', isRTL ? 'וידאו' : 'Video'], ['phone', isRTL ? 'טלפון' : 'Phone'], ['public', isRTL ? 'מקום ציבורי' : 'Public place']] as const).map(([val, label]) => (
+                        <button
+                          key={val}
+                          onClick={() => setMgType(val)}
+                          className="flex-1 rounded-xl border py-2 text-xs font-medium"
+                          style={{ borderColor: mgType === val ? '#D4AF37' : 'rgba(0,0,0,0.12)', background: mgType === val ? 'rgba(212,175,55,0.08)' : 'white', color: '#000' }}
+                        >
+                          {label}
+                        </button>
+                      ))}
+                    </div>
+                    <Button
+                      onClick={() => meetGreetMutation.mutate()}
+                      disabled={meetGreetMutation.isPending}
+                      className="w-full font-semibold text-black hover:opacity-90"
+                      style={{ background: '#D4AF37' }}
+                    >
+                      {meetGreetMutation.isPending ? (isRTL ? 'שולח…' : 'Sending…') : (isRTL ? 'בקשת פגישת היכרות' : 'Request Meet & Greet')}
+                    </Button>
+                  </>
+                )}
+              </div>
+
               <p className="mt-3 text-center text-xs text-gray-400">
                 {isRTL
                   ? 'פנייה למספר ספקים מגדילה את הסיכוי למצוא התאמה מושלמת.'

@@ -1642,8 +1642,8 @@ router.post('/:requestId/meet-greet', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
-    const { action, date, location, notes } = req.body;
-    
+    const { action, date, location, notes, type } = req.body;
+
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
@@ -1660,7 +1660,61 @@ router.post('/:requestId/meet-greet', async (req, res) => {
     
     const statusHistory = (booking.statusHistory as any[]) || [];
     const actor: BookingActor = booking.ownerId === userId ? 'owner' : 'provider';
-    
+
+    if (action === 'request') {
+      // Either side (typically the CUSTOMER) asks for a Meet & Greet before
+      // payment. Soft state — the provider then confirms a time (→ scheduled).
+      const meetType = ['video', 'phone', 'public', 'home'].includes(type) ? type : 'video';
+      const transition = applyTransition({
+        from: booking.status,
+        to: 'meet_greet_requested',
+        actor,
+        actorId: userId ?? null,
+        note: `Meet & Greet requested (${meetType})${date ? ` — preferred ${date}` : ''}`,
+      });
+      if (!transition.result.ok) {
+        return res.status(transition.result.statusCode).json({
+          error: transition.result.error,
+          code: transition.result.code,
+        });
+      }
+      statusHistory.push(transition.historyEntry);
+      const noteParts = [`type: ${meetType}`, date ? `preferred: ${date}` : null, notes].filter(Boolean);
+      await db.update(bookingRequests)
+        .set({
+          status: 'meet_greet_requested',
+          meetGreetLocation: location || null,
+          meetGreetNotes: noteParts.join(' · ') || null,
+          statusHistory,
+          updatedAt: new Date(),
+        })
+        .where(eq(bookingRequests.requestId, requestId));
+
+      logBookingEvent('meet_greet_requested', buildEventPayload({ ...booking, status: 'meet_greet_requested' }), {
+        customerRequestedAt: new Date().toISOString(),
+      }).catch(() => {});
+
+      // Notify the other party (best-effort, non-blocking)
+      const otherId = actor === 'owner' ? booking.providerId : booking.ownerId;
+      if (otherId) {
+        db.select({ email: users.email, phone: users.phone, firstName: users.firstName })
+          .from(users).where(eq(users.id, otherId)).limit(1)
+          .then(([u]) => u && dispatchNotification({
+            uid: otherId,
+            email: u.email || undefined,
+            phone: u.phone || undefined,
+            type: 'meet_greet_requested',
+            title: 'בקשת פגישת היכרות · Meet & Greet requested — PetWash™',
+            bodyHtml: `<p>${actor === 'owner' ? 'A customer' : 'The provider'} requested a Meet &amp; Greet (${meetType})${date ? ` — preferred ${date}` : ''}. Open PetWash to coordinate a time.</p>`,
+            bodyText: `PetWash: Meet & Greet requested (${meetType})${date ? ` — preferred ${date}` : ''}. Open the app to confirm a time.`,
+            channels: ['inbox', 'email', 'sms'],
+            priority: 7,
+          })).catch(() => {});
+      }
+
+      return res.json({ success: true, message: 'Meet & Greet requested' });
+    }
+
     if (action === 'schedule') {
       if (!date) {
         return res.status(400).json({ error: 'Meet & Greet date is required' });

@@ -33,6 +33,7 @@ export type BookingStatus =
   | 'pending'
   | 'accepted'
   | 'declined'
+  | 'meet_greet_requested'
   | 'meet_greet_scheduled'
   | 'meet_greet_completed'
   | 'payment_pending'
@@ -48,6 +49,7 @@ export const ALL_BOOKING_STATUSES: ReadonlyArray<BookingStatus> = [
   'pending',
   'accepted',
   'declined',
+  'meet_greet_requested',
   'meet_greet_scheduled',
   'meet_greet_completed',
   'payment_pending',
@@ -77,9 +79,10 @@ export type BookingActor = 'owner' | 'provider' | 'system' | 'admin';
  * `cancelled` is intentionally reachable from many states — see CANCEL_FROM.
  */
 const ALLOWED: Readonly<Record<BookingStatus, ReadonlyArray<BookingStatus>>> = {
-  pending: ['accepted', 'declined', 'meet_greet_scheduled', 'cancelled'],
-  accepted: ['payment_pending', 'confirmed', 'in_progress', 'cancelled', 'meet_greet_scheduled'],
+  pending: ['accepted', 'declined', 'meet_greet_requested', 'meet_greet_scheduled', 'cancelled'],
+  accepted: ['payment_pending', 'confirmed', 'in_progress', 'cancelled', 'meet_greet_requested', 'meet_greet_scheduled'],
   declined: [], // terminal
+  meet_greet_requested: ['meet_greet_scheduled', 'accepted', 'declined', 'cancelled'],
   meet_greet_scheduled: ['meet_greet_completed', 'cancelled', 'declined'],
   meet_greet_completed: ['payment_pending', 'confirmed', 'cancelled'],
   payment_pending: ['confirmed', 'cancelled'],
@@ -101,8 +104,15 @@ const ROLE_RULES: Readonly<Record<string, ReadonlyArray<BookingActor>>> = {
   // pending → ?
   'pending->accepted':              ['provider', 'admin'],
   'pending->declined':              ['provider', 'admin', 'system'],
+  'pending->meet_greet_requested':  ['owner', 'provider', 'admin'],
   'pending->meet_greet_scheduled':  ['provider', 'admin'],
   'pending->cancelled':             ['owner', 'provider', 'admin', 'system'],
+
+  // meet_greet_requested → ?  (customer asked; provider confirms a time)
+  'meet_greet_requested->meet_greet_scheduled': ['provider', 'owner', 'admin'],
+  'meet_greet_requested->accepted':             ['provider', 'admin'],
+  'meet_greet_requested->declined':             ['provider', 'admin', 'system'],
+  'meet_greet_requested->cancelled':            ['owner', 'provider', 'admin', 'system'],
 
   // accepted → ?
   'accepted->payment_pending':      ['system', 'owner', 'admin'],
