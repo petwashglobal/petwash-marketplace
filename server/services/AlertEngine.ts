@@ -221,6 +221,41 @@ async function detectLowStock(): Promise<{ created: number; resolved: number }> 
   return { created: keys.length, resolved };
 }
 
+/** Logistics/warehouse consumable (shampoo, conditioner, supplies, parts) at/below
+ *  its reorder level. Complements detectLowStock (which only covers spare_parts) —
+ *  this covers logistics_inventory, the real consumables the stations burn through.
+ *  Only items with reorder_level > 0 trigger, so default-0 rows never spam.
+ *  Idempotent via dedupe prefix; auto-resolves when restocked above the level. */
+async function detectLowConsumables(): Promise<{ created: number; resolved: number }> {
+  const PREFIX = "consumable_low:";
+  const res = await db.execute(sql`
+    SELECT id, sku, product_name, product_name_he, category, quantity, unit, reorder_level
+    FROM logistics_inventory
+    WHERE reorder_level > 0 AND quantity <= reorder_level
+    ORDER BY quantity ASC
+    LIMIT 500
+  `);
+  const rows = rowsOf(res);
+  const keys: string[] = [];
+  for (const r of rows) {
+    const key = `${PREFIX}${r.id}`;
+    keys.push(key);
+    const qty = Number(r.quantity);
+    const name = r.product_name_he || r.product_name || r.sku || r.id;
+    const unit = r.unit || "יח'";
+    await createOrUpdateAlert({
+      dedupeKey: key, category: "stock",
+      severity: qty <= 0 ? "critical" : "warning",
+      title: qty <= 0 ? "מלאי אזל" : "מלאי נמוך",
+      message: `${name}: ${qty} ${unit} במלאי (נקודת הזמנה ${r.reorder_level}).`,
+      linkedEntityType: "item", linkedEntityId: String(r.id),
+      metadata: { sku: r.sku, category: r.category, quantity: qty, reorderLevel: Number(r.reorder_level) },
+    });
+  }
+  const resolved = await resolveClearedByPrefix(PREFIX, keys);
+  return { created: keys.length, resolved };
+}
+
 /** Station offline / out of service. */
 async function detectStationOffline(): Promise<{ created: number; resolved: number }> {
   const PREFIX = "station_offline:";
@@ -336,6 +371,7 @@ export async function runAlertSweep(): Promise<SweepResult> {
   await run("bayStatus", detectBayStatus);
   await run("failedAsyncJobs", detectFailedAsyncJobs);
   await run("lowStock", detectLowStock);
+  await run("lowConsumables", detectLowConsumables);
   await run("stationOffline", detectStationOffline);
   await run("reconfirmationOverdue", detectReconfirmationOverdue);
   await run("insuranceExpiring", detectInsuranceExpiring);
