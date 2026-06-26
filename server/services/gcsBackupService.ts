@@ -179,6 +179,50 @@ export async function performWeeklyCodeBackup(): Promise<{
 const POSTGRES_BUCKET = process.env.GCS_POSTGRES_BUCKET || 'petwash-postgres-backups';
 
 /**
+ * Resolve the pg_dump binary, GUARANTEEING a version >= the Neon server major.
+ *
+ * Why this exists: the runtime image installs postgresql-client-18 (PGDG), but
+ * the bare `pg_dump` on PATH is the postgresql-common WRAPPER, whose selected
+ * version depends on what else is installed. If any older client (e.g. 17) ever
+ * lands in the image, the wrapper can resolve to it and pg_dump REFUSES a newer
+ * server ("server version mismatch" — the 2026-06-26 backup failure, Neon PG18
+ * vs pg_dump 17.10). Pinning the versioned binary path removes that ambiguity.
+ *
+ * Order: explicit PG_DUMP_PATH override → versioned PGDG path(s), newest first →
+ * bare `pg_dump` (last resort). Bump the version list when Neon's major changes.
+ */
+function resolvePgDumpBinary(): string {
+  const candidates = [
+    process.env.PG_DUMP_PATH,
+    '/usr/lib/postgresql/18/bin/pg_dump',
+    '/usr/lib/postgresql/19/bin/pg_dump',
+  ].filter(Boolean) as string[];
+  for (const c of candidates) {
+    try { if (fs.existsSync(c)) return c; } catch { /* noop */ }
+  }
+  return 'pg_dump';
+}
+
+/**
+ * Ensure the Postgres backup bucket exists. The nightly dump was also failing
+ * with "bucket does not exist" because petwash-postgres-backups was never
+ * created. Create it on first use (idempotent) in an EU multi-region so the
+ * copy stays in the EU near Neon's eu-central server (data-residency friendly).
+ * If the service account lacks storage.buckets.create, this throws and the
+ * caller records a LOUD failure — never a silent no-backup.
+ */
+async function ensurePostgresBucket(storageClient: Storage): Promise<void> {
+  const bucket = storageClient.bucket(POSTGRES_BUCKET);
+  const [exists] = await bucket.exists();
+  if (exists) return;
+  logger.warn(`[GCS] Postgres backup bucket gs://${POSTGRES_BUCKET} missing — creating it`);
+  await storageClient.createBucket(POSTGRES_BUCKET, {
+    location: process.env.GCS_BACKUP_LOCATION || 'EU',
+  });
+  logger.info(`[GCS] ✅ Created backup bucket gs://${POSTGRES_BUCKET}`);
+}
+
+/**
  * Nightly PostgreSQL logical backup → GCS.
  *
  * Postgres (Neon) is the source of truth — users, bookings, money, providers,
@@ -236,14 +280,16 @@ export async function performPostgresBackup(): Promise<{
     // execFile (no shell) — the URL is passed as an argv element, not interpolated
     // into a shell string, so there is no injection surface. -Fc = compressed,
     // restorable custom format; --no-owner/--no-privileges for clean cross-env restore.
+    const pgDumpBin = resolvePgDumpBinary();
+    logger.info(`[GCS] Using pg_dump binary: ${pgDumpBin}`);
     try {
-      await execFileAsync('pg_dump', ['-Fc', '--no-owner', '--no-privileges', '-f', localPath, dbUrl], {
+      await execFileAsync(pgDumpBin, ['-Fc', '--no-owner', '--no-privileges', '-f', localPath, dbUrl], {
         maxBuffer: 1024 * 1024 * 200,
         env: { ...process.env },
       });
     } catch (dumpErr: any) {
       const missing = dumpErr?.code === 'ENOENT';
-      await recordFailure(missing ? 'pg_dump binary not found in runtime image' : `pg_dump failed: ${dumpErr?.message}`);
+      await recordFailure(missing ? `pg_dump binary not found (tried ${pgDumpBin})` : `pg_dump failed: ${dumpErr?.message}`);
       return { success: false, error: missing ? 'pg_dump not installed' : dumpErr?.message };
     }
 
@@ -253,6 +299,7 @@ export async function performPostgresBackup(): Promise<{
     logger.info(`[GCS] pg_dump complete: ${sizeMB} MB, sha256 ${fileHash.slice(0, 12)}…`);
 
     const storageClient = getStorageClient();
+    await ensurePostgresBucket(storageClient); // self-heal: create the bucket if it was never provisioned
     const destination = `daily/${date}/${backupFile}`;
     await storageClient.bucket(POSTGRES_BUCKET).upload(localPath, {
       destination,
