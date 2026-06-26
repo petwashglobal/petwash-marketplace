@@ -18,6 +18,7 @@
 import { useState } from 'react';
 import { useLocation } from 'wouter';
 import { useSEO, pageSEO } from '@/lib/seo';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Tag, Heart, Sparkles, ShoppingBag, Mail, ArrowRight, Gift,
   Award, CheckCircle2,
@@ -131,15 +132,26 @@ export default function Shop() {
     setInterest((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
   };
 
-  const submitWaitlist = (e: React.FormEvent) => {
+  const submitWaitlist = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email) return;
-    // Real wiring lands when /api/shop/waitlist exists. Until then route
-    // the operator to a mailto. Keeps the page honest — no fake "you're on
-    // the list!" toast when there is no backend.
-    const body = `Email: ${email}\nInterests: ${interest.join(', ') || '(none selected)'}\n\nFrom PetWash shop waitlist.`;
-    window.location.href = `mailto:shop@petwash.co.il?subject=${encodeURIComponent('PetWash Shop — Waitlist')}&body=${encodeURIComponent(body)}`;
-    setSubmittedCategory('done');
+    // Real demand capture — posts to the universal waitlist engine (platform
+    // SHOP). No more mailto dead-end; every interest becomes a DB record.
+    try {
+      await apiRequest('POST', '/api/waitlist', {
+        platformKey: 'SHOP',
+        email: email.trim(),
+        fullName: email.split('@')[0] || 'Shop visitor',
+        interestType: interest.join(', ') || undefined,
+        message: interest.length ? `Interested in: ${interest.join(', ')}` : undefined,
+        sourcePage: typeof window !== 'undefined' ? window.location.pathname : '/shop',
+        consentToContact: true,
+        marketingConsent: false,
+      });
+      setSubmittedCategory('done');
+    } catch {
+      setSubmittedCategory('error');
+    }
   };
 
   return (
@@ -230,7 +242,10 @@ export default function Shop() {
               </button>
             </form>
             {submittedCategory === 'done' && (
-              <p className="sh-toast">Thanks — your email client should have opened with the waitlist message.</p>
+              <p className="sh-toast">You're on the list — we'll email you the moment the shop opens.</p>
+            )}
+            {submittedCategory === 'error' && (
+              <p className="sh-toast">Something went wrong — please try again in a moment.</p>
             )}
           </div>
         </section>
