@@ -88,6 +88,8 @@ export default function AcademyBookingFlow() {
 
       const payload = {
         platform: "academy",
+        // Backend (POST /api/academy/bookings) reads validatedData.trainerId — must send trainerId.
+        trainerId: Number(trainerId),
         providerId: trainerId,
         serviceDate: selectedDate.toISOString(),
         sessionDuration,

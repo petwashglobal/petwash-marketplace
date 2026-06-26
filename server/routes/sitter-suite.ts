@@ -780,7 +780,7 @@ router.post('/bookings', requireAuth, async (req, res) => {
     const [pet] = await db
       .select()
       .from(petProfilesForSitting)
-      .where(and(eq(petProfilesForSitting.id, petId), eq(petProfilesForSitting.ownerId, ownerId)));
+      .where(and(eq(petProfilesForSitting.id, petId), eq(petProfilesForSitting.userId, ownerId)));
     
     if (!sitter || !pet) {
       return res.status(404).json({ error: 'Sitter or pet not found' });
