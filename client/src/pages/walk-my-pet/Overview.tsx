@@ -123,7 +123,7 @@ export default function WalkMyPetOverview() {
             {features.map((feature, index) => (
               <Link key={index} href={feature.link}>
                 <div className={`luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 cursor-pointer h-full luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}>
-                  <div className="w-16 h-16 mb-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                  <div className="w-16 h-16 mb-4 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
                     {feature.icon}
                   </div>
                   <h3 className="luxury-heading-sm mb-2">
@@ -143,7 +143,7 @@ export default function WalkMyPetOverview() {
         </div>
 
         {/* Stats Section */}
-        <div className="py-16 bg-gradient-to-r from-purple-600 via-purple-700 to-purple-800">
+        <div className="py-16 bg-gradient-to-r from-[#D4AF37] via-zinc-800 to-black">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="luxury-grid-3">
               {stats.map((stat, index) => (
@@ -154,7 +154,7 @@ export default function WalkMyPetOverview() {
                   <div className="luxury-heading-md text-white mb-2">
                     {stat.title}
                   </div>
-                  <div className="luxury-text-body text-purple-100">
+                  <div className="luxury-text-body text-white">
                     {stat.description}
                   </div>
                 </div>

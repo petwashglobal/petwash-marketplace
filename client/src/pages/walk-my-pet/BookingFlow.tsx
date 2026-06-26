@@ -317,7 +317,7 @@ export default function WalkBookingFlow() {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF37] mx-auto mb-4"></div>
           <p className="text-slate-600 font-light">טוען את נתוני המוליך/ה...</p>
         </div>
       </div>
@@ -333,7 +333,7 @@ export default function WalkBookingFlow() {
           <p className="text-slate-600 font-light mb-6">
             המוליך/ה לא זמינ/ה כרגע או שהקישור שגוי.
           </p>
-          <Button onClick={() => setLocation("/walk-my-pet")} className="bg-blue-500 text-white font-light">
+          <Button onClick={() => setLocation("/walk-my-pet")} className="bg-[#D4AF37] text-white font-light">
             חזרה לרשימת מוליכים
           </Button>
         </div>
@@ -363,7 +363,7 @@ export default function WalkBookingFlow() {
 
       {/* 24/7 Availability Banner */}
       <div className="max-w-3xl mx-auto px-4 pt-4">
-        <div className="bg-gradient-to-r from-emerald-500/10 to-blue-500/10 rounded-xl p-3 border border-emerald-200/50 text-center">
+        <div className="bg-gradient-to-r from-emerald-500/10 to-[#D4AF37]/10 rounded-xl p-3 border border-emerald-200/50 text-center">
           <p className="text-sm text-emerald-800 font-medium inline-flex items-center justify-center gap-2">
             <PetWashIcon name="brand_paw" size={16} label="Paw" /> שירות 24/7 כל השנה
           </p>
@@ -374,12 +374,12 @@ export default function WalkBookingFlow() {
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="flex items-center justify-center gap-1 sm:gap-2 mb-8 luxury-fade-in">
           {/* Step 1: Details */}
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white luxury-shadow-lg' : ['summary', 'pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-blue-600' : 'bg-white text-slate-500'}`}>
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' : ['summary', 'pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-[#D4AF37]' : 'bg-white text-slate-500'}`}>
             1
           </div>
-          <div className={`h-1 w-8 sm:w-12 rounded-full ${['summary', 'pending_match', 'confirmation'].includes(step) ? 'bg-blue-500' : 'bg-white'}`}></div>
+          <div className={`h-1 w-8 sm:w-12 rounded-full ${['summary', 'pending_match', 'confirmation'].includes(step) ? 'bg-[#D4AF37]' : 'bg-white'}`}></div>
           {/* Step 2: Summary */}
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white luxury-shadow-lg' : ['pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-blue-600' : 'bg-white text-slate-500'}`}>
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' : ['pending_match', 'confirmation'].includes(step) ? 'luxury-gradient-border bg-white text-[#D4AF37]' : 'bg-white text-slate-500'}`}>
             2
           </div>
           <div className={`h-1 w-8 sm:w-12 rounded-full ${['pending_match', 'confirmation'].includes(step) ? 'bg-amber-500' : 'bg-white'}`}></div>
@@ -395,8 +395,8 @@ export default function WalkBookingFlow() {
         </div>
         {/* Step Labels */}
         <div className="flex items-center justify-center gap-6 text-xs text-slate-500">
-          <span className={step === 'details' ? 'text-blue-600 font-medium' : ''}>פרטים</span>
-          <span className={step === 'summary' ? 'text-blue-600 font-medium' : ''}>סיכום</span>
+          <span className={step === 'details' ? 'text-[#D4AF37] font-medium' : ''}>פרטים</span>
+          <span className={step === 'summary' ? 'text-[#D4AF37] font-medium' : ''}>סיכום</span>
           <span className={step === 'pending_match' ? 'text-amber-600 font-medium' : ''}>התאמה</span>
           <span className={step === 'confirmation' ? 'text-emerald-600 font-medium' : ''}>אישור</span>
         </div>
@@ -415,10 +415,10 @@ export default function WalkBookingFlow() {
                   <img
                     src={walker.profilePictureUrl}
                     alt={walker.businessName || walker.displayName}
-                    className="h-16 w-16 rounded-full object-cover border-2 border-blue-200"
+                    className="h-16 w-16 rounded-full object-cover border-2 border-[#D4AF37]/30"
                   />
                 ) : (
-                  <div className="h-16 w-16 rounded-full bg-blue-100 flex items-center justify-center text-xl font-semibold text-blue-700">
+                  <div className="h-16 w-16 rounded-full bg-[#D4AF37]/15 flex items-center justify-center text-xl font-semibold text-black">
                     {(walker.businessName || walker.displayName || 'W').charAt(0)}
                   </div>
                 )}
@@ -439,7 +439,7 @@ export default function WalkBookingFlow() {
             {/* Pet Selection */}
             <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
               <div className="mb-4 luxury-heading-sm flex items-center gap-2">
-                <PawPrint className="h-4 w-4 text-blue-500" />
+                <PawPrint className="h-4 w-4 text-[#D4AF37]" />
                 כלבים להליכה
               </div>
               {pets.length === 0 ? (
@@ -448,7 +448,7 @@ export default function WalkBookingFlow() {
                   <button
                     type="button"
                     onClick={() => setLocation('/pets')}
-                    className="rounded-full px-5 py-3 min-h-[44px] text-sm font-medium bg-blue-500 text-white shadow-md transition-all"
+                    className="rounded-full px-5 py-3 min-h-[44px] text-sm font-medium bg-[#D4AF37] text-white shadow-md transition-all"
                   >
                     + הוסף כלב
                   </button>
@@ -464,7 +464,7 @@ export default function WalkBookingFlow() {
                         onClick={() => togglePet(pet.id)}
                         className={`rounded-full px-5 py-3 min-h-[44px] text-sm transition-all touch-manipulation ${
                           active
-                            ? "bg-blue-500 text-white shadow-md"
+                            ? "bg-[#D4AF37] text-white shadow-md"
                             : "bg-white text-slate-700 border border-slate-200"
                         }`}
                         data-testid={`button-pet-${pet.id}`}
@@ -480,7 +480,7 @@ export default function WalkBookingFlow() {
             {/* Date & Time */}
             <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
               <div className="mb-4 luxury-heading-sm flex items-center gap-2">
-                <Clock className="h-4 w-4 text-blue-500" />
+                <Clock className="h-4 w-4 text-[#D4AF37]" />
                 תאריך ושעת התחלה
               </div>
               <MobileDatePicker
@@ -552,22 +552,22 @@ export default function WalkBookingFlow() {
                 <span>מחיר השירות</span>
                 <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
               </div>
-              <div className="mb-1 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+              <div className="mb-1 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
                 <span>כולל עמלת PetWash (15%)</span>
                 <span>₪{pricing.commission.toFixed(2)}</span>
               </div>
-              <div className="mb-4 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+              <div className="mb-4 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
                 <span>מהם מע״מ (18/118)</span>
                 <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
               </div>
-              <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
+              <div className="pt-4 border-t border-[#D4AF37]/20 flex items-center justify-between">
                 <span className="luxury-heading-sm">סה״כ לחיוב</span>
                 <span className="luxury-heading-lg luxury-text-gradient">
                   ₪{pricing.totalCharged.toFixed(2)}
                 </span>
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
-                <Shield className="h-3 w-3 inline mr-1 text-blue-500" />
+                <Shield className="h-3 w-3 inline mr-1 text-[#D4AF37]" />
                 הסכום ייושמר מהארנק שלך עם אישור המוליך/ה, ויחויב לאחר סיום ההליכה.
               </div>
             </div>
@@ -610,16 +610,16 @@ export default function WalkBookingFlow() {
                 <span>מחיר השירות</span>
                 <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
               </div>
-              <div className="mb-2 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+              <div className="mb-2 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
                 <span>כולל עמלת PetWash + מע״מ</span>
                 <span>₪{(pricing.commission + pricing.vatOnCommission).toFixed(2)}</span>
               </div>
-              <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
+              <div className="pt-4 border-t border-[#D4AF37]/20 flex items-center justify-between">
                 <span className="luxury-heading-sm">סה״כ</span>
                 <span className="luxury-heading-lg luxury-text-gradient">₪{pricing.totalCharged.toFixed(2)}</span>
               </div>
               {appliedCredits && (
-                <div className="mt-3 pt-3 border-t border-purple-100 space-y-1">
+                <div className="mt-3 pt-3 border-t border-[#D4AF37]/20 space-y-1">
                   <div className="flex items-center justify-between luxury-text-small text-emerald-600">
                     <span>קרדיטים שהופעלו</span>
                     <span>-₪{(appliedCredits.totalCreditsAppliedCents / 100).toFixed(2)}</span>
@@ -672,14 +672,14 @@ export default function WalkBookingFlow() {
             {/* Payment Method Disclosure */}
             <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
               <div className="flex items-center gap-2 mb-4 luxury-heading-sm">
-                <CreditCard className="h-4 w-4 text-blue-500" />
+                <CreditCard className="h-4 w-4 text-[#D4AF37]" />
                 אמצעי תשלום
               </div>
               
               {PAYMENTS_CONFIG.enableCreditCard && !PAYMENTS_CONFIG.enableNayax && (
                 <div className="flex items-center gap-3 p-3 bg-white rounded-xl border border-slate-100 mb-4">
-                  <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                    <CreditCard className="h-5 w-5 text-blue-600" />
+                  <div className="h-10 w-10 rounded-full bg-[#D4AF37]/15 flex items-center justify-center">
+                    <CreditCard className="h-5 w-5 text-[#D4AF37]" />
                   </div>
                   <div>
                     <div className="text-sm font-semibold text-slate-900">כרטיס אשראי שמור</div>
@@ -689,9 +689,9 @@ export default function WalkBookingFlow() {
                 </div>
               )}
 
-              <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-xl flex gap-3">
-                <Shield className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-                <div className="text-sm text-blue-800 leading-relaxed">
+              <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-xl flex gap-3">
+                <Shield className="h-5 w-5 text-[#D4AF37] flex-shrink-0 mt-0.5" />
+                <div className="text-sm text-black leading-relaxed">
                   <span className="font-semibold block mb-1">הגנת ⁦Pet Wash™⁩</span>
                   {PAYMENTS_CONFIG.escrowMessage.he} הכרטיס שלך לא יחויב כעת.
                 </div>
@@ -735,8 +735,8 @@ export default function WalkBookingFlow() {
             
             {/* Matching Animation */}
             <div className="flex items-center justify-center gap-4 my-8">
-              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-100 to-blue-200 flex items-center justify-center border-2 border-blue-300">
-                <Users className="h-8 w-8 text-blue-600" />
+              <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/20 flex items-center justify-center border-2 border-[#D4AF37]/40">
+                <Users className="h-8 w-8 text-[#D4AF37]" />
               </div>
               <div className="flex gap-1">
                 <div className="w-3 h-3 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
@@ -831,7 +831,7 @@ export default function WalkBookingFlow() {
                     href={`https://www.google.com/maps/dir/?api=1&destination=${pickupDetails?.lat ?? (walker as any)?.latitude},${pickupDetails?.lng ?? (walker as any)?.longitude}`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-blue-50 border border-blue-200 text-blue-700 text-sm font-semibold hover:bg-blue-100 transition-colors"
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/30 text-black text-sm font-semibold hover:bg-[#D4AF37]/15 transition-colors"
                   >
                     🗺️ Google Maps
                   </a>

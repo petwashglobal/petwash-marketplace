@@ -38,7 +38,7 @@ function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; className: string }> = {
     confirmed: { label: 'מאושר / Confirmed', className: 'bg-green-500 text-white' },
     pending_provider: { label: 'ממתין / Pending', className: 'bg-amber-500 text-white' },
-    in_progress: { label: 'בטיול / In Progress', className: 'bg-blue-500 text-white animate-pulse' },
+    in_progress: { label: 'בטיול / In Progress', className: 'bg-[#D4AF37] text-white animate-pulse' },
     completed: { label: 'הושלם / Completed', className: 'bg-gray-400 text-white' },
     cancelled: { label: 'בוטל / Cancelled', className: 'bg-red-500 text-white' },
   };
@@ -130,8 +130,8 @@ export default function WalkMyPetOwnerDashboard() {
               <div className="text-slate-500 text-sm mb-2 font-medium">Status / סטטוס</div>
               <div className="text-lg font-semibold text-slate-800">
                 {activeWalk ? (
-                  <span className="flex items-center gap-2 text-blue-600">
-                    <span className="h-2 w-2 rounded-full bg-blue-500 animate-pulse"></span>
+                  <span className="flex items-center gap-2 text-[#D4AF37]">
+                    <span className="h-2 w-2 rounded-full bg-[#D4AF37] animate-pulse"></span>
                     בטיול / In Walk
                   </span>
                 ) : '—'}
