@@ -572,6 +572,36 @@ export default function ProviderDetail() {
                 )}
               </div>
             </GlassmorphismCard>
+
+            {/* PetWash Protected Booking — ORIGINAL wording, NO insurance/guarantee
+                claim (counsel-gated). The trust layer shown before booking. */}
+            <GlassmorphismCard className="luxury-glass-card luxury-shadow-xl">
+              <div className="p-6">
+                <h3 className="text-2xl font-bold mb-4 text-black">
+                  {isHebrew ? 'הזמנה מוגנת PetWash' : 'PetWash Protected Booking'}
+                </h3>
+                <div className="flex items-start gap-3 mb-4">
+                  <Shield className="w-6 h-6 shrink-0" style={{ color: '#D4AF37' }} />
+                  <p className="text-sm text-gray-700 dark:text-black leading-relaxed">
+                    {isHebrew
+                      ? 'הזמנות שמשולמות דרך PetWash כוללות גישה לתמיכת PetWash ותיעוד הזמנה מאומת — כך פרטי הטיפול, ההודעות וההיסטוריה נשמרים במקום אחד מאובטח. לביטחונך, תקשורת ותשלום תמיד דרך PetWash.'
+                      : 'Bookings paid through PetWash include access to PetWash support and a verified booking record — so your care details, messages and history stay in one secure place. For your safety, always communicate and pay through PetWash.'}
+                  </p>
+                </div>
+                <div className="flex items-start gap-3">
+                  <CalendarIcon className="w-6 h-6 shrink-0" style={{ color: '#D4AF37' }} />
+                  <p className="text-sm text-gray-700 dark:text-black leading-relaxed">
+                    <span className="font-semibold">{isHebrew ? 'מדיניות ביטול' : 'Cancellation policy'}:</span>{' '}
+                    {isHebrew
+                      ? 'מדיניות ביטול והחזר הוגנת בהתאם לתנאי השירות.'
+                      : 'Fair cancellation & refund terms apply per the service terms.'}{' '}
+                    <a href="/legal/booking-rules" className="font-semibold underline" style={{ color: '#D4AF37' }}>
+                      {isHebrew ? 'מידע נוסף' : 'Learn more'}
+                    </a>
+                  </p>
+                </div>
+              </div>
+            </GlassmorphismCard>
           </div>
         </div>
       </div>
