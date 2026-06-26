@@ -168,7 +168,7 @@ export default function AcademyBookingFlow() {
     return (
       <div className="flex h-screen items-center justify-center bg-white">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-500 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF37] mx-auto mb-4"></div>
           <p className="text-slate-600 font-light">טוען את נתוני המאמן/ת...</p>
         </div>
       </div>
@@ -184,7 +184,7 @@ export default function AcademyBookingFlow() {
           <p className="text-slate-600 font-light mb-6">
             המאמן/ת לא זמינ/ה כרגע או שהקישור שגוי.
           </p>
-          <Button onClick={() => setLocation("/academy")} className="bg-purple-500 text-white font-light">
+          <Button onClick={() => setLocation("/academy")} className="bg-[#D4AF37] text-white font-light">
             חזרה לרשימת מאמנים
           </Button>
         </div>
@@ -215,15 +215,15 @@ export default function AcademyBookingFlow() {
       {/* Progress Stepper */}
       <div className="max-w-3xl mx-auto px-4 py-6">
         <div className="flex items-center justify-center gap-2 mb-8 luxury-fade-in">
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : step === 'summary' || step === 'confirmation' ? 'luxury-gradient-border bg-white text-purple-600' : 'bg-white text-slate-500'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'details' ? 'bg-gradient-to-r from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' : step === 'summary' || step === 'confirmation' ? 'luxury-gradient-border bg-white text-[#D4AF37]' : 'bg-white text-slate-500'}`}>
             1
           </div>
           <div className={`h-1 w-16 rounded-full ${step === 'summary' || step === 'confirmation' ? 'luxury-bg-primary' : 'bg-white'}`}></div>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-purple-600' : 'bg-white text-slate-500'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'summary' ? 'bg-gradient-to-r from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-[#D4AF37]' : 'bg-white text-slate-500'}`}>
             2
           </div>
           <div className={`h-1 w-16 rounded-full ${step === 'confirmation' ? 'luxury-bg-primary' : 'bg-white'}`}></div>
-          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'confirmation' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-white text-slate-500'}`}>
+          <div className={`w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold transition-all ${step === 'confirmation' ? 'bg-gradient-to-r from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' : 'bg-white text-slate-500'}`}>
             3
           </div>
         </div>
@@ -242,10 +242,10 @@ export default function AcademyBookingFlow() {
                   <img
                     src={trainer.profilePhotoUrl}
                     alt={trainer.fullName}
-                    className="h-16 w-16 rounded-full object-cover border-2 border-purple-200"
+                    className="h-16 w-16 rounded-full object-cover border-2 border-[#D4AF37]/30"
                   />
                 ) : (
-                  <div className="h-16 w-16 rounded-full bg-purple-100 flex items-center justify-center text-xl font-semibold text-purple-700">
+                  <div className="h-16 w-16 rounded-full bg-[#D4AF37]/15 flex items-center justify-center text-xl font-semibold text-black">
                     {trainer.fullName.charAt(0)}
                   </div>
                 )}
@@ -255,7 +255,7 @@ export default function AcademyBookingFlow() {
                     {trainer.city} · ⭐ {parseFloat(trainer.averageRating).toFixed(1)} ({trainer.totalSessions} שיעורים)
                   </div>
                   {trainer.isCertified && (
-                    <div className="text-xs text-purple-600 mt-1">✓ מאומן/ת מוסמך/ת</div>
+                    <div className="text-xs text-[#D4AF37] mt-1">✓ מאומן/ת מוסמך/ת</div>
                   )}
                 </div>
               </div>
@@ -264,7 +264,7 @@ export default function AcademyBookingFlow() {
             {/* Session Type */}
             <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
               <div className="mb-4 luxury-heading-sm flex items-center gap-2">
-                <GraduationCap className="h-4 w-4 text-purple-500" />
+                <GraduationCap className="h-4 w-4 text-[#D4AF37]" />
                 סוג שיעור
               </div>
               <div className="flex flex-wrap gap-2">
@@ -277,7 +277,7 @@ export default function AcademyBookingFlow() {
                       onClick={() => setSessionType(type.id)}
                       className={`rounded-xl px-4 py-3 text-sm transition-all border ${
                         active
-                          ? "bg-purple-500 text-white shadow-md border-purple-500"
+                          ? "bg-[#D4AF37] text-white shadow-md border-[#D4AF37]"
                           : "bg-white text-slate-700 border-slate-200"
                       }`}
                       data-testid={`button-type-${type.id}`}
@@ -293,7 +293,7 @@ export default function AcademyBookingFlow() {
             {/* Date & Time */}
             <section className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6">
               <div className="mb-4 luxury-heading-sm flex items-center gap-2">
-                <Clock className="h-4 w-4 text-purple-500" />
+                <Clock className="h-4 w-4 text-[#D4AF37]" />
                 תאריך ושעה
               </div>
               <MobileDatePicker
@@ -339,22 +339,22 @@ export default function AcademyBookingFlow() {
                 <span>מחיר השיעור</span>
                 <span>₪{pricing.grossCollectedILS.toFixed(2)}</span>
               </div>
-              <div className="mb-1 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+              <div className="mb-1 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
                 <span>כולל עמלת PetWash (15%)</span>
                 <span>₪{pricing.commission.toFixed(2)}</span>
               </div>
-              <div className="mb-4 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+              <div className="mb-4 flex items-center justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]/20">
                 <span>מהם מע״מ (18/118)</span>
                 <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
               </div>
-              <div className="pt-4 border-t border-purple-100 flex items-center justify-between">
+              <div className="pt-4 border-t border-[#D4AF37]/20 flex items-center justify-between">
                 <span className="luxury-heading-sm">סה״כ לחיוב</span>
                 <span className="luxury-heading-lg luxury-text-gradient">
                   ₪{pricing.totalCharged.toFixed(2)}
                 </span>
               </div>
               <div className="mt-4 luxury-text-small leading-relaxed opacity-80">
-                <Shield className="h-3 w-3 inline mr-1 text-purple-500" />
+                <Shield className="h-3 w-3 inline mr-1 text-[#D4AF37]" />
                 הסכום ייושמר מהארנק שלך עם אישור המאמן/ת, ויחויב לאחר סיום השיעור.
               </div>
             </div>
@@ -455,7 +455,7 @@ export default function AcademyBookingFlow() {
         {step === "confirmation" && (
           <div className="py-12 luxury-fade-in">
             <div className="text-center mb-6">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-r from-purple-500 to-purple-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
+              <div className="w-24 h-24 rounded-full bg-gradient-to-r from-[#D4AF37] to-[#B8932F] mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
                 <Check className="h-12 w-12 text-white" />
               </div>
               <h2 className="luxury-heading-lg mb-4">ההזמנה נקלטה בהצלחה!</h2>

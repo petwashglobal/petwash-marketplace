@@ -44,8 +44,8 @@ interface FinanceBadgeProps { state: string | null }
 const FINANCE_BADGE: Record<string, { label: string; cls: string }> = {
   hold_active: { label: "Wallet reserved",  cls: "bg-amber-100 text-amber-800 border-amber-300" },
   debited:     { label: "Wallet charged",   cls: "bg-green-100 text-green-800 border-green-300" },
-  released:    { label: "Wallet released",  cls: "bg-blue-100 text-blue-800 border-blue-300" },
-  refunded:    { label: "Wallet refunded",  cls: "bg-purple-100 text-purple-800 border-purple-300" },
+  released:    { label: "Wallet released",  cls: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  refunded:    { label: "Wallet refunded",  cls: "bg-[#D4AF37]/15 text-black border-[#D4AF37]/40" },
   none:        { label: "No charge",        cls: "bg-white text-gray-600 border-gray-300" },
 };
 
@@ -62,7 +62,7 @@ function FinanceBadge({ state }: FinanceBadgeProps) {
 const STATUS_BADGE: Record<string, string> = {
   pending:   "bg-yellow-100 text-yellow-800",
   confirmed: "bg-green-100 text-green-800",
-  completed: "bg-blue-100 text-blue-800",
+  completed: "bg-emerald-100 text-emerald-700",
   cancelled: "bg-red-100 text-red-800",
 };
 
@@ -272,7 +272,7 @@ export default function TrainerBookings() {
                 cancelModal.financeState === "hold_active"
                   ? "bg-amber-50 border-amber-200 text-amber-800"
                   : cancelModal.financeState === "debited"
-                    ? "bg-blue-50 border-blue-200 text-blue-800"
+                    ? "bg-emerald-50 border-emerald-200 text-emerald-700"
                     : "bg-white border-gray-200 text-gray-700"
               }`}>
                 {cancelModal.financeState === "hold_active" && (
