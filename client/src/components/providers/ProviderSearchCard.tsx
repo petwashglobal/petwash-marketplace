@@ -46,10 +46,24 @@ export function ProviderSearchCard({ item }: Props) {
 
   const locationParts = [item.suburb, item.city].filter(Boolean).join(", ");
 
+  // Map service → marketplace platform, then deep-link by the provider's
+  // Firebase UID (unambiguous, non-numeric). The old `/provider/:slug` link was
+  // dead (no such route); profile + contact-first both resolve by userId.
+  const PLATFORM_BY_SERVICE: Record<string, string> = {
+    pet_sitting: "sitter_suite", daycare: "sitter_suite",
+    dog_walking: "walk_my_pet", grooming: "groomers", transport: "pettrek",
+  };
+  const svc = item.supportedServices?.[0] || "pet_sitting";
+  const platform = PLATFORM_BY_SERVICE[svc] || "sitter_suite";
+  const targetId = item.userId || item.providerId;
+  const profileUrl = `/marketplace/${platform}/${targetId}`;
+  const bookUrl = `/marketplace/contact/${platform}/${targetId}`;
+  const GOLD = "#D4AF37";
+
   return (
     <div
       className="bg-white dark:bg-white rounded-2xl overflow-hidden hover:shadow-lg transition-all duration-200 cursor-pointer group border border-zinc-100 dark:border-zinc-800"
-      onClick={() => setLocation(`/provider/${item.providerSlug}`)}
+      onClick={() => setLocation(profileUrl)}
       data-testid={`provider-card-${item.providerId}`}
     >
       <div className="flex flex-col sm:flex-row">
@@ -193,25 +207,27 @@ export function ProviderSearchCard({ item }: Props) {
             )}
           </div>
 
-          {/* CTA buttons */}
+          {/* CTA buttons — gold primary (PetWash brand), contact-first booking */}
           <div className="flex gap-2 mt-4 pt-3 border-t border-zinc-100 dark:border-zinc-800">
             <Button
               variant="outline"
               size="sm"
-              className="flex-1 text-sm border-zinc-200 dark:border-zinc-700"
+              className="flex-1 text-sm font-medium text-black"
+              style={{ borderColor: GOLD }}
               onClick={(e) => {
                 e.stopPropagation();
-                setLocation(`/provider/${item.providerSlug}`);
+                setLocation(profileUrl);
               }}
             >
               {isHebrew ? "צפה בפרופיל" : "View profile"}
             </Button>
             <Button
               size="sm"
-              className="flex-1 bg-zinc-900 text-white hover:bg-zinc-700 dark:bg-white dark:text-zinc-900 dark:hover:bg-white text-sm font-semibold"
+              className="flex-1 text-sm font-semibold text-black hover:opacity-90"
+              style={{ background: GOLD }}
               onClick={(e) => {
                 e.stopPropagation();
-                setLocation(`/provider/${item.providerSlug}`);
+                setLocation(bookUrl);
               }}
             >
               {isHebrew ? "הזמן עכשיו" : "Book now"}

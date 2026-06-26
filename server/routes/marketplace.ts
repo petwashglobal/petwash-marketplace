@@ -568,8 +568,12 @@ router.get('/provider/:platform/:id', async (req, res) => {
 
     switch (platform as MarketplacePlatformId) {
       case 'walk_my_pet': {
+        // Accept either the walkerId OR the provider's Firebase UID (the unified
+        // search returns userId — the unambiguous, non-numeric id). Sitter branch
+        // already handles userId; this brings walkers to parity so search results
+        // open and book.
         const [walker] = await db.select().from(walkerProfiles)
-          .where(eq(walkerProfiles.walkerId, id))
+          .where(or(eq(walkerProfiles.walkerId, id), eq(walkerProfiles.userId, id)))
           .limit(1);
 
         if (walker) {
