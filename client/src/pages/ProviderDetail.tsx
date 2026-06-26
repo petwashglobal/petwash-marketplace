@@ -8,7 +8,6 @@ import { GlassmorphismCard } from '@/components/luxury/GlassmorphismCard';
 import { useToast } from '@/hooks/use-toast';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
-import { usePaymentStatus } from '@/hooks/use-payment-status';
 import { useProviderDetails, useProviderReviews } from '@/services/marketplace';
 import { InsuranceTrustChip } from '@/components/marketplace/InsuranceTrustChip';
 import {
@@ -26,7 +25,6 @@ export default function ProviderDetail() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
   const { toast } = useToast();
-  const { paymentsEnabled } = usePaymentStatus();
 
   const [showContactInfo, setShowContactInfo] = useState(false);
 
@@ -94,8 +92,10 @@ export default function ProviderDetail() {
       return;
     }
 
-    // Navigate to booking flow with provider details
-    navigate(`/marketplace/book/${platform}/${id}`);
+    // Contact-first: go to the booking-request screen (provider accepts BEFORE
+    // any charge — "you won't be asked to pay yet"). Payment happens later on
+    // acceptance. This replaces the jump-straight-to-payment flow.
+    navigate(`/marketplace/contact/${platform}/${id}`);
   };
 
   const toggleContactInfo = () => {
@@ -406,47 +406,38 @@ export default function ProviderDetail() {
                   </div>
                 )}
 
-                {/* Price Display */}
-                <div className="flex items-center justify-between p-6 bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 rounded-2xl border-2 border-purple-200 dark:border-purple-800">
+                {/* Price + Contact-first CTA (white/gold). Contacting is a
+                    booking REQUEST, not a charge — always available regardless
+                    of payment-rail status; the provider accepts before any payment. */}
+                <div className="flex items-center justify-between p-6 bg-white rounded-2xl border-2" style={{ borderColor: '#D4AF37' }}>
                   <div>
-                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">
+                    <p className="text-sm text-gray-600 mb-1">
                       {isHebrew ? 'מחיר' : 'Price'}
                     </p>
-                    <p className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" data-testid="text-provider-price">
+                    <p className="text-3xl font-bold text-black" data-testid="text-provider-price">
                       {provider.priceDisplay || (isHebrew ? 'צור קשר למחיר' : 'Contact for Price')}
                     </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
+                    <p className="text-xs text-gray-500 mt-1">
                       {isHebrew ? 'כולל 18% מע״מ' : 'Includes 18% VAT'}
                     </p>
                   </div>
-                  {paymentsEnabled ? (
-                    <Button 
-                      size="lg" 
+                  <div className="flex flex-col items-center gap-2">
+                    <Button
+                      size="lg"
                       onClick={handleBooking}
-                      className="luxury-btn-primary luxury-shadow-xl text-white px-8 py-6 text-lg"
+                      className="px-8 py-6 text-lg font-semibold text-black hover:opacity-90"
+                      style={{ background: '#D4AF37' }}
                       data-testid="button-book-now"
                     >
-                      <CalendarIcon className="w-5 h-5 mr-2" />
-                      {isHebrew ? 'הזמן עכשיו' : 'Book Now'}
+                      <MessageCircle className="w-5 h-5 mr-2" />
+                      {isHebrew
+                        ? `יצירת קשר עם ${provider.firstName || 'הספק'}`
+                        : `Contact ${provider.firstName || 'provider'}`}
                     </Button>
-                  ) : (
-                    <div className="flex flex-col items-center gap-2">
-                      <Button
-                        size="lg"
-                        disabled
-                        className="w-full px-8 py-6 text-lg bg-violet-100 text-violet-700 border-2 border-violet-300 cursor-not-allowed opacity-80"
-                        data-testid="button-book-soon"
-                      >
-                        <CalendarIcon className="w-5 h-5 mr-2" />
-                        {isHebrew ? '🚀 בקרוב — מערכת הזמנות בפיתוח' : '🚀 Coming Soon — Bookings launching shortly'}
-                      </Button>
-                      <p className="text-xs text-center text-gray-500">
-                        {isHebrew
-                          ? 'ניתן ליצור קשר ישיר עם הספק בינתיים'
-                          : 'Contact the provider directly in the meantime'}
-                      </p>
-                    </div>
-                  )}
+                    <p className="text-xs text-center text-gray-500">
+                      {isHebrew ? "עדיין לא תתבקש/י לשלם." : "You won't be asked to pay yet."}
+                    </p>
+                  </div>
                 </div>
 
                 {/* Note about Availability */}
