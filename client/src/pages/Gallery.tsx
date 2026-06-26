@@ -7,30 +7,6 @@ import { useSEO, pageSEO } from '@/lib/seo';
 // Gallery images
 const galleryImages = [
   {
-    src: '/gallery/petwash-community-1.jpg',
-    alt: "Pet Wash™ — Israel's pet community",
-    category: 'branding',
-    featured: true
-  },
-  {
-    src: '/gallery/petwash-community-2.jpg',
-    alt: 'Pet Wash™ community — all pets welcome',
-    category: 'branding',
-    featured: true
-  },
-  {
-    src: '/gallery/petwash-community-3.jpg',
-    alt: 'Pet Wash™ — everything in one hub',
-    category: 'branding',
-    featured: false
-  },
-  {
-    src: '/gallery/petwash-community-4.jpg',
-    alt: 'Pet Wash™ — a place for every pet',
-    category: 'branding',
-    featured: false
-  },
-  {
     src: '/gallery/C4EFE9DA-C7A6-4252-AB3F-7ED77BAC1A9B_1761100129902.png',
     alt: 'Pet Wash™ Station Signage',
     category: 'branding',
@@ -151,9 +127,9 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                 </div>
                 
                 {/* Video Stats Bar */}
-                <div className="bg-gradient-to-r from-purple-600/10 via-blue-600/10 to-purple-600/10 backdrop-blur-sm p-4 text-center">
+                <div className="bg-[#D4AF37]/10 backdrop-blur-sm p-4 text-center">
                   <div className="flex items-center justify-center gap-3 luxury-text-body">
-                    <Play className="w-5 h-5 text-purple-600" />
+                    <Play className="w-5 h-5 text-[#D4AF37]" />
                     <span className="text-sm font-medium">
                       {language === 'he' ? 'לחץ להפעלה' : language === 'ar' ? 'انقر للتشغيل' : language === 'ru' ? 'Нажмите для воспроизведения' : language === 'fr' ? 'Cliquez pour jouer' : language === 'es' ? 'Haz clic para reproducir' : 'Click to Play'}
                     </span>
@@ -213,7 +189,7 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                   />
                   
                   {/* Luxury Gradient Overlay */}
-                  <div className="absolute inset-0 bg-gradient-to-t from-purple-900/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
                   
                   {/* Hover Info */}
                   <div className="absolute bottom-0 left-0 right-0 p-6 text-white transform translate-y-full group-hover:translate-y-0 transition-transform duration-500">

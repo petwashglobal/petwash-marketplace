@@ -202,7 +202,7 @@ export default function Contact({ language }: ContactProps) {
               
               <div className="space-y-6">
                 <div className="flex items-center space-x-4 rtl:space-x-reverse" data-testid="contact-phone">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-[#D4AF37] flex items-center justify-center flex-shrink-0">
                     <Phone className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -214,7 +214,7 @@ export default function Contact({ language }: ContactProps) {
                 </div>
 
                 <div className="flex items-center space-x-4 rtl:space-x-reverse" data-testid="contact-email">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-[#D4AF37] flex items-center justify-center flex-shrink-0">
                     <Mail className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -226,7 +226,7 @@ export default function Contact({ language }: ContactProps) {
                 </div>
 
                 <div className="flex items-center space-x-4 rtl:space-x-reverse" data-testid="contact-company">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-500 to-blue-600 flex items-center justify-center flex-shrink-0">
+                  <div className="w-12 h-12 rounded-full bg-[#D4AF37] flex items-center justify-center flex-shrink-0">
                     <MapPin className="h-6 w-6 text-white" />
                   </div>
                   <div>
@@ -371,7 +371,7 @@ export default function Contact({ language }: ContactProps) {
           <div className="luxury-glass-card luxury-shadow-lg p-8 mt-8 luxury-animate-fade-in luxury-delay-3">
             <div className="text-center mb-8">
               <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-full bg-[#D4AF37] flex items-center justify-center">
                   <Navigation className="h-6 w-6 text-white" />
                 </div>
                 <h2 className="luxury-heading-lg">
