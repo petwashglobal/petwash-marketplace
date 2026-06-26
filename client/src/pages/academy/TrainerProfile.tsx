@@ -69,7 +69,7 @@ export default function TrainerProfile() {
       <Layout>
         <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#D4AF37] mx-auto mb-4"></div>
             <p className="luxury-text-body">{t('Loading trainer profile...')}</p>
           </div>
         </div>
@@ -123,7 +123,7 @@ export default function TrainerProfile() {
         </div>
 
         {/* Cover Photo / Gradient */}
-        <div className="relative h-64 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500">
+        <div className="relative h-64 bg-gradient-to-br from-black via-zinc-900 to-black">
           {trainer.coverPhotoUrl && (
             <img src={trainer.coverPhotoUrl} alt="" className="w-full h-full object-cover opacity-50" />
           )}
@@ -132,7 +132,7 @@ export default function TrainerProfile() {
           {/* Verified Badge */}
           {trainer.isCertified && (
             <div className="absolute top-4 left-4">
-              <Badge className="bg-white/90 text-purple-900 border-0 shadow-lg gap-2">
+              <Badge className="bg-white/90 text-black border-0 shadow-lg gap-2">
                 <Shield className="h-4 w-4" />
                 {t('Certified Professional')}
               </Badge>
@@ -162,12 +162,12 @@ export default function TrainerProfile() {
                 <div className="flex items-start gap-6 mb-6">
                   {/* Profile Photo - Circular with Gradient Border */}
                   <div className="relative">
-                    <div className="absolute inset-0 bg-gradient-to-br from-purple-500 via-blue-500 to-pink-500 rounded-full p-1">
+                    <div className="absolute inset-0 bg-gradient-to-br from-black via-zinc-900 to-black rounded-full p-1">
                       <Avatar className="w-32 h-32 border-4 border-white shadow-xl">
                         {trainer.profilePhotoUrl ? (
                           <AvatarImage src={trainer.profilePhotoUrl} alt={trainer.fullName || 'Trainer'} />
                         ) : (
-                          <AvatarFallback className="text-3xl bg-gradient-to-br from-purple-400 to-blue-400 text-white">
+                          <AvatarFallback className="text-3xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white">
                             {trainer.fullName?.charAt(0) || 'T'}
                           </AvatarFallback>
                         )}
@@ -201,7 +201,7 @@ export default function TrainerProfile() {
 
                     <div className="flex flex-wrap gap-2">
                       {trainer.certifications?.map((cert) => (
-                        <Badge key={cert} variant="secondary" className="bg-purple-100 text-purple-900 dark:bg-white dark:text-purple-100">
+                        <Badge key={cert} variant="secondary" className="bg-[#D4AF37]/15 text-black dark:bg-white dark:text-white">
                           <Award className="h-3 w-3 mr-1" />
                           {cert}
                         </Badge>
@@ -222,8 +222,8 @@ export default function TrainerProfile() {
 
                 {/* Quick Stats */}
                 <div className="grid grid-cols-3 gap-4">
-                  <div className="text-center p-4 rounded-lg bg-purple-50 dark:bg-white">
-                    <TrendingUp className="h-6 w-6 text-purple-600 dark:text-purple-400 mx-auto mb-2" />
+                  <div className="text-center p-4 rounded-lg bg-[#D4AF37]/10 dark:bg-white">
+                    <TrendingUp className="h-6 w-6 text-[#D4AF37] dark:text-[#D4AF37] mx-auto mb-2" />
                     <div className="text-2xl font-bold text-gray-900 dark:text-black">
                       {trainer.experienceYears}+
                     </div>
@@ -232,8 +232,8 @@ export default function TrainerProfile() {
                     </div>
                   </div>
 
-                  <div className="text-center p-4 rounded-lg bg-blue-50 dark:bg-white">
-                    <Users className="h-6 w-6 text-blue-600 dark:text-blue-400 mx-auto mb-2" />
+                  <div className="text-center p-4 rounded-lg bg-emerald-50 dark:bg-white">
+                    <Users className="h-6 w-6 text-emerald-700 dark:text-emerald-700 mx-auto mb-2" />
                     <div className="text-2xl font-bold text-gray-900 dark:text-black">
                       {trainer.totalSessions}
                     </div>
@@ -272,9 +272,9 @@ export default function TrainerProfile() {
                         {trainer.specialties?.map((specialty) => (
                           <div
                             key={specialty}
-                            className="flex items-center gap-3 p-3 rounded-lg bg-purple-50 dark:bg-white"
+                            className="flex items-center gap-3 p-3 rounded-lg bg-[#D4AF37]/10 dark:bg-white"
                           >
-                            <CheckCircle2 className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                            <CheckCircle2 className="h-5 w-5 text-[#D4AF37] dark:text-[#D4AF37]" />
                             <span className="text-gray-900 dark:text-black">{specialty}</span>
                           </div>
                         ))}
@@ -456,17 +456,17 @@ export default function TrainerProfile() {
                       </div>
 
                       {/* Info Notes */}
-                      <div className="mt-6 p-4 rounded-lg bg-purple-50 dark:bg-white space-y-2 text-xs text-gray-600 dark:text-gray-400">
+                      <div className="mt-6 p-4 rounded-lg bg-[#D4AF37]/10 dark:bg-white space-y-2 text-xs text-gray-600 dark:text-gray-400">
                         <div className="flex items-start gap-2">
-                          <Shield className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5" />
+                          <Shield className="h-4 w-4 text-[#D4AF37] dark:text-[#D4AF37] mt-0.5" />
                           <span>{t('72-hour payment hold with automatic release')}</span>
                         </div>
                         <div className="flex items-start gap-2">
-                          <CheckCircle2 className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5" />
+                          <CheckCircle2 className="h-4 w-4 text-[#D4AF37] dark:text-[#D4AF37] mt-0.5" />
                           <span>{t('All payments processed by ⁦Pet Wash™⁩ Ltd')}</span>
                         </div>
                         <div className="flex items-start gap-2">
-                          <BookOpen className="h-4 w-4 text-purple-600 dark:text-purple-400 mt-0.5" />
+                          <BookOpen className="h-4 w-4 text-[#D4AF37] dark:text-[#D4AF37] mt-0.5" />
                           <span>{t('Full refund if cancelled within 24 hours')}</span>
                         </div>
                       </div>
