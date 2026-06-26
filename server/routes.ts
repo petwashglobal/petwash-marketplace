@@ -230,6 +230,7 @@ import enterpriseSalesCRMRoutes from "./routes/enterprise-sales-crm";
 import expensesRoutes from "./routes/expenses";
 import franchiseRoutes from "./routes/franchise";
 import waitlistRoutes from "./routes/waitlist";
+import dealGateRoutes from "./routes/deal-gate";
 import inventoryRoutes from "./routes/inventory";
 import israeliCPIRoutes from "./routes/israeli-cpi";
 import franchiseMgmtRoutes from "./routes/franchise-mgmt";
@@ -11248,6 +11249,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Universal waitlist / demand-capture (public capture; CSRF-exempt in index.ts)
   app.use('/api/waitlist', optionalFirebaseToken, apiLimiter, waitlistRoutes);
+
+  // Deal Gate — read-only booking-confirmability validator + money-flag snapshot.
+  app.use('/api/deal-gate', optionalFirebaseToken, apiLimiter, dealGateRoutes);
   logger.info('[Routes] ✅ Waitlist demand-capture routes registered');
 
   // Inbox routes (User + Franchise)
