@@ -11,8 +11,10 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { db } from '../db';
-import { waitlistEntries, createWaitlistEntrySchema } from '../../shared/schema-waitlist';
+import { waitlistEntries, createWaitlistEntrySchema, WAITLIST_STATUSES } from '../../shared/schema-waitlist';
 import { logger } from '../lib/logger';
+import { requireAdmin } from '../adminAuth';
+import { and, desc, eq } from 'drizzle-orm';
 
 const router = Router();
 
@@ -56,6 +58,44 @@ router.post('/', async (req: Request, res: Response) => {
     }
     logger.error('[Waitlist] create failed', { error: e?.message });
     return res.status(500).json({ error: 'WAITLIST_CREATE_FAILED' });
+  }
+});
+
+// ── Admin ────────────────────────────────────────────────────────────────────
+// requireAdmin verifies the token + admin role itself (self-contained).
+
+// GET /api/waitlist/admin — list entries, optional ?platform= & ?status= filters.
+router.get('/admin', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const { platform, status } = req.query as { platform?: string; status?: string };
+    const conds = [];
+    if (platform) conds.push(eq(waitlistEntries.platformKey, platform));
+    if (status) conds.push(eq(waitlistEntries.status, status));
+    const rows = await db.select().from(waitlistEntries)
+      .where(conds.length ? and(...conds) : undefined)
+      .orderBy(desc(waitlistEntries.createdAt))
+      .limit(500);
+    return res.json({ entries: rows, count: rows.length });
+  } catch (e: any) {
+    logger.error('[Waitlist] admin list failed', { error: e?.message });
+    return res.status(500).json({ error: 'WAITLIST_LIST_FAILED' });
+  }
+});
+
+// PATCH /api/waitlist/admin/:id — update the lifecycle status of an entry.
+router.patch('/admin/:id', requireAdmin, async (req: Request, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    const { status } = req.body || {};
+    if (!Number.isFinite(id)) return res.status(400).json({ error: 'INVALID_ID' });
+    if (!(WAITLIST_STATUSES as readonly string[]).includes(status)) {
+      return res.status(400).json({ error: 'INVALID_STATUS', allowed: WAITLIST_STATUSES });
+    }
+    await db.update(waitlistEntries).set({ status, updatedAt: new Date() }).where(eq(waitlistEntries.id, id));
+    return res.json({ success: true });
+  } catch (e: any) {
+    logger.error('[Waitlist] admin status update failed', { error: e?.message });
+    return res.status(500).json({ error: 'WAITLIST_UPDATE_FAILED' });
   }
 });
 
