@@ -49,6 +49,9 @@ export interface ProviderSearchFilters {
 
 export interface ProviderSearchItem {
   providerId: string;
+  /** Provider's Firebase UID — the unambiguous (non-numeric) id used to open
+   *  the detail page and the contact-first booking flow. */
+  userId?: string;
   providerSlug: string;
   displayName: string;
   avatarUrl?: string;

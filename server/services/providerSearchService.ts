@@ -266,6 +266,7 @@ async function fetchDogWalkers(
     const providerIdStr = String(w.providerId);
     return {
       providerId: providerIdStr,
+      userId: w.userId ?? undefined,
       providerSlug: slug(`${displayName}-${w.city || "il"}`),
       displayName,
       avatarUrl: w.walkerPhoto ?? w.providerPhoto ?? undefined,
@@ -391,6 +392,7 @@ async function fetchSitters(
     const providerIdStr = String(s.providerId);
     results.push({
       providerId: providerIdStr,
+      userId: s.userId ?? undefined,
       providerSlug: slug(`${displayName}-${s.city || "il"}`),
       displayName,
       avatarUrl: s.avatarUrl ?? undefined,
