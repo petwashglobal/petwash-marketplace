@@ -735,6 +735,59 @@ router.post('/', async (req, res) => {
       );
     }
 
+    // Notify the CUSTOMER that their booking REQUEST (enquiry) was sent —
+    // pre-acceptance, pre-payment. Original PetWash wording, bright gold,
+    // bilingual (He-first). NO competitor terms, NO insurance/guarantee claim.
+    // Reassures "you haven't been charged" and lays out the next steps the
+    // master booking-lifecycle spec defines. Non-blocking, best-effort: a
+    // notification failure must never break booking creation.
+    if (booking.ownerId) {
+      const [ownerUser] = await db
+        .select({ email: users.email, phone: users.phone, firstName: users.firstName })
+        .from(users)
+        .where(eq(users.id, booking.ownerId))
+        .limit(1)
+        .catch(() => []);
+
+      const svc = data.serviceType?.replace(/_/g, ' ') || 'service';
+      const petName = data.petDetails?.[0]?.petName || '';
+      const fmtDate = (d: any) => { try { return new Date(d).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }); } catch { return ''; } };
+      const dateRange = `${fmtDate(booking.startDate)} – ${fmtDate(booking.endDate)}`;
+      const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+      const detailsUrl = `${appUrl}/booking/confirmation/${requestId}`;
+      const gold = '#D4AF37';
+      const hi = ownerUser?.firstName ? ` ${ownerUser.firstName}` : '';
+
+      const customerBodyHtml =
+        `<p>שלום${hi}, בקשת ההזמנה שלך נשלחה בהצלחה ושותפה עם הספק לבדיקה. נעדכן אותך ברגע שתתקבל תשובה. <strong>עדיין לא בוצע חיוב.</strong></p>` +
+        `<p style="margin:12px 0;padding:12px 14px;border-right:3px solid ${gold};background:#faf7ec">` +
+        `<strong>פרטי הבקשה</strong><br/>שירות: ${svc}${petName ? `<br/>חיית מחמד: ${petName}` : ''}<br/>תאריכים: ${dateRange}<br/>מספר בקשה: ${requestId}</p>` +
+        `<p><strong>מה קורה עכשיו?</strong><br/>1. השלמת פרופיל חיית המחמד · 2. תיאום פגישת היכרות · 3. הספק בודק ומגיב · 4. אישור ותשלום מאובטח דרך PetWash בלבד.</p>` +
+        `<p style="color:#666;font-size:13px">לביטחונך — תקשורת ותשלום תמיד דרך PetWash. כך נשמרים ההזמנה, פרטי הטיפול והתיעוד.</p>` +
+        `<hr/>` +
+        `<p><em>Hi${hi}, your booking request has been sent and shared with the provider for review. We'll notify you as soon as they respond. <strong>You haven't been charged.</strong></em></p>` +
+        `<p><em>Service: ${svc}${petName ? ` · Pet: ${petName}` : ''} · Dates: ${dateRange} · Ref: ${requestId}</em></p>` +
+        `<p><em>What happens next? 1) Complete your pet profile 2) Arrange a Meet &amp; Greet 3) Provider reviews &amp; responds 4) Confirm &amp; pay securely — always inside PetWash.</em></p>`;
+
+      const customerSms = `PetWash: your ${svc} booking request was sent to the provider. Ref ${requestId}. We'll let you know when they respond: ${detailsUrl}`;
+
+      dispatchNotification({
+        uid: booking.ownerId,
+        email: ownerUser?.email ?? undefined,
+        phone: ownerUser?.phone ?? undefined,
+        type: 'booking_request_sent',
+        title: 'בקשת ההזמנה נשלחה · Booking request sent',
+        bodyHtml: customerBodyHtml,
+        bodyText: customerSms,
+        ctaText: 'View booking',
+        ctaUrl: detailsUrl,
+        channels: ['inbox', 'email', 'sms'],
+        priority: 8,
+      }).catch((notifErr: any) =>
+        logger.warn('[BookingRequests] Customer enquiry-sent notification failed (non-blocking)', { error: notifErr?.message, requestId })
+      );
+    }
+
     // Intelligence — advance customer journey state to ready_to_book
     if (booking.ownerId) {
       advanceJourneyState(booking.ownerId, 'ready_to_book').catch(err => logger.warn('[BookingRequests] advanceJourneyState ready_to_book failed', { ownerId: booking.ownerId, err: err?.message }));
