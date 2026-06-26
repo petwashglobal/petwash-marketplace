@@ -550,6 +550,7 @@ export default function BookingConfirmation() {
   const showAlertPanel = isOwner && ['declined', 'cancelled'].includes(booking.status);
   const canModify      = isOwner && ['pending', 'confirmed'].includes(booking.status);
   const canCancel      = isOwner && ['pending', 'confirmed'].includes(booking.status) && !showCancelConfirm;
+  const isEnquirySent  = isOwner && booking.status === 'pending';
   const infoItems      = importantInfo[booking.serviceType] ?? importantInfo['pet_sitting'];
 
   const startDateObj   = booking.startDate ? new Date(booking.startDate) : null;
@@ -570,6 +571,63 @@ export default function BookingConfirmation() {
             <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
             {t.back}
           </Button>
+
+          {/* ══════════════════════════════════════════════════════════
+              BOOKING ENQUIRY SENT — pending request, pre-acceptance.
+              Original PetWash wording, white + gold. "You haven't been charged."
+          ══════════════════════════════════════════════════════════ */}
+          {isEnquirySent && (
+            <div className="mb-4">
+              <div className="flex items-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-100 px-4 py-3 mb-3">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+                <p className="font-semibold text-emerald-800 text-sm">
+                  {isRTL ? 'בקשת ההזמנה נשלחה' : 'Booking enquiry sent'}
+                </p>
+              </div>
+              <p className="text-sm text-gray-600 leading-relaxed mb-4">
+                {isRTL
+                  ? `שיתפנו את הבקשה עם ${booking.providerName || 'הספק'} לבדיקה. נעדכן אותך ברגע שתתקבל תשובה. עדיין לא חויבת.`
+                  : `We've shared your request with ${booking.providerName || 'the provider'} for review. We'll notify you as soon as they respond. You haven't been charged.`}
+              </p>
+              <div className="rounded-2xl border border-gray-100 p-4 mb-3">
+                <h2 className="font-bold text-gray-900 text-sm mb-3">
+                  {isRTL ? 'מה קורה עכשיו?' : 'What happens next?'}
+                </h2>
+                <ol className="space-y-2 text-sm text-gray-700">
+                  {[
+                    isRTL ? 'השלמת פרופיל חיית המחמד' : 'Complete your pet profile',
+                    isRTL ? 'תיאום פגישת היכרות (Meet & Greet)' : 'Arrange a Meet & Greet',
+                    isRTL ? 'הספק בודק ומגיב' : 'The provider reviews & responds',
+                    isRTL ? 'אישור ותשלום מאובטח — תמיד דרך PetWash' : 'Confirm & pay securely — always inside PetWash',
+                  ].map((step, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-xs font-bold text-black" style={{ background: '#D4AF37' }}>{i + 1}</span>
+                      <span className="leading-relaxed">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <button onClick={() => navigate('/pets')} className="flex flex-col items-center gap-1 rounded-xl border border-gray-100 py-3 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                  <PawPrint className="w-5 h-5" style={{ color: '#D4AF37' }} />
+                  {isRTL ? 'פרופיל חיה' : 'Pet profile'}
+                </button>
+                <button onClick={() => booking.requestId && navigate(`/booking-chat/${booking.requestId}`)} className="flex flex-col items-center gap-1 rounded-xl border border-gray-100 py-3 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                  <MessageCircle className="w-5 h-5" style={{ color: '#D4AF37' }} />
+                  {isRTL ? 'הודעה לספק' : 'Message provider'}
+                </button>
+                <button onClick={() => navigate('/search')} className="flex flex-col items-center gap-1 rounded-xl border border-gray-100 py-3 text-xs font-medium text-gray-700 hover:bg-gray-50">
+                  <Search className="w-5 h-5" style={{ color: '#D4AF37' }} />
+                  {isRTL ? 'ספקים נוספים' : 'More sitters'}
+                </button>
+              </div>
+              <p className="mt-3 text-center text-xs text-gray-400">
+                {isRTL
+                  ? 'פנייה למספר ספקים מגדילה את הסיכוי למצוא התאמה מושלמת.'
+                  : 'Contacting a few providers improves your chance of the perfect match.'}
+              </p>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════════════════════
               TABIT-STYLE HERO CARD
