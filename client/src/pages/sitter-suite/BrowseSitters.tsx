@@ -310,10 +310,10 @@ export default function BrowseSitters() {
   return (
     <Layout>
       <div className="min-h-screen bg-white">
-        <div className="relative bg-gradient-to-br from-fuchsia-500 via-pink-500 to-rose-500 overflow-hidden">
+        <div className="relative bg-gradient-to-br from-[#D4AF37] via-[#C9A536] to-rose-500 overflow-hidden">
           <div className="absolute inset-0 opacity-40">
-            <div className="absolute top-10 left-10 w-72 h-72 bg-fuchsia-300 rounded-full blur-3xl animate-pulse"></div>
-            <div className="absolute bottom-0 right-0 w-96 h-96 bg-pink-300 rounded-full blur-3xl"></div>
+            <div className="absolute top-10 left-10 w-72 h-72 bg-[#D4AF37] rounded-full blur-3xl animate-pulse"></div>
+            <div className="absolute bottom-0 right-0 w-96 h-96 bg-[#D4AF37] rounded-full blur-3xl"></div>
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-rose-300 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }}></div>
           </div>
           
@@ -417,7 +417,7 @@ export default function BrowseSitters() {
                     }}
                     className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-colors ${
                       sortBy === option.id
-                        ? 'bg-fuchsia-50 text-fuchsia-700 font-medium'
+                        ? 'bg-[#D4AF37]/10 text-black font-medium'
                         : 'hover:bg-white text-gray-700'
                     }`}
                   >
@@ -432,7 +432,7 @@ export default function BrowseSitters() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={`rounded-full gap-1.5 h-9 text-sm ${maxPrice < 500 ? 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700' : ''}`}>
+                <Button variant="outline" size="sm" className={`rounded-full gap-1.5 h-9 text-sm ${maxPrice < 500 ? 'border-[#D4AF37]/40 bg-[#D4AF37]/10 text-black' : ''}`}>
                   ₪ {isHebrew ? 'מחיר' : 'Price'}
                   {maxPrice < 500 && <span className="font-semibold">{isHebrew ? `עד ₪${maxPrice}` : `≤₪${maxPrice}`}</span>}
                   <ChevronDown className="h-3 w-3 opacity-60" />
@@ -444,7 +444,7 @@ export default function BrowseSitters() {
                     <span className="text-sm font-medium text-gray-700">
                       {isHebrew ? 'מחיר מקסימלי ללילה' : 'Max price per night'}
                     </span>
-                    <span className="text-lg font-bold text-fuchsia-600">₪{maxPrice}</span>
+                    <span className="text-lg font-bold text-[#D4AF37]">₪{maxPrice}</span>
                   </div>
                   <Slider
                     value={[maxPrice]}
@@ -467,7 +467,7 @@ export default function BrowseSitters() {
 
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={`rounded-full gap-1.5 h-9 text-sm ${minRating > 0 ? 'border-fuchsia-300 bg-fuchsia-50 text-fuchsia-700' : ''}`}>
+                <Button variant="outline" size="sm" className={`rounded-full gap-1.5 h-9 text-sm ${minRating > 0 ? 'border-[#D4AF37]/40 bg-[#D4AF37]/10 text-black' : ''}`}>
                   <Star className="h-3.5 w-3.5" />
                   {minRating > 0 
                     ? `${minRating}+ ${isHebrew ? 'כוכבים' : 'stars'}`
@@ -491,7 +491,7 @@ export default function BrowseSitters() {
                     }}
                     className={`w-full text-start px-3 py-2 rounded-lg text-sm transition-colors ${
                       minRating === option.value
-                        ? 'bg-fuchsia-50 text-fuchsia-700 font-medium'
+                        ? 'bg-[#D4AF37]/10 text-black font-medium'
                         : 'hover:bg-white text-gray-700'
                     }`}
                   >
@@ -521,7 +521,7 @@ export default function BrowseSitters() {
 
           {isLoading ? (
             <div className="text-center py-16">
-              <div className="w-16 h-16 border-4 border-fuchsia-200 border-t-fuchsia-500 rounded-full animate-spin mx-auto mb-4"></div>
+              <div className="w-16 h-16 border-4 border-[#D4AF37]/20 border-t-[#D4AF37] rounded-full animate-spin mx-auto mb-4"></div>
               <p className="text-gray-600">
                 {isHebrew ? 'מחפשים שמרטפים מדהימים...' : 'Finding amazing sitters...'}
               </p>
@@ -529,8 +529,8 @@ export default function BrowseSitters() {
           ) : providers.length === 0 ? (
             <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-8">
               <div className="text-center py-12">
-                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-fuchsia-100 to-pink-100 flex items-center justify-center">
-                  <Heart className="w-12 h-12 text-fuchsia-400" />
+                <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/10 flex items-center justify-center">
+                  <Heart className="w-12 h-12 text-[#D4AF37]" />
                 </div>
                 <h3 className="text-2xl font-semibold text-gray-900 mb-3">
                   {hasSearched
@@ -550,7 +550,7 @@ export default function BrowseSitters() {
                 </p>
                 <div className="flex flex-col sm:flex-row gap-4 justify-center">
                   <Button 
-                    className="bg-gradient-to-r from-fuchsia-500 to-pink-500 hover:from-fuchsia-600 hover:to-pink-600 text-white rounded-full px-8 shadow-lg shadow-fuchsia-500/25"
+                    className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white rounded-full px-8 shadow-lg shadow-[#D4AF37]/20"
                     onClick={() => onClickBecomeProvider(setLocation, 'sitter')}
                     data-testid="button-become-sitter"
                   >
@@ -596,8 +596,8 @@ export default function BrowseSitters() {
                   </p>
                 </div>
                 <div className="text-center p-6">
-                  <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-blue-100 flex items-center justify-center">
-                    <Camera className="h-7 w-7 text-blue-600" />
+                  <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center">
+                    <Camera className="h-7 w-7 text-[#D4AF37]" />
                   </div>
                   <h4 className="font-semibold text-gray-900 mb-2">
                     {isHebrew ? 'עדכוני תמונות יומיים' : 'Daily Photo Updates'}
@@ -610,8 +610,8 @@ export default function BrowseSitters() {
                   </p>
                 </div>
                 <div className="text-center p-6">
-                  <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
-                    <Shield className="h-7 w-7 text-fuchsia-600" />
+                  <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center">
+                    <Shield className="h-7 w-7 text-[#D4AF37]" />
                   </div>
                   {/* PR-LEGAL-B: previously claimed 'Full Insurance Included'
                       with 'Complete insurance coverage for every booking'.
@@ -687,9 +687,9 @@ export default function BrowseSitters() {
         <div className="bg-white py-16">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="text-center mb-10">
-              <div className="inline-flex items-center gap-2 px-4 py-2 bg-fuchsia-50 border border-fuchsia-200 rounded-full mb-4">
-                <Wallet className="h-4 w-4 text-fuchsia-600" />
-                <span className="text-sm font-medium text-fuchsia-700">
+              <div className="inline-flex items-center gap-2 px-4 py-2 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-full mb-4">
+                <Wallet className="h-4 w-4 text-[#D4AF37]" />
+                <span className="text-sm font-medium text-black">
                   {isHebrew ? 'הזדמנות הכנסה נוספת' : 'Extra Income Opportunity'}
                 </span>
               </div>
@@ -706,8 +706,8 @@ export default function BrowseSitters() {
             
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
-                  <Wallet className="h-7 w-7 text-fuchsia-600" />
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center">
+                  <Wallet className="h-7 w-7 text-[#D4AF37]" />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? 'עד ₪200+/שעה' : 'Up to ₪200+/hour'}
@@ -717,8 +717,8 @@ export default function BrowseSitters() {
                 </p>
               </div>
               <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
-                  <Briefcase className="h-7 w-7 text-fuchsia-600" />
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center">
+                  <Briefcase className="h-7 w-7 text-[#D4AF37]" />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? 'גמישות מלאה' : 'Full Flexibility'}
@@ -728,8 +728,8 @@ export default function BrowseSitters() {
                 </p>
               </div>
               <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-fuchsia-100 flex items-center justify-center">
-                  <Heart className="h-7 w-7 text-fuchsia-600" />
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#D4AF37]/10 flex items-center justify-center">
+                  <Heart className="h-7 w-7 text-[#D4AF37]" />
                 </div>
                 {/* PR-LEGAL-B: previously 'Full Insurance' / 'Coverage for every
                     booking'. Replaced with the CEO-approved canonical disclaimer
@@ -765,19 +765,19 @@ export default function BrowseSitters() {
             
             <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
               <div className="text-center">
-                <div className="text-4xl font-bold text-fuchsia-600 mb-2">4.9</div>
+                <div className="text-4xl font-bold text-[#D4AF37] mb-2">4.9</div>
                 <div className="text-sm text-gray-600">{isHebrew ? 'דירוג ממוצע' : 'Average Rating'}</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-fuchsia-600 mb-2">10K+</div>
+                <div className="text-4xl font-bold text-[#D4AF37] mb-2">10K+</div>
                 <div className="text-sm text-gray-600">{isHebrew ? 'הזמנות הושלמו' : 'Bookings Completed'}</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-fuchsia-600 mb-2">100%</div>
+                <div className="text-4xl font-bold text-[#D4AF37] mb-2">100%</div>
                 <div className="text-sm text-gray-600">{isHebrew ? 'שמרטפים מאומתים' : 'Verified Sitters'}</div>
               </div>
               <div className="text-center">
-                <div className="text-4xl font-bold text-fuchsia-600 mb-2">24/7</div>
+                <div className="text-4xl font-bold text-[#D4AF37] mb-2">24/7</div>
                 <div className="text-sm text-gray-600">{isHebrew ? 'תמיכה זמינה' : 'Support Available'}</div>
               </div>
             </div>

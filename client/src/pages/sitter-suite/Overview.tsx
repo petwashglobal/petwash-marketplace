@@ -138,7 +138,7 @@ export default function SitterSuiteOverview() {
             {features.map((feature, index) => (
               <Link key={index} href={feature.link}>
                 <div className={`luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 cursor-pointer h-full luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}>
-                  <div className="w-16 h-16 mb-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                  <div className="w-16 h-16 mb-4 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
                     {feature.icon}
                   </div>
                   <h3 className="luxury-heading-sm mb-2">
@@ -163,7 +163,7 @@ export default function SitterSuiteOverview() {
             <div className="luxury-grid-3">
               {stats.map((stat, index) => (
                 <div key={index} className={`text-center luxury-animate-fade-in luxury-delay-${index + 1}`}>
-                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-purple-100 flex items-center justify-center">
+                  <div className="w-20 h-20 mx-auto mb-4 rounded-full bg-[#D4AF37]/10 flex items-center justify-center">
                     {stat.icon}
                   </div>
                   <div className="luxury-heading-md text-gray-900 mb-2">
@@ -202,13 +202,13 @@ export default function SitterSuiteOverview() {
                   icon: Shield, 
                   titleKey: 'marketplace.verifiedBackgroundChecked',
                   descKey: 'marketplace.verifiedBackgroundCheckedDesc',
-                  color: 'from-blue-500 to-blue-600'
+                  color: 'from-[#D4AF37] to-[#B8932F]'
                 },
                 { 
                   icon: Heart, 
                   titleKey: 'marketplace.animalLoversOnly',
                   descKey: 'marketplace.animalLoversOnlyDesc',
-                  color: 'from-pink-500 to-pink-600'
+                  color: 'from-[#D4AF37] to-[#B8932F]'
                 },
                 { 
                   icon: Award, 
@@ -226,7 +226,7 @@ export default function SitterSuiteOverview() {
                   icon: MapPin, 
                   titleKey: 'marketplace.localNeighborhoodProviders',
                   descKey: 'marketplace.localNeighborhoodProvidersDesc',
-                  color: 'from-purple-500 to-purple-600'
+                  color: 'from-[#D4AF37] to-[#B8932F]'
                 },
                 { 
                   icon: Home, 
@@ -238,7 +238,7 @@ export default function SitterSuiteOverview() {
                   icon: Shield, 
                   titleKey: 'marketplace.fullInsurance',
                   descKey: 'marketplace.fullInsuranceDesc',
-                  color: 'from-indigo-500 to-blue-600'
+                  color: 'from-[#D4AF37] to-[#B8932F]'
                 },
               ].map((item, i) => (
                 <div 
@@ -268,7 +268,7 @@ export default function SitterSuiteOverview() {
                 </div>
                 <Link href="/sitter-suite/browse">
                   <Button 
-                    className="px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-pink-500 to-purple-600 rounded-xl hover:from-pink-600 hover:to-purple-700 transition-all shadow-lg whitespace-nowrap"
+                    className="px-8 py-4 text-lg font-bold text-white bg-gradient-to-r from-[#D4AF37] to-[#B8932F] rounded-xl hover:from-[#D4AF37] hover:to-[#B8932F] transition-all shadow-lg whitespace-nowrap"
                     data-testid="button-vacation-cta"
                   >
                     {t('marketplace.findSitterNow')}

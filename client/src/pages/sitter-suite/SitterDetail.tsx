@@ -137,7 +137,7 @@ export default function SitterDetail() {
       <Layout>
         <div className="min-h-screen flex items-center justify-center">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#D4AF37]/40 mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">
               {isHebrew ? 'טוען...' : 'Loading...'}
             </p>
@@ -177,7 +177,7 @@ export default function SitterDetail() {
             <div className="grid lg:grid-cols-3 gap-8">
               {/* Left: Profile Photo */}
               <div className="lg:col-span-1 luxury-animate-scale-in luxury-delay-1">
-                <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-purple-200 via-pink-200 to-amber-200 border-4 border-transparent bg-clip-padding" style={{
+                <div className="relative aspect-square rounded-2xl overflow-hidden bg-gradient-to-br from-[#D4AF37]/10 via-[#C9A536] to-amber-200 border-4 border-transparent bg-clip-padding" style={{
                   backgroundImage: 'linear-gradient(white, white), linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
                   backgroundOrigin: 'border-box',
                   backgroundClip: 'padding-box, border-box'
@@ -190,7 +190,7 @@ export default function SitterDetail() {
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
-                      <Users className="w-24 h-24 text-purple-400" />
+                      <Users className="w-24 h-24 text-[#D4AF37]" />
                     </div>
                   )}
                   {sitter.isVerified && (
@@ -225,7 +225,7 @@ export default function SitterDetail() {
                   </div>
                   
                   <div className="flex items-center gap-2 text-gray-700 mb-4">
-                    <MapPin className="w-6 h-6 text-purple-600" />
+                    <MapPin className="w-6 h-6 text-[#D4AF37]" />
                     <span className="text-xl font-medium">{sitter.city}</span>
                   </div>
                 </div>
@@ -248,7 +248,7 @@ export default function SitterDetail() {
 
                   <div className="luxury-glass-card luxury-hover-lift text-center p-5 luxury-animate-scale-in luxury-delay-4">
                     <div className="flex justify-center mb-2">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
                         <Award className="w-7 h-7 text-white" />
                       </div>
                     </div>
@@ -276,7 +276,7 @@ export default function SitterDetail() {
 
                   <div className="luxury-glass-card luxury-hover-lift text-center p-5 luxury-animate-scale-in luxury-delay-6">
                     <div className="flex justify-center mb-2">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-cyan-500 flex items-center justify-center">
                         <TrendingUp className="w-7 h-7 text-white" />
                       </div>
                     </div>
@@ -331,10 +331,10 @@ export default function SitterDetail() {
             <div className="lg:col-span-2 space-y-6">
               {/* Login/Add Pet Prompt */}
               {!user && (
-                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8 border-2 border-dashed border-purple-300">
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8 border-2 border-dashed border-[#D4AF37]/40">
                   <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                      <Users className="w-8 h-8 text-purple-600" />
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/10 flex items-center justify-center">
+                      <Users className="w-8 h-8 text-[#D4AF37]" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-black mb-2">
                       {isHebrew ? 'התחבר כדי להזמין' : 'Sign In to Book'}
@@ -346,7 +346,7 @@ export default function SitterDetail() {
                     </p>
                     <Button 
                       onClick={() => navigate('/signin')}
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                      className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white"
                       data-testid="button-signin-to-book"
                     >
                       {isHebrew ? 'התחבר עכשיו' : 'Sign In Now'}
@@ -357,10 +357,10 @@ export default function SitterDetail() {
 
               {/* Add Pet Prompt */}
               {user && (!pets || pets.length === 0) && (
-                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8 border-2 border-dashed border-purple-300">
+                <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8 border-2 border-dashed border-[#D4AF37]/40">
                   <div className="text-center">
-                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                      <Dog className="w-8 h-8 text-purple-600" />
+                    <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/10 flex items-center justify-center">
+                      <Dog className="w-8 h-8 text-[#D4AF37]" />
                     </div>
                     <h3 className="text-xl font-bold text-gray-900 dark:text-black mb-2">
                       {isHebrew ? 'הוסף את חיית המחמד שלך' : 'Add Your Pet First'}
@@ -372,7 +372,7 @@ export default function SitterDetail() {
                     </p>
                     <Button 
                       onClick={() => navigate('/pets')}
-                      className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                      className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white"
                       data-testid="button-add-pet"
                     >
                       {isHebrew ? 'הוסף חיית מחמד' : 'Add Pet'}
@@ -385,7 +385,7 @@ export default function SitterDetail() {
               {user && pets && pets.length > 0 && (
                 <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-8">
                   <h3 className="luxury-heading-md mb-6 flex items-center gap-3 luxury-text-gradient">
-                    <Dog className="w-8 h-8 text-purple-600" />
+                    <Dog className="w-8 h-8 text-[#D4AF37]" />
                     {isHebrew ? 'בחר חיית מחמד' : 'Select Your Pet'}
                   </h3>
                   <div className="grid md:grid-cols-2 gap-4">
@@ -395,7 +395,7 @@ export default function SitterDetail() {
                         onClick={() => setSelectedPetId(pet.id)}
                         className={`luxury-glass-minimal luxury-hover-lift p-4 cursor-pointer transition-all luxury-animate-scale-in luxury-delay-${Math.min(10, 9 + idx)} ${
                           selectedPetId === pet.id
-                            ? 'border-2 border-purple-600 luxury-shadow-lg'
+                            ? 'border-2 border-[#D4AF37]/40 luxury-shadow-lg'
                             : 'border border-gray-200 dark:border-gray-700'
                         }`}
                         data-testid={`pet-option-${pet.id}`}
@@ -405,11 +405,11 @@ export default function SitterDetail() {
                             <img 
                               src={pet.photoUrl} 
                               alt={pet.name}
-                              className="w-16 h-16 rounded-full object-cover ring-2 ring-purple-200"
+                              className="w-16 h-16 rounded-full object-cover ring-2 ring-[#D4AF37]"
                             />
                           ) : (
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-200 to-pink-200 flex items-center justify-center ring-2 ring-purple-200">
-                              <Dog className="w-8 h-8 text-purple-600" />
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/10 flex items-center justify-center ring-2 ring-[#D4AF37]">
+                              <Dog className="w-8 h-8 text-[#D4AF37]" />
                             </div>
                           )}
                           <div>
@@ -427,7 +427,7 @@ export default function SitterDetail() {
               {/* Select Dates */}
               <div className="luxury-glass-card luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-9">
                 <h3 className="luxury-heading-md mb-6 flex items-center gap-3 luxury-text-gradient">
-                  <CalendarIcon className="w-8 h-8 text-purple-600" />
+                  <CalendarIcon className="w-8 h-8 text-[#D4AF37]" />
                   {isHebrew ? 'בחר תאריכים' : 'Select Dates'}
                 </h3>
                 <div className="grid md:grid-cols-2 gap-6">
