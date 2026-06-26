@@ -83,10 +83,10 @@ const QR_TTL = 45;
 
 const DIVISION_CONFIG: Record<string, { iconKey: string; labelEn: string; labelHe: string; color: string }> = {
   station_k9000: { iconKey: 'nature_water_drop',  labelEn: 'K9000 Dog Wash',   labelHe: 'K9000 שטיפת כלבים',  color: '#22c55e' },
-  petsitter:     { iconKey: 'product_pet_bed',    labelEn: 'Pet Sitter / Care', labelHe: 'פנסיון ומטפל',        color: '#8b5cf6' },
-  walkers:       { iconKey: 'product_leash',      labelEn: 'Walk My Pet',       labelHe: 'מטייל כלבים',         color: '#0ea5e9' },
-  academy:       { iconKey: 'trust_pet_safe',     labelEn: 'Academy',           labelHe: 'אקדמיה',              color: '#f59e0b' },
-  pettrek:       { iconKey: 'product_carrier_bag', labelEn: 'PetTrek Transport', labelHe: 'PetTrek הסעות',       color: '#06b6d4' },
+  petsitter:     { iconKey: 'product_pet_bed',    labelEn: 'Pet Sitter Suite',  labelHe: 'Pet Sitter Suite',   color: '#8b5cf6' },
+  walkers:       { iconKey: 'product_leash',      labelEn: 'Walk My Pet',       labelHe: 'Walk My Pet',         color: '#0ea5e9' },
+  academy:       { iconKey: 'trust_pet_safe',     labelEn: 'Academy',           labelHe: 'Academy',             color: '#f59e0b' },
+  pettrek:       { iconKey: 'product_carrier_bag', labelEn: 'PetTrek',           labelHe: 'PetTrek',             color: '#06b6d4' },
   general:       { iconKey: 'brand_paw',          labelEn: 'General',           labelHe: 'כללי',                color: '#0a0a0a' },
 };
 
@@ -718,9 +718,9 @@ function DigitalCardSection({
           {he ? 'הזמן שירות עם PetWash Privilege' : 'Book with PetWash Privilege'}
         </h3>
         {[
-          { id:'sitter', icon:<Home size={16}/>, en:'Pet Sitter / Boarding', he2:'פנסיון ומטפל', detEn:'from ₪80/night', detHe:'מ-₪80/לילה', from:8000, path:'/sitter-suite', color:'#8b5cf6' },
-          { id:'walker', icon:<MapPin size={16}/>, en:'Dog Walker', he2:'מטייל כלבים', detEn:'from ₪65/session', detHe:'מ-₪65/טיול', from:6500, path:'/walk-my-pet', color:'#0ea5e9' },
-          { id:'academy', icon:<BookOpen size={16}/>, en:'Academy — Training', he2:'אקדמיה — אימון', detEn:'from ₪200', detHe:'מ-₪200', from:20000, path:'/academy', color:'#f59e0b' },
+          { id:'sitter', icon:<Home size={16}/>, en:'Pet Sitter Suite', he2:'Pet Sitter Suite', detEn:'from ₪80/night', detHe:'מ-₪80/לילה', from:8000, path:'/sitter-suite', color:'#8b5cf6' },
+          { id:'walker', icon:<MapPin size={16}/>, en:'Walk My Pet', he2:'Walk My Pet', detEn:'from ₪65/session', detHe:'מ-₪65/טיול', from:6500, path:'/walk-my-pet', color:'#0ea5e9' },
+          { id:'academy', icon:<BookOpen size={16}/>, en:'Pet Wash Academy', he2:'Pet Wash Academy', detEn:'from ₪200', detHe:'מ-₪200', from:20000, path:'/academy', color:'#f59e0b' },
         ].map((svc) => {
           const canBook  = totalLiquid >= svc.from;
           const partial  = totalLiquid > 0 && !canBook;
