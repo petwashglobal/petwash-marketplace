@@ -10,7 +10,6 @@ import { CookieConsent } from "@/components/CookieConsent";
 import { ConsentManager } from "@/components/ConsentManager";
 import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
-import PWAInstallPrompt from "@/components/PWAInstallPrompt";
 import { AuthProvider, useFirebaseAuth } from "@/auth/AuthProvider";
 import { useWhoami } from "@/auth/useWhoami";
 import RequireAuth from "@/auth/RequireAuth";
@@ -4008,11 +4007,12 @@ console.log("Build: 1769350182889");
               {showMobileNav && <MobileBottomNav />}
           </AuthProvider>
           
-          {/* PWA "Save PetWash to your phone" — consented install prompt (iOS add-to-home / Android install).
-              Gated by showMobileNav so it NEVER renders on auth/onboarding/KYC/form routes (where it previously
-              bled behind the iOS keyboard and stole taps). Self-suppresses in standalone/native + 7-day cooldown. */}
-          {showMobileNav && <PWAInstallPrompt />}
-          
+          {/* PWA "add to home screen" prompt REMOVED (CEO 2026-06-27): PetWash is a real
+              native app installed from the App Store / Google Play, not a Safari home-screen
+              shortcut. Customers are routed to the official app via the native iOS Smart App
+              Banner (apple-itunes-app meta) + store buttons — never a PWA install card.
+              Component file kept as a technical fallback only; intentionally NOT mounted. */}
+
           {/* GDPR-compliant cookie consent system */}
           <CookieConsent 
             language={currentLanguage}
