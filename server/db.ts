@@ -6,15 +6,17 @@ import * as enterpriseSchema from "@shared/schema-enterprise";
 import * as unifiedPlatformSchema from "@shared/schema-unified-platform";
 import * as paymentsSchema from "@shared/schema-payments";
 import * as treasurySchema from "@shared/schema-treasury";
+import * as waitlistSchema from "@shared/schema-waitlist";
 
 neonConfig.webSocketConstructor = ws;
 
-const combinedSchema = { 
-  ...schema, 
+const combinedSchema = {
+  ...schema,
   ...enterpriseSchema,
   ...unifiedPlatformSchema.unifiedPlatformSchemas,
   ...paymentsSchema,
   ...treasurySchema,
+  ...waitlistSchema,
 };
 
 // --- DATABASE "AUTO-HEAL" PATTERN (2025 Production Standard) ---
