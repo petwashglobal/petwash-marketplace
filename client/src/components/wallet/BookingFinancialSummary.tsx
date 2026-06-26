@@ -92,6 +92,12 @@ export function BookingFinancialSummary({
 
       <Row label={t.total} value={fmtIls(totalCents)} bold doubleBorder />
 
+      {/* Israeli Consumer Protection §17a — disclose that the headline total is
+          inclusive of VAT and all fees (no surprise add-ons at checkout). */}
+      <p className="px-1 pt-1 text-[11px] text-gray-400">
+        {isRTL ? 'הסכום הכולל כולל מע״מ וכל העמלות.' : 'Total includes VAT and all fees.'}
+      </p>
+
       {loyaltyRedeemedCents > 0 && (
         <Row
           label={t.loyalty}
