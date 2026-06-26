@@ -6,11 +6,11 @@
  * brief message → (country-aware phone if missing) → "Send booking request".
  *
  * CONTACT-FIRST, NO PAYMENT. This posts a booking *request* to the canonical
- * `/api/ln` engine (server `booking-requests`) where the provider accepts BEFORE
+ * `/api/booking-requests` engine where the provider accepts BEFORE
  * any charge — hence the reassurance "You won't be asked to pay yet." Money is
  * never touched here; pricing/payment happen later on acceptance.
  *
- * providerId for /api/ln = the provider's Firebase UID (provider.userId), the
+ * providerId = the provider's Firebase UID (provider.userId), the
  * same id SitterDetail/WalkerDetail use to enter this engine.
  *
  * Brand: PURE WHITE + black + metallic gold (#D4AF37). No cream/teal/purple.
@@ -154,7 +154,7 @@ export default function BookingContact() {
       const modeLabel = isHebrew ? `${mode.labelHe} — ${mode.subHe}` : `${mode.labelEn} — ${mode.subEn}`;
 
       const payload = {
-        providerId: provider.userId,           // /api/ln keys on provider Firebase UID
+        providerId: provider.userId,           // booking-requests keys on provider Firebase UID
         providerType,
         serviceType: mode.serviceType,
         startDate: startISO,
@@ -164,7 +164,7 @@ export default function BookingContact() {
         message: message || undefined,
         specialRequirements: modeLabel,        // carries Hosting vs Sitting vs drop-in
       };
-      const res = await apiRequest('POST', '/api/ln', payload);
+      const res = await apiRequest('POST', '/api/booking-requests', payload);
       return res.json();
     },
     onSuccess: (resp: any) => {
