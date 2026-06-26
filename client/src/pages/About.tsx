@@ -141,8 +141,8 @@ export default function About({ language }: AboutProps) {
             {/* Technology */}
             <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-fade-in luxury-delay-3">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center">
-                  <Zap className="h-7 w-7 text-purple-600" />
+                <div className="w-14 h-14 rounded-full bg-white border border-[#D4AF37]/40 flex items-center justify-center">
+                  <Zap className="h-7 w-7 text-[#D4AF37]" />
                 </div>
                 <h3 className="luxury-heading-md">
                   {currentLanguage === 'en' ? 'Technology' : 'טכנולוגיה'}
@@ -159,8 +159,8 @@ export default function About({ language }: AboutProps) {
             {/* Safety */}
             <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-fade-in luxury-delay-4">
               <div className="flex items-center gap-4 mb-6">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-blue-50 to-blue-100 flex items-center justify-center">
-                  <Shield className="h-7 w-7 text-blue-600" />
+                <div className="w-14 h-14 rounded-full bg-white border border-[#D4AF37]/40 flex items-center justify-center">
+                  <Shield className="h-7 w-7 text-[#D4AF37]" />
                 </div>
                 <h3 className="luxury-heading-md">
                   {currentLanguage === 'en' ? 'Safety' : 'בטיחות'}
@@ -229,7 +229,7 @@ export default function About({ language }: AboutProps) {
               { icon: CheckCircle2, titleEn: 'Global Brand', titleHe: 'מותג עולמי', descEn: 'Proven business model', descHe: 'מודל עסקי מוכח' },
             ].map((item, index) => (
               <div key={index} className="luxury-glass-card p-8 luxury-hover-lift">
-                <item.icon className="h-8 w-8 text-purple-600 mb-4" />
+                <item.icon className="h-8 w-8 text-[#D4AF37] mb-4" />
                 <h4 className="luxury-heading-sm mb-3">
                   {currentLanguage === 'en' ? item.titleEn : item.titleHe}
                 </h4>
@@ -272,7 +272,7 @@ export default function About({ language }: AboutProps) {
         <div className="luxury-container">
           <div className="text-center max-w-4xl mx-auto">
             <div className="mb-12">
-              <div className="w-20 h-20 mx-auto mb-8 rounded-full bg-gradient-to-br from-pink-100 to-red-100 flex items-center justify-center">
+              <div className="w-20 h-20 mx-auto mb-8 rounded-full bg-white border border-[#D4AF37]/40 flex items-center justify-center">
                 <Heart className="h-10 w-10 text-red-500" />
               </div>
               <h2 className="luxury-heading-lg mb-8">
@@ -293,20 +293,20 @@ export default function About({ language }: AboutProps) {
               </h3>
               <div className="space-y-6">
                 <div className="flex items-center justify-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center">
-                    <Phone className="h-5 w-5 text-purple-600" />
+                  <div className="w-10 h-10 rounded-full bg-white border border-[#D4AF37]/40 flex items-center justify-center">
+                    <Phone className="h-5 w-5 text-[#D4AF37]" />
                   </div>
                   <span className="luxury-text-body font-medium">+972-54-983-3355</span>
                 </div>
                 <div className="flex items-center justify-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center">
-                    <Mail className="h-5 w-5 text-purple-600" />
+                  <div className="w-10 h-10 rounded-full bg-white border border-[#D4AF37]/40 flex items-center justify-center">
+                    <Mail className="h-5 w-5 text-[#D4AF37]" />
                   </div>
                   <span className="luxury-text-body font-medium">Support@PetWash.co.il</span>
                 </div>
                 <div className="flex items-center justify-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 flex items-center justify-center">
-                    <Building2 className="h-5 w-5 text-purple-600" />
+                  <div className="w-10 h-10 rounded-full bg-white border border-[#D4AF37]/40 flex items-center justify-center">
+                    <Building2 className="h-5 w-5 text-[#D4AF37]" />
                   </div>
                   <span className="luxury-text-body font-medium">
                     {currentLanguage === 'en' ? '⁦Pet Wash™⁩ Ltd (517145033)' : '⁦Pet Wash™⁩ בע"מ (517145033)'}

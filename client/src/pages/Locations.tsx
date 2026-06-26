@@ -35,8 +35,8 @@ export interface PublicStation {
 }
 
 export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls: string }> = {
-  active: { en: 'Open', he: 'פעילה', cls: 'text-emerald-600' },
-  coming_soon: { en: 'Opening soon', he: 'נפתחת בקרוב', cls: 'text-amber-600' },
+  active: { en: 'Open', he: 'פעילה', cls: 'text-[#0a0a0a] font-semibold' },
+  coming_soon: { en: 'Opening soon', he: 'נפתחת בקרוב', cls: 'text-[#D4AF37]' },
   maintenance: { en: 'In maintenance', he: 'בתחזוקה', cls: 'text-gray-500' },
   offline: { en: 'Temporarily unavailable', he: 'לא זמינה זמנית', cls: 'text-gray-400' },
 };
@@ -148,11 +148,11 @@ export default function Locations() {
         {ANNOUNCED_LOCATIONS.length > 0 && (
           <div className="max-w-4xl mx-auto space-y-4 mb-8">
             {ANNOUNCED_LOCATIONS.map((a) => (
-              <div key={a.nameEn} className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-amber-300 via-yellow-100 to-amber-400 luxury-shadow-lg">
+              <div key={a.nameEn} className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-[#D4AF37] via-[#F4E4A6] to-[#D4AF37] luxury-shadow-lg">
                 <div className="rounded-2xl bg-white p-6 sm:p-8">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                      <span className="text-xs font-semibold tracking-wide text-amber-700">✦ OPENING SOON · נפתחת בקרוב</span>
+                      <span className="text-xs font-semibold tracking-wide text-[#D4AF37]">✦ OPENING SOON · נפתחת בקרוב</span>
                       <h2 className="text-2xl font-bold luxury-gradient-text mt-1">{a.nameEn}</h2>
                       <p className="text-lg luxury-text-body" dir="rtl">{a.nameHe}</p>
                       <p className="luxury-text-body mt-1">{a.etaEn} · {a.etaHe}</p>

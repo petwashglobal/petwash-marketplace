@@ -316,7 +316,7 @@ export default function Franchise({ language, onLanguageChange }: FranchiseProps
 
 function styles() {
   return `
-    .fr-hero{ background:linear-gradient(180deg,#fff 0,#fafaf9 100%); padding:64px 0 88px; }
+    .fr-hero{ background:linear-gradient(180deg,#fff 0,#ffffff 100%); padding:64px 0 88px; }
     .fr-frame{ max-width:1200px; margin:0 auto; padding:0 clamp(20px,4vw,40px); }
     .fr-back{ background:none; border:0; color:#64748b; font-weight:600; padding:8px 0; cursor:pointer; margin-bottom:24px }
     .fr-eyebrow{ display:inline-flex; align-items:center; gap:8px; font-size:12.5px; font-weight:800; letter-spacing:.18em; text-transform:uppercase; color:#9d6f23; padding:8px 14px; border:1px solid #F4D77A; border-radius:999px; background:linear-gradient(180deg,#fffdf6,#fdf5dc) }
@@ -331,7 +331,7 @@ function styles() {
     .fr-cta--secondary:hover{ border-color:#9d6f23 }
 
     .fr-section{ padding:72px 0 }
-    .fr-section--alt{ background:#fafaf9 }
+    .fr-section--alt{ background:#ffffff }
     .fr-h2{ font-family:"Playfair Display",Georgia,serif; font-size:clamp(26px,3vw,40px); margin:0 0 28px; color:#0b1220; font-weight:600; display:flex; align-items:center; gap:10px }
     .fr-h2--muted{ color:#475569 }
 
