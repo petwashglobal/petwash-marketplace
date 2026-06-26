@@ -19,7 +19,7 @@ interface NavItem {
 
 const CUSTOMER_NAV: NavItem[] = [
   { path: '/home',               labelHe: 'בית',       labelEn: 'Home',      Icon: Home },
-  { path: '/paw-finder',         labelHe: 'מציאת חיות', labelEn: 'PawFinder', Icon: Footprints },
+  { path: '/paw-finder',         labelHe: '⁦PawFinder⁩', labelEn: 'PawFinder', Icon: Footprints },
   { path: '/bookings',           labelHe: 'הזמנות',    labelEn: 'Bookings',  Icon: CalendarDays },
   { path: '/booking-chat/inbox', labelHe: 'הודעות',    labelEn: 'Messages',  Icon: MessageCircle },
   { path: '/my-account',         labelHe: 'חשבון',     labelEn: 'Account',   Icon: User },
