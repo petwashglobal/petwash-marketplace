@@ -577,8 +577,8 @@ export default function BrowseWalkers() {
                 </p>
               </div>
               <div className="text-center p-6 bg-white rounded-2xl shadow-sm">
-                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-blue-100 flex items-center justify-center">
-                  <Route className="h-7 w-7 text-blue-600" />
+                <div className="w-14 h-14 mx-auto mb-4 rounded-2xl bg-[#D4AF37]/15 flex items-center justify-center">
+                  <Route className="h-7 w-7 text-[#D4AF37]" />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">
                   {isHebrew ? 'עדכוני תמונות' : 'Photo Updates'}

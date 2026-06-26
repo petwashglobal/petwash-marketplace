@@ -151,14 +151,14 @@ export default function WalkerDashboard() {
             </div>
             <div className="luxury-glass-panel p-4 luxury-hover-lift">
               <div className="flex items-center gap-2 mb-1">
-                <TrendingUp className="w-4 h-4 text-purple-500" />
+                <TrendingUp className="w-4 h-4 text-[#D4AF37]" />
                 <p className="text-sm text-gray-500">This Month</p>
               </div>
               <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.monthly?.toFixed(0) ?? '0'}</p>
             </div>
             <div className="luxury-glass-panel p-4 luxury-hover-lift">
               <div className="flex items-center gap-2 mb-1">
-                <Clock className="w-4 h-4 text-blue-500" />
+                <Clock className="w-4 h-4 text-[#D4AF37]" />
                 <p className="text-sm text-gray-500">Pending</p>
               </div>
               <p className="luxury-heading-lg luxury-text-gradient">₪{earnings?.pending?.toFixed(0) ?? '0'}</p>
@@ -186,8 +186,8 @@ export default function WalkerDashboard() {
               </div>
             ) : pendingBookings.length === 0 ? (
               <div className="luxury-glass-card luxury-shadow-lg p-10 text-center luxury-animate-scale-in">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 dark:from-purple-900/30 dark:to-indigo-900/30 mb-4">
-                  <Calendar className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/10 dark:from-zinc-900/30 dark:to-zinc-900/30 mb-4">
+                  <Calendar className="h-8 w-8 text-[#D4AF37] dark:text-[#D4AF37]" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">No Pending Requests / אין בקשות ממתינות</h3>
                 <p className="luxury-text-small">New walk requests will appear here when owners book you.</p>
@@ -214,8 +214,8 @@ export default function WalkerDashboard() {
                     <CardContent className="space-y-4">
                       {(booking.scheduledDate || booking.startTime) && (
                         <div className="flex items-center gap-3">
-                          <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30">
-                            <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+                          <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-cyan-100 dark:from-zinc-900/30 dark:to-cyan-900/30">
+                            <Clock className="h-4 w-4 text-[#D4AF37] dark:text-[#D4AF37]" />
                           </div>
                           <span className="luxury-text-body">
                             {new Date(booking.scheduledDate || booking.startTime!).toLocaleString('he-IL')}
