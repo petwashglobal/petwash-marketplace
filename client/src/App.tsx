@@ -87,6 +87,7 @@ const Marketplace = lazy(() => import("@/pages/Marketplace"));
 const TalentMarketplace = lazy(() => import("@/pages/PetWashTalentMarketplacePage"));
 const ServiceLandingPage = lazy(() => import("@/pages/ServiceLandingPage"));
 const ProviderDetail = lazy(() => import("@/pages/ProviderDetail"));
+const BookingContact = lazy(() => import("@/pages/BookingContact"));
 const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
 const ProviderBookingsDashboard = lazy(() => import("@/pages/ProviderBookingsDashboard"));
 const ProviderTaskInbox = lazy(() => import("@/pages/ProviderTaskInbox"));
@@ -1504,6 +1505,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
+        {/* UNIFIED MARKETPLACE - Contact-first booking request (must precede :platform/:id) */}
+        <Route path="/marketplace/contact/:platform/:id">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <BookingContact />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
+
         {/* UNIFIED MARKETPLACE - Provider Detail Pages (All Platforms) */}
         <Route path="/marketplace/:platform/:id">
           {() => (
