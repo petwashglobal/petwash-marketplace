@@ -6,7 +6,7 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { 
-  MapPin, Star, Dog, Heart, Sparkles, CheckCircle, Smartphone, Route, Shield, Users, Wallet, Briefcase, SlidersHorizontal, X, ArrowUpDown, ChevronDown
+  Star, Dog, Heart, Sparkles, CheckCircle, Smartphone, Route, Shield, Users, Wallet, Briefcase, SlidersHorizontal, X, ArrowUpDown, ChevronDown
 } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useSEO, pageSEO } from "@/lib/seo";
@@ -319,10 +319,6 @@ export default function BrowseWalkers() {
               <div className="hidden sm:block">
                 <CompactWeatherWidget variant="compact" className="bg-white" />
               </div>
-              <Button variant="outline" className="gap-2 rounded-full" data-testid="button-map-view">
-                <MapPin className="h-4 w-4" />
-                {isHebrew ? 'תצוגת מפה' : 'Map View'}
-              </Button>
             </div>
           </div>
 
@@ -518,18 +514,6 @@ export default function BrowseWalkers() {
             </div>
           )}
 
-          {displayWalkers.length > 0 && (
-            <div className="text-center mt-12">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="rounded-full px-8 border-gray-300 hover:bg-white"
-                data-testid="button-load-more"
-              >
-                {isHebrew ? 'טען עוד מטיילים' : 'Load More Walkers'}
-              </Button>
-            </div>
-          )}
         </div>
 
         <div className="bg-white py-16 border-t border-gray-100">

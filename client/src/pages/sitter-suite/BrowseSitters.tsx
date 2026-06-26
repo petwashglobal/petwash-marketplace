@@ -3,7 +3,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
-import { Star, MapPin, Shield, Heart, Sparkles, ArrowRight, CheckCircle, Camera, Users, Wallet, Briefcase, SlidersHorizontal, X, ArrowUpDown, ChevronDown } from "lucide-react";
+import { Star, Shield, Heart, Sparkles, ArrowRight, CheckCircle, Camera, Users, Wallet, Briefcase, SlidersHorizontal, X, ArrowUpDown, ChevronDown } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { useLocation } from "wouter";
 import { onClickBecomeProvider } from "@/lib/becomeProvider";
@@ -13,6 +13,8 @@ import { ProviderSearch, ProviderCard, SearchEmptyState, type SearchParams } fro
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
 import LocationPermissionBanner from "@/components/LocationPermissionBanner";
 import { CompactWeatherWidget } from "@/components/weather/CompactWeatherWidget";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { JoinWaitlistForm } from "@/components/waitlist/JoinWaitlistForm";
 import { format } from "date-fns";
 import { fetchProviderBrowseResults } from "@/api/providerSearchApi";
 
@@ -383,10 +385,6 @@ export default function BrowseSitters() {
               <div className="hidden sm:block">
                 <CompactWeatherWidget variant="compact" className="bg-white" />
               </div>
-              <Button variant="outline" className="gap-2 rounded-full" data-testid="button-map-view">
-                <MapPin className="h-4 w-4" />
-                {isHebrew ? 'תצוגת מפה' : 'Map View'}
-              </Button>
             </div>
           </div>
 
@@ -559,14 +557,26 @@ export default function BrowseSitters() {
                     <Users className="h-5 w-5 me-2" />
                     {isHebrew ? 'הפוך לשמרטף' : 'Become a Sitter'}
                   </Button>
-                  <Button 
-                    variant="outline" 
-                    className="rounded-full px-8"
-                    data-testid="button-notify-me"
-                  >
-                    <Sparkles className="w-5 h-5 me-2" />
-                    {isHebrew ? 'עדכנו אותי' : 'Notify Me'}
-                  </Button>
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button
+                        variant="outline"
+                        className="rounded-full px-8"
+                        data-testid="button-notify-me"
+                      >
+                        <Sparkles className="w-5 h-5 me-2" />
+                        {isHebrew ? 'עדכנו אותי' : 'Notify Me'}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="max-w-md">
+                      <DialogHeader>
+                        <DialogTitle className="text-start">
+                          {isHebrew ? 'נעדכן אתכם כשנשיק באזורכם' : "We'll notify you when we launch in your area"}
+                        </DialogTitle>
+                      </DialogHeader>
+                      <JoinWaitlistForm platformKey="SITTER_SUITE" sourcePage="browse-sitters" />
+                    </DialogContent>
+                  </Dialog>
                 </div>
               </div>
 
@@ -671,18 +681,6 @@ export default function BrowseSitters() {
             </div>
           )}
 
-          {providers.length > 0 && (
-            <div className="text-center mt-12">
-              <Button 
-                variant="outline" 
-                size="lg" 
-                className="rounded-full px-8 border-gray-300 hover:bg-white"
-                data-testid="button-load-more"
-              >
-                {isHebrew ? 'טען עוד שמרטפים' : 'Load More Sitters'}
-              </Button>
-            </div>
-          )}
         </div>
 
         {/* Provider Recruitment Section */}
