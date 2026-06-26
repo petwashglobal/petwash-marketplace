@@ -74,9 +74,13 @@ export async function createAndPublishPost(userId: string, input: CreatePostInpu
 
   const modResult = await pawFinderModeration.moderateFinal(modInput);
 
+  // CEO rule (2026-06-26): a Paw Finder post is visible to everyone ONLY once
+  // APPROVED. AI moderation no longer auto-publishes — it screens and routes to
+  // the human review queue. Members post free; support approves → published →
+  // matching fires (admin approve already triggers refreshMatchesForPost).
+  // AI 'rejected' = blocked outright; 'approved'/'flagged' = await human approval.
   const finalStatus: PawFinderStatus =
-    modResult.verdict === 'approved' ? 'published' :
-    modResult.verdict === 'flagged'  ? 'pending_review' : 'rejected';
+    modResult.verdict === 'rejected' ? 'rejected' : 'pending_review';
 
   // ── STEP 2: Atomic DB writes ──────────────────────────────────────────────
   const client = await pool.connect();
