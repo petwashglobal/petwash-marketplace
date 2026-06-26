@@ -338,8 +338,8 @@ async function searchWalkers(filters: MarketplaceSearchFilters): Promise<{
       walkerId: walker.walkerId,
       firstName: walker.firstName,
       lastName: walker.lastName,
-      email: walker.email,
-      phone: walker.phone,
+      email: null, // PII not exposed in public marketplace responses — contact is in-platform via userId
+      phone: null, // PII not exposed publicly
       city: walker.city,
       bio: walker.bio,
       profilePictureUrl: walker.profilePictureUrl,
@@ -409,8 +409,8 @@ async function searchSitters(filters: MarketplaceSearchFilters): Promise<{
       sitterId: sitter.id,
       firstName: sitter.firstName,
       lastName: sitter.lastName,
-      email: sitter.email,
-      phone: sitter.phone,
+      email: null, // PII not exposed in public marketplace responses — contact is in-platform via userId
+      phone: null, // PII not exposed publicly
       city: sitter.city,
       bio: sitter.bio,
       profilePictureUrl: sitter.profilePictureUrl,
@@ -585,8 +585,8 @@ router.get('/provider/:platform/:id', async (req, res) => {
             walkerId: walker.walkerId,
             firstName: walker.firstName,
             lastName: walker.lastName,
-            email: walker.email,
-            phone: walker.phone,
+            email: null, // PII not exposed in public marketplace responses — contact is in-platform via userId
+            phone: null, // PII not exposed publicly
             city: walker.city,
             bio: walker.bio,
             profilePictureUrl: walker.profilePictureUrl,
@@ -627,8 +627,8 @@ router.get('/provider/:platform/:id', async (req, res) => {
             sitterId: sitter.id,
             firstName: sitter.firstName,
             lastName: sitter.lastName,
-            email: sitter.email,
-            phone: sitter.phone,
+            email: null, // PII not exposed in public marketplace responses — contact is in-platform via userId
+            phone: null, // PII not exposed publicly
             city: sitter.city,
             bio: sitter.bio,
             profilePictureUrl: sitter.profilePictureUrl,

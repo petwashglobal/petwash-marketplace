@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { Layout } from '@/components/Layout';
@@ -12,7 +11,7 @@ import { useProviderDetails, useProviderReviews } from '@/services/marketplace';
 import { InsuranceTrustChip } from '@/components/marketplace/InsuranceTrustChip';
 import {
   Star, MapPin, Shield, CheckCircle2, Award, Calendar as CalendarIcon,
-  Clock, DollarSign, MessageCircle, Phone, Mail,
+  Clock, DollarSign, MessageCircle,
   TrendingUp, Users, Video, Plane, Dog, Car, Scissors,
   UserCheck, CheckSquare, AlertTriangle,
 } from 'lucide-react';
@@ -25,8 +24,6 @@ export default function ProviderDetail() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
   const { toast } = useToast();
-
-  const [showContactInfo, setShowContactInfo] = useState(false);
 
   // Fetch provider details
   const { data, isLoading, error } = useProviderDetails(platform!, id!);
@@ -96,19 +93,6 @@ export default function ProviderDetail() {
     // any charge — "you won't be asked to pay yet"). Payment happens later on
     // acceptance. This replaces the jump-straight-to-payment flow.
     navigate(`/marketplace/contact/${platform}/${id}`);
-  };
-
-  const toggleContactInfo = () => {
-    if (!user) {
-      toast({
-        title: isHebrew ? 'נדרש התחברות' : 'Login Required',
-        description: isHebrew ? 'אנא התחבר כדי לראות פרטי קשר' : 'Please log in to view contact details',
-        variant: 'destructive',
-      });
-      navigate('/signin');
-      return;
-    }
-    setShowContactInfo(!showContactInfo);
   };
 
   // Platform-specific labels
@@ -485,36 +469,27 @@ export default function ProviderDetail() {
             {/* Contact Info */}
             <GlassmorphismCard className="luxury-glass-card luxury-shadow-xl">
               <div className="p-6">
-                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h3 className="text-2xl font-bold mb-4 text-black">
                   {isHebrew ? 'יצירת קשר' : 'Contact'}
                 </h3>
-                
-                {showContactInfo ? (
-                  <div className="space-y-4">
-                    {provider.email && (
-                      <div className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg border border-gray-200 dark:border-gray-800">
-                        <Mail className="w-5 h-5 text-purple-600" />
-                        <span className="text-gray-700 dark:text-black" data-testid="text-provider-email">{provider.email}</span>
-                      </div>
-                    )}
-                    {provider.phone && (
-                      <div className="flex items-center gap-3 p-3 bg-white dark:bg-black rounded-lg border border-gray-200 dark:border-gray-800">
-                        <Phone className="w-5 h-5 text-purple-600" />
-                        <span className="text-gray-700 dark:text-black" data-testid="text-provider-phone">{provider.phone}</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <Button 
-                    onClick={toggleContactInfo}
-                    variant="outline"
-                    className="w-full"
-                    data-testid="button-show-contact"
-                  >
-                    <MessageCircle className="w-5 h-5 mr-2" />
-                    {isHebrew ? 'הצג פרטי קשר' : 'Show Contact Info'}
-                  </Button>
-                )}
+
+                {/* In-platform contact only — provider email/phone are never
+                    exposed publicly. All messaging stays inside PetWash (safer
+                    booking record + support trail). Routes to the contact-first flow. */}
+                <p className="text-sm text-gray-600 dark:text-black mb-4 leading-relaxed">
+                  {isHebrew
+                    ? 'כל התקשורת מתבצעת בתוך PetWash — בטוח ומאובטח. שלח/י הודעה לספק כדי להתחיל.'
+                    : 'All communication happens inside PetWash — safe and secure. Message the provider to get started.'}
+                </p>
+                <Button
+                  onClick={handleBooking}
+                  className="w-full font-semibold text-black hover:opacity-90"
+                  style={{ background: '#D4AF37' }}
+                  data-testid="button-contact-provider"
+                >
+                  <MessageCircle className="w-5 h-5 mr-2" />
+                  {isHebrew ? `יצירת קשר עם ${provider.firstName || 'הספק'}` : `Contact ${provider.firstName || 'provider'}`}
+                </Button>
               </div>
             </GlassmorphismCard>
 
