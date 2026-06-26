@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useLanguage } from "@/lib/languageStore";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { useQuery, useMutation } from "@tanstack/react-query";
@@ -60,7 +60,7 @@ export default function SitterEditProfile() {
     longitude: null as number | null,
   });
 
-  useState(() => {
+  useEffect(() => {
     if (profile) {
       setFormData({
         firstName: profile.firstName || '',
@@ -74,7 +74,7 @@ export default function SitterEditProfile() {
         longitude: profile.longitude ? parseFloat(String(profile.longitude)) : null,
       });
     }
-  });
+  }, [profile]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<SitterProfile>) => {

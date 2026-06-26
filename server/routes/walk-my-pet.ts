@@ -566,7 +566,7 @@ router.post('/walks/book', requireAuth, async (req, res) => {
     try {
       await db.insert(octopusBookings).values({
         id: octopusId,
-        platform: 'PETTREK',
+        platform: 'walk_my_pet',
         status: 'DRAFT',
         userId: ownerId,
         providerId: walkerId,
@@ -580,7 +580,7 @@ router.post('/walks/book', requireAuth, async (req, res) => {
         type: 'BOOKING_CREATED',
         bookingId: octopusId,
         amount: priceCents,
-        platform: 'PETTREK',
+        platform: 'walk_my_pet',
         metadata: { walkBookingId: bookingId, durationMinutes, ownerId, walkerId },
       });
       console.log(`[Octopus Brain] Walk booking recorded: ${octopusId} for ${bookingId}`);
@@ -730,7 +730,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
             type: 'PAYMENT_CAPTURED',
             bookingId: octopusRecord.id,
             amount: octopusRecord.price,
-            platform: 'PETTREK',
+            platform: 'walk_my_pet',
             metadata: { walkBookingId: booking.bookingId, escrowHoldHours: 72 },
           });
           logger.info('[Octopus Brain] Walk booking confirmed + payment captured', { octopusId: octopusRecord.id });
@@ -792,7 +792,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           await backupFinancialDocument({
             documentType: 'escrow_record',
             bookingId: booking.bookingId,
-            platform: 'PETTREK',
+            platform: 'walk_my_pet',
             content: JSON.stringify({
               bookingId: booking.bookingId,
               ownerId: booking.ownerId,
@@ -843,7 +843,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
             type: 'CANCELLATION',
             bookingId: octopusRecord.id,
             amount: 0,
-            platform: 'PETTREK',
+            platform: 'walk_my_pet',
             metadata: {
               reason: declineReason || 'Walker declined',
               cancelledBy: 'provider',

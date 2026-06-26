@@ -71,7 +71,6 @@ export default function OwnerDashboard() {
   const t = (key: string) => ti18n(key, language);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedConversation, setSelectedConversation] = useState<string>();
-  const [currentUserId, setCurrentUserId] = useState<string>('demo-user-id');
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
