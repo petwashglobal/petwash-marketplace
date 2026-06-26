@@ -153,13 +153,13 @@ export default function PrestigeHome() {
 
   const actions: { label: string; labelHe: string; icon: any; to: string; soon?: boolean }[] = [
     { label: 'Book Wash',     labelHe: 'שטיפה',    icon: Droplets,      to: '/stations' },
-    { label: 'Pet Sitter',    labelHe: 'פט סיטר',  icon: Dog,           to: '/sitter-suite' },
-    { label: 'Walk My Pet',   labelHe: 'טיולים',   icon: Footprints,    to: '/walk-my-pet' },
-    { label: 'PetWash Shop',  labelHe: 'חנות',     icon: ShoppingBag,   to: '/shop' },
+    { label: 'Pet Sitter',    labelHe: 'Pet Sitter',  icon: Dog,           to: '/sitter-suite' },
+    { label: 'Walk My Pet',   labelHe: 'Walk My Pet',   icon: Footprints,    to: '/walk-my-pet' },
+    { label: 'PetWash Shop',  labelHe: 'PetWash Shop',     icon: ShoppingBag,   to: '/shop' },
     { label: 'Send a Gift',   labelHe: 'שליחת מתנה', icon: Gift,        to: '/buy-gift-card' },
     { label: 'Buy Package',   labelHe: 'רכישת חבילה', icon: CreditCard, to: '/packages' },
     { label: 'Wallet Top Up', labelHe: 'טעינת ארנק', icon: WalletIcon,  to: '/my-wallet' },
-    { label: 'Academy',       labelHe: 'אקדמיה',   icon: GraduationCap, to: '/academy' },
+    { label: 'Academy',       labelHe: 'Academy',   icon: GraduationCap, to: '/academy' },
     { label: 'My Pets',       labelHe: 'החיות שלי', icon: PawPrint,     to: '/pets' },
     { label: 'PetTrek',       labelHe: 'PetTrek',  icon: Mountain,      to: '#', soon: true },
   ];
