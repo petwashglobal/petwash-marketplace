@@ -686,6 +686,44 @@ router.post(
           transactionId: payload.transactionId,
         });
 
+        // ── Customer notification: payment failed (ADDITIVE, fire-and-forget) ──
+        // No money behavior changed — just tells the customer their payment
+        // didn't complete and the slot was released, so they can retry. Dynamic
+        // imports match this file's pattern; fully wrapped so it can never affect
+        // the webhook's money path.
+        setImmediate(async () => {
+          try {
+            const { users: usersTbl } = await import('@shared/schema');
+            const { dispatchNotification } = await import('../lib/notificationDispatcher');
+            const custId = (booking as any)?.userId || (booking as any)?.customerId;
+            if (custId) {
+              const [cust] = await db
+                .select({ email: usersTbl.email, phone: usersTbl.phone, firstName: usersTbl.firstName })
+                .from(usersTbl)
+                .where(eq(usersTbl.id, custId))
+                .limit(1);
+              if (cust) {
+                const retryUrl = `https://petwash.co.il/booking/confirmation/${payload.bookingId}`;
+                await dispatchNotification({
+                  uid: custId,
+                  email: cust.email || undefined,
+                  phone: cust.phone || undefined,
+                  type: 'payment_failed',
+                  title: 'התשלום לא הושלם · Payment not completed — PetWash™',
+                  bodyHtml: `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;background:#fff;color:#000;"><h2 style="color:#000;">התשלום לא הושלם — PetWash™</h2><p>שלום ${cust.firstName || ''},</p><p>התשלום עבור ההזמנה לא הושלם והמקום שוחרר. אפשר לנסות שוב או לבחור אמצעי תשלום אחר.</p><p><a href="${retryUrl}" style="background:#D4AF37;color:#000;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;">נסה/י שוב</a></p><p style="margin-top:24px;font-size:12px;color:#888;">PetWash Ltd. | petwash.co.il</p></body></html>`,
+                  bodyText: `PetWash: התשלום עבור ההזמנה לא הושלם. ניתן לנסות שוב: ${retryUrl}`,
+                  ctaText: 'Try again',
+                  ctaUrl: retryUrl,
+                  channels: ['inbox', 'email', 'sms'],
+                  priority: 9,
+                });
+              }
+            }
+          } catch (e: any) {
+            logger.warn('[NayaxPaymentWebhook] payment-failed customer notification failed (non-fatal)', { error: e?.message, bookingId: payload.bookingId });
+          }
+        });
+
         // ── [Ops] Fire-and-forget: API errors sheet + live feed ───────────────
         setImmediate(() => {
           Promise.all([

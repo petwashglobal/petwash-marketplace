@@ -1532,6 +1532,47 @@ router.post('/:requestId/respond', async (req, res) => {
       })();
     }
 
+    // ── Non-blocking: email + SMS to customer on DECLINE (immediate) ─────────
+    // The in-app bell fires for both accept+decline above, but email/SMS only
+    // fired on accept — so a declined customer wasn't told promptly (only a
+    // 1h-delayed rebook nudge). Mirror the acceptance dispatch for parity so the
+    // customer hears "provider unavailable, here are others" right away.
+    if (data.action === 'decline' && booking.ownerId) {
+      (async () => {
+        try {
+          const [ownerUser] = await db
+            .select({ email: users.email, phone: users.phone, firstName: users.firstName })
+            .from(users)
+            .where(eq(users.id, booking.ownerId))
+            .limit(1);
+          if (ownerUser) {
+            const customerName = ownerUser.firstName || 'לקוח';
+            const releasedStr = holdCents > 0 ? ` ₪${(holdCents / 100).toFixed(2)} שוחררו חזרה לארנק שלך.` : '';
+            const searchUrl = `https://petwash.co.il/search`;
+            const htmlBody = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;background:#fff;color:#000;">
+<h2 style="color:#000;">${providerName} אינו זמין בתאריכים אלה — PetWash™</h2>
+<p>שלום ${customerName},</p>
+<p>${providerName} אינו זמין לבקשה זו. אל דאגה — יש לנו ספקים מאומתים נוספים באזור שלך.${releasedStr}</p>
+<p><a href="${searchUrl}" style="background:#D4AF37;color:#000;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;font-weight:bold;">חיפוש ספקים נוספים</a></p>
+<p style="margin-top:24px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il</p>
+</body></html>`;
+            await dispatchNotification({
+              uid: booking.ownerId,
+              email: ownerUser.email || undefined,
+              phone: ownerUser.phone || undefined,
+              type: 'booking_declined',
+              title: `${providerName} אינו זמין — PetWash™`,
+              bodyHtml: htmlBody,
+              bodyText: `${providerName} אינו זמין בתאריכים אלה. יש לנו ספקים נוספים שיוכלו לעזור — חיפוש: ${searchUrl}${releasedStr}`,
+              channels: ['email', 'sms'],
+            });
+          }
+        } catch (e: any) {
+          logger.warn('[BookingRequests] email/SMS dispatch failed on decline (non-fatal)', { error: e?.message });
+        }
+      })();
+    }
+
     // ── Non-blocking: Schedule declined_recovery nudge (1 h later) ────────────
     if (newStatus === 'declined' && booking.ownerId) {
       scheduleRebookTrigger('declined_recovery', {
