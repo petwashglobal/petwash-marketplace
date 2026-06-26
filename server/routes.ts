@@ -229,6 +229,7 @@ import enterpriseSalesRoutes from "./routes/enterprise-sales";
 import enterpriseSalesCRMRoutes from "./routes/enterprise-sales-crm";
 import expensesRoutes from "./routes/expenses";
 import franchiseRoutes from "./routes/franchise";
+import waitlistRoutes from "./routes/waitlist";
 import inventoryRoutes from "./routes/inventory";
 import israeliCPIRoutes from "./routes/israeli-cpi";
 import franchiseMgmtRoutes from "./routes/franchise-mgmt";
@@ -11244,6 +11245,10 @@ self.addEventListener('notificationclick', (event) => {
   // Referral System - חבר מביא חבר (Friend Brings Friend)
   app.use('/api/referral', optionalFirebaseToken, apiLimiter, referralRoutes);
   logger.info('[Routes] ✅ Referral system routes registered');
+
+  // Universal waitlist / demand-capture (public capture; CSRF-exempt in index.ts)
+  app.use('/api/waitlist', optionalFirebaseToken, apiLimiter, waitlistRoutes);
+  logger.info('[Routes] ✅ Waitlist demand-capture routes registered');
 
   // Inbox routes (User + Franchise)
   const inboxRoutes = await import('./routes/inbox');
