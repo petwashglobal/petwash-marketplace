@@ -377,8 +377,13 @@ export default function BookingContact() {
                 ? (isHebrew ? 'שולח…' : 'Sending…')
                 : (isHebrew ? 'שליחת בקשת הזמנה' : 'Send booking request')}
             </Button>
-            <p className="py-2 text-center text-sm text-black/55">
+            <p className="pt-2 text-center text-sm text-black/55">
               {isHebrew ? 'עדיין לא תתבקש/י לשלם.' : "You won't be asked to pay yet."}
+            </p>
+            <p className="pb-2 text-center text-xs text-black/40">
+              {isHebrew
+                ? 'המחיר הסופי — כולל מע״מ וכל העמלות — יוצג לפני התשלום.'
+                : 'The final price — including VAT and all fees — is shown before you pay.'}
             </p>
           </div>
         </div>
