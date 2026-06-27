@@ -172,7 +172,7 @@ export default function ProviderRegistrationBanner({
                 {t("providerBanner.heroDescription")}
               </p>
 
-              <div className="grid grid-cols-2 gap-4 mb-8">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8">
                 {benefits.map((benefit, idx) => (
                   <div key={idx} className="flex items-center gap-3 p-4 rounded-xl bg-white border border-gray-200">
                     <div className="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
