@@ -72,26 +72,26 @@ export default function PlatformLegalFramework() {
           {/* Platform Services Overview */}
           <section className="mb-12">
             <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-black flex items-center gap-3">
-              <Shield className="h-8 w-8 text-blue-600" />
+              <Shield className="h-8 w-8 text-[#B8932F]" />
               {isHebrew ? 'שירותי הפלטפורמה - מודל העסקי' : 'Platform Services - Business Model'}
             </h2>
             
             <div className="grid md:grid-cols-3 gap-6 mb-8">
               {/* K9000 Wash Stations */}
               <div className="luxury-glass-panel rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3 text-blue-900 dark:text-blue-200">
+                <h3 className="text-xl font-bold mb-3 text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew ? 'תחנות רחצה K9000' : 'K9000 Wash Stations'}
                 </h3>
-                <p className="text-sm text-blue-800 dark:text-blue-300 mb-4">
+                <p className="text-sm text-[#B8932F] dark:text-[#D4AF37] mb-4">
                   {isHebrew ? 'פלטפורמה מקשרת - תשלום ישיר למפעילי תחנות' : 'Connector Platform - Direct payment to station operators'}
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <Check className="h-4 w-4 text-[#B8932F] mt-0.5 flex-shrink-0" />
                     <span>{isHebrew ? 'אנו מקשרים לקוחות לתחנות עצמאיות' : 'We connect customers to independent stations'}</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                    <Check className="h-4 w-4 text-[#B8932F] mt-0.5 flex-shrink-0" />
                     <span>{isHebrew ? 'עמלת פלטפורמה בלבד' : 'Platform commission only'}</span>
                   </div>
                   <div className="flex items-start gap-2">
@@ -103,19 +103,19 @@ export default function PlatformLegalFramework() {
 
               {/* Walk My Pet */}
               <div className="luxury-glass-panel rounded-xl p-6">
-                <h3 className="text-xl font-bold mb-3 text-purple-900 dark:text-purple-200">
+                <h3 className="text-xl font-bold mb-3 text-[#B8932F] dark:text-[#D4AF37]">
                   ⁦Walk My Pet™⁩
                 </h3>
-                <p className="text-sm text-purple-800 dark:text-purple-300 mb-4">
+                <p className="text-sm text-[#B8932F] dark:text-[#D4AF37] mb-4">
                   {isHebrew ? 'פלטפורמת שוק - 24% עמלת תיווך גולמית' : 'Marketplace Platform - 24% gross take rate'}
                 </p>
                 <div className="space-y-2 text-sm">
                   <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <Check className="h-4 w-4 text-[#B8932F] mt-0.5 flex-shrink-0" />
                     <span>{isHebrew ? 'קבלנים עצמאיים בלבד' : 'Independent contractors only'}</span>
                   </div>
                   <div className="flex items-start gap-2">
-                    <Check className="h-4 w-4 text-purple-600 mt-0.5 flex-shrink-0" />
+                    <Check className="h-4 w-4 text-[#B8932F] mt-0.5 flex-shrink-0" />
                     <span>{isHebrew ? 'בעל משלם 6%, מטייל משלם 18%' : 'Owner pays 6%, Walker pays 18%'}</span>
                   </div>
                   <div className="flex items-start gap-2">
@@ -154,7 +154,7 @@ export default function PlatformLegalFramework() {
           {/* Legal Protection Principles */}
           <section className="mb-12">
             <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-black flex items-center gap-3">
-              <Lock className="h-8 w-8 text-purple-600" />
+              <Lock className="h-8 w-8 text-[#B8932F]" />
               {isHebrew ? 'עקרונות הגנה משפטית' : 'Legal Protection Principles'}
             </h2>
             
@@ -245,11 +245,11 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Transaction Security */}
-              <div className="bg-blue-50 dark:bg-white rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
-                <h3 className="text-lg font-bold mb-3 text-blue-900 dark:text-blue-200">
+              <div className="bg-[#D4AF37] dark:bg-white rounded-xl p-6 border-2 border-[#D4AF37] dark:border-[#B8932F]">
+                <h3 className="text-lg font-bold mb-3 text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew ? 'אבטחת עסקאות' : 'Transaction Security'}
                 </h3>
-                <ul className="space-y-2 text-sm text-blue-800 dark:text-blue-300">
+                <ul className="space-y-2 text-sm text-[#B8932F] dark:text-[#D4AF37]">
                   <li>• {isHebrew ? 'תשלומים דרך Nayax בלבד (PCI-DSS מוסמך)' : 'Nayax-only payments (PCI-DSS certified)'}</li>
                   <li>• {isHebrew ? 'אסקרו 24 שעות למניעת הונאה' : '24-hour escrow for fraud prevention'}</li>
                   <li>• {isHebrew ? 'שרשרת בלוקצ\'יין לתיעוד עמיד בשינויים' : 'Blockchain chain for tamper-proof records'}</li>
@@ -258,11 +258,11 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Data Protection */}
-              <div className="bg-purple-50 dark:bg-white rounded-xl p-6 border-2 border-purple-200 dark:border-purple-700">
-                <h3 className="text-lg font-bold mb-3 text-purple-900 dark:text-purple-200">
+              <div className="bg-[#D4AF37] dark:bg-white rounded-xl p-6 border-2 border-[#D4AF37] dark:border-[#B8932F]">
+                <h3 className="text-lg font-bold mb-3 text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew ? 'הגנת נתונים' : 'Data Protection'}
                 </h3>
-                <ul className="space-y-2 text-sm text-purple-800 dark:text-purple-300">
+                <ul className="space-y-2 text-sm text-[#B8932F] dark:text-[#D4AF37]">
                   <li>• {isHebrew ? 'תאימות GDPR (אירופה) + חוק הגנת הפרטיות הישראלי 2025' : 'GDPR compliant (Europe) + Israeli Privacy Law 2025'}</li>
                   <li>• {isHebrew ? 'שמירת יומנים למשך 7 שנים לציות' : '7-year log retention for compliance'}</li>
                   <li>• {isHebrew ? 'איתור אנומליות מונע על ידי AI' : 'AI-powered anomaly detection'}</li>
@@ -288,17 +288,17 @@ export default function PlatformLegalFramework() {
           {/* Clear Expectations */}
           <section className="mb-12">
             <h2 className="text-3xl font-bold mb-6 text-gray-900 dark:text-black flex items-center gap-3">
-              <FileText className="h-8 w-8 text-blue-600" />
+              <FileText className="h-8 w-8 text-[#B8932F]" />
               {isHebrew ? 'ציפיות ברורות - שני הצדדים' : 'Clear Expectations - Both Sides'}
             </h2>
 
             <div className="grid md:grid-cols-2 gap-6">
               {/* Customer Expectations */}
-              <div className="bg-blue-50 dark:bg-white rounded-xl p-6 border-2 border-blue-200 dark:border-blue-700">
-                <h3 className="text-xl font-bold mb-4 text-blue-900 dark:text-blue-200">
+              <div className="bg-[#D4AF37] dark:bg-white rounded-xl p-6 border-2 border-[#D4AF37] dark:border-[#B8932F]">
+                <h3 className="text-xl font-bold mb-4 text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew ? '👤 ציפיות לקוחות' : '👤 Customer Expectations'}
                 </h3>
-                <div className="space-y-3 text-blue-800 dark:text-blue-300">
+                <div className="space-y-3 text-[#B8932F] dark:text-[#D4AF37]">
                   <div>
                     <p className="font-semibold mb-1">{isHebrew ? 'מה מקבלים:' : 'What You Get:'}</p>
                     <ul className="text-sm space-y-1 mr-6">
@@ -321,11 +321,11 @@ export default function PlatformLegalFramework() {
               </div>
 
               {/* Service Provider Expectations */}
-              <div className="bg-purple-50 dark:bg-white rounded-xl p-6 border-2 border-purple-200 dark:border-purple-700">
-                <h3 className="text-xl font-bold mb-4 text-purple-900 dark:text-purple-200">
+              <div className="bg-[#D4AF37] dark:bg-white rounded-xl p-6 border-2 border-[#D4AF37] dark:border-[#B8932F]">
+                <h3 className="text-xl font-bold mb-4 text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew ? '🛠️ ציפיות ספקי שירותים' : '🛠️ Service Provider Expectations'}
                 </h3>
-                <div className="space-y-3 text-purple-800 dark:text-purple-300">
+                <div className="space-y-3 text-[#B8932F] dark:text-[#D4AF37]">
                   <div>
                     <p className="font-semibold mb-1">{isHebrew ? 'מה מקבלים:' : 'What You Get:'}</p>
                     <ul className="text-sm space-y-1 mr-6">
@@ -373,21 +373,21 @@ export default function PlatformLegalFramework() {
             </h3>
             <div className="grid md:grid-cols-3 gap-4">
               <Link href="/sitter-suite/terms-conditions">
-                <Button className="w-full p-4 bg-blue-50 dark:bg-white hover:bg-blue-100 dark:hover:bg-blue-900/30 rounded-lg text-left transition-colors">
-                  <p className="font-semibold text-blue-900 dark:text-blue-200">
+                <Button className="w-full p-4 bg-[#D4AF37] dark:bg-white hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 rounded-lg text-left transition-colors">
+                  <p className="font-semibold text-[#B8932F] dark:text-[#D4AF37]">
                     {isHebrew ? 'תנאי Sitter Suite' : 'Sitter Suite Terms'}
                   </p>
-                  <p className="text-sm text-blue-700 dark:text-blue-300 mt-1">
+                  <p className="text-sm text-[#B8932F] dark:text-[#D4AF37] mt-1">
                     {isHebrew ? 'תנאים ספציפיים לשירות' : 'Service-specific terms'}
                   </p>
                 </Button>
               </Link>
               <Link href="/sitter-suite/privacy-policy">
-                <Button className="w-full p-4 bg-purple-50 dark:bg-white hover:bg-purple-100 dark:hover:bg-purple-900/30 rounded-lg text-left transition-colors">
-                  <p className="font-semibold text-purple-900 dark:text-purple-200">
+                <Button className="w-full p-4 bg-[#D4AF37] dark:bg-white hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 rounded-lg text-left transition-colors">
+                  <p className="font-semibold text-[#B8932F] dark:text-[#D4AF37]">
                     {isHebrew ? 'מדיניות פרטיות' : 'Privacy Policy'}
                   </p>
-                  <p className="text-sm text-purple-700 dark:text-purple-300 mt-1">
+                  <p className="text-sm text-[#B8932F] dark:text-[#D4AF37] mt-1">
                     {isHebrew ? 'הגנת נתונים' : 'Data protection'}
                   </p>
                 </Button>

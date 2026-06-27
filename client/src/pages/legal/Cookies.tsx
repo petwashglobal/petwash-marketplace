@@ -8,7 +8,7 @@ export default function CookiesPolicy() {
         {/* Header Section */}
         <div className="text-center mb-16 luxury-animate-fade-in">
           {/* Cookie Icon in Gradient Circle */}
-          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 luxury-shadow-lg">
+          <div className="inline-flex items-center justify-center w-24 h-24 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 luxury-shadow-lg">
             <Cookie className="w-12 h-12 text-white" />
           </div>
           
@@ -26,7 +26,7 @@ export default function CookiesPolicy() {
         {/* What Are Cookies Section */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-1">
           <div className="flex items-start gap-4 mb-6">
-            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center luxury-shadow-md">
+            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center luxury-shadow-md">
               <Cookie className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -58,19 +58,19 @@ export default function CookiesPolicy() {
                   </p>
                   <ul className="space-y-2">
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Authentication and session management</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Security and fraud prevention</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Language and regional preferences</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Shopping cart and booking state</span>
                     </li>
                   </ul>
@@ -81,7 +81,7 @@ export default function CookiesPolicy() {
             {/* Analytics Cookies */}
             <div className="luxury-glass-minimal luxury-hover-lift p-6">
               <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-blue-500 to-blue-700 flex items-center justify-center luxury-shadow-sm">
+                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center luxury-shadow-sm">
                   <Target className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1">
@@ -92,15 +92,15 @@ export default function CookiesPolicy() {
                   </p>
                   <ul className="space-y-2">
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Google Analytics 4 (GA4)</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Firebase Analytics</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Microsoft Clarity</span>
                     </li>
                   </ul>
@@ -111,7 +111,7 @@ export default function CookiesPolicy() {
             {/* Marketing Cookies */}
             <div className="luxury-glass-minimal luxury-hover-lift p-6">
               <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-pink-700 flex items-center justify-center luxury-shadow-sm">
+                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center luxury-shadow-sm">
                   <TrendingUp className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1">
@@ -122,15 +122,15 @@ export default function CookiesPolicy() {
                   </p>
                   <ul className="space-y-2">
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Facebook Pixel</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>TikTok Pixel</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Google Ads</span>
                     </li>
                   </ul>
@@ -141,7 +141,7 @@ export default function CookiesPolicy() {
             {/* Storage Cookies */}
             <div className="luxury-glass-minimal luxury-hover-lift p-6">
               <div className="flex items-start gap-4">
-                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-orange-500 to-orange-700 flex items-center justify-center luxury-shadow-sm">
+                <div className="flex-shrink-0 w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center luxury-shadow-sm">
                   <Database className="w-7 h-7 text-white" />
                 </div>
                 <div className="flex-1">
@@ -152,15 +152,15 @@ export default function CookiesPolicy() {
                   </p>
                   <ul className="space-y-2">
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>User preferences (theme, language)</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Cached data for performance</span>
                     </li>
                     <li className="luxury-text-small flex items-start gap-2">
-                      <span className="text-purple-600 mt-1">•</span>
+                      <span className="text-[#B8932F] mt-1">•</span>
                       <span>Temporary session data</span>
                     </li>
                   </ul>
@@ -176,7 +176,7 @@ export default function CookiesPolicy() {
         {/* Third-Party Services Section */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-3">
           <div className="flex items-start gap-4 mb-6">
-            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-700 flex items-center justify-center luxury-shadow-md">
+            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center luxury-shadow-md">
               <Settings className="w-8 h-8 text-white" />
             </div>
             <div className="flex-1">
@@ -251,7 +251,7 @@ export default function CookiesPolicy() {
         {/* Cookie Management Panel */}
         <div className="luxury-glass-card luxury-shadow-lg p-8 mb-8 luxury-animate-slide-up luxury-delay-4">
           <div className="flex items-start gap-4 mb-6">
-            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center luxury-shadow-md">
+            <div className="flex-shrink-0 w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center luxury-shadow-md">
               <Settings className="w-8 h-8 text-white" />
             </div>
             <div className="flex-1">
@@ -262,19 +262,19 @@ export default function CookiesPolicy() {
               
               <ul className="space-y-3 mb-6">
                 <li className="luxury-text-body flex items-start gap-3">
-                  <span className="text-purple-600 mt-1.5">•</span>
+                  <span className="text-[#B8932F] mt-1.5">•</span>
                   <span>Use our consent manager (appears on first visit)</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-3">
-                  <span className="text-purple-600 mt-1.5">•</span>
+                  <span className="text-[#B8932F] mt-1.5">•</span>
                   <span>Adjust browser settings to block cookies</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-3">
-                  <span className="text-purple-600 mt-1.5">•</span>
+                  <span className="text-[#B8932F] mt-1.5">•</span>
                   <span>Opt-out of analytics tracking</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-3">
-                  <span className="text-purple-600 mt-1.5">•</span>
+                  <span className="text-[#B8932F] mt-1.5">•</span>
                   <span>Disable marketing cookies individually</span>
                 </li>
               </ul>
@@ -322,11 +322,11 @@ export default function CookiesPolicy() {
                 <h2 className="luxury-heading-md mb-4">Cookie Duration</h2>
                 <ul className="space-y-3">
                   <li className="luxury-text-body flex items-start gap-3">
-                    <span className="text-purple-600 mt-1.5">•</span>
+                    <span className="text-[#B8932F] mt-1.5">•</span>
                     <span><strong>Session cookies:</strong> Deleted when you close your browser</span>
                   </li>
                   <li className="luxury-text-body flex items-start gap-3">
-                    <span className="text-purple-600 mt-1.5">•</span>
+                    <span className="text-[#B8932F] mt-1.5">•</span>
                     <span><strong>Persistent cookies:</strong> Stored for 1-24 months depending on type</span>
                   </li>
                 </ul>
@@ -346,7 +346,7 @@ export default function CookiesPolicy() {
                   Questions about cookies? Reach out to us at{" "}
                   <a 
                     href="mailto:privacy@petwash.co.il" 
-                    className="text-purple-600 hover:text-purple-700 font-semibold underline decoration-2 decoration-purple-300 hover:decoration-purple-500 transition-colors"
+                    className="text-[#B8932F] hover:text-[#B8932F] font-semibold underline decoration-2 decoration-[#D4AF37] hover:decoration-[#D4AF37] transition-colors"
                   >
                     privacy@petwash.co.il
                   </a>

@@ -2,13 +2,13 @@ import { Award, Star, Gift, Users, Calendar, TrendingUp, Shield, Mail, Check, Sp
 
 export default function LoyaltyTerms() {
   const tiers = [
-    { name: "Bronze", points: "0", color: "text-orange-700", badge: "luxury-badge" },
+    { name: "Bronze", points: "0", color: "text-[#B8932F]", badge: "luxury-badge" },
     { name: "Silver", points: "1,000", color: "text-gray-600", badge: "luxury-badge" },
     { name: "Gold", points: "3,000", color: "text-yellow-600", badge: "luxury-badge-gold" },
-    { name: "Platinum", points: "6,000", color: "text-purple-600", badge: "luxury-badge-gold" },
-    { name: "Diamond", points: "10,000", color: "text-blue-600", badge: "luxury-badge-gold" },
+    { name: "Platinum", points: "6,000", color: "text-[#B8932F]", badge: "luxury-badge-gold" },
+    { name: "Diamond", points: "10,000", color: "text-[#B8932F]", badge: "luxury-badge-gold" },
     { name: "Emerald", points: "20,000", color: "text-green-600", badge: "luxury-badge-gold" },
-    { name: "Royal", points: "35,000", color: "text-purple-700", badge: "luxury-badge-gold" },
+    { name: "Royal", points: "35,000", color: "text-[#B8932F]", badge: "luxury-badge-gold" },
   ];
 
   const earningMethods = [
@@ -33,7 +33,7 @@ export default function LoyaltyTerms() {
       <div className="luxury-container py-12">
         {/* Header Section */}
         <div className="text-center mb-16 luxury-animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 luxury-shadow-lg">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 luxury-shadow-lg">
             <Award className="w-10 h-10 text-white" />
           </div>
           <h1 className="luxury-heading-xl mb-6">
@@ -60,7 +60,7 @@ export default function LoyaltyTerms() {
                 key={tier.name}
                 className={`luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-slide-up luxury-delay-${index + 1}`}
               >
-                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800 mb-4">
+                <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F] mb-4">
                   <Star className={`w-6 h-6 ${tier.color}`} />
                 </div>
                 <h3 className={`luxury-heading-sm mb-2 ${tier.color}`}>{tier.name}</h3>
@@ -81,8 +81,8 @@ export default function LoyaltyTerms() {
         {/* Program Overview */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-1">
           <div className="flex items-start gap-4 mb-4">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-              <Award className="w-6 h-6 text-purple-600" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F]">
+              <Award className="w-6 h-6 text-[#B8932F]" />
             </div>
             <div>
               <h2 className="luxury-heading-md mb-2">1. Program Overview</h2>
@@ -98,8 +98,8 @@ export default function LoyaltyTerms() {
         {/* Earning Points */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-2">
           <div className="flex items-start gap-4 mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-              <TrendingUp className="w-6 h-6 text-purple-600" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F]">
+              <TrendingUp className="w-6 h-6 text-[#B8932F]" />
             </div>
             <div>
               <h2 className="luxury-heading-md mb-2">2. Earning Points</h2>
@@ -112,8 +112,8 @@ export default function LoyaltyTerms() {
           <div className="grid md:grid-cols-2 gap-4 mb-6">
             {earningMethods.map((method, index) => (
               <div key={method.title} className="flex items-start gap-3">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/50 dark:to-purple-800/50">
-                  <method.icon className="w-5 h-5 text-purple-600" />
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/50 dark:to-[#B8932F]/50">
+                  <method.icon className="w-5 h-5 text-[#B8932F]" />
                 </div>
                 <div>
                   <h4 className="font-semibold text-gray-900 dark:text-black mb-1">
@@ -126,7 +126,7 @@ export default function LoyaltyTerms() {
           </div>
 
           {/* Points Calculation Example */}
-          <div className="luxury-glass-minimal p-6 border-l-4 border-purple-500">
+          <div className="luxury-glass-minimal p-6 border-l-4 border-[#D4AF37]">
             <h4 className="font-semibold text-gray-900 dark:text-black mb-4">
               Example Calculation:
             </h4>
@@ -151,8 +151,8 @@ export default function LoyaltyTerms() {
         {/* Tier Benefits */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-3">
           <div className="flex items-start gap-4 mb-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-              <Sparkles className="w-6 h-6 text-purple-600" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F]">
+              <Sparkles className="w-6 h-6 text-[#B8932F]" />
             </div>
             <div className="flex-1">
               <h2 className="luxury-heading-md mb-2">3. Tier Benefits</h2>
@@ -163,7 +163,7 @@ export default function LoyaltyTerms() {
               <ul className="space-y-3">
                 {benefits.map((benefit, index) => (
                   <li key={index} className="flex items-start gap-3">
-                    <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0 mt-0.5">
+                    <div className="inline-flex items-center justify-center w-6 h-6 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0 mt-0.5">
                       <Check className="w-4 h-4 text-white" />
                     </div>
                     <span className="luxury-text-body">{benefit}</span>
@@ -186,8 +186,8 @@ export default function LoyaltyTerms() {
         {/* Point Expiration */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-4">
           <div className="flex items-start gap-4">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-              <Calendar className="w-6 h-6 text-purple-600" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F]">
+              <Calendar className="w-6 h-6 text-[#B8932F]" />
             </div>
             <div>
               <h2 className="luxury-heading-md mb-2">4. Point Expiration</h2>
@@ -207,8 +207,8 @@ export default function LoyaltyTerms() {
         {/* Tier Retention */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-5">
           <div className="flex items-start gap-4">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-              <TrendingUp className="w-6 h-6 text-purple-600" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F]">
+              <TrendingUp className="w-6 h-6 text-[#B8932F]" />
             </div>
             <div>
               <h2 className="luxury-heading-md mb-2">5. Tier Retention</h2>
@@ -224,8 +224,8 @@ export default function LoyaltyTerms() {
         {/* Program Changes */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-6">
           <div className="flex items-start gap-4">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 dark:from-purple-900 dark:to-purple-800">
-              <Shield className="w-6 h-6 text-purple-600" />
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F]">
+              <Shield className="w-6 h-6 text-[#B8932F]" />
             </div>
             <div>
               <h2 className="luxury-heading-md mb-2">6. Program Changes</h2>
@@ -284,7 +284,7 @@ export default function LoyaltyTerms() {
 
         {/* Contact Section */}
         <div className="luxury-glass-card luxury-shadow-lg p-8 text-center luxury-animate-slide-up luxury-delay-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 luxury-shadow-md">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 luxury-shadow-md">
             <Mail className="w-8 h-8 text-white" />
           </div>
           <h2 className="luxury-heading-md mb-4">Questions About Our Loyalty Program?</h2>
