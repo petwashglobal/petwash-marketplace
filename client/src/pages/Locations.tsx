@@ -234,18 +234,26 @@ export default function Locations() {
           })}
         </div>
 
-        {/* Location request CTA — lead capture for new deployments */}
-        <div className="max-w-4xl mx-auto mt-16 luxury-glass-card luxury-shadow-xl p-10 text-center luxury-slide-up">
-          <h2 className="text-3xl font-bold luxury-gradient-text mb-4">Want a station in your neighborhood? · רוצים תחנה בשכונה שלכם?</h2>
-          <p className="luxury-text-body text-lg mb-8">
-            Tell us where a ⁦Pet Wash™⁩ station would serve your building, center or city.
-            <br />ספרו לנו איפה תחנת ⁦Pet Wash™⁩ תשרת את הבניין, המרכז או העיר שלכם.
+        {/* Location request CTA — lead capture for new deployments.
+            Bilingual content is split into explicit dir="ltr" (English) and
+            dir="rtl" (Hebrew) blocks so punctuation doesn't flip on RTL mobile,
+            and the CTA wraps instead of overflowing the viewport. */}
+        <div className="max-w-4xl mx-auto mt-16 luxury-glass-card luxury-shadow-xl p-6 sm:p-10 text-center luxury-slide-up">
+          <h2 className="text-2xl sm:text-3xl font-bold luxury-gradient-text mb-4">
+            <span dir="ltr" className="block">Want a station in your neighborhood?</span>
+            <span dir="rtl" className="block">רוצים תחנה בשכונה שלכם?</span>
+          </h2>
+          <p className="luxury-text-body text-base sm:text-lg mb-8">
+            <span dir="ltr" className="block">Tell us where a ⁦Pet Wash™⁩ station would serve your building, center or city.</span>
+            <span dir="rtl" className="block mt-1">ספרו לנו איפה תחנת ⁦Pet Wash™⁩ תשרת את הבניין, המרכז או העיר שלכם.</span>
           </p>
           <Button
-            className="luxury-btn-outline luxury-shadow-lg"
+            className="luxury-btn-outline luxury-shadow-lg w-full sm:w-auto h-auto whitespace-normal max-w-full py-3 leading-snug"
             onClick={() => window.location.href = 'mailto:Support@PetWash.co.il?subject=New Location Request'}
           >
-            📧 Request a New Location · בקשת מיקום חדש
+            <span dir="ltr">📧 Request a New Location</span>
+            <span className="mx-2 opacity-40 hidden sm:inline">·</span>
+            <span dir="rtl" className="block sm:inline">בקשת מיקום חדש</span>
           </Button>
         </div>
       </div>
