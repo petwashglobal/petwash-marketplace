@@ -7,7 +7,6 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { FloatingStack } from "@/components/FloatingStack";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { CookieConsent } from "@/components/CookieConsent";
-import { AccessibilityButton } from "@/components/AccessibilityButton";
 import { ConsentManager } from "@/components/ConsentManager";
 import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
@@ -4014,9 +4013,14 @@ console.log("Build: 1769350182889");
               Banner (apple-itunes-app meta) + store buttons — never a PWA install card.
               Component file kept as a technical fallback only; intentionally NOT mounted. */}
 
-          {/* Accessibility controls (a11y as luxury — large text / contrast).
-              Serves the seniors/disabled members PetWash already supports. */}
-          <AccessibilityButton language={currentLanguage} />
+          {/* <AccessibilityButton> UNMOUNTED (P0, 2026-06-27): wiring it in #1105
+              crashed React reconciliation on EVERY page (NotFoundError: insertBefore/
+              removeChild "not a child"), white-screening the whole site for all users.
+              Verified in a clean prod build: site renders with it removed, crashes with
+              it present. Do NOT re-mount until the AccessibilityButton/AccessibilityMenu
+              subtree is rebuilt and proven not to corrupt the React tree. The a11y
+              <html> class/style logic (high-contrast, large-text, etc.) is fine; the
+              crash is in the rendered widget subtree. */}
 
           {/* GDPR-compliant cookie consent system */}
           <CookieConsent

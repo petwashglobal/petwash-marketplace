@@ -4,33 +4,18 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./lib/i18next-init";
 
-// ── DOM-mutation resilience patch (P0 fix, 2026-06-27) ───────────────────────
-// Production homepage white-screened with:
-//   "NotFoundError: Failed to execute 'removeChild' on 'Node':
-//    The node to be removed is not a child of this node."
-// This is the well-known React crash that happens when something OUTSIDE React
-// mutates the DOM — browser auto-translate (Safari/Chrome on this Hebrew site),
-// extensions, or any foreign script — and React later unmounts a node that was
-// moved. removeChild/insertBefore then throw and the whole app crashes via the
-// error boundary. Guarding these two Node methods makes React tolerant of
-// foreign DOM mutation (facebook/react#11538). Belt-and-suspenders with the
-// translate="no" directive in index.html (PetWash ships its own i18n).
-if (typeof Node === "function" && Node.prototype) {
-  const originalRemoveChild = Node.prototype.removeChild;
-  Node.prototype.removeChild = function <T extends Node>(this: Node, child: T): T {
-    if (child.parentNode !== this) {
-      return child;
-    }
-    return originalRemoveChild.call(this, child) as T;
-  };
-  const originalInsertBefore = Node.prototype.insertBefore;
-  Node.prototype.insertBefore = function <T extends Node>(this: Node, newNode: T, referenceNode: Node | null): T {
-    if (referenceNode && referenceNode.parentNode !== this) {
-      return newNode;
-    }
-    return originalInsertBefore.call(this, newNode, referenceNode) as T;
-  };
-}
+// ── REMOVED: the #1110 Node.prototype removeChild/insertBefore monkeypatch ────
+// It was meant to make React tolerant of foreign DOM mutation (facebook/react
+// #11538). In OUR app it BACKFIRED catastrophically: the guards silently no-op
+// React's own legitimate DOM operations, React's tree diverges from the real
+// DOM, the page never mounts, and — because the guard also swallows the throw —
+// the user gets a SILENT BLANK WHITE SCREEN with no error boundary (verified
+// live in Chrome: restoring native removeChild/insertBefore made content render
+// again). A visible "Something went wrong" card (recoverable, self-healing via
+// the boot guard below) is strictly better than a silent blank for 100% of
+// users. The real auto-translate mitigation is the translate="no" /
+// notranslate directives in index.html. Do NOT re-add a global Node.prototype
+// patch without proving it cannot skip a legitimate React mutation.
 
 // Defensive one-time service-worker + Cache Storage cleanup.
 //
