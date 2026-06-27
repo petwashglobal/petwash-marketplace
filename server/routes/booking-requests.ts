@@ -43,6 +43,7 @@ import EscrowService from '../services/EscrowService';
 import { createEarningRecord } from '../services/payoutLedger';
 import { assertServiceApproved, providerHasAnyServiceRows } from '../services/providerServiceApproval';
 import { isReconfirmationOverdue } from '../services/reconfirmationService';
+import { recordAcceptance, recordStatusEvent, recordRefund } from '../services/DealGateService';
 import { dispatchNotification } from '../lib/notificationDispatcher';
 import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
 import { twilioSMSService } from '../services/TwilioSMSService';
@@ -1622,10 +1623,28 @@ router.post('/:requestId/respond', async (req, res) => {
       }
     }
     
+    // ── Deal Gate (§B/§L): record provider acceptance + audit the transition ──
+    if (data.action === 'accept') {
+      recordAcceptance({
+        bookingId: requestId,
+        customerUserId: booking.ownerId,
+        providerUserId: booking.providerId ?? null,
+        side: 'provider',
+      }).catch(() => {});
+    }
+    recordStatusEvent({
+      bookingId: requestId,
+      oldStatus: booking.status,
+      newStatus,
+      changedBy: userId || booking.providerId,
+      actorRole: 'provider',
+      reason: data.action === 'accept' ? 'provider_accepted' : 'provider_declined',
+    }).catch(() => {});
+
     res.json({
       success: true,
       status: newStatus,
-      message: data.action === 'accept' 
+      message: data.action === 'accept'
         ? (meetGreetDate ? 'Booking accepted! Meet & Greet scheduled.' : 'Booking accepted!')
         : 'Booking declined.',
     });
@@ -1946,6 +1965,28 @@ router.post('/:requestId/pay', async (req, res) => {
     logBookingEvent('payment_initiated', buildEventPayload({ ...booking, status: 'payment_pending' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       paymentInitiatedAt: new Date().toISOString(),
+    }).catch(() => {});
+
+    // ── Deal Gate (§B/§L): record customer acceptance (payment authorising) + audit ──
+    recordAcceptance({
+      bookingId: requestId,
+      customerUserId: booking.ownerId,
+      providerUserId: booking.providerId ?? null,
+      side: 'customer',
+      paymentProvider: 'NAYAX',
+      paymentTransactionId: sessionId,
+      paymentAuthorisedAt: new Date(),
+      amountTotalCents: booking.totalCents ?? undefined,
+      ipAddress: (req.headers['x-forwarded-for'] as string) || req.ip,
+      language: 'he',
+    }).catch(() => {});
+    recordStatusEvent({
+      bookingId: requestId,
+      oldStatus: booking.status,
+      newStatus: 'payment_pending',
+      changedBy: userId || booking.ownerId,
+      actorRole: 'customer',
+      reason: 'payment_initiated',
     }).catch(() => {});
 
     res.json({
@@ -2645,6 +2686,17 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
       } as any)
       .where(eq(bookingRequests.requestId, requestId));
     
+    // ── Deal Gate (§L): audit the completion transition ──
+    recordStatusEvent({
+      bookingId: requestId,
+      oldStatus: booking.status,
+      newStatus: 'COMPLETED',
+      changedBy: userId || booking.ownerId,
+      actorRole: 'customer',
+      reason: 'owner_confirmed_completion',
+      metadata: { finalStatus },
+    }).catch(() => {});
+
     logger.info('[BookingRequests] Owner confirmed with enterprise integration', {
       requestId,
       rating,
@@ -3155,6 +3207,32 @@ router.post('/:requestId/cancel', async (req, res) => {
         updatedAt: new Date(),
       } as any)
       .where(eq(bookingRequests.requestId, requestId));
+
+    // ── Deal Gate (§L/§16): audit the cancellation + record the refund/fee split ──
+    // recordRefund writes shadow_only while AUTO_REFUNDS_ENABLED=false (no live money
+    // moved here — the existing escrow/wallet rails below still handle the actual refund).
+    recordStatusEvent({
+      bookingId: requestId,
+      oldStatus: booking.status,
+      newStatus: cancelledBy === 'provider' ? 'CANCELLED_BY_PROVIDER' : 'CANCELLED_BY_CUSTOMER',
+      changedBy: userId,
+      actorRole: cancelledBy === 'provider' ? 'provider' : 'customer',
+      reason: reason || cancellationTier,
+      metadata: { cancellationTier, refundCents, cancellationPenaltyCents, hoursUntilService },
+    }).catch(() => {});
+    if (refundCents > 0 || cancellationPenaltyCents > 0) {
+      recordRefund({
+        bookingId: requestId,
+        requestedBy: userId,
+        reason: reason || cancellationTier,
+        originalAmountCents: booking.totalCents ?? 0,
+        cancellationFeeCents: Math.max(0, (booking.totalCents ?? 0) - refundCents),
+        providerCompensationCents: cancellationPenaltyCents,
+        refundAmountCents: refundCents,
+        refundProvider: 'NAYAX',
+        policyVersion: 'tiered-v1',
+      }).catch(() => {});
+    }
 
     // Free the provider's calendar slot — a cancelled booking must release its
     // EXCLUDE slot-lock so the time becomes re-bookable. Idempotent, best-effort.
