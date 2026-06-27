@@ -23,6 +23,7 @@ import {
 import { apiRequest, getFirebaseBearerToken } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
 import { PetWashIcon } from '@/components/PetWashIcon';
+import { SocialShare } from '@/components/SocialShare';
 
 /* -------------------------------------------------------------------------
    TYPES
@@ -225,6 +226,12 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
               <AlertCircle className="w-3.5 h-3.5" /> התחבר כדי ליצור קשר
             </button>
           ) : null}
+          {/* Spread the alert — every share helps a lost pet get home (viral loop). */}
+          <SocialShare
+            title={`עזרו למצוא את ${post.pet_name || 'החיה האבודה'} | PawFinder™`}
+            description={post.description || ''}
+            showLabels={false}
+          />
         </div>
       </div>
     </div>

@@ -7,6 +7,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { FloatingStack } from "@/components/FloatingStack";
 import { AiChatWidget } from "@/components/AiChatWidget";
 import { CookieConsent } from "@/components/CookieConsent";
+import { AccessibilityButton } from "@/components/AccessibilityButton";
 import { ConsentManager } from "@/components/ConsentManager";
 import { getConsentPreferences, applyConsentPreferences } from "@/lib/consent";
 import { NotificationPermissionPrompt } from "@/components/NotificationPermissionPrompt";
@@ -4013,8 +4014,12 @@ console.log("Build: 1769350182889");
               Banner (apple-itunes-app meta) + store buttons — never a PWA install card.
               Component file kept as a technical fallback only; intentionally NOT mounted. */}
 
+          {/* Accessibility controls (a11y as luxury — large text / contrast).
+              Serves the seniors/disabled members PetWash already supports. */}
+          <AccessibilityButton language={currentLanguage} />
+
           {/* GDPR-compliant cookie consent system */}
-          <CookieConsent 
+          <CookieConsent
             language={currentLanguage}
             onOpenManager={() => setIsConsentManagerOpen(true)}
           />

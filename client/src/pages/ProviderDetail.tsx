@@ -9,6 +9,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { useProviderDetails, useProviderReviews } from '@/services/marketplace';
 import { InsuranceTrustChip } from '@/components/marketplace/InsuranceTrustChip';
+import StarProviderBadge from '@/components/StarProviderBadge';
 import {
   Star, MapPin, Shield, CheckCircle2, Award, Calendar as CalendarIcon,
   Clock, DollarSign, MessageCircle,
@@ -500,12 +501,18 @@ export default function ProviderDetail() {
                   <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
                     {isHebrew ? 'ביקורות' : 'Reviews'}
                   </h3>
-                  <Badge variant="outline" className="text-amber-600 border-amber-300">
-                    <Star className="w-4 h-4 mr-1 fill-amber-500" />
-                    {provider.rating || '5.0'}
-                  </Badge>
+                  <div className="flex items-center gap-2">
+                    <StarProviderBadge
+                      stats={{ rating: Number(provider.rating) || 0, reviewCount: reviewList.length }}
+                      size="sm"
+                    />
+                    <Badge variant="outline" className="text-amber-600 border-amber-300">
+                      <Star className="w-4 h-4 mr-1 fill-amber-500" />
+                      {provider.rating || '5.0'}
+                    </Badge>
+                  </div>
                 </div>
-                
+
                 {reviewsLoading ? (
                   <div className="flex items-center justify-center py-8">
                     <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
