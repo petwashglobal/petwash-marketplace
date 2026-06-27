@@ -320,7 +320,7 @@ export default function Verify() {
 
   return (
     <Layout language={language} onLanguageChange={setLanguage}>
-      <div className="min-h-screen luxury-bg-mesh">
+      <div className="min-h-screen luxury-bg-mesh" dir={language === 'he' ? 'rtl' : 'ltr'}>
         <div className="container max-w-6xl mx-auto px-4 py-12">
           {/* Header */}
           <motion.div 
@@ -507,7 +507,7 @@ export default function Verify() {
                             <div className="flex items-center justify-between bg-white/10 p-4 rounded-lg">
                               <div className="flex items-center gap-3">
                                 <FileCheck className="w-8 h-8 text-green-400" />
-                                <div className="text-left">
+                                <div className="text-start">
                                   <p className="text-white font-semibold">{file.name}</p>
                                   <p className="text-sm text-[#D4AF37]">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                                 </div>

@@ -2229,7 +2229,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
             </div>
             <button
               onClick={() => navigatePostLogin()}
-              className="p-1 rounded hover:bg-white/10 transition-colors"
+              className="p-2.5 min-w-[44px] min-h-[44px] flex items-center justify-center rounded hover:bg-white/10 transition-colors"
               aria-label={t('common.close', language)}
               data-testid="button-close-signin"
             >
