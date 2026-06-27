@@ -16,24 +16,32 @@ export function initClientSentry() {
     return;
   }
 
-  Sentry.init({
-    dsn: sentryDsn,
-    environment: import.meta.env.MODE || 'development',
-    release: `petwash@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
-    integrations: [
-      Sentry.browserTracingIntegration(),
-    ],
-    tracesSampleRate: isDevelopment ? 1.0 : 0.1,
-    beforeSend(event, hint) {
-      if (isDevelopment) {
-        console.log('[Sentry] Captured event:', event);
-      }
-      return event;
-    },
-  });
+  // Monitoring must NEVER be able to take down the app it monitors. If Sentry's
+  // SDK ever throws on init (bad integration, CSP, blocked network), swallow it
+  // — a missing error tracker is acceptable; a blank-white app is not.
+  try {
+    Sentry.init({
+      dsn: sentryDsn,
+      environment: import.meta.env.MODE || 'development',
+      release: `petwash@${import.meta.env.VITE_APP_VERSION || '1.0.0'}`,
+      integrations: [
+        Sentry.browserTracingIntegration(),
+      ],
+      tracesSampleRate: isDevelopment ? 1.0 : 0.1,
+      beforeSend(event, hint) {
+        if (isDevelopment) {
+          console.log('[Sentry] Captured event:', event);
+        }
+        return event;
+      },
+    });
 
-  if (isDevelopment) {
-    console.log('[Sentry] ✅ Client error tracking initialized');
+    if (isDevelopment) {
+      console.log('[Sentry] ✅ Client error tracking initialized');
+    }
+  } catch (e) {
+    // Never throw out of monitoring init.
+    console.warn('[Sentry] init failed — continuing without error tracking', e);
   }
 }
 

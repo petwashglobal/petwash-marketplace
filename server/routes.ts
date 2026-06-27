@@ -16132,14 +16132,18 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       // network / chunk-load blips) so we never alert on non-actionable events;
       // reportFault also dedupes + throttles per signature.
       const clientMsg = String(errorReport?.message || '');
-      const isNoise = /ResizeObserver loop|^Script error\.?$|Load failed|Failed to fetch|NetworkError|ChunkLoadError|Loading chunk [\w-]+ failed/i.test(clientMsg);
+      // A confirmed boot death (app never mounted, even after a self-heal reload)
+      // is ALWAYS actionable — it is a real white screen, not the transient
+      // chunk/network blip the noise filter is meant to drop. Never silence it.
+      const isBootFailure = errorReport?.source === 'client-boot';
+      const isNoise = !isBootFailure && /ResizeObserver loop|^Script error\.?$|Load failed|Failed to fetch|NetworkError|ChunkLoadError|Loading chunk [\w-]+ failed/i.test(clientMsg);
       if (clientMsg && !isNoise) {
         const clientErr: any = new Error(clientMsg);
         clientErr.name = 'ClientError';
         clientErr.stack = errorReport?.stack || clientMsg;
         void import('./lib/faultReporter')
           .then((m) => m.reportFault(clientErr, {
-            source: `client:${errorReport?.context || 'app'}`,
+            source: isBootFailure ? 'client-boot:white-screen' : `client:${errorReport?.context || 'app'}`,
             url: errorReport?.url,
             traceId: errorReport?.userId,
           }))
