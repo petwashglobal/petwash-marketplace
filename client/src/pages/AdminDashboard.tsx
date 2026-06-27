@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { DashboardShell } from '@/components/dashboard/DashboardShell';
+import { DailyBriefCard } from '@/components/admin/DailyBriefCard';
 import { 
   Users, 
   Package, 
@@ -203,6 +204,9 @@ export default function AdminDashboard() {
 
   return (
     <DashboardShell role="admin" title="Admin" subtitle="Business management">
+      {/* Morning brain — what's stuck / valuable / recoverable today (§20) */}
+      <DailyBriefCard />
+
       {/* Section tabs */}
       <div className="mb-8 -mt-2 border-b border-black/10">
         <div className="flex gap-1 overflow-x-auto">
