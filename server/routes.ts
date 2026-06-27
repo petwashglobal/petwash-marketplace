@@ -232,6 +232,7 @@ import franchiseRoutes from "./routes/franchise";
 import waitlistRoutes from "./routes/waitlist";
 import dealGateRoutes from "./routes/deal-gate";
 import conversionRoutes from "./routes/conversion";
+import adminDailyBriefRoutes from "./routes/admin-daily-brief";
 import inventoryRoutes from "./routes/inventory";
 import israeliCPIRoutes from "./routes/israeli-cpi";
 import franchiseMgmtRoutes from "./routes/franchise-mgmt";
@@ -11256,6 +11257,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Booking Rescue / Conversion — public intent capture (/api/intent) + admin leads.
   app.use('/api', optionalFirebaseToken, apiLimiter, conversionRoutes);
+
+  // Admin AI Daily Brief — read-only "what's stuck / recoverable today" (§20).
+  app.use('/api/admin/daily-brief', optionalFirebaseToken, adminDailyBriefRoutes);
   logger.info('[Routes] ✅ Waitlist demand-capture routes registered');
 
   // Inbox routes (User + Franchise)
