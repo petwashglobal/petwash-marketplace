@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
@@ -13,6 +13,10 @@ interface AccessibilityMenuProps {
   language: Language;
   isOpen: boolean;
   onClose: () => void;
+  /** Unique dialog id from the parent so multiple instances can never collide
+   *  on a hard-coded DOM id (the #1105/#1117 white-screen class). Optional —
+   *  falls back to an internally-generated React useId. */
+  id?: string;
 }
 
 interface AccessibilitySettings {
@@ -287,7 +291,12 @@ interface StatementData {
   };
 }
 
-export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMenuProps) {
+export function AccessibilityMenu({ language, isOpen, onClose, id }: AccessibilityMenuProps) {
+  // Unique per-instance ids — never a hard-coded literal that two mounted copies
+  // could share (that DOM-id collision is what white-screened the site, #1117).
+  const reactId = useId();
+  const menuId = id || `pw-a11y-menu-${reactId}`;
+  const titleId = `${menuId}-title`;
   const [settings, setSettings] = useState<AccessibilitySettings>(defaultSettings);
   const [activeTab, setActiveTab] = useState<Tab>('settings');
   const [statement, setStatement] = useState<StatementData | null>(null);
@@ -465,7 +474,7 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
     >
       <div
         ref={dialogRef}
-        id="pw-accessibility-menu"
+        id={menuId}
         className="bg-white rounded-2xl shadow-2xl max-w-md w-full max-h-[85vh] overflow-y-auto"
         style={{
           direction: isRtl ? 'rtl' : 'ltr',
@@ -476,10 +485,10 @@ export function AccessibilityMenu({ language, isOpen, onClose }: AccessibilityMe
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="accessibility-menu-title"
+        aria-labelledby={titleId}
       >
         <div className="flex items-center justify-between p-5 border-b border-gray-100 bg-white rounded-t-2xl">
-          <h2 id="accessibility-menu-title" className="text-lg font-bold text-gray-900">{t('title')}</h2>
+          <h2 id={titleId} className="text-lg font-bold text-gray-900">{t('title')}</h2>
           <Button
             variant="ghost"
             size="sm"

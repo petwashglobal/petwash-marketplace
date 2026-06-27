@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useId } from 'react';
 import { Accessibility } from 'lucide-react';
 import { AccessibilityMenu } from './AccessibilityMenu';
 import { Language, t } from '@/lib/i18n';
@@ -11,6 +11,7 @@ interface FloatingStackProps {
 }
 
 export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
+  const a11yMenuId = useId();
   const [isAccessibilityMenuOpen, setIsAccessibilityMenuOpen] = useState(false);
   const { trackWhatsAppClick } = useAnalytics();
   const stackRef = useRef<HTMLDivElement>(null);
@@ -103,7 +104,7 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
           data-base-bottom="160"
           aria-label={accessibilityLabel}
           aria-expanded={isAccessibilityMenuOpen}
-          aria-controls="pw-accessibility-menu"
+          aria-controls={a11yMenuId}
           onClick={handleAccessibilityClick}
           data-testid="fab-accessibility"
         >
@@ -140,14 +141,11 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
         </button>
       </div>
 
-      <a
-        href="#main-content"
-        className="sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[10000] focus:bg-black focus:text-white focus:px-4 focus:py-2 focus:rounded-md focus:outline-none focus:ring-4 focus:ring-blue-500"
-      >
-        {language === 'he' ? 'דלג לתוכן הראשי' : 'Skip to main content'}
-      </a>
-
+      {/* Skip-to-content link intentionally removed — Layout.tsx already renders
+          the canonical one. Two live "#main-content" links was a duplicate (and
+          this copy used an off-brand focus:ring-blue). */}
       <AccessibilityMenu
+        id={a11yMenuId}
         language={language}
         isOpen={isAccessibilityMenuOpen}
         onClose={() => setIsAccessibilityMenuOpen(false)}
