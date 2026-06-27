@@ -6745,7 +6745,7 @@ self.addEventListener('notificationclick', (event) => {
         senderName,
         message,
         eligibleServices,
-        expiresInMonths: 24
+        expiresInMonths: 60 // Israeli Amendment 33: gift vouchers ≥5 years
       });
 
       logger.info('[Multi-Service Gift] Created', { 
@@ -6771,7 +6771,7 @@ self.addEventListener('notificationclick', (event) => {
           messageLanguage: messageLanguage || 'he',
           personalMessage: message,
           eligibleServices,
-          expiresInMonths: 24
+          expiresInMonths: 60 // Israeli Amendment 33: gift vouchers ≥5 years
         });
       } catch (emailErr) {
         logger.warn('[Multi-Service Gift] Email send failed (non-blocking):', emailErr);

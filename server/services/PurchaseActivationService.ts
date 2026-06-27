@@ -479,7 +479,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
           messageLanguage: String((meta as any).language ?? (meta as any).messageLanguage ?? 'he'),
           personalMessage: message,
           eligibleServices,
-          expiresInMonths: 24,
+          expiresInMonths: 60, // Israeli Amendment 33: gift vouchers ≥5 years
         });
       } catch (mailErr: any) {
         logger.warn('[Activation] eGift email send failed (non-fatal; voucher already created)', { err: mailErr?.message, giftCardId: gift.giftCardId });
