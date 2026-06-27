@@ -211,7 +211,7 @@ export default function PetTrekOverview() {
                       }}
                       placeholder={t('pettrek.enterAddress')}
                       country={['il']}
-                      inputClassName="px-4 py-2 text-sm outline-none flex-1 border border-gray-200 rounded-lg focus:border-purple-600"
+                      inputClassName="px-4 py-2 text-sm outline-none flex-1 border border-gray-200 rounded-lg focus:border-[#B8932F]"
                     />
                   </div>
                   <div>
@@ -226,13 +226,13 @@ export default function PetTrekOverview() {
                       }}
                       placeholder={t('pettrek.whereTo')}
                       country={['il']}
-                      inputClassName="px-4 py-2 text-sm outline-none flex-1 border border-gray-200 rounded-lg focus:border-purple-600"
+                      inputClassName="px-4 py-2 text-sm outline-none flex-1 border border-gray-200 rounded-lg focus:border-[#B8932F]"
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-semibold mb-2 text-gray-700">{t('pettrek.when')}</label>
                     <div className="flex items-center gap-2 px-3 py-3 bg-white rounded-lg border border-gray-200">
-                      <Clock className="h-5 w-5 text-purple-600" />
+                      <Clock className="h-5 w-5 text-[#B8932F]" />
                       <Input 
                         type="text" 
                         placeholder={t('pettrek.now')}
@@ -265,11 +265,11 @@ export default function PetTrekOverview() {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8 relative">
               {/* Step 1 */}
               <div className="luxury-glass-card luxury-hover-lift p-8 text-center luxury-animate-slide-up luxury-delay-1">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
                   1
                 </div>
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mx-auto mb-4">
-                  <MapPin className="h-8 w-8 text-purple-700" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center mx-auto mb-4">
+                  <MapPin className="h-8 w-8 text-[#B8932F]" />
                 </div>
                 <h3 className="luxury-heading-sm mb-3">{t('pettrek.step1Title')}</h3>
                 <p className="luxury-text-body">
@@ -279,16 +279,16 @@ export default function PetTrekOverview() {
 
               {/* Connector */}
               <div className="hidden md:flex items-center justify-center absolute top-24 left-1/3 transform -translate-x-1/2">
-                <ArrowRight className="h-8 w-8 text-purple-300" />
+                <ArrowRight className="h-8 w-8 text-[#D4AF37]" />
               </div>
 
               {/* Step 2 */}
               <div className="luxury-glass-card luxury-hover-lift p-8 text-center luxury-animate-slide-up luxury-delay-2">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
                   2
                 </div>
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mx-auto mb-4">
-                  <Users className="h-8 w-8 text-purple-700" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center mx-auto mb-4">
+                  <Users className="h-8 w-8 text-[#B8932F]" />
                 </div>
                 <h3 className="luxury-heading-sm mb-3">{t('pettrek.step2Title')}</h3>
                 <p className="luxury-text-body">
@@ -298,16 +298,16 @@ export default function PetTrekOverview() {
 
               {/* Connector */}
               <div className="hidden md:flex items-center justify-center absolute top-24 right-1/3 transform translate-x-1/2">
-                <ArrowRight className="h-8 w-8 text-purple-300" />
+                <ArrowRight className="h-8 w-8 text-[#D4AF37]" />
               </div>
 
               {/* Step 3 */}
               <div className="luxury-glass-card luxury-hover-lift p-8 text-center luxury-animate-slide-up luxury-delay-3">
-                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
+                <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white text-3xl font-bold flex items-center justify-center mx-auto mb-6 luxury-shadow-lg">
                   3
                 </div>
-                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-purple-200 flex items-center justify-center mx-auto mb-4">
-                  <Video className="h-8 w-8 text-purple-700" />
+                <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center mx-auto mb-4">
+                  <Video className="h-8 w-8 text-[#B8932F]" />
                 </div>
                 <h3 className="luxury-heading-sm mb-3">{t('pettrek.step3Title')}</h3>
                 <p className="luxury-text-body">
@@ -332,7 +332,7 @@ export default function PetTrekOverview() {
               {serviceTypes.map((service, index) => (
                 <Link key={index} href={service.link}>
                   <div className="luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 cursor-pointer h-full luxury-animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center mb-4 text-white">
+                    <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center mb-4 text-white">
                       {service.icon}
                     </div>
                     <h3 className="luxury-heading-md mb-3">{service.name}</h3>
@@ -341,7 +341,7 @@ export default function PetTrekOverview() {
                       <div className="luxury-badge luxury-badge-gold">
                         {t('pettrek.from')} {service.priceFrom}
                       </div>
-                      <ArrowRight className="h-5 w-5 text-purple-600" />
+                      <ArrowRight className="h-5 w-5 text-[#B8932F]" />
                     </div>
                   </div>
                 </Link>
@@ -364,7 +364,7 @@ export default function PetTrekOverview() {
               {featuredDrivers.map((driver, index) => (
                 <div key={index} className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 text-center luxury-animate-scale-in" style={{ animationDelay: `${index * 0.1}s` }}>
                   <div className="relative inline-block mb-4">
-                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 p-1">
+                    <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] p-1">
                       <img 
                         src={driver.photo} 
                         alt={driver.name}
@@ -434,7 +434,7 @@ export default function PetTrekOverview() {
             </div>
 
             <div className="luxury-glass-card luxury-shadow-lg overflow-hidden">
-              <div className="bg-gradient-to-r from-purple-500 to-purple-700 p-6 text-white text-center">
+              <div className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] p-6 text-white text-center">
                 <h3 className="text-2xl font-bold">{t('pettrek.standardRates')}</h3>
               </div>
               
@@ -450,7 +450,7 @@ export default function PetTrekOverview() {
                   ].map((item, index) => (
                     <div 
                       key={index} 
-                      className="flex items-center justify-between p-4 rounded-lg hover:bg-purple-50 transition-colors"
+                      className="flex items-center justify-between p-4 rounded-lg hover:bg-[#D4AF37] transition-colors"
                     >
                       <div className="flex-1">
                         <div className="luxury-heading-sm text-base mb-1">{item.service}</div>
@@ -463,7 +463,7 @@ export default function PetTrekOverview() {
                   ))}
                 </div>
 
-                <div className="mt-8 p-6 bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl">
+                <div className="mt-8 p-6 bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-xl">
                   <div className="flex items-center justify-between mb-2">
                     <span className="luxury-heading-sm">{t('pettrek.exampleVetVisit')}</span>
                     <span className="luxury-text-gradient text-3xl font-bold">₪129</span>
@@ -481,7 +481,7 @@ export default function PetTrekOverview() {
             <div className="flex flex-wrap items-center justify-center gap-12">
               {trustBadges.map((badge, index) => (
                 <div key={index} className="flex items-center gap-3 luxury-animate-fade-in" style={{ animationDelay: `${index * 0.1}s` }}>
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center text-white">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center text-white">
                     {badge.icon}
                   </div>
                   <span className="luxury-text-small font-semibold text-gray-700">
@@ -503,7 +503,7 @@ export default function PetTrekOverview() {
               {t('pettrek.readyToBookSubtitle')}
             </p>
             <Link href="/pettrek/book">
-              <Button className="luxury-btn-primary luxury-shadow-xl bg-white text-purple-700 hover:bg-white">
+              <Button className="luxury-btn-primary luxury-shadow-xl bg-white text-[#B8932F] hover:bg-white">
                 <Car className="h-5 w-5 mr-2 inline" />
                 {t('pettrek.bookFirstRide')}
                 <ArrowRight className="h-5 w-5 ml-2 inline" />
