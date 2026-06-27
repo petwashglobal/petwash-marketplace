@@ -45,7 +45,7 @@ export default function LocationPermissionBanner({
         className="flex items-center gap-1.5 text-xs text-gray-500 hover:text-gray-700 transition-colors"
         disabled={isRequesting}
       >
-        <Navigation className={`h-3.5 w-3.5 ${isRequesting ? 'animate-pulse text-blue-500' : 'text-gray-400'}`} />
+        <Navigation className={`h-3.5 w-3.5 ${isRequesting ? 'animate-pulse text-[#D4AF37]' : 'text-gray-400'}`} />
         <span>{isRequesting
           ? (isHebrew ? 'מחפש...' : 'Locating...')
           : (isHebrew ? 'השתמש במיקום שלי' : 'Use my location')
@@ -70,22 +70,22 @@ export default function LocationPermissionBanner({
     <div className={`relative flex items-start gap-3 px-4 py-3 rounded-xl border transition-all ${
       isDenied
         ? 'bg-amber-50 border-amber-200'
-        : 'bg-blue-50 border-blue-200'
+        : 'bg-[#D4AF37] border-[#D4AF37]'
     }`}>
       <div className={`shrink-0 h-8 w-8 rounded-full flex items-center justify-center ${
-        isDenied ? 'bg-amber-100' : 'bg-blue-100'
+        isDenied ? 'bg-amber-100' : 'bg-[#D4AF37]'
       }`}>
         {isDenied
           ? <AlertTriangle className="h-4 w-4 text-amber-500" />
-          : <MapPin className="h-4 w-4 text-blue-500" />
+          : <MapPin className="h-4 w-4 text-[#D4AF37]" />
         }
       </div>
 
       <div className="flex-1 min-w-0">
-        <p className={`text-sm font-semibold ${isDenied ? 'text-amber-800' : 'text-blue-800'}`}>
+        <p className={`text-sm font-semibold ${isDenied ? 'text-amber-800' : 'text-[#B8932F]'}`}>
           {label(permissionState, isHebrew, isGranted)}
         </p>
-        <p className={`text-xs mt-0.5 ${isDenied ? 'text-amber-600' : 'text-blue-600'}`}>
+        <p className={`text-xs mt-0.5 ${isDenied ? 'text-amber-600' : 'text-[#B8932F]'}`}>
           {isDenied
             ? (isHebrew
                 ? 'כדי לקבל תוצאות בסביבתך, הפעל מיקום בהגדרות הדפדפן ורענן'
@@ -103,7 +103,7 @@ export default function LocationPermissionBanner({
             size="sm"
             onClick={requestPermission}
             disabled={isRequesting}
-            className="h-8 px-3 text-xs bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+            className="h-8 px-3 text-xs bg-[#B8932F] hover:bg-[#B8932F] text-white rounded-lg"
           >
             {isRequesting
               ? (isHebrew ? 'מחפש...' : 'Locating...')

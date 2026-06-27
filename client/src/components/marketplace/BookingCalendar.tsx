@@ -129,7 +129,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
 
           {isLoading && (
             <div className="flex items-center justify-center py-8">
-              <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+              <Loader2 className="w-8 h-8 animate-spin text-[#B8932F]" />
               <span className="ml-2 text-gray-600">Loading availability...</span>
             </div>
           )}
@@ -188,9 +188,9 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
                     disabled={!isAvailable}
                     className={`${
                       isSelected
-                        ? 'bg-gradient-to-r from-purple-600 to-pink-600 text-white'
+                        ? 'bg-gradient-to-r from-[#B8932F] to-[#B8932F] text-white'
                         : isAvailable
-                        ? 'hover:border-purple-300'
+                        ? 'hover:border-[#D4AF37]'
                         : 'opacity-50 cursor-not-allowed'
                     }`}
                     data-testid={`time-slot-${timeLabel}`}

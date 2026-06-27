@@ -367,9 +367,9 @@ function RebookBanner({ warnings, petCount, addonCount, hasNotes }: RebookBanner
       </div>
 
       {/* ── Price recalculation notice ─────────────────────────────────── */}
-      <div className="px-4 py-2.5 flex items-start gap-2 bg-sky-50/70 border-t border-sky-100/80">
-        <Sparkles className="w-3.5 h-3.5 text-sky-400 shrink-0 mt-0.5" />
-        <p className="text-[11px] text-sky-700 leading-relaxed">
+      <div className="px-4 py-2.5 flex items-start gap-2 bg-[#D4AF37]/70 border-t border-[#D4AF37]/80">
+        <Sparkles className="w-3.5 h-3.5 text-[#D4AF37] shrink-0 mt-0.5" />
+        <p className="text-[11px] text-[#B8932F] leading-relaxed">
           <span className="font-semibold">המחיר מחושב מחדש</span> — התעריף מגיע ממנוע המחיר הנוכחי.
           ייתכן שישתנה מההזמנה הקודמת. בחר תאריך להצגת מחיר מעודכן.
         </p>
@@ -725,7 +725,7 @@ function PetCareForm({
       {fields.includes("medication") && (
         <div className="flex items-center justify-between p-3 bg-white rounded-xl">
           <div className="flex items-center gap-2">
-            <Pill className="w-4 h-4 text-blue-500" />
+            <Pill className="w-4 h-4 text-[#D4AF37]" />
             <div>
               <p className="text-sm font-medium text-gray-800">זקוק לתרופות</p>
               <p className="text-xs text-gray-500">יש לציין פרטים בהערות</p>
@@ -759,7 +759,7 @@ function PetCareForm({
       {fields.includes("special_needs") && (
         <div className="flex items-center justify-between p-3 bg-white rounded-xl">
           <div className="flex items-center gap-2">
-            <Shield className="w-4 h-4 text-purple-500" />
+            <Shield className="w-4 h-4 text-[#D4AF37]" />
             <div>
               <p className="text-sm font-medium text-gray-800">צרכים מיוחדים</p>
               <p className="text-xs text-gray-500">נכות, קשיש, ריפוי וכו׳</p>
@@ -926,7 +926,7 @@ function AddonsStep({
       {petAddons.length > 0 && petCares.length > 0 && (
         <div className="space-y-3">
           <div className="flex items-center gap-2">
-            <div className="w-2 h-2 rounded-full bg-blue-400" />
+            <div className="w-2 h-2 rounded-full bg-[#D4AF37]" />
             <p className="text-xs font-bold text-gray-600 uppercase tracking-wider">🐾 לפי חיית מחמד</p>
             <span className="text-[10px] text-gray-400 bg-white px-2 py-0.5 rounded-full">חיוב לכל חיה</span>
           </div>
@@ -945,10 +945,10 @@ function AddonsStep({
                     key={`${addon.code}-${pc.clientRef}`}
                     onClick={() => onToggleAddon(addon, pc.clientRef)}
                     className={`w-full flex items-center gap-3 p-3 rounded-xl border-2 transition-all text-right mr-3 ${
-                      selected ? "border-blue-300 bg-blue-50/50 shadow-sm" : "border-gray-100 bg-white hover:border-blue-200"
+                      selected ? "border-[#D4AF37] bg-[#D4AF37]/50 shadow-sm" : "border-gray-100 bg-white hover:border-[#D4AF37]"
                     }`}
                   >
-                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 ${selected ? "bg-blue-100" : "bg-white"}`}>
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0 ${selected ? "bg-[#D4AF37]" : "bg-white"}`}>
                       {addon.icon}
                     </div>
                     <div className="flex-1 text-right">
@@ -957,7 +957,7 @@ function AddonsStep({
                     </div>
                     <div className="flex flex-col items-end gap-1 shrink-0">
                       <span className="text-sm font-bold text-gray-700">{formatILS(addon.unitPriceCents)}</span>
-                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-blue-500 border-blue-500" : "border-gray-200"}`}>
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selected ? "bg-[#D4AF37] border-[#D4AF37]" : "border-gray-200"}`}>
                         {selected && <Check className="w-3 h-3 text-white" />}
                       </div>
                     </div>
@@ -1112,7 +1112,7 @@ function ConfirmStep({
               </div>
               <div className="flex items-center gap-1.5">
                 {pc.requiresMedication && (
-                  <span className="flex items-center gap-0.5 text-[10px] text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded-full">
+                  <span className="flex items-center gap-0.5 text-[10px] text-[#B8932F] bg-[#D4AF37] px-1.5 py-0.5 rounded-full">
                     <Pill className="w-2.5 h-2.5" /> תרופות
                   </span>
                 )}
@@ -1122,7 +1122,7 @@ function ConfirmStep({
                   </span>
                 )}
                 {pc.hasSpecialNeeds && (
-                  <span className="flex items-center gap-0.5 text-[10px] text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded-full">
+                  <span className="flex items-center gap-0.5 text-[10px] text-[#B8932F] bg-[#D4AF37] px-1.5 py-0.5 rounded-full">
                     <Info className="w-2.5 h-2.5" /> מיוחד
                   </span>
                 )}
@@ -1144,7 +1144,7 @@ function ConfirmStep({
               return (
                 <div key={i} className="flex items-center justify-between py-1">
                   <div className="flex items-center gap-2 min-w-0">
-                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.scope === "booking" ? "bg-[#D9B84C]" : "bg-blue-400"}`} />
+                    <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${a.scope === "booking" ? "bg-[#D9B84C]" : "bg-[#D4AF37]"}`} />
                     <p className="text-sm text-gray-700 truncate">{a.addonName}</p>
                     {petName && (
                       <span className="text-xs text-gray-400 bg-white px-1.5 py-0.5 rounded-full shrink-0">

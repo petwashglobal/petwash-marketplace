@@ -206,11 +206,11 @@ export default function FranchiseManagementDashboard() {
       {/* KPI Cards - Luxury Grid */}
       <div className="luxury-grid-4 mb-8">
         <div className="luxury-glass-card luxury-shadow-lg luxury-hover-glow luxury-animate-fade-in luxury-delay-1" data-testid="card-total-franchisees">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-blue-400 to-cyan-500"></div>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37]"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <h3 className="luxury-heading-sm">Partners</h3>
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 p-2.5 shadow-lg">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] p-2.5 shadow-lg">
                 <Building2 className="w-full h-full text-white" />
               </div>
             </div>
@@ -224,11 +224,11 @@ export default function FranchiseManagementDashboard() {
         </div>
 
         <div className="luxury-glass-card luxury-shadow-lg luxury-hover-glow luxury-animate-fade-in luxury-delay-2" data-testid="card-total-stations">
-          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-purple-400 to-pink-500"></div>
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37]"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
               <h3 className="luxury-heading-sm">Total Stations</h3>
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 p-2.5 shadow-lg">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] p-2.5 shadow-lg">
                 <MapPin className="w-full h-full text-white" />
               </div>
             </div>
@@ -379,7 +379,7 @@ export default function FranchiseManagementDashboard() {
                           {franchisee.country || 'Unknown'}
                         </p>
                       </div>
-                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center shadow-lg">
+                      <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center shadow-lg">
                         <Building2 className="w-5 h-5 text-white" />
                       </div>
                     </div>

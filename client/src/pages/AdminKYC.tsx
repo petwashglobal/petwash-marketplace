@@ -233,7 +233,7 @@ export default function AdminKYC() {
         {/* Header Section */}
         <div className="luxury-animate-fade-in">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
               <Shield className="h-6 w-6 text-white" />
             </div>
             <div>
@@ -247,7 +247,7 @@ export default function AdminKYC() {
         <div className="luxury-grid-4 luxury-animate-slide-up luxury-delay-1">
           <div className="luxury-glass-card luxury-hover-lift p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                 <Users className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -259,7 +259,7 @@ export default function AdminKYC() {
           
           <div className="luxury-glass-card luxury-hover-lift p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-[#D4AF37] flex items-center justify-center">
                 <Clock className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -283,7 +283,7 @@ export default function AdminKYC() {
           
           <div className="luxury-glass-card luxury-hover-lift p-6">
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-[#D4AF37] flex items-center justify-center">
                 <Ban className="h-6 w-6 text-white" />
               </div>
               <div>
@@ -304,7 +304,7 @@ export default function AdminKYC() {
                 placeholder={t('searchPlaceholder')}
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="luxury-glass-minimal w-full pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="luxury-glass-minimal w-full pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                 data-testid="input-search"
               />
             </div>
@@ -313,7 +313,7 @@ export default function AdminKYC() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as any)}
-                className="luxury-glass-minimal w-full pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                className="luxury-glass-minimal w-full pl-10 pr-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                 data-testid="select-status-filter"
               >
                 <option value="all">{t('all')}</option>
@@ -350,7 +350,7 @@ export default function AdminKYC() {
               >
                 {/* User Avatar */}
                 <div className="flex items-center gap-4 mb-4">
-                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 p-0.5">
+                  <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] p-0.5">
                     <div className="w-full h-full rounded-full bg-white dark:bg-white flex items-center justify-center">
                       <span className="luxury-heading-md luxury-text-gradient">
                         {submission.firstName[0]}{submission.lastName[0]}
@@ -525,7 +525,7 @@ export default function AdminKYC() {
                   onChange={(e) => setExpiryYears(e.target.value)}
                   min="1"
                   max="10"
-                  className="luxury-glass-minimal w-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                  className="luxury-glass-minimal w-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
                   data-testid="input-expiry-years"
                 />
               </div>
@@ -581,7 +581,7 @@ export default function AdminKYC() {
                   value={rejectionReason}
                   onChange={(e) => setRejectionReason(e.target.value)}
                   rows={4}
-                  className="luxury-glass-minimal w-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-purple-500 resize-none"
+                  className="luxury-glass-minimal w-full px-4 py-3 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] resize-none"
                   data-testid="textarea-rejection-reason"
                 />
               </div>

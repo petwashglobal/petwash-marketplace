@@ -141,27 +141,27 @@ export default function AccessibilityStatement() {
               </div>
             </div>
 
-            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-7 border-l-4 border-purple-500">
+            <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-7 border-l-4 border-[#D4AF37]">
               <h2 className="luxury-heading-md mb-4">רכז נגישות</h2>
               <div className="space-y-4 luxury-text-body">
                 <p className="font-semibold">צוות הנגישות של ⁦Pet Wash™⁩ לשירותכם</p>
                 
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center gap-3">
-                    <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <Mail className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
                     <div>
                       <p className="font-semibold">אימייל:</p>
-                      <a href="mailto:accessibility@petwash.co.il" className="text-blue-600 dark:text-blue-400 underline">
+                      <a href="mailto:accessibility@petwash.co.il" className="text-[#B8932F] dark:text-[#D4AF37] underline">
                         accessibility@petwash.co.il
                       </a>
                     </div>
                   </div>
                   
                   <div className="flex items-center gap-3">
-                    <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                    <Phone className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
                     <div>
                       <p className="font-semibold">טלפון:</p>
-                      <a href="tel:+972501234567" className="text-blue-600 dark:text-blue-400 underline">
+                      <a href="tel:+972501234567" className="text-[#B8932F] dark:text-[#D4AF37] underline">
                         050-123-4567
                       </a>
                       <p className="text-sm text-gray-600 dark:text-gray-400">(א׳-ה׳, 9:00-17:00)</p>
@@ -345,27 +345,27 @@ export default function AccessibilityStatement() {
             </div>
           </div>
 
-          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-5 border-l-4 border-purple-500">
+          <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-5 border-l-4 border-[#D4AF37]">
             <h2 className="luxury-heading-md mb-4">Accessibility Coordinator</h2>
             <div className="space-y-4 luxury-text-body">
               <p className="font-semibold">⁦Pet Wash™⁩ Accessibility Team at your service</p>
               
               <div className="mt-4 space-y-3">
                 <div className="flex items-center gap-3">
-                  <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <Mail className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
                   <div>
                     <p className="font-semibold">Email:</p>
-                    <a href="mailto:accessibility@petwash.co.il" className="text-blue-600 dark:text-blue-400 underline">
+                    <a href="mailto:accessibility@petwash.co.il" className="text-[#B8932F] dark:text-[#D4AF37] underline">
                       accessibility@petwash.co.il
                     </a>
                   </div>
                 </div>
                 
                 <div className="flex items-center gap-3">
-                  <Phone className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                  <Phone className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
                   <div>
                     <p className="font-semibold">Phone:</p>
-                    <a href="tel:+972501234567" className="text-blue-600 dark:text-blue-400 underline">
+                    <a href="tel:+972501234567" className="text-[#B8932F] dark:text-[#D4AF37] underline">
                       +972-50-123-4567
                     </a>
                     <p className="text-sm text-gray-600 dark:text-gray-400">(Sun-Thu, 9:00-17:00 IST)</p>

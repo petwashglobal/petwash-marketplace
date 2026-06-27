@@ -52,15 +52,15 @@ export function KenzoTalkingAvatar({ isVisible, isSpeaking, emotion = 'happy' }:
   if (!isVisible) return null;
 
   const emotionColors: Record<string, string> = {
-    happy: 'from-blue-400 to-blue-600',
-    thinking: 'from-purple-400 to-purple-600',
-    excited: 'from-orange-400 to-orange-600',
+    happy: 'from-[#D4AF37] to-[#B8932F]',
+    thinking: 'from-[#D4AF37] to-[#B8932F]',
+    excited: 'from-[#D4AF37] to-[#B8932F]',
     helpful: 'from-green-400 to-green-600',
-    playful: 'from-pink-400 to-pink-600',
-    kiss: 'from-pink-500 to-rose-600',
+    playful: 'from-[#D4AF37] to-[#B8932F]',
+    kiss: 'from-[#D4AF37] to-rose-600',
     wink: 'from-amber-400 to-yellow-600',
     smile: 'from-emerald-400 to-teal-600',
-    love: 'from-red-400 to-pink-600',
+    love: 'from-red-400 to-[#B8932F]',
   };
 
   const gradientClass = emotionColors[emotion] || emotionColors.happy;
@@ -101,7 +101,7 @@ export function KenzoTalkingAvatar({ isVisible, isSpeaking, emotion = 'happy' }:
             {(emotion === 'love' || emotion === 'kiss') && (
               <>
                 <div className="absolute -top-4 -right-2 text-red-500 text-xl animate-float">❤️</div>
-                <div className="absolute -top-6 left-0 text-pink-500 text-sm animate-float-delayed">💕</div>
+                <div className="absolute -top-6 left-0 text-[#D4AF37] text-sm animate-float-delayed">💕</div>
               </>
             )}
             
@@ -170,10 +170,10 @@ export function KenzoTalkingAvatar({ isVisible, isSpeaking, emotion = 'happy' }:
         {/* Status Indicator */}
         <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 text-center">
           <div className={`inline-flex items-center gap-2 px-4 py-2 rounded-full text-xs font-medium bg-white shadow-lg ${
-            isSpeaking ? 'text-blue-600' : 'text-gray-600'
+            isSpeaking ? 'text-[#B8932F]' : 'text-gray-600'
           }`}>
             <div className={`w-2 h-2 rounded-full ${
-              isSpeaking ? 'bg-blue-500 animate-pulse' : 'bg-gray-400'
+              isSpeaking ? 'bg-[#D4AF37] animate-pulse' : 'bg-gray-400'
             }`} />
             {isSpeaking ? 'Speaking...' : 'Listening'}
           </div>

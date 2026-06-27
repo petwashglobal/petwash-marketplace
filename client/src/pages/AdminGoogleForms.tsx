@@ -110,7 +110,7 @@ export default function AdminGoogleForms() {
           </Link>
           <div>
             <h1 className="text-2xl font-bold flex items-center gap-3">
-              <FileText className="h-7 w-7 text-blue-600" />
+              <FileText className="h-7 w-7 text-[#B8932F]" />
               Google Forms Management
             </h1>
             <p className="text-gray-500 text-sm mt-1">
@@ -147,7 +147,7 @@ export default function AdminGoogleForms() {
             ) : (
               <div className="space-y-4">
                 {configs.map((config: FormConfig) => (
-                  <div key={config.id} className="border rounded-lg p-4 hover:border-blue-200 transition-colors">
+                  <div key={config.id} className="border rounded-lg p-4 hover:border-[#D4AF37] transition-colors">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <Badge variant={config.enabled ? 'default' : 'secondary'} className="gap-1">
@@ -301,7 +301,7 @@ export default function AdminGoogleForms() {
             <CardTitle className="text-lg">How It Works</CardTitle>
           </CardHeader>
           <CardContent className="text-sm text-gray-600 space-y-2">
-            <p>1. Create a Google Form at <a href="https://forms.google.com" target="_blank" className="text-blue-600 underline">forms.google.com</a></p>
+            <p>1. Create a Google Form at <a href="https://forms.google.com" target="_blank" className="text-[#B8932F] underline">forms.google.com</a></p>
             <p>2. Copy the form's share URL and paste it above</p>
             <p>3. The form will be embedded on the corresponding page automatically</p>
             <p>4. Responses will appear in your Google Form responses and linked Google Sheets</p>

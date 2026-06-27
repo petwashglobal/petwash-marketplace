@@ -129,7 +129,7 @@ export default function NayaxMonitoring() {
       case 'pending':
         return <Badge className="bg-yellow-500 text-white"><Clock className="w-3 h-3 mr-1" />Pending</Badge>;
       case 'processing':
-        return <Badge className="bg-blue-500 text-white"><RefreshCw className="w-3 h-3 mr-1" />Processing</Badge>;
+        return <Badge className="bg-[#D4AF37] text-white"><RefreshCw className="w-3 h-3 mr-1" />Processing</Badge>;
       case 'failed':
         return <Badge className="bg-red-500 text-white"><XCircle className="w-3 h-3 mr-1" />Failed</Badge>;
       default:
@@ -140,11 +140,11 @@ export default function NayaxMonitoring() {
   const getTypeBadge = (type: string) => {
     switch (type) {
       case 'payment':
-        return <Badge variant="outline" className="border-blue-500 text-blue-700"><CreditCard className="w-3 h-3 mr-1" />Payment</Badge>;
+        return <Badge variant="outline" className="border-[#D4AF37] text-[#B8932F]"><CreditCard className="w-3 h-3 mr-1" />Payment</Badge>;
       case 'redeem':
         return <Badge variant="outline" className="border-green-500 text-green-700"><QrCode className="w-3 h-3 mr-1" />Redeem</Badge>;
       case 'webhook':
-        return <Badge variant="outline" className="border-purple-500 text-purple-700">Webhook</Badge>;
+        return <Badge variant="outline" className="border-[#D4AF37] text-[#B8932F]">Webhook</Badge>;
       default:
         return <Badge variant="outline">{type}</Badge>;
     }
@@ -316,7 +316,7 @@ export default function NayaxMonitoring() {
           {/* Transaction Table */}
           {isLoading ? (
             <div className="text-center py-12">
-              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-blue-600" />
+              <RefreshCw className="w-8 h-8 animate-spin mx-auto mb-4 text-[#B8932F]" />
               <p className="text-slate-600">Loading transactions...</p>
             </div>
           ) : transactions && transactions.length > 0 ? (

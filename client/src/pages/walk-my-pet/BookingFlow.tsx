@@ -384,7 +384,7 @@ export default function WalkBookingFlow() {
           </div>
           <div className={`h-1 w-8 sm:w-12 rounded-full ${['pending_match', 'confirmation'].includes(step) ? 'bg-amber-500' : 'bg-white'}`}></div>
           {/* Step 3: Matching */}
-          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'pending_match' ? 'bg-gradient-to-r from-amber-400 to-orange-500 text-white luxury-shadow-lg animate-pulse' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-amber-600' : 'bg-white text-slate-500'}`}>
+          <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center text-xs sm:text-sm font-semibold transition-all ${step === 'pending_match' ? 'bg-gradient-to-r from-amber-400 to-[#D4AF37] text-white luxury-shadow-lg animate-pulse' : step === 'confirmation' ? 'luxury-gradient-border bg-white text-amber-600' : 'bg-white text-slate-500'}`}>
             3
           </div>
           <div className={`h-1 w-8 sm:w-12 rounded-full ${step === 'confirmation' ? 'bg-emerald-500' : 'bg-white'}`}></div>
@@ -722,7 +722,7 @@ export default function WalkBookingFlow() {
         {/* Step 3: Pending Match — both parties must consent before the walk is confirmed */}
         {step === "pending_match" && (
           <div className="text-center py-12 luxury-fade-in">
-            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-amber-400 to-orange-500 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl animate-pulse">
+            <div className="w-24 h-24 rounded-full bg-gradient-to-r from-amber-400 to-[#D4AF37] mx-auto flex items-center justify-center mb-6 luxury-shadow-xl animate-pulse">
               <Handshake className="h-12 w-12 text-white" />
             </div>
             <h2 className="luxury-heading-lg mb-4">ממתינים להתאמה...</h2>
@@ -741,7 +741,7 @@ export default function WalkBookingFlow() {
               <div className="flex gap-1">
                 <div className="w-3 h-3 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0ms' }}></div>
                 <div className="w-3 h-3 rounded-full bg-amber-500 animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                <div className="w-3 h-3 rounded-full bg-orange-500 animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                <div className="w-3 h-3 rounded-full bg-[#D4AF37] animate-bounce" style={{ animationDelay: '300ms' }}></div>
               </div>
               <div className="w-16 h-16 rounded-full bg-gradient-to-br from-emerald-100 to-emerald-200 flex items-center justify-center border-2 border-emerald-300">
                 <PawPrint className="h-8 w-8 text-emerald-600" />
@@ -823,7 +823,7 @@ export default function WalkBookingFlow() {
                     href={`https://waze.com/ul?ll=${pickupDetails?.lat ?? (walker as any)?.latitude},${pickupDetails?.lng ?? (walker as any)?.longitude}&navigate=yes&zoom=17`}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-cyan-50 border border-cyan-200 text-cyan-700 text-sm font-semibold hover:bg-cyan-100 transition-colors"
+                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#D4AF37] border border-[#D4AF37] text-[#B8932F] text-sm font-semibold hover:bg-[#D4AF37] transition-colors"
                   >
                     🚗 Waze
                   </a>

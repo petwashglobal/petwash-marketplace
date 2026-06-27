@@ -1098,9 +1098,9 @@ const LocationDashboardPanel: React.FC = () => {
       ) : (
         <>
           <div className="flex gap-3 mb-4">
-            <div className="flex-1 bg-blue-50 rounded-xl px-4 py-3 text-center border border-blue-100">
-              <div className="text-xl font-bold text-blue-700">{customers.length}</div>
-              <div className="text-xs text-blue-500 mt-0.5">Customers online</div>
+            <div className="flex-1 bg-[#D4AF37] rounded-xl px-4 py-3 text-center border border-[#D4AF37]">
+              <div className="text-xl font-bold text-[#B8932F]">{customers.length}</div>
+              <div className="text-xs text-[#D4AF37] mt-0.5">Customers online</div>
             </div>
             <div className="flex-1 bg-emerald-50 rounded-xl px-4 py-3 text-center border border-emerald-100">
               <div className="text-xl font-bold text-emerald-700">{providers.length}</div>
@@ -1117,7 +1117,7 @@ const LocationDashboardPanel: React.FC = () => {
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
                   loc.role === 'provider'
                     ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-blue-100 text-blue-700'
+                    : 'bg-[#D4AF37] text-[#B8932F]'
                 }`}>
                   {loc.role === 'provider' ? '🐾' : '👤'}
                 </div>
@@ -1127,10 +1127,10 @@ const LocationDashboardPanel: React.FC = () => {
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
                       loc.role === 'provider'
                         ? 'bg-emerald-100 text-emerald-600'
-                        : 'bg-blue-100 text-blue-600'
+                        : 'bg-[#D4AF37] text-[#B8932F]'
                     }`}>{loc.role}</span>
                     {loc.source === 'device_gps' && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-purple-100 text-purple-600 font-medium">GPS</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] font-medium">GPS</span>
                     )}
                   </div>
                   <div className="text-xs text-slate-400 mt-0.5">

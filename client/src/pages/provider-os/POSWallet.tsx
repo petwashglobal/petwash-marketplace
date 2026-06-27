@@ -187,8 +187,8 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
 
         {/* This week */}
         <div className="bg-white border border-gray-200 rounded-xl p-4">
-          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center mb-2">
-            <TrendingUp className="w-4 h-4 text-blue-600" />
+          <div className="w-8 h-8 bg-[#D4AF37] rounded-lg flex items-center justify-center mb-2">
+            <TrendingUp className="w-4 h-4 text-[#B8932F]" />
           </div>
           {earningsLoading ? <div className="h-7 bg-white rounded animate-pulse mb-1" /> : (
             <p className="text-xl font-bold text-gray-900">{thisWeek !== null ? FMT_ILS(thisWeek) : '—'}</p>
@@ -250,12 +250,12 @@ export default function POSWallet({ activePlatform }: { activePlatform: Platform
       {/* ── Overview tab ─────────────────────────────────────────────── */}
       {activeTab === 'overview' && (
         <div className="space-y-4">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
+          <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-xl p-4">
             <div className="flex items-start gap-3">
-              <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
+              <Info className="w-4 h-4 text-[#B8932F] mt-0.5 shrink-0" />
               <div>
-                <p className="text-sm font-semibold text-blue-900">How your wallet works</p>
-                <ul className="text-xs text-blue-800 mt-1 space-y-1">
+                <p className="text-sm font-semibold text-[#B8932F]">How your wallet works</p>
+                <ul className="text-xs text-[#B8932F] mt-1 space-y-1">
                   <li>• Client pays → funds enter escrow</li>
                   <li>• Job completed → 48h review period</li>
                   <li>• Platform commission (15%) deducted + VAT 18% on commission only</li>

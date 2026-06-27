@@ -65,9 +65,9 @@ function ServiceGlyph({ svc, size, label }: { svc: { emoji: string; iconKey?: st
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: 'Awaiting Groomer', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
-  accepted: { label: 'Confirmed', color: 'bg-blue-100 text-blue-800 dark:bg-white dark:text-blue-300' },
+  accepted: { label: 'Confirmed', color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]' },
   confirmed: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-300' },
-  in_progress: { label: '✂️ Grooming Now', color: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900/30 dark:text-indigo-300' },
+  in_progress: { label: '✂️ Grooming Now', color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F]/30 dark:text-[#D4AF37]' },
   completed: { label: 'Done', color: 'bg-white text-gray-700 dark:bg-white/40 dark:text-black' },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-300' },
 };
@@ -183,7 +183,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
       <div className="luxury-glass-card luxury-shadow-md p-5 luxury-animate-fade-in">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-3">
-            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-pink-400 to-rose-600 flex items-center justify-center"><ServiceGlyph svc={svc} size={20} label={isHebrew ? svc.he : svc.en} /></div>
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-rose-600 flex items-center justify-center"><ServiceGlyph svc={svc} size={20} label={isHebrew ? svc.he : svc.en} /></div>
             <div>
               <h3 className="font-semibold text-gray-900 dark:text-black">{isHebrew ? svc.he : svc.en}</h3>
               <p className="text-sm text-gray-500 flex items-center gap-1"><PawPrint className="w-3.5 h-3.5" />{petName}</p>
@@ -194,11 +194,11 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
 
         <div className="grid grid-cols-2 gap-3 text-sm mb-4">
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-            <Calendar className="w-4 h-4 text-blue-500" />
+            <Calendar className="w-4 h-4 text-[#D4AF37]" />
             {format(parseISO(booking.startDate), 'MMM d, h:mm a')}
           </div>
           <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
-            <Scissors className="w-4 h-4 text-pink-500" />{groomerName}
+            <Scissors className="w-4 h-4 text-[#D4AF37]" />{groomerName}
           </div>
           <div className="flex items-center gap-2">
             <DollarSign className="w-4 h-4 text-green-500" />
@@ -215,7 +215,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
             <div className="flex gap-2 overflow-x-auto pb-1">
               {booking.photoUpdates.map((photo, i) => (
                 <div key={i} className="flex-shrink-0 bg-white dark:bg-white rounded-lg p-3 text-xs text-gray-600 dark:text-gray-400 min-w-[120px]">
-                  <Camera className="w-4 h-4 mb-1 text-pink-400" />
+                  <Camera className="w-4 h-4 mb-1 text-[#D4AF37]" />
                   <p>{photo.caption || 'Photo update'}</p>
                   <p className="text-gray-400 mt-1">{format(new Date(photo.timestamp), 'h:mm a')}</p>
                 </div>
@@ -284,9 +284,9 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
         <div className="luxury-container">
           <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
             <div>
-              <div className="flex items-center gap-2 mb-1"><Scissors className="w-6 h-6 text-pink-300" /><span className="text-pink-200 text-sm font-medium uppercase tracking-wide">My Grooming</span></div>
+              <div className="flex items-center gap-2 mb-1"><Scissors className="w-6 h-6 text-[#D4AF37]" /><span className="text-[#D4AF37] text-sm font-medium uppercase tracking-wide">My Grooming</span></div>
               <h1 className="text-3xl font-bold text-white">{isHebrew ? 'היסטוריית הטיפוח שלי' : 'My Grooming History'}</h1>
-              <p className="text-purple-100 mt-1">Track appointments, photos & spending</p>
+              <p className="text-[#D4AF37] mt-1">Track appointments, photos & spending</p>
             </div>
             <Button variant="outline" size="sm" className="border-white/30 text-white hover:bg-white/10" onClick={() => setLocation('/groomers/book')}>
               <Scissors className="w-4 h-4 mr-2" />Book Session
@@ -295,13 +295,13 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
 
           <div className="grid grid-cols-3 gap-4 mt-8">
             {[
-              { icon: Scissors, label: 'Sessions', value: completed.length, color: 'from-pink-400 to-rose-600' },
+              { icon: Scissors, label: 'Sessions', value: completed.length, color: 'from-[#D4AF37] to-rose-600' },
               { icon: DollarSign, label: 'Total Spent', value: fmt(totalSpent), color: 'from-green-400 to-emerald-600' },
-              { icon: TrendingUp, label: 'Fav Service', value: favoriteService ? (SERVICE_LABELS[favoriteService]?.emoji || '✂️') : '—', color: 'from-amber-400 to-orange-500' },
+              { icon: TrendingUp, label: 'Fav Service', value: favoriteService ? (SERVICE_LABELS[favoriteService]?.emoji || '✂️') : '—', color: 'from-amber-400 to-[#D4AF37]' },
             ].map(({ icon: Icon, label, value, color }) => (
               <div key={label} className="bg-white/10 backdrop-blur-sm rounded-2xl p-4 text-center">
                 <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${color} flex items-center justify-center mb-2 mx-auto`}><Icon className="w-4 h-4 text-white" /></div>
-                <p className="text-xs text-purple-200">{label}</p>
+                <p className="text-xs text-[#D4AF37]">{label}</p>
                 <p className="text-lg font-bold text-white">{value}</p>
               </div>
             ))}

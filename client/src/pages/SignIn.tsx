@@ -2312,8 +2312,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 className="w-full text-left p-4 border border-neutral-200 hover:border-neutral-400 bg-white hover:shadow-sm transition-all flex items-center gap-4"
                 data-testid="intent-customer"
               >
-                <div className="w-10 h-10 bg-blue-50 rounded-full flex items-center justify-center flex-shrink-0">
-                  <User className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 bg-[#D4AF37] rounded-full flex items-center justify-center flex-shrink-0">
+                  <User className="w-5 h-5 text-[#B8932F]" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-neutral-900">{language === 'he' ? 'הזמנת שירותים' : 'Book Services'}</p>
@@ -2351,8 +2351,8 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 className="w-full text-left p-4 border border-neutral-200 hover:border-neutral-400 bg-white hover:shadow-sm transition-all flex items-center gap-4"
                 data-testid="intent-staff"
               >
-                <div className="w-10 h-10 bg-purple-50 rounded-full flex items-center justify-center flex-shrink-0">
-                  <Lock className="w-5 h-5 text-purple-600" />
+                <div className="w-10 h-10 bg-[#D4AF37] rounded-full flex items-center justify-center flex-shrink-0">
+                  <Lock className="w-5 h-5 text-[#B8932F]" />
                 </div>
                 <div>
                   <p className="text-sm font-medium text-neutral-900">{language === 'he' ? 'צוות / ניהול' : 'Staff / Admin Access'}</p>
@@ -2556,7 +2556,7 @@ export default function SignIn({ language, onLanguageChange }: SignInProps) {
                 onClick={() => handleExternalOAuth('instagram')}
                 disabled={!!socialLoading}
                 variant="outline"
-                className="flex-1 h-12 flex items-center justify-center gap-2 text-xs font-medium border-0 bg-gradient-to-r from-purple-500 via-pink-500 to-orange-400 hover:opacity-90 text-white rounded-none tracking-wider uppercase transition-all"
+                className="flex-1 h-12 flex items-center justify-center gap-2 text-xs font-medium border-0 bg-gradient-to-r from-[#D4AF37] via-[#D4AF37] to-[#D4AF37] hover:opacity-90 text-white rounded-none tracking-wider uppercase transition-all"
                 data-testid="button-instagram-signin"
               >
                 {socialLoading === 'instagram' ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <SiInstagram className="w-3.5 h-3.5" />}

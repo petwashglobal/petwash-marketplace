@@ -210,7 +210,7 @@ export default function Disclaimer() {
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '5. קבלנים עצמאיים - לא עובדים' : '5. Independent Contractors - Not Employees'}
               </h2>
-              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
+              <div className="bg-[#D4AF37] dark:bg-white p-6 rounded-lg">
                 <p className="font-bold mb-2">{isHebrew ? 'הצהרה חשובה:' : 'Important Declaration:'}</p>
                 <p className="leading-relaxed">
                   {isHebrew ? (
@@ -318,7 +318,7 @@ export default function Disclaimer() {
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '10. קבלה של כתב ויתור זה' : '10. Acceptance of This Disclaimer'}
               </h2>
-              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
+              <div className="bg-[#D4AF37] dark:bg-white p-6 rounded-lg">
                 <p className="leading-relaxed font-bold">
                   {isHebrew ? (
                     <>על ידי שימוש ב-⁦The Sitter Suite™⁩, אתה מאשר ומקבל את כל תנאי כתב הויתור הזה. אם אינך מסכים, אל תשתמש בפלטפורמה.</>
@@ -334,13 +334,13 @@ export default function Disclaimer() {
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '11. יצירת קשר' : '11. Contact Us'}
               </h2>
-              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
+              <div className="bg-[#D4AF37] dark:bg-white p-6 rounded-lg">
                 <p className="font-semibold mb-2">Pet Wash Ltd</p>
                 <p className="mt-2">
-                  {isHebrew ? 'דוא"ל משפטי:' : 'Legal Email:'} <a href="mailto:legal@petwash.co.il" className="text-blue-600 hover:underline">legal@petwash.co.il</a>
+                  {isHebrew ? 'דוא"ל משפטי:' : 'Legal Email:'} <a href="mailto:legal@petwash.co.il" className="text-[#B8932F] hover:underline">legal@petwash.co.il</a>
                 </p>
                 <p>
-                  {isHebrew ? 'אתר:' : 'Website:'} <a href="https://www.petwash.co.il" className="text-blue-600 hover:underline">www.petwash.co.il</a>
+                  {isHebrew ? 'אתר:' : 'Website:'} <a href="https://www.petwash.co.il" className="text-[#B8932F] hover:underline">www.petwash.co.il</a>
                 </p>
               </div>
             </section>

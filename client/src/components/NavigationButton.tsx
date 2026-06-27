@@ -210,7 +210,7 @@ export function NavigationLink({
       href={links[provider]}
       target="_blank"
       rel="noopener noreferrer"
-      className={`inline-flex items-center gap-2 text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 ${className}`}
+      className={`inline-flex items-center gap-2 text-[#B8932F] hover:text-[#B8932F] dark:text-[#D4AF37] dark:hover:text-[#D4AF37] ${className}`}
     >
       {children || (
         <>

@@ -245,24 +245,24 @@ export default function POSSafety() {
 
           <div className="bg-white border border-gray-200 rounded-xl p-4 space-y-3">
             <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-              <MapPin className="w-4 h-4 text-orange-500" /> Block an Address
+              <MapPin className="w-4 h-4 text-[#D4AF37]" /> Block an Address
             </h3>
             <div className="flex gap-2">
               <input value={blockAddress} onChange={e => setBlockAddress(e.target.value)}
                 placeholder="Enter address to block"
                 className="flex-1 text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400" />
-              <button onClick={handleBlockAddress} className="px-4 py-2.5 bg-orange-500 text-white rounded-xl text-sm font-medium hover:bg-orange-600 transition-colors">
+              <button onClick={handleBlockAddress} className="px-4 py-2.5 bg-[#D4AF37] text-white rounded-xl text-sm font-medium hover:bg-[#B8932F] transition-colors">
                 Block
               </button>
             </div>
             {blockedAddresses.length > 0 && (
               <div className="space-y-1.5">
                 {blockedAddresses.map((a, i) => (
-                  <div key={i} className="flex items-center gap-2 bg-orange-50 rounded-lg px-3 py-2">
-                    <MapPin className="w-3.5 h-3.5 text-orange-500 shrink-0" />
-                    <span className="text-xs text-orange-800 flex-1 truncate">{a}</span>
+                  <div key={i} className="flex items-center gap-2 bg-[#D4AF37] rounded-lg px-3 py-2">
+                    <MapPin className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
+                    <span className="text-xs text-[#B8932F] flex-1 truncate">{a}</span>
                     <button onClick={() => setBlockedAddresses(prev => prev.filter((_, idx) => idx !== i))}>
-                      <X className="w-3.5 h-3.5 text-orange-400" />
+                      <X className="w-3.5 h-3.5 text-[#D4AF37]" />
                     </button>
                   </div>
                 ))}
@@ -272,8 +272,8 @@ export default function POSSafety() {
 
           {/* Safety toggle */}
           <div className="bg-white border border-gray-200 rounded-xl p-4 flex items-center gap-3">
-            <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center">
-              <Shield className="w-4 h-4 text-blue-600" />
+            <div className="w-9 h-9 bg-[#D4AF37] rounded-xl flex items-center justify-center">
+              <Shield className="w-4 h-4 text-[#B8932F]" />
             </div>
             <div className="flex-1">
               <p className="text-sm font-medium text-gray-900">Verified clients only</p>
@@ -312,8 +312,8 @@ export default function POSSafety() {
 
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <div className="flex items-start gap-3 mb-3">
-              <div className="w-9 h-9 bg-blue-50 rounded-xl flex items-center justify-center shrink-0">
-                <Clock className="w-4 h-4 text-blue-600" />
+              <div className="w-9 h-9 bg-[#D4AF37] rounded-xl flex items-center justify-center shrink-0">
+                <Clock className="w-4 h-4 text-[#B8932F]" />
               </div>
               <div className="flex-1">
                 <p className="text-sm font-semibold text-gray-900">Safety Check-in Timer</p>
@@ -350,7 +350,7 @@ export default function POSSafety() {
               items: ['Verify client identity matches booking', 'Confirm pet details and any special needs', 'Check the service address before arrival', 'Ensure your emergency contacts are up to date']
             },
             {
-              title: 'During the Job', icon: Shield, color: 'text-blue-600', bg: 'bg-blue-50',
+              title: 'During the Job', icon: Shield, color: 'text-[#B8932F]', bg: 'bg-[#D4AF37]',
               items: ['Always stay on the service platform chat', 'Take photos at start and end of service', 'Report any injuries or incidents immediately', 'Do not share personal contact details']
             },
             {
@@ -358,7 +358,7 @@ export default function POSSafety() {
               items: ['Leave the situation immediately if threatened', 'Call 100 (Police) for immediate danger', 'Contact PetWash Safety team: safety@petwash.co.il', 'Document the incident with photos/notes']
             },
             {
-              title: 'Pet Safety', icon: Heart, color: 'text-pink-600', bg: 'bg-pink-50',
+              title: 'Pet Safety', icon: Heart, color: 'text-[#B8932F]', bg: 'bg-[#D4AF37]',
               items: ['Report pet injuries to owner and platform immediately', 'Know the nearest 24h vet clinic in your area', 'Never leave a pet unattended in a vehicle', 'Follow the care instructions provided by the owner']
             },
           ].map(section => {

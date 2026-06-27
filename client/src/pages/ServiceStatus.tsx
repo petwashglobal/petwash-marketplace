@@ -220,12 +220,12 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
       beta: {
         variant: 'secondary' as const,
         label: isHebrew ? 'בטא' : 'Beta',
-        color: 'bg-blue-500',
+        color: 'bg-[#D4AF37]',
       },
       development: {
         variant: 'outline' as const,
         label: isHebrew ? 'פיתוח' : 'Development',
-        color: 'bg-orange-500',
+        color: 'bg-[#D4AF37]',
       },
       planned: {
         variant: 'outline' as const,
@@ -281,7 +281,7 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
                       {service.backend && service.frontend ? (
                         <CheckCircle2 className="w-5 h-5 text-green-600" />
                       ) : service.backend || service.frontend ? (
-                        <AlertCircle className="w-5 h-5 text-orange-600" />
+                        <AlertCircle className="w-5 h-5 text-[#B8932F]" />
                       ) : (
                         <Construction className="w-5 h-5 text-gray-400" />
                       )}
@@ -322,7 +322,7 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
           ))}
         </div>
 
-        <Card className="mt-12 border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-950">
+        <Card className="mt-12 border-[#D4AF37] dark:border-[#B8932F] bg-[#D4AF37] dark:bg-[#B8932F]">
           <CardContent className="pt-6">
             <p className="text-sm text-center">
               {isHebrew 

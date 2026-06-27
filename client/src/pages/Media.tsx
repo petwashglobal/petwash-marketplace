@@ -19,7 +19,7 @@ export default function Media() {
 
         <div className="luxury-grid-3 mb-16 luxury-stagger-fade-in">
           <div className="luxury-glass-minimal luxury-hover-lift p-8 cursor-pointer" onClick={() => setLocation("/gallery")} style={{ animationDelay: '0.1s' }}>
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 luxury-pulse-glow">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center mb-6 luxury-pulse-glow">
               <Camera className="w-7 h-7 text-white" />
             </div>
             <h3 className="text-xl font-bold mb-3 luxury-gradient-text">Photo Gallery</h3>
@@ -32,7 +32,7 @@ export default function Media() {
           </div>
 
           <div className="luxury-glass-minimal luxury-hover-lift p-8" style={{ animationDelay: '0.2s' }}>
-            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center mb-6 luxury-pulse-glow">
+            <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center mb-6 luxury-pulse-glow">
               <Video className="w-7 h-7 text-white" />
             </div>
             <h3 className="text-xl font-bold mb-3 luxury-gradient-text">Video Resources</h3>
@@ -47,11 +47,11 @@ export default function Media() {
                 { title: 'App Walkthrough', tag: 'How-To' },
               ].map((v) => (
                 <div key={v.title} className="rounded-lg overflow-hidden border border-white/10 bg-white/5 p-2 flex flex-col gap-1">
-                  <div className="w-full h-10 rounded bg-gradient-to-br from-blue-900/40 to-cyan-900/30 flex items-center justify-center">
-                    <Video className="w-4 h-4 text-cyan-400 opacity-60" />
+                  <div className="w-full h-10 rounded bg-gradient-to-br from-[#B8932F]/40 to-[#B8932F]/30 flex items-center justify-center">
+                    <Video className="w-4 h-4 text-[#D4AF37] opacity-60" />
                   </div>
                   <p className="text-[10px] font-semibold text-gray-200 leading-tight">{v.title}</p>
-                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-300 self-start">{v.tag}</span>
+                  <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-[#D4AF37]/20 text-[#D4AF37] self-start">{v.tag}</span>
                 </div>
               ))}
             </div>

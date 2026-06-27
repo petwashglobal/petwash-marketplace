@@ -73,7 +73,7 @@ export default function SuppliersPartners() {
     <div className="min-h-screen luxury-bg-mesh py-12">
       <div className="container max-w-6xl mx-auto px-4">
         <div className="text-center mb-16 luxury-animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-blue-600 rounded-full mb-4 luxury-shadow-lg luxury-animate-scale-in">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-green-500 to-[#B8932F] rounded-full mb-4 luxury-shadow-lg luxury-animate-scale-in">
             <Package className="w-10 h-10 text-white" />
           </div>
           <h1 className="luxury-heading-xl mb-4">
@@ -100,7 +100,7 @@ export default function SuppliersPartners() {
           </div>
 
           <div className="luxury-glass-card luxury-hover-glow luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-3">
-            <Truck className="w-12 h-12 text-blue-600 mb-4" />
+            <Truck className="w-12 h-12 text-[#B8932F] mb-4" />
             <h3 className="luxury-heading-sm mb-2">
               {isHe ? 'ספקי ציוד' : 'Equipment Suppliers'}
             </h3>
@@ -112,7 +112,7 @@ export default function SuppliersPartners() {
           </div>
 
           <div className="luxury-glass-card luxury-hover-glow luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-4">
-            <Award className="w-12 h-12 text-purple-600 mb-4" />
+            <Award className="w-12 h-12 text-[#B8932F] mb-4" />
             <h3 className="luxury-heading-sm mb-2">
               {isHe ? 'שיתופי מותג' : 'Brand Partnerships'}
             </h3>
@@ -124,7 +124,7 @@ export default function SuppliersPartners() {
           </div>
         </div>
 
-        <div className="luxury-glass-card luxury-shadow-xl p-8 text-center bg-gradient-to-r from-green-500/10 to-blue-500/10 luxury-animate-fade-in luxury-delay-5">
+        <div className="luxury-glass-card luxury-shadow-xl p-8 text-center bg-gradient-to-r from-green-500/10 to-[#D4AF37]/10 luxury-animate-fade-in luxury-delay-5">
           <h2 className="luxury-heading-lg mb-4">
             {isHe ? 'הצטרפו כשותפי אספקה' : 'Become a Supplier Partner'}
           </h2>
@@ -156,7 +156,7 @@ export default function SuppliersPartners() {
               </Button>
 
               <div className="text-center mb-6">
-                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-blue-600 flex items-center justify-center mx-auto mb-3">
+                <div className="w-14 h-14 rounded-full bg-gradient-to-br from-green-500 to-[#B8932F] flex items-center justify-center mx-auto mb-3">
                   <Send className="w-7 h-7 text-white" />
                 </div>
                 <h2 className="text-2xl font-bold text-gray-900 dark:text-black">
@@ -259,7 +259,7 @@ export default function SuppliersPartners() {
                 <Button
                   type="submit"
                   disabled={isSubmitting}
-                  className="w-full py-5 text-base font-semibold rounded-xl bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white border-0 shadow-lg"
+                  className="w-full py-5 text-base font-semibold rounded-xl bg-gradient-to-r from-green-600 to-[#B8932F] hover:from-green-700 hover:to-[#B8932F] text-white border-0 shadow-lg"
                   data-testid="button-submit-supplier"
                 >
                   {isSubmitting ? (

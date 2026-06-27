@@ -78,7 +78,7 @@ export default function AccessPending() {
   if (loading) {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center" dir={isHe ? 'rtl' : 'ltr'}>
-        <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+        <Loader2 className="w-8 h-8 animate-spin text-[#B8932F]" />
       </div>
     );
   }

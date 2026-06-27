@@ -91,7 +91,7 @@ export default function StatusDashboard() {
   if (uptimeLoading || stationsLoading) {
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600" />
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8932F]" />
       </div>
     );
   }
@@ -101,7 +101,7 @@ export default function StatusDashboard() {
       variant="dashboard"
       title="⁦Pet Wash™⁩ System Status"
       subtitle="Real-time platform health monitoring"
-      icon={<Activity className="w-8 h-8 text-purple-600" />}
+      icon={<Activity className="w-8 h-8 text-[#B8932F]" />}
     >
       <div className="min-h-screen luxury-bg-mesh p-6">
       <div className="max-w-7xl mx-auto space-y-6 animate-in fade-in duration-700">
@@ -139,7 +139,7 @@ export default function StatusDashboard() {
                 {/* Database Health */}
                 <div className="luxury-glass-minimal p-4 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-blue-500 to-purple-500">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
                       <Database className="w-5 h-5 text-white" />
                     </div>
                     <h3 className="font-semibold">Database</h3>
@@ -171,12 +171,12 @@ export default function StatusDashboard() {
                 {/* Critical Alerts */}
                 <div className="luxury-glass-minimal p-4 rounded-lg">
                   <div className="flex items-center gap-2 mb-2">
-                    <div className="p-2 rounded-lg bg-gradient-to-br from-orange-500 to-red-500">
+                    <div className="p-2 rounded-lg bg-gradient-to-br from-[#D4AF37] to-red-500">
                       <AlertCircle className="w-5 h-5 text-white" />
                     </div>
                     <h3 className="font-semibold">Critical Alerts</h3>
                   </div>
-                  <p className="text-2xl font-bold text-orange-600">
+                  <p className="text-2xl font-bold text-[#B8932F]">
                     {uptimeData.alerts.criticalUnacknowledged}
                   </p>
                   <p className="text-sm text-gray-600">
@@ -227,7 +227,7 @@ export default function StatusDashboard() {
                 <CardTitle className="text-sm font-medium">Maintenance Due</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold text-orange-600">
+                <div className="text-3xl font-bold text-[#B8932F]">
                   {stationsData.summary.maintenanceDue}
                 </div>
               </CardContent>
@@ -240,7 +240,7 @@ export default function StatusDashboard() {
           <Card className="luxury-glass-card luxury-shadow-lg animate-in slide-in-from-bottom duration-700 delay-200">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                <div className="p-2 rounded-lg bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
                   <MapPin className="w-5 h-5 text-white" />
                 </div>
                 Station Details

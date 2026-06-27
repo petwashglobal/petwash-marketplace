@@ -143,12 +143,12 @@ function BlockUserSheet({
 // ─── AI Summary panel ─────────────────────────────────────────────────────────
 function SummaryPanel({ summary, onClose }: { summary: string; onClose: () => void }) {
   return (
-    <div className="mx-4 mb-3 bg-white border border-blue-100 rounded-2xl p-4 shadow-sm"
+    <div className="mx-4 mb-3 bg-white border border-[#D4AF37] rounded-2xl p-4 shadow-sm"
       style={{ boxShadow: "0 2px 12px rgba(11,87,208,0.08)" }}>
       <div className="flex items-start justify-between mb-2">
         <div className="flex items-center gap-2">
-          <Bot className="w-4 h-4 text-blue-500" />
-          <span className="text-xs font-bold text-blue-700">AI Summary</span>
+          <Bot className="w-4 h-4 text-[#D4AF37]" />
+          <span className="text-xs font-bold text-[#B8932F]">AI Summary</span>
         </div>
         <button onClick={onClose} className="text-gray-300 hover:text-gray-500">
           <X className="w-4 h-4" />
@@ -270,8 +270,8 @@ function ContextualEmptyState({
   if (chatStatus === "pending" || chatStatus === "awaiting_confirmation") {
     return (
       <div className="flex flex-col items-center justify-center py-16 px-8 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center mb-5">
-          <Calendar className="w-7 h-7 text-blue-400" />
+        <div className="w-16 h-16 rounded-2xl bg-[#D4AF37] border border-[#D4AF37] flex items-center justify-center mb-5">
+          <Calendar className="w-7 h-7 text-[#D4AF37]" />
         </div>
         <h3 className="text-base font-bold text-gray-800 mb-2">Booking pending confirmation</h3>
         <p className="text-sm text-gray-400 leading-relaxed max-w-xs">
@@ -376,10 +376,10 @@ function WaveformPlayer({ audioUrl, transcript, isMe }: { audioUrl: string; tran
       <audio ref={audioRef} src={sanitizeUrl(audioUrl)} preload="metadata" />
       <div className="flex items-center gap-2">
         <button onClick={toggle}
-          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${isMe ? "bg-white/20 hover:bg-white/30" : "bg-blue-50 hover:bg-blue-100"}`}>
+          className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 transition-all ${isMe ? "bg-white/20 hover:bg-white/30" : "bg-[#D4AF37] hover:bg-[#D4AF37]"}`}>
           {playing
-            ? <Pause className={`w-3.5 h-3.5 ${isMe ? "text-white" : "text-blue-600"}`} />
-            : <Play  className={`w-3.5 h-3.5 ${isMe ? "text-white" : "text-blue-600"}`} />
+            ? <Pause className={`w-3.5 h-3.5 ${isMe ? "text-white" : "text-[#B8932F]"}`} />
+            : <Play  className={`w-3.5 h-3.5 ${isMe ? "text-white" : "text-[#B8932F]"}`} />
           }
         </button>
         {/* Waveform bars + seek */}
@@ -392,7 +392,7 @@ function WaveformPlayer({ audioUrl, transcript, isMe }: { audioUrl: string; tran
                 <div key={i}
                   style={{ height: `${h}%`, minHeight: 3 }}
                   className={`flex-1 rounded-full transition-colors ${active
-                    ? (isMe ? "bg-white" : "bg-blue-500")
+                    ? (isMe ? "bg-white" : "bg-[#D4AF37]")
                     : (isMe ? "bg-white/35" : "bg-white")
                   }`}
                 />
@@ -915,7 +915,7 @@ export default function BookingChat() {
       <div className="flex flex-col items-center justify-center bg-white p-8 text-center" style={{ height: "100dvh" }}>
         <AlertTriangle className="w-10 h-10 text-red-300 mb-4" />
         <h2 className="text-lg font-bold text-gray-800 mb-3">Unable to load chat</h2>
-        <button onClick={() => refetch()} className="text-sm font-semibold text-blue-600 hover:text-blue-800">Try again</button>
+        <button onClick={() => refetch()} className="text-sm font-semibold text-[#B8932F] hover:text-[#B8932F]">Try again</button>
       </div>
     );
   }
@@ -1000,7 +1000,7 @@ export default function BookingChat() {
                   className="flex items-center gap-2.5 text-sm cursor-pointer py-2.5"
                   onClick={() => aiSummarizeMutation.mutate()}
                 >
-                  <Bot className="w-4 h-4 text-blue-500" />
+                  <Bot className="w-4 h-4 text-[#D4AF37]" />
                   {aiSummarizeMutation.isPending ? "Summarizing…" : "AI Summarize chat"}
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
@@ -1044,7 +1044,7 @@ export default function BookingChat() {
 
         {/* ── Safety notice ────────────────────────────────────────────────── */}
         <div className="shrink-0 px-4 py-2 bg-white border-b border-gray-100 flex items-center gap-2">
-          <ShieldCheck className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+          <ShieldCheck className="w-3.5 h-3.5 text-[#D4AF37] shrink-0" />
           <span className="text-[11px] text-gray-400">Keep conversations on-platform for your safety.</span>
         </div>
 
@@ -1152,27 +1152,27 @@ export default function BookingChat() {
                 const mapsUrl = `https://maps.google.com/?q=${meta.lat},${meta.lng}`;
                 return (
                   <div key={msg.messageId} className="flex justify-center my-2">
-                    <div className="bg-white border border-blue-100 rounded-2xl overflow-hidden max-w-[85%]"
+                    <div className="bg-white border border-[#D4AF37] rounded-2xl overflow-hidden max-w-[85%]"
                       style={{ boxShadow: "0 2px 14px rgba(11,87,208,0.10)" }}>
                       {/* Map visual */}
-                      <div className="relative bg-blue-50 h-28 flex items-center justify-center">
+                      <div className="relative bg-[#D4AF37] h-28 flex items-center justify-center">
                         <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNjAiIGhlaWdodD0iNjAiIHZpZXdCb3g9IjAgMCA2MCA2MCIgZmlsbD0ibm9uZSIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cGF0aCBkPSJNMCAwaDYwdjYwSDB6IiBmaWxsPSIjRTdFRkZGIi8+PHBhdGggZD0iTTMwIDMwbTMwIDBhMzAgMzAgMCAxIDEtNjAgMCAzMCAzMCAwIDAgMSA2MCAwIiBmaWxsPSJub25lIiBzdHJva2U9IiNDN0Q3RjgiIHN0cm9rZS13aWR0aD0iMC41Ii8+PHBhdGggZD0iTTAgMzBoNjBNMzAgMHYzMCIgc3Ryb2tlPSIjQzdEN0Y4IiBzdHJva2Utd2lkdGg9IjAuNSIvPjwvc3ZnPg==')] opacity-60" />
                         <div className="relative flex flex-col items-center gap-1">
-                          <div className="w-10 h-10 rounded-full bg-blue-600 flex items-center justify-center shadow-lg">
+                          <div className="w-10 h-10 rounded-full bg-[#B8932F] flex items-center justify-center shadow-lg">
                             <MapPin className="w-5 h-5 text-white" />
                           </div>
-                          <div className="w-2 h-2 rounded-full bg-blue-200 mt-0.5" />
+                          <div className="w-2 h-2 rounded-full bg-[#D4AF37] mt-0.5" />
                         </div>
                       </div>
                       {/* Info */}
                       <div className="px-4 py-3">
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="text-[11px] font-semibold text-blue-700 uppercase tracking-wide">Provider On the Way</span>
+                          <span className="text-[11px] font-semibold text-[#B8932F] uppercase tracking-wide">Provider On the Way</span>
                           <span className="text-[9px] text-gray-300">{msg.createdAt ? format(new Date(msg.createdAt), "HH:mm") : ""}</span>
                         </div>
                         <p className="text-xs text-gray-500 mb-2">{msg.content}</p>
                         <a href={mapsUrl} target="_blank" rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-blue-600 text-white text-[11px] font-semibold hover:bg-blue-700 transition-colors">
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-[#B8932F] text-white text-[11px] font-semibold hover:bg-[#B8932F] transition-colors">
                           <MapPin className="w-3 h-3" /> View on Map
                         </a>
                       </div>
@@ -1211,7 +1211,7 @@ export default function BookingChat() {
                   <div key={msg.messageId} className="flex justify-center my-1">
                     <div className="bg-white border border-gray-100 rounded-full px-4 py-1.5 flex items-center gap-2 text-[11px] text-gray-500"
                       style={{ boxShadow: "0 1px 4px rgba(0,0,0,0.06)" }}>
-                      <ShieldCheck className="w-3 h-3 text-blue-400 shrink-0" />
+                      <ShieldCheck className="w-3 h-3 text-[#D4AF37] shrink-0" />
                       <span className="font-medium">{msg.content}</span>
                       <span className="text-[9px] text-gray-300">{msg.createdAt ? format(new Date(msg.createdAt), "HH:mm") : ""}</span>
                     </div>
@@ -1270,8 +1270,8 @@ export default function BookingChat() {
                   >
                     {/* Quoted reply preview */}
                     {quotedMsg && (
-                      <div className={`mb-2 rounded-lg px-2.5 py-1.5 text-[11px] border-l-2 ${isMe ? "border-white/50 bg-white/15" : "border-blue-300 bg-blue-50"}`}>
-                        <div className={`font-semibold mb-0.5 ${isMe ? "text-white/80" : "text-blue-600"}`}>
+                      <div className={`mb-2 rounded-lg px-2.5 py-1.5 text-[11px] border-l-2 ${isMe ? "border-white/50 bg-white/15" : "border-[#D4AF37] bg-[#D4AF37]"}`}>
+                        <div className={`font-semibold mb-0.5 ${isMe ? "text-white/80" : "text-[#B8932F]"}`}>
                           {quotedMsg.senderUid === user?.uid ? "You" : "Them"}
                         </div>
                         <div className={`truncate ${isMe ? "text-white/70" : "text-gray-500"}`}>
@@ -1282,8 +1282,8 @@ export default function BookingChat() {
 
                     {/* T010: Translation display */}
                     {translations[msg.messageId] && !showOriginal.has(msg.messageId) && !msg.isDeleted && (
-                      <div className={`mb-1.5 rounded-lg px-2 py-1 text-[11px] border-l-2 ${isMe ? "border-white/40 bg-white/10" : "border-blue-200 bg-blue-50/50"}`}>
-                        <div className={`flex items-center gap-1 mb-0.5 ${isMe ? "text-white/60" : "text-blue-500"}`}>
+                      <div className={`mb-1.5 rounded-lg px-2 py-1 text-[11px] border-l-2 ${isMe ? "border-white/40 bg-white/10" : "border-[#D4AF37] bg-[#D4AF37]/50"}`}>
+                        <div className={`flex items-center gap-1 mb-0.5 ${isMe ? "text-white/60" : "text-[#D4AF37]"}`}>
                           <Globe className="w-2.5 h-2.5" />
                           <span className="font-semibold text-[9px] uppercase tracking-wide">Translated</span>
                         </div>
@@ -1353,7 +1353,7 @@ export default function BookingChat() {
                       {Object.entries(msgReactions).map(([emoji, count]) => count > 0 && (
                         <button key={emoji}
                           onClick={() => reactMutation.mutate({ messageId: msg.messageId, reaction: emoji })}
-                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-gray-100 text-[11px] font-medium text-gray-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
+                          className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-gray-100 text-[11px] font-medium text-gray-600 hover:border-[#D4AF37] hover:bg-[#D4AF37] transition-colors"
                           style={{ boxShadow: "0 1px 3px rgba(0,0,0,0.06)" }}>
                           <span>{emoji}</span>
                           <span>{count}</span>
@@ -1371,7 +1371,7 @@ export default function BookingChat() {
                   <div className="flex items-center gap-1">
                     {!msg.isDeleted && (
                       <button onClick={() => setReplyingTo(msg)}
-                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-blue-400 flex items-center gap-1 transition-opacity">
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-[#D4AF37] flex items-center gap-1 transition-opacity">
                         <Reply className="w-3 h-3" /> Reply
                       </button>
                     )}
@@ -1384,10 +1384,10 @@ export default function BookingChat() {
                     {!msg.isDeleted && msg.messageType === 'text' && msg.content.length > 2 && (
                       <button onClick={() => translateMessage(msg)}
                         disabled={translatingId === msg.messageId}
-                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-indigo-400 flex items-center gap-1 transition-opacity disabled:opacity-30"
+                        className="opacity-0 group-hover:opacity-100 focus:opacity-100 mt-0.5 px-1 text-[10px] text-gray-300 hover:text-[#D4AF37] flex items-center gap-1 transition-opacity disabled:opacity-30"
                         title={translations[msg.messageId] ? (showOriginal.has(msg.messageId) ? "Show translation" : "Show original") : "Translate"}>
                         {translatingId === msg.messageId
-                          ? <span className="w-2.5 h-2.5 border border-gray-300 border-t-indigo-400 rounded-full animate-spin" />
+                          ? <span className="w-2.5 h-2.5 border border-gray-300 border-t-[#D4AF37] rounded-full animate-spin" />
                           : <Globe className="w-3 h-3" />
                         }
                       </button>
@@ -1423,10 +1423,10 @@ export default function BookingChat() {
             <div className="max-w-2xl mx-auto">
               {/* Reply preview bar */}
               {replyingTo && (
-                <div className="flex items-center gap-2 mb-2 px-1 py-1.5 bg-blue-50 rounded-xl border border-blue-100">
-                  <div className="w-0.5 h-8 bg-blue-400 rounded-full shrink-0" />
+                <div className="flex items-center gap-2 mb-2 px-1 py-1.5 bg-[#D4AF37] rounded-xl border border-[#D4AF37]">
+                  <div className="w-0.5 h-8 bg-[#D4AF37] rounded-full shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <div className="text-[10px] font-semibold text-blue-600 flex items-center gap-1">
+                    <div className="text-[10px] font-semibold text-[#B8932F] flex items-center gap-1">
                       <Reply className="w-3 h-3" />
                       Replying to {replyingTo.senderUid === user?.uid ? "yourself" : "them"}
                     </div>
@@ -1442,13 +1442,13 @@ export default function BookingChat() {
               <div className="flex items-center gap-2 mb-2 flex-wrap">
                 <button onClick={() => aiDraftMutation.mutate()}
                   disabled={aiDraftMutation.isPending}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-blue-600 border border-blue-100 bg-blue-50 hover:bg-blue-100 transition-colors disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-[#B8932F] border border-[#D4AF37] bg-[#D4AF37] hover:bg-[#D4AF37] transition-colors disabled:opacity-50">
                   <Sparkles className="w-3 h-3" />
                   {aiDraftMutation.isPending ? "Drafting…" : "AI Draft"}
                 </button>
                 <button onClick={() => aiSummarizeMutation.mutate()}
                   disabled={aiSummarizeMutation.isPending}
-                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-purple-600 border border-purple-100 bg-purple-50 hover:bg-purple-100 transition-colors disabled:opacity-50">
+                  className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-semibold text-[#B8932F] border border-[#D4AF37] bg-[#D4AF37] hover:bg-[#D4AF37] transition-colors disabled:opacity-50">
                   <Bot className="w-3 h-3" />
                   {aiSummarizeMutation.isPending ? "Summarizing…" : "Summarize"}
                 </button>
@@ -1472,11 +1472,11 @@ export default function BookingChat() {
                 <button
                   onClick={() => fileInputRef.current?.click()}
                   disabled={uploadingImage || sendMutation.isPending || isRecording}
-                  className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-blue-500 hover:border-blue-200 transition-colors shrink-0 disabled:opacity-40"
+                  className="w-9 h-9 rounded-full border border-gray-200 flex items-center justify-center text-gray-400 hover:text-[#D4AF37] hover:border-[#D4AF37] transition-colors shrink-0 disabled:opacity-40"
                   title="Attach image"
                 >
                   {uploadingImage ? (
-                    <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-blue-500 rounded-full animate-spin" />
+                    <span className="w-3.5 h-3.5 border-2 border-gray-300 border-t-[#D4AF37] rounded-full animate-spin" />
                   ) : (
                     <ImageIcon className="w-4 h-4" />
                   )}
@@ -1508,7 +1508,7 @@ export default function BookingChat() {
                     onChange={e => handleInputChange(e.target.value)}
                     placeholder="Type a message…"
                     rows={1}
-                    className="w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-blue-300 focus:bg-white transition-colors"
+                    className="w-full resize-none rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm text-gray-900 placeholder:text-gray-300 focus:outline-none focus:border-[#D4AF37] focus:bg-white transition-colors"
                     style={{ minHeight: 44, maxHeight: 120 }}
                     onKeyDown={e => {
                       if (e.key === "Enter" && !e.shiftKey && window.innerWidth > 768) {
@@ -1569,14 +1569,14 @@ export default function BookingChat() {
             {/* Caption editor */}
             <div className="px-4 pt-3 pb-2">
               <div className="flex items-start gap-2 mb-1">
-                <Edit2 className="w-3.5 h-3.5 text-blue-400 mt-1 shrink-0" />
-                <span className="text-[11px] font-semibold text-blue-600 uppercase tracking-wide">AI Caption — edit before sending</span>
+                <Edit2 className="w-3.5 h-3.5 text-[#D4AF37] mt-1 shrink-0" />
+                <span className="text-[11px] font-semibold text-[#B8932F] uppercase tracking-wide">AI Caption — edit before sending</span>
               </div>
               <textarea
                 value={photoCaption}
                 onChange={e => setPhotoCaption(e.target.value)}
                 rows={3}
-                className="w-full text-sm text-gray-700 border border-gray-100 rounded-xl p-2.5 resize-none focus:outline-none focus:border-blue-200 focus:ring-2 focus:ring-blue-50"
+                className="w-full text-sm text-gray-700 border border-gray-100 rounded-xl p-2.5 resize-none focus:outline-none focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37]"
                 placeholder="Add a caption…"
               />
             </div>

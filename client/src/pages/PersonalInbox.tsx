@@ -477,7 +477,7 @@ export default function PersonalInbox() {
                             );
                           })()}
                           {selectedMessage.messageType !== 'general' && (
-                            <span className="text-xs px-2 py-1 rounded-lg bg-purple-50 text-purple-700">
+                            <span className="text-xs px-2 py-1 rounded-lg bg-[#D4AF37] text-[#B8932F]">
                               {selectedMessage.messageType}
                             </span>
                           )}
@@ -525,7 +525,7 @@ export default function PersonalInbox() {
                           </div>
                         </div>
                         <div className="flex items-start gap-2">
-                          <Lock className="w-4 h-4 text-purple-500 mt-0.5 flex-shrink-0" />
+                          <Lock className="w-4 h-4 text-[#D4AF37] mt-0.5 flex-shrink-0" />
                           <div>
                             <p className="text-xs font-medium text-gray-900">{isHebrew ? 'חתימת ביקורת' : 'Audit Signature'}</p>
                             <p className="text-[11px] text-gray-400 font-mono break-all">{selectedMessage.auditHash?.substring(0, 32)}...</p>
@@ -561,7 +561,7 @@ export default function PersonalInbox() {
             </div>
             <div className="w-px h-4 bg-white" />
             <div className="flex items-center gap-2 text-xs text-gray-500">
-              <Lock className="w-3.5 h-3.5 text-purple-500" />
+              <Lock className="w-3.5 h-3.5 text-[#D4AF37]" />
               <span>{isHebrew ? 'הצפנה מקצה לקצה' : 'End-to-End Encryption'}</span>
             </div>
             <div className="w-px h-4 bg-white" />

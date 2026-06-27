@@ -50,8 +50,8 @@ const DUST_CODES = [77]; // Snow grains (often indicates dusty conditions in des
 function getWeatherIcon(code: number) {
   if (code === 0) return <Sun className="h-6 w-6 text-amber-400" />;
   if (code <= 3) return <CloudSun className="h-6 w-6 text-slate-400" />;
-  if (code >= 61 && code <= 67) return <CloudRain className="h-6 w-6 text-blue-500" />;
-  if (code >= 80 && code <= 82) return <CloudRain className="h-6 w-6 text-blue-600" />;
+  if (code >= 61 && code <= 67) return <CloudRain className="h-6 w-6 text-[#D4AF37]" />;
+  if (code >= 80 && code <= 82) return <CloudRain className="h-6 w-6 text-[#B8932F]" />;
   if (code >= 95) return <AlertTriangle className="h-6 w-6 text-red-500" />;
   return <Wind className="h-6 w-6 text-slate-500" />;
 }
@@ -220,7 +220,7 @@ export function WeatherConsentDialog({
         </DialogHeader>
         
         {/* Weather Info Card */}
-        <div className="bg-gradient-to-br from-amber-50 to-orange-50 rounded-xl p-4 border border-amber-200">
+        <div className="bg-gradient-to-br from-amber-50 to-[#D4AF37] rounded-xl p-4 border border-amber-200">
           <div className="flex items-center justify-between mb-3">
             <div className="flex items-center gap-2">
               {weather && getWeatherIcon(weather.conditionCode)}
@@ -254,8 +254,8 @@ export function WeatherConsentDialog({
         </div>
         
         {/* Walker Note */}
-        <div className="bg-blue-50 rounded-xl p-3 border border-blue-200">
-          <p className="text-blue-800 text-sm">
+        <div className="bg-[#D4AF37] rounded-xl p-3 border border-[#D4AF37]">
+          <p className="text-[#B8932F] text-sm">
             {isHebrew 
               ? `${walkerName} מוכן/ה להליכה בתנאים אלה. חלק מהמוליכים שלנו מתמחים בהליכות בכל מזג אוויר.`
               : `${walkerName} is willing to walk in these conditions. Some of our walkers specialize in all-weather walks.`}

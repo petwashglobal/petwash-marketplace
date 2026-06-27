@@ -114,8 +114,8 @@ const dtShort = (s: string | null) => s ? new Date(s).toLocaleDateString('he-IL'
 function bookingStatusBadge(status: string) {
   const map: Record<string, string> = {
     completed:   'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
-    confirmed:   'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-    in_progress: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
+    confirmed:   'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+    in_progress: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
     cancelled:   'bg-white text-gray-700 dark:bg-white dark:text-black',
     disputed:    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     draft:       'bg-white text-gray-600 dark:bg-white dark:text-gray-400',
@@ -137,7 +137,7 @@ function settlementBadge(status: string) {
 
 function disputeBadge(status: string) {
   if (status === 'open')         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-0 text-xs"><ShieldAlert className="h-3 w-3 mr-1" />Open</Badge>;
-  if (status === 'under_review') return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-0 text-xs"><Clock className="h-3 w-3 mr-1" />Under Review</Badge>;
+  if (status === 'under_review') return <Badge className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs"><Clock className="h-3 w-3 mr-1" />Under Review</Badge>;
   if (status === 'resolved')     return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border-0 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Resolved</Badge>;
   if (status === 'rejected')     return <Badge className="bg-white text-gray-700 border-0 text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
   if (status === 'closed')       return <Badge className="bg-white text-gray-600 border-0 text-xs">Closed</Badge>;
@@ -146,9 +146,9 @@ function disputeBadge(status: string) {
 }
 
 function nextActionBadge(owner: string) {
-  if (owner === 'platform')          return <Badge className="bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200 border-0 text-xs">Platform action needed</Badge>;
-  if (owner === 'system')            return <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 border-0 text-xs">Awaiting system</Badge>;
-  if (owner === 'franchise_owner')   return <Badge className="bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200 border-0 text-xs">Owner action needed</Badge>;
+  if (owner === 'platform')          return <Badge className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Platform action needed</Badge>;
+  if (owner === 'system')            return <Badge className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Awaiting system</Badge>;
+  if (owner === 'franchise_owner')   return <Badge className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Owner action needed</Badge>;
   return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border-0 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Complete</Badge>;
 }
 
@@ -284,7 +284,7 @@ export default function BookingTrace() {
             <CardContent className="p-3">
               <p className="text-xs text-gray-500 mb-1">Mismatch</p>
               {summary.hasMismatch
-                ? <span className="flex items-center gap-1 text-xs text-orange-600 font-medium"><TriangleAlert className="h-3.5 w-3.5" />Yes</span>
+                ? <span className="flex items-center gap-1 text-xs text-[#B8932F] font-medium"><TriangleAlert className="h-3.5 w-3.5" />Yes</span>
                 : <span className="flex items-center gap-1 text-xs text-emerald-600"><CheckCircle2 className="h-3.5 w-3.5" />None</span>
               }
             </CardContent>
@@ -367,13 +367,13 @@ export default function BookingTrace() {
 
         {/* ── Settlement split ──────────────────────────────────────────────── */}
         {settlement && (
-          <Card className={cn('border-0 shadow-sm', settlement.hasReconciliationMismatch && 'ring-1 ring-orange-400')}>
+          <Card className={cn('border-0 shadow-sm', settlement.hasReconciliationMismatch && 'ring-1 ring-[#D4AF37]')}>
             <CardHeader className="pb-2 pt-4 px-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
                 <Banknote className="h-4 w-4 text-gray-400" />
                 Settlement Split
                 {settlement.hasReconciliationMismatch && (
-                  <Badge className="bg-orange-100 text-orange-700 border-0 text-xs ml-auto">
+                  <Badge className="bg-[#D4AF37] text-[#B8932F] border-0 text-xs ml-auto">
                     <TriangleAlert className="h-3 w-3 mr-1" />Mismatch
                   </Badge>
                 )}
@@ -421,7 +421,7 @@ export default function BookingTrace() {
                   {disputeBadge(dispute.status)}
                   <Link
                     href="/case-queue"
-                    className="text-xs text-gray-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+                    className="text-xs text-gray-400 hover:text-[#B8932F] dark:hover:text-[#D4AF37] transition-colors"
                   >
                     Exception Queue →
                   </Link>
@@ -507,7 +507,7 @@ export default function BookingTrace() {
           <Card className="border-0 shadow-sm">
             <CardHeader className="pb-2 pt-4 px-4">
               <CardTitle className="text-sm font-semibold flex items-center gap-2">
-                <Banknote className="h-4 w-4 text-blue-500" />
+                <Banknote className="h-4 w-4 text-[#D4AF37]" />
                 Refund
               </CardTitle>
             </CardHeader>
@@ -616,7 +616,7 @@ export default function BookingTrace() {
                     <div className={cn(
                       'mt-0.5 h-2 w-2 rounded-full flex-shrink-0',
                       a.severity === 'error' ? 'bg-red-400' :
-                      a.severity === 'warn'  ? 'bg-orange-400' : 'bg-gray-300'
+                      a.severity === 'warn'  ? 'bg-[#D4AF37]' : 'bg-gray-300'
                     )} />
                     <div className="flex-1 min-w-0">
                       <span className="font-medium">{a.actionType}</span>

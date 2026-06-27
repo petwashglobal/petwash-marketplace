@@ -121,7 +121,7 @@ export default function TermsConditions() {
               <h3 className="text-xl font-semibold mb-3 text-gray-800 dark:text-black">
                 {isHebrew ? '6.1 מבנה מחירים' : '6.1 Pricing Structure'}
               </h3>
-              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
+              <div className="bg-[#D4AF37] dark:bg-white p-6 rounded-lg">
                 <p className="font-semibold mb-2">{isHebrew ? 'סיכום עמלות:' : 'Fee Breakdown:'}</p>
                 <ul className="space-y-1">
                   <li>{isHebrew ? '• מחיר בסיס: תעריף הספק × ימים/שעות' : '• Base Price: Provider\'s rate × days/hours'}</li>
@@ -314,13 +314,13 @@ export default function TermsConditions() {
               <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-black">
                 {isHebrew ? '16. יצירת קשר' : '16. Contact Us'}
               </h2>
-              <div className="bg-blue-50 dark:bg-white p-6 rounded-lg">
+              <div className="bg-[#D4AF37] dark:bg-white p-6 rounded-lg">
                 <p className="font-semibold mb-2">Pet Wash Ltd</p>
                 <p className="mt-2">
-                  {isHebrew ? 'דוא"ל תמיכה:' : 'Support Email:'} <a href="mailto:Support@PetWash.co.il" className="text-blue-600 hover:underline">Support@PetWash.co.il</a>
+                  {isHebrew ? 'דוא"ל תמיכה:' : 'Support Email:'} <a href="mailto:Support@PetWash.co.il" className="text-[#B8932F] hover:underline">Support@PetWash.co.il</a>
                 </p>
                 <p>
-                  {isHebrew ? 'אתר:' : 'Website:'} <a href="https://www.petwash.co.il" className="text-blue-600 hover:underline">www.petwash.co.il</a>
+                  {isHebrew ? 'אתר:' : 'Website:'} <a href="https://www.petwash.co.il" className="text-[#B8932F] hover:underline">www.petwash.co.il</a>
                 </p>
               </div>
             </section>

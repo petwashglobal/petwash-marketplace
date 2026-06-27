@@ -282,7 +282,7 @@ export function SecurityCheckpoint({
         className={`
           flex items-center gap-3 p-4 rounded-sm border-2 transition-all duration-300 cursor-pointer select-none
           ${status === 'idle' ? 'border-gray-200 bg-white hover:border-gray-300 hover:bg-white' : ''}
-          ${status === 'verifying' ? 'border-blue-200 bg-blue-50' : ''}
+          ${status === 'verifying' ? 'border-[#D4AF37] bg-[#D4AF37]' : ''}
           ${status === 'verified' ? 'border-green-200 bg-green-50' : ''}
           ${status === 'failed' ? 'border-red-200 bg-red-50' : ''}
         `}
@@ -305,7 +305,7 @@ export function SecurityCheckpoint({
             <div className="w-6 h-6 rounded-sm border-2 border-gray-400 bg-white transition-colors" />
           )}
           {status === 'verifying' && (
-            <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />
+            <Loader2 className="w-6 h-6 text-[#D4AF37] animate-spin" />
           )}
           {status === 'verified' && (
             <div className="w-6 h-6 rounded-sm bg-green-500 flex items-center justify-center">
@@ -323,7 +323,7 @@ export function SecurityCheckpoint({
           <p className={`text-sm font-medium ${
             status === 'verified' ? 'text-green-700' :
             status === 'failed' ? 'text-red-700' :
-            status === 'verifying' ? 'text-blue-700' :
+            status === 'verifying' ? 'text-[#B8932F]' :
             'text-gray-700'
           }`}>
             {status === 'idle' && (isHebrew ? 'אני לא רובוט' : "I'm not a robot")}
@@ -357,7 +357,7 @@ export function SecurityCheckpoint({
           href="https://policies.google.com/privacy" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-[9px] text-blue-400 hover:text-blue-500"
+          className="text-[9px] text-[#D4AF37] hover:text-[#D4AF37]"
           onClick={(e) => e.stopPropagation()}
         >
           {isHebrew ? 'פרטיות' : 'Privacy'}
@@ -367,7 +367,7 @@ export function SecurityCheckpoint({
           href="https://policies.google.com/terms" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="text-[9px] text-blue-400 hover:text-blue-500"
+          className="text-[9px] text-[#D4AF37] hover:text-[#D4AF37]"
           onClick={(e) => e.stopPropagation()}
         >
           {isHebrew ? 'תנאים' : 'Terms'}

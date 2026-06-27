@@ -59,7 +59,7 @@ export default function MobileStationHub() {
   const getStatusColor = (status: string): string => {
     switch (status) {
       case 'active': return 'bg-green-500';
-      case 'installing': return 'bg-blue-500';
+      case 'installing': return 'bg-[#D4AF37]';
       case 'maintenance': return 'bg-yellow-500';
       case 'offline': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -93,14 +93,14 @@ export default function MobileStationHub() {
           {/* Pull to refresh indicator */}
           {isPullRefreshing && (
             <div className="absolute top-16 left-1/2 -translate-x-1/2 luxury-glass-card px-4 py-2 rounded-xl flex items-center gap-2 text-sm luxury-animate-scale-in">
-              <RefreshCw className="w-4 h-4 animate-spin text-purple-600" />
+              <RefreshCw className="w-4 h-4 animate-spin text-[#B8932F]" />
               <span className="luxury-text-gradient font-semibold">Refreshing...</span>
             </div>
           )}
           
           {/* Search */}
           <div className="relative luxury-animate-fade-in luxury-delay-1">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-purple-400" />
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-[#D4AF37]" />
             <input
               type="search"
               placeholder="Search serial, city, or name..."
@@ -140,7 +140,7 @@ export default function MobileStationHub() {
           </div>
         ) : filteredStations.length === 0 ? (
           <div className="luxury-glass-card luxury-shadow-lg p-8 text-center luxury-animate-slide-up">
-            <Package className="w-16 h-16 mx-auto mb-4 text-purple-300" />
+            <Package className="w-16 h-16 mx-auto mb-4 text-[#D4AF37]" />
             <p className="luxury-heading-sm mb-2">No stations found</p>
             <p className="luxury-text-small">
               {search ? 'Try a different search' : 'Add your first station'}
@@ -183,7 +183,7 @@ export default function MobileStationHub() {
               </div>
 
               <div className="flex items-start gap-2 luxury-text-small ml-3.5">
-                <MapPin className="w-4 h-4 text-purple-400 mt-0.5 flex-shrink-0" />
+                <MapPin className="w-4 h-4 text-[#D4AF37] mt-0.5 flex-shrink-0" />
                 <div>
                   <p>{station.address.line1}</p>
                   <p>{station.address.city}, {station.address.postcode}</p>
@@ -192,7 +192,7 @@ export default function MobileStationHub() {
 
               {/* Quick Info */}
               {station.lowStockItems && station.lowStockItems.length > 0 && (
-                <div className="mt-3 pt-3 border-t border-purple-100">
+                <div className="mt-3 pt-3 border-t border-[#D4AF37]">
                   <p className="text-xs font-medium text-yellow-700">
                     {station.lowStockItems.join(', ')} running low
                   </p>

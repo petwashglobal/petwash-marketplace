@@ -50,8 +50,8 @@ export function OnboardingChecklist() {
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-gray-50">
         <div className="flex items-center gap-2">
-          <div className="w-7 h-7 rounded-full bg-blue-50 flex items-center justify-center">
-            <Sparkles className="w-3.5 h-3.5 text-blue-500" />
+          <div className="w-7 h-7 rounded-full bg-[#D4AF37] flex items-center justify-center">
+            <Sparkles className="w-3.5 h-3.5 text-[#D4AF37]" />
           </div>
           <div>
             <div className="text-[12px] font-semibold text-gray-900">Getting started</div>
@@ -98,7 +98,7 @@ export function OnboardingChecklist() {
                   disabled={completeMutation.isPending}
                   className="shrink-0"
                 >
-                  <Circle className="w-4 h-4 text-gray-200 hover:text-blue-400 transition-colors" />
+                  <Circle className="w-4 h-4 text-gray-200 hover:text-[#D4AF37] transition-colors" />
                 </button>
               )}
               <span className={`text-[12px] ${m.completed ? "line-through text-gray-400" : "text-gray-700"}`}>

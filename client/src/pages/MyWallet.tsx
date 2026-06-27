@@ -87,13 +87,13 @@ const TIER_LABELS: Record<string, { en: string; he: string; emoji: string }> = {
 const TX_TYPE_ICONS: Record<string, { icon: typeof ArrowUpRight; color: string }> = {
   issue: { icon: ArrowUpRight, color: 'text-green-600' },
   redeem: { icon: ArrowDownRight, color: 'text-red-500' },
-  refund: { icon: ArrowUpRight, color: 'text-blue-600' },
+  refund: { icon: ArrowUpRight, color: 'text-[#B8932F]' },
   expire: { icon: Clock, color: 'text-gray-400' },
 };
 
 const CHANNEL_COLORS: Record<string, string> = {
-  STATION: 'bg-blue-500',
-  WEB: 'bg-purple-500',
+  STATION: 'bg-[#D4AF37]',
+  WEB: 'bg-[#D4AF37]',
   APP: 'bg-green-500',
 };
 
@@ -235,7 +235,7 @@ export default function MyWallet() {
           <div className="flex items-center justify-between mb-6 luxury-animate-fade-in">
             <div>
               <h1 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Wallet className="w-5 h-5 text-blue-600" />
+                <Wallet className="w-5 h-5 text-[#B8932F]" />
                 {isHebrew ? 'הארנק שלי' : 'My Wallet'}
               </h1>
               <p className="text-sm text-gray-500 mt-0.5">
@@ -324,8 +324,8 @@ export default function MyWallet() {
             <Card className="luxury-glass-card">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center">
-                    <CreditCard className="w-4 h-4 text-blue-600" />
+                  <div className="w-8 h-8 rounded-lg bg-[#D4AF37] flex items-center justify-center">
+                    <CreditCard className="w-4 h-4 text-[#B8932F]" />
                   </div>
                   <span className="text-xs text-gray-500">
                     {isHebrew ? 'מתנה דיגיטלית' : 'E-Gift'}
@@ -379,8 +379,8 @@ export default function MyWallet() {
             <Card className="luxury-glass-card">
               <CardContent className="p-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <div className="w-8 h-8 rounded-lg bg-purple-50 flex items-center justify-center">
-                    <Gift className="w-4 h-4 text-purple-600" />
+                  <div className="w-8 h-8 rounded-lg bg-[#D4AF37] flex items-center justify-center">
+                    <Gift className="w-4 h-4 text-[#B8932F]" />
                   </div>
                   <span className="text-xs text-gray-500">
                     {isHebrew ? 'קרדיט מבצע' : 'Promo Credits'}
@@ -465,7 +465,7 @@ export default function MyWallet() {
                   {uv.totalPlatformCreditRemainingCents > 0 && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500 flex items-center gap-1">
-                        <CreditCard className="w-3.5 h-3.5 text-purple-500" />
+                        <CreditCard className="w-3.5 h-3.5 text-[#D4AF37]" />
                         {isHebrew ? 'קרדיט פלטפורמה' : 'Platform Credit'}
                       </span>
                       <span className="font-semibold text-gray-800">
@@ -476,7 +476,7 @@ export default function MyWallet() {
                   {uv.totalWashPackagesRemaining > 0 && (
                     <div className="flex items-center justify-between text-sm">
                       <span className="text-gray-500 flex items-center gap-1">
-                        <Droplets className="w-3.5 h-3.5 text-blue-500" />
+                        <Droplets className="w-3.5 h-3.5 text-[#D4AF37]" />
                         {isHebrew ? 'חבילות שטיפה' : 'Wash Packages'}
                       </span>
                       <span className="font-semibold text-gray-800">
@@ -500,7 +500,7 @@ export default function MyWallet() {
           <div className="space-y-3 mb-6 luxury-animate-slide-up">
             <Button
               onClick={() => setLocation('/wallet/redeem')}
-              className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg text-base font-semibold gap-3"
+              className="w-full h-14 rounded-xl bg-[#B8932F] hover:bg-[#B8932F] text-white shadow-lg text-base font-semibold gap-3"
             >
               <QrCode className="w-5 h-5" />
               {isHebrew ? 'מימוש בתחנת K9000' : 'Redeem at K9000 Station'}
@@ -656,7 +656,7 @@ export default function MyWallet() {
             {/* Secondary path: confirm a top-up already paid at a K9000 station.
                 The server verifies the Nayax confirmation code before crediting. */}
             <div className="pt-2 border-t border-gray-100">
-              <div className="bg-blue-50 rounded-xl p-3 text-xs text-blue-800 leading-relaxed mb-3">
+              <div className="bg-[#D4AF37] rounded-xl p-3 text-xs text-[#B8932F] leading-relaxed mb-3">
                 <p className="font-semibold mb-1">{isHebrew ? 'שילמת בתחנת K9000?' : 'Already paid at a K9000 station?'}</p>
                 <p>{isHebrew
                   ? 'הזן את קוד האישור של Nayax כדי לזכות את הארנק'

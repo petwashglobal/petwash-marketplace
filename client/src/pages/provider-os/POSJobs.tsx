@@ -335,7 +335,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
           <div className="bg-white rounded-2xl w-full max-w-sm shadow-xl">
             <div className="px-5 pt-5 pb-4 border-b border-gray-100">
               <div className="flex items-center gap-2 mb-1">
-                <Receipt className="w-5 h-5 text-blue-600" />
+                <Receipt className="w-5 h-5 text-[#B8932F]" />
                 <h3 className="text-base font-semibold text-gray-900">Complete Job</h3>
               </div>
               <p className="text-xs text-gray-500">Confirm payment — a tax invoice will be sent to the client automatically.</p>
@@ -354,7 +354,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
                   <input type="number" min="0" step="1"
                     value={finishModal.amountILS}
                     onChange={e => setFinishModal(m => m ? { ...m, amountILS: e.target.value } : null)}
-                    className="w-full pl-7 pr-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:outline-none font-medium"
+                    className="w-full pl-7 pr-4 py-2.5 text-sm border-2 border-gray-200 rounded-xl focus:border-[#D4AF37] focus:outline-none font-medium"
                     style={{ fontSize: '16px' }} />
                 </div>
                 {finishModal.booking.providerPayout && (
@@ -373,7 +373,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
                       <button key={pm.id} type="button"
                         onClick={() => setFinishModal(m => m ? { ...m, paymentMethod: pm.id } : null)}
                         className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${
-                          selected ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-white'
+                          selected ? 'border-[#D4AF37] bg-[#D4AF37] text-[#B8932F]' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-white'
                         }`}>
                         <Icon className="w-4 h-4" />
                         <span>{pm.label}</span>
@@ -390,7 +390,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
               </button>
               <button onClick={() => finishMutation.mutate(finishModal!)}
                 disabled={finishMutation.isPending || !finishModal.amountILS || Number(finishModal.amountILS) <= 0}
-                className="flex-1 py-3 bg-blue-600 text-white rounded-xl text-sm font-semibold hover:bg-blue-700 transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
+                className="flex-1 py-3 bg-[#B8932F] text-white rounded-xl text-sm font-semibold hover:bg-[#B8932F] transition-colors flex items-center justify-center gap-2 disabled:opacity-50">
                 {finishMutation.isPending
                   ? <><Loader2 className="w-4 h-4 animate-spin" /> Processing…</>
                   : <><CheckCircle2 className="w-4 h-4" /> Finish & Invoice</>}
@@ -433,11 +433,11 @@ function JobCard({
   }
   // V2: confirmed = ready to start
   if (['confirmed', 'provider_confirmed'].includes(booking.status)) {
-    actions.push({ label: 'Start',  action: 'start',   icon: Play,    className: 'bg-purple-600 text-white hover:bg-purple-700' });
+    actions.push({ label: 'Start',  action: 'start',   icon: Play,    className: 'bg-[#B8932F] text-white hover:bg-[#B8932F]' });
     actions.push({ label: 'Cancel', action: '_cancel', icon: XCircle, className: 'bg-white text-red-600 hover:bg-red-50' });
   }
   if (booking.status === 'in_progress') {
-    actions.push({ label: 'Finish', action: '_finish', icon: Square,        className: 'bg-blue-600 text-white hover:bg-blue-700' });
+    actions.push({ label: 'Finish', action: '_finish', icon: Square,        className: 'bg-[#B8932F] text-white hover:bg-[#B8932F]' });
   }
 
   return (
@@ -532,7 +532,7 @@ function JobCard({
               <div className="flex items-center gap-3">
                 {booking.clientEmail && (
                   <a href={`mailto:${booking.clientEmail}`}
-                    className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-medium">
+                    className="flex items-center gap-1.5 text-xs text-[#B8932F] hover:text-[#B8932F] font-medium">
                     <Mail className="w-3.5 h-3.5" /> Email client
                   </a>
                 )}

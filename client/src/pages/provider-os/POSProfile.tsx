@@ -83,7 +83,7 @@ const PET_OPTIONS = [
 
 const AVAILABILITY_OPTIONS = [
   { value: 'online',    label: 'Online — accepting new bookings',    color: 'text-green-600',  dot: 'bg-green-500' },
-  { value: 'available', label: 'Available — limited availability',   color: 'text-blue-600',   dot: 'bg-blue-500' },
+  { value: 'available', label: 'Available — limited availability',   color: 'text-[#B8932F]',   dot: 'bg-[#D4AF37]' },
   { value: 'busy',      label: 'Busy — no new bookings right now',   color: 'text-amber-600',  dot: 'bg-amber-500' },
   { value: 'offline',   label: 'Offline — not taking bookings',      color: 'text-gray-500',   dot: 'bg-gray-400' },
 ];
@@ -329,7 +329,7 @@ export default function POSProfile() {
           {/* Languages */}
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-              <Globe className="w-4 h-4 text-blue-500" /> Languages
+              <Globe className="w-4 h-4 text-[#D4AF37]" /> Languages
             </p>
             <div className="flex flex-wrap gap-2">
               {LANGUAGES.map(lang => (
@@ -352,7 +352,7 @@ export default function POSProfile() {
               {SERVICE_AREAS.map(area => (
                 <button key={area} onClick={() => toggleArea(area)}
                   className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                    serviceAreas.includes(area) ? 'bg-blue-500 text-white' : 'bg-white text-gray-600 hover:bg-white'
+                    serviceAreas.includes(area) ? 'bg-[#D4AF37] text-white' : 'bg-white text-gray-600 hover:bg-white'
                   }`}>
                   {area}
                 </button>
@@ -453,7 +453,7 @@ export default function POSProfile() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-gray-900 flex items-center gap-1.5">
-                    <Dog className="w-4 h-4 text-blue-600" /> No other pets at home?
+                    <Dog className="w-4 h-4 text-[#B8932F]" /> No other pets at home?
                   </p>
                   <p className="text-xs text-gray-500 mt-0.5">Important for owners with pet allergies or nervous animals</p>
                 </div>
@@ -511,7 +511,7 @@ export default function POSProfile() {
               <div className="space-y-2">
                 {[
                   { value: 'online',    label: 'Online — fully open to new bookings',   dot: 'bg-green-500'  },
-                  { value: 'available', label: 'Available — limited availability',       dot: 'bg-blue-500'   },
+                  { value: 'available', label: 'Available — limited availability',       dot: 'bg-[#D4AF37]'   },
                   { value: 'busy',      label: 'Busy — not accepting new bookings',      dot: 'bg-amber-500'  },
                   { value: 'offline',   label: 'Offline — completely off',               dot: 'bg-gray-400'   },
                 ].map(opt => (
@@ -530,25 +530,25 @@ export default function POSProfile() {
             {/* Working hours grid */}
             <div className="bg-white border border-gray-200 rounded-xl p-4">
               <p className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                <Clock className="w-4 h-4 text-blue-500" /> Working Hours
+                <Clock className="w-4 h-4 text-[#D4AF37]" /> Working Hours
               </p>
               <div className="space-y-2">
                 {DAYS.map(({ key, short }) => {
                   const d = workingHours[key] ?? { active: false };
                   return (
-                    <div key={key} className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${d.active ? 'border-blue-200 bg-blue-50' : 'border-gray-100 bg-white'}`}>
+                    <div key={key} className={`flex items-center gap-3 px-3 py-2 rounded-xl border ${d.active ? 'border-[#D4AF37] bg-[#D4AF37]' : 'border-gray-100 bg-white'}`}>
                       <span className="text-xs font-semibold text-gray-600 w-8 shrink-0">{short}</span>
                       <button onClick={() => updateDayHours(key, 'active', !d.active)}
-                        className={`w-8 h-5 rounded-full transition-colors shrink-0 ${d.active ? 'bg-blue-500' : 'bg-gray-300'}`}>
+                        className={`w-8 h-5 rounded-full transition-colors shrink-0 ${d.active ? 'bg-[#D4AF37]' : 'bg-gray-300'}`}>
                         <span className={`block w-3 h-3 bg-white rounded-full mx-auto transition-transform ${d.active ? 'translate-x-1.5' : '-translate-x-1'}`} />
                       </button>
                       {d.active ? (
                         <div className="flex items-center gap-1.5 flex-1">
                           <input type="time" value={d.from || '09:00'} onChange={e => updateDayHours(key, 'from', e.target.value)}
-                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-400 w-24" />
+                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#D4AF37] w-24" />
                           <span className="text-xs text-gray-400">to</span>
                           <input type="time" value={d.to || '18:00'} onChange={e => updateDayHours(key, 'to', e.target.value)}
-                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-blue-400 w-24" />
+                            className="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:border-[#D4AF37] w-24" />
                         </div>
                       ) : (
                         <span className="text-xs text-gray-400 flex-1">Off</span>
@@ -661,11 +661,11 @@ export default function POSProfile() {
             {/* Metric chips */}
             <div className="grid grid-cols-2 gap-2">
               {/* Booking Activity Summary */}
-              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.acceptanceRatePct != null ? 'bg-blue-50 border border-blue-100' : 'bg-white border border-gray-100'}`}>
-                <UserCheck className={`w-4 h-4 shrink-0 ${trustStats?.acceptanceRatePct != null ? 'text-blue-500' : 'text-gray-300'}`} />
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.acceptanceRatePct != null ? 'bg-[#D4AF37] border border-[#D4AF37]' : 'bg-white border border-gray-100'}`}>
+                <UserCheck className={`w-4 h-4 shrink-0 ${trustStats?.acceptanceRatePct != null ? 'text-[#D4AF37]' : 'text-gray-300'}`} />
                 <div className="min-w-0">
                   <p className="text-[10px] text-gray-500">Booking Activity Summary</p>
-                  <p className={`text-sm font-semibold ${trustStats?.acceptanceRatePct != null ? 'text-blue-700' : 'text-gray-300'}`}>
+                  <p className={`text-sm font-semibold ${trustStats?.acceptanceRatePct != null ? 'text-[#B8932F]' : 'text-gray-300'}`}>
                     {trustStats?.acceptanceRatePct != null ? `${trustStats.acceptanceRatePct}%` : '—'}
                   </p>
                 </div>
@@ -683,11 +683,11 @@ export default function POSProfile() {
               </div>
 
               {/* Response rate */}
-              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.responseRatePct != null ? 'bg-purple-50 border border-purple-100' : 'bg-white border border-gray-100'}`}>
-                <Clock className={`w-4 h-4 shrink-0 ${trustStats?.responseRatePct != null ? 'text-purple-500' : 'text-gray-300'}`} />
+              <div className={`flex items-center gap-2 p-2.5 rounded-lg ${trustStats?.responseRatePct != null ? 'bg-[#D4AF37] border border-[#D4AF37]' : 'bg-white border border-gray-100'}`}>
+                <Clock className={`w-4 h-4 shrink-0 ${trustStats?.responseRatePct != null ? 'text-[#D4AF37]' : 'text-gray-300'}`} />
                 <div className="min-w-0">
                   <p className="text-[10px] text-gray-500">Response rate</p>
-                  <p className={`text-sm font-semibold ${trustStats?.responseRatePct != null ? 'text-purple-700' : 'text-gray-300'}`}>
+                  <p className={`text-sm font-semibold ${trustStats?.responseRatePct != null ? 'text-[#B8932F]' : 'text-gray-300'}`}>
                     {trustStats?.responseRatePct != null ? `${trustStats.responseRatePct}%` : '—'}
                   </p>
                 </div>

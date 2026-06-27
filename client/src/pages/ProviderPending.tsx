@@ -273,9 +273,9 @@ export default function ProviderPending() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 bg-blue-50 rounded-lg border border-blue-100">
-                  <CheckCircle className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-blue-900">
+                <div className="flex items-start gap-3 p-3 bg-[#D4AF37] rounded-lg border border-[#D4AF37]">
+                  <CheckCircle className="w-5 h-5 text-[#B8932F] mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-[#B8932F]">
                     {he
                       ? "תקבל הודעת אימייל ו-SMS ברגע שהבקשה תאושר"
                       : "You will receive an email and SMS the moment your application is approved"}

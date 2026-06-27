@@ -118,7 +118,7 @@ export default function JvPartnersDashboard() {
 
       {partners?.length === 0 ? (
         <div className="luxury-glass-card luxury-shadow-lg p-12 text-center luxury-animate-fade-in luxury-delay-2">
-          <Building2 className="w-12 h-12 mx-auto text-purple-600 mb-4" />
+          <Building2 className="w-12 h-12 mx-auto text-[#B8932F] mb-4" />
           <h3 className="luxury-heading-md mb-2">No JV partners yet</h3>
           <p className="luxury-text-body">
             Start by adding your first joint venture partner
@@ -145,7 +145,7 @@ export default function JvPartnersDashboard() {
                     </span>
                   )}
                 </div>
-                <p className="luxury-text-small text-purple-600" data-testid={`text-partner-type-${partner.id}`}>
+                <p className="luxury-text-small text-[#B8932F]" data-testid={`text-partner-type-${partner.id}`}>
                   {partner.partnerType}
                 </p>
               </div>

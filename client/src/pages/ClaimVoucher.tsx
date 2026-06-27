@@ -188,7 +188,7 @@ export default function ClaimVoucher() {
           <div className="space-y-8">
             {/* Header */}
             <div className="text-center space-y-4">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mb-4">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] mb-4">
                 <Gift className="w-12 h-12 text-white" />
               </div>
               
@@ -271,14 +271,14 @@ export default function ClaimVoucher() {
             </Button>
 
             {/* Help Section */}
-            <div className="bg-purple-50 dark:bg-white border-2 border-purple-200 dark:border-purple-800 rounded-xl p-6 space-y-4">
-              <h3 className="font-semibold text-purple-900 dark:text-purple-100 text-center">
+            <div className="bg-[#D4AF37] dark:bg-white border-2 border-[#D4AF37] dark:border-[#B8932F] rounded-xl p-6 space-y-4">
+              <h3 className="font-semibold text-[#B8932F] dark:text-[#D4AF37] text-center">
                 {isRTL ? '❓ שאלות נפוצות' : '❓ Frequently Asked Questions'}
               </h3>
-              <div className="space-y-3 text-sm text-purple-800 dark:text-purple-200">
+              <div className="space-y-3 text-sm text-[#B8932F] dark:text-[#D4AF37]">
                 <div>
                   <p className="font-medium">{isRTL ? 'איפה אמצא את קוד השובר?' : 'Where can I find my voucher code?'}</p>
-                  <p className="text-purple-700 dark:text-purple-300 mt-1">
+                  <p className="text-[#B8932F] dark:text-[#D4AF37] mt-1">
                     {isRTL 
                       ? 'קוד השובר נשלח אליכם באימייל לאחר הרכישה'
                       : 'The voucher code was sent to you via email after purchase'}
@@ -286,7 +286,7 @@ export default function ClaimVoucher() {
                 </div>
                 <div>
                   <p className="font-medium">{isRTL ? 'האם ניתן למחוק או להעביר שובר?' : 'Can I delete or transfer a voucher?'}</p>
-                  <p className="text-purple-700 dark:text-purple-300 mt-1">
+                  <p className="text-[#B8932F] dark:text-[#D4AF37] mt-1">
                     {isRTL 
                       ? 'לאחר מימוש השובר, הוא משויך לחשבון שלכם ולא ניתן להעביר אותו'
                       : 'Once claimed, the voucher is linked to your account and cannot be transferred'}
@@ -294,7 +294,7 @@ export default function ClaimVoucher() {
                 </div>
                 <div>
                   <p className="font-medium">{isRTL ? 'צריכים עזרה?' : 'Need Help?'}</p>
-                  <p className="text-purple-700 dark:text-purple-300 mt-1">
+                  <p className="text-[#B8932F] dark:text-[#D4AF37] mt-1">
                     {isRTL ? 'צרו קשר' : 'Contact us'}: 
                     <a href="mailto:Support@PetWash.co.il" className="underline mx-1">Support@PetWash.co.il</a>
                     {isRTL ? 'או' : 'or'}

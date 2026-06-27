@@ -58,7 +58,7 @@ export function DatePicker({
             "shadow-sm hover:shadow-md",
             "hover:bg-white dark:hover:bg-white",
             "hover:border-gray-300 dark:hover:border-gray-600",
-            "focus:ring-2 focus:ring-blue-500 focus:border-blue-500",
+            "focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37]",
             "transition-all duration-200",
             "rounded-xl",
             !value && "text-gray-400 dark:text-gray-500",

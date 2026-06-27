@@ -139,7 +139,7 @@ export function AIChatAssistant({ language, isOpen: externalIsOpen, onClose }: A
             <div className="flex items-center gap-3">
               {/* Kenzo's Animated Avatar */}
               <div className={`w-12 h-12 rounded-full overflow-hidden shadow-lg ring-2 ring-white/30 transition-all duration-300 ${
-                avatarState.animation === 'speaking' ? 'scale-110 ring-4 ring-blue-400/50' : 
+                avatarState.animation === 'speaking' ? 'scale-110 ring-4 ring-[#D4AF37]/50' : 
                 avatarState.animation === 'nodding' ? 'animate-bounce' : ''
               }`}>
                 <img 

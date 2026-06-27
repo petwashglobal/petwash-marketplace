@@ -394,7 +394,7 @@ export default function Hub() {
       descKey: "washStationsDesc",
       href: "/stations",
       comingSoon: false,
-      gradient: "from-blue-500 to-cyan-500",
+      gradient: "from-[#D4AF37] to-[#D4AF37]",
     },
     {
       icon: Home,
@@ -410,7 +410,7 @@ export default function Hub() {
       descKey: "walkMyPetDesc",
       href: "/walk-my-pet/overview",
       comingSoon: false,
-      gradient: "from-orange-500 to-amber-500",
+      gradient: "from-[#D4AF37] to-amber-500",
     },
     {
       icon: RouteIcon,
@@ -418,7 +418,7 @@ export default function Hub() {
       descKey: "petTrekDesc",
       href: "#",
       comingSoon: true,
-      gradient: "from-purple-500 to-pink-500",
+      gradient: "from-[#D4AF37] to-[#D4AF37]",
     },
     {
       icon: GraduationCap,
@@ -426,7 +426,7 @@ export default function Hub() {
       descKey: "academyDesc",
       href: "/academy",
       comingSoon: false,
-      gradient: "from-indigo-500 to-violet-500",
+      gradient: "from-[#D4AF37] to-[#D4AF37]",
     },
     {
       icon: Award,
@@ -434,7 +434,7 @@ export default function Hub() {
       descKey: "loyaltyVipDesc",
       href: "/loyalty",
       comingSoon: false,
-      gradient: "from-yellow-500 to-orange-500",
+      gradient: "from-yellow-500 to-[#D4AF37]",
     },
     {
       icon: Gift,
@@ -442,7 +442,7 @@ export default function Hub() {
       descKey: "eGiftCardsDesc",
       href: "/egift",
       comingSoon: false,
-      gradient: "from-pink-500 to-fuchsia-500",
+      gradient: "from-[#D4AF37] to-[#D4AF37]",
     },
   ];
 
@@ -525,7 +525,7 @@ export default function Hub() {
                 const Icon = stat.icon;
                 return (
                   <div key={stat.labelKey} className="text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mb-4">
+                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] mb-4">
                       <Icon className="w-8 h-8 text-white" />
                     </div>
                     <div className="luxury-heading-lg luxury-text-gradient mb-1">
@@ -560,7 +560,7 @@ export default function Hub() {
                 >
                   {platform.comingSoon && (
                     <div className="absolute top-3 right-3 z-10">
-                      <span className="px-3 py-1 text-[10px] tracking-wider uppercase font-bold rounded-full bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg">
+                      <span className="px-3 py-1 text-[10px] tracking-wider uppercase font-bold rounded-full bg-gradient-to-r from-amber-500 to-[#D4AF37] text-white shadow-lg">
                         {tx('comingSoon', language)}
                       </span>
                     </div>
@@ -615,7 +615,7 @@ export default function Hub() {
                   key={index}
                   className="luxury-glass-minimal p-4 luxury-hover-lift flex items-start gap-4"
                 >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0">
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center flex-shrink-0">
                     <Clock className="w-5 h-5 text-white" />
                   </div>
                   <div className="flex-1 min-w-0">
@@ -642,7 +642,7 @@ export default function Hub() {
             <h3 className="luxury-heading-md mb-6">{tx('loyaltyStatus', language)}</h3>
             <div className="luxury-glass-card luxury-hover-glow p-8">
               <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 mb-4">
+                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-yellow-500 to-[#D4AF37] mb-4">
                   <Award className="w-10 h-10 text-white" />
                 </div>
                 <div className="luxury-badge-gold mb-3">
@@ -658,7 +658,7 @@ export default function Hub() {
               
               <div className="relative h-3 bg-white dark:bg-white rounded-full overflow-hidden mb-6">
                 <div 
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-purple-500 to-pink-500 rounded-full transition-all duration-500"
+                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] rounded-full transition-all duration-500"
                   style={{ width: '62.5%' }}
                 ></div>
               </div>
@@ -676,7 +676,7 @@ export default function Hub() {
 
         <div className="mt-16 text-center luxury-animate-fade-in luxury-delay-5">
           <div className="luxury-glass-card luxury-shadow-xl p-10">
-            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 mb-6">
+            <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] mb-6">
               <Heart className="w-8 h-8 text-white" />
             </div>
             <h2 className="luxury-heading-lg mb-4">

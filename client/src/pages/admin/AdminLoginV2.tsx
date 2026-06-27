@@ -458,7 +458,7 @@ export default function AdminLoginV2() {
                   w-full min-h-[48px] sm:h-12 text-white shadow-lg hover:shadow-xl transition-all text-sm sm:text-base
                   ${biometricStatus === 'error' ? 'bg-red-500 hover:bg-red-600' :
                     biometricStatus === 'success' ? 'bg-green-500 hover:bg-green-600' :
-                    biometricStatus === 'scanning' ? 'bg-purple-400 animate-pulse' :
+                    biometricStatus === 'scanning' ? 'bg-[#D4AF37] animate-pulse' :
                     'luxury-btn-primary'}
                 `}
                 data-testid="button-biometric-login"
@@ -544,7 +544,7 @@ export default function AdminLoginV2() {
         {/* Divider */}
         <div className="relative my-6">
           <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-purple-100"></div>
+            <div className="w-full border-t border-[#D4AF37]"></div>
           </div>
           <div className="relative flex justify-center text-xs">
             <span className="px-2 bg-white text-gray-500">or use email</span>
@@ -568,7 +568,7 @@ export default function AdminLoginV2() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@petwash.co.il"
-                className="luxury-glass-minimal pl-10 h-12 sm:h-11 border-purple-200 focus:border-purple-400 text-base sm:text-sm"
+                className="luxury-glass-minimal pl-10 h-12 sm:h-11 border-[#D4AF37] focus:border-[#D4AF37] text-base sm:text-sm"
                 required
                 data-testid="input-email"
               />
@@ -586,7 +586,7 @@ export default function AdminLoginV2() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="luxury-glass-minimal pl-10 h-12 sm:h-11 border-purple-200 focus:border-purple-400 text-base sm:text-sm"
+                className="luxury-glass-minimal pl-10 h-12 sm:h-11 border-[#D4AF37] focus:border-[#D4AF37] text-base sm:text-sm"
                 required
                 data-testid="input-password"
               />
@@ -619,7 +619,7 @@ export default function AdminLoginV2() {
           <Button
             type="button"
             variant="ghost"
-            className="text-sm text-gray-600 hover:text-purple-600 transition-colors"
+            className="text-sm text-gray-600 hover:text-[#B8932F] transition-colors"
             onClick={async () => {
               if (!email) {
                 toast({

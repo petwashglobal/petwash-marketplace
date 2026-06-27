@@ -22,7 +22,7 @@ export default function FranchiseMarketing() {
           <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-1">
             <CardHeader>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileImage className="h-5 w-5 text-white" />
                 </div>
                 <CardTitle className="luxury-heading-md">
@@ -40,7 +40,7 @@ export default function FranchiseMarketing() {
           <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-2">
             <CardHeader>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileVideo className="h-5 w-5 text-white" />
                 </div>
                 <CardTitle className="luxury-heading-md">
@@ -58,7 +58,7 @@ export default function FranchiseMarketing() {
           <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-3">
             <CardHeader>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <Download className="h-5 w-5 text-white" />
                 </div>
                 <CardTitle className="luxury-heading-md">

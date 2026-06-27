@@ -160,7 +160,7 @@ export function BookingPaymentModal({
                     : 'Payment released to provider. Thank you for your review!')}
             </p>
             <Button 
-              className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full"
+              className="w-full bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] text-white rounded-full"
               onClick={handleClose}
               data-testid="button-close-payment-success"
             >
@@ -229,7 +229,7 @@ export function BookingPaymentModal({
                 </div>
                 <div className="pt-2 border-t border-gray-200 flex justify-between font-bold text-lg">
                   <span>{isHebrew ? 'סה"כ' : 'Total'}</span>
-                  <span className="text-pink-600">₪{(booking.totalCents / 100).toFixed(0)}</span>
+                  <span className="text-[#B8932F]">₪{(booking.totalCents / 100).toFixed(0)}</span>
                 </div>
               </div>
 

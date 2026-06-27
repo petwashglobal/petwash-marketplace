@@ -261,7 +261,7 @@ interface TemplateProps {
 
 function FullscreenTemplate({ config, title, subtitle, ctaText, onCta }: TemplateProps) {
   return (
-    <div className={`w-full h-full min-h-[70vh] md:min-h-[500px] flex flex-col items-center justify-center p-8 text-center text-white bg-gradient-to-br ${config.backgroundColor || 'from-amber-500 to-orange-600'}`}>
+    <div className={`w-full h-full min-h-[70vh] md:min-h-[500px] flex flex-col items-center justify-center p-8 text-center text-white bg-gradient-to-br ${config.backgroundColor || 'from-amber-500 to-[#B8932F]'}`}>
       {config.logoUrl && (
         <img src={config.logoUrl} alt="" className="w-32 h-32 object-contain mx-auto mb-8 drop-shadow-2xl" />
       )}
@@ -418,7 +418,7 @@ function MembershipTiersTemplate({ config, title, subtitle, ctaText, onCta }: Te
             <p className="text-xs text-gray-500 uppercase tracking-wider mb-3">Trade points for voucher</p>
             <div className="flex gap-2">
               {[20, 25, 30].map((discount, i) => (
-                <div key={i} className={`flex-1 p-2 rounded-lg text-center ${i === 2 ? 'bg-amber-400' : i === 1 ? 'bg-blue-500 text-white' : 'bg-white'}`}>
+                <div key={i} className={`flex-1 p-2 rounded-lg text-center ${i === 2 ? 'bg-amber-400' : i === 1 ? 'bg-[#D4AF37] text-white' : 'bg-white'}`}>
                   <p className="text-xs font-bold">{discount}% OFF</p>
                   <p className="text-[10px] mt-1 opacity-70">{(i + 1) * 2500}</p>
                 </div>

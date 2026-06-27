@@ -187,7 +187,7 @@ export function KYCUpload({ language }: KYCUploadProps) {
   }) => (
     <div
       className={`border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all ${
-        file ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white hover:border-blue-400 hover:bg-blue-50'
+        file ? 'border-green-400 bg-green-50' : 'border-gray-200 bg-white hover:border-[#D4AF37] hover:bg-[#D4AF37]'
       }`}
       onClick={() => inputRef.current?.click()}
       data-testid={testId}
@@ -234,9 +234,9 @@ export function KYCUpload({ language }: KYCUploadProps) {
 
   return (
     <Card className="shadow-lg border-0 bg-white/80 backdrop-blur">
-      <CardHeader className="bg-gradient-to-r from-blue-50 to-purple-50 border-b">
+      <CardHeader className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] border-b">
         <CardTitle className="flex items-center gap-2 text-xl" dir={isHe ? 'rtl' : 'ltr'}>
-          <Shield className="w-5 h-5 text-blue-600" />
+          <Shield className="w-5 h-5 text-[#B8932F]" />
           {isHe ? 'אימות זהות — KYC' : 'Identity Verification — KYC'}
         </CardTitle>
         <CardDescription dir={isHe ? 'rtl' : 'ltr'}>
@@ -257,20 +257,20 @@ export function KYCUpload({ language }: KYCUploadProps) {
                 onClick={() => setDocType(dt.id)}
                 className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition-all ${
                   docType === dt.id
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-gray-200 hover:border-blue-300 hover:bg-white'
+                    ? 'border-[#D4AF37] bg-[#D4AF37]'
+                    : 'border-gray-200 hover:border-[#D4AF37] hover:bg-white'
                 }`}
                 dir={isHe ? 'rtl' : 'ltr'}
                 data-testid={`doc-type-${dt.id}`}
               >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${docType === dt.id ? 'bg-blue-100 text-blue-600' : 'bg-white text-gray-500'}`}>
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${docType === dt.id ? 'bg-[#D4AF37] text-[#B8932F]' : 'bg-white text-gray-500'}`}>
                   {dt.icon}
                 </div>
                 <div className="flex-1">
                   <p className="font-medium text-gray-900 text-sm">{isHe ? dt.labelHe : dt.labelEn}</p>
                   <p className="text-xs text-gray-500">{isHe ? dt.descHe : dt.descEn}</p>
                 </div>
-                {docType === dt.id && <CheckCircle2 className="w-5 h-5 text-blue-500 flex-shrink-0" />}
+                {docType === dt.id && <CheckCircle2 className="w-5 h-5 text-[#D4AF37] flex-shrink-0" />}
               </div>
             ))}
           </div>
@@ -359,15 +359,15 @@ export function KYCUpload({ language }: KYCUploadProps) {
             <Button
               onClick={handleSubmit}
               disabled={!selfieFile || !idFrontFile || !consentGiven || uploading}
-              className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+              className="w-full bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F]"
               data-testid="button-upload-kyc"
             >
               {uploading ? (isHe ? 'שולח...' : 'Submitting...') : (isHe ? 'שלח לאימות' : 'Submit for Verification')}
             </Button>
 
-            <Alert className="bg-blue-50 border-blue-200">
-              <AlertCircle className="w-4 h-4 text-blue-600" />
-              <AlertDescription className="text-blue-800 text-xs" dir={isHe ? 'rtl' : 'ltr'}>
+            <Alert className="bg-[#D4AF37] border-[#D4AF37]">
+              <AlertCircle className="w-4 h-4 text-[#B8932F]" />
+              <AlertDescription className="text-[#B8932F] text-xs" dir={isHe ? 'rtl' : 'ltr'}>
                 {isHe
                   ? 'המסמכים מעובדים אך ורק בזיכרון RAM ואינם נשמרים לאחר האימות. תהליך Zero-Storage מוצפן ומאובטח.'
                   : 'Documents are processed in RAM only and never stored after verification. Zero-storage encrypted pipeline.'}
@@ -379,7 +379,7 @@ export function KYCUpload({ language }: KYCUploadProps) {
         {/* Guidelines */}
         <div className="bg-white p-4 rounded-lg space-y-2">
           <h4 className="font-semibold text-gray-900 flex items-center gap-2 text-sm" dir={isHe ? 'rtl' : 'ltr'}>
-            <AlertCircle className="w-4 h-4 text-blue-600" />
+            <AlertCircle className="w-4 h-4 text-[#B8932F]" />
             {isHe ? 'הנחיות' : 'Guidelines'}
           </h4>
           <ul className="text-xs text-gray-600 space-y-1 list-disc list-inside" dir={isHe ? 'rtl' : 'ltr'}>

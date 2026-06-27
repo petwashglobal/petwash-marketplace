@@ -240,10 +240,10 @@ export default function FinanceDashboard() {
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: "bg-yellow-500",
-      scheduled: "bg-blue-500",
+      scheduled: "bg-[#D4AF37]",
       paid: "bg-green-500",
       overdue: "bg-red-500",
-      partial: "bg-orange-500",
+      partial: "bg-[#D4AF37]",
       cancelled: "bg-gray-500",
     };
     return colors[status] || "bg-gray-500";
@@ -299,7 +299,7 @@ export default function FinanceDashboard() {
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">Overdue Receivables</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-orange-500" />
+            <AlertTriangle className="h-4 w-4 text-[#D4AF37]" />
           </CardHeader>
           <CardContent>
             <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-overdue-receivables">{overdueReceivables?.length || 0}</div>

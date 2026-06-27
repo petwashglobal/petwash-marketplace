@@ -294,7 +294,7 @@ export default function AdminSupplierInvoices() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-orange-50/20"
+      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-[#D4AF37]/20"
       dir="rtl"
       style={{
         paddingTop: "env(safe-area-inset-top)",

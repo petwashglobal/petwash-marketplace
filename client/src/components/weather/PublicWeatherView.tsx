@@ -65,16 +65,16 @@ interface Props {
 
 const RATING_GRADIENT = {
   excellent: 'from-emerald-500 via-green-400 to-teal-400',
-  good: 'from-blue-500 via-cyan-400 to-sky-400',
-  moderate: 'from-amber-500 via-yellow-400 to-orange-400',
-  poor: 'from-red-500 via-rose-400 to-pink-400',
+  good: 'from-[#D4AF37] via-[#D4AF37] to-[#D4AF37]',
+  moderate: 'from-amber-500 via-yellow-400 to-[#D4AF37]',
+  poor: 'from-red-500 via-rose-400 to-[#D4AF37]',
 };
 
 const getWeatherIcon = (code: number) => {
   if (code === 0 || code === 1) return <Sun className="w-12 h-12 text-yellow-400" />;
   if (code === 2 || code === 3) return <Cloud className="w-12 h-12 text-gray-400" />;
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return <CloudRain className="w-12 h-12 text-blue-400" />;
-  if ([71, 73, 75, 85, 86].includes(code)) return <CloudSnow className="w-12 h-12 text-blue-200" />;
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return <CloudRain className="w-12 h-12 text-[#D4AF37]" />;
+  if ([71, 73, 75, 85, 86].includes(code)) return <CloudSnow className="w-12 h-12 text-[#D4AF37]" />;
   return <Cloud className="w-12 h-12 text-gray-400" />;
 };
 
@@ -198,7 +198,7 @@ export default function PublicWeatherView({ data, location, onLocationChange }: 
               >
                 <Card className={`relative overflow-hidden bg-gradient-to-br ${
                   day.washScore >= 80 ? 'from-emerald-500/10 to-green-500/5 border-emerald-500/30' :
-                  day.washScore >= 60 ? 'from-blue-500/10 to-cyan-500/5 border-blue-500/30' :
+                  day.washScore >= 60 ? 'from-[#D4AF37]/10 to-[#D4AF37]/5 border-[#D4AF37]/30' :
                   day.washScore >= 40 ? 'from-amber-500/10 to-yellow-500/5 border-amber-500/30' :
                   'from-red-500/10 to-rose-500/5 border-red-500/30'
                 } backdrop-blur-md hover:scale-105 transition-transform duration-300`}>
@@ -231,7 +231,7 @@ export default function PublicWeatherView({ data, location, onLocationChange }: 
                     {/* Weather Details */}
                     <div className="grid grid-cols-2 gap-3 text-sm mb-4">
                       <div className="flex items-center gap-2">
-                        <Droplets className="w-4 h-4 text-blue-400" />
+                        <Droplets className="w-4 h-4 text-[#D4AF37]" />
                         <span>{day.precipitationProbability}%</span>
                       </div>
                       <div className="flex items-center gap-2">
@@ -243,7 +243,7 @@ export default function PublicWeatherView({ data, location, onLocationChange }: 
                         <span>{day.windSpeed} km/h</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <ThermometerSun className="w-4 h-4 text-orange-400" />
+                        <ThermometerSun className="w-4 h-4 text-[#D4AF37]" />
                         <span>{day.temperature.max}°</span>
                       </div>
                     </div>

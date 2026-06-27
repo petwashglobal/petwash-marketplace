@@ -250,10 +250,10 @@ export default function CustomerManagement() {
   // Loyalty tier color mapping (7-TIER LUXURY SYSTEM: Bronze→Royal)
   const getLoyaltyTierColor = (tier: string) => {
     switch (tier) {
-      case 'royal': return 'bg-violet-100 text-violet-800 border-violet-300';
+      case 'royal': return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
       case 'emerald': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      case 'diamond': return 'bg-blue-100 text-blue-800 border-blue-300';
-      case 'platinum': return 'bg-purple-100 text-purple-800 border-purple-300';
+      case 'diamond': return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+      case 'platinum': return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
       case 'gold': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'silver': return 'bg-white text-gray-800 border-gray-300';
       case 'bronze': return 'bg-amber-100 text-amber-800 border-amber-300';
@@ -265,8 +265,8 @@ export default function CustomerManagement() {
   // Customer value calculation
   const getCustomerValueTier = (totalSpent: string) => {
     const spent = parseFloat(totalSpent);
-    if (spent >= 5000) return { tier: t('customers.value.vip', language), color: 'bg-purple-100 text-purple-800' };
-    if (spent >= 2000) return { tier: t('customers.value.highValue', language), color: 'bg-blue-100 text-blue-800' };
+    if (spent >= 5000) return { tier: t('customers.value.vip', language), color: 'bg-[#D4AF37] text-[#B8932F]' };
+    if (spent >= 2000) return { tier: t('customers.value.highValue', language), color: 'bg-[#D4AF37] text-[#B8932F]' };
     if (spent >= 500) return { tier: t('customers.value.regular', language), color: 'bg-green-100 text-green-800' };
     return { tier: t('customers.value.new', language), color: 'bg-white text-gray-800' };
   };
@@ -319,11 +319,11 @@ export default function CustomerManagement() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-20">
             <div className="flex items-center space-x-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#B8932F] to-[#B8932F] rounded-xl flex items-center justify-center shadow-lg">
                 <Users className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                   Customer Management
                 </h1>
                 <p className="text-sm text-slate-600 font-medium">Comprehensive customer relationship management</p>
@@ -335,7 +335,7 @@ export default function CustomerManagement() {
                 variant="outline" 
                 size="sm" 
                 onClick={() => refetchCustomers()}
-                className="border-blue-200 hover:bg-blue-50"
+                className="border-[#D4AF37] hover:bg-[#D4AF37]"
                 data-testid="refresh-customers"
               >
                 <RefreshCw className="w-4 h-4 mr-2" />
@@ -545,7 +545,7 @@ export default function CustomerManagement() {
                           <TableCell>
                             <Avatar className="w-8 h-8">
                               <AvatarImage src={customer.profilePictureUrl} />
-                              <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white text-xs">
+                              <AvatarFallback className="bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] text-white text-xs">
                                 {customer.firstName.charAt(0)}{customer.lastName.charAt(0)}
                               </AvatarFallback>
                             </Avatar>
@@ -595,7 +595,7 @@ export default function CustomerManagement() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center space-x-1">
-                              <Gift className="w-4 h-4 text-blue-500" />
+                              <Gift className="w-4 h-4 text-[#D4AF37]" />
                               <span className="font-medium">{customer.washBalance}</span>
                             </div>
                           </TableCell>
@@ -609,9 +609,9 @@ export default function CustomerManagement() {
                               {customer.isVerified ? (
                                 <CheckCircle className="w-4 h-4 text-green-500" />
                               ) : (
-                                <AlertTriangle className="w-4 h-4 text-orange-500" />
+                                <AlertTriangle className="w-4 h-4 text-[#D4AF37]" />
                               )}
-                              <span className={`text-xs font-medium ${customer.isVerified ? 'text-green-700' : 'text-orange-700'}`}>
+                              <span className={`text-xs font-medium ${customer.isVerified ? 'text-green-700' : 'text-[#B8932F]'}`}>
                                 {customer.isVerified ? t('customers.status.verified', language) : t('customers.status.pending', language)}
                               </span>
                             </div>
@@ -693,7 +693,7 @@ export default function CustomerManagement() {
             <DialogTitle className="flex items-center space-x-3">
               <Avatar className="w-10 h-10">
                 <AvatarImage src={selectedCustomer?.profilePictureUrl} />
-                <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-500 text-white">
+                <AvatarFallback className="bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] text-white">
                   {selectedCustomer?.firstName.charAt(0)}{selectedCustomer?.lastName.charAt(0)}
                 </AvatarFallback>
               </Avatar>
@@ -714,7 +714,7 @@ export default function CustomerManagement() {
           {selectedCustomer && (
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
               <TabsList className="grid w-full grid-cols-5">
-                <TabsTrigger value="overview" className="data-[state=active]:bg-blue-50">
+                <TabsTrigger value="overview" className="data-[state=active]:bg-[#D4AF37]">
                   <User className="w-4 h-4 mr-2" />
                   Overview
                 </TabsTrigger>
@@ -722,7 +722,7 @@ export default function CustomerManagement() {
                   <History className="w-4 h-4 mr-2" />
                   Service History
                 </TabsTrigger>
-                <TabsTrigger value="communications" className="data-[state=active]:bg-purple-50">
+                <TabsTrigger value="communications" className="data-[state=active]:bg-[#D4AF37]">
                   <MessageSquare className="w-4 h-4 mr-2" />
                   Communications
                 </TabsTrigger>
@@ -730,7 +730,7 @@ export default function CustomerManagement() {
                   <PawPrint className="w-4 h-4 mr-2" />
                   Pet Information
                 </TabsTrigger>
-                <TabsTrigger value="analytics" className="data-[state=active]:bg-cyan-50">
+                <TabsTrigger value="analytics" className="data-[state=active]:bg-[#D4AF37]">
                   <TrendingUp className="w-4 h-4 mr-2" />
                   Analytics
                 </TabsTrigger>
@@ -870,8 +870,8 @@ export default function CustomerManagement() {
                       <div className="space-y-2">
                         <Label>Wash Balance</Label>
                         <div className="flex items-center space-x-2">
-                          <Gift className="w-4 h-4 text-blue-500" />
-                          <span className="text-xl font-bold text-blue-600">
+                          <Gift className="w-4 h-4 text-[#D4AF37]" />
+                          <span className="text-xl font-bold text-[#B8932F]">
                             {selectedCustomer.washBalance} washes
                           </span>
                         </div>
@@ -900,9 +900,9 @@ export default function CustomerManagement() {
                             {selectedCustomer.isVerified ? (
                               <CheckCircle className="w-5 h-5 text-green-500" />
                             ) : (
-                              <AlertTriangle className="w-5 h-5 text-orange-500" />
+                              <AlertTriangle className="w-5 h-5 text-[#D4AF37]" />
                             )}
-                            <span className={`text-sm font-medium ${selectedCustomer.isVerified ? 'text-green-700' : 'text-orange-700'}`}>
+                            <span className={`text-sm font-medium ${selectedCustomer.isVerified ? 'text-green-700' : 'text-[#B8932F]'}`}>
                               {selectedCustomer.isVerified ? t('customers.status.verified', language) : t('customers.status.unverified', language)}
                             </span>
                           </div>
@@ -950,7 +950,7 @@ export default function CustomerManagement() {
                   <CardContent>
                     {historyLoading ? (
                       <div className="text-center py-8">
-                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <div className="w-8 h-8 border-2 border-[#B8932F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-slate-600">Loading service history...</p>
                       </div>
                     ) : (
@@ -967,7 +967,7 @@ export default function CustomerManagement() {
                               <div className="text-right">
                                 <div className="font-bold text-green-600">₪{parseFloat(wash.finalPrice).toLocaleString()}</div>
                                 {parseFloat(wash.discountApplied) > 0 && (
-                                  <div className="text-sm text-orange-600">
+                                  <div className="text-sm text-[#B8932F]">
                                     {parseFloat(wash.discountApplied).toFixed(1)}% discount
                                   </div>
                                 )}
@@ -1074,7 +1074,7 @@ export default function CustomerManagement() {
                     {/* Communication History */}
                     {communicationsLoading ? (
                       <div className="text-center py-8">
-                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <div className="w-8 h-8 border-2 border-[#B8932F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-slate-600">Loading communications...</p>
                       </div>
                     ) : (
@@ -1084,7 +1084,7 @@ export default function CustomerManagement() {
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex items-center space-x-3">
                                 <div className={`w-2 h-2 rounded-full ${
-                                  comm.direction === 'inbound' ? 'bg-blue-500' : 'bg-green-500'
+                                  comm.direction === 'inbound' ? 'bg-[#D4AF37]' : 'bg-green-500'
                                 }`}></div>
                                 <Badge variant="outline">
                                   {comm.communicationType}
@@ -1132,7 +1132,7 @@ export default function CustomerManagement() {
                   <CardContent>
                     {petsLoading ? (
                       <div className="text-center py-8">
-                        <div className="w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+                        <div className="w-8 h-8 border-2 border-[#B8932F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
                         <p className="text-slate-600">Loading pet information...</p>
                       </div>
                     ) : (
@@ -1141,7 +1141,7 @@ export default function CustomerManagement() {
                           <div key={pet.id} className="border rounded-lg p-4">
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex items-center space-x-3">
-                                <PawPrint className="w-5 h-5 text-orange-500" />
+                                <PawPrint className="w-5 h-5 text-[#D4AF37]" />
                                 <div>
                                   <h4 className="font-medium">{pet.name}</h4>
                                   <p className="text-sm text-slate-600">{pet.breed}</p>
@@ -1223,7 +1223,7 @@ export default function CustomerManagement() {
                       <CardTitle className="text-sm font-medium text-slate-600">Visit Frequency</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-blue-600">
+                      <div className="text-2xl font-bold text-[#B8932F]">
                         {((customerWashHistory as any) || []).length || 0}
                       </div>
                       <p className="text-sm text-slate-600 mt-1">Total visits</p>
@@ -1235,7 +1235,7 @@ export default function CustomerManagement() {
                       <CardTitle className="text-sm font-medium text-slate-600">Average Order Value</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-2xl font-bold text-purple-600">
+                      <div className="text-2xl font-bold text-[#B8932F]">
                         ₪{((customerWashHistory as any) || []).length ? 
                           (parseFloat(selectedCustomer.totalSpent) / ((customerWashHistory as any) || []).length).toFixed(0) : 
                           '0'
@@ -1253,8 +1253,8 @@ export default function CustomerManagement() {
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
-                      <div className="flex items-center space-x-4 p-3 bg-blue-50 rounded-lg">
-                        <div className="w-3 h-3 bg-blue-500 rounded-full"></div>
+                      <div className="flex items-center space-x-4 p-3 bg-[#D4AF37] rounded-lg">
+                        <div className="w-3 h-3 bg-[#D4AF37] rounded-full"></div>
                         <div>
                           <div className="font-medium">Customer Registration</div>
                           <div className="text-sm text-slate-600">
@@ -1274,8 +1274,8 @@ export default function CustomerManagement() {
                       )}
 
                       {((customerWashHistory as any) || []).length > 0 && (
-                        <div className="flex items-center space-x-4 p-3 bg-purple-50 rounded-lg">
-                          <div className="w-3 h-3 bg-purple-500 rounded-full"></div>
+                        <div className="flex items-center space-x-4 p-3 bg-[#D4AF37] rounded-lg">
+                          <div className="w-3 h-3 bg-[#D4AF37] rounded-full"></div>
                           <div>
                             <div className="font-medium">First Service</div>
                             <div className="text-sm text-slate-600">

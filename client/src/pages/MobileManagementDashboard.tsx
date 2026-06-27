@@ -45,16 +45,16 @@ interface DashboardSection {
 }
 
 const dashboardSections: DashboardSection[] = [
-  { id: 'applications', icon: FileText, label: { en: 'Applications', he: 'בקשות הצטרפות' }, description: { en: 'Review provider applications', he: 'סקירת בקשות ספקים' }, bgGradient: 'from-purple-500/30 to-pink-600/20', route: '/admin/provider-intake' },
-  { id: 'hr', icon: Users, label: { en: 'HR Management', he: 'ניהול משאבי אנוש' }, description: { en: 'Employee management', he: 'ניהול עובדים' }, bgGradient: 'from-blue-500/30 to-indigo-600/20', route: '/hr-admin' },
+  { id: 'applications', icon: FileText, label: { en: 'Applications', he: 'בקשות הצטרפות' }, description: { en: 'Review provider applications', he: 'סקירת בקשות ספקים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/provider-intake' },
+  { id: 'hr', icon: Users, label: { en: 'HR Management', he: 'ניהול משאבי אנוש' }, description: { en: 'Employee management', he: 'ניהול עובדים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/hr-admin' },
   { id: 'finance', icon: DollarSign, label: { en: 'Finance', he: 'פיננסים' }, description: { en: 'Revenue & payments', he: 'הכנסות ותשלומים' }, bgGradient: 'from-emerald-500/30 to-teal-600/20', route: '/accounting' },
-  { id: 'sales', icon: TrendingUp, label: { en: 'Sales & CRM', he: 'מכירות ו-CRM' }, description: { en: 'Sales pipeline', he: 'צינור מכירות' }, bgGradient: 'from-amber-500/30 to-orange-600/20', route: '/admin/sales' },
+  { id: 'sales', icon: TrendingUp, label: { en: 'Sales & CRM', he: 'מכירות ו-CRM' }, description: { en: 'Sales pipeline', he: 'צינור מכירות' }, bgGradient: 'from-amber-500/30 to-[#B8932F]/20', route: '/admin/sales' },
   { id: 'marketing', icon: Megaphone, label: { en: 'Marketing', he: 'שיווק' }, description: { en: 'Campaigns & ads', he: 'קמפיינים ופרסום' }, bgGradient: 'from-rose-500/30 to-red-600/20', route: '/admin/marketing' },
-  { id: 'social', icon: Share2, label: { en: 'Social Media', he: 'רשתות חברתיות' }, description: { en: 'Social channels', he: 'ערוצים חברתיים' }, bgGradient: 'from-sky-500/30 to-cyan-600/20', route: '/admin/social' },
-  { id: 'leads', icon: UserPlus, label: { en: 'Leads', he: 'לידים' }, description: { en: 'Lead tracking', he: 'מעקב לידים' }, bgGradient: 'from-violet-500/30 to-purple-600/20', route: '/admin/leads' },
-  { id: 'promotions', icon: Gift, label: { en: 'Promotions', he: 'מבצעים' }, description: { en: 'Coupons & offers', he: 'קופונים והצעות' }, bgGradient: 'from-fuchsia-500/30 to-pink-600/20', route: '/admin/promotions' },
+  { id: 'social', icon: Share2, label: { en: 'Social Media', he: 'רשתות חברתיות' }, description: { en: 'Social channels', he: 'ערוצים חברתיים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/social' },
+  { id: 'leads', icon: UserPlus, label: { en: 'Leads', he: 'לידים' }, description: { en: 'Lead tracking', he: 'מעקב לידים' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/leads' },
+  { id: 'promotions', icon: Gift, label: { en: 'Promotions', he: 'מבצעים' }, description: { en: 'Coupons & offers', he: 'קופונים והצעות' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/admin/promotions' },
   { id: 'influencers', icon: Star, label: { en: 'Influencers', he: 'משפיענים' }, description: { en: 'Partnerships', he: 'שותפויות' }, bgGradient: 'from-yellow-500/30 to-amber-600/20', route: '/admin/influencers' },
-  { id: 'analytics', icon: BarChart3, label: { en: 'Analytics', he: 'אנליטיקס' }, description: { en: 'Reports & insights', he: 'דוחות ותובנות' }, bgGradient: 'from-indigo-500/30 to-blue-600/20', route: '/company-reports' },
+  { id: 'analytics', icon: BarChart3, label: { en: 'Analytics', he: 'אנליטיקס' }, description: { en: 'Reports & insights', he: 'דוחות ותובנות' }, bgGradient: 'from-[#D4AF37]/30 to-[#B8932F]/20', route: '/company-reports' },
 ];
 
 interface Provider {
@@ -71,10 +71,10 @@ interface Provider {
 
 const platformColors: Record<string, { bg: string; text: string; icon: typeof Users }> = {
   'walker': { bg: 'bg-emerald-500/15', text: 'text-emerald-400', icon: Footprints },
-  'sitter': { bg: 'bg-purple-500/15', text: 'text-purple-400', icon: Home },
-  'driver': { bg: 'bg-blue-500/15', text: 'text-blue-400', icon: Car },
+  'sitter': { bg: 'bg-[#D4AF37]/15', text: 'text-[#D4AF37]', icon: Home },
+  'driver': { bg: 'bg-[#D4AF37]/15', text: 'text-[#D4AF37]', icon: Car },
   'groomer': { bg: 'bg-rose-500/15', text: 'text-rose-400', icon: Scissors },
-  'trainer': { bg: 'bg-cyan-500/15', text: 'text-cyan-400', icon: GraduationCap },
+  'trainer': { bg: 'bg-[#D4AF37]/15', text: 'text-[#D4AF37]', icon: GraduationCap },
   'k9000': { bg: 'bg-slate-500/15', text: 'text-slate-400', icon: Droplets },
 };
 
@@ -249,10 +249,10 @@ export default function MobileManagementDashboard() {
           <div className="px-4 py-4 overflow-x-auto">
             <div className="flex gap-3 min-w-max">
               {[
-                { icon: FileText, value: (applicationStats as any)?.newCount || 0, label: isHebrew ? 'בקשות חדשות' : 'New Apps', gradient: 'from-purple-500/25 to-pink-600/15', color: 'text-purple-400' },
-                { icon: Clock, value: (applicationStats as any)?.pendingCount || 0, label: isHebrew ? 'ממתינות' : 'Pending', gradient: 'from-amber-500/25 to-orange-600/15', color: 'text-amber-400' },
+                { icon: FileText, value: (applicationStats as any)?.newCount || 0, label: isHebrew ? 'בקשות חדשות' : 'New Apps', gradient: 'from-[#D4AF37]/25 to-[#B8932F]/15', color: 'text-[#D4AF37]' },
+                { icon: Clock, value: (applicationStats as any)?.pendingCount || 0, label: isHebrew ? 'ממתינות' : 'Pending', gradient: 'from-amber-500/25 to-[#B8932F]/15', color: 'text-amber-400' },
                 { icon: DollarSign, value: '₪0', label: isHebrew ? 'הכנסות' : 'Revenue', gradient: 'from-emerald-500/25 to-teal-600/15', color: 'text-emerald-400' },
-                { icon: UserPlus, value: 0, label: isHebrew ? 'לידים' : 'Leads', gradient: 'from-violet-500/25 to-purple-600/15', color: 'text-violet-400' },
+                { icon: UserPlus, value: 0, label: isHebrew ? 'לידים' : 'Leads', gradient: 'from-[#D4AF37]/25 to-[#B8932F]/15', color: 'text-[#D4AF37]' },
               ].map((stat, i) => (
                 <div key={i} className={`bg-white border border-[#E8E3D9] shadow-sm rounded-2xl p-4 min-w-[130px] bg-gradient-to-br ${stat.gradient}`}>
                   <stat.icon className={`h-5 w-5 mb-2 ${stat.color}`} />
@@ -278,10 +278,10 @@ export default function MobileManagementDashboard() {
             <div className="grid grid-cols-3 md:grid-cols-6 gap-2">
               {[
                 { label: isHebrew ? 'טיולים' : 'Walkers', icon: Footprints, color: 'text-emerald-400', bg: 'from-emerald-500/15 to-emerald-600/5', count: 3, route: '/walk-my-pet' },
-                { label: isHebrew ? 'שמרטפים' : 'Sitters', icon: Home, color: 'text-purple-400', bg: 'from-purple-500/15 to-purple-600/5', count: 3, route: '/sitter-suite' },
-                { label: isHebrew ? 'נהגים' : 'Drivers', icon: Car, color: 'text-blue-400', bg: 'from-blue-500/15 to-blue-600/5', count: 6, route: '/pettrek' },
+                { label: isHebrew ? 'שמרטפים' : 'Sitters', icon: Home, color: 'text-[#D4AF37]', bg: 'from-[#D4AF37]/15 to-[#B8932F]/5', count: 3, route: '/sitter-suite' },
+                { label: isHebrew ? 'נהגים' : 'Drivers', icon: Car, color: 'text-[#D4AF37]', bg: 'from-[#D4AF37]/15 to-[#B8932F]/5', count: 6, route: '/pettrek' },
                 { label: isHebrew ? 'טיפוח' : 'Groomers', icon: Scissors, color: 'text-rose-400', bg: 'from-rose-500/15 to-rose-600/5', count: 0, route: '/groomers' },
-                { label: isHebrew ? 'מאלפים' : 'Trainers', icon: GraduationCap, color: 'text-cyan-400', bg: 'from-cyan-500/15 to-cyan-600/5', count: 3, route: '/academy' },
+                { label: isHebrew ? 'מאלפים' : 'Trainers', icon: GraduationCap, color: 'text-[#D4AF37]', bg: 'from-[#D4AF37]/15 to-[#B8932F]/5', count: 3, route: '/academy' },
                 { label: '⁦K9000™⁩', icon: Droplets, color: 'text-[#0a0a0a]', bg: 'from-[#D9B84C]/15 to-[#D9B84C]/5', count: 6, route: '/k9000' },
               ].map((p, i) => (
                 <Link key={i} href={p.route}>

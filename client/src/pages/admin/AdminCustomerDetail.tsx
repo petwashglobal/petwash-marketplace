@@ -117,7 +117,7 @@ function Verified({ ok }: { ok: boolean }) {
   return ok ? (
     <CheckCircle2 className="inline w-4 h-4 text-green-600" aria-label="מאומת" />
   ) : (
-    <XCircle className="inline w-4 h-4 text-orange-500" aria-label="לא מאומת" />
+    <XCircle className="inline w-4 h-4 text-[#D4AF37]" aria-label="לא מאומת" />
   );
 }
 
@@ -330,7 +330,7 @@ export default function AdminCustomerDetail() {
                     </Row>
                     <Row label="דרגת נאמנות">{profile.loyaltyTier || DASH}</Row>
                     {overview?.errors && Object.keys(overview.errors).length > 0 && (
-                      <p className="mt-4 text-xs text-orange-600">
+                      <p className="mt-4 text-xs text-[#B8932F]">
                         חלק מהנתונים לא נטענו: {Object.keys(overview.errors).join(", ")}
                       </p>
                     )}

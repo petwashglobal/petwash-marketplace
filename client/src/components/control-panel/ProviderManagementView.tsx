@@ -101,15 +101,15 @@ const statusStyles: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
   approved: "bg-green-100 text-green-800 border-green-200",
   rejected: "bg-red-100 text-red-800 border-red-200",
-  on_hold: "bg-orange-100 text-orange-800 border-orange-200",
-  under_review: "bg-blue-100 text-blue-800 border-blue-200",
+  on_hold: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
+  under_review: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
   expired: "bg-white text-gray-800 border-gray-200",
 };
 
 const priorityStyles: Record<string, string> = {
   low: "bg-white text-gray-700",
-  normal: "bg-blue-100 text-blue-700",
-  high: "bg-orange-100 text-orange-700",
+  normal: "bg-[#D4AF37] text-[#B8932F]",
+  high: "bg-[#D4AF37] text-[#B8932F]",
   urgent: "bg-red-100 text-red-700 animate-pulse",
 };
 
@@ -235,7 +235,7 @@ export default function ProviderManagementView() {
             <Card className="luxury-glass-card" data-testid="card-expiring-police">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">תעודות יושר</CardTitle>
-                <AlertTriangle className="w-4 h-4 text-orange-500" />
+                <AlertTriangle className="w-4 h-4 text-[#D4AF37]" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold luxury-text-gradient">
@@ -248,7 +248,7 @@ export default function ProviderManagementView() {
             <Card className="luxury-glass-card" data-testid="card-training">
               <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">הכשרות</CardTitle>
-                <Award className="w-4 h-4 text-purple-500" />
+                <Award className="w-4 h-4 text-[#D4AF37]" />
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold luxury-text-gradient">
@@ -275,7 +275,7 @@ export default function ProviderManagementView() {
                       className="luxury-glass-minimal p-4 rounded-lg text-center"
                       data-testid={`platform-stat-${key}`}
                     >
-                      <Icon className="w-8 h-8 mx-auto mb-2 text-purple-500" />
+                      <Icon className="w-8 h-8 mx-auto mb-2 text-[#D4AF37]" />
                       <div className="text-2xl font-bold luxury-text-gradient">{count}</div>
                       <p className="text-sm text-muted-foreground">{labels.he}</p>
                       <p className="text-xs text-muted-foreground">{labels.en}</p>
@@ -439,7 +439,7 @@ export default function ProviderManagementView() {
                                   onClick={() => holdMutation.mutate({ id: item.id, reason: actionNotes || "ממתין למסמכים נוספים" })}
                                   disabled={holdMutation.isPending}
                                   variant="outline"
-                                  className="border-orange-500 text-orange-600"
+                                  className="border-[#D4AF37] text-[#B8932F]"
                                   data-testid="btn-hold"
                                 >
                                   <Pause className="w-4 h-4 mr-1" />
@@ -499,7 +499,7 @@ export default function ProviderManagementView() {
                 </Card>
                 <Card className="luxury-glass-minimal">
                   <CardContent className="pt-4 text-center">
-                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-orange-500" />
+                    <AlertTriangle className="w-8 h-8 mx-auto mb-2 text-[#D4AF37]" />
                     <div className="text-xl font-bold">{stats?.expiringPoliceChecks || 0}</div>
                     <p className="text-sm text-muted-foreground">פגות ב-30 יום</p>
                   </CardContent>
@@ -514,8 +514,8 @@ export default function ProviderManagementView() {
               </div>
 
               {expiringChecks.length > 0 && (
-                <div className="border border-orange-200 rounded-lg p-4 bg-white">
-                  <h4 className="font-medium text-orange-800 mb-3 flex items-center gap-2">
+                <div className="border border-[#D4AF37] rounded-lg p-4 bg-white">
+                  <h4 className="font-medium text-[#B8932F] mb-3 flex items-center gap-2">
                     <AlertTriangle className="w-4 h-4" />
                     תעודות שעומדות לפוג ({expiringChecks.length})
                   </h4>
@@ -527,7 +527,7 @@ export default function ProviderManagementView() {
                         data-testid={`expiring-check-${check.id}`}
                       >
                         <span className="font-medium">{check.providerId}</span>
-                        <Badge className="bg-orange-100 text-orange-800">
+                        <Badge className="bg-[#D4AF37] text-[#B8932F]">
                           {check.daysUntilExpiry} ימים נותרו
                         </Badge>
                       </div>
@@ -557,7 +557,7 @@ export default function ProviderManagementView() {
                   return (
                     <Card key={key} className="luxury-glass-minimal">
                       <CardContent className="pt-6 text-center">
-                        <Icon className="w-10 h-10 mx-auto mb-3 text-purple-500" />
+                        <Icon className="w-10 h-10 mx-auto mb-3 text-[#D4AF37]" />
                         <h4 className="font-medium mb-1">{labels.he}</h4>
                         <p className="text-sm text-muted-foreground mb-3">{labels.en}</p>
                         <div className="flex justify-center gap-2">

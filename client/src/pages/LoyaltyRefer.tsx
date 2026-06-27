@@ -134,7 +134,7 @@ export default function LoyaltyRefer() {
         <div className="text-center mb-12">
           <img src="/brand/petwash-logo-white-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="w-16 h-16 rounded-2xl bg-[rgba(139,92,246,0.1)] border border-[rgba(139,92,246,0.2)] flex items-center justify-center mx-auto mb-4">
-            <Share2 className="w-8 h-8 text-purple-400" />
+            <Share2 className="w-8 h-8 text-[#D4AF37]" />
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-3">
             {isHebrew ? 'הזמנת חברים' : 'Refer a Friend'}
@@ -151,7 +151,7 @@ export default function LoyaltyRefer() {
               className="p-6 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl text-center transition-all duration-300 hover:border-[rgba(139,92,246,0.3)]"
             >
               <div className="w-12 h-12 rounded-xl bg-[rgba(139,92,246,0.1)] flex items-center justify-center mx-auto mb-3">
-                <stat.icon className="w-6 h-6 text-purple-400" />
+                <stat.icon className="w-6 h-6 text-[#D4AF37]" />
               </div>
               <p className="text-[#8A8078] text-sm mb-1">{stat.label}</p>
               <p className="text-3xl font-bold text-[#0a0a0a]">{stat.value}</p>
@@ -185,7 +185,7 @@ export default function LoyaltyRefer() {
                   rel="noopener noreferrer"
                   className="flex flex-col items-center gap-2 py-4 px-3 rounded-xl bg-[rgba(139,92,246,0.08)] border border-[rgba(139,92,246,0.15)] hover:bg-[rgba(139,92,246,0.15)] hover:border-[rgba(139,92,246,0.3)] transition-all duration-300"
                 >
-                  <button.icon className="w-5 h-5 text-purple-400" />
+                  <button.icon className="w-5 h-5 text-[#D4AF37]" />
                   <span className="text-xs text-[#6A6A6A]">{button.label}</span>
                 </a>
               ))}

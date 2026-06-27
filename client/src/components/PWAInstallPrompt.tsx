@@ -166,7 +166,7 @@ export default function PWAInstallPrompt() {
             <h2 className="text-xl font-bold text-white">
               {isHebrew ? 'התקינו את ⁦Pet Wash™⁩' : 'Get ⁦Pet Wash™⁩ App'}
             </h2>
-            <p className="text-blue-100 text-sm mt-0.5">
+            <p className="text-[#D4AF37] text-sm mt-0.5">
               {isHebrew ? 'חוויית מובייל מושלמת' : 'Premium Mobile Experience'}
             </p>
           </div>
@@ -199,7 +199,7 @@ export default function PWAInstallPrompt() {
         <div
           key={i}
           className={`h-1.5 rounded-full transition-all duration-500 ${
-            step === i ? 'w-6 bg-blue-600' : 'w-1.5 bg-white'
+            step === i ? 'w-6 bg-[#B8932F]' : 'w-1.5 bg-white'
           }`}
         />
       ))}
@@ -209,16 +209,16 @@ export default function PWAInstallPrompt() {
   const renderIOSSafariSteps = () => (
     <div className="px-6 py-5 bg-white" style={{ animation: 'fadeUp 0.5s ease-out 0.8s both' }}>
       <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-blue-600" />
+        <Sparkles className="w-4 h-4 text-[#B8932F]" />
         {isHebrew ? 'בשני צעדים פשוטים:' : 'Two Simple Steps:'}
       </h3>
 
       <div className="space-y-3">
         <div className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all duration-500 ${
-          step === 0 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-white'
+          step === 0 ? 'border-[#D4AF37] bg-[#D4AF37] shadow-md shadow-[#D4AF37]' : 'border-gray-100 bg-white'
         }`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            step === 0 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white'
+            step === 0 ? 'bg-[#B8932F] shadow-lg shadow-[#D4AF37]' : 'bg-white'
           }`}>
             <span className={`text-sm font-bold ${step === 0 ? 'text-white' : 'text-gray-500'}`}>1</span>
           </div>
@@ -227,7 +227,7 @@ export default function PWAInstallPrompt() {
               <span className="text-sm font-semibold text-gray-900">
                 {isHebrew ? 'לחצו על' : 'Tap the'}
               </span>
-              <div className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md">
+              <div className="inline-flex items-center gap-1 bg-[#D4AF37] text-[#B8932F] px-2 py-0.5 rounded-md">
                 <Share className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="text-xs font-bold">{isHebrew ? 'שיתוף' : 'Share'}</span>
               </div>
@@ -237,15 +237,15 @@ export default function PWAInstallPrompt() {
             </p>
           </div>
           {step === 0 && (
-            <ChevronDown className="w-5 h-5 text-blue-500 flex-shrink-0" style={{ animation: 'floatUp 1.5s ease-in-out infinite' }} />
+            <ChevronDown className="w-5 h-5 text-[#D4AF37] flex-shrink-0" style={{ animation: 'floatUp 1.5s ease-in-out infinite' }} />
           )}
         </div>
 
         <div className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all duration-500 ${
-          step === 1 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-white'
+          step === 1 ? 'border-[#D4AF37] bg-[#D4AF37] shadow-md shadow-[#D4AF37]' : 'border-gray-100 bg-white'
         }`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            step === 1 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white'
+            step === 1 ? 'bg-[#B8932F] shadow-lg shadow-[#D4AF37]' : 'bg-white'
           }`}>
             <span className={`text-sm font-bold ${step === 1 ? 'text-white' : 'text-gray-500'}`}>2</span>
           </div>
@@ -254,7 +254,7 @@ export default function PWAInstallPrompt() {
               <span className="text-sm font-semibold text-gray-900">
                 {isHebrew ? 'לחצו' : 'Tap'}
               </span>
-              <div className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md">
+              <div className="inline-flex items-center gap-1 bg-[#D4AF37] text-[#B8932F] px-2 py-0.5 rounded-md">
                 <Plus className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="text-xs font-bold">{isHebrew ? 'הוסף למסך הבית' : 'Add to Home Screen'}</span>
               </div>
@@ -297,7 +297,7 @@ export default function PWAInstallPrompt() {
           window.open(`x-web-search://?${currentUrl}`, '_blank');
           handleDismiss();
         }}
-        className="w-full py-3.5 text-sm text-white font-bold rounded-2xl bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+        className="w-full py-3.5 text-sm text-white font-bold rounded-2xl bg-[#B8932F] hover:bg-[#B8932F] transition-all shadow-lg shadow-[#D4AF37] flex items-center justify-center gap-2"
       >
         <ExternalLink className="w-4 h-4" />
         {isHebrew ? 'העתיקו קישור' : 'Copy Link'}
@@ -307,10 +307,10 @@ export default function PWAInstallPrompt() {
 
   const renderInAppMessage = () => (
     <div className="px-6 py-5 bg-white" style={{ animation: 'fadeUp 0.5s ease-out 0.8s both' }}>
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-4">
+      <div className="bg-[#D4AF37] border-2 border-[#D4AF37] rounded-2xl p-4 mb-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <ExternalLink className="w-5 h-5 text-blue-600" />
+          <div className="w-10 h-10 rounded-xl bg-[#D4AF37] flex items-center justify-center flex-shrink-0">
+            <ExternalLink className="w-5 h-5 text-[#B8932F]" />
           </div>
           <div>
             <h4 className="text-sm font-bold text-gray-900 mb-1">
@@ -339,7 +339,7 @@ export default function PWAInstallPrompt() {
         </Button>
         <Button
           onClick={handleNativeInstall}
-          className="flex-1 py-3.5 text-sm text-white font-bold rounded-2xl bg-blue-600 hover:bg-blue-700 transition-all shadow-lg shadow-blue-200 flex items-center justify-center gap-2"
+          className="flex-1 py-3.5 text-sm text-white font-bold rounded-2xl bg-[#B8932F] hover:bg-[#B8932F] transition-all shadow-lg shadow-[#D4AF37] flex items-center justify-center gap-2"
         >
           <Download className="w-4 h-4" />
           {isHebrew ? 'התקנה' : 'Install'}
@@ -351,16 +351,16 @@ export default function PWAInstallPrompt() {
   const renderAndroidManualSteps = () => (
     <div className="px-6 py-5 bg-white" style={{ animation: 'fadeUp 0.5s ease-out 0.8s both' }}>
       <h3 className="text-sm font-bold text-gray-900 mb-4 flex items-center gap-2">
-        <Sparkles className="w-4 h-4 text-blue-600" />
+        <Sparkles className="w-4 h-4 text-[#B8932F]" />
         {isHebrew ? 'בשני צעדים פשוטים:' : 'Two Simple Steps:'}
       </h3>
 
       <div className="space-y-3">
         <div className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all duration-500 ${
-          step === 0 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-white'
+          step === 0 ? 'border-[#D4AF37] bg-[#D4AF37] shadow-md shadow-[#D4AF37]' : 'border-gray-100 bg-white'
         }`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            step === 0 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white'
+            step === 0 ? 'bg-[#B8932F] shadow-lg shadow-[#D4AF37]' : 'bg-white'
           }`}>
             <span className={`text-sm font-bold ${step === 0 ? 'text-white' : 'text-gray-500'}`}>1</span>
           </div>
@@ -381,10 +381,10 @@ export default function PWAInstallPrompt() {
         </div>
 
         <div className={`flex items-center gap-4 p-3.5 rounded-2xl border-2 transition-all duration-500 ${
-          step === 1 ? 'border-blue-500 bg-blue-50 shadow-md shadow-blue-100' : 'border-gray-100 bg-white'
+          step === 1 ? 'border-[#D4AF37] bg-[#D4AF37] shadow-md shadow-[#D4AF37]' : 'border-gray-100 bg-white'
         }`}>
           <div className={`w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 transition-all duration-500 ${
-            step === 1 ? 'bg-blue-600 shadow-lg shadow-blue-200' : 'bg-white'
+            step === 1 ? 'bg-[#B8932F] shadow-lg shadow-[#D4AF37]' : 'bg-white'
           }`}>
             <span className={`text-sm font-bold ${step === 1 ? 'text-white' : 'text-gray-500'}`}>2</span>
           </div>
@@ -393,7 +393,7 @@ export default function PWAInstallPrompt() {
               <span className="text-sm font-semibold text-gray-900">
                 {isHebrew ? 'בחרו' : 'Select'}
               </span>
-              <div className="inline-flex items-center gap-1 bg-blue-100 text-blue-700 px-2 py-0.5 rounded-md">
+              <div className="inline-flex items-center gap-1 bg-[#D4AF37] text-[#B8932F] px-2 py-0.5 rounded-md">
                 <Plus className="w-3.5 h-3.5 flex-shrink-0" />
                 <span className="text-xs font-bold">{isHebrew ? 'הוסף למסך הבית' : 'Add to Home Screen'}</span>
               </div>
@@ -411,10 +411,10 @@ export default function PWAInstallPrompt() {
 
   const renderDesktopSteps = () => (
     <div className="px-6 py-5 bg-white" style={{ animation: 'fadeUp 0.5s ease-out 0.8s both' }}>
-      <div className="bg-blue-50 border-2 border-blue-200 rounded-2xl p-4 mb-4">
+      <div className="bg-[#D4AF37] border-2 border-[#D4AF37] rounded-2xl p-4 mb-4">
         <div className="flex items-start gap-3">
-          <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center flex-shrink-0">
-            <Download className="w-5 h-5 text-blue-600" />
+          <div className="w-10 h-10 rounded-xl bg-[#D4AF37] flex items-center justify-center flex-shrink-0">
+            <Download className="w-5 h-5 text-[#B8932F]" />
           </div>
           <div>
             <h4 className="text-sm font-bold text-gray-900 mb-1">

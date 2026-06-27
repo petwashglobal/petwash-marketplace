@@ -46,9 +46,9 @@ interface LoyaltyStats {
 const getTierIcon = (tier: string) => {
   switch (tier.toLowerCase()) {
     case 'diamond':
-      return <Crown className="h-4 w-4 text-blue-500" />;
+      return <Crown className="h-4 w-4 text-[#D4AF37]" />;
     case 'platinum':
-      return <Crown className="h-4 w-4 text-purple-500" />;
+      return <Crown className="h-4 w-4 text-[#D4AF37]" />;
     case 'gold':
       return <Award className="h-4 w-4 text-yellow-500" />;
     case 'silver':
@@ -63,9 +63,9 @@ const getTierIcon = (tier: string) => {
 const getTierColor = (tier: string) => {
   switch (tier.toLowerCase()) {
     case 'diamond':
-      return 'bg-blue-100 text-blue-800 border-blue-200';
+      return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
     case 'platinum':
-      return 'bg-purple-100 text-purple-800 border-purple-200';
+      return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
     case 'gold':
       return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     case 'silver':
@@ -118,7 +118,7 @@ export function LoyaltyDashboard() {
   if (statsLoading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8932F]"></div>
       </div>
     );
   }
@@ -241,7 +241,7 @@ export function LoyaltyDashboard() {
             <CardContent>
               {customersLoading ? (
                 <div className="flex items-center justify-center h-32">
-                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#B8932F]"></div>
                 </div>
               ) : (
                 <div className="rounded-md border overflow-hidden">

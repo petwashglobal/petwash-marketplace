@@ -126,8 +126,8 @@ export default function POSDocuments() {
       {/* Progress summary */}
       <div className="grid grid-cols-3 gap-3">
         {[
-          { label: 'Accepted', value: `${acceptedCount}/${CLICK_TO_ACCEPT.length}`, color: 'text-blue-600', bg: 'bg-blue-50', icon: MousePointerClick },
-          { label: 'Signed', value: `${signedCount}/${ESIGN_DOCS.length}`, color: 'text-purple-600', bg: 'bg-purple-50', icon: PenLine },
+          { label: 'Accepted', value: `${acceptedCount}/${CLICK_TO_ACCEPT.length}`, color: 'text-[#B8932F]', bg: 'bg-[#D4AF37]', icon: MousePointerClick },
+          { label: 'Signed', value: `${signedCount}/${ESIGN_DOCS.length}`, color: 'text-[#B8932F]', bg: 'bg-[#D4AF37]', icon: PenLine },
           { label: 'Uploaded', value: `${uploadedCount}/${UPLOAD_DOCS.length}`, color: 'text-teal-600', bg: 'bg-teal-50', icon: Upload },
         ].map(card => {
           const Icon = card.icon;
@@ -162,9 +162,9 @@ export default function POSDocuments() {
       {/* Click-to-accept */}
       {activeTab === 'accept' && (
         <div className="space-y-3">
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2.5">
-            <Info className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-blue-800">These documents require a checkbox acceptance. Your acceptance is logged with a timestamp and SHA-256 audit trail.</p>
+          <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-xl p-3 flex items-start gap-2.5">
+            <Info className="w-4 h-4 text-[#B8932F] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#B8932F]">These documents require a checkbox acceptance. Your acceptance is logged with a timestamp and SHA-256 audit trail.</p>
           </div>
           {CLICK_TO_ACCEPT.map(doc => {
             const isAccepted = !!accepted[doc.id];
@@ -198,9 +198,9 @@ export default function POSDocuments() {
       {/* E-signature required */}
       {activeTab === 'esign' && (
         <div className="space-y-3">
-          <div className="bg-purple-50 border border-purple-200 rounded-xl p-3 flex items-start gap-2.5">
-            <PenLine className="w-4 h-4 text-purple-600 shrink-0 mt-0.5" />
-            <p className="text-xs text-purple-800">These documents require a legally binding e-signature. The signing process opens an embedded signing panel — no redirect required.</p>
+          <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-xl p-3 flex items-start gap-2.5">
+            <PenLine className="w-4 h-4 text-[#B8932F] shrink-0 mt-0.5" />
+            <p className="text-xs text-[#B8932F]">These documents require a legally binding e-signature. The signing process opens an embedded signing panel — no redirect required.</p>
           </div>
           {ESIGN_DOCS.map(doc => {
             const status = esignStatus[doc.id] || 'pending';
@@ -213,8 +213,8 @@ export default function POSDocuments() {
                   className="w-full flex items-start gap-3 p-4 text-start hover:bg-white transition-colors"
                   onClick={() => setExpandedEsign(isExpanded ? null : doc.id)}
                 >
-                  <div className="w-9 h-9 bg-purple-50 rounded-xl flex items-center justify-center shrink-0">
-                    <FileText className="w-4 h-4 text-purple-600" />
+                  <div className="w-9 h-9 bg-[#D4AF37] rounded-xl flex items-center justify-center shrink-0">
+                    <FileText className="w-4 h-4 text-[#B8932F]" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
@@ -235,7 +235,7 @@ export default function POSDocuments() {
                   <div className="px-4 pb-4 border-t border-gray-100">
                     {status !== 'signed' ? (
                       <button onClick={() => handleSignDoc(doc.id)}
-                        className="mt-3 w-full py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2">
+                        className="mt-3 w-full py-2.5 bg-[#B8932F] text-white rounded-xl text-sm font-semibold hover:bg-[#B8932F] transition-colors flex items-center justify-center gap-2">
                         <PenLine className="w-4 h-4" /> Sign Document
                       </button>
                     ) : (
@@ -343,7 +343,7 @@ export default function POSDocuments() {
                   Cancel
                 </button>
                 <button onClick={() => simulateSign(signingDoc!)}
-                  className="flex-1 py-2.5 bg-purple-600 text-white rounded-xl text-sm font-semibold hover:bg-purple-700 transition-colors flex items-center justify-center gap-2">
+                  className="flex-1 py-2.5 bg-[#B8932F] text-white rounded-xl text-sm font-semibold hover:bg-[#B8932F] transition-colors flex items-center justify-center gap-2">
                   <PenLine className="w-4 h-4" /> Sign Now
                 </button>
               </div>

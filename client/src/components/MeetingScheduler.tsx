@@ -181,8 +181,8 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
       <Card className="p-6 sm:p-8 shadow-xl border-2">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-16 h-16 bg-blue-100 rounded-full mb-4">
-            <Calendar className="w-8 h-8 text-blue-600" />
+          <div className="inline-flex items-center justify-center w-16 h-16 bg-[#D4AF37] rounded-full mb-4">
+            <Calendar className="w-8 h-8 text-[#B8932F]" />
           </div>
           <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-2">{t.title}</h1>
           <p className="text-gray-600">{t.subtitle}</p>
@@ -231,8 +231,8 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
                   className={`
                     min-h-[56px] rounded-xl border-2 font-semibold transition-all
                     ${formData.duration === minutes
-                      ? 'bg-blue-600 text-white border-blue-600'
-                      : 'bg-white text-gray-700 border-gray-300 hover:border-blue-400'
+                      ? 'bg-[#B8932F] text-white border-[#B8932F]'
+                      : 'bg-white text-gray-700 border-gray-300 hover:border-[#D4AF37]'
                     }
                   `}
                   data-testid={`button-duration-${minutes}`}
@@ -275,7 +275,7 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
               <Button
                 type="button"
                 onClick={handleAddAttendee}
-                className="min-h-[56px] px-6 bg-blue-600 hover:bg-blue-700"
+                className="min-h-[56px] px-6 bg-[#B8932F] hover:bg-[#B8932F]"
                 data-testid="button-add-attendee"
               >
                 +
@@ -286,9 +286,9 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
                 {formData.attendees?.map((email) => (
                   <div
                     key={email}
-                    className="flex items-center justify-between p-3 bg-blue-50 rounded-lg border border-blue-200"
+                    className="flex items-center justify-between p-3 bg-[#D4AF37] rounded-lg border border-[#D4AF37]"
                   >
-                    <span className="text-sm font-medium text-blue-900">{email}</span>
+                    <span className="text-sm font-medium text-[#B8932F]">{email}</span>
                     <button
                       type="button"
                       onClick={() => handleRemoveAttendee(email)}
@@ -321,7 +321,7 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
               onChange={(e) => setFormData({ ...formData, description: e.target.value })}
               placeholder={t.descriptionPlaceholder}
               rows={4}
-              className="w-full px-5 py-4 text-base rounded-xl border-2 border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 transition-all"
+              className="w-full px-5 py-4 text-base rounded-xl border-2 border-gray-300 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] transition-all"
               data-testid="textarea-meeting-description"
             />
           </div>
@@ -354,7 +354,7 @@ export function MeetingScheduler({ language, meetingType = 'customer', prefilled
           <Button
             type="submit"
             disabled={scheduleMeeting.isPending}
-            className="w-full min-h-[64px] text-lg font-bold bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 shadow-lg"
+            className="w-full min-h-[64px] text-lg font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] shadow-lg"
             data-testid="button-schedule-meeting"
           >
             {scheduleMeeting.isPending ? (

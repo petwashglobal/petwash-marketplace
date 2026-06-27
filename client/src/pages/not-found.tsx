@@ -15,7 +15,7 @@ export default function NotFound() {
           <div className={`flex mb-6 gap-3 items-center ${isHebrew ? 'flex-row-reverse' : ''}`}>
             <div className="relative">
               <AlertCircle className="h-10 w-10 text-red-500" />
-              <div className="absolute inset-0 h-10 w-10 bg-gradient-to-r from-purple-600 to-red-500 opacity-20 blur-xl rounded-full"></div>
+              <div className="absolute inset-0 h-10 w-10 bg-gradient-to-r from-[#B8932F] to-red-500 opacity-20 blur-xl rounded-full"></div>
             </div>
             <div>
               <h1 className="luxury-heading-lg">404</h1>

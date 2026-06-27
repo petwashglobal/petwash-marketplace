@@ -66,7 +66,7 @@ export function DashboardQuickActions({ language }: DashboardQuickActionsProps) 
         {busy === 'redeem' ? t('quickActions.opening', language) : t('quickActions.redeem', language)}
       </Button>
       <Button 
-        className="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 text-white" 
+        className="w-full bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] text-white" 
         onClick={go('/loyalty', 'loyalty', 'view_loyalty')}
         disabled={busy === 'loyalty'}
         aria-label={t('quickActions.loyalty', language)}
@@ -90,7 +90,7 @@ export function DashboardQuickActions({ language }: DashboardQuickActionsProps) 
       
       {/* My Pets Button */}
       <Button 
-        className="w-full bg-gradient-to-r from-pink-500 to-rose-600 hover:from-pink-600 hover:to-rose-700 text-white shadow-md" 
+        className="w-full bg-gradient-to-r from-[#D4AF37] to-rose-600 hover:from-[#B8932F] hover:to-rose-700 text-white shadow-md" 
         onClick={go('/pets', 'pets', 'manage_pets')}
         disabled={busy === 'pets'}
         aria-label={t('quickActions.pets', language)}

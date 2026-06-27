@@ -172,7 +172,7 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
               }}
             >
               <Sparkles 
-                className="text-purple-400" 
+                className="text-[#D4AF37]" 
                 size={16 + Math.random() * 16}
                 style={{
                   transform: `rotate(${Math.random() * 360}deg)`,
@@ -298,7 +298,7 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
         {/* Usage Instructions */}
         <div className="luxury-glass-panel p-6 rounded-2xl mb-8 luxury-animate-slide-up luxury-delay-2">
           <h3 className="luxury-heading-sm mb-4 flex items-center gap-2">
-            <Sparkles className="w-5 h-5 text-purple-500" />
+            <Sparkles className="w-5 h-5 text-[#D4AF37]" />
             {t('payment.howToUse', language)}
           </h3>
           <ol className={`luxury-text-body space-y-3 ${isRTL ? 'list-decimal list-inside' : 'list-decimal list-inside'}`}>

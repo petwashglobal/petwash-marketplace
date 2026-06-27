@@ -28,7 +28,7 @@ function pretty(value: unknown) {
 function statusClass(status: Proposal['status']) {
   switch (status) {
     case 'proposed': return 'bg-amber-100 text-amber-800 border-amber-200';
-    case 'accepted': return 'bg-blue-100 text-blue-800 border-blue-200';
+    case 'accepted': return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
     case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
     case 'promoted': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
     default:         return 'bg-white text-slate-800 border-slate-200';
@@ -169,7 +169,7 @@ export default function Optimizer() {
       {/* Status summary */}
       {proposals.length > 0 && (
         <div className="flex gap-5 text-sm">
-          {([['Pending', counts.proposed, 'text-amber-700'], ['Accepted', counts.accepted, 'text-blue-700'],
+          {([['Pending', counts.proposed, 'text-amber-700'], ['Accepted', counts.accepted, 'text-[#B8932F]'],
              ['Promoted', counts.promoted, 'text-emerald-700'], ['Rejected', counts.rejected, 'text-slate-500']] as const).map(
             ([lbl, n, color]) => (
               <div key={lbl} className="text-center">
@@ -247,7 +247,7 @@ export default function Optimizer() {
                   )}
 
                   {p.review_note && (
-                    <div className="mt-2 rounded bg-blue-50 border border-blue-200 px-3 py-2 text-sm text-blue-800 italic">
+                    <div className="mt-2 rounded bg-[#D4AF37] border border-[#D4AF37] px-3 py-2 text-sm text-[#B8932F] italic">
                       Review note: {p.review_note}
                     </div>
                   )}
@@ -274,7 +274,7 @@ export default function Optimizer() {
                       <button
                         disabled={busyId === p.id}
                         onClick={() => act(p.id, 'accept')}
-                        className="rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-blue-700"
+                        className="rounded-lg bg-[#B8932F] px-3 py-2 text-sm font-medium text-white disabled:opacity-50 hover:bg-[#B8932F]"
                       >
                         Accept
                       </button>

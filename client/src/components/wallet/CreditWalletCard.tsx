@@ -261,15 +261,15 @@ export function CreditWalletCard({
               icon={<Gift className="w-4 h-4 sm:w-5 sm:h-5" />}
               label="E-Gift Balance"
               value={formatCurrency(wallet.egiftBalanceCents)}
-              color="from-pink-500/20 to-rose-500/10"
-              iconColor="text-pink-400"
+              color="from-[#D4AF37]/20 to-rose-500/10"
+              iconColor="text-[#D4AF37]"
             />
             <CreditItem
               icon={<Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />}
               label="Wash Packages"
               value={`${wallet.washPackageCredits} washes`}
-              color="from-cyan-500/20 to-blue-500/10"
-              iconColor="text-cyan-400"
+              color="from-[#D4AF37]/20 to-[#D4AF37]/10"
+              iconColor="text-[#D4AF37]"
             />
             <CreditItem
               icon={<Star className="w-4 h-4 sm:w-5 sm:h-5" />}

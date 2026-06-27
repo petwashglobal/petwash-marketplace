@@ -164,7 +164,7 @@ export default function NewExpense() {
           <div className="mb-8 p-6 luxury-glass-card luxury-shadow-xl rounded-xl">
             <h3 className="luxury-heading-md mb-4 flex items-center gap-2">
               📸 העלאת קבלה / Receipt Upload
-              <Badge variant="default" className="bg-gradient-to-r from-violet-600 to-purple-600 text-white">
+              <Badge variant="default" className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] text-white">
                 Camera-First
               </Badge>
             </h3>

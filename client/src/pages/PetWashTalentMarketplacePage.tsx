@@ -63,8 +63,8 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     shortName: "PetTrek",
     fullName: "PetTrek Transport",
     tagLine: "On-demand pet rides with live tracking.",
-    accent: "border-indigo-400 text-indigo-500",
-    chipColor: "bg-indigo-50 text-indigo-600",
+    accent: "border-[#D4AF37] text-[#D4AF37]",
+    chipColor: "bg-[#D4AF37] text-[#B8932F]",
     description:
       "Safe drivers and vehicles for vet visits, washes, airport trips and longer journeys.",
   },
@@ -73,8 +73,8 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     shortName: "Wash Hub",
     fullName: "⁦Pet Wash™⁩ Hub Operators",
     tagLine: "Operators of premium natural wash hubs.",
-    accent: "border-sky-400 text-sky-500",
-    chipColor: "bg-sky-50 text-sky-600",
+    accent: "border-[#D4AF37] text-[#D4AF37]",
+    chipColor: "bg-[#D4AF37] text-[#B8932F]",
     description:
       "Local hub operators who run ⁦Pet Wash™⁩ stations with strict hygiene, maintenance and guest service standards.",
   },
@@ -103,8 +103,8 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     shortName: "Enterprise",
     fullName: "Enterprise Partners",
     tagLine: "Location partner and operator review.",
-    accent: "border-orange-400 text-orange-500",
-    chipColor: "bg-white text-orange-600",
+    accent: "border-[#D4AF37] text-[#D4AF37]",
+    chipColor: "bg-white text-[#B8932F]",
     description:
       "Approved location partners and operators reviewed through NDA, contracts, site evidence, training, support, and finance controls.",
   },

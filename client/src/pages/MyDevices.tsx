@@ -76,7 +76,7 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
     if (device.deviceType === 'multiDevice' || device.backedUp) {
       return <ShieldCheck className="w-8 h-8 text-green-600" />;
     }
-    return <Smartphone className="w-8 h-8 text-blue-600" />;
+    return <Smartphone className="w-8 h-8 text-[#B8932F]" />;
   };
 
   const getDeviceLabel = (device: PasskeyDevice) => {
@@ -122,9 +122,9 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
 
           <CardContent className="space-y-4">
             {/* Info Alert */}
-            <Alert className="bg-blue-50 border-blue-200">
-              <Info className="h-4 w-4 text-blue-600" />
-              <AlertDescription className="text-sm text-blue-900">
+            <Alert className="bg-[#D4AF37] border-[#D4AF37]">
+              <Info className="h-4 w-4 text-[#B8932F]" />
+              <AlertDescription className="text-sm text-[#B8932F]">
                 {t('myDevices.alertInfo', language)}
               </AlertDescription>
             </Alert>
@@ -132,7 +132,7 @@ export default function MyDevices({ language, onLanguageChange }: MyDevicesProps
             {/* Loading State */}
             {isLoading && (
               <div className="flex justify-center items-center py-12">
-                <Loader2 className="h-8 w-8 animate-spin text-blue-600" />
+                <Loader2 className="h-8 w-8 animate-spin text-[#B8932F]" />
               </div>
             )}
 

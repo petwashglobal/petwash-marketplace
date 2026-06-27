@@ -113,12 +113,12 @@ const stageLabels: Record<string, { en: string; he: string }> = {
 };
 
 const stageColors: Record<string, string> = {
-  application_submitted: 'bg-blue-100 text-blue-700',
+  application_submitted: 'bg-[#D4AF37] text-[#B8932F]',
   documents_pending: 'bg-yellow-100 text-yellow-700',
-  documents_under_review: 'bg-purple-100 text-purple-700',
-  background_check_pending: 'bg-orange-100 text-orange-700',
+  documents_under_review: 'bg-[#D4AF37] text-[#B8932F]',
+  background_check_pending: 'bg-[#D4AF37] text-[#B8932F]',
   background_check_complete: 'bg-teal-100 text-teal-700',
-  admin_final_review: 'bg-indigo-100 text-indigo-700',
+  admin_final_review: 'bg-[#D4AF37] text-[#B8932F]',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
   withdrawn: 'bg-white text-gray-700',
@@ -290,8 +290,8 @@ export default function ProviderReview() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
-                  <Clock className="w-5 h-5 text-blue-600" />
+                <div className="w-10 h-10 rounded-full bg-[#D4AF37] flex items-center justify-center">
+                  <Clock className="w-5 h-5 text-[#B8932F]" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{applicants.filter(a => a.status === 'pending').length}</p>
@@ -329,8 +329,8 @@ export default function ProviderReview() {
           <Card>
             <CardContent className="p-4">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-purple-600" />
+                <div className="w-10 h-10 rounded-full bg-[#D4AF37] flex items-center justify-center">
+                  <Shield className="w-5 h-5 text-[#B8932F]" />
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{applicants.filter(a => a.stage.includes('background')).length}</p>
@@ -367,7 +367,7 @@ export default function ProviderReview() {
                   const unread: number = app.queueUnreadCount ?? 0;
                   const priorityColor: Record<string, string> = {
                     urgent: 'bg-red-600 text-white',
-                    high:   'bg-orange-500 text-white',
+                    high:   'bg-[#D4AF37] text-white',
                     normal: 'bg-slate-200 text-slate-700',
                     low:    'bg-white text-slate-500',
                   };
@@ -398,7 +398,7 @@ export default function ProviderReview() {
                             </Badge>
                           )}
                           {unread > 0 && (
-                            <span className="bg-blue-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                            <span className="bg-[#D4AF37] text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                               {unread}
                             </span>
                           )}
@@ -468,7 +468,7 @@ export default function ProviderReview() {
           <CardContent>
             {isLoading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#B8932F]" />
               </div>
             ) : filteredApplicants.length === 0 ? (
               <div className="text-center py-12 text-gray-500">
@@ -479,13 +479,13 @@ export default function ProviderReview() {
                 {filteredApplicants.map((applicant) => (
                   <div
                     key={applicant.id}
-                    className="p-4 rounded-xl border hover:border-purple-300 cursor-pointer transition-all bg-white dark:bg-white"
+                    className="p-4 rounded-xl border hover:border-[#D4AF37] cursor-pointer transition-all bg-white dark:bg-white"
                     onClick={() => setSelectedApplicant(applicant as any)}
                     data-testid={`applicant-row-${applicant.id}`}
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold">
+                        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center text-white font-bold">
                           {applicant.firstName[0]}{applicant.lastName[0]}
                         </div>
                         <div>
@@ -522,14 +522,14 @@ export default function ProviderReview() {
             <ScrollArea className="max-h-[90vh]">
               {isLoadingDetails ? (
                 <div className="flex items-center justify-center py-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-purple-600" />
+                  <Loader2 className="w-8 h-8 animate-spin text-[#B8932F]" />
                 </div>
               ) : applicantDetails ? (
                 <div className="p-6 space-y-6">
                   {/* Header */}
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-4">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white text-xl font-bold">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center text-white text-xl font-bold">
                         {applicantDetails.firstName[0]}{applicantDetails.lastName[0]}
                       </div>
                       <div>
@@ -657,13 +657,13 @@ export default function ProviderReview() {
                         applicantDetails.backgroundChecks.map((check) => (
                           <div key={check.id} className="flex items-center justify-between p-3 rounded-lg bg-white dark:bg-white">
                             <div className="flex items-center gap-3">
-                              <Shield className="w-4 h-4 text-purple-500" />
+                              <Shield className="w-4 h-4 text-[#D4AF37]" />
                               <span className="text-sm capitalize">{check.checkType.replace('_', ' ')}</span>
                             </div>
                             <Badge className={
                               check.resultStatus === 'clear' ? 'bg-green-100 text-green-700' :
                               check.resultStatus === 'flagged' ? 'bg-red-100 text-red-700' :
-                              check.status === 'in_progress' ? 'bg-blue-100 text-blue-700' :
+                              check.status === 'in_progress' ? 'bg-[#D4AF37] text-[#B8932F]' :
                               'bg-yellow-100 text-yellow-700'
                             }>
                               {check.resultStatus || check.status}
@@ -682,7 +682,7 @@ export default function ProviderReview() {
                     <div className="space-y-2">
                       {applicantDetails.stageTransitions.map((t, idx) => (
                         <div key={t.id} className="flex items-start gap-3 text-sm">
-                          <div className={`w-2 h-2 rounded-full mt-1.5 ${idx === 0 ? 'bg-purple-500' : 'bg-gray-300'}`} />
+                          <div className={`w-2 h-2 rounded-full mt-1.5 ${idx === 0 ? 'bg-[#D4AF37]' : 'bg-gray-300'}`} />
                           <div>
                             <p>
                               {t.fromStage ? `${stageLabels[t.fromStage]?.[isHebrew ? 'he' : 'en']} → ` : ''}
@@ -702,7 +702,7 @@ export default function ProviderReview() {
                     <>
                       <Separator />
                       <div className="space-y-4">
-                        <h4 className="font-semibold flex items-center gap-2 text-purple-700">
+                        <h4 className="font-semibold flex items-center gap-2 text-[#B8932F]">
                           <Shield className="w-5 h-5" />
                           {isHebrew ? 'רשימת אישור ניהולית' : 'Management Approval Checklist'}
                         </h4>
@@ -712,38 +712,38 @@ export default function ProviderReview() {
                             : 'Check all items before approving. Each case is reviewed on its own merit.'}
                         </p>
                         
-                        <div className="grid gap-2 p-4 bg-purple-50 dark:bg-white rounded-lg border border-purple-200">
-                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                        <div className="grid gap-2 p-4 bg-[#D4AF37] dark:bg-white rounded-lg border border-[#D4AF37]">
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 p-2 rounded">
                             <Checkbox checked={checkIdVerified} onCheckedChange={(checked) => setCheckIdVerified(!!checked)} className="w-4 h-4" data-testid="check-id-verified" />
                             <span className="text-sm">{isHebrew ? '✅ זהות אומתה (ת.ז./דרכון)' : '✅ ID Verified (National ID/Passport)'}</span>
                           </label>
                           
-                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 p-2 rounded">
                             <Checkbox checked={checkDocumentsReviewed} onCheckedChange={(checked) => setCheckDocumentsReviewed(!!checked)} className="w-4 h-4" data-testid="check-docs-reviewed" />
                             <span className="text-sm">{isHebrew ? '📄 מסמכים נבדקו וקבילים' : '📄 Documents Reviewed & Acceptable'}</span>
                           </label>
                           
-                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 p-2 rounded">
                             <Checkbox checked={checkDeclarationsComplete} onCheckedChange={(checked) => setCheckDeclarationsComplete(!!checked)} className="w-4 h-4" data-testid="check-declarations" />
                             <span className="text-sm">{isHebrew ? '📋 הצהרות עצמיות הושלמו' : '📋 Self-Declarations Complete'}</span>
                           </label>
                           
-                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 p-2 rounded">
                             <Checkbox checked={checkInsuranceValid} onCheckedChange={(checked) => setCheckInsuranceValid(!!checked)} className="w-4 h-4" data-testid="check-insurance" />
                             <span className="text-sm">{isHebrew ? '🛡️ ביטוח בתוקף (אם נדרש)' : '🛡️ Insurance Valid (if required)'}</span>
                           </label>
                           
-                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 p-2 rounded">
                             <Checkbox checked={checkLicenseValid} onCheckedChange={(checked) => setCheckLicenseValid(!!checked)} className="w-4 h-4" data-testid="check-license" />
                             <span className="text-sm">{isHebrew ? '🚗 רישיון נהיגה בתוקף (לנהגים)' : '🚗 Driving License Valid (for drivers)'}</span>
                           </label>
                           
-                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 p-2 rounded">
                             <Checkbox checked={checkCertificationsValid} onCheckedChange={(checked) => setCheckCertificationsValid(!!checked)} className="w-4 h-4" data-testid="check-certs" />
                             <span className="text-sm">{isHebrew ? '🎓 תעודות הכשרה תקינות (למאמנים)' : '🎓 Training Certifications Valid (for trainers)'}</span>
                           </label>
                           
-                          <label className="flex items-center gap-3 cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-800/30 p-2 rounded">
+                          <label className="flex items-center gap-3 cursor-pointer hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30 p-2 rounded">
                             <Checkbox checked={checkBackgroundClear} onCheckedChange={(checked) => setCheckBackgroundClear(!!checked)} className="w-4 h-4" data-testid="check-background" />
                             <span className="text-sm">{isHebrew ? '🔍 בדיקת רקע תקינה/הצהרה מתאימה' : '🔍 Background Check Clear / Declaration Acceptable'}</span>
                           </label>

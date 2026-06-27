@@ -73,7 +73,7 @@ export default function ProviderFeedbackDashboard() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800"
+      className="min-h-screen bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-gray-900 dark:to-gray-800"
       dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
     >
       <div className="max-w-2xl mx-auto p-4">
@@ -87,7 +87,7 @@ export default function ProviderFeedbackDashboard() {
             <ChevronLeft className="w-5 h-5" />
           </Button>
           <div>
-            <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <h1 className="text-xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
               {isHebrew ? "משוב מלקוחות" : "Customer Feedback"}
             </h1>
             <p className="text-gray-500 dark:text-gray-400 text-sm">
@@ -124,7 +124,7 @@ export default function ProviderFeedbackDashboard() {
               <BigStat
                 value={data?.stats?.reviewCount ?? 0}
                 label={isHebrew ? "ביקורות" : "Reviews"}
-                color="bg-purple-50 text-purple-800 dark:bg-white dark:text-purple-200"
+                color="bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]"
               />
               <BigStat
                 value={data?.stats?.flaggedCount ?? 0}
@@ -139,7 +139,7 @@ export default function ProviderFeedbackDashboard() {
 
             {/* Quality nudge */}
             {data?.stats?.avgRating != null && (
-              <Card className="mb-4 border-0 bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+              <Card className="mb-4 border-0 bg-gradient-to-r from-[#B8932F] to-[#B8932F] text-white">
                 <CardContent className="pt-4 pb-4">
                   <div className="flex items-center gap-3">
                     <TrendingUp className="w-6 h-6 shrink-0" />
@@ -181,7 +181,7 @@ export default function ProviderFeedbackDashboard() {
                     key={review.id}
                     className={`${
                       review.isFlagged
-                        ? "border-orange-300 dark:border-orange-700"
+                        ? "border-[#D4AF37] dark:border-[#B8932F]"
                         : ""
                     }`}
                   >
@@ -196,7 +196,7 @@ export default function ProviderFeedbackDashboard() {
                             {review.isFlagged && (
                               <Badge
                                 variant="secondary"
-                                className="bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300 text-xs"
+                                className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F]/30 dark:text-[#D4AF37] text-xs"
                               >
                                 <AlertTriangle className="w-3 h-3 mr-1" />
                                 {isHebrew ? "מסומן" : "Flagged"}

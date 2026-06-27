@@ -276,7 +276,7 @@ export default function SitterDetail() {
 
                   <div className="luxury-glass-card luxury-hover-lift text-center p-5 luxury-animate-scale-in luxury-delay-6">
                     <div className="flex justify-center mb-2">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-cyan-500 flex items-center justify-center">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                         <TrendingUp className="w-7 h-7 text-white" />
                       </div>
                     </div>

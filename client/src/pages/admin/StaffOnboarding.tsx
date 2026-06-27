@@ -142,8 +142,8 @@ export default function StaffOnboarding() {
           <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium text-gray-600">Pending Applications</CardTitle>
-              <div className="p-2 luxury-glass-minimal rounded-xl bg-blue-50">
-                <Users className="h-4 w-4 text-blue-600" />
+              <div className="p-2 luxury-glass-minimal rounded-xl bg-[#D4AF37]">
+                <Users className="h-4 w-4 text-[#B8932F]" />
               </div>
             </CardHeader>
             <CardContent>

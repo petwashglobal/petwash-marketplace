@@ -151,8 +151,8 @@ export default function StationRegistryDashboard() {
         </div>
       ) : stations?.length === 0 ? (
         <div className="luxury-glass-card luxury-shadow-xl p-12 text-center luxury-animate-scale-in luxury-delay-2">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/30 dark:to-blue-900/30 flex items-center justify-center">
-            <MapPin className="w-10 h-10 text-purple-600" />
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30 flex items-center justify-center">
+            <MapPin className="w-10 h-10 text-[#B8932F]" />
           </div>
           <h3 className="luxury-heading-md mb-3">No stations registered</h3>
           <p className="luxury-text-body mb-6">Get started by registering your first Pet ⁦Wash Hub™⁩</p>
@@ -178,17 +178,17 @@ export default function StationRegistryDashboard() {
                     {station.stationNameHe && (
                       <p className="luxury-text-small opacity-75" dir="rtl">{station.stationNameHe}</p>
                     )}
-                    <p className="text-xs font-mono text-purple-600">{station.stationId}</p>
+                    <p className="text-xs font-mono text-[#B8932F]">{station.stationId}</p>
                   </div>
                   {getStatusBadge(station.operatingStatus)}
                 </div>
                 <div className="space-y-3">
                   <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 mt-0.5 text-purple-600 flex-shrink-0" />
+                    <MapPin className="w-4 h-4 mt-0.5 text-[#B8932F] flex-shrink-0" />
                     <span className="luxury-text-small">{station.city}, {station.country}</span>
                   </div>
                   <div className="flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-purple-600" />
+                    <Activity className="w-4 h-4 text-[#B8932F]" />
                     <span className="luxury-text-small">
                       {station.totalWashes || 0} washes • {station.ownershipType}
                     </span>

@@ -89,9 +89,9 @@ interface ReserveSummary {
 
 const ROLE_COLOR: Record<string, string> = {
   agent: 'bg-white text-gray-700',
-  manager: 'bg-blue-100 text-blue-700',
-  franchise_owner: 'bg-purple-100 text-purple-700',
-  admin: 'bg-orange-100 text-orange-700',
+  manager: 'bg-[#D4AF37] text-[#B8932F]',
+  franchise_owner: 'bg-[#D4AF37] text-[#B8932F]',
+  admin: 'bg-[#D4AF37] text-[#B8932F]',
   executive: 'bg-red-100 text-red-700',
 };
 
@@ -106,7 +106,7 @@ const STATUS_COLOR: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   approved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
-  executed: 'bg-blue-100 text-blue-800',
+  executed: 'bg-[#D4AF37] text-[#B8932F]',
 };
 
 function ils(cents: number | null | undefined) {
@@ -445,8 +445,8 @@ function ReservePanel({ summary }: { summary: ReserveSummary | undefined }) {
     {
       label: 'Released',
       value: ils(summary.released_cents),
-      icon: <Unlock className="w-4 h-4 text-blue-600" />,
-      color: 'border-blue-200 bg-blue-50',
+      icon: <Unlock className="w-4 h-4 text-[#B8932F]" />,
+      color: 'border-[#D4AF37] bg-[#D4AF37]',
     },
   ];
 
@@ -578,7 +578,7 @@ export default function FinancialApprovals() {
         {/* Header */}
         <div>
           <div className="flex items-center gap-3 mb-1">
-            <Shield className="w-7 h-7 text-purple-600" />
+            <Shield className="w-7 h-7 text-[#B8932F]" />
             <h1 className="text-2xl font-bold text-gray-900">Financial Approvals</h1>
           </div>
           <p className="text-muted-foreground text-sm">
@@ -595,7 +595,7 @@ export default function FinancialApprovals() {
             { label: 'Pending', value: pendingItems.length, icon: <Clock className="w-4 h-4 text-yellow-600" />, color: 'bg-yellow-50 border-yellow-200' },
             { label: 'Approved Today', value: approvedToday.length, icon: <CheckCircle2 className="w-4 h-4 text-green-600" />, color: 'bg-green-50 border-green-200' },
             { label: 'Rejected Today', value: rejectedToday.length, icon: <XCircle className="w-4 h-4 text-red-600" />, color: 'bg-red-50 border-red-200' },
-            { label: 'Executed Today', value: executedToday.length, icon: <DollarSign className="w-4 h-4 text-blue-600" />, color: 'bg-blue-50 border-blue-200' },
+            { label: 'Executed Today', value: executedToday.length, icon: <DollarSign className="w-4 h-4 text-[#B8932F]" />, color: 'bg-[#D4AF37] border-[#D4AF37]' },
           ].map(k => (
             <Card key={k.label} className={`border ${k.color}`}>
               <CardContent className="pt-4 pb-3 px-4">
@@ -676,7 +676,7 @@ export default function FinancialApprovals() {
             <Card>
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
-                  <DollarSign className="w-4 h-4 text-blue-600" />
+                  <DollarSign className="w-4 h-4 text-[#B8932F]" />
                   Full Audit Log
                 </CardTitle>
                 <CardDescription>
@@ -694,8 +694,8 @@ export default function FinancialApprovals() {
           {/* Rules matrix */}
           <TabsContent value="matrix" className="mt-4">
             <div className="mb-4">
-              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-                <Info className="w-4 h-4 text-blue-500 shrink-0" />
+              <div className="flex items-center gap-2 text-sm text-muted-foreground bg-[#D4AF37] border border-[#D4AF37] rounded-lg px-4 py-3">
+                <Info className="w-4 h-4 text-[#D4AF37] shrink-0" />
                 <span>These rules are the financial authority table. Every financial action must match one rule. No match = action blocked. Owner-specific rules override global defaults.</span>
               </div>
             </div>

@@ -25,7 +25,7 @@ export default function StandaloneDivisions() {
       name: 'Pet ⁦Wash Hub™⁩',
       nameHe: 'Pet ⁦Wash Hub™⁩',
       icon: Building2,
-      color: 'from-blue-500 to-cyan-500',
+      color: 'from-[#D4AF37] to-[#D4AF37]',
       description: 'Premium natural wash stations - Our flagship self-service pet washing division',
       descriptionHe: 'תחנות שטיפה טבעיות פרימיום - חטיבת השטיפה העצמית הדגל שלנו',
       usComparison: 'Category-defining premium retail flagship',
@@ -55,7 +55,7 @@ export default function StandaloneDivisions() {
       name: '⁦The Sitter Suite™⁩',
       nameHe: '⁦The Sitter Suite™⁩',
       icon: Heart,
-      color: 'from-pink-500 to-rose-500',
+      color: 'from-[#D4AF37] to-rose-500',
       description: 'Pet sitting marketplace with AI triage and split payments - Fully independent operation',
       descriptionHe: 'שוק שמרטפות עם מיון AI ותשלומים מפוצלים - מבצע עצמאי לחלוטין',
       usComparison: 'Vetted host marketplace with verified profiles',
@@ -70,7 +70,7 @@ export default function StandaloneDivisions() {
       name: '⁦PetTrek™⁩',
       nameHe: '⁦PetTrek™⁩',
       icon: Car,
-      color: 'from-purple-500 to-indigo-500',
+      color: 'from-[#D4AF37] to-[#D4AF37]',
       description: 'Advanced pet transport with on-demand matching and live tracking — complete rideshare platform',
       descriptionHe: 'הובלת חיות מחמד מתקדמת עם התאמה לפי דרישה ומעקב חי — פלטפורמת rideshare מלאה',
       usComparison: 'On-demand pet transport with dynamic dispatch',
@@ -115,7 +115,7 @@ export default function StandaloneDivisions() {
       name: 'Enterprise',
       nameHe: 'Enterprise',
       icon: Briefcase,
-      color: 'from-red-500 to-orange-500',
+      color: 'from-red-500 to-[#D4AF37]',
       description: 'Location partner controls, approved revenue-share review, and enterprise operations evidence',
       descriptionHe: 'בקרת שותפי מיקום, בדיקת חלוקת הכנסות מאושרת וראיות תפעול ארגוניות',
       usComparison: 'Enterprise partner-control and evidence platform',
@@ -176,7 +176,7 @@ export default function StandaloneDivisions() {
                       </p>
                       
                       <div className="luxury-glass-minimal p-4 rounded-xl mb-6">
-                        <p className="luxury-text-small font-semibold text-purple-600">
+                        <p className="luxury-text-small font-semibold text-[#B8932F]">
                           {getLocalizedField(division, 'usComparison')}
                         </p>
                       </div>
@@ -212,10 +212,10 @@ export default function StandaloneDivisions() {
 
           {/* Why This Structure Works */}
           <div className="luxury-glass-card luxury-shadow-xl overflow-hidden luxury-animate-scale-in luxury-delay-3">
-            <div className="bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 p-8">
+            <div className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30 p-8">
               <div className="flex items-center gap-3">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
-                  <TrendingUp className="w-6 h-6 text-purple-600" />
+                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30 flex items-center justify-center">
+                  <TrendingUp className="w-6 h-6 text-[#B8932F]" />
                 </div>
                 <h2 className="luxury-heading-lg">{t('standaloneDivisions.whyThisWorks', language)}</h2>
               </div>
@@ -223,8 +223,8 @@ export default function StandaloneDivisions() {
             <div className="p-8">
               <div className="luxury-grid-3">
                 <div className="luxury-glass-minimal p-8 rounded-xl text-center luxury-hover-lift">
-                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-blue-100 to-cyan-100 dark:from-blue-900/30 dark:to-cyan-900/30 flex items-center justify-center">
-                    <Users className="w-8 h-8 text-blue-600" />
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30 flex items-center justify-center">
+                    <Users className="w-8 h-8 text-[#B8932F]" />
                   </div>
                   <h3 className="luxury-heading-sm mb-3">
                     {t('standaloneDivisions.specializedTeams', language)}
@@ -247,8 +247,8 @@ export default function StandaloneDivisions() {
                 </div>
 
                 <div className="luxury-glass-minimal p-8 rounded-xl text-center luxury-hover-lift">
-                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
-                    <Sparkles className="w-8 h-8 text-purple-600" />
+                  <div className="w-16 h-16 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30 flex items-center justify-center">
+                    <Sparkles className="w-8 h-8 text-[#B8932F]" />
                   </div>
                   <h3 className="luxury-heading-sm mb-3">
                     {t('standaloneDivisions.crossSellingOpportunities', language)}
@@ -272,7 +272,7 @@ export default function StandaloneDivisions() {
                   {t('standaloneDivisions.freeDivisionDesc', language)}
                 </p>
                 <Link href="/plush-lab">
-                  <Button size="lg" className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white">
+                  <Button size="lg" className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] text-white">
                     {t('standaloneDivisions.tryNowFree', language)}
                     <ArrowRight className="w-5 h-5 ml-2" />
                   </Button>

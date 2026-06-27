@@ -22,7 +22,7 @@ const FORMS: FormCard[] = [
     href: '/forms/booking',
     color: '#3B82F6',
     tag: 'Most Popular',
-    tagColor: 'bg-blue-500/20 text-blue-300',
+    tagColor: 'bg-[#D4AF37]/20 text-[#D4AF37]',
     department: 'All Services',
   },
   {
@@ -82,7 +82,7 @@ const FORMS: FormCard[] = [
     href: '/forms/legal',
     color: '#6366F1',
     tag: 'E-Sign',
-    tagColor: 'bg-indigo-500/20 text-indigo-300',
+    tagColor: 'bg-[#D4AF37]/20 text-[#D4AF37]',
     department: 'Legal & Compliance',
   },
   {

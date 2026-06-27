@@ -52,8 +52,8 @@ export default function FranchiseStationSettlements() {
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 rounded-lg bg-blue-100 dark:bg-blue-900 flex items-center justify-center flex-shrink-0">
-              <Building2 className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            <div className="h-10 w-10 rounded-lg bg-[#D4AF37] dark:bg-[#B8932F] flex items-center justify-center flex-shrink-0">
+              <Building2 className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
             </div>
             <div>
               <h1 className="text-xl font-bold text-gray-900 dark:text-black">

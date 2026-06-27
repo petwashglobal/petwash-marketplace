@@ -108,8 +108,8 @@ export function MobileDatePicker({
       {/* Modern Date Selection */}
       <div className="space-y-3">
         {/* Display Selected Date */}
-        <div className="bg-blue-50 border-2 border-blue-200 rounded-xl p-4 min-h-[56px] flex items-center justify-center">
-          <p className="text-lg font-semibold text-blue-900">
+        <div className="bg-[#D4AF37] border-2 border-[#D4AF37] rounded-xl p-4 min-h-[56px] flex items-center justify-center">
+          <p className="text-lg font-semibold text-[#B8932F]">
             {formatDisplayDate(selectedDate)}
           </p>
         </div>
@@ -129,7 +129,7 @@ export function MobileDatePicker({
               'text-base font-medium',
               'rounded-xl border-2',
               'transition-all duration-200',
-              'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+              'focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37]',
               error
                 ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                 : 'border-gray-300 hover:border-gray-400',
@@ -157,7 +157,7 @@ export function MobileDatePicker({
                 'text-base font-medium',
                 'rounded-xl border-2',
                 'transition-all duration-200',
-                'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500',
+                'focus:outline-none focus:ring-2 focus:ring-[#D4AF37] focus:border-[#D4AF37]',
                 error
                   ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
                   : 'border-gray-300 hover:border-gray-400',
@@ -205,7 +205,7 @@ export function QuickDateButtons({ onSelect }: { onSelect: (date: Date) => void 
           key={label}
           type="button"
           onClick={() => onSelect(date)}
-          className="px-4 py-2 min-h-[44px] rounded-lg border-2 border-blue-200 bg-blue-50 text-blue-700 font-medium hover:bg-blue-100 active:scale-95 transition-all"
+          className="px-4 py-2 min-h-[44px] rounded-lg border-2 border-[#D4AF37] bg-[#D4AF37] text-[#B8932F] font-medium hover:bg-[#D4AF37] active:scale-95 transition-all"
           data-testid={`button-quick-date-${label.toLowerCase()}`}
         >
           {label}

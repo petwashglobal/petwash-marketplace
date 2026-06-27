@@ -78,10 +78,10 @@ const STATUS_CFG: Record<string, { color: string; icon: React.ReactNode; label: 
   draft:       { color: 'text-gray-700 bg-white border-gray-300',       icon: <Clock className="w-3 h-3" />,        label: 'Draft' },
   active:      { color: 'text-emerald-700 bg-emerald-50 border-emerald-200', icon: <CheckCircle2 className="w-3 h-3" />, label: 'Active' },
   archived:    { color: 'text-gray-500 bg-white border-gray-200',         icon: <Layers className="w-3 h-3" />,       label: 'Archived' },
-  planned:     { color: 'text-blue-700 bg-blue-50 border-blue-200',         icon: <Clock className="w-3 h-3" />,        label: 'Planned' },
+  planned:     { color: 'text-[#B8932F] bg-[#D4AF37] border-[#D4AF37]',         icon: <Clock className="w-3 h-3" />,        label: 'Planned' },
   paused:      { color: 'text-amber-700 bg-amber-50 border-amber-200',      icon: <Minus className="w-3 h-3" />,        label: 'Paused' },
   rolled_back: { color: 'text-red-700 bg-red-50 border-red-200',            icon: <RotateCcw className="w-3 h-3" />,    label: 'Rolled back' },
-  completed:   { color: 'text-indigo-700 bg-indigo-50 border-indigo-200',   icon: <CheckCircle2 className="w-3 h-3" />, label: 'Completed' },
+  completed:   { color: 'text-[#B8932F] bg-[#D4AF37] border-[#D4AF37]',   icon: <CheckCircle2 className="w-3 h-3" />, label: 'Completed' },
 };
 
 const SCOPE_LABELS: Record<string, string> = {
@@ -379,7 +379,7 @@ function PolicyConfigsSection({ policyKeys }: { policyKeys: Record<string, Polic
         <div className="flex items-center justify-between">
           <div>
             <CardTitle className="text-base flex items-center gap-2">
-              <Layers className="w-4 h-4 text-indigo-600" /> Policy Versions
+              <Layers className="w-4 h-4 text-[#B8932F]" /> Policy Versions
             </CardTitle>
             <CardDescription>
               Each change creates a new draft. Drafts must be activated before rollout. Activation archives the previous active version.
@@ -494,7 +494,7 @@ function RolloutsSection({ configs }: { configs: PolicyConfig[] }) {
         </div>
         {Object.keys(counts).length > 0 && (
           <div className="flex gap-4 text-xs mt-2">
-            {[['active','bg-emerald-500'],['planned','bg-blue-500'],['paused','bg-amber-500'],['rolled_back','bg-red-500'],['completed','bg-indigo-500']] .map(([s, col]) => (
+            {[['active','bg-emerald-500'],['planned','bg-[#D4AF37]'],['paused','bg-amber-500'],['rolled_back','bg-red-500'],['completed','bg-[#D4AF37]']] .map(([s, col]) => (
               <span key={s} className="flex items-center gap-1">
                 <span className={`w-2 h-2 rounded-full ${col}`} /> {counts[s] ?? 0} {s.replace('_',' ')}
               </span>
@@ -598,9 +598,9 @@ export default function PolicyRollout() {
         </div>
 
         {/* Workflow diagram */}
-        <Card className="border-indigo-200 bg-indigo-50">
+        <Card className="border-[#D4AF37] bg-[#D4AF37]">
           <CardContent className="pt-4 pb-3 px-4">
-            <div className="flex items-center gap-2 flex-wrap text-xs font-medium text-indigo-700">
+            <div className="flex items-center gap-2 flex-wrap text-xs font-medium text-[#B8932F]">
               {[
                 ['Create draft', 'Define config values'],
                 ['Activate', 'Archive previous active'],
@@ -609,10 +609,10 @@ export default function PolicyRollout() {
                 ['Rollback', 'Kill switch if harm detected'],
               ].map(([step, sub], i) => (
                 <span key={step} className="flex items-center gap-1">
-                  {i > 0 && <ArrowRight className="w-3 h-3 text-indigo-400" />}
-                  <span className="bg-white border border-indigo-200 rounded px-2 py-1">
+                  {i > 0 && <ArrowRight className="w-3 h-3 text-[#D4AF37]" />}
+                  <span className="bg-white border border-[#D4AF37] rounded px-2 py-1">
                     <span className="font-semibold">{step}</span>
-                    <span className="text-indigo-400 ml-1 font-normal">{sub}</span>
+                    <span className="text-[#D4AF37] ml-1 font-normal">{sub}</span>
                   </span>
                 </span>
               ))}

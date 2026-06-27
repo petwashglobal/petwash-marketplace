@@ -285,7 +285,7 @@ export function ComprehensiveLegalTerms({ section = "all", className = "" }: Com
             </div>
             <CardTitle className="text-lg text-white">{data.title}</CardTitle>
           </div>
-          <Badge variant="outline" className="border-blue-500/30 text-blue-400">
+          <Badge variant="outline" className="border-[#D4AF37]/30 text-[#D4AF37]">
             <CheckCircle2 className="w-3 h-3 mr-1" />
             {isHebrew ? "חוקי" : "Legal"}
           </Badge>
@@ -333,7 +333,7 @@ export function ComprehensiveLegalTerms({ section = "all", className = "" }: Com
   return (
     <div className={`space-y-6 ${className}`} dir={isRTL ? "rtl" : "ltr"}>
       <div className="text-center mb-8">
-        <Badge className="bg-blue-500/20 text-blue-400 mb-4">
+        <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] mb-4">
           <Scale className="w-4 h-4 mr-1" />
           {isHebrew ? "מסמכים משפטיים מלאים" : "Comprehensive Legal Documents"}
         </Badge>

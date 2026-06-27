@@ -161,11 +161,11 @@ export default function SparePartsManagement() {
       case 'pending':
         return <Badge variant="outline">{isHebrew ? 'ממתין' : 'Pending'}</Badge>;
       case 'approved':
-        return <Badge className="bg-blue-100 text-blue-700">{isHebrew ? 'אושר' : 'Approved'}</Badge>;
+        return <Badge className="bg-[#D4AF37] text-[#B8932F]">{isHebrew ? 'אושר' : 'Approved'}</Badge>;
       case 'ordered':
-        return <Badge className="bg-purple-100 text-purple-700">{isHebrew ? 'הוזמן' : 'Ordered'}</Badge>;
+        return <Badge className="bg-[#D4AF37] text-[#B8932F]">{isHebrew ? 'הוזמן' : 'Ordered'}</Badge>;
       case 'shipped':
-        return <Badge className="bg-cyan-100 text-cyan-700">{isHebrew ? 'נשלח' : 'Shipped'}</Badge>;
+        return <Badge className="bg-[#D4AF37] text-[#B8932F]">{isHebrew ? 'נשלח' : 'Shipped'}</Badge>;
       case 'delivered':
         return <Badge className="bg-green-100 text-green-700">{isHebrew ? 'נמסר' : 'Delivered'}</Badge>;
       case 'cancelled':
@@ -210,7 +210,7 @@ export default function SparePartsManagement() {
         {/* Header */}
         <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl mb-8 luxury-animate-fade-in">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-orange-500 to-red-600 flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-red-600 flex items-center justify-center shadow-lg">
               <Wrench className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -237,7 +237,7 @@ export default function SparePartsManagement() {
                       {summaryData.totalParts || 0}
                     </p>
                   </div>
-                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                     <Box className="w-6 h-6 text-white" />
                   </div>
                 </div>
@@ -269,7 +269,7 @@ export default function SparePartsManagement() {
                     {summaryData.lowStockCount || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-[#D4AF37] flex items-center justify-center">
                   <AlertCircle className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -285,7 +285,7 @@ export default function SparePartsManagement() {
                     {summaryData.openOrders || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <ShoppingCart className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -385,7 +385,7 @@ export default function SparePartsManagement() {
                   </div>
                 ) : parts.length === 0 ? (
                   <div className="text-center py-12">
-                    <Package className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                    <Package className="w-16 h-16 text-[#D4AF37] mx-auto mb-4" />
                     <p className="luxury-text-small">{isHebrew ? 'לא נמצאו חלקים' : 'No parts found'}</p>
                   </div>
                 ) : (
@@ -399,7 +399,7 @@ export default function SparePartsManagement() {
                       >
                         <div className="flex items-start justify-between mb-3">
                           <div className="flex items-center gap-3 flex-1">
-                            <Wrench className="w-5 h-5 text-orange-600" />
+                            <Wrench className="w-5 h-5 text-[#B8932F]" />
                             <div className="flex-1">
                               <div className="flex items-center gap-2 mb-1">
                                 <h3 className="font-semibold text-gray-900 dark:text-black">{part.name}</h3>
@@ -426,7 +426,7 @@ export default function SparePartsManagement() {
                             <p className="text-xs text-gray-500">
                               {isHebrew ? 'מינימום' : 'Min'}: {part.minStockLevel}
                             </p>
-                            <p className="text-sm font-semibold text-blue-600 mt-1">
+                            <p className="text-sm font-semibold text-[#B8932F] mt-1">
                               {formatCurrency(part.unitCost, part.currency)}
                             </p>
                           </div>
@@ -473,7 +473,7 @@ export default function SparePartsManagement() {
                 </div>
               ) : orders.length === 0 ? (
                 <div className="text-center py-12">
-                  <ShoppingCart className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                  <ShoppingCart className="w-16 h-16 text-[#D4AF37] mx-auto mb-4" />
                   <p className="luxury-text-small">{isHebrew ? 'אין הזמנות' : 'No orders found'}</p>
                 </div>
               ) : (

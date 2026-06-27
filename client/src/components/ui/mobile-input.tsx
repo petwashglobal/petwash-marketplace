@@ -117,7 +117,7 @@ export const MobileInput = forwardRef<HTMLInputElement, MobileInputProps>(
               'flex w-full rounded-xl border-2 bg-white',
               'font-medium',
               'transition-all duration-200',
-              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:border-blue-500',
+              'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D4AF37] focus-visible:border-[#D4AF37]',
               'disabled:cursor-not-allowed disabled:opacity-50 disabled:bg-white',
               error
                 ? 'border-red-500 focus-visible:border-red-500 focus-visible:ring-red-500'

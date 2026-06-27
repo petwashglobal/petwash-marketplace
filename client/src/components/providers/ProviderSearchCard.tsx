@@ -101,7 +101,7 @@ export function ProviderSearchCard({ item }: Props) {
               </span>
             )}
             {item.insured && (
-              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-blue-600/90 text-white text-xs font-medium">
+              <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#B8932F]/90 text-white text-xs font-medium">
                 <CheckCircle2 className="h-3 w-3" />
                 {isHebrew ? "מבוטח" : "Insured"}
               </span>

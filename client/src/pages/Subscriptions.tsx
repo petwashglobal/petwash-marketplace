@@ -137,15 +137,15 @@ export default function Subscriptions() {
 
   const getTierColor = (tierName: string) => {
     if (tierName.toLowerCase().includes("deluxe")) return "text-yellow-500";
-    if (tierName.toLowerCase().includes("premium")) return "text-purple-500";
-    return "text-blue-500";
+    if (tierName.toLowerCase().includes("premium")) return "text-[#D4AF37]";
+    return "text-[#D4AF37]";
   };
 
   if (isLoading) {
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="text-center luxury-animate-fade-in">
-          <Heart className="w-16 h-16 text-pink-500 animate-pulse mx-auto mb-4" />
+          <Heart className="w-16 h-16 text-[#D4AF37] animate-pulse mx-auto mb-4" />
           <p className="text-lg luxury-text-body">Loading subscription options...</p>
         </div>
       </div>
@@ -454,7 +454,7 @@ export default function Subscriptions() {
               <Card 
                 key={tier.id} 
                 className={`relative luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-${index + 1} ${
-                  isPopular ? "border-2 border-purple-500" : ""
+                  isPopular ? "border-2 border-[#D4AF37]" : ""
                 }`}
                 data-testid={`card-tier-${tier.name.toLowerCase()}`}
               >

@@ -69,7 +69,7 @@ export function SmartReceiptViewer() {
       case 'silver':
         return 'bg-white text-gray-800 border-gray-200';
       default:
-        return 'bg-orange-100 text-orange-800 border-orange-200';
+        return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
     }
   };
 
@@ -97,7 +97,7 @@ export function SmartReceiptViewer() {
         <div className="text-center mb-8 luxury-animate-fade-in">
           <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
             <div className="flex items-center justify-center mb-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center mr-3">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center mr-3">
                 <Receipt className="h-6 w-6 text-white" />
               </div>
               <h1 className="luxury-heading-lg">⁦Pet Wash™⁩ Receipt</h1>
@@ -226,7 +226,7 @@ export function SmartReceiptViewer() {
                 </div>
                 <div className="w-full luxury-glass-minimal rounded-full h-2 overflow-hidden">
                   <div 
-                    className="bg-gradient-to-r from-blue-500 to-blue-600 h-2 rounded-full transition-all duration-300"
+                    className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] h-2 rounded-full transition-all duration-300"
                     style={{ width: `${progressPercentage}%` }}
                   ></div>
                 </div>

@@ -330,7 +330,7 @@ function ChatNowPanel({ booking, t, navigate }: { booking: any; t: typeof labels
     >
       <div className="flex items-center gap-3 min-w-0">
         <div className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0" style={{ background: '#3B82F61A' }}>
-          <MessageCircle className="w-5 h-5 text-blue-500" />
+          <MessageCircle className="w-5 h-5 text-[#D4AF37]" />
         </div>
         <div className="min-w-0">
           <p className="font-bold text-sm text-gray-900 truncate">{t.chatNowTitle}</p>
@@ -392,15 +392,15 @@ function StatusAlertPanel({ booking, t, navigate }: { booking: any; t: typeof la
   const serviceRoute = SERVICE_TO_ROUTE[booking.serviceType] || '/marketplace';
   return (
     <div className="mb-4 space-y-3">
-      <Card className={isDeclined ? 'border-red-200 bg-red-50' : 'border-orange-200 bg-orange-50'}>
+      <Card className={isDeclined ? 'border-red-200 bg-red-50' : 'border-[#D4AF37] bg-[#D4AF37]'}>
         <CardContent className="p-4">
           <div className="flex items-start gap-3">
-            {isDeclined ? <XCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" /> : <AlertTriangle className="w-5 h-5 text-orange-500 mt-0.5 flex-shrink-0" />}
+            {isDeclined ? <XCircle className="w-5 h-5 text-red-500 mt-0.5 flex-shrink-0" /> : <AlertTriangle className="w-5 h-5 text-[#D4AF37] mt-0.5 flex-shrink-0" />}
             <div className="space-y-1 min-w-0">
-              <p className={`font-bold text-sm ${isDeclined ? 'text-red-800' : 'text-orange-800'}`}>{isDeclined ? t.declinedTitle : t.cancelledTitle}</p>
-              {reason && <p className={`text-xs ${isDeclined ? 'text-red-600' : 'text-orange-600'}`}>{t.declinedReason}: {reason}</p>}
-              {isCancelled && booking.cancelledBy && <p className="text-xs text-orange-600">{t.cancelledBy}: {cancelledByLabel}</p>}
-              {hasRefund && <p className={`text-xs font-semibold ${isDeclined ? 'text-red-700' : 'text-orange-700'}`}>{t.refund}: ₪{((booking.refundCents ?? 0) / 100).toFixed(2)}</p>}
+              <p className={`font-bold text-sm ${isDeclined ? 'text-red-800' : 'text-[#B8932F]'}`}>{isDeclined ? t.declinedTitle : t.cancelledTitle}</p>
+              {reason && <p className={`text-xs ${isDeclined ? 'text-red-600' : 'text-[#B8932F]'}`}>{t.declinedReason}: {reason}</p>}
+              {isCancelled && booking.cancelledBy && <p className="text-xs text-[#B8932F]">{t.cancelledBy}: {cancelledByLabel}</p>}
+              {hasRefund && <p className={`text-xs font-semibold ${isDeclined ? 'text-red-700' : 'text-[#B8932F]'}`}>{t.refund}: ₪{((booking.refundCents ?? 0) / 100).toFixed(2)}</p>}
             </div>
           </div>
         </CardContent>
@@ -932,10 +932,10 @@ export default function BookingConfirmation() {
                   <span className="text-gray-500 text-sm">{t.status}</span>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                     confirmed || booking.status === 'reviewed' ? 'bg-emerald-100 text-emerald-700'
-                    : booking.status === 'completed'           ? 'bg-blue-100 text-blue-700'
+                    : booking.status === 'completed'           ? 'bg-[#D4AF37] text-[#B8932F]'
                     : booking.status === 'confirmed'           ? 'bg-green-100 text-green-700'
                     : booking.status === 'declined'            ? 'bg-red-100 text-red-700'
-                    : booking.status === 'cancelled'           ? 'bg-orange-100 text-orange-700'
+                    : booking.status === 'cancelled'           ? 'bg-[#D4AF37] text-[#B8932F]'
                     : 'bg-white text-gray-700'
                   }`}>
                     {confirmed ? t.confirmed : booking.status}
@@ -947,12 +947,12 @@ export default function BookingConfirmation() {
 
           {/* ── 72-hour escrow notice ── */}
           {confirmed && (
-            <Card className="mb-4 border-blue-200 bg-blue-50">
+            <Card className="mb-4 border-[#D4AF37] bg-[#D4AF37]">
               <CardContent className="p-4 flex items-start gap-3">
-                <Shield className="w-5 h-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                <Shield className="w-5 h-5 text-[#B8932F] mt-0.5 flex-shrink-0" />
                 <div>
-                  <p className="font-semibold text-blue-800">{t.escrow}</p>
-                  <p className="text-blue-600 text-sm">{t.payoutNote}</p>
+                  <p className="font-semibold text-[#B8932F]">{t.escrow}</p>
+                  <p className="text-[#B8932F] text-sm">{t.payoutNote}</p>
                 </div>
               </CardContent>
             </Card>

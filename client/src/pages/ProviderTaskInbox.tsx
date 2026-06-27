@@ -64,7 +64,7 @@ interface MarketplaceBooking {
 
 const PAYOUT_BADGE: Record<string, { label: string; className: string }> = {
   pending:   { label: "Payout Pending",  className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  released:  { label: "Payout Released", className: "bg-blue-100 text-blue-800 border-blue-200" },
+  released:  { label: "Payout Released", className: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]" },
   paid_out:  { label: "Paid Out",        className: "bg-green-100 text-green-800 border-green-200" },
   failed:    { label: "Payout Failed",   className: "bg-red-100 text-red-800 border-red-200" },
 };
@@ -225,7 +225,7 @@ export default function ProviderTaskInbox() {
                 Task Inbox
               </h1>
               {totalPending > 0 && (
-                <p className="text-xs text-orange-600 font-medium">
+                <p className="text-xs text-[#B8932F] font-medium">
                   {totalPending} decision{totalPending !== 1 ? "s" : ""} needed
                 </p>
               )}
@@ -247,12 +247,12 @@ export default function ProviderTaskInbox() {
         {/* SECTION 1: Needs Your Decision */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <AlertCircle className="w-4 h-4 text-orange-500" />
+            <AlertCircle className="w-4 h-4 text-[#D4AF37]" />
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
               Needs Your Decision
             </h2>
             {totalPending > 0 && (
-              <span className="ml-auto bg-orange-100 text-orange-700 text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="ml-auto bg-[#D4AF37] text-[#B8932F] text-xs font-bold px-2 py-0.5 rounded-full">
                 {totalPending}
               </span>
             )}
@@ -277,7 +277,7 @@ export default function ProviderTaskInbox() {
             {pending.map((b) => (
               <div
                 key={b.id}
-                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-orange-400"
+                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-[#D4AF37]"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
@@ -340,7 +340,7 @@ export default function ProviderTaskInbox() {
                     onClick={() => navigate(`/booking-chat/${b.id}`)}
                     aria-label="Message customer"
                   >
-                    <MessageSquare className="w-4 h-4 text-blue-500" />
+                    <MessageSquare className="w-4 h-4 text-[#D4AF37]" />
                   </Button>
                 </div>
               </div>
@@ -351,7 +351,7 @@ export default function ProviderTaskInbox() {
         {/* SECTION 2: Today & Tomorrow */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <Calendar className="w-4 h-4 text-blue-500" />
+            <Calendar className="w-4 h-4 text-[#D4AF37]" />
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
               Today &amp; Tomorrow
             </h2>
@@ -367,7 +367,7 @@ export default function ProviderTaskInbox() {
 
           {!upcomingLoading && upcoming.length === 0 && (
             <div className="bg-white dark:bg-white rounded-xl p-6 text-center border border-gray-100 dark:border-gray-700">
-              <Calendar className="w-8 h-8 text-blue-200 mx-auto mb-2" />
+              <Calendar className="w-8 h-8 text-[#D4AF37] mx-auto mb-2" />
               <p className="text-sm text-gray-500">No upcoming jobs in the next 24 hours</p>
             </div>
           )}
@@ -376,7 +376,7 @@ export default function ProviderTaskInbox() {
             {upcoming.map((b) => (
               <div
                 key={b.id}
-                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-blue-400"
+                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-[#D4AF37]"
               >
                 <div className="flex items-start justify-between gap-2">
                   <div>
@@ -384,7 +384,7 @@ export default function ProviderTaskInbox() {
                       {b.serviceType || "Booking"}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">#{b.bookingNumber}</p>
-                    <p className="text-xs text-blue-600 mt-1 font-medium">
+                    <p className="text-xs text-[#B8932F] mt-1 font-medium">
                       {formatDate(b.startTime)}
                     </p>
                   </div>
@@ -403,12 +403,12 @@ export default function ProviderTaskInbox() {
         {/* SECTION 3: Marketplace Bookings with Add-ons */}
         <section>
           <div className="flex items-center gap-2 mb-3">
-            <Package className="w-4 h-4 text-purple-500" />
+            <Package className="w-4 h-4 text-[#D4AF37]" />
             <h2 className="text-sm font-semibold uppercase tracking-wider text-gray-500">
               Marketplace Bookings
             </h2>
             {mktBookings.length > 0 && (
-              <span className="ml-auto bg-purple-100 text-purple-700 text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="ml-auto bg-[#D4AF37] text-[#B8932F] text-xs font-bold px-2 py-0.5 rounded-full">
                 {mktBookings.length}
               </span>
             )}
@@ -424,7 +424,7 @@ export default function ProviderTaskInbox() {
 
           {!mktLoading && mktBookings.length === 0 && (
             <div className="bg-white dark:bg-white rounded-xl p-5 text-center border border-gray-100 dark:border-gray-700">
-              <Package className="w-8 h-8 text-purple-200 mx-auto mb-2" />
+              <Package className="w-8 h-8 text-[#D4AF37] mx-auto mb-2" />
               <p className="text-sm text-gray-500">No marketplace bookings yet</p>
             </div>
           )}
@@ -433,7 +433,7 @@ export default function ProviderTaskInbox() {
             {mktBookings.map((b) => (
               <div
                 key={b.id}
-                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-purple-400"
+                className="bg-white dark:bg-white rounded-xl p-4 shadow-sm border-l-4 border-[#D4AF37]"
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
@@ -441,7 +441,7 @@ export default function ProviderTaskInbox() {
                       {b.serviceType || "Marketplace Service"}
                     </p>
                     <p className="text-xs text-gray-400 mt-0.5">#{b.bookingNumber}</p>
-                    <p className="text-xs text-purple-600 mt-1 font-medium">
+                    <p className="text-xs text-[#B8932F] mt-1 font-medium">
                       {formatDate(b.startTime)}
                     </p>
                   </div>
@@ -458,10 +458,10 @@ export default function ProviderTaskInbox() {
                     {b.addons.map((addon) => (
                       <span
                         key={addon.code}
-                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200 dark:bg-white dark:text-purple-300 dark:border-purple-700"
+                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37] dark:bg-white dark:text-[#D4AF37] dark:border-[#B8932F]"
                       >
                         {addon.labelEn}
-                        <span className="text-purple-400">
+                        <span className="text-[#D4AF37]">
                           +₪{parseFloat(addon.unitPrice).toFixed(0)}
                         </span>
                       </span>
@@ -477,14 +477,14 @@ export default function ProviderTaskInbox() {
         <div className="text-center pb-4 space-y-2">
           <button
             type="button"
-            className="text-sm text-blue-500 hover:underline block w-full"
+            className="text-sm text-[#D4AF37] hover:underline block w-full"
             onClick={() => navigate("/provider/dashboard")}
           >
             View all bookings in full dashboard →
           </button>
           <button
             type="button"
-            className="text-sm text-purple-500 hover:underline block w-full"
+            className="text-sm text-[#D4AF37] hover:underline block w-full"
             onClick={() => navigate("/provider/feedback")}
           >
             ⭐ Customer Feedback & Ratings →

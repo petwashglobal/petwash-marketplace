@@ -108,7 +108,7 @@ function fmtTime(iso: string | null, he: boolean): string {
 function severityStyle(sev: string): string {
   switch ((sev || '').toLowerCase()) {
     case 'critical': return 'bg-red-50 text-red-700 border-red-200';
-    case 'high':     return 'bg-orange-50 text-orange-700 border-orange-200';
+    case 'high':     return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
     case 'medium':   return 'bg-amber-50 text-amber-700 border-amber-200';
     case 'low':      return 'bg-emerald-50 text-emerald-700 border-emerald-200';
     default:         return 'bg-neutral-100 text-neutral-700 border-neutral-200';

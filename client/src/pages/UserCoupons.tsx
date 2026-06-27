@@ -147,22 +147,22 @@ function CouponCard({ coupon, active, onDetails }: { coupon: IssuedCoupon; activ
   const expiry = coupon.expires_at || coupon.valid_until;
 
   return (
-    <Card className={`relative overflow-hidden transition-all ${active ? 'border-purple-200 dark:border-purple-800 shadow-sm' : 'opacity-60 border-gray-200 dark:border-gray-700'}`}>
+    <Card className={`relative overflow-hidden transition-all ${active ? 'border-[#D4AF37] dark:border-[#B8932F] shadow-sm' : 'opacity-60 border-gray-200 dark:border-gray-700'}`}>
       {/* Color stripe */}
-      <div className={`absolute top-0 right-0 bottom-0 w-1.5 ${active ? 'bg-purple-500' : 'bg-gray-300'}`} />
+      <div className={`absolute top-0 right-0 bottom-0 w-1.5 ${active ? 'bg-[#D4AF37]' : 'bg-gray-300'}`} />
 
       <CardContent className="p-4 pr-6">
         <div className="flex items-start justify-between gap-2">
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2 mb-1">
               {coupon.discount_type === 'percent' ? (
-                <Percent className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <Percent className="w-4 h-4 text-[#D4AF37] flex-shrink-0" />
               ) : coupon.discount_type === 'free_wash' || coupon.discount_type === 'free_service' ? (
-                <Gift className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <Gift className="w-4 h-4 text-[#D4AF37] flex-shrink-0" />
               ) : (
-                <Tag className="w-4 h-4 text-purple-500 flex-shrink-0" />
+                <Tag className="w-4 h-4 text-[#D4AF37] flex-shrink-0" />
               )}
-              <span className="font-bold text-lg text-purple-700 dark:text-purple-300">{discountLabel(coupon)}</span>
+              <span className="font-bold text-lg text-[#B8932F] dark:text-[#D4AF37]">{discountLabel(coupon)}</span>
               {active ? (
                 <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 text-xs">פעיל</Badge>
               ) : coupon.redeemed_at ? (
@@ -199,14 +199,14 @@ function CouponCard({ coupon, active, onDetails }: { coupon: IssuedCoupon; activ
             <div className="flex items-center gap-1.5">
               <span className="font-mono text-sm bg-white dark:bg-white px-2 py-0.5 rounded">{coupon.code}</span>
               {active && (
-                <button onClick={copyCode} className="text-gray-400 hover:text-purple-600 transition-colors">
+                <button onClick={copyCode} className="text-gray-400 hover:text-[#B8932F] transition-colors">
                   <Copy className="w-3.5 h-3.5" />
                 </button>
               )}
             </div>
             <button
               onClick={onDetails}
-              className="text-xs text-purple-600 dark:text-purple-400 hover:underline flex items-center gap-0.5"
+              className="text-xs text-[#B8932F] dark:text-[#D4AF37] hover:underline flex items-center gap-0.5"
             >
               <Info className="w-3 h-3" />
               פרטים ותנאים
@@ -273,7 +273,7 @@ export default function UserCoupons() {
       <div className="max-w-xl mx-auto space-y-5">
 
         <div className="flex items-center gap-3 pt-2">
-          <div className="p-2 bg-purple-600 rounded-xl">
+          <div className="p-2 bg-[#B8932F] rounded-xl">
             <Tag className="w-5 h-5 text-white" />
           </div>
           <div>
@@ -286,13 +286,13 @@ export default function UserCoupons() {
         <div className="grid grid-cols-3 gap-3">
           <Card>
             <CardContent className="p-3 text-center">
-              <div className="text-xl font-bold text-purple-600">{active.length}</div>
+              <div className="text-xl font-bold text-[#B8932F]">{active.length}</div>
               <div className="text-xs text-gray-500">פעילים</div>
             </CardContent>
           </Card>
           <Card>
             <CardContent className="p-3 text-center">
-              <div className="text-xl font-bold text-blue-600">{activeRedemptions.length}</div>
+              <div className="text-xl font-bold text-[#B8932F]">{activeRedemptions.length}</div>
               <div className="text-xs text-gray-500">מומשו</div>
             </CardContent>
           </Card>
@@ -340,7 +340,7 @@ export default function UserCoupons() {
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm flex items-center gap-2">
-                  <ReceiptText className="w-4 h-4 text-blue-500" />
+                  <ReceiptText className="w-4 h-4 text-[#D4AF37]" />
                   היסטוריית מימוש
                 </CardTitle>
               </CardHeader>
@@ -388,7 +388,7 @@ export default function UserCoupons() {
         <DialogContent dir={dir} className="max-w-sm">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <Info className="w-4 h-4 text-purple-600" />
+              <Info className="w-4 h-4 text-[#B8932F]" />
               פרטי קופון
             </DialogTitle>
           </DialogHeader>
@@ -408,9 +408,9 @@ export default function UserCoupons() {
               </div>
 
               <div className="grid grid-cols-2 gap-3 text-sm">
-                <div className="bg-purple-50 dark:bg-white rounded-lg p-3 text-center">
+                <div className="bg-[#D4AF37] dark:bg-white rounded-lg p-3 text-center">
                   <div className="text-xs text-gray-500 mb-1">הטבה</div>
-                  <div className="font-bold text-purple-700 dark:text-purple-300">
+                  <div className="font-bold text-[#B8932F] dark:text-[#D4AF37]">
                     {detailsData.discountType === 'percent'   ? `${detailsData.discountPercent}%`  :
                      detailsData.discountType === 'fixed'     ? `₪${detailsData.discountAmount}`   :
                      detailsData.discountType === 'free_wash' ? 'שטיפה חינם'                        : 'שירות חינם'}
@@ -441,7 +441,7 @@ export default function UserCoupons() {
 
               {!detailsData.stackable && (
                 <div className="text-xs text-gray-500 text-center flex items-center justify-center gap-1">
-                  <XCircle className="w-3 h-3 text-orange-500" />
+                  <XCircle className="w-3 h-3 text-[#D4AF37]" />
                   לא ניתן לצבירה עם הטבות אחרות
                 </div>
               )}

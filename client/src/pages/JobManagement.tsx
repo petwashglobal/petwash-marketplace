@@ -77,10 +77,10 @@ interface Position {
 }
 
 const roleColors: Record<string, { bg: string; text: string; gradient: string }> = {
-  walker: { bg: 'bg-pink-100', text: 'text-pink-700', gradient: 'from-pink-500 to-rose-600' },
-  driver: { bg: 'bg-blue-100', text: 'text-blue-700', gradient: 'from-blue-500 to-indigo-600' },
-  sitter: { bg: 'bg-purple-100', text: 'text-purple-700', gradient: 'from-purple-500 to-violet-600' },
-  host: { bg: 'bg-amber-100', text: 'text-amber-700', gradient: 'from-amber-500 to-orange-600' },
+  walker: { bg: 'bg-[#D4AF37]', text: 'text-[#B8932F]', gradient: 'from-[#D4AF37] to-rose-600' },
+  driver: { bg: 'bg-[#D4AF37]', text: 'text-[#B8932F]', gradient: 'from-[#D4AF37] to-[#B8932F]' },
+  sitter: { bg: 'bg-[#D4AF37]', text: 'text-[#B8932F]', gradient: 'from-[#D4AF37] to-[#B8932F]' },
+  host: { bg: 'bg-amber-100', text: 'text-amber-700', gradient: 'from-amber-500 to-[#B8932F]' },
   supplier: { bg: 'bg-emerald-100', text: 'text-emerald-700', gradient: 'from-emerald-500 to-teal-600' },
   admin: { bg: 'bg-white', text: 'text-slate-700', gradient: 'from-slate-500 to-gray-600' },
   trainer: { bg: 'bg-yellow-100', text: 'text-yellow-700', gradient: 'from-yellow-500 to-amber-600' },

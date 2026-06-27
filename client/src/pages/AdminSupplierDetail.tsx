@@ -72,9 +72,9 @@ function OsekBadge({ value }: { value: Osek }) {
     value === "unknown"
       ? "bg-amber-100 text-amber-800"
       : value === "patur"
-      ? "bg-blue-100 text-blue-800"
+      ? "bg-[#D4AF37] text-[#B8932F]"
       : value === "chevra"
-      ? "bg-purple-100 text-purple-800"
+      ? "bg-[#D4AF37] text-[#B8932F]"
       : "bg-emerald-100 text-emerald-800";
   return <Badge className={cn("text-[10px] font-medium", cls)}>{OSEK_LABEL_HE[value]}</Badge>;
 }
@@ -137,7 +137,7 @@ export default function AdminSupplierDetail() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-orange-50/20"
+      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-[#D4AF37]/20"
       dir="rtl"
       style={{
         paddingTop: "env(safe-area-inset-top)",
@@ -249,7 +249,7 @@ export default function AdminSupplierDetail() {
                   />
                   {supplier.osekCertificateUrl && (
                     <a
-                      className="mt-1 text-[11px] text-blue-700 hover:underline inline-flex items-center gap-1"
+                      className="mt-1 text-[11px] text-[#B8932F] hover:underline inline-flex items-center gap-1"
                       href={supplier.osekCertificateUrl}
                       target="_blank"
                       rel="noopener noreferrer"
