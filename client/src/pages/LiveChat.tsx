@@ -20,13 +20,13 @@ export default function LiveChat() {
               AI Chat Assistant
             </h1>
             <p className="luxury-subtitle-lg">
-              Powered by Google Dialogflow CX & Gemini 2.5 Flash AI - Hebrew & English Support
+              Powered by Gemini AI — Kenzo, your ⁦Pet Wash™⁩ concierge. Hebrew & English support.
             </p>
           </div>
 
           <div className="luxury-glass-card luxury-shadow-lg p-10 mb-8 text-center luxury-bg-primary">
             <p className="text-xl text-white/95 mb-4 font-semibold">
-              Click the purple chat bubble in the bottom-right corner to start chatting! 💬
+              Tap the chat button in the bottom corner to start chatting! 💬
             </p>
             <p className="text-white/80 text-lg">
               Our AI assistant is available on every page of ⁦Pet Wash™⁩
