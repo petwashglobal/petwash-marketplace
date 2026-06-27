@@ -7946,6 +7946,7 @@ export * from "./schema-finance";
 export * from "./schema-policy";
 export * from "./schema-franchise";
 export * from "./schema-chat";
+export * from "./schema-communication-events";
 export * from "./schema-gemini-watchdog";
 export * from "./schema-integrations";
 export * from "./schema-payroll";

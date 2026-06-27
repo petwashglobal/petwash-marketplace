@@ -34,6 +34,7 @@ import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { twilioSMSService } from './TwilioSMSService';
 import { FCMService } from './FCMService';
+import { logCommunicationEventAsync } from './CommunicationEventService';
 import { createMailService } from '../lib/sendgrid';
 
 export type NotificationChannel = 'email' | 'sms' | 'push';
@@ -319,6 +320,18 @@ export async function dispatchNotifications(job: NotificationJob): Promise<void>
           })
           .where(eq(notificationLogs.id, logId));
       }
+
+      // Mirror into the unified communication_events timeline (comms spec §10) —
+      // best-effort, never blocks the dispatch.
+      logCommunicationEventAsync({
+        channel: channel.toUpperCase() as any, // 'email'|'sms'|'push' → EMAIL|SMS|PUSH
+        eventType: job.eventType,
+        bookingId: job.bookingId ?? null,
+        receiverUserId: job.userId ?? null,
+        externalMessageId: providerMessageId,
+        status: sent ? 'sent' : 'failed',
+        contentSummary: job.templateKey,
+      });
 
       logger.info('[NotificationEngine] Channel dispatched', {
         channel,
