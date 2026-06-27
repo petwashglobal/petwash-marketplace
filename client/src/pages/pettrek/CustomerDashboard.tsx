@@ -129,7 +129,7 @@ export default function PetTrekCustomerDashboard() {
       name: "Home",
       address: "123 Rothschild Blvd, Tel Aviv",
       icon: Home,
-      color: "from-blue-500 to-blue-600"
+      color: "from-[#D4AF37] to-[#B8932F]"
     },
     {
       id: "loc-2",
@@ -143,7 +143,7 @@ export default function PetTrekCustomerDashboard() {
       name: "Pet Groomer",
       address: "Premium Pet Spa, Ramat Aviv",
       icon: Scissors,
-      color: "from-purple-500 to-purple-600"
+      color: "from-[#D4AF37] to-[#B8932F]"
     }
   ];
 
@@ -212,7 +212,7 @@ export default function PetTrekCustomerDashboard() {
         {/* Quick Stats - Luxury Grid */}
         <div className="luxury-grid-4 luxury-animate-fade-in luxury-delay-1">
           <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6" data-testid="stat-total-trips">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 mb-4">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
               <Car className="h-6 w-6 text-white" />
             </div>
             <div className="luxury-heading-lg luxury-text-gradient">{stats.totalTrips}</div>
@@ -220,7 +220,7 @@ export default function PetTrekCustomerDashboard() {
           </div>
           
           <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6" data-testid="stat-this-month">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 mb-4">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
               <Calendar className="h-6 w-6 text-white" />
             </div>
             <div className="luxury-heading-lg luxury-text-gradient">{stats.thisMonth}</div>
@@ -255,7 +255,7 @@ export default function PetTrekCustomerDashboard() {
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-4">
                   <div className="relative">
-                    <Avatar className="h-16 w-16 border-3 border-gradient-to-br from-purple-500 to-purple-600 shadow-lg" data-testid="avatar-active-driver">
+                    <Avatar className="h-16 w-16 border-3 border-gradient-to-br from-[#D4AF37] to-[#B8932F] shadow-lg" data-testid="avatar-active-driver">
                       <AvatarImage src={activeTrip.driverPhoto} />
                       <AvatarFallback>MS</AvatarFallback>
                     </Avatar>
@@ -287,9 +287,9 @@ export default function PetTrekCustomerDashboard() {
                   <span>Trip Progress</span>
                   <span className="luxury-text-gradient font-semibold" data-testid="text-progress">{activeTrip.progress}%</span>
                 </div>
-                <div className="h-3 bg-gradient-to-r from-purple-100 to-purple-50 rounded-full overflow-hidden">
+                <div className="h-3 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-gradient-to-r from-purple-500 to-purple-600 rounded-full transition-all duration-500"
+                    className="h-full bg-gradient-to-r from-[#D4AF37] to-[#B8932F] rounded-full transition-all duration-500"
                     style={{ width: `${activeTrip.progress}%` }}
                     data-testid="progress-bar"
                   />
@@ -363,7 +363,7 @@ export default function PetTrekCustomerDashboard() {
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-start gap-4 flex-1">
                       <div className="relative">
-                        <Avatar className="h-14 w-14 border-2 border-gradient-to-br from-purple-500 to-purple-600 shadow-md" data-testid={`avatar-driver-${trip.id}`}>
+                        <Avatar className="h-14 w-14 border-2 border-gradient-to-br from-[#D4AF37] to-[#B8932F] shadow-md" data-testid={`avatar-driver-${trip.id}`}>
                           <AvatarImage src={trip.driverPhoto} />
                           <AvatarFallback>{trip.driverName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
                         </Avatar>
@@ -380,11 +380,11 @@ export default function PetTrekCustomerDashboard() {
                         </div>
                         <div className="space-y-2">
                           <div className="flex items-center gap-2 luxury-text-body">
-                            <Calendar className="h-4 w-4 text-purple-500" />
+                            <Calendar className="h-4 w-4 text-[#D4AF37]" />
                             <span data-testid={`datetime-${trip.id}`}>{trip.scheduledDate} at {trip.scheduledTime}</span>
                           </div>
                           <div className="flex items-start gap-2 luxury-text-body">
-                            <MapPin className="h-4 w-4 text-purple-500 mt-1" />
+                            <MapPin className="h-4 w-4 text-[#D4AF37] mt-1" />
                             <div className="flex-1" data-testid={`route-${trip.id}`}>
                               <div className="font-medium">{trip.pickup}</div>
                               <div className="luxury-text-small text-gray-400 my-1">↓ {trip.distance} • ~{trip.estimatedDuration} min</div>
@@ -392,7 +392,7 @@ export default function PetTrekCustomerDashboard() {
                             </div>
                           </div>
                           <div className="flex items-center gap-2 luxury-text-body">
-                            <Package className="h-4 w-4 text-purple-500" />
+                            <Package className="h-4 w-4 text-[#D4AF37]" />
                             <span data-testid={`pet-${trip.id}`}>Pet: {trip.petName}</span>
                           </div>
                         </div>
@@ -431,7 +431,7 @@ export default function PetTrekCustomerDashboard() {
                 >
                   <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <div className="flex items-start gap-4 flex-1">
-                      <Avatar className="h-12 w-12 border-2 border-purple-200 shadow-sm" data-testid={`avatar-past-${trip.id}`}>
+                      <Avatar className="h-12 w-12 border-2 border-[#D4AF37] shadow-sm" data-testid={`avatar-past-${trip.id}`}>
                         <AvatarImage src={trip.driverPhoto} />
                         <AvatarFallback>{trip.driverName.split(" ").map(n => n[0]).join("")}</AvatarFallback>
                       </Avatar>
@@ -439,14 +439,14 @@ export default function PetTrekCustomerDashboard() {
                         <h3 className="luxury-heading-sm mb-2" data-testid={`driver-past-${trip.id}`}>{trip.driverName}</h3>
                         <div className="space-y-1">
                           <div className="flex items-center gap-2 luxury-text-small">
-                            <Calendar className="h-3 w-3 text-purple-500" />
+                            <Calendar className="h-3 w-3 text-[#D4AF37]" />
                             <span data-testid={`date-past-${trip.id}`}>{trip.date} at {trip.time}</span>
                           </div>
                           <div className="luxury-text-body" data-testid={`route-past-${trip.id}`}>
                             {trip.pickup} → {trip.dropoff}
                           </div>
                           <div className="flex items-center gap-2 luxury-text-small">
-                            <Clock className="h-3 w-3 text-purple-500" />
+                            <Clock className="h-3 w-3 text-[#D4AF37]" />
                             <span data-testid={`duration-past-${trip.id}`}>{trip.duration} min • {trip.distance}</span>
                           </div>
                         </div>
@@ -533,11 +533,11 @@ export default function PetTrekCustomerDashboard() {
                 data-testid={`card-driver-${driver.id}`}
               >
                 <div className="relative inline-block mb-4">
-                  <Avatar className="h-20 w-20 border-3 border-gradient-to-br from-purple-500 to-purple-600 shadow-lg mx-auto" data-testid={`avatar-fav-${driver.id}`}>
+                  <Avatar className="h-20 w-20 border-3 border-gradient-to-br from-[#D4AF37] to-[#B8932F] shadow-lg mx-auto" data-testid={`avatar-fav-${driver.id}`}>
                     <AvatarImage src={driver.photo} />
                     <AvatarFallback>{driver.name.split(" ").map(n => n[0]).join("")}</AvatarFallback>
                   </Avatar>
-                  <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center">
+                  <div className="absolute -bottom-1 -right-1 h-6 w-6 bg-[#D4AF37] rounded-full border-2 border-white flex items-center justify-center">
                     <Heart className="h-3 w-3 text-white fill-white" />
                   </div>
                 </div>

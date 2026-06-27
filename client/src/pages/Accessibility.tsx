@@ -8,7 +8,7 @@ export default function Accessibility() {
         <div className="luxury-container max-w-5xl">
           {/* Header */}
           <div className="text-center mb-12 luxury-animate-fade-in">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 luxury-shadow-lg">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 luxury-shadow-lg">
               <AccessibilityIcon className="w-10 h-10 text-white" />
             </div>
             <h1 className="luxury-heading-xl mb-4">Accessibility Declaration</h1>
@@ -44,7 +44,7 @@ export default function Accessibility() {
           {/* Our Commitment */}
           <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-2">
             <div className="flex items-start gap-4 mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <Eye className="w-6 h-6 text-white" />
               </div>
               <h2 className="luxury-heading-md">Our Commitment to Accessibility</h2>
@@ -63,7 +63,7 @@ export default function Accessibility() {
             
             <div className="luxury-grid-3">
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <Monitor className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">Screen Reader Compatible</h3>
@@ -71,7 +71,7 @@ export default function Accessibility() {
               </div>
 
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <Eye className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">Keyboard Navigation</h3>
@@ -79,7 +79,7 @@ export default function Accessibility() {
               </div>
 
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <Shield className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">High Contrast</h3>
@@ -87,7 +87,7 @@ export default function Accessibility() {
               </div>
 
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <FileText className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">Adjustable Text</h3>
@@ -95,7 +95,7 @@ export default function Accessibility() {
               </div>
 
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <Users className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">Alt Text</h3>
@@ -103,7 +103,7 @@ export default function Accessibility() {
               </div>
 
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <CheckCircle2 className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">Logical Structure</h3>
@@ -111,7 +111,7 @@ export default function Accessibility() {
               </div>
 
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <TrendingUp className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">Skip Navigation</h3>
@@ -119,7 +119,7 @@ export default function Accessibility() {
               </div>
 
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <Monitor className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">Touch Targets</h3>
@@ -127,7 +127,7 @@ export default function Accessibility() {
               </div>
 
               <div className="luxury-glass-minimal luxury-hover-lift p-6">
-                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+                <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
                   <Users className="w-5 h-5 text-white" />
                 </div>
                 <h3 className="luxury-heading-sm mb-2">Multilingual</h3>
@@ -141,7 +141,7 @@ export default function Accessibility() {
           {/* Physical Location Accessibility */}
           <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-4">
             <div className="flex items-start gap-4 mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <MapPin className="w-6 h-6 text-white" />
               </div>
               <h2 className="luxury-heading-md">Physical Location Accessibility</h2>
@@ -149,23 +149,23 @@ export default function Accessibility() {
             <p className="luxury-text-body mb-4">Our physical pet washing locations feature:</p>
             <ul className="space-y-3">
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Wheelchair accessible entrances and facilities
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Accessible parking spaces
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Clear signage and wayfinding
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Adjustable washing station heights
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Easy-to-use interface controls
               </li>
             </ul>
@@ -174,7 +174,7 @@ export default function Accessibility() {
           {/* Ongoing Efforts */}
           <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-5">
             <div className="flex items-start gap-4 mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <TrendingUp className="w-6 h-6 text-white" />
               </div>
               <h2 className="luxury-heading-md">Ongoing Efforts</h2>
@@ -184,19 +184,19 @@ export default function Accessibility() {
             </p>
             <ul className="space-y-3">
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Regular accessibility audits and testing
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 User feedback incorporation
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Staff training on accessibility best practices
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Technology updates to support assistive devices
               </li>
             </ul>
@@ -207,7 +207,7 @@ export default function Accessibility() {
           {/* Contact/Feedback */}
           <div className="luxury-glass-card luxury-shadow-lg p-8 mb-8 luxury-animate-slide-up">
             <div className="flex items-start gap-4 mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <Mail className="w-6 h-6 text-white" />
               </div>
               <h2 className="luxury-heading-md">Feedback and Contact</h2>
@@ -218,21 +218,21 @@ export default function Accessibility() {
             </p>
             <div className="space-y-4 mb-6">
               <div className="flex items-center gap-3">
-                <Mail className="w-5 h-5 text-purple-600" />
+                <Mail className="w-5 h-5 text-[#B8932F]" />
                 <span className="luxury-text-body">Email:</span>
                 <a href="mailto:accessibility@petwash.co.il" className="luxury-text-gradient font-semibold hover:opacity-80 transition-opacity">
                   accessibility@petwash.co.il
                 </a>
               </div>
               <div className="flex items-center gap-3">
-                <Phone className="w-5 h-5 text-purple-600" />
+                <Phone className="w-5 h-5 text-[#B8932F]" />
                 <span className="luxury-text-body">Phone:</span>
                 <span className="luxury-text-gradient font-semibold">
                   Available through our WhatsApp support
                 </span>
               </div>
               <div className="flex items-center gap-3">
-                <MapPin className="w-5 h-5 text-purple-600" />
+                <MapPin className="w-5 h-5 text-[#B8932F]" />
                 <span className="luxury-text-body">Mail:</span>
                 <span className="luxury-text-body font-semibold">
                   ⁦Pet Wash™⁩ Ltd, Accessibility Department
@@ -247,7 +247,7 @@ export default function Accessibility() {
           {/* Technical Specifications */}
           <div className="luxury-glass-card luxury-shadow-md p-8 mb-8">
             <div className="flex items-start gap-4 mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <Monitor className="w-6 h-6 text-white" />
               </div>
               <h2 className="luxury-heading-md">Technical Specifications</h2>
@@ -259,19 +259,19 @@ export default function Accessibility() {
             </p>
             <ul className="space-y-2 mb-4">
               <li className="flex items-center gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0"></span>
                 HTML
               </li>
               <li className="flex items-center gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0"></span>
                 WAI-ARIA
               </li>
               <li className="flex items-center gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0"></span>
                 CSS
               </li>
               <li className="flex items-center gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0"></span>
                 JavaScript
               </li>
             </ul>
@@ -284,7 +284,7 @@ export default function Accessibility() {
           {/* Limitations and Alternatives */}
           <div className="luxury-glass-card luxury-shadow-md p-8 mb-8">
             <div className="flex items-start gap-4 mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <Shield className="w-6 h-6 text-white" />
               </div>
               <h2 className="luxury-heading-md">Limitations and Alternatives</h2>
@@ -298,7 +298,7 @@ export default function Accessibility() {
           {/* Assessment Approach */}
           <div className="luxury-glass-card luxury-shadow-md p-8 mb-8">
             <div className="flex items-start gap-4 mb-6">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <FileText className="w-6 h-6 text-white" />
               </div>
               <h2 className="luxury-heading-md">Assessment Approach</h2>
@@ -308,15 +308,15 @@ export default function Accessibility() {
             </p>
             <ul className="space-y-3">
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Self-evaluation using automated and manual testing tools
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 Expert accessibility consultation
               </li>
               <li className="flex items-start gap-3 luxury-text-body">
-                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mt-2 flex-shrink-0"></span>
                 User testing with assistive technologies
               </li>
             </ul>

@@ -46,7 +46,7 @@ export default function ProviderDetail() {
       <Layout>
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8932F] mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">
               {isHebrew ? 'טוען...' : 'Loading...'}
             </p>
@@ -125,7 +125,7 @@ export default function ProviderDetail() {
     if (provider.kind === 'walker') {
       if (provider.bodyCamera) {
         badges.push(
-          <Badge key="bodycam" variant="secondary" className="bg-blue-100 text-blue-800 dark:bg-white dark:text-blue-400" data-testid="badge-body-camera">
+          <Badge key="bodycam" variant="secondary" className="bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]" data-testid="badge-body-camera">
             <Video className="w-4 h-4 mr-1" />
             {isHebrew ? 'מצלמת גוף' : 'Body Camera'}
           </Badge>
@@ -133,7 +133,7 @@ export default function ProviderDetail() {
       }
       if (provider.droneAccess) {
         badges.push(
-          <Badge key="drone" variant="secondary" className="bg-purple-100 text-purple-800 dark:bg-white dark:text-purple-400" data-testid="badge-drone">
+          <Badge key="drone" variant="secondary" className="bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]" data-testid="badge-drone">
             <Plane className="w-4 h-4 mr-1" />
             {isHebrew ? 'גישה לרחפן' : 'Drone Access'}
           </Badge>
@@ -164,8 +164,8 @@ export default function ProviderDetail() {
             <div className="grid lg:grid-cols-3 gap-8">
               {/* Left: Profile Photo - Circular with Gradient Border */}
               <div className="lg:col-span-1 flex items-center justify-center">
-                <div className="relative w-80 h-80 rounded-full overflow-hidden p-2 bg-gradient-to-br from-purple-600 via-pink-600 to-amber-600 luxury-shadow-xl">
-                  <div className="relative w-full h-full rounded-full overflow-hidden bg-gradient-to-br from-purple-200 via-pink-200 to-amber-200">
+                <div className="relative w-80 h-80 rounded-full overflow-hidden p-2 bg-gradient-to-br from-[#B8932F] via-[#B8932F] to-amber-600 luxury-shadow-xl">
+                  <div className="relative w-full h-full rounded-full overflow-hidden bg-gradient-to-br from-[#D4AF37] via-[#D4AF37] to-amber-200">
                     {provider.profilePictureUrl ? (
                       <img 
                         src={provider.profilePictureUrl} 
@@ -175,7 +175,7 @@ export default function ProviderDetail() {
                       />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center bg-white dark:bg-white">
-                        <Users className="w-24 h-24 text-purple-400" />
+                        <Users className="w-24 h-24 text-[#D4AF37]" />
                       </div>
                     )}
                     {provider.isVerified && (
@@ -197,7 +197,7 @@ export default function ProviderDetail() {
               <div className="lg:col-span-2 space-y-6">
                 <div>
                   <div className="flex items-center gap-3 mb-2 flex-wrap">
-                    <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 bg-clip-text text-transparent" data-testid="text-provider-name">
+                    <h1 className="text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-amber-600 bg-clip-text text-transparent" data-testid="text-provider-name">
                       {provider.firstName} {provider.lastName}
                     </h1>
                     {provider.isVerified && (
@@ -211,7 +211,7 @@ export default function ProviderDetail() {
                   <p className="text-lg text-gray-600 dark:text-gray-400 mb-3">{platformLabel}</p>
 
                   <div className="flex items-center gap-2 text-gray-700 dark:text-black mb-4">
-                    <MapPin className="w-6 h-6 text-purple-600" />
+                    <MapPin className="w-6 h-6 text-[#B8932F]" />
                     <span className="text-xl font-medium" data-testid="text-provider-city">{provider.city}</span>
                   </div>
 
@@ -235,11 +235,11 @@ export default function ProviderDetail() {
                     </div>
                   </div>
 
-                  <div className="text-center p-5 luxury-glass-panel luxury-shadow-xl rounded-2xl border-2 border-purple-200 dark:border-purple-800">
+                  <div className="text-center p-5 luxury-glass-panel luxury-shadow-xl rounded-2xl border-2 border-[#D4AF37] dark:border-[#B8932F]">
                     <div className="flex justify-center mb-2">
-                      <Award className="w-7 h-7 text-purple-600" />
+                      <Award className="w-7 h-7 text-[#B8932F]" />
                     </div>
-                    <div className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent" data-testid="stat-total-bookings">
+                    <div className="text-3xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent" data-testid="stat-total-bookings">
                       {provider.totalBookings || 0}
                     </div>
                     <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">
@@ -259,11 +259,11 @@ export default function ProviderDetail() {
                     </div>
                   </div>
 
-                  <div className="text-center p-5 luxury-glass-panel luxury-shadow-xl rounded-2xl border-2 border-blue-200 dark:border-blue-800">
+                  <div className="text-center p-5 luxury-glass-panel luxury-shadow-xl rounded-2xl border-2 border-[#D4AF37] dark:border-[#B8932F]">
                     <div className="flex justify-center mb-2">
-                      <TrendingUp className="w-7 h-7 text-blue-600" />
+                      <TrendingUp className="w-7 h-7 text-[#B8932F]" />
                     </div>
-                    <div className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent" data-testid="stat-years-experience">
+                    <div className="text-3xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent" data-testid="stat-years-experience">
                       {provider.yearsOfExperience || 0}
                     </div>
                     <div className="text-sm font-medium text-gray-600 dark:text-gray-400 mt-1">
@@ -298,11 +298,11 @@ export default function ProviderDetail() {
 
                     <div className="grid grid-cols-2 gap-3">
                       {trustStats?.acceptanceRatePct != null && (
-                        <div className="flex items-center gap-2 bg-white dark:bg-white p-3 rounded-xl border border-blue-100">
-                          <UserCheck className="w-4 h-4 text-blue-500 shrink-0" />
+                        <div className="flex items-center gap-2 bg-white dark:bg-white p-3 rounded-xl border border-[#D4AF37]">
+                          <UserCheck className="w-4 h-4 text-[#D4AF37] shrink-0" />
                           <div>
                             <p className="text-[10px] text-gray-500">{isHebrew ? 'אחוז קבלה' : 'Acceptance'}</p>
-                            <p className="text-sm font-bold text-blue-700">{trustStats.acceptanceRatePct}%</p>
+                            <p className="text-sm font-bold text-[#B8932F]">{trustStats.acceptanceRatePct}%</p>
                           </div>
                         </div>
                       )}
@@ -316,11 +316,11 @@ export default function ProviderDetail() {
                         </div>
                       )}
                       {trustStats?.responseRatePct != null && (
-                        <div className="flex items-center gap-2 bg-white dark:bg-white p-3 rounded-xl border border-purple-100">
-                          <Clock className="w-4 h-4 text-purple-500 shrink-0" />
+                        <div className="flex items-center gap-2 bg-white dark:bg-white p-3 rounded-xl border border-[#D4AF37]">
+                          <Clock className="w-4 h-4 text-[#D4AF37] shrink-0" />
                           <div>
                             <p className="text-[10px] text-gray-500">{isHebrew ? 'אחוז תגובה' : 'Response'}</p>
-                            <p className="text-sm font-bold text-purple-700">{trustStats.responseRatePct}%</p>
+                            <p className="text-sm font-bold text-[#B8932F]">{trustStats.responseRatePct}%</p>
                           </div>
                         </div>
                       )}
@@ -360,8 +360,8 @@ export default function ProviderDetail() {
                 )}
 
                 {/* Bio */}
-                <div className="bg-white dark:bg-black p-6 rounded-2xl border-2 border-purple-100 dark:border-purple-900">
-                  <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <div className="bg-white dark:bg-black p-6 rounded-2xl border-2 border-[#D4AF37] dark:border-[#B8932F]">
+                  <h3 className="text-2xl font-bold mb-3 bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                     {isHebrew ? 'אודות' : 'About'}
                   </h3>
                   <p className="text-gray-700 dark:text-black leading-relaxed text-lg" data-testid="text-provider-bio">
@@ -426,9 +426,9 @@ export default function ProviderDetail() {
                 </div>
 
                 {/* Note about Availability */}
-                <div className="bg-blue-50 dark:bg-white p-4 rounded-xl border border-blue-200 dark:border-blue-800">
+                <div className="bg-[#D4AF37] dark:bg-white p-4 rounded-xl border border-[#D4AF37] dark:border-[#B8932F]">
                   <p className="text-sm text-gray-700 dark:text-black">
-                    <CalendarIcon className="w-4 h-4 inline mr-2 text-blue-600" />
+                    <CalendarIcon className="w-4 h-4 inline mr-2 text-[#B8932F]" />
                     {isHebrew 
                       ? 'זמינות ותאריכים יוצגו בשלב הבא של ההזמנה' 
                       : 'Availability and scheduling will be shown in the next booking step'}
@@ -442,12 +442,12 @@ export default function ProviderDetail() {
           {provider.profilePictureUrl && (
             <GlassmorphismCard className="luxury-glass-card luxury-shadow-xl mb-8">
               <div className="p-6">
-                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                <h3 className="text-2xl font-bold mb-4 bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                   {isHebrew ? 'תמונות' : 'Photos'}
                 </h3>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                   {/* Main profile picture */}
-                  <div className="aspect-square rounded-xl overflow-hidden border-2 border-purple-200 dark:border-purple-800" data-testid="photo-0">
+                  <div className="aspect-square rounded-xl overflow-hidden border-2 border-[#D4AF37] dark:border-[#B8932F]" data-testid="photo-0">
                     <img
                       src={provider.profilePictureUrl}
                       alt={`${provider.firstName} ${provider.lastName}`}
@@ -498,7 +498,7 @@ export default function ProviderDetail() {
             <GlassmorphismCard className="luxury-glass-card luxury-shadow-xl">
               <div className="p-6">
                 <div className="flex items-center justify-between mb-4">
-                  <h3 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  <h3 className="text-2xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                     {isHebrew ? 'ביקורות' : 'Reviews'}
                   </h3>
                   <div className="flex items-center gap-2">
@@ -515,7 +515,7 @@ export default function ProviderDetail() {
 
                 {reviewsLoading ? (
                   <div className="flex items-center justify-center py-8">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8932F]"></div>
                   </div>
                 ) : reviewList.length === 0 ? (
                   <div className="text-center py-8 bg-white dark:bg-white/50 rounded-lg border border-gray-200 dark:border-gray-800" data-testid="reviews-empty-state">

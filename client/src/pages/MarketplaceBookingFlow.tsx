@@ -379,7 +379,7 @@ export default function MarketplaceBookingFlow() {
       <Layout>
         <div className="min-h-screen flex items-center justify-center bg-white dark:bg-black">
           <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600 mx-auto mb-4"></div>
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8932F] mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">
               {isHebrew ? 'טוען...' : 'Loading...'}
             </p>
@@ -423,7 +423,7 @@ export default function MarketplaceBookingFlow() {
               {isHebrew ? 'חזור לפרופיל' : 'Back to Profile'}
             </Button>
             
-            <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 via-pink-600 to-amber-600 bg-clip-text text-transparent mb-2">
+            <h1 className="text-4xl font-bold bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-amber-600 bg-clip-text text-transparent mb-2">
               {isHebrew ? 'הזמן שירות' : 'Book Service'}
             </h1>
             <div className="flex items-center gap-3 flex-wrap">
@@ -447,7 +447,7 @@ export default function MarketplaceBookingFlow() {
                     <div
                       className={`flex items-center justify-center w-14 h-14 rounded-full border-4 transition-all luxury-shadow-xl ${
                         currentStep === step.id
-                          ? 'border-transparent bg-gradient-to-br from-purple-600 via-pink-600 to-purple-700 text-white shadow-purple-400/50 scale-110'
+                          ? 'border-transparent bg-gradient-to-br from-[#B8932F] via-[#B8932F] to-[#B8932F] text-white shadow-[#D4AF37]/50 scale-110'
                           : step.completed
                           ? 'border-transparent bg-gradient-to-br from-green-500 to-emerald-600 text-white shadow-green-400/50'
                           : 'border-gray-300 dark:border-gray-700 text-gray-400 bg-white dark:bg-white'
@@ -479,14 +479,14 @@ export default function MarketplaceBookingFlow() {
               {/* Step 1: Select Service */}
               {currentStep === 1 && (
                 <div data-testid="step-select-service">
-                  <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                     {isHebrew ? 'בחר שירות' : 'Select Service'}
                   </h2>
                   <div className="space-y-4">
                     <Card 
                       className={`cursor-pointer hover:shadow-lg transition-all ${
                         selectedService === 'standard' 
-                          ? 'border-purple-600 bg-purple-50 dark:bg-white border-2' 
+                          ? 'border-[#B8932F] bg-[#D4AF37] dark:bg-white border-2' 
                           : 'border-gray-200 dark:border-gray-700'
                       }`}
                       onClick={() => setSelectedService('standard')}
@@ -495,7 +495,7 @@ export default function MarketplaceBookingFlow() {
                       <CardHeader>
                         <CardTitle className="flex items-center justify-between">
                           <span>{isHebrew ? 'שירות רגיל' : 'Standard Service'}</span>
-                          <span className="text-purple-600">₪{(basePriceCents / 100).toFixed(0)}</span>
+                          <span className="text-[#B8932F]">₪{(basePriceCents / 100).toFixed(0)}</span>
                         </CardTitle>
                       </CardHeader>
                       <CardContent>
@@ -522,7 +522,7 @@ export default function MarketplaceBookingFlow() {
               {/* Step 2: Choose Date & Time (Availability-Based) */}
               {currentStep === 2 && (
                 <div data-testid="step-choose-datetime">
-                  <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                     {isHebrew ? 'בחר תאריך ושעה' : 'Choose Date & Time'}
                   </h2>
                   
@@ -539,11 +539,11 @@ export default function MarketplaceBookingFlow() {
                   />
 
                   {customDateMode && (
-                    <div className="mt-4 p-4 border border-purple-200 rounded-lg bg-purple-50 dark:bg-white space-y-3">
-                      <p className="text-sm font-medium text-purple-800 dark:text-purple-200">
+                    <div className="mt-4 p-4 border border-[#D4AF37] rounded-lg bg-[#D4AF37] dark:bg-white space-y-3">
+                      <p className="text-sm font-medium text-[#B8932F] dark:text-[#D4AF37]">
                         {isHebrew ? 'בקשת תאריך מותאם' : 'Custom Date Request'}
                       </p>
-                      <p className="text-xs text-purple-600 dark:text-purple-300">
+                      <p className="text-xs text-[#B8932F] dark:text-[#D4AF37]">
                         {isHebrew
                           ? 'בחר תאריך ושעה מועדפים. הספק ישיב לבקשתך תוך 24 שעות.'
                           : 'Choose your preferred date and time. The provider will respond within 24 hours.'}
@@ -583,7 +583,7 @@ export default function MarketplaceBookingFlow() {
               {/* Step 3: Pet Details */}
               {currentStep === 3 && (
                 <div data-testid="step-pet-details">
-                  <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                     {isHebrew ? 'בחר חיית מחמד' : 'Select Your Pet'}
                   </h2>
 
@@ -594,8 +594,8 @@ export default function MarketplaceBookingFlow() {
                           key={pet.id}
                           className={`cursor-pointer transition-all ${
                             selectedPetId === pet.id
-                              ? 'border-purple-600 bg-purple-50 dark:bg-white'
-                              : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                              ? 'border-[#B8932F] bg-[#D4AF37] dark:bg-white'
+                              : 'border-gray-200 dark:border-gray-700 hover:border-[#D4AF37]'
                           }`}
                           onClick={() => setSelectedPetId(pet.id)}
                           data-testid={`pet-option-${pet.id}`}
@@ -609,8 +609,8 @@ export default function MarketplaceBookingFlow() {
                                   className="w-16 h-16 rounded-full object-cover"
                                 />
                               ) : (
-                                <div className="w-16 h-16 rounded-full bg-purple-100 dark:bg-white flex items-center justify-center">
-                                  <Dog className="w-8 h-8 text-purple-600" />
+                                <div className="w-16 h-16 rounded-full bg-[#D4AF37] dark:bg-white flex items-center justify-center">
+                                  <Dog className="w-8 h-8 text-[#B8932F]" />
                                 </div>
                               )}
                               <div>
@@ -655,8 +655,8 @@ export default function MarketplaceBookingFlow() {
                             onClick={() => toggleAddon(addon.code)}
                             className={`flex items-center gap-3 p-3 rounded-xl border-2 text-left transition-all ${
                               active
-                                ? 'border-purple-500 bg-purple-50 dark:bg-white'
-                                : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'
+                                ? 'border-[#D4AF37] bg-[#D4AF37] dark:bg-white'
+                                : 'border-gray-200 dark:border-gray-700 hover:border-[#D4AF37]'
                             }`}
                           >
                             <span className="text-xl">{addon.emoji}</span>
@@ -669,7 +669,7 @@ export default function MarketplaceBookingFlow() {
                               </p>
                             </div>
                             {active && (
-                              <div className="w-5 h-5 rounded-full bg-purple-600 flex items-center justify-center flex-shrink-0">
+                              <div className="w-5 h-5 rounded-full bg-[#B8932F] flex items-center justify-center flex-shrink-0">
                                 <Check className="w-3 h-3 text-white" />
                               </div>
                             )}
@@ -678,7 +678,7 @@ export default function MarketplaceBookingFlow() {
                       })}
                     </div>
                     {addonsTotalCents > 0 && (
-                      <p className="text-xs text-purple-600 font-medium mt-2">
+                      <p className="text-xs text-[#B8932F] font-medium mt-2">
                         {isHebrew
                           ? `תוספות: +₪${(addonsTotalCents / 100).toFixed(0)}`
                           : `Add-ons total: +₪${(addonsTotalCents / 100).toFixed(0)}`}
@@ -712,25 +712,25 @@ export default function MarketplaceBookingFlow() {
               {/* Step 4: Review & Pay */}
               {currentStep === 4 && (
                 <div data-testid="step-review-pay">
-                  <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+                  <h2 className="text-2xl font-bold mb-6 bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                     {isHebrew ? 'סקירה ותשלום' : 'Review & Pay'}
                   </h2>
 
                   {/* Lock Countdown Banner */}
                   {lockToken && lockExpiresAt && (
-                    <div className="mb-6 bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950 dark:to-red-950 border-2 border-orange-400 dark:border-orange-600 rounded-2xl p-6">
+                    <div className="mb-6 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37]/10 dark:from-[#B8932F] dark:to-[#B8932F] border-2 border-[#D4AF37] dark:border-[#B8932F] rounded-2xl p-6">
                       <div className="flex items-center gap-4">
-                        <Lock className="w-8 h-8 text-orange-600 dark:text-orange-400 animate-pulse" />
+                        <Lock className="w-8 h-8 text-[#B8932F] dark:text-[#D4AF37] animate-pulse" />
                         <div className="flex-1">
-                          <h3 className="font-bold text-lg text-orange-900 dark:text-orange-100 mb-1">
+                          <h3 className="font-bold text-lg text-[#B8932F] dark:text-[#D4AF37] mb-1">
                             {isHebrew ? 'ההזמנה שלך מוזמנת!' : 'Your Slot is Reserved!'}
                           </h3>
-                          <p className="text-orange-700 dark:text-orange-300">
+                          <p className="text-[#B8932F] dark:text-[#D4AF37]">
                             {isHebrew 
                               ? 'השלם את התשלום תוך' 
                               : 'Complete payment within'}
                             {' '}
-                            <span className="font-mono text-2xl font-bold text-orange-600 dark:text-orange-400" data-testid="text-countdown">
+                            <span className="font-mono text-2xl font-bold text-[#B8932F] dark:text-[#D4AF37]" data-testid="text-countdown">
                               {formatCountdown()}
                             </span>
                             {' '}
@@ -744,7 +744,7 @@ export default function MarketplaceBookingFlow() {
                   {/* Booking Summary */}
                   <div className="space-y-4 mb-6">
                     <div className="flex items-center gap-3 p-4 bg-white dark:bg-white/50 rounded-lg">
-                      <MapPin className="w-5 h-5 text-purple-600" />
+                      <MapPin className="w-5 h-5 text-[#B8932F]" />
                       <div>
                         <p className="font-semibold">{provider.firstName} {provider.lastName}</p>
                         <p className="text-sm text-gray-600 dark:text-gray-400">{provider.city}</p>
@@ -752,7 +752,7 @@ export default function MarketplaceBookingFlow() {
                     </div>
 
                     <div className="flex items-center gap-3 p-4 bg-white dark:bg-white/50 rounded-lg">
-                      <CalendarIcon className="w-5 h-5 text-purple-600" />
+                      <CalendarIcon className="w-5 h-5 text-[#B8932F]" />
                       <div>
                         <p className="font-semibold">
                           {selectedDate?.toLocaleDateString()} at {selectedTime}
@@ -765,7 +765,7 @@ export default function MarketplaceBookingFlow() {
 
                     {selectedPetId && pets && (
                       <div className="flex items-center gap-3 p-4 bg-white dark:bg-white/50 rounded-lg">
-                        <Dog className="w-5 h-5 text-purple-600" />
+                        <Dog className="w-5 h-5 text-[#B8932F]" />
                         <div>
                           <p className="font-semibold">
                             {pets.find(p => p.id === selectedPetId)?.name}
@@ -786,27 +786,27 @@ export default function MarketplaceBookingFlow() {
                         {isHebrew ? 'ערבות שביעות רצון' : 'Satisfaction Guarantee'}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center gap-1 bg-blue-50 dark:bg-white border border-blue-200 dark:border-blue-800 rounded-xl p-3 text-center">
+                    <div className="flex flex-col items-center gap-1 bg-[#D4AF37] dark:bg-white border border-[#D4AF37] dark:border-[#B8932F] rounded-xl p-3 text-center">
                       <span className="text-2xl">✅</span>
-                      <span className="text-xs font-semibold text-blue-800 dark:text-blue-300">
+                      <span className="text-xs font-semibold text-[#B8932F] dark:text-[#D4AF37]">
                         {isHebrew ? 'ספקים מאומתים' : 'Verified Providers'}
                       </span>
                     </div>
-                    <div className="flex flex-col items-center gap-1 bg-purple-50 dark:bg-white border border-purple-200 dark:border-purple-800 rounded-xl p-3 text-center">
+                    <div className="flex flex-col items-center gap-1 bg-[#D4AF37] dark:bg-white border border-[#D4AF37] dark:border-[#B8932F] rounded-xl p-3 text-center">
                       <span className="text-2xl">🔒</span>
-                      <span className="text-xs font-semibold text-purple-800 dark:text-purple-300">
+                      <span className="text-xs font-semibold text-[#B8932F] dark:text-[#D4AF37]">
                         {isHebrew ? 'תשלום מאובטח' : 'Secure Payment'}
                       </span>
                     </div>
                   </div>
 
                   {/* Pricing Breakdown */}
-                  <div className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20 p-6 rounded-2xl border-2 border-purple-200 dark:border-purple-800 mb-6">
+                  <div className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/20 dark:to-[#B8932F]/20 p-6 rounded-2xl border-2 border-[#D4AF37] dark:border-[#B8932F] mb-6">
                     <h3 className="font-semibold mb-4">{isHebrew ? 'פירוט מחיר' : 'Price Breakdown'}</h3>
                     
                     {quoteMutation.isPending ? (
                       <div className="flex items-center justify-center py-4">
-                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
+                        <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-[#B8932F]"></div>
                         <span className="ml-2 text-gray-600 dark:text-gray-400">
                           {isHebrew ? 'מחשב מחיר...' : 'Calculating pricing...'}
                         </span>
@@ -840,10 +840,10 @@ export default function MarketplaceBookingFlow() {
                           <span>{isHebrew ? 'מע״מ (18%)' : 'VAT (18%)'}</span>
                           <span data-testid="price-vat">₪{((quoteData?.vatCents || vatCents) / 100).toFixed(2)}</span>
                         </div>
-                        <div className="border-t-2 border-purple-300 dark:border-purple-700 pt-2 mt-2">
+                        <div className="border-t-2 border-[#D4AF37] dark:border-[#B8932F] pt-2 mt-2">
                           <div className="flex justify-between text-lg font-bold">
                             <span>{isHebrew ? 'סה"כ' : 'Total'}</span>
-                            <span className="text-purple-600" data-testid="price-total">₪{((quoteData?.totalCents || totalCents) / 100).toFixed(2)}</span>
+                            <span className="text-[#B8932F]" data-testid="price-total">₪{((quoteData?.totalCents || totalCents) / 100).toFixed(2)}</span>
                           </div>
                         </div>
                       </div>
