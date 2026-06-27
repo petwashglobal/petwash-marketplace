@@ -44,6 +44,17 @@ import { createEarningRecord } from '../services/payoutLedger';
 import { assertServiceApproved, providerHasAnyServiceRows } from '../services/providerServiceApproval';
 import { isReconfirmationOverdue } from '../services/reconfirmationService';
 import { recordAcceptance, recordStatusEvent, recordRefund } from '../services/DealGateService';
+import { closeLead } from '../services/ConversionLeadService';
+import type { LeadType } from '../../shared/schema-conversion';
+
+// Map a booking serviceType → the Booking-Rescue lead type (for closeLead).
+function serviceToLeadType(serviceType?: string | null): LeadType | null {
+  const s = String(serviceType || '').toLowerCase();
+  if (s.includes('walk')) return 'WALK_MY_PET_BOOKING';
+  if (s.includes('train') || s.includes('academy')) return 'ACADEMY_COURSE';
+  if (s.includes('sit')) return 'PET_SITTER_BOOKING';
+  return null;
+}
 import { dispatchNotification } from '../lib/notificationDispatcher';
 import { logBookingEvent, type BookingEventPayload } from '../services/bookingEventLogger';
 import { twilioSMSService } from '../services/TwilioSMSService';
@@ -2696,6 +2707,13 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
       reason: 'owner_confirmed_completion',
       metadata: { finalStatus },
     }).catch(() => {});
+    // Booking Rescue: a completed booking closes its lead as CONVERTED.
+    {
+      const lt = serviceToLeadType(booking.serviceType);
+      if (lt && booking.ownerId) {
+        closeLead({ userId: booking.ownerId, leadType: lt, relatedBookingId: requestId, outcome: 'CONVERTED' }).catch(() => {});
+      }
+    }
 
     logger.info('[BookingRequests] Owner confirmed with enterprise integration', {
       requestId,
@@ -3220,6 +3238,13 @@ router.post('/:requestId/cancel', async (req, res) => {
       reason: reason || cancellationTier,
       metadata: { cancellationTier, refundCents, cancellationPenaltyCents, hoursUntilService },
     }).catch(() => {});
+    // Booking Rescue: a cancelled booking closes its lead as LOST.
+    {
+      const lt = serviceToLeadType(booking.serviceType);
+      if (lt && booking.ownerId) {
+        closeLead({ userId: booking.ownerId, leadType: lt, relatedBookingId: requestId, outcome: 'LOST' }).catch(() => {});
+      }
+    }
     if (refundCents > 0 || cancellationPenaltyCents > 0) {
       recordRefund({
         bookingId: requestId,

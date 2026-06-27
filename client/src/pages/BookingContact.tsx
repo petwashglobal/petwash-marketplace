@@ -169,6 +169,13 @@ export default function BookingContact() {
     },
     onSuccess: (resp: any) => {
       const requestId = resp?.booking?.requestId || resp?.requestId;
+      // Booking Rescue: every enquiry becomes a tracked lead (fire-and-forget).
+      apiRequest('POST', '/api/intent', {
+        eventType: 'BOOKING_ENQUIRY_SENT',
+        platformKey: platform === 'walk_my_pet' ? 'WALK_MY_PET' : 'SITTER_SUITE',
+        relatedBookingId: requestId,
+        relatedProviderId: provider?.userId,
+      }).catch(() => {});
       const name = provider?.firstName || (isHebrew ? 'המטפל/ת' : 'The sitter');
       toast({
         title: isHebrew ? 'הבקשה נשלחה' : 'Request sent',
