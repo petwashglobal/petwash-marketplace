@@ -213,7 +213,7 @@ export default function AdminSupplierInvoiceDetail() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-orange-50/20"
+      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-[#D4AF37]/20"
       dir="rtl"
       style={{
         paddingTop: "env(safe-area-inset-top)",
@@ -289,7 +289,7 @@ export default function AdminSupplierInvoiceDetail() {
                     <div className="text-[11px] text-gray-500">קובץ מקור</div>
                     {invoice.fileUrl ? (
                       <a
-                        className="text-sm text-blue-700 hover:underline inline-flex items-center gap-1"
+                        className="text-sm text-[#B8932F] hover:underline inline-flex items-center gap-1"
                         href={invoice.fileUrl}
                         target="_blank"
                         rel="noopener noreferrer"

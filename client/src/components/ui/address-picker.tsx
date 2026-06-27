@@ -196,12 +196,12 @@ export function AddressPicker({
         type="button"
         onClick={handleCurrentLocation}
         disabled={geoLoading}
-        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-blue-200 bg-blue-50/60 text-blue-700 text-sm font-medium hover:bg-blue-100 active:bg-blue-200 transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-[#D4AF37] bg-[#D4AF37]/60 text-[#B8932F] text-sm font-medium hover:bg-[#D4AF37] active:bg-[#D4AF37] transition-colors"
       >
         {geoLoading ? (
           <Loader2 className="w-4 h-4 shrink-0 animate-spin" />
         ) : (
-          <Navigation className="w-4 h-4 shrink-0 fill-blue-500 text-blue-500" />
+          <Navigation className="w-4 h-4 shrink-0 fill-[#D4AF37] text-[#D4AF37]" />
         )}
         <span>{isHebrew ? "השתמש במיקומי הנוכחי" : "Use my current location"}</span>
       </button>

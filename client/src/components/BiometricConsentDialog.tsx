@@ -333,9 +333,9 @@ export function BiometricConsentDialog({
           </div>
 
           {/* Security Note */}
-          <div className="bg-purple-50 dark:bg-purple-950 p-5 rounded-lg border border-purple-200 dark:border-purple-800">
+          <div className="bg-[#D4AF37] dark:bg-[#B8932F] p-5 rounded-lg border border-[#D4AF37] dark:border-[#B8932F]">
             <h3 className="font-bold text-base mb-3 flex items-center gap-2">
-              <Lock className="w-5 h-5 text-purple-600" />
+              <Lock className="w-5 h-5 text-[#B8932F]" />
               {passkeyContent.securityNote}
             </h3>
             <ul className="space-y-2">
@@ -395,7 +395,7 @@ export function BiometricConsentDialog({
                   href="/privacy-policy"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                  className="text-[#B8932F] hover:underline inline-flex items-center gap-1"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {passkeyContent.privacyPolicy}
@@ -406,7 +406,7 @@ export function BiometricConsentDialog({
                   href="/terms"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="text-blue-600 hover:underline inline-flex items-center gap-1"
+                  className="text-[#B8932F] hover:underline inline-flex items-center gap-1"
                   onClick={(e) => e.stopPropagation()}
                 >
                   {passkeyContent.termsOfService}
@@ -437,7 +437,7 @@ export function BiometricConsentDialog({
           <Button
             onClick={handleAccept}
             disabled={!biometricConsent || !dataProcessingConsent || !privacyPolicyConsent}
-            className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50"
+            className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] disabled:opacity-50"
             data-testid="button-biometric-consent-accept"
           >
             <Shield className="w-4 h-4 mr-2" />

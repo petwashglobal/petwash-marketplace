@@ -355,7 +355,7 @@ export default function PrivacyPolicy() {
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5, delay: 1.3 }}
             >
-              <Card className="luxury-glass-panel luxury-shadow-md border-2 border-purple-200">
+              <Card className="luxury-glass-panel luxury-shadow-md border-2 border-[#D4AF37]">
                 <CardHeader>
                   <CardTitle className="luxury-heading-sm luxury-text-gradient">יצירת קשר</CardTitle>
                 </CardHeader>
@@ -643,7 +643,7 @@ export default function PrivacyPolicy() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5, delay: 1.1 }}
           >
-            <Card className="luxury-glass-panel luxury-shadow-md border-2 border-purple-200">
+            <Card className="luxury-glass-panel luxury-shadow-md border-2 border-[#D4AF37]">
               <CardHeader>
                 <CardTitle className="luxury-heading-sm luxury-text-gradient">Contact Us</CardTitle>
               </CardHeader>

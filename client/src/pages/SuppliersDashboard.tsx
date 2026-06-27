@@ -153,7 +153,7 @@ export default function SuppliersDashboard() {
       {suppliers?.length === 0 ? (
         <Card className="luxury-glass-card luxury-shadow-lg" data-testid="empty-state">
           <CardContent className="flex flex-col items-center justify-center py-12">
-            <Building2 className="w-12 h-12 text-purple-400 mb-4" />
+            <Building2 className="w-12 h-12 text-[#D4AF37] mb-4" />
             <p className="text-muted-foreground">No suppliers found. Add your first supplier to get started.</p>
           </CardContent>
         </Card>
@@ -170,7 +170,7 @@ export default function SuppliersDashboard() {
                 <div className="flex justify-between items-start">
                   <div>
                     <CardTitle className="flex items-center gap-2">
-                      <div className="p-2 rounded-lg bg-gradient-to-br from-purple-500 to-pink-500">
+                      <div className="p-2 rounded-lg bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
                         <Building2 className="w-5 h-5 text-white" />
                       </div>
                       {supplier.companyName}

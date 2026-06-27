@@ -422,7 +422,7 @@ export function GooglePlacesAutocomplete({
                   type="button"
                   dir="auto"
                   className={`w-full text-start px-4 py-3 flex items-start gap-3 border-b border-gray-50 last:border-b-0 ${
-                    idx === highlightIndex ? 'bg-blue-50' : 'active:bg-blue-50'
+                    idx === highlightIndex ? 'bg-[#D4AF37]' : 'active:bg-[#D4AF37]'
                   }`}
                   onPointerDown={(e) => {
                     e.preventDefault();
@@ -458,7 +458,7 @@ export function GooglePlacesAutocomplete({
                 </div>
                 <button
                   type="button"
-                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-blue-600 text-white text-sm font-semibold hover:bg-blue-700 active:bg-blue-800 transition-colors"
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg bg-[#B8932F] text-white text-sm font-semibold hover:bg-[#B8932F] active:bg-[#B8932F] transition-colors"
                   onPointerDown={(e) => {
                     e.preventDefault();
                     setShowDropdown(false);
@@ -519,11 +519,11 @@ export function GooglePlacesAutocomplete({
             min-h-[48px] sm:min-h-[52px]
             rounded-xl
             border-2
-            focus:ring-2 focus:ring-blue-500
+            focus:ring-2 focus:ring-[#D4AF37]
             transition-all
             ${darkMode ? 'text-white placeholder:text-slate-500 bg-slate-800/50 border-slate-600 caret-white' : 'text-gray-900 placeholder:text-gray-500'}
             touch-manipulation
-            ${error ? 'border-red-500 focus:border-red-500' : darkMode ? 'focus:border-amber-500 focus:ring-amber-500/20' : 'border-gray-300 focus:border-blue-500'}
+            ${error ? 'border-red-500 focus:border-red-500' : darkMode ? 'focus:border-amber-500 focus:ring-amber-500/20' : 'border-gray-300 focus:border-[#D4AF37]'}
           `}
           style={{
             color: darkMode ? '#ffffff' : '#1f2937',
@@ -552,7 +552,7 @@ export function GooglePlacesAutocomplete({
       {dropdownPortal}
 
       {showExtraFields && selectedPlace && (
-        <div className="mt-3 rounded-xl border border-blue-100 bg-blue-50/40 p-3 space-y-3">
+        <div className="mt-3 rounded-xl border border-[#D4AF37] bg-[#D4AF37]/40 p-3 space-y-3">
           {/* Confirmed address context — city / area / country */}
           {(selectedPlace.city || selectedPlace.state || selectedPlace.country) && (
             <div className="flex flex-wrap gap-1.5">
@@ -562,7 +562,7 @@ export function GooglePlacesAutocomplete({
                 </span>
               )}
               {selectedPlace.state && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-blue-700 border border-blue-200 shadow-sm">
+                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-medium bg-white text-[#B8932F] border border-[#D4AF37] shadow-sm">
                   📍 {selectedPlace.state}
                 </span>
               )}
@@ -586,7 +586,7 @@ export function GooglePlacesAutocomplete({
                 value={buildingNumber}
                 onChange={handleBuildingNumberChange}
                 placeholder="לדוג׳ 18"
-                className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation bg-white"
+                className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
                 dir="ltr"
@@ -601,7 +601,7 @@ export function GooglePlacesAutocomplete({
                 value={apartment}
                 onChange={handleApartmentChange}
                 placeholder={apartmentPlaceholder || 'דירה 3, קומה 2'}
-                className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation bg-white"
+                className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
                 dir="rtl"
@@ -618,7 +618,7 @@ export function GooglePlacesAutocomplete({
               value={postalCode}
               onChange={handlePostalCodeChange}
               placeholder={postalCodePlaceholder || 'לדוג׳ 6291302'}
-              className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-blue-500 focus:ring-2 focus:ring-blue-500 min-h-[44px] touch-manipulation bg-white"
+              className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
               style={{ fontSize: '16px' }}
               autoComplete="off"
               dir="ltr"

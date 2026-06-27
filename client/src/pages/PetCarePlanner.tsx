@@ -224,9 +224,9 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
 
   const getWeatherIcon = (condition: string) => {
     if (condition.includes('rain') || condition.includes('shower')) {
-      return <CloudRain className="h-8 w-8 text-blue-500 icon-glow-blue" />;
+      return <CloudRain className="h-8 w-8 text-[#D4AF37] icon-glow-blue" />;
     } else if (condition.includes('snow')) {
-      return <Snowflake className="h-8 w-8 text-blue-300 icon-glow-blue" />;
+      return <Snowflake className="h-8 w-8 text-[#D4AF37] icon-glow-blue" />;
     } else if (condition.includes('cloud')) {
       return <Thermometer className="h-8 w-8 text-gray-500" />;
     }
@@ -309,10 +309,10 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
               : '💎 Exclusive Benefits, Gift Cards & Nayax QR Redemption'}
           </CardDescription>
         </CardHeader>
-        <CardContent className="pt-6 bg-gradient-to-br from-purple-50 via-white to-blue-50">
+        <CardContent className="pt-6 bg-gradient-to-br from-[#D4AF37] via-white to-[#D4AF37]">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {/* Tier Badge */}
-            <div className="text-center p-6 rounded-xl bg-white border-2 border-purple-300 shadow-md hover:scale-105 transition-all">
+            <div className="text-center p-6 rounded-xl bg-white border-2 border-[#D4AF37] shadow-md hover:scale-105 transition-all">
               <div className="text-5xl mb-3">{tierConfig.badge}</div>
               <h3 className="font-bold text-2xl mb-2" style={{ color: tierConfig.color.dark }}>
                 {loyaltyData.tier.toUpperCase()}
@@ -340,8 +340,8 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
             </div>
 
             {/* Nayax QR Redemption */}
-            <div className="text-center p-6 rounded-xl bg-gradient-to-br from-blue-50 to-cyan-100 border-2 border-blue-400 shadow-md hover:scale-105 transition-all">
-              <QrCode className="h-12 w-12 mx-auto mb-3 text-blue-600 icon-glow-blue" />
+            <div className="text-center p-6 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] border-2 border-[#D4AF37] shadow-md hover:scale-105 transition-all">
+              <QrCode className="h-12 w-12 mx-auto mb-3 text-[#B8932F] icon-glow-blue" />
               <h3 className="font-bold text-lg text-muted-foreground mb-2">
                 {isHebrew ? '📱 פדיון Nayax QR' : '📱 Nayax QR Redemption'}
               </h3>
@@ -381,9 +381,9 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Vaccine Tracker - Ultra Luxury Design */}
         <Card className="border-metallic-rose hover-glow-rose shadow-luxury transition-all duration-300 hover:scale-[1.02]">
-          <CardHeader className="bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white rounded-t-lg border-b-4 border-pink-500">
+          <CardHeader className="bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white rounded-t-lg border-b-4 border-[#D4AF37]">
             <CardTitle className="flex items-center gap-3 text-2xl font-bold">
-              <Star className="h-7 w-7 animate-pulse text-pink-400" />
+              <Star className="h-7 w-7 animate-pulse text-[#D4AF37]" />
               {isHebrew ? '💉 מעקב חיסונים + תזכורות רחצה' : '💉 Vaccine Tracker + Wash Reminders'}
             </CardTitle>
             <CardDescription className="text-gray-100 text-base mt-2 font-medium">
@@ -392,10 +392,10 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                 : '🔔 Smart automatic reminders (Goal: 14 days between washes)'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-6 bg-gradient-to-br from-pink-50 to-white">
+          <CardContent className="pt-6 bg-gradient-to-br from-[#D4AF37] to-white">
             {pets.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
-                <Heart className="h-16 w-16 mx-auto mb-4 text-pink-300" />
+                <Heart className="h-16 w-16 mx-auto mb-4 text-[#D4AF37]" />
                 <p className="text-lg">{isHebrew ? '🐕 לא נמצאו חיות מחמד. הוסף חיית מחמד בהגדרות.' : '🐕 No pets found. Add a pet in settings.'}</p>
               </div>
             ) : (
@@ -403,7 +403,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                 {pets.map((pet, index) => {
                   const vaccineStatus = getVaccineStatus(pet);
                   const washReminder = calculateWashReminder(pet);
-                  const bgColors = ['bg-white', 'bg-gradient-to-br from-purple-50 to-white', 'bg-gradient-to-br from-blue-50 to-white'];
+                  const bgColors = ['bg-white', 'bg-gradient-to-br from-[#D4AF37] to-white', 'bg-gradient-to-br from-[#D4AF37] to-white'];
                   
                   return (
                     <div
@@ -450,7 +450,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                         <div className={`mb-4 rounded-lg p-4 border-2 ${
                           washReminder.type === 'overdue' ? 'bg-red-50 border-red-300' :
                           washReminder.type === 'due-soon' ? 'bg-white border-yellow-300' :
-                          'bg-blue-50 border-blue-300'
+                          'bg-[#D4AF37] border-[#D4AF37]'
                         }`}>
                           <p className="text-sm font-semibold flex items-center gap-2">
                             <Droplets className="h-5 w-5" />
@@ -470,11 +470,11 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                       )}
                       
                       {pet.nextVaccinationDate ? (
-                        <div className="mt-4 bg-metallic-platinum rounded-lg p-4 border-2 border-purple-200">
+                        <div className="mt-4 bg-metallic-platinum rounded-lg p-4 border-2 border-[#D4AF37]">
                           <p className="text-sm font-semibold flex items-center gap-2">
-                            <Calendar className="h-5 w-5 text-purple-600" />
+                            <Calendar className="h-5 w-5 text-[#B8932F]" />
                             {isHebrew ? '📅 חיסון הבא:' : '📅 Next Vaccine:'}
-                            <span className="ml-2 font-bold text-purple-700 text-base">
+                            <span className="ml-2 font-bold text-[#B8932F] text-base">
                               {format(parseISO(pet.nextVaccinationDate), 'MMMM dd, yyyy')}
                             </span>
                           </p>
@@ -523,7 +523,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                   value={selectedCity}
                   onChange={(e) => setSelectedCity(e.target.value)}
                   placeholder={isHebrew ? 'תל אביב' : 'Tel Aviv'}
-                  className="mt-2 border-2 border-blue-300 focus:border-blue-500 rounded-lg py-6 text-base"
+                  className="mt-2 border-2 border-[#D4AF37] focus:border-[#D4AF37] rounded-lg py-6 text-base"
                   data-testid="input-city"
                 />
               </div>
@@ -536,7 +536,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                   id="pet-select"
                   value={selectedPetId || ''}
                   onChange={(e) => setSelectedPetId(Number(e.target.value))}
-                  className="w-full mt-2 px-4 py-3 border-2 border-blue-300 focus:border-blue-500 rounded-lg text-base font-medium"
+                  className="w-full mt-2 px-4 py-3 border-2 border-[#D4AF37] focus:border-[#D4AF37] rounded-lg text-base font-medium"
                   data-testid="select-pet"
                 >
                   <option value="">{isHebrew ? 'בחר...' : '✨ Choose...'}</option>
@@ -556,7 +556,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                   id="coat-condition"
                   value={coatCondition}
                   onChange={(e) => setCoatCondition(e.target.value as 'good' | 'shedding' | 'matted')}
-                  className="w-full mt-2 px-4 py-3 border-2 border-blue-300 focus:border-blue-500 rounded-lg text-base font-medium"
+                  className="w-full mt-2 px-4 py-3 border-2 border-[#D4AF37] focus:border-[#D4AF37] rounded-lg text-base font-medium"
                   data-testid="select-coat-condition"
                 >
                   <option value="good">✅ {isHebrew ? 'טוב' : 'Good'}</option>
@@ -574,7 +574,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                   type="date"
                   value={washDate}
                   onChange={(e) => setWashDate(e.target.value)}
-                  className="mt-2 border-2 border-blue-300 focus:border-blue-500 rounded-lg py-6 text-base"
+                  className="mt-2 border-2 border-[#D4AF37] focus:border-[#D4AF37] rounded-lg py-6 text-base"
                   data-testid="input-wash-date"
                 />
               </div>
@@ -597,7 +597,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
             {/* Scheduled Washes with AI Recommendations */}
             <div className="space-y-4">
               <h3 className="font-bold text-xl text-muted-foreground flex items-center gap-2">
-                <Calendar className="h-6 w-6 text-blue-500" />
+                <Calendar className="h-6 w-6 text-[#D4AF37]" />
                 {isHebrew ? '📋 רחצות מתוכננות + המלצות AI' : '📋 Scheduled Washes + AI Recommendations'}
               </h3>
               
@@ -608,7 +608,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                 </div>
               ) : washSchedules.length === 0 ? (
                 <div className="text-center py-8">
-                  <Droplets className="h-16 w-16 mx-auto mb-4 text-blue-300" />
+                  <Droplets className="h-16 w-16 mx-auto mb-4 text-[#D4AF37]" />
                   <p className="text-base text-muted-foreground">
                     {isHebrew ? '💧 אין רחצות מתוכננות עדיין' : '💧 No washes scheduled yet'}
                   </p>
@@ -640,7 +640,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                     
                     {schedule.weather && (
                       <>
-                        <div className="bg-gradient-to-br from-blue-100 to-cyan-50 rounded-xl p-4 space-y-3 border-2 border-blue-200">
+                        <div className="bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-xl p-4 space-y-3 border-2 border-[#D4AF37]">
                           <div className="flex items-center gap-3">
                             {getWeatherIcon(schedule.weather.condition)}
                             <span className="font-bold text-2xl">{schedule.weather.temperature}°C</span>
@@ -667,7 +667,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                           </div>
                           
                           {schedule.weather.actionAdvice && (
-                            <p className="text-sm font-medium text-blue-700 mt-2">
+                            <p className="text-sm font-medium text-[#B8932F] mt-2">
                               💡 {schedule.weather.actionAdvice}
                             </p>
                           )}

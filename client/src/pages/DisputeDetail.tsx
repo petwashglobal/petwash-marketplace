@@ -73,7 +73,7 @@ const DISPUTE_STATUS_CONFIG: Record<
   { labelEn: string; labelHe: string; className: string }
 > = {
   open:       { labelEn: 'Open',       labelHe: 'פתוח',       className: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
-  in_review:  { labelEn: 'In Review',  labelHe: 'בבדיקה',     className: 'bg-blue-100 text-blue-700 border-blue-300' },
+  in_review:  { labelEn: 'In Review',  labelHe: 'בבדיקה',     className: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
   resolved:   { labelEn: 'Resolved',   labelHe: 'נפתר',       className: 'bg-green-100 text-green-700 border-green-300' },
   dismissed:  { labelEn: 'Dismissed',  labelHe: 'נדחה',       className: 'bg-white text-gray-500 border-gray-300' },
   escalated:  { labelEn: 'Escalated',  labelHe: 'הועלה לדרגה', className: 'bg-red-100 text-red-700 border-red-300' },
@@ -237,7 +237,7 @@ export default function DisputeDetail() {
         <Card className="rounded-xl border-0 shadow-sm bg-white dark:bg-white mb-4">
           <CardHeader className="pb-2 pt-4 px-4">
             <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <CalendarDays className="w-4 h-4 text-blue-500" />
+              <CalendarDays className="w-4 h-4 text-[#D4AF37]" />
               {isHebrew ? 'פרטי הזמנה' : 'Booking Info'}
             </CardTitle>
           </CardHeader>

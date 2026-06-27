@@ -16,7 +16,7 @@ export default function AdminAccessDenied() {
 
         {/* Access Denied Icon */}
         <div className="flex justify-center">
-          <div className="w-24 h-24 bg-gradient-to-br from-red-100 to-orange-100 rounded-full flex items-center justify-center shadow-lg">
+          <div className="w-24 h-24 bg-gradient-to-br from-red-100 to-[#D4AF37] rounded-full flex items-center justify-center shadow-lg">
             <Shield className="w-12 h-12 text-red-500" />
           </div>
         </div>

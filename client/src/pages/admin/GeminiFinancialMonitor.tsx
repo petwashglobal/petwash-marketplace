@@ -80,7 +80,7 @@ export default function GeminiFinancialMonitor() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900 p-6" dir="ltr">
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-[#B8932F] to-slate-900 p-6" dir="ltr">
       <div className="max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-center gap-4">
@@ -95,16 +95,16 @@ export default function GeminiFinancialMonitor() {
           </Button>
           <div className="flex-1">
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center shadow-lg">
                 <Brain className="w-5 h-5 text-white" />
               </div>
               <div>
                 <h1 className="text-2xl font-bold text-white">Gemini Financial Safety Monitor</h1>
-                <p className="text-purple-300 text-sm">AI-powered transaction validation · VAT 18% · ILS</p>
+                <p className="text-[#D4AF37] text-sm">AI-powered transaction validation · VAT 18% · ILS</p>
               </div>
             </div>
           </div>
-          <Badge className="bg-purple-500/20 text-purple-300 border-purple-500/30 gap-1">
+          <Badge className="bg-[#D4AF37]/20 text-[#D4AF37] border-[#D4AF37]/30 gap-1">
             <Zap className="w-3 h-3" />
             Gemini 2.5 Flash
           </Badge>
@@ -115,31 +115,31 @@ export default function GeminiFinancialMonitor() {
           <Card className="bg-white/5 border-white/10 backdrop-blur-xl">
             <CardHeader>
               <CardTitle className="text-white flex items-center gap-2">
-                <Calculator className="w-5 h-5 text-purple-400" />
+                <Calculator className="w-5 h-5 text-[#D4AF37]" />
                 Transaction Details
               </CardTitle>
-              <CardDescription className="text-purple-300">
+              <CardDescription className="text-[#D4AF37]">
                 Enter transaction data for Gemini AI analysis
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-purple-200 text-xs">Transaction ID</Label>
+                  <Label className="text-[#D4AF37] text-xs">Transaction ID</Label>
                   <Input
                     value={form.transactionId}
                     onChange={e => setForm(f => ({ ...f, transactionId: e.target.value }))}
                     placeholder="TXN-001"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-purple-400"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                     data-testid="input-txn-id"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-purple-200 text-xs">Service Type</Label>
+                  <Label className="text-[#D4AF37] text-xs">Service Type</Label>
                   <select
                     value={form.serviceType}
                     onChange={e => setForm(f => ({ ...f, serviceType: e.target.value }))}
-                    className="w-full h-9 rounded-md bg-white/10 border border-white/20 text-white text-sm px-3 focus:border-purple-400 outline-none"
+                    className="w-full h-9 rounded-md bg-white/10 border border-white/20 text-white text-sm px-3 focus:border-[#D4AF37] outline-none"
                     data-testid="select-service-type"
                   >
                     <option value="dog_wash" className="bg-slate-800">Dog Wash</option>
@@ -154,21 +154,21 @@ export default function GeminiFinancialMonitor() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-purple-200 text-xs">Customer ID</Label>
+                  <Label className="text-[#D4AF37] text-xs">Customer ID</Label>
                   <Input
                     value={form.customerId}
                     onChange={e => setForm(f => ({ ...f, customerId: e.target.value }))}
                     placeholder="usr_123"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-purple-400"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-purple-200 text-xs">Provider ID</Label>
+                  <Label className="text-[#D4AF37] text-xs">Provider ID</Label>
                   <Input
                     value={form.providerId}
                     onChange={e => setForm(f => ({ ...f, providerId: e.target.value }))}
                     placeholder="prv_456"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-purple-400"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                   />
                 </div>
               </div>
@@ -177,64 +177,64 @@ export default function GeminiFinancialMonitor() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div className="space-y-1">
-                  <Label className="text-purple-200 text-xs">Base Amount (ILS)</Label>
+                  <Label className="text-[#D4AF37] text-xs">Base Amount (ILS)</Label>
                   <Input
                     type="number"
                     value={form.amount}
                     onChange={e => setForm(f => ({ ...f, amount: e.target.value }))}
                     placeholder="100.00"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-purple-400"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                     data-testid="input-amount"
                   />
                   {form.amount && (
-                    <p className="text-xs text-purple-400">Suggested VAT (18%): ₪{vatAmount}</p>
+                    <p className="text-xs text-[#D4AF37]">Suggested VAT (18%): ₪{vatAmount}</p>
                   )}
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-purple-200 text-xs">VAT Charged (ILS)</Label>
+                  <Label className="text-[#D4AF37] text-xs">VAT Charged (ILS)</Label>
                   <Input
                     type="number"
                     value={form.vat}
                     onChange={e => setForm(f => ({ ...f, vat: e.target.value }))}
                     placeholder="18.00"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-purple-400"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                     data-testid="input-vat"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-purple-200 text-xs">Commission (ILS)</Label>
+                  <Label className="text-[#D4AF37] text-xs">Commission (ILS)</Label>
                   <Input
                     type="number"
                     value={form.commission}
                     onChange={e => setForm(f => ({ ...f, commission: e.target.value }))}
                     placeholder="15.00"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-purple-400"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                     data-testid="input-commission"
                   />
                 </div>
                 <div className="space-y-1">
-                  <Label className="text-purple-200 text-xs">Total Charged (ILS)</Label>
+                  <Label className="text-[#D4AF37] text-xs">Total Charged (ILS)</Label>
                   <Input
                     type="number"
                     value={form.total}
                     onChange={e => setForm(f => ({ ...f, total: e.target.value }))}
                     placeholder="118.00"
-                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-purple-400"
+                    className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-[#D4AF37]"
                     data-testid="input-total"
                   />
                   {form.amount && (
-                    <p className="text-xs text-purple-400">Expected total: ₪{suggestedTotal}</p>
+                    <p className="text-xs text-[#D4AF37]">Expected total: ₪{suggestedTotal}</p>
                   )}
                 </div>
               </div>
 
               <div className="space-y-1">
-                <Label className="text-purple-200 text-xs">Additional Notes (optional)</Label>
+                <Label className="text-[#D4AF37] text-xs">Additional Notes (optional)</Label>
                 <Textarea
                   value={form.notes}
                   onChange={e => setForm(f => ({ ...f, notes: e.target.value }))}
                   placeholder="Describe anything unusual about this transaction..."
-                  className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-purple-400 resize-none"
+                  className="bg-white/10 border-white/20 text-white placeholder:text-white/30 focus:border-[#D4AF37] resize-none"
                   rows={3}
                 />
               </div>
@@ -242,7 +242,7 @@ export default function GeminiFinancialMonitor() {
               <Button
                 onClick={() => runCheck(form)}
                 disabled={isPending || !form.amount || !form.total}
-                className="w-full bg-gradient-to-r from-violet-600 to-purple-600 hover:from-violet-700 hover:to-purple-700 text-white font-medium shadow-lg"
+                className="w-full bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] text-white font-medium shadow-lg"
                 data-testid="button-run-check"
               >
                 {isPending ? (
@@ -259,9 +259,9 @@ export default function GeminiFinancialMonitor() {
             {!result && !isPending && (
               <Card className="bg-white/5 border-white/10 backdrop-blur-xl">
                 <CardContent className="pt-10 pb-10 text-center">
-                  <ShieldAlert className="w-12 h-12 text-purple-400 mx-auto mb-4 opacity-50" />
-                  <p className="text-purple-300 font-medium">Ready for Analysis</p>
-                  <p className="text-purple-400 text-sm mt-1">
+                  <ShieldAlert className="w-12 h-12 text-[#D4AF37] mx-auto mb-4 opacity-50" />
+                  <p className="text-[#D4AF37] font-medium">Ready for Analysis</p>
+                  <p className="text-[#D4AF37] text-sm mt-1">
                     Enter transaction details and click Run to validate with Gemini AI
                   </p>
                 </CardContent>
@@ -271,9 +271,9 @@ export default function GeminiFinancialMonitor() {
             {isPending && (
               <Card className="bg-white/5 border-white/10 backdrop-blur-xl">
                 <CardContent className="pt-10 pb-10 text-center">
-                  <Brain className="w-12 h-12 text-purple-400 mx-auto mb-4 animate-pulse" />
+                  <Brain className="w-12 h-12 text-[#D4AF37] mx-auto mb-4 animate-pulse" />
                   <p className="text-white font-medium">Gemini AI Processing...</p>
-                  <p className="text-purple-300 text-sm mt-1">Verifying VAT math · Checking anomalies · Assessing fraud risk</p>
+                  <p className="text-[#D4AF37] text-sm mt-1">Verifying VAT math · Checking anomalies · Assessing fraud risk</p>
                 </CardContent>
               </Card>
             )}
@@ -298,7 +298,7 @@ export default function GeminiFinancialMonitor() {
                 <Card className="bg-white/5 border-white/10 backdrop-blur-xl">
                   <CardHeader className="pb-3">
                     <CardTitle className="text-white text-sm flex items-center gap-2">
-                      <TrendingUp className="w-4 h-4 text-purple-400" />
+                      <TrendingUp className="w-4 h-4 text-[#D4AF37]" />
                       Risk Score: {result.riskScore}/100
                     </CardTitle>
                   </CardHeader>
@@ -325,7 +325,7 @@ export default function GeminiFinancialMonitor() {
                       </div>
                     </div>
 
-                    <p className="text-purple-300 text-xs">{result.mathCheck.details}</p>
+                    <p className="text-[#D4AF37] text-xs">{result.mathCheck.details}</p>
                   </CardContent>
                 </Card>
 
@@ -353,8 +353,8 @@ export default function GeminiFinancialMonitor() {
                     <CardTitle className="text-white text-sm">AI Recommendation</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-purple-200 text-sm">{result.recommendation}</p>
-                    <p className="text-purple-400 text-xs mt-2">Analysis at {new Date(result.timestamp).toLocaleTimeString()}</p>
+                    <p className="text-[#D4AF37] text-sm">{result.recommendation}</p>
+                    <p className="text-[#D4AF37] text-xs mt-2">Analysis at {new Date(result.timestamp).toLocaleTimeString()}</p>
                   </CardContent>
                 </Card>
 

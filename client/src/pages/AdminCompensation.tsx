@@ -52,7 +52,7 @@ export default function AdminCompensation() {
   });
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-orange-50/20" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#D4AF37]/20" dir="rtl">
       <div className="max-w-4xl mx-auto px-4 py-8">
 
         <div className="flex items-center justify-between mb-6">
@@ -72,7 +72,7 @@ export default function AdminCompensation() {
           </div>
           <div className="flex items-center gap-2">
             {!isLoading && (
-              <Badge className={cn("text-xs", pending.length > 0 ? "bg-orange-100 text-orange-800" : "bg-emerald-100 text-emerald-800")}>
+              <Badge className={cn("text-xs", pending.length > 0 ? "bg-[#D4AF37] text-[#B8932F]" : "bg-emerald-100 text-emerald-800")}>
                 {pending.length > 0 ? `${pending.length} ממתינים` : "הכל תקין"}
               </Badge>
             )}
@@ -104,12 +104,12 @@ export default function AdminCompensation() {
         ) : (
           <div className="space-y-3">
             {pending.map((item: any) => (
-              <Card key={item.sessionId} className="border-orange-100 bg-white">
+              <Card key={item.sessionId} className="border-[#D4AF37] bg-white">
                 <CardContent className="pt-4">
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className="bg-orange-100 text-orange-800 text-[10px]">
+                        <Badge className="bg-[#D4AF37] text-[#B8932F] text-[10px]">
                           <AlertTriangle className="h-2.5 w-2.5 mr-1" />
                           פיצוי נדרש
                         </Badge>
@@ -151,7 +151,7 @@ export default function AdminCompensation() {
                         <div className="flex flex-col gap-1.5">
                           <Button
                             size="sm"
-                            className="text-xs bg-orange-600 hover:bg-orange-700 gap-1.5"
+                            className="text-xs bg-[#B8932F] hover:bg-[#B8932F] gap-1.5"
                             onClick={() => compensate.mutate(item.sessionId)}
                             disabled={compensate.isPending}
                           >
@@ -176,7 +176,7 @@ export default function AdminCompensation() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-xs gap-1.5 border-orange-200 text-orange-700 hover:bg-orange-50"
+                          className="text-xs gap-1.5 border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
                           onClick={() => setConfirming(item.sessionId)}
                         >
                           <Wallet className="h-3 w-3" />

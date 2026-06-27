@@ -56,9 +56,9 @@ const PAYOUT_CONFIG: Record<
   released: {
     label: "Released",
     icon: TrendingUp,
-    bg: "bg-blue-50",
-    text: "text-blue-700",
-    border: "border-blue-200",
+    bg: "bg-[#D4AF37]",
+    text: "text-[#B8932F]",
+    border: "border-[#D4AF37]",
   },
   paid_out: {
     label: "Paid Out",
@@ -215,7 +215,7 @@ export default function ProviderEarningsPage() {
               type="button"
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-colors ${
                 activeFilter === tab.id
-                  ? "bg-blue-600 text-white"
+                  ? "bg-[#B8932F] text-white"
                   : "bg-white dark:bg-white text-gray-600 dark:text-black border border-gray-200 dark:border-gray-700 hover:bg-white"
               }`}
               onClick={() => setActiveFilter(tab.id)}

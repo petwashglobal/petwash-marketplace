@@ -129,12 +129,12 @@ export function GoogleReviewsWidget({
   return (
     <div className="w-full space-y-6">
       {/* Overall Rating Card */}
-      <Card className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950 dark:to-purple-950 border-2 border-blue-200 dark:border-blue-800">
+      <Card className="bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F] border-2 border-[#D4AF37] dark:border-[#B8932F]">
         <CardContent className="pt-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6">
             <div className="flex items-center gap-4">
               <div className="text-center">
-                <div className="text-5xl font-bold text-blue-600 dark:text-blue-400">
+                <div className="text-5xl font-bold text-[#B8932F] dark:text-[#D4AF37]">
                   {rating.toFixed(1)}
                 </div>
                 <div className="flex justify-center mt-2">
@@ -218,7 +218,7 @@ export function GoogleReviewsWidget({
                     className="w-12 h-12 rounded-full object-cover"
                   />
                 ) : (
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                     <User className="w-6 h-6 text-white" />
                   </div>
                 )}
@@ -230,7 +230,7 @@ export function GoogleReviewsWidget({
                         href={review.authorUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-semibold text-gray-900 dark:text-black hover:text-blue-600 dark:hover:text-blue-400 transition-colors"
+                        className="font-semibold text-gray-900 dark:text-black hover:text-[#B8932F] dark:hover:text-[#D4AF37] transition-colors"
                       >
                         {review.authorName}
                       </a>

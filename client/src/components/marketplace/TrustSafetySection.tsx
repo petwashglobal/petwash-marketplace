@@ -169,16 +169,16 @@ export function TrustSafetySection({ variant = "full", className }: TrustSafetyS
               <div className={cn(
                 "w-16 h-16 mx-auto rounded-2xl flex items-center justify-center mb-6 transition-transform group-hover:scale-110",
                 feature.color === "emerald" && "bg-emerald-100",
-                feature.color === "blue" && "bg-blue-100",
-                feature.color === "violet" && "bg-violet-100",
-                feature.color === "orange" && "bg-orange-100",
+                feature.color === "blue" && "bg-[#D4AF37]",
+                feature.color === "violet" && "bg-[#D4AF37]",
+                feature.color === "orange" && "bg-[#D4AF37]",
               )}>
                 <feature.icon className={cn(
                   "h-8 w-8",
                   feature.color === "emerald" && "text-emerald-600",
-                  feature.color === "blue" && "text-blue-600",
-                  feature.color === "violet" && "text-violet-600",
-                  feature.color === "orange" && "text-orange-600",
+                  feature.color === "blue" && "text-[#B8932F]",
+                  feature.color === "violet" && "text-[#B8932F]",
+                  feature.color === "orange" && "text-[#B8932F]",
                 )} />
               </div>
               <h3 

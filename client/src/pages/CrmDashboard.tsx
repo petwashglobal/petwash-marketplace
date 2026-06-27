@@ -207,9 +207,9 @@ export default function CrmDashboard() {
 
   const getTaskPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      low: "bg-blue-500",
+      low: "bg-[#D4AF37]",
       medium: "bg-yellow-500",
-      high: "bg-orange-500",
+      high: "bg-[#D4AF37]",
       urgent: "bg-red-500",
     };
     return colors[priority] || "bg-gray-500";
@@ -218,7 +218,7 @@ export default function CrmDashboard() {
   const getTaskStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: "bg-yellow-500",
-      in_progress: "bg-blue-500",
+      in_progress: "bg-[#D4AF37]",
       completed: "bg-green-500",
       cancelled: "bg-gray-500",
     };

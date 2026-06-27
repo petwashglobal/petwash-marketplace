@@ -119,7 +119,7 @@ Be helpful, concise, and practical. Answer in English unless the user writes in 
       {/* Header */}
       <div className="flex items-center justify-between mb-4 shrink-0">
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md">
+          <div className="w-9 h-9 bg-gradient-to-br from-[#D4AF37] to-[#B8932F] rounded-xl flex items-center justify-center shadow-md">
             <Sparkles className="w-4.5 h-4.5 text-white" />
           </div>
           <div>
@@ -137,7 +137,7 @@ Be helpful, concise, and practical. Answer in English unless the user writes in 
         {messages.map((msg, i) => (
           <div key={i} className={`flex gap-3 ${msg.role === 'user' ? 'flex-row-reverse' : ''}`}>
             <div className={`w-7 h-7 rounded-xl flex items-center justify-center shrink-0 ${
-              msg.role === 'assistant' ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-amber-500'
+              msg.role === 'assistant' ? 'bg-gradient-to-br from-[#D4AF37] to-[#B8932F]' : 'bg-amber-500'
             }`}>
               {msg.role === 'assistant' ? <Bot className="w-3.5 h-3.5 text-white" /> : <span className="text-white text-[10px] font-bold">You</span>}
             </div>
@@ -154,7 +154,7 @@ Be helpful, concise, and practical. Answer in English unless the user writes in 
 
         {loading && (
           <div className="flex gap-3">
-            <div className="w-7 h-7 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-xl flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 bg-gradient-to-br from-[#D4AF37] to-[#B8932F] rounded-xl flex items-center justify-center shrink-0">
               <Bot className="w-3.5 h-3.5 text-white" />
             </div>
             <div className="bg-white border border-gray-200 rounded-2xl rounded-tl-sm px-4 py-3 shadow-sm flex items-center gap-2">
@@ -177,9 +177,9 @@ Be helpful, concise, and practical. Answer in English unless the user writes in 
                 const Icon = chip.icon;
                 return (
                   <button key={chip.label} onClick={() => sendMessage(chip.prompt)}
-                    className="flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-xl text-start hover:border-indigo-300 hover:bg-indigo-50 transition-all group">
-                    <Icon className="w-4 h-4 text-indigo-500 shrink-0" />
-                    <span className="text-xs font-medium text-gray-700 group-hover:text-indigo-700 leading-tight">{chip.label}</span>
+                    className="flex items-center gap-2 p-3 bg-white border border-gray-200 rounded-xl text-start hover:border-[#D4AF37] hover:bg-[#D4AF37] transition-all group">
+                    <Icon className="w-4 h-4 text-[#D4AF37] shrink-0" />
+                    <span className="text-xs font-medium text-gray-700 group-hover:text-[#B8932F] leading-tight">{chip.label}</span>
                   </button>
                 );
               })}
@@ -207,7 +207,7 @@ Be helpful, concise, and practical. Answer in English unless the user writes in 
           <button
             onClick={() => sendMessage(input)}
             disabled={!input.trim() || loading}
-            className="w-8 h-8 bg-indigo-600 text-white rounded-xl flex items-center justify-center hover:bg-indigo-700 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+            className="w-8 h-8 bg-[#B8932F] text-white rounded-xl flex items-center justify-center hover:bg-[#B8932F] transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
           >
             {loading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Send className="w-3.5 h-3.5" />}
           </button>

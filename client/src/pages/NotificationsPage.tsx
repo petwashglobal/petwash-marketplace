@@ -20,11 +20,11 @@ interface InAppNotification {
 
 function getNotificationIcon(eventType: string | null) {
   if (!eventType) return <Bell className="w-5 h-5 text-gray-400" />;
-  if (eventType.includes("booking")) return <Calendar className="w-5 h-5 text-blue-500" />;
+  if (eventType.includes("booking")) return <Calendar className="w-5 h-5 text-[#D4AF37]" />;
   if (eventType.includes("payout") || eventType.includes("settlement")) return <CreditCard className="w-5 h-5 text-green-500" />;
-  if (eventType.includes("provider")) return <User className="w-5 h-5 text-purple-500" />;
+  if (eventType.includes("provider")) return <User className="w-5 h-5 text-[#D4AF37]" />;
   if (eventType.includes("loyalty") || eventType.includes("tier")) return <Star className="w-5 h-5 text-yellow-500" />;
-  if (eventType.includes("wash") || eventType.includes("k9000")) return <Zap className="w-5 h-5 text-orange-500" />;
+  if (eventType.includes("wash") || eventType.includes("k9000")) return <Zap className="w-5 h-5 text-[#D4AF37]" />;
   if (eventType.includes("inventory") || eventType.includes("incident")) return <Package className="w-5 h-5 text-red-500" />;
   return <Bell className="w-5 h-5 text-gray-400" />;
 }
@@ -134,7 +134,7 @@ export default function NotificationsPage() {
               size="sm"
               onClick={() => markAllReadMutation.mutate()}
               disabled={markAllReadMutation.isPending}
-              className="text-blue-600 hover:text-blue-700 gap-1"
+              className="text-[#B8932F] hover:text-[#B8932F] gap-1"
             >
               <CheckCheck className="w-4 h-4" />
               Mark all read
@@ -188,7 +188,7 @@ export default function NotificationsPage() {
                   className={`
                     relative bg-white dark:bg-white rounded-xl px-4 py-3 shadow-sm flex gap-3 cursor-pointer
                     transition-all hover:shadow-md
-                    ${!n.isRead ? "border-l-4 border-blue-500" : "border-l-4 border-transparent"}
+                    ${!n.isRead ? "border-l-4 border-[#D4AF37]" : "border-l-4 border-transparent"}
                   `}
                   onClick={() => handleItemClick(n)}
                   role="button"
@@ -198,7 +198,7 @@ export default function NotificationsPage() {
                   {/* Icon */}
                   <div className={`
                     w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0
-                    ${!n.isRead ? "bg-blue-50 dark:bg-white" : "bg-white dark:bg-white"}
+                    ${!n.isRead ? "bg-[#D4AF37] dark:bg-white" : "bg-white dark:bg-white"}
                   `}>
                     {getNotificationIcon(n.eventType)}
                   </div>
@@ -219,13 +219,13 @@ export default function NotificationsPage() {
                       </p>
                     )}
                     {n.deepLink && (
-                      <span className="text-xs text-blue-500 mt-1 inline-block">View →</span>
+                      <span className="text-xs text-[#D4AF37] mt-1 inline-block">View →</span>
                     )}
                   </div>
 
                   {/* Unread dot */}
                   {!n.isRead && (
-                    <div className="w-2 h-2 bg-blue-500 rounded-full absolute top-4 right-4 flex-shrink-0" />
+                    <div className="w-2 h-2 bg-[#D4AF37] rounded-full absolute top-4 right-4 flex-shrink-0" />
                   )}
                 </div>
               ))}

@@ -214,7 +214,7 @@ export default function WalkerDashboard() {
                     <CardContent className="space-y-4">
                       {(booking.scheduledDate || booking.startTime) && (
                         <div className="flex items-center gap-3">
-                          <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-cyan-100 dark:from-zinc-900/30 dark:to-cyan-900/30">
+                          <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37] dark:from-zinc-900/30 dark:to-[#B8932F]/30">
                             <Clock className="h-4 w-4 text-[#D4AF37] dark:text-[#D4AF37]" />
                           </div>
                           <span className="luxury-text-body">
@@ -233,7 +233,7 @@ export default function WalkerDashboard() {
                       )}
 
                       <div className="flex items-center gap-3">
-                        <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/30">
+                        <div className="inline-flex items-center justify-center w-9 h-9 rounded-full bg-gradient-to-br from-amber-100 to-[#D4AF37] dark:from-amber-900/30 dark:to-[#B8932F]/30">
                           <DollarSign className="h-4 w-4 text-amber-600 dark:text-amber-400" />
                         </div>
                         <span className="luxury-heading-sm luxury-text-gradient">

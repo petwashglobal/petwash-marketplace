@@ -195,7 +195,7 @@ export default function BookingChatInbox() {
               onClick={() => setActiveTab("active")}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
                 activeTab === "active"
-                  ? "border-blue-600 text-blue-600"
+                  ? "border-[#B8932F] text-[#B8932F]"
                   : "border-transparent text-gray-400 hover:text-gray-600"
               }`}
             >
@@ -203,7 +203,7 @@ export default function BookingChatInbox() {
               Active
               {activeConversations.length > 0 && (
                 <span className={`ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === "active" ? "bg-blue-100 text-blue-600" : "bg-white text-gray-400"
+                  activeTab === "active" ? "bg-[#D4AF37] text-[#B8932F]" : "bg-white text-gray-400"
                 }`}>
                   {activeConversations.length}
                 </span>
@@ -213,7 +213,7 @@ export default function BookingChatInbox() {
               onClick={() => setActiveTab("archived")}
               className={`flex items-center gap-1.5 px-4 py-2.5 text-sm font-semibold border-b-2 transition-colors ${
                 activeTab === "archived"
-                  ? "border-blue-600 text-blue-600"
+                  ? "border-[#B8932F] text-[#B8932F]"
                   : "border-transparent text-gray-400 hover:text-gray-600"
               }`}
             >
@@ -221,7 +221,7 @@ export default function BookingChatInbox() {
               Archived
               {archivedConversations.length > 0 && (
                 <span className={`ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === "archived" ? "bg-blue-100 text-blue-600" : "bg-white text-gray-400"
+                  activeTab === "archived" ? "bg-[#D4AF37] text-[#B8932F]" : "bg-white text-gray-400"
                 }`}>
                   {archivedConversations.length}
                 </span>

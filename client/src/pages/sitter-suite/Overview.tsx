@@ -214,7 +214,7 @@ export default function SitterSuiteOverview() {
                   icon: Award, 
                   titleKey: 'marketplace.legallyBindingAgreements',
                   descKey: 'marketplace.legallyBindingAgreementsDesc',
-                  color: 'from-amber-500 to-orange-500'
+                  color: 'from-amber-500 to-[#D4AF37]'
                 },
                 { 
                   icon: Users, 
@@ -232,7 +232,7 @@ export default function SitterSuiteOverview() {
                   icon: Home, 
                   titleKey: 'marketplace.youChooseLocation',
                   descKey: 'marketplace.youChooseLocationDesc',
-                  color: 'from-cyan-500 to-teal-500'
+                  color: 'from-[#D4AF37] to-teal-500'
                 },
                 { 
                   icon: Shield, 

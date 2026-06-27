@@ -185,7 +185,7 @@ export default function FranchiseOwnerDashboard() {
             )}
             <Link
               href="/case-queue"
-              className="inline-flex items-center gap-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-orange-400 hover:text-orange-600 dark:hover:text-orange-400 transition-colors"
+              className="inline-flex items-center gap-1.5 rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-white px-2.5 py-1 text-xs font-medium text-gray-600 dark:text-gray-400 hover:border-[#D4AF37] hover:text-[#B8932F] dark:hover:text-[#D4AF37] transition-colors"
             >
               <Filter className="h-3.5 w-3.5" />
               Exception Queue

@@ -464,9 +464,9 @@ export function ProviderBrowseGrid({
                 </span>
               )}
               {filters.backgroundCheckOnly && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-blue-50 text-blue-700 rounded-full text-xs font-medium border border-blue-200">
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#D4AF37] text-[#B8932F] rounded-full text-xs font-medium border border-[#D4AF37]">
                   🛡️ {isHebrew ? 'בדיקת רקע' : 'Background check'}
-                  <button onClick={() => updateFilter('backgroundCheckOnly', false)} className="ml-1 text-blue-400 hover:text-blue-700">×</button>
+                  <button onClick={() => updateFilter('backgroundCheckOnly', false)} className="ml-1 text-[#D4AF37] hover:text-[#B8932F]">×</button>
                 </span>
               )}
               {filters.fencedYardOnly && (
@@ -476,9 +476,9 @@ export function ProviderBrowseGrid({
                 </span>
               )}
               {filters.noPetsAtHomeOnly && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-purple-50 text-purple-700 rounded-full text-xs font-medium border border-purple-200">
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#D4AF37] text-[#B8932F] rounded-full text-xs font-medium border border-[#D4AF37]">
                   🐾 {isHebrew ? 'ללא חיות בית' : 'No other pets'}
-                  <button onClick={() => updateFilter('noPetsAtHomeOnly', false)} className="ml-1 text-purple-400 hover:text-purple-700">×</button>
+                  <button onClick={() => updateFilter('noPetsAtHomeOnly', false)} className="ml-1 text-[#D4AF37] hover:text-[#B8932F]">×</button>
                 </span>
               )}
               {filters.minRating > 0 && (
@@ -575,7 +575,7 @@ export function ProviderBrowseGrid({
                             </div>
                           )}
                           {!showTopProvider && showRising && (
-                            <div className="flex items-center gap-1 px-2.5 py-1 bg-blue-600 rounded-full text-[11px] font-semibold text-white shadow-md">
+                            <div className="flex items-center gap-1 px-2.5 py-1 bg-[#B8932F] rounded-full text-[11px] font-semibold text-white shadow-md">
                               <Sparkles className="w-3 h-3" />
                               {isHebrew ? 'עולה' : 'Rising'}
                             </div>
@@ -676,7 +676,7 @@ export function ProviderBrowseGrid({
                           )}
                           {/* Repeat clients — only when repeatClientCount is real and > 0 */}
                           {provider.repeatClientCount !== null && provider.repeatClientCount > 0 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-violet-50 text-violet-700 rounded-full text-[10px] font-semibold border border-violet-100">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#D4AF37] text-[#B8932F] rounded-full text-[10px] font-semibold border border-[#D4AF37]">
                               <CheckCircle className="w-2.5 h-2.5" />
                               {provider.repeatClientCount} {isHebrew ? 'לקוחות חוזרים' : 'repeat clients'}
                             </span>

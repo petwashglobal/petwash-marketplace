@@ -101,11 +101,11 @@ export default function GeminiWatchdogDashboard() {
   const getSeverityColor = (severity: string) => {
     switch (severity) {
       case "low":
-        return "text-blue-600 dark:text-blue-400";
+        return "text-[#B8932F] dark:text-[#D4AF37]";
       case "medium":
         return "text-yellow-600 dark:text-yellow-400";
       case "high":
-        return "text-orange-600 dark:text-orange-400";
+        return "text-[#B8932F] dark:text-[#D4AF37]";
       case "critical":
         return "text-red-600 dark:text-red-400";
       default:
@@ -149,11 +149,11 @@ export default function GeminiWatchdogDashboard() {
 
   if (isLoading) {
     return (
-      <div className={`min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
+      <div className={`min-h-screen bg-gradient-to-br from-[#D4AF37] via-white to-[#D4AF37] dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-purple-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#B8932F] mx-auto mb-4"></div>
               <p className="text-lg text-gray-600 dark:text-gray-400">
                 {isHebrew ? "טוען..." : "Loading..."}
               </p>
@@ -169,25 +169,25 @@ export default function GeminiWatchdogDashboard() {
       variant="dashboard"
       title={isHebrew ? "🤖 פיקוח Gemini AI" : "🤖 Gemini AI Watchdog"}
       subtitle={isHebrew ? "ניטור אוטונומי 24/7 ותיקון עצמי" : "24/7 Autonomous monitoring and self-healing"}
-      icon={<Bot className="w-8 h-8 text-purple-600" />}
+      icon={<Bot className="w-8 h-8 text-[#B8932F]" />}
     >
-      <div className={`min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
+      <div className={`min-h-screen bg-gradient-to-br from-[#D4AF37] via-white to-[#D4AF37] dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 ${(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}`}>
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
           <Link href="/admin">
-            <Button className="mb-4 flex items-center gap-2 text-purple-600 hover:text-purple-700 dark:text-purple-400" data-testid="button-back-admin">
+            <Button className="mb-4 flex items-center gap-2 text-[#B8932F] hover:text-[#B8932F] dark:text-[#D4AF37]" data-testid="button-back-admin">
               <ArrowLeft className="h-4 w-4" />
               {isHebrew ? "חזרה לניהול" : "Back to Admin"}
             </Button>
           </Link>
 
           <div className="flex items-center gap-4 mb-2">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-purple-500 to-blue-600 rounded-full">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#D4AF37] to-[#B8932F] rounded-full">
               <Bot className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
+              <h1 className="text-4xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                 {isHebrew ? "Gemini AI Watchdog" : "Gemini AI Watchdog"}
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
@@ -224,7 +224,7 @@ export default function GeminiWatchdogDashboard() {
               <CardTitle className="text-sm font-medium">
                 {isHebrew ? "בעיות פתוחות" : "Open Issues"}
               </CardTitle>
-              <AlertTriangle className="h-4 w-4 text-orange-600" />
+              <AlertTriangle className="h-4 w-4 text-[#B8932F]" />
             </CardHeader>
             <CardContent>
               <div className="luxury-heading-lg luxury-text-gradient">
@@ -301,7 +301,7 @@ export default function GeminiWatchdogDashboard() {
               <CardContent>
                 {!issuesData && issuesFetching ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8932F]"></div>
                     <span className="ml-3 text-gray-600 dark:text-gray-400">
                       {isHebrew ? "טוען..." : "Loading..."}
                     </span>
@@ -309,8 +309,8 @@ export default function GeminiWatchdogDashboard() {
                 ) : issues.length === 0 ? (
                   <div className="text-center py-12">
                     {issuesFetching && (
-                      <div className="flex items-center justify-center gap-2 text-xs text-purple-600 dark:text-purple-400 mb-4">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600"></div>
+                      <div className="flex items-center justify-center gap-2 text-xs text-[#B8932F] dark:text-[#D4AF37] mb-4">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#B8932F]"></div>
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}
@@ -322,8 +322,8 @@ export default function GeminiWatchdogDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {issuesFetching && (
-                      <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 mb-2">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600"></div>
+                      <div className="flex items-center gap-2 text-xs text-[#B8932F] dark:text-[#D4AF37] mb-2">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#B8932F]"></div>
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}
@@ -356,11 +356,11 @@ export default function GeminiWatchdogDashboard() {
                           {issue.description}
                         </p>
                         {issue.suggestedFix && (
-                          <div className="bg-blue-50 dark:bg-white border border-blue-200 dark:border-blue-800 rounded p-3 mt-2">
-                            <p className="text-xs font-semibold text-blue-900 dark:text-blue-300 mb-1">
+                          <div className="bg-[#D4AF37] dark:bg-white border border-[#D4AF37] dark:border-[#B8932F] rounded p-3 mt-2">
+                            <p className="text-xs font-semibold text-[#B8932F] dark:text-[#D4AF37] mb-1">
                               {isHebrew ? "תיקון מוצע:" : "Suggested Fix:"}
                             </p>
-                            <p className="text-sm text-blue-800 dark:text-blue-200">
+                            <p className="text-sm text-[#B8932F] dark:text-[#D4AF37]">
                               {issue.suggestedFix}
                             </p>
                           </div>
@@ -387,7 +387,7 @@ export default function GeminiWatchdogDashboard() {
               <CardContent>
                 {!strugglesData && strugglesFetching ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8932F]"></div>
                     <span className="ml-3 text-gray-600 dark:text-gray-400">
                       {isHebrew ? "טוען..." : "Loading..."}
                     </span>
@@ -395,8 +395,8 @@ export default function GeminiWatchdogDashboard() {
                 ) : struggles.length === 0 ? (
                   <div className="text-center py-12">
                     {strugglesFetching && (
-                      <div className="flex items-center justify-center gap-2 text-xs text-purple-600 dark:text-purple-400 mb-4">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600"></div>
+                      <div className="flex items-center justify-center gap-2 text-xs text-[#B8932F] dark:text-[#D4AF37] mb-4">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#B8932F]"></div>
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}
@@ -408,8 +408,8 @@ export default function GeminiWatchdogDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {strugglesFetching && (
-                      <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 mb-2">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600"></div>
+                      <div className="flex items-center gap-2 text-xs text-[#B8932F] dark:text-[#D4AF37] mb-2">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#B8932F]"></div>
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}
@@ -483,7 +483,7 @@ export default function GeminiWatchdogDashboard() {
               <CardContent>
                 {!autoFixesData && autoFixesFetching ? (
                   <div className="flex items-center justify-center py-12">
-                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#B8932F]"></div>
                     <span className="ml-3 text-gray-600 dark:text-gray-400">
                       {isHebrew ? "טוען..." : "Loading..."}
                     </span>
@@ -491,8 +491,8 @@ export default function GeminiWatchdogDashboard() {
                 ) : autoFixes.length === 0 ? (
                   <div className="text-center py-12">
                     {autoFixesFetching && (
-                      <div className="flex items-center justify-center gap-2 text-xs text-purple-600 dark:text-purple-400 mb-4">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600"></div>
+                      <div className="flex items-center justify-center gap-2 text-xs text-[#B8932F] dark:text-[#D4AF37] mb-4">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#B8932F]"></div>
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}
@@ -504,8 +504,8 @@ export default function GeminiWatchdogDashboard() {
                 ) : (
                   <div className="space-y-4">
                     {autoFixesFetching && (
-                      <div className="flex items-center gap-2 text-xs text-purple-600 dark:text-purple-400 mb-2">
-                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-purple-600"></div>
+                      <div className="flex items-center gap-2 text-xs text-[#B8932F] dark:text-[#D4AF37] mb-2">
+                        <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-[#B8932F]"></div>
                         <span>{isHebrew ? "מרענן..." : "Refreshing..."}</span>
                       </div>
                     )}

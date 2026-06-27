@@ -62,13 +62,13 @@ interface BookingRequest {
 
 const STATUS_CONFIG: Record<BookingStatus, { label: string; labelHe: string; color: string; bgColor: string }> = {
   pending: { label: 'Pending', labelHe: 'ממתין', color: 'text-amber-700', bgColor: 'bg-amber-100' },
-  accepted: { label: 'Accepted', labelHe: 'אושר', color: 'text-blue-700', bgColor: 'bg-blue-100' },
+  accepted: { label: 'Accepted', labelHe: 'אושר', color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]' },
   declined: { label: 'Declined', labelHe: 'נדחה', color: 'text-red-700', bgColor: 'bg-red-100' },
-  meet_greet_scheduled: { label: 'Meet & Greet', labelHe: 'פגישת היכרות', color: 'text-purple-700', bgColor: 'bg-purple-100' },
-  meet_greet_completed: { label: 'M&G Done', labelHe: 'פגישה הושלמה', color: 'text-indigo-700', bgColor: 'bg-indigo-100' },
-  payment_pending: { label: 'Awaiting Payment', labelHe: 'ממתין לתשלום', color: 'text-orange-700', bgColor: 'bg-orange-100' },
+  meet_greet_scheduled: { label: 'Meet & Greet', labelHe: 'פגישת היכרות', color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]' },
+  meet_greet_completed: { label: 'M&G Done', labelHe: 'פגישה הושלמה', color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]' },
+  payment_pending: { label: 'Awaiting Payment', labelHe: 'ממתין לתשלום', color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]' },
   confirmed: { label: 'Confirmed', labelHe: 'מאושר', color: 'text-green-700', bgColor: 'bg-green-100' },
-  in_progress: { label: 'In Progress', labelHe: 'בביצוע', color: 'text-cyan-700', bgColor: 'bg-cyan-100' },
+  in_progress: { label: 'In Progress', labelHe: 'בביצוע', color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]' },
   completed: { label: 'Completed', labelHe: 'הושלם', color: 'text-emerald-700', bgColor: 'bg-emerald-100' },
   reviewed: { label: 'Reviewed', labelHe: 'נבדק', color: 'text-teal-700', bgColor: 'bg-teal-100' },
   cancelled: { label: 'Cancelled', labelHe: 'בוטל', color: 'text-gray-700', bgColor: 'bg-white' },
@@ -119,7 +119,7 @@ export default function ProviderBookingsDashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-white" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
       {/* Header */}
-      <div className="bg-gradient-to-r from-pink-500 to-purple-600 text-white p-6">
+      <div className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] text-white p-6">
         <div className="max-w-4xl mx-auto">
           <div className="flex items-center gap-3 mb-2">
             <h1 className="text-2xl font-bold">
@@ -139,14 +139,14 @@ export default function ProviderBookingsDashboard() {
         {/* Stats Overview */}
         <div className="grid grid-cols-4 gap-4 mb-6">
           {[
-            { key: 'pending', icon: Clock, color: 'from-amber-500 to-orange-500' },
-            { key: 'upcoming', icon: CalendarDays, color: 'from-blue-500 to-indigo-500' },
+            { key: 'pending', icon: Clock, color: 'from-amber-500 to-[#D4AF37]' },
+            { key: 'upcoming', icon: CalendarDays, color: 'from-[#D4AF37] to-[#D4AF37]' },
             { key: 'active', icon: Play, color: 'from-green-500 to-emerald-500' },
             { key: 'completed', icon: CheckCircle, color: 'from-gray-500 to-gray-600' },
           ].map(({ key, icon: Icon, color }) => (
             <Card 
               key={key}
-              className={`cursor-pointer transition-all hover:scale-105 ${activeTab === key ? 'ring-2 ring-pink-500' : ''}`}
+              className={`cursor-pointer transition-all hover:scale-105 ${activeTab === key ? 'ring-2 ring-[#D4AF37]' : ''}`}
               onClick={() => setActiveTab(key as any)}
               data-testid={`card-stat-${key}`}
             >
@@ -571,7 +571,7 @@ function UpcomingBookingCard({
   });
 
   return (
-    <Card className="border-l-4 border-l-blue-500">
+    <Card className="border-l-4 border-l-[#D4AF37]">
       <CardContent className="p-6">
         <div className="flex justify-between items-start mb-4">
           <div>
@@ -663,7 +663,7 @@ function UpcomingBookingCard({
         <div className="flex gap-3">
           {booking.status === 'meet_greet_scheduled' && (
             <Button
-              className="flex-1 bg-gradient-to-r from-purple-500 to-indigo-500 text-white"
+              className="flex-1 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] text-white"
               onClick={() => completeMeetGreetMutation.mutate()}
               disabled={completeMeetGreetMutation.isPending}
               data-testid={`button-complete-meet-greet-${booking.requestId}`}

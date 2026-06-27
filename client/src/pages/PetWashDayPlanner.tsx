@@ -65,16 +65,16 @@ interface PlannerData {
 
 const RATING_GRADIENT = {
   excellent: 'from-emerald-500 via-green-400 to-teal-400',
-  good: 'from-blue-500 via-cyan-400 to-sky-400',
-  moderate: 'from-amber-500 via-yellow-400 to-orange-400',
-  poor: 'from-red-500 via-rose-400 to-pink-400',
+  good: 'from-[#D4AF37] via-[#D4AF37] to-[#D4AF37]',
+  moderate: 'from-amber-500 via-yellow-400 to-[#D4AF37]',
+  poor: 'from-red-500 via-rose-400 to-[#D4AF37]',
 };
 
 const getWeatherIcon = (code: number) => {
   if (code === 0 || code === 1) return <Sun className="w-12 h-12 text-yellow-400" />;
   if (code === 2 || code === 3) return <Cloud className="w-12 h-12 text-gray-400" />;
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return <CloudRain className="w-12 h-12 text-blue-400" />;
-  if ([71, 73, 75, 85, 86].includes(code)) return <CloudSnow className="w-12 h-12 text-blue-200" />;
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return <CloudRain className="w-12 h-12 text-[#D4AF37]" />;
+  if ([71, 73, 75, 85, 86].includes(code)) return <CloudSnow className="w-12 h-12 text-[#D4AF37]" />;
   return <Cloud className="w-12 h-12 text-gray-400" />;
 };
 
@@ -119,7 +119,7 @@ export default function PetWashDayPlanner() {
         transition={{ duration: 8, repeat: Infinity }}
       />
       <motion.div
-        className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-blue-500/20 via-cyan-400/10 to-transparent rounded-full blur-3xl"
+        className="absolute bottom-0 left-0 w-[500px] h-[500px] bg-gradient-to-tr from-[#D4AF37]/20 via-[#D4AF37]/10 to-transparent rounded-full blur-3xl"
         animate={{
           scale: [1.2, 1, 1.2],
           opacity: [0.2, 0.4, 0.2],
@@ -275,7 +275,7 @@ export default function PetWashDayPlanner() {
                       </div>
                       <div className="h-12 w-px bg-white/10" />
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-blue-400">
+                        <div className="text-3xl font-bold text-[#D4AF37]">
                           {bestWashDay.uvIndex}
                         </div>
                         <div className="text-sm text-gray-400 uppercase tracking-wider">
@@ -284,7 +284,7 @@ export default function PetWashDayPlanner() {
                       </div>
                       <div className="h-12 w-px bg-white/10" />
                       <div className="text-center">
-                        <div className="text-3xl font-bold text-cyan-400">
+                        <div className="text-3xl font-bold text-[#D4AF37]">
                           {bestWashDay.precipitationProbability}%
                         </div>
                         <div className="text-sm text-gray-400 uppercase tracking-wider">
@@ -379,7 +379,7 @@ export default function PetWashDayPlanner() {
                           <CheckCircle2 className="w-6 h-6 text-emerald-400" />
                         )}
                         {day.recommendation.rating === 'good' && (
-                          <CheckCircle2 className="w-6 h-6 text-blue-400" />
+                          <CheckCircle2 className="w-6 h-6 text-[#D4AF37]" />
                         )}
                         {day.recommendation.rating === 'moderate' && (
                           <AlertTriangle className="w-6 h-6 text-amber-400" />

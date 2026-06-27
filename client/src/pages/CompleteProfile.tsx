@@ -58,8 +58,8 @@ function getRoleConfig(role: string) {
         subtitleHe: "מלאו את הפרטים לבקשת גישה",
         subtitleEn: "Fill in your details for access request",
         icon: UserCircle,
-        iconBg: "bg-purple-100",
-        iconColor: "text-purple-600",
+        iconBg: "bg-[#D4AF37]",
+        iconColor: "text-[#B8932F]",
       };
     default:
       return {
@@ -68,8 +68,8 @@ function getRoleConfig(role: string) {
         subtitleHe: "מלאו את הפרטים כדי להתחיל",
         subtitleEn: "Fill in your details to get started",
         icon: UserCircle,
-        iconBg: "bg-blue-100",
-        iconColor: "text-blue-600",
+        iconBg: "bg-[#D4AF37]",
+        iconColor: "text-[#B8932F]",
       };
   }
 }

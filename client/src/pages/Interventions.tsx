@@ -56,7 +56,7 @@ interface CaseListResponse {
 
 const STATUS_CFG = {
   open:        { label: 'Open',        color: 'bg-amber-100 text-amber-800 border-amber-300',    icon: <Clock className="w-3 h-3" /> },
-  in_progress: { label: 'In progress', color: 'bg-blue-100 text-blue-800 border-blue-300',       icon: <ArrowUpRight className="w-3 h-3" /> },
+  in_progress: { label: 'In progress', color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',       icon: <ArrowUpRight className="w-3 h-3" /> },
   resolved:    { label: 'Resolved',    color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: <CheckCircle2 className="w-3 h-3" /> },
   escalated:   { label: 'Escalated',  color: 'bg-red-100 text-red-800 border-red-300',           icon: <XCircle className="w-3 h-3" /> },
 };
@@ -345,7 +345,7 @@ function CasesTable({ cases }: { cases: InterventionCase[] }) {
                 <TableCell className="text-xs text-muted-foreground font-mono">{c.id}</TableCell>
                 <TableCell>
                   <div className="font-medium text-sm">{c.entityName}</div>
-                  <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${c.entityType === 'station' ? 'bg-blue-50 text-blue-700 border-blue-200' : c.entityType === 'network' ? 'bg-white text-slate-700 border-slate-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${c.entityType === 'station' ? 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' : c.entityType === 'network' ? 'bg-white text-slate-700 border-slate-200' : 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]'}`}>
                     {c.entityType}
                   </span>
                 </TableCell>
@@ -447,7 +447,7 @@ export default function Interventions() {
         {/* Count strip */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <CountCard label="Open" value={counts.open} color={counts.open > 0 ? 'border-amber-200 bg-amber-50' : 'border-gray-200'} />
-          <CountCard label="In progress" value={counts.inProgress} color="border-blue-200 bg-blue-50" />
+          <CountCard label="In progress" value={counts.inProgress} color="border-[#D4AF37] bg-[#D4AF37]" />
           <CountCard label="Escalated" value={counts.escalated} color={counts.escalated > 0 ? 'border-red-200 bg-red-50' : 'border-gray-200'} />
           <CountCard label="Resolved" value={counts.resolved} color="border-emerald-200 bg-emerald-50" />
         </div>

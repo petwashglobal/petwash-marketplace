@@ -30,7 +30,7 @@ export default function SecurityStatus() {
       case 'inactive':
         return <XCircle className="w-6 h-6 text-yellow-500" />;
       case 'checking':
-        return <Loader2 className="w-6 h-6 text-blue-500 animate-spin" />;
+        return <Loader2 className="w-6 h-6 text-[#D4AF37] animate-spin" />;
       default:
         return <AlertTriangle className="w-6 h-6 text-gray-400" />;
     }
@@ -55,7 +55,7 @@ export default function SecurityStatus() {
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center p-4">
         <div className="text-center">
-          <Loader2 className="w-16 h-16 text-purple-600 animate-spin mx-auto mb-4" />
+          <Loader2 className="w-16 h-16 text-[#B8932F] animate-spin mx-auto mb-4" />
           <p className="luxury-text-body">Checking security systems...</p>
         </div>
       </div>
@@ -76,7 +76,7 @@ export default function SecurityStatus() {
       <div className="max-w-4xl mx-auto">
         <div className="text-center mb-12 pt-8">
           <div className="relative inline-block mb-6">
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-400 via-indigo-500 to-purple-400 rounded-full blur-2xl opacity-20 animate-pulse"></div>
+            <div className="absolute inset-0 bg-gradient-to-r from-[#D4AF37] via-[#D4AF37] to-[#D4AF37] rounded-full blur-2xl opacity-20 animate-pulse"></div>
             <div className="relative luxury-glass-card p-8 rounded-full luxury-shadow-xl">
               {allActive ? (
                 <div className="relative">
@@ -160,29 +160,29 @@ export default function SecurityStatus() {
             <div className="grid md:grid-cols-2 gap-4 text-sm">
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]"></div>
                   <span>WebAuthn/Passkey Authentication</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]"></div>
                   <span>SHA-256 Blockchain Ledger</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]"></div>
                   <span>Fraud Detection (7 Signals)</span>
                 </div>
               </div>
               <div className="space-y-2">
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]"></div>
                   <span>K9000 IoT Monitoring</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]"></div>
                   <span>Israeli Privacy Law 2025</span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500"></div>
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#D4AF37]"></div>
                   <span>7-Year Log Retention</span>
                 </div>
               </div>

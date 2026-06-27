@@ -140,7 +140,7 @@ export default function EmployeeExpenses() {
         </div>
 
         <Card className="luxury-glass-card luxury-shadow-xl">
-          <CardHeader className="border-b border-purple-100 bg-gradient-to-b from-white/95 to-purple-50/30 rounded-t-lg p-8">
+          <CardHeader className="border-b border-[#D4AF37] bg-gradient-to-b from-white/95 to-[#D4AF37]/30 rounded-t-lg p-8">
             <CardTitle className="luxury-heading-md">Submit New Expense</CardTitle>
             <CardDescription className="luxury-text-body mt-2">
               Fill in the expense details below. Each expense is tracked with cryptographic audit signatures for 7-year legal compliance.
@@ -297,7 +297,7 @@ export default function EmployeeExpenses() {
                             type="number"
                             step="0.01"
                             placeholder="₪0.00"
-                            className="luxury-glass-minimal h-14 font-semibold text-lg border-purple-300"
+                            className="luxury-glass-minimal h-14 font-semibold text-lg border-[#D4AF37]"
                           />
                         </FormControl>
                         <FormMessage />
@@ -390,7 +390,7 @@ export default function EmployeeExpenses() {
                   )}
                 />
 
-                <div className="flex gap-4 pt-8 border-t border-purple-100 mt-8">
+                <div className="flex gap-4 pt-8 border-t border-[#D4AF37] mt-8">
                   <Button
                     type="submit"
                     data-testid="button-submit-expense"

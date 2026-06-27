@@ -38,7 +38,7 @@ export default function Privacy() {
             </Link>
           </div>
           <Card className="luxury-glass-panel luxury-shadow-md">
-            <CardHeader className="bg-gradient-to-br from-white/95 to-purple-50/30 border-b border-purple-100">
+            <CardHeader className="bg-gradient-to-br from-white/95 to-[#D4AF37]/30 border-b border-[#D4AF37]">
               <CardTitle className="luxury-heading-md text-center">
                 {language === 'en' ? 'Privacy Policy – ⁦Pet Wash™⁩ Ltd' : 'מדיניות פרטיות – ⁦Pet Wash™⁩ בע"מ'}
               </CardTitle>

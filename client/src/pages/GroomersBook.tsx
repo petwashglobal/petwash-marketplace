@@ -111,14 +111,14 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
     <div className="min-h-screen luxury-bg-mesh">
       <div className="luxury-bg-primary text-white py-10">
         <div className="luxury-container">
-          <div className="flex items-center gap-2 mb-1"><Scissors className="w-6 h-6 text-pink-300" /><span className="text-pink-200 text-sm font-medium uppercase tracking-wide">Grooming Marketplace</span></div>
+          <div className="flex items-center gap-2 mb-1"><Scissors className="w-6 h-6 text-[#D4AF37]" /><span className="text-[#D4AF37] text-sm font-medium uppercase tracking-wide">Grooming Marketplace</span></div>
           <h1 className="text-3xl font-bold text-white mb-2">{isHebrew ? 'הזמן מפגש טיפוח' : 'Book a Grooming Session'}</h1>
-          <p className="text-purple-100">Professional grooming for your pet</p>
+          <p className="text-[#D4AF37]">Professional grooming for your pet</p>
 
           <div className="flex items-center gap-2 mt-6">
             {Array.from({ length: totalSteps }, (_, i) => (
               <div key={i} className="flex items-center gap-2">
-                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${i + 1 <= step ? 'bg-white text-purple-700' : 'bg-white/20 text-white/60'}`}>
+                <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all ${i + 1 <= step ? 'bg-white text-[#B8932F]' : 'bg-white/20 text-white/60'}`}>
                   {i + 1 < step ? <CheckCircle2 className="w-4 h-4" /> : i + 1}
                 </div>
                 {i < totalSteps - 1 && <div className={`h-0.5 w-8 md:w-16 transition-all ${i + 1 < step ? 'bg-white' : 'bg-white/20'}`} />}
@@ -140,7 +140,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 <div
                   key={svc.key}
                   onClick={() => setSelectedService(svc.key)}
-                  className={`cursor-pointer luxury-glass-card p-4 transition-all luxury-hover-lift ${selectedService === svc.key ? 'ring-2 ring-purple-500 bg-purple-50/50 dark:bg-white' : ''}`}
+                  className={`cursor-pointer luxury-glass-card p-4 transition-all luxury-hover-lift ${selectedService === svc.key ? 'ring-2 ring-[#D4AF37] bg-[#D4AF37]/50 dark:bg-white' : ''}`}
                 >
                   <div className="flex items-start justify-between">
                     <div className="flex items-center gap-2.5">
@@ -150,11 +150,11 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                         <p className="text-xs text-gray-500 mt-0.5">{svc.desc}</p>
                       </div>
                     </div>
-                    {selectedService === svc.key && <CheckCircle2 className="w-5 h-5 text-purple-500 flex-shrink-0" />}
+                    {selectedService === svc.key && <CheckCircle2 className="w-5 h-5 text-[#D4AF37] flex-shrink-0" />}
                   </div>
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-gray-100 dark:border-gray-700">
                     <span className="text-xs text-gray-400 flex items-center gap-1"><Clock className="w-3 h-3" />{svc.duration}</span>
-                    <span className="font-bold text-purple-700 dark:text-purple-300">from ₪{svc.price}</span>
+                    <span className="font-bold text-[#B8932F] dark:text-[#D4AF37]">from ₪{svc.price}</span>
                   </div>
                 </div>
               ))}
@@ -166,7 +166,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
           <div className="space-y-6">
             <h2 className="luxury-heading-md">{isHebrew ? 'בחר תאריך ושעה' : 'Pick Date & Time'}</h2>
             {selectedSvc && (
-              <div className="luxury-glass-card p-4 flex items-center gap-3 bg-purple-50/50 dark:bg-white">
+              <div className="luxury-glass-card p-4 flex items-center gap-3 bg-[#D4AF37]/50 dark:bg-white">
                 <ServiceGlyph iconKey={selectedSvc.iconKey} emoji={selectedSvc.emoji} size={24} label={isHebrew ? selectedSvc.he : selectedSvc.en} />
                 <div>
                   <p className="font-semibold text-sm text-gray-900 dark:text-black">{isHebrew ? selectedSvc.he : selectedSvc.en}</p>
@@ -185,7 +185,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                   <button
                     key={slot}
                     onClick={() => setSelectedTime(slot)}
-                    className={`py-2.5 rounded-xl text-sm font-medium transition-all ${selectedTime === slot ? 'bg-purple-600 text-white shadow-md' : 'luxury-glass-card hover:bg-purple-50 dark:hover:bg-purple-900/20 text-gray-700 dark:text-black'}`}
+                    className={`py-2.5 rounded-xl text-sm font-medium transition-all ${selectedTime === slot ? 'bg-[#B8932F] text-white shadow-md' : 'luxury-glass-card hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/20 text-gray-700 dark:text-black'}`}
                   >
                     {slot}
                   </button>
@@ -207,7 +207,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
               <div className="space-y-2">
                 <Label className="text-sm font-medium">Quick fill from saved pets</Label>
                 {pets.slice(0,3).map((pet: any) => (
-                  <button key={pet.id} onClick={() => { setPetName(pet.name || ''); setPetBreed(pet.breed || ''); }} className="w-full luxury-glass-card p-3 flex items-center gap-3 text-left hover:bg-purple-50/50 dark:hover:bg-purple-900/20 transition-colors">
+                  <button key={pet.id} onClick={() => { setPetName(pet.name || ''); setPetBreed(pet.breed || ''); }} className="w-full luxury-glass-card p-3 flex items-center gap-3 text-left hover:bg-[#D4AF37]/50 dark:hover:bg-[#B8932F]/20 transition-colors">
                     <PetWashIcon name="brand_paw" size={20} label={pet.name || 'Pet'} />
                     <div><p className="font-medium text-sm text-gray-900 dark:text-black">{pet.name}</p><p className="text-xs text-gray-500">{pet.breed}</p></div>
                   </button>
@@ -231,7 +231,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
               <div className="grid grid-cols-3 gap-3">
                 {PET_SIZES.map(size => (
                   <button key={size.key} onClick={() => setPetSize(size.key)}
-                    className={`py-3 rounded-xl text-center transition-all ${petSize === size.key ? 'bg-purple-600 text-white shadow-md' : 'luxury-glass-card hover:bg-purple-50 dark:hover:bg-purple-900/20'}`}>
+                    className={`py-3 rounded-xl text-center transition-all ${petSize === size.key ? 'bg-[#B8932F] text-white shadow-md' : 'luxury-glass-card hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/20'}`}>
                     <div className="mb-1 flex justify-center"><ServiceGlyph iconKey={size.iconKey} emoji={size.emoji} size={24} label={isHebrew ? size.labelHe : size.label} /></div>
                     <p className="text-xs font-medium">{isHebrew ? size.labelHe : size.label}</p>
                     <p className="text-xs text-current opacity-70">{size.desc}</p>
@@ -267,8 +267,8 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 { icon: MapPin, label: 'Address', value: address || 'Not specified' },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-start gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-white flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4 text-purple-600" />
+                  <div className="w-8 h-8 rounded-lg bg-[#D4AF37] dark:bg-white flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4 text-[#B8932F]" />
                   </div>
                   <div>
                     <p className="text-xs text-gray-400">{label}</p>
@@ -293,7 +293,7 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 <span className="text-gray-500">Platform fee (15%)</span><span>₪{Math.round(selectedSvc.price * 0.15)}</span>
               </div>
               <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-100 dark:border-gray-700">
-                <span>Total</span><span className="text-purple-700 dark:text-purple-300">₪{Math.round(selectedSvc.price * 1.15)}</span>
+                <span>Total</span><span className="text-[#B8932F] dark:text-[#D4AF37]">₪{Math.round(selectedSvc.price * 1.15)}</span>
               </div>
               <p className="text-xs text-gray-400 mt-2 text-center flex items-center justify-center gap-1">
                 <Sparkles className="w-3 h-3" />Payment held in 72hr escrow — released on completion

@@ -714,8 +714,8 @@ export function AccessibilityMenu({ language, isOpen, onClose, id }: Accessibili
                   <p className="font-semibold text-gray-900 mb-2">{t('statementContact')}</p>
                   <div className="space-y-1 text-gray-600">
                     <p>{statement.contact.title}</p>
-                    <p>{t('statementEmail')}: <a href={`mailto:${statement.contact.email}`} className="text-blue-600 underline">{statement.contact.email}</a></p>
-                    <p>{t('statementPhone')}: <a href={`tel:${statement.contact.phone}`} className="text-blue-600 underline" dir="ltr">{statement.contact.phone}</a></p>
+                    <p>{t('statementEmail')}: <a href={`mailto:${statement.contact.email}`} className="text-[#B8932F] underline">{statement.contact.email}</a></p>
+                    <p>{t('statementPhone')}: <a href={`tel:${statement.contact.phone}`} className="text-[#B8932F] underline" dir="ltr">{statement.contact.phone}</a></p>
                     <p>{t('statementResponse')}: {statement.contact.responseTime}</p>
                   </div>
                 </div>

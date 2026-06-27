@@ -75,8 +75,8 @@ export default function VerifyEmail() {
     <div className="min-h-screen flex items-center justify-center p-4 bg-white">
       <Card className="max-w-md w-full mx-auto bg-white">
         <CardHeader className="text-center pb-2">
-          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-blue-50 flex items-center justify-center">
-            <MailCheck className="w-8 h-8 text-blue-500" />
+          <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-[#D4AF37] flex items-center justify-center">
+            <MailCheck className="w-8 h-8 text-[#D4AF37]" />
           </div>
           <CardTitle className="text-xl">
             {he ? "אמת את כתובת האימייל שלך" : "Verify Your Email"}

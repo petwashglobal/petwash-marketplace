@@ -145,7 +145,7 @@ export default function MobileStationSheet() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <div className="text-center">
-          <div className="w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
+          <div className="w-12 h-12 border-4 border-[#B8932F] border-t-transparent rounded-full animate-spin mx-auto mb-3"></div>
           <p className="text-gray-500">Loading station...</p>
         </div>
       </div>
@@ -227,7 +227,7 @@ export default function MobileStationSheet() {
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-500';
-      case 'installing': return 'bg-blue-500';
+      case 'installing': return 'bg-[#D4AF37]';
       case 'maintenance': return 'bg-yellow-500';
       case 'offline': return 'bg-red-500';
       default: return 'bg-gray-500';
@@ -316,21 +316,21 @@ export default function MobileStationSheet() {
           <TabsList className="w-full justify-start rounded-none h-12 bg-transparent p-0">
             <TabsTrigger 
               value="overview" 
-              className="flex-1 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600"
+              className="flex-1 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#B8932F]"
               data-testid="tab-overview"
             >
               Overview
             </TabsTrigger>
             <TabsTrigger 
               value="inventory" 
-              className="flex-1 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600"
+              className="flex-1 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#B8932F]"
               data-testid="tab-inventory"
             >
               Inventory
             </TabsTrigger>
             <TabsTrigger 
               value="utilities" 
-              className="flex-1 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-blue-600"
+              className="flex-1 rounded-none data-[state=active]:border-b-2 data-[state=active]:border-[#B8932F]"
               data-testid="tab-utilities"
             >
               Utilities

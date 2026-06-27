@@ -305,7 +305,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   className={cn(
                     "relative flex items-start gap-4 p-5 rounded-2xl border-2 text-left transition-all duration-300",
                     isSelected
-                      ? "border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 shadow-lg shadow-amber-500/20"
+                      ? "border-amber-500 bg-gradient-to-br from-amber-50 to-[#D4AF37] dark:from-amber-900/30 dark:to-[#B8932F]/20 shadow-lg shadow-amber-500/20"
                       : "border-gray-200 dark:border-gray-700 hover:border-amber-300 hover:bg-white dark:hover:bg-white"
                   )}
                   whileHover={{ scale: 1.02 }}
@@ -320,7 +320,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center shrink-0",
                     isSelected 
-                      ? "bg-gradient-to-br from-amber-500 to-orange-600" 
+                      ? "bg-gradient-to-br from-amber-500 to-[#B8932F]" 
                       : "bg-white dark:bg-white"
                   )}>
                     <Icon className={cn(
@@ -360,7 +360,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                 className={cn(
                   "flex items-center justify-between p-4 rounded-2xl border-2 transition-all",
                   filters.pets[key] > 0
-                    ? "border-amber-500 bg-gradient-to-r from-amber-50/50 to-orange-50/50 dark:from-amber-900/20 dark:to-orange-900/10"
+                    ? "border-amber-500 bg-gradient-to-r from-amber-50/50 to-[#D4AF37]/50 dark:from-amber-900/20 dark:to-[#B8932F]/10"
                     : "border-gray-200 dark:border-gray-700"
                 )}
                 initial={{ opacity: 0, y: 20 }}
@@ -370,7 +370,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   <div className={cn(
                     "w-12 h-12 rounded-xl flex items-center justify-center",
                     filters.pets[key] > 0
-                      ? "bg-gradient-to-br from-amber-500 to-orange-600"
+                      ? "bg-gradient-to-br from-amber-500 to-[#B8932F]"
                       : "bg-white dark:bg-white"
                   )}>
                     <Icon className={cn(
@@ -413,7 +413,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
               </motion.div>
             ))}
             {getTotalPets() > 0 && (
-              <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/20 border border-amber-200 dark:border-amber-700">
+              <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-100 to-[#D4AF37] dark:from-amber-900/30 dark:to-[#B8932F]/20 border border-amber-200 dark:border-amber-700">
                 <div className="flex items-center gap-2">
                   <Gem className="w-5 h-5 text-amber-600" />
                   <span className="font-semibold text-amber-800 dark:text-amber-300">
@@ -437,7 +437,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   className={cn(
                     "relative flex flex-col items-center justify-center p-6 rounded-2xl border-2 transition-all duration-300",
                     isSelected
-                      ? "border-amber-500 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/20 shadow-lg shadow-amber-500/20"
+                      ? "border-amber-500 bg-gradient-to-br from-amber-50 to-[#D4AF37] dark:from-amber-900/30 dark:to-[#B8932F]/20 shadow-lg shadow-amber-500/20"
                       : "border-gray-200 dark:border-gray-700 hover:border-amber-300 hover:bg-white dark:hover:bg-white"
                   )}
                   whileHover={{ scale: 1.03 }}
@@ -449,7 +449,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   )}
                   <div className={cn(
                     "w-12 h-12 rounded-full flex items-center justify-center mb-3",
-                    isSelected ? "bg-gradient-to-br from-amber-500 to-orange-600" : "bg-white dark:bg-white"
+                    isSelected ? "bg-gradient-to-br from-amber-500 to-[#B8932F]" : "bg-white dark:bg-white"
                   )}>
                     <Dog className={cn(
                       isSelected ? "text-white" : "text-gray-600 dark:text-black",
@@ -499,7 +499,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   className={cn(
                     "px-4 py-2 rounded-full text-sm font-medium transition-all",
                     filters.location === city
-                      ? "bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-lg shadow-amber-500/30"
+                      ? "bg-gradient-to-r from-amber-500 to-[#D4AF37] text-white shadow-lg shadow-amber-500/30"
                       : "bg-white dark:bg-white text-gray-700 dark:text-black hover:bg-amber-100 dark:hover:bg-amber-900/30"
                   )}
                   whileHover={{ scale: 1.05 }}
@@ -575,7 +575,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
               </Popover>
             </div>
             {filters.startDate && filters.endDate && (
-              <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-100 to-orange-100 dark:from-amber-900/30 dark:to-orange-900/20 border border-amber-200">
+              <div className="mt-4 p-4 rounded-xl bg-gradient-to-r from-amber-100 to-[#D4AF37] dark:from-amber-900/30 dark:to-[#B8932F]/20 border border-amber-200">
                 <div className="flex items-center gap-2">
                   <CalendarIcon className="w-5 h-5 text-amber-600" />
                   <span className="font-semibold text-amber-800 dark:text-amber-300">
@@ -602,7 +602,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   className={cn(
                     "flex items-center justify-between p-4 rounded-2xl border-2 transition-all cursor-pointer",
                     isSelected
-                      ? "border-amber-500 bg-gradient-to-r from-amber-50/80 to-orange-50/80 dark:from-amber-900/30 dark:to-orange-900/20"
+                      ? "border-amber-500 bg-gradient-to-r from-amber-50/80 to-[#D4AF37]/80 dark:from-amber-900/30 dark:to-[#B8932F]/20"
                       : "border-gray-200 dark:border-gray-700 hover:border-amber-300"
                   )}
                   onClick={() => toggleAddOn(service.id)}
@@ -613,7 +613,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                     <div className={cn(
                       "w-12 h-12 rounded-xl flex items-center justify-center",
                       isSelected
-                        ? "bg-gradient-to-br from-amber-500 to-orange-600"
+                        ? "bg-gradient-to-br from-amber-500 to-[#B8932F]"
                         : "bg-white dark:bg-white"
                     )}>
                       <Icon className={cn("w-6 h-6", isSelected ? "text-white" : "text-gray-500")} />
@@ -674,7 +674,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
         const estimate = calculateEstimate();
         return (
           <div className="space-y-6">
-            <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-50 via-orange-50 to-amber-100 dark:from-amber-900/30 dark:via-orange-900/20 dark:to-amber-800/30 border-2 border-amber-200 dark:border-amber-700">
+            <div className="p-6 rounded-2xl bg-gradient-to-br from-amber-50 via-[#D4AF37] to-amber-100 dark:from-amber-900/30 dark:via-[#B8932F]/20 dark:to-amber-800/30 border-2 border-amber-200 dark:border-amber-700">
               <div className="flex items-center gap-2 mb-4">
                 <Crown className="w-6 h-6 text-amber-600" />
                 <h3 className="text-lg font-bold text-amber-800 dark:text-amber-300">
@@ -724,7 +724,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                 )}
               </div>
             </div>
-            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500 to-orange-600 text-white">
+            <div className="p-4 rounded-xl bg-gradient-to-r from-amber-500 to-[#B8932F] text-white">
               <div className="flex justify-between items-center">
                 <span className="text-lg">{isHebrew ? 'הערכת מחיר' : 'Estimated Total'}</span>
                 <span className="text-2xl font-bold">₪{estimate.total}</span>
@@ -763,7 +763,7 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
   return (
     <div className="w-full max-w-2xl mx-auto">
       <div className="bg-white dark:bg-white rounded-3xl shadow-2xl overflow-hidden border border-amber-200/50 dark:border-amber-800/30">
-        <div className="bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 p-6 relative overflow-hidden">
+        <div className="bg-gradient-to-r from-amber-500 via-[#D4AF37] to-amber-600 p-6 relative overflow-hidden">
           <div className="absolute inset-0 bg-[linear-gradient(45deg,transparent_25%,rgba(255,255,255,0.1)_50%,transparent_75%)] bg-[length:200%_100%] animate-[shimmer_3s_infinite]" />
           <div className="relative z-10">
             <div className="flex items-center justify-between mb-4">
@@ -846,8 +846,8 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
               className={cn(
                 "h-12 px-8 rounded-xl font-semibold transition-all",
                 step === totalSteps
-                  ? "bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg shadow-amber-500/30"
-                  : "bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white"
+                  ? "bg-gradient-to-r from-amber-500 to-[#B8932F] hover:from-amber-600 hover:to-[#B8932F] text-white shadow-lg shadow-amber-500/30"
+                  : "bg-gradient-to-r from-amber-500 to-[#D4AF37] hover:from-amber-600 hover:to-[#B8932F] text-white"
               )}
               data-testid="button-wizard-next"
             >
@@ -901,7 +901,7 @@ export function BookingWizardTrigger({
   return (
     <Button
       onClick={() => setIsOpen(true)}
-      className="h-14 px-8 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 text-white font-semibold shadow-lg shadow-amber-500/30 transition-all"
+      className="h-14 px-8 rounded-xl bg-gradient-to-r from-amber-500 via-[#D4AF37] to-amber-600 hover:from-amber-600 hover:via-[#B8932F] hover:to-amber-700 text-white font-semibold shadow-lg shadow-amber-500/30 transition-all"
       data-testid="button-start-booking-wizard"
     >
       <Crown className="w-5 h-5 mr-2" />

@@ -164,11 +164,11 @@ export default function ProviderListings() {
         <div className="luxury-animate-slide-up luxury-delay-1">
           <Tabs value={serviceType} onValueChange={(value) => setServiceType(value as any)} className="mb-6">
             <TabsList className="grid w-full max-w-md mx-auto grid-cols-2 luxury-glass-card luxury-shadow-md p-1">
-              <TabsTrigger value="walker" data-testid="tab-walkers" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              <TabsTrigger value="walker" data-testid="tab-walkers" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#D4AF37] data-[state=active]:to-[#B8932F] data-[state=active]:text-white">
                 <Dog className="h-4 w-4 mr-2" />
                 {t.walker}
               </TabsTrigger>
-              <TabsTrigger value="sitter" data-testid="tab-sitters" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-blue-500 data-[state=active]:to-purple-600 data-[state=active]:text-white">
+              <TabsTrigger value="sitter" data-testid="tab-sitters" className="data-[state=active]:bg-gradient-to-br data-[state=active]:from-[#D4AF37] data-[state=active]:to-[#B8932F] data-[state=active]:text-white">
                 <Home className="h-4 w-4 mr-2" />
                 {t.sitter}
               </TabsTrigger>
@@ -230,7 +230,7 @@ export default function ProviderListings() {
         {/* Provider Grid */}
         {isLoading ? (
           <div className="text-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-purple-600" />
+            <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4 text-[#B8932F]" />
             <p className="luxury-text-body">{t.loading}</p>
           </div>
         ) : filteredProviders.length === 0 ? (
@@ -248,9 +248,9 @@ export default function ProviderListings() {
                 data-testid={`provider-card-${provider.id}`}
               >
                 <div className="flex items-start gap-4 mb-4">
-                  <Avatar className="h-16 w-16 ring-2 ring-purple-400/30">
+                  <Avatar className="h-16 w-16 ring-2 ring-[#D4AF37]/30">
                     <AvatarImage src={provider.profilePhoto} />
-                    <AvatarFallback className="bg-gradient-to-br from-blue-500 to-purple-600 text-white">
+                    <AvatarFallback className="bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white">
                       {provider.firstName[0]}{provider.lastName[0]}
                     </AvatarFallback>
                   </Avatar>
@@ -300,12 +300,12 @@ export default function ProviderListings() {
                   {/* Stats */}
                   <div className="grid grid-cols-2 gap-2 text-sm luxury-text-body">
                     <div className="flex items-center gap-1">
-                      <Clock className="h-4 w-4 text-purple-600" />
+                      <Clock className="h-4 w-4 text-[#B8932F]" />
                       <span>{provider.completedBookings} {t.bookings}</span>
                     </div>
                     {provider.yearsOfExperience && (
                       <div className="flex items-center gap-1">
-                        <Award className="h-4 w-4 text-purple-600" />
+                        <Award className="h-4 w-4 text-[#B8932F]" />
                         <span>{provider.yearsOfExperience} {t.years}</span>
                       </div>
                     )}
@@ -322,13 +322,13 @@ export default function ProviderListings() {
                   <div className="flex items-center justify-between pt-3 mt-3 luxury-divider">
                     <div>
                       {provider.hourlyRate && (
-                        <div className="flex items-center gap-1 font-semibold text-purple-900">
+                        <div className="flex items-center gap-1 font-semibold text-[#B8932F]">
                           <DollarSign className="h-4 w-4" />
                           {provider.hourlyRate}{t.hourly}
                         </div>
                       )}
                       {provider.dailyRate && !provider.hourlyRate && (
-                        <div className="flex items-center gap-1 font-semibold text-purple-900">
+                        <div className="flex items-center gap-1 font-semibold text-[#B8932F]">
                           <DollarSign className="h-4 w-4" />
                           {provider.dailyRate}{t.daily}
                         </div>

@@ -240,7 +240,7 @@ export default function AdminSystemLogs() {
           <div className="luxury-glass-card luxury-hover-lift p-6" data-testid="stat-total-logs">
             <div className="flex items-center justify-between mb-2">
               <p className="luxury-text-small">Total Logs</p>
-              <FileText className="h-5 w-5 text-purple-500" />
+              <FileText className="h-5 w-5 text-[#D4AF37]" />
             </div>
             <p className="luxury-heading-lg luxury-text-gradient">{stats.total}</p>
           </div>
@@ -264,9 +264,9 @@ export default function AdminSystemLogs() {
           <div className="luxury-glass-card luxury-hover-lift p-6" data-testid="stat-info">
             <div className="flex items-center justify-between mb-2">
               <p className="luxury-text-small">Info</p>
-              <Info className="h-5 w-5 text-blue-500" />
+              <Info className="h-5 w-5 text-[#D4AF37]" />
             </div>
-            <p className="luxury-heading-lg text-blue-600">{stats.info}</p>
+            <p className="luxury-heading-lg text-[#B8932F]">{stats.info}</p>
           </div>
         </div>
 
@@ -337,13 +337,13 @@ export default function AdminSystemLogs() {
         {/* Log Level Filter */}
         <div className="luxury-glass-panel luxury-shadow-md p-6 luxury-animate-fade-in luxury-delay-3">
           <div className="flex items-center gap-2 mb-4">
-            <Filter className="h-4 w-4 text-purple-600" />
+            <Filter className="h-4 w-4 text-[#B8932F]" />
             <span className="luxury-heading-sm">Filter by Level</span>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
               onClick={() => setActiveLevel('all')}
-              className={`luxury-badge ${activeLevel === 'all' ? 'ring-2 ring-purple-500' : ''}`}
+              className={`luxury-badge ${activeLevel === 'all' ? 'ring-2 ring-[#D4AF37]' : ''}`}
               data-testid="filter-all"
             >
               All Logs
@@ -376,7 +376,7 @@ export default function AdminSystemLogs() {
             </button>
             <button
               onClick={() => setActiveLevel('info')}
-              className={`luxury-badge ${activeLevel === 'info' ? 'ring-2 ring-blue-500' : ''}`}
+              className={`luxury-badge ${activeLevel === 'info' ? 'ring-2 ring-[#D4AF37]' : ''}`}
               style={{ 
                 background: 'linear-gradient(135deg, rgba(59, 130, 246, 0.1) 0%, rgba(37, 99, 235, 0.1) 100%)',
                 color: '#2563eb',
@@ -550,7 +550,7 @@ export default function AdminSystemLogs() {
                           {hasDetails && (
                             <div className="mt-2">
                               <button
-                                className="flex items-center gap-1 luxury-text-small text-purple-600 hover:text-purple-700"
+                                className="flex items-center gap-1 luxury-text-small text-[#B8932F] hover:text-[#B8932F]"
                                 onClick={(e) => {
                                   e.stopPropagation();
                                   toggleLogExpansion(log.id);
@@ -631,7 +631,7 @@ export default function AdminSystemLogs() {
                   <div className="flex items-center gap-2">
                     {selectedLog.level === 'error' && <AlertCircle className="h-5 w-5 text-red-500" />}
                     {selectedLog.level === 'warn' && <AlertTriangle className="h-5 w-5 text-yellow-500" />}
-                    {selectedLog.level === 'info' && <Info className="h-5 w-5 text-blue-500" />}
+                    {selectedLog.level === 'info' && <Info className="h-5 w-5 text-[#D4AF37]" />}
                     {selectedLog.level === 'debug' && <Bug className="h-5 w-5 text-green-500" />}
                     <span className="luxury-heading-sm capitalize">{selectedLog.level}</span>
                   </div>
@@ -685,7 +685,7 @@ export default function AdminSystemLogs() {
                     .map(relatedLog => (
                       <div
                         key={relatedLog.id}
-                        className="luxury-glass-minimal p-3 rounded-lg cursor-pointer hover:bg-purple-50 dark:hover:bg-purple-900/10"
+                        className="luxury-glass-minimal p-3 rounded-lg cursor-pointer hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/10"
                         onClick={() => setSelectedLog(relatedLog)}
                         data-testid={`related-log-${relatedLog.id}`}
                       >

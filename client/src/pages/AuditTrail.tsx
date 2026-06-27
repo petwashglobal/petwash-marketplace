@@ -31,7 +31,7 @@ export default function AuditTrail() {
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center p-6">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-4 border-purple-600 border-t-transparent mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-16 w-16 border-4 border-[#B8932F] border-t-transparent mx-auto mb-4"></div>
           <p className="luxury-text-body">Loading audit trail...</p>
         </div>
       </div>
@@ -68,7 +68,7 @@ export default function AuditTrail() {
           {records.length === 0 ? (
             <Card className="luxury-glass-panel">
               <CardContent className="pt-6 text-center">
-                <Clock className="h-12 w-12 mx-auto mb-3 opacity-50 text-purple-400" />
+                <Clock className="h-12 w-12 mx-auto mb-3 opacity-50 text-[#D4AF37]" />
                 <p className="luxury-text-body">No transactions yet</p>
               </CardContent>
             </Card>
@@ -103,7 +103,7 @@ export default function AuditTrail() {
                     <span className="font-semibold">ID:</span> {record.entityId}
                   </div>
                 </div>
-                <div className="luxury-text-small font-mono bg-purple-50 dark:bg-white p-3 rounded-lg">
+                <div className="luxury-text-small font-mono bg-[#D4AF37] dark:bg-white p-3 rounded-lg">
                   Hash: {record.currentHash?.substring(0, 32)}...
                 </div>
               </div>

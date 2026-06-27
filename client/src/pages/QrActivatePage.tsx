@@ -198,9 +198,9 @@ export default function QrActivatePage() {
         {/* Step: RUNNING */}
         {step === 'running' && (
           <div className="space-y-4">
-            <div className="rounded-2xl border border-blue-100 bg-blue-50 p-6 text-center">
-              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-100 mb-4">
-                <Waves className="w-8 h-8 text-blue-500 animate-pulse" />
+            <div className="rounded-2xl border border-[#D4AF37] bg-[#D4AF37] p-6 text-center">
+              <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-[#D4AF37] mb-4">
+                <Waves className="w-8 h-8 text-[#D4AF37] animate-pulse" />
               </div>
               <p className="font-bold text-gray-900 text-lg">
                 {isRtl ? 'השטיפה פעילה' : 'Wash in progress'}
@@ -210,8 +210,8 @@ export default function QrActivatePage() {
               )}
               {remaining !== null && (
                 <div className="flex items-center justify-center gap-2 mt-4">
-                  <Clock className="w-4 h-4 text-blue-400" />
-                  <span className="font-mono text-xl font-bold text-blue-600">
+                  <Clock className="w-4 h-4 text-[#D4AF37]" />
+                  <span className="font-mono text-xl font-bold text-[#B8932F]">
                     {formatSeconds(remaining)}
                   </span>
                   <span className="text-sm text-gray-400">

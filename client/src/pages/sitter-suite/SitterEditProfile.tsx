@@ -177,7 +177,7 @@ export default function SitterEditProfile() {
 
       <main className="max-w-3xl mx-auto px-6 py-8">
         <div className="bg-white dark:bg-white rounded-3xl shadow-xl overflow-hidden">
-          <div className="relative bg-gradient-to-r from-[#D4AF37] via-[#C9A536] to-orange-500 p-8">
+          <div className="relative bg-gradient-to-r from-[#D4AF37] via-[#C9A536] to-[#D4AF37] p-8">
             <div className="flex flex-col items-center">
               <div className="relative group">
                 <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37] to-[#B8932F] rounded-full blur-lg opacity-75 group-hover:opacity-100 transition-opacity"></div>
@@ -351,7 +351,7 @@ export default function SitterEditProfile() {
               <Button
                 onClick={handleSave}
                 disabled={updateMutation.isPending}
-                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-[#D4AF37] via-[#C9A536] to-orange-500 hover:from-[#D4AF37] hover:via-[#C9A536] hover:to-orange-600 rounded-2xl shadow-lg hover:shadow-xl transition-all"
+                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-[#D4AF37] via-[#C9A536] to-[#D4AF37] hover:from-[#D4AF37] hover:via-[#C9A536] hover:to-[#B8932F] rounded-2xl shadow-lg hover:shadow-xl transition-all"
               >
                 {updateMutation.isPending ? (
                   <>

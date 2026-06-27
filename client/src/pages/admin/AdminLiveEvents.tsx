@@ -37,7 +37,7 @@ const EVENT_CONFIG: Record<LiveEvent['type'], {
   bg: string;
   labelEn: string;
 }> = {
-  MATCHING_STARTED:  { icon: Search,     color: 'text-blue-600',   bg: 'bg-blue-50 dark:bg-white',   labelEn: 'Matching Started' },
+  MATCHING_STARTED:  { icon: Search,     color: 'text-[#B8932F]',   bg: 'bg-[#D4AF37] dark:bg-white',   labelEn: 'Matching Started' },
   PROVIDER_ACCEPTED: { icon: CheckCircle, color: 'text-emerald-600', bg: 'bg-emerald-50 dark:bg-emerald-900/20', labelEn: 'Provider Accepted' },
   PROVIDER_ARRIVING: { icon: Navigation2, color: 'text-amber-600',  bg: 'bg-amber-50 dark:bg-amber-900/20', labelEn: 'Provider Arriving' },
 };
@@ -197,7 +197,7 @@ export default function AdminLiveEvents() {
               size="sm"
               onClick={fireTestEvents}
               disabled={firing}
-              className="border-violet-300 text-violet-700 hover:bg-violet-50"
+              className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
             >
               <FlaskConical className="h-3.5 w-3.5 mr-1.5" />
               {firing ? 'Firing…' : 'Fire test events'}
@@ -227,7 +227,7 @@ export default function AdminLiveEvents() {
         {/* Stats */}
         <div className="grid grid-cols-3 gap-4 mb-6">
           {[
-            { label: 'Matching Started', value: matching, icon: Search,     color: 'text-blue-600' },
+            { label: 'Matching Started', value: matching, icon: Search,     color: 'text-[#B8932F]' },
             { label: 'Provider Accepted', value: accepted, icon: CheckCircle, color: 'text-emerald-600' },
             { label: 'Provider Arriving', value: arriving, icon: Navigation2, color: 'text-amber-600' },
           ].map(({ label, value, icon: Icon, color }) => (

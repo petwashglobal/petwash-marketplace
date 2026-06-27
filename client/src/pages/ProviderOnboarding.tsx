@@ -617,16 +617,16 @@ export default function ProviderOnboarding() {
             </div>
             <div className="space-y-6 luxury-animate-fade-in luxury-delay-2">
               {biometricScore !== null && (
-                <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-blue-400/30">
+                <div className="luxury-glass-card luxury-shadow-md p-6 border-2 border-[#D4AF37]/30">
                   <div className="flex items-center gap-3 mb-3">
-                    <Shield className="h-6 w-6 text-blue-600" />
-                    <h3 className="luxury-heading-sm text-blue-900 dark:text-blue-200">
+                    <Shield className="h-6 w-6 text-[#B8932F]" />
+                    <h3 className="luxury-heading-sm text-[#B8932F] dark:text-[#D4AF37]">
                       {t.biometricMatch}
                     </h3>
                   </div>
                   <div className="flex items-center justify-between">
-                    <span className="text-blue-800 dark:text-blue-300">{t.matchScore}:</span>
-                    <span className="text-2xl font-bold text-blue-900 dark:text-blue-100">
+                    <span className="text-[#B8932F] dark:text-[#D4AF37]">{t.matchScore}:</span>
+                    <span className="text-2xl font-bold text-[#B8932F] dark:text-[#D4AF37]">
                       {biometricScore.toFixed(1)}%
                     </span>
                   </div>
@@ -654,9 +654,9 @@ export default function ProviderOnboarding() {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-start gap-3 p-3 rounded-lg bg-blue-50 border border-blue-100">
-                  <Users className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
-                  <p className="text-sm text-blue-900">
+                <div className="flex items-start gap-3 p-3 rounded-lg bg-[#D4AF37] border border-[#D4AF37]">
+                  <Users className="h-5 w-5 text-[#B8932F] mt-0.5 flex-shrink-0" />
+                  <p className="text-sm text-[#B8932F]">
                     {isHebrew
                       ? 'תקבל הודעת אימייל ו-SMS ברגע שהבקשה תאושר'
                       : 'You will receive an email and SMS the moment your application is approved'}
@@ -678,7 +678,7 @@ export default function ProviderOnboarding() {
                 </p>
                 <a
                   href="mailto:support@petwash.co.il"
-                  className="text-sm text-blue-600 underline underline-offset-2"
+                  className="text-sm text-[#B8932F] underline underline-offset-2"
                 >
                   support@petwash.co.il
                 </a>
@@ -723,22 +723,22 @@ export default function ProviderOnboarding() {
 
         {/* Progress Steps - Luxury Gradient Circles */}
         <div className="flex items-center justify-center gap-2 md:gap-4 mb-8 px-4 luxury-animate-slide-up luxury-delay-1">
-          <div className={`flex items-center gap-2 ${step >= 1 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
+          <div className={`flex items-center gap-2 ${step >= 1 ? 'text-[#B8932F]' : 'text-gray-400'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 1 ? 'bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
               1
             </div>
             <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'פלטפורמה ופרטים' : 'Platform & Info'}</span>
           </div>
-          <div className={`h-0.5 w-8 ${step >= 2 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
-          <div className={`flex items-center gap-2 ${step >= 2 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
+          <div className={`h-0.5 w-8 ${step >= 2 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B8932F]' : 'bg-gray-300'}`}></div>
+          <div className={`flex items-center gap-2 ${step >= 2 ? 'text-[#B8932F]' : 'text-gray-400'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 2 ? 'bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
               2
             </div>
             <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'מסמכים' : 'Documents'}</span>
           </div>
-          <div className={`h-0.5 w-8 ${step >= 3 ? 'bg-gradient-to-r from-blue-500 to-purple-600' : 'bg-gray-300'}`}></div>
-          <div className={`flex items-center gap-2 ${step >= 3 ? 'text-blue-600' : 'text-gray-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 3 ? 'bg-gradient-to-br from-blue-500 to-purple-600 text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
+          <div className={`h-0.5 w-8 ${step >= 3 ? 'bg-gradient-to-r from-[#D4AF37] to-[#B8932F]' : 'bg-gray-300'}`}></div>
+          <div className={`flex items-center gap-2 ${step >= 3 ? 'text-[#B8932F]' : 'text-gray-400'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold ${step >= 3 ? 'bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' : 'bg-white text-gray-500'}`}>
               3
             </div>
             <span className="hidden lg:inline text-sm font-medium">{isHebrew ? 'רקע' : 'Background'}</span>
@@ -1097,7 +1097,7 @@ export default function ProviderOnboarding() {
                   {/* Insurance Certificate + Policy Details (Walkers/Sitters) */}
                   {(hasProviderType('walker') || hasProviderType('sitter')) && (
                     <>
-                      <div className="luxury-glass-card luxury-shadow-md p-4 space-y-3 border-2 border-blue-400/20">
+                      <div className="luxury-glass-card luxury-shadow-md p-4 space-y-3 border-2 border-[#D4AF37]/20">
                         <Label htmlFor="insurance" className="text-lg font-semibold">
                           {t.insurancePolicy}
                         </Label>
@@ -1259,18 +1259,18 @@ export default function ProviderOnboarding() {
             {/* Step 3: Declarations & Background Check (2026 Spec) */}
             {step === 3 && (
               <div className="space-y-6">
-                <Alert className="border-blue-500 bg-blue-50 dark:bg-white">
-                  <Shield className="h-5 w-5 text-blue-600" />
+                <Alert className="border-[#D4AF37] bg-[#D4AF37] dark:bg-white">
+                  <Shield className="h-5 w-5 text-[#B8932F]" />
                   <AlertDescription>
-                    <strong className="text-blue-900 dark:text-blue-200">{t.backgroundCheck}</strong>
+                    <strong className="text-[#B8932F] dark:text-[#D4AF37]">{t.backgroundCheck}</strong>
                     <br />
-                    <span className="text-blue-800 dark:text-blue-300">{t.backgroundCheckDescription}</span>
+                    <span className="text-[#B8932F] dark:text-[#D4AF37]">{t.backgroundCheckDescription}</span>
                   </AlertDescription>
                 </Alert>
 
                 {/* Role-Specific Declarations - USA 2025 Compliance */}
-                <div className="luxury-glass-card luxury-shadow-lg border-2 border-purple-400/30 p-6">
-                  <h3 className="luxury-heading-sm text-purple-900 dark:text-purple-200 mb-4 flex items-center gap-2">
+                <div className="luxury-glass-card luxury-shadow-lg border-2 border-[#D4AF37]/30 p-6">
+                  <h3 className="luxury-heading-sm text-[#B8932F] dark:text-[#D4AF37] mb-4 flex items-center gap-2">
                     <Shield className="h-5 w-5" />
                     {isHebrew ? 'הצהרות נדרשות' : 'Required Declarations'}
                   </h3>
@@ -1282,8 +1282,8 @@ export default function ProviderOnboarding() {
 
                   {/* Driver Declarations (PetTrek) */}
                   {hasProviderType('driver') && (
-                    <div className="space-y-3 mb-6 p-4 bg-blue-50 dark:bg-white rounded-lg border border-blue-200 dark:border-blue-800">
-                      <h4 className="font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                    <div className="space-y-3 mb-6 p-4 bg-[#D4AF37] dark:bg-white rounded-lg border border-[#D4AF37] dark:border-[#B8932F]">
+                      <h4 className="font-semibold text-[#B8932F] dark:text-[#D4AF37] flex items-center gap-2">
                         <Car className="w-4 h-4" aria-hidden="true" />
                         {isHebrew ? 'הצהרות נהג (PetTrek)' : 'Driver Declarations (PetTrek)'}
                       </h4>
@@ -1347,8 +1347,8 @@ export default function ProviderOnboarding() {
 
                   {/* Sitter/Walker Declarations */}
                   {(hasProviderType('walker') || hasProviderType('sitter')) && (
-                    <div className="space-y-3 mb-6 p-4 bg-pink-50 dark:bg-pink-900/20 rounded-lg border border-pink-200 dark:border-pink-800">
-                      <h4 className="font-semibold text-pink-900 dark:text-pink-200 flex items-center gap-2">
+                    <div className="space-y-3 mb-6 p-4 bg-[#D4AF37] dark:bg-[#B8932F]/20 rounded-lg border border-[#D4AF37] dark:border-[#B8932F]">
+                      <h4 className="font-semibold text-[#B8932F] dark:text-[#D4AF37] flex items-center gap-2">
                         <Footprints className="w-4 h-4" aria-hidden="true" />
                         {isHebrew ? 'הצהרות שמרטף/מטייל' : 'Sitter/Walker Declarations'}
                       </h4>
@@ -1389,15 +1389,15 @@ export default function ProviderOnboarding() {
                   </div>
 
                   {/* Israel-safe self-declaration (2026 spec). Mandatory.  */}
-                  <div className="space-y-3 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-300 dark:border-blue-700">
-                    <h4 className="font-semibold text-blue-900 dark:text-blue-200 flex items-center gap-2">
+                  <div className="space-y-3 p-4 bg-[#D4AF37] dark:bg-[#B8932F]/20 rounded-lg border-2 border-[#D4AF37] dark:border-[#B8932F]">
+                    <h4 className="font-semibold text-[#B8932F] dark:text-[#D4AF37] flex items-center gap-2">
                       <Shield className="w-4 h-4" aria-hidden="true" />
                       {declarationText.title}
                     </h4>
-                    <p className="text-xs text-blue-900 dark:text-blue-200">
+                    <p className="text-xs text-[#B8932F] dark:text-[#D4AF37]">
                       {declarationText.idRequiredNotice}
                     </p>
-                    <p className="text-xs text-blue-900 dark:text-blue-200">
+                    <p className="text-xs text-[#B8932F] dark:text-[#D4AF37]">
                       {declarationText.body}
                     </p>
                     <label className="flex items-start gap-3 cursor-pointer">
@@ -1407,14 +1407,14 @@ export default function ProviderOnboarding() {
                         className="mt-1"
                         data-testid="checkbox-self-declaration-no-convictions"
                       />
-                      <span className="text-sm text-blue-900 dark:text-blue-200">
+                      <span className="text-sm text-[#B8932F] dark:text-[#D4AF37]">
                         {declarationText.checkboxLabel}
                       </span>
                     </label>
 
                     {/* Optional opt-in to high-risk service categories */}
-                    <div className="mt-2 pt-3 border-t border-blue-200 dark:border-blue-700">
-                      <p className="text-xs font-medium text-blue-900 dark:text-blue-200 mb-2">
+                    <div className="mt-2 pt-3 border-t border-[#D4AF37] dark:border-[#B8932F]">
+                      <p className="text-xs font-medium text-[#B8932F] dark:text-[#D4AF37] mb-2">
                         {isHebrew ? 'שירותים שאספק (סמן את כל הרלוונטיים):' : 'Services I will offer (tick all that apply):'}
                       </p>
                       {ENHANCED_VERIFICATION_REASONS.map((reason) => {
@@ -1434,7 +1434,7 @@ export default function ProviderOnboarding() {
                               className="mt-1"
                               data-testid={`checkbox-enhanced-${reason}`}
                             />
-                            <span className="text-sm text-blue-900 dark:text-blue-200">{label}</span>
+                            <span className="text-sm text-[#B8932F] dark:text-[#D4AF37]">{label}</span>
                           </label>
                         );
                       })}

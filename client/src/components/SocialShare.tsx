@@ -98,19 +98,19 @@ export function SocialShare({
         icon={Facebook}
         label="Facebook"
         onClick={() => openShare(shareUrls.facebook)}
-        color="text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-950"
+        color="text-[#B8932F] hover:bg-[#D4AF37] dark:text-[#D4AF37] dark:hover:bg-[#B8932F]"
       />
       <ShareButton
         icon={Twitter}
         label="Twitter"
         onClick={() => openShare(shareUrls.twitter)}
-        color="text-sky-500 hover:bg-sky-50 dark:text-sky-400 dark:hover:bg-sky-950"
+        color="text-[#D4AF37] hover:bg-[#D4AF37] dark:text-[#D4AF37] dark:hover:bg-[#B8932F]"
       />
       <ShareButton
         icon={Linkedin}
         label="LinkedIn"
         onClick={() => openShare(shareUrls.linkedin)}
-        color="text-blue-700 hover:bg-blue-50 dark:text-blue-500 dark:hover:bg-blue-950"
+        color="text-[#B8932F] hover:bg-[#D4AF37] dark:text-[#D4AF37] dark:hover:bg-[#B8932F]"
       />
       <ShareButton
         icon={MessageCircle}

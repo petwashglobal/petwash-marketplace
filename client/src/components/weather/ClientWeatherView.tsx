@@ -33,15 +33,15 @@ interface Props {
 
 const RATING_GRADIENT = {
   excellent: 'from-emerald-500 via-green-400 to-teal-400',
-  good: 'from-blue-500 via-cyan-400 to-sky-400',
-  moderate: 'from-amber-500 via-yellow-400 to-orange-400',
-  poor: 'from-red-500 via-rose-400 to-pink-400',
+  good: 'from-[#D4AF37] via-[#D4AF37] to-[#D4AF37]',
+  moderate: 'from-amber-500 via-yellow-400 to-[#D4AF37]',
+  poor: 'from-red-500 via-rose-400 to-[#D4AF37]',
 };
 
 const getWeatherIcon = (code: number) => {
   if (code === 0 || code === 1) return <Sun className="w-8 h-8 text-yellow-400" />;
   if (code === 2 || code === 3) return <Cloud className="w-8 h-8 text-gray-400" />;
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return <CloudRain className="w-8 h-8 text-blue-400" />;
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return <CloudRain className="w-8 h-8 text-[#D4AF37]" />;
   return <Cloud className="w-8 h-8 text-gray-400" />;
 };
 
@@ -54,7 +54,7 @@ export default function ClientWeatherView({ data }: Props) {
         animate={{ opacity: 1, y: 0 }}
         className="max-w-6xl mx-auto mb-12 text-center"
       >
-        <h1 className="text-5xl md:text-6xl font-black mb-4 bg-gradient-to-r from-purple-300 via-pink-200 to-purple-300 bg-clip-text text-transparent">
+        <h1 className="text-5xl md:text-6xl font-black mb-4 bg-gradient-to-r from-[#D4AF37] via-[#D4AF37] to-[#D4AF37] bg-clip-text text-transparent">
           My Wash Calendar
         </h1>
         <p className="text-xl text-gray-300">
@@ -69,9 +69,9 @@ export default function ClientWeatherView({ data }: Props) {
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {data.personalRecommendations.map((rec, idx) => (
-            <Card key={idx} className="bg-gradient-to-br from-purple-500/10 to-pink-500/5 border-purple-500/30 backdrop-blur-md p-6">
+            <Card key={idx} className="bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/5 border-[#D4AF37]/30 backdrop-blur-md p-6">
               <div className="flex items-center gap-3">
-                <TrendingUp className="w-6 h-6 text-purple-400" />
+                <TrendingUp className="w-6 h-6 text-[#D4AF37]" />
                 <p className="text-gray-200">{rec}</p>
               </div>
             </Card>
@@ -95,7 +95,7 @@ export default function ClientWeatherView({ data }: Props) {
             >
               <Card className={`relative overflow-hidden bg-gradient-to-br ${
                 day.washScore >= 80 ? 'from-emerald-500/10 to-green-500/5 border-emerald-500/30' :
-                day.washScore >= 60 ? 'from-blue-500/10 to-cyan-500/5 border-blue-500/30' :
+                day.washScore >= 60 ? 'from-[#D4AF37]/10 to-[#D4AF37]/5 border-[#D4AF37]/30' :
                 day.washScore >= 40 ? 'from-amber-500/10 to-yellow-500/5 border-amber-500/30' :
                 'from-red-500/10 to-rose-500/5 border-red-500/30'
               } backdrop-blur-md hover:scale-105 transition-transform duration-300`}>
@@ -134,7 +134,7 @@ export default function ClientWeatherView({ data }: Props) {
                   {/* Book Button */}
                   <Button
                     data-testid={`button-book-day-${index}`}
-                    className="w-full mt-4 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600"
+                    className="w-full mt-4 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] hover:from-[#B8932F] hover:to-[#B8932F]"
                     size="sm"
                   >
                     <Calendar className="w-4 h-4 mr-2" />

@@ -230,7 +230,7 @@ export default function K9000Redeem() {
     return (
       <Layout>
         <div className="min-h-screen bg-white flex items-center justify-center">
-          <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+          <Loader2 className="w-8 h-8 animate-spin text-[#B8932F]" />
         </div>
       </Layout>
     );
@@ -279,7 +279,7 @@ export default function K9000Redeem() {
                     <span className="text-sm font-medium text-gray-500">
                       {isHebrew ? 'מחיר שטיפה סטנדרטי' : 'Standard K9000 Wash'}
                     </span>
-                    <Badge className="bg-blue-100 text-blue-700 border-0">K9000</Badge>
+                    <Badge className="bg-[#D4AF37] text-[#B8932F] border-0">K9000</Badge>
                   </div>
                   <div className="text-3xl font-bold text-gray-900">{formatCurrency(WASH_PRICE_CENTS)}</div>
                 </CardContent>
@@ -287,7 +287,7 @@ export default function K9000Redeem() {
 
               <div>
                 <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                  <Smartphone className="w-4 h-4 text-blue-600" />
+                  <Smartphone className="w-4 h-4 text-[#B8932F]" />
                   {isHebrew ? 'בחר אמצעי תשלום' : 'Select Payment Method'}
                 </h2>
 
@@ -330,19 +330,19 @@ export default function K9000Redeem() {
                     <label
                       className={`flex items-center gap-4 p-4 rounded-xl border-2 cursor-pointer transition-all ${
                         selectedOption === 'egift'
-                          ? 'border-blue-500 bg-blue-50'
+                          ? 'border-[#D4AF37] bg-[#D4AF37]'
                           : 'border-gray-200 hover:border-gray-300'
                       }`}
                     >
                       <RadioGroupItem value="egift" />
-                      <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                        <CreditCard className="w-5 h-5 text-blue-600" />
+                      <div className="w-10 h-10 rounded-xl bg-[#D4AF37] flex items-center justify-center">
+                        <CreditCard className="w-5 h-5 text-[#B8932F]" />
                       </div>
                       <div className="flex-1">
                         <div className="font-semibold text-gray-900">
                           {isHebrew ? 'שימוש ביתרת מתנה' : 'Use E-Gift Balance'}
                         </div>
-                        <div className="text-sm text-blue-600 font-medium">
+                        <div className="text-sm text-[#B8932F] font-medium">
                           {formatCurrency(wallet!.egiftBalanceCents)} {isHebrew ? 'זמין' : 'available'}
                         </div>
                       </div>
@@ -406,7 +406,7 @@ export default function K9000Redeem() {
               <Button
                 onClick={handleGenerate}
                 disabled={!selectedOption || isGenerating}
-                className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg text-base font-semibold gap-3 disabled:opacity-50"
+                className="w-full h-14 rounded-xl bg-[#B8932F] hover:bg-[#B8932F] text-white shadow-lg text-base font-semibold gap-3 disabled:opacity-50"
               >
                 {isGenerating ? (
                   <Loader2 className="w-5 h-5 animate-spin" />
@@ -422,7 +422,7 @@ export default function K9000Redeem() {
             <div className="space-y-5 luxury-animate-slide-up">
 
               <div className="text-center">
-                <div className="inline-flex items-center gap-2 bg-blue-50 text-blue-700 rounded-full px-4 py-2 text-sm font-medium mb-4">
+                <div className="inline-flex items-center gap-2 bg-[#D4AF37] text-[#B8932F] rounded-full px-4 py-2 text-sm font-medium mb-4">
                   <Smartphone className="w-4 h-4" />
                   {isHebrew ? 'הצג את הקוד לסורק בתחנה' : 'Show this QR to the K9000 scanner'}
                 </div>
@@ -455,7 +455,7 @@ export default function K9000Redeem() {
                       color={secondsLeft < 60 ? '#ef4444' : secondsLeft < 180 ? '#f59e0b' : '#3b82f6'}
                     >
                       <div className="text-center">
-                        <Clock className={`w-3 h-3 mx-auto mb-0.5 ${secondsLeft < 60 ? 'text-red-500' : 'text-blue-600'}`} />
+                        <Clock className={`w-3 h-3 mx-auto mb-0.5 ${secondsLeft < 60 ? 'text-red-500' : 'text-[#B8932F]'}`} />
                         <div className={`text-xs font-bold ${secondsLeft < 60 ? 'text-red-500' : 'text-gray-700'}`}>
                           {minutes}:{seconds.toString().padStart(2, '0')}
                         </div>
@@ -639,7 +639,7 @@ export default function K9000Redeem() {
                         <div className="text-[10px] text-gray-400">{isHebrew ? 'שטיפות' : 'Washes'}</div>
                       </div>
                       <div>
-                        <CreditCard className="w-4 h-4 mx-auto text-blue-600 mb-1" />
+                        <CreditCard className="w-4 h-4 mx-auto text-[#B8932F] mb-1" />
                         <div className="text-lg font-bold text-gray-900">{formatCurrency(wallet.egiftBalanceCents)}</div>
                         <div className="text-[10px] text-gray-400">{isHebrew ? 'מתנה' : 'E-Gift'}</div>
                       </div>
@@ -655,7 +655,7 @@ export default function K9000Redeem() {
 
               <Button
                 onClick={() => setLocation('/my-wallet')}
-                className="w-full h-14 rounded-xl bg-blue-600 hover:bg-blue-700 text-white shadow-lg text-base font-semibold gap-3"
+                className="w-full h-14 rounded-xl bg-[#B8932F] hover:bg-[#B8932F] text-white shadow-lg text-base font-semibold gap-3"
               >
                 <ArrowLeft className="w-5 h-5" />
                 {isHebrew ? 'חזרה לארנק' : 'Back to Wallet'}
@@ -732,7 +732,7 @@ export default function K9000Redeem() {
                 </Button>
                 <Button
                   onClick={() => setLocation('/my-wallet')}
-                  className="flex-1 h-12 rounded-xl bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                  className="flex-1 h-12 rounded-xl bg-[#B8932F] hover:bg-[#B8932F] text-white gap-2"
                 >
                   <Wallet className="w-4 h-4" />
                   {isHebrew ? 'הארנק שלי' : 'My Wallet'}

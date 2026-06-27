@@ -49,7 +49,7 @@ export default function FranchiseReports() {
         {/* Gemini AI Narrative Report (T011) */}
         <div className="luxury-glass-card shadow-lg luxury-animate-fade-in mb-6 p-4">
           <div className="flex items-center gap-3 mb-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <div>
@@ -58,7 +58,7 @@ export default function FranchiseReports() {
             </div>
           </div>
           {aiReport ? (
-            <div className="bg-white/70 rounded-xl p-4 text-sm text-gray-700 leading-relaxed mb-3 whitespace-pre-wrap border border-blue-50">
+            <div className="bg-white/70 rounded-xl p-4 text-sm text-gray-700 leading-relaxed mb-3 whitespace-pre-wrap border border-[#D4AF37]">
               {aiReport}
             </div>
           ) : (
@@ -78,7 +78,7 @@ export default function FranchiseReports() {
           <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-1">
             <CardHeader>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileSpreadsheet className="h-5 w-5 text-white" />
                 </div>
                 <CardTitle className="luxury-heading-md">{t('reports.monthlyReport', language)}</CardTitle>
@@ -105,7 +105,7 @@ export default function FranchiseReports() {
           <div className="luxury-glass-card shadow-lg luxury-animate-fade-in luxury-delay-2">
             <CardHeader>
               <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <CardTitle className="luxury-heading-md">{t('reports.dailyReport', language)}</CardTitle>

@@ -184,7 +184,7 @@ export function DataProcessingConsent({
             <ul className="space-y-2">
               {t.whyList.map((item, index) => (
                 <li key={index} className="flex items-start gap-2 text-sm text-gray-700">
-                  <Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <Check className="w-4 h-4 text-[#B8932F] mt-0.5 flex-shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -192,12 +192,12 @@ export function DataProcessingConsent({
           </div>
 
           {/* Your Rights */}
-          <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
-            <h3 className="text-lg font-semibold text-blue-900 mb-3">{t.yourRights}</h3>
+          <div className="bg-[#D4AF37] rounded-lg p-4 border border-[#D4AF37]">
+            <h3 className="text-lg font-semibold text-[#B8932F] mb-3">{t.yourRights}</h3>
             <ul className="space-y-2">
               {t.rightsList.map((item, index) => (
-                <li key={index} className="flex items-start gap-2 text-sm text-blue-800">
-                  <Check className="w-4 h-4 text-blue-600 mt-0.5 flex-shrink-0" />
+                <li key={index} className="flex items-start gap-2 text-sm text-[#B8932F]">
+                  <Check className="w-4 h-4 text-[#B8932F] mt-0.5 flex-shrink-0" />
                   <span>{item}</span>
                 </li>
               ))}
@@ -265,7 +265,7 @@ export function DataProcessingConsent({
             <a href="/terms" target="_blank" className="text-black dark:text-black hover:underline">
               {t.viewTerms} →
             </a>
-            <a href="/account-settings#data-rights" className="text-blue-600 hover:underline">
+            <a href="/account-settings#data-rights" className="text-[#B8932F] hover:underline">
               {language === 'he' ? 'זכויות הנתונים שלי' : 'My Data Rights'} →
             </a>
           </div>

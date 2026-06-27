@@ -327,8 +327,8 @@ export default function DeviceManagement() {
               animate={{ opacity: 1, scale: 1 }}
             >
               <Card className="p-12 text-center luxury-glass-card luxury-shadow-lg">
-                <div className="mx-auto w-20 h-20 bg-blue-100 rounded-full flex items-center justify-center mb-6">
-                  <Shield className="h-10 w-10 text-blue-600" />
+                <div className="mx-auto w-20 h-20 bg-[#D4AF37] rounded-full flex items-center justify-center mb-6">
+                  <Shield className="h-10 w-10 text-[#B8932F]" />
                 </div>
                 <h3 className="luxury-heading-md mb-3">
                   {t('devices.noDevices', language)}
@@ -494,14 +494,14 @@ export default function DeviceManagement() {
               animate={{ opacity: 1 }}
               className="mt-8"
             >
-              <Card className="p-4 bg-blue-50 border-blue-200">
+              <Card className="p-4 bg-[#D4AF37] border-[#D4AF37]">
                 <div className="flex items-start gap-3">
-                  <Info className="h-5 w-5 text-blue-600 mt-0.5 flex-shrink-0" />
+                  <Info className="h-5 w-5 text-[#B8932F] mt-0.5 flex-shrink-0" />
                   <div>
-                    <h4 className="font-semibold text-blue-900 mb-1">
+                    <h4 className="font-semibold text-[#B8932F] mb-1">
                       {t('devices.securityTip', language)}
                     </h4>
-                    <p className="text-sm text-blue-800">
+                    <p className="text-sm text-[#B8932F]">
                       {t('devices.backupDevice', language)}
                     </p>
                   </div>

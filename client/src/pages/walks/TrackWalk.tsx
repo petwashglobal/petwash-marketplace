@@ -44,8 +44,8 @@ export default function TrackWalk() {
         <div className="luxury-glass-card luxury-shadow-xl p-6 luxury-animate-fade-in">
           <div className="space-y-8">
             {/* Live GPS Map Placeholder */}
-            <div className="bg-gradient-to-br from-purple-100 to-purple-200 rounded-2xl h-96 flex items-center justify-center relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-purple-400/20 to-purple-600/20"></div>
+            <div className="bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-2xl h-96 flex items-center justify-center relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-[#D4AF37]/20 to-[#B8932F]/20"></div>
               <div className="relative z-10 text-center">
                 <MapPin className="h-16 w-16 mx-auto mb-4" style={{ color: '#667eea' }} />
                 <p className="luxury-heading-md" style={{ color: '#667eea' }}>
@@ -57,7 +57,7 @@ export default function TrackWalk() {
             {/* Walk Stats */}
             <div className="luxury-grid-3">
               <div className="luxury-glass-panel luxury-shadow-md p-6 text-center">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
                   <Clock className="h-6 w-6 text-white" />
                 </div>
                 <p className="luxury-text-small mb-1">
@@ -75,7 +75,7 @@ export default function TrackWalk() {
                 <p className="luxury-heading-md">-- km</p>
               </div>
               <div className="luxury-glass-panel luxury-shadow-md p-6 text-center">
-                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+                <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
                   <Camera className="h-6 w-6 text-white" />
                 </div>
                 <p className="luxury-text-small mb-1">

@@ -399,7 +399,7 @@ export default function ProviderCompliance() {
                     </div>
                     <div>
                       <p className="text-sm font-medium">Total Commissions</p>
-                      <p className="text-2xl font-bold text-orange-600">
+                      <p className="text-2xl font-bold text-[#B8932F]">
                         ₪{compliance.compliance.commissionStats.totalCommissions?.toFixed(2) || '0.00'}
                       </p>
                     </div>

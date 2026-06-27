@@ -86,7 +86,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
       value: analyticsData?.stations?.totalStations || 0,
       active: analyticsData?.stations?.activeStations || 0,
       icon: Building2,
-      color: "text-blue-600",
+      color: "text-[#B8932F]",
     },
     {
       title: "Active Franchisees",
@@ -107,7 +107,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
       value: analyticsData?.workOrders?.totalPending || 0,
       inProgress: analyticsData?.workOrders?.totalInProgress || 0,
       icon: Wrench,
-      color: "text-orange-600",
+      color: "text-[#B8932F]",
     },
   ];
 
@@ -207,7 +207,7 @@ export default function EnterpriseHQ({ language, onLanguageChange }: EnterpriseH
                 placeholder="Search stations, franchisees, assets..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-10 luxury-glass-minimal border-0 focus:ring-2 focus:ring-purple-400"
+                className="pl-10 luxury-glass-minimal border-0 focus:ring-2 focus:ring-[#D4AF37]"
                 data-testid="input-search-global"
               />
             </div>

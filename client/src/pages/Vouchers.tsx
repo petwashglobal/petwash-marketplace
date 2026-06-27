@@ -82,7 +82,7 @@ export default function Vouchers() {
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="luxury-glass-card luxury-shadow-xl max-w-md p-8 text-center luxury-animate-scale-in">
-          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center mx-auto mb-6">
+          <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center mx-auto mb-6">
             <Wallet className="w-8 h-8 text-white" />
           </div>
           <h2 className="luxury-heading-md mb-3">Authentication Required</h2>
@@ -182,7 +182,7 @@ export default function Vouchers() {
           <div className="grid grid-cols-1 sm:grid-cols-3 luxury-gap-md mb-12">
             <div className="luxury-glass-card luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-1">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center luxury-shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center luxury-shadow-md">
                   <Wallet className="w-7 h-7 text-white" />
                 </div>
                 <div>
@@ -206,7 +206,7 @@ export default function Vouchers() {
             
             <div className="luxury-glass-card luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-3">
               <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-pink-500 to-pink-600 flex items-center justify-center luxury-shadow-md">
+                <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center luxury-shadow-md">
                   <Sparkles className="w-7 h-7 text-white" />
                 </div>
                 <div>
@@ -221,8 +221,8 @@ export default function Vouchers() {
         {/* Vouchers Grid */}
         {vouchers.length === 0 ? (
           <div className="luxury-glass-card text-center py-16 px-8 luxury-animate-fade-in luxury-delay-4">
-            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center mx-auto mb-6">
-              <Sparkles className="w-10 h-10 text-purple-600" />
+            <div className="w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center mx-auto mb-6">
+              <Sparkles className="w-10 h-10 text-[#B8932F]" />
             </div>
             <h3 className="luxury-heading-md mb-3">No Vouchers Yet</h3>
             <p className="luxury-text-body mb-8 max-w-md mx-auto">

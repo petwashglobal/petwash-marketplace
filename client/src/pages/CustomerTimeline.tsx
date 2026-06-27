@@ -13,8 +13,8 @@ import {
 import { cn } from "@/lib/utils";
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; label: string; amountSign: string }> = {
-  marketplace_booking: { icon: CalendarDays, color: "text-blue-500",    label: "הזמנה",            amountSign: "-" },
-  k9000_wash:          { icon: Droplets,     color: "text-cyan-500",    label: "K9000 שטיפה",      amountSign: "-" },
+  marketplace_booking: { icon: CalendarDays, color: "text-[#D4AF37]",    label: "הזמנה",            amountSign: "-" },
+  k9000_wash:          { icon: Droplets,     color: "text-[#D4AF37]",    label: "K9000 שטיפה",      amountSign: "-" },
   k9000_refund:        { icon: RefreshCcw,   color: "text-emerald-600", label: "פיצוי K9000",      amountSign: "+" },
   wallet_credit:       { icon: TrendingUp,   color: "text-green-500",   label: "טעינת ארנק",       amountSign: "+" },
   wallet_debit:        { icon: TrendingDown, color: "text-red-400",     label: "שימוש בארנק",      amountSign: "-" },
@@ -34,8 +34,8 @@ const BOOKING_STATUS_LABELS: Record<string, string> = {
 
 const BOOKING_STATUS_COLOR: Record<string, string> = {
   completed:   "bg-green-100 text-green-800",
-  in_progress: "bg-blue-100 text-blue-800",
-  confirmed:   "bg-blue-100 text-blue-800",
+  in_progress: "bg-[#D4AF37] text-[#B8932F]",
+  confirmed:   "bg-[#D4AF37] text-[#B8932F]",
   pending:     "bg-yellow-100 text-yellow-800",
   cancelled:   "bg-white text-gray-600",
   declined:    "bg-white text-gray-600",

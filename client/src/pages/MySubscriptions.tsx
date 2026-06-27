@@ -139,7 +139,7 @@ export default function MySubscriptions() {
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
         <div className="text-center luxury-animate-fade-in">
-          <Package className="w-16 h-16 text-purple-500 animate-pulse mx-auto mb-4" />
+          <Package className="w-16 h-16 text-[#D4AF37] animate-pulse mx-auto mb-4" />
           <p className="luxury-text-body">Loading your subscriptions...</p>
         </div>
       </div>
@@ -249,7 +249,7 @@ export default function MySubscriptions() {
                 {/* Shipment Info */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="flex items-center gap-2">
-                    <Calendar className="w-5 h-5 text-blue-600" />
+                    <Calendar className="w-5 h-5 text-[#B8932F]" />
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Started</p>
                       <p className="font-medium">{format(new Date(subscription.startDate), "MMM dd, yyyy")}</p>
@@ -265,7 +265,7 @@ export default function MySubscriptions() {
                     </div>
                   )}
                   <div className="flex items-center gap-2">
-                    <Package className="w-5 h-5 text-purple-600" />
+                    <Package className="w-5 h-5 text-[#B8932F]" />
                     <div>
                       <p className="text-sm text-gray-600 dark:text-gray-400">Total Shipments</p>
                       <p className="font-medium">{subscription.totalShipments}</p>

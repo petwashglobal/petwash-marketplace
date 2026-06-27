@@ -15,7 +15,7 @@ export default function StationMap() {
         {/* Header */}
         <div className="text-center mb-12 luxury-animate-fade-in">
           <div className="inline-flex items-center gap-3 mb-6">
-            <MapPin className="w-10 h-10 text-purple-600" />
+            <MapPin className="w-10 h-10 text-[#B8932F]" />
             <h1 className="luxury-heading-xl">
               {isHe ? 'מצאו תחנת ⁦K9000™⁩' : 'Find a ⁦K9000™⁩ Station'}
             </h1>
@@ -52,7 +52,7 @@ export default function StationMap() {
         {/* Map Placeholder */}
         <div className="luxury-glass-card luxury-shadow-xl h-[600px] flex items-center justify-center mb-12 overflow-hidden luxury-animate-scale-in luxury-delay-2">
           <div className="text-center p-8">
-            <MapPin className="w-24 h-24 text-purple-600 mx-auto mb-6 luxury-pulse" />
+            <MapPin className="w-24 h-24 text-[#B8932F] mx-auto mb-6 luxury-pulse" />
             <h3 className="luxury-heading-lg mb-4">
               {isHe ? 'המפה האינטראקטיבית — בקרוב' : 'Interactive Map Coming Soon'}
             </h3>

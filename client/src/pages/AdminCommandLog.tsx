@@ -20,11 +20,11 @@ const CMD_LABELS: Record<string, string> = {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   pending:      { label: "ממתין",     color: "bg-white text-gray-700",    icon: Clock },
-  sent:         { label: "נשלח",      color: "bg-blue-100 text-blue-700",    icon: Zap },
+  sent:         { label: "נשלח",      color: "bg-[#D4AF37] text-[#B8932F]",    icon: Zap },
   acknowledged: { label: "אושר",      color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
   completed:    { label: "הושלם",     color: "bg-emerald-100 text-emerald-800", icon: CheckCircle2 },
   failed:       { label: "נכשל",      color: "bg-red-100 text-red-700",      icon: XCircle },
-  expired:      { label: "פג תוקף",   color: "bg-orange-100 text-orange-700", icon: Clock },
+  expired:      { label: "פג תוקף",   color: "bg-[#D4AF37] text-[#B8932F]", icon: Clock },
 };
 
 function RelTime({ ts }: { ts: string | null }) {
@@ -75,7 +75,7 @@ export default function AdminCommandLog() {
               { label: "פקודה אחרונה",  value: CMD_LABELS[summary.lastCommandType] ?? summary.lastCommandType ?? "—", color: "text-gray-800" },
               { label: "סטטוס אחרון",    value: STATUS_CONFIG[summary.lastCommandStatus]?.label ?? summary.lastCommandStatus ?? "—", color: summary.lastCommandStatus === "failed" ? "text-red-700" : "text-gray-800" },
               { label: "כשלונות (1ש׳)",   value: String(summary.failedCount ?? 0), color: summary.failedCount > 0 ? "text-red-700" : "text-gray-800" },
-              { label: "פיקוח פעיל",    value: summary.pendingCompensations > 0 ? `${summary.pendingCompensations} דורשים פיצוי` : "תקין", color: summary.pendingCompensations > 0 ? "text-orange-700" : "text-emerald-700" },
+              { label: "פיקוח פעיל",    value: summary.pendingCompensations > 0 ? `${summary.pendingCompensations} דורשים פיצוי` : "תקין", color: summary.pendingCompensations > 0 ? "text-[#B8932F]" : "text-emerald-700" },
             ].map((s) => (
               <Card key={s.label} className="border-gray-100">
                 <CardContent className="pt-3 pb-2">
@@ -126,7 +126,7 @@ export default function AdminCommandLog() {
                         <tr key={cmd.id} className={cn(
                           "hover:bg-white/60 transition-colors",
                           cmd.status === "failed" && "bg-red-50/40",
-                          needsComp && "bg-orange-50/40",
+                          needsComp && "bg-[#D4AF37]/40",
                         )}>
                           <td className="py-2 px-3">
                             <div className="flex items-center gap-1.5">
@@ -143,8 +143,8 @@ export default function AdminCommandLog() {
                           </td>
                           <td className="py-2 px-3">
                             <div className="flex items-center gap-1">
-                              {cmd.retryCount > 0 && <RotateCcw className="h-3 w-3 text-orange-400" />}
-                              <span className={cmd.retryCount > 0 ? "text-orange-700 font-medium" : "text-gray-600"}>
+                              {cmd.retryCount > 0 && <RotateCcw className="h-3 w-3 text-[#D4AF37]" />}
+                              <span className={cmd.retryCount > 0 ? "text-[#B8932F] font-medium" : "text-gray-600"}>
                                 {cmd.retryCount}/{cmd.maxRetries}
                               </span>
                             </div>
@@ -155,7 +155,7 @@ export default function AdminCommandLog() {
                           <td className="py-2 px-3">
                             {needsComp ? (
                               <Link href="/admin/compensation">
-                                <span className="text-orange-700 font-medium flex items-center gap-0.5 underline cursor-pointer">
+                                <span className="text-[#B8932F] font-medium flex items-center gap-0.5 underline cursor-pointer">
                                   <AlertTriangle className="h-3 w-3" />
                                   פיצוי
                                 </span>

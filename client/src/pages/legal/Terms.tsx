@@ -36,7 +36,7 @@ export default function TermsAndConditions() {
 
   const SectionIcon = ({ icon: Icon, delay = 0 }: { icon: any; delay?: number }) => (
     <div 
-      className={`w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center mb-4 luxury-animate-scale-in`}
+      className={`w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center mb-4 luxury-animate-scale-in`}
       style={{ animationDelay: `${delay * 100}ms` }}
     >
       <Icon className="w-6 h-6 text-white" />
@@ -60,7 +60,7 @@ export default function TermsAndConditions() {
 
             {/* Header */}
             <div className="text-center mb-12 luxury-animate-slide-up">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 luxury-shadow-lg">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 luxury-shadow-lg">
                 <FileText className="w-10 h-10 text-white" />
               </div>
               <h1 className="luxury-heading-xl mb-4">
@@ -165,19 +165,19 @@ export default function TermsAndConditions() {
                       service-specific terms for details.
                     </p>
                   </div>
-                  <div className="luxury-glass-panel p-6 border-l-4 border-blue-500">
+                  <div className="luxury-glass-panel p-6 border-l-4 border-[#D4AF37]">
                     <p className="luxury-heading-sm mb-3">Accepted Payment Methods</p>
                     <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                       <li className="flex items-start gap-3">
-                        <span className="text-purple-600 font-bold">•</span>
+                        <span className="text-[#B8932F] font-bold">•</span>
                         <span>Credit Cards: Visa, Mastercard, American Express</span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <span className="text-purple-600 font-bold">•</span>
+                        <span className="text-[#B8932F] font-bold">•</span>
                         <span>Digital Wallets: Apple Pay, Google Pay</span>
                       </li>
                       <li className="flex items-start gap-3">
-                        <span className="text-purple-600 font-bold">•</span>
+                        <span className="text-[#B8932F] font-bold">•</span>
                         <span>E-Vouchers: Prepaid digital vouchers with QR code</span>
                       </li>
                     </ul>
@@ -319,13 +319,13 @@ export default function TermsAndConditions() {
                   <div className="luxury-glass-panel p-6">
                     <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                       <li className="flex items-start gap-3">
-                        <Mail className="w-5 h-5 text-purple-600 mt-1" />
+                        <Mail className="w-5 h-5 text-[#B8932F] mt-1" />
                         <div>
                           <strong>Legal Inquiries:</strong> <a href="mailto:legal@petwash.co.il" className="luxury-text-gradient hover:underline">legal@petwash.co.il</a>
                         </div>
                       </li>
                       <li className="flex items-start gap-3">
-                        <Mail className="w-5 h-5 text-purple-600 mt-1" />
+                        <Mail className="w-5 h-5 text-[#B8932F] mt-1" />
                         <div>
                           <strong>Customer Support:</strong> <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient hover:underline">Support@PetWash.co.il</a>
                         </div>

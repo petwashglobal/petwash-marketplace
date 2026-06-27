@@ -317,7 +317,7 @@ export function PricingDisclosureCard({ className = "" }: { className?: string }
   const isRTL = isHebrew;
 
   return (
-    <Card className={`bg-gradient-to-br from-amber-500/10 to-orange-500/10 border-amber-500/20 ${className}`} dir={isRTL ? "rtl" : "ltr"}>
+    <Card className={`bg-gradient-to-br from-amber-500/10 to-[#D4AF37]/10 border-amber-500/20 ${className}`} dir={isRTL ? "rtl" : "ltr"}>
       <CardContent className="pt-6">
         <div className="flex items-start gap-4">
           <div className="w-10 h-10 rounded-xl bg-amber-500/20 flex items-center justify-center flex-shrink-0">
@@ -345,8 +345,8 @@ export function EscrowNotice({ className = "" }: { className?: string }) {
   const isRTL = isHebrew;
 
   return (
-    <div className={`flex items-center gap-3 p-4 rounded-xl bg-blue-500/10 border border-blue-500/20 ${className}`} dir={isRTL ? "rtl" : "ltr"}>
-      <Shield className="w-5 h-5 text-blue-400 flex-shrink-0" />
+    <div className={`flex items-center gap-3 p-4 rounded-xl bg-[#D4AF37]/10 border border-[#D4AF37]/20 ${className}`} dir={isRTL ? "rtl" : "ltr"}>
+      <Shield className="w-5 h-5 text-[#D4AF37] flex-shrink-0" />
       <p className="text-sm text-white/80">
         {isHebrew 
           ? "התשלום מוגן במערכת נאמנות 72 שעות. הכספים משוחררים לספק רק לאחר השלמה מוצלחת של השירות."

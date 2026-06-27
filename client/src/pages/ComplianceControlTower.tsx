@@ -50,7 +50,7 @@ export default function ComplianceControlTower() {
       case "medium":
         return "text-yellow-600 dark:text-yellow-400";
       case "high":
-        return "text-orange-600 dark:text-orange-400";
+        return "text-[#B8932F] dark:text-[#D4AF37]";
       case "critical":
         return "text-red-600 dark:text-red-400";
       default:
@@ -78,7 +78,7 @@ export default function ComplianceControlTower() {
         <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="flex items-center justify-center min-h-[60vh]">
             <div className="text-center luxury-animate-fade-in">
-              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-blue-600 mx-auto mb-4"></div>
+              <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-[#B8932F] mx-auto mb-4"></div>
               <p className="luxury-text-body">
                 {isHebrew ? "טוען..." : "Loading..."}
               </p>
@@ -102,11 +102,11 @@ export default function ComplianceControlTower() {
           </Link>
 
           <div className="flex items-center gap-4 mb-2">
-            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full luxury-shadow-lg luxury-animate-scale-in">
+            <div className="inline-flex items-center justify-center w-16 h-16 bg-gradient-to-br from-[#D4AF37] to-[#B8932F] rounded-full luxury-shadow-lg luxury-animate-scale-in">
               <Shield className="h-8 w-8 text-white" />
             </div>
             <div>
-              <h1 className="luxury-heading-xl bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="luxury-heading-xl bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                 {isHebrew ? "מגדל בקרת ציות" : "Compliance Control Tower"}
               </h1>
               <p className="luxury-text-body">
@@ -161,10 +161,10 @@ export default function ComplianceControlTower() {
               <h3 className="luxury-text-small opacity-70">
                 {isHebrew ? "משימות ציות" : "Compliance Tasks"}
               </h3>
-              <Clock className="h-4 w-4 text-blue-600" />
+              <Clock className="h-4 w-4 text-[#B8932F]" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-blue-600">
+              <div className="text-2xl font-bold text-[#B8932F]">
                 {complianceStatus?.pendingTasks || 0}
               </div>
               <p className="luxury-text-small opacity-70 mt-1">
@@ -181,10 +181,10 @@ export default function ComplianceControlTower() {
               <h3 className="luxury-text-small opacity-70">
                 {isHebrew ? "ספקים מושעים" : "Suspended Providers"}
               </h3>
-              <Users className="h-4 w-4 text-orange-600" />
+              <Users className="h-4 w-4 text-[#B8932F]" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-orange-600">
+              <div className="text-2xl font-bold text-[#B8932F]">
                 {complianceStatus?.suspendedProviders || 0}
               </div>
               <p className="luxury-text-small opacity-70 mt-1">
@@ -252,7 +252,7 @@ export default function ComplianceControlTower() {
                             <p className="luxury-text-small opacity-70 mb-2">
                               {isHebrew ? issue.descriptionHe : issue.description}
                             </p>
-                            <p className="luxury-text-small text-blue-600 font-medium">
+                            <p className="luxury-text-small text-[#B8932F] font-medium">
                               {isHebrew ? "פעולה נדרשת: " : "Action required: "}
                               {issue.actionRequired}
                             </p>
@@ -472,7 +472,7 @@ export default function ComplianceControlTower() {
                     {corporateSeals.map((seal: any) => (
                       <div
                         key={seal.id}
-                        className="p-6 border-2 border-gray-200 dark:border-gray-700 rounded-lg text-center hover:border-blue-500 dark:hover:border-blue-400 transition"
+                        className="p-6 border-2 border-gray-200 dark:border-gray-700 rounded-lg text-center hover:border-[#D4AF37] dark:hover:border-[#D4AF37] transition"
                       >
                         <div className="flex justify-center mb-4">
                           <div

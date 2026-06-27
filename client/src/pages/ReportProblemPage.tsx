@@ -93,7 +93,7 @@ export default function ReportProblemPage() {
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#D4AF37] to-red-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
           <CardContent className="pt-8 pb-8">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -107,7 +107,7 @@ export default function ReportProblemPage() {
                 ? "הצוות שלנו יבחן את הפנייה ויצור איתך קשר תוך 24 שעות"
                 : "Our team will review your report and reach out within 24 hours"}
             </p>
-            <div className="flex items-center justify-center gap-2 text-purple-600 text-sm font-medium mb-6">
+            <div className="flex items-center justify-center gap-2 text-[#B8932F] text-sm font-medium mb-6">
               <Shield className="w-4 h-4" />
               {isHebrew ? "PetWash™ ערבות השירות מגנה עליך" : "PetWash™ Service Guarantee protects you"}
             </div>
@@ -125,13 +125,13 @@ export default function ReportProblemPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-orange-50 to-red-50 dark:from-gray-900 dark:to-gray-800 p-4"
+      className="min-h-screen bg-gradient-to-br from-[#D4AF37] to-red-50 dark:from-gray-900 dark:to-gray-800 p-4"
       dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
     >
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6 pt-6">
           <div className="flex items-center justify-center gap-2 mb-2">
-            <AlertTriangle className="w-6 h-6 text-orange-500" />
+            <AlertTriangle className="w-6 h-6 text-[#D4AF37]" />
             <h1 className="text-2xl font-bold text-gray-900 dark:text-black">
               {isHebrew ? "דיווח על בעיה" : "Report a Problem"}
             </h1>
@@ -179,10 +179,10 @@ export default function ReportProblemPage() {
               />
             </div>
 
-            <div className="bg-purple-50 border border-purple-200 rounded-lg p-3 dark:bg-white dark:border-purple-800">
+            <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-lg p-3 dark:bg-white dark:border-[#B8932F]">
               <div className="flex items-start gap-2">
-                <Shield className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
-                <p className="text-xs text-purple-700 dark:text-purple-300">
+                <Shield className="w-4 h-4 text-[#B8932F] mt-0.5 shrink-0" />
+                <p className="text-xs text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew
                     ? "PetWash™ מציעה ערבות שביעות רצון. אם השירות לא עמד בסטנדרטים שלנו, נפעל לפתרון."
                     : "PetWash™ offers a satisfaction guarantee. If the service didn't meet our standards, we will work to resolve it."}
@@ -193,7 +193,7 @@ export default function ReportProblemPage() {
             <Button
               onClick={handleSubmit}
               disabled={!reason || disputeMutation.isPending}
-              className="w-full bg-orange-600 hover:bg-orange-700 text-white"
+              className="w-full bg-[#B8932F] hover:bg-[#B8932F] text-white"
             >
               {disputeMutation.isPending
                 ? isHebrew

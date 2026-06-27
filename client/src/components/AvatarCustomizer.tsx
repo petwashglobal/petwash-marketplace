@@ -121,7 +121,7 @@ export function AvatarCustomizer({
   return (
     <div className="space-y-6">
       {/* Character Type Selection */}
-      <Card className="border-2 border-purple-200/50 dark:border-purple-800/50 bg-white/80 dark:bg-white/80 backdrop-blur-xl shadow-2xl">
+      <Card className="border-2 border-[#D4AF37]/50 dark:border-[#B8932F]/50 bg-white/80 dark:bg-white/80 backdrop-blur-xl shadow-2xl">
         <CardHeader>
           <CardTitle className="text-lg flex items-center gap-2">
             <Sparkles className="w-5 h-5" />
@@ -134,7 +134,7 @@ export function AvatarCustomizer({
               <Button
                 key={type}
                 variant={characterType === type ? 'default' : 'outline'}
-                className={characterType === type ? 'bg-gradient-to-r from-purple-600 to-pink-600' : ''}
+                className={characterType === type ? 'bg-gradient-to-r from-[#B8932F] to-[#B8932F]' : ''}
                 onClick={() => onCharacterTypeChange(type)}
                 data-testid={`button-character-${type}`}
               >
@@ -150,9 +150,9 @@ export function AvatarCustomizer({
       </Card>
 
       {/* Customization Tabs */}
-      <Card className="border-2 border-purple-200/50 dark:border-purple-800/50 bg-white/80 dark:bg-white/80 backdrop-blur-xl shadow-2xl">
+      <Card className="border-2 border-[#D4AF37]/50 dark:border-[#B8932F]/50 bg-white/80 dark:bg-white/80 backdrop-blur-xl shadow-2xl">
         <Tabs value={activeTab} onValueChange={(v: any) => setActiveTab(v)}>
-          <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30">
+          <TabsList className="grid w-full grid-cols-3 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30">
             <TabsTrigger value="outfits" data-testid="tab-outfits">
               <Shirt className="w-4 h-4 mr-2" />
               {isHebrew ? 'תלבושות' : 'Outfits'}
@@ -194,7 +194,7 @@ export function AvatarCustomizer({
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                 {/* None Option */}
                 <Card
-                  className={`cursor-pointer hover:shadow-lg transition-all ${!selectedOutfitId ? 'border-2 border-purple-500' : ''}`}
+                  className={`cursor-pointer hover:shadow-lg transition-all ${!selectedOutfitId ? 'border-2 border-[#D4AF37]' : ''}`}
                   onClick={() => onOutfitChange(undefined)}
                   data-testid="outfit-none"
                 >
@@ -208,7 +208,7 @@ export function AvatarCustomizer({
                 {availableOutfits.map((outfit) => (
                   <Card
                     key={outfit.id}
-                    className={`cursor-pointer hover:shadow-lg transition-all ${selectedOutfitId === outfit.id ? 'border-2 border-purple-500' : ''}`}
+                    className={`cursor-pointer hover:shadow-lg transition-all ${selectedOutfitId === outfit.id ? 'border-2 border-[#D4AF37]' : ''}`}
                     onClick={() => onOutfitChange(outfit.id)}
                     data-testid={`outfit-${outfit.id}`}
                   >
@@ -220,7 +220,7 @@ export function AvatarCustomizer({
                         </p>
                         <div className="flex gap-1 justify-center mt-2">
                           {outfit.premium && (
-                            <Badge variant="secondary" className="text-xs bg-gradient-to-r from-yellow-400 to-orange-400">
+                            <Badge variant="secondary" className="text-xs bg-gradient-to-r from-yellow-400 to-[#D4AF37]">
                               <Star className="w-3 h-3 mr-1" />
                               {isHebrew ? 'פרימיום' : 'Premium'}
                             </Badge>
@@ -257,7 +257,7 @@ export function AvatarCustomizer({
                           return (
                             <Card
                               key={accessory.id}
-                              className={`cursor-pointer hover:shadow-lg transition-all ${isSelected ? 'border-2 border-purple-500' : ''}`}
+                              className={`cursor-pointer hover:shadow-lg transition-all ${isSelected ? 'border-2 border-[#D4AF37]' : ''}`}
                               onClick={() => toggleAccessory(accessory.id)}
                               data-testid={`accessory-${accessory.id}`}
                             >
@@ -298,7 +298,7 @@ export function AvatarCustomizer({
                         <Button
                           key={color}
                           variant="outline"
-                          className={`h-16 ${isSelected ? 'border-2 border-purple-500' : ''}`}
+                          className={`h-16 ${isSelected ? 'border-2 border-[#D4AF37]' : ''}`}
                           style={{ background: colorHex }}
                           onClick={() => onCustomizationChange({
                             ...customization,
@@ -329,7 +329,7 @@ export function AvatarCustomizer({
                         <Button
                           key={pattern}
                           variant={isSelected ? 'default' : 'outline'}
-                          className={isSelected ? 'bg-gradient-to-r from-purple-600 to-pink-600' : ''}
+                          className={isSelected ? 'bg-gradient-to-r from-[#B8932F] to-[#B8932F]' : ''}
                           onClick={() => onCustomizationChange({
                             ...customization,
                             patterns: { ...customization.patterns, outfit: pattern }
@@ -358,7 +358,7 @@ export function AvatarCustomizer({
 
       {/* Current Selection Summary */}
       {(selectedOutfit || selectedAccessories.length > 0) && (
-        <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+        <Card className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/20 dark:to-[#B8932F]/20">
           <CardHeader>
             <CardTitle className="text-sm">
               {isHebrew ? 'הבחירה הנוכחית שלך' : 'Your Current Selection'}
@@ -367,7 +367,7 @@ export function AvatarCustomizer({
           <CardContent>
             <div className="flex flex-wrap gap-2">
               {selectedOutfit && (
-                <Badge className="bg-gradient-to-r from-purple-600 to-pink-600 text-white">
+                <Badge className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] text-white">
                   {selectedOutfit.thumbnail} {isHebrew ? selectedOutfit.nameHe : selectedOutfit.name}
                 </Badge>
               )}

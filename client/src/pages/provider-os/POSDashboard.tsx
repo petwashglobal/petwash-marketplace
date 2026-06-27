@@ -167,15 +167,15 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
             <p className="text-[10px] text-gray-500">New requests</p>
           </button>
           <button onClick={() => onNavigate('jobs')}
-            className="bg-white border border-gray-200 rounded-xl p-3 text-center hover:border-blue-200 transition-colors">
-            <CalendarDays className="w-3.5 h-3.5 text-blue-500 mx-auto mb-0.5" />
+            className="bg-white border border-gray-200 rounded-xl p-3 text-center hover:border-[#D4AF37] transition-colors">
+            <CalendarDays className="w-3.5 h-3.5 text-[#D4AF37] mx-auto mb-0.5" />
             <p className="text-lg font-bold text-gray-900">{todayJobs.length}</p>
             <p className="text-[10px] text-gray-500">Today</p>
           </button>
           <button onClick={() => onNavigate('jobs')}
-            className={`rounded-xl p-3 text-center border transition-colors ${activeJobs.length > 0 ? 'bg-purple-50 border-purple-200' : 'bg-white border-gray-200'}`}>
-            <Play className={`w-3.5 h-3.5 mx-auto mb-0.5 ${activeJobs.length > 0 ? 'text-purple-600' : 'text-gray-400'}`} />
-            <p className={`text-lg font-bold ${activeJobs.length > 0 ? 'text-purple-700' : 'text-gray-900'}`}>{activeJobs.length}</p>
+            className={`rounded-xl p-3 text-center border transition-colors ${activeJobs.length > 0 ? 'bg-[#D4AF37] border-[#D4AF37]' : 'bg-white border-gray-200'}`}>
+            <Play className={`w-3.5 h-3.5 mx-auto mb-0.5 ${activeJobs.length > 0 ? 'text-[#B8932F]' : 'text-gray-400'}`} />
+            <p className={`text-lg font-bold ${activeJobs.length > 0 ? 'text-[#B8932F]' : 'text-gray-900'}`}>{activeJobs.length}</p>
             <p className="text-[10px] text-gray-500">Active now</p>
           </button>
         </div>
@@ -208,7 +208,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
         {[
           { label: 'Paid out',   value: `₪${paidBalance.toFixed(0)}`,    sub: 'Received to date', icon: Wallet,      color: 'text-green-600', bg: 'bg-green-50' },
           { label: 'Pending',    value: `₪${pendingBalance.toFixed(0)}`,  sub: 'Awaiting payout',  icon: Clock,       color: 'text-amber-600', bg: 'bg-amber-50' },
-          { label: 'This month', value: `₪${monthTotal.toFixed(0)}`,      sub: 'Earnings MTD',     icon: TrendingUp,  color: 'text-blue-600',  bg: 'bg-blue-50' },
+          { label: 'This month', value: `₪${monthTotal.toFixed(0)}`,      sub: 'Earnings MTD',     icon: TrendingUp,  color: 'text-[#B8932F]',  bg: 'bg-[#D4AF37]' },
         ].map(card => {
           const Icon = card.icon;
           return (
@@ -230,7 +230,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
           { label: 'Rating',    value: statsLoading ? '—' : `${(stats?.averageRating ?? 0).toFixed(1)}★`,  color: 'text-amber-600' },
           { label: 'Completed', value: statsLoading ? '—' : `${stats?.completedBookings ?? 0}`,            color: 'text-green-600' },
           { label: 'Cancel %',  value: statsLoading ? '—' : `${stats?.completionRate ? (100 - stats.completionRate).toFixed(0) : 0}%`, color: 'text-red-500' },
-          { label: 'Reviews',   value: statsLoading ? '—' : `${stats?.totalReviews ?? 0}`,                 color: 'text-blue-600' },
+          { label: 'Reviews',   value: statsLoading ? '—' : `${stats?.totalReviews ?? 0}`,                 color: 'text-[#B8932F]' },
         ].map(kpi => (
           <div key={kpi.label} className="bg-white border border-gray-200 rounded-xl p-3 text-center">
             <p className={`text-base font-bold ${kpi.color}`}>{kpi.value}</p>
@@ -319,7 +319,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       {activeJobs.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <span className="w-2 h-2 bg-purple-500 rounded-full animate-pulse" />
+            <span className="w-2 h-2 bg-[#D4AF37] rounded-full animate-pulse" />
             Active Now ({activeJobs.length})
           </h2>
           <div className="space-y-2">
@@ -332,7 +332,7 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
       {todayJobs.length > 0 && (
         <section>
           <h2 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-            <CalendarDays className="w-4 h-4 text-blue-500" /> Today ({todayJobs.length})
+            <CalendarDays className="w-4 h-4 text-[#D4AF37]" /> Today ({todayJobs.length})
           </h2>
           <div className="space-y-2">
             {todayJobs.map((b: any) => <JobMiniCard key={b.id} booking={b} />)}
@@ -394,11 +394,11 @@ export default function POSDashboard({ activePlatform, isAvailable, onToggleAvai
         <div className="grid grid-cols-3 gap-2">
           {[
             { label: 'Jobs',      icon: Package,      mod: 'jobs' as Module,       color: 'text-amber-600',  bg: 'bg-amber-50' },
-            { label: 'Calendar',  icon: CalendarDays, mod: 'calendar' as Module,   color: 'text-blue-600',   bg: 'bg-blue-50' },
+            { label: 'Calendar',  icon: CalendarDays, mod: 'calendar' as Module,   color: 'text-[#B8932F]',   bg: 'bg-[#D4AF37]' },
             { label: 'Wallet',    icon: Wallet,       mod: 'wallet' as Module,     color: 'text-green-600',  bg: 'bg-green-50' },
-            { label: 'Services',  icon: Star,         mod: 'services' as Module,   color: 'text-purple-600', bg: 'bg-purple-50' },
+            { label: 'Services',  icon: Star,         mod: 'services' as Module,   color: 'text-[#B8932F]', bg: 'bg-[#D4AF37]' },
             { label: 'Profile',   icon: UserCircle,   mod: 'profile' as Module,    color: 'text-teal-600',   bg: 'bg-teal-50' },
-            { label: 'AI Help',   icon: Zap,          mod: 'assistant' as Module,  color: 'text-indigo-600', bg: 'bg-indigo-50' },
+            { label: 'AI Help',   icon: Zap,          mod: 'assistant' as Module,  color: 'text-[#B8932F]', bg: 'bg-[#D4AF37]' },
           ].map(action => {
             const Icon = action.icon;
             return (
@@ -462,9 +462,9 @@ function JobRequestCard({ booking, onAction, isPending }: {
 
 function JobMiniCard({ booking, isActive }: { booking: any; isActive?: boolean }) {
   return (
-    <div className={`bg-white border rounded-xl p-3 flex items-center gap-3 ${isActive ? 'border-purple-200 bg-purple-50' : 'border-gray-200'}`}>
-      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? 'bg-purple-100' : 'bg-white'}`}>
-        {isActive ? <Play className="w-4 h-4 text-purple-600" /> : <CalendarDays className="w-4 h-4 text-gray-500" />}
+    <div className={`bg-white border rounded-xl p-3 flex items-center gap-3 ${isActive ? 'border-[#D4AF37] bg-[#D4AF37]' : 'border-gray-200'}`}>
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${isActive ? 'bg-[#D4AF37]' : 'bg-white'}`}>
+        {isActive ? <Play className="w-4 h-4 text-[#B8932F]" /> : <CalendarDays className="w-4 h-4 text-gray-500" />}
       </div>
       <div className="flex-1 min-w-0">
         <p className="text-sm font-medium text-gray-900 truncate">{booking.serviceType?.replace(/_/g, ' ') || 'Service'}</p>

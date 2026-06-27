@@ -115,7 +115,7 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
         {/* Quick Stats */}
         <div className="luxury-grid-3 gap-3 luxury-animate-fade-in luxury-delay-1">
           <div className="luxury-glass-card luxury-shadow-lg p-4 rounded-2xl text-center">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-[#D4AF37] flex items-center justify-center mx-auto mb-3">
               <Clock className="h-6 w-6 text-white" />
             </div>
             <p className="text-3xl font-bold text-yellow-600">{pendingOrders?.length || 0}</p>
@@ -123,7 +123,7 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
           </div>
           
           <div className="luxury-glass-card luxury-shadow-lg p-4 rounded-2xl text-center">
-            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center mx-auto mb-3">
+            <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center mx-auto mb-3">
               <Wrench className="h-6 w-6 text-white" />
             </div>
             <p className="text-3xl font-bold luxury-text-gradient">{inProgressOrders?.length || 0}</p>
@@ -142,18 +142,18 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
         {/* Quick Actions */}
         <div className="grid grid-cols-2 gap-3 luxury-animate-fade-in luxury-delay-2">
           <Button className="luxury-glass-card luxury-shadow-lg luxury-hover-lift h-20 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300" data-testid="button-scan-qr">
-            <QrCode className="h-6 w-6 text-purple-600" />
+            <QrCode className="h-6 w-6 text-[#B8932F]" />
             <span className="text-sm font-semibold luxury-text-gradient">Scan QR</span>
           </Button>
           <Button className="luxury-glass-card luxury-shadow-lg luxury-hover-lift h-20 flex flex-col items-center justify-center gap-2 rounded-2xl transition-all duration-300" data-testid="button-upload-photo">
-            <Camera className="h-6 w-6 text-purple-600" />
+            <Camera className="h-6 w-6 text-[#B8932F]" />
             <span className="text-sm font-semibold luxury-text-gradient">Photo</span>
           </Button>
         </div>
 
         {/* Active Work Orders */}
         {inProgressOrders && inProgressOrders.length > 0 && (
-          <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden border-2 border-blue-200 luxury-animate-slide-up luxury-delay-3">
+          <div className="luxury-glass-card luxury-shadow-lg rounded-2xl overflow-hidden border-2 border-[#D4AF37] luxury-animate-slide-up luxury-delay-3">
             <div className="luxury-glass-panel px-6 py-4">
               <h2 className="font-bold flex items-center gap-2 luxury-text-gradient">
                 <Wrench className="h-5 w-5" />
@@ -164,7 +164,7 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
               {inProgressOrders.map((order: any, index: number) => (
                 <div
                   key={order.id}
-                  className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl border-2 border-blue-200 transition-all duration-300"
+                  className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl border-2 border-[#D4AF37] transition-all duration-300"
                   data-testid={`work-order-active-${order.id}`}
                   style={{ animationDelay: `${(index + 4) * 0.05}s` }}
                 >
@@ -267,7 +267,7 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
             ))}
             {(!pendingOrders || pendingOrders.length === 0) && (
               <div className="text-center py-12">
-                <Wrench className="h-16 w-16 mx-auto mb-4 text-purple-200" />
+                <Wrench className="h-16 w-16 mx-auto mb-4 text-[#D4AF37]" />
                 <p className="luxury-text-small">No pending work orders</p>
               </div>
             )}

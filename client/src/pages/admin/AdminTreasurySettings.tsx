@@ -223,8 +223,8 @@ export default function AdminTreasurySettings() {
 
       {/* Header */}
       <div className="flex items-center gap-3">
-        <div className="p-2 bg-blue-50 rounded-lg">
-          <Building2 className="w-6 h-6 text-blue-600" />
+        <div className="p-2 bg-[#D4AF37] rounded-lg">
+          <Building2 className="w-6 h-6 text-[#B8932F]" />
         </div>
         <div>
           <h1 className="text-xl font-bold text-slate-900">Treasury Settings</h1>

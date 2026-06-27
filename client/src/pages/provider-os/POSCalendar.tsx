@@ -173,7 +173,7 @@ export default function POSCalendar() {
       {/* Status toggles */}
       <div className="grid grid-cols-2 gap-3">
         {[
-          { label: 'Vacation Mode', sub: 'Block all dates', value: vacationMode, onChange: setVacationMode, color: 'text-blue-600', icon: Zap },
+          { label: 'Vacation Mode', sub: 'Block all dates', value: vacationMode, onChange: setVacationMode, color: 'text-[#B8932F]', icon: Zap },
           { label: 'Pause Bookings', sub: 'No new requests', value: pauseNewBookings, onChange: setPauseNewBookings, color: 'text-amber-600', icon: Coffee },
         ].map(item => {
           const Icon = item.icon;

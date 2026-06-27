@@ -29,19 +29,19 @@ import { useToast } from '@/hooks/use-toast';
 
 const statusConfig: Record<string, { color: string; bgColor: string; icon: any; label: string; labelHe: string }> = {
   draft: { color: 'text-gray-600', bgColor: 'bg-white', icon: FileText, label: 'Draft', labelHe: 'טיוטה' },
-  pending: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Clock, label: 'Pending Review', labelHe: 'בהמתנה לבדיקה' },
+  pending: { color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]', icon: Clock, label: 'Pending Review', labelHe: 'בהמתנה לבדיקה' },
   under_review: { color: 'text-amber-600', bgColor: 'bg-amber-100', icon: Eye, label: 'Under Review', labelHe: 'בבדיקה' },
-  interview_scheduled: { color: 'text-purple-600', bgColor: 'bg-purple-100', icon: Calendar, label: 'Interview Scheduled', labelHe: 'ראיון נקבע' },
+  interview_scheduled: { color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]', icon: Calendar, label: 'Interview Scheduled', labelHe: 'ראיון נקבע' },
   approved: { color: 'text-emerald-600', bgColor: 'bg-emerald-100', icon: CheckCircle2, label: 'Approved', labelHe: 'אושר' },
   rejected: { color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle, label: 'Not Selected', labelHe: 'לא נבחר' },
   withdrawn: { color: 'text-gray-500', bgColor: 'bg-white', icon: XCircle, label: 'Withdrawn', labelHe: 'נמשך' },
 };
 
 const roleColors: Record<string, string> = {
-  walker: 'from-pink-500 to-rose-600',
-  driver: 'from-blue-500 to-indigo-600',
-  sitter: 'from-purple-500 to-violet-600',
-  host: 'from-amber-500 to-orange-600',
+  walker: 'from-[#D4AF37] to-rose-600',
+  driver: 'from-[#D4AF37] to-[#B8932F]',
+  sitter: 'from-[#D4AF37] to-[#B8932F]',
+  host: 'from-amber-500 to-[#B8932F]',
   supplier: 'from-emerald-500 to-teal-600',
   admin: 'from-slate-500 to-gray-600',
   trainer: 'from-yellow-500 to-amber-600',

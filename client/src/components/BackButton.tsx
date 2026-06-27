@@ -22,7 +22,7 @@ export function BackButton({ language, className = "" }: BackButtonProps) {
     <button
       onClick={handleBack}
       aria-label={language === 'he' ? 'חזור' : 'Back'}
-      className={`back-btn flex items-center gap-1 text-gray-700 hover:text-blue-600 transition-colors ${className}`}
+      className={`back-btn flex items-center gap-1 text-gray-700 hover:text-[#B8932F] transition-colors ${className}`}
       data-testid="button-back"
     >
       <ChevronLeft className="w-5 h-5" />

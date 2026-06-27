@@ -73,7 +73,7 @@ export default function PerformanceReviewsDashboard() {
     switch (status) {
       case "completed": return <CheckCircle className="w-4 h-4 text-green-600" />;
       case "draft": return <Clock className="w-4 h-4 text-yellow-600" />;
-      case "acknowledged": return <CheckCircle className="w-4 h-4 text-blue-600" />;
+      case "acknowledged": return <CheckCircle className="w-4 h-4 text-[#B8932F]" />;
       case "archived": return <Archive className="w-4 h-4 text-gray-600" />;
       default: return <Clock className="w-4 h-4" />;
     }

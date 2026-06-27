@@ -21,7 +21,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
       permissions: [
         {
           icon: MapPin,
-          iconBg: 'bg-blue-500',
+          iconBg: 'bg-[#D4AF37]',
           name: 'Location',
           status: 'While Using',
           description: 'Find nearby pet wash stations and show weather-based recommendations',
@@ -29,7 +29,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
         },
         {
           icon: Image,
-          iconBg: 'bg-pink-500',
+          iconBg: 'bg-[#D4AF37]',
           name: 'Photos',
           status: 'Add Photos Only',
           description: 'Save wash receipts and loyalty cards to your photo library',
@@ -37,7 +37,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
         },
         {
           icon: Network,
-          iconBg: 'bg-blue-600',
+          iconBg: 'bg-[#B8932F]',
           name: 'Local Network',
           status: 'Enabled',
           description: 'Connect to ⁦Pet Wash™⁩ smart stations for contactless payment',
@@ -45,7 +45,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
         },
         {
           icon: Mic,
-          iconBg: 'bg-orange-500',
+          iconBg: 'bg-[#D4AF37]',
           name: 'Microphone',
           status: 'Disabled',
           description: 'Voice commands for hands-free wash station control (optional)',
@@ -107,7 +107,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
       permissions: [
         {
           icon: MapPin,
-          iconBg: 'bg-blue-500',
+          iconBg: 'bg-[#D4AF37]',
           name: 'מיקום',
           status: 'בזמן שימוש',
           description: 'מצא תחנות רחיצה קרובות והצג המלצות מבוססות מזג אוויר',
@@ -115,7 +115,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
         },
         {
           icon: Image,
-          iconBg: 'bg-pink-500',
+          iconBg: 'bg-[#D4AF37]',
           name: 'תמונות',
           status: 'הוסף תמונות בלבד',
           description: 'שמור קבלות רחיצה וכרטיסי נאמנות בספריית התמונות שלך',
@@ -123,7 +123,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
         },
         {
           icon: Network,
-          iconBg: 'bg-blue-600',
+          iconBg: 'bg-[#B8932F]',
           name: 'רשת מקומית',
           status: 'מופעל',
           description: 'התחבר לתחנות ⁦Pet Wash™⁩ החכמות לתשלום ללא מגע',
@@ -131,7 +131,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
         },
         {
           icon: Mic,
-          iconBg: 'bg-orange-500',
+          iconBg: 'bg-[#D4AF37]',
           name: 'מיקרופון',
           status: 'כבוי',
           description: 'פקודות קוליות לשליטה בתחנת רחיצה ללא ידיים (אופציונלי)',
@@ -312,17 +312,17 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
           </div>
 
           {/* How To Enable */}
-          <div className="bg-blue-50 dark:bg-blue-950/30 rounded-2xl p-4 border border-blue-200 dark:border-blue-800">
-            <h3 className="text-base font-semibold text-blue-900 dark:text-blue-100 mb-3">
+          <div className="bg-[#D4AF37] dark:bg-[#B8932F]/30 rounded-2xl p-4 border border-[#D4AF37] dark:border-[#B8932F]">
+            <h3 className="text-base font-semibold text-[#B8932F] dark:text-[#D4AF37] mb-3">
               {t.howTo}
             </h3>
             <ol className="space-y-2">
               {t.howToSteps.map((step, index) => (
                 <li key={index} className="flex items-start gap-3">
-                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-500 text-white text-sm flex items-center justify-center font-medium">
+                  <span className="flex-shrink-0 w-6 h-6 rounded-full bg-[#D4AF37] text-white text-sm flex items-center justify-center font-medium">
                     {index + 1}
                   </span>
-                  <span className="text-sm text-blue-800 dark:text-blue-200 pt-0.5">
+                  <span className="text-sm text-[#B8932F] dark:text-[#D4AF37] pt-0.5">
                     {step}
                   </span>
                 </li>

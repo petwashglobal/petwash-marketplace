@@ -288,7 +288,7 @@ export default function AdminFaultIntel() {
                           <div className="flex flex-wrap items-center gap-2">
                             <Badge className={cn('text-[10px] border',
                               f.severity === 'critical' ? 'bg-red-50 text-red-700 border-red-200'
-                                : f.severity === 'error' ? 'bg-orange-50 text-orange-700 border-orange-200'
+                                : f.severity === 'error' ? 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]'
                                   : 'bg-amber-50 text-amber-700 border-amber-200')}>
                               {f.severity}
                             </Badge>

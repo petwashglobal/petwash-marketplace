@@ -393,7 +393,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {stats?.repeatClientCount !== null && (stats?.repeatClientCount ?? 0) > 0 && (
                   <>
                     <div className="h-4 w-px bg-white" />
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-violet-50 text-violet-700 rounded-full text-xs font-semibold border border-violet-100">
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-[#D4AF37] text-[#B8932F] rounded-full text-xs font-semibold border border-[#D4AF37]">
                       <Users className="w-3 h-3" />
                       {stats!.repeatClientCount} {isHebrew ? 'לקוחות חוזרים' : 'repeat clients'}
                     </div>
@@ -403,7 +403,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {showScarcity && (
                   <>
                     <div className="h-4 w-px bg-white" />
-                    <div className="flex items-center gap-1.5 text-orange-600 text-xs font-semibold">
+                    <div className="flex items-center gap-1.5 text-[#B8932F] text-xs font-semibold">
                       <TrendingUp className="w-3.5 h-3.5" />
                       {isHebrew ? `הוזמן ${bookingsThisMonth} פעמים החודש` : `Booked ${bookingsThisMonth}× this month`}
                     </div>
@@ -801,9 +801,9 @@ function BookingWidget({
 
       {/* Scarcity signal — only when real prop >= 3 */}
       {showScarcity && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-orange-50 rounded-xl mb-4 border border-orange-100">
-          <TrendingUp className="w-4 h-4 text-orange-500 shrink-0" />
-          <p className="text-xs text-orange-700 font-medium">
+        <div className="flex items-center gap-2 px-3 py-2 bg-[#D4AF37] rounded-xl mb-4 border border-[#D4AF37]">
+          <TrendingUp className="w-4 h-4 text-[#D4AF37] shrink-0" />
+          <p className="text-xs text-[#B8932F] font-medium">
             {isHebrew
               ? `הוזמן ${bookingsThisMonth} פעמים החודש — מבוקש מאוד!`
               : `Booked ${bookingsThisMonth}× this month — in high demand!`}
@@ -830,7 +830,7 @@ function BookingWidget({
         {/* Repeat clients — only when real count > 0 */}
         {stats?.repeatClientCount !== null && (stats?.repeatClientCount ?? 0) > 0 && (
           <div className="flex items-center gap-3 text-sm">
-            <Users className="w-4 h-4 text-violet-400 shrink-0" />
+            <Users className="w-4 h-4 text-[#D4AF37] shrink-0" />
             <span className="text-gray-600">
               {stats!.repeatClientCount} {isHebrew ? 'לקוחות חוזרים' : 'repeat clients'}
             </span>

@@ -69,7 +69,7 @@ function StatusLine({ inv }: { inv: InvoiceRow }) {
   }
   if (inv.sumitStatus === "sent") {
     return (
-      <div className="flex items-center gap-1.5 text-xs text-blue-700">
+      <div className="flex items-center gap-1.5 text-xs text-[#B8932F]">
         <Clock className="h-3.5 w-3.5" />
         נשלח לרו״ח — ממתין לאישור
       </div>
@@ -114,7 +114,7 @@ export default function ProviderMyInvoices() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-orange-50/20"
+      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-[#D4AF37]/20"
       dir="rtl"
       style={{
         paddingTop: "env(safe-area-inset-top)",

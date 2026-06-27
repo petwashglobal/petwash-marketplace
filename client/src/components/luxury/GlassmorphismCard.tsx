@@ -11,11 +11,11 @@ interface GlassmorphismCardProps {
 }
 
 const gradients = {
-  purple: 'from-purple-500/10 via-pink-500/10 to-purple-600/10',
-  pink: 'from-pink-500/10 via-rose-500/10 to-red-500/10',
-  blue: 'from-blue-500/10 via-cyan-500/10 to-blue-600/10',
+  purple: 'from-[#D4AF37]/10 via-[#D4AF37]/10 to-[#B8932F]/10',
+  pink: 'from-[#D4AF37]/10 via-rose-500/10 to-red-500/10',
+  blue: 'from-[#D4AF37]/10 via-[#D4AF37]/10 to-[#B8932F]/10',
   green: 'from-green-500/10 via-emerald-500/10 to-teal-600/10',
-  gold: 'from-yellow-500/10 via-amber-500/10 to-orange-500/10',
+  gold: 'from-yellow-500/10 via-amber-500/10 to-[#D4AF37]/10',
 };
 
 export function GlassmorphismCard({
@@ -46,7 +46,7 @@ export function GlassmorphismCard({
       <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
       
       {/* Subtle glow */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-purple-600/20 via-pink-600/20 to-purple-600/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      <div className="absolute -inset-1 bg-gradient-to-r from-[#B8932F]/20 via-[#B8932F]/20 to-[#B8932F]/20 blur-lg opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
       
       {/* Content */}
       <div className="relative z-10">
@@ -80,7 +80,7 @@ export function LuxuryButton({
   };
 
   const variants = {
-    primary: 'bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700 text-white shadow-lg hover:shadow-xl hover:from-purple-700 hover:via-pink-700 hover:to-purple-800',
+    primary: 'bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-[#B8932F] text-white shadow-lg hover:shadow-xl hover:from-[#B8932F] hover:via-[#B8932F] hover:to-[#B8932F]',
     secondary: 'bg-white/10 backdrop-blur-lg border border-white/20 text-gray-900 dark:text-black hover:bg-white/20',
     ghost: 'bg-transparent hover:bg-white/10',
   };

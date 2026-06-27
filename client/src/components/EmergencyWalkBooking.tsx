@@ -139,7 +139,7 @@ export function EmergencyWalkBooking() {
       <DialogTrigger asChild>
         <Button 
           size="lg"
-          className="bg-gradient-to-r from-red-600 via-orange-600 to-yellow-600 hover:from-red-700 hover:via-orange-700 hover:to-yellow-700 text-white font-bold shadow-2xl border-2 border-white/20 backdrop-blur-sm animate-pulse"
+          className="bg-gradient-to-r from-red-600 via-[#B8932F] to-yellow-600 hover:from-red-700 hover:via-[#B8932F] hover:to-yellow-700 text-white font-bold shadow-2xl border-2 border-white/20 backdrop-blur-sm animate-pulse"
           data-testid="button-emergency-walk"
         >
           <Zap className="mr-2 h-5 w-5" />
@@ -150,7 +150,7 @@ export function EmergencyWalkBooking() {
       <DialogContent className="sm:max-w-[600px]" data-testid="dialog-emergency-walk">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl">
-            <Zap className="h-6 w-6 text-orange-500" />
+            <Zap className="h-6 w-6 text-[#D4AF37]" />
             {t('emergency.title')}
           </DialogTitle>
           <DialogDescription className="text-base">
@@ -169,7 +169,7 @@ export function EmergencyWalkBooking() {
                 value={petName}
                 onChange={(e) => setPetName(e.target.value)}
                 placeholder={t('emergency.petNamePlaceholder')}
-                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-blue-500 focus:ring-2 focus:ring-blue-200 transition-all"
+                className="w-full px-4 py-3 border-2 border-gray-300 rounded-lg focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] transition-all"
                 data-testid="input-pet-name"
                 disabled={emergencyBookingMutation.isPending}
               />
@@ -196,7 +196,7 @@ export function EmergencyWalkBooking() {
             <Button
               onClick={handleEmergencyBooking}
               disabled={emergencyBookingMutation.isPending}
-              className="w-full bg-gradient-to-r from-orange-600 to-red-600 hover:from-orange-700 hover:to-red-700 text-white text-lg py-6"
+              className="w-full bg-gradient-to-r from-[#B8932F] to-red-600 hover:from-[#B8932F] hover:to-red-700 text-white text-lg py-6"
               data-testid="button-find-walker"
             >
               {emergencyBookingMutation.isPending ? (
@@ -235,7 +235,7 @@ export function EmergencyWalkBooking() {
 
               <div className="grid grid-cols-2 gap-4 pt-4">
                 <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-blue-500" />
+                  <Clock className="h-5 w-5 text-[#D4AF37]" />
                   <div>
                     <p className="text-xs text-gray-600">{t('emergency.arrival')}</p>
                     <p className="font-bold" data-testid="text-eta">
@@ -256,17 +256,17 @@ export function EmergencyWalkBooking() {
             </GlassCard>
 
             {bookingResult.surgePricing.isSurge && (
-              <div className="bg-white border-2 border-orange-300 rounded-lg p-4">
+              <div className="bg-white border-2 border-[#D4AF37] rounded-lg p-4">
                 <div className="flex items-start gap-3">
-                  <TrendingUp className="h-5 w-5 text-orange-600 mt-0.5" />
+                  <TrendingUp className="h-5 w-5 text-[#B8932F] mt-0.5" />
                   <div className="flex-1">
-                    <p className="font-semibold text-orange-900" data-testid="text-surge-active">
+                    <p className="font-semibold text-[#B8932F]" data-testid="text-surge-active">
                       {t('emergency.surgeActive')} ({bookingResult.surgePricing.surgeMultiplier}x)
                     </p>
-                    <p className="text-sm text-orange-800 mt-1">
+                    <p className="text-sm text-[#B8932F] mt-1">
                       {t('emergency.surgeReasons')}
                     </p>
-                    <ul className="list-disc list-inside text-sm text-orange-700 mt-1 mr-4">
+                    <ul className="list-disc list-inside text-sm text-[#B8932F] mt-1 mr-4">
                       {bookingResult.surgePricing.surgeReasons.map((reason, idx) => (
                         <li key={idx} data-testid={`text-surge-reason-${idx}`}>{reason}</li>
                       ))}
@@ -278,7 +278,7 @@ export function EmergencyWalkBooking() {
 
             <GlassCard className="p-6 space-y-3">
               <h4 className="font-semibold flex items-center gap-2">
-                <DollarSign className="h-5 w-5 text-purple-500" />
+                <DollarSign className="h-5 w-5 text-[#D4AF37]" />
                 {t('emergency.pricing')}
               </h4>
               
@@ -291,7 +291,7 @@ export function EmergencyWalkBooking() {
                 </div>
                 
                 {bookingResult.surgePricing.isSurge && (
-                  <div className="flex justify-between text-orange-600">
+                  <div className="flex justify-between text-[#B8932F]">
                     <span>
                       {t('emergency.surgeMultiplier').replace('{{multiplier}}', bookingResult.surgePricing.surgeMultiplier.toString())}:
                     </span>
@@ -326,7 +326,7 @@ export function EmergencyWalkBooking() {
                 <div className="border-t-2 border-gray-200 pt-2 mt-2">
                   <div className="flex justify-between text-lg font-bold">
                     <span>{t('emergency.total')}:</span>
-                    <span className="text-blue-600" data-testid="text-total-price">
+                    <span className="text-[#B8932F]" data-testid="text-total-price">
                       {bookingResult.pricing.totalChargeWithVATILS}
                     </span>
                   </div>
@@ -381,7 +381,7 @@ export function EmergencyWalkBooking() {
                   });
                 }
               }}
-              className="w-full bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white text-lg py-6"
+              className="w-full bg-gradient-to-r from-green-600 to-[#B8932F] hover:from-green-700 hover:to-[#B8932F] text-white text-lg py-6"
               data-testid="button-proceed-payment"
             >
               {t('emergency.bookAndPay')}

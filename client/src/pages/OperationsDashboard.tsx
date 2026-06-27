@@ -136,9 +136,9 @@ export default function OperationsDashboard() {
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      low: "bg-blue-500",
+      low: "bg-[#D4AF37]",
       medium: "bg-yellow-500",
-      high: "bg-orange-500",
+      high: "bg-[#D4AF37]",
       urgent: "bg-red-500",
     };
     return colors[priority] || "bg-gray-500";
@@ -146,9 +146,9 @@ export default function OperationsDashboard() {
 
   const getSeverityColor = (severity: string) => {
     const colors: Record<string, string> = {
-      low: "bg-blue-500",
+      low: "bg-[#D4AF37]",
       medium: "bg-yellow-500",
-      high: "bg-orange-500",
+      high: "bg-[#D4AF37]",
       critical: "bg-red-600",
     };
     return colors[severity] || "bg-gray-500";

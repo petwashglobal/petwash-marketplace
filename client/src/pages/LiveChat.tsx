@@ -36,7 +36,7 @@ export default function LiveChat() {
           <div className="luxury-grid-3 luxury-stagger-fade-in">
             <div className="luxury-glass-card luxury-hover-glow p-8" style={{ animationDelay: '0.1s' }}>
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center luxury-pulse-glow">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center luxury-pulse-glow">
                   <Sparkles className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-xl font-bold luxury-gradient-text">Gemini AI Powered</h3>
@@ -48,7 +48,7 @@ export default function LiveChat() {
 
             <div className="luxury-glass-card luxury-hover-glow p-8" style={{ animationDelay: '0.2s' }}>
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center luxury-pulse-glow">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center luxury-pulse-glow">
                   <MessageCircle className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-xl font-bold luxury-gradient-text">Bilingual Support</h3>
@@ -60,7 +60,7 @@ export default function LiveChat() {
 
             <div className="luxury-glass-card luxury-hover-glow p-8" style={{ animationDelay: '0.3s' }}>
               <div className="flex items-center gap-4 mb-4">
-                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center luxury-pulse-glow">
+                <div className="w-14 h-14 rounded-xl bg-gradient-to-br from-[#D4AF37] to-amber-500 flex items-center justify-center luxury-pulse-glow">
                   <Zap className="w-7 h-7 text-white" />
                 </div>
                 <h3 className="text-xl font-bold luxury-gradient-text">Always Available</h3>

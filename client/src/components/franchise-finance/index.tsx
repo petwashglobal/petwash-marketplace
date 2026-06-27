@@ -416,7 +416,7 @@ export function StationFinancialsTable({ stations, ownerType, isLoading, buildDr
                           {buildDrilldownUrl ? (
                             <Link
                               href={buildDrilldownUrl(st.stationId)}
-                              className="font-medium leading-tight text-blue-600 hover:underline dark:text-blue-400"
+                              className="font-medium leading-tight text-[#B8932F] hover:underline dark:text-[#D4AF37]"
                             >
                               {st.stationName}
                             </Link>
@@ -468,7 +468,7 @@ interface PayoutCycleListProps {
 
 const CYCLE_STATUS_CONFIG: Record<CycleStatus, { label: string; className: string; icon: React.ReactNode }> = {
   pending:     { label: 'Pending',            className: 'border-yellow-400 text-yellow-700 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-300',  icon: <Clock className="h-3 w-3 mr-1" /> },
-  in_progress: { label: 'In Progress',        className: 'border-blue-400 text-blue-700 bg-blue-50 dark:bg-blue-950 dark:text-blue-300',             icon: <Wrench className="h-3 w-3 mr-1" /> },
+  in_progress: { label: 'In Progress',        className: 'border-[#D4AF37] text-[#B8932F] bg-[#D4AF37] dark:bg-[#B8932F] dark:text-[#D4AF37]',             icon: <Wrench className="h-3 w-3 mr-1" /> },
   completed:   { label: 'Completed',          className: 'border-green-400 text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-300',         icon: <CheckCircle2 className="h-3 w-3 mr-1" /> },
   internal:    { label: 'Internal Settlement', className: 'border-gray-300 text-gray-600 bg-white dark:bg-white dark:text-gray-400',             icon: <CalendarCheck className="h-3 w-3 mr-1" /> },
 };
@@ -747,7 +747,7 @@ export function SettlementLedger({ rows, summary, ownerType, isLoading }: Settle
           { label: 'Settled',  value: summary.settled,  color: 'text-emerald-700 dark:text-emerald-400' },
           { label: 'Pending',  value: summary.pending,  color: 'text-yellow-700 dark:text-yellow-400' },
           { label: 'Disputed', value: summary.disputed, color: 'text-red-700 dark:text-red-400' },
-          { label: 'Mismatches', value: summary.mismatchCount, color: 'text-orange-700 dark:text-orange-400' },
+          { label: 'Mismatches', value: summary.mismatchCount, color: 'text-[#B8932F] dark:text-[#D4AF37]' },
         ].map(({ label, value, color }) => (
           <Card key={label} className="border-0 shadow-sm">
             <CardContent className="p-3 text-center">
@@ -792,13 +792,13 @@ export function SettlementLedger({ rows, summary, ownerType, isLoading }: Settle
                         className={cn(
                           'text-sm',
                           isDisputed  && 'bg-red-50/60 dark:bg-red-950/30',
-                          hasMismatch && !isDisputed && 'bg-orange-50/60 dark:bg-orange-950/30',
+                          hasMismatch && !isDisputed && 'bg-[#D4AF37]/60 dark:bg-[#B8932F]/30',
                         )}
                       >
                         <TableCell className="py-2.5 font-mono text-xs">
                           <Link
                             href={`/booking-trace/${row.bookingId}`}
-                            className="text-blue-600 hover:underline dark:text-blue-400"
+                            className="text-[#B8932F] hover:underline dark:text-[#D4AF37]"
                           >
                             {row.bookingId}
                           </Link>
@@ -830,7 +830,7 @@ export function SettlementLedger({ rows, summary, ownerType, isLoading }: Settle
                         <TableCell className="py-2.5 text-center">
                           {hasMismatch ? (
                             <span title="Split totals do not add up to gross — reconciliation required">
-                              <TriangleAlert className="h-4 w-4 text-orange-500 mx-auto" />
+                              <TriangleAlert className="h-4 w-4 text-[#D4AF37] mx-auto" />
                             </span>
                           ) : (
                             <CheckCircle2 className="h-4 w-4 text-emerald-500 mx-auto" />

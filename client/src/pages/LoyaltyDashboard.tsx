@@ -31,7 +31,7 @@ import { TIER_CONFIGS } from '@shared/schema-loyalty';
 // 7-STAR LUXURY TIER SYSTEM - Visual Configuration
 const TIER_VISUAL_CONFIG: Record<string, { color: string; bgColor: string; icon: any; badge: string; emoji: string }> = {
   bronze: { 
-    color: 'from-amber-600 to-orange-700', 
+    color: 'from-amber-600 to-[#B8932F]', 
     bgColor: 'bg-amber-100 dark:bg-amber-900/20',
     icon: Star,
     badge: 'bg-amber-600',
@@ -59,10 +59,10 @@ const TIER_VISUAL_CONFIG: Record<string, { color: string; bgColor: string; icon:
     emoji: '💎'
   },
   diamond: { 
-    color: 'from-blue-400 to-cyan-500', 
-    bgColor: 'bg-blue-100 dark:bg-white',
+    color: 'from-[#D4AF37] to-[#D4AF37]', 
+    bgColor: 'bg-[#D4AF37] dark:bg-white',
     icon: Gem,
-    badge: 'bg-blue-500',
+    badge: 'bg-[#D4AF37]',
     emoji: '💠'
   },
   emerald: { 
@@ -387,7 +387,7 @@ export default function LoyaltyDashboard() {
           {/* Tier System Grid - 7 STAR LUXURY */}
           <div className="mb-8 luxury-animate-slide-up luxury-delay-2">
             <h2 className="luxury-heading-md mb-6 flex items-center gap-2">
-              <div className="p-2 rounded-xl bg-gradient-to-br from-blue-500/20 to-purple-500/20">
+              <div className="p-2 rounded-xl bg-gradient-to-br from-[#D4AF37]/20 to-[#D4AF37]/20">
                 <Trophy className="w-6 h-6 luxury-text-gradient" />
               </div>
               {isHebrew ? 'מערכת דירוג 7 כוכבים' : '7-Star Tier System'}
@@ -403,7 +403,7 @@ export default function LoyaltyDashboard() {
                     key={tierConfig.id}
                     className={`luxury-glass-card luxury-shadow-lg relative overflow-hidden luxury-hover-lift luxury-animate-scale-in luxury-delay-${index + 3} ${
                       isCurrent 
-                        ? 'ring-4 ring-blue-500 scale-105' 
+                        ? 'ring-4 ring-[#D4AF37] scale-105' 
                         : ''
                     }`}
                   >
@@ -441,12 +441,12 @@ export default function LoyaltyDashboard() {
                             <span>{tierConfig.benefits.discountPercent}% {isHebrew ? 'הנחה' : 'Discount'}</span>
                           </div>
                           <div className="flex items-center gap-2 text-gray-700 dark:text-black">
-                            <TrendingUp className="w-3 h-3 text-blue-600" />
+                            <TrendingUp className="w-3 h-3 text-[#B8932F]" />
                             <span>{tierConfig.benefits.pointsMultiplier}x {isHebrew ? 'נקודות' : 'Points'}</span>
                           </div>
                           {tierConfig.benefits.conciergeService && (
                             <div className="flex items-center gap-2 text-gray-700 dark:text-black">
-                              <Crown className="w-3 h-3 text-purple-600" />
+                              <Crown className="w-3 h-3 text-[#B8932F]" />
                               <span>{isHebrew ? 'שירות קונסיירז׳' : 'Concierge'}</span>
                             </div>
                           )}
@@ -531,8 +531,8 @@ export default function LoyaltyDashboard() {
           {/* LUXURY Points Activity Chart (Transaction History) */}
           <div className="luxury-glass-minimal luxury-hover-lift p-8 mt-8 luxury-animate-slide-up">
             <div className="flex items-center gap-3 mb-6">
-              <div className="p-3 rounded-xl bg-gradient-to-br from-blue-500/20 to-cyan-500/20">
-                <TrendingUp className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+              <div className="p-3 rounded-xl bg-gradient-to-br from-[#D4AF37]/20 to-[#D4AF37]/20">
+                <TrendingUp className="w-6 h-6 text-[#B8932F] dark:text-[#D4AF37]" />
               </div>
               <h3 className="luxury-heading-md">
                 {isHebrew ? 'היסטוריית נקודות' : 'Points History'}

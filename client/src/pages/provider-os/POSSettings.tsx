@@ -165,8 +165,8 @@ export default function POSSettings() {
             value={manualApproval}
             onChange={(v) => { setManualApproval(v); if (v) setAutoAccept(false); }}
             icon={UserCheck}
-            iconColor="text-blue-600"
-            iconBg="bg-blue-50"
+            iconColor="text-[#B8932F]"
+            iconBg="bg-[#D4AF37]"
           />
           <ToggleCard
             label="Instant booking"
@@ -183,8 +183,8 @@ export default function POSSettings() {
             value={weekendJobs}
             onChange={setWeekendJobs}
             icon={Sun}
-            iconColor="text-orange-500"
-            iconBg="bg-orange-50"
+            iconColor="text-[#D4AF37]"
+            iconBg="bg-[#D4AF37]"
           />
           <ToggleCard
             label="Night jobs"
@@ -192,8 +192,8 @@ export default function POSSettings() {
             value={nightJobs}
             onChange={setNightJobs}
             icon={Moon}
-            iconColor="text-indigo-600"
-            iconBg="bg-indigo-50"
+            iconColor="text-[#B8932F]"
+            iconBg="bg-[#D4AF37]"
           />
           <ToggleCard
             label="Accept new clients"
@@ -210,8 +210,8 @@ export default function POSSettings() {
             value={returningOnly}
             onChange={(v) => { setReturningOnly(v); if (v) setNewClients(false); }}
             icon={UserX}
-            iconColor="text-purple-600"
-            iconBg="bg-purple-50"
+            iconColor="text-[#B8932F]"
+            iconBg="bg-[#D4AF37]"
           />
 
           <div className="bg-white border border-gray-200 rounded-xl p-4">
@@ -228,7 +228,7 @@ export default function POSSettings() {
 
           <div className="bg-white border border-gray-200 rounded-xl p-4">
             <p className="text-sm font-medium text-gray-900 mb-3 flex items-center gap-2">
-              <Clock className="w-4 h-4 text-blue-500" /> Minimum advance notice
+              <Clock className="w-4 h-4 text-[#D4AF37]" /> Minimum advance notice
             </p>
             <select value={minNotice} onChange={e => setMinNotice(e.target.value)}
               className="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:border-amber-400">
@@ -244,11 +244,11 @@ export default function POSSettings() {
       {activeTab === 'notifications' && (
         <div className="space-y-3">
           <ToggleCard label="Push notifications" sub="Real-time alerts on your device" value={pushNotifs} onChange={setPushNotifs} icon={Bell} iconColor="text-amber-600" iconBg="bg-amber-50" />
-          <ToggleCard label="Email notifications" sub="Summary emails for key events" value={emailNotifs} onChange={setEmailNotifs} icon={MessageSquare} iconColor="text-blue-600" iconBg="bg-blue-50" />
+          <ToggleCard label="Email notifications" sub="Summary emails for key events" value={emailNotifs} onChange={setEmailNotifs} icon={MessageSquare} iconColor="text-[#B8932F]" iconBg="bg-[#D4AF37]" />
           <ToggleCard label="SMS — emergency only" sub="Text alerts for urgent situations" value={smsEmergency} onChange={setSmsEmergency} icon={Phone} iconColor="text-red-600" iconBg="bg-red-50" />
           <ToggleCard label="Chat message alerts" sub="Notifications when clients message you" value={chatNotifs} onChange={setChatNotifs} icon={MessageSquare} iconColor="text-teal-600" iconBg="bg-teal-50" />
           <ToggleCard label="Payment alerts" sub="Notify when funds arrive or change" value={paymentAlerts} onChange={setPaymentAlerts} icon={CreditCard} iconColor="text-green-600" iconBg="bg-green-50" />
-          <ToggleCard label="Document alerts" sub="Notify before documents expire" value={documentAlerts} onChange={setDocumentAlerts} icon={FileText} iconColor="text-purple-600" iconBg="bg-purple-50" />
+          <ToggleCard label="Document alerts" sub="Notify before documents expire" value={documentAlerts} onChange={setDocumentAlerts} icon={FileText} iconColor="text-[#B8932F]" iconBg="bg-[#D4AF37]" />
         </div>
       )}
 
@@ -270,8 +270,8 @@ export default function POSSettings() {
             value={platformOnly}
             onChange={setPlatformOnly}
             icon={MessageSquare}
-            iconColor="text-blue-600"
-            iconBg="bg-blue-50"
+            iconColor="text-[#B8932F]"
+            iconBg="bg-[#D4AF37]"
           />
           <ToggleCard
             label="Verified clients only"
@@ -294,7 +294,7 @@ export default function POSSettings() {
         <div className="space-y-3">
           <ToggleCard label="Dogs only" sub="Only accept dog-related bookings" value={dogsOnly} onChange={setDogsOnly} icon={Dog} iconColor="text-amber-600" iconBg="bg-amber-50" />
           <ToggleCard label="Cats welcome" sub="Accept cat-related bookings" value={catsAllowed} onChange={setCatsAllowed} icon={Dog} iconColor="text-teal-600" iconBg="bg-teal-50" />
-          <ToggleCard label="Small pets only" sub="Only accept pets under 15kg" value={smallPets} onChange={setSmallPets} icon={Dog} iconColor="text-blue-600" iconBg="bg-blue-50" />
+          <ToggleCard label="Small pets only" sub="Only accept pets under 15kg" value={smallPets} onChange={setSmallPets} icon={Dog} iconColor="text-[#B8932F]" iconBg="bg-[#D4AF37]" />
           <ToggleCard label="No aggressive breeds" sub="Decline bookings with restricted breeds" value={noAggressive} onChange={setNoAggressive} icon={Shield} iconColor="text-red-600" iconBg="bg-red-50" />
 
           <div className="bg-white border border-gray-200 rounded-xl p-4">

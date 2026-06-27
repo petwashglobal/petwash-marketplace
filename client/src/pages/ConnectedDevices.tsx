@@ -234,7 +234,7 @@ export default function ConnectedDevices() {
                 >
                   <Card 
                     className={`luxury-glass-card luxury-hover-lift ${
-                      device.isCurrentDevice ? 'ring-2 ring-purple-400' : ''
+                      device.isCurrentDevice ? 'ring-2 ring-[#D4AF37]' : ''
                   } ${
                     device.fraudFlags.length > 0 ? 'border-yellow-500' : ''
                   }`}

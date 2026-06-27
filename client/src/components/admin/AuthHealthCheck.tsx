@@ -315,10 +315,10 @@ export default function AuthHealthCheck() {
 
       {/* Firebase Config Viewer */}
       {firebaseConfig && (
-        <Card className="border-2 border-blue-500">
+        <Card className="border-2 border-[#D4AF37]">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Activity className="w-5 h-5 text-blue-600" />
+              <Activity className="w-5 h-5 text-[#B8932F]" />
               Live Firebase Configuration
             </CardTitle>
             <CardDescription>
@@ -365,8 +365,8 @@ export default function AuthHealthCheck() {
               </div>
             </div>
 
-            <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded">
-              <p className="text-sm text-blue-900">
+            <div className="mt-4 p-3 bg-[#D4AF37] border border-[#D4AF37] rounded">
+              <p className="text-sm text-[#B8932F]">
                 <strong>Note:</strong> This configuration is loaded at runtime from the Firebase initialization.
                 Changes to environment variables require a server restart.
               </p>

@@ -187,7 +187,7 @@ export default function Academy() {
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto mt-12">
               <div className="luxury-glass-card luxury-shadow-lg p-4 text-center luxury-animate-fade-in luxury-delay-5">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="p-2 bg-gradient-to-br from-amber-500 to-orange-500 rounded-lg">
+                  <div className="p-2 bg-gradient-to-br from-amber-500 to-[#D4AF37] rounded-lg">
                     <Crown className="h-5 w-5 text-white" />
                   </div>
                   <span className="luxury-heading-lg">
@@ -215,7 +215,7 @@ export default function Academy() {
 
               <div className="luxury-glass-card luxury-shadow-lg p-4 text-center luxury-animate-fade-in luxury-delay-7">
                 <div className="flex items-center justify-center gap-2 mb-2">
-                  <div className="p-2 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-lg">
+                  <div className="p-2 bg-gradient-to-br from-yellow-400 to-[#D4AF37] rounded-lg">
                     <Star className="h-5 w-5 text-white" />
                   </div>
                   <span className="luxury-heading-lg">
@@ -435,7 +435,7 @@ function TrainerCard({ trainer }: { trainer: TrainerProfile }) {
   return (
     <div className="luxury-glass-card luxury-hover-glow luxury-shadow-xl overflow-hidden luxury-animate-scale-in">
       {/* Cover Photo / Gradient */}
-      <div className="relative h-32 bg-gradient-to-br from-amber-500 via-yellow-500 to-orange-500">
+      <div className="relative h-32 bg-gradient-to-br from-amber-500 via-yellow-500 to-[#D4AF37]">
         {trainer.verified && (
           <div className="absolute top-3 left-3">
             <span className="luxury-badge-success luxury-shadow-lg">

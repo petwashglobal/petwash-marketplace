@@ -102,7 +102,7 @@ export function PetAvatarDisplay({
     return (
       <div className={`${sizeClasses[size]} ${className}`}>
         <div className="relative w-full h-full">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-400 via-pink-400 to-blue-400 rounded-full animate-pulse" />
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-400 via-[#D4AF37] to-[#D4AF37] rounded-full animate-pulse" />
           <div className="absolute inset-2 bg-white dark:bg-white rounded-full flex items-center justify-center">
             <PetWashIcon name="brand_paw" size={34} label="Kenzo" />
           </div>
@@ -125,7 +125,7 @@ export function PetAvatarDisplay({
         
         {/* Emotion indicator */}
         {animated && isAnimating && (
-          <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-yellow-400 to-orange-400 rounded-full flex items-center justify-center shadow-lg animate-bounce">
+          <div className="absolute -top-2 -right-2 w-8 h-8 bg-gradient-to-r from-yellow-400 to-[#D4AF37] rounded-full flex items-center justify-center shadow-lg animate-bounce">
             {avatarState.emotion === 'joy' && '😊'}
             {avatarState.emotion === 'curiosity' && '🤔'}
             {avatarState.emotion === 'helpful' && '💡'}
@@ -141,7 +141,7 @@ export function PetAvatarDisplay({
       )}
       
       {greeting && (
-        <div className="mt-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-pink-100 dark:from-amber-900/30 dark:to-pink-900/30 rounded-lg border border-amber-200 dark:border-amber-700">
+        <div className="mt-2 px-4 py-2 bg-gradient-to-r from-amber-100 to-[#D4AF37] dark:from-amber-900/30 dark:to-[#B8932F]/30 rounded-lg border border-amber-200 dark:border-amber-700">
           <p className="text-sm text-gray-700 dark:text-black text-center">
             {greeting}
           </p>

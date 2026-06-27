@@ -12,22 +12,22 @@ import { cn } from "@/lib/utils";
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; label: string; urgent?: boolean }> = {
   session_completed:    { icon: CheckCircle2, color: "text-green-600",  label: "סשן הושלם" },
-  session_active:       { icon: Activity,     color: "text-blue-600",   label: "סשן פעיל" },
+  session_active:       { icon: Activity,     color: "text-[#B8932F]",   label: "סשן פעיל" },
   session_pending:      { icon: Clock,        color: "text-gray-500",   label: "סשן ממתין" },
   session_aborted:      { icon: XCircle,      color: "text-red-500",    label: "סשן בוטל" },
-  session_timed_out:    { icon: XCircle,      color: "text-orange-500", label: "סשן פג תוקף" },
+  session_timed_out:    { icon: XCircle,      color: "text-[#D4AF37]", label: "סשן פג תוקף" },
   session_fault:        { icon: AlertTriangle,color: "text-red-700",    label: "תקלה בסשן" },
-  command_timed_out:    { icon: Clock,        color: "text-orange-500", label: "פקודה פגה" },
+  command_timed_out:    { icon: Clock,        color: "text-[#D4AF37]", label: "פקודה פגה" },
   command_failed:       { icon: XCircle,      color: "text-red-600",    label: "פקודה נכשלה" },
-  command_start_pump:   { icon: Zap,          color: "text-blue-500",   label: "הפעלת משאבה" },
-  compensation_required:{ icon: AlertTriangle,color: "text-orange-700", label: "נדרש פיצוי", urgent: true },
+  command_start_pump:   { icon: Zap,          color: "text-[#D4AF37]",   label: "הפעלת משאבה" },
+  compensation_required:{ icon: AlertTriangle,color: "text-[#B8932F]", label: "נדרש פיצוי", urgent: true },
   fault:                { icon: AlertTriangle,color: "text-red-600",    label: "תקלה" },
   fault_raised:         { icon: AlertTriangle,color: "text-red-700",    label: "תקלה הועלתה" },
   heartbeat:            { icon: Wifi,         color: "text-emerald-500",label: "Heartbeat" },
-  session_started:      { icon: Activity,     color: "text-blue-500",   label: "סשן התחיל" },
-  card_swiped:          { icon: Terminal,     color: "text-indigo-500", label: "כרטיס נגלש" },
-  qr_scanned:           { icon: Terminal,     color: "text-indigo-500", label: "QR נסרק" },
-  command_sent:         { icon: Zap,          color: "text-blue-400",   label: "פקודה נשלחה" },
+  session_started:      { icon: Activity,     color: "text-[#D4AF37]",   label: "סשן התחיל" },
+  card_swiped:          { icon: Terminal,     color: "text-[#D4AF37]", label: "כרטיס נגלש" },
+  qr_scanned:           { icon: Terminal,     color: "text-[#D4AF37]", label: "QR נסרק" },
+  command_sent:         { icon: Zap,          color: "text-[#D4AF37]",   label: "פקודה נשלחה" },
   command_acknowledged: { icon: CheckCircle2, color: "text-emerald-500",label: "פקודה אושרה" },
 };
 
@@ -67,7 +67,7 @@ export default function BayTimeline() {
         </Link>
         <h1 className="text-xl font-bold flex-1">פיד עמדה — {bayId}</h1>
         <Link href="/admin/compensation">
-          <Button variant="outline" size="sm" className="gap-1 text-xs border-orange-200 text-orange-700 hover:bg-orange-50">
+          <Button variant="outline" size="sm" className="gap-1 text-xs border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]">
             <AlertTriangle className="h-3.5 w-3.5" />
             פיצויים
           </Button>
@@ -91,10 +91,10 @@ export default function BayTimeline() {
         </Card>
         <Card className="flex-1">
           <CardContent className="pt-3 pb-3 flex items-center gap-2">
-            <Terminal className={cn("h-5 w-5", pendingCmds > 0 ? "text-blue-500" : "text-gray-300")} />
+            <Terminal className={cn("h-5 w-5", pendingCmds > 0 ? "text-[#D4AF37]" : "text-gray-300")} />
             <div>
               <p className="text-xs text-muted-foreground">פקודות ממתינות</p>
-              <p className={cn("text-lg font-bold", pendingCmds > 0 ? "text-blue-600" : "text-gray-400")}>
+              <p className={cn("text-lg font-bold", pendingCmds > 0 ? "text-[#B8932F]" : "text-gray-400")}>
                 {pendingCmds}
               </p>
             </div>
@@ -134,7 +134,7 @@ export default function BayTimeline() {
                     key={item.id}
                     className={cn(
                       "flex gap-3 py-2.5 px-2 border-b last:border-0 rounded transition-colors",
-                      isUrgent && "bg-orange-50 border-orange-100",
+                      isUrgent && "bg-[#D4AF37] border-[#D4AF37]",
                     )}
                   >
                     <div className="mt-0.5">
@@ -142,7 +142,7 @@ export default function BayTimeline() {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={cn("text-sm font-medium", isUrgent && "text-orange-800")}>
+                        <span className={cn("text-sm font-medium", isUrgent && "text-[#B8932F]")}>
                           {config.label}
                         </span>
                         {item.severity && (
@@ -155,7 +155,7 @@ export default function BayTimeline() {
                         )}
                         {isUrgent && (
                           <Link href="/admin/compensation">
-                            <Badge className="text-[10px] bg-orange-200 text-orange-900 cursor-pointer underline">
+                            <Badge className="text-[10px] bg-[#D4AF37] text-[#B8932F] cursor-pointer underline">
                               דרוש פיצוי ›
                             </Badge>
                           </Link>
@@ -170,7 +170,7 @@ export default function BayTimeline() {
                             </span>
                           )}
                           {meta.retryCount != null && (
-                            <span className="text-[10px] text-orange-500">
+                            <span className="text-[10px] text-[#D4AF37]">
                               ניסיון {meta.retryCount + 1}
                             </span>
                           )}

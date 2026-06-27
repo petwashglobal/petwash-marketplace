@@ -17,7 +17,7 @@ export default function Story() {
         <div className="space-y-8 luxury-stagger-fade-in">
           <div className="luxury-glass-card luxury-shadow-lg p-10 luxury-slide-up" style={{ animationDelay: '0.1s' }}>
             <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center luxury-pulse-glow">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-[#D4AF37] flex items-center justify-center luxury-pulse-glow">
                 <Lightbulb className="w-6 h-6 text-white" />
               </div>
               <span className="luxury-gradient-text">The Vision</span>
@@ -31,7 +31,7 @@ export default function Story() {
 
           <div className="luxury-glass-card luxury-shadow-lg p-10 luxury-slide-up" style={{ animationDelay: '0.2s' }}>
             <h2 className="text-3xl font-bold mb-6 flex items-center gap-4">
-              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-cyan-500 flex items-center justify-center luxury-pulse-glow">
+              <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center luxury-pulse-glow">
                 <Globe className="w-6 h-6 text-white" />
               </div>
               <span className="luxury-gradient-text">Global Expansion</span>

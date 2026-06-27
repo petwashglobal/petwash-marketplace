@@ -164,7 +164,7 @@ export function ReceiptCameraUpload({ onDataExtracted, language = 'en' }: Receip
           type="button"
           onClick={() => cameraInputRef.current?.click()}
           disabled={isProcessing}
-          className="flex-1 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-bold py-6 shadow-lg"
+          className="flex-1 bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] text-white font-bold py-6 shadow-lg"
           data-testid="button-camera-capture"
         >
           <Camera className="w-5 h-5 mr-2" />

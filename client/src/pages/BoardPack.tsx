@@ -105,19 +105,19 @@ function ils(v: number | null | undefined) {
 
 const SIGNAL_CFG: Record<ExpansionSignal, { label: string; color: string; icon: React.ReactNode }> = {
   expand_now:            { label: 'Expand now',           color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: <TrendingUp className="w-3 h-3" /> },
-  expand_carefully:      { label: 'Expand carefully',     color: 'bg-blue-100 text-blue-800 border-blue-300',         icon: <TrendingUp className="w-3 h-3" /> },
+  expand_carefully:      { label: 'Expand carefully',     color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',         icon: <TrendingUp className="w-3 h-3" /> },
   fix_operations_first:  { label: 'Fix ops first',        color: 'bg-amber-100 text-amber-800 border-amber-300',      icon: <AlertTriangle className="w-3 h-3" /> },
-  freeze_capex:          { label: 'Freeze capex',         color: 'bg-orange-100 text-orange-800 border-orange-300',   icon: <Minus className="w-3 h-3" /> },
-  review_franchise:      { label: 'Review franchise',     color: 'bg-purple-100 text-purple-800 border-purple-300',   icon: <AlertTriangle className="w-3 h-3" /> },
+  freeze_capex:          { label: 'Freeze capex',         color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',   icon: <Minus className="w-3 h-3" /> },
+  review_franchise:      { label: 'Review franchise',     color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',   icon: <AlertTriangle className="w-3 h-3" /> },
   restructure:           { label: 'Restructure',          color: 'bg-red-100 text-red-800 border-red-300',            icon: <TrendingDown className="w-3 h-3" /> },
   maintain:              { label: 'Maintain',             color: 'bg-white text-gray-700 border-gray-300',         icon: <Minus className="w-3 h-3" /> },
 };
 
 const GRADE_CFG: Record<NetworkGrade, { color: string; label: string }> = {
   A: { color: 'text-emerald-700 bg-emerald-50 border-emerald-200', label: 'Excellent' },
-  B: { color: 'text-blue-700 bg-blue-50 border-blue-200',         label: 'Good' },
+  B: { color: 'text-[#B8932F] bg-[#D4AF37] border-[#D4AF37]',         label: 'Good' },
   C: { color: 'text-amber-700 bg-amber-50 border-amber-200',      label: 'Acceptable' },
-  D: { color: 'text-orange-700 bg-orange-50 border-orange-200',   label: 'Weak' },
+  D: { color: 'text-[#B8932F] bg-[#D4AF37] border-[#D4AF37]',   label: 'Weak' },
   E: { color: 'text-red-700 bg-red-50 border-red-200',            label: 'Critical' },
 };
 
@@ -299,7 +299,7 @@ function StationRanking({ stations }: { stations: ExpansionStationScore[] }) {
                 </div>
               </TableCell>
               <TableCell>
-                <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${s.ownershipType === 'company' ? 'bg-blue-50 text-blue-700 border-blue-200' : 'bg-purple-50 text-purple-700 border-purple-200'}`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${s.ownershipType === 'company' ? 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' : 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]'}`}>
                   {s.ownershipType === 'company' ? 'Company' : 'Franchise'}
                 </span>
               </TableCell>
@@ -375,7 +375,7 @@ function OwnershipDecision({ decision }: { decision: OwnershipComparisonDecision
   const winnerLabel = winner === 'company' ? 'Company-owned outperforms' : winner === 'franchise' ? 'Franchise-owned outperforms' : 'Performance is comparable';
   const winnerColor = winner === 'tie'
     ? 'bg-white border-gray-200 text-gray-700'
-    : 'bg-blue-50 border-blue-200 text-blue-800';
+    : 'bg-[#D4AF37] border-[#D4AF37] text-[#B8932F]';
 
   return (
     <div className="space-y-3">
@@ -390,7 +390,7 @@ function OwnershipDecision({ decision }: { decision: OwnershipComparisonDecision
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
         <div className="border rounded-lg p-3 bg-white">
           <div className="text-xs text-muted-foreground mb-1">Margin delta</div>
-          <div className={`flex items-center gap-1 font-bold text-lg ${deltaMarginPct > 0 ? 'text-blue-700' : deltaMarginPct < 0 ? 'text-purple-700' : 'text-gray-600'}`}>
+          <div className={`flex items-center gap-1 font-bold text-lg ${deltaMarginPct > 0 ? 'text-[#B8932F]' : deltaMarginPct < 0 ? 'text-[#B8932F]' : 'text-gray-600'}`}>
             {deltaMarginPct > 0 ? <ChevronUp className="w-4 h-4" /> : deltaMarginPct < 0 ? <ChevronDown className="w-4 h-4" /> : <Minus className="w-4 h-4" />}
             {Math.abs(deltaMarginPct).toFixed(1)}pp
           </div>

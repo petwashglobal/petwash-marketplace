@@ -167,10 +167,10 @@ export default function ProviderRegistrationForm() {
 
       {step === 2 && (
         <>
-          <div className="bg-blue-900/20 border border-blue-500/30 rounded-2xl p-4">
-            <p className="text-blue-300 text-sm font-semibold">📸 Identity Verification</p>
-            <p className="text-blue-200/60 text-xs mt-1">We need a selfie and your government ID to verify your identity. Photos are encrypted and stored securely.</p>
-            <p className="text-blue-200/40 text-xs mt-0.5" dir="rtl">התמונות מוצפנות ומאוחסנות בצורה מאובטחת</p>
+          <div className="bg-[#B8932F]/20 border border-[#D4AF37]/30 rounded-2xl p-4">
+            <p className="text-[#D4AF37] text-sm font-semibold">📸 Identity Verification</p>
+            <p className="text-[#D4AF37]/60 text-xs mt-1">We need a selfie and your government ID to verify your identity. Photos are encrypted and stored securely.</p>
+            <p className="text-[#D4AF37]/40 text-xs mt-0.5" dir="rtl">התמונות מוצפנות ומאוחסנות בצורה מאובטחת</p>
           </div>
 
           <MobileSection title="Selfie / Live Photo" titleHe="סלפי לאימות זהות">

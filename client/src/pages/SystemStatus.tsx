@@ -64,7 +64,7 @@ export default function SystemStatus() {
         </div>
 
         <Card className="luxury-glass-card luxury-shadow-lg p-6 mt-8 text-center animate-in slide-in-from-bottom duration-700 delay-200">
-          <Clock className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+          <Clock className="w-12 h-12 text-[#D4AF37] mx-auto mb-4" />
           <h3 className="font-semibold mb-2">Status History</h3>
           <p className="text-sm text-gray-600">
             No incidents reported in the last 30 days

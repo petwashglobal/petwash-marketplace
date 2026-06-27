@@ -48,7 +48,7 @@ function Calendar({
           "focus-within:relative focus-within:z-20",
           "[&:has([aria-selected].day-range-end)]:rounded-r-md",
           "[&:has([aria-selected].day-range-start)]:rounded-l-md",
-          "[&:has([aria-selected])]:bg-blue-50 dark:[&:has([aria-selected])]:bg-blue-900/30",
+          "[&:has([aria-selected])]:bg-[#D4AF37] dark:[&:has([aria-selected])]:bg-[#B8932F]/30",
           "first:[&:has([aria-selected])]:rounded-l-md",
           "last:[&:has([aria-selected])]:rounded-r-md"
         ),
@@ -66,26 +66,26 @@ function Calendar({
         day_range_start: "day-range-start",
         day_range_end: "day-range-end",
         day_selected: cn(
-          "bg-blue-500 dark:bg-blue-600",
+          "bg-[#D4AF37] dark:bg-[#B8932F]",
           "text-white font-semibold",
-          "hover:bg-blue-600 dark:hover:bg-blue-700",
-          "focus:bg-blue-600 dark:focus:bg-blue-700",
+          "hover:bg-[#B8932F] dark:hover:bg-[#B8932F]",
+          "focus:bg-[#B8932F] dark:focus:bg-[#B8932F]",
           "rounded-lg"
         ),
         day_today: cn(
           "bg-white dark:bg-white",
-          "text-blue-600 dark:text-blue-400",
+          "text-[#B8932F] dark:text-[#D4AF37]",
           "font-bold"
         ),
         day_outside: cn(
           "day-outside text-gray-300 dark:text-gray-600",
-          "aria-selected:bg-blue-50/50 dark:aria-selected:bg-blue-900/20",
+          "aria-selected:bg-[#D4AF37]/50 dark:aria-selected:bg-[#B8932F]/20",
           "aria-selected:text-gray-400"
         ),
         day_disabled: "text-gray-300 dark:text-gray-600 opacity-50 cursor-not-allowed",
         day_range_middle: cn(
-          "aria-selected:bg-blue-50 dark:aria-selected:bg-blue-900/40",
-          "aria-selected:text-blue-700 dark:aria-selected:text-blue-300",
+          "aria-selected:bg-[#D4AF37] dark:aria-selected:bg-[#B8932F]/40",
+          "aria-selected:text-[#B8932F] dark:aria-selected:text-[#D4AF37]",
           "aria-selected:rounded-none"
         ),
         day_hidden: "invisible",

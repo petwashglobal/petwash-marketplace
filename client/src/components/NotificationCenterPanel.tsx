@@ -256,7 +256,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
         <SheetHeader className="px-5 pb-3 border-b border-gray-50 shrink-0">
           <div className="flex items-center justify-between">
             <SheetTitle className="text-base font-bold text-gray-900 flex items-center gap-2">
-              <Bell className="w-4 h-4 text-blue-500" />
+              <Bell className="w-4 h-4 text-[#D4AF37]" />
               {isHebrew ? 'התראות' : 'Notifications'}
               {(data?.totalUnread ?? 0) > 0 && (
                 <span
@@ -271,7 +271,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
               <button
                 onClick={handleMarkAllRead}
                 disabled={markReadMutation.isPending}
-                className="text-[11px] font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1 disabled:opacity-50"
+                className="text-[11px] font-semibold text-[#B8932F] hover:text-[#B8932F] flex items-center gap-1 disabled:opacity-50"
               >
                 <CheckCheck className="w-3 h-3" />
                 {isHebrew ? 'סמן הכל כנקרא' : 'Mark all read'}
@@ -354,7 +354,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
               <div
                 key={idx}
                 className={`flex items-start gap-3 px-5 py-4 border-b border-gray-50 transition-colors ${
-                  isUnread ? "bg-blue-50/40" : "bg-white"
+                  isUnread ? "bg-[#D4AF37]/40" : "bg-white"
                 }`}
               >
                 {/* Platform Icon */}
@@ -431,7 +431,7 @@ export function NotificationCenterPanel({ open, onClose, language = 'en' }: Noti
                       </span>
                     )}
                     {isUnread && group.unreadCount === 1 && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500" />
+                      <div className="w-2 h-2 rounded-full bg-[#D4AF37]" />
                     )}
                     {group.bookingId && <ChevronRight className="w-3.5 h-3.5 text-gray-300" />}
                   </div>

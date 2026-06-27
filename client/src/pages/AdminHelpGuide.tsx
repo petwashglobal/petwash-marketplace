@@ -46,7 +46,7 @@ export default function AdminHelpGuide({ language, onLanguageChange }: AdminHelp
             <CardHeader className="pb-4">
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3">
-                  <div className="p-3 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg shadow-lg">
+                  <div className="p-3 bg-gradient-to-br from-[#B8932F] to-[#B8932F] rounded-lg shadow-lg">
                     <Shield className="w-8 h-8 text-white" />
                   </div>
                   <div>
@@ -97,11 +97,11 @@ export default function AdminHelpGuide({ language, onLanguageChange }: AdminHelp
           </Card>
 
           <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-blue-50 border-blue-200 hover:shadow-md transition-shadow cursor-pointer">
+            <Card className="bg-[#D4AF37] border-[#D4AF37] hover:shadow-md transition-shadow cursor-pointer">
               <CardContent className="p-4">
                 <a href="#authentication-architecture-overview" className="block">
-                  <h3 className="font-semibold text-blue-900 mb-1">Architecture</h3>
-                  <p className="text-sm text-blue-700">
+                  <h3 className="font-semibold text-[#B8932F] mb-1">Architecture</h3>
+                  <p className="text-sm text-[#B8932F]">
                     {t('admin.help.systemStructure', language)}
                   </p>
                 </a>

@@ -122,7 +122,7 @@ function statusColor(status: string) {
   if (status === 'approved') return 'text-green-600';
   if (status === 'rejected') return 'text-red-600';
   if (status === 'pending_review') return 'text-amber-600';
-  if (status === 'pending_resubmission') return 'text-orange-600';
+  if (status === 'pending_resubmission') return 'text-[#B8932F]';
   return 'text-gray-500';
 }
 
@@ -294,7 +294,7 @@ export default function ProviderKycReview() {
   const queuePriority = app.priority ?? 'normal';
   const PRIORITY_STYLE: Record<string, string> = {
     urgent: 'bg-red-600 text-white',
-    high:   'bg-orange-500 text-white',
+    high:   'bg-[#D4AF37] text-white',
     normal: 'bg-white text-slate-600',
     low:    'bg-white text-slate-400',
   };
@@ -398,7 +398,7 @@ export default function ProviderKycReview() {
           )}
 
           {isPendingResubmission && (
-            <Badge variant="outline" className="border-orange-400 text-orange-700 bg-orange-50">
+            <Badge variant="outline" className="border-[#D4AF37] text-[#B8932F] bg-[#D4AF37]">
               RESUBMISSION PENDING
             </Badge>
           )}
@@ -409,7 +409,7 @@ export default function ProviderKycReview() {
               app.status === 'pending_resubmission' ? 'outline' :
               'destructive'
             }
-            className={app.status === 'pending_resubmission' ? 'border-orange-400 text-orange-700' : ''}
+            className={app.status === 'pending_resubmission' ? 'border-[#D4AF37] text-[#B8932F]' : ''}
           >
             {app.status?.replace(/_/g, ' ').toUpperCase()}
           </Badge>
@@ -438,7 +438,7 @@ export default function ProviderKycReview() {
             <MessageSquare className="h-4 w-4" />
             Messages
             {messages.length > 0 && (
-              <span className="ml-1 bg-blue-100 text-blue-700 rounded-full text-xs px-1.5">{messages.length}</span>
+              <span className="ml-1 bg-[#D4AF37] text-[#B8932F] rounded-full text-xs px-1.5">{messages.length}</span>
             )}
           </TabsTrigger>
           <TabsTrigger value="audit" className="flex items-center gap-1.5">
@@ -680,15 +680,15 @@ export default function ProviderKycReview() {
 
               {/* Trainee → Provider promotion (visible when status=approved) */}
               {app.status === 'approved' && numericId && (
-                <Card className="border-blue-200 bg-blue-50">
+                <Card className="border-[#D4AF37] bg-[#D4AF37]">
                   <CardContent className="pt-4 pb-4 flex items-center justify-between gap-3 flex-wrap">
-                    <div className="text-sm text-blue-800 flex items-center gap-2">
+                    <div className="text-sm text-[#B8932F] flex items-center gap-2">
                       <UserCheck className="h-4 w-4 shrink-0" />
                       <span>If this provider is a <strong>trainee</strong>, you can promote them to a full provider role here.</span>
                     </div>
                     <Button
                       size="sm"
-                      className="bg-blue-700 hover:bg-blue-800 text-white shrink-0"
+                      className="bg-[#B8932F] hover:bg-[#B8932F] text-white shrink-0"
                       onClick={() => promoteTraineeMutation.mutate()}
                       disabled={promoteTraineeMutation.isPending || promoteTraineeMutation.isSuccess}
                     >
@@ -701,13 +701,13 @@ export default function ProviderKycReview() {
 
               {/* ── Resubmission panel (inline if pending_resubmission) ── */}
               {isPendingResubmission && !showResubmitPanel && (
-                <Card className="border-orange-200 bg-orange-50">
+                <Card className="border-[#D4AF37] bg-[#D4AF37]">
                   <CardContent className="pt-4 pb-4 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 text-sm text-orange-800">
+                    <div className="flex items-center gap-2 text-sm text-[#B8932F]">
                       <Clock className="h-4 w-4 shrink-0" />
                       Waiting for applicant to upload updated documents.
                     </div>
-                    <Button size="sm" variant="outline" className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                    <Button size="sm" variant="outline" className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
                       onClick={() => setShowResubmitPanel(true)}>
                       Request again
                     </Button>
@@ -717,9 +717,9 @@ export default function ProviderKycReview() {
 
               {/* ── Resubmit request form ── */}
               {showResubmitPanel && (
-                <Card className="border-orange-300">
+                <Card className="border-[#D4AF37]">
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-orange-800 uppercase tracking-wide flex items-center gap-2">
+                    <CardTitle className="text-sm text-[#B8932F] uppercase tracking-wide flex items-center gap-2">
                       <RefreshCw className="h-4 w-4" /> Request Document Resubmission
                     </CardTitle>
                   </CardHeader>
@@ -742,7 +742,7 @@ export default function ProviderKycReview() {
                     <div className="flex gap-3 pt-1">
                       <Button
                         size="sm"
-                        className="bg-orange-600 hover:bg-orange-700 text-white"
+                        className="bg-[#B8932F] hover:bg-[#B8932F] text-white"
                         disabled={selectedReasons.length === 0 || resubmitMutation.isPending}
                         onClick={() => resubmitMutation.mutate()}
                       >
@@ -810,7 +810,7 @@ export default function ProviderKycReview() {
                         {canResubmit && (
                           <Button
                             variant="outline"
-                            className="border-orange-400 text-orange-700 hover:bg-orange-50"
+                            className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
                             onClick={() => setShowResubmitPanel(true)}
                           >
                             <RefreshCw className="h-4 w-4 mr-2" />
@@ -854,13 +854,13 @@ export default function ProviderKycReview() {
                   value={msgBody}
                   onChange={e => setMsgBody(e.target.value)}
                   rows={4}
-                  className={msgVisible === 'provider' ? 'border-blue-200' : ''}
+                  className={msgVisible === 'provider' ? 'border-[#D4AF37]' : ''}
                 />
                 <Button
                   size="sm"
                   disabled={!msgBody.trim() || messageMutation.isPending || !numericId}
                   onClick={() => messageMutation.mutate()}
-                  className={msgVisible === 'provider' ? 'bg-blue-700 hover:bg-blue-800 text-white' : ''}
+                  className={msgVisible === 'provider' ? 'bg-[#B8932F] hover:bg-[#B8932F] text-white' : ''}
                 >
                   {messageMutation.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />}
                   <SendHorizonal className="h-4 w-4 mr-2" />
@@ -886,12 +886,12 @@ export default function ProviderKycReview() {
                       className={`rounded-lg p-4 text-sm border ${isInternal
                         ? 'bg-white border-slate-200'
                         : msg.direction === 'outbound'
-                          ? 'bg-blue-50 border-blue-200'
+                          ? 'bg-[#D4AF37] border-[#D4AF37]'
                           : 'bg-green-50 border-green-200'}`}
                     >
                       <div className="flex items-center justify-between mb-1.5">
                         <div className="flex items-center gap-2">
-                          <Badge variant="outline" className={`text-xs ${isInternal ? 'text-slate-500 border-slate-300' : 'text-blue-700 border-blue-300'}`}>
+                          <Badge variant="outline" className={`text-xs ${isInternal ? 'text-slate-500 border-slate-300' : 'text-[#B8932F] border-[#D4AF37]'}`}>
                             {isInternal ? 'Internal note' : msg.direction === 'outbound' ? 'Sent to applicant' : 'From applicant'}
                           </Badge>
                           <span className="text-xs text-muted-foreground">{msg.sent_by}</span>

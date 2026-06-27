@@ -461,7 +461,7 @@ export default function TeamInbox() {
                       data-testid={`conversation-item-${conv.id}`}
                       onClick={() => setSelectedConversationId(conv.id)}
                       className={`luxury-glass-minimal luxury-hover-lift p-4 border-b cursor-pointer transition-all duration-300 ${
-                        isSelected ? 'bg-purple-50 border-l-4 border-l-purple-500' : ''
+                        isSelected ? 'bg-[#D4AF37] border-l-4 border-l-[#D4AF37]' : ''
                       }`}
                     >
                       <div className="flex items-start justify-between gap-2">
@@ -621,7 +621,7 @@ export default function TeamInbox() {
                             )}
                             <Card className={`${
                               isMyMessage 
-                                ? 'bg-blue-500 text-white' 
+                                ? 'bg-[#D4AF37] text-white' 
                                 : 'bg-white text-gray-900'
                             } ${msg.id === selectedConversation?.pinnedMessageId ? 'ring-2 ring-amber-400' : ''}`}>
                               <div className="p-3">
@@ -646,7 +646,7 @@ export default function TeamInbox() {
                                       data-testid={`button-pin-${msg.id}`}
                                       className={`h-6 w-6 p-0 flex-shrink-0 ${
                                         isMyMessage 
-                                          ? 'text-blue-200 hover:text-white hover:bg-blue-600' 
+                                          ? 'text-[#D4AF37] hover:text-white hover:bg-[#B8932F]' 
                                           : 'text-gray-400 hover:text-gray-600 hover:bg-white'
                                       }`}
                                     >
@@ -667,7 +667,7 @@ export default function TeamInbox() {
                                         data-testid={`attachment-${att.id}`}
                                         className={`flex items-center gap-2 p-2 rounded border ${
                                           isMyMessage 
-                                            ? 'bg-blue-600 border-blue-400' 
+                                            ? 'bg-[#B8932F] border-[#D4AF37]' 
                                             : 'bg-white border-gray-200'
                                         } hover:opacity-80 transition-opacity`}
                                       >
@@ -682,7 +682,7 @@ export default function TeamInbox() {
                                   </div>
                                 )}
                                 
-                                <p className={`text-xs mt-2 ${isMyMessage ? 'text-blue-100' : 'text-gray-400'}`}>
+                                <p className={`text-xs mt-2 ${isMyMessage ? 'text-[#D4AF37]' : 'text-gray-400'}`}>
                                   {formatDistanceToNow(new Date(msg.createdAt), { addSuffix: true })}
                                 </p>
                               </div>

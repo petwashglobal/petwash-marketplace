@@ -56,12 +56,12 @@ import type { MarketplaceSearchFilters, MarketplacePlatformId } from '@shared/sc
 type TierFilter = 'prestige' | 'gold' | 'silver' | 'bronze' | undefined;
 
 const TIER_CONFIG = {
-  prestige: { label: 'Prestige', icon: Crown, color: 'bg-purple-100 text-purple-700 border-purple-300' },
+  prestige: { label: 'Prestige', icon: Crown, color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
   gold: { label: 'Gold', icon: Award, color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
   silver: { label: 'Silver', icon: Shield, color: 'bg-white text-gray-600 border-gray-300' },
-  bronze: { label: 'Bronze', icon: Zap, color: 'bg-orange-100 text-orange-700 border-orange-300' },
+  bronze: { label: 'Bronze', icon: Zap, color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
   at_risk: { label: 'At Risk', icon: Zap, color: 'bg-red-100 text-red-700 border-red-300' },
-  new: { label: 'New', icon: TrendingUp, color: 'bg-blue-100 text-blue-700 border-blue-300' },
+  new: { label: 'New', icon: TrendingUp, color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
 } as const;
 
 export default function Marketplace() {
@@ -104,19 +104,19 @@ export default function Marketplace() {
       id: 'walk_my_pet' as MarketplacePlatformId,
       name: 'Walk My Pet',
       icon: <Dog className="w-5 h-5" />,
-      color: 'text-blue-600',
+      color: 'text-[#B8932F]',
     },
     {
       id: 'sitter_suite' as MarketplacePlatformId,
       name: 'Sitter Suite',
       icon: <Home className="w-5 h-5" />,
-      color: 'text-pink-600',
+      color: 'text-[#B8932F]',
     },
     {
       id: 'pet_trek' as MarketplacePlatformId,
       name: 'PetTrek',
       icon: <Car className="w-5 h-5" />,
-      color: 'text-purple-600',
+      color: 'text-[#B8932F]',
       disabled: true,
       badge: 'Coming Soon',
     },
@@ -142,7 +142,7 @@ export default function Marketplace() {
   return (
     <div className="min-h-screen luxury-bg-mesh">
       {/* Header */}
-      <div className="border-b border-purple-100/20">
+      <div className="border-b border-[#D4AF37]/20">
         <div className="max-w-7xl mx-auto px-4 py-12 text-center luxury-fade-in">
           <h1 className="luxury-heading-xl mb-4">
             Pet Services Marketplace
@@ -204,7 +204,7 @@ export default function Marketplace() {
           {/* Filters Sidebar */}
           <div id="marketplace-filters" className={`lg:col-span-1 ${showFilters ? '' : 'hidden lg:block'}`}>
             <div className="luxury-glass-card luxury-shadow-lg sticky top-4">
-              <div className="p-6 border-b border-purple-100/20">
+              <div className="p-6 border-b border-[#D4AF37]/20">
                 <h3 className="text-lg font-bold flex items-center gap-2 luxury-gradient-text">
                   <SlidersHorizontal className="w-5 h-5" />
                   Filters
@@ -347,7 +347,7 @@ export default function Marketplace() {
               </h2>
               {/* Active sort indicator */}
               {filters.sortBy === 'recommended' && (
-                <span className="text-xs text-purple-600 dark:text-purple-400 font-medium flex items-center gap-1">
+                <span className="text-xs text-[#B8932F] dark:text-[#D4AF37] font-medium flex items-center gap-1">
                   <TrendingUp className="w-3.5 h-3.5" />
                   Ranked by quality
                 </span>

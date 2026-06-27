@@ -443,7 +443,7 @@ export function AppleWheelSelect({
         className={cn(
           'w-full flex items-center justify-between px-4 py-3 rounded-xl border bg-white text-left',
           'text-base font-medium transition-all duration-200',
-          isOpen ? 'border-blue-400 shadow-md ring-2 ring-blue-100' : 'border-gray-200 shadow-sm hover:border-gray-300',
+          isOpen ? 'border-[#D4AF37] shadow-md ring-2 ring-[#D4AF37]' : 'border-gray-200 shadow-sm hover:border-gray-300',
         )}
       >
         <span className={selectedItem ? 'text-gray-900' : 'text-gray-400'}>

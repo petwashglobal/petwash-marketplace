@@ -152,8 +152,8 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
           <main className="flex-1 container mx-auto px-4 py-16 flex items-center justify-center">
             <div className="max-w-md w-full text-center">
               <div className="relative mb-6">
-                <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
-                  <Gift className="w-12 h-12 text-purple-500" />
+                <div className="w-24 h-24 mx-auto rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
+                  <Gift className="w-12 h-12 text-[#D4AF37]" />
                 </div>
                 <div className="absolute -top-1 -right-1 w-8 h-8 rounded-full bg-amber-400 flex items-center justify-center shadow-md mx-auto" style={{ right: 'calc(50% - 52px)' }}>
                   <Clock className="w-4 h-4 text-white" />
@@ -167,14 +167,14 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
                   ? 'אנחנו בגרסת השקה — כרטיסי מתנה דיגיטליים יהיו זמינים ברגע שמערכת התשלומים תופעל. תודה על הסבלנות!'
                   : 'We\'re in soft launch mode — digital gift cards will be available as soon as our payment system goes live. Thanks for your patience!'}
               </p>
-              <div className="bg-purple-50 border border-purple-100 rounded-2xl p-4 mb-6 text-sm text-purple-700">
+              <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-2xl p-4 mb-6 text-sm text-[#B8932F]">
                 {isRTL
                   ? '✅ בינתיים, הצטרף למועדון, גלה ספקים וצור קשר עם קהילת חובבי החיות שלנו!'
                   : '✅ In the meantime, join the club, discover providers, and connect with our pet lover community!'}
               </div>
               <button
                 onClick={() => navigate('/')}
-                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-semibold transition-colors shadow-sm"
+                className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#B8932F] hover:bg-[#B8932F] text-white font-semibold transition-colors shadow-sm"
               >
                 {isRTL ? '← חזרה לדף הבית' : '← Back to Home'}
               </button>
@@ -192,7 +192,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
         <div className="max-w-3xl mx-auto">
           {/* Header */}
           <div className="text-center mb-8 luxury-animate-fade-in">
-            <Gift className="w-16 h-16 mx-auto mb-4 text-purple-600" />
+            <Gift className="w-16 h-16 mx-auto mb-4 text-[#B8932F]" />
             <h1 className="luxury-heading-xl mb-2">
               {t('giftCards.buyTitle', language)}
             </h1>
@@ -428,7 +428,7 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
             <Button
               type="submit"
               disabled={loading}
-              className="w-full h-14 bg-gradient-to-r from-pink-600 to-purple-600 hover:from-pink-700 hover:to-purple-700 text-white font-semibold text-lg"
+              className="w-full h-14 bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] text-white font-semibold text-lg"
               data-testid="button-purchase-gift-card"
             >
               {loading ? (

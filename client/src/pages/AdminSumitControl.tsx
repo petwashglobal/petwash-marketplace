@@ -98,7 +98,7 @@ export default function AdminSumitControl() {
 
   return (
     <div
-      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-orange-50/20"
+      className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-[#D4AF37]/20"
       dir="rtl"
       style={{
         paddingTop: "env(safe-area-inset-top)",
@@ -216,7 +216,7 @@ export default function AdminSumitControl() {
                 <div className="mt-4 text-[11px] text-gray-500">
                   לרשימה מלאה ולפעולת שליחה לחץ:
                   <Link href="/admin/supplier-invoices">
-                    <a className="text-blue-700 hover:underline mr-1">חשבוניות ספקים</a>
+                    <a className="text-[#B8932F] hover:underline mr-1">חשבוניות ספקים</a>
                   </Link>
                 </div>
               </CardContent>

@@ -98,7 +98,7 @@ export default function AdminIdentityMerge() {
                 <CardContent className="flex items-center justify-between gap-4 py-4">
                   <div className="flex items-center gap-3">
                     {g.matchedOn === "email" ? (
-                      <Mail className="h-5 w-5 text-blue-500" />
+                      <Mail className="h-5 w-5 text-[#D4AF37]" />
                     ) : (
                       <Phone className="h-5 w-5 text-emerald-500" />
                     )}
@@ -117,7 +117,7 @@ export default function AdminIdentityMerge() {
                       className={cn(
                         "text-[10px] font-medium",
                         g.matchedOn === "email"
-                          ? "bg-blue-100 text-blue-800"
+                          ? "bg-[#D4AF37] text-[#B8932F]"
                           : "bg-emerald-100 text-emerald-800",
                       )}
                     >

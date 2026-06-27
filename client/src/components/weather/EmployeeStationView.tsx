@@ -56,15 +56,15 @@ interface Props {
 
 const RATING_GRADIENT = {
   excellent: 'from-emerald-500 via-green-400 to-teal-400',
-  good: 'from-blue-500 via-cyan-400 to-sky-400',
-  moderate: 'from-amber-500 via-yellow-400 to-orange-400',
-  poor: 'from-red-500 via-rose-400 to-pink-400',
+  good: 'from-[#D4AF37] via-[#D4AF37] to-[#D4AF37]',
+  moderate: 'from-amber-500 via-yellow-400 to-[#D4AF37]',
+  poor: 'from-red-500 via-rose-400 to-[#D4AF37]',
 };
 
 const getWeatherIcon = (code: number) => {
   if (code === 0 || code === 1) return <Sun className="w-6 h-6 text-yellow-400" />;
   if (code === 2 || code === 3) return <Cloud className="w-6 h-6 text-gray-400" />;
-  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return <CloudRain className="w-6 h-6 text-blue-400" />;
+  if ([51, 53, 55, 61, 63, 65, 80, 81, 82].includes(code)) return <CloudRain className="w-6 h-6 text-[#D4AF37]" />;
   return <Cloud className="w-6 h-6 text-gray-400" />;
 };
 
@@ -79,14 +79,14 @@ export default function EmployeeStationView({ data }: Props) {
       >
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h1 className="text-4xl md:text-5xl font-black mb-2 bg-gradient-to-r from-blue-300 via-cyan-200 to-blue-300 bg-clip-text text-transparent">
+            <h1 className="text-4xl md:text-5xl font-black mb-2 bg-gradient-to-r from-[#D4AF37] via-[#D4AF37] to-[#D4AF37] bg-clip-text text-transparent">
               {data.language === 'he' ? 'תחזית תחנות' : data.language === 'ar' ? 'توقعات المحطة' : 'Station Forecast'}
             </h1>
             <p className="text-xl text-gray-300">
               {data.language === 'he' ? `שלום ${data.employeeName}` : data.language === 'ar' ? `مرحبا ${data.employeeName}` : `Hello, ${data.employeeName}`}
             </p>
           </div>
-          <Badge className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white border-0 px-4 py-2 text-lg">
+          <Badge className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] text-white border-0 px-4 py-2 text-lg">
             {data.role}
           </Badge>
         </div>
@@ -105,7 +105,7 @@ export default function EmployeeStationView({ data }: Props) {
             {/* Station Header */}
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <Building2 className="w-8 h-8 text-blue-400" />
+                <Building2 className="w-8 h-8 text-[#D4AF37]" />
                 <h2 className="text-3xl font-bold">{station.stationName}</h2>
               </div>
               <div className="flex items-center gap-2 text-gray-400">
@@ -171,7 +171,7 @@ export default function EmployeeStationView({ data }: Props) {
                   data-testid={`station-forecast-${stationIdx}-${dayIdx}`}
                   className={`bg-gradient-to-br ${
                     day.washScore >= 80 ? 'from-emerald-500/10 to-green-500/5 border-emerald-500/30' :
-                    day.washScore >= 60 ? 'from-blue-500/10 to-cyan-500/5 border-blue-500/30' :
+                    day.washScore >= 60 ? 'from-[#D4AF37]/10 to-[#D4AF37]/5 border-[#D4AF37]/30' :
                     day.washScore >= 40 ? 'from-amber-500/10 to-yellow-500/5 border-amber-500/30' :
                     'from-red-500/10 to-rose-500/5 border-red-500/30'
                   } backdrop-blur-md p-4`}

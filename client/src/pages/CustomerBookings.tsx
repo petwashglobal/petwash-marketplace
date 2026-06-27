@@ -312,19 +312,19 @@ const STATUS_CONTEXT: Record<string, {
     en: 'Awaiting provider response. You will be notified soon.',
   },
   accepted: {
-    bg: 'bg-blue-50', border: 'border-blue-200', textColor: 'text-blue-800',
+    bg: 'bg-[#D4AF37]', border: 'border-[#D4AF37]', textColor: 'text-[#B8932F]',
     icon: CheckCircle2, iconColor: '#2563EB',
     he: 'הספק הגיב! ייתכן שתתואם פגישת היכרות לפני האישור הסופי.',
     en: 'Provider responded! A Meet & Greet may be scheduled before final confirmation.',
   },
   meet_greet_scheduled: {
-    bg: 'bg-orange-50', border: 'border-orange-200', textColor: 'text-orange-800',
+    bg: 'bg-[#D4AF37]', border: 'border-[#D4AF37]', textColor: 'text-[#B8932F]',
     icon: Timer, iconColor: '#EA580C',
     he: 'פגישת היכרות מתוכננת. בדוק את הפרטים שקיבלת מהספק.',
     en: 'Meet & Greet is scheduled. Check the details shared by your provider.',
   },
   meet_greet_completed: {
-    bg: 'bg-blue-50', border: 'border-blue-200', textColor: 'text-blue-800',
+    bg: 'bg-[#D4AF37]', border: 'border-[#D4AF37]', textColor: 'text-[#B8932F]',
     icon: CheckCircle2, iconColor: '#2563EB',
     he: 'פגישת ההיכרות הושלמה. השלם תשלום לאישור סופי.',
     en: 'Meet & Greet done. Complete payment to finalize your booking.',
@@ -342,13 +342,13 @@ const STATUS_CONTEXT: Record<string, {
     en: 'Booking confirmed! Service will begin soon.',
   },
   in_progress: {
-    bg: 'bg-sky-50', border: 'border-sky-200', textColor: 'text-sky-800',
+    bg: 'bg-[#D4AF37]', border: 'border-[#D4AF37]', textColor: 'text-[#B8932F]',
     icon: Timer, iconColor: '#0284C7',
     he: 'השירות מתבצע כעת. חיית המחמד שלך בידיים טובות! 🐾',
     en: 'Service is in progress. Your pet is in good hands! 🐾',
   },
   completed: {
-    bg: 'bg-violet-50', border: 'border-violet-200', textColor: 'text-violet-800',
+    bg: 'bg-[#D4AF37]', border: 'border-[#D4AF37]', textColor: 'text-[#B8932F]',
     icon: Star, iconColor: '#7C3AED',
     he: 'השירות הושלם! נשמח לשמוע מה חשבת — השאר ביקורת.',
     en: "Service completed! We'd love your feedback — please leave a review.",
@@ -372,7 +372,7 @@ const STATUS_CONTEXT: Record<string, {
     en: 'Booking was cancelled. A refund will be processed per our policy.',
   },
   disputed: {
-    bg: 'bg-orange-50', border: 'border-orange-200', textColor: 'text-orange-800',
+    bg: 'bg-[#D4AF37]', border: 'border-[#D4AF37]', textColor: 'text-[#B8932F]',
     icon: AlertTriangle, iconColor: '#EA580C',
     he: 'פנייתך לבירור התקבלה. הצוות שלנו יצור קשר בקרוב.',
     en: 'Your dispute has been received. Our team will be in touch shortly.',
@@ -608,7 +608,7 @@ function BookingCard({
                     )}
                     {booking.kind === 'walker' && (
                       <span
-                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200"
+                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]"
                         data-testid="badge-walker-source"
                       >
                         {isRTL ? 'הולך' : 'Walker'}
@@ -616,7 +616,7 @@ function BookingCard({
                     )}
                     {booking.kind === 'academy' && (
                       <span
-                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-200"
+                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]"
                         data-testid="badge-academy-source"
                       >
                         {isRTL ? 'אקדמיה' : 'Academy'}
@@ -662,7 +662,7 @@ function BookingCard({
               {/* Contextual chips */}
               {hasMeetGreet && (
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-violet-50 text-violet-700 border border-violet-100">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]">
                     <HandshakeIcon size={9} />
                     {isRTL ? 'פגישת היכרות' : 'Meet & Greet'}
                     {booking.meetGreetDate && ` · ${formatDateShort(booking.meetGreetDate, locale)}`}
@@ -677,7 +677,7 @@ function BookingCard({
 
               {booking.status === 'disputed' && (
                 <div className="mt-2 flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-orange-50 text-orange-700 border border-orange-100">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]">
                     <AlertTriangle size={9} />
                     {isRTL ? 'תיק במחלוקת — בטיפול' : 'Dispute under review'}
                   </span>

@@ -28,11 +28,11 @@ export default function K9000Overview() {
   
   const features = [
     {
-      icon: <MapPin className="h-8 w-8 text-blue-600" />,
+      icon: <MapPin className="h-8 w-8 text-[#B8932F]" />,
       title: t('k9000.findStation'),
       description: t('k9000.findStationDesc'),
       link: "/k9000/explore",
-      color: "bg-blue-50 dark:bg-blue-950"
+      color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
       icon: <Activity className="h-8 w-8 text-green-600" />,
@@ -42,32 +42,32 @@ export default function K9000Overview() {
       color: "bg-green-50 dark:bg-green-950"
     },
     {
-      icon: <History className="h-8 w-8 text-purple-600" />,
+      icon: <History className="h-8 w-8 text-[#B8932F]" />,
       title: t('k9000.myWashes'),
       description: t('k9000.myWashesDesc'),
       link: "/k9000/booking",
-      color: "bg-purple-50 dark:bg-purple-950"
+      color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
-      icon: <Gift className="h-8 w-8 text-pink-600" />,
+      icon: <Gift className="h-8 w-8 text-[#B8932F]" />,
       title: t('k9000.packages'),
       description: t('k9000.packagesDesc'),
       link: "/loyalty",
-      color: "bg-pink-50 dark:bg-pink-950"
+      color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
-      icon: <Shield className="h-8 w-8 text-indigo-600" />,
+      icon: <Shield className="h-8 w-8 text-[#B8932F]" />,
       title: t('k9000.safety'),
       description: t('k9000.safetyDesc'),
       link: "/k9000/explore",
-      color: "bg-indigo-50 dark:bg-indigo-950"
+      color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
-      icon: <HelpCircle className="h-8 w-8 text-orange-600" />,
+      icon: <HelpCircle className="h-8 w-8 text-[#B8932F]" />,
       title: t('k9000.help'),
       description: t('k9000.helpDesc'),
       link: "/k9000/hub",
-      color: "bg-white dark:bg-orange-950"
+      color: "bg-white dark:bg-[#B8932F]"
     }
   ];
 
@@ -131,7 +131,7 @@ export default function K9000Overview() {
               <Link key={index} href={feature.link}>
                 <div className="luxury-glass-card luxury-hover-glow h-full cursor-pointer" style={{ animationDelay: `${index * 0.1}s` }}>
                   <div className="p-8">
-                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center mb-6 luxury-pulse-glow">
+                    <div className="w-16 h-16 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center mb-6 luxury-pulse-glow">
                       {feature.icon}
                     </div>
                     <h3 className="text-2xl font-bold luxury-gradient-text mb-3">
@@ -152,7 +152,7 @@ export default function K9000Overview() {
         </div>
 
         {/* Stats Section */}
-        <div className="py-16 bg-gradient-to-r from-blue-600 via-purple-600 to-blue-800">
+        <div className="py-16 bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-[#B8932F]">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="luxury-grid-3">
               {stats.map((stat, index) => (
@@ -163,7 +163,7 @@ export default function K9000Overview() {
                   <div className="luxury-heading-md text-white mb-2">
                     {stat.title}
                   </div>
-                  <div className="luxury-text-body text-blue-100">
+                  <div className="luxury-text-body text-[#D4AF37]">
                     {stat.description}
                   </div>
                 </div>

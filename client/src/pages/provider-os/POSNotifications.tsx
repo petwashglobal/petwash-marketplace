@@ -33,8 +33,8 @@ interface Notification {
 const TYPE_STYLES: Record<NotifType, { icon: React.ComponentType<any>; color: string; bg: string }> = {
   job: { icon: Briefcase, color: 'text-amber-600', bg: 'bg-amber-50' },
   payment: { icon: CreditCard, color: 'text-green-600', bg: 'bg-green-50' },
-  document: { icon: FileText, color: 'text-purple-600', bg: 'bg-purple-50' },
-  system: { icon: Settings, color: 'text-blue-600', bg: 'bg-blue-50' },
+  document: { icon: FileText, color: 'text-[#B8932F]', bg: 'bg-[#D4AF37]' },
+  system: { icon: Settings, color: 'text-[#B8932F]', bg: 'bg-[#D4AF37]' },
   chat: { icon: Bell, color: 'text-teal-600', bg: 'bg-teal-50' },
 };
 

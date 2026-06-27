@@ -190,7 +190,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
                 alt="Kenzo"
                 className={`h-full w-full object-cover transition-transform duration-200 ${isLoading ? 'scale-110' : 'scale-100'}`}
               />
-              {isLoading && <div className="absolute inset-0 bg-blue-500/30 animate-pulse" />}
+              {isLoading && <div className="absolute inset-0 bg-[#D4AF37]/30 animate-pulse" />}
             </div>
             <div className="min-w-0">
               <h3 className="text-white font-semibold text-sm leading-tight truncate">קנזו - העוזר החכם</h3>
@@ -217,8 +217,8 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
             style={{ background: '#12121F' }}
             dir="rtl"
           >
-            <div className="rounded-full bg-blue-600/20 p-3">
-              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-blue-400">
+            <div className="rounded-full bg-[#B8932F]/20 p-3">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" className="text-[#D4AF37]">
                 <circle cx="12" cy="12" r="10" />
                 <line x1="12" y1="8" x2="12" y2="12" />
                 <line x1="12" y1="16" x2="12.01" y2="16" />

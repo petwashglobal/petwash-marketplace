@@ -101,13 +101,13 @@ export default function InventoryManagement() {
   const getItemIcon = (itemType: string) => {
     switch (itemType?.toLowerCase()) {
       case 'shampoo':
-        return <Droplet className="w-5 h-5 text-blue-600" />;
+        return <Droplet className="w-5 h-5 text-[#B8932F]" />;
       case 'conditioner':
-        return <Sparkles className="w-5 h-5 text-purple-600" />;
+        return <Sparkles className="w-5 h-5 text-[#B8932F]" />;
       case 'disinfectant':
         return <ShieldAlert className="w-5 h-5 text-red-600" />;
       case 'fragrance':
-        return <Sparkles className="w-5 h-5 text-pink-600" />;
+        return <Sparkles className="w-5 h-5 text-[#B8932F]" />;
       default:
         return <Package className="w-5 h-5 text-gray-600" />;
     }
@@ -131,7 +131,7 @@ export default function InventoryManagement() {
         );
       case 'critical':
         return (
-          <Badge className="bg-orange-100 text-orange-700 border-orange-300">
+          <Badge className="bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]">
             <TrendingDown className="w-3 h-3 mr-1" />
             {isHebrew ? 'קריטי' : 'Critical'}
           </Badge>
@@ -155,7 +155,7 @@ export default function InventoryManagement() {
       case 'low':
         return 'bg-yellow-500';
       case 'critical':
-        return 'bg-orange-500';
+        return 'bg-[#D4AF37]';
       case 'empty':
         return 'bg-red-500';
       default:
@@ -190,7 +190,7 @@ export default function InventoryManagement() {
         {/* Header */}
         <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl mb-8 luxury-animate-fade-in">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-cyan-600 flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center shadow-lg">
               <Package className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -217,7 +217,7 @@ export default function InventoryManagement() {
                     {summaryData.totalItems || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-blue-400 to-purple-500 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <Package className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -249,7 +249,7 @@ export default function InventoryManagement() {
                     {summaryData.lowCount || 0}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-orange-500 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-[#D4AF37] flex items-center justify-center">
                   <AlertTriangle className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -265,7 +265,7 @@ export default function InventoryManagement() {
                     {(summaryData.criticalCount || 0) + (summaryData.emptyCount || 0)}
                   </p>
                 </div>
-                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-pink-600 flex items-center justify-center">
+                <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-[#B8932F] flex items-center justify-center">
                   <TrendingDown className="w-6 h-6 text-white" />
                 </div>
               </div>
@@ -336,7 +336,7 @@ export default function InventoryManagement() {
               </div>
             ) : items.length === 0 ? (
               <div className="text-center py-12">
-                <Package className="w-16 h-16 text-purple-300 mx-auto mb-4" />
+                <Package className="w-16 h-16 text-[#D4AF37] mx-auto mb-4" />
                 <p className="luxury-text-small">{isHebrew ? 'לא נמצאו פריטים' : 'No items found'}</p>
               </div>
             ) : (

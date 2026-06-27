@@ -139,11 +139,11 @@ export default function K9000Documents() {
       case 'k9000_invoice':
         return <FileCheck className="w-5 h-5 text-green-600" />;
       case 'k9000_technical':
-        return <FileWarning className="w-5 h-5 text-blue-600" />;
+        return <FileWarning className="w-5 h-5 text-[#B8932F]" />;
       case 'k9000_manual':
-        return <FileText className="w-5 h-5 text-purple-600" />;
+        return <FileText className="w-5 h-5 text-[#B8932F]" />;
       case 'k9000_contract':
-        return <Shield className="w-5 h-5 text-orange-600" />;
+        return <Shield className="w-5 h-5 text-[#B8932F]" />;
       default:
         return <FileText className="w-5 h-5 text-gray-600" />;
     }
@@ -154,11 +154,11 @@ export default function K9000Documents() {
       case 'k9000_invoice':
         return 'bg-green-50 text-green-700 border-green-200';
       case 'k9000_technical':
-        return 'bg-blue-50 text-blue-700 border-blue-200';
+        return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
       case 'k9000_manual':
-        return 'bg-purple-50 text-purple-700 border-purple-200';
+        return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
       case 'k9000_contract':
-        return 'bg-white text-orange-700 border-orange-200';
+        return 'bg-white text-[#B8932F] border-[#D4AF37]';
       default:
         return 'bg-white text-gray-700 border-gray-200';
     }
@@ -181,7 +181,7 @@ export default function K9000Documents() {
         {/* Header */}
         <div className="mb-8 luxury-animate-fade-in">
           <div className="flex items-center gap-3 mb-2">
-            <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl luxury-shadow-xl">
+            <div className="p-3 bg-gradient-to-br from-[#D4AF37] to-[#B8932F] rounded-xl luxury-shadow-xl">
               <Shield className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -208,7 +208,7 @@ export default function K9000Documents() {
                     {accessData.totalAccessible || 0}
                   </p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-blue-500 to-cyan-500 rounded-xl">
+                <div className="p-3 bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-xl">
                   <FolderOpen className="w-12 h-12 text-white" />
                 </div>
               </div>
@@ -240,7 +240,7 @@ export default function K9000Documents() {
                     {categories.length}
                   </p>
                 </div>
-                <div className="p-3 bg-gradient-to-br from-purple-500 to-pink-500 rounded-xl">
+                <div className="p-3 bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-xl">
                   <Filter className="w-12 h-12 text-white" />
                 </div>
               </div>
@@ -252,7 +252,7 @@ export default function K9000Documents() {
         <div className="mb-6 luxury-glass-card luxury-hover-glow luxury-shadow-xl luxury-animate-fade-in luxury-delay-6">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h3 className="luxury-heading-md flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-lg">
                 <Search className="w-5 h-5 text-white" />
               </div>
               {isHebrew ? 'חיפוש וסינון' : 'Search & Filter'}
@@ -292,7 +292,7 @@ export default function K9000Documents() {
         <div className="luxury-glass-card luxury-shadow-xl luxury-animate-fade-in luxury-delay-7">
           <div className="p-6 border-b border-gray-200 dark:border-gray-700">
             <h3 className="luxury-heading-md flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-blue-500 to-purple-500 rounded-lg">
+              <div className="p-2 bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-lg">
                 <FileText className="w-5 h-5 text-white" />
               </div>
               {isHebrew ? 'רשימת מסמכים' : 'Document List'}
@@ -326,7 +326,7 @@ export default function K9000Documents() {
                     data-testid={`document-item-${doc.id}`}
                   >
                     <div className="flex items-center gap-3 mb-4">
-                      <div className="p-3 bg-gradient-to-br from-blue-500 to-purple-500 rounded-xl">
+                      <div className="p-3 bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-xl">
                         {getCategoryIcon(doc.category)}
                       </div>
                       <div className="flex-1 min-w-0">
@@ -392,7 +392,7 @@ export default function K9000Documents() {
         <div className="mt-6 luxury-glass-card luxury-shadow-lg bg-gradient-to-br from-amber-50/50 to-white/50 dark:from-amber-950/30 dark:to-gray-900/30 luxury-animate-fade-in luxury-delay-8">
           <div className="p-6">
             <div className="flex items-start gap-3">
-              <div className="p-2 bg-gradient-to-br from-amber-400 to-orange-500 rounded-lg flex-shrink-0">
+              <div className="p-2 bg-gradient-to-br from-amber-400 to-[#D4AF37] rounded-lg flex-shrink-0">
                 <Shield className="w-5 h-5 text-white" />
               </div>
               <div>

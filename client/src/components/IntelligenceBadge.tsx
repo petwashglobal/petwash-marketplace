@@ -68,7 +68,7 @@ export function IntelligenceBadge({
             <TooltipTrigger asChild>
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full font-medium bg-blue-100 text-blue-700 dark:bg-white dark:text-blue-300',
+                  'inline-flex items-center gap-1 rounded-full font-medium bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]',
                   isSmall ? 'text-xs px-2 py-0.5' : 'text-sm px-2.5 py-1',
                 )}
               >
@@ -165,12 +165,12 @@ function ScoreCard({
   const pct = Math.round(score);
   const colorMap: Record<string, string> = {
     emerald: 'stroke-emerald-500',
-    blue:    'stroke-blue-500',
+    blue:    'stroke-[#D4AF37]',
     rose:    'stroke-rose-500',
   };
   const trackMap: Record<string, string> = {
     emerald: 'stroke-emerald-100 dark:stroke-emerald-900/30',
-    blue:    'stroke-blue-100 dark:stroke-blue-900/30',
+    blue:    'stroke-[#D4AF37] dark:stroke-[#B8932F]/30',
     rose:    'stroke-rose-100 dark:stroke-rose-900/30',
   };
 
