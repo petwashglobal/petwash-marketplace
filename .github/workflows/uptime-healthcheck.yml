@@ -1,0 +1,48 @@
+name: Uptime Health-Check (petwash.co.il)
+
+# Free, repo-native production monitor. Loads the REAL site in a headless browser
+# every 15 min and fails if it white-screens / 500s — catching crashes a plain
+# ping can't see (the server returns 200 while the React app is broken). On
+# failure GitHub emails the repo admins automatically (no paid vendor). Optional
+# Slack ping if ALERTS_SLACK_WEBHOOK secret is set.
+
+on:
+  schedule:
+    - cron: "*/15 * * * *"   # every 15 minutes
+  workflow_dispatch: {}        # run on demand from the Actions tab
+
+# Don't pile up overlapping runs.
+concurrency:
+  group: uptime-healthcheck
+  cancel-in-progress: true
+
+jobs:
+  healthcheck:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      # Install ONLY Playwright (not the whole repo) to keep this fast/cheap.
+      - name: Install Playwright + Chromium
+        run: |
+          npm init -y >/dev/null 2>&1 || true
+          npm install --no-save playwright@1.58.2
+          npx playwright install --with-deps chromium
+
+      - name: Run health-check
+        run: node scripts/monitoring/homepage-healthcheck.mjs "https://petwash.co.il"
+
+      # Optional: ping Slack on failure (only if the secret is configured).
+      - name: Slack alert on failure
+        if: failure() && env.SLACK_WEBHOOK != ''
+        env:
+          SLACK_WEBHOOK: ${{ secrets.ALERTS_SLACK_WEBHOOK }}
+        run: |
+          curl -s -X POST -H 'Content-type: application/json' \
+            --data '{"text":"🚨 PetWash uptime check FAILED — petwash.co.il is degraded or white-screening. See GitHub Actions run: '"${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"'"}' \
+            "$SLACK_WEBHOOK" || true
