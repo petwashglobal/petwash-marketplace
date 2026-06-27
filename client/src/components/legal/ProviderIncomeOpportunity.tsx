@@ -204,7 +204,7 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
   return (
     <div className={`space-y-8 ${className}`} dir={isRTL ? "rtl" : "ltr"}>
       <div className="text-center">
-        <Badge className="bg-gradient-to-r from-purple-500/20 to-pink-500/20 text-purple-300 mb-4">
+        <Badge className="bg-gradient-to-r from-[#D4AF37]/20 to-[#D4AF37]/20 text-[#D4AF37] mb-4">
           <TrendingUp className="w-4 h-4 mr-1" />
           {isHebrew ? "הזדמנות הכנסה" : "Income Opportunity"}
         </Badge>
@@ -276,10 +276,10 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
         </CardContent>
       </Card>
 
-      <Card className="bg-gradient-to-br from-purple-500/10 to-pink-500/10 border-purple-500/20">
+      <Card className="bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/10 border-[#D4AF37]/20">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <TrendingUp className="w-5 h-5 text-purple-400" />
+            <TrendingUp className="w-5 h-5 text-[#D4AF37]" />
             {isHebrew ? "תרחישי הכנסה" : "Income Scenarios"}
           </CardTitle>
         </CardHeader>
@@ -287,7 +287,7 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
           <div className="grid gap-4 md:grid-cols-3">
             {earningPotential.incomeScenarios.map((scenario, idx) => (
               <div key={idx} className="p-4 rounded-xl bg-white/5 border border-white/10 text-center">
-                <h4 className="font-semibold text-purple-400 mb-1">{scenario.level}</h4>
+                <h4 className="font-semibold text-[#D4AF37] mb-1">{scenario.level}</h4>
                 <p className="text-xs text-white/40 mb-3">{scenario.hours}</p>
                 <div className="text-3xl font-bold text-white mb-2">{scenario.monthlyRange}</div>
                 <p className="text-xs text-white/50">{isHebrew ? "לחודש" : "per month"}</p>
@@ -301,14 +301,14 @@ export function ProviderIncomeOpportunity({ className = "" }: ProviderIncomeOppo
       <Card className="bg-white/5 border-white/10">
         <CardHeader>
           <CardTitle className="text-white flex items-center gap-2">
-            <CheckCircle2 className="w-5 h-5 text-blue-400" />
+            <CheckCircle2 className="w-5 h-5 text-[#D4AF37]" />
             {isHebrew ? "למה להצטרף ל-⁦Pet Wash™⁩?" : "Why Join ⁦Pet Wash™⁩?"}
           </CardTitle>
         </CardHeader>
         <CardContent className="grid gap-4 md:grid-cols-2">
           {earningPotential.whyJoin.map((item, idx) => (
-            <div key={idx} className="flex items-start gap-3 p-4 rounded-lg bg-blue-500/5 border border-blue-500/10">
-              <item.icon className="w-5 h-5 text-blue-400 mt-0.5 flex-shrink-0" />
+            <div key={idx} className="flex items-start gap-3 p-4 rounded-lg bg-[#D4AF37]/5 border border-[#D4AF37]/10">
+              <item.icon className="w-5 h-5 text-[#D4AF37] mt-0.5 flex-shrink-0" />
               <div>
                 <h4 className="font-medium text-white mb-1">{item.title}</h4>
                 <p className="text-sm text-white/60">{item.description}</p>

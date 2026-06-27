@@ -324,7 +324,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
       : cat.includes('apparel') || cat.includes('collar') || cat.includes('wear') ? <Shirt className="w-9 h-9" strokeWidth={1.25} />
       : <Sparkles className="w-9 h-9" strokeWidth={1.25} />;
     // gem accent colour rotates subtly by id so the grid reads like a tray of jewels
-    const gems = ['text-emerald-300/70', 'text-sky-300/70', 'text-rose-300/70', 'text-amber-200/80'];
+    const gems = ['text-emerald-300/70', 'text-[#D4AF37]/70', 'text-rose-300/70', 'text-amber-200/80'];
     const gem = gems[p.id % gems.length];
     return (
       <div className="relative w-full h-full bg-gradient-to-br from-neutral-900 via-neutral-950 to-black overflow-hidden">

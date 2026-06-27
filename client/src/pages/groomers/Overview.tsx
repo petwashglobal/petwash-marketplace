@@ -22,25 +22,25 @@ export default function GroomersOverview() {
   
   const features = [
     {
-      icon: <Search className="h-8 w-8 text-pink-600" />,
+      icon: <Search className="h-8 w-8 text-[#B8932F]" />,
       title: "Find a Groomer",
       description: "Browse professional groomers in your area",
       link: "/groomers",
-      color: "bg-pink-50 dark:bg-pink-950"
+      color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
-      icon: <Calendar className="h-8 w-8 text-blue-600" />,
+      icon: <Calendar className="h-8 w-8 text-[#B8932F]" />,
       title: "Book Appointment",
       description: "Schedule grooming services",
       link: "/groomers/book",
-      color: "bg-blue-50 dark:bg-blue-950"
+      color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
-      icon: <Clock className="h-8 w-8 text-purple-600" />,
+      icon: <Clock className="h-8 w-8 text-[#B8932F]" />,
       title: "My Appointments",
       description: "View upcoming and past grooming sessions",
       link: "/groomers/customer/dashboard",
-      color: "bg-purple-50 dark:bg-purple-950"
+      color: "bg-[#D4AF37] dark:bg-[#B8932F]"
     },
     {
       icon: <Heart className="h-8 w-8 text-rose-600" />,
@@ -57,11 +57,11 @@ export default function GroomersOverview() {
       color: "bg-emerald-50 dark:bg-emerald-950"
     },
     {
-      icon: <HelpCircle className="h-8 w-8 text-orange-600" />,
+      icon: <HelpCircle className="h-8 w-8 text-[#B8932F]" />,
       title: "Help & Support",
       description: "Get assistance with grooming services",
       link: "/groomers/help",
-      color: "bg-white dark:bg-orange-950"
+      color: "bg-white dark:bg-[#B8932F]"
     }
   ];
 
@@ -110,7 +110,7 @@ export default function GroomersOverview() {
               <Link key={index} href={feature.link}>
                 <div className={`luxury-glass-card luxury-hover-glow cursor-pointer h-full luxury-animate-scale-in luxury-delay-${Math.min(index + 1, 10)}`}>
                   <CardHeader>
-                    <div className="inline-flex p-4 rounded-xl bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 luxury-shadow-md mb-4">
+                    <div className="inline-flex p-4 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/50 dark:to-[#B8932F]/50 luxury-shadow-md mb-4">
                       {feature.icon}
                     </div>
                     <CardTitle className="luxury-heading-sm luxury-text-gradient">
@@ -121,7 +121,7 @@ export default function GroomersOverview() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Button variant="ghost" className="w-full justify-between text-purple-600 dark:text-purple-400 hover:text-purple-700 dark:hover:text-purple-300" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
+                    <Button variant="ghost" className="w-full justify-between text-[#B8932F] dark:text-[#D4AF37] hover:text-[#B8932F] dark:hover:text-[#D4AF37]" data-testid={`link-${feature.title.toLowerCase().replace(/\s+/g, '-')}`}>
                       Learn More
                       <ArrowRight className="h-4 w-4" />
                     </Button>

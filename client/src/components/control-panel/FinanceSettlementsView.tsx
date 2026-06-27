@@ -120,7 +120,7 @@ export default function FinanceSettlementsView() {
     const colors: Record<SettlementStatus, string> = {
       pending: "",
       approved: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-      paid: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+      paid: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
     };
     return (
       <Badge variant={variants[status]} className={colors[status]}>
@@ -163,7 +163,7 @@ export default function FinanceSettlementsView() {
         <Card data-testid="card-total-commissions">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Commissions</CardTitle>
-            <Receipt className="w-4 h-4 text-blue-600" />
+            <Receipt className="w-4 h-4 text-[#B8932F]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₪{summary.totalCommissions}</div>
@@ -174,7 +174,7 @@ export default function FinanceSettlementsView() {
         <Card data-testid="card-total-vat">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">VAT (18%)</CardTitle>
-            <FileText className="w-4 h-4 text-purple-600" />
+            <FileText className="w-4 h-4 text-[#B8932F]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">₪{summary.totalVAT}</div>
@@ -185,7 +185,7 @@ export default function FinanceSettlementsView() {
         <Card data-testid="card-pending-settlements">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pending Settlements</CardTitle>
-            <Clock className="w-4 h-4 text-orange-600" />
+            <Clock className="w-4 h-4 text-[#B8932F]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{summary.pendingSettlements}</div>
@@ -295,7 +295,7 @@ export default function FinanceSettlementsView() {
                       <TableCell className="text-right font-mono text-green-600">
                         ₪{parseFloat(settlement.partnerShare).toFixed(2)}
                       </TableCell>
-                      <TableCell className="text-right font-mono text-blue-600">
+                      <TableCell className="text-right font-mono text-[#B8932F]">
                         ₪{parseFloat(settlement.petwashShare).toFixed(2)}
                       </TableCell>
                       <TableCell>{getStatusBadge(settlement.status)}</TableCell>

@@ -87,12 +87,12 @@ export default function TrackTrip() {
               </h1>
             </div>
             <div className="flex items-center gap-3">
-              <Clock className="h-8 w-8 text-purple-600" />
+              <Clock className="h-8 w-8 text-[#B8932F]" />
               <div>
                 <p className="luxury-text-small">
                   {isHebrew ? 'זמן הגעה משוער' : 'Estimated Arrival'}
                 </p>
-                <p className="luxury-heading-md text-purple-600">{eta} {isHebrew ? 'דקות' : 'min'}</p>
+                <p className="luxury-heading-md text-[#B8932F]">{eta} {isHebrew ? 'דקות' : 'min'}</p>
               </div>
             </div>
           </div>
@@ -106,20 +106,20 @@ export default function TrackTrip() {
             {/* Live Map */}
             <div className="luxury-glass-card luxury-shadow-xl p-6 luxury-animate-slide-up luxury-delay-1">
               <div className="flex items-center gap-2 mb-4">
-                <Navigation className="h-5 w-5 text-purple-600" />
+                <Navigation className="h-5 w-5 text-[#B8932F]" />
                 <h2 className="luxury-heading-sm">
                   {isHebrew ? 'מעקב בזמן אמת' : 'Live GPS Tracking'}
                 </h2>
               </div>
               
               {/* Map Container */}
-              <div className="relative bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl h-96 flex items-center justify-center overflow-hidden border-2 border-purple-100">
+              <div className="relative bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] rounded-2xl h-96 flex items-center justify-center overflow-hidden border-2 border-[#D4AF37]">
                 <div className="text-center z-10">
                   <div className="relative inline-block">
-                    <MapPin className="h-16 w-16 mx-auto text-purple-600 mb-3 animate-bounce" />
-                    <div className="absolute inset-0 bg-purple-400 blur-xl opacity-50 animate-pulse"></div>
+                    <MapPin className="h-16 w-16 mx-auto text-[#B8932F] mb-3 animate-bounce" />
+                    <div className="absolute inset-0 bg-[#D4AF37] blur-xl opacity-50 animate-pulse"></div>
                   </div>
-                  <p className="luxury-text-body font-semibold text-purple-700">
+                  <p className="luxury-text-body font-semibold text-[#B8932F]">
                     {isHebrew ? 'מיקום נוכחי: רחוב בן יהודה, תל אביב' : 'Current Location: Ben Yehuda St, Tel Aviv'}
                   </p>
                   <p className="luxury-text-small mt-2">
@@ -130,7 +130,7 @@ export default function TrackTrip() {
                 {/* Animated route line decoration */}
                 <div className="absolute inset-0 pointer-events-none">
                   <div className="absolute top-1/4 left-1/4 w-2 h-2 bg-green-500 rounded-full shadow-lg shadow-green-500/50"></div>
-                  <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-purple-500 rounded-full animate-ping"></div>
+                  <div className="absolute top-1/2 left-1/2 w-3 h-3 bg-[#D4AF37] rounded-full animate-ping"></div>
                   <div className="absolute bottom-1/4 right-1/4 w-2 h-2 bg-red-500 rounded-full shadow-lg shadow-red-500/50"></div>
                 </div>
               </div>
@@ -151,7 +151,7 @@ export default function TrackTrip() {
                         step.status === 'completed' 
                           ? 'bg-gradient-to-br from-green-400 to-green-600 shadow-lg shadow-green-500/50' 
                           : step.status === 'current'
-                          ? 'bg-gradient-to-br from-purple-400 to-purple-600 shadow-lg shadow-purple-500/50 animate-pulse'
+                          ? 'bg-gradient-to-br from-[#D4AF37] to-[#B8932F] shadow-lg shadow-[#D4AF37]/50 animate-pulse'
                           : 'bg-white'
                       }`}>
                         {step.status === 'completed' ? (
@@ -166,7 +166,7 @@ export default function TrackTrip() {
                       {/* Connecting Line */}
                       {index < timelineSteps.length - 1 && (
                         <div className={`absolute left-1/2 top-10 w-0.5 h-8 -ml-px ${
-                          step.status === 'completed' ? 'bg-gradient-to-b from-green-500 to-purple-400' : 'bg-white'
+                          step.status === 'completed' ? 'bg-gradient-to-b from-green-500 to-[#D4AF37]' : 'bg-white'
                         }`}></div>
                       )}
                     </div>
@@ -184,7 +184,7 @@ export default function TrackTrip() {
             {/* Trip Details */}
             <div className="luxury-glass-card luxury-shadow-md p-6 luxury-animate-slide-up luxury-delay-3">
               <div className="flex items-center gap-2 mb-4">
-                <PawPrint className="h-5 w-5 text-purple-600" />
+                <PawPrint className="h-5 w-5 text-[#B8932F]" />
                 <h2 className="luxury-heading-sm">
                   {isHebrew ? 'פרטי הנסיעה' : 'Trip Details'}
                 </h2>
@@ -251,7 +251,7 @@ export default function TrackTrip() {
             <div className="luxury-glass-card luxury-hover-glow luxury-shadow-lg p-6 luxury-animate-scale-in luxury-delay-2">
               <div className="text-center mb-6">
                 <div className="relative inline-block mb-4">
-                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 p-1">
+                  <div className="w-24 h-24 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] p-1">
                     <div className="w-full h-full rounded-full bg-white flex items-center justify-center overflow-hidden">
                       <User className="h-12 w-12 text-gray-400" />
                     </div>
@@ -272,7 +272,7 @@ export default function TrackTrip() {
               
               <div className="space-y-3 mb-6">
                 <div className="flex items-center gap-3 luxury-glass-minimal p-3 rounded-lg">
-                  <Car className="h-5 w-5 text-purple-600" />
+                  <Car className="h-5 w-5 text-[#B8932F]" />
                   <div className="flex-1">
                     <p className="luxury-text-small">
                       {isHebrew ? 'רכב' : 'Vehicle'}
@@ -283,7 +283,7 @@ export default function TrackTrip() {
                 
                 <div className="flex items-center gap-3 luxury-glass-minimal p-3 rounded-lg">
                   <div className="w-5 h-5 flex items-center justify-center">
-                    <span className="text-xs font-bold text-purple-600">#</span>
+                    <span className="text-xs font-bold text-[#B8932F]">#</span>
                   </div>
                   <div className="flex-1">
                     <p className="luxury-text-small">
@@ -342,8 +342,8 @@ export default function TrackTrip() {
                     }
                   }}
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                    <Share2 className="h-6 w-6 text-purple-600" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
+                    <Share2 className="h-6 w-6 text-[#B8932F]" />
                   </div>
                   <span className="luxury-text-small font-semibold">
                     {isHebrew ? 'שתף מיקום' : 'Share Location'}
@@ -355,8 +355,8 @@ export default function TrackTrip() {
                   data-testid="button-contact-support"
                   onClick={() => setLocation('/support')}
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                    <Headphones className="h-6 w-6 text-purple-600" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
+                    <Headphones className="h-6 w-6 text-[#B8932F]" />
                   </div>
                   <span className="luxury-text-small font-semibold">
                     {isHebrew ? 'תמיכה' : 'Support'}
@@ -368,8 +368,8 @@ export default function TrackTrip() {
                   data-testid="button-view-receipt"
                   onClick={() => setLocation(`/pettrek/trips/${tripId}`)}
                 >
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 flex items-center justify-center">
-                    <Receipt className="h-6 w-6 text-purple-600" />
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
+                    <Receipt className="h-6 w-6 text-[#B8932F]" />
                   </div>
                   <span className="luxury-text-small font-semibold">
                     {isHebrew ? 'קבלה' : 'Receipt'}
@@ -391,7 +391,7 @@ export default function TrackTrip() {
                     className="luxury-glass-minimal luxury-hover-lift p-4 rounded-lg transition-all"
                     style={{ animationDelay: `${index * 0.1}s` }}
                   >
-                    <p className="luxury-text-small text-purple-600 font-semibold mb-1">
+                    <p className="luxury-text-small text-[#B8932F] font-semibold mb-1">
                       {update.time}
                     </p>
                     <p className="luxury-text-body">

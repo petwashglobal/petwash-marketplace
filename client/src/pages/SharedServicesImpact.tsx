@@ -71,7 +71,7 @@ export default function SharedServicesImpact() {
         <div className="luxury-container py-16">
           {/* Hero Section */}
           <div className="text-center mb-12 luxury-animate-fade-in">
-            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 luxury-shadow-lg">
+            <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 luxury-shadow-lg">
               <Heart className="w-10 h-10 text-white" />
             </div>
             <h1 className="luxury-heading-xl mb-4">
@@ -91,7 +91,7 @@ export default function SharedServicesImpact() {
                 key={index}
                 className={`luxury-glass-card luxury-shadow-lg p-8 text-center luxury-animate-fade-in luxury-delay-${Math.min(index + 1, 10)}`}
               >
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6">
                   <stat.icon className="w-8 h-8 text-white" />
                 </div>
                 <h2 className="luxury-heading-lg luxury-text-gradient mb-2">{stat.value}</h2>

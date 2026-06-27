@@ -142,7 +142,7 @@ export default function ComplianceView() {
       );
     }
     return (
-      <Badge variant="outline" className="gap-1 border-orange-500 text-orange-700 dark:text-orange-400">
+      <Badge variant="outline" className="gap-1 border-[#D4AF37] text-[#B8932F] dark:text-[#D4AF37]">
         <AlertTriangle className="w-3 h-3" />
           Incomplete
         </Badge>
@@ -182,7 +182,7 @@ export default function ComplianceView() {
         <Card data-testid="card-compliance-pending">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium">Pending</CardTitle>
-            <Clock className="w-4 h-4 text-orange-600" />
+            <Clock className="w-4 h-4 text-[#B8932F]" />
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
@@ -272,7 +272,7 @@ export default function ComplianceView() {
                     {/* Header Row */}
                     <div className="flex items-start justify-between mb-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                           <User className="w-5 h-5 text-white" />
                         </div>
                         <div>
@@ -343,7 +343,7 @@ export default function ComplianceView() {
                               Valid
                             </Badge>
                           ) : (
-                            <Badge variant="outline" className="gap-1 border-orange-500 text-orange-700 dark:text-orange-400">
+                            <Badge variant="outline" className="gap-1 border-[#D4AF37] text-[#B8932F] dark:text-[#D4AF37]">
                               <AlertTriangle className="w-3 h-3" />
                               Invalid
                             </Badge>

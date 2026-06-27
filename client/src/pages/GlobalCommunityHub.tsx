@@ -71,7 +71,7 @@ export default function GlobalCommunityHub() {
       descriptionKey: 'communityHub.disabilityDescription',
       gradient: 'blue',
       discount: '50%',
-      color: 'from-blue-500 to-cyan-500'
+      color: 'from-[#D4AF37] to-[#D4AF37]'
     },
     {
       icon: Users,
@@ -80,7 +80,7 @@ export default function GlobalCommunityHub() {
       descriptionKey: 'communityHub.seniorDescription',
       gradient: 'purple',
       discount: '40%',
-      color: 'from-purple-500 to-pink-500'
+      color: 'from-[#D4AF37] to-[#D4AF37]'
     },
     {
       icon: Award,
@@ -89,7 +89,7 @@ export default function GlobalCommunityHub() {
       descriptionKey: 'communityHub.veteranDescription',
       gradient: 'gold',
       discount: '35%',
-      color: 'from-amber-500 to-orange-500'
+      color: 'from-amber-500 to-[#D4AF37]'
     },
     {
       icon: Home,
@@ -107,21 +107,21 @@ export default function GlobalCommunityHub() {
       value: 12847,
       labelKey: 'communityHub.petsHelped',
       icon: Heart,
-      color: 'text-pink-500',
+      color: 'text-[#D4AF37]',
       prefix: ''
     },
     {
       value: 425000,
       labelKey: 'communityHub.donatedValue',
       icon: Gift,
-      color: 'text-blue-500',
+      color: 'text-[#D4AF37]',
       prefix: '₪'
     },
     {
       value: 34,
       labelKey: 'communityHub.sheltersPartnered',
       icon: Building,
-      color: 'text-purple-500',
+      color: 'text-[#D4AF37]',
       prefix: ''
     },
     {
@@ -285,7 +285,7 @@ export default function GlobalCommunityHub() {
               >
                 <GlassmorphismCard gradient="pink" className="h-full p-8">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-pink-500 to-rose-500 p-3 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-rose-500 p-3 flex items-center justify-center">
                       <Calendar className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="text-3xl font-bold text-gray-900 dark:text-black">
@@ -317,7 +317,7 @@ export default function GlobalCommunityHub() {
               >
                 <GlassmorphismCard gradient="gold" className="h-full p-8">
                   <div className="flex items-center gap-4 mb-6">
-                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-500 to-orange-500 p-3 flex items-center justify-center">
+                    <div className="w-14 h-14 rounded-full bg-gradient-to-br from-yellow-500 to-[#D4AF37] p-3 flex items-center justify-center">
                       <Crown className="w-8 h-8 text-white" />
                     </div>
                     <h3 className="text-3xl font-bold text-gray-900 dark:text-black">
@@ -421,7 +421,7 @@ export default function GlobalCommunityHub() {
                 <LuxuryButton
                   variant="primary"
                   size="lg"
-                  className="bg-gradient-to-r from-purple-600 via-pink-600 to-purple-700"
+                  className="bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-[#B8932F]"
                   testId="button-contact-support"
                 >
                   <Heart className="w-5 h-5 mr-2" />

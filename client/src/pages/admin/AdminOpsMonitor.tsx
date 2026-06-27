@@ -50,7 +50,7 @@ function HealthSection({ headers }: { headers: Record<string, string> }) {
     <Card className="border border-slate-200">
       <CardHeader className="pb-3 flex flex-row items-center justify-between">
         <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-blue-500" />
+          <Activity className="w-4 h-4 text-[#D4AF37]" />
           Production Health — 4 Watch Items
         </CardTitle>
         <Button variant="ghost" size="sm" onClick={() => refetch()} disabled={isRefetching}>
@@ -304,7 +304,7 @@ function DocumentsByPrefixSection({ headers }: { headers: Record<string, string>
     <Card className="border border-slate-200">
       <CardHeader className="pb-3">
         <CardTitle className="text-sm font-semibold text-slate-700 flex items-center gap-2">
-          <FileText className="w-4 h-4 text-indigo-500" />
+          <FileText className="w-4 h-4 text-[#D4AF37]" />
           Financial Documents by Prefix
         </CardTitle>
       </CardHeader>
@@ -320,13 +320,13 @@ function DocumentsByPrefixSection({ headers }: { headers: Record<string, string>
                 onClick={() => setSelectedPrefix(isSelected ? '' : pfx)}
                 className={`rounded-lg border p-2.5 text-left transition-all ${
                   isSelected
-                    ? 'border-indigo-400 bg-indigo-50'
+                    ? 'border-[#D4AF37] bg-[#D4AF37]'
                     : 'border-slate-200 bg-white hover:border-slate-400 hover:bg-white'
                 }`}
               >
                 <div className="font-mono text-xs font-bold text-slate-800">{pfx}</div>
                 <div className="text-xs text-slate-500 mt-0.5 leading-tight">{PREFIX_LABELS[pfx]}</div>
-                <div className={`text-sm font-bold mt-1.5 ${count > 0 ? 'text-indigo-700' : 'text-slate-300'}`}>
+                <div className={`text-sm font-bold mt-1.5 ${count > 0 ? 'text-[#B8932F]' : 'text-slate-300'}`}>
                   {isLoading ? '…' : count.toLocaleString()}
                 </div>
               </button>
@@ -357,7 +357,7 @@ function DocumentsByPrefixSection({ headers }: { headers: Record<string, string>
                   )}
                   {recentDocs.map((doc: any, i: number) => (
                     <tr key={i} className="border-b border-slate-50 hover:bg-white">
-                      <td className="py-1.5 pr-3 font-mono font-semibold text-indigo-700">{doc.document_reference}</td>
+                      <td className="py-1.5 pr-3 font-mono font-semibold text-[#B8932F]">{doc.document_reference}</td>
                       <td className="py-1.5 pr-3 font-mono text-slate-600 max-w-[120px] truncate">{doc.user_id ?? '—'}</td>
                       <td className="py-1.5 pr-3 font-mono text-slate-600">{doc.booking_id ?? '—'}</td>
                       <td className="py-1.5 text-slate-500 whitespace-nowrap">
@@ -421,7 +421,7 @@ function EventMatrixSection({ headers }: { headers: Record<string, string> }) {
                   <tr key={i} className="border-b border-slate-50 hover:bg-white">
                     <td className="py-1.5 pr-3 font-mono font-semibold text-slate-800">{e.event}</td>
                     <td className="py-1.5 pr-3 text-slate-600">{e.documentType}</td>
-                    <td className="py-1.5 pr-3 font-mono font-bold text-indigo-700">{e.documentPrefix}</td>
+                    <td className="py-1.5 pr-3 font-mono font-bold text-[#B8932F]">{e.documentPrefix}</td>
                     <td className="py-1.5 pr-3">
                       <div className="flex gap-1">
                         {e.channels.map((ch: string) => (

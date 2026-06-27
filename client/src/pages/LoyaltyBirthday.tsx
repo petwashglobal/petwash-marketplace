@@ -84,7 +84,7 @@ export default function LoyaltyBirthday() {
         <div className="text-center mb-12">
           <img src="/brand/petwash-logo-white-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="w-16 h-16 rounded-2xl bg-[rgba(236,72,153,0.1)] border border-[rgba(236,72,153,0.2)] flex items-center justify-center mx-auto mb-4">
-            <Cake className="w-8 h-8 text-pink-400" />
+            <Cake className="w-8 h-8 text-[#D4AF37]" />
           </div>
           <h1 className="text-4xl md:text-5xl font-bold text-[#1A1A1A] mb-3">
             {isHebrew ? 'הטבות יום הולדת' : 'Birthday Rewards'}
@@ -145,7 +145,7 @@ export default function LoyaltyBirthday() {
                 className="p-6 rounded-2xl bg-white border border-[#E8E3D9] backdrop-blur-xl transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1 hover:border-[rgba(236,72,153,0.3)] group"
               >
                 <div className="w-12 h-12 rounded-xl bg-[rgba(236,72,153,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(236,72,153,0.2)]">
-                  <reward.icon className="w-6 h-6 text-pink-400" />
+                  <reward.icon className="w-6 h-6 text-[#D4AF37]" />
                 </div>
                 <h3 className="text-[#1A1A1A] font-bold text-lg mb-1">{reward.title}</h3>
                 <p className="text-[#9A9088] text-xs mb-3">{reward.subtitle}</p>

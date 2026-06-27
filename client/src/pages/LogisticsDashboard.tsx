@@ -182,9 +182,9 @@ export default function LogisticsDashboard() {
 
   const getPriorityColor = (priority: string) => {
     const colors: Record<string, string> = {
-      low: "bg-blue-500",
+      low: "bg-[#D4AF37]",
       normal: "bg-green-500",
-      high: "bg-orange-500",
+      high: "bg-[#D4AF37]",
       urgent: "bg-red-500",
     };
     return colors[priority] || "bg-gray-500";
@@ -193,9 +193,9 @@ export default function LogisticsDashboard() {
   const getStatusColor = (status: string) => {
     const colors: Record<string, string> = {
       pending: "bg-yellow-500",
-      picking: "bg-blue-500",
-      packing: "bg-indigo-500",
-      shipped: "bg-purple-500",
+      picking: "bg-[#D4AF37]",
+      packing: "bg-[#D4AF37]",
+      shipped: "bg-[#D4AF37]",
       delivered: "bg-green-500",
       cancelled: "bg-red-500",
     };
@@ -235,7 +235,7 @@ export default function LogisticsDashboard() {
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{he ? 'תוקף קרוב' : 'Expiring Soon'}</CardTitle>
-            <AlertCircle className="h-4 w-4 text-orange-500" />
+            <AlertCircle className="h-4 w-4 text-[#D4AF37]" />
           </CardHeader>
           <CardContent>
             <div className="luxury-heading-lg luxury-text-gradient" data-testid="metric-expiring">{expiringItems?.length || 0}</div>

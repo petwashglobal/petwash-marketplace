@@ -207,10 +207,10 @@ export default function PolicyManagementDashboard() {
         <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-2" data-testid="card-total-policies">
           <div className="flex flex-row items-center justify-between pb-2">
             <h3 className="luxury-text-small opacity-70">Total Policies</h3>
-            <FileText className="w-4 h-4 text-blue-600" />
+            <FileText className="w-4 h-4 text-[#B8932F]" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-blue-600" data-testid="text-total-policies">
+            <div className="text-2xl font-bold text-[#B8932F]" data-testid="text-total-policies">
               {Array.isArray(allPolicies) ? allPolicies.length : 0}
             </div>
             <p className="luxury-text-small opacity-70 mt-1">
@@ -235,10 +235,10 @@ export default function PolicyManagementDashboard() {
         <div className="luxury-glass-card luxury-hover-lift luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-4" data-testid="card-certifications">
           <div className="flex flex-row items-center justify-between pb-2">
             <h3 className="luxury-text-small opacity-70">Certifications</h3>
-            <Award className="w-4 h-4 text-purple-600" />
+            <Award className="w-4 h-4 text-[#B8932F]" />
           </div>
           <div>
-            <div className="text-2xl font-bold text-purple-600" data-testid="text-total-certifications">
+            <div className="text-2xl font-bold text-[#B8932F]" data-testid="text-total-certifications">
               {Array.isArray(certifications) ? certifications.length : 0}
             </div>
             <p className="luxury-text-small opacity-70 mt-1">
@@ -346,10 +346,10 @@ export default function PolicyManagementDashboard() {
                           <span className="luxury-badge-secondary px-2 py-1 text-xs">Inactive</span>
                         )}
                       </div>
-                      <h3 className="luxury-heading-sm text-blue-600 mb-1">{policy.title}</h3>
+                      <h3 className="luxury-heading-sm text-[#B8932F] mb-1">{policy.title}</h3>
                       <p className="luxury-text-small opacity-70">{policy.category}</p>
                     </div>
-                    <Shield className="w-5 h-5 text-blue-600" />
+                    <Shield className="w-5 h-5 text-[#B8932F]" />
                   </div>
                   <div className="space-y-3">
                     <div className="flex items-center justify-between luxury-text-small">

@@ -68,7 +68,7 @@ export function LoyaltyWinbackCard({ data: propData }: Props) {
   }
 
   return (
-    <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-violet-500 to-purple-600 text-white p-5 shadow-md shadow-purple-200">
+    <div className="relative rounded-3xl overflow-hidden bg-gradient-to-r from-[#D4AF37] to-[#B8932F] text-white p-5 shadow-md shadow-[#D4AF37]">
       {/* Dismiss */}
       <button
         onClick={() => setDismissed(true)}
@@ -89,7 +89,7 @@ export function LoyaltyWinbackCard({ data: propData }: Props) {
           </p>
           <button
             onClick={handleCta}
-            className="inline-block mt-3 bg-white text-purple-600 font-bold text-xs px-4 py-2 rounded-xl hover:bg-purple-50 transition-colors"
+            className="inline-block mt-3 bg-white text-[#B8932F] font-bold text-xs px-4 py-2 rounded-xl hover:bg-[#D4AF37] transition-colors"
           >
             הזמן עכשיו
           </button>

@@ -163,7 +163,7 @@ export default function MyExpenses() {
                 <Card key={expense.id} className={`p-6 luxury-glass-minimal luxury-hover-lift luxury-animate-slide-up luxury-delay-${Math.min(idx % 10, 10)}`}>
                   <div className="flex justify-between items-start mb-4">
                     <div className="flex items-center gap-3">
-                      <StatusIcon className="w-6 h-6 text-violet-600" />
+                      <StatusIcon className="w-6 h-6 text-[#B8932F]" />
                       <div>
                         <div className="flex items-center gap-2 mb-1">
                           <Badge variant={statusInfo.variant as any} className="text-sm">

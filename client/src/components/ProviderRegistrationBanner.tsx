@@ -63,7 +63,7 @@ export default function ProviderRegistrationBanner({
       icon: Home,
       title: t("providerBanner.petSitter"),
       desc: t("providerBanner.petSitterDesc"),
-      color: "from-pink-500 to-rose-600",
+      color: "from-[#D4AF37] to-rose-600",
     },
     {
       id: "walker" as ProviderType,
@@ -77,7 +77,7 @@ export default function ProviderRegistrationBanner({
       icon: Car,
       title: t("providerBanner.petDriver"),
       desc: t("providerBanner.petDriverDesc"),
-      color: "from-blue-500 to-indigo-600",
+      color: "from-[#D4AF37] to-[#B8932F]",
       comingSoon: true,
     },
     {
@@ -85,7 +85,7 @@ export default function ProviderRegistrationBanner({
       icon: GraduationCap,
       title: t("providerBanner.petTrainer"),
       desc: t("providerBanner.petTrainerDesc"),
-      color: "from-amber-500 to-orange-600",
+      color: "from-amber-500 to-[#B8932F]",
     },
   ];
 
@@ -139,7 +139,7 @@ export default function ProviderRegistrationBanner({
           </div>
           <Button
             onClick={navigateToOnboarding}
-            className="bg-gradient-to-r from-cyan-500 to-purple-600 hover:from-cyan-600 hover:to-purple-700 text-white font-bold px-6 py-2 rounded-full shadow-lg shadow-cyan-500/25"
+            className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] text-white font-bold px-6 py-2 rounded-full shadow-lg shadow-[#D4AF37]/25"
           >
             {t("providerBanner.applyNow")}
             <ArrowRight className={`w-4 h-4 ${isRTL ? "mr-2 rotate-180" : "ml-2"}`} />

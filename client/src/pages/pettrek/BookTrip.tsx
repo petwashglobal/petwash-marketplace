@@ -266,14 +266,14 @@ export default function BookTrip() {
               <div key={step} className="flex items-center flex-1">
                 <div className={`flex items-center justify-center w-12 h-12 rounded-full font-semibold transition-all ${
                   step <= currentStep 
-                    ? 'bg-gradient-to-br from-purple-500 to-purple-700 text-white luxury-shadow-lg' 
+                    ? 'bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white luxury-shadow-lg' 
                     : 'luxury-glass-minimal text-gray-400'
                 }`}>
                   {step < currentStep ? <CheckCircle2 className="h-6 w-6" /> : step}
                 </div>
                 {step < 3 && (
                   <div className={`flex-1 h-1 mx-2 rounded ${
-                    step < currentStep ? 'bg-gradient-to-r from-purple-500 to-purple-700' : 'bg-white'
+                    step < currentStep ? 'bg-gradient-to-r from-[#D4AF37] to-[#B8932F]' : 'bg-white'
                   }`} />
                 )}
               </div>
@@ -281,7 +281,7 @@ export default function BookTrip() {
           </div>
           <div className="flex justify-between mt-3">
             {stepLabels.map((label, idx) => (
-              <span key={idx} className={`luxury-text-small font-medium ${idx + 1 === currentStep ? 'text-purple-700' : ''}`}>
+              <span key={idx} className={`luxury-text-small font-medium ${idx + 1 === currentStep ? 'text-[#B8932F]' : ''}`}>
                 {label}
               </span>
             ))}
@@ -307,7 +307,7 @@ export default function BookTrip() {
                         value={petName}
                         onChange={(e) => setPetName(e.target.value)}
                         placeholder={isHebrew ? 'שם חיית המחמד שלך' : 'Your pet\'s name'}
-                        className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-white/80 focus:ring-2 focus:ring-purple-400 focus:border-transparent outline-none transition-all"
+                        className="w-full px-4 py-3 rounded-lg border border-gray-200 bg-white/80 focus:ring-2 focus:ring-[#D4AF37] focus:border-transparent outline-none transition-all"
                         data-testid="input-pet-name"
                       />
                     </div>
@@ -323,11 +323,11 @@ export default function BookTrip() {
                             type="button"
                             onClick={() => setSelectedPetType(pet.id)}
                             className={`luxury-glass-minimal luxury-hover-lift p-4 rounded-xl text-center transition-all ${
-                              selectedPetType === pet.id ? 'ring-2 ring-purple-500 bg-purple-50' : ''
+                              selectedPetType === pet.id ? 'ring-2 ring-[#D4AF37] bg-[#D4AF37]' : ''
                             }`}
                             data-testid={`button-pet-${pet.id}`}
                           >
-                            <pet.icon className="h-8 w-8 mx-auto mb-2 text-purple-600" />
+                            <pet.icon className="h-8 w-8 mx-auto mb-2 text-[#B8932F]" />
                             <span className="luxury-text-small font-medium">{pet.label}</span>
                           </button>
                         ))}
@@ -346,7 +346,7 @@ export default function BookTrip() {
                             onClick={() => setPetSize(size.id)}
                             className={`px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                               petSize === size.id 
-                                ? 'bg-purple-600 text-white shadow-md' 
+                                ? 'bg-[#B8932F] text-white shadow-md' 
                                 : 'bg-white text-gray-700 hover:bg-white'
                             }`}
                             data-testid={`button-size-${size.id}`}
@@ -369,7 +369,7 @@ export default function BookTrip() {
                             onClick={() => setSelectedServiceType(service.id)}
                             className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
                               selectedServiceType === service.id 
-                                ? 'bg-purple-600 text-white shadow-md' 
+                                ? 'bg-[#B8932F] text-white shadow-md' 
                                 : 'bg-white text-gray-700 hover:bg-white'
                             }`}
                             data-testid={`button-service-${service.id}`}
@@ -397,8 +397,8 @@ export default function BookTrip() {
                       </div>
 
                       <div className="flex justify-center">
-                        <div className="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center">
-                          <Route className="h-4 w-4 text-purple-600" />
+                        <div className="w-8 h-8 rounded-full bg-[#D4AF37] flex items-center justify-center">
+                          <Route className="h-4 w-4 text-[#B8932F]" />
                         </div>
                       </div>
 
@@ -498,12 +498,12 @@ export default function BookTrip() {
                         : 'Final price — no surprises. What you see is what you pay.'}
                     </p>
 
-                    <div className="bg-gradient-to-br from-purple-50 to-white rounded-2xl p-6 border border-purple-100">
+                    <div className="bg-gradient-to-br from-[#D4AF37] to-white rounded-2xl p-6 border border-[#D4AF37]">
                       <div className="flex items-center gap-3 mb-4">
                         <div className="w-3 h-3 rounded-full bg-green-500"></div>
                         <span className="text-sm text-gray-600">{pickup?.address}</span>
                       </div>
-                      <div className="border-l-2 border-dashed border-purple-200 ml-1.5 h-6"></div>
+                      <div className="border-l-2 border-dashed border-[#D4AF37] ml-1.5 h-6"></div>
                       <div className="flex items-center gap-3 mb-6">
                         <div className="w-3 h-3 rounded-full bg-red-500"></div>
                         <span className="text-sm text-gray-600">{dropoff?.address}</span>
@@ -511,12 +511,12 @@ export default function BookTrip() {
 
                       <div className="grid grid-cols-2 gap-4 mb-6">
                         <div className="bg-white rounded-xl p-4 text-center border border-gray-100">
-                          <Route className="h-5 w-5 text-purple-600 mx-auto mb-1" />
+                          <Route className="h-5 w-5 text-[#B8932F] mx-auto mb-1" />
                           <p className="text-xl font-bold text-gray-900">{fareEstimate.breakdown.distanceKm.toFixed(1)} km</p>
                           <p className="text-xs text-gray-500">{isHebrew ? 'מרחק' : 'Distance'}</p>
                         </div>
                         <div className="bg-white rounded-xl p-4 text-center border border-gray-100">
-                          <Clock className="h-5 w-5 text-purple-600 mx-auto mb-1" />
+                          <Clock className="h-5 w-5 text-[#B8932F] mx-auto mb-1" />
                           <p className="text-xl font-bold text-gray-900">{fareEstimate.breakdown.estimatedMinutes} {isHebrew ? 'דק׳' : 'min'}</p>
                           <p className="text-xs text-gray-500">{isHebrew ? 'זמן משוער' : 'Est. time'}</p>
                         </div>
@@ -537,27 +537,27 @@ export default function BookTrip() {
                         </div>
                         {fareEstimate.surgeFare > 0 && (
                           <div className="flex justify-between text-sm">
-                            <span className="text-orange-600 flex items-center gap-1">
+                            <span className="text-[#B8932F] flex items-center gap-1">
                               <Zap className="h-3 w-3" />
                               {isHebrew ? 'תוספת שעות עומס' : 'Peak hours surge'}
                               <span className="text-xs">(x{fareEstimate.breakdown.surgeMultiplier})</span>
                             </span>
-                            <span className="font-medium text-orange-600">₪{fareEstimate.surgeFare.toFixed(2)}</span>
+                            <span className="font-medium text-[#B8932F]">₪{fareEstimate.surgeFare.toFixed(2)}</span>
                           </div>
                         )}
-                        <div className="flex justify-between text-xs text-gray-500 pl-3 border-l-2 border-purple-100">
+                        <div className="flex justify-between text-xs text-gray-500 pl-3 border-l-2 border-[#D4AF37]">
                           <span>{isHebrew ? 'כולל עמלת PetWash (15%)' : 'Incl. PetWash fee (15%)'}</span>
                           <span>₪{pricing.commission.toFixed(2)}</span>
                         </div>
-                        <div className="flex justify-between text-xs text-gray-400 pl-3 border-l-2 border-purple-100">
+                        <div className="flex justify-between text-xs text-gray-400 pl-3 border-l-2 border-[#D4AF37]">
                           <span>{isHebrew ? 'מהם מע"מ (18/118)' : 'Of which VAT (18/118)'}</span>
                           <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
                         </div>
 
-                        <div className="border-t border-purple-200 pt-3 mt-3">
+                        <div className="border-t border-[#D4AF37] pt-3 mt-3">
                           <div className="flex justify-between items-center">
                             <span className="text-lg font-bold text-gray-900">{isHebrew ? 'סה"כ לתשלום' : 'Total to pay'}</span>
-                            <span className="text-3xl font-bold bg-gradient-to-r from-purple-600 to-purple-800 bg-clip-text text-transparent">
+                            <span className="text-3xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
                               ₪{pricing.totalCharged.toFixed(0)}
                             </span>
                           </div>
@@ -566,13 +566,13 @@ export default function BookTrip() {
                     </div>
 
                     {fareEstimate.breakdown.isPeakTime && (
-                      <div className="bg-white border border-orange-200 rounded-xl p-4 flex items-start gap-3">
-                        <Zap className="h-5 w-5 text-orange-500 mt-0.5 flex-shrink-0" />
+                      <div className="bg-white border border-[#D4AF37] rounded-xl p-4 flex items-start gap-3">
+                        <Zap className="h-5 w-5 text-[#D4AF37] mt-0.5 flex-shrink-0" />
                         <div>
-                          <p className="text-sm font-medium text-orange-800">
+                          <p className="text-sm font-medium text-[#B8932F]">
                             {isHebrew ? 'שעות עומס' : 'Peak Hours'}
                           </p>
-                          <p className="text-xs text-orange-600">
+                          <p className="text-xs text-[#B8932F]">
                             {isHebrew 
                               ? 'המחיר כולל תוספת שעות עומס. שקול לקבוע שעה אחרת לחיסכון.'
                               : 'Price includes peak hour surcharge. Consider a different time to save.'}
@@ -621,9 +621,9 @@ export default function BookTrip() {
                         : 'A certified driver will contact you shortly to coordinate pickup. You\'ll receive an SMS with driver details.'}
                     </p>
                     {tripId && (
-                      <div className="bg-purple-50 rounded-xl px-6 py-3 inline-block">
+                      <div className="bg-[#D4AF37] rounded-xl px-6 py-3 inline-block">
                         <p className="text-sm text-gray-500">{isHebrew ? 'מספר הזמנה' : 'Booking ID'}</p>
-                        <p className="text-lg font-mono font-bold text-purple-700">{tripId}</p>
+                        <p className="text-lg font-mono font-bold text-[#B8932F]">{tripId}</p>
                       </div>
                     )}
                     <div className="flex justify-center gap-3 pt-4">
@@ -679,16 +679,16 @@ export default function BookTrip() {
                       <span>₪{fareEstimate.timeFare.toFixed(2)}</span>
                     </div>
                     {fareEstimate.surgeFare > 0 && (
-                      <div className="flex justify-between luxury-text-small text-orange-600">
+                      <div className="flex justify-between luxury-text-small text-[#B8932F]">
                         <span>{isHebrew ? 'תוספת עומס' : 'Surge'}</span>
                         <span>₪{fareEstimate.surgeFare.toFixed(2)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-purple-100">
+                    <div className="flex justify-between luxury-text-small opacity-70 pl-3 border-l-2 border-[#D4AF37]">
                       <span>{isHebrew ? 'כולל עמלת PetWash (15%)' : 'Incl. PetWash fee (15%)'}</span>
                       <span>₪{pricing.commission.toFixed(2)}</span>
                     </div>
-                    <div className="flex justify-between luxury-text-small opacity-60 pl-3 border-l-2 border-purple-100">
+                    <div className="flex justify-between luxury-text-small opacity-60 pl-3 border-l-2 border-[#D4AF37]">
                       <span>{isHebrew ? 'מהם מע"מ (18/118)' : 'Of which VAT (18/118)'}</span>
                       <span>₪{pricing.vatOnCommission.toFixed(2)}</span>
                     </div>
@@ -703,7 +703,7 @@ export default function BookTrip() {
                     </div>
 
                     {fareEstimate.breakdown.isPeakTime && (
-                      <div className="text-xs text-center text-orange-500 flex items-center justify-center gap-1">
+                      <div className="text-xs text-center text-[#D4AF37] flex items-center justify-center gap-1">
                         <Zap className="h-3 w-3" />
                         {isHebrew ? 'תעריף שעות עומס פעיל' : 'Peak hour pricing active'}
                       </div>
@@ -711,7 +711,7 @@ export default function BookTrip() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <Route className="h-10 w-10 text-purple-300 mx-auto mb-3" />
+                    <Route className="h-10 w-10 text-[#D4AF37] mx-auto mb-3" />
                     <p className="luxury-text-small">
                       {isHebrew ? 'מלא את הפרטים לקבלת הצעת מחיר מיידית' : 'Fill in details for an instant quote'}
                     </p>
@@ -726,7 +726,7 @@ export default function BookTrip() {
                     className="luxury-glass-minimal luxury-hover-lift p-4 rounded-xl"
                   >
                     <div className="flex items-start gap-3">
-                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center flex-shrink-0">
+                      <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center flex-shrink-0">
                         <feature.icon className="h-5 w-5 text-white" />
                       </div>
                       <div>

@@ -13,10 +13,10 @@ import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<string, { label: string; labelHe: string; color: string; bg: string; icon: any }> = {
   ready:       { label: "Ready",               labelHe: "מוכן",            color: "text-emerald-700", bg: "bg-emerald-50 border-emerald-200", icon: CheckCircle2 },
-  busy:        { label: "Active wash",          labelHe: "שטיפה פעילה",     color: "text-blue-700",    bg: "bg-blue-50 border-blue-200",       icon: Activity },
+  busy:        { label: "Active wash",          labelHe: "שטיפה פעילה",     color: "text-[#B8932F]",    bg: "bg-[#D4AF37] border-[#D4AF37]",       icon: Activity },
   cleanup:     { label: "Cleanup in progress",  labelHe: "ניקוי מתבצע",     color: "text-amber-700",   bg: "bg-amber-50 border-amber-200",     icon: Clock },
   fault:       { label: "Fault",                labelHe: "תקלה",            color: "text-red-700",     bg: "bg-red-50 border-red-200",         icon: AlertTriangle },
-  maintenance: { label: "Maintenance",          labelHe: "תחזוקה",          color: "text-purple-700",  bg: "bg-purple-50 border-purple-200",   icon: Wrench },
+  maintenance: { label: "Maintenance",          labelHe: "תחזוקה",          color: "text-[#B8932F]",  bg: "bg-[#D4AF37] border-[#D4AF37]",   icon: Wrench },
   offline:     { label: "Offline",              labelHe: "לא מחובר",        color: "text-gray-500",    bg: "bg-white border-gray-200",       icon: WifiOff },
 };
 
@@ -29,7 +29,7 @@ function HeartbeatAge({ ts }: { ts: string | null }) {
     `${Math.floor(seconds / 3600)}ש׳`;
   const stale = seconds > 120;
   return (
-    <span className={cn("text-xs", stale ? "text-orange-500" : "text-gray-500")}>
+    <span className={cn("text-xs", stale ? "text-[#D4AF37]" : "text-gray-500")}>
       {stale && <WifiOff className="inline h-3 w-3 mr-0.5" />}
       לפני {label}
     </span>
@@ -66,7 +66,7 @@ export default function AdminBayMap() {
   const sides = ["left", "right"].filter((s) => bays[s]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50/20" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-[#D4AF37]/20" dir="rtl">
       <div className="max-w-4xl mx-auto px-4 py-8">
 
         <div className="flex items-center justify-between mb-6">
@@ -84,7 +84,7 @@ export default function AdminBayMap() {
           </div>
           <div className="flex items-center gap-2">
             {summary && (
-              <Badge className={cn("text-xs", summary.anyFault ? "bg-red-100 text-red-800" : summary.allReady ? "bg-emerald-100 text-emerald-800" : "bg-blue-100 text-blue-800")}>
+              <Badge className={cn("text-xs", summary.anyFault ? "bg-red-100 text-red-800" : summary.allReady ? "bg-emerald-100 text-emerald-800" : "bg-[#D4AF37] text-[#B8932F]")}>
                 {summary.anyFault ? "תקלה פעילה" : summary.allReady ? "כל העמדות מוכנות" : "פעיל"}
               </Badge>
             )}
@@ -144,10 +144,10 @@ export default function AdminBayMap() {
                     )}
 
                     {bay.currentSessionId && (
-                      <div className="text-xs bg-blue-50 border border-blue-100 rounded p-2">
+                      <div className="text-xs bg-[#D4AF37] border border-[#D4AF37] rounded p-2">
                         <span className="text-gray-500">סשן פעיל:</span>
                         <Link href={`/admin/bays/${bay.bayId}/timeline`}>
-                          <span className="font-mono text-blue-700 underline mr-1 cursor-pointer">{bay.currentSessionId}</span>
+                          <span className="font-mono text-[#B8932F] underline mr-1 cursor-pointer">{bay.currentSessionId}</span>
                         </Link>
                       </div>
                     )}
@@ -172,8 +172,8 @@ export default function AdminBayMap() {
                     </div>
 
                     <div className="space-y-1.5">
-                      <LevelBar pct={bay.shampooLevelPct} label="שמפו" color="bg-violet-400" />
-                      <LevelBar pct={bay.conditionerLevelPct} label="קונדישינר" color="bg-cyan-400" />
+                      <LevelBar pct={bay.shampooLevelPct} label="שמפו" color="bg-[#D4AF37]" />
+                      <LevelBar pct={bay.conditionerLevelPct} label="קונדישינר" color="bg-[#D4AF37]" />
                     </div>
 
                     <div className="flex items-center justify-between text-[10px] text-gray-400 pt-1 border-t border-gray-100">

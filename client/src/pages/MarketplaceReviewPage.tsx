@@ -133,7 +133,7 @@ export default function MarketplaceReviewPage() {
       <div className="min-h-screen flex items-center justify-center">
         <Card className="max-w-md w-full mx-4">
           <CardContent className="pt-6 text-center">
-            <AlertCircle className="w-12 h-12 text-orange-500 mx-auto mb-3" />
+            <AlertCircle className="w-12 h-12 text-[#D4AF37] mx-auto mb-3" />
             <p className="text-gray-600 dark:text-gray-400">
               {isHebrew ? "נדרשת התחברות" : "Login required"}
             </p>
@@ -146,11 +146,11 @@ export default function MarketplaceReviewPage() {
   // Booking loaded but service not yet completed → show informational screen
   if (!bookingLoading && booking && !isReviewable) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
           <CardContent className="pt-8 pb-8">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Calendar className="w-9 h-9 text-blue-600" />
+            <div className="w-16 h-16 bg-[#D4AF37] rounded-full flex items-center justify-center mx-auto mb-4">
+              <Calendar className="w-9 h-9 text-[#B8932F]" />
             </div>
             <h2 className="text-xl font-bold mb-2">
               {isHebrew ? "השירות עדיין לא הושלם" : "Service Not Yet Completed"}
@@ -161,7 +161,7 @@ export default function MarketplaceReviewPage() {
                 : "You can leave a review after the service is completed"}
             </p>
             {bookingDate && (
-              <p className="text-sm text-blue-700 dark:text-blue-300 font-medium mb-6">
+              <p className="text-sm text-[#B8932F] dark:text-[#D4AF37] font-medium mb-6">
                 {isHebrew ? `השירות מתוכנן ל-${bookingDate}` : `Service scheduled for ${bookingDate}`}
               </p>
             )}
@@ -173,7 +173,7 @@ export default function MarketplaceReviewPage() {
                 {isHebrew ? "לכל ההזמנות" : "My Bookings"}
               </Button>
               <Button
-                className="bg-orange-500 hover:bg-orange-600 text-white"
+                className="bg-[#D4AF37] hover:bg-[#B8932F] text-white"
                 onClick={() => navigate(`/report-problem/${bookingId}`)}
               >
                 <AlertTriangle className="w-4 h-4 mr-2" />
@@ -188,7 +188,7 @@ export default function MarketplaceReviewPage() {
 
   if (submitted || existingReview) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
+      <div className="min-h-screen bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-gray-900 dark:to-gray-800 flex items-center justify-center p-4">
         <Card className="max-w-md w-full text-center">
           <CardContent className="pt-8 pb-8">
             <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -218,14 +218,14 @@ export default function MarketplaceReviewPage() {
             )}
             {/* Low-rating prompt to report a problem */}
             {(existingReview?.overallRating ?? rating) <= 2 && (existingReview || submitted) && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 mb-4 text-sm text-orange-700 dark:bg-orange-900/20 dark:border-orange-700 dark:text-orange-300">
+              <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-lg p-3 mb-4 text-sm text-[#B8932F] dark:bg-[#B8932F]/20 dark:border-[#B8932F] dark:text-[#D4AF37]">
                 <p className="font-medium mb-2">
                   {isHebrew ? "חוויה רעה? נעזור לפתור את זה." : "Bad experience? We can help."}
                 </p>
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-orange-400 text-orange-700 hover:bg-orange-100"
+                  className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
                   onClick={() => navigate(`/report-problem/${bookingId}`)}
                 >
                   <AlertTriangle className="w-3.5 h-3.5 mr-1" />
@@ -248,12 +248,12 @@ export default function MarketplaceReviewPage() {
 
   return (
     <div
-      className="min-h-screen bg-gradient-to-br from-purple-50 to-pink-50 dark:from-gray-900 dark:to-gray-800 p-4"
+      className="min-h-screen bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-gray-900 dark:to-gray-800 p-4"
       dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}
     >
       <div className="max-w-lg mx-auto">
         <div className="text-center mb-6 pt-6">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
             {isHebrew ? "ספר לנו על החוויה שלך" : "Tell us about your experience"}
           </h1>
           <p className="text-gray-500 dark:text-gray-400 mt-1 text-sm">
@@ -289,7 +289,7 @@ export default function MarketplaceReviewPage() {
             </div>
 
             {rating > 0 && rating <= 2 && (
-              <div className="bg-orange-50 border border-orange-200 rounded-lg p-3 text-sm text-orange-700 dark:bg-orange-900/20 dark:border-orange-800 dark:text-orange-300">
+              <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-lg p-3 text-sm text-[#B8932F] dark:bg-[#B8932F]/20 dark:border-[#B8932F] dark:text-[#D4AF37]">
                 {isHebrew
                   ? "מצטערים לשמוע. הצוות שלנו יבחן את הדיווח ויצור איתך קשר."
                   : "Sorry to hear that. Our team will review this report and reach out to you."}

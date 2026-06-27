@@ -125,7 +125,7 @@ export const DashboardWidget = ({
           {actionIcon && onActionPress && (
             <Button 
               onClick={onActionPress}
-              className="text-blue-600 hover:text-blue-700 transition-colors"
+              className="text-[#B8932F] hover:text-[#B8932F] transition-colors"
             >
               {actionIcon}
             </Button>
@@ -152,12 +152,12 @@ export const MetricWidget = ({
   trend?: number;
 }) => {
   const colorClasses = {
-    blue: 'from-blue-500 to-blue-600',
+    blue: 'from-[#D4AF37] to-[#B8932F]',
     purple: 'from-amber-500 to-amber-600',
     green: 'from-green-500 to-green-600',
-    orange: 'from-orange-500 to-orange-600',
-    pink: 'from-pink-500 to-pink-600',
-  }[color] || 'from-blue-500 to-blue-600';
+    orange: 'from-[#D4AF37] to-[#B8932F]',
+    pink: 'from-[#D4AF37] to-[#B8932F]',
+  }[color] || 'from-[#D4AF37] to-[#B8932F]';
 
   return (
     <div className="text-center p-4 bg-white dark:bg-white rounded-xl shadow-md hover:shadow-lg transition-shadow">
@@ -187,7 +187,7 @@ export const StatusBadge = ({
     active: 'bg-green-100 text-green-700 dark:bg-white dark:text-green-300',
     pending: 'bg-yellow-100 text-yellow-700 dark:bg-white dark:text-yellow-300',
     inactive: 'bg-white text-gray-700 dark:bg-white/30 dark:text-black',
-    verified: 'bg-blue-100 text-blue-700 dark:bg-white dark:text-blue-300',
+    verified: 'bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]',
   };
 
   return (

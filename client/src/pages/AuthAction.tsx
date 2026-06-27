@@ -144,7 +144,7 @@ export default function AuthAction() {
     <div className="min-h-screen luxury-bg-mesh flex items-center justify-center p-4">
       <div className="w-full max-w-md luxury-glass-card luxury-shadow-xl p-8 space-y-6">
         <div className="text-center space-y-4">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto flex items-center justify-center luxury-shadow-xl">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#B8932F] to-[#B8932F] rounded-3xl mx-auto flex items-center justify-center luxury-shadow-xl">
             <div className="text-4xl">🐾</div>
           </div>
           <h1 className="luxury-heading-xl">⁦Pet Wash™⁩</h1>
@@ -159,7 +159,7 @@ export default function AuthAction() {
         <div className="space-y-4">
           {loading && (
             <div className="flex flex-col items-center justify-center py-8">
-              <Loader2 className="w-12 h-12 animate-spin text-blue-500 mb-4" />
+              <Loader2 className="w-12 h-12 animate-spin text-[#D4AF37] mb-4" />
               <p className="text-gray-600 dark:text-gray-400">Processing...</p>
             </div>
           )}
@@ -183,7 +183,7 @@ export default function AuthAction() {
           {showPasswordForm && !loading && !success && (
             <form onSubmit={handlePasswordSubmit} className="space-y-4">
               {email && (
-                <div className="text-sm text-gray-600 dark:text-gray-400 bg-blue-50 dark:bg-white p-3 rounded-lg">
+                <div className="text-sm text-gray-600 dark:text-gray-400 bg-[#D4AF37] dark:bg-white p-3 rounded-lg">
                   Resetting password for: <strong>{email}</strong>
                 </div>
               )}

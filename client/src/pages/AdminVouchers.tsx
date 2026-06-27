@@ -319,7 +319,7 @@ export default function AdminVouchers() {
         <div className="luxury-grid-4 mb-8">
           <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-fade-in luxury-delay-1">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
                 <Gift className="w-6 h-6 text-white" />
               </div>
             </div>
@@ -343,7 +343,7 @@ export default function AdminVouchers() {
 
           <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-fade-in luxury-delay-3">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
                 <TrendingUp className="w-6 h-6 text-white" />
               </div>
             </div>
@@ -355,7 +355,7 @@ export default function AdminVouchers() {
 
           <div className="luxury-glass-card luxury-hover-lift luxury-shadow-md p-6 luxury-animate-fade-in luxury-delay-4">
             <div className="flex items-center gap-3 mb-3">
-              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-orange-600 flex items-center justify-center">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-yellow-500 to-[#B8932F] flex items-center justify-center">
                 <DollarSign className="w-6 h-6 text-white" />
               </div>
             </div>
@@ -369,7 +369,7 @@ export default function AdminVouchers() {
         {/* Create Voucher Panel */}
         <div className="luxury-glass-card luxury-shadow-xl p-6 mb-8 luxury-animate-fade-in luxury-delay-5">
           <h2 className="luxury-heading-md mb-6 flex items-center gap-2">
-            <Plus className="w-6 h-6 text-purple-600" />
+            <Plus className="w-6 h-6 text-[#B8932F]" />
             Create New Voucher
           </h2>
 
@@ -661,7 +661,7 @@ export default function AdminVouchers() {
         {/* Recent Redemptions */}
         <div className="luxury-glass-panel p-6 luxury-animate-fade-in luxury-delay-8">
           <h2 className="luxury-heading-md mb-6 flex items-center gap-2">
-            <Activity className="w-6 h-6 text-purple-600" />
+            <Activity className="w-6 h-6 text-[#B8932F]" />
             Recent Redemptions
           </h2>
 

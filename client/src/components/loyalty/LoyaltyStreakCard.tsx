@@ -144,7 +144,7 @@ export function LoyaltyStreakCard({ data: propData }: Props) {
       </div>
 
       <StreakRow
-        icon={<Footprints className="w-4 h-4 text-blue-400" />}
+        icon={<Footprints className="w-4 h-4 text-[#D4AF37]" />}
         label="טיולים שהושלמו"
         count={streaks.walkBookings}
         milestones={MILESTONES}
@@ -152,7 +152,7 @@ export function LoyaltyStreakCard({ data: propData }: Props) {
       />
 
       <StreakRow
-        icon={<Home className="w-4 h-4 text-purple-400" />}
+        icon={<Home className="w-4 h-4 text-[#D4AF37]" />}
         label="שמירות שהושלמו"
         count={streaks.sitBookings}
         milestones={MILESTONES}

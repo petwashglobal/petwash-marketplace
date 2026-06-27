@@ -126,8 +126,8 @@ function ils(cents: number | string | null | undefined) {
 
 const STATUS_COLOR: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  approved: 'bg-blue-100 text-blue-800 border-blue-200',
-  submitted: 'bg-indigo-100 text-indigo-800 border-indigo-200',
+  approved: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',
+  submitted: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',
   paid: 'bg-green-100 text-green-800 border-green-200',
   failed: 'bg-red-100 text-red-800 border-red-200',
   reconciled: 'bg-emerald-100 text-emerald-800 border-emerald-200',
@@ -330,7 +330,7 @@ export default function Treasury() {
   const kpis = [
     { label: 'Total Batched', value: ils(t?.total_amount_cents), sub: `${t?.total_batches ?? 0} batches`, color: 'border-gray-200', icon: <Wallet className="w-4 h-4 text-gray-600" /> },
     { label: 'Pending', value: ils(t?.pending_cents), sub: `${t?.pending_count ?? 0} batches`, color: 'border-yellow-200 bg-yellow-50', icon: <Clock className="w-4 h-4 text-yellow-600" /> },
-    { label: 'Submitted', value: ils(t?.submitted_cents), sub: `${t?.submitted_count ?? 0} batches`, color: 'border-indigo-200 bg-indigo-50', icon: <ArrowRight className="w-4 h-4 text-indigo-600" /> },
+    { label: 'Submitted', value: ils(t?.submitted_cents), sub: `${t?.submitted_count ?? 0} batches`, color: 'border-[#D4AF37] bg-[#D4AF37]', icon: <ArrowRight className="w-4 h-4 text-[#B8932F]" /> },
     { label: 'Paid', value: ils(t?.paid_cents), sub: `${t?.paid_count ?? 0} batches`, color: 'border-green-200 bg-green-50', icon: <CheckCircle2 className="w-4 h-4 text-green-600" /> },
     { label: 'Reconciled', value: ils(t?.reconciled_cents), sub: `${t?.reconciled_count ?? 0} batches`, color: 'border-emerald-200 bg-emerald-50', icon: <TrendingUp className="w-4 h-4 text-emerald-600" /> },
     { label: 'Failed', value: ils(t?.failed_cents), sub: `${status?.open_failures ?? 0} open failures`, color: 'border-red-200 bg-red-50', icon: <XCircle className="w-4 h-4 text-red-600" /> },
@@ -349,7 +349,7 @@ export default function Treasury() {
         <div className="flex items-center justify-between">
           <div>
             <div className="flex items-center gap-3 mb-1">
-              <Building2 className="w-7 h-7 text-blue-600" />
+              <Building2 className="w-7 h-7 text-[#B8932F]" />
               <h1 className="text-2xl font-bold text-gray-900">Treasury</h1>
             </div>
             <p className="text-muted-foreground text-sm">Cash reconciliation — every payout traced from approval to bank confirmation</p>

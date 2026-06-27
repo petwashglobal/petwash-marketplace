@@ -97,21 +97,21 @@ const departmentInfo = {
   },
   ops: { 
     icon: Settings, 
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
+    color: 'text-[#B8932F]',
+    bgColor: 'bg-[#D4AF37]',
     label: { en: 'Operations', he: 'תפעול' },
     description: { en: 'Operations management', he: 'ניהול תפעול' }
   },
   manager: { 
     icon: Users, 
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
+    color: 'text-[#B8932F]',
+    bgColor: 'bg-[#D4AF37]',
     label: { en: 'Station Manager', he: 'מנהל תחנה' },
     description: { en: 'Station management', he: 'ניהול תחנות' }
   },
   maintenance: { 
     icon: Wrench, 
-    color: 'text-orange-600',
+    color: 'text-[#B8932F]',
     bgColor: 'bg-white',
     label: { en: 'Maintenance', he: 'תחזוקה' },
     description: { en: 'Technical maintenance', he: 'תחזוקה טכנית' }
@@ -125,8 +125,8 @@ const departmentInfo = {
   },
   marketing: { 
     icon: TrendingUp, 
-    color: 'text-pink-600',
-    bgColor: 'bg-pink-50',
+    color: 'text-[#B8932F]',
+    bgColor: 'bg-[#D4AF37]',
     label: { en: 'Marketing', he: 'שיווק' },
     description: { en: 'Marketing & campaigns', he: 'שיווק וקמפיינים' }
   },
@@ -292,7 +292,7 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
           <CardContent>
             {isLoading ? (
               <div className="flex justify-center items-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+                <Loader2 className="w-8 h-8 animate-spin text-[#B8932F]" />
               </div>
             ) : employees.length === 0 ? (
               <div className="text-center py-12">
@@ -341,7 +341,7 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
                               employee.status === 'active' 
                                 ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                                 : employee.status === 'suspended'
-                                ? 'bg-orange-100 text-orange-700 hover:bg-orange-200'
+                                ? 'bg-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]'
                                 : 'bg-white text-gray-700 hover:bg-white'
                             }
                           >

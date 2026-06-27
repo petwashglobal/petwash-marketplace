@@ -25,14 +25,14 @@ interface ServiceConfig {
 type ServicesConfig = Record<string, ServiceConfig>;
 
 const SERVICE_META: Record<string, { label: string; description: string; icon: any; color: string }> = {
-  petsitting:   { label: 'Pet Sitting',    description: 'Stay at client\'s home while they\'re away', icon: Home,         color: 'text-indigo-600' },
-  boarding:     { label: 'Boarding',       description: 'Pet stays at your home overnight',           icon: Moon,         color: 'text-blue-600' },
+  petsitting:   { label: 'Pet Sitting',    description: 'Stay at client\'s home while they\'re away', icon: Home,         color: 'text-[#B8932F]' },
+  boarding:     { label: 'Boarding',       description: 'Pet stays at your home overnight',           icon: Moon,         color: 'text-[#B8932F]' },
   daycare:      { label: 'Day Care',       description: 'Full-day care at your home',                 icon: Clock,        color: 'text-green-600' },
   dogwalking:   { label: 'Dog Walking',    description: 'Solo or group walks',                        icon: MapPin,       color: 'text-amber-600' },
-  grooming:     { label: 'Grooming',       description: 'Bath, haircut and styling',                  icon: Scissors,     color: 'text-pink-600' },
-  pettraining:  { label: 'Training',       description: 'Obedience and behaviour sessions',           icon: GraduationCap,color: 'text-purple-600' },
+  grooming:     { label: 'Grooming',       description: 'Bath, haircut and styling',                  icon: Scissors,     color: 'text-[#B8932F]' },
+  pettraining:  { label: 'Training',       description: 'Obedience and behaviour sessions',           icon: GraduationCap,color: 'text-[#B8932F]' },
   housesitting: { label: 'House Sitting',  description: 'House check-ins while client travels',       icon: Home,         color: 'text-teal-600' },
-  dropinvisit:  { label: 'Drop-In Visit',  description: 'Short home visit to feed/play',              icon: Dog,          color: 'text-orange-600' },
+  dropinvisit:  { label: 'Drop-In Visit',  description: 'Short home visit to feed/play',              icon: Dog,          color: 'text-[#B8932F]' },
 };
 
 const ALL_SERVICE_IDS = Object.keys(SERVICE_META);
@@ -178,12 +178,12 @@ export default function POSServices() {
       </div>
 
       {/* How pricing works */}
-      <div className="bg-blue-50 border border-blue-200 rounded-xl p-3 flex items-start gap-2">
-        <Info className="w-4 h-4 text-blue-600 mt-0.5 shrink-0" />
-        <div className="text-xs text-blue-800 space-y-0.5">
+      <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-xl p-3 flex items-start gap-2">
+        <Info className="w-4 h-4 text-[#B8932F] mt-0.5 shrink-0" />
+        <div className="text-xs text-[#B8932F] space-y-0.5">
           <p className="font-semibold">What clients see vs what you earn</p>
           <p>Clients see your base price on your public profile. You receive the base price minus a 15% platform commission. VAT (18%) applies to the commission portion only.</p>
-          <p className="text-blue-600 font-medium">Your net = base price × 82.3%</p>
+          <p className="text-[#B8932F] font-medium">Your net = base price × 82.3%</p>
         </div>
       </div>
 

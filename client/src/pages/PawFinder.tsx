@@ -244,7 +244,7 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
 
 const STATUS_COLORS: Record<string, string> = {
   published:      'bg-emerald-50 text-emerald-700 border-emerald-200',
-  matched:        'bg-sky-50 text-sky-700 border-sky-200',
+  matched:        'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',
   resolved:       'bg-slate-50 text-slate-500 border-slate-200',
   pending_review: 'bg-amber-50 text-amber-700 border-amber-200',
   rejected:       'bg-rose-50 text-rose-700 border-rose-200',
@@ -414,7 +414,7 @@ function PostCard({ post, onContact, onResolve, isOwner = false, showResolve = f
                 </span>
               )}
               {post.matched_post_count > 0 && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]">
                   {post.matched_post_count} התאמות
                 </span>
               )}
@@ -1539,7 +1539,7 @@ export default function PawFinder({ language }: PawFinderProps) {
                     </div>
                     <p className="text-sm text-slate-700 mt-3 leading-relaxed">{selectedPost.description}</p>
                     {selectedPost.matched_post_count > 0 && (
-                      <div className="mt-3 rounded-xl bg-sky-50 border border-sky-200 px-4 py-2 text-sm text-sky-700 font-medium">
+                      <div className="mt-3 rounded-xl bg-[#D4AF37] border border-[#D4AF37] px-4 py-2 text-sm text-[#B8932F] font-medium">
                         ✨ נמצאו {selectedPost.matched_post_count} התאמות אפשריות לפוסט זה
                       </div>
                     )}

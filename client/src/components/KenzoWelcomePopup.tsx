@@ -70,11 +70,11 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
         dir={isRTL ? 'rtl' : 'ltr'}
         style={{ fontFamily: isRTL ? 'Alef, sans-serif' : 'Inter, system-ui, sans-serif' }}
       >
-        <div className="relative bg-gradient-to-br from-white via-blue-50 to-purple-50 dark:from-gray-900 dark:via-blue-950 dark:to-purple-950 rounded-3xl shadow-2xl overflow-hidden border-4 border-white/50 dark:border-white/10">
+        <div className="relative bg-gradient-to-br from-white via-[#D4AF37] to-[#D4AF37] dark:from-gray-900 dark:via-[#B8932F] dark:to-[#B8932F] rounded-3xl shadow-2xl overflow-hidden border-4 border-white/50 dark:border-white/10">
           
           {/* Decorative Elements */}
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-300/30 to-orange-300/30 rounded-full blur-3xl" />
-          <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-blue-300/30 to-purple-300/30 rounded-full blur-3xl" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-300/30 to-[#D4AF37]/30 rounded-full blur-3xl" />
+          <div className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-[#D4AF37]/30 to-[#D4AF37]/30 rounded-full blur-3xl" />
           
           {/* Close Button */}
           <button
@@ -90,7 +90,7 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
             {/* Kenzo's Photo */}
             <div className="flex justify-center mb-6">
               <div className="relative">
-                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-full blur-xl opacity-50 animate-pulse" />
+                <div className="absolute inset-0 bg-gradient-to-br from-yellow-400 to-[#D4AF37] rounded-full blur-xl opacity-50 animate-pulse" />
                 <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-2xl ring-4 ring-yellow-400/50">
                   <img 
                     src="/brand/kenzo-avatar.jpeg" 
@@ -109,7 +109,7 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
 
             {/* Greeting */}
             <div className="text-center mb-4">
-              <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent mb-2 animate-gradient">
+              <h2 className="text-3xl font-bold bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-[#B8932F] bg-clip-text text-transparent mb-2 animate-gradient">
                 {content.greeting}
               </h2>
               <p className="text-xl font-semibold text-gray-800 dark:text-black">
@@ -140,7 +140,7 @@ export function KenzoWelcomePopup({ language }: KenzoWelcomePopupProps) {
             <div className="flex flex-col gap-3">
               <Button
                 onClick={handleClose}
-                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 hover:from-blue-700 hover:via-purple-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 rounded-xl"
+                className="w-full h-14 text-lg font-semibold bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:via-[#B8932F] hover:to-[#B8932F] text-white shadow-lg hover:shadow-xl transition-all hover:scale-105 rounded-xl"
                 data-testid="button-start-adventure"
               >
                 {content.cta}

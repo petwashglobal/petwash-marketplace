@@ -223,7 +223,7 @@ export default function AdminInbox() {
       case 'urgent':
         return 'bg-red-100 text-red-700 border-red-300';
       case 'high':
-        return 'bg-orange-100 text-orange-700 border-orange-300';
+        return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
       default:
         return 'luxury-badge';
     }
@@ -235,7 +235,7 @@ export default function AdminInbox() {
         {/* Header */}
         <div className="mb-8 luxury-animate-fade-in">
           <div className="flex items-center gap-3 mb-2">
-            <Inbox className="w-8 h-8 text-purple-600" />
+            <Inbox className="w-8 h-8 text-[#B8932F]" />
             <h1 className="luxury-heading-lg luxury-text-gradient">
               Admin Inbox
             </h1>
@@ -253,7 +253,7 @@ export default function AdminInbox() {
               className={`luxury-glass-card luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-${index + 1}`}
             >
               <div className="flex items-center justify-between mb-2">
-                <stat.icon className="w-5 h-5 text-purple-600" />
+                <stat.icon className="w-5 h-5 text-[#B8932F]" />
                 <span className="luxury-text-small">{stat.label}</span>
               </div>
               <div className="luxury-heading-lg luxury-text-gradient">
@@ -360,7 +360,7 @@ export default function AdminInbox() {
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-2 mb-1">
                           {!message.isRead && (
-                            <div className="w-2 h-2 rounded-full bg-purple-600" />
+                            <div className="w-2 h-2 rounded-full bg-[#B8932F]" />
                           )}
                           <span className={`luxury-heading-sm truncate ${!message.isRead ? 'font-bold' : ''}`}>
                             {message.sender}
@@ -403,7 +403,7 @@ export default function AdminInbox() {
                   <div className="flex items-start gap-4">
                     <Avatar className="w-12 h-12">
                       <AvatarImage src={selectedMessage.senderAvatar} />
-                      <AvatarFallback className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white">
+                      <AvatarFallback className="bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white">
                         {selectedMessage.sender.split(' ').map(n => n[0]).join('')}
                       </AvatarFallback>
                     </Avatar>
@@ -451,7 +451,7 @@ export default function AdminInbox() {
                           key={index}
                           className="luxury-glass-minimal p-3 flex items-center gap-3 luxury-hover-lift"
                         >
-                          <Paperclip className="w-5 h-5 text-purple-600" />
+                          <Paperclip className="w-5 h-5 text-[#B8932F]" />
                           <div className="flex-1">
                             <p className="luxury-text-body font-medium">{attachment.name}</p>
                             <p className="luxury-text-small">{attachment.size}</p>

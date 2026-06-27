@@ -36,7 +36,7 @@ export default function PerformanceMonitoring() {
   if (isLoading || !metrics) {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-600"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8932F]"></div>
       </div>
     );
   }
@@ -80,7 +80,7 @@ export default function PerformanceMonitoring() {
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <Database className="h-5 w-5 text-blue-600" />
+                    <Database className="h-5 w-5 text-[#B8932F]" />
                     Database Performance
                   </CardTitle>
                   <CardDescription>PostgreSQL (Neon Serverless)</CardDescription>
@@ -107,7 +107,7 @@ export default function PerformanceMonitoring() {
 
               {/* Query Performance */}
               <div className="grid grid-cols-3 gap-4">
-                <div className="text-center p-4 bg-blue-50 dark:bg-white rounded-lg">
+                <div className="text-center p-4 bg-[#D4AF37] dark:bg-white rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {database.avgQueryTime}ms
                   </div>
@@ -116,7 +116,7 @@ export default function PerformanceMonitoring() {
                     Target: &lt;100ms
                   </div>
                 </div>
-                <div className="text-center p-4 bg-white dark:bg-orange-900/20 rounded-lg">
+                <div className="text-center p-4 bg-white dark:bg-[#B8932F]/20 rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {database.slowQueries}
                   </div>
@@ -138,7 +138,7 @@ export default function PerformanceMonitoring() {
           <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Activity className="h-5 w-5 text-purple-600" />
+                <Activity className="h-5 w-5 text-[#B8932F]" />
                 System Resources
               </CardTitle>
               <CardDescription>Real-time metrics</CardDescription>
@@ -185,7 +185,7 @@ export default function PerformanceMonitoring() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-purple-50 dark:bg-white rounded-lg">
+                <div className="text-center p-4 bg-[#D4AF37] dark:bg-white rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {api.requestsPerSecond}
                   </div>
@@ -195,21 +195,21 @@ export default function PerformanceMonitoring() {
                     <span className="text-xs text-gray-500">Live</span>
                   </div>
                 </div>
-                <div className="text-center p-4 bg-blue-50 dark:bg-white rounded-lg">
+                <div className="text-center p-4 bg-[#D4AF37] dark:bg-white rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {api.avgResponseTime}ms
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">Avg Response</div>
                   <div className="text-xs text-green-600 mt-1">Target: &lt;500ms</div>
                 </div>
-                <div className="text-center p-4 bg-indigo-50 dark:bg-indigo-900/20 rounded-lg">
+                <div className="text-center p-4 bg-[#D4AF37] dark:bg-[#B8932F]/20 rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {api.p95ResponseTime}ms
                   </div>
                   <div className="text-xs text-gray-600 dark:text-gray-400">P95 Response</div>
                   <div className="text-xs text-gray-500 mt-1">95th percentile</div>
                 </div>
-                <div className="text-center p-4 bg-cyan-50 dark:bg-cyan-900/20 rounded-lg">
+                <div className="text-center p-4 bg-[#D4AF37] dark:bg-[#B8932F]/20 rounded-lg">
                   <div className="luxury-heading-lg luxury-text-gradient">
                     {api.p99ResponseTime}ms
                   </div>
@@ -221,7 +221,7 @@ export default function PerformanceMonitoring() {
               <div className="mt-6 p-4 bg-white dark:bg-white rounded-lg">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">Active Requests</span>
-                  <span className="text-lg font-bold text-purple-600">{api.activeRequests}</span>
+                  <span className="text-lg font-bold text-[#B8932F]">{api.activeRequests}</span>
                 </div>
               </div>
             </CardContent>

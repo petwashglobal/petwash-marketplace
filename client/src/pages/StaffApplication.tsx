@@ -212,7 +212,7 @@ export default function StaffApplication() {
     <div className="min-h-screen luxury-bg-mesh">
       <div className="container mx-auto py-8 max-w-4xl" data-testid="application-form">
       <div className="mb-8 text-center">
-        <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl">
+        <div className="w-20 h-20 bg-gradient-to-br from-[#B8932F] to-[#B8932F] rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl">
           <Briefcase className="w-10 h-10 text-white" />
         </div>
         <h1 className="luxury-heading-xl mb-4" data-testid="page-title">

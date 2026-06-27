@@ -96,9 +96,9 @@ export default function LogisticsFleetView() {
       case "completed":
         return <CheckCircle className="w-4 h-4 text-green-600" />;
       case "in_progress":
-        return <Clock className="w-4 h-4 text-blue-600 animate-pulse" />;
+        return <Clock className="w-4 h-4 text-[#B8932F] animate-pulse" />;
       case "assigned":
-        return <User className="w-4 h-4 text-purple-600" />;
+        return <User className="w-4 h-4 text-[#B8932F]" />;
       case "blocked":
         return <XCircle className="w-4 h-4 text-red-600" />;
       default:
@@ -119,11 +119,11 @@ export default function LogisticsFleetView() {
 
   const getTypeBadge = (type: TaskType) => {
     const colors: Record<TaskType, string> = {
-      install: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300",
+      install: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
       service: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-      repair: "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300",
-      inspection: "bg-purple-100 text-purple-700 dark:bg-purple-900 dark:text-purple-300",
-      relocation: "bg-pink-100 text-pink-700 dark:bg-pink-900 dark:text-pink-300",
+      repair: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
+      inspection: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
+      relocation: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
     };
     return (
       <Badge className={colors[type]} variant="outline">
@@ -178,7 +178,7 @@ export default function LogisticsFleetView() {
         <Card data-testid="card-tasks-assigned">
           <CardContent className="pt-6">
             <div className="text-center">
-              <User className="w-6 h-6 mx-auto mb-2 text-purple-600" />
+              <User className="w-6 h-6 mx-auto mb-2 text-[#B8932F]" />
               <div className="text-2xl font-bold">{stats.assigned}</div>
               <p className="text-xs text-muted-foreground">Assigned</p>
             </div>
@@ -188,7 +188,7 @@ export default function LogisticsFleetView() {
         <Card data-testid="card-tasks-inprogress">
           <CardContent className="pt-6">
             <div className="text-center">
-              <Clock className="w-6 h-6 mx-auto mb-2 text-blue-600 animate-pulse" />
+              <Clock className="w-6 h-6 mx-auto mb-2 text-[#B8932F] animate-pulse" />
               <div className="text-2xl font-bold">{stats.inProgress}</div>
               <p className="text-xs text-muted-foreground">In Progress</p>
             </div>
@@ -421,8 +421,8 @@ export default function LogisticsFleetView() {
                 <Card key={vehicle.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex items-center gap-3">
-                      <div className="p-3 bg-blue-100 dark:bg-blue-900 rounded-lg">
-                        <Truck className="w-6 h-6 text-blue-600 dark:text-blue-300" />
+                      <div className="p-3 bg-[#D4AF37] dark:bg-[#B8932F] rounded-lg">
+                        <Truck className="w-6 h-6 text-[#B8932F] dark:text-[#D4AF37]" />
                       </div>
                       <div className="flex-1">
                         <h4 className="font-medium">{vehicle.plateNumber}</h4>

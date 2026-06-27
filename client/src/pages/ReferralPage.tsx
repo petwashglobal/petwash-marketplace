@@ -78,8 +78,8 @@ const LEVEL_CONFIG = {
   DIAMOND: { 
     label: "יהלום", 
     labelEn: "Diamond",
-    color: "bg-cyan-400", 
-    textColor: "text-cyan-500",
+    color: "bg-[#D4AF37]", 
+    textColor: "text-[#D4AF37]",
     minSuccessful: 25, 
     nextLevel: null, 
     nextAt: null,
@@ -89,7 +89,7 @@ const LEVEL_CONFIG = {
 
 const STATUS_CONFIG = {
   PENDING_SIGNUP: { label: "ממתין להרשמה", color: "bg-white text-gray-600", icon: Clock },
-  SIGNED_UP: { label: "נרשם", color: "bg-blue-100 text-blue-600", icon: Users },
+  SIGNED_UP: { label: "נרשם", color: "bg-[#D4AF37] text-[#B8932F]", icon: Users },
   WAITING_FIRST_PAYMENT: { label: "ממתין לתשלום", color: "bg-yellow-100 text-yellow-700", icon: Clock },
   COMPLETED: { label: "הושלם!", color: "bg-green-100 text-green-700", icon: Check },
   REJECTED: { label: "נדחה", color: "bg-red-100 text-red-600", icon: Clock },
@@ -311,7 +311,7 @@ export default function ReferralPage() {
             )}
             {!levelConfig.nextLevel && (
               <div className="text-center py-4">
-                <Trophy className="w-12 h-12 mx-auto text-cyan-400 mb-2" />
+                <Trophy className="w-12 h-12 mx-auto text-[#D4AF37] mb-2" />
                 <p className="text-lg font-medium">הגעת לדרגה הגבוהה ביותר!</p>
                 <p className="text-gray-500">אתה אלוף ההפניות של ⁦Pet Wash™⁩</p>
               </div>
@@ -336,8 +336,8 @@ export default function ReferralPage() {
           </div>
           
           <div className="text-center">
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <Users className="w-8 h-8 text-blue-600" />
+            <div className="w-16 h-16 bg-[#D4AF37] rounded-full flex items-center justify-center mx-auto mb-4">
+              <Users className="w-8 h-8 text-[#B8932F]" />
             </div>
             <h3 className="font-bold mb-2">2. חברים נרשמים ומשלמים</h3>
             <p className="text-gray-600 text-sm">

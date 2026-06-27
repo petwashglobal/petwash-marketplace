@@ -78,7 +78,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
         <main className="flex-1 container mx-auto px-4 py-8 max-w-6xl">
         {/* Hero Section */}
         <div className="text-center mb-8">
-          <div className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl">
+          <div className="w-20 h-20 bg-gradient-to-br from-[#B8932F] to-[#B8932F] rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl">
             <Sparkles className="w-10 h-10 text-white" />
           </div>
           <h1 className="luxury-heading-xl mb-4">
@@ -127,7 +127,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
           <div className="luxury-glass-card luxury-shadow-xl p-8">
             <div className="mb-6">
               <div className="flex items-center gap-3 mb-2">
-                <div className="p-3 rounded-2xl bg-gradient-to-br from-purple-600 to-purple-700 shadow-lg">
+                <div className="p-3 rounded-2xl bg-gradient-to-br from-[#B8932F] to-[#B8932F] shadow-lg">
                   <Building2 className="w-6 h-6 text-white" />
                 </div>
                 <div>
@@ -182,7 +182,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
               </div>
 
               {/* Corporate Guidelines */}
-              <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-900/20 border-2">
+              <div className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/20 border-2">
                 <Checkbox
                   id="guidelines"
                   checked={consents.corporateGuidelines}
@@ -275,7 +275,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
           <div className="mt-8 luxury-glass-card luxury-shadow-xl p-8">
             <div className="mb-6">
               <h2 className="luxury-heading-md flex items-center gap-3 mb-2">
-                <Globe className="w-6 h-6 text-purple-600" />
+                <Globe className="w-6 h-6 text-[#B8932F]" />
                 {t('welcomeConsent.guidelines.title', language)}
               </h2>
               <p className="text-gray-600">
@@ -284,7 +284,7 @@ export default function WelcomeConsent({ language, onLanguageChange }: WelcomeCo
             </div>
             <div className="prose prose-sm dark:prose-invert max-w-none space-y-6">
               {/* Quick link to full documentation */}
-              <div className="not-prose p-4 rounded-xl bg-blue-50 dark:bg-blue-950/30 border-2 border-blue-200 dark:border-blue-700">
+              <div className="not-prose p-4 rounded-xl bg-[#D4AF37] dark:bg-[#B8932F]/30 border-2 border-[#D4AF37] dark:border-[#B8932F]">
                 <p className="text-sm mb-2">
                   {t('welcomeConsent.guidelines.fullDocAvailable', language)}
                 </p>

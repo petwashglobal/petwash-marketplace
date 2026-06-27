@@ -174,7 +174,7 @@ export function BookingRequestModal({
             </p>
             <div className="space-y-3">
               <Button 
-                className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full"
+                className="w-full bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] text-white rounded-full"
                 onClick={handleClose}
                 data-testid="button-close-success"
               >
@@ -197,12 +197,12 @@ export function BookingRequestModal({
 
             <div className="space-y-6" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
               {/* Provider Card */}
-              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-pink-50 to-purple-50 rounded-xl">
+              <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] rounded-xl">
                 <div className="w-16 h-16 rounded-full overflow-hidden bg-white shadow-md">
                   {provider.photo ? (
                     <img src={provider.photo} alt={provider.name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-pink-100 text-pink-600 text-xl font-bold">
+                    <div className="w-full h-full flex items-center justify-center bg-[#D4AF37] text-[#B8932F] text-xl font-bold">
                       {provider.name.charAt(0)}
                     </div>
                   )}
@@ -232,7 +232,7 @@ export function BookingRequestModal({
                   {/* Service Address */}
                   <div className="space-y-2">
                     <label className="text-sm font-medium text-gray-700 flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-pink-500" />
+                      <MapPin className="h-3.5 w-3.5 text-[#D4AF37]" />
                       {isHebrew ? 'כתובת השירות' : 'Service Address'}
                     </label>
                     <Input
@@ -382,7 +382,7 @@ export function BookingRequestModal({
                   </div>
 
                   <Button
-                    className="w-full bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full py-6 text-lg"
+                    className="w-full bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] text-white rounded-full py-6 text-lg"
                     onClick={() => setStep('review')}
                     data-testid="button-continue-to-review"
                   >
@@ -429,7 +429,7 @@ export function BookingRequestModal({
                       </div>
                       <div className="pt-2 border-t border-gray-200 flex justify-between text-lg font-bold">
                         <span>{isHebrew ? 'סה"כ' : 'Total'}</span>
-                        <span className="text-pink-600">₪{total}</span>
+                        <span className="text-[#B8932F]">₪{total}</span>
                       </div>
                     </div>
                   </div>
@@ -461,7 +461,7 @@ export function BookingRequestModal({
                       {isHebrew ? 'חזור' : 'Back'}
                     </Button>
                     <Button
-                      className="flex-1 bg-gradient-to-r from-pink-500 to-purple-500 text-white rounded-full py-6"
+                      className="flex-1 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] text-white rounded-full py-6"
                       onClick={handleSubmit}
                       disabled={createBookingMutation.isPending}
                       data-testid="button-send-request"

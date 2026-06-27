@@ -161,7 +161,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
     <div className="border-t border-slate-100 pt-3 mt-1">
       {/* Birthday countdown */}
       {petBirthdate && birthdayCountdown !== null && birthdayCountdown <= 30 && (
-        <div className="mx-4 mb-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-3 flex items-center gap-2">
+        <div className="mx-4 mb-3 rounded-xl bg-gradient-to-r from-amber-50 to-[#D4AF37] border border-amber-200 p-3 flex items-center gap-2">
           <Cake className="w-5 h-5 text-amber-500 shrink-0" />
           <div className="text-sm">
             <span className="font-semibold text-amber-800">
@@ -187,7 +187,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
           </span>
           <button
             onClick={() => setAdding(v => !v)}
-            className="text-xs flex items-center gap-1 text-violet-600 hover:text-violet-700 font-medium"
+            className="text-xs flex items-center gap-1 text-[#B8932F] hover:text-[#B8932F] font-medium"
           >
             <Plus className="w-3.5 h-3.5" />
             {isHe ? 'הוסף' : 'Add'}
@@ -196,7 +196,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
 
         {/* Add form */}
         {adding && (
-          <div className="bg-violet-50 border border-violet-100 rounded-xl p-3 mb-3 space-y-2">
+          <div className="bg-[#D4AF37] border border-[#D4AF37] rounded-xl p-3 mb-3 space-y-2">
             <select
               value={form.type}
               onChange={e => setForm(f => ({ ...f, type: e.target.value }))}
@@ -232,7 +232,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
               <button
                 onClick={() => addMutation.mutate()}
                 disabled={!form.title || !form.date || addMutation.isPending}
-                className="flex-1 text-sm py-1.5 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium disabled:opacity-50"
+                className="flex-1 text-sm py-1.5 rounded-lg bg-[#B8932F] hover:bg-[#B8932F] text-white font-medium disabled:opacity-50"
               >
                 {addMutation.isPending ? '...' : (isHe ? 'שמור' : 'Save')}
               </button>
@@ -307,7 +307,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
                       target="_blank"
                       rel="noopener noreferrer"
                       title={isHe ? 'Google Calendar' : 'Google Calendar'}
-                      className="p-1 rounded hover:bg-white text-slate-500 hover:text-violet-600"
+                      className="p-1 rounded hover:bg-white text-slate-500 hover:text-[#B8932F]"
                     >
                       <ExternalLink className="w-3.5 h-3.5" />
                     </a>
@@ -316,7 +316,7 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
                       onClick={downloadIcs}
                       data-testid={`button-download-ics-${ev.id}`}
                       title={isHe ? 'הורד לאייפון (.ics)' : 'Download for iPhone (.ics)'}
-                      className="p-1 rounded hover:bg-white text-slate-500 hover:text-blue-600"
+                      className="p-1 rounded hover:bg-white text-slate-500 hover:text-[#B8932F]"
                     >
                       <Download className="w-3.5 h-3.5" />
                     </button>
@@ -607,7 +607,7 @@ export default function Pets() {
           <CardContent className="p-6">
             {isLoading ? (
               <div className="flex items-center justify-center h-64">
-                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8932F]"></div>
               </div>
             ) : pets.length === 0 ? (
               <div className="flex flex-col items-center justify-center h-64 text-gray-500">
@@ -623,11 +623,11 @@ export default function Pets() {
               <div className="luxury-grid-3 luxury-gap-lg">
                 {pets.map((pet, index) => (
                   <div key={pet.id} className={`luxury-glass-card luxury-hover-lift luxury-delay-${Math.min(index + 1, 10)}`} data-testid={`card-pet-${pet.id}`}>
-                    <CardHeader className="bg-gradient-to-r from-purple-50/50 to-blue-50/50 dark:from-purple-900/10 dark:to-blue-900/10 pb-4">
+                    <CardHeader className="bg-gradient-to-r from-[#D4AF37]/50 to-[#D4AF37]/50 dark:from-[#B8932F]/10 dark:to-[#B8932F]/10 pb-4">
                       <div className="flex items-start justify-between">
                         <div className="flex items-center gap-3">
-                          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-purple-100 to-blue-100 dark:from-purple-900/50 dark:to-blue-900/50 flex items-center justify-center shadow-lg">
-                            <PawPrint className="h-7 w-7 text-purple-600 dark:text-purple-400" />
+                          <div className="h-14 w-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/50 dark:to-[#B8932F]/50 flex items-center justify-center shadow-lg">
+                            <PawPrint className="h-7 w-7 text-[#B8932F] dark:text-[#D4AF37]" />
                           </div>
                           <div>
                             <h3 className="luxury-heading-sm luxury-text-gradient">{pet.name}</h3>
@@ -707,7 +707,7 @@ export default function Pets() {
                     {/* Health Journal toggle */}
                     <button
                       onClick={() => setExpandedHealthPet(expandedHealthPet === pet.id ? null : pet.id)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-violet-600 hover:bg-violet-50 transition-colors border-t border-slate-100 rounded-b-xl"
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-[#B8932F] hover:bg-[#D4AF37] transition-colors border-t border-slate-100 rounded-b-xl"
                     >
                       <span className="flex items-center gap-1.5">
                         <Stethoscope className="w-3.5 h-3.5" />
@@ -945,7 +945,7 @@ export default function Pets() {
                   type="submit"
                   disabled={createMutation.isPending || updateMutation.isPending}
                   data-testid="button-save-pet"
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                  className="bg-[#B8932F] hover:bg-[#B8932F] text-white"
                 >
                   {(createMutation.isPending || updateMutation.isPending)
                     ? t('pets.saving')

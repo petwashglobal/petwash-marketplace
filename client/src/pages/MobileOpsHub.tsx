@@ -159,7 +159,7 @@ export default function MobileOpsHub() {
               onClick={() => setLocation('/admin')}
               className="p-3 rounded-xl luxury-glass-minimal luxury-hover-lift transition-all"
             >
-              <Settings className="w-5 h-5 text-purple-600" />
+              <Settings className="w-5 h-5 text-[#B8932F]" />
             </button>
           </div>
         </div>
@@ -204,7 +204,7 @@ export default function MobileOpsHub() {
               >
                 {/* Badge */}
                 {action.badge !== undefined && action.badge > 0 && (
-                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-red-500 to-pink-600 text-white shadow-lg">
+                  <div className="absolute -top-2 -right-2 w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold bg-gradient-to-br from-red-500 to-[#B8932F] text-white shadow-lg">
                     {action.badge > 99 ? '99+' : action.badge}
                   </div>
                 )}
@@ -259,7 +259,7 @@ export default function MobileOpsHub() {
             onClick={() => setLocation('/mobile/ops')}
             className="flex flex-col items-center gap-1 p-2 rounded-xl luxury-glass-panel"
           >
-            <Zap className="w-5 h-5 text-purple-600" />
+            <Zap className="w-5 h-5 text-[#B8932F]" />
             <span className="text-xs font-semibold luxury-text-gradient">Ops</span>
           </button>
           <button

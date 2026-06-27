@@ -104,7 +104,7 @@ export default function PetWashCircle() {
         {/* Header */}
         <div className="text-center mb-8 luxury-animate-fade-in">
           <h1 className="luxury-heading-xl mb-2 flex items-center justify-center gap-3">
-            <Shield className="w-10 h-10 text-purple-600" />
+            <Shield className="w-10 h-10 text-[#B8932F]" />
             The PetWash Circle
           </h1>
           <p className="luxury-text-body text-gray-600">
@@ -121,7 +121,7 @@ export default function PetWashCircle() {
           <Card className="luxury-glass-card luxury-shadow-lg p-6 mb-6 luxury-animate-slide-up">
             <div className="flex gap-3">
               <Avatar>
-                <AvatarFallback className="bg-gradient-to-r from-purple-500 to-purple-600 text-white">
+                <AvatarFallback className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] text-white">
                   {user.displayName?.[0] || user.email?.[0] || 'U'}
                 </AvatarFallback>
               </Avatar>
@@ -176,7 +176,7 @@ export default function PetWashCircle() {
                 {/* Post Header */}
                 <div className="flex items-center gap-3 mb-4">
                   <Avatar>
-                    <AvatarFallback className="bg-gradient-to-br from-purple-500 to-purple-600 text-white">
+                    <AvatarFallback className="bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white">
                       {post.userName[0] || 'U'}
                     </AvatarFallback>
                   </Avatar>
@@ -204,13 +204,13 @@ export default function PetWashCircle() {
                   <Button
                     variant="ghost"
                     onClick={() => likePostMutation.mutate(post.id)}
-                    className="flex items-center gap-2 text-gray-500 hover:text-pink-500 transition-all duration-200"
+                    className="flex items-center gap-2 text-gray-500 hover:text-[#D4AF37] transition-all duration-200"
                     data-testid={`button-like-${post.id}`}
                   >
                     <Heart className="w-5 h-5" />
                     <span className="text-sm font-medium">{post.likesCount || 0}</span>
                   </Button>
-                  <Button variant="ghost" className="flex items-center gap-2 text-gray-500 hover:text-blue-500 transition-all duration-200">
+                  <Button variant="ghost" className="flex items-center gap-2 text-gray-500 hover:text-[#D4AF37] transition-all duration-200">
                     <MessageCircle className="w-5 h-5" />
                     <span className="text-sm font-medium">{post.commentsCount || 0}</span>
                   </Button>
@@ -223,7 +223,7 @@ export default function PetWashCircle() {
         {/* Footer Info */}
         <div className="mt-8 text-center luxury-text-small text-gray-500 space-y-2 luxury-animate-fade-in">
           <p className="flex items-center justify-center gap-2">
-            <Shield className="w-4 h-4 text-purple-500" />
+            <Shield className="w-4 h-4 text-[#D4AF37]" />
             כל התכנים עוברים מודרציה אוטומטית באמצעות AI מתקדם
           </p>
           <p>מדיניות אפס סובלנות לתכנים פוגעניים, פוליטיים או בלתי הולמים</p>

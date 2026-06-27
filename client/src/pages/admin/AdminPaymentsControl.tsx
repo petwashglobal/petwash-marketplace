@@ -172,13 +172,13 @@ function SummarySection() {
         accent
       />
       <SummaryCard
-        icon={<CreditCard className="w-4 h-4 text-blue-500" />}
+        icon={<CreditCard className="w-4 h-4 text-[#D4AF37]" />}
         label="Nayax (K9000) היום"
         primary={ils(nayax?.grossCents)}
         secondary={`${nayax?.count ?? 0} עסקאות`}
       />
       <SummaryCard
-        icon={<Wallet className="w-4 h-4 text-purple-500" />}
+        icon={<Wallet className="w-4 h-4 text-[#D4AF37]" />}
         label="ארנק היום"
         primary={ils(data.wallet?.grossCents)}
         secondary={`${data.wallet?.count ?? 0} עסקאות`}
@@ -359,7 +359,7 @@ function PaymentsTable() {
                     </td>
                     <td className="py-2.5 px-3 text-left font-bold text-black tabular-nums whitespace-nowrap">
                       {ils(r.grossCents)}
-                      {r.walletUsed && <span className="text-[9px] text-purple-500 mr-1">ארנק</span>}
+                      {r.walletUsed && <span className="text-[9px] text-[#D4AF37] mr-1">ארנק</span>}
                     </td>
                     <td className="py-2.5 px-3 text-gray-500 whitespace-nowrap">{r.paymentMethod ?? "—"}</td>
                     <td className="py-2.5 px-3 text-gray-600 whitespace-nowrap">{processorLabel(r.paymentProcessor)}</td>

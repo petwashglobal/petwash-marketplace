@@ -148,7 +148,7 @@ export function ReviewSubmitDialog({
 
         <div className="space-y-6 py-4">
           {/* Overall Rating - Required */}
-          <div className="p-4 bg-purple-50 dark:bg-white rounded-lg">
+          <div className="p-4 bg-[#D4AF37] dark:bg-white rounded-lg">
             <StarRating
               category="overall"
               label="Overall Rating *"
@@ -221,7 +221,7 @@ export function ReviewSubmitDialog({
               onClick={handleSubmit}
               disabled={submitReviewMutation.isPending || ratings.overall === 0}
               data-testid="button-submit-review"
-              className="bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700"
+              className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F]"
             >
               {submitReviewMutation.isPending ? 'Submitting...' : 'Submit Review'}
             </Button>

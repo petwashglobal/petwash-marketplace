@@ -68,7 +68,7 @@ export default function GroupStatusMonitor() {
       avgResponseTime: 142,
       lastChecked: new Date().toISOString(),
       icon: Heart,
-      color: "from-pink-500 to-rose-500",
+      color: "from-[#D4AF37] to-rose-500",
     },
     {
       platform: "walk-my-pet",
@@ -80,7 +80,7 @@ export default function GroupStatusMonitor() {
       avgResponseTime: 156,
       lastChecked: new Date().toISOString(),
       icon: PawPrint,
-      color: "from-blue-500 to-cyan-500",
+      color: "from-[#D4AF37] to-[#D4AF37]",
     },
     {
       platform: "pettrek",
@@ -92,7 +92,7 @@ export default function GroupStatusMonitor() {
       avgResponseTime: 167,
       lastChecked: new Date().toISOString(),
       icon: Car,
-      color: "from-purple-500 to-indigo-500",
+      color: "from-[#D4AF37] to-[#D4AF37]",
     },
     {
       platform: "pet-wash-hub",
@@ -128,7 +128,7 @@ export default function GroupStatusMonitor() {
       avgResponseTime: 189,
       lastChecked: new Date().toISOString(),
       icon: Palette,
-      color: "from-orange-500 to-red-500",
+      color: "from-[#D4AF37] to-red-500",
     },
     {
       platform: "enterprise",
@@ -179,7 +179,7 @@ export default function GroupStatusMonitor() {
   return (
     <div className="min-h-screen luxury-bg-mesh">
       {/* Header */}
-      <div className="luxury-glass-minimal border-b border-purple-100 mb-8">
+      <div className="luxury-glass-minimal border-b border-[#D4AF37] mb-8">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="flex items-center justify-between">
             <div>
@@ -217,12 +217,12 @@ export default function GroupStatusMonitor() {
 
             <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
               <div className="p-6 flex items-center gap-4">
-                <div className="p-3 rounded-full bg-gradient-to-br from-blue-500 to-cyan-500">
+                <div className="p-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
                   <Users className="h-6 w-6 text-white" />
                 </div>
                 <div>
                   <p className="text-sm text-gray-600">Active Users</p>
-                  <p className="luxury-heading-md text-blue-600">{totalUsers.toLocaleString()}</p>
+                  <p className="luxury-heading-md text-[#B8932F]">{totalUsers.toLocaleString()}</p>
                 </div>
               </div>
             </Card>
@@ -241,7 +241,7 @@ export default function GroupStatusMonitor() {
 
             <Card className="luxury-glass-card luxury-shadow-lg luxury-hover-lift">
               <div className="p-6 flex items-center gap-4">
-                <div className="p-3 rounded-full bg-gradient-to-br from-purple-500 to-indigo-500">
+                <div className="p-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
                   <TrendingUp className="h-6 w-6 text-white" />
                 </div>
                 <div>
@@ -306,7 +306,7 @@ export default function GroupStatusMonitor() {
                     <Button
                       variant="outline"
                       size="sm"
-                      className="w-full hover:bg-purple-50"
+                      className="w-full hover:bg-[#D4AF37]"
                       data-testid={`button-view-${platform.platform}`}
                     >
                       View Details

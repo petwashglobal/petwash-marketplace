@@ -89,8 +89,8 @@ export default function DriverDashboard() {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { color: string; label: string }> = {
       pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-white dark:text-yellow-400', label: 'New Request' },
-      accepted: { color: 'bg-blue-100 text-blue-800 dark:bg-white dark:text-blue-400', label: 'Accepted' },
-      arrived: { color: 'bg-purple-100 text-purple-800 dark:bg-white dark:text-purple-400', label: 'Arrived' },
+      accepted: { color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]', label: 'Accepted' },
+      arrived: { color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]', label: 'Arrived' },
       in_progress: { color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-400', label: 'In Transit' },
       completed: { color: 'bg-white text-gray-800 dark:bg-white/20 dark:text-gray-400', label: 'Completed' },
       cancelled: { color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-400', label: 'Cancelled' },
@@ -118,13 +118,13 @@ export default function DriverDashboard() {
               }}>
                 🚗 PetTrek Driver
               </h1>
-              <p className="text-lg text-blue-100 luxury-text-body">Premium pet transport service</p>
+              <p className="text-lg text-[#D4AF37] luxury-text-body">Premium pet transport service</p>
             </div>
             
             {/* Online Toggle */}
             <div className="flex items-center gap-4 luxury-animate-fade-in luxury-delay-1">
               <div className="text-right mr-4">
-                <p className="luxury-text-small text-blue-100">Status</p>
+                <p className="luxury-text-small text-[#D4AF37]">Status</p>
                 <p className="text-xl font-bold">{isOnline ? '🟢 Online' : '🔴 Offline'}</p>
               </div>
               <Button 
@@ -144,31 +144,31 @@ export default function DriverDashboard() {
           {/* Stats Bar */}
           <div className="grid grid-cols-2 md:grid-cols-6 gap-4 mt-8">
             <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-1">
-              <p className="luxury-text-small text-blue-100 mb-1">Today</p>
+              <p className="luxury-text-small text-[#D4AF37] mb-1">Today</p>
               <p className="text-2xl font-bold text-white">
                 {stats?.todayTrips || 0} trips
               </p>
             </div>
 
             <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-2">
-              <p className="luxury-text-small text-blue-100 mb-1">Today's $</p>
+              <p className="luxury-text-small text-[#D4AF37] mb-1">Today's $</p>
               <p className="text-2xl font-bold text-white">₪{stats?.todayEarnings.toFixed(0) || '0'}</p>
             </div>
 
             <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-3">
-              <p className="luxury-text-small text-blue-100 mb-1">This Week</p>
+              <p className="luxury-text-small text-[#D4AF37] mb-1">This Week</p>
               <p className="text-2xl font-bold text-white">
                 {stats?.weeklyTrips || 0} trips
               </p>
             </div>
 
             <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-4">
-              <p className="luxury-text-small text-blue-100 mb-1">Weekly $</p>
+              <p className="luxury-text-small text-[#D4AF37] mb-1">Weekly $</p>
               <p className="text-2xl font-bold text-white">₪{stats?.weeklyEarnings.toFixed(0) || '0'}</p>
             </div>
 
             <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-5">
-              <p className="luxury-text-small text-blue-100 mb-1">Rating</p>
+              <p className="luxury-text-small text-[#D4AF37] mb-1">Rating</p>
               <div className="flex items-center gap-1">
                 <Star className="w-5 h-5 fill-yellow-400 text-yellow-400" />
                 <p className="text-2xl font-bold text-white">{stats?.rating.toFixed(1) || '5.0'}</p>
@@ -176,7 +176,7 @@ export default function DriverDashboard() {
             </div>
 
             <div className="luxury-glass-minimal p-4 luxury-animate-scale-in luxury-delay-5">
-              <p className="luxury-text-small text-blue-100 mb-1">Completion</p>
+              <p className="luxury-text-small text-[#D4AF37] mb-1">Completion</p>
               <p className="text-2xl font-bold text-white">{stats?.completionRate || 100}%</p>
             </div>
           </div>
@@ -258,7 +258,7 @@ export default function DriverDashboard() {
                       <div className="flex gap-4">
                         <Avatar className="w-20 h-20">
                           <AvatarImage src={request.customerPhoto || undefined} />
-                          <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-2xl">
+                          <AvatarFallback className="bg-gradient-to-br from-[#B8932F] to-[#B8932F] text-white text-2xl">
                             {request.customerName.charAt(0)}
                           </AvatarFallback>
                         </Avatar>
@@ -278,12 +278,12 @@ export default function DriverDashboard() {
                       <div className="flex-1 space-y-3">
                         <div className="grid grid-cols-2 gap-4">
                           <div className="flex items-center gap-2 luxury-text-small">
-                            <Clock className="w-4 h-4 text-blue-600" />
+                            <Clock className="w-4 h-4 text-[#B8932F]" />
                             <span className="font-semibold">{format(new Date(request.scheduledTime), 'h:mm a')}</span>
                             <span className="text-gray-500">({request.estimatedDuration} min)</span>
                           </div>
                           <div className="flex items-center gap-2 luxury-text-small">
-                            <Route className="w-4 h-4 text-blue-600" />
+                            <Route className="w-4 h-4 text-[#B8932F]" />
                             <span>{request.distance.toFixed(1)} km</span>
                           </div>
                         </div>
@@ -365,7 +365,7 @@ export default function DriverDashboard() {
                     <div className="flex flex-col md:flex-row gap-6">
                       <Avatar className="w-16 h-16">
                         <AvatarImage src={trip.customerPhoto || undefined} />
-                        <AvatarFallback className="bg-gradient-to-br from-blue-600 to-purple-600 text-white text-xl">
+                        <AvatarFallback className="bg-gradient-to-br from-[#B8932F] to-[#B8932F] text-white text-xl">
                           {trip.customerName.charAt(0)}
                         </AvatarFallback>
                       </Avatar>
@@ -478,7 +478,7 @@ export default function DriverDashboard() {
                   <h3 className="luxury-heading-md mb-6">Platform Activity Overview</h3>
                   <div className="luxury-grid-4">
                     <div className="luxury-glass-card luxury-hover-lift text-center p-6">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center mx-auto mb-4">
                         <Star className="w-8 h-8 text-white fill-white" />
                       </div>
                       <p className="luxury-heading-lg luxury-text-gradient">{stats?.rating.toFixed(1) || '5.0'}</p>
@@ -493,14 +493,14 @@ export default function DriverDashboard() {
                       <p className="luxury-text-small text-gray-500 mt-2">Total Rides</p>
                     </div>
                     <div className="luxury-glass-card luxury-hover-lift text-center p-6">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-orange-600 flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-amber-500 to-[#B8932F] flex items-center justify-center mx-auto mb-4">
                         <Route className="w-8 h-8 text-white" />
                       </div>
                       <p className="luxury-heading-lg luxury-text-gradient">{stats?.acceptanceRate || 100}%</p>
                       <p className="luxury-text-small text-gray-500 mt-2">Acceptance</p>
                     </div>
                     <div className="luxury-glass-card luxury-hover-lift text-center p-6">
-                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center mx-auto mb-4">
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center mx-auto mb-4">
                         <CheckCircle2 className="w-8 h-8 text-white" />
                       </div>
                       <p className="luxury-heading-lg luxury-text-gradient">{stats?.completionRate || 100}%</p>
@@ -515,7 +515,7 @@ export default function DriverDashboard() {
                   <div className="space-y-4">
                     <div className="flex items-center justify-between luxury-glass-minimal p-4">
                       <div className="flex items-center gap-3">
-                        <Car className="w-6 h-6 text-blue-600" />
+                        <Car className="w-6 h-6 text-[#B8932F]" />
                         <div>
                           <p className="luxury-heading-sm text-sm">Vehicle Inspection</p>
                           <p className="luxury-text-small text-gray-500">Last checked: Today</p>
@@ -525,7 +525,7 @@ export default function DriverDashboard() {
                     </div>
                     <div className="flex items-center justify-between luxury-glass-minimal p-4">
                       <div className="flex items-center gap-3">
-                        <Car className="w-6 h-6 text-blue-600" />
+                        <Car className="w-6 h-6 text-[#B8932F]" />
                         <div>
                           <p className="luxury-heading-sm text-sm">Insurance</p>
                           <p className="luxury-text-small text-gray-500">Valid until: Dec 2025</p>

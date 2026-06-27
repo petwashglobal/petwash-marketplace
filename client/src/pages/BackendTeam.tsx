@@ -53,7 +53,7 @@ export default function BackendTeam() {
         <Card className="max-w-4xl mx-auto mb-8 luxury-glass-card luxury-hover-lift luxury-animate-slide-up luxury-delay-2">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 luxury-heading-md">
-              <Code2 className="w-6 h-6 text-violet-600" />
+              <Code2 className="w-6 h-6 text-[#B8932F]" />
               Our Technology Stack
             </CardTitle>
             <CardDescription className="luxury-text-small">
@@ -68,7 +68,7 @@ export default function BackendTeam() {
                 "Vite", "Tailwind CSS", "WebSockets", "AI/ML"
               ].map((tech, idx) => (
                 <div key={tech} className={`flex items-center gap-2 p-3 luxury-glass-minimal luxury-hover-lift luxury-animate-scale-in luxury-delay-${Math.min(idx % 10, 10)}`}>
-                  <Zap className="w-4 h-4 text-violet-600" />
+                  <Zap className="w-4 h-4 text-[#B8932F]" />
                   <span className="font-medium text-sm">{tech}</span>
                 </div>
               ))}
@@ -80,7 +80,7 @@ export default function BackendTeam() {
         <Card className="max-w-4xl mx-auto mb-8 luxury-glass-card luxury-hover-lift luxury-animate-slide-up luxury-delay-3">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 luxury-heading-md">
-              <Rocket className="w-6 h-6 text-blue-600" />
+              <Rocket className="w-6 h-6 text-[#B8932F]" />
               What You'll Build
             </CardTitle>
             <CardDescription className="luxury-text-small">
@@ -111,7 +111,7 @@ export default function BackendTeam() {
         <Card className="max-w-4xl mx-auto mb-12 luxury-glass-card luxury-hover-lift luxury-animate-slide-up luxury-delay-4">
           <CardHeader>
             <CardTitle className="flex items-center gap-2 luxury-heading-md">
-              <Users className="w-6 h-6 text-purple-600" />
+              <Users className="w-6 h-6 text-[#B8932F]" />
               Our Culture
             </CardTitle>
             <CardDescription className="luxury-text-small">

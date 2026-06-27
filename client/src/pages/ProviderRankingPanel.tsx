@@ -31,12 +31,12 @@ import {
 // ─── Tier config ──────────────────────────────────────────────────────────────
 
 const TIER_CONFIG = {
-  prestige: { label: 'Prestige', labelHe: 'Prestige', icon: Crown, color: 'bg-purple-100 text-purple-700 border-purple-300', barColor: 'bg-purple-500' },
+  prestige: { label: 'Prestige', labelHe: 'Prestige', icon: Crown, color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
   gold:     { label: 'Gold',     labelHe: 'זהב',    icon: Award,  color: 'bg-yellow-100 text-yellow-700 border-yellow-300', barColor: 'bg-yellow-500' },
   silver:   { label: 'Silver',   labelHe: 'כסף',   icon: Shield, color: 'bg-white text-gray-600 border-gray-300',       barColor: 'bg-gray-400' },
-  bronze:   { label: 'Bronze',   labelHe: 'ארד',   icon: Zap,    color: 'bg-orange-100 text-orange-700 border-orange-300', barColor: 'bg-orange-500' },
+  bronze:   { label: 'Bronze',   labelHe: 'ארד',   icon: Zap,    color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
   at_risk:  { label: 'At Risk',  labelHe: 'בסיכון',icon: AlertTriangle, color: 'bg-red-100 text-red-700 border-red-300',   barColor: 'bg-red-500' },
-  new:      { label: 'New',      labelHe: 'חדש',   icon: TrendingUp,    color: 'bg-blue-100 text-blue-700 border-blue-300', barColor: 'bg-blue-500' },
+  new:      { label: 'New',      labelHe: 'חדש',   icon: TrendingUp,    color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
 } as const;
 
 type TierKey = keyof typeof TIER_CONFIG;
@@ -196,7 +196,7 @@ export default function ProviderRankingPanel() {
                     {isHebrew ? tierCfg.labelHe : tierCfg.label}
                   </span>
                   {data.isFlagged && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-orange-100 text-orange-700 border border-orange-300">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]">
                       <AlertTriangle className="w-3 h-3" />
                       {isHebrew ? 'בבדיקה' : 'Under Review'}
                     </span>
@@ -242,7 +242,7 @@ export default function ProviderRankingPanel() {
         <Card>
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
-              <Info className="w-4 h-4 text-blue-500" />
+              <Info className="w-4 h-4 text-[#D4AF37]" />
               {isHebrew ? 'פירוט הציון' : 'Score Breakdown'}
             </CardTitle>
           </CardHeader>
@@ -265,13 +265,13 @@ export default function ProviderRankingPanel() {
                   label: isHebrew ? 'בונוס ספק חדש' : 'New provider boost',
                   value: `+${data.breakdown.newProviderBoost}`,
                   desc: isHebrew ? 'פחות מ-3 ביקורות' : 'Fewer than 3 reviews',
-                  color: 'text-blue-700',
+                  color: 'text-[#B8932F]',
                 },
                 data.breakdown.adminBoost > 0 && {
                   label: isHebrew ? 'בונוס מנהל' : 'Admin boost',
                   value: `+${data.breakdown.adminBoost}`,
                   desc: isHebrew ? 'הופעל זמנית' : 'Temporarily active',
-                  color: 'text-blue-700',
+                  color: 'text-[#B8932F]',
                 },
                 {
                   label: isHebrew ? 'זמינות' : 'Availability',

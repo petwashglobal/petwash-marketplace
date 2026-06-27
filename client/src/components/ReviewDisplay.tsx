@@ -74,11 +74,11 @@ export function ReviewDisplay({ contractorId, contractorName }: ReviewDisplayPro
   return (
     <div className="space-y-4">
       {/* Summary Card */}
-      <Card className="bg-gradient-to-r from-purple-50 to-pink-50 dark:from-purple-900/20 dark:to-pink-900/20">
+      <Card className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/20 dark:to-[#B8932F]/20">
         <CardContent className="py-6">
           <div className="flex items-center gap-4">
             <div className="text-center">
-              <div className="text-4xl font-bold text-purple-600 dark:text-purple-400">
+              <div className="text-4xl font-bold text-[#B8932F] dark:text-[#D4AF37]">
                 {averageRating.toFixed(1)}
               </div>
               <StarRating rating={Math.round(averageRating)} />
@@ -173,7 +173,7 @@ export function ReviewDisplay({ contractorId, contractorName }: ReviewDisplayPro
 
             {/* Contractor Response */}
             {review.subjectResponse && (
-              <div className="mt-4 p-4 bg-white dark:bg-white/50 rounded-lg border-l-4 border-purple-500">
+              <div className="mt-4 p-4 bg-white dark:bg-white/50 rounded-lg border-l-4 border-[#D4AF37]">
                 <p className="text-sm font-semibold mb-1">Response from {contractorName}</p>
                 <p className="text-sm text-gray-700 dark:text-black">{review.subjectResponse}</p>
                 {review.subjectResponseAt && (

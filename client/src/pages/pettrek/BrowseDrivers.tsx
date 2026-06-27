@@ -353,7 +353,7 @@ export default function BrowseDrivers() {
             <div className="mt-4 flex justify-center">
               <Button
                 onClick={() => setShowWizard(true)}
-                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-orange-500 to-amber-600 text-white font-bold shadow-xl shadow-amber-500/30 hover:from-amber-600 hover:via-orange-600 hover:to-amber-700 transition-all hover:scale-105"
+                className="inline-flex items-center gap-2 px-8 py-4 rounded-xl bg-gradient-to-r from-amber-500 via-[#D4AF37] to-amber-600 text-white font-bold shadow-xl shadow-amber-500/30 hover:from-amber-600 hover:via-[#B8932F] hover:to-amber-700 transition-all hover:scale-105"
                 data-testid="button-start-booking-wizard"
               >
                 <Crown className="w-5 h-5" />
@@ -368,8 +368,8 @@ export default function BrowseDrivers() {
         <div className="luxury-glass-panel luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-2">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             <div className="text-center">
-              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
-                <Users className="h-8 w-8 text-purple-600" />
+              <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
+                <Users className="h-8 w-8 text-[#B8932F]" />
               </div>
               <div className="luxury-heading-lg luxury-text-gradient mb-1">
                 {totalDrivers}+
@@ -412,7 +412,7 @@ export default function BrowseDrivers() {
             {activeFilters.length > 0 && (
               <Button
                 onClick={clearAllFilters}
-                className="luxury-text-small text-purple-600 hover:text-purple-700"
+                className="luxury-text-small text-[#B8932F] hover:text-[#B8932F]"
                 data-testid="button-clear-all-filters"
               >
                 Clear all
@@ -428,7 +428,7 @@ export default function BrowseDrivers() {
                   {filter.label}
                   <Button
                     onClick={() => clearFilter(filter.key)}
-                    className="hover:bg-purple-100 rounded-full p-0.5"
+                    className="hover:bg-[#D4AF37] rounded-full p-0.5"
                     data-testid={`button-remove-filter-${filter.key}`}
                   >
                     <X className="h-3 w-3" />
@@ -448,7 +448,7 @@ export default function BrowseDrivers() {
                     <MapPin className="absolute left-3 top-3 h-5 w-5 text-gray-400" />
                     <Input
                       placeholder="Enter location"
-                      className="pl-10 border-purple-200 focus:border-purple-400"
+                      className="pl-10 border-[#D4AF37] focus:border-[#D4AF37]"
                       value={filters.location}
                       onChange={(e) => setFilters({ ...filters, location: e.target.value })}
                       data-testid="input-location"
@@ -496,7 +496,7 @@ export default function BrowseDrivers() {
                       type="checkbox"
                       checked={filters.availableNow}
                       onChange={(e) => setFilters({ ...filters, availableNow: e.target.checked })}
-                      className="w-5 h-5 rounded border-purple-300 text-purple-600 focus:ring-purple-500"
+                      className="w-5 h-5 rounded border-[#D4AF37] text-[#B8932F] focus:ring-[#D4AF37]"
                       data-testid="checkbox-available-now"
                     />
                     <span className="luxury-text-small font-medium">Available Now</span>
@@ -504,7 +504,7 @@ export default function BrowseDrivers() {
                 </div>
               </div>
               
-              <div className="flex gap-3 mt-6 pt-6 border-t border-purple-100">
+              <div className="flex gap-3 mt-6 pt-6 border-t border-[#D4AF37]">
                 <Button className="luxury-btn-primary flex-1" data-testid="button-apply-filters">
                   Apply Filters
                 </Button>
@@ -532,7 +532,7 @@ export default function BrowseDrivers() {
               <select
                 value={sortBy}
                 onChange={(e) => setSortBy(e.target.value)}
-                className="px-3 py-2 rounded-lg border border-purple-200 bg-white/80 luxury-text-small focus:outline-none focus:border-purple-400"
+                className="px-3 py-2 rounded-lg border border-[#D4AF37] bg-white/80 luxury-text-small focus:outline-none focus:border-[#D4AF37]"
                 data-testid="select-sort"
               >
                 <option value="rating">Highest Rating</option>
@@ -543,7 +543,7 @@ export default function BrowseDrivers() {
               </select>
             </div>
             
-            <div className="flex items-center gap-2 border-l border-purple-200 pl-4">
+            <div className="flex items-center gap-2 border-l border-[#D4AF37] pl-4">
               <Button
                 onClick={() => setViewMode('grid')}
                 className={viewMode === 'grid' ? 'luxury-btn-primary p-2' : 'luxury-btn-ghost p-2'}
@@ -590,7 +590,7 @@ export default function BrowseDrivers() {
                               className="w-full h-full object-cover"
                             />
                           ) : (
-                            <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-purple-100 to-indigo-100">
+                            <div className="w-full h-full flex items-center justify-center text-3xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
                               🚗
                             </div>
                           )}
@@ -638,7 +638,7 @@ export default function BrowseDrivers() {
                   onClick={() => setLocation(`/pettrek/book?driverId=${driver.id}`)}
                   data-testid={`card-driver-${driver.id}`}
                 >
-                  <div className="aspect-video bg-gradient-to-br from-purple-100 to-indigo-100 relative overflow-hidden">
+                  <div className="aspect-video bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] relative overflow-hidden">
                     {driver.photoUrl ? (
                       <img
                         src={driver.photoUrl}
@@ -683,7 +683,7 @@ export default function BrowseDrivers() {
 
                     <div className="space-y-2 mb-4">
                       <div className="flex items-center gap-2 luxury-text-body">
-                        <MapPin className="h-4 w-4 text-purple-600" />
+                        <MapPin className="h-4 w-4 text-[#B8932F]" />
                         <span>{driver.serviceArea}</span>
                         {driver.distanceKm != null && (
                           <span className="text-xs font-medium text-green-600 ml-auto">
@@ -700,7 +700,7 @@ export default function BrowseDrivers() {
                       </div>
 
                       <div className="flex items-center gap-2 luxury-text-body">
-                        <Car className="h-4 w-4 text-purple-600" />
+                        <Car className="h-4 w-4 text-[#B8932F]" />
                         <span>
                           {driver.vehicleMake} {driver.vehicleModel} ({driver.vehicleType})
                         </span>

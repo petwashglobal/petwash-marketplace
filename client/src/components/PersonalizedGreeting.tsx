@@ -67,7 +67,7 @@ export function PersonalizedGreeting() {
           }}
           className="mb-6"
         >
-          <Card className="relative overflow-hidden bg-gradient-to-r from-blue-50 via-purple-50 to-pink-50 dark:from-blue-900/20 dark:via-purple-900/20 dark:to-pink-900/20 border-2 border-blue-200 dark:border-blue-800 shadow-lg">
+          <Card className="relative overflow-hidden bg-gradient-to-r from-[#D4AF37] via-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/20 dark:via-[#B8932F]/20 dark:to-[#B8932F]/20 border-2 border-[#D4AF37] dark:border-[#B8932F] shadow-lg">
             {/* Animated background sparkles */}
             <div className="absolute inset-0 overflow-hidden pointer-events-none">
               <motion.div
@@ -80,7 +80,7 @@ export function PersonalizedGreeting() {
                   repeat: Infinity,
                   ease: "easeInOut"
                 }}
-                className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-200/40 to-orange-200/40 dark:from-yellow-500/20 dark:to-orange-500/20 rounded-full blur-2xl"
+                className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-yellow-200/40 to-[#D4AF37]/40 dark:from-yellow-500/20 dark:to-[#D4AF37]/20 rounded-full blur-2xl"
               />
               <motion.div
                 animate={{
@@ -93,7 +93,7 @@ export function PersonalizedGreeting() {
                   ease: "easeInOut",
                   delay: 1
                 }}
-                className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-blue-200/40 to-purple-200/40 dark:from-blue-500/20 dark:to-purple-500/20 rounded-full blur-2xl"
+                className="absolute bottom-0 left-0 w-40 h-40 bg-gradient-to-tr from-[#D4AF37]/40 to-[#D4AF37]/40 dark:from-[#D4AF37]/20 dark:to-[#D4AF37]/20 rounded-full blur-2xl"
               />
             </div>
 

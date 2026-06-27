@@ -133,7 +133,7 @@ export default function OpsTodayPage() {
               data-testid="button-back"
               aria-label="Go back"
             >
-              <ArrowLeft className="w-5 h-5 text-purple-600" />
+              <ArrowLeft className="w-5 h-5 text-[#B8932F]" />
             </button>
             <div>
               <h1 className="luxury-heading-md">Low Stock Monitor</h1>
@@ -221,13 +221,13 @@ export default function OpsTodayPage() {
         <div className="mx-4 mt-4 mb-8">
           {/* Table Header */}
           <div className="luxury-glass-card luxury-shadow-lg overflow-hidden rounded-2xl luxury-animate-slide-up luxury-delay-2">
-            <div className="luxury-glass-panel px-6 py-3 flex items-center text-xs font-semibold text-purple-900 uppercase tracking-wider">
+            <div className="luxury-glass-panel px-6 py-3 flex items-center text-xs font-semibold text-[#B8932F] uppercase tracking-wider">
               <div className="w-10">
                 <input
                   type="checkbox"
                   checked={selectedItems.size === filteredItems.length}
                   onChange={handleSelectAll}
-                  className="w-4 h-4 rounded accent-purple-600"
+                  className="w-4 h-4 rounded accent-[#B8932F]"
                   data-testid="checkbox-select-all"
                   aria-label="Select all items"
                 />
@@ -241,7 +241,7 @@ export default function OpsTodayPage() {
             </div>
 
             {/* Table Rows */}
-            <div className="divide-y divide-purple-100">
+            <div className="divide-y divide-[#D4AF37]">
               {filteredItems.map((item, index) => {
                 const key = `${item.stationId}-${item.sku}`;
                 const isSelected = selectedItems.has(key);
@@ -251,7 +251,7 @@ export default function OpsTodayPage() {
                   <div
                     key={key}
                     className={`luxury-glass-minimal luxury-hover-lift px-6 py-4 flex items-center text-sm transition-all duration-300 ${
-                      isSelected ? 'bg-purple-50 bg-opacity-50' : ''
+                      isSelected ? 'bg-[#D4AF37] bg-opacity-50' : ''
                     }`}
                     style={{ animationDelay: `${(index + 3) * 0.05}s` }}
                   >
@@ -260,7 +260,7 @@ export default function OpsTodayPage() {
                         type="checkbox"
                         checked={isSelected}
                         onChange={() => toggleSelection(item.stationId, item.sku)}
-                        className="w-4 h-4 rounded accent-purple-600"
+                        className="w-4 h-4 rounded accent-[#B8932F]"
                         data-testid={`checkbox-${item.stationId}-${item.sku}`}
                         aria-label={`Select ${item.itemName}`}
                       />
@@ -275,7 +275,7 @@ export default function OpsTodayPage() {
                       </button>
                     </div>
                     <div className="flex-1 min-w-[100px] truncate flex items-center gap-2">
-                      <Package className="w-4 h-4 text-purple-400 flex-shrink-0" />
+                      <Package className="w-4 h-4 text-[#D4AF37] flex-shrink-0" />
                       <span className="font-medium">{item.itemName}</span>
                     </div>
                     <div className={`w-24 text-right font-bold tabular-nums ${

@@ -220,14 +220,14 @@ export interface SearchTheme {
 const THEMES: Record<string, SearchTheme> = {
   pink: {
     accent: 'pink',
-    buttonGradient: 'from-fuchsia-500 to-pink-500 hover:from-fuchsia-600 hover:to-pink-600',
-    buttonShadow: 'shadow-fuchsia-500/30 hover:shadow-fuchsia-500/40',
-    selectedBorder: 'border-fuchsia-500',
-    selectedBg: 'bg-fuchsia-50',
-    selectedText: 'text-fuchsia-700',
-    iconColor: 'text-fuchsia-500',
-    focusRing: 'focus:ring-fuchsia-500',
-    focusBorder: 'focus:border-fuchsia-500',
+    buttonGradient: 'from-[#D4AF37] to-[#D4AF37] hover:from-[#B8932F] hover:to-[#B8932F]',
+    buttonShadow: 'shadow-[#D4AF37]/30 hover:shadow-[#D4AF37]/40',
+    selectedBorder: 'border-[#D4AF37]',
+    selectedBg: 'bg-[#D4AF37]',
+    selectedText: 'text-[#B8932F]',
+    iconColor: 'text-[#D4AF37]',
+    focusRing: 'focus:ring-[#D4AF37]',
+    focusBorder: 'focus:border-[#D4AF37]',
   },
   emerald: {
     accent: 'emerald',
@@ -242,29 +242,29 @@ const THEMES: Record<string, SearchTheme> = {
   },
   blue: {
     accent: 'blue',
-    buttonGradient: 'from-blue-500 to-indigo-500 hover:from-blue-600 hover:to-indigo-600',
-    buttonShadow: 'shadow-blue-500/25 hover:shadow-blue-500/30',
-    selectedBorder: 'border-blue-500',
-    selectedBg: 'bg-blue-50',
-    selectedText: 'text-blue-700',
-    iconColor: 'text-blue-500',
-    focusRing: 'focus:ring-blue-500',
-    focusBorder: 'focus:border-blue-500',
+    buttonGradient: 'from-[#D4AF37] to-[#D4AF37] hover:from-[#B8932F] hover:to-[#B8932F]',
+    buttonShadow: 'shadow-[#D4AF37]/25 hover:shadow-[#D4AF37]/30',
+    selectedBorder: 'border-[#D4AF37]',
+    selectedBg: 'bg-[#D4AF37]',
+    selectedText: 'text-[#B8932F]',
+    iconColor: 'text-[#D4AF37]',
+    focusRing: 'focus:ring-[#D4AF37]',
+    focusBorder: 'focus:border-[#D4AF37]',
   },
   purple: {
     accent: 'purple',
-    buttonGradient: 'from-purple-500 to-violet-500 hover:from-purple-600 hover:to-violet-600',
-    buttonShadow: 'shadow-purple-500/25 hover:shadow-purple-500/30',
-    selectedBorder: 'border-purple-500',
-    selectedBg: 'bg-purple-50',
-    selectedText: 'text-purple-700',
-    iconColor: 'text-purple-500',
-    focusRing: 'focus:ring-purple-500',
-    focusBorder: 'focus:border-purple-500',
+    buttonGradient: 'from-[#D4AF37] to-[#D4AF37] hover:from-[#B8932F] hover:to-[#B8932F]',
+    buttonShadow: 'shadow-[#D4AF37]/25 hover:shadow-[#D4AF37]/30',
+    selectedBorder: 'border-[#D4AF37]',
+    selectedBg: 'bg-[#D4AF37]',
+    selectedText: 'text-[#B8932F]',
+    iconColor: 'text-[#D4AF37]',
+    focusRing: 'focus:ring-[#D4AF37]',
+    focusBorder: 'focus:border-[#D4AF37]',
   },
   amber: {
     accent: 'amber',
-    buttonGradient: 'from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600',
+    buttonGradient: 'from-amber-500 to-[#D4AF37] hover:from-amber-600 hover:to-[#B8932F]',
     buttonShadow: 'shadow-amber-500/25 hover:shadow-amber-500/30',
     selectedBorder: 'border-amber-500',
     selectedBg: 'bg-white',
@@ -499,7 +499,7 @@ function GooglePlacesLocationInput({
         {isGettingLocation ? (
           <Loader2 className="h-5 w-5 text-gray-500 animate-spin" />
         ) : (
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-blue-500">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 text-[#D4AF37]">
             <circle cx="12" cy="12" r="3"/>
             <path d="M12 2v4m0 12v4M2 12h4m12 0h4"/>
           </svg>
@@ -1045,10 +1045,10 @@ export function ProviderSearch({
                       row: "flex w-full mt-0",
                       cell: `h-11 w-11 text-center text-sm p-0 relative focus-within:z-20 [&:has([aria-selected].day-range-end)]:rounded-r-full [&:has([aria-selected].day-range-start)]:rounded-l-full [&:has([aria-selected])]:${t.selectedBg} first:[&:has([aria-selected])]:rounded-l-full last:[&:has([aria-selected])]:rounded-r-full`,
                       day: "h-11 w-11 p-0 font-medium rounded-full text-gray-900 hover:bg-white transition-colors aria-selected:opacity-100 touch-manipulation cursor-pointer select-none",
-                      day_range_start: `day-range-start !${t.accent === 'emerald' ? 'bg-emerald-500' : 'bg-fuchsia-500'} !text-white !font-bold !rounded-full hover:!${t.accent === 'emerald' ? 'bg-emerald-600' : 'bg-fuchsia-600'}`,
-                      day_range_end: `day-range-end !${t.accent === 'emerald' ? 'bg-emerald-500' : 'bg-fuchsia-500'} !text-white !font-bold !rounded-full hover:!${t.accent === 'emerald' ? 'bg-emerald-600' : 'bg-fuchsia-600'}`,
+                      day_range_start: `day-range-start !${t.accent === 'emerald' ? 'bg-emerald-500' : 'bg-[#D4AF37]'} !text-white !font-bold !rounded-full hover:!${t.accent === 'emerald' ? 'bg-emerald-600' : 'bg-[#B8932F]'}`,
+                      day_range_end: `day-range-end !${t.accent === 'emerald' ? 'bg-emerald-500' : 'bg-[#D4AF37]'} !text-white !font-bold !rounded-full hover:!${t.accent === 'emerald' ? 'bg-emerald-600' : 'bg-[#B8932F]'}`,
                       day_range_middle: `!${t.selectedBg} !${t.selectedText} aria-selected:!rounded-none`,
-                      day_selected: `${t.accent === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-fuchsia-500 hover:bg-fuchsia-600'} text-white font-bold rounded-full`,
+                      day_selected: `${t.accent === 'emerald' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-[#D4AF37] hover:bg-[#B8932F]'} text-white font-bold rounded-full`,
                       day_today: "bg-white text-gray-900 font-bold",
                       day_outside: `text-gray-300 opacity-50 aria-selected:${t.selectedBg}/50 aria-selected:${t.selectedText}`,
                       day_disabled: "text-gray-200 opacity-40 cursor-not-allowed line-through",
@@ -1123,7 +1123,7 @@ export function ProviderSearch({
 
             {advancedTab === 'services' && (
               <div className="space-y-4">
-                <div className={`p-3 bg-gradient-to-r ${t.accent === 'emerald' ? 'from-emerald-50 to-teal-50 border-emerald-200' : 'from-fuchsia-50 to-pink-50 border-fuchsia-200'} rounded-xl border`}>
+                <div className={`p-3 bg-gradient-to-r ${t.accent === 'emerald' ? 'from-emerald-50 to-teal-50 border-emerald-200' : 'from-[#D4AF37] to-[#D4AF37] border-[#D4AF37]'} rounded-xl border`}>
                   <label className="flex items-center gap-3 cursor-pointer">
                     <Checkbox 
                       checked={requestMeetAndGreet} 
@@ -1131,10 +1131,10 @@ export function ProviderSearch({
                       data-testid="checkbox-meet-greet" 
                     />
                     <div>
-                      <span className={`text-sm font-medium ${t.accent === 'emerald' ? 'text-emerald-800' : 'text-fuchsia-800'} flex items-center gap-2`}>
+                      <span className={`text-sm font-medium ${t.accent === 'emerald' ? 'text-emerald-800' : 'text-[#B8932F]'} flex items-center gap-2`}>
                         🤝 {isHebrew ? 'בקש פגישת היכרות' : 'Request Meet & Greet'}
                       </span>
-                      <p className={`text-xs ${t.accent === 'emerald' ? 'text-emerald-600' : 'text-fuchsia-600'}`}>
+                      <p className={`text-xs ${t.accent === 'emerald' ? 'text-emerald-600' : 'text-[#B8932F]'}`}>
                         {isHebrew 
                           ? 'פגוש את השמרטף לפני ההזמנה לוודא התאמה'
                           : 'Meet the sitter before booking to ensure a good fit'
@@ -1447,8 +1447,8 @@ export function ProviderSearch({
 
             {advancedTab === 'emergency' && (
               <div className="space-y-4">
-                <div className="p-3 bg-blue-50 rounded-xl border border-blue-200">
-                  <p className="text-xs text-blue-700">
+                <div className="p-3 bg-[#D4AF37] rounded-xl border border-[#D4AF37]">
+                  <p className="text-xs text-[#B8932F]">
                     {isHebrew 
                       ? 'פרטי החירום חיוניים למקרה של בעיה רפואית או מצב חירום. אנא וודאו שאיש הקשר זמין בזמן ששהייתכם מחוץ לבית.'
                       : 'Emergency details are essential in case of medical issues. Please ensure your contact is available while you\'re away.'
@@ -1576,7 +1576,7 @@ export function ProviderCard({
       className="group bg-white rounded-2xl shadow-md hover:shadow-xl border border-gray-100 overflow-hidden cursor-pointer transition-all duration-300 hover:-translate-y-1"
       data-testid={`card-provider-${id}`}
     >
-      <div className={`aspect-[4/3] bg-gradient-to-br ${theme === 'emerald' ? 'from-emerald-100 to-teal-100' : 'from-fuchsia-100 to-pink-100'} relative overflow-hidden`}>
+      <div className={`aspect-[4/3] bg-gradient-to-br ${theme === 'emerald' ? 'from-emerald-100 to-teal-100' : 'from-[#D4AF37] to-[#D4AF37]'} relative overflow-hidden`}>
         {photo ? (
           <img
             src={photo}

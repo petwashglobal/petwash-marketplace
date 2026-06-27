@@ -39,7 +39,7 @@ export default function Support() {
           <div className="relative">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 rtl:left-auto rtl:right-4" style={{ color: '#667eea' }} />
             <Input
-              className="pl-12 rtl:pl-4 rtl:pr-12 py-6 text-lg bg-transparent border-none focus-visible:ring-2 focus-visible:ring-purple-500"
+              className="pl-12 rtl:pl-4 rtl:pr-12 py-6 text-lg bg-transparent border-none focus-visible:ring-2 focus-visible:ring-[#D4AF37]"
               placeholder={t('supportPage.searchPlaceholder')}
               data-testid="input-search-help"
             />
@@ -51,7 +51,7 @@ export default function Support() {
             className="luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center cursor-pointer luxury-animate-fade-in luxury-delay-4" 
             onClick={() => setLocation("/live-chat")}
           >
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-purple-400 to-purple-600 flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
               <MessageCircle className="w-8 h-8 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2">{t('supportPage.liveChat')}</h3>
@@ -77,7 +77,7 @@ export default function Support() {
           </div>
 
           <div className="luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-fade-in luxury-delay-6">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
               <Mail className="w-8 h-8 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2">{t('supportPage.emailSupport')}</h3>
@@ -90,7 +90,7 @@ export default function Support() {
           </div>
 
           <div className="luxury-glass-card luxury-hover-glow luxury-shadow-md p-6 text-center luxury-animate-fade-in luxury-delay-7">
-            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center">
+            <div className="w-16 h-16 mx-auto mb-4 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center">
               <FileQuestion className="w-8 h-8 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2">{t('supportPage.faq')}</h3>

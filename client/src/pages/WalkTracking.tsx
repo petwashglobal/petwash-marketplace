@@ -373,7 +373,7 @@ export default function WalkTracking() {
             <div className="luxury-glass-card luxury-shadow-xl luxury-animate-slide-up luxury-delay-3">
               <div className="p-6">
                 <h2 className="luxury-heading-sm flex items-center gap-2 mb-4">
-                  <MapPin className="w-6 h-6 text-purple-600" />
+                  <MapPin className="w-6 h-6 text-[#B8932F]" />
                   {isHebrew ? 'מפה בזמן אמת' : 'Live Map'}
                 </h2>
                 
@@ -389,13 +389,13 @@ export default function WalkTracking() {
                 <div className="relative">
                   <div 
                     ref={mapContainerRef}
-                    className="w-full h-96 rounded-2xl border-2 border-purple-200 dark:border-purple-700 overflow-hidden z-0 luxury-shadow-md"
+                    className="w-full h-96 rounded-2xl border-2 border-[#D4AF37] dark:border-[#B8932F] overflow-hidden z-0 luxury-shadow-md"
                   />
                   
                   {!walk.currentLocation && (
                     <div className="absolute inset-0 flex items-center justify-center luxury-glass-panel">
                       <div className="text-center">
-                        <MapPin className="w-16 h-16 mx-auto mb-3 text-purple-400 animate-pulse" />
+                        <MapPin className="w-16 h-16 mx-auto mb-3 text-[#D4AF37] animate-pulse" />
                         <p className="luxury-text-body">{isHebrew ? 'ממתין למיקום GPS...' : 'Waiting for GPS location...'}</p>
                       </div>
                     </div>
@@ -406,7 +406,7 @@ export default function WalkTracking() {
                     <div className="absolute top-4 left-4 luxury-glass-panel p-4 luxury-shadow-lg z-10 luxury-animate-fade-in">
                       <div className="space-y-2">
                         <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                             <Clock className="w-5 h-5 text-white" />
                           </div>
                           <span className="luxury-text-body font-bold">{formatDuration(walk.duration)}</span>
@@ -418,7 +418,7 @@ export default function WalkTracking() {
                           <span className="luxury-text-body font-bold">{(walk.distance / 1000).toFixed(2)} km</span>
                         </div>
                         <div className="flex items-center gap-3 text-xs">
-                          <MapPin className="w-4 h-4 text-purple-500" />
+                          <MapPin className="w-4 h-4 text-[#D4AF37]" />
                           <span className="font-mono luxury-text-small">{walk.currentLocation.lat.toFixed(4)}, {walk.currentLocation.lon.toFixed(4)}</span>
                         </div>
                       </div>
@@ -433,7 +433,7 @@ export default function WalkTracking() {
               <div className="luxury-glass-card luxury-animate-slide-up luxury-delay-4">
                 <div className="p-6">
                   <h2 className="luxury-heading-sm flex items-center gap-2 mb-4">
-                    <Camera className="w-6 h-6 text-purple-600" />
+                    <Camera className="w-6 h-6 text-[#B8932F]" />
                     {isHebrew ? 'תמונות מהטיול' : 'Walk Photos'}
                   </h2>
                   <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
@@ -469,7 +469,7 @@ export default function WalkTracking() {
                     <div className="flex items-center gap-4">
                       {walk.walker.photoUrl ? (
                         <div className="relative">
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 animate-pulse" style={{ padding: '3px' }}></div>
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] animate-pulse" style={{ padding: '3px' }}></div>
                           <img 
                             src={walk.walker.photoUrl} 
                             alt={walk.walker.firstName} 
@@ -477,7 +477,7 @@ export default function WalkTracking() {
                           />
                         </div>
                       ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                           <User className="w-8 h-8 text-white" />
                         </div>
                       )}
@@ -496,7 +496,7 @@ export default function WalkTracking() {
                     <div className="flex items-center gap-4">
                       {walk.pet.photoUrl ? (
                         <div className="relative">
-                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 animate-pulse" style={{ padding: '3px' }}></div>
+                          <div className="absolute inset-0 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] animate-pulse" style={{ padding: '3px' }}></div>
                           <img 
                             src={walk.pet.photoUrl} 
                             alt={walk.pet.name} 
@@ -504,7 +504,7 @@ export default function WalkTracking() {
                           />
                         </div>
                       ) : (
-                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center">
+                        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                           <Dog className="w-8 h-8 text-white" />
                         </div>
                       )}
@@ -575,7 +575,7 @@ export default function WalkTracking() {
               <div className="luxury-glass-card luxury-animate-slide-up luxury-delay-6">
                 <div className="p-6">
                   <h2 className="luxury-heading-sm flex items-center gap-2 mb-4">
-                    <Activity className="w-6 h-6 text-purple-600" />
+                    <Activity className="w-6 h-6 text-[#B8932F]" />
                     {isHebrew ? 'מדדי בריאות' : 'Health Metrics'}
                   </h2>
                   
@@ -584,7 +584,7 @@ export default function WalkTracking() {
                       <div className="luxury-glass-panel p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-pink-500 flex items-center justify-center">
+                            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-red-500 to-[#D4AF37] flex items-center justify-center">
                               <Heart className="w-6 h-6 text-white animate-pulse" />
                             </div>
                             <span className="luxury-text-body font-semibold">{isHebrew ? 'דופק' : 'Heart Rate'}</span>

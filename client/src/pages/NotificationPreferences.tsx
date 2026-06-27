@@ -142,7 +142,7 @@ export default function NotificationPreferences() {
                   <>
                     <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                       <div className="flex items-center gap-3">
-                        <Mail className="h-5 w-5 text-blue-600" />
+                        <Mail className="h-5 w-5 text-[#B8932F]" />
                         <div>
                           <Label htmlFor="email-enabled" className="text-base font-medium cursor-pointer">
                             Email Notifications
@@ -184,7 +184,7 @@ export default function NotificationPreferences() {
 
                     <div className="flex items-center justify-between p-4 bg-white dark:bg-white rounded-lg">
                       <div className="flex items-center gap-3">
-                        <Bell className="h-5 w-5 text-purple-600" />
+                        <Bell className="h-5 w-5 text-[#B8932F]" />
                         <div>
                           <Label htmlFor="push-enabled" className="text-base font-medium cursor-pointer">
                             Push Notifications

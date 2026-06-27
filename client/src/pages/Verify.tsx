@@ -301,17 +301,17 @@ export default function Verify() {
   if (authLoading || statusLoading) {
     return (
       <Layout language={language} onLanguageChange={setLanguage}>
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-purple-900 to-slate-900">
+        <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-[#B8932F] to-slate-900">
           <motion.div 
             className="text-center"
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
           >
             <div className="relative">
-              <div className="w-20 h-20 border-4 border-purple-500/30 border-t-purple-500 rounded-full animate-spin mx-auto mb-6"></div>
-              <Shield className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-purple-400 animate-pulse" />
+              <div className="w-20 h-20 border-4 border-[#D4AF37]/30 border-t-[#D4AF37] rounded-full animate-spin mx-auto mb-6"></div>
+              <Shield className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 text-[#D4AF37] animate-pulse" />
             </div>
-            <p className="text-lg text-purple-200">{isHebrew ? 'טוען...' : 'Loading...'}</p>
+            <p className="text-lg text-[#D4AF37]">{isHebrew ? 'טוען...' : 'Loading...'}</p>
           </motion.div>
         </div>
       </Layout>
@@ -332,7 +332,7 @@ export default function Verify() {
               initial={{ scale: 0.8 }}
               animate={{ scale: 1 }}
               transition={{ type: "spring", duration: 0.6, delay: 0.1 }}
-              className="w-20 h-20 bg-gradient-to-br from-purple-600 to-indigo-600 rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl"
+              className="w-20 h-20 bg-gradient-to-br from-[#B8932F] to-[#B8932F] rounded-3xl mx-auto mb-6 flex items-center justify-center luxury-shadow-xl"
             >
               <Shield className="w-10 h-10 text-white" />
             </motion.div>
@@ -378,8 +378,8 @@ export default function Verify() {
             >
               <div className="luxury-glass-card luxury-shadow-xl p-8">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-600/20 to-indigo-600/20 border border-purple-400/30">
-                    <Upload className="w-6 h-6 text-purple-600" />
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-[#B8932F]/20 to-[#B8932F]/20 border border-[#D4AF37]/30">
+                    <Upload className="w-6 h-6 text-[#B8932F]" />
                   </div>
                   <h2 className="luxury-heading-md">{t.uploadDoc}</h2>
                 </div>
@@ -437,7 +437,7 @@ export default function Verify() {
                     <div
                       className={`relative border-2 border-dashed rounded-2xl p-8 text-center transition-all duration-300 ${
                         isDragging
-                          ? 'border-cyan-400 bg-cyan-500/10'
+                          ? 'border-[#D4AF37] bg-[#D4AF37]/10'
                           : 'border-white/20 bg-white/5 hover:bg-white/10'
                       }`}
                       onDragOver={handleDragOver}
@@ -459,21 +459,21 @@ export default function Verify() {
                         >
                           <div className="mb-4">
                             {isDragging ? (
-                              <ImageIcon className="w-16 h-16 mx-auto text-cyan-400 animate-bounce" />
+                              <ImageIcon className="w-16 h-16 mx-auto text-[#D4AF37] animate-bounce" />
                             ) : (
-                              <Camera className="w-16 h-16 mx-auto text-purple-300" />
+                              <Camera className="w-16 h-16 mx-auto text-[#D4AF37]" />
                             )}
                           </div>
                           <p className="text-white text-lg mb-2">{t.dragDrop}</p>
-                          <p className="text-purple-300 mb-4">{t.or}</p>
+                          <p className="text-[#D4AF37] mb-4">{t.or}</p>
                           <Button
                             onClick={() => fileInputRef.current?.click()}
-                            className="bg-gradient-to-r from-cyan-600 to-blue-600 hover:from-cyan-700 hover:to-blue-700"
+                            className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F]"
                           >
                             <Upload className="w-4 h-4 mr-2" />
                             {t.clickUpload}
                           </Button>
-                          <div className="mt-4 space-y-1 text-sm text-purple-300">
+                          <div className="mt-4 space-y-1 text-sm text-[#D4AF37]">
                             <p>{t.maxSize}</p>
                             <p>{t.formats}</p>
                           </div>
@@ -509,7 +509,7 @@ export default function Verify() {
                                 <FileCheck className="w-8 h-8 text-green-400" />
                                 <div className="text-left">
                                   <p className="text-white font-semibold">{file.name}</p>
-                                  <p className="text-sm text-purple-300">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
+                                  <p className="text-sm text-[#D4AF37]">{(file.size / 1024 / 1024).toFixed(2)} MB</p>
                                 </div>
                               </div>
                               <Button
@@ -598,7 +598,7 @@ export default function Verify() {
                       animate={{ opacity: 1 }}
                     >
                       <Progress value={uploadProgress} className="h-2" />
-                      <p className="text-center text-purple-200 mt-2">{uploadProgress}%</p>
+                      <p className="text-center text-[#D4AF37] mt-2">{uploadProgress}%</p>
                     </motion.div>
                   )}
 
@@ -634,8 +634,8 @@ export default function Verify() {
               {/* Benefits Card */}
               <div className="rounded-2xl bg-white/5 backdrop-blur-xl border border-white/10 p-6">
                 <div className="flex items-center gap-3 mb-6">
-                  <div className="p-3 rounded-xl bg-gradient-to-br from-purple-500/20 to-pink-500/20 border border-purple-400/30">
-                    <Award className="w-6 h-6 text-purple-300" />
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-[#D4AF37]/20 to-[#D4AF37]/20 border border-[#D4AF37]/30">
+                    <Award className="w-6 h-6 text-[#D4AF37]" />
                   </div>
                   <h3 className="text-xl font-bold text-white">{t.benefits}</h3>
                 </div>
@@ -652,7 +652,7 @@ export default function Verify() {
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ delay: 0.4 + index * 0.1 }}
                     >
-                      <div className="text-purple-300">{benefit.icon}</div>
+                      <div className="text-[#D4AF37]">{benefit.icon}</div>
                       <span className="text-white">{benefit.text}</span>
                     </motion.div>
                   ))}
@@ -660,12 +660,12 @@ export default function Verify() {
               </div>
 
               {/* Trusted Countries Info */}
-              <div className="rounded-2xl bg-gradient-to-br from-cyan-500/10 to-blue-500/10 backdrop-blur-xl border border-cyan-400/20 p-6">
+              <div className="rounded-2xl bg-gradient-to-br from-[#D4AF37]/10 to-[#D4AF37]/10 backdrop-blur-xl border border-[#D4AF37]/20 p-6">
                 <div className="flex items-center gap-2 mb-3">
-                  <Globe className="w-5 h-5 text-cyan-300" />
+                  <Globe className="w-5 h-5 text-[#D4AF37]" />
                   <h3 className="font-semibold text-white">{t.trustedOnly}</h3>
                 </div>
-                <p className="text-sm text-cyan-200/80">
+                <p className="text-sm text-[#D4AF37]/80">
                   {TRUSTED_COUNTRIES.map(c => c.name).join(', ')}
                 </p>
               </div>

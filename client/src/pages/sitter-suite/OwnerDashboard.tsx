@@ -116,7 +116,7 @@ export default function OwnerDashboard() {
     const variants: Record<string, { bg: string; text: string; border: string; icon: any }> = {
       pending: { bg: 'bg-white', text: 'text-amber-700', border: 'border-amber-200', icon: Clock },
       confirmed: { bg: 'bg-emerald-50', text: 'text-emerald-700', border: 'border-emerald-200', icon: CheckCircle2 },
-      completed: { bg: 'bg-sky-50', text: 'text-sky-700', border: 'border-sky-200', icon: CheckCircle2 },
+      completed: { bg: 'bg-[#D4AF37]', text: 'text-[#B8932F]', border: 'border-[#D4AF37]', icon: CheckCircle2 },
       cancelled: { bg: 'bg-red-50', text: 'text-red-700', border: 'border-red-200', icon: XCircle },
     };
     const v = variants[status] || variants.pending;
@@ -150,7 +150,7 @@ export default function OwnerDashboard() {
                   <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-[#D4AF37] via-[#C9A536] to-rose-500 flex items-center justify-center shadow-xl shadow-[#D4AF37]/20">
                     <Heart className="w-7 h-7 text-white fill-white" />
                   </div>
-                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-orange-400 flex items-center justify-center shadow-md">
+                  <div className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-gradient-to-br from-amber-400 to-[#D4AF37] flex items-center justify-center shadow-md">
                     <Sparkles className="w-3 h-3 text-white" />
                   </div>
                 </div>
@@ -228,7 +228,7 @@ export default function OwnerDashboard() {
               <div className="bg-white rounded-3xl border border-amber-200/80 overflow-hidden shadow-sm">
                 <div className="px-6 py-4 border-b border-gray-100 bg-white">
                   <h3 className="flex items-center gap-2 text-amber-800 font-bold text-base">
-                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-orange-500 flex items-center justify-center shadow-sm">
+                    <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-amber-400 to-[#D4AF37] flex items-center justify-center shadow-sm">
                       <Clock className="w-4 h-4 text-white" />
                     </div>
                     {t('sitterHub.pendingApproval')} ({pendingBookings.length})
@@ -314,7 +314,7 @@ export default function OwnerDashboard() {
                               <div>
                                 <h3 className="text-lg font-bold text-gray-900">{booking.sitterName}</h3>
                                 <div className="flex items-center gap-2 mt-1.5">
-                                  <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-50 to-orange-50 text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200/80">
+                                  <span className="inline-flex items-center gap-1 bg-gradient-to-r from-amber-50 to-[#D4AF37] text-amber-700 text-xs font-bold px-2.5 py-1 rounded-full border border-amber-200/80">
                                     <Star className="w-3 h-3 fill-amber-400 text-amber-400" />
                                     {booking.sitterRating.toFixed(1)}
                                   </span>

@@ -109,7 +109,7 @@ export function CompactWeatherWidget({
       >
         <div className="flex items-center gap-3">
           <div className="relative">
-            <div className="absolute inset-0 bg-gradient-to-br from-amber-400/20 to-orange-500/20 rounded-full blur-xl"></div>
+            <div className="absolute inset-0 bg-gradient-to-br from-amber-400/20 to-[#D4AF37]/20 rounded-full blur-xl"></div>
             <WeatherIcon className="h-8 w-8 text-amber-400 relative z-10" />
           </div>
           <div className="flex-1 min-w-0">
@@ -143,21 +143,21 @@ export function CompactWeatherWidget({
           <p className="text-sm text-white/50 mt-1">{conditionHe}</p>
         </div>
         <div className="relative">
-          <div className="absolute inset-0 bg-gradient-to-br from-amber-400/30 to-orange-500/30 rounded-full blur-2xl scale-150"></div>
+          <div className="absolute inset-0 bg-gradient-to-br from-amber-400/30 to-[#D4AF37]/30 rounded-full blur-2xl scale-150"></div>
           <WeatherIcon className="h-12 w-12 text-amber-400 relative z-10" />
         </div>
       </div>
       
       <div className="grid grid-cols-2 gap-3 pt-3 border-t border-white/10">
         <div className="flex items-center gap-2">
-          <Droplets className="h-4 w-4 text-blue-400/70" />
+          <Droplets className="h-4 w-4 text-[#D4AF37]/70" />
           <div>
             <p className="text-xs text-white/40">לחות</p>
             <p className="text-sm text-white/80">{weather.humidity}%</p>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <Wind className="h-4 w-4 text-cyan-400/70" />
+          <Wind className="h-4 w-4 text-[#D4AF37]/70" />
           <div>
             <p className="text-xs text-white/40">רוח</p>
             <p className="text-sm text-white/80">{weather.windSpeed} קמ״ש</p>
@@ -221,7 +221,7 @@ export function PetWalkWeatherAdvisor({
         rounded-2xl p-3
         ${isGoodForWalk 
           ? "bg-gradient-to-r from-emerald-500/20 to-green-500/20 border border-emerald-500/30" 
-          : "bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30"
+          : "bg-gradient-to-r from-amber-500/20 to-[#D4AF37]/20 border border-amber-500/30"
         }
         backdrop-blur-xl
         ${className}

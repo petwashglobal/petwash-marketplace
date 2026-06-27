@@ -330,7 +330,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
       saving: {
         icon: Loader2,
         text: "Saving...",
-        className: "bg-blue-500 text-white cursor-not-allowed",
+        className: "bg-[#D4AF37] text-white cursor-not-allowed",
       },
       saved: {
         icon: CheckCircle2,
@@ -438,7 +438,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
       <SheetContent side="right" className="w-full sm:max-w-2xl overflow-y-auto pb-24">
         <SheetHeader className="space-y-3">
           <SheetTitle className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center shadow-lg">
               <MapPin className="w-6 h-6 text-white" />
             </div>
             <div>
@@ -454,7 +454,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
               <span className="font-mono text-xs text-slate-700 font-semibold">{stationId}</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <span className="font-mono font-bold text-blue-600 bg-blue-50 px-3 py-1 rounded-lg border border-blue-200">
+              <span className="font-mono font-bold text-[#B8932F] bg-[#D4AF37] px-3 py-1 rounded-lg border border-[#D4AF37]">
                 {stationData?.station?.serialNumber}
               </span>
               <span className="text-slate-600">•</span>
@@ -468,7 +468,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
 
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
-            <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
+            <Loader2 className="w-8 h-8 animate-spin text-[#B8932F]" />
           </div>
         ) : (
           <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
@@ -841,7 +841,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
                 </CardContent>
               </Card>
 
-              <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-orange-50">
+              <Card className="border-2 border-amber-200 bg-gradient-to-br from-amber-50 to-[#D4AF37]">
                 <CardHeader>
                   <CardTitle className="text-lg flex items-center gap-2">
                     <Building2 className="w-5 h-5 text-amber-600" />
@@ -901,7 +901,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="councilEmail" className="font-semibold flex items-center gap-1">
-                        <Mail className="w-3 h-3 text-blue-500" />
+                        <Mail className="w-3 h-3 text-[#D4AF37]" />
                         Email
                       </Label>
                       <Input
@@ -970,8 +970,8 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
                   </>
                 ) : (
                   <>
-                    <Loader2 className="w-4 h-4 text-blue-600 animate-spin" />
-                    <span className="font-medium text-blue-700 dark:text-blue-400">Saving...</span>
+                    <Loader2 className="w-4 h-4 text-[#B8932F] animate-spin" />
+                    <span className="font-medium text-[#B8932F] dark:text-[#D4AF37]">Saving...</span>
                   </>
                 )}
               </div>
@@ -990,7 +990,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
                   size="sm"
                   onClick={handleSave}
                   disabled={currentSaveState === "saving"}
-                  className="bg-blue-600 hover:bg-blue-700 text-white disabled:opacity-50"
+                  className="bg-[#B8932F] hover:bg-[#B8932F] text-white disabled:opacity-50"
                   data-testid="button-save-changes"
                 >
                   <Save className="w-4 h-4 mr-2" />

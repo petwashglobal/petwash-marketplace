@@ -68,7 +68,7 @@ export default function FranchiseInbox() {
     return (
       <div className="min-h-screen luxury-bg-mesh p-4 md:p-6 flex items-center justify-center">
         <div className="text-center luxury-animate-fade-in">
-          <div className="w-12 h-12 border-4 border-purple-600 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <div className="w-12 h-12 border-4 border-[#B8932F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
           <p className="luxury-text-body">
             {t('inbox.loading', language)}
           </p>

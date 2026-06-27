@@ -142,12 +142,12 @@ export default function DocumentManagement() {
   const getDocumentTypeColor = (type: string): string => {
     const colors: Record<string, string> = {
       invoice: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      contract: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200',
-      agreement: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200',
-      specification: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200',
+      contract: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+      agreement: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+      specification: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
       legal: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      trademark: 'bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200',
-      certificate: 'bg-cyan-100 text-cyan-800 dark:bg-cyan-900 dark:text-cyan-200',
+      trademark: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+      certificate: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
     };
     return colors[type] || 'bg-white text-gray-800 dark:bg-white dark:text-black';
   };
@@ -170,7 +170,7 @@ export default function DocumentManagement() {
         {/* Header */}
         <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl luxury-animate-fade-in">
           <div className="flex items-center gap-4">
-            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center shadow-lg">
+            <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center shadow-lg">
               <FileText className="w-8 h-8 text-white" />
             </div>
             <div>
@@ -254,7 +254,7 @@ export default function DocumentManagement() {
           </div>
         ) : filteredDocuments.length === 0 ? (
           <div className="luxury-glass-card luxury-shadow-lg p-12 text-center rounded-2xl luxury-animate-slide-up luxury-delay-2">
-            <FileText className="w-16 h-16 mx-auto text-purple-300 mb-4" />
+            <FileText className="w-16 h-16 mx-auto text-[#D4AF37] mb-4" />
             <p className="luxury-text-small">
               {isHebrew ? 'לא נמצאו מסמכים' : 'No documents found'}
             </p>
@@ -286,7 +286,7 @@ export default function DocumentManagement() {
                   <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     <span className={`luxury-badge ${doc.documentType === 'invoice' ? 'bg-green-100 text-green-700' :
-                      doc.documentType === 'contract' ? 'bg-blue-100 text-blue-700' :
+                      doc.documentType === 'contract' ? 'bg-[#D4AF37] text-[#B8932F]' :
                       doc.documentType === 'legal' ? 'bg-red-100 text-red-700' :
                       'luxury-badge'}`}>
                       {doc.documentType}

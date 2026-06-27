@@ -86,11 +86,11 @@ export default function TrackMyPet() {
   // Show preview for non-logged-in users
   if (!user) {
     return (
-      <Card className="bg-gradient-to-br from-purple-50/90 via-blue-50/90 to-pink-50/90 dark:from-purple-950/50 dark:via-blue-950/50 dark:to-pink-950/50 border-2 border-purple-300 dark:border-purple-700 shadow-2xl backdrop-blur-lg hover:shadow-purple-500/50 transition-all duration-300">
+      <Card className="bg-gradient-to-br from-[#D4AF37]/90 via-[#D4AF37]/90 to-[#D4AF37]/90 dark:from-[#B8932F]/50 dark:via-[#B8932F]/50 dark:to-[#B8932F]/50 border-2 border-[#D4AF37] dark:border-[#B8932F] shadow-2xl backdrop-blur-lg hover:shadow-[#D4AF37]/50 transition-all duration-300">
         <CardHeader>
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
-            <MapPin className="h-6 w-6 text-purple-600 dark:text-purple-400 animate-pulse" />
-            <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+            <MapPin className="h-6 w-6 text-[#B8932F] dark:text-[#D4AF37] animate-pulse" />
+            <span className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
               {isHebrew ? '🐾 עקוב אחרי חיית המחמד שלך LIVE' : '🐾 Track My Pet LIVE'}
             </span>
           </CardTitle>
@@ -99,12 +99,12 @@ export default function TrackMyPet() {
           {/* Preview Stats Grid */}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
-              <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+              <Clock className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
               <div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   {isHebrew ? 'מעקב בזמן אמת' : 'Real-time Tracking'}
                 </p>
-                <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                <p className="text-sm font-bold text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew ? 'כל 3 שניות' : 'Every 3 sec'}
                 </p>
               </div>
@@ -135,12 +135,12 @@ export default function TrackMyPet() {
             </div>
 
             <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
-              <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+              <Activity className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
               <div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">
                   {isHebrew ? 'מד צעדים' : 'Step Counter'}
                 </p>
-                <p className="text-sm font-bold text-purple-700 dark:text-purple-300">
+                <p className="text-sm font-bold text-[#B8932F] dark:text-[#D4AF37]">
                   {isHebrew ? 'אוטומטי' : 'Auto'}
                 </p>
               </div>
@@ -148,18 +148,18 @@ export default function TrackMyPet() {
           </div>
 
           {/* Feature List */}
-          <div className="bg-blue-50/80 dark:bg-blue-950/40 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+          <div className="bg-[#D4AF37]/80 dark:bg-[#B8932F]/40 rounded-lg p-4 border border-[#D4AF37] dark:border-[#B8932F]">
             <div className="space-y-2">
-              <div className="flex items-center gap-2 text-sm text-blue-900 dark:text-blue-100">
-                <Eye className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center gap-2 text-sm text-[#B8932F] dark:text-[#D4AF37]">
+                <Eye className="h-4 w-4 text-[#B8932F] dark:text-[#D4AF37]" />
                 <span>{isHebrew ? 'צפייה חיה במפה' : 'Live map view'}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-blue-900 dark:text-blue-100">
-                <Footprints className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center gap-2 text-sm text-[#B8932F] dark:text-[#D4AF37]">
+                <Footprints className="h-4 w-4 text-[#B8932F] dark:text-[#D4AF37]" />
                 <span>{isHebrew ? 'מעקב אחר מרחק וזמן' : 'Distance & time tracking'}</span>
               </div>
-              <div className="flex items-center gap-2 text-sm text-blue-900 dark:text-blue-100">
-                <Heart className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+              <div className="flex items-center gap-2 text-sm text-[#B8932F] dark:text-[#D4AF37]">
+                <Heart className="h-4 w-4 text-[#B8932F] dark:text-[#D4AF37]" />
                 <span>{isHebrew ? 'נתוני בריאות בזמן אמת' : 'Real-time health data'}</span>
               </div>
             </div>
@@ -168,13 +168,13 @@ export default function TrackMyPet() {
           {/* Call to Action */}
           <div className="space-y-2">
             <Link href="/login">
-              <Button className="w-full bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 hover:from-purple-700 hover:via-blue-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-lg py-6">
+              <Button className="w-full bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:via-[#B8932F] hover:to-[#B8932F] text-white shadow-lg hover:shadow-xl transition-all duration-300 text-lg py-6">
                 <MapPin className="h-5 w-5 mr-2" />
                 {isHebrew ? '🔐 התחבר לצפייה במעקב חי' : '🔐 Login to View Live Tracking'}
               </Button>
             </Link>
             <Link href="/walk-my-pet">
-              <Button variant="outline" className="w-full border-purple-300 dark:border-purple-700 hover:bg-purple-50 dark:hover:bg-purple-950/30">
+              <Button variant="outline" className="w-full border-[#D4AF37] dark:border-[#B8932F] hover:bg-[#D4AF37] dark:hover:bg-[#B8932F]/30">
                 {isHebrew ? 'למידע נוסף על ⁦Walk My Pet™⁩' : 'Learn more about ⁦Walk My Pet™⁩'}
               </Button>
             </Link>
@@ -186,16 +186,16 @@ export default function TrackMyPet() {
 
   if (isLoading) {
     return (
-      <Card className="bg-gradient-to-br from-purple-50/80 via-blue-50/80 to-pink-50/80 dark:from-purple-950/40 dark:via-blue-950/40 dark:to-pink-950/40 border-purple-200 dark:border-purple-800 shadow-xl backdrop-blur-lg">
+      <Card className="bg-gradient-to-br from-[#D4AF37]/80 via-[#D4AF37]/80 to-[#D4AF37]/80 dark:from-[#B8932F]/40 dark:via-[#B8932F]/40 dark:to-[#B8932F]/40 border-[#D4AF37] dark:border-[#B8932F] shadow-xl backdrop-blur-lg">
         <CardHeader>
           <CardTitle className="text-2xl font-bold flex items-center gap-2">
-            <MapPin className="h-6 w-6 text-purple-600 dark:text-purple-400" />
+            <MapPin className="h-6 w-6 text-[#B8932F] dark:text-[#D4AF37]" />
             {isHebrew ? 'עקוב אחרי חיית המחמד שלך' : 'Track My Pet'}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-center p-8">
-            <Loader2 className="h-8 w-8 animate-spin text-purple-600 dark:text-purple-400" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#B8932F] dark:text-[#D4AF37]" />
           </div>
         </CardContent>
       </Card>
@@ -204,7 +204,7 @@ export default function TrackMyPet() {
 
   if (error) {
     return (
-      <Card className="bg-gradient-to-br from-red-50/80 via-orange-50/80 to-yellow-50/80 dark:from-red-950/40 dark:via-orange-950/40 dark:to-yellow-950/40 border-red-200 dark:border-red-800 shadow-xl backdrop-blur-lg">
+      <Card className="bg-gradient-to-br from-red-50/80 via-[#D4AF37]/80 to-yellow-50/80 dark:from-red-950/40 dark:via-[#B8932F]/40 dark:to-yellow-950/40 border-red-200 dark:border-red-800 shadow-xl backdrop-blur-lg">
         <CardContent className="p-6">
           <div className="flex items-center gap-3 text-red-700 dark:text-red-300">
             <AlertCircle className="h-6 w-6" />
@@ -229,7 +229,7 @@ export default function TrackMyPet() {
             {isHebrew ? 'אין טיולים פעילים כרגע' : 'No active walks right now'}
           </p>
           <Link href="/walk-my-pet">
-            <Button className="w-full mt-4 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white shadow-lg">
+            <Button className="w-full mt-4 bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F] text-white shadow-lg">
               {isHebrew ? 'הזמן הליכה' : 'Book a Walk'}
             </Button>
           </Link>
@@ -241,8 +241,8 @@ export default function TrackMyPet() {
   return (
     <div className="space-y-4" data-testid="track-my-pet-widget">
       <h2 className="text-2xl font-bold flex items-center gap-2 mb-4">
-        <MapPin className="h-6 w-6 text-purple-600 dark:text-purple-400 animate-pulse" />
-        <span className="bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent">
+        <MapPin className="h-6 w-6 text-[#B8932F] dark:text-[#D4AF37] animate-pulse" />
+        <span className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
           {isHebrew ? '🐾 עקוב אחרי חיית המחמד שלך LIVE' : '🐾 Track My Pet LIVE'}
         </span>
       </h2>
@@ -250,7 +250,7 @@ export default function TrackMyPet() {
       {activeWalks.map((walk) => (
         <Card 
           key={walk.id} 
-          className="bg-gradient-to-br from-purple-50/90 via-blue-50/90 to-pink-50/90 dark:from-purple-950/50 dark:via-blue-950/50 dark:to-pink-950/50 border-2 border-purple-300 dark:border-purple-700 shadow-2xl backdrop-blur-lg hover:shadow-purple-500/50 transition-all duration-300"
+          className="bg-gradient-to-br from-[#D4AF37]/90 via-[#D4AF37]/90 to-[#D4AF37]/90 dark:from-[#B8932F]/50 dark:via-[#B8932F]/50 dark:to-[#B8932F]/50 border-2 border-[#D4AF37] dark:border-[#B8932F] shadow-2xl backdrop-blur-lg hover:shadow-[#D4AF37]/50 transition-all duration-300"
           data-testid={`active-walk-${walk.id}`}
         >
           <CardHeader className="pb-3">
@@ -272,12 +272,12 @@ export default function TrackMyPet() {
             <div className="grid grid-cols-2 gap-4">
               {/* Elapsed Time */}
               <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
-                <Clock className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                <Clock className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
                 <div>
                   <p className="text-xs text-gray-600 dark:text-gray-400">
                     {isHebrew ? 'זמן שעבר' : 'Time'}
                   </p>
-                  <p className="text-lg font-bold text-blue-700 dark:text-blue-300">
+                  <p className="text-lg font-bold text-[#B8932F] dark:text-[#D4AF37]">
                     {formatElapsedTime(walk.actualStartTime)}
                   </p>
                 </div>
@@ -314,12 +314,12 @@ export default function TrackMyPet() {
               {/* Steps */}
               {walk.vitalDataSummary?.steps && (
                 <div className="flex items-center gap-2 bg-white/60 dark:bg-white/60 rounded-lg p-3 backdrop-blur-sm">
-                  <Activity className="h-5 w-5 text-purple-600 dark:text-purple-400" />
+                  <Activity className="h-5 w-5 text-[#B8932F] dark:text-[#D4AF37]" />
                   <div>
                     <p className="text-xs text-gray-600 dark:text-gray-400">
                       {isHebrew ? 'צעדים' : 'Steps'}
                     </p>
-                    <p className="text-lg font-bold text-purple-700 dark:text-purple-300">
+                    <p className="text-lg font-bold text-[#B8932F] dark:text-[#D4AF37]">
                       {walk.vitalDataSummary.steps.toLocaleString()}
                     </p>
                   </div>
@@ -329,17 +329,17 @@ export default function TrackMyPet() {
 
             {/* Last Known Location */}
             {walk.lastKnownLocation && (
-              <div className="bg-blue-50/80 dark:bg-blue-950/40 rounded-lg p-3 border border-blue-200 dark:border-blue-800">
+              <div className="bg-[#D4AF37]/80 dark:bg-[#B8932F]/40 rounded-lg p-3 border border-[#D4AF37] dark:border-[#B8932F]">
                 <div className="flex items-center gap-2 mb-2">
-                  <Navigation className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-                  <span className="text-sm font-semibold text-blue-900 dark:text-blue-100">
+                  <Navigation className="h-4 w-4 text-[#B8932F] dark:text-[#D4AF37]" />
+                  <span className="text-sm font-semibold text-[#B8932F] dark:text-[#D4AF37]">
                     {isHebrew ? 'מיקום אחרון' : 'Last Location'}
                   </span>
                 </div>
-                <p className="text-xs text-blue-700 dark:text-blue-300 font-mono">
+                <p className="text-xs text-[#B8932F] dark:text-[#D4AF37] font-mono">
                   {walk.lastKnownLocation.latitude.toFixed(6)}, {walk.lastKnownLocation.longitude.toFixed(6)}
                 </p>
-                <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+                <p className="text-xs text-[#B8932F] dark:text-[#D4AF37] mt-1">
                   {isHebrew ? 'דיוק' : 'Accuracy'}: {walk.lastKnownLocation.accuracy.toFixed(1)}m
                 </p>
               </div>
@@ -357,7 +357,7 @@ export default function TrackMyPet() {
                       key={index}
                       variant="secondary" 
                       className={marker.type === 'pee' 
-                        ? "bg-blue-100 dark:bg-white text-blue-700 dark:text-blue-300 border border-blue-300 dark:border-blue-700" 
+                        ? "bg-[#D4AF37] dark:bg-white text-[#B8932F] dark:text-[#D4AF37] border border-[#D4AF37] dark:border-[#B8932F]" 
                         : "bg-amber-100 dark:bg-amber-900/40 text-amber-700 dark:text-amber-300 border border-amber-300 dark:border-amber-700"}
                       data-testid={`bathroom-marker-${index}`}
                     >
@@ -376,7 +376,7 @@ export default function TrackMyPet() {
             {/* Track on Map Button */}
             <Link href={`/walk-tracking/${walk.id}`}>
               <Button 
-                className="w-full bg-gradient-to-r from-purple-600 via-blue-600 to-pink-600 hover:from-purple-700 hover:via-blue-700 hover:to-pink-700 text-white shadow-lg hover:shadow-xl transition-all duration-300 text-lg py-6"
+                className="w-full bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:via-[#B8932F] hover:to-[#B8932F] text-white shadow-lg hover:shadow-xl transition-all duration-300 text-lg py-6"
                 data-testid={`button-track-on-map-${walk.id}`}
               >
                 <MapPin className="h-5 w-5 mr-2" />

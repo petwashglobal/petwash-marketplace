@@ -43,7 +43,7 @@ export default function FounderMember() {
 
         {/* Main Card */}
         <Card className="luxury-glass-card luxury-shadow-xl luxury-hover-glow luxury-animate-scale-in luxury-delay-2">
-          <CardHeader className="bg-gradient-to-r from-purple-600 via-blue-600 to-indigo-600 text-white rounded-t-lg">
+          <CardHeader className="bg-gradient-to-r from-[#B8932F] via-[#B8932F] to-[#B8932F] text-white rounded-t-lg">
             <CardTitle className="text-2xl flex items-center gap-2">
               <Crown className="w-6 h-6 drop-shadow-lg" />
               Founder Member Profile
@@ -57,8 +57,8 @@ export default function FounderMember() {
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Personal Information</h3>
                   <div className="space-y-3">
                     <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
-                        <span className="text-blue-600 font-semibold">
+                      <div className="w-8 h-8 bg-[#D4AF37] rounded-full flex items-center justify-center">
+                        <span className="text-[#B8932F] font-semibold">
                           {founder.name.split(' ').map((n: string) => n[0]).join('')}
                         </span>
                       </div>
@@ -106,7 +106,7 @@ export default function FounderMember() {
                     </div>
                     
                     <div className="flex items-center gap-3">
-                      <div className="w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center">
+                      <div className="w-5 h-5 bg-[#D4AF37] rounded-full flex items-center justify-center">
                         <span className="text-white text-xs">✓</span>
                       </div>
                       <span className="text-gray-700">
@@ -123,8 +123,8 @@ export default function FounderMember() {
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Account Summary</h3>
                   
                   <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-blue-50 rounded-lg p-4 text-center">
-                      <div className="text-2xl font-bold text-blue-600">₪{founder.totalSpent}</div>
+                    <div className="bg-[#D4AF37] rounded-lg p-4 text-center">
+                      <div className="text-2xl font-bold text-[#B8932F]">₪{founder.totalSpent}</div>
                       <div className="text-sm text-gray-600">Total Spent</div>
                     </div>
                     
@@ -140,19 +140,19 @@ export default function FounderMember() {
                   <h3 className="text-lg font-semibold text-gray-800 mb-4">Founder Privileges</h3>
                   <div className="space-y-2">
                     <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-[#D4AF37] rounded-full"></div>
                       <span>Lifetime {founder.discountPercent}% discount</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-[#D4AF37] rounded-full"></div>
                       <span>Priority customer support</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-[#D4AF37] rounded-full"></div>
                       <span>Early access to new features</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
-                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                      <div className="w-2 h-2 bg-[#D4AF37] rounded-full"></div>
                       <span>Exclusive franchise opportunities</span>
                     </div>
                   </div>

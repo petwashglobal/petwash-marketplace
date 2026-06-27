@@ -47,10 +47,10 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
       range: '501-1,500',
       points: '501-1,500',
       discount: '10%',
-      color: 'from-blue-400 to-blue-600',
-      borderColor: 'border-blue-400',
-      textColor: 'text-blue-700',
-      bgColor: 'bg-gradient-to-br from-blue-50 to-blue-100',
+      color: 'from-[#D4AF37] to-[#B8932F]',
+      borderColor: 'border-[#D4AF37]',
+      textColor: 'text-[#B8932F]',
+      bgColor: 'bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]',
       benefits: [
         t('loyalty.tier2.benefit1', language),
         t('loyalty.tier2.benefit2', language),
@@ -82,10 +82,10 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
       range: '3,001-5,000',
       points: '3,001-5,000',
       discount: '20%',
-      color: 'from-purple-400 to-purple-600',
-      borderColor: 'border-purple-400',
-      textColor: 'text-purple-700',
-      bgColor: 'bg-gradient-to-br from-purple-50 to-purple-100',
+      color: 'from-[#D4AF37] to-[#B8932F]',
+      borderColor: 'border-[#D4AF37]',
+      textColor: 'text-[#B8932F]',
+      bgColor: 'bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]',
       benefits: [
         t('loyalty.tier4.benefit1', language),
         t('loyalty.tier4.benefit2', language),
@@ -101,10 +101,10 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
       range: '10,000-19,999',
       points: '10,000-19,999',
       discount: '30%',
-      color: 'from-cyan-400 via-blue-400 to-indigo-500',
-      borderColor: 'border-cyan-500',
-      textColor: 'text-cyan-700',
-      bgColor: 'bg-gradient-to-br from-cyan-50 via-blue-50 to-indigo-50',
+      color: 'from-[#D4AF37] via-[#D4AF37] to-[#D4AF37]',
+      borderColor: 'border-[#D4AF37]',
+      textColor: 'text-[#B8932F]',
+      bgColor: 'bg-gradient-to-br from-[#D4AF37] via-[#D4AF37] to-[#D4AF37]',
       benefits: [
         t('loyalty.tier5.benefit1', language),
         t('loyalty.tier5.benefit2', language),
@@ -142,10 +142,10 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
       range: '35,000+',
       points: '35,000+',
       discount: '50%',
-      color: 'from-violet-500 via-purple-600 to-fuchsia-700',
-      borderColor: 'border-violet-600',
-      textColor: 'text-violet-800',
-      bgColor: 'bg-gradient-to-br from-violet-50 via-purple-50 to-fuchsia-50',
+      color: 'from-[#D4AF37] via-[#B8932F] to-[#B8932F]',
+      borderColor: 'border-[#B8932F]',
+      textColor: 'text-[#B8932F]',
+      bgColor: 'bg-gradient-to-br from-[#D4AF37] via-[#D4AF37] to-[#D4AF37]',
       benefits: [
         t('loyalty.tier7.benefit1', language),
         t('loyalty.tier7.benefit2', language),
@@ -171,13 +171,13 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
       icon: TrendingUp,
       title: t('loyalty.feature2.title', language),
       description: t('loyalty.feature2.desc', language),
-      color: 'text-blue-600'
+      color: 'text-[#B8932F]'
     },
     {
       icon: Users,
       title: t('loyalty.feature3.title', language),
       description: t('loyalty.feature3.desc', language),
-      color: 'text-purple-600'
+      color: 'text-[#B8932F]'
     },
     {
       icon: Calendar,
@@ -203,8 +203,8 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
           </p>
           
           {/* Points System Explainer */}
-          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-blue-50 via-cyan-50 to-blue-50 border border-blue-200 rounded-full px-6 py-3 shadow-lg">
-            <Zap className="w-5 h-5 text-blue-600" />
+          <div className="inline-flex items-center gap-3 bg-gradient-to-r from-[#D4AF37] via-[#D4AF37] to-[#D4AF37] border border-[#D4AF37] rounded-full px-6 py-3 shadow-lg">
+            <Zap className="w-5 h-5 text-[#B8932F]" />
             <span className="font-semibold text-gray-900">{t('loyalty.pawPoints', language)}</span>
             <span className="text-gray-600">{t('loyalty.earnPoints', language)}</span>
           </div>
@@ -361,28 +361,28 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
         </div>
 
         {/* How It Works */}
-        <Card className="mb-12 border-2 border-rose-200 bg-gradient-to-br from-rose-50 to-pink-50">
+        <Card className="mb-12 border-2 border-rose-200 bg-gradient-to-br from-rose-50 to-[#D4AF37]">
           <CardContent className="p-8">
             <h3 className="text-2xl font-bold text-center text-gray-900 mb-8">
               {t('loyalty.howItWorks', language)}
             </h3>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-rose-400 to-pink-500 text-white font-bold text-2xl mb-4 shadow-lg">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-rose-400 to-[#D4AF37] text-white font-bold text-2xl mb-4 shadow-lg">
                   1
                 </div>
                 <h4 className="font-bold text-gray-900 mb-2">{t('loyalty.step1.title', language)}</h4>
                 <p className="text-sm text-gray-600">{t('loyalty.step1.desc', language)}</p>
               </div>
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-blue-400 to-purple-500 text-white font-bold text-2xl mb-4 shadow-lg">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] text-white font-bold text-2xl mb-4 shadow-lg">
                   2
                 </div>
                 <h4 className="font-bold text-gray-900 mb-2">{t('loyalty.step2.title', language)}</h4>
                 <p className="text-sm text-gray-600">{t('loyalty.step2.desc', language)}</p>
               </div>
               <div className="text-center">
-                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-orange-500 text-white font-bold text-2xl mb-4 shadow-lg">
+                <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-amber-400 to-[#D4AF37] text-white font-bold text-2xl mb-4 shadow-lg">
                   3
                 </div>
                 <h4 className="font-bold text-gray-900 mb-2">{t('loyalty.step3.title', language)}</h4>
@@ -399,9 +399,9 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
             {[
-              { icon: Users, text: t('loyalty.bonus1', language), points: '+200', color: 'from-blue-500 to-purple-600' },
-              { icon: Calendar, text: t('loyalty.bonus2', language), points: '2x', color: 'from-pink-500 to-rose-600' },
-              { icon: Trophy, text: t('loyalty.bonus3', language), points: '+500', color: 'from-amber-500 to-orange-600' },
+              { icon: Users, text: t('loyalty.bonus1', language), points: '+200', color: 'from-[#D4AF37] to-[#B8932F]' },
+              { icon: Calendar, text: t('loyalty.bonus2', language), points: '2x', color: 'from-[#D4AF37] to-rose-600' },
+              { icon: Trophy, text: t('loyalty.bonus3', language), points: '+500', color: 'from-amber-500 to-[#B8932F]' },
               { icon: Gift, text: t('loyalty.bonus4', language), points: '2x', color: 'from-green-500 to-teal-600' }
             ].map((bonus, index) => {
               const IconComponent = bonus.icon;
@@ -434,7 +434,7 @@ export function LoyaltyProgram({ language }: LoyaltyProgramProps) {
               </p>
               <Button 
                 onClick={handleSignUp} 
-                className="bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white px-8 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+                className="bg-gradient-to-r from-rose-500 to-[#B8932F] hover:from-rose-600 hover:to-[#B8932F] text-white px-8 py-6 text-lg font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
                 data-testid="button-loyalty-join"
               >
                 {user ? t('nav.dashboard', language) : t('loyalty.signUp', language)}

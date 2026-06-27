@@ -275,8 +275,8 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="luxury-heading-sm text-gray-700">Total Users</h3>
-                <div className="p-3 rounded-full bg-gradient-to-br from-blue-100 to-blue-50">
-                  <Users className="h-6 w-6 text-blue-600" />
+                <div className="p-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
+                  <Users className="h-6 w-6 text-[#B8932F]" />
                 </div>
               </div>
               <div className="luxury-heading-lg luxury-text-gradient">{stats.total}</div>
@@ -303,8 +303,8 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="luxury-heading-sm text-gray-700">Premium</h3>
-                <div className="p-3 rounded-full bg-gradient-to-br from-purple-100 to-purple-50">
-                  <Crown className="h-6 w-6 text-purple-600" />
+                <div className="p-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
+                  <Crown className="h-6 w-6 text-[#B8932F]" />
                 </div>
               </div>
               <div className="luxury-heading-lg luxury-text-gradient">{stats.premium}</div>
@@ -317,8 +317,8 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
             >
               <div className="flex items-center justify-between mb-4">
                 <h3 className="luxury-heading-sm text-gray-700">New This Month</h3>
-                <div className="p-3 rounded-full bg-gradient-to-br from-orange-100 to-orange-50">
-                  <UserPlus className="h-6 w-6 text-orange-600" />
+                <div className="p-3 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37]">
+                  <UserPlus className="h-6 w-6 text-[#B8932F]" />
                 </div>
               </div>
               <div className="luxury-heading-lg luxury-text-gradient">{stats.newThisMonth}</div>
@@ -335,7 +335,7 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
                   placeholder="Search users by name, email, or phone..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="pl-10 luxury-glass-minimal border-0 focus:ring-2 focus:ring-purple-400"
+                  className="pl-10 luxury-glass-minimal border-0 focus:ring-2 focus:ring-[#D4AF37]"
                   data-testid="input-search-users"
                 />
               </div>
@@ -457,7 +457,7 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
                     />
 
                     {/* Avatar */}
-                    <Avatar className="h-12 w-12 border-2 border-purple-200">
+                    <Avatar className="h-12 w-12 border-2 border-[#D4AF37]">
                       <AvatarImage src={user.profileImageUrl} />
                       <AvatarFallback className="luxury-bg-primary text-white">
                         {user.firstName?.[0] || user.email[0].toUpperCase()}
@@ -512,7 +512,7 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
 
                     {/* Loyalty Tier */}
                     <div className="text-right min-w-24">
-                      <p className="luxury-text-small font-semibold text-purple-600">
+                      <p className="luxury-text-small font-semibold text-[#B8932F]">
                         {user.loyaltyTier}
                       </p>
                       <p className="luxury-text-small">{user.loyaltyPoints} pts</p>
@@ -591,7 +591,7 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
             <h2 className="luxury-heading-sm luxury-text-gradient mb-4">Recent Activity</h2>
             <div className="space-y-3">
               <div className="luxury-glass-minimal p-4 flex items-start gap-3">
-                <UserPlus className="h-5 w-5 text-blue-600 mt-0.5" />
+                <UserPlus className="h-5 w-5 text-[#B8932F] mt-0.5" />
                 <div className="flex-1">
                   <p className="luxury-text-small font-semibold">New user registered</p>
                   <p className="luxury-text-small text-gray-600">john.doe@example.com joined the platform</p>
@@ -599,7 +599,7 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
                 </div>
               </div>
               <div className="luxury-glass-minimal p-4 flex items-start gap-3">
-                <Edit className="h-5 w-5 text-purple-600 mt-0.5" />
+                <Edit className="h-5 w-5 text-[#B8932F] mt-0.5" />
                 <div className="flex-1">
                   <p className="luxury-text-small font-semibold">User role updated</p>
                   <p className="luxury-text-small text-gray-600">sarah.smith@example.com promoted to Admin</p>
@@ -634,7 +634,7 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
               <div className="space-y-6 py-4">
                 {/* User Header */}
                 <div className="luxury-glass-panel p-6 flex items-center gap-4">
-                  <Avatar className="h-20 w-20 border-4 border-purple-200">
+                  <Avatar className="h-20 w-20 border-4 border-[#D4AF37]">
                     <AvatarImage src={selectedUser.profileImageUrl} />
                     <AvatarFallback className="luxury-bg-primary text-white text-2xl">
                       {selectedUser.firstName?.[0] || selectedUser.email[0].toUpperCase()}
@@ -668,7 +668,7 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
                   </div>
                   <div className="luxury-glass-panel p-4">
                     <p className="luxury-text-small text-gray-600 mb-1">Loyalty Tier</p>
-                    <p className="luxury-heading-sm text-purple-600">{selectedUser.loyaltyTier}</p>
+                    <p className="luxury-heading-sm text-[#B8932F]">{selectedUser.loyaltyTier}</p>
                   </div>
                   <div className="luxury-glass-panel p-4">
                     <p className="luxury-text-small text-gray-600 mb-1">Total Spent</p>
@@ -685,7 +685,7 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
                   <h4 className="luxury-heading-sm mb-3">Recent Activity</h4>
                   <div className="space-y-3">
                     <div className="luxury-glass-minimal p-3 flex items-start gap-3">
-                      <Calendar className="h-4 w-4 text-purple-600 mt-0.5" />
+                      <Calendar className="h-4 w-4 text-[#B8932F] mt-0.5" />
                       <div>
                         <p className="luxury-text-small font-semibold">Joined Platform</p>
                         <p className="luxury-text-small text-gray-600">

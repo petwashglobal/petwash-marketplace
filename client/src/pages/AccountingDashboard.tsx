@@ -124,7 +124,7 @@ export default function AccountingDashboard() {
         <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-8 gap-4">
           <div>
             <h1 className="text-3xl font-bold text-slate-900 dark:text-black flex items-center gap-3">
-              <Calculator className="h-8 w-8 text-pink-500" />
+              <Calculator className="h-8 w-8 text-[#D4AF37]" />
               {isHebrew ? 'הנהלת חשבונות ותאימות' : 'Accounting & Compliance'}
             </h1>
             <p className="text-slate-600 dark:text-slate-400 mt-1">
@@ -170,12 +170,12 @@ export default function AccountingDashboard() {
 
         {summaryLoading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 className="h-8 w-8 animate-spin text-pink-500" />
+            <Loader2 className="h-8 w-8 animate-spin text-[#D4AF37]" />
           </div>
         ) : (
           <>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-              <Card className="bg-gradient-to-br from-pink-500 to-rose-600 text-white" data-testid="card-revenue">
+              <Card className="bg-gradient-to-br from-[#D4AF37] to-rose-600 text-white" data-testid="card-revenue">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg opacity-90 flex items-center gap-2">
                     <TrendingUp className="h-5 w-5" />
@@ -189,7 +189,7 @@ export default function AccountingDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-purple-500 to-indigo-600 text-white" data-testid="card-fees">
+              <Card className="bg-gradient-to-br from-[#D4AF37] to-[#B8932F] text-white" data-testid="card-fees">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg opacity-90 flex items-center gap-2">
                     <Wallet className="h-5 w-5" />
@@ -203,7 +203,7 @@ export default function AccountingDashboard() {
                 </CardContent>
               </Card>
 
-              <Card className="bg-gradient-to-br from-amber-500 to-orange-600 text-white" data-testid="card-payouts">
+              <Card className="bg-gradient-to-br from-amber-500 to-[#B8932F] text-white" data-testid="card-payouts">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-lg opacity-90 flex items-center gap-2">
                     <Clock className="h-5 w-5" />
@@ -279,7 +279,7 @@ export default function AccountingDashboard() {
                   <Card>
                     <CardHeader>
                       <CardTitle className="flex items-center gap-2">
-                        <Brain className="h-5 w-5 text-purple-600" />
+                        <Brain className="h-5 w-5 text-[#B8932F]" />
                         {isHebrew ? 'דו"ח תאימות' : 'Compliance Report'}
                       </CardTitle>
                       <CardDescription>
@@ -290,7 +290,7 @@ export default function AccountingDashboard() {
                     </CardHeader>
                     <CardContent>
                       <Button 
-                        className="w-full bg-purple-600 hover:bg-purple-700"
+                        className="w-full bg-[#B8932F] hover:bg-[#B8932F]"
                         onClick={() => exportComplianceMutation.mutate()}
                         disabled={exportComplianceMutation.isPending}
                         data-testid="button-export-compliance"
@@ -340,7 +340,7 @@ export default function AccountingDashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <Card data-testid="card-vat">
                     <CardHeader>
-                      <CardTitle className="text-blue-600">
+                      <CardTitle className="text-[#B8932F]">
                         {isHebrew ? 'מע"מ לתשלום' : 'VAT Payable'}
                       </CardTitle>
                       <CardDescription>
@@ -348,7 +348,7 @@ export default function AccountingDashboard() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-blue-600">
+                      <div className="text-3xl font-bold text-[#B8932F]">
                         ₪{(taxes?.vatCollected?.amount || 0).toLocaleString()}
                       </div>
                       <p className="text-sm text-gray-500 mt-2">
@@ -361,7 +361,7 @@ export default function AccountingDashboard() {
 
                   <Card data-testid="card-withholding">
                     <CardHeader>
-                      <CardTitle className="text-orange-600">
+                      <CardTitle className="text-[#B8932F]">
                         {isHebrew ? 'ניכוי מס במקור' : 'Withholding Tax'}
                       </CardTitle>
                       <CardDescription>
@@ -369,7 +369,7 @@ export default function AccountingDashboard() {
                       </CardDescription>
                     </CardHeader>
                     <CardContent>
-                      <div className="text-3xl font-bold text-orange-600">
+                      <div className="text-3xl font-bold text-[#B8932F]">
                         ₪{(taxes?.withholdingTax?.amount || 0).toLocaleString()}
                       </div>
                       <p className="text-sm text-gray-500 mt-2">
@@ -407,7 +407,7 @@ export default function AccountingDashboard() {
                 <Card>
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
-                      <Shield className="h-5 w-5 text-indigo-600" />
+                      <Shield className="h-5 w-5 text-[#B8932F]" />
                       {isHebrew ? 'תאימות מס ישראלי 2025/2026' : 'Israeli Tax Compliance 2025/2026'}
                     </CardTitle>
                     <CardDescription>

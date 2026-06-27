@@ -108,10 +108,10 @@ export default function SalesDashboard() {
 
   const getLeadStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      new: "bg-blue-500",
+      new: "bg-[#D4AF37]",
       contacted: "bg-yellow-500",
       qualified: "bg-green-500",
-      nurturing: "bg-purple-500",
+      nurturing: "bg-[#D4AF37]",
       converted: "bg-emerald-500",
       lost: "bg-red-500",
     };
@@ -120,7 +120,7 @@ export default function SalesDashboard() {
 
   const getOpportunityStatusColor = (status: string) => {
     const colors: Record<string, string> = {
-      open: "bg-blue-500",
+      open: "bg-[#D4AF37]",
       won: "bg-green-500",
       lost: "bg-red-500",
       on_hold: "bg-yellow-500",

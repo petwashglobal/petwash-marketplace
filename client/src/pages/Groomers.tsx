@@ -110,9 +110,9 @@ export default function Groomers({ language: langProp }: GroomersProps) {
     <div className="min-h-screen luxury-bg-mesh">
       <div className="luxury-bg-primary text-white py-12">
         <div className="luxury-container">
-          <div className="flex items-center gap-2 mb-2"><Scissors className="w-6 h-6 text-pink-300" /><span className="text-pink-200 text-sm font-medium uppercase tracking-wide">Grooming Marketplace</span></div>
+          <div className="flex items-center gap-2 mb-2"><Scissors className="w-6 h-6 text-[#D4AF37]" /><span className="text-[#D4AF37] text-sm font-medium uppercase tracking-wide">Grooming Marketplace</span></div>
           <h1 className="text-3xl md:text-4xl font-bold text-white mb-2">{isHebrew ? 'מצא מטפח מקצועי' : 'Find a Professional Groomer'}</h1>
-          <p className="text-purple-100 mb-8">Certified, insured groomers near you</p>
+          <p className="text-[#D4AF37] mb-8">Certified, insured groomers near you</p>
 
           <div className="relative max-w-lg">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -134,7 +134,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
             <div className="flex items-center gap-2 mt-3 flex-wrap">
               {SERVICES_FILTER.map(s => (
                 <button key={s.key} onClick={() => setServiceFilter(s.key)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${serviceFilter === s.key ? 'bg-pink-400 text-white' : 'bg-white/15 text-white hover:bg-white/25'}`}>
+                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${serviceFilter === s.key ? 'bg-[#D4AF37] text-white' : 'bg-white/15 text-white hover:bg-white/25'}`}>
                   {isHebrew ? s.he : s.label}
                 </button>
               ))}
@@ -182,8 +182,8 @@ export default function Groomers({ language: langProp }: GroomersProps) {
                 return (
                   <Card key={id} className="luxury-glass-card luxury-shadow-md luxury-hover-lift luxury-animate-fade-in overflow-hidden">
                     <CardContent className="p-0">
-                      <div className="bg-gradient-to-br from-pink-400/20 via-purple-300/10 to-transparent h-24 relative">
-                        <div className="absolute bottom-0 left-5 translate-y-1/2 w-16 h-16 rounded-2xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center text-3xl shadow-lg">
+                      <div className="bg-gradient-to-br from-[#D4AF37]/20 via-[#D4AF37]/10 to-transparent h-24 relative">
+                        <div className="absolute bottom-0 left-5 translate-y-1/2 w-16 h-16 rounded-2xl bg-gradient-to-br from-[#D4AF37] to-rose-600 flex items-center justify-center text-3xl shadow-lg">
                           ✂️
                         </div>
                         <button
@@ -217,7 +217,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
 
                         {groomer.isVerified && (
                           <div className="flex flex-wrap gap-1.5 mb-3">
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-purple-100 dark:bg-white text-purple-700 dark:text-purple-300 text-xs font-medium">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-[#D4AF37] dark:bg-white text-[#B8932F] dark:text-[#D4AF37] text-xs font-medium">
                               <CheckCircle className="w-3 h-3" />Verified
                             </span>
                           </div>
@@ -228,7 +228,7 @@ export default function Groomers({ language: langProp }: GroomersProps) {
                             {price && (
                               <>
                                 <p className="text-xs text-gray-400">from</p>
-                                <p className="font-bold text-purple-700 dark:text-purple-300">{price}</p>
+                                <p className="font-bold text-[#B8932F] dark:text-[#D4AF37]">{price}</p>
                               </>
                             )}
                           </div>

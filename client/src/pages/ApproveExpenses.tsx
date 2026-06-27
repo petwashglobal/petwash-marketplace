@@ -153,12 +153,12 @@ export default function ApproveExpenses() {
 
         <div className="luxury-grid-3 luxury-gap-md mb-8">
           <Card className="p-6 luxury-glass-card luxury-hover-lift text-center luxury-animate-slide-up luxury-delay-1">
-            <Clock className="w-8 h-8 mx-auto mb-2 text-violet-600" />
+            <Clock className="w-8 h-8 mx-auto mb-2 text-[#B8932F]" />
             <div className="luxury-heading-lg">{expensesList.length}</div>
             <div className="luxury-text-small">הוצאות ממתינות / Pending</div>
           </Card>
           <Card className="p-6 luxury-glass-card luxury-hover-lift text-center luxury-animate-slide-up luxury-delay-2">
-            <DollarSign className="w-8 h-8 mx-auto mb-2 text-violet-600" />
+            <DollarSign className="w-8 h-8 mx-auto mb-2 text-[#B8932F]" />
             <div className="luxury-heading-lg luxury-text-gradient">
               ₪{totalPendingAmount.toFixed(2)}
             </div>
@@ -197,7 +197,7 @@ export default function ApproveExpenses() {
               <Card key={expense.id} className={`p-6 luxury-glass-minimal luxury-hover-lift luxury-animate-slide-up luxury-delay-${Math.min(idx % 10, 10)}`}>
                 <div className="flex justify-between items-start mb-4">
                   <div className="flex items-start gap-4">
-                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-violet-600 to-purple-600 flex items-center justify-center text-white font-bold text-lg border-4 border-white/20 shadow-lg">
+                    <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#B8932F] to-[#B8932F] flex items-center justify-center text-white font-bold text-lg border-4 border-white/20 shadow-lg">
                       {expense.employeeName?.charAt(0) || 'U'}
                     </div>
                     <div>

@@ -73,8 +73,8 @@ export default function SharedServicesPrograms({ language = 'en' }: SharedServic
         {/* Hero Section */}
         <div className="text-center mb-16 luxury-animate-fade-in">
           <div className="inline-flex items-center gap-3 mb-6">
-            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
-              <Award className="w-8 h-8 text-purple-600" />
+            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30 flex items-center justify-center">
+              <Award className="w-8 h-8 text-[#B8932F]" />
             </div>
             <h1 className="luxury-heading-xl">
               {isHebrew ? 'תוכניות קהילתיות' : 'Community Programs'}
@@ -98,8 +98,8 @@ export default function SharedServicesPrograms({ language = 'en' }: SharedServic
                 style={{ animationDelay: `${0.1 * (index + 1)}s` }}
               >
                 <div className="flex items-start gap-4 mb-4">
-                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-7 h-7 text-purple-600" />
+                  <div className="w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30 flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-7 h-7 text-[#B8932F]" />
                   </div>
                   <div>
                     <h3 className="luxury-heading-md mb-2">
@@ -117,8 +117,8 @@ export default function SharedServicesPrograms({ language = 'en' }: SharedServic
 
         {/* Call to Action */}
         <div className="luxury-glass-card luxury-shadow-xl p-12 text-center luxury-animate-scale-in luxury-delay-3">
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-purple-100 to-pink-100 dark:from-purple-900/30 dark:to-pink-900/30 flex items-center justify-center">
-            <Heart className="w-10 h-10 text-purple-600 luxury-pulse" />
+          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F]/30 dark:to-[#B8932F]/30 flex items-center justify-center">
+            <Heart className="w-10 h-10 text-[#B8932F] luxury-pulse" />
           </div>
           <h2 className="luxury-heading-lg mb-4">
             {isHebrew ? 'הצטרפו לקהילה שלנו' : 'Join Our Community'}

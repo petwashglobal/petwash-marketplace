@@ -78,10 +78,10 @@ function getStepIndex(status: string) {
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; variant: 'default' | 'outline' | 'destructive' | 'secondary'; className?: string }> = {
     draft: { label: 'Draft', variant: 'secondary' },
-    submitted: { label: 'Submitted', variant: 'outline', className: 'border-blue-400 text-blue-700 bg-blue-50' },
-    processing: { label: 'Processing', variant: 'outline', className: 'border-violet-400 text-violet-700 bg-violet-50' },
+    submitted: { label: 'Submitted', variant: 'outline', className: 'border-[#D4AF37] text-[#B8932F] bg-[#D4AF37]' },
+    processing: { label: 'Processing', variant: 'outline', className: 'border-[#D4AF37] text-[#B8932F] bg-[#D4AF37]' },
     pending_review: { label: 'Under Review', variant: 'outline', className: 'border-amber-400 text-amber-700 bg-amber-50' },
-    pending_resubmission: { label: 'Resubmission Needed', variant: 'outline', className: 'border-orange-400 text-orange-700 bg-orange-50' },
+    pending_resubmission: { label: 'Resubmission Needed', variant: 'outline', className: 'border-[#D4AF37] text-[#B8932F] bg-[#D4AF37]' },
     approved: { label: 'Approved', variant: 'default', className: 'bg-green-600 text-white' },
     rejected: { label: 'Rejected', variant: 'destructive' },
     withdrawn: { label: 'Withdrawn', variant: 'secondary' },
@@ -327,36 +327,36 @@ export default function ProviderApplicationStatus() {
 
         {/* Resubmission needed */}
         {app.status === 'pending_resubmission' && (
-          <Card className="border-orange-200 bg-orange-50">
+          <Card className="border-[#D4AF37] bg-[#D4AF37]">
             <CardHeader className="pb-2">
-              <CardTitle className="flex items-center gap-2 text-orange-800">
+              <CardTitle className="flex items-center gap-2 text-[#B8932F]">
                 <AlertTriangle className="h-5 w-5" />
                 Updated documents required
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <p className="text-sm text-orange-700">
+              <p className="text-sm text-[#B8932F]">
                 Our team reviewed your application and needs clearer copies of your documents.
                 This is attempt {app.resubmission_count} of 3.
               </p>
               {kycFlags.length > 0 && (
                 <div className="flex flex-wrap gap-1.5">
                   {kycFlags.map((flag: string) => (
-                    <Badge key={flag} variant="outline" className="border-orange-400 text-orange-800 bg-white text-xs">
+                    <Badge key={flag} variant="outline" className="border-[#D4AF37] text-[#B8932F] bg-white text-xs">
                       {flag}
                     </Badge>
                   ))}
                 </div>
               )}
               {resubmitUrl ? (
-                <Button asChild className="bg-orange-600 hover:bg-orange-700 text-white w-full">
+                <Button asChild className="bg-[#B8932F] hover:bg-[#B8932F] text-white w-full">
                   <a href={resubmitUrl}>
                     <Upload className="h-4 w-4 mr-2" />
                     Upload Updated Documents
                   </a>
                 </Button>
               ) : (
-                <div className="text-sm text-orange-600 bg-orange-100 rounded p-3 flex items-start gap-2">
+                <div className="text-sm text-[#B8932F] bg-[#D4AF37] rounded p-3 flex items-start gap-2">
                   <Clock className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>A secure upload link is being generated. You'll receive it by email shortly.</span>
                 </div>
@@ -387,7 +387,7 @@ export default function ProviderApplicationStatus() {
           <Card>
             <CardContent className="pt-5 pb-5">
               <div className="flex items-center gap-3">
-                <Loader2 className="h-6 w-6 text-violet-500 shrink-0 animate-spin" />
+                <Loader2 className="h-6 w-6 text-[#D4AF37] shrink-0 animate-spin" />
                 <div>
                   <p className="font-medium text-slate-800">Running identity checks</p>
                   <p className="text-sm text-muted-foreground">
@@ -430,7 +430,7 @@ export default function ProviderApplicationStatus() {
                 <MessageSquare className="h-4 w-4" />
                 Messages
                 {messages.length > 0 && (
-                  <span className="bg-blue-100 text-blue-700 rounded-full text-xs px-1.5 font-normal">
+                  <span className="bg-[#D4AF37] text-[#B8932F] rounded-full text-xs px-1.5 font-normal">
                     {messages.length}
                   </span>
                 )}
@@ -452,17 +452,17 @@ export default function ProviderApplicationStatus() {
                         key={msg.id}
                         className={`rounded p-3 text-sm ${isFromMe
                           ? 'bg-green-50 border border-green-100 ml-4'
-                          : 'bg-blue-50 border border-blue-100 mr-4'}`}
+                          : 'bg-[#D4AF37] border border-[#D4AF37] mr-4'}`}
                       >
                         <div className="flex items-center justify-between mb-1">
-                          <span className={`text-xs font-medium ${isFromMe ? 'text-green-700' : 'text-blue-700'}`}>
+                          <span className={`text-xs font-medium ${isFromMe ? 'text-green-700' : 'text-[#B8932F]'}`}>
                             {isFromMe ? 'You' : 'PetWash Support'}
                           </span>
-                          <span className={`text-xs ${isFromMe ? 'text-green-500' : 'text-blue-400'}`}>
+                          <span className={`text-xs ${isFromMe ? 'text-green-500' : 'text-[#D4AF37]'}`}>
                             {new Date(msg.created_at).toLocaleDateString('he-IL', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <p className={isFromMe ? 'text-green-900' : 'text-blue-900'}>{msg.body}</p>
+                        <p className={isFromMe ? 'text-green-900' : 'text-[#B8932F]'}>{msg.body}</p>
                       </div>
                     );
                   })}

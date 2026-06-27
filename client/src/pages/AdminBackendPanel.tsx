@@ -108,8 +108,8 @@ function StatusBadge({ status }: { status: string }) {
     approved: { color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle },
     rejected: { color: "bg-red-100 text-red-800 border-red-200", icon: XCircle },
     active: { color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle },
-    interview: { color: "bg-blue-100 text-blue-800 border-blue-200", icon: AlertCircle },
-    review: { color: "bg-purple-100 text-purple-800 border-purple-200", icon: AlertCircle },
+    interview: { color: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]", icon: AlertCircle },
+    review: { color: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]", icon: AlertCircle },
   };
   const variant = variants[status?.toLowerCase()] || variants.pending;
   const Icon = variant.icon;
@@ -123,13 +123,13 @@ function StatusBadge({ status }: { status: string }) {
 
 function LoyaltyBadge({ tier }: { tier: string }) {
   const colors: Record<string, string> = {
-    bronze: "bg-orange-100 text-orange-800 border-orange-200",
+    bronze: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
     silver: "bg-white text-gray-700 border-gray-200",
     gold: "bg-yellow-100 text-yellow-800 border-yellow-200",
     platinum: "bg-white text-slate-800 border-slate-200",
-    diamond: "bg-cyan-100 text-cyan-800 border-cyan-200",
-    elite: "bg-purple-100 text-purple-800 border-purple-200",
-    royal: "bg-indigo-100 text-indigo-800 border-indigo-200",
+    diamond: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
+    elite: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
+    royal: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
   };
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${colors[tier?.toLowerCase()] || colors.bronze}`}>
@@ -270,8 +270,8 @@ export default function AdminBackendPanel() {
               <Card className="border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("members")}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center">
-                      <Users className="w-5 h-5 text-blue-600" />
+                    <div className="w-10 h-10 rounded-xl bg-[#D4AF37] flex items-center justify-center">
+                      <Users className="w-5 h-5 text-[#B8932F]" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-gray-900">{stats?.members ?? "—"}</p>
@@ -298,8 +298,8 @@ export default function AdminBackendPanel() {
               <Card className="border border-gray-100 shadow-sm cursor-pointer hover:shadow-md transition-shadow" onClick={() => setActiveTab("staff")}>
                 <CardContent className="p-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-xl bg-purple-50 flex items-center justify-center">
-                      <UserCheck className="w-5 h-5 text-purple-600" />
+                    <div className="w-10 h-10 rounded-xl bg-[#D4AF37] flex items-center justify-center">
+                      <UserCheck className="w-5 h-5 text-[#B8932F]" />
                     </div>
                     <div>
                       <p className="text-2xl font-bold text-gray-900">{stats?.staff ?? "—"}</p>

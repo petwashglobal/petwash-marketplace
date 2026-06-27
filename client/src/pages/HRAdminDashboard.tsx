@@ -43,21 +43,21 @@ import { apiRequest, queryClient } from '@/lib/queryClient';
 
 const statusConfig: Record<string, { color: string; bgColor: string; icon: any; label: string; labelHe: string }> = {
   draft: { color: 'text-gray-600', bgColor: 'bg-white', icon: FileText, label: 'Draft', labelHe: 'טיוטה' },
-  pending: { color: 'text-blue-600', bgColor: 'bg-blue-100', icon: Clock, label: 'Pending', labelHe: 'ממתין' },
+  pending: { color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]', icon: Clock, label: 'Pending', labelHe: 'ממתין' },
   under_review: { color: 'text-amber-600', bgColor: 'bg-amber-100', icon: Eye, label: 'Under Review', labelHe: 'בבדיקה' },
-  documents_required: { color: 'text-orange-600', bgColor: 'bg-orange-100', icon: FileText, label: 'Docs Required', labelHe: 'נדרשים מסמכים' },
-  background_check: { color: 'text-indigo-600', bgColor: 'bg-indigo-100', icon: Shield, label: 'Background Check', labelHe: 'בדיקת רקע' },
-  interview_scheduled: { color: 'text-purple-600', bgColor: 'bg-purple-100', icon: Calendar, label: 'Interview', labelHe: 'ראיון' },
+  documents_required: { color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]', icon: FileText, label: 'Docs Required', labelHe: 'נדרשים מסמכים' },
+  background_check: { color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]', icon: Shield, label: 'Background Check', labelHe: 'בדיקת רקע' },
+  interview_scheduled: { color: 'text-[#B8932F]', bgColor: 'bg-[#D4AF37]', icon: Calendar, label: 'Interview', labelHe: 'ראיון' },
   approved: { color: 'text-emerald-600', bgColor: 'bg-emerald-100', icon: CheckCircle2, label: 'Approved', labelHe: 'אושר' },
   rejected: { color: 'text-red-600', bgColor: 'bg-red-100', icon: XCircle, label: 'Rejected', labelHe: 'נדחה' },
   withdrawn: { color: 'text-gray-500', bgColor: 'bg-white', icon: XCircle, label: 'Withdrawn', labelHe: 'נמשך' },
 };
 
 const roleColors: Record<string, string> = {
-  walker: 'from-pink-500 to-rose-600',
-  driver: 'from-blue-500 to-indigo-600',
-  sitter: 'from-purple-500 to-violet-600',
-  host: 'from-amber-500 to-orange-600',
+  walker: 'from-[#D4AF37] to-rose-600',
+  driver: 'from-[#D4AF37] to-[#B8932F]',
+  sitter: 'from-[#D4AF37] to-[#B8932F]',
+  host: 'from-amber-500 to-[#B8932F]',
   supplier: 'from-emerald-500 to-teal-600',
   admin: 'from-slate-500 to-gray-600',
   trainer: 'from-yellow-500 to-amber-600',
@@ -247,7 +247,7 @@ export default function HRAdminDashboard() {
               <Button 
                 onClick={() => bulkShortlistMutation.mutate()}
                 disabled={bulkShortlistMutation.isPending}
-                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F]"
                 data-testid="button-bulk-shortlist"
               >
                 {bulkShortlistMutation.isPending ? (
@@ -277,8 +277,8 @@ export default function HRAdminDashboard() {
                     <p className="text-sm text-gray-500">{isRTL ? 'סה"כ מועמדויות' : 'Total Applications'}</p>
                     <p className="text-3xl font-bold text-gray-900">{stats?.total || 0}</p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center">
-                    <Users className="w-6 h-6 text-blue-600" />
+                  <div className="w-12 h-12 rounded-full bg-[#D4AF37] flex items-center justify-center">
+                    <Users className="w-6 h-6 text-[#B8932F]" />
                   </div>
                 </div>
               </CardContent>
@@ -541,7 +541,7 @@ export default function HRAdminDashboard() {
                   <Button
                     onClick={() => shortlistSingleMutation.mutate(selectedApplication.id)}
                     disabled={shortlistSingleMutation.isPending}
-                    className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                    className="bg-gradient-to-r from-[#B8932F] to-[#B8932F] hover:from-[#B8932F] hover:to-[#B8932F]"
                     data-testid="button-shortlist-single"
                   >
                     {shortlistSingleMutation.isPending ? (

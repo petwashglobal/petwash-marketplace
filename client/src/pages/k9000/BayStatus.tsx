@@ -116,12 +116,12 @@ export default function K9000BayStatus() {
         <div className="luxury-glass-card luxury-shadow-xl p-6">
           <div className="flex items-center justify-between mb-4">
             <h2 className="luxury-heading-sm flex items-center gap-2">
-              <Waves className="h-5 w-5 text-blue-500" />
+              <Waves className="h-5 w-5 text-[#D4AF37]" />
               {isHebrew ? 'מצב מפרצים בזמן אמת' : t('k9000.bayStatus', language)}
             </h2>
             <button
               onClick={() => refetch()}
-              className="text-gray-400 hover:text-blue-500 transition-colors"
+              className="text-gray-400 hover:text-[#D4AF37] transition-colors"
               aria-label="Refresh bay status"
               data-testid="button-refresh-bay"
             >
@@ -131,7 +131,7 @@ export default function K9000BayStatus() {
 
           {isLoading && (
             <div className="text-center py-6 luxury-text-body opacity-60">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-3" />
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#D4AF37] mx-auto mb-3" />
               {isHebrew ? 'בודק זמינות מפרצים...' : t('k9000.checkingBayStatus', language)}
             </div>
           )}
@@ -195,12 +195,12 @@ export default function K9000BayStatus() {
           </h2>
 
           {/* Path 1: Pay at terminal (public / walk-up) */}
-          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 space-y-2">
-            <div className="flex items-center gap-2 font-semibold text-blue-800">
+          <div className="rounded-xl border border-[#D4AF37] bg-[#D4AF37] p-4 space-y-2">
+            <div className="flex items-center gap-2 font-semibold text-[#B8932F]">
               <CreditCard className="h-5 w-5" />
               {isHebrew ? 'תשלום בטרמינל (כרטיס / NFC)' : t('k9000.payAtTerminal', language)}
             </div>
-            <p className="text-sm text-blue-700">
+            <p className="text-sm text-[#B8932F]">
               {isHebrew
                 ? 'גש למפרץ הפנוי, הנח כרטיס אשראי או טלפון על קורא ה-Nayax — השטיפה מתחילה מיד.'
                 : t('k9000.payAtTerminalDesc', language)}
@@ -208,12 +208,12 @@ export default function K9000BayStatus() {
           </div>
 
           {/* Path 2: Member redemption */}
-          <div className="rounded-xl border border-purple-200 bg-purple-50 p-4 space-y-2">
-            <div className="flex items-center gap-2 font-semibold text-purple-800">
+          <div className="rounded-xl border border-[#D4AF37] bg-[#D4AF37] p-4 space-y-2">
+            <div className="flex items-center gap-2 font-semibold text-[#B8932F]">
               <Waves className="h-5 w-5" />
               {isHebrew ? 'מימוש קרדיט / QR' : t('k9000.redeemWash', language)}
             </div>
-            <p className="text-sm text-purple-700">
+            <p className="text-sm text-[#B8932F]">
               {isHebrew
                 ? 'יש לך קרדיטים או חבילת שטיפה? צור QR באפליקציה וסרוק אותו בטרמינל.'
                 : 'Have wash credits or a package? Generate a QR in the app and scan it at the terminal.'}

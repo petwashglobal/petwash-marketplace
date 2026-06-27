@@ -184,7 +184,7 @@ function dtShort(s: string | null): string {
 function SeverityBadge({ s }: { s: Severity }) {
   const styles = {
     critical: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200',
-    high:     'bg-orange-100 text-orange-800 dark:bg-orange-950 dark:text-orange-200',
+    high:     'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
     medium:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200',
     low:      'bg-white text-gray-600 dark:bg-white dark:text-gray-400',
   };
@@ -208,10 +208,10 @@ function SlaCell({ ageHours, slaBudgetHours, slaStatus }: {
   const remaining = slaBudgetHours - ageHours;
   const barColor  =
     slaStatus === 'breached' ? 'bg-red-500' :
-    slaStatus === 'at_risk'  ? 'bg-orange-400' : 'bg-emerald-400';
+    slaStatus === 'at_risk'  ? 'bg-[#D4AF37]' : 'bg-emerald-400';
   const textColor =
     slaStatus === 'breached' ? 'text-red-600 dark:text-red-400' :
-    slaStatus === 'at_risk'  ? 'text-orange-600 dark:text-orange-400' :
+    slaStatus === 'at_risk'  ? 'text-[#B8932F] dark:text-[#D4AF37]' :
                                'text-emerald-600 dark:text-emerald-400';
   return (
     <div className="space-y-1 min-w-[80px]">
@@ -232,8 +232,8 @@ function AssignedBadge({ uid, isMe }: { uid: string; isMe: boolean }) {
     <Badge className={cn(
       'border-0 text-xs font-mono flex items-center gap-1 max-w-[100px]',
       isMe
-        ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-        : 'bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300'
+        ? 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]'
+        : 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]'
     )}>
       <User className="h-2.5 w-2.5 flex-shrink-0" />
       <span className="truncate">{isMe ? 'Me' : shortUid(uid)}</span>
@@ -407,7 +407,7 @@ function BulkActionBar({ selected, casesByKey, onClear, onSuccess, currentUid, a
         <Button
           size="sm"
           variant="outline"
-          className="gap-1.5 text-blue-700 border-blue-300 hover:bg-blue-50 dark:text-blue-300 dark:border-blue-600"
+          className="gap-1.5 text-[#B8932F] border-[#D4AF37] hover:bg-[#D4AF37] dark:text-[#D4AF37] dark:border-[#B8932F]"
           disabled={bulkMutation.isPending}
           onClick={() => bulkMutation.mutate('assign_to_me')}
         >
@@ -432,7 +432,7 @@ function BulkActionBar({ selected, casesByKey, onClear, onSuccess, currentUid, a
           <Button
             size="sm"
             variant="outline"
-            className="gap-1.5 text-orange-700 border-orange-300 hover:bg-orange-50 dark:text-orange-300"
+            className="gap-1.5 text-[#B8932F] border-[#D4AF37] hover:bg-[#D4AF37] dark:text-[#D4AF37]"
             disabled={bulkMutation.isPending}
             onClick={() => bulkMutation.mutate('mark_under_review')}
           >
@@ -500,7 +500,7 @@ function RowAssignControls({ caseType, caseRefId, assignedToUid, currentUid, onM
       <Button
         size="sm"
         variant="ghost"
-        className="h-6 text-xs gap-1 text-blue-600 hover:text-blue-800 hover:bg-blue-50 dark:text-blue-400 px-2"
+        className="h-6 text-xs gap-1 text-[#B8932F] hover:text-[#B8932F] hover:bg-[#D4AF37] dark:text-[#D4AF37] px-2"
         disabled={isPending}
         onClick={e => { e.stopPropagation(); assignMe.mutate(); }}
       >
@@ -530,7 +530,7 @@ function RowAssignControls({ caseType, caseRefId, assignedToUid, currentUid, onM
     <Button
       size="sm"
       variant="ghost"
-      className="h-6 text-xs gap-1 text-indigo-600 hover:text-blue-700 hover:bg-blue-50 px-2"
+      className="h-6 text-xs gap-1 text-[#B8932F] hover:text-[#B8932F] hover:bg-[#D4AF37] px-2"
       disabled={isPending}
       onClick={e => { e.stopPropagation(); assignMe.mutate(); }}
       title={`Currently: ${assignedToUid}`}
@@ -546,7 +546,7 @@ function RowAssignControls({ caseType, caseRefId, assignedToUid, currentUid, onM
 function CaseTypeBadge({ type }: { type: string }) {
   const styles = {
     dispute:  'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
-    mismatch: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300',
+    mismatch: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
     refund:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
   }[type] ?? 'bg-white text-gray-600';
   return <Badge className={cn('border-0 text-xs capitalize', styles)}>{type}</Badge>;
@@ -581,7 +581,7 @@ function ReopenButton({ bookingId, onDone }: { bookingId: string; onDone: () => 
     return (
       <Button
         size="sm" variant="ghost"
-        className="h-6 text-xs gap-1 px-2 text-indigo-600 hover:bg-indigo-50"
+        className="h-6 text-xs gap-1 px-2 text-[#B8932F] hover:bg-[#D4AF37]"
         onClick={e => { e.stopPropagation(); setOpen(true); }}
       >
         <RotateCcw className="h-3 w-3" />Reopen
@@ -830,8 +830,8 @@ function EscalatedTab({ cases, isLoading, currentUid }: {
                       <Badge className={cn(
                         'border-0 text-xs font-mono',
                         c.escalatedToUid === currentUid
-                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-200'
-                          : 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300'
+                          ? 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]'
+                          : 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]'
                       )}>
                         {c.escalatedToUid === currentUid ? 'Me' : c.escalatedToUid === 'platform_admin' ? 'Admin' : c.escalatedToUid.slice(0, 8) + '…'}
                       </Badge>
@@ -841,7 +841,7 @@ function EscalatedTab({ cases, isLoading, currentUid }: {
                   </TableCell>
                   <TableCell className="py-3">
                     {c.assignedToUid ? (
-                      <Badge className="border-0 text-xs font-mono bg-indigo-100 text-indigo-700 dark:bg-indigo-950 dark:text-indigo-300">
+                      <Badge className="border-0 text-xs font-mono bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]">
                         {c.assignedToUid === currentUid ? 'Me' : c.assignedToUid.slice(0, 8) + '…'}
                       </Badge>
                     ) : (
@@ -852,7 +852,7 @@ function EscalatedTab({ cases, isLoading, currentUid }: {
                     <div className="flex items-center gap-1.5">
                       <Link
                         href={`/booking-trace/${c.bookingId}`}
-                        className="inline-flex items-center gap-0.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 text-xs"
+                        className="inline-flex items-center gap-0.5 text-[#B8932F] hover:text-[#B8932F] dark:text-[#D4AF37] text-xs"
                         onClick={e => e.stopPropagation()}
                       >
                         View <ArrowUpRight className="h-3 w-3" />
@@ -1062,8 +1062,8 @@ export default function CaseQueue() {
                 className={cn(
                   'h-6 text-xs gap-1 px-2',
                   isExpanded
-                    ? 'text-indigo-600 bg-indigo-50 dark:bg-indigo-950'
-                    : 'text-gray-500 hover:text-indigo-600 hover:bg-indigo-50'
+                    ? 'text-[#B8932F] bg-[#D4AF37] dark:bg-[#B8932F]'
+                    : 'text-gray-500 hover:text-[#B8932F] hover:bg-[#D4AF37]'
                 )}
                 onClick={e => { e.stopPropagation(); toggleNotes(c.caseId); }}
               >
@@ -1106,7 +1106,7 @@ export default function CaseQueue() {
     return (
       <TableCell className="py-3 space-y-0.5">
         {assignee.assignedTeamId != null && (
-          <Badge className="border-0 text-xs flex items-center gap-1 bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300 max-w-[110px]">
+          <Badge className="border-0 text-xs flex items-center gap-1 bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] max-w-[110px]">
             <Building2 className="h-2.5 w-2.5 flex-shrink-0" />
             <span className="truncate">{assignee.teamName ?? `Team ${assignee.assignedTeamId}`}</span>
           </Badge>
@@ -1151,8 +1151,8 @@ export default function CaseQueue() {
                       ? opt.value === 'all'
                         ? 'bg-gray-900 dark:bg-white text-white dark:text-gray-900 font-medium'
                         : opt.value === 'mine'
-                          ? 'bg-blue-600 text-white font-medium'
-                          : 'bg-purple-600 text-white font-medium'
+                          ? 'bg-[#B8932F] text-white font-medium'
+                          : 'bg-[#B8932F] text-white font-medium'
                       : 'text-gray-600 dark:text-gray-400 hover:bg-white dark:hover:bg-white'
                   )}
                   onClick={() => setCaseFilter(opt.value)}
@@ -1258,8 +1258,8 @@ export default function CaseQueue() {
                         className={cn(
                           'transition-colors',
                           c.severity === 'critical' && 'bg-red-50/40 dark:bg-red-950/20',
-                          c.severity === 'high'     && 'bg-orange-50/40 dark:bg-orange-950/20',
-                          selected.has(c.caseId)    && 'bg-blue-50/60 dark:bg-blue-950/20',
+                          c.severity === 'high'     && 'bg-[#D4AF37]/40 dark:bg-[#B8932F]/20',
+                          selected.has(c.caseId)    && 'bg-[#D4AF37]/60 dark:bg-[#B8932F]/20',
                         )}
                       >
                         <TableCell className="py-3 pl-3">
@@ -1291,7 +1291,7 @@ export default function CaseQueue() {
                           <Badge className={cn(
                             'border-0 text-xs capitalize',
                             c.status === 'open'         ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
-                            c.status === 'under_review' ? 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' :
+                            c.status === 'under_review' ? 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]' :
                             'bg-white text-gray-600'
                           )}>
                             {c.status.replace(/_/g, ' ')}
@@ -1305,7 +1305,7 @@ export default function CaseQueue() {
                         <TableCell className="py-3">
                           <Link
                             href={`/booking-trace/${c.bookingId}`}
-                            className="inline-flex items-center gap-0.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 text-xs"
+                            className="inline-flex items-center gap-0.5 text-[#B8932F] hover:text-[#B8932F] dark:text-[#D4AF37] text-xs"
                             onClick={e => e.stopPropagation()}
                           >
                             View <ArrowUpRight className="h-3 w-3" />
@@ -1362,8 +1362,8 @@ export default function CaseQueue() {
                         className={cn(
                           'transition-colors',
                           c.severity === 'critical' && 'bg-red-50/40 dark:bg-red-950/20',
-                          c.severity === 'high'     && 'bg-orange-50/40 dark:bg-orange-950/20',
-                          selected.has(c.caseId)    && 'bg-blue-50/60 dark:bg-blue-950/20',
+                          c.severity === 'high'     && 'bg-[#D4AF37]/40 dark:bg-[#B8932F]/20',
+                          selected.has(c.caseId)    && 'bg-[#D4AF37]/60 dark:bg-[#B8932F]/20',
                         )}
                       >
                         <TableCell className="py-3 pl-3">
@@ -1381,7 +1381,7 @@ export default function CaseQueue() {
                           {c.stationCode && <span className="text-xs text-gray-400 ml-1">({c.stationCode})</span>}
                         </TableCell>
                         <TableCell className="py-3 text-sm text-right tabular-nums">{fmt(c.totalAmount)}</TableCell>
-                        <TableCell className="py-3 text-sm text-right tabular-nums font-semibold text-orange-600 dark:text-orange-400">
+                        <TableCell className="py-3 text-sm text-right tabular-nums font-semibold text-[#B8932F] dark:text-[#D4AF37]">
                           {fmt(c.mismatchILS)}
                         </TableCell>
                         <TableCell className="py-3 text-sm text-gray-600 dark:text-gray-400 whitespace-nowrap">
@@ -1394,7 +1394,7 @@ export default function CaseQueue() {
                         <TableCell className="py-3">
                           <Link
                             href={`/booking-trace/${c.bookingId}`}
-                            className="inline-flex items-center gap-0.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 text-xs"
+                            className="inline-flex items-center gap-0.5 text-[#B8932F] hover:text-[#B8932F] dark:text-[#D4AF37] text-xs"
                             onClick={e => e.stopPropagation()}
                           >
                             View <ArrowUpRight className="h-3 w-3" />
@@ -1453,8 +1453,8 @@ export default function CaseQueue() {
                         className={cn(
                           'transition-colors',
                           c.severity === 'critical' && 'bg-red-50/40 dark:bg-red-950/20',
-                          c.severity === 'high'     && 'bg-orange-50/40 dark:bg-orange-950/20',
-                          selected.has(c.caseId)    && 'bg-blue-50/60 dark:bg-blue-950/20',
+                          c.severity === 'high'     && 'bg-[#D4AF37]/40 dark:bg-[#B8932F]/20',
+                          selected.has(c.caseId)    && 'bg-[#D4AF37]/60 dark:bg-[#B8932F]/20',
                         )}
                       >
                         <TableCell className="py-3 pl-3">
@@ -1487,7 +1487,7 @@ export default function CaseQueue() {
                           <Badge className={cn(
                             'border-0 text-xs capitalize',
                             c.refundStatus === 'pending'    ? 'bg-yellow-100 text-yellow-700' :
-                            c.refundStatus === 'processing' ? 'bg-orange-100 text-orange-700' :
+                            c.refundStatus === 'processing' ? 'bg-[#D4AF37] text-[#B8932F]' :
                             'bg-white text-gray-600'
                           )}>
                             {c.refundStatus}
@@ -1496,7 +1496,7 @@ export default function CaseQueue() {
                         <TableCell className="py-3">
                           <Link
                             href={`/booking-trace/${c.bookingId}`}
-                            className="inline-flex items-center gap-0.5 text-blue-600 hover:text-blue-800 dark:text-blue-400 text-xs"
+                            className="inline-flex items-center gap-0.5 text-[#B8932F] hover:text-[#B8932F] dark:text-[#D4AF37] text-xs"
                             onClick={e => e.stopPropagation()}
                           >
                             View <ArrowUpRight className="h-3 w-3" />

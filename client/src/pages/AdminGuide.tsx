@@ -61,7 +61,7 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="w-12 h-12 bg-gradient-to-br from-purple-600 to-purple-700 rounded-lg flex items-center justify-center shadow-lg">
+              <div className="w-12 h-12 bg-gradient-to-br from-[#B8932F] to-[#B8932F] rounded-lg flex items-center justify-center shadow-lg">
                 <Book className="w-6 h-6 text-white" />
               </div>
               <div>
@@ -76,7 +76,7 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
           </div>
 
           <Card className="luxury-glass-card luxury-shadow-lg">
-            <CardHeader className="bg-gradient-to-r from-blue-50 to-blue-100 dark:from-blue-900 dark:to-blue-800 border-b">
+            <CardHeader className="bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] dark:from-[#B8932F] dark:to-[#B8932F] border-b">
               <CardTitle className="flex items-center gap-2">
                 <Book className="w-5 h-5" />
                 {t('admin.guide.guideContents')}
@@ -88,12 +88,12 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
                   <div className="prose prose-blue max-w-none
                     prose-headings:font-bold
                     prose-h1:text-4xl prose-h1:mb-6 prose-h1:mt-8
-                    prose-h2:text-3xl prose-h2:mb-4 prose-h2:mt-8 prose-h2:border-b-2 prose-h2:border-blue-600 prose-h2:pb-2
+                    prose-h2:text-3xl prose-h2:mb-4 prose-h2:mt-8 prose-h2:border-b-2 prose-h2:border-[#B8932F] prose-h2:pb-2
                     prose-h3:text-2xl prose-h3:mb-3 prose-h3:mt-6
                     prose-h4:text-xl prose-h4:mb-2 prose-h4:mt-4
                     prose-p:text-gray-700 prose-p:leading-relaxed prose-p:mb-4
-                    prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline
-                    prose-code:bg-white prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-blue-600
+                    prose-a:text-[#B8932F] prose-a:no-underline hover:prose-a:underline
+                    prose-code:bg-white prose-code:px-2 prose-code:py-1 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:text-[#B8932F]
                     prose-pre:bg-gray-900 prose-pre:text-gray-100
                     prose-ul:list-disc prose-ul:list-inside prose-ul:space-y-1 prose-ul:mb-4
                     prose-ol:list-decimal prose-ol:list-inside prose-ol:space-y-1 prose-ol:mb-4
@@ -102,7 +102,7 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
                     prose-th:border prose-th:border-gray-300 prose-th:bg-white prose-th:px-4 prose-th:py-2 prose-th:font-bold
                     prose-td:border prose-td:border-gray-300 prose-td:px-4 prose-td:py-2
                     prose-strong:font-bold prose-strong:text-gray-900
-                    prose-blockquote:border-l-4 prose-blockquote:border-blue-600 prose-blockquote:pl-4 prose-blockquote:italic
+                    prose-blockquote:border-l-4 prose-blockquote:border-[#B8932F] prose-blockquote:pl-4 prose-blockquote:italic
                   ">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
                       {guideContent}
@@ -111,7 +111,7 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
                 ) : (
                   <div className="flex items-center justify-center py-12">
                     <div className="text-center">
-                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#B8932F] mx-auto mb-4"></div>
                       <p className="text-gray-600">
                         {t('admin.guide.loadingGuide')}
                       </p>
@@ -151,11 +151,11 @@ export default function AdminGuide({ language, onLanguageChange }: AdminGuidePro
             </Card>
           </div>
 
-          <Card className="mt-6 bg-blue-50 dark:bg-blue-900 border-blue-200 dark:border-blue-700">
+          <Card className="mt-6 bg-[#D4AF37] dark:bg-[#B8932F] border-[#D4AF37] dark:border-[#B8932F]">
             <CardContent className="p-6">
               <p className="text-sm text-gray-700 dark:text-black text-center">
                 {t('admin.guide.needHelp')}{' '}
-                <a href="mailto:Support@PetWash.co.il" className="font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                <a href="mailto:Support@PetWash.co.il" className="font-medium text-[#B8932F] dark:text-[#D4AF37] hover:underline">
                   Support@PetWash.co.il
                 </a>
               </p>

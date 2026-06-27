@@ -33,7 +33,7 @@ export default function LocationPartners() {
     <div className="min-h-screen luxury-bg-mesh py-12">
       <div className="container max-w-6xl mx-auto px-4">
         <div className="text-center mb-16 luxury-animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-purple-500 to-pink-600 rounded-full mb-4 luxury-shadow-lg luxury-animate-scale-in">
+          <div className="inline-flex items-center justify-center w-20 h-20 bg-gradient-to-br from-[#D4AF37] to-[#B8932F] rounded-full mb-4 luxury-shadow-lg luxury-animate-scale-in">
             <MapPin className="w-10 h-10 text-white" />
           </div>
           <h1 className="luxury-heading-xl mb-4">
@@ -51,7 +51,7 @@ export default function LocationPartners() {
             const Icon = type.icon;
             return (
               <div key={type.name} className={`luxury-glass-card luxury-hover-glow luxury-shadow-lg p-6 luxury-animate-fade-in luxury-delay-${idx + 2}`}>
-                <Icon className="w-12 h-12 text-purple-600 mb-4" />
+                <Icon className="w-12 h-12 text-[#B8932F] mb-4" />
                 <h3 className="luxury-heading-sm mb-2">{type.name}</h3>
                 <p className="luxury-text-body">{type.desc}</p>
               </div>
@@ -59,7 +59,7 @@ export default function LocationPartners() {
           })}
         </div>
 
-        <div className="luxury-glass-card luxury-shadow-xl p-8 text-center bg-gradient-to-r from-purple-500/10 to-pink-500/10 luxury-animate-fade-in luxury-delay-6">
+        <div className="luxury-glass-card luxury-shadow-xl p-8 text-center bg-gradient-to-r from-[#D4AF37]/10 to-[#D4AF37]/10 luxury-animate-fade-in luxury-delay-6">
           <h2 className="luxury-heading-lg mb-4">
             {isHe ? 'מעוניינים לארח תחנת ⁦K9000™⁩?' : 'Interested in Hosting a ⁦K9000™⁩ Station?'}
           </h2>

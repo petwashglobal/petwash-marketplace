@@ -126,25 +126,25 @@ interface PolicyVersion {
 
 const TYPE_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   approval_threshold: { label: 'Approval', icon: <CheckCircle2 className="h-3.5 w-3.5" />, color: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' },
-  auto_routing:       { label: 'Routing',  icon: <Route className="h-3.5 w-3.5" />,       color: 'bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300' },
-  escalation_rule:    { label: 'Escalation', icon: <AlertTriangle className="h-3.5 w-3.5" />, color: 'bg-orange-100 text-orange-700 dark:bg-orange-950 dark:text-orange-300' },
-  playbook:           { label: 'Playbook', icon: <Zap className="h-3.5 w-3.5" />,         color: 'bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300' },
+  auto_routing:       { label: 'Routing',  icon: <Route className="h-3.5 w-3.5" />,       color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]' },
+  escalation_rule:    { label: 'Escalation', icon: <AlertTriangle className="h-3.5 w-3.5" />, color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]' },
+  playbook:           { label: 'Playbook', icon: <Zap className="h-3.5 w-3.5" />,         color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]' },
 };
 
 const OUTCOME_META: Record<string, { label: string; color: string }> = {
   auto_approve:       { label: 'AUTO-APPROVED',      color: 'bg-green-100 text-green-700 border-green-200' },
   level_2_required:   { label: 'LEVEL-2 REQUIRED',   color: 'bg-red-100 text-red-700 border-red-200' },
   level_1_required:   { label: 'MANAGER REVIEW',     color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  actions_queued:     { label: 'ACTIONS QUEUED',      color: 'bg-blue-100 text-blue-700 border-blue-200' },
+  actions_queued:     { label: 'ACTIONS QUEUED',      color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
   no_match:           { label: 'NO POLICIES MATCHED', color: 'bg-white text-gray-600 border-gray-200' },
 };
 
 const CHANGE_TYPE_META: Record<string, { label: string; color: string }> = {
   created:      { label: 'Created',      color: 'bg-green-100 text-green-700' },
-  updated:      { label: 'Updated',      color: 'bg-blue-100 text-blue-700' },
+  updated:      { label: 'Updated',      color: 'bg-[#D4AF37] text-[#B8932F]' },
   deactivated:  { label: 'Deactivated',  color: 'bg-red-100 text-red-700' },
   activated:    { label: 'Activated',    color: 'bg-green-100 text-green-700' },
-  rolled_back:  { label: 'Rolled Back',  color: 'bg-purple-100 text-purple-700' },
+  rolled_back:  { label: 'Rolled Back',  color: 'bg-[#D4AF37] text-[#B8932F]' },
 };
 
 function TypeBadge({ type }: { type: string }) {
@@ -259,7 +259,7 @@ function PolicyForm({ policy, open, onClose, onSaved }: PolicyFormProps) {
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <ShieldCheck className="h-5 w-5 text-blue-600" />
+            <ShieldCheck className="h-5 w-5 text-[#B8932F]" />
             {isEdit ? 'Edit Policy' : 'New Governance Policy'}
           </DialogTitle>
         </DialogHeader>
@@ -469,7 +469,7 @@ function SimulateTab() {
                           <div className="text-xs font-medium text-gray-500 mt-2 mb-1">Actions</div>
                           <div className="flex flex-wrap gap-1">
                             {p.actions.map((a: any, i: number) => (
-                              <Badge key={i} className="border-0 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-xs">
+                              <Badge key={i} className="border-0 bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">
                                 {a.type}{a.level ? `:L${a.level}` : ''}{a.role ? `:${a.role}` : ''}
                               </Badge>
                             ))}
@@ -605,7 +605,7 @@ function TraceTab() {
                 <Collapsible key={step.executionId} open={expanded.has(step.executionId)} onOpenChange={() => toggleExpand(step.executionId)}>
                   <div className="flex gap-3">
                     {/* Step number */}
-                    <div className="h-10 w-10 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center shrink-0 z-10">
+                    <div className="h-10 w-10 rounded-full bg-[#B8932F] text-white text-xs font-bold flex items-center justify-center shrink-0 z-10">
                       {step.step}
                     </div>
 
@@ -637,7 +637,7 @@ function TraceTab() {
                             <div className="text-xs font-medium text-gray-500 mb-1">Actions taken</div>
                             <div className="flex flex-wrap gap-1">
                               {step.actionsTaken.map((a, i) => (
-                                <Badge key={i} className="border-0 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-xs">{a}</Badge>
+                                <Badge key={i} className="border-0 bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">{a}</Badge>
                               ))}
                             </div>
                           </div>
@@ -748,10 +748,10 @@ function VersionsTab() {
                     const meta = CHANGE_TYPE_META[v.changeType] ?? { label: v.changeType, color: 'bg-white text-gray-600' };
                     const isCurrent = idx === 0;
                     return (
-                      <TableRow key={v.versionId} className={isCurrent ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''}>
+                      <TableRow key={v.versionId} className={isCurrent ? 'bg-[#D4AF37]/50 dark:bg-[#B8932F]/10' : ''}>
                         <TableCell className="py-2.5 font-mono text-sm font-semibold">
                           v{v.versionNumber}
-                          {isCurrent && <Badge className="border-0 ml-1.5 text-xs bg-blue-100 text-blue-700">current</Badge>}
+                          {isCurrent && <Badge className="border-0 ml-1.5 text-xs bg-[#D4AF37] text-[#B8932F]">current</Badge>}
                         </TableCell>
                         <TableCell className="py-2.5">
                           <Badge className={cn('border-0 text-xs', meta.color)}>{meta.label}</Badge>
@@ -765,7 +765,7 @@ function VersionsTab() {
                           {!isCurrent && (
                             <Button
                               size="sm" variant="ghost"
-                              className="h-7 gap-1 text-xs text-purple-600 hover:bg-purple-50 hover:text-purple-700"
+                              className="h-7 gap-1 text-xs text-[#B8932F] hover:bg-[#D4AF37] hover:text-[#B8932F]"
                               onClick={() => setRollbackId({ versionId: v.versionId, versionNumber: v.versionNumber })}
                             >
                               <RotateCcw className="h-3 w-3" />Rollback
@@ -795,7 +795,7 @@ function VersionsTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-purple-600 hover:bg-purple-700"
+              className="bg-[#B8932F] hover:bg-[#B8932F]"
               onClick={() => rollbackId && rollbackMut.mutate({ versionId: rollbackId.versionId })}
             >
               {rollbackMut.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Rollback'}
@@ -846,7 +846,7 @@ function ExecutionLog() {
         <TableBody>
           {items.map(e => (
             <>
-              <TableRow key={e.id} className={expandedId === e.id ? 'bg-blue-50/50 dark:bg-blue-950/10' : ''}>
+              <TableRow key={e.id} className={expandedId === e.id ? 'bg-[#D4AF37]/50 dark:bg-[#B8932F]/10' : ''}>
                 <TableCell className="py-2.5">
                   <TypeBadge type={e.policyType} />
                   <div className="text-xs text-gray-700 mt-0.5">{e.policyName}</div>
@@ -858,7 +858,7 @@ function ExecutionLog() {
                 <TableCell className="py-2.5">
                   <div className="flex flex-wrap gap-1">
                     {e.actionsTaken.map((a, i) => (
-                      <Badge key={i} className="border-0 bg-blue-50 text-blue-700 dark:bg-blue-950 dark:text-blue-300 text-xs">{a}</Badge>
+                      <Badge key={i} className="border-0 bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">{a}</Badge>
                     ))}
                   </div>
                 </TableCell>
@@ -874,7 +874,7 @@ function ExecutionLog() {
               </TableRow>
               {expandedId === e.id && e.whyMatched && (
                 <TableRow key={`${e.id}-why`}>
-                  <TableCell colSpan={6} className="py-2 px-4 bg-blue-50/30 dark:bg-blue-950/10">
+                  <TableCell colSpan={6} className="py-2 px-4 bg-[#D4AF37]/30 dark:bg-[#B8932F]/10">
                     <div className="text-xs font-medium text-gray-500 mb-1.5">Why this policy matched</div>
                     <div className="space-y-1">
                       {e.whyMatched.map((c, i) => <ConditionRow key={i} c={c} />)}
@@ -928,7 +928,7 @@ function PoliciesTab({ onEdit, onCreate }: { onEdit: (p: Policy) => void; onCrea
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <span className="text-sm text-gray-500">{policies.length} {showInactive ? 'total' : 'active'} policies</span>
-          <button className="text-xs text-blue-600 hover:underline" onClick={() => setShowInactive(v => !v)}>
+          <button className="text-xs text-[#B8932F] hover:underline" onClick={() => setShowInactive(v => !v)}>
             {showInactive ? 'Show active only' : 'Show all including inactive'}
           </button>
         </div>
@@ -1054,7 +1054,7 @@ export default function GovernancePolicies() {
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 dark:text-black flex items-center gap-3">
-              <ShieldCheck className="h-6 w-6 text-blue-600" />
+              <ShieldCheck className="h-6 w-6 text-[#B8932F]" />
               Governance & Automation
             </h1>
             <p className="text-sm text-gray-500 mt-1">
@@ -1070,7 +1070,7 @@ export default function GovernancePolicies() {
               className={cn(
                 'px-4 py-2.5 text-sm font-medium transition-colors border-b-2 -mb-px flex items-center gap-1.5',
                 activeTab === tab.id
-                  ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
+                  ? 'border-[#B8932F] text-[#B8932F] dark:border-[#D4AF37] dark:text-[#D4AF37]'
                   : 'border-transparent text-gray-500 hover:text-gray-900 dark:hover:text-gray-200'
               )}>
               {tab.icon}{tab.label}
