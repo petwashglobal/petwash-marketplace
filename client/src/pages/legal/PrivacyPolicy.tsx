@@ -32,7 +32,7 @@ export default function PrivacyPolicy() {
             {/* Introduction */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -58,7 +58,7 @@ export default function PrivacyPolicy() {
             {/* Information We Collect */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-2">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -71,27 +71,27 @@ export default function PrivacyPolicy() {
               </h3>
               <ul className={`space-y-3 ${isHebrew ? 'mr-6' : 'ml-6'}`}>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'פרטים אישיים: שם מלא, תאריך לידה, דוא"ל, טלפון' : 'Personal Details: Full name, date of birth, email, phone'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'כתובת מגורים: רחוב, דירה, עיר, מדינה, מיקוד, מדינה' : 'Home Address: Street, apartment, city, state/province, postal code, country'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'מידע פיננסי: פרטי תשלום מעובדים באמצעות Nayax (אנו לא שומרים פרטי כרטיסי אשראי)' : 'Financial Information: Payment details processed through Nayax (we do not store credit card details)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'פרטי חיית מחמד: שם, גזע, גיל, משקל, תמונות, אלרגיות, צרכים מיוחדים' : 'Pet Information: Name, breed, age, weight, photos, allergies, special needs'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'מסמכי אימות (שמרטפים): תעודת זהות, אישורי רקע, תעודות ביטוח' : 'Verification Documents (Sitters): ID documents, background checks, insurance certificates'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'מידע בריאותי: אלרגיות אישיות, סטטוס עישון (שמרטפים)' : 'Health Information: Personal allergies, smoking status (Sitters)'}</span>
                 </li>
               </ul>
@@ -101,19 +101,19 @@ export default function PrivacyPolicy() {
               </h3>
               <ul className={`space-y-3 ${isHebrew ? 'mr-6' : 'ml-6'}`}>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'מיקום גיאוגרפי: נתוני GPS למצוא שמרטפים קרובים' : 'Geolocation Data: GPS data to find nearby sitters'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'מידע התקן: כתובת IP, סוג דפדפן, מערכת הפעלה' : 'Device Information: IP address, browser type, operating system'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'Cookies ו-טכנולוגיות דומות' : 'Cookies and similar technologies'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'נתוני שימוש: דפים שביקרת, זמן שהותך באתר' : 'Usage Data: Pages visited, time spent on site'}</span>
                 </li>
               </ul>
@@ -122,7 +122,7 @@ export default function PrivacyPolicy() {
             {/* How We Use Information */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-3">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -131,35 +131,35 @@ export default function PrivacyPolicy() {
               </div>
               <ul className={`space-y-3 ${isHebrew ? 'mr-6' : 'ml-6'}`}>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'לאפשר הזמנות ותשלומים בין בעלים לשמרטפים' : 'To facilitate bookings and payments between owners and sitters'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'לאמת זהויות וערוך בדיקות רקע (שמרטפים)' : 'To verify identities and conduct background checks (Sitters)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'לעבד תשלומים באמצעות Nayax עם אסקרו 24 שעות' : 'To process payments via Nayax with 24-hour escrow'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'לחשב ולאכוף עמלת תיווך של 7%' : 'To calculate and enforce 7% brokerage commission'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'לשלוח התראות הזמנה, עדכוני סטטוס, הודעות בטיחות' : 'To send booking confirmations, status updates, safety notifications'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'למנוע הונאה ואבטחה (מערכת תלונות שקטה)' : 'To prevent fraud and ensure safety (Silent complaint system)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'לשפר את הפלטפורמה שלנו (ניתוח, A/B testing)' : 'To improve our Platform (analytics, A/B testing)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'לעמוד בדרישות חוקיות (דיווח מס, תאימות)' : 'To comply with legal requirements (tax reporting, compliance)'}</span>
                 </li>
               </ul>
@@ -168,7 +168,7 @@ export default function PrivacyPolicy() {
             {/* Data Sharing */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -180,25 +180,25 @@ export default function PrivacyPolicy() {
               </p>
               <ul className={`space-y-3 ${isHebrew ? 'mr-6' : 'ml-6'}`}>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'עם הצד השני:' : 'With the Other Party:'}</strong> {isHebrew ? 'בעלים רואים פרופילי שמרטפים (שם, תמונה, ביוגרפיה, ביקורות). שמרטפים רואים פרטי חיות מחמד ומידע ליצירת קשר בעת אישור הזמנה.' : 'Owners see sitter profiles (name, photo, bio, reviews). Sitters see pet details and contact information upon booking confirmation.'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'ספקי שירות:' : 'Service Providers:'}</strong> {isHebrew ? 'Nayax (תשלומים), Firebase (אימות), SendGrid (דוא"ל), Meta WhatsApp Business (הודעות), Google Cloud (אחסון)' : 'Nayax (payments), Firebase (authentication), SendGrid (email), Meta WhatsApp Business (messaging), Google Cloud (storage)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'רשויות חוקיות:' : 'Legal Authorities:'}</strong> {isHebrew ? 'כאשר נדרש על ידי חוק או לצורכי אכיפת חוק' : 'When required by law or for law enforcement purposes'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'בעלי רישיון פוטנציאליים:' : 'Potential Franchisees:'}</strong> {isHebrew ? 'נתוני שוק מצטברים (לא מזהים אישי)' : 'Aggregated market data (non-personally identifiable)'}</span>
                 </li>
               </ul>
-              <div className="mt-6 p-4 luxury-glass-panel border-l-4 border-purple-500">
+              <div className="mt-6 p-4 luxury-glass-panel border-l-4 border-[#D4AF37]">
                 <div className="flex items-center gap-2">
-                  <Lock className="h-5 w-5 text-purple-600" />
+                  <Lock className="h-5 w-5 text-[#B8932F]" />
                   <p className="luxury-text-body font-semibold">
                     {isHebrew ? 'אנו לא מוכרים את המידע האישי שלך לצדדים שלישיים.' : 'We do NOT sell your personal information to third parties.'}
                   </p>
@@ -209,7 +209,7 @@ export default function PrivacyPolicy() {
             {/* Data Retention */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-5">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -218,27 +218,27 @@ export default function PrivacyPolicy() {
               </div>
               <ul className={`space-y-3 ${isHebrew ? 'mr-6' : 'ml-6'}`}>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'פרופילי משתמש פעילים: כל עוד החשבון פעיל' : 'Active User Profiles: As long as the account is active'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'היסטוריית הזמנות: 7 שנים (דרישות חוקיות ישראליות)' : 'Booking History: 7 years (Israeli legal requirements)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'רישומי תשלום: 7 שנים (דרישות מס)' : 'Payment Records: 7 years (tax requirements)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'תלונות ותקריות בטיחות: 10 שנים' : 'Complaints & Safety Incidents: 10 years'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'בדיקות רקע: 5 שנים לאחר סיום פעילות שמרטף' : 'Background Checks: 5 years after sitter deactivation'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'חשבונות שנמחקו: 30 יום תקופת מחיקה רכה (שחזור אפשרי)' : 'Deleted Accounts: 30-day soft delete period (recovery possible)'}</span>
                 </li>
               </ul>
@@ -247,7 +247,7 @@ export default function PrivacyPolicy() {
             {/* Your Rights */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-1">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <Shield className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -259,27 +259,27 @@ export default function PrivacyPolicy() {
               </p>
               <ul className={`space-y-3 ${isHebrew ? 'mr-6' : 'ml-6'}`}>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'גישה:' : 'Access:'}</strong> {isHebrew ? 'בקש עותק של המידע האישי שלך' : 'Request a copy of your personal data'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'תיקון:' : 'Rectification:'}</strong> {isHebrew ? 'תקן מידע לא מדויק או לא שלם' : 'Correct inaccurate or incomplete information'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'מחיקה:' : 'Erasure:'}</strong> {isHebrew ? 'בקש מחיקת החשבון שלך ("זכות להישכח")' : 'Request deletion of your account ("Right to be Forgotten")'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'ניידות:' : 'Portability:'}</strong> {isHebrew ? 'קבל את הנתונים שלך בפורמט מובנה' : 'Receive your data in a structured format'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'התנגדות:' : 'Object:'}</strong> {isHebrew ? 'התנגד לעיבוד מידע למטרות שיווק' : 'Object to processing for marketing purposes'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span><strong>{isHebrew ? 'משיכת הסכמה:' : 'Withdraw Consent:'}</strong> {isHebrew ? 'משוך הסכמה בכל עת (עשוי להגביל שירותים)' : 'Withdraw consent at any time (may limit services)'}</span>
                 </li>
               </ul>
@@ -295,7 +295,7 @@ export default function PrivacyPolicy() {
             {/* Security */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-2">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <Lock className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -307,31 +307,31 @@ export default function PrivacyPolicy() {
               </p>
               <ul className={`space-y-3 ${isHebrew ? 'mr-6' : 'ml-6'}`}>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'הצפנת TLS 1.3 לכל העברת נתונים' : 'TLS 1.3 encryption for all data transmission'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'אימות WebAuthn/Passkey (ביומטרי)' : 'WebAuthn/Passkey authentication (biometric)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'Firebase App Check (זיהוי בוטים)' : 'Firebase App Check (bot detection)'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'גיבויים אוטומטיים יומיים ל-Google Cloud Storage' : 'Daily automated backups to Google Cloud Storage'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'שרת Blockchain-style audit trail למניעת הונאה' : 'Blockchain-style audit trail for fraud prevention'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'ניטור AI למעקב אחר תקריות אבטחה' : 'AI-powered monitoring for security incidents'}</span>
                 </li>
                 <li className="luxury-text-body flex items-start gap-2">
-                  <span className="text-purple-500 mt-1">•</span>
+                  <span className="text-[#D4AF37] mt-1">•</span>
                   <span>{isHebrew ? 'בדיקות חדירה רבעוניות' : 'Quarterly penetration testing'}</span>
                 </li>
               </ul>
@@ -340,7 +340,7 @@ export default function PrivacyPolicy() {
             {/* Children's Privacy */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-3">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <Shield className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -359,7 +359,7 @@ export default function PrivacyPolicy() {
             {/* International Transfers */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-4">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -378,7 +378,7 @@ export default function PrivacyPolicy() {
             {/* Changes to Policy */}
             <div className="luxury-glass-card luxury-shadow-md p-8 luxury-animate-slide-up luxury-delay-5">
               <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">
@@ -397,7 +397,7 @@ export default function PrivacyPolicy() {
             {/* Contact */}
             <div className="luxury-glass-card luxury-shadow-lg p-8 luxury-animate-slide-up luxury-delay-1">
               <div className="flex items-center gap-3 mb-6">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-blue-500 flex items-center justify-center">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
                   <FileText className="h-5 w-5 text-white" />
                 </div>
                 <h2 className="luxury-heading-md">

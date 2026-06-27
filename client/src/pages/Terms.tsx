@@ -46,7 +46,7 @@ export default function Terms() {
 
   const SectionIcon = ({ icon: Icon, delay = 0 }: { icon: any; delay?: number }) => (
     <div 
-      className={`w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex items-center justify-center mb-4 luxury-animate-scale-in luxury-delay-${delay}`}
+      className={`w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex items-center justify-center mb-4 luxury-animate-scale-in luxury-delay-${delay}`}
       style={{ animationDelay: `${delay * 100}ms` }}
     >
       <Icon className="w-6 h-6 text-white" />
@@ -70,7 +70,7 @@ export default function Terms() {
 
             {/* Header */}
             <div className="text-center mb-12 luxury-animate-slide-up">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 luxury-shadow-lg">
+              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 luxury-shadow-lg">
                 <FileText className="w-10 h-10 text-white" />
               </div>
               <h1 className="luxury-heading-xl mb-4">
@@ -122,27 +122,27 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Self-service pet washing stations located throughout Israel</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Pet-formulated washing products, each with a published safety data sheet</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Digital loyalty program with tiered benefits</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>E-voucher system for prepaid wash packages</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Mobile PWA for station management (franchise partners)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>AI-powered customer support assistant</span>
                         </li>
                       </ul>
@@ -160,7 +160,7 @@ export default function Terms() {
                     <SectionIcon icon={CreditCard} delay={3} />
                     <h2 className="luxury-heading-md mb-6">3. Pricing & VAT</h2>
                     <div className="space-y-4">
-                      <div className="luxury-glass-panel p-6 border-l-4 border-blue-500">
+                      <div className="luxury-glass-panel p-6 border-l-4 border-[#D4AF37]">
                         <p className="luxury-heading-sm mb-3">Important: All Prices Include VAT</p>
                         <p className="luxury-text-body mb-3">
                           All prices displayed on our website, mobile app, and physical stations are in Israeli New Shekels (₪) 
@@ -173,15 +173,15 @@ export default function Terms() {
                       <p className="luxury-text-body font-semibold">Current Wash Packages:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold">•</span>
+                          <span className="text-[#B8932F] font-bold">•</span>
                           <span>Single Wash: ₪55 (includes VAT)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold">•</span>
+                          <span className="text-[#B8932F] font-bold">•</span>
                           <span>3-Pack Bundle: ₪150 (includes VAT)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold">•</span>
+                          <span className="text-[#B8932F] font-bold">•</span>
                           <span>5-Pack Bundle: ₪220 (includes VAT, 20% savings)</span>
                         </li>
                       </ul>
@@ -202,15 +202,15 @@ export default function Terms() {
                       <p className="luxury-text-body">We accept the following payment methods:</p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Credit Cards:</strong> Visa, Mastercard, American Express (via Nayax Israel)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Digital Wallets:</strong> Apple Pay, Google Pay</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>E-Vouchers:</strong> Prepaid digital vouchers with QR code redemption</span>
                         </li>
                       </ul>
@@ -254,7 +254,7 @@ export default function Terms() {
                       </div>
                       
                       <p className="luxury-text-body font-semibold">Cancellation Fee:</p>
-                      <div className="luxury-glass-panel p-6 border-l-4 border-blue-500">
+                      <div className="luxury-glass-panel p-6 border-l-4 border-[#D4AF37]">
                         <p className="luxury-text-body mb-2">
                           Maximum cancellation fee: <strong>5% of transaction value OR ₪100 (whichever is LOWER)</strong>
                         </p>
@@ -268,16 +268,16 @@ export default function Terms() {
                       <p className="luxury-text-body font-semibold">How to Cancel:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Email:</strong> Send written notice to <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient hover:underline">Support@PetWash.co.il</a> 
                           with subject line "[CANCELLATION REQUEST]"</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Phone:</strong> Call customer service (business hours: Sunday-Thursday 8:00-18:00)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Provide: Full name, ID card number, order number, transaction date</span>
                         </li>
                       </ul>
@@ -285,15 +285,15 @@ export default function Terms() {
                       <p className="luxury-text-body font-semibold">Refund Process:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Refund processed within <strong>14 days</strong> from receipt of cancellation notice</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Refund issued to original payment method (credit card, PayPal, etc.)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>If cancellation fee applies, it will be deducted from refund amount</span>
                         </li>
                       </ul>
@@ -315,19 +315,19 @@ export default function Terms() {
                       <p className="luxury-text-body">Pet Wash Ltd guarantees that:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>All washing products are pet-formulated and intended for safe use on pets</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Washing stations are maintained and sanitized regularly</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Equipment is tested and functional (or clearly marked as out of service)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Services will be provided as described on our website and promotional materials</span>
                         </li>
                       </ul>
@@ -335,15 +335,15 @@ export default function Terms() {
                       <p className="luxury-text-body">If you experience equipment malfunction or service issues, please report it immediately via:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Our mobile app (instant notification to ops team)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Email: <a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient hover:underline">Support@PetWash.co.il</a></span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Phone: [Contact number]</span>
                         </li>
                       </ul>
@@ -364,28 +364,28 @@ export default function Terms() {
                       <p className="luxury-text-body">Our e-voucher system allows you to purchase prepaid wash packages:</p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Validity:</strong> E-vouchers are valid for <strong>60 months (5 years)</strong> from purchase date, 
                           in accordance with consumer protection best practices</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Redemption:</strong> Scan QR code at any Pet Wash station to redeem value</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Transferability:</strong> Vouchers can be freely gifted or shared with others</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Security:</strong> Each voucher has a unique cryptographic signature (HMAC-SHA256) to prevent fraud</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Balance Tracking:</strong> View remaining balance anytime in your account dashboard or by scanning the QR code</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>Partial Redemption:</strong> Vouchers can be used multiple times until full value is consumed</span>
                         </li>
                       </ul>
@@ -419,38 +419,38 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Full name</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Valid email address</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Phone number</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Pet information (optional but recommended)</span>
                         </li>
                       </ul>
                       <p className="luxury-text-body">You agree to:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Provide accurate and complete information</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Keep your password secure and confidential</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Notify us immediately of any unauthorized account access</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Accept responsibility for all activities under your account</span>
                         </li>
                       </ul>
@@ -477,23 +477,23 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>What data we collect and why</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>How we use and protect your information</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Your rights under Israeli privacy law (access, correction, deletion, portability)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Cookie usage and third-party services</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Cross-border data transfers</span>
                         </li>
                       </ul>
@@ -536,19 +536,19 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Indirect, incidental, or consequential damages arising from service use</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Pet injuries resulting from improper use of washing equipment</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Loss of data, vouchers, or account access due to user negligence</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Service interruptions due to force majeure events (natural disasters, war, pandemics)</span>
                         </li>
                       </ul>
@@ -578,19 +578,19 @@ export default function Terms() {
                       <p className="luxury-text-body">You may not:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Copy, reproduce, or distribute our content without written permission</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Use our trademarks or branding in any commercial manner</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Reverse engineer or attempt to extract source code from our software</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Create derivative works based on our services</span>
                         </li>
                       </ul>
@@ -629,15 +629,15 @@ export default function Terms() {
                       <p className="luxury-text-body">We will notify you of material changes via:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Prominent notice on our website</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>Email to registered users</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>In-app notification</span>
                         </li>
                       </ul>
@@ -680,7 +680,7 @@ export default function Terms() {
                       <p className="luxury-text-body">
                         If you believe your consumer rights have been violated, you may file a complaint with:
                       </p>
-                      <div className="luxury-glass-panel p-6 border-l-4 border-blue-500">
+                      <div className="luxury-glass-panel p-6 border-l-4 border-[#D4AF37]">
                         <p className="luxury-heading-sm mb-3">Bureau of Consumer Protection and Fair Trade</p>
                         <p className="luxury-text-body mb-2">Ministry of Economy and Industry</p>
                         <p className="luxury-text-body mb-2">
@@ -743,27 +743,27 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>תחנות רחיצה עצמית לחיות מחמד ברחבי ישראל</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>מוצרים ייעודיים לחיות מחמד, לכל אחד גיליון בטיחות מפורסם</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>תוכנית נאמנות דיגיטלית עם הטבות מדורגות</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>מערכת שוברים דיגיטליים לחבילות רחיצה משולמות מראש</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>אפליקציה לניהול תחנות (לשותפים זכיינים)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>עוזר שירות לקוחות מבוסס בינה מלאכותית</span>
                         </li>
                       </ul>
@@ -779,7 +779,7 @@ export default function Terms() {
                     <SectionIcon icon={CreditCard} delay={3} />
                     <h2 className="luxury-heading-md mb-6">3. מחירים ומע"מ</h2>
                     <div className="space-y-4">
-                      <div className="luxury-glass-panel p-6 border-r-4 border-blue-500">
+                      <div className="luxury-glass-panel p-6 border-r-4 border-[#D4AF37]">
                         <p className="luxury-heading-sm mb-3">חשוב: כל המחירים כוללים מע"מ</p>
                         <p className="luxury-text-body mb-3">
                           כל המחירים המוצגים באתר, באפליקציה ובתחנות הפיזיות הם בשקלים חדשים (₪) 
@@ -792,15 +792,15 @@ export default function Terms() {
                       <p className="luxury-text-body font-semibold">חבילות רחיצה נוכחיות:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold">•</span>
+                          <span className="text-[#B8932F] font-bold">•</span>
                           <span>רחיצה בודדת: ₪55 (כולל מע"מ)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold">•</span>
+                          <span className="text-[#B8932F] font-bold">•</span>
                           <span>חבילת 3: ₪150 (כולל מע"מ)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold">•</span>
+                          <span className="text-[#B8932F] font-bold">•</span>
                           <span>חבילת 5: ₪220 (כולל מע"מ, 20% חיסכון)</span>
                         </li>
                       </ul>
@@ -819,15 +819,15 @@ export default function Terms() {
                       <p className="luxury-text-body">אנו מקבלים את אמצעי התשלום הבאים:</p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>כרטיסי אשראי:</strong> Visa, Mastercard, American Express (דרך Nayax ישראל)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>ארנקים דיגיטליים:</strong> Apple Pay, Google Pay</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>שוברים דיגיטליים:</strong> שוברים משולמים מראש עם מימוש QR</span>
                         </li>
                       </ul>
@@ -866,7 +866,7 @@ export default function Terms() {
                       </div>
                       
                       <p className="luxury-text-body font-semibold">דמי ביטול:</p>
-                      <div className="luxury-glass-panel p-6 border-r-4 border-blue-500">
+                      <div className="luxury-glass-panel p-6 border-r-4 border-[#D4AF37]">
                         <p className="luxury-text-body mb-2">
                           דמי ביטול מקסימליים: <strong>5% משווי העסקה או ₪100 (הנמוך מביניהם)</strong>
                         </p>
@@ -880,16 +880,16 @@ export default function Terms() {
                       <p className="luxury-text-body font-semibold">כיצד לבטל:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>אימייל:</strong> שלח הודעה בכתב ל-<a href="mailto:Support@PetWash.co.il" className="luxury-text-gradient hover:underline">Support@PetWash.co.il</a> 
                           עם נושא "[בקשת ביטול]"</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>טלפון:</strong> התקשר לשירות לקוחות (שעות פעילות: ראשון-חמישי 8:00-18:00)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>יש לספק: שם מלא, מספר תעודת זהות, מספר הזמנה, תאריך עסקה</span>
                         </li>
                       </ul>
@@ -897,15 +897,15 @@ export default function Terms() {
                       <p className="luxury-text-body font-semibold">תהליך החזר כספי:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>החזר מעובד תוך <strong>14 יום</strong> מקבלת הודעת הביטול</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>החזר מועבר לאמצעי התשלום המקורי (כרטיס אשראי, PayPal וכו')</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>אם חלים דמי ביטול, הם ינוכו מסכום ההחזר</span>
                         </li>
                       </ul>
@@ -926,19 +926,19 @@ export default function Terms() {
                       <p className="luxury-text-body">⁦Pet Wash™⁩ בע"מ מתחייבת ש:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>כל מוצרי הרחיצה הם מוצרים ייעודיים לחיות מחמד, המיועדים לשימוש בטוח</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>תחנות הרחיצה מתוחזקות ומחוטאות באופן קבוע</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>הציוד נבדק ותפקודי (או מסומן בבירור כמחוץ לשירות)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>השירותים יסופקו כפי שמתואר באתר ובחומרים שיווקיים</span>
                         </li>
                       </ul>
@@ -956,28 +956,28 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>תוקף:</strong> שוברים דיגיטליים תקפים ל-<strong>60 חודשים (5 שנים)</strong> מתאריך הרכישה, 
                           בהתאם לשיטות העבודה המומלצות להגנת הצרכן</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>מימוש:</strong> סרוק קוד QR בכל תחנת Pet Wash למימוש ערך</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>העברה:</strong> ניתן להעניק או לשתף שוברים עם אחרים בחופשיות</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>אבטחה:</strong> לכל שובר חתימה קריפטוגרפית ייחודית (HMAC-SHA256) למניעת הונאה</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>מעקב אחר יתרה:</strong> צפה ביתרה הנותרת בכל עת בדשבורד החשבון או על ידי סריקת קוד ה-QR</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span><strong>מימוש חלקי:</strong> ניתן להשתמש בשוברים מספר פעמים עד לניצול מלוא הערך</span>
                         </li>
                       </ul>
@@ -1010,19 +1010,19 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>שם מלא</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>כתובת אימייל תקפה</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>מספר טלפון</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>מידע על חיית המחמד (אופציונלי אך מומלץ)</span>
                         </li>
                       </ul>
@@ -1044,23 +1044,23 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>איזה נתונים אנו אוספים ולמה</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>כיצד אנו משתמשים ומגנים על המידע שלך</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>הזכויות שלך על פי החוק הישראלי (גישה, תיקון, מחיקה, ניידות)</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>שימוש בעוגיות ושירותי צד שלישי</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>העברות מידע חוצות גבולות</span>
                         </li>
                       </ul>
@@ -1101,19 +1101,19 @@ export default function Terms() {
                       </p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>נזקים עקיפים, מקריים או תוצאתיים הנובעים משימוש בשירות</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>פציעות חיות הנובעות משימוש לא נכון בציוד הרחיצה</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>אובדן נתונים, שוברים או גישה לחשבון עקב רשלנות משתמש</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>הפרעות בשירות עקב אירועי כוח עליון (אסונות טבע, מלחמה, מגיפות)</span>
                         </li>
                       </ul>
@@ -1151,15 +1151,15 @@ export default function Terms() {
                       <p className="luxury-text-body">נודיע לך על שינויים מהותיים באמצעות:</p>
                       <ul className="space-y-2 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>הודעה בולטת באתר</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>אימייל למשתמשים רשומים</span>
                         </li>
                         <li className="flex items-start gap-3">
-                          <span className="text-purple-600 font-bold mt-1">•</span>
+                          <span className="text-[#B8932F] font-bold mt-1">•</span>
                           <span>הודעה באפליקציה</span>
                         </li>
                       </ul>
@@ -1175,7 +1175,7 @@ export default function Terms() {
                       <p className="luxury-text-body">
                         אם אתה מאמין שזכויות הצרכן שלך הופרו, תוכל להגיש תלונה ל:
                       </p>
-                      <div className="luxury-glass-panel p-6 border-r-4 border-blue-500">
+                      <div className="luxury-glass-panel p-6 border-r-4 border-[#D4AF37]">
                         <p className="luxury-heading-sm mb-3">לשכת הגנת הצרכן ומסחר הוגן</p>
                         <p className="luxury-text-body mb-2">משרד הכלכלה והתעשייה</p>
                         <p className="luxury-text-body mb-2">
