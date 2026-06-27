@@ -23,8 +23,20 @@ import { pathToFileURL } from 'node:url';
 const ROUTES_FILE = resolve(process.cwd(), 'server/routes.ts');
 
 const src = readFileSync(ROUTES_FILE, 'utf8');
+// Blank out fully-commented lines BEFORE scanning so a dead
+// `// const x = await import('./deleted')` cannot fail the gate for a file that
+// was intentionally removed (this exact case froze the #1114 deploy). Newlines
+// are preserved so genuine multi-line dynamic imports still match. Mirrors the
+// comment-skipping the STATIC-import check below already does.
+const srcScannable = src
+  .split('\n')
+  .map((line) => {
+    const t = line.trimStart();
+    return t.startsWith('//') ? '' : line;
+  })
+  .join('\n');
 // Match: await import('./routes/x') | await import("./services/y") — any relative specifier.
-const specs = Array.from(src.matchAll(/await\s+import\(\s*['"](\.[^'"]+)['"]\s*\)/g), m => m[1]);
+const specs = Array.from(srcScannable.matchAll(/await\s+import\(\s*['"](\.[^'"]+)['"]\s*\)/g), m => m[1]);
 const unique = Array.from(new Set(specs)).sort();
 
 if (unique.length === 0) {

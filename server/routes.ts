@@ -1986,48 +1986,10 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // ========================================================================
-  // 🌐 OLD TRANSLATION API - DEPRECATED! Use /api/translate from translationRoutes instead
-  // ========================================================================
-  // Commented out - replaced by Gemini AI translation service (server/routes/translation.ts)
-  // const { translationService } = await import('./services/TranslationService');
-  //
-  // // POST /api/translate - Translate text to target language with caching
-  // app.post('/api/translate', async (req, res) => {
-  //   try {
-  //     const { text, targetLanguage, batch } = req.body;
-  //
-  //     // Validation
-  //     if (!text || !targetLanguage) {
-  //       return res.status(400).json({ 
-  //         ok: false, 
-  //         error: 'Missing required fields: text and targetLanguage' 
-  //       });
-  //     }
-  //
-  //     // Validate target language (ISO 639-1 codes)
-  //     const validLanguages = ['en', 'he', 'ar', 'ru', 'fr', 'es', 'de', 'it', 'pt', 'ja', 'ko', 'zh'];
-  //     if (!validLanguages.includes(targetLanguage.toLowerCase())) {
-  //       return res.status(400).json({ 
-  //         ok: false, 
-  //         error: `Unsupported language: ${targetLanguage}. Supported: ${validLanguages.join(', ')}` 
-  //       });
-  //     }
-  //
-  //     // Handle batch translation
-  //     if (Array.isArray(text)) {
-  //       const translations = await translationService.translateBatch(text, targetLanguage);
-  //       return res.json({ ok: true, translations });
-  //     }
-  //
-  //     // Handle single translation
-  //     const translation = await translationService.translateText(text, targetLanguage);
-  //     res.json({ ok: true, translation });
-  //   } catch (error) {
-  //     logger.error('[Translation API] Translation request failed', error);
-  //     res.status(500).json({ ok: false, error: 'Translation failed' });
-  //   }
-  // });
+  // OLD /api/translate (TranslationService + @google-cloud/translate) was removed
+  // in #1114 — the file is deleted and translation is served by Gemini via
+  // server/routes/translation.ts. The dead commented block that referenced the
+  // deleted module is removed so the deploy module-load gate stays green.
 
   // ========================================================================
   // 🔐 SIMPLE AUTH SYSTEM (Email + Password) - PostgreSQL Based
