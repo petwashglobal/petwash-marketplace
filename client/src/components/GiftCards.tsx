@@ -133,7 +133,8 @@ export function GiftCards({ language }: GiftCardsProps) {
                         </span>
                       </div>
                       <p className="text-[10px] sm:text-[11px] mt-1.5 text-[#595959]">
-                        {language === 'he' ? voucher.labelHe : voucher.label} · E-Gift
+                        <span dir={language === 'he' ? 'rtl' : 'ltr'}>{language === 'he' ? voucher.labelHe : voucher.label}</span>
+                        <span dir="ltr" className="mx-1">· E-Gift</span>
                       </p>
                     </div>
 

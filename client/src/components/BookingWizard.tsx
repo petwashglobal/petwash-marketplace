@@ -475,13 +475,13 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
         return (
           <div className="space-y-4">
             <div className="relative">
-              <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-500" />
+              <MapPin className="absolute start-4 top-1/2 -translate-y-1/2 w-5 h-5 text-amber-500" />
               <Input
                 type="text"
                 placeholder={t.step4.placeholder}
                 value={filters.location}
                 onChange={(e) => setFilters({ ...filters, location: e.target.value })}
-                className="pl-12 h-14 text-lg rounded-xl border-2 focus:border-amber-500"
+                className="ps-12 h-14 text-lg rounded-xl border-2 focus:border-amber-500"
                 list="cities"
                 data-testid="input-location"
               />
@@ -525,12 +525,12 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full h-14 justify-start text-left font-normal rounded-xl border-2",
+                      "w-full h-14 justify-start text-start font-normal rounded-xl border-2",
                       filters.startDate ? "border-amber-500" : "text-gray-400"
                     )}
                     data-testid="button-start-date"
                   >
-                    <CalendarIcon className="mr-2 h-5 w-5 text-amber-500" />
+                    <CalendarIcon className="me-2 h-5 w-5 text-amber-500" />
                     {filters.startDate ? format(filters.startDate, 'PPP') : t.step5.pickDate}
                   </Button>
                 </PopoverTrigger>
@@ -554,12 +554,12 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                   <Button
                     variant="outline"
                     className={cn(
-                      "w-full h-14 justify-start text-left font-normal rounded-xl border-2",
+                      "w-full h-14 justify-start text-start font-normal rounded-xl border-2",
                       filters.endDate ? "border-amber-500" : "text-gray-400"
                     )}
                     data-testid="button-end-date"
                   >
-                    <CalendarIcon className="mr-2 h-5 w-5 text-amber-500" />
+                    <CalendarIcon className="me-2 h-5 w-5 text-amber-500" />
                     {filters.endDate ? format(filters.endDate, 'PPP') : t.step5.pickDate}
                   </Button>
                 </PopoverTrigger>
@@ -655,12 +655,12 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
         return (
           <div className="space-y-4">
             <div className="relative">
-              <MessageSquare className="absolute left-4 top-4 w-5 h-5 text-amber-500" />
+              <MessageSquare className="absolute start-4 top-4 w-5 h-5 text-amber-500" />
               <Textarea
                 placeholder={t.step7.placeholder}
                 value={filters.specialNotes}
                 onChange={(e) => setFilters({ ...filters, specialNotes: e.target.value })}
-                className="pl-12 min-h-[150px] text-lg rounded-xl border-2 focus:border-amber-500 resize-none"
+                className="ps-12 min-h-[150px] text-lg rounded-xl border-2 focus:border-amber-500 resize-none"
                 data-testid="textarea-special-notes"
               />
             </div>
