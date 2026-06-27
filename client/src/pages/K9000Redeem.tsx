@@ -26,6 +26,7 @@ import { ProgressCircle } from '@/components/LuxuryWidgets';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { apiRequest } from '@/lib/queryClient';
 import { PetWashIcon } from '@/components/PetWashIcon';
+import { WashDiscountNote } from '@/components/WashDiscountNote';
 import QRCode from 'qrcode';
 
 const WASH_PRICE_CENTS = 5500;
@@ -289,6 +290,10 @@ export default function K9000Redeem() {
                   <Smartphone className="w-4 h-4 text-blue-600" />
                   {isHebrew ? 'בחר אמצעי תשלום' : 'Select Payment Method'}
                 </h2>
+
+                {/* Member's own resolved K9000 wash discount (server-authoritative;
+                    renders nothing if the member has none). Informational only. */}
+                <WashDiscountNote className="mb-3" />
 
                 <RadioGroup
                   value={selectedOption}
