@@ -714,6 +714,9 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // Anonymous visitors POST interest before any login — Zod-validated,
     // rate-limited, consent-gated. Same safety profile as /api/contact.
     if (req.path === '/api/waitlist') return true;
+    // Booking Rescue intent capture ("no dead clicks") — anonymous + logged-in
+    // POST started-but-stopped events; Zod-validated, rate-limited, no money path.
+    if (req.path === '/api/intent') return true;
     // Kenzo AI chat widget (client/src/components/AiChatWidget.tsx → POST
     // /api/ai/chat). Anonymous visitors converse with Kenzo before any login,
     // so there is no Firebase Bearer and no pw.csrf cookie round-trip. The
