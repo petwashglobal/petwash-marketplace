@@ -109,9 +109,14 @@ export function logRequest(req: Request, res: Response, next: NextFunction) {
   next();
 }
 
+// PetWash Sentry project (EU/Germany). Default in production so server error
+// capture works without an env var; SENTRY_DSN still overrides. Same project as
+// the client — Sentry tags events by SDK/platform (server vs browser).
+const DEFAULT_SENTRY_DSN = 'https://eafe6538ae59f035b0de2f752e93e2b0@o4511635352649728.ingest.de.sentry.io/4511635367526480';
+
 export function initSentry() {
-  const sentryDsn = process.env.SENTRY_DSN;
-  
+  const sentryDsn = process.env.SENTRY_DSN || (process.env.NODE_ENV === 'production' ? DEFAULT_SENTRY_DSN : undefined);
+
   if (!sentryDsn) {
     winstonLogger.warn('Sentry DSN not configured - error tracking disabled');
     return;
