@@ -63,7 +63,10 @@ export class GiftOrchestrationService {
     qrCodeData: string;
   }> {
     const expiresAt = new Date();
-    expiresAt.setMonth(expiresAt.getMonth() + (config.expiresInMonths || 24));
+    // Israeli Consumer Protection Law amendment 33: gift vouchers (תווי קנייה)
+    // must be valid for a MINIMUM of 5 years (60 months) from issuance. Default
+    // to 60 so a caller that omits expiresInMonths is still compliant.
+    expiresAt.setMonth(expiresAt.getMonth() + (config.expiresInMonths || 60));
 
     const result = await storage.createVoucher({
       type: 'STORED_VALUE',
