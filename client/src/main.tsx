@@ -134,41 +134,110 @@ history.replaceState = function(...args) {
 
 window.addEventListener('popstate', trackHubSpotPageView);
 
-(async function initApp() {
-  // Wait for Firebase config with a 400ms hard timeout.
-  // If the server is slow, we fall through immediately and firebase.ts
-  // uses VITE_ env vars as fallback — no user-visible delay.
-  if (window.__FIREBASE_CONFIG_READY__) {
-    await Promise.race([
-      window.__FIREBASE_CONFIG_READY__,
-      new Promise<boolean>(resolve => setTimeout(() => resolve(false), 400))
-    ]);
+// ── Boot-failure self-heal (P0, 2026-06-27) ──────────────────────────────────
+// If the top-level boot throws BEFORE React mounts, the user gets a blank white
+// screen with no error boundary (the boundary lives *inside* the tree we never
+// rendered). The #1 cause is a stale browser/app cache: an old index.html that
+// references hashed JS chunks the latest deploy has replaced, so the dynamic
+// import 404s. Recovery: hard-reload ONCE with a cache-bust param; if it still
+// fails, render a branded "refreshing" panel (never blank) AND best-effort tell
+// the server so the alarm fires — we must always know when boot dies.
+const BOOT_RETRY_KEY = 'petwash_boot_retry';
+
+function reportBootFailure(err: unknown) {
+  try {
+    const body = JSON.stringify({
+      source: 'client-boot',
+      // App never mounted even after a cache-bust reload — a real white-screen,
+      // not a benign one-off chunk blip. Prefix marks it past the noise filter.
+      message: `BOOT FAILED (white screen): ${err instanceof Error ? err.message : String(err)}`,
+      stack: err instanceof Error ? err.stack : undefined,
+      url: typeof location !== 'undefined' ? location.href : undefined,
+      userAgent: typeof navigator !== 'undefined' ? navigator.userAgent : undefined,
+    });
+    // keepalive so the POST survives the upcoming reload.
+    void fetch('/api/errors/log', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body,
+      keepalive: true,
+    }).catch(() => {});
+  } catch (_e) {
+    /* never throw from the failure reporter */
   }
+}
 
-  // Load App, ErrorBoundary, and auth-guardian ALL IN PARALLEL
-  // Previously these were 3 sequential awaits — each blocking the next
-  const [{ default: App }, { AppErrorBoundary }] = await Promise.all([
-    import('./App'),
-    import('./components/AppErrorBoundary'),
-    import('./lib/auth-guardian-2025'), // fire-and-forget side effect
-  ]);
+function renderBootFallback() {
+  const root = document.getElementById('root');
+  if (!root) return;
+  root.innerHTML = `
+    <div dir="rtl" style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;background:#0A0A0A;color:#fff;font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;padding:24px;text-align:center;">
+      <div style="font-size:22px;font-weight:600;color:#D4AF37;">PetWash</div>
+      <div style="font-size:16px;opacity:.9;">מעדכנים לגרסה האחרונה…<br/><span style="opacity:.7;font-size:14px;">Updating to the latest version…</span></div>
+      <button onclick="location.reload()" style="margin-top:8px;background:#D4AF37;color:#0A0A0A;border:none;border-radius:9999px;padding:12px 28px;font-size:15px;font-weight:600;cursor:pointer;">רענון / Refresh</button>
+    </div>`;
+}
 
-  createRoot(document.getElementById("root")!).render(
-    <AppErrorBoundary>
-      <App />
-    </AppErrorBoundary>
-  );
+(async function initApp() {
+  try {
+    // Wait for Firebase config with a 400ms hard timeout.
+    // If the server is slow, we fall through immediately and firebase.ts
+    // uses VITE_ env vars as fallback — no user-visible delay.
+    if (window.__FIREBASE_CONFIG_READY__) {
+      await Promise.race([
+        window.__FIREBASE_CONFIG_READY__,
+        new Promise<boolean>(resolve => setTimeout(() => resolve(false), 400))
+      ]);
+    }
 
-  // Non-blocking background initializations — do NOT await these
-  import('./lib/rum').then(({ trackWebVitals }) => {
-    trackWebVitals();
-  }).catch(() => {});
+    // Load App, ErrorBoundary, and auth-guardian ALL IN PARALLEL
+    // Previously these were 3 sequential awaits — each blocking the next
+    const [{ default: App }, { AppErrorBoundary }] = await Promise.all([
+      import('./App'),
+      import('./components/AppErrorBoundary'),
+      import('./lib/auth-guardian-2025'), // fire-and-forget side effect
+    ]);
 
-  import('./lib/deviceTelemetry').then(({ setupDeviceTracking }) => {
-    setupDeviceTracking();
-  }).catch(() => {});
+    createRoot(document.getElementById("root")!).render(
+      <AppErrorBoundary>
+        <App />
+      </AppErrorBoundary>
+    );
 
-  import('./lib/deviceDetection').then(({ logDeviceInfo }) => {
-    logDeviceInfo();
-  }).catch(() => {});
+    // Boot succeeded — clear the retry guard so a future genuine failure can
+    // still trigger one self-heal reload.
+    try { sessionStorage.removeItem(BOOT_RETRY_KEY); } catch (_e) { /* ignore */ }
+
+    // Non-blocking background initializations — do NOT await these
+    import('./lib/rum').then(({ trackWebVitals }) => {
+      trackWebVitals();
+    }).catch(() => {});
+
+    import('./lib/deviceTelemetry').then(({ setupDeviceTracking }) => {
+      setupDeviceTracking();
+    }).catch(() => {});
+
+    import('./lib/deviceDetection').then(({ logDeviceInfo }) => {
+      logDeviceInfo();
+    }).catch(() => {});
+  } catch (err) {
+    let alreadyRetried = false;
+    try { alreadyRetried = sessionStorage.getItem(BOOT_RETRY_KEY) === '1'; } catch (_e) { /* ignore */ }
+
+    if (!alreadyRetried) {
+      // First failure this session — likely a stale cached index pointing at
+      // chunks that 404. Force a fresh fetch from the network once. (No alert
+      // yet: a one-off that self-heals on reload is not actionable.)
+      try { sessionStorage.setItem(BOOT_RETRY_KEY, '1'); } catch (_e) { /* ignore */ }
+      const u = new URL(window.location.href);
+      u.searchParams.set('_cb', String(Date.now()));
+      window.location.replace(u.toString());
+      return;
+    }
+
+    // Retry already happened and we STILL failed — this is a real white-screen.
+    // Tell the server so the alarm fires, then show a branded panel (never blank).
+    reportBootFailure(err);
+    renderBootFallback();
+  }
 })();
