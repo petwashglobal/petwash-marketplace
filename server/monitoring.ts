@@ -13,7 +13,11 @@ import { getStationAnalyticsFor24Hours } from './stationsService';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY;
-const ALERT_EMAIL = process.env.REPORTS_EMAIL_TO || 'admin@petwash.co.il';
+// Default to a MONITORED inbox (support@) — the old 'admin@' default went to an
+// unread mailbox, which is why a prod white-screen alert reached no one. Override
+// with REPORTS_EMAIL_TO. NOTE (ops): email alerts require SENDGRID_API_KEY, and
+// Slack alerts require SLACK_WEBHOOK_URL — set those for the alarm to actually fire.
+const ALERT_EMAIL = process.env.REPORTS_EMAIL_TO || 'support@petwash.co.il';
 const SLACK_WEBHOOK = process.env.SLACK_WEBHOOK_URL || process.env.ALERTS_SLACK_WEBHOOK;
 
 // ============================================
