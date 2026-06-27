@@ -4,6 +4,34 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./lib/i18next-init";
 
+// ── DOM-mutation resilience patch (P0 fix, 2026-06-27) ───────────────────────
+// Production homepage white-screened with:
+//   "NotFoundError: Failed to execute 'removeChild' on 'Node':
+//    The node to be removed is not a child of this node."
+// This is the well-known React crash that happens when something OUTSIDE React
+// mutates the DOM — browser auto-translate (Safari/Chrome on this Hebrew site),
+// extensions, or any foreign script — and React later unmounts a node that was
+// moved. removeChild/insertBefore then throw and the whole app crashes via the
+// error boundary. Guarding these two Node methods makes React tolerant of
+// foreign DOM mutation (facebook/react#11538). Belt-and-suspenders with the
+// translate="no" directive in index.html (PetWash ships its own i18n).
+if (typeof Node === "function" && Node.prototype) {
+  const originalRemoveChild = Node.prototype.removeChild;
+  Node.prototype.removeChild = function <T extends Node>(this: Node, child: T): T {
+    if (child.parentNode !== this) {
+      return child;
+    }
+    return originalRemoveChild.call(this, child) as T;
+  };
+  const originalInsertBefore = Node.prototype.insertBefore;
+  Node.prototype.insertBefore = function <T extends Node>(this: Node, newNode: T, referenceNode: Node | null): T {
+    if (referenceNode && referenceNode.parentNode !== this) {
+      return newNode;
+    }
+    return originalInsertBefore.call(this, newNode, referenceNode) as T;
+  };
+}
+
 // Defensive one-time service-worker + Cache Storage cleanup.
 //
 // Earlier builds shipped pre-caching workers at both /sw.js and

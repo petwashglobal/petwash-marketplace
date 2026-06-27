@@ -1,8 +1,12 @@
 <!DOCTYPE html>
-<html lang="he" dir="rtl">
+<html lang="he" dir="rtl" translate="no">
   <head>
     <meta name="data-test-build" content="BUILD_2026_MAR08_PERF_OPT">
     <meta charset="UTF-8">
+    <!-- PetWash ships its own i18n (he/en/ar/ru/fr). Browser auto-translate
+         mutates the DOM out from under React and crashes the app
+         (removeChild NotFoundError), so we opt out of machine translation. -->
+    <meta name="google" content="notranslate">
 
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
 
