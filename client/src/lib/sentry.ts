@@ -1,7 +1,12 @@
 import * as Sentry from '@sentry/browser';
 
 const isDevelopment = import.meta.env.DEV;
-const sentryDsn = import.meta.env.VITE_SENTRY_DSN;
+// PetWash Sentry project (EU/Germany region). Client DSNs are public by design
+// (they ship in the browser bundle), so we default it here so production error
+// capture works without an env var; VITE_SENTRY_DSN still overrides. Dev stays
+// quiet unless a DSN is explicitly set, so local crashes don't flood Sentry.
+const DEFAULT_SENTRY_DSN = 'https://eafe6538ae59f035b0de2f752e93e2b0@o4511635352649728.ingest.de.sentry.io/4511635367526480';
+const sentryDsn = import.meta.env.VITE_SENTRY_DSN || (import.meta.env.PROD ? DEFAULT_SENTRY_DSN : undefined);
 
 export function initClientSentry() {
   if (!sentryDsn) {
