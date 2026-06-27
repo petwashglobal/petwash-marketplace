@@ -253,9 +253,9 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-2 mb-2 sm:mb-3">
-                      <h3 
-                        className="text-lg sm:text-xl font-semibold tracking-tight leading-tight"
+                    <div className="flex flex-wrap items-center gap-2 mb-2 sm:mb-3">
+                      <h3
+                        className="min-w-0 text-lg sm:text-xl font-semibold tracking-tight leading-tight"
                         style={{ 
                           color: style.textColor,
                           fontFamily: "'Playfair Display', 'Didot', Georgia, serif",
