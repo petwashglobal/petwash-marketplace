@@ -19,7 +19,7 @@ export default function EGiftPolicy() {
       <div className="luxury-container max-w-4xl mx-auto py-12">
         {/* Header Section */}
         <div className="text-center mb-16 luxury-animate-fade-in">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 luxury-shadow-lg">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 luxury-shadow-lg">
             <Gift className="w-10 h-10 text-white" />
           </div>
           <h1 className="luxury-heading-xl mb-4">
@@ -34,7 +34,7 @@ export default function EGiftPolicy() {
         {/* Gift Card Features Grid */}
         <div className="luxury-grid-3 mb-12 luxury-animate-slide-up luxury-delay-1">
           <div className="luxury-glass-minimal luxury-hover-lift p-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
               <Mail className="w-6 h-6 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2">Instant Delivery</h3>
@@ -44,7 +44,7 @@ export default function EGiftPolicy() {
           </div>
 
           <div className="luxury-glass-minimal luxury-hover-lift p-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
               <CreditCard className="w-6 h-6 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2">Flexible Amounts</h3>
@@ -54,7 +54,7 @@ export default function EGiftPolicy() {
           </div>
 
           <div className="luxury-glass-minimal luxury-hover-lift p-6">
-            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-4">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-4">
               <Smartphone className="w-6 h-6 text-white" />
             </div>
             <h3 className="luxury-heading-sm mb-2">All Platforms</h3>
@@ -69,7 +69,7 @@ export default function EGiftPolicy() {
         {/* Purchase and Delivery Section */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-2">
           <div className="flex items-center gap-4 mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F]">
               <CreditCard className="w-7 h-7 text-white" />
             </div>
             <h2 className="luxury-heading-md">Purchase and Delivery</h2>
@@ -82,19 +82,19 @@ export default function EGiftPolicy() {
             
             <ul className="space-y-3 ml-6">
               <li className="flex items-start gap-3">
-                <span className="inline-block w-2 h-2 rounded-full bg-purple-600 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-[#B8932F] mt-2 flex-shrink-0"></span>
                 <span>eGift cards are delivered instantly via email</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="inline-block w-2 h-2 rounded-full bg-purple-600 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-[#B8932F] mt-2 flex-shrink-0"></span>
                 <span>Available in denominations from ₪50 to ₪1,000</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="inline-block w-2 h-2 rounded-full bg-purple-600 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-[#B8932F] mt-2 flex-shrink-0"></span>
                 <span>Valid for 12 months from purchase date</span>
               </li>
               <li className="flex items-start gap-3">
-                <span className="inline-block w-2 h-2 rounded-full bg-purple-600 mt-2 flex-shrink-0"></span>
+                <span className="inline-block w-2 h-2 rounded-full bg-[#B8932F] mt-2 flex-shrink-0"></span>
                 <span>Can be used across all Pet Wash platforms</span>
               </li>
             </ul>
@@ -104,7 +104,7 @@ export default function EGiftPolicy() {
         {/* Redemption Process */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-3">
           <div className="flex items-center gap-4 mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F]">
               <CheckCircle className="w-7 h-7 text-white" />
             </div>
             <h2 className="luxury-heading-md">How to Redeem</h2>
@@ -116,7 +116,7 @@ export default function EGiftPolicy() {
 
           <div className="grid gap-4 mt-6">
             <div className="luxury-glass-minimal p-4 flex items-start gap-4">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <span className="text-white font-bold">1</span>
               </div>
               <div>
@@ -126,7 +126,7 @@ export default function EGiftPolicy() {
             </div>
 
             <div className="luxury-glass-minimal p-4 flex items-start gap-4">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <span className="text-white font-bold">2</span>
               </div>
               <div>
@@ -136,7 +136,7 @@ export default function EGiftPolicy() {
             </div>
 
             <div className="luxury-glass-minimal p-4 flex items-start gap-4">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <span className="text-white font-bold">3</span>
               </div>
               <div>
@@ -146,7 +146,7 @@ export default function EGiftPolicy() {
             </div>
 
             <div className="luxury-glass-minimal p-4 flex items-start gap-4">
-              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 flex-shrink-0">
+              <div className="inline-flex items-center justify-center w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] flex-shrink-0">
                 <span className="text-white font-bold">4</span>
               </div>
               <div>
@@ -162,7 +162,7 @@ export default function EGiftPolicy() {
         {/* Refund Policy - eGift Cards */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-4">
           <div className="flex items-center gap-4 mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F]">
               <XCircle className="w-7 h-7 text-white" />
             </div>
             <h2 className="luxury-heading-md">eGift Card Refund Policy</h2>
@@ -185,7 +185,7 @@ export default function EGiftPolicy() {
         {/* Service Refunds */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-5">
           <div className="flex items-center gap-4 mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F]">
               <RefreshCw className="w-7 h-7 text-white" />
             </div>
             <h2 className="luxury-heading-md">Service Refunds</h2>
@@ -197,15 +197,15 @@ export default function EGiftPolicy() {
           
           <ul className="space-y-3 ml-6">
             <li className="flex items-start gap-3">
-              <span className="inline-block w-2 h-2 rounded-full bg-purple-600 mt-2 flex-shrink-0"></span>
+              <span className="inline-block w-2 h-2 rounded-full bg-[#B8932F] mt-2 flex-shrink-0"></span>
               <span><strong>K9000 Stations</strong>: Full refund if station malfunctions</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="inline-block w-2 h-2 rounded-full bg-purple-600 mt-2 flex-shrink-0"></span>
+              <span className="inline-block w-2 h-2 rounded-full bg-[#B8932F] mt-2 flex-shrink-0"></span>
               <span><strong>Bookings</strong>: Refund per cancellation policy (varies by service)</span>
             </li>
             <li className="flex items-start gap-3">
-              <span className="inline-block w-2 h-2 rounded-full bg-purple-600 mt-2 flex-shrink-0"></span>
+              <span className="inline-block w-2 h-2 rounded-full bg-[#B8932F] mt-2 flex-shrink-0"></span>
               <span><strong>Loyalty Rewards</strong>: Points refunded if service not rendered</span>
             </li>
           </ul>
@@ -214,7 +214,7 @@ export default function EGiftPolicy() {
         {/* Cancellation Timeframes */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-6">
           <div className="flex items-center gap-4 mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F]">
               <Clock className="w-7 h-7 text-white" />
             </div>
             <h2 className="luxury-heading-md">Cancellation Timeframes</h2>
@@ -229,7 +229,7 @@ export default function EGiftPolicy() {
               <p className="luxury-text-small mt-2">Full refund with 48 hours advance notice</p>
             </div>
 
-            <div className="luxury-glass-panel p-4 border-l-4 border-blue-500">
+            <div className="luxury-glass-panel p-4 border-l-4 border-[#D4AF37]">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-900 dark:text-black">Dog Walker</span>
                 <span className="luxury-badge luxury-badge-success">24 hours notice</span>
@@ -237,7 +237,7 @@ export default function EGiftPolicy() {
               <p className="luxury-text-small mt-2">Full refund with 24 hours advance notice</p>
             </div>
 
-            <div className="luxury-glass-panel p-4 border-l-4 border-purple-500">
+            <div className="luxury-glass-panel p-4 border-l-4 border-[#D4AF37]">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-900 dark:text-black">Pet Transport</span>
                 <span className="luxury-badge luxury-badge-success">24 hours notice</span>
@@ -245,7 +245,7 @@ export default function EGiftPolicy() {
               <p className="luxury-text-small mt-2">Full refund with 24 hours advance notice</p>
             </div>
 
-            <div className="luxury-glass-panel p-4 border-l-4 border-indigo-500">
+            <div className="luxury-glass-panel p-4 border-l-4 border-[#D4AF37]">
               <div className="flex justify-between items-center">
                 <span className="font-semibold text-gray-900 dark:text-black">Training</span>
                 <span className="luxury-badge luxury-badge-success">48 hours notice</span>
@@ -260,7 +260,7 @@ export default function EGiftPolicy() {
         {/* Disputes */}
         <div className="luxury-glass-card luxury-shadow-md p-8 mb-8 luxury-animate-slide-up luxury-delay-7">
           <div className="flex items-center gap-4 mb-6">
-            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-purple-500 to-purple-700">
+            <div className="inline-flex items-center justify-center w-14 h-14 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F]">
               <Shield className="w-7 h-7 text-white" />
             </div>
             <h2 className="luxury-heading-md">Disputes & Resolution</h2>
@@ -298,7 +298,7 @@ export default function EGiftPolicy() {
 
         {/* Contact & Support */}
         <div className="luxury-glass-card luxury-shadow-lg p-8 text-center luxury-animate-slide-up luxury-delay-9">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-purple-500 to-purple-700 mb-6 mx-auto">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#B8932F] mb-6 mx-auto">
             <HelpCircle className="w-8 h-8 text-white" />
           </div>
           
