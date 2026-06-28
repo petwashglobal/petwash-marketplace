@@ -16,7 +16,7 @@ import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import IsraeliTaxAPIService from '../services/IsraeliTaxAPIService';
 import ElectronicInvoicingService from '../services/ElectronicInvoicingService';
-import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+import { ISRAEL_VAT_RATE, isShaamAllocationRequired } from "@shared/israel-compliance-config";
 
 // LEGACY RASA ENDPOINTS - KEPT FOR BACKWARDS COMPATIBILITY
 const RASA_API_ENDPOINT = process.env.RASA_API_ENDPOINT || 'https://api.taxes.gov.il/shaam/production/Invoices';
@@ -110,7 +110,11 @@ export async function generateTaxInvoice(
 
       // Check if this is a B2B transaction requiring electronic invoicing
       const isB2B = !!data.customerDetails.id;
-      const requiresElectronicInvoicing = isB2B && data.totalAmount >= 25000;
+      // Date-aware, EX-VAT SHAAM threshold from the single source of truth
+      // (Phase 2: > ₪5,000 since 2026-06-01). The old hard-coded `totalAmount >=
+      // 25000` was the dead 2024 band AND used the VAT-inclusive total — it let
+      // B2B invoices between ₪5k and ₪25k skip ITA e-invoicing. (council fix 2026-06-28)
+      const requiresElectronicInvoicing = isB2B && isShaamAllocationRequired(data.amountBeforeVAT, new Date());
       
       let electronicInvoiceId: number | undefined;
       let itaReferenceNumber: string | undefined;
@@ -118,8 +122,8 @@ export async function generateTaxInvoice(
       // Create electronic invoice record if required
       // ElectronicInvoicingService.createInvoice() will auto-submit to ITA if threshold is met
       if (requiresElectronicInvoicing) {
-        logger.info('[IsraeliTax] B2B transaction ≥₪25,000 - creating electronic invoice (auto-submits to ITA)', {
-          amount: data.totalAmount
+        logger.info('[IsraeliTax] B2B over SHAAM threshold - creating electronic invoice (auto-submits to ITA)', {
+          amountBeforeVAT: data.amountBeforeVAT, totalAmount: data.totalAmount
         });
         
         const electronicInvoice = await ElectronicInvoicingService.createInvoice({
@@ -176,7 +180,7 @@ export async function generateTaxInvoice(
         return;
       }
       
-      // For non-electronic invoicing (B2C or B2B <₪25,000), submit directly to ITA
+      // For non-electronic invoicing (B2C, or B2B under the current SHAAM threshold), submit directly to ITA
       const result = await IsraeliTaxAPIService.submitInvoice(invoicePayload as any);
       
       if (result.success) {
