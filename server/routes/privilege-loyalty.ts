@@ -4,6 +4,7 @@ import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { sendClubWelcomeEmail, sendLuxuryEmail } from '../email/luxury-email-service';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
+import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { syncUserToHubSpot, trackHubSpotEvent } from '../hubspot';
 import multer from 'multer';
 import admin from '../lib/firebase-admin';
@@ -85,7 +86,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       pets, idType, idNumber,
       referralSource, referralCode,
       marketingConsent, smsConsent, termsConsent,
-      language, captchaToken, traceId
+      language, captchaToken, turnstileToken, traceId
     } = req.body;
 
     logger.info('[Privilege Register] Processing', { traceId, email });
@@ -104,11 +105,23 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       return res.status(400).json({ error: 'Invalid phone number', errorCode: 'INVALID_PHONE' });
     }
 
-    // ── reCAPTCHA verification (soft-fail: log score, only hard-block clear bots) ──
-    if (captchaToken && captchaToken !== 'captcha_unavailable') {
+    // ── Bot gate (soft-fail: only hard-block unambiguous bots in prod) ──
+    // Turnstile is the canonical check; legacy reCAPTCHA still accepted during
+    // migration so existing clients don't break.
+    if (turnstileToken) {
+      try {
+        const ts = await verifyTurnstileToken(turnstileToken, req.ip);
+        logger.info('[Privilege] Turnstile result', { traceId, valid: ts.valid, reason: ts.reason });
+        if (!ts.valid && process.env.NODE_ENV === 'production') {
+          return res.status(403).json({ error: 'Security verification failed. Please refresh and try again.', errorCode: 'CAPTCHA_FAILED' });
+        }
+      } catch (tsErr) {
+        logger.warn('[Privilege] Turnstile verification error (non-blocking)', { tsErr });
+      }
+    } else if (captchaToken && captchaToken !== 'captcha_unavailable') {
       try {
         const captchaResult = await verifyCaptchaToken(captchaToken, 'privilege_register');
-        logger.info('[Privilege] reCAPTCHA result', { traceId, valid: captchaResult.valid, score: captchaResult.score, source: captchaResult.source });
+        logger.info('[Privilege] reCAPTCHA (legacy) result', { traceId, valid: captchaResult.valid, score: captchaResult.score, source: captchaResult.source });
         // Hard-block only unambiguous bots (score < 0.1) in production
         if (!captchaResult.valid && captchaResult.score !== undefined && captchaResult.score < 0.1 && process.env.NODE_ENV === 'production') {
           return res.status(403).json({ error: 'Security verification failed. Please refresh and try again.', errorCode: 'CAPTCHA_FAILED' });
@@ -117,7 +130,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
         logger.warn('[Privilege] reCAPTCHA verification error (non-blocking)', { captchaErr });
       }
     } else {
-      logger.warn('[Privilege] No captcha token provided or captcha unavailable', { traceId, captchaToken: captchaToken || 'missing' });
+      logger.warn('[Privilege] No bot-check token provided', { traceId });
     }
 
     // Ensure table is ready (module-level init already ran; this just awaits it)

@@ -14,7 +14,7 @@ import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from "@/hooks/use-toast";
 import { PhoneInput } from '@/components/PhoneInput';
-import { executeReCaptcha } from '@/components/ReCaptcha';
+import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { motion, AnimatePresence } from "framer-motion";
 import { getApiUrl } from '@/lib/apiConfig';
@@ -252,15 +252,15 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       formData.append('smsConsent', String(smsConsent));
       formData.append('termsConsent', String(termsConsent));
       formData.append('language', language);
-      // reCAPTCHA: non-blocking — if script fails (Safari ITP, ad-blockers, slow network)
-      // we still allow submission. Server logs the missing token and soft-fails.
+      // Turnstile bot check: non-blocking — if the widget fails (Safari ITP,
+      // ad-blockers, slow network) we still allow submission; the server soft-fails.
       let freshCaptchaToken: string | null = null;
       try {
-        freshCaptchaToken = await executeReCaptcha('privilege_register');
+        freshCaptchaToken = await executeTurnstileInvisible('privilege_register');
       } catch {
         freshCaptchaToken = null;
       }
-      formData.append('captchaToken', freshCaptchaToken ?? 'captcha_unavailable');
+      formData.append('turnstileToken', freshCaptchaToken ?? '');
       formData.append('traceId', traceId);
 
       // AbortController: 45-second hard timeout prevents silent hangs on slow networks
