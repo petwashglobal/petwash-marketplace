@@ -662,6 +662,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     value={email} onChange={(e) => setEmail(e.target.value)}
                     placeholder={t.emailPh} />
                 </div>
+                <div className="sl-hint">{he ? 'אפשר Gmail, Hotmail, Yahoo או כל כתובת אימייל' : 'Gmail, Hotmail, Yahoo or any email address works'}</div>
               </div>
               <div className="sl-field">
                 <label className="sl-label">{t.pwd}</label>
@@ -724,6 +725,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 <span>{t.enc}</span>
                 <span aria-hidden> · </span>
                 <span>{t.safe}</span>
+              </div>
+
+              {/* 2026 Advanced Security — trust signals describing REAL protections
+                  already in place (passkey/WebAuthn, invisible bot check, SMS/email
+                  OTP). Display-only and honest — not fake controls. */}
+              <div className="sl-secRow" aria-label={he ? 'אבטחה מתקדמת 2026' : '2026 advanced security'}>
+                <div className="sl-secTitle">{he ? 'אבטחה מתקדמת 2026' : '2026 ADVANCED SECURITY'}</div>
+                <div className="sl-secItems">
+                  <span className="sl-secItem"><FaShieldAlt aria-hidden /> {he ? 'מוכן ל-Passkey' : 'Passkey ready'}</span>
+                  <span className="sl-secItem"><FaShieldAlt aria-hidden /> {he ? 'הגנת בוטים' : 'Bot protection'}</span>
+                  <span className="sl-secItem"><FaLock aria-hidden /> {he ? 'אימות OTP' : 'OTP verification'}</span>
+                </div>
               </div>
 
               <div className="sl-div">{t.or}</div>
@@ -1108,6 +1121,19 @@ function styles(he: boolean) {
       color:var(--muted); font-size:12.5px; padding-top:4px;
     }
     .sl-bank svg{ color:var(--gold2); font-size:13px }
+
+    /* 2026 Advanced Security trust row */
+    .sl-secRow{
+      margin-top:12px; padding:10px 12px; border:1px solid rgba(176,132,28,.22);
+      border-radius:12px; background:rgba(176,132,28,.04);
+    }
+    .sl-secTitle{
+      text-align:center; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
+      color:var(--gold2); margin-bottom:6px;
+    }
+    .sl-secItems{ display:flex; align-items:center; justify-content:center; gap:14px; flex-wrap:wrap }
+    .sl-secItem{ display:inline-flex; align-items:center; gap:5px; font-size:11.5px; color:var(--muted) }
+    .sl-secItem svg{ color:var(--gold2); font-size:12px }
 
     /* DOWNLOAD APP BANNER */
     .sl-dl{
