@@ -13,6 +13,7 @@
 import { Router, type Request, type Response } from 'express';
 import { z } from 'zod';
 import { UnifiedVerificationError, unifiedVerificationService } from '../services/UnifiedVerificationService';
+import { mintEmailVerifiedToken } from '../lib/emailVerifiedToken';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -95,7 +96,10 @@ router.post('/verify', async (req: Request, res: Response) => {
       code,
       actor: actorFrom(req),
     });
-    return res.json({ ok: true, verified: true, action: (result as any).action });
+    // Mint a short-lived, HMAC-signed proof so /api/auth/email-session can mint a
+    // login WITHOUT trusting a bare { email }. Only issued on a matched code.
+    const sessionToken = mintEmailVerifiedToken(email);
+    return res.json({ ok: true, verified: true, action: (result as any).action, sessionToken });
   } catch (err: any) {
     if (err instanceof UnifiedVerificationError) {
       logger.warn('[AuthEmail] verify failed', { email: maskEmail(email), reason: err.reasonCode });

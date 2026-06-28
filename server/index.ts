@@ -621,6 +621,10 @@ const AUTH_CSRF_EXEMPT = new Set([
   // SignUpLuxury's "send email code" gets EBADCSRFTOKEN before any session exists.
   '/api/auth/email/start',
   '/api/auth/email/verify',
+  // Passwordless email login — mints a customToken from the HMAC-signed proof
+  // returned by /api/auth/email/verify (mirror of /api/auth/phone-session).
+  // Pre-session origin, the proof token IS the auth. Without this it 403s.
+  '/api/auth/email-session',
   // Post-login role-routing and onboarding steps — all require a valid Firebase
   // session cookie (requireAuth) which already scopes them to the authenticated user.
   '/api/auth/post-login',
