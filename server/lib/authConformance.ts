@@ -52,26 +52,33 @@ function runCheck(check: RuleCheck, root: string): ConformanceFinding {
   return { ...base, status: problems.length ? 'fail' : 'pass', problems };
 }
 
-/** Run every Rulebook check against the working tree. `root` defaults to cwd. */
-export function runAuthConformance(root: string = process.cwd()): ConformanceReport {
-  const checks: RuleCheck[] = [];
-  for (const ch of AUTH_RULEBOOK.channels) checks.push(...ch.checks);
-  for (const r of AUTH_RULEBOOK.roles) checks.push(...(r.checks ?? []));
+/** Generic: run a flat list of checks against the working tree. Reused by every
+ *  domain Referee (auth, money, …) so the runner itself is single-sourced. */
+export function runChecks(checks: RuleCheck[], root: string = process.cwd()): ConformanceFinding[] {
+  return checks.map((c) => runCheck(c, root));
+}
 
-  const findings = checks.map((c) => runCheck(c, root));
+/** Generic: wrap findings + domain meta into a report. */
+export function buildReport(domain: string, version: string, findings: ConformanceFinding[]): ConformanceReport {
   const failed = findings.filter((f) => f.status === 'fail').length;
-  const passed = findings.length - failed;
-
   return {
     ok: failed === 0,
-    domain: AUTH_RULEBOOK.domain,
-    version: AUTH_RULEBOOK.version,
+    domain,
+    version,
     total: findings.length,
-    passed,
+    passed: findings.length - failed,
     failed,
     findings,
     generatedAt: new Date().toISOString(),
   };
+}
+
+/** Run every auth Rulebook check against the working tree. `root` defaults to cwd. */
+export function runAuthConformance(root: string = process.cwd()): ConformanceReport {
+  const checks: RuleCheck[] = [];
+  for (const ch of AUTH_RULEBOOK.channels) checks.push(...ch.checks);
+  for (const r of AUTH_RULEBOOK.roles) checks.push(...(r.checks ?? []));
+  return buildReport(AUTH_RULEBOOK.domain, AUTH_RULEBOOK.version, runChecks(checks, root));
 }
 
 /** Pretty one-line-per-check report for logs / CLI / the CI gate message. */
