@@ -3587,6 +3587,48 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // GET /api/auth/apple/config-health - PUBLIC, secrets-free Apple sign-in readiness probe.
+  // Apple App Store rule 5.1.1(v): an app offering Sign in with Apple MUST support
+  // account deletion + token revocation, which needs APPLE_SIGN_IN_* server secrets.
+  // CRITICAL gotcha: putting a secret in Google Secret Manager does NOT expose it to
+  // the running app — it must be BOUND to the Cloud Run service as an env var of that
+  // exact name. This probe reports, by NAME ONLY (never any value), which of the
+  // required vars the running server can actually see, so "I added it to Secret
+  // Manager but it's still missing" (= not wired into Cloud Run) is instantly visible.
+  // Note: this checks the server-side revocation creds. The sign-in BUTTON itself is
+  // enabled separately in the Firebase console (Apple provider + Services ID/key).
+  app.get('/api/auth/apple/config-health', authLimiter, async (req, res) => {
+    try {
+      const { getAppleSignInRevocationConfig } = await import('./services/appleSignInRevocation');
+      const cfg = getAppleSignInRevocationConfig(process.env);
+      const present = {
+        // accept either the canonical name or its alias (NAME presence only)
+        APPLE_SIGN_IN_CLIENT_ID: !!(process.env.APPLE_SIGN_IN_CLIENT_ID || process.env.APPLE_SIGNIN_CLIENT_ID),
+        APPLE_SIGN_IN_TEAM_ID: !!(process.env.APPLE_SIGN_IN_TEAM_ID || process.env.APPLE_SIGNIN_TEAM_ID),
+        APPLE_SIGN_IN_KEY_ID: !!(process.env.APPLE_SIGN_IN_KEY_ID || process.env.APPLE_SIGNIN_KEY_ID),
+        APPLE_SIGN_IN_PRIVATE_KEY: !!(process.env.APPLE_SIGN_IN_PRIVATE_KEY || process.env.APPLE_SIGNIN_PRIVATE_KEY),
+      };
+      // Universal-links / AASA team id (separate from the revocation creds).
+      const appleTeamIdForUniversalLinks = !!(process.env.APPLE_TEAM_IDENTIFIER || process.env.APPLE_TEAM_ID);
+      return res.json({
+        status: cfg.configured ? 'ok' : 'degraded',
+        // THE answer: can the server complete Apple account-deletion/token-revocation?
+        revocationConfigured: cfg.configured,
+        // Which required env-var NAMES the running server can see (never the values).
+        present,
+        // If non-empty, these are bound in Secret Manager but NOT wired into the
+        // Cloud Run service env (or named differently) — that's the usual cause.
+        missingEnv: cfg.configured ? [] : (cfg as { missingEnv: string[] }).missingEnv,
+        appleTeamIdForUniversalLinks,
+        note: cfg.configured
+          ? 'Apple revocation creds visible to the server. (The sign-in button itself is enabled in the Firebase console — this probe does not check that.)'
+          : 'Missing vars are not visible to the running server. If you added them to Secret Manager, bind each to the Cloud Run service as an env var of the exact name above.',
+      });
+    } catch (error: any) {
+      return res.status(500).json({ status: 'error', error: error?.message || 'apple config probe failed' });
+    }
+  });
+
   // GET /api/auth/firebase-admin-test - Test Firebase Admin SDK capabilities (admin-only: exposes project internals)
   app.get('/api/auth/firebase-admin-test', requireAdmin, async (req, res) => {
     try {
