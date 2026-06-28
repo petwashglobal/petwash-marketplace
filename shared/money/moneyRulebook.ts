@@ -64,6 +64,17 @@ export const MONEY_RULEBOOK = {
       ],
     },
     {
+      id: 'einvoice.shaam-threshold-single-source',
+      plain: 'The B2B electronic-invoicing (ITA / SHAAM allocation) trigger must read the date-aware, EX-VAT threshold from the single source (isShaamAllocationRequired) — NEVER a hardcoded number. The old ₪25,000 hardcode let B2B invoices ₪5k–₪25k skip ITA e-invoicing (2026 threshold is ₪5,000). Council-found 2026-06-28.',
+      status: 'enforced',
+      checks: [
+        { id: 'einvoice.usesCanonicalThreshold', says: 'The ITA e-invoicing gate uses isShaamAllocationRequired, not a hardcoded threshold.',
+          file: 'server/enterprise/israeliTax.ts',
+          mustContain: ['isShaamAllocationRequired(data.amountBeforeVAT'],
+          mustNotContain: ['totalAmount >= 25000'] },
+      ],
+    },
+    {
       id: 'escrow.single-source',
       plain: 'KNOWN GAP (task #30): escrow state is split across 3 stores (Firestore escrow_payments + Postgres billingRecords + escrowHoldings). It should be single-sourced. Declared here as a tracked gap — read-only reconciliation first, no blind migration. No failing check yet (would block the gate on a real, accepted gap); the Referee will get a hard check once consolidated.',
       status: 'known-gap',
