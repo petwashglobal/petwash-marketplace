@@ -204,22 +204,39 @@ function resolvePgDumpBinary(): string {
 }
 
 /**
- * Ensure the Postgres backup bucket exists. The nightly dump was also failing
- * with "bucket does not exist" because petwash-postgres-backups was never
- * created. Create it on first use (idempotent) in an EU multi-region so the
- * copy stays in the EU near Neon's eu-central server (data-residency friendly).
- * If the service account lacks storage.buckets.create, this throws and the
- * caller records a LOUD failure — never a silent no-backup.
+ * Verify the Postgres backup bucket exists — the nightly job NEVER creates it.
+ *
+ * Production pattern (CEO backup spec 2026-06-28): a GCP admin creates the bucket
+ * ONCE; the backup service account gets only roles/storage.objectCreator and just
+ * UPLOADS. The previous code called createBucket() on every run, which needs
+ * storage.buckets.create — a permission the backup SA intentionally does NOT have,
+ * so the nightly run failed with "does not have storage.buckets.create access".
+ * Creating infrastructure is not the backup job's responsibility.
+ *
+ * If the bucket is missing we fail LOUD with the exact one-time admin commands
+ * (never a silent no-backup, never an attempt to create it). If the existence
+ * probe itself is denied (objectCreator-only SAs may lack storage.buckets.get),
+ * we skip the probe and proceed to upload — a genuinely-missing bucket then fails
+ * clearly on the upload.
  */
 async function ensurePostgresBucket(storageClient: Storage): Promise<void> {
   const bucket = storageClient.bucket(POSTGRES_BUCKET);
-  const [exists] = await bucket.exists();
-  if (exists) return;
-  logger.warn(`[GCS] Postgres backup bucket gs://${POSTGRES_BUCKET} missing — creating it`);
-  await storageClient.createBucket(POSTGRES_BUCKET, {
-    location: process.env.GCS_BACKUP_LOCATION || 'EU',
-  });
-  logger.info(`[GCS] ✅ Created backup bucket gs://${POSTGRES_BUCKET}`);
+  try {
+    const [exists] = await bucket.exists();
+    if (exists) return;
+    throw new Error(
+      `Backup bucket gs://${POSTGRES_BUCKET} does not exist. A GCP admin must create it ONCE — ` +
+      `the nightly job does not (and must not) create buckets. Run:\n` +
+      `  gcloud storage buckets create gs://${POSTGRES_BUCKET} --location=${process.env.GCS_BACKUP_LOCATION || 'me-west1'} --uniform-bucket-level-access --public-access-prevention\n` +
+      `then grant upload-only access:\n` +
+      `  gcloud storage buckets add-iam-policy-binding gs://${POSTGRES_BUCKET} --member="serviceAccount:github-actions@signinpetwash.iam.gserviceaccount.com" --role="roles/storage.objectCreator"`,
+    );
+  } catch (e: any) {
+    if (/does not exist/.test(e?.message || '')) throw e;
+    // exists() denied (objectCreator lacks storage.buckets.get) — don't block;
+    // upload will surface a clear error if the bucket is truly missing.
+    logger.warn(`[GCS] bucket existence probe skipped (no storage.buckets.get) — proceeding to upload`, { error: e?.message });
+  }
 }
 
 /**
