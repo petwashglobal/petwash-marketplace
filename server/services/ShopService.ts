@@ -786,26 +786,31 @@ export class ShopService {
                 if (!order) throw new Error(`Order ${orderId} not found`);
 
           const items = await this._getOrderItems(orderId);
+          const itemNamesHe = items.map((i: any) => `${i.name_he} ×${i.quantity}`).join(', ');
+          const totalCents = Number(order.total_cents) || 0;
+          const netCents = Number(order.net_cents) || 0;
 
-          await this.invoiceGenerator.generateInvoice({
-                    invoiceType: 'tax_invoice',
-                    orderId: order.order_number,
-                    customerName: order.display_name,
-                    customerEmail: order.email,
-                    items: items.map((i: any) => ({
-                                description: i.name_he,
-                                quantity: i.quantity,
-                                unitPriceCents: i.unit_price_cents,
-                                totalCents: i.line_total_cents,
-                                vatCents: i.vat_cents,
-                    })),
-                    totalCents: order.total_cents,
-                    vatCents: order.vat_cents,
-                    netCents: order.net_cents,
-                    date: new Date().toISOString(),
+          // Canonical SUMIT-backed fiscal receipt — the SAME engine wash/sitter/walk
+          // use (routes to SUMIT when SUMIT_ENABLED + creds are set; legal חשבונית מס-קבלה
+          // with allocation number). Replaces the broken IsraeliInvoiceGenerator call
+          // (that was a static provider-commission method with a different signature —
+          // it silently failed, so paid shop orders got NO receipt). Direct PetWash sale
+          // → no provider, no marketplace commission.
+          const { IsraeliDigitalReceiptService } = await import('./IsraeliDigitalReceiptService');
+          await IsraeliDigitalReceiptService.generateReceipt({
+            platform: 'shop',
+            bookingId: `shop:${order.order_number ?? orderId}`,
+            customerEmail: order.email || '',
+            customerName: order.display_name || '',
+            serviceDescription: `⁦PetWash™⁩ Shop order ${order.order_number ?? orderId}`,
+            serviceDescriptionHe: itemNamesHe || `הזמנת חנות ⁦PetWash™⁩ ${order.order_number ?? orderId}`,
+            subtotalAmount: netCents / 100,
+            platformFeeAmount: 0,
+            totalAmount: totalCents / 100,
+            paymentMethod: 'Credit Card (SUMIT)',
           });
 
-          logger.info('[ShopService] Tax invoice generated', { orderId, orderNumber: order.order_number });
+          logger.info('[ShopService] Tax invoice generated via SUMIT', { orderId, orderNumber: order.order_number });
         } catch (err: any) {
                 logger.error('[ShopService] generateTaxInvoice failed', { orderId, err: err.message });
                 // Non-fatal — invoice can be regenerated from admin
