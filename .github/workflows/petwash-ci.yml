@@ -1339,6 +1339,17 @@ jobs:
             # before the UPay client ships. Same overwrite hazard as SUMIT above —
             # keep it mapped so it persists across deploys.
             "UPAY_API_KEY=UPAY_API_KEY:latest"
+            # Nayax Lynx (operations/inventory) + Cortina (pre-paid wash redeem)
+            # tokens. SECRETS, read at runtime by LynxClient / the Cortina /start
+            # call. Optional so the deploy does NOT fail before the operator creates
+            # them in GCP Secret Manager; the moment each secret exists it auto-
+            # mounts on the next deploy with no code change. Same overwrite hazard as
+            # SUMIT above — keep mapped so they persist. The matching ON/OFF flags
+            # (LYNX_ENABLED / NAYAX_CORTINA_ENABLED) are plain env, default OFF, and
+            # are flipped only after a passing sandbox cycle.
+            "LYNX_USER_TOKEN=LYNX_USER_TOKEN:latest"
+            "NAYAX_CORTINA_SECRET_TOKEN=NAYAX_CORTINA_SECRET_TOKEN:latest"
+            "NAYAX_CORTINA_INTEGRATOR_NAME=NAYAX_CORTINA_INTEGRATOR_NAME:latest"
           )
 
           for mapping in "${required_mappings[@]}"; do
