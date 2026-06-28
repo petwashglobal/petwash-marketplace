@@ -56,4 +56,25 @@ describe('Nayax Cortina pre-paid redemption (reserve→commit→release)', () =>
     expect(src).toMatch(/status='expired'[^]*status='reserved' AND expires_at < NOW\(\)/);
     expect(src).toMatch(/closeBaySession\(row\.session_id, 'timed_out'\)/);
   });
+
+  it('wire-format is pre-aligned to the verified Cortina Static-QR spec (nested BasicInfo/MachineInfo/DeviceInfo)', () => {
+    // Verified nested shape recognised, with the legacy flat keys kept as fallbacks.
+    expect(src).toMatch(/BasicInfo\b/);
+    expect(src).toMatch(/MachineInfo\b/);
+    expect(src).toMatch(/DeviceInfo\b/);
+    expect(src).toMatch(/machine\.Id \?\? machine\.id/);            // machine identity source
+    // Identity keys on MachineInfo.Id, NOT DeviceInfo.HwSerial (which changes on swaps).
+    expect(src).toMatch(/log only — do NOT key identity on it/);
+    expect(src).toMatch(/b\.TerminalId \?\? b\.terminalId \?\? b\.UniQR/); // flat fallbacks preserved
+  });
+
+  it('VOID callback exists and is money-safe (release reserve; flag — never auto-refund — a committed debit)', () => {
+    expect(src).toMatch(/router\.post\('\/void'/);
+    expect(src).toMatch(/if \(!cortinaEnabled\(\)\) return res\.status\(503\)/); // dark-gated like the others
+    // Reserved (no debit) → cancelled; committed (debited) → recon break, NOT auto-refund.
+    expect(src).toMatch(/r\.status === 'reserved'[^]*status='cancelled'/);
+    expect(src).toMatch(/r\.status === 'committed'[^]*k9000_reconciliation_breaks/);
+    expect(src).toMatch(/break_type[^]*void_after_commit|'void_after_commit'/);
+    expect(src).not.toMatch(/void[^]*refundToWallet|void[^]*reverseEntry/);     // no blind refund math in void
+  });
 });

@@ -1,5 +1,21 @@
 # K9000 Redeem-at-Bay — verified Nayax wiring plan (2026-06-28)
 
+> **STATUS CORRECTION (2026-06-29): this is ALREADY BUILT — not pending.** The
+> redeem-at-bay rail shipped in **#1042** (Cortina pre-paid wiring, DARK), **#1043**
+> (reservation→commit→release + reconciliation), and **#1047** (security: killed a
+> free-wash backdoor), with migration `0076_k9000_redemption_reservations.sql`,
+> design doc `docs/design/2026-06-25-k9000-closedloop-prepaid-redemption.md`, the
+> code in `server/routes/nayax-cortina.ts`, and regression tests. The live design
+> is a **Try-Confirm-Cancel reservation model** (authorise = reserve, no debit;
+> settlement = atomic commit via `authorizeRedemption`, card never charged; a cron
+> sweep releases) — money-safe and gated DARK behind `NAYAX_CORTINA_ENABLED`.
+> A follow-up (branch `claude/nayax-cortina-spec-finalize-2026-06-29`) then
+> pre-aligned the wire-format to the verified Cortina Static-QR spec below and
+> added the `/void` callback. The doc below remains the
+> verified spec reference; the only thing still OUTSTANDING is **OPS** (Nayax
+> creds + a sandbox cycle), not code.
+
+
 **Source of truth:** Nayax Developer Portal, read live via the Nayax MCP + the
 official `nayax-lynx-*` skills (installed #1151). Every endpoint/field below is
 quoted from Nayax's own Cortina Static-QR reference — not assumed. This resolves
