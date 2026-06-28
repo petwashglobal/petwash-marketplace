@@ -251,7 +251,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const [method, setMethod] = useState<'mobile' | 'email' | 'other'>('mobile');
+  const [method, setMethod] = useState<'mobile' | 'email'>('mobile');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -312,7 +312,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!d.ok) {
         if (signupFlags.smsFallbackAndRealErrors) {
           setSmsProviderHealthy(false);
-          if (signupFlags.emailPassword) setMethod('email');
+          if (signupFlags.emailPassword) {
+            setMethod('email');
+            fail(d.message || (he ? 'SMS אינו זמין כעת — המשך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'));
+            return;
+          }
+          // Email is disabled too — never leave the user stuck on a dead SMS tab;
+          // point them at the social options that ARE available.
+          fail(he ? 'SMS אינו זמין כעת — המשך עם Google או Apple.' : 'SMS is temporarily unavailable — continue with Google or Apple.');
+          return;
         }
         fail(d.message || (he ? 'SMS אינו זמין כעת — המשך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'));
         return;
@@ -679,7 +687,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${phone}` : `Enter the code sent to ${phone}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verify(c); }} loading={busy} language={he ? 'he' : 'en'} />
-              <button className="sl-btn" disabled={busy || !consentOk} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+              {/* Resend only needs the network idle — NOT consent again. The code
+                  was already sent (consent was given at first send); re-gating on
+                  consent created a dead button if the user later toggled a box. */}
+              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
             </>
           )}
 
