@@ -125,6 +125,9 @@ const CSP_DIRECTIVES = [
     "https://www.recaptcha.net",
     // Gemini AI (client-side SDK)
     "https://generativelanguage.googleapis.com",
+    // Apple Sign-In — token/userinfo exchange (parallel to accounts.google.com).
+    // Without it the Apple OAuth XHR is blocked and sign-in fails. (2026-06-28)
+    "https://appleid.apple.com",
     // SendGrid click-tracking pixel
     "https://click.petwash.co.il",
     // Sentry
@@ -153,6 +156,9 @@ const CSP_DIRECTIVES = [
     "https://www.google.com/recaptcha/",
     "https://recaptcha.google.com/",
     "https://accounts.google.com",
+    // Apple Sign-In popup/iframe (parallel to accounts.google.com). MISSING this
+    // silently blocked "Sign in with Apple" → the button did nothing. (2026-06-28)
+    "https://appleid.apple.com",
     "https://*.firebaseapp.com",
     "https://open.spotify.com",
     replitHosts,
@@ -164,8 +170,11 @@ const CSP_DIRECTIVES = [
   // Base tag restricted to self
   "base-uri 'self'",
 
-  // Form actions restricted to self
-  "form-action 'self'",
+  // Form actions — 'self' plus the OAuth providers. Firebase signInWithRedirect
+  // (the fallback Safari/iOS use when popups are blocked — i.e. most Apple users)
+  // does a top-level form POST to the provider; with 'self' only, that redirect
+  // was blocked and Apple/Google sign-in silently failed on those devices. (2026-06-28)
+  "form-action 'self' https://appleid.apple.com https://accounts.google.com https://*.firebaseapp.com",
 
   // Upgrade insecure requests in production
   ...(isDev ? [] : ["upgrade-insecure-requests"]),
