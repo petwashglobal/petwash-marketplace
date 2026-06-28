@@ -1,14 +1,14 @@
 /**
- * Unconfigured social sign-in providers must be hidden by default.
+ * Social sign-in providers are ALL ON by CEO decision (2026-06-28) — every
+ * method is shown so customers can pick any. They remain individually gated by a
+ * VITE_AUTH_SIGNUP_*_ENABLED env flag (an operator can force any off per-env),
+ * and each is still wired through SignIn's GRACEFUL error handling: a provider
+ * that isn't configured yet (Firebase console / OAuth secrets missing) returns
+ * "not switched on yet — use Google/email/phone", never a crash or silent dead tap.
  *
- * Facebook, Instagram, and TikTok buttons used to render unconditionally on
- * /signup (SignUpLuxury) and /signin (SignIn) even though their backends 503 or
- * their consoles aren't configured — so users tapped buttons that error.
- * They are now gated behind default-OFF flags (like apple_signin already was),
- * so signup/login only show options that actually work, and an operator flips
- * the env flag to true once the provider's console + secrets are ready.
- *
- * Source-introspection so a regression (un-gating a dead button) fails CI.
+ * So the guardrail changed from "must be OFF" to "may be ON, but MUST degrade
+ * gracefully + stay flag-controllable". Source-introspection so a regression
+ * (un-gating, or removing the graceful handler) fails CI.
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,11 +19,19 @@ const flagsSrc = fs.readFileSync(path.join(CLIENT, 'lib', 'authSignupFlags.ts'),
 const signupSrc = fs.readFileSync(path.join(CLIENT, 'pages', 'SignUpLuxury.tsx'), 'utf8');
 const signinSrc = fs.readFileSync(path.join(CLIENT, 'pages', 'SignIn.tsx'), 'utf8');
 
-describe('authSignupFlags — unconfigured providers default OFF', () => {
-  it('facebook/instagram/tiktok use off() (enabled only when env === "true")', () => {
-    expect(flagsSrc).toMatch(/facebookSignin:\s*off\('VITE_AUTH_SIGNUP_FACEBOOK_SIGNIN_ENABLED'\)/);
-    expect(flagsSrc).toMatch(/instagramSignin:\s*off\('VITE_AUTH_SIGNUP_INSTAGRAM_SIGNIN_ENABLED'\)/);
-    expect(flagsSrc).toMatch(/tiktokSignin:\s*off\('VITE_AUTH_SIGNUP_TIKTOK_SIGNIN_ENABLED'\)/);
+describe('authSignupFlags — all providers ON but flag-controllable', () => {
+  it('facebook/instagram/tiktok use on() (CEO 2026-06-28; force off only via env === "false")', () => {
+    expect(flagsSrc).toMatch(/facebookSignin:\s*on\('VITE_AUTH_SIGNUP_FACEBOOK_SIGNIN_ENABLED'\)/);
+    expect(flagsSrc).toMatch(/instagramSignin:\s*on\('VITE_AUTH_SIGNUP_INSTAGRAM_SIGNIN_ENABLED'\)/);
+    expect(flagsSrc).toMatch(/tiktokSignin:\s*on\('VITE_AUTH_SIGNUP_TIKTOK_SIGNIN_ENABLED'\)/);
+  });
+});
+
+describe('SignIn — unconfigured providers degrade gracefully (no dead crash)', () => {
+  it('handles the not-configured Firebase auth codes with an honest message', () => {
+    expect(signinSrc).toContain('auth/operation-not-allowed');
+    expect(signinSrc).toContain('auth/configuration-not-found');
+    expect(signinSrc).toMatch(/switched on yet|not configured yet/);
   });
 });
 

@@ -28,11 +28,15 @@ describe('Firebase social auth audit guardrails', () => {
     expect(src).toContain("VITE_FIREBASE_AUTH_DOMAIN || 'signinpetwash.firebaseapp.com'");
   });
 
-  it('keeps Apple signup disabled until console config and revocation are verified', () => {
+  it('enables Apple signup (App Store rule 4.8) with the iOS OAuth handler intact', () => {
+    // CEO decision 2026-06-28: Apple sign-in is ON. App Store guideline 4.8
+    // requires "Sign in with Apple" whenever Google sign-in is offered. Until the
+    // Apple provider is configured in the Firebase/Apple consoles, a tap returns a
+    // graceful "not switched on yet" message (handled in SignIn.tsx) — never a crash.
     const flags = read('client/src/lib/authSignupFlags.ts');
     const iosHandler = read('client/src/lib/iosAuthHandler.ts');
 
-    expect(flags).toContain("appleSignin: off('VITE_AUTH_SIGNUP_APPLE_SIGNIN_ENABLED')");
+    expect(flags).toContain("appleSignin: on('VITE_AUTH_SIGNUP_APPLE_SIGNIN_ENABLED')");
     expect(iosHandler).toContain("new OAuthProvider('apple.com')");
     expect(iosHandler).toContain("provider.addScope('email')");
     expect(iosHandler).toContain("provider.addScope('name')");
