@@ -95,7 +95,7 @@ export default function SitterDetail() {
         description: isHebrew ? 'אנא התחבר כדי להזמין' : 'Please log in to book',
         variant: 'destructive',
       });
-      navigate('/signin');
+      navigate(`/signin?from=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
 
@@ -345,7 +345,7 @@ export default function SitterDetail() {
                         : 'Sign in to book a sitter for your beloved pet'}
                     </p>
                     <Button 
-                      onClick={() => navigate('/signin')}
+                      onClick={() => navigate(`/signin?from=${encodeURIComponent(window.location.pathname + window.location.search)}`)}
                       className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white"
                       data-testid="button-signin-to-book"
                     >
