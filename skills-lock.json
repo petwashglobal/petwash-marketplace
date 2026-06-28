@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "nayax-lynx-inventory": {
+      "source": "writechoiceorg/nayax-ai",
+      "sourceType": "github",
+      "skillPath": "skills/nayax-lynx-inventory/SKILL.md",
+      "computedHash": "b05f5758c1fa2e277c55eec51d8b50f843db5160148bc214efb4ca2f1a996a24"
+    },
+    "nayax-lynx-prepaid-cards": {
+      "source": "writechoiceorg/nayax-ai",
+      "sourceType": "github",
+      "skillPath": "skills/nayax-lynx-prepaid-cards/SKILL.md",
+      "computedHash": "60d27c4e6bb0c071d639fd492b614995a6d4f5702d5388febbde5fe401382d97"
+    },
+    "nayax-lynx-refunds": {
+      "source": "writechoiceorg/nayax-ai",
+      "sourceType": "github",
+      "skillPath": "skills/nayax-lynx-refunds/SKILL.md",
+      "computedHash": "59b59752115546ef48cbc44229abd5fa0297235c7eeb8da37bc807dee0d58163"
+    },
+    "nayax-lynx-reports": {
+      "source": "writechoiceorg/nayax-ai",
+      "sourceType": "github",
+      "skillPath": "skills/nayax-lynx-reports/SKILL.md",
+      "computedHash": "f3885f4cec2f5858b847903aa16aaec84db5a0400bdcf232583badcb5aa567a0"
+    }
+  }
+}

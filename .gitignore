@@ -67,3 +67,4 @@ load-test-output.txt
 *.p8
 mobile-app/*.p8
 mobile-app/play-store-service-account.json
+/agent/
