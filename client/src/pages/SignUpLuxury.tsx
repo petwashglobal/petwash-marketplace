@@ -60,7 +60,8 @@ import {
   getRedirectResult,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
-import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider } from '@/lib/iosAuthHandler';
+import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider,
+  isNativePlatform, signInWithGoogleNative, signInWithAppleNative } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
 import { type Language } from '@/lib/i18n';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -413,6 +414,28 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     setInlineError(null);
     setBusy(true);
     try {
+      // NATIVE apps (iPhone / Galaxy): use the DIRECT native sheet via
+      // @capacitor-firebase/authentication. The web signInWithRedirect path
+      // returns null inside the Capacitor webview, so Google/Apple sign-in only
+      // works through the native handlers. Falls through to web for the browser.
+      if (isNativePlatform() && (which === 'google' || which === 'apple')) {
+        const cred = which === 'google'
+          ? await signInWithGoogleNative(auth)
+          : await signInWithAppleNative(auth);
+        const idToken = await cred.user.getIdToken(true);
+        const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ idToken }),
+        });
+        if (!sessionRes.ok) {
+          const label = which === 'google' ? 'Google' : 'Apple';
+          fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
+          return;
+        }
+        await finishAndRoute();
+        return;
+      }
+
       const provider =
         which === 'google' ? createGoogleProvider() :
         which === 'apple'  ? createAppleProvider()  :
