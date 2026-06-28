@@ -35,7 +35,7 @@ import { logger } from '../lib/logger';
 import { twilioSMSService } from './TwilioSMSService';
 import { FCMService } from './FCMService';
 import { logCommunicationEventAsync } from './CommunicationEventService';
-import { createMailService } from '../lib/sendgrid';
+import { EmailService } from '../emailService';
 
 export type NotificationChannel = 'email' | 'sms' | 'push';
 
@@ -279,14 +279,15 @@ export async function dispatchNotifications(job: NotificationJob): Promise<void>
       let providerMessageId: string | null = null;
 
       if (channel === 'email' && job.email) {
-        const sg = createMailService();
-        const ok = await sg.send({
+        // Use the canonical EmailService wrapper (default from-address, spend
+        // guard, production-blackout reporting, boolean result). The raw
+        // createMailService().send() returns a [response, {}] tuple and needs an
+        // explicit `from`, so it bypassed all of those guards.
+        sent = await EmailService.send({
           to: job.email.to,
           subject: job.email.subject,
           html: job.email.html,
-          text: job.email.text,
         });
-        sent = ok;
       }
 
       if (channel === 'sms' && job.sms) {
