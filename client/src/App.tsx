@@ -76,7 +76,8 @@ const AccessPending = lazy(() => import("@/pages/AccessPending"));
 const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
-const SignIn = lazy(() => import("@/pages/SignIn"));
+// SignIn (the old white "WELCOME BACK" modal) KILLED 2026-06-28 — every login
+// route now renders the premium SignUpLuxury screen. Do NOT reintroduce it.
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
 const Dashboard = lazy(() => import("@/pages/Dashboard"));
 const DashboardV2 = lazy(() => import("@/pages/DashboardV2"));
@@ -816,13 +817,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           }}
         </Route>
         <Route path="/signin">
-          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/sign-in">
-          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/login">
-          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/booking-chat/inbox">
           {() => (
@@ -846,7 +847,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/signin-advanced">
-          {() => <SignIn language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/signup">
           {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}

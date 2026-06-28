@@ -140,14 +140,11 @@ describe('intentParam helper behaviour', () => {
 // ── B. CALLER-INTEGRATION SOURCE PINS ──────────────────────────────────────
 
 describe('PR-FRES-6 caller-integration source pins', () => {
-  it('11. SignIn.tsx imports applyIntentFromUrl and invokes it BEFORE the redirect heuristic', () => {
-    const src = read('client/src/pages/SignIn.tsx');
+  it('11. SignUpLuxury (unified login) imports applyIntentFromUrl and invokes it on mount', () => {
+    // old SignIn.tsx retired 2026-06-28 — unified into SignUpLuxury.
+    const src = read('client/src/pages/SignUpLuxury.tsx');
     expect(src).toMatch(/import\s*\{\s*applyIntentFromUrl\s*\}\s*from\s*['"]@\/lib\/intentParam['"]/);
-    // applyIntentFromUrl() must run before the legacy customRedirect heuristic
-    const apply = src.indexOf('applyIntentFromUrl()');
-    const legacy = src.indexOf("provider-onboarding'");
-    expect(apply).toBeGreaterThan(0);
-    expect(legacy).toBeGreaterThan(apply);
+    expect(src).toContain('applyIntentFromUrl()');
   });
 
   it('12. AuthAction.tsx (email-link return) invokes applyIntentFromUrl before handleAction', () => {

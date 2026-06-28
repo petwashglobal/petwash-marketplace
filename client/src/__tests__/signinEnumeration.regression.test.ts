@@ -6,19 +6,16 @@ const ROOT = resolve(__dirname, '..', '..', '..');
 const read = (p: string) => readFileSync(resolve(ROOT, p), 'utf8');
 
 describe('SignIn invalid credential enumeration guard', () => {
-  it('keeps user-not-found on the same generic invalid-credentials path as wrong password', () => {
-    const src = read('client/src/pages/SignIn.tsx');
-    const catchStart = src.indexOf('logger.error("Email/password sign-in error:"');
-    expect(catchStart).toBeGreaterThan(0);
-
-    const block = src.slice(catchStart, src.indexOf('trackAuthError({', catchStart));
-    expect(block).toContain("error.code === 'auth/user-not-found'");
-    expect(block).toContain("error.code === 'auth/wrong-password'");
-    expect(block).toContain("error.code === 'auth/invalid-credential'");
-    expect(block).toContain("t('signin.invalidCredentials', language)");
-    expect(block).not.toContain('No account found with this email');
-    expect(block).not.toContain('Redirecting to sign up');
-    expect(block).not.toContain('navigate(`/signup?email=');
+  it('email auth does not leak whether an account exists (enumeration guard)', () => {
+    // Unified login is SignUpLuxury (old SignIn.tsx retired 2026-06-28). A wrong
+    // password on an existing account must read the SAME as any other bad
+    // credential — never confirm an email is registered.
+    const src = read('client/src/pages/SignUpLuxury.tsx');
+    expect(src).toContain('Email or password is incorrect.');
+    expect(src).not.toContain('Account exists — please check your password');
+    expect(src).not.toContain('Wrong password.');
+    expect(src).not.toContain('No account found');
+    expect(src).not.toContain('navigate(`/signup?email=');
   });
 
   it('keeps shared Firebase auth helpers generic for user-not-found and wrong-password', () => {
