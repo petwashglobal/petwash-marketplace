@@ -3867,11 +3867,15 @@ function App() {
       elements.forEach(el => el.remove());
     });
 
-    const floatingStacks = document.querySelectorAll('.pw-float-stack');
-    floatingStacks.forEach((el, i) => {
-      if (i > 0) el.remove();
-    });
-    
+    // NOTE (2026-06-28): the old `.pw-float-stack` dedup loop was REMOVED here.
+    // `.pw-float-stack` is created ONLY by React's <FloatingStack> (rendered
+    // exactly once in this tree), so manually .remove()-ing a "duplicate" could
+    // only ever rip a React-owned node out from under the reconciler — the exact
+    // react#11538 insertBefore/removeChild "not a child" crash that white-screened
+    // the site. The real duplicate (a second <AccessibilityButton>) was deleted in
+    // #1117 and the shared DOM ids were made per-instance in #1120, so no second
+    // stack is ever rendered. Do NOT reintroduce manual DOM removal of React nodes.
+
     return cleanupViewport;
   }, []);
 
