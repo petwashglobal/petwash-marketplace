@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useLanguage } from '@/lib/languageStore';
+import { CheckoutLegalNotice } from '@/components/legal/CheckoutLegalNotice';
 import { Layout } from '@/components/Layout';
 import { PetWashIcon } from '@/components/PetWashIcon';
 
@@ -1312,6 +1313,8 @@ export default function EGift() {
                 <div className="mt-5 pt-5" style={{ borderTop: '1px solid rgba(10,10,10,0.10)' }}>
                   <PaymentMethods language={lang} size="sm" />
                 </div>
+
+                <CheckoutLegalNotice className="mt-4" />
               </div>
             </div>
 
