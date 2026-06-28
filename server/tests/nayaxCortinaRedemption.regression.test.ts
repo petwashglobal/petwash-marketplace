@@ -68,13 +68,30 @@ describe('Nayax Cortina pre-paid redemption (reserve→commit→release)', () =>
     expect(src).toMatch(/b\.TerminalId \?\? b\.terminalId \?\? b\.UniQR/); // flat fallbacks preserved
   });
 
-  it('VOID callback exists and is money-safe (release reserve; flag — never auto-refund — a committed debit)', () => {
-    expect(src).toMatch(/router\.post\('\/void'/);
+  it('VOID/CANCEL callbacks share money-safe logic (release reserve; flag — never auto-refund — a committed debit)', () => {
+    expect(src).toMatch(/router\.post\(\['\/void', '\/cancel'\]/);              // both share one handler
     expect(src).toMatch(/if \(!cortinaEnabled\(\)\) return res\.status\(503\)/); // dark-gated like the others
-    // Reserved (no debit) → cancelled; committed (debited) → recon break, NOT auto-refund.
     expect(src).toMatch(/r\.status === 'reserved'[^]*status='cancelled'/);
     expect(src).toMatch(/r\.status === 'committed'[^]*k9000_reconciliation_breaks/);
-    expect(src).toMatch(/break_type[^]*void_after_commit|'void_after_commit'/);
-    expect(src).not.toMatch(/void[^]*refundToWallet|void[^]*reverseEntry/);     // no blind refund math in void
+    expect(src).toMatch(/'void_after_commit'/);
+    expect(src).not.toMatch(/void[^]*refundToWallet|void[^]*reverseEntry/);     // no blind refund math
+  });
+
+  it('REFUND callback flags a recon break — never blind refund math (refund rail is a known gap)', () => {
+    expect(src).toMatch(/router\.post\('\/refund'/);
+    expect(src).toMatch(/'refund_requested'/);
+    expect(src).not.toMatch(/refund[^]*refundToWallet|refund[^]*reverseEntry/);
+  });
+
+  it('response shape matches the verified Cortina spec ({Status:{Verdict}}), not the old {Result}', () => {
+    expect(src).toMatch(/Verdict: 'Approved'/);
+    expect(src).toMatch(/Verdict: 'Declined'/);
+    expect(src).not.toMatch(/Result: 'Approved'|Approved: true/);
+  });
+
+  it('decline codes match the verified list (50=unknown machine, NOT 5=fraud, for bay_not_found)', () => {
+    expect(src).toMatch(/cortinaDecline\(50, 'bay_not_found'\)/);
+    expect(src).not.toMatch(/cortinaDecline\(5, 'bay_not_found'\)/);            // 5 = Suspected Fraud (wrong)
+    expect(src).toMatch(/cortinaDecline\(999, 'internal_error'\)/);            // 999 = General exception
   });
 });

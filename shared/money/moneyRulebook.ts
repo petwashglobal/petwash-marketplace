@@ -79,9 +79,9 @@ export const MONEY_RULEBOOK = {
       plain: 'The K9000 pre-paid redeem-at-bay (Nayax Cortina Static-QR) is DARK until NAYAX_CORTINA_ENABLED=true. It is Try-Confirm-Cancel: authorise RESERVES (no debit), settlement COMMITS via the existing atomic authorizeRedemption (the card is NEVER charged), and void RELEASES an un-debited hold — but a void AFTER a committed debit is flagged as a reconciliation break, NEVER auto-refunded (refund rail is a known gap). Wire-format pre-aligned to the verified Cortina spec (2026-06-29).',
       status: 'config-gated',
       checks: [
-        { id: 'cortina.dark-gated', says: 'All Cortina handlers are dark until NAYAX_CORTINA_ENABLED.',
+        { id: 'cortina.dark-gated', says: 'All Cortina handlers are dark until NAYAX_CORTINA_ENABLED; verified spec response shape; no blind refund math.',
           file: 'server/routes/nayax-cortina.ts',
-          mustContain: ["if (!cortinaEnabled()) return res.status(503)", "router.post('/void'", "k9000_reconciliation_breaks"],
+          mustContain: ["if (!cortinaEnabled()) return res.status(503)", "router.post(['/void', '/cancel']", "router.post('/refund'", "Verdict: 'Approved'", "k9000_reconciliation_breaks"],
           mustNotContain: ['refundToWallet', 'reverseEntry'] },
       ],
     },
