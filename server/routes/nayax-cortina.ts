@@ -19,9 +19,15 @@
  *
  * DARK until NAYAX_CORTINA_ENABLED=true (needs Nayax Cortina creds + per-bay
  * TerminalId mapping + "PreSelection Enabled = Yes"). The Nayax wire-format is
- * isolated in parseCortinaRequest / cortinaApprove / cortinaDecline — FINALISE
- * those field names against the live Cortina StaticQR spec when creds arrive; the
- * PetWash-side logic (resolve → verify → debit → release) is final.
+ * isolated in parseCortinaRequest / cortinaApprove / cortinaDecline. The field
+ * names are now PRE-ALIGNED to the verified Cortina Static-QR spec (Nayax dev
+ * portal, read via the Nayax MCP 2026-06-29): the nested shape
+ * BasicInfo{Amount, CurrencyCode, TransactionId} / MachineInfo{Id} /
+ * DeviceInfo{HwSerial}, with the legacy flat keys kept as fallbacks. Machine
+ * identity keys on MachineInfo.Id (the stable virtual-machine id), NOT
+ * DeviceInfo.HwSerial (changes on a device swap). Confirm exact casing against
+ * the first live sandbox payload before flipping to production. The PetWash-side
+ * logic (resolve → verify → reserve → debit → release/void) is final.
  */
 import { Router, type Request, type Response } from 'express';
 import { db, pool } from '../db';
@@ -69,13 +75,36 @@ async function pickRedemptionType(userId: string): Promise<K9000RedemptionType |
  * Nayax wire-format adapter (ISOLATED — finalise field names vs Cortina spec).
  * Cortina StaticQR posts the scanned code + the device's TerminalId/UniQR.
  */
-function parseCortinaRequest(body: any): { terminalId: string; code: string; transactionId?: string; vended?: boolean } {
+interface CortinaRequest {
+  terminalId: string;       // resolves to a bay (matches nayaxTerminalId / nayaxQrReaderId)
+  machineId?: string;       // verified spec: MachineInfo.Id (stable virtual-machine id)
+  code: string;             // the scanned PetWash QR (signed pass-link token)
+  transactionId?: string;   // Nayax txn id — idempotency anchor
+  vended?: boolean;         // Settlement: did the product actually dispense?
+  amount?: number;          // BasicInfo.Amount (for logging/validation; we debit our own price)
+  currency?: string;        // BasicInfo.CurrencyCode (expected ILS)
+  hwSerial?: string;        // DeviceInfo.HwSerial (log only — do NOT key identity on it)
+}
+function parseCortinaRequest(body: any): CortinaRequest {
   const b = body ?? {};
+  // Verified Cortina Static-QR shape is nested; legacy flat keys kept as fallbacks.
+  const basic   = b.BasicInfo   ?? b.basicInfo   ?? {};
+  const machine = b.MachineInfo ?? b.machineInfo ?? {};
+  const device  = b.DeviceInfo  ?? b.deviceInfo  ?? {};
+  const machineId = String(machine.Id ?? machine.id ?? '') || undefined;
   return {
-    terminalId: String(b.TerminalId ?? b.terminalId ?? b.UniQR ?? b.uniqr ?? ''),
-    code:       String(b.Code ?? b.code ?? b.Data ?? b.qr ?? ''),
-    transactionId: b.TransactionId ?? b.transactionId,
+    // Match on MachineInfo.Id (stable) first, then the flat TerminalId/UniQR.
+    terminalId: String(
+      b.TerminalId ?? b.terminalId ?? b.UniQR ?? b.uniqr ??
+      basic.TerminalId ?? basic.terminalId ?? machineId ?? '',
+    ),
+    machineId,
+    code:       String(b.Code ?? b.code ?? b.Data ?? b.qr ?? basic.Code ?? basic.code ?? ''),
+    transactionId: b.TransactionId ?? b.transactionId ?? basic.TransactionId ?? basic.transactionId,
     vended: b.Vended ?? b.vended ?? b.Success ?? b.success,
+    amount:   typeof basic.Amount === 'number' ? basic.Amount : undefined,
+    currency: basic.CurrencyCode ?? basic.currencyCode ?? undefined,
+    hwSerial: device.HwSerial ?? device.hwSerial ?? undefined,
   };
 }
 const cortinaApprove = (extra: Record<string, unknown> = {}) => ({ Result: 'Approved', Approved: true, ...extra });
@@ -189,6 +218,71 @@ router.post('/settlement', async (req: Request, res: Response) => {
   } catch (err: any) {
     logger.error('[Cortina] settlement error', { err: err?.message });
     return res.json(cortinaDecline(992, 'internal_error'));
+  }
+});
+
+// POST /api/nayax/cortina/void — Nayax cancels a transaction → RELEASE the hold.
+// Verified Cortina Static-QR callback (Nayax dev portal). Money-safe by case:
+//   • still-RESERVED hold (NO debit happened) → flip to 'cancelled'. Trivial.
+//   • already-COMMITTED redemption (money already left the pre-paid ledger) → a
+//     refund, and the automated customer-refund rail is a KNOWN GAP
+//     ([[refund-rail-gap-2026-06-22]]). We do NOT invent refund math here: we log
+//     a CRITICAL reconciliation break for an operator and ACK the void.
+//   • nothing matching → release any active reserve on the bay, then idempotent ACK.
+// Ack-on-error is deliberate: a reserved hold TTL-expires via the sweep regardless,
+// and a committed mismatch is caught by daily reconciliation — far safer than a
+// decline that triggers a Nayax retry storm.
+router.post('/void', async (req: Request, res: Response) => {
+  if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(992, 'cortina_disabled'));
+  const { terminalId, transactionId } = parseCortinaRequest(req.body);
+  try {
+    if (!transactionId) return res.json(cortinaApprove({ note: 'no_transaction_id_nothing_to_void' }));
+
+    const found = await pool.query(
+      `SELECT id, status, bay_id, station_id, session_id, reservation_ref
+         FROM k9000_redemption_reservations
+        WHERE nayax_transaction_id = $1
+        ORDER BY created_at DESC LIMIT 1`,
+      [transactionId],
+    );
+    const r = found.rows[0];
+
+    if (!r) {
+      // Void for a txn we never committed → release any active reserve on the bay, ack.
+      const bay = await resolveBay(terminalId);
+      if (bay) {
+        await pool.query(
+          `UPDATE k9000_redemption_reservations SET status='cancelled', updated_at=NOW()
+             WHERE bay_id=$1 AND status='reserved'`,
+          [bay.bayId],
+        ).catch(() => {});
+      }
+      return res.json(cortinaApprove({ note: 'no_committed_txn_released_or_noop' }));
+    }
+
+    if (r.status === 'reserved') {
+      await pool.query(`UPDATE k9000_redemption_reservations SET status='cancelled', updated_at=NOW() WHERE id=$1`, [r.id]);
+      logger.info('[Cortina] void — released un-debited reservation', { transactionId, reservationRef: r.reservation_ref });
+      return res.json(cortinaApprove({ released: true }));
+    }
+
+    if (r.status === 'committed') {
+      // Money already debited — refund rail is a known gap. Flag, do NOT auto-refund.
+      await pool.query(
+        `INSERT INTO k9000_reconciliation_breaks
+           (recon_date, break_type, bay_id, station_id, nayax_ref, petwash_session_id, severity, status, observed_json)
+         VALUES (CURRENT_DATE, 'void_after_commit', $1, $2, $3, $4, 'critical', 'open', $5::jsonb)`,
+        [r.bay_id, r.station_id, transactionId, r.session_id,
+         JSON.stringify({ reservationRef: r.reservation_ref, reason: 'nayax_void_after_prepaid_debit_needs_manual_refund' })],
+      ).catch((e: any) => logger.error('[Cortina] void recon-break insert failed', { err: e?.message }));
+      logger.warn('[Cortina] void AFTER commit — flagged for manual refund (refund-rail gap)', { transactionId, reservationRef: r.reservation_ref });
+      return res.json(cortinaApprove({ flaggedForRefund: true }));
+    }
+
+    return res.json(cortinaApprove({ idempotent: true, status: r.status })); // already cancelled/expired
+  } catch (err: any) {
+    logger.error('[Cortina] void error', { err: err?.message });
+    return res.json(cortinaApprove({ note: 'void_ack_despite_error' }));
   }
 });
 

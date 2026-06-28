@@ -75,6 +75,17 @@ export const MONEY_RULEBOOK = {
       ],
     },
     {
+      id: 'k9000.cortina-prepaid-safe',
+      plain: 'The K9000 pre-paid redeem-at-bay (Nayax Cortina Static-QR) is DARK until NAYAX_CORTINA_ENABLED=true. It is Try-Confirm-Cancel: authorise RESERVES (no debit), settlement COMMITS via the existing atomic authorizeRedemption (the card is NEVER charged), and void RELEASES an un-debited hold — but a void AFTER a committed debit is flagged as a reconciliation break, NEVER auto-refunded (refund rail is a known gap). Wire-format pre-aligned to the verified Cortina spec (2026-06-29).',
+      status: 'config-gated',
+      checks: [
+        { id: 'cortina.dark-gated', says: 'All Cortina handlers are dark until NAYAX_CORTINA_ENABLED.',
+          file: 'server/routes/nayax-cortina.ts',
+          mustContain: ["if (!cortinaEnabled()) return res.status(503)", "router.post('/void'", "k9000_reconciliation_breaks"],
+          mustNotContain: ['refundToWallet', 'reverseEntry'] },
+      ],
+    },
+    {
       id: 'escrow.single-source',
       plain: 'KNOWN GAP (task #30): escrow state is split across 3 stores (Firestore escrow_payments + Postgres billingRecords + escrowHoldings). It should be single-sourced. Declared here as a tracked gap — read-only reconciliation first, no blind migration. No failing check yet (would block the gate on a real, accepted gap); the Referee will get a hard check once consolidated.',
       status: 'known-gap',
