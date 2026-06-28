@@ -359,6 +359,55 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     finally { setBusy(false); }
   }
 
+  // ── Passwordless EMAIL 6-digit code (mirror of the mobile OTP flow) ──────────
+  async function sendEmailCode() {
+    if (!email) { fail(he ? 'הזן כתובת אימייל' : 'Enter your email'); return; }
+    if (!requireTerms()) return;
+    setInlineError(null);
+    setBusy(true);
+    try {
+      const r = await fetch(getApiUrl('/api/auth/email/start'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ email, purpose: 'signup', language }),
+      });
+      const d = await r.json();
+      if (!d.ok) { fail(d.message || (he ? 'לא ניתן לשלוח קוד כעת' : 'Could not send the code right now')); return; }
+      setSent(true);
+      toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
+    } catch (e) { logger.error('[signup] sendEmailCode', e); fail(he ? 'שגיאת רשת' : 'Network error'); }
+    finally { setBusy(false); }
+  }
+
+  async function verifyEmailCode(c: string) {
+    setInlineError(null);
+    setBusy(true);
+    try {
+      const v = await fetch(getApiUrl('/api/auth/email/verify'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ email, code: c, purpose: 'signup' }),
+      });
+      const vd = await v.json();
+      if (!vd.ok || !vd.sessionToken) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
+      const s = await fetch(getApiUrl('/api/auth/email-session'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ sessionToken: vd.sessionToken }),
+      });
+      const sd = await s.json();
+      if (sd.customToken) {
+        const cred = await signInWithCustomToken(auth, sd.customToken);
+        const idToken = await cred.user.getIdToken(true);
+        await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ idToken }),
+        });
+        await finishAndRoute();
+        return;
+      }
+      fail(he ? 'האימות נכשל' : 'Verification failed');
+    } catch (e) { logger.error('[signup] verifyEmailCode', e); fail(he ? 'האימות נכשל' : 'Verification failed'); }
+    finally { setBusy(false); }
+  }
+
   async function social(which: 'google' | 'apple' | 'facebook') {
     if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return; }
     setInlineError(null);
@@ -664,6 +713,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 </div>
                 <div className="sl-hint">{he ? 'אפשר Gmail, Hotmail, Yahoo או כל כתובת אימייל' : 'Gmail, Hotmail, Yahoo or any email address works'}</div>
               </div>
+
+              {/* Primary: passwordless 6-digit email code (same gate as mobile). */}
+              <button type="button" className="sl-cta" disabled={busy || !email || !consentOk}
+                onClick={() => void sendEmailCode()}>
+                <FaEnvelope aria-hidden /> {he ? 'שלחו לי קוד בן 6 ספרות' : 'Email me a 6-digit code'}
+              </button>
+              {!consentOk && <div className="sl-hint sl-submitHint">{he ? 'יש לאשר את התנאים וגיל 18+' : 'Please accept the terms and confirm you are 18+'}</div>}
+
+              <div className="sl-div">{he ? 'או הגדירו סיסמה' : 'or set a password'}</div>
+
               <div className="sl-field">
                 <label className="sl-label">{t.pwd}</label>
                 <div className="sl-inputWrap">
@@ -691,6 +750,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {/* Resend only needs the network idle — NOT consent again. The code
                   was already sent (consent was given at first send); re-gating on
                   consent created a dead button if the user later toggled a box. */}
+              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+            </>
+          )}
+
+          {/* === Email OTP — appears after we send the 6-digit email code === */}
+          {method === 'email' && sent && (
+            <>
+              <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${email}` : `Enter the code sent to ${email}`}</p>
+              <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
               <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
             </>
           )}

@@ -15,6 +15,7 @@ import { sql, eq } from 'drizzle-orm';
 import { pool, db } from '../db';
 import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared/schema';
 import { storage } from '../storage';
+import { validateEmailVerifiedToken } from '../lib/emailVerifiedToken';
 
 // Rate limiter: max 3 SMS send attempts per IP per 10 minutes.
 // Tight window prevents bulk enumeration or accidental spam from a single device.
@@ -684,6 +685,97 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
       ok: false,
       error: 'Server error'
     });
+  }
+});
+
+/**
+ * POST /api/auth/email-session
+ * Passwordless EMAIL login — the mirror of /api/auth/phone-session.
+ * REQUIRES: sessionToken from a successful /api/auth/email/verify (HMAC-signed
+ * proof the 6-digit email code was matched). Never mints a session from a bare
+ * { email } — the token is the only trust anchor.
+ */
+publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) => {
+  try {
+    const { sessionToken } = req.body;
+    const check = validateEmailVerifiedToken(sessionToken);
+    if (!check.valid || !check.email) {
+      logger.warn('[EmailAuth] Invalid or expired email session token', { reason: check.reason });
+      return res.status(401).json({ ok: false, error: 'Invalid or expired verification. Please verify your email again.' });
+    }
+
+    const email = check.email;
+    const adminAuth = fbAdminAuth;
+
+    let user;
+    try {
+      user = await adminAuth.getUserByEmail(email);
+    } catch (error: any) {
+      if (error.code === 'auth/user-not-found') {
+        // Email is proven (matched code) → safe to create as a verified account.
+        user = await adminAuth.createUser({ email, emailVerified: true });
+        logger.info('[EmailAuth] Created new user for email', { email: email.replace(/(.{2}).*(@.*)/, '$1•••$2') });
+
+        try {
+          const { logNewUserRegistration } = await import('../services/bookingEventLogger');
+          logNewUserRegistration({
+            userId: user.uid, firstName: 'User', lastName: '', email,
+            phone: '', country: 'IL', registrationSource: 'email_code', language: 'he',
+          }).catch(() => {});
+        } catch (logErr) {
+          logger.warn('[EmailAuth] Registration logging failed (non-blocking)', logErr);
+        }
+
+        // Wallet + loyalty + users row — same bootstrap as phone-session so the
+        // dashboard/wallet queries never crash on a brand-new email account.
+        try {
+          const walletId = `WALLET-${user.uid.slice(0, 20)}`;
+          await pool.query(
+            `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents, updated_at)
+             VALUES ($1, $2, 0, NOW()) ON CONFLICT (wallet_id) DO NOTHING`,
+            [walletId, user.uid],
+          );
+        } catch (walletErr: any) {
+          logger.warn('[EmailAuth] Wallet auto-creation failed (non-blocking)', { error: walletErr.message });
+        }
+        try {
+          await pool.query(
+            `INSERT INTO loyalty_profiles
+               (user_id, tier, tier_since, tier_progress, tier_threshold, points, lifetime_points, xp, level,
+                total_washes, current_streak, longest_streak, average_wash_interval, is_vip, concierge_access,
+                priority_support, preferred_stations, preferred_times, personalized_offers, created_at, updated_at)
+             VALUES ($1, 'bronze', NOW(), 0, 1000, 100, 100, 0, 1, 0, 0, 0, 21, false, false, false,
+                     '[]', '[]', '[]', NOW(), NOW())
+             ON CONFLICT (user_id) DO NOTHING`,
+            [user.uid],
+          );
+        } catch (loyaltyErr: any) {
+          logger.warn('[EmailAuth] Loyalty auto-enroll failed (non-blocking)', { error: loyaltyErr.message });
+        }
+        try {
+          await storage.upsertUser({
+            id: user.uid, email, phone: null, role: 'customer', authProvider: 'email',
+            language: 'he', country: 'IL', userStatus: 'new', signupIntent: 'customer',
+          } as any);
+        } catch (usersErr: any) {
+          logger.warn('[EmailAuth] users table upsert failed (non-blocking)', { error: usersErr.message });
+        }
+      } else {
+        throw error;
+      }
+    }
+
+    const customToken = await adminAuth.createCustomToken(user.uid, { email, authMethod: 'email' });
+    logger.info('[EmailAuth] Custom token created', { uid: user.uid });
+    return res.status(200).json({
+      ok: true,
+      userId: user.uid,
+      customToken,
+      message: 'Email verified. Use customToken with signInWithCustomToken, then POST /api/auth/session to set session cookie.',
+    });
+  } catch (err) {
+    logger.error('[PublicAuth] Error creating email session:', err);
+    return res.status(500).json({ ok: false, error: 'Server error' });
   }
 });
 
