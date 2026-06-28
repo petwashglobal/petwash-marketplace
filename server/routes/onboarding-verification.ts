@@ -6,6 +6,7 @@ import { twilioSMSService } from '../services/TwilioSMSService';
 import { EmailService } from '../emailService';
 import { logger } from '../lib/logger';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
+import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import crypto from 'crypto';
 import { db } from '../db';
 import { users } from '../../shared/schema';
@@ -526,21 +527,30 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
 
 router.post('/send-sms-code', verificationLimiter, async (req: Request, res: Response) => {
   try {
-    const { phone, language = 'he', captchaToken } = req.body;
+    const { phone, language = 'he', captchaToken, turnstileToken } = req.body;
 
     if (!phone) {
       return res.status(400).json({ success: false, message: 'Phone number required' });
     }
 
-    if (!captchaToken) {
-      logger.warn('[Verification] SMS send blocked — no captchaToken', { phone: phone.slice(0, 6) });
+    // Bot gate — Turnstile is the canonical check (Cloudflare, free, no Enterprise/
+    // domain tangle). Legacy reCAPTCHA tokens are still accepted during migration so
+    // no client breaks; once all callers send Turnstile, reCAPTCHA can be retired.
+    if (turnstileToken) {
+      const ts = await verifyTurnstileToken(turnstileToken, req.ip);
+      if (!ts.valid) {
+        logger.warn('[Verification] SMS send blocked by Turnstile', { phone: phone.slice(0, 6), reason: ts.reason });
+        return res.status(403).json({ success: false, message: 'Security check failed. Please refresh and try again.' });
+      }
+    } else if (captchaToken) {
+      const captchaResult = await verifyCaptchaToken(captchaToken, 'send_sms');
+      if (!captchaResult.valid) {
+        logger.warn('[Verification] SMS send blocked by reCAPTCHA (legacy)', { phone: phone.slice(0, 6), reason: captchaResult.reason });
+        return res.status(403).json({ success: false, message: 'Security check failed. Please refresh and try again.' });
+      }
+    } else {
+      logger.warn('[Verification] SMS send blocked — no bot-check token', { phone: phone.slice(0, 6) });
       return res.status(400).json({ success: false, message: 'Security verification required' });
-    }
-
-    const captchaResult = await verifyCaptchaToken(captchaToken, 'send_sms');
-    if (!captchaResult.valid) {
-      logger.warn('[Verification] SMS send blocked by reCAPTCHA', { phone: phone.slice(0, 6), reason: captchaResult.reason });
-      return res.status(403).json({ success: false, message: 'Security check failed. Please refresh and try again.' });
     }
 
     const phoneCooldown = await checkPhoneSmsCooldown(phone);

@@ -7,7 +7,7 @@ import { apiRequest } from '@/lib/queryClient';
 import type { Language } from '@/lib/i18n';
 import { Mail, Phone, CheckCircle2, ArrowRight, ArrowLeft, Shield, Loader2, RefreshCw, Link2 } from 'lucide-react';
 import { PhoneInput } from '@/components/PhoneInput';
-import { executeReCaptcha } from '@/components/ReCaptcha';
+import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 
 interface OnboardingVerificationProps {
   isOpen: boolean;
@@ -294,14 +294,14 @@ export function OnboardingVerification({
       toast({ title: isRTL ? 'אנא הזינו מספר טלפון תקין' : 'Please enter a valid phone number', variant: 'destructive' });
       return;
     }
-    const freshCaptchaToken = await executeReCaptcha('send_sms');
+    const freshCaptchaToken = await executeTurnstileInvisible('send_sms').catch(() => null);
     if (!freshCaptchaToken) {
       toast({ title: isRTL ? 'אימות אבטחה נכשל' : 'Security check failed', description: isRTL ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify request. Please refresh and try again.', variant: 'destructive' });
       return;
     }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/onboarding-verification/send-sms-code', { phone, language, captchaToken: freshCaptchaToken });
+      const res = await apiRequest('POST', '/api/onboarding-verification/send-sms-code', { phone, language, turnstileToken: freshCaptchaToken });
       const data = await res.json();
       if (data.success) {
         setStep('phone_code');
