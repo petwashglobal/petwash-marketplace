@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button';
 import { ChevronLeft, ChevronRight, Check, ArrowRight, ArrowLeft, Leaf, Sparkles, ShieldCheck, CheckCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
+import { CheckoutLegalNotice } from '@/components/legal/CheckoutLegalNotice';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 
@@ -288,6 +289,8 @@ export default function Packages() {
                 <p className="text-[10px] text-[#aaa] text-center mt-3 tracking-wide">
                   {isHe ? 'תשלום מאובטח · שמפו טבעי' : 'Secure checkout · natural pet care'}
                 </p>
+
+                <CheckoutLegalNotice className="mt-3" />
               </div>
             </div>
 

@@ -62,6 +62,11 @@ export function Footer({ language }: FooterProps) {
                 </Link>
               </div>
               <div>
+                <Link href="/legal/cancellation-refund-policy" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
+                  {language === 'he' ? 'ביטול והחזר כספי' : 'Cancellation & Refund'}
+                </Link>
+              </div>
+              <div>
                 <Link href="/accessibility" className="text-gray-600 hover:text-black transition-colors cursor-pointer">
                   {t('footer.accessibility', language)}
                 </Link>
