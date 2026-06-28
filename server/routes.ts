@@ -18,6 +18,7 @@ import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
 import adminIdentityMergeRoutes from "./routes/admin-identity-merge";
 import adminSumitRoutes from "./routes/admin-sumit";
+import adminLynxRoutes from "./routes/admin-lynx";
 import supplierFraudFlagsRoutes from "./routes/supplier-fraud-flags";
 import providerInsuranceRoutes from "./routes/provider-insurance";
 import adminUpayRoutes from "./routes/admin-upay";
@@ -11009,6 +11010,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin/suppliers', adminSuppliersRoutes);
   app.use('/api/admin', adminIdentityMergeRoutes); // GET /identity-merge-candidates — SHADOW, read-only
   app.use('/api/admin/sumit', adminSumitRoutes);
+  // Nayax Lynx ops (machine inventory / device status / restock pick lists) —
+  // super-admin, read-only + audited ops, DARK until LYNX_ENABLED + token. No money.
+  app.use('/api/admin/lynx', adminLynxRoutes);
   // Supplier Fraud Control (spec §20) — READ-ONLY detector. Same flag gate as
   // supplier-invoices (404 when ff.supplier_invoice_control.enabled is OFF).
   app.use('/api/admin', supplierFraudFlagsRoutes);
