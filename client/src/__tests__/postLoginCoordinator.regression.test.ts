@@ -176,9 +176,13 @@ describe('postLoginCoordinator behaviour', () => {
 // ── B. SOURCE-PIN TESTS — every caller routes through the coordinator ───────
 
 describe('PR-FRES-B caller-integration source pins', () => {
-  it('13. SignIn.tsx imports resolvePostLogin and removed raw post-login fetch', () => {
-    const src = read('client/src/pages/SignIn.tsx');
-    expect(src).toMatch(/import\s*\{\s*resolvePostLogin\s*\}\s*from\s*['"]@\/lib\/postLoginCoordinator['"]/);
+  it('13. SignUpLuxury (unified login) imports resolvePostLogin and has no raw post-login fetch', () => {
+    // old SignIn.tsx retired 2026-06-28 — unified into SignUpLuxury.
+    const src = read('client/src/pages/SignUpLuxury.tsx');
+    // SignUpLuxury imports the coordinator dynamically (await import(...)) and
+    // destructures resolvePostLogin — accept either static or dynamic form.
+    expect(src).toMatch(/import\(\s*['"]@\/lib\/postLoginCoordinator['"]\s*\)|import\s*\{\s*resolvePostLogin\s*\}\s*from\s*['"]@\/lib\/postLoginCoordinator['"]/);
+    expect(src).toMatch(/resolvePostLogin/);
     expect(src).not.toMatch(/fetch\([^)]*['"]\/api\/auth\/post-login['"]/);
   });
 

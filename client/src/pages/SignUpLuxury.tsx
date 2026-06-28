@@ -69,6 +69,11 @@ import { useToast } from '@/hooks/use-toast';
 import { logger } from '@/lib/logger';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { signupFlags } from '@/lib/authSignupFlags';
+// Intent preservation across the OAuth redirect (Safari-ITP safe) — ported from
+// the retired SignIn.tsx when it was unified into this screen (2026-06-28). Keeps
+// provider/loyalty signup intent through a cross-origin Firebase redirect.
+import { seedSignupIntentCookie } from '@/lib/seedIntent';
+import { applyIntentFromUrl } from '@/lib/intentParam';
 import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import {
   FaApple, FaFacebookF, FaInstagram, FaLock,
@@ -139,6 +144,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [over18, setOver18] = useState(false);
   const consentOk = agreedTerms && over18;
+
+  // Capture ?intent=provider|loyalty|staff_request from the URL into the signup
+  // intent cookie on arrival, so it survives the OAuth redirect and post-login
+  // routing sends the user to the right place. (Ported from SignIn.tsx.)
+  useEffect(() => { applyIntentFromUrl(); }, []);
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -351,6 +361,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // Mark which provider we're redirecting to so the on-mount handler can
         // recover the result when Safari returns the user to /signup.
         setSignupRedirectMarker(which);
+        // Persist the signup intent server-side BEFORE the cross-origin redirect —
+        // sessionStorage is wiped by Safari ITP on the round-trip, the httpOnly
+        // cookie survives so post-login routes provider/loyalty users correctly.
+        await seedSignupIntentCookie();
         await signInWithRedirect(auth, provider);
         return;
       }
@@ -412,12 +426,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             cred = await createUserWithEmailAndPassword(auth, email, password);
             try { await sendEmailVerification(cred.user); } catch { /* non-blocking */ }
           } catch (ce: any) {
-            if (ce?.code === 'auth/email-already-in-use') { fail(he ? 'החשבון קיים — בדוק את הסיסמה' : 'Account exists — please check your password.'); return; }
+            // Enumeration-safe: an existing account whose password didn't match
+            // gets the SAME generic message as a wrong password — never confirm
+            // whether an email is registered.
+            if (ce?.code === 'auth/email-already-in-use') { fail(he ? 'אימייל או סיסמה שגויים' : 'Email or password is incorrect.'); return; }
             if (ce?.code === 'auth/weak-password') { fail(he ? 'סיסמה חלשה מדי (6 תווים לפחות)' : 'Password too weak (min 6 characters).'); return; }
             throw ce;
           }
         } else if (e?.code === 'auth/wrong-password') {
-          fail(he ? 'סיסמה שגויה' : 'Wrong password.'); return;
+          fail(he ? 'אימייל או סיסמה שגויים' : 'Email or password is incorrect.'); return;
         } else if (e?.code === 'auth/invalid-email') {
           fail(he ? 'כתובת אימייל לא תקינה' : 'Invalid email address.'); return;
         } else { throw e; }

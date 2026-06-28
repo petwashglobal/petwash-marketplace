@@ -43,9 +43,11 @@ describe('signup SMS fallback and real errors', () => {
   });
 
   it('does not log full phone numbers before SMS send', () => {
-    const signIn = read('client/src/pages/SignIn.tsx');
+    // Unified login is SignUpLuxury (the old SignIn.tsx was retired 2026-06-28).
+    // It must never log the raw phone number.
+    const src = read('client/src/pages/SignUpLuxury.tsx');
 
-    expect(signIn).not.toContain("logger.info('[PhoneAuth] Sending code to:', formattedPhone)");
-    expect(signIn).toContain("logger.info('[PhoneAuth] Sending code', { phone: formattedPhone.slice(-4) })");
+    expect(src).not.toContain("Sending code to:', formattedPhone");
+    expect(src).not.toContain("Sending code to:', phone");
   });
 });

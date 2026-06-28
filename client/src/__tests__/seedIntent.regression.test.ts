@@ -57,15 +57,16 @@ describe('Issue #153 PR-FRES-2 — seed signup_intent cookie before OAuth redire
     expect(src).toMatch(/'staff_request'/);
   });
 
-  it('4. SignIn.tsx imports seedSignupIntentCookie', () => {
-    const src = read('client/src/pages/SignIn.tsx');
+  // Unified login is SignUpLuxury (old SignIn.tsx retired 2026-06-28).
+  it('4. SignUpLuxury imports seedSignupIntentCookie', () => {
+    const src = read('client/src/pages/SignUpLuxury.tsx');
     expect(src).toMatch(/import\s*\{\s*seedSignupIntentCookie\s*\}\s*from\s*['"]@\/lib\/seedIntent['"]/);
   });
 
-  it('5. SignIn.tsx awaits seedSignupIntentCookie BEFORE signInWithRedirect on the iPhone path', () => {
-    const src = read('client/src/pages/SignIn.tsx');
-    // Anchor on the unique log line that precedes the redirect
-    const idx = src.indexOf("iPhone detected");
+  it('5. SignUpLuxury awaits seedSignupIntentCookie BEFORE signInWithRedirect on the redirect path', () => {
+    const src = read('client/src/pages/SignUpLuxury.tsx');
+    // Anchor on the redirect-strategy branch that precedes the redirect.
+    const idx = src.indexOf("getAuthStrategy() === 'redirect'");
     expect(idx).toBeGreaterThan(0);
     const window = src.slice(idx, idx + 600);
     const seedPos = window.indexOf('seedSignupIntentCookie');
