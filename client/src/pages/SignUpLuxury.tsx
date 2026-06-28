@@ -171,7 +171,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // ?redirect=/shop — return the user where they came from (shop cart, booking…).
   // Internal paths only: must start with a single '/' (blocks //evil.com and
   // proto:// open-redirects).
-  const redirectParam = params.get('redirect');
+  // Accept BOTH ?redirect= (AuthGateCard, deep links) AND ?from= (RequireAuth.tsx
+  // sends ?from=<page>). Without reading ?from=, every gated-page login dropped
+  // the user on /home instead of returning them where they were. (fix 2026-06-28)
+  const redirectParam = params.get('redirect') || params.get('from');
   const safeRedirect = redirectParam && /^\/(?!\/)/.test(redirectParam) ? redirectParam : null;
   const dest = safeRedirect ?? destForFlow(flow);
 

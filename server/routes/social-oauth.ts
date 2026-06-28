@@ -128,7 +128,8 @@ router.get('/tiktok/callback', async (req: Request, res: Response) => {
     const tokenData = await tokenResponse.json();
 
     if (!tokenData.access_token) {
-      logger.error('[TikTok OAuth] Token exchange failed', { tokenData });
+      // Never log the full provider response — it can carry tokens. Error code only.
+      logger.error('[TikTok OAuth] Token exchange failed', { error: tokenData?.error || tokenData?.error_description || 'unknown' });
       return res.redirect('/signin?error=tiktok_token_failed');
     }
 
@@ -243,7 +244,8 @@ router.get('/instagram/callback', async (req: Request, res: Response) => {
     const tokenData = await tokenResponse.json();
 
     if (!tokenData.access_token) {
-      logger.error('[Instagram OAuth] Token exchange failed', { tokenData });
+      // Never log the full provider response — it can carry tokens. Error code only.
+      logger.error('[Instagram OAuth] Token exchange failed', { error: tokenData?.error || tokenData?.error_description || 'unknown' });
       return res.redirect('/signin?error=instagram_token_failed');
     }
 

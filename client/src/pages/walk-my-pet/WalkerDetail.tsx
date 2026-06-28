@@ -60,7 +60,7 @@ export default function WalkerDetail() {
         description: isHebrew ? 'אנא התחבר כדי להזמין' : 'Please log in to book',
         variant: 'destructive',
       });
-      navigate('/signin');
+      navigate(`/signin?from=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
     navigate(`/walk-my-pet/book/${id}?mode=${serviceMode}&service=${serviceId}`);
@@ -73,7 +73,7 @@ export default function WalkerDetail() {
         description: isHebrew ? 'אנא התחבר כדי לשלוח הודעה' : 'Please log in to send a message',
         variant: 'destructive',
       });
-      navigate('/signin');
+      navigate(`/signin?from=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
     navigate(`/personal-inbox?to=walker-${id}`);

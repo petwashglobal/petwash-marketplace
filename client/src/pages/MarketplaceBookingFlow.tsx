@@ -346,7 +346,7 @@ export default function MarketplaceBookingFlow() {
         description: isHebrew ? 'אנא התחבר כדי להזמין' : 'Please log in to book',
         variant: 'destructive',
       });
-      navigate('/signin');
+      navigate(`/signin?from=${encodeURIComponent(window.location.pathname + window.location.search)}`);
       return;
     }
 
