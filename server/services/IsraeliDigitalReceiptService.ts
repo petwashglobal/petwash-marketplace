@@ -26,7 +26,7 @@
 
 import { db } from '../db';
 import { digitalReceipts, providerCommissions, withholdingRemittanceLedger, octopusLedger } from '@shared/schema';
-import { eq, sql, desc } from 'drizzle-orm';
+import { eq, and, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
@@ -268,6 +268,54 @@ export class IsraeliDigitalReceiptService {
    */
   static async generateReceipt(params: ReceiptGenerationParams): Promise<ReceiptResult> {
     try {
+      // ── Exactly-once guard (no double receipt per booking) ──────────────────
+      // A booking charge must yield exactly ONE customer receipt. Without this,
+      // a webhook retry, a double client submit, or two call-sites firing would
+      // each INSERT a fresh receipt — consuming a gapless tax sequence number and
+      // double-emailing the customer (a real ITA/legal problem). If an active
+      // (non-voided) customer_payment receipt already exists for this bookingId,
+      // return it idempotently instead of issuing a second one.
+      //   • Only when bookingId is present — K9000 walk-ins keyed by Nayax txn
+      //     have a null bookingId and are legitimately one-receipt-per-txn.
+      //   • This guard covers the common SEQUENTIAL causes (retries / double
+      //     submit). The race-proof guarantee is a DB partial-unique index on
+      //     (booking_id) WHERE NOT is_voided AND receipt_type='customer_payment'
+      //     — that needs a migration + a prod dup-check first (CEO ops).
+      if (params.bookingId) {
+        try {
+          const [existing] = await db.select()
+            .from(digitalReceipts)
+            .where(and(
+              eq(digitalReceipts.bookingId, params.bookingId),
+              eq(digitalReceipts.receiptType, 'customer_payment'),
+              eq(digitalReceipts.isVoided, false),
+            ))
+            .orderBy(desc(digitalReceipts.issuedAt))
+            .limit(1);
+          if (existing) {
+            logger.warn('[Digital Receipt] Duplicate suppressed — active receipt already exists for booking', {
+              bookingId: params.bookingId,
+              existingReceiptNumber: existing.receiptNumber,
+              existingReceiptId: existing.id,
+              platform: params.platform,
+            });
+            return {
+              success: true,
+              receiptNumber: existing.receiptNumber,
+              receiptId: existing.id,
+              emailSent: existing.emailSent,
+              accountingRecorded: existing.accountingRecorded,
+            };
+          }
+        } catch (guardErr: any) {
+          // A guard read failure must never block issuing a valid receipt for a
+          // completed payment — log and fall through to normal issuance.
+          logger.warn('[Digital Receipt] dedup guard read failed — issuing normally', {
+            bookingId: params.bookingId, error: guardErr?.message,
+          });
+        }
+      }
+
       const receiptNumber = await this.generateReceiptNumber();
       const issuedAt = new Date();
 
