@@ -1,6 +1,8 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useWhoami } from '@/auth/useWhoami';
+import { isAdminRole } from '@shared/adminRoles';
 import { getApiUrl } from '@/lib/apiConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -24,7 +26,10 @@ import {
   ChevronRight
 } from 'lucide-react';
 
-const ADMIN_EMAIL = 'nirhadad1@gmail.com';
+// Admin authorization comes from the server (useWhoami) — never a hardcoded
+// client email. Route is wrapped in AdminRouteGuard; this uses the SAME server
+// signal so every approved admin works (the old hardcoded email broke it for all
+// admins except one).
 
 type LogLevel = 'all' | 'error' | 'warn' | 'info' | 'debug';
 
@@ -58,7 +63,8 @@ export default function AdminSystemLogs() {
     };
   };
 
-  const isAdmin = firebaseUser?.email === ADMIN_EMAIL;
+  const { isSuperAdmin, role } = useWhoami();
+  const isAdmin = isSuperAdmin || isAdminRole(role);
 
   const { data: workflowLogs, isLoading: workflowLoading, refetch: refetchWorkflow } = useQuery({
     queryKey: ['/api/admin/system-logs/workflow'],

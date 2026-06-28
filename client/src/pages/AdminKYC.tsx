@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useWhoami } from '@/auth/useWhoami';
+import { isAdminRole } from '@shared/adminRoles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -15,7 +17,10 @@ import { trackKYCApproved, trackKYCRejected } from '@/lib/analytics';
 import { logger } from "@/lib/logger";
 import { getApiUrl } from '@/lib/apiConfig';
 
-const ADMIN_EMAIL = 'nirhadad1@gmail.com';
+// Admin authorization comes from the server (useWhoami) — never a hardcoded
+// client email. The route is already wrapped in AdminRouteGuard; this in-page
+// check uses the SAME server signal so EVERY approved admin works (the old
+// `=== nirhadad1@gmail.com` check silently broke the page for any other admin).
 
 interface KYCSubmission {
   uid: string;
@@ -97,8 +102,9 @@ export default function AdminKYC() {
     return translations[key]?.[language] || key;
   };
 
-  // Check if user is admin
-  const isAdmin = firebaseUser?.email === ADMIN_EMAIL;
+  // Check if user is admin — server-validated (matches AdminRouteGuard)
+  const { isSuperAdmin, role } = useWhoami();
+  const isAdmin = isSuperAdmin || isAdminRole(role);
 
   // Fetch pending submissions
   const { data: submissions, isLoading } = useQuery<{ submissions: KYCSubmission[] }>({
