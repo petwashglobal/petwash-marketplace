@@ -1672,25 +1672,33 @@ router.post('/reviews', requireAuth, async (req: any, res) => {
  * POST /api/sitter-suite/search/nearby - Find sitters near user location
  * LOYALTY MEMBERS ONLY
  */
-router.post('/search/nearby', async (req, res) => {
+router.post('/search/nearby', requireAuth, async (req: any, res) => {
   try {
-    const { latitude, longitude, radiusKm, loyaltyTier } = req.body;
-    
+    const { latitude, longitude, radiusKm } = req.body;
+    const userId = req.firebaseUser?.uid || req.user?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+
     if (!latitude || !longitude) {
       return res.status(400).json({ error: 'Location coordinates required' });
     }
 
-    // CRITICAL: Verify loyalty membership (only verified members can book)
+    // Eligibility uses the SERVER-stored loyalty tier for the authenticated user —
+    // never the client-supplied `loyaltyTier` (which let anyone self-assert "gold"
+    // and bypass the members-only gate, previously even while anonymous).
+    const [me] = await db
+      .select({ loyaltyTier: users.loyaltyTier })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    const serverLoyaltyTier = me?.loyaltyTier ?? null;
+
     const { proximitySearch } = await import('../services/SitterProximitySearch');
-    const isEligible = await proximitySearch.isEligibleToBook(
-      req.session?.userId || 'anonymous',
-      loyaltyTier
-    );
+    const isEligible = await proximitySearch.isEligibleToBook(userId, serverLoyaltyTier);
 
     if (!isEligible) {
       logger.warn('[Proximity Search] Non-loyalty member attempted search', {
-        userId: req.session?.userId,
-        loyaltyTier,
+        userId,
+        loyaltyTier: serverLoyaltyTier,
       });
       return res.status(403).json({
         error: 'Loyalty membership required',

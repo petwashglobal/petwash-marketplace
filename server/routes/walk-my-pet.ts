@@ -27,6 +27,7 @@ import { z } from 'zod';
 import crypto from 'crypto';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { bookingLimiter } from '../middleware/rateLimiter';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
@@ -1780,10 +1781,23 @@ router.get('/users/:userId/walks', requireAuth, async (req: any, res) => {
 });
 
 // Get walker's bookings
-router.get('/walkers/:walkerId/walks', async (req, res) => {
+router.get('/walkers/:walkerId/walks', requireAuth, async (req: any, res) => {
   try {
     const { walkerId } = req.params;
     const { status } = req.query;
+    const uid = req.firebaseUser?.uid || req.user?.uid;
+
+    // OWNERSHIP: a walker's bookings contain owner PII, addresses, pet details and
+    // amounts. Only that walker (or a verified admin) may list them — this was an
+    // open, unauthenticated enumeration endpoint.
+    const [wp] = await db
+      .select({ userId: walkerProfiles.userId })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, walkerId))
+      .limit(1);
+    if (!wp || (wp.userId !== uid && !isSuperAdminVerified(req))) {
+      return res.status(403).json({ error: 'Not authorized to view these bookings' });
+    }
 
     let query = db
       .select()
