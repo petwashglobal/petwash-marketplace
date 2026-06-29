@@ -26,53 +26,58 @@ export interface TierConfig {
 }
 
 export const TIER_CONFIGS: Record<LoyaltyTier, TierConfig> = {
+    // NOTE: benefits below are deliberately NON-MONETARY (experiences, priority,
+    // early access, closed-loop loyalty points on eligible K9000 washes only).
+    // NEVER promise % discounts on "all bookings/services", free services,
+    // cashback, or lifetime discounts here — discounts are K9000-eligible-only
+    // and governed by PetWash terms. See loyalty discount policy.
     bronze: {
-          nameEn: 'Bronze', nameHe: 'ברונזה',
+          nameEn: 'Member', nameHe: 'חבר',
           color: '#cd7f32', glowColor: 'rgba(205,127,50,0.15)', icon: '🥉',
-          benefitsEn: ['5% discount on all bookings', 'Priority booking windows', 'Birthday surprise'],
-          benefitsHe: ['הנחה של 5% על כל הזמנה', 'חלון הזמנה מועדף', 'הפתעת יום הולדת'],
+          benefitsEn: ['Priority booking windows', 'Birthday surprise', 'Member-only updates & early access'],
+          benefitsHe: ['חלון הזמנה מועדף', 'הפתעת יום הולדת', 'עדכונים והשקות מוקדמות לחברים'],
           nextTierEn: 'Silver', nextTierHe: 'כסף', pointsToNext: 500,
     },
     silver: {
           nameEn: 'Silver', nameHe: 'כסף',
           color: '#9ca3af', glowColor: 'rgba(156,163,175,0.15)', icon: '🥈',
-          benefitsEn: ['8% discount on all bookings', 'Free shampoo upgrade', 'Skip the queue — priority booking', 'Monthly wash credit'],
-          benefitsHe: ['הנחה של 8% על כל הזמנה', 'שדרוג שמפו חינם', 'קפיצת תור — הזמנה מועדפת', 'קרדיט שטיפה חודשי'],
+          benefitsEn: ['Skip-the-queue priority booking', 'Early access to new products & stations', 'Birthday surprise'],
+          benefitsHe: ['קפיצת תור — הזמנה מועדפת', 'גישה מוקדמת למוצרים ולתחנות חדשים', 'הפתעת יום הולדת'],
           nextTierEn: 'Gold', nextTierHe: 'זהב', pointsToNext: 1000,
     },
     gold: {
           nameEn: 'Gold', nameHe: 'זהב',
           color: '#C9A96E', glowColor: 'rgba(201,169,110,0.2)', icon: '🥇',
-          benefitsEn: ['12% discount on all bookings', 'Free grooming add-ons', 'Dedicated account manager', '2x loyalty points on K9000'],
-          benefitsHe: ['הנחה של 12% על כל הזמנה', 'תוספות טיפוח חינם', 'מנהל לקוח ייעודי', 'פי 2 נקודות ב-K9000'],
+          benefitsEn: ['Dedicated member support', 'Early access to new products & stations', '2× loyalty points on eligible K9000 washes'],
+          benefitsHe: ['תמיכת חברים ייעודית', 'גישה מוקדמת למוצרים ולתחנות חדשים', 'פי 2 נקודות נאמנות בשטיפות K9000 זכאיות'],
           nextTierEn: 'Platinum', nextTierHe: 'פלטינה', pointsToNext: 2500,
     },
     platinum: {
           nameEn: 'Platinum', nameHe: 'פלטינה',
           color: '#e5e7eb', glowColor: 'rgba(229,231,235,0.2)', icon: '💎',
-          benefitsEn: ['15% discount on all bookings', 'Free monthly grooming session', '3x loyalty points on all services', 'Priority same-day service', 'eGift card on anniversary'],
-          benefitsHe: ['הנחה של 15% על כל הזמנה', 'טיפול גריידינג חודשי חינם', 'פי 3 נקודות על כל שירות', 'שירות ביום אותו — עדיפות', 'כרטיס מתנה ביום השנה'],
+          benefitsEn: ['Priority same-day booking', 'Early access to member events', '3× loyalty points on eligible K9000 washes'],
+          benefitsHe: ['הזמנה מועדפת באותו יום', 'גישה מוקדמת לאירועי חברים', 'פי 3 נקודות נאמנות בשטיפות K9000 זכאיות'],
           nextTierEn: 'Diamond', nextTierHe: 'יהלום', pointsToNext: 5000,
     },
     diamond: {
           nameEn: 'Diamond', nameHe: 'יהלום',
-          color: '#818cf8', glowColor: 'rgba(129,140,248,0.2)', icon: '✨',
-          benefitsEn: ['18% discount on all bookings', 'Monthly home visit grooming', '5x loyalty points', 'White-glove concierge booking', 'Quarterly gift hamper'],
-          benefitsHe: ['הנחה של 18% על כל הזמנה', 'טיפול גריידינג ביתי חודשי', 'פי 5 נקודות', 'הזמנה קונסיירז', 'סל מתנה רבעוני'],
-          nextTierEn: 'Elite', nextTierHe: 'עילית', pointsToNext: 10000,
+          color: '#cbd5e1', glowColor: 'rgba(203,213,225,0.2)', icon: '✨',
+          benefitsEn: ['White-glove concierge booking', 'Invitations to member experiences', '5× loyalty points on eligible K9000 washes'],
+          benefitsHe: ['שירות קונסיירז׳ אישי בהזמנות', 'הזמנות לחוויות חברים', 'פי 5 נקודות נאמנות בשטיפות K9000 זכאיות'],
+          nextTierEn: 'Emerald', nextTierHe: 'אמרלד', pointsToNext: 10000,
     },
-    elite: {
-          nameEn: 'Elite', nameHe: 'עילית',
-          color: '#f59e0b', glowColor: 'rgba(245,158,11,0.2)', icon: '👑',
-          benefitsEn: ['20% discount on all services', 'Unlimited complimentary add-ons', '10x loyalty points', 'Personal pet wellness advisor', 'Annual luxury hamper', 'VIP event invitations'],
-          benefitsHe: ['הנחה של 20% על כל השירותים', 'תוספות חינמיות ללא הגבלה', 'פי 10 נקודות', 'יועץ בריאות חיות אישי', 'סל יוקרה שנתי', 'הזמנות לאירועי VIP'],
-          nextTierEn: 'Prestige', nextTierHe: 'פרסטיג\'', pointsToNext: 25000,
+    emerald: {
+          nameEn: 'Emerald', nameHe: 'אמרלד',
+          color: '#34d399', glowColor: 'rgba(52,211,153,0.2)', icon: '💚',
+          benefitsEn: ['Personal pet-wellness concierge', 'VIP event invitations', 'Early access to everything new'],
+          benefitsHe: ['קונסיירז׳ רווחת חיות אישי', 'הזמנות לאירועי VIP', 'גישה מוקדמת לכל מה שחדש'],
+          nextTierEn: 'Black Reserve', nextTierHe: 'Black Reserve', pointsToNext: 25000,
     },
-    prestige: {
-          nameEn: 'Prestige', nameHe: 'פרסטיג\'',
-          color: '#C9A96E', glowColor: 'rgba(201,169,110,0.3)', icon: '🌟',
-          benefitsEn: ['25% lifetime discount', 'Dedicated senior account manager', 'All services complimentary once/month', 'Exclusive franchise partner events', 'Annual 5-star pet spa retreat', 'Name on our Wall of Honor'],
-          benefitsHe: ['הנחה לכל החיים של 25%', 'מנהל לקוח בכיר ייעודי', 'כל השירותים חינמיים פעם בחודש', 'אירועים בלעדיים לשותפי זכיינות', 'ריטריט ספא לחיות 5 כוכבים שנתי', 'שמכם על לוח הכבוד שלנו'],
+    royal: {
+          nameEn: 'Black Reserve', nameHe: 'Black Reserve',
+          color: '#D4AF37', glowColor: 'rgba(212,175,55,0.3)', icon: '🌟',
+          benefitsEn: ['Dedicated senior concierge', 'Exclusive member experiences & events', 'Name on our Wall of Honor'],
+          benefitsHe: ['קונסיירז׳ בכיר ייעודי', 'חוויות ואירועים בלעדיים לחברים', 'שמכם על לוח הכבוד שלנו'],
     },
 };
 
@@ -109,6 +114,9 @@ export function buildTierUpgradeEmail(p: TierUpgradeParams): string {
         dashBtn: isHe ? 'צפה בהטבות' : 'View My Benefits',
         bookBtn: isHe ? 'הזמן עכשיו' : 'Book Now',
         footer1: isHe ? 'שאלות? אנחנו כאן בשבילך' : 'Questions? We\'re here for you',
+        disclaimer: isHe
+          ? 'דרגת ה-PetWash Prestige שלך עודכנה. הטבות, תגמולים, גישה מוקדמת וחוויות חברים זמינים בכפוף לזכאות ולתנאי PetWash. תגמולי והנחות שטיפת K9000 חלים רק במקום שבו הם זכאים ובהתאם לתנאי PetWash.'
+          : 'Your PetWash Prestige tier has been updated. Your tier may unlock eligible PetWash benefits, rewards, early access, and member experiences. K9000 wash rewards and discounts apply only where eligible and according to PetWash terms.',
   };
 
   const benefits = isHe ? tc.benefitsHe : tc.benefitsEn;
@@ -169,7 +177,14 @@ export function buildTierUpgradeEmail(p: TierUpgradeParams): string {
                                                                                                                                                                                                                                                     </table>
                                                                                                                                                                                                                                                         </td>
                                                                                                                                                                                                                                                           </tr>
-                                                                                                                                                                                                                                                          
+
+                                                                                                                                                                                                                                                            <!-- ELIGIBILITY DISCLAIMER (PetWash terms; no blanket discount promises) -->
+                                                                                                                                                                                                                                                              <tr>
+                                                                                                                                                                                                                                                                  <td style="padding:0 40px 24px;">
+                                                                                                                                                                                                                                                                        <p style="margin:0;font-size:11px;line-height:1.6;color:#999;text-align:center;">${t.disclaimer}</p>
+                                                                                                                                                                                                                                                                          </td>
+                                                                                                                                                                                                                                                                            </tr>
+
                                                                                                                                                                                                                                                             <!-- NEXT TIER TEASER -->
                                                                                                                                                                                                                                                               ${tc.nextTierEn || tc.nextTierHe ? `
                                                                                                                                                                                                                                                                 <tr>
