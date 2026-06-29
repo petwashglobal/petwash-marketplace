@@ -64,6 +64,7 @@ import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFaceb
   isNativePlatform, signInWithGoogleNative, signInWithAppleNative } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
 import { type Language } from '@/lib/i18n';
+import { fieldSchemas, vmsg } from '@/lib/validation';
 import { PhoneInput } from '@/components/PhoneInput';
 import { OtpCodeInput } from '@/components/OtpCodeInput';
 import { useToast } from '@/hooks/use-toast';
@@ -363,6 +364,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // ── Passwordless EMAIL 6-digit code (mirror of the mobile OTP flow) ──────────
   async function sendEmailCode() {
     if (!email) { fail(he ? 'הזן כתובת אימייל' : 'Enter your email'); return; }
+    if (!fieldSchemas(language).email.safeParse(email.trim()).success) { fail(vmsg('validation.email.invalid', language)); return; }
     if (!requireTerms()) return;
     setInlineError(null);
     setBusy(true);
@@ -494,6 +496,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
   async function emailSubmit() {
     if (!email || !password) { fail(he ? 'הזן אימייל וסיסמה' : 'Enter your email and password'); return; }
+    if (!fieldSchemas(language).email.safeParse(email.trim()).success) { fail(vmsg('validation.email.invalid', language)); return; }
     if (!requireTerms()) return;
     setInlineError(null);
     setBusy(true);
