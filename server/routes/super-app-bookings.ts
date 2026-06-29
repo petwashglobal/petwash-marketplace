@@ -705,98 +705,12 @@ router.post(
   }
 );
 
-// POST /api/platforms/:platformId/bookings/:bookingId/cancel - Cancel booking
-router.post(
-  '/:platformId/bookings/:bookingId/cancel',
-  requireAuth,
-  requirePlatformContext,
-  apiLimiter,
-  async (req: any, res: any) => {
-    try {
-      const userId = req.firebaseUser?.uid || req.user?.uid;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      const platformId = req.platformContext.platformId;
-      const bookingId = req.params.bookingId;
-      const { reason } = req.body;
-
-      if (!reason || reason.trim().length === 0) {
-        return res.status(400).json({ error: 'Cancellation reason is required' });
-      }
-
-      // Get existing booking to verify ownership
-      const existingBooking = await bookingService.getBookingById(bookingId);
-
-      if (!existingBooking) {
-        return res.status(404).json({ error: 'Booking not found' });
-      }
-
-      // SECURITY: Verify platform isolation
-      if (existingBooking.platformId !== platformId) {
-        return res.status(403).json({ error: 'Booking does not belong to this platform' });
-      }
-
-      // SECURITY: Verify user ownership or provider access
-      const isCustomer = existingBooking.userId === userId;
-      
-      let isProvider = false;
-      if (existingBooking.providerId) {
-        const { db } = await import('../db');
-        const { providers } = await import('@shared/schema');
-        const { eq, and } = await import('drizzle-orm');
-        
-        const [provider] = await db
-          .select()
-          .from(providers)
-          .where(
-            and(
-              eq(providers.id, existingBooking.providerId),
-              eq(providers.userId, userId),
-              eq(providers.platformId, platformId)
-            )
-          );
-        
-        isProvider = !!provider;
-      }
-
-      if (!isCustomer && !isProvider) {
-        return res.status(403).json({ error: 'Unauthorized to cancel this booking' });
-      }
-
-      // Cancel booking with state guards and reason capture
-      const cancelledBooking = await bookingService.cancelBooking(
-        bookingId,
-        userId,
-        reason
-      );
-
-      // Audit log
-      logger.info('Booking cancelled', {
-        bookingId,
-        bookingNumber: existingBooking.bookingNumber,
-        platformId,
-        cancelledBy: userId,
-        role: isCustomer ? 'customer' : 'provider',
-        reason
-      });
-
-      res.json(cancelledBooking);
-    } catch (error: any) {
-      logger.error('Booking cancellation failed', {
-        error: error.message,
-        userId: req.firebaseUser?.uid || req.user?.uid,
-        platformId: req.platformContext?.platformId,
-        bookingId: req.params.bookingId
-      });
-
-      res.status(400).json({ 
-        error: error.message || 'Failed to cancel booking'
-      });
-    }
-  }
-);
+// NOTE: the booking-cancel route is defined ONCE — see "Cancel booking and trigger
+// refund" further below. A duplicate NO-REFUND handler used to live here and, because
+// Express matches the FIRST registered route, it shadowed the refund-capable one — so
+// cancellations never initiated the escrow refund (customers silently not refunded).
+// Removed. The consolidated handler below is the single source of truth: correct
+// provider auth (providers join) + cancelEscrowAndRefund + honest refund_pending status.
 
 // ============================================================================
 // BOOKING-2: PAYMENT INTENT ROUTES - NAYAX EXCLUSIVE
@@ -1050,9 +964,25 @@ router.post(
         return res.status(403).json({ error: 'Booking does not belong to this platform' });
       }
 
-      // SECURITY: Only provider can complete booking
-      const isProvider = existingBooking.providerId && existingBooking.providerId.toString() === userId;
-      
+      // SECURITY: only the ASSIGNED provider may complete (this gates escrow release).
+      // providerId is the NUMERIC providers.id — resolve to the caller's Firebase UID
+      // via the providers table (the old `providerId.toString() === userId` compared a
+      // number to a UID and was always false → the real provider could never complete).
+      let isProvider = false;
+      if (existingBooking.providerId) {
+        const { db } = await import('../db');
+        const { providers } = await import('@shared/schema');
+        const { eq, and } = await import('drizzle-orm');
+        const [provider] = await db
+          .select()
+          .from(providers)
+          .where(and(
+            eq(providers.id, existingBooking.providerId),
+            eq(providers.userId, userId),
+            eq(providers.platformId, platformId),
+          ));
+        isProvider = !!provider;
+      }
       if (!isProvider) {
         return res.status(403).json({ error: 'Only the provider can complete this booking' });
       }
@@ -1130,10 +1060,26 @@ router.post(
         return res.status(403).json({ error: 'Booking does not belong to this platform' });
       }
 
-      // SECURITY: Only customer or provider can cancel
+      // SECURITY: Only the customer or the assigned provider can cancel.
+      // providerId is the NUMERIC providers.id — resolve it to the caller's Firebase
+      // UID via the providers table (the old `providerId.toString() === userId`
+      // compared a number to a UID and was always false → provider could never cancel).
       const isCustomer = existingBooking.userId === userId;
-      const isProvider = existingBooking.providerId && existingBooking.providerId.toString() === userId;
-      
+      let isProvider = false;
+      if (existingBooking.providerId) {
+        const { db } = await import('../db');
+        const { providers } = await import('@shared/schema');
+        const { eq, and } = await import('drizzle-orm');
+        const [provider] = await db
+          .select()
+          .from(providers)
+          .where(and(
+            eq(providers.id, existingBooking.providerId),
+            eq(providers.userId, userId),
+            eq(providers.platformId, platformId),
+          ));
+        isProvider = !!provider;
+      }
       if (!isCustomer && !isProvider) {
         return res.status(403).json({ error: 'Unauthorized to cancel this booking' });
       }
