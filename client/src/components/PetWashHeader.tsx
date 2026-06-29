@@ -147,6 +147,7 @@ const T: Record<string, Record<string, string>> = {
   "careers.label": { en: "Careers", he: "קריירה", ru: "Карьера", fr: "Carrières", es: "Empleo", ar: "وظائف" },
   "section.legal": { en: "LEGAL", he: "משפטי", ru: "ЮРИДИЧЕСКАЯ ИНФОРМАЦИЯ", fr: "MENTIONS LÉGALES", es: "LEGAL", ar: "قانوني" },
   "terms.label": { en: "Terms and conditions", he: "תנאים והגבלות", ru: "Условия использования", fr: "Conditions générales", es: "Términos y condiciones", ar: "الشروط والأحكام" },
+  "trust-safety.label": { en: "Trust & Safety", he: "אמון ובטיחות", ru: "Доверие и безопасность", fr: "Confiance et sécurité", es: "Confianza y seguridad", ar: "الثقة والأمان" },
   "privacy.label": { en: "Privacy & data protection", he: "פרטיות והגנת מידע", ru: "Конфиденциальность и защита данных", fr: "Confidentialité et protection des données", es: "Privacidad y protección de datos", ar: "الخصوصية وحماية البيانات" },
   "egift-policy.label": { en: "eGift and refund policy", he: "מדיניות תווי שי והחזרים", ru: "Политика ваучеров и возвратов", fr: "Politique des bons et remboursement", es: "Política de vales y reembolso", ar: "سياسة القسائم والاسترداد" },
   "loyalty-terms.label": { en: "PetWash Privilege terms", he: "תנאי PetWash Privilege", ru: "Условия PetWash Privilege", fr: "Conditions PetWash Privilege", es: "Términos PetWash Privilege", ar: "شروط PetWash Privilege" },
@@ -223,6 +224,7 @@ const COMPANY_MENU_ITEMS = [
 ];
 
 const LEGAL_MENU_ITEMS = [
+  { id: "trust-safety", labelKey: "trust-safety.label", href: "/trust-safety" },
   { id: "terms", labelKey: "terms.label", href: "/legal/terms" },
   { id: "privacy", labelKey: "privacy.label", href: "/legal/privacy" },
   { id: "egift-policy", labelKey: "egift-policy.label", href: "/legal/egift-policy" },

@@ -119,6 +119,7 @@ const Accessibility = lazy(() => import("@/pages/Accessibility"));
 const AccessibilityStatement = lazy(() => import("@/pages/AccessibilityStatement"));
 const About = lazy(() => import("@/pages/About"));
 const TrustCompliance = lazy(() => import("@/pages/TrustCompliance"));
+const TrustSafety = lazy(() => import("@/pages/TrustSafety"));
 const StationPage = lazy(() => import("@/pages/StationPage"));
 const Franchise = lazy(() => import("@/pages/Franchise"));
 const Contact = lazy(() => import("@/pages/Contact"));
@@ -2709,6 +2710,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Common routes available to all users */}
         <Route path="/about">{() => <About language={language} />}</Route>
         <Route path="/trust">{() => <TrustCompliance language={language} onLanguageChange={handleLanguageChange} />}</Route>
+        <Route path="/trust-safety">{() => <TrustSafety language={language} onLanguageChange={handleLanguageChange} />}</Route>
         {/* Public business-model / comparison pages — withdrawn from public navigation.
             Old bookmarks land on the homepage instead. The page components remain in the
             codebase for internal pitch/investor use only. */}
