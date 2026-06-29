@@ -541,16 +541,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     finally { setBusy(false); }
   }
 
-  const readyForSubmit = !busy && (
-    method === 'mobile'
-      ? phone.length > 4
-      : email.length > 3 && password.length > 0
-  );
+  // OPEN, no-tabs flow: the user just types phone and/or email; we detect which
+  // on Continue. Phone wins when present (SMS is the Israel-primary path). Both
+  // paths are passwordless 6-digit codes — one easy button, no method to pick.
+  const emailValid = /\S+@\S+\.\S+/.test(email);
+  const phoneValid = phone.replace(/\D/g, '').length > 6;
+  const readyForSubmit = !busy && (phoneValid || emailValid);
 
-  // CTA label adapts to the actual action.
-  const ctaLabel = busy ? '…' : (
-    method === 'mobile' ? (he ? 'שלח קוד אימות' : 'Send Verification Code') : (he ? 'צור חשבון מאובטח' : 'Create Secure Account')
-  );
+  const ctaLabel = busy ? '…' : (he ? 'המשך' : 'Continue');
+
+  function startSignup() {
+    if (phoneValid) { setMethod('mobile'); void sendCode(); }
+    else if (emailValid) { setMethod('email'); void sendEmailCode(); }
+  }
 
   const t = {
     eyebrow: he ? 'אקוסיסטם חכם לטיפול בחיות מחמד' : 'INTELLIGENT PET-CARE ECOSYSTEM',
@@ -698,73 +701,36 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <p className="sl-inlineError" role="alert">{inlineError}</p>
           )}
 
-          {/* === Method tabs === */}
+          {/* === OPEN inputs — no tabs. Phone AND email are both visible; the user
+              just types whichever they like and presses Continue (we detect which). === */}
           {!sent && (
-            <div className="sl-tabs" role="tablist">
-              <button type="button" className="sl-tab" role="tab" aria-selected={method === 'mobile'} onClick={() => { setMethod('mobile'); setSent(false); }}>
-                <FaPhoneAlt aria-hidden /> {t.tabMobile}
-              </button>
-              {signupFlags.emailPassword && (
-                <button type="button" className="sl-tab" role="tab" aria-selected={method === 'email'} onClick={() => setMethod('email')}>
-                  <FaEnvelope aria-hidden /> {t.tabEmail}
-                </button>
-              )}
-            </div>
-          )}
-
-          {/* === Auth method inputs === */}
-          {method === 'mobile' && !sent && (
             <>
               {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
                 <p className="sl-inlineError" role="status">
-                  {he ? 'SMS אינו זמין כעת — אפשר להמשיך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'}
+                  {he ? 'SMS אינו זמין כעת — אפשר להמשיך עם אימייל למטה.' : 'SMS is temporarily unavailable — continue with email below.'}
                 </p>
               )}
+
               <div className="sl-field">
                 <label className="sl-label">{t.phoneLabel}</label>
                 <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
               </div>
-            </>
-          )}
 
-          {method === 'email' && !sent && (
-            <>
-              <div className="sl-field">
-                <label className="sl-label">{t.emailLabel}</label>
-                <div className="sl-inputWrap">
-                  <FaEnvelope className="sl-inputIcon" aria-hidden />
-                  <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                    value={email} onChange={(e) => setEmail(e.target.value)}
-                    placeholder={t.emailPh} />
-                </div>
-                <div className="sl-hint">{he ? 'אפשר Gmail, Hotmail, Yahoo או כל כתובת אימייל' : 'Gmail, Hotmail, Yahoo or any email address works'}</div>
-              </div>
-
-              {/* Primary: passwordless 6-digit email code (same gate as mobile). */}
-              <button type="button" className="sl-cta" disabled={busy || !email || !consentOk}
-                onClick={() => void sendEmailCode()}>
-                <FaEnvelope aria-hidden /> {he ? 'שלחו לי קוד בן 6 ספרות' : 'Email me a 6-digit code'}
-              </button>
-              {!consentOk && <div className="sl-hint sl-submitHint">{he ? 'יש לאשר את התנאים וגיל 18+' : 'Please accept the terms and confirm you are 18+'}</div>}
-
-              <div className="sl-div">{he ? 'או הגדירו סיסמה' : 'or set a password'}</div>
-
-              <div className="sl-field">
-                <label className="sl-label">{t.pwd}</label>
-                <div className="sl-inputWrap">
-                  <FaLock className="sl-inputIcon" aria-hidden />
-                  <input className="sl-input sl-input--icon" type="password" name="password" id="signup-password" autoComplete="new-password"
-                    value={password} onChange={(e) => setPassword(e.target.value)} placeholder="••••••••" />
-                </div>
-              </div>
-              <div className="sl-field">
-                <label className="sl-label">{t.pwd2}</label>
-                <div className="sl-inputWrap">
-                  <FaLock className="sl-inputIcon" aria-hidden />
-                  <input className="sl-input sl-input--icon" type="password" name="confirm-password" id="signup-confirm-password" autoComplete="new-password"
-                    value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder="••••••••" />
-                </div>
-              </div>
+              {signupFlags.emailPassword && (
+                <>
+                  <div className="sl-div">{he ? 'או' : 'or'}</div>
+                  <div className="sl-field">
+                    <label className="sl-label">{t.emailLabel}</label>
+                    <div className="sl-inputWrap">
+                      <FaEnvelope className="sl-inputIcon" aria-hidden />
+                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                        value={email} onChange={(e) => setEmail(e.target.value)}
+                        placeholder={t.emailPh} />
+                    </div>
+                    <div className="sl-hint">{he ? 'Gmail, Hotmail, Yahoo או כל כתובת אימייל' : 'Gmail, Hotmail, Yahoo or any email works'}</div>
+                  </div>
+                </>
+              )}
             </>
           )}
 
@@ -793,7 +759,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <div className="sl-consent" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 6px', fontSize: '13px', lineHeight: 1.6, textAlign: he ? 'right' : 'left' }}>
                 <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', flexShrink: 0 }} />
+                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0 }} />
                   <span>
                     {he ? 'אני מסכים/ה ל' : 'I agree to the '}
                     <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
@@ -802,12 +768,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   </span>
                 </label>
                 <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer', marginTop: '8px' }}>
-                  <input type="checkbox" checked={over18} onChange={(e) => setOver18(e.target.checked)} style={{ marginTop: '3px', width: '16px', height: '16px', flexShrink: 0 }} />
+                  <input type="checkbox" checked={over18} onChange={(e) => setOver18(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0 }} />
                   <span>{he ? 'אני מאשר/ת שאני בן/בת 18 ומעלה' : 'I confirm I am 18 years or older'}</span>
                 </label>
               </div>
               <button className="sl-cta" disabled={!readyForSubmit || !consentOk}
-                onClick={() => (method === 'email' ? void emailSubmit() : void sendCode())}>
+                onClick={startSignup}>
                 <FaLock aria-hidden /> {ctaLabel}
               </button>
               {!readyForSubmit && <div className="sl-hint sl-submitHint">{t.completeFields}</div>}
