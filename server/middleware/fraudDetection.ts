@@ -320,7 +320,10 @@ export class WalletFraudDetection {
       const userDoc = await db.collection('users').doc(userId).get();
       return userDoc.data()?.emailVerified === true;
     } catch (error) {
-      return true; // Assume verified on error
+      // FAIL CLOSED: on a lookup error treat the account as UNVERIFIED so fraud risk
+      // points still apply. Returning true lowered fraud scores exactly when the
+      // system was degraded (a DB blip would mark everyone "verified").
+      return false;
     }
   }
 

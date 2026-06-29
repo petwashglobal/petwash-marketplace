@@ -36,14 +36,15 @@ router.get('/display', (req: Request, res: Response) => {
  * GET /api/currency/virtual-account - Get virtual bank account
  */
 router.get('/virtual-account', async (req: AuthenticatedRequest, res: Response) => {
-  try {
-    const userId = req.firebaseUser!.uid;
-    const currency = (req.query.currency as SupportedCurrency) || 'USD';
-    const account = getVirtualBankAccount(userId, currency);
-    res.json(account);
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get virtual account' });
-  }
+  // DISABLED (#41 audit): getVirtualBankAccount returns HARDCODED, INVENTED account
+  // numbers + SWIFT/BIC codes presented as real "Pet Wash Ltd" accounts. Serving them
+  // could lead a customer to wire real money into non-existent accounts (lost funds,
+  // legal exposure). No real virtual-account provider is wired, so this returns 503
+  // until one is. Do NOT re-enable until backed by a real, provisioned account.
+  return res.status(503).json({
+    error: 'Virtual bank accounts are not available.',
+    code: 'VIRTUAL_ACCOUNTS_DISABLED',
+  });
 });
 
 /**
