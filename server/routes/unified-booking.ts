@@ -9,7 +9,7 @@
  * - Full audit trail
  */
 
-import { Router, type Request, type Response } from 'express';
+import { Router, type Request, type Response, type NextFunction } from 'express';
 import { authMiddleware as requireAuth } from '../middleware/auth';
 import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
@@ -30,6 +30,24 @@ import { DomainEventType } from '@shared/events';
 import { ISRAELI_VAT_RATE } from '../services/VATCalculatorService';
 
 const router = Router();
+
+// ── SECURITY GATE (#41) — DARK until rebuilt on the canonical engine ──────────
+// This is a DIVERGENT booking engine: /quote requires + trusts the client-supplied
+// `price` (so a caller can book any service for ₪0.01) and /confirm marks the
+// booking PAID on any non-empty paymentReference with no Nayax/SUMIT verification.
+// The canonical, safe 2026 engine (BookingLifecycleService.calculateQuote) recomputes
+// price server-side from provider rate cards and never trusts a client price. No GA
+// surface uses this router (PetTrek, its only referent, is pre-GA), so it is held
+// DARK in production until it is rebuilt on the canonical engine + real payment
+// verification. Flip UNIFIED_BOOKING_ENABLED=true ONLY after that rebuild.
+router.use((req: Request, res: Response, next: NextFunction) => {
+  if ((process.env.UNIFIED_BOOKING_ENABLED || '').trim().toLowerCase() === 'true') return next();
+  return res.status(503).json({
+    success: false,
+    code: 'ENGINE_DARK',
+    error: 'This booking path is disabled. Use the standard booking flow.',
+  });
+});
 
 /**
  * Helper: Load booking from database and convert to UnifiedBooking format
