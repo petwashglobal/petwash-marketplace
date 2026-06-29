@@ -13,8 +13,15 @@ import { petWashStations } from '@shared/schema-enterprise';
 import { ne, eq, and } from 'drizzle-orm';
 import { apiLimiter } from '../middleware/rateLimiter';
 import { logger } from '../lib/logger';
+import { redis } from '../services/redis';
 
 const router = Router();
+
+// Public, slow-changing directory → safe to cache server-side. Cuts the
+// Israel(app)→Frankfurt(Neon) round-trip to at most once per TTL on hot loads.
+// redis.get/set degrade gracefully (null/false when Redis is down) → it then
+// falls straight through to the DB, so caching can never break the endpoint.
+const STATIONS_CACHE_TTL_SECONDS = 120;
 
 // Marketing-safe projection — single source of truth for both endpoints.
 const PUBLIC_FIELDS = {
@@ -43,12 +50,19 @@ const PUBLIC_FIELDS = {
  */
 router.get('/stations', apiLimiter, async (_req: Request, res: Response) => {
   try {
+    const CACHE_KEY = 'public:stations:list:v1';
+    const cached = await redis.get<any[]>(CACHE_KEY);
+    if (cached) {
+      res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
+      return res.json({ stations: cached });
+    }
     const stations = await db
       .select(PUBLIC_FIELDS)
       .from(petWashStations)
       .where(ne(petWashStations.operationalStatus, 'decommissioned'))
       .orderBy(petWashStations.city, petWashStations.stationCode)
       .limit(1000); // bound the public read (cheap insurance even though the network is small)
+    await redis.set(CACHE_KEY, stations, STATIONS_CACHE_TTL_SECONDS); // best-effort; no-op if Redis down
     res.set('Cache-Control', 'public, max-age=300, stale-while-revalidate=3600');
     res.json({ stations });
   } catch (err: any) {
