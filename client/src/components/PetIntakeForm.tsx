@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
 import {
   Dialog,
   DialogContent,
@@ -84,6 +85,12 @@ const defaultForm: IntakeFormData = {
   consentToEmergencyVet: false,
   consentToPhotos: true,
   signatureName: '',
+};
+
+const MONTHS_HE = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
+const todayStr = () => {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
 };
 
 export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, bookingId, language = 'he' }: PetIntakeFormProps) {
@@ -207,11 +214,29 @@ export function PetIntakeForm({ open, onClose, onComplete, petName, petSpecies, 
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-500">{isHebrew ? 'תאריך חיסון אחרון' : 'Last vaccination date'}</Label>
-              <Input type="date" value={form.lastVaccinationDate} onChange={e => set('lastVaccinationDate', e.target.value)} className="text-sm" />
+              <AppleWheelDatePicker
+                value={form.lastVaccinationDate || todayStr()}
+                onChange={v => set('lastVaccinationDate', v)}
+                minYear={new Date().getFullYear() - 20}
+                maxYear={new Date().getFullYear()}
+                monthNames={isHebrew ? MONTHS_HE : undefined}
+                dayLabel={isHebrew ? 'יום' : 'Day'}
+                monthLabel={isHebrew ? 'חודש' : 'Month'}
+                yearLabel={isHebrew ? 'שנה' : 'Year'}
+              />
             </div>
             <div className="space-y-1.5">
               <Label className="text-xs text-gray-500">{isHebrew ? 'תאריך חיסון כלבת (קנין / חתולים)' : 'Rabies vaccine date (dogs/cats)'}</Label>
-              <Input type="date" value={form.rabiesVaccineDate} onChange={e => set('rabiesVaccineDate', e.target.value)} className="text-sm" />
+              <AppleWheelDatePicker
+                value={form.rabiesVaccineDate || todayStr()}
+                onChange={v => set('rabiesVaccineDate', v)}
+                minYear={new Date().getFullYear() - 20}
+                maxYear={new Date().getFullYear()}
+                monthNames={isHebrew ? MONTHS_HE : undefined}
+                dayLabel={isHebrew ? 'יום' : 'Day'}
+                monthLabel={isHebrew ? 'חודש' : 'Month'}
+                yearLabel={isHebrew ? 'שנה' : 'Year'}
+              />
             </div>
             <div className="flex items-center justify-between p-3 rounded-xl bg-white">
               <Label className="text-sm font-medium">{isHebrew ? 'חיסון שיעול הכלבות (Bordetella)' : 'Kennel cough (Bordetella) vaccine'}</Label>
