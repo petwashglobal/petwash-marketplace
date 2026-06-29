@@ -19,6 +19,7 @@ import adminSuppliersRoutes from "./routes/admin-suppliers";
 import adminIdentityMergeRoutes from "./routes/admin-identity-merge";
 import adminSumitRoutes from "./routes/admin-sumit";
 import adminLynxRoutes from "./routes/admin-lynx";
+import cronBackupRoutes from "./routes/cron-backup";
 import supplierFraudFlagsRoutes from "./routes/supplier-fraud-flags";
 import providerInsuranceRoutes from "./routes/provider-insurance";
 import adminUpayRoutes from "./routes/admin-upay";
@@ -11013,6 +11014,9 @@ self.addEventListener('notificationclick', (event) => {
   // Nayax Lynx ops (machine inventory / device status / restock pick lists) —
   // super-admin, read-only + audited ops, DARK until LYNX_ENABLED + token. No money.
   app.use('/api/admin/lynx', adminLynxRoutes);
+  // Cloud-Scheduler backup trigger (reliable replacement for in-process night cron).
+  // Auth = x-cron-secret (CRON_SECRET) or super-admin; CSRF-exempt below. No money.
+  app.use('/api/cron', cronBackupRoutes);
   // Supplier Fraud Control (spec §20) — READ-ONLY detector. Same flag gate as
   // supplier-invoices (404 when ff.supplier_invoice_control.enabled is OFF).
   app.use('/api/admin', supplierFraudFlagsRoutes);

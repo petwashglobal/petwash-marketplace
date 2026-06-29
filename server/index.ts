@@ -697,6 +697,11 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // anonymous UX telemetry (no auth-sensitive state mutation), so the lack of a
     // CSRF token is acceptable. Live production was returning 403 on every flush.
     if (req.path === '/api/track/interactions') return true;
+    // Cloud-Scheduler backup trigger (server/routes/cron-backup.ts). Machine-to-
+    // machine; authenticated by the x-cron-secret header (timing-safe vs CRON_SECRET),
+    // not a browser cookie, so the double-submit CSRF token can't be sent. Without
+    // this skip, Cloud Scheduler's POST is 403'd before the handler's secret check.
+    if (/^\/api\/cron\//.test(req.path)) return true;
     // Public cookie-banner consent capture (client/src/lib/consent.ts:70).
     // Hit by unauthenticated visitors on first-page-load before a pw.csrf cookie
     // is established, and the endpoint only writes the visitor's own consent
