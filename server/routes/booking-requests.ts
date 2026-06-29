@@ -1448,6 +1448,30 @@ router.post('/:requestId/respond', async (req, res) => {
           }
         } catch (walletErr: any) {
           logger.error('[BookingRequests] Wallet lifecycle error on provider response', { requestId, action: data.action, error: walletErr.message });
+          // Make this VISIBLE + RECOVERABLE rather than silently swallowed. The response
+          // already returned 200 and the customer was told "charged", but the debit/
+          // release didn't land and financeState is still 'hold_active' (looks normal).
+          // Flag the row distinctly so a reconciliation sweep / ops can find it, and alert.
+          const failedState = data.action === 'accept' ? 'debit_failed' : 'release_failed';
+          try {
+            await db.update(bookingRequests)
+              .set({ financeState: failedState, updatedAt: new Date() })
+              .where(eq(bookingRequests.requestId, requestId));
+          } catch (flagErr: any) {
+            logger.error('[BookingRequests] Could not flag wallet finance-state for reconciliation', { requestId, error: flagErr?.message });
+          }
+          try {
+            const { sendSecurityAlert } = await import('../services/alerts');
+            await sendSecurityAlert(
+              `Wallet ${data.action} FAILED — booking ${requestId} needs reconciliation`,
+              `<p>Wallet <b>${data.action}</b> of ${holdCents} agorot failed for booking <b>${requestId}</b>.</p>` +
+              `<p>The booking response already returned 200; financeState set to <b>${failedState}</b>. ` +
+              `A held amount is neither captured nor released — reconcile manually.</p>` +
+              `<p>Error: ${walletErr?.message}</p>`,
+            );
+          } catch (alertErr: any) {
+            logger.warn('[BookingRequests] reconciliation alert failed', { requestId, error: alertErr?.message });
+          }
         }
       });
     }
