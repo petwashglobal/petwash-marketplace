@@ -723,6 +723,24 @@ router.post('/', async (req, res) => {
       { source: 'booking-requests/create', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
     ).catch((e: any) => logger.error('[BookingRequests] BOOKING_CREATED event publish failed', { error: e?.message, requestId }));
 
+    // Communication Hub: spawn the canonical entity-linked BOOKING thread for this
+    // enquiry so the conversation shows in the inbox tied to a REAL booking record
+    // (the core rule). Non-blocking + fail-safe — goes live once migration 0084
+    // (chat_threads) is applied; until then this just no-ops with a warning.
+    setImmediate(async () => {
+      try {
+        const { getOrCreateThread } = await import('../services/chatThreadService');
+        await getOrCreateThread({
+          threadType: 'BOOKING',
+          bookingId: requestId,
+          customerUserId: booking.ownerId,
+          providerUserId: booking.providerId ?? null,
+        });
+      } catch (e: any) {
+        logger.warn('[BookingRequests] BOOKING chat thread create skipped (non-blocking)', { error: e?.message, requestId });
+      }
+    });
+
     // Notify provider of new booking request — in-app + email + SMS (non-blocking, best-effort)
     if (booking.providerId) {
       // Fetch provider contact details for email/SMS channels
