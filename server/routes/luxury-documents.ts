@@ -95,33 +95,19 @@ router.get('/backup-report', async (req, res) => {
         storage = new Storage();
       }
     } catch (error) {
-      logger.warn('[Backup Report] GCS credentials not configured, using mock data');
-      
-      res.json({
-        success: true,
-        message: 'GCS לא מוגדר - נתונים לדוגמה',
-        mockData: true,
-        report: {
-          codeBackups: {
-            bucket: 'petwash-code-backups',
-            totalFiles: 52,
-            totalSizeGB: 2.8,
-            oldestBackup: '2024-01-15',
-            newestBackup: new Date().toISOString().split('T')[0]
-          },
-          firestoreBackups: {
-            bucket: 'petwash-firestore-backups',
-            totalFiles: 365,
-            totalSizeGB: 12.4,
-            oldestBackup: '2024-01-01',
-            newestBackup: new Date().toISOString().split('T')[0]
-          },
-          totalStorage: {
-            totalFiles: 417,
-            totalSizeGB: 15.2,
-            monthlyCost: '$0.39 USD'
-          }
-        }
+      // HONEST STATE (never fake "healthy"): previously this returned invented
+      // counts (52 code files, 365 firestore, newestBackup=today) on a config error,
+      // telling an admin backups were fine when they weren't — dangerous false
+      // assurance about disaster recovery. Surface the real "unknown" state instead.
+      logger.error('[Backup Report] Cannot read backup status (GCS not configured / unreachable)', {
+        error: error instanceof Error ? error.message : String(error),
+      });
+      res.status(503).json({
+        success: false,
+        configured: false,
+        status: 'unknown',
+        message: 'Backup status is unavailable — GCS is not configured or unreachable. Do not assume backups exist.',
+        report: null,
       });
       return;
     }
