@@ -187,14 +187,26 @@ export class ProviderPayoutService {
         };
       }
 
-      // Update status to 'processing'
-      await db.update(superAppPayouts)
+      // ATOMIC CLAIM: flip in_escrow → processing ONLY if still in_escrow.
+      // On Cloud Run this cron runs on every instance (maxScale=20); the in-process
+      // jobLock does NOT span instances, and the read-check at the top is a separate
+      // statement — so without a status guard in the WHERE, two instances both pass
+      // that read and both reach processIsraeliBankTransfer = DUPLICATE real payout.
+      // RETURNING tells us whether THIS instance won the claim; if 0 rows, another
+      // worker already claimed it and we abort BEFORE any money moves.
+      const claimed = await db.update(superAppPayouts)
         .set({
           status: 'processing',
           processedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(superAppPayouts.id, payoutId));
+        .where(and(eq(superAppPayouts.id, payoutId), eq(superAppPayouts.status, 'in_escrow')))
+        .returning({ id: superAppPayouts.id });
+
+      if (claimed.length === 0) {
+        logger.warn('[ProviderPayout] Skipped — payout already claimed by another worker (concurrent release)', { payoutId });
+        return { success: false, error: 'Payout already being processed (concurrent claim)' };
+      }
 
       logger.info('[ProviderPayout] Processing payout', {
         payoutId,
@@ -625,14 +637,23 @@ ${bookingRow}
         };
       }
 
-      // Update status to 'failed' (escrow cancelled)
-      await db.update(superAppPayouts)
+      // ATOMIC cancel: flip in_escrow → failed ONLY if still in_escrow. Guards the
+      // release-vs-cancel race — without it, one worker could release (PAY) while
+      // another cancels (REFUND) the same escrow = paying out AND refunding the same
+      // money. The status guard means whichever transition lands first wins.
+      const cancelled = await db.update(superAppPayouts)
         .set({
           status: 'failed',
           failureReason: `Cancelled: ${reason}`,
           updatedAt: new Date(),
         })
-        .where(eq(superAppPayouts.id, payoutId));
+        .where(and(eq(superAppPayouts.id, payoutId), eq(superAppPayouts.status, 'in_escrow')))
+        .returning({ id: superAppPayouts.id });
+
+      if (cancelled.length === 0) {
+        logger.warn('[ProviderPayout] Cancel skipped — escrow no longer in_escrow (already released/cancelled)', { payoutId });
+        return { success: false, error: 'Escrow no longer cancellable (already released or cancelled)' };
+      }
 
       logger.info('[ProviderPayout] Escrow cancelled for refund', {
         payoutId,
