@@ -539,6 +539,26 @@ export function isGcsConfigured(): boolean {
 /**
  * Backup a single message to GCS
  */
+// ── Circuit-breaker for the per-message backup ───────────────────────────────
+// backupMessage() runs once for EVERY message sent. A persistent failure (missing
+// `petwash-secure-messages` bucket, denied service account, or no credentials)
+// would otherwise log an error for every single message — the "million failed
+// messages" flood. Once a failure is seen we pause attempts for a cooldown window
+// and emit ONE warning, instead of an error per message. A sweep can re-backup the
+// rows marked backupStatus!='completed' once the bucket/creds are fixed.
+let msgBackupPausedUntil = 0;
+let msgBackupLastNoticeAt = 0;
+const MSG_BACKUP_COOLDOWN_MS = 30 * 60 * 1000; // 30 min
+
+function pauseMessageBackup(reason: string): void {
+  const now = Date.now();
+  msgBackupPausedUntil = now + MSG_BACKUP_COOLDOWN_MS;
+  if (now - msgBackupLastNoticeAt > MSG_BACKUP_COOLDOWN_MS) {
+    msgBackupLastNoticeAt = now;
+    logger.warn('[GCS] Message backup paused for 30 min after a failure — fix the bucket/credentials to re-enable (rows stay backupStatus!=completed for later sweep)', { reason });
+  }
+}
+
 export async function backupMessage(messageData: {
   messageId: number;
   userId: string;
@@ -552,6 +572,15 @@ export async function backupMessage(messageData: {
   gcsPath?: string;
   error?: string;
 }> {
+  // Skip quietly while the breaker is open (no per-message logging during an outage).
+  if (Date.now() < msgBackupPausedUntil) {
+    return { success: false, error: 'backup_paused' };
+  }
+  // No credentials → don't even try; pause + single notice (not an error per message).
+  if (!isGcsConfigured()) {
+    pauseMessageBackup('GCS credentials not configured');
+    return { success: false, error: 'gcs_not_configured' };
+  }
   try {
     const storageClient = getStorageClient();
     const bucket = storageClient.bucket('petwash-secure-messages');
@@ -591,11 +620,9 @@ export async function backupMessage(messageData: {
       gcsPath: fileName,
     };
   } catch (error: any) {
-    logger.error('[GCS] Message backup failed', {
-      messageId: messageData.messageId,
-      error: error.message,
-    });
-    
+    // Open the circuit-breaker + emit ONE throttled warning instead of an error
+    // for every message. The row keeps backupStatus!='completed' for a later sweep.
+    pauseMessageBackup(error?.message || 'unknown');
     return {
       success: false,
       error: error.message,
