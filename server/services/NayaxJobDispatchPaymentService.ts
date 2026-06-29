@@ -420,7 +420,10 @@ export class NayaxJobDispatchPaymentService {
   private static async callNayaxAuthorizeAPI(request: NayaxAuthorizeRequest): Promise<NayaxAuthorizeResponse> {
     try {
       // Development mode: Simulate successful authorization
-      if (process.env.NODE_ENV === 'development') {
+      // Simulate ONLY with an explicit opt-in AND never in production — so a missing/
+      // wrong NODE_ENV on a deploy can't silently mock-approve real payments. Mirrors
+      // the double-guard in payment-provider-mode.ts.
+      if (process.env.NODE_ENV !== 'production' && process.env.NAYAX_JOBDISPATCH_SIMULATE === 'true') {
         logger.info('[Nayax Job Dispatch - DEV MODE] Simulating authorization', {
           amount: request.Amount,
           currency: request.Currency,
@@ -466,7 +469,10 @@ export class NayaxJobDispatchPaymentService {
   private static async callNayaxCaptureAPI(request: NayaxCaptureRequest): Promise<NayaxCaptureResponse> {
     try {
       // Development mode: Simulate successful capture
-      if (process.env.NODE_ENV === 'development') {
+      // Simulate ONLY with an explicit opt-in AND never in production — so a missing/
+      // wrong NODE_ENV on a deploy can't silently mock-approve real payments. Mirrors
+      // the double-guard in payment-provider-mode.ts.
+      if (process.env.NODE_ENV !== 'production' && process.env.NAYAX_JOBDISPATCH_SIMULATE === 'true') {
         logger.info('[Nayax Job Dispatch - DEV MODE] Simulating capture', {
           authorizationId: request.AuthorizationId,
         });
@@ -510,7 +516,10 @@ export class NayaxJobDispatchPaymentService {
   private static async callNayaxVoidAPI(request: NayaxVoidRequest): Promise<NayaxVoidResponse> {
     try {
       // Development mode: Simulate successful void
-      if (process.env.NODE_ENV === 'development') {
+      // Simulate ONLY with an explicit opt-in AND never in production — so a missing/
+      // wrong NODE_ENV on a deploy can't silently mock-approve real payments. Mirrors
+      // the double-guard in payment-provider-mode.ts.
+      if (process.env.NODE_ENV !== 'production' && process.env.NAYAX_JOBDISPATCH_SIMULATE === 'true') {
         logger.info('[Nayax Job Dispatch - DEV MODE] Simulating void', {
           authorizationId: request.AuthorizationId,
           reason: request.Reason,
