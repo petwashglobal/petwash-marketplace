@@ -24,6 +24,7 @@ import { bookings, bookingRequests, providers } from '@shared/schema';
 import { bookingDisputes } from '@shared/schema';
 import { assertServiceApproved } from './providerServiceApproval';
 import { isReconfirmationOverdue } from './reconfirmationService';
+import { checkProviderDeclarationsSigned } from './providerDeclarationGate';
 import { logger } from '../lib/logger';
 
 export const REFUND_WINDOW_HOURS = Number(process.env.PAYOUT_REFUND_WINDOW_HOURS || 48);
@@ -241,6 +242,36 @@ export async function checkPayoutGates(input: PayoutGateInput): Promise<PayoutGa
             ok: false,
             reason: 'RECONFIRMATION_OVERDUE',
             message: 'Provider 6-month re-confirmation is overdue — payout held until re-confirmed.',
+          };
+        }
+      }
+    }
+
+    // Gate (h): Provider Protection Book declarations signed (epic #49). The
+    // provider must have SIGNED every required protection declaration (core +
+    // service-specific) at its current version before money moves. Flag-gated
+    // (PROVIDER_DECLARATIONS_ENFORCE, default off), mirroring the reconfirmation
+    // gate: off = SHADOW (log what it WOULD hold, payout proceeds); on = HOLD.
+    // This lets the declaration system run observe-only until counsel approves the
+    // wording and DocuSeal is live, then becomes a hard gate by flipping one flag.
+    //
+    // SHADOW is fail-SAFE: a genuine "unsigned" result is logged but never blocks
+    // while off; an internal lookup error (DECLARATION_GATE_ERROR) is likewise
+    // non-blocking off. When ENFORCE is on we HOLD on unsigned declarations
+    // (money fail-closed, consistent with this file) — a deliberate CEO switch
+    // taken only after the wording is counsel-approved.
+    {
+      const decl = await checkProviderDeclarationsSigned(providerUid);
+      if (!decl.ok) {
+        const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'off').toLowerCase() === 'on';
+        logger.warn(
+          `[PayoutGate] declarations ${enforce ? 'HOLD' : 'WOULD HOLD (shadow)'} for ${providerUid} — ${decl.reason}${decl.missing.length ? ` (missing: ${decl.missing.join(',')})` : ''}`,
+        );
+        if (enforce) {
+          return {
+            ok: false,
+            reason: `DECLARATIONS_UNSIGNED:${decl.reason}`,
+            message: `Provider has unsigned required protection declarations${decl.missing.length ? ` (${decl.missing.join(', ')})` : ''} — payout held until signed.`,
           };
         }
       }

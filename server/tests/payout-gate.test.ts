@@ -19,6 +19,7 @@ const H = vi.hoisted(() => {
     tableRows: new Map<any, any[]>(),
     svc: { result: { ok: true, status: 'approved_for_payout' } as { ok: boolean; status: string | null; reason?: string } },
     reconfirm: { overdue: false },
+    decl: { result: { ok: true, reason: 'OK', missing: [] as string[] } },
   };
 });
 const { BOOKINGS, BOOKING_REQUESTS, PROVIDERS, BOOKING_DISPUTES } = H;
@@ -56,6 +57,11 @@ vi.mock('../services/reconfirmationService', () => ({
   isReconfirmationOverdue: vi.fn(async () => H.reconfirm.overdue),
 }));
 
+// Mock the declaration gate so we control gate (h) independently.
+vi.mock('../services/providerDeclarationGate', () => ({
+  checkProviderDeclarationsSigned: vi.fn(async () => H.decl.result),
+}));
+
 import { checkPayoutGates } from '../services/payoutGate';
 
 const HOURS = 60 * 60 * 1000;
@@ -71,7 +77,9 @@ function setupHappyPath() {
   H.tableRows.set(PROVIDERS, [{ verificationStatus: 'verified' }]);
   H.svc.result = { ok: true, status: 'approved_for_payout' };
   H.reconfirm.overdue = false;
+  H.decl.result = { ok: true, reason: 'OK', missing: [] };
   delete process.env.RECONFIRMATION_ENFORCE;
+  delete process.env.PROVIDER_DECLARATIONS_ENFORCE;
 }
 
 describe('checkPayoutGates — fail-CLOSED chain', () => {
@@ -151,6 +159,22 @@ describe('checkPayoutGates — fail-CLOSED chain', () => {
     const r = await checkPayoutGates({ providerUid: 'uid1', bookingId: 'bk1' });
     expect(r.ok).toBe(false);
     expect(r.reason).toContain('SERVICE_NOT_APPROVED_FOR_PAYOUT');
+  });
+
+  it('PASSES (shadow) when declarations unsigned but PROVIDER_DECLARATIONS_ENFORCE off (gate h)', async () => {
+    H.decl.result = { ok: false, reason: 'DECLARATIONS_UNSIGNED', missing: ['independent_provider'] };
+    delete process.env.PROVIDER_DECLARATIONS_ENFORCE;
+    const r = await checkPayoutGates({ providerUid: 'uid1', bookingId: 'bk1' });
+    expect(r).toMatchObject({ ok: true, reason: 'OK' });
+  });
+
+  it('HOLDS when declarations unsigned and PROVIDER_DECLARATIONS_ENFORCE on (gate h)', async () => {
+    H.decl.result = { ok: false, reason: 'DECLARATIONS_UNSIGNED', missing: ['independent_provider'] };
+    process.env.PROVIDER_DECLARATIONS_ENFORCE = 'on';
+    const r = await checkPayoutGates({ providerUid: 'uid1', bookingId: 'bk1' });
+    expect(r.ok).toBe(false);
+    expect(r.reason).toContain('DECLARATIONS_UNSIGNED');
+    delete process.env.PROVIDER_DECLARATIONS_ENFORCE;
   });
 
   it('resolves marketplace booking_requests when not in unified bookings', async () => {
