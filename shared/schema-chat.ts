@@ -393,6 +393,6 @@ export type ChatThread = typeof chatThreads.$inferSelect;
 /** Canonical thread types — the only allowed thread_type values. */
 export const CHAT_THREAD_TYPES = [
   "BOOKING", "SUPPORT", "INCIDENT", "K9000",
-  "PAW_FINDER", "SHOP_ORDER", "GIFT", "PROVIDER_APPLICATION", "ADMIN",
+  "PAW_FINDER", "SHOP_ORDER", "GIFT", "PROVIDER_APPLICATION", "FRANCHISE", "ADMIN",
 ] as const;
 export type ChatThreadType = (typeof CHAT_THREAD_TYPES)[number];

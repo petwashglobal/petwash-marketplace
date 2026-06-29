@@ -24,6 +24,7 @@ const REQUIRED_ANCHOR: Record<ChatThreadType, keyof typeof chatThreads.$inferIns
   SHOP_ORDER: 'orderId',
   GIFT: 'giftId',
   PROVIDER_APPLICATION: 'applicationId',
+  FRANCHISE: 'applicationId', // franchise enquiry/application id
   ADMIN: 'caseId',
 };
 
