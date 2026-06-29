@@ -978,9 +978,9 @@ function styles(he: boolean) {
     }
 
     .sl-shell{
-      --gold:#b0841c; --gold2:#d9bd72; --gold3:#8f6a16; --white:#fffaf0;
+      --gold:#D4AF37; --gold2:#E6C766; --gold3:#B8932F; --white:#fffaf0;
       --muted:rgba(255,250,240,.6); --line:rgba(255,255,255,.10);
-      --line2:rgba(176,132,28,.22); --ink:#0a0a0a;
+      --line2:rgba(212,175,55,.22); --ink:#0a0a0a;
       position:relative; min-height:100dvh; background:#000 !important;
       background-color:#000 !important;
       color:var(--white);
@@ -1013,7 +1013,7 @@ function styles(he: boolean) {
     .sl-sub{ margin:0 auto; color:var(--muted); font-size:clamp(14px,1.4vw,17px); line-height:1.5; max-width:520px; text-align:center }
 
     .sl-divPaw{ display:flex; align-items:center; gap:10px; color:var(--gold); margin:2px 0 }
-    .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(176,132,28,.45), transparent); flex:1 }
+    .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(212,175,55,.45), transparent); flex:1 }
     .sl-divPaw svg{ width:14px; height:14px }
 
     /* Dog can be large and emotional, but it supports the brand identity. */
@@ -1055,7 +1055,7 @@ function styles(he: boolean) {
       background:linear-gradient(135deg, var(--gold2), var(--gold));
       color:#0a0a0a; font-weight:900; font-size:11px;
     }
-    .sl-stars{ color:var(--gold2); font-size:18px; letter-spacing:4px; text-shadow:0 0 12px rgba(176,132,28,.5) }
+    .sl-stars{ color:var(--gold2); font-size:18px; letter-spacing:4px; text-shadow:0 0 12px rgba(212,175,55,.5) }
     .sl-ratingTxt{ color:var(--white); font-weight:800; font-size:14px }
 
     .sl-secBadge{
@@ -1085,7 +1085,7 @@ function styles(he: boolean) {
       color:var(--white); font-weight:700; font-size:13px;
       border-radius:999px; padding:10px 16px; min-height:44px;
     }
-    .sl-lang:hover{ border-color:rgba(176,132,28,.5) }
+    .sl-lang:hover{ border-color:rgba(212,175,55,.5) }
 
     /* Social tiles 2x2 */
     .sl-social4{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
@@ -1121,7 +1121,7 @@ function styles(he: boolean) {
       min-height:64px; padding:12px 14px; border-radius:14px; box-sizing:border-box;
       background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--white);
       cursor:pointer; appearance:none; -webkit-appearance:none; transition:border-color .2s, background .2s }
-    .sl-intentCard--on{ border-color:var(--gold); background:rgba(176,132,28,.12) }
+    .sl-intentCard--on{ border-color:var(--gold); background:rgba(212,175,55,.12) }
     .sl-intentIcon{ color:var(--gold2); font-size:20px; flex-shrink:0 }
     .sl-intentText{ flex:1; min-width:0 }
     .sl-intentName{ font-size:14px; font-weight:700; line-height:1.2 }
@@ -1140,8 +1140,8 @@ function styles(he: boolean) {
       padding:0 8px; transition:background .15s ease, border-color .15s ease, color .15s ease;
     }
     .sl-tab svg{ font-size:16px }
-    .sl-tab[aria-selected="true"]{ background:rgba(176,132,28,.12); border-color:rgba(176,132,28,.4); color:var(--white) }
-    .sl-tab:hover{ border-color:rgba(176,132,28,.35) }
+    .sl-tab[aria-selected="true"]{ background:rgba(212,175,55,.12); border-color:rgba(212,175,55,.4); color:var(--white) }
+    .sl-tab:hover{ border-color:rgba(212,175,55,.35) }
 
     /* Fields */
     .sl-field{ display:grid; gap:8px }
@@ -1162,7 +1162,7 @@ function styles(he: boolean) {
     }
     .sl-input--icon{ ${he ? 'padding-right:42px; padding-left:16px' : 'padding-left:42px; padding-right:16px'} }
     .sl-input::placeholder{ color:rgba(255,250,240,.4); font-weight:400 }
-    .sl-input:focus{ border-color:rgba(176,132,28,.55); box-shadow:0 0 0 3px rgba(176,132,28,.18) }
+    .sl-input:focus{ border-color:rgba(212,175,55,.55); box-shadow:0 0 0 3px rgba(212,175,55,.18) }
     .sl-hint{ color:var(--muted); font-size:12.5px; line-height:1.4 }
     .sl-inlineError{
       margin:0;
@@ -1208,9 +1208,9 @@ function styles(he: boolean) {
     .sl-terms--quick{
       margin:-2px 0 0;
       padding:10px 12px;
-      border:1px solid rgba(176,132,28,.24);
+      border:1px solid rgba(212,175,55,.24);
       border-radius:14px;
-      background:rgba(176,132,28,.06);
+      background:rgba(212,175,55,.06);
     }
 
     /* CTA — premium gold gradient (luxury house brand). Min-height 58px keeps
@@ -1222,11 +1222,11 @@ function styles(he: boolean) {
       color:#0a0a0a;
       display:flex; align-items:center; justify-content:center; gap:10px;
       font-weight:900; font-size:16px; letter-spacing:.02em;
-      box-shadow:0 18px 50px rgba(176,132,28,.28);
+      box-shadow:0 18px 50px rgba(212,175,55,.28);
       transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
-    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(176,132,28,.5) }
+    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(212,175,55,.5) }
     .sl-cta:disabled{ opacity:.5; cursor:not-allowed }
     .sl-cta svg{ font-size:18px }
     .sl-btn{
@@ -1244,8 +1244,8 @@ function styles(he: boolean) {
 
     /* 2026 Advanced Security trust row */
     .sl-secRow{
-      margin-top:12px; padding:10px 12px; border:1px solid rgba(176,132,28,.22);
-      border-radius:12px; background:rgba(176,132,28,.04);
+      margin-top:12px; padding:10px 12px; border:1px solid rgba(212,175,55,.22);
+      border-radius:12px; background:rgba(212,175,55,.04);
     }
     .sl-secTitle{
       text-align:center; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
@@ -1279,7 +1279,7 @@ function styles(he: boolean) {
       color:#fff; text-decoration:none; min-height:54px;
       transition:border-color .15s ease, box-shadow .15s ease;
     }
-    .sl-store:hover{ border-color:rgba(176,132,28,.4); box-shadow:0 0 0 3px rgba(176,132,28,.1) }
+    .sl-store:hover{ border-color:rgba(212,175,55,.4); box-shadow:0 0 0 3px rgba(212,175,55,.1) }
     .sl-store svg{ font-size:26px; flex:0 0 auto }
     .sl-store span{ display:flex; flex-direction:column; line-height:1.05; align-items:flex-start }
     .sl-store small{ font-size:10px; opacity:.78; font-weight:700; letter-spacing:.06em; text-transform:uppercase }
