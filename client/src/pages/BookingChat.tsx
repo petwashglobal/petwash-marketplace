@@ -2,8 +2,27 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useRoute, useLocation } from "wouter";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { useLanguage } from "@/lib/languageStore";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+
+/** Smart status for this booking (GET /api/inbox/v2/booking/:id/status). */
+interface ChatSmartStatus {
+  badge: string;
+  badgeLabel: { en: string; he: string };
+  action: string;
+  actionLabel: { en: string; he: string };
+}
+const CHAT_BADGE_STYLE: Record<string, { bg: string; fg: string }> = {
+  WAITING_FOR_PROVIDER: { bg: '#FBF3DC', fg: '#8a6a12' },
+  PROVIDER_ACCEPTED: { bg: '#E6F3EE', fg: '#1f7a52' },
+  PAYMENT_REQUIRED: { bg: '#FBF3DC', fg: '#8a6a12' },
+  BOOKING_CONFIRMED: { bg: '#E6F3EE', fg: '#1f7a52' },
+  STARTS_SOON: { bg: '#FBF3DC', fg: '#8a6a12' },
+  ACTIVE_NOW: { bg: '#E6F3EE', fg: '#1f7a52' },
+  COMPLETED: { bg: '#EEF1F4', fg: '#475569' },
+  CANCELLED: { bg: '#FBEAEA', fg: '#b42318' },
+};
 import { Skeleton } from "@/components/ui/skeleton";
 import {
   Dialog,
@@ -501,6 +520,15 @@ export default function BookingChat() {
     enabled: !!conversationId,
   });
 
+  // Smart status for this booking — same badge/action engine as the inbox.
+  const { language: chatLang } = useLanguage();
+  const heChat = chatLang === 'he';
+  const { data: smartStatus } = useQuery<ChatSmartStatus>({
+    queryKey: [`/api/inbox/v2/booking/${bookingId}/status`],
+    enabled: !!bookingId && !!conversationId,
+    refetchInterval: 30000,
+  });
+
   // ── 3. Send message ───────────────────────────────────────────────────────
   const sendMutation = useMutation({
     mutationFn: async ({ content, messageType, metadata, replyToMessageId }: { content: string; messageType: string; metadata?: any; replyToMessageId?: string | null }) => {
@@ -974,6 +1002,20 @@ export default function BookingChat() {
             </div>
             <div className="flex items-center gap-2 mt-0.5 flex-wrap">
               <StatusChip status={conversation.chatStatus} />
+              {/* Smart booking status + next action (same engine as the inbox). */}
+              {smartStatus && CHAT_BADGE_STYLE[smartStatus.badge] && (
+                <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full"
+                  style={{ background: CHAT_BADGE_STYLE[smartStatus.badge].bg, color: CHAT_BADGE_STYLE[smartStatus.badge].fg }}>
+                  {heChat ? smartStatus.badgeLabel.he : smartStatus.badgeLabel.en}
+                </span>
+              )}
+              {smartStatus && smartStatus.action !== 'OPEN_CHAT' && (
+                <button onClick={() => setLocation('/my-bookings')}
+                  className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white active:opacity-80"
+                  style={{ background: '#B8860B' }}>
+                  {heChat ? smartStatus.actionLabel.he : smartStatus.actionLabel.en}
+                </button>
+              )}
               {/* Wave 1 #3: session timer chip — live elapsed since "Starting now" */}
               {sessionStartedAt && !isReadOnly && (
                 <SessionTimerChip startedAt={sessionStartedAt} />

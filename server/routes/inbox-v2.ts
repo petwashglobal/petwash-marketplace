@@ -80,4 +80,30 @@ router.get('/threads', requireAuth, async (req, res) => {
   }
 });
 
+/**
+ * GET /api/inbox/v2/booking/:bookingId/status — smart status for ONE booking.
+ * Reads the booking lifecycle directly (works today, no chat_threads dependency)
+ * so the chat screen can show the same badge + next action as the inbox.
+ */
+router.get('/booking/:bookingId/status', requireAuth, async (req, res) => {
+  const { bookingId } = req.params;
+  try {
+    let bookingStatus: string | null = null;
+    try {
+      const [b] = await db
+        .select({ status: bookingRequests.status })
+        .from(bookingRequests)
+        .where(eq(bookingRequests.requestId, bookingId))
+        .limit(1);
+      bookingStatus = (b?.status as string) ?? null;
+    } catch { /* leave null */ }
+
+    const smart = computeInboxRowStatus({ threadType: 'BOOKING', bookingStatus });
+    res.json({ ok: true, bookingId, bookingStatus, ...smart });
+  } catch (e: any) {
+    logger.warn('[InboxV2] booking status failed', { error: e?.message, bookingId });
+    res.json({ ok: true, bookingId, badge: 'OPEN', action: 'OPEN_CHAT', badgeLabel: { en: 'Open', he: 'פתוח' }, actionLabel: { en: 'Open chat', he: 'פתחו צ׳אט' } });
+  }
+});
+
 export default router;
