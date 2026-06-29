@@ -106,6 +106,7 @@ import captchaProbeRoutes from "./routes/captcha-probe";
 import meetingsRoutes from "./routes/meetings";
 import unifiedVouchersRoutes from "./routes/unified-vouchers";
 import esignRoutes from "./routes/esign";
+import providerDeclarationsRoutes from "./routes/provider-declarations";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
 import bookingChatRouter from './routes/booking-chat';
@@ -12482,7 +12483,15 @@ self.addEventListener('notificationclick', (event) => {
   
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use('/api/esign', apiLimiter, esignRoutes);
-  
+
+  // Provider Protection Book — signed-declaration surface (epic #49, Phase 1).
+  // Reuses the DocuSeal engine above; DARK until DOCUSEAL_API_KEY is set AND each
+  // declaration's reviewedByCounsel flag is flipped true. No money mutation.
+  // Hyphen form (NOT /api/provider/...) on purpose: declarations are signed DURING
+  // onboarding, before activation, so it must NOT sit behind the /api/provider/
+  // requireProviderActive gate — same pattern as /api/provider-onboarding.
+  app.use('/api/provider-declarations', apiLimiter, providerDeclarationsRoutes);
+
   // 🇮🇱 Israeli "Government-Grade" E-Signature (2025) — DISABLED at the router.
   // Its JWS signing is cryptographically void (random throwaway HS256 secret,
   // never the ES256 key) and its /verify lies ("compliant with Israeli law"
