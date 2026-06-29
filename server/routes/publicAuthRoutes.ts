@@ -546,6 +546,37 @@ publicAuthRouter.get("/api/auth/phone/status", (req, res) => {
 /**
  * Create phone session after verification
  * POST /api/auth/phone-session
+/**
+ * 18+ gate for NEW account creation. A signup must supply a valid date of birth
+ * (YYYY-MM-DD) and be at least 18. Applied only when creating a brand-new user —
+ * returning users signing in are unaffected. Israel: pet-care platform is adults-only.
+ */
+function checkSignupAge(dob: unknown): { ok: boolean; error?: string; iso?: string } {
+  if (typeof dob !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(dob)) {
+    return { ok: false, error: 'Date of birth is required to create an account.' };
+  }
+  const d = new Date(dob + 'T00:00:00');
+  if (Number.isNaN(d.getTime())) return { ok: false, error: 'Invalid date of birth.' };
+  const now = new Date();
+  let age = now.getFullYear() - d.getFullYear();
+  const m = now.getMonth() - d.getMonth();
+  if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+  if (age > 120 || age < 0) return { ok: false, error: 'Invalid date of birth.' };
+  if (age < 18) return { ok: false, error: 'You must be at least 18 years old to create an account.' };
+  return { ok: true, iso: dob };
+}
+
+/** Best-effort persist DOB to the Postgres users row (never blocks signup). */
+async function persistDob(uid: string, isoDob: string): Promise<void> {
+  try {
+    await pool.query(`UPDATE users SET date_of_birth = $1 WHERE id = $2`, [isoDob, uid]);
+  } catch (e: any) {
+    logger.warn('[Signup] DOB persist skipped (non-blocking)', { error: e?.message });
+  }
+}
+
+/**
+ * POST /api/auth/phone-session
  * REQUIRES: verificationToken from successful /verify-code response
  */
 publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
@@ -578,10 +609,16 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
       user = await adminAuth.getUserByPhoneNumber(formattedPhone);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
+        // 18+ gate — new accounts only.
+        const ageCheck = checkSignupAge(req.body?.dateOfBirth);
+        if (!ageCheck.ok) {
+          return res.status(403).json({ ok: false, error: ageCheck.error, code: 'AGE_REQUIREMENT' });
+        }
         user = await adminAuth.createUser({
           phoneNumber: formattedPhone,
           displayName: `User ${formattedPhone.slice(-4)}`,
         });
+        await persistDob(user.uid, ageCheck.iso!);
         logger.info('[PhoneAuth] Created new user for phone:', formattedPhone.slice(0, 6) + '****');
 
         try {
@@ -712,8 +749,14 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
       user = await adminAuth.getUserByEmail(email);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
+        // 18+ gate — new accounts only.
+        const ageCheck = checkSignupAge(req.body?.dateOfBirth);
+        if (!ageCheck.ok) {
+          return res.status(403).json({ ok: false, error: ageCheck.error, code: 'AGE_REQUIREMENT' });
+        }
         // Email is proven (matched code) → safe to create as a verified account.
         user = await adminAuth.createUser({ email, emailVerified: true });
+        await persistDob(user.uid, ageCheck.iso!);
         logger.info('[EmailAuth] Created new user for email', { email: email.replace(/(.{2}).*(@.*)/, '$1•••$2') });
 
         try {
