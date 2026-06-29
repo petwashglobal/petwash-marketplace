@@ -1125,7 +1125,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/payment-failed">
           {() => (
-            <div dir={language === 'he' ? 'rtl' : 'ltr'} className="min-h-[100dvh] flex flex-col items-center justify-center bg-white text-black px-6 text-center gap-4">
+            <div dir={isRTL(language) ? 'rtl' : 'ltr'} className="min-h-[100dvh] flex flex-col items-center justify-center bg-white text-black px-6 text-center gap-4">
               <h1 className="text-2xl font-semibold">{language === 'he' ? 'התשלום לא הושלם' : 'Payment not completed'}</h1>
               <p className="text-black/60 max-w-md">{language === 'he' ? 'התשלום לא הושלם. אם חויבת, פנה לתמיכה. אפשר לנסות שוב.' : 'Your payment was not completed. If you were charged, please contact support. You can try again.'}</p>
               <a href="/" className="rounded-lg bg-[#047857] text-white px-5 py-2.5 text-sm font-medium">{language === 'he' ? 'חזרה לדף הבית' : 'Back to home'}</a>
