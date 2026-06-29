@@ -1598,8 +1598,35 @@ router.post('/walks/:bookingId/complete', requireAuth, async (req, res) => {
 router.post('/walkers/:walkerId/review', requireAuth, async (req, res) => {
   try {
     const { walkerId } = req.params;
-    const ownerId = (req as any).user?.uid;
-    
+    const ownerId = (req as any).user?.uid || (req as any).firebaseUser?.uid;
+    if (!ownerId) return res.status(401).json({ error: 'Authentication required' });
+
+    // COMPLETED-WALK GATE: a review must reference a real walk that belongs to this
+    // owner, was with THIS walker, is COMPLETED, and hasn't been reviewed yet.
+    // Without it, any authed user could rate any walker they never used (ratings
+    // drive search ranking).
+    const bookingId = req.body?.bookingId;
+    if (!bookingId) return res.status(400).json({ error: 'bookingId is required' });
+    const [walk] = await db
+      .select()
+      .from(walkBookings)
+      .where(eq(walkBookings.bookingId, String(bookingId)))
+      .limit(1);
+    if (!walk || walk.ownerId !== ownerId || walk.walkerId !== walkerId) {
+      return res.status(403).json({ error: 'You can only review your own completed walk with this walker.' });
+    }
+    if (walk.status !== 'completed') {
+      return res.status(400).json({ error: 'You can only review a completed walk.' });
+    }
+    const [existingWalkReview] = await db
+      .select({ reviewId: walkerReviews.reviewId })
+      .from(walkerReviews)
+      .where(eq(walkerReviews.bookingId, String(bookingId)))
+      .limit(1);
+    if (existingWalkReview) {
+      return res.status(409).json({ error: 'This walk has already been reviewed.' });
+    }
+
     const reviewData: InsertWalkerReview = {
       reviewId: `REV-${crypto.randomUUID()}`,
       ...req.body,

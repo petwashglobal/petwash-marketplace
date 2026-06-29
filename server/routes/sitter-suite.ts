@@ -1601,15 +1601,42 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
 /**
  * POST /api/sitter-suite/reviews - Submit review for completed booking
  */
-router.post('/reviews', async (req, res) => {
+router.post('/reviews', requireAuth, async (req: any, res) => {
   try {
+    const ownerId = req.firebaseUser?.uid || req.user?.uid;
+    if (!ownerId) return res.status(401).json({ error: 'Authentication required' });
+
     const validatedData = insertSitterReviewSchema.parse(req.body);
-    
+
+    // OWNERSHIP + COMPLETED-BOOKING GATE: a review must come from the booking's
+    // owner, for a COMPLETED stay with that sitter, and only once. Previously this
+    // route had NO auth at all — anyone could forge ratings that drive search rank.
+    const [booking] = await db
+      .select()
+      .from(sitterBookings)
+      .where(eq(sitterBookings.id, validatedData.bookingId))
+      .limit(1);
+    if (!booking || booking.ownerId !== ownerId || booking.sitterId !== validatedData.sitterId) {
+      return res.status(403).json({ error: 'You can only review your own booking with this sitter.' });
+    }
+    if (booking.status !== 'completed') {
+      return res.status(400).json({ error: 'You can only review a completed stay.' });
+    }
+    const [existingReview] = await db
+      .select({ id: sitterReviews.id })
+      .from(sitterReviews)
+      .where(eq(sitterReviews.bookingId, validatedData.bookingId))
+      .limit(1);
+    if (existingReview) {
+      return res.status(409).json({ error: 'This booking has already been reviewed.' });
+    }
+
     const [newReview] = await db
       .insert(sitterReviews)
-      .values(validatedData)
+      // Force ownerId + verified flag server-side — never trust the body for these.
+      .values({ ...validatedData, ownerId, isVerifiedStay: true })
       .returning();
-    
+
     // Update sitter's average rating
     const allReviews = await db
       .select()
