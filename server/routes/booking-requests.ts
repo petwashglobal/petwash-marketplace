@@ -43,6 +43,7 @@ import { createHash } from 'crypto';
 import EscrowService from '../services/EscrowService';
 import { createEarningRecord } from '../services/payoutLedger';
 import { assertServiceApproved, providerHasAnyServiceRows } from '../services/providerServiceApproval';
+import { checkProviderDeclarationsSigned } from '../services/providerDeclarationGate';
 import { isReconfirmationOverdue } from '../services/reconfirmationService';
 import { recordAcceptance, recordStatusEvent, recordRefund } from '../services/DealGateService';
 import { closeLead } from '../services/ConversionLeadService';
@@ -1238,6 +1239,32 @@ router.post('/:requestId/respond', async (req, res) => {
             return res.status(403).json({
               error: 'RECONFIRMATION_REQUIRED',
               message: 'Please re-confirm your provider declarations (required every 6 months) before accepting new bookings.',
+            });
+          }
+        }
+      } catch { /* fail-open: advisory gate must never break a live accept on infra error */ }
+
+      // ── PROVIDER PROTECTION DECLARATIONS GATE (epic #49) ──────────────────
+      // A provider may not ACCEPT a booking (go live serving a job) until every
+      // required Protection-Book declaration is signed. Uses the SAME flag as the
+      // payout gate (PROVIDER_DECLARATIONS_ENFORCE, default off = SHADOW) so one
+      // switch arms the whole epic — you never want acceptance allowed while payout
+      // is held, or vice versa. When the flag is flipped on, this blocks ANY
+      // provider (incl. legacy) who hasn't signed — which is the intended Protection
+      // Book rule; run shadow first to see who would be blocked. Fail-safe:
+      // checkProviderDeclarationsSigned never throws, and shadow only logs.
+      try {
+        const decl = await checkProviderDeclarationsSigned(userId!);
+        if (!decl.ok) {
+          const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'off').toLowerCase() === 'on';
+          logger.warn(`[BookingRequests] declarations ${enforce ? 'BLOCK' : 'WOULD BLOCK (shadow)'} accept`, {
+            providerId: userId, reason: decl.reason, missing: decl.missing,
+          });
+          if (enforce) {
+            return res.status(403).json({
+              error: 'DECLARATIONS_REQUIRED',
+              message: 'Please sign your provider declarations before accepting bookings.',
+              missing: decl.missing,
             });
           }
         }
