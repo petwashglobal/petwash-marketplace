@@ -14,8 +14,35 @@ import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useLanguage } from '@/lib/languageStore';
 import { formatDistanceToNow } from 'date-fns';
 import type { BookingConversation } from '@shared/schema';
+
+/** Smart inbox row decoration from GET /api/inbox/v2/threads. */
+interface SmartThread {
+  threadId: string;
+  threadType: string;
+  bookingId: string | null;
+  badge: string;
+  badgeLabel: { en: string; he: string };
+  action: string;
+  actionLabel: { en: string; he: string };
+}
+// Badge colour by intent — luxury palette (green=good, gold=needs action, red=alert).
+const BADGE_STYLE: Record<string, { bg: string; fg: string }> = {
+  WAITING_FOR_PROVIDER: { bg: '#FBF3DC', fg: '#8a6a12' },
+  PROVIDER_ACCEPTED: { bg: '#E6F3EE', fg: '#1f7a52' },
+  PAYMENT_REQUIRED: { bg: '#FBF3DC', fg: '#8a6a12' },
+  BOOKING_CONFIRMED: { bg: '#E6F3EE', fg: '#1f7a52' },
+  STARTS_SOON: { bg: '#FBF3DC', fg: '#8a6a12' },
+  ACTIVE_NOW: { bg: '#E6F3EE', fg: '#1f7a52' },
+  COMPLETED: { bg: '#EEF1F4', fg: '#475569' },
+  CANCELLED: { bg: '#FBEAEA', fg: '#b42318' },
+  INCIDENT_OPEN: { bg: '#FBEAEA', fg: '#b42318' },
+  SUPPORT_WAITING: { bg: '#FBF3DC', fg: '#8a6a12' },
+  ARCHIVED: { bg: '#EEF1F4', fg: '#475569' },
+  OPEN: { bg: '#EEF1F4', fg: '#475569' },
+};
 import {
   Bell, Lock, Sparkles, ChevronRight, Dog, Cat, PawPrint, GraduationCap,
   Gift, Receipt, Megaphone, Inbox as InboxIcon, MessageSquare,
@@ -75,6 +102,19 @@ export default function PetWashInbox() {
     enabled: !!user,
   });
   const alerts = alertData?.messages ?? [];
+
+  // Smart inbox feed (Communication Hub): per-thread status badge + next action.
+  // Fail-safe + additive — empty until migration 0084 makes chat_threads live, so
+  // rows just render as before until then.
+  const { language } = useLanguage();
+  const he = language === 'he';
+  const { data: smartData } = useQuery<{ ok: boolean; threads: SmartThread[] }>({
+    queryKey: ['/api/inbox/v2/threads'],
+    enabled: !!user,
+    refetchInterval: 30000,
+  });
+  const smartByBooking = new Map<string, SmartThread>();
+  (smartData?.threads ?? []).forEach(t => { if (t.bookingId) smartByBooking.set(t.bookingId, t); });
 
   const active = conversations.filter(c => c.chatStatus === 'active');
   const unreadMsgs = active.reduce((s, c) => s + (user?.uid === c.customerId ? (c.customerUnread ?? 0) : (c.providerUnread ?? 0)), 0);
@@ -146,6 +186,25 @@ export default function PetWashInbox() {
                           <span className="text-[12.5px] text-gray-500 truncate">{preview || 'Tap to open conversation'}</span>
                           {unread > 0 && <span className="w-[9px] h-[9px] rounded-full shrink-0" style={{ background: EMERALD }} />}
                         </div>
+                        {(() => {
+                          const smart = c.bookingId ? smartByBooking.get(String(c.bookingId)) : undefined;
+                          if (!smart) return null;
+                          const bs = BADGE_STYLE[smart.badge] ?? BADGE_STYLE.OPEN;
+                          return (
+                            <div className="flex items-center justify-between gap-2 mt-1.5">
+                              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium shrink-0"
+                                style={{ background: bs.bg, color: bs.fg }}>
+                                {he ? smart.badgeLabel.he : smart.badgeLabel.en}
+                              </span>
+                              {smart.action !== 'OPEN_CHAT' && (
+                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold shrink-0"
+                                  style={{ background: EMERALD, color: '#fff' }}>
+                                  {he ? smart.actionLabel.he : smart.actionLabel.en}
+                                </span>
+                              )}
+                            </div>
+                          );
+                        })()}
                       </div>
                     </div>
                   </Link>
