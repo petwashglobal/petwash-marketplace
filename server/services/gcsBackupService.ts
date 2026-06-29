@@ -329,10 +329,18 @@ export async function performPostgresBackup(): Promise<{
     logger.info(`[GCS] ✅ PostgreSQL backup complete in ${duration}s: ${gcsUrl}`);
 
     fs.unlinkSync(localPath);
-    await db.collection('backup_logs').add({
-      type: 'postgres', status: 'success', backupFile, sizeMB: parseFloat(sizeMB), gcsUrl,
-      sha256: fileHash, duration: parseFloat(duration), timestamp,
-    });
+    // Best-effort success log. The DUMP is the critical artifact and is already
+    // safely in GCS by this point — do NOT let a Firestore permission/availability
+    // blip on this secondary log write flip a GOOD backup to "FAILED" (which fired a
+    // false security alert + a Cloud Scheduler retry storm that re-dumped repeatedly).
+    try {
+      await db.collection('backup_logs').add({
+        type: 'postgres', status: 'success', backupFile, sizeMB: parseFloat(sizeMB), gcsUrl,
+        sha256: fileHash, duration: parseFloat(duration), timestamp,
+      });
+    } catch (logErr: any) {
+      logger.warn('[GCS] Postgres backup uploaded OK but backup_logs write failed (non-fatal)', { error: logErr?.message });
+    }
 
     return { success: true, backupFile, size: `${sizeMB} MB`, gcsUrl };
   } catch (error: any) {
