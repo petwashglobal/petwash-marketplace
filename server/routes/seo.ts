@@ -132,6 +132,7 @@ router.get('/sitemap.xml', async (req, res) => {
     { url: '/academy', changefreq: 'weekly', priority: '0.7' },
     { url: '/buy-gift-card', changefreq: 'weekly', priority: '0.7' },
     { url: '/trust', changefreq: 'monthly', priority: '0.7' },
+    { url: '/trust-safety', changefreq: 'monthly', priority: '0.6' },
     { url: '/shop', changefreq: 'weekly', priority: '0.6' },
     { url: '/careers', changefreq: 'monthly', priority: '0.5' },
     { url: '/privacy', changefreq: 'monthly', priority: '0.4' },
