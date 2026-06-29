@@ -227,7 +227,7 @@ export const pwTaxDocuments = pgTable("pw_tax_documents", {
 
   // ── VAT metadata ────────────────────────────────────────────────────────────
   vatRate:     varchar("vat_rate").default("0.18"),
-  vatNumber:   varchar("vat_number").default("516788400"), // Pet Wash company VAT — confirm with accountant
+  vatNumber:   varchar("vat_number").default("517145033"), // Pet Wash Ltd company tax/VAT no. (canonical — matches finance-identity.ts; was wrong 516788400)
 
   // ── External accounting reference ───────────────────────────────────────────
   externalDocId:  varchar("external_doc_id"),              // e.g. DocuSeal / accounting system ID
