@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getApiUrl } from '@/lib/apiConfig';
-import { MobileDatePicker } from "@/components/ui/mobile-date-picker";
+import { AppleWheelDatePicker } from "@/components/ui/apple-wheel-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Clock, Loader2 } from "lucide-react";
@@ -31,6 +31,15 @@ interface AvailabilitySlot {
   status: 'AVAILABLE' | 'HELD' | 'BOOKED';
   timezone: string;
 }
+
+const pad2 = (n: number) => String(n).padStart(2, '0');
+/** Local-date → 'YYYY-MM-DD' (no UTC shift). */
+const dateToStr = (d: Date) => `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+/** 'YYYY-MM-DD' → local Date at midnight. */
+const strToDate = (s: string) => {
+  const [y, m, d] = s.split('-').map(Number);
+  return new Date(y, (m || 1) - 1, d || 1);
+};
 
 export function BookingCalendar({ platform, providerId, onSlotSelected, bookingMode, onRequestCustomDate }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -113,10 +122,20 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
     <div className="space-y-6">
       <div>
         <h3 className="text-lg font-semibold mb-4">Select Date</h3>
-        <MobileDatePicker
-          value={selectedDate}
-          onChange={setSelectedDate}
-          minDate={new Date()}
+        {/* iOS-style finger-scroll wheel (day · month · year). The wheel speaks
+            'YYYY-MM-DD'; we adapt to/from Date and clamp any past pick to today
+            to preserve the old minDate guard. */}
+        <AppleWheelDatePicker
+          value={dateToStr(selectedDate || new Date())}
+          onChange={(s) => {
+            let d = strToDate(s);
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            if (d < today) d = today;
+            setSelectedDate(d);
+          }}
+          minYear={new Date().getFullYear()}
+          maxYear={new Date().getFullYear() + 1}
         />
       </div>
 
