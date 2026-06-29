@@ -79,10 +79,16 @@ import { applyIntentFromUrl } from '@/lib/intentParam';
 import { setProviderSignupIntent } from '@/lib/becomeProvider';
 import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import {
+  isPlatformAuthenticatorAvailable,
+  getBiometricMethodName,
+  signInWithPasskey,
+  signInWithPasskeyConditional,
+} from '@/auth/passkey';
+import {
   FaApple, FaFacebookF, FaInstagram, FaLock,
   FaShieldAlt, FaAppStoreIos, FaGooglePlay,
   FaCog, FaGift, FaCalendarAlt, FaHeartbeat,
-  FaEnvelope, FaPhoneAlt, FaPaw,
+  FaEnvelope, FaPhoneAlt, FaPaw, FaFingerprint,
 } from 'react-icons/fa';
 
 interface Props {
@@ -276,8 +282,44 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
+  // Passkey / Face ID (returning users): device-bound, the 2026 way to skip codes.
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [bioName, setBioName] = useState('Face ID');
 
   const fail = (msg: string) => setInlineError(msg);
+
+  // On mount: detect a platform authenticator (Face ID / Touch ID / fingerprint)
+  // and ARM conditional passkey autofill so a returning user sees their passkey in
+  // the email field with no extra tap. Fire-and-forget; never blocks the page.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const avail = await isPlatformAuthenticatorAvailable();
+        if (cancelled) return;
+        setBioAvailable(avail);
+        if (avail) setBioName(getBiometricMethodName());
+        signInWithPasskeyConditional().catch(() => {});
+      } catch { /* passkeys unsupported — silent, normal flow continues */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Explicit "Sign in with Face ID" tap. On success the useFirebaseAuth user
+  // effect routes via the post-login decider; no consent gate (returning user
+  // already accepted terms at original signup).
+  async function handlePasskeyLogin() {
+    setBusy(true);
+    setInlineError(null);
+    try {
+      const r = await signInWithPasskey();
+      if (!r.success) fail(r.error || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+    } catch (e: any) {
+      fail(e?.message || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!signupFlags.smsFallbackAndRealErrors || !signupFlags.emailPassword) return;
@@ -718,6 +760,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               just types whichever they like and presses Continue (we detect which). === */}
           {!sent && (
             <>
+              {/* === Returning users: one-tap Face ID / Touch ID (passkey). Shown only
+                  when the device has a platform authenticator. No consent gate — a
+                  returning user already accepted terms at original signup. === */}
+              {bioAvailable && (
+                <>
+                  <button type="button" className="sl-bio" disabled={busy} onClick={handlePasskeyLogin}>
+                    <FaFingerprint aria-hidden /> {he ? `התחברות עם ${bioName}` : `Sign in with ${bioName}`}
+                  </button>
+                  <div className="sl-div">{he ? 'או הצטרפו לחשבון חדש' : 'or create a new account'}</div>
+                </>
+              )}
+
               {/* === Clear intent up front: member and/or provider (non-exclusive) === */}
               <div className="sl-intent">
                 <div className="sl-intentQ">{he ? 'איך תרצו להצטרף?' : 'How would you like to join?'}</div>
@@ -763,7 +817,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     <label className="sl-label">{t.emailLabel}</label>
                     <div className="sl-inputWrap">
                       <FaEnvelope className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                         value={email} onChange={(e) => setEmail(e.target.value)}
                         placeholder={t.emailPh} />
                     </div>
@@ -1117,6 +1171,16 @@ function styles(he: boolean) {
     /* Always one column: full-width cards read the same on a small iPhone and a
        big tablet, use 100% of the form width, and never cramp/wrap the card text. */
     .sl-intentGrid{ display:grid; grid-template-columns:1fr; gap:10px; width:100% }
+
+    /* Face ID / Touch ID passkey button — white-on-dark secondary, gold-tinted. */
+    .sl-bio{ display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+      min-height:56px; border-radius:12px; box-sizing:border-box; cursor:pointer; appearance:none;
+      -webkit-appearance:none; font-size:15px; font-weight:700;
+      background:rgba(212,175,55,.10); border:1px solid var(--gold); color:var(--white);
+      transition:background .2s, filter .15s }
+    .sl-bio:hover:not(:disabled){ background:rgba(212,175,55,.18); filter:brightness(1.04) }
+    .sl-bio:disabled{ opacity:.5; cursor:not-allowed }
+    .sl-bio svg{ color:var(--gold2); font-size:18px }
     .sl-intentCard{ display:flex; align-items:center; gap:10px; width:100%; text-align:start;
       min-height:64px; padding:12px 14px; border-radius:14px; box-sizing:border-box;
       background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--white);
