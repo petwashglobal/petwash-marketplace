@@ -23,8 +23,8 @@ export default function LoyaltyTiers() {
     bronze: 'rgba(205,127,50,0.25)',
     silver: 'rgba(192,192,192,0.25)',
     gold: 'rgba(255,215,0,0.3)',
-    platinum: 'rgba(139,92,246,0.3)',
-    diamond: 'rgba(96,165,250,0.3)',
+    platinum: 'rgba(229,231,235,0.30)', // platinum silver (was purple #8b5cf6 — brand violation)
+    diamond: 'rgba(255,255,255,0.32)',  // icy clear-diamond white (was blue — brand violation)
     emerald: 'rgba(52,211,153,0.3)',
     royal: 'rgba(217, 184, 76,0.4)',
   };

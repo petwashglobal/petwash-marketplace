@@ -187,18 +187,23 @@ export function getTierConfig(tier: LoyaltyTier): TierConfig {
   return TIER_CONFIG[tier];
 }
 
+// CANONICAL public tier labels (single source of truth — CEO-locked 2026-06-29).
+// Internal tier IDs (bronze..royal) are UNCHANGED — only the displayed label differs,
+// so discount thresholds / DB tier values / money math are untouched.
+// Ladder: Member · Silver · Gold · Platinum · Diamond · Emerald · Black Reserve.
+// NOTE: "Black Reserve" is a product/tier NAME — stays English in every language (brand rule).
+export const TIER_DISPLAY_LABELS: Record<LoyaltyTier, { en: string; he: string }> = {
+  bronze: { en: 'Member', he: 'חבר' },
+  silver: { en: 'Silver', he: 'כסף' },
+  gold: { en: 'Gold', he: 'זהב' },
+  platinum: { en: 'Platinum', he: 'פלטינום' },
+  diamond: { en: 'Diamond', he: 'יהלום' },
+  emerald: { en: 'Emerald', he: 'אמרלד' },
+  royal: { en: 'Black Reserve', he: 'Black Reserve' }
+};
+
 export function getTierDisplay(tier: LoyaltyTier, language: 'en' | 'he'): string {
-  const displays: Record<LoyaltyTier, { en: string; he: string }> = {
-    bronze: { en: 'Bronze', he: 'ברונזה' },
-    silver: { en: 'Silver', he: 'כסף' },
-    gold: { en: 'Gold', he: 'זהב' },
-    platinum: { en: 'Platinum', he: 'פלטינום' },
-    diamond: { en: 'Diamond', he: 'יהלום' },
-    emerald: { en: 'Emerald', he: 'אמרלד' },
-    royal: { en: 'Royal', he: 'מלכותי' }
-  };
-  
-  return displays[tier][language];
+  return (TIER_DISPLAY_LABELS[tier] ?? TIER_DISPLAY_LABELS.bronze)[language];
 }
 
 export function calculatePointsValue(washes: number, avgWashCost: number = 50): number {

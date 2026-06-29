@@ -68,9 +68,9 @@ const tierConfig: Record<string, {
   icon: typeof Crown;
   glow: string;
 }> = {
-  bronze: { 
-    gradient: 'luxury-tier-bronze', 
-    label: 'Bronze',
+  bronze: {
+    gradient: 'luxury-tier-bronze',
+    label: 'Member',
     icon: Star,
     glow: 'rgba(205, 133, 63, 0.3)'
   },
@@ -104,11 +104,11 @@ const tierConfig: Record<string, {
     icon: Crown,
     glow: 'rgba(60, 60, 60, 0.5)'
   },
-  royal: { 
-    gradient: 'luxury-tier-royal', 
-    label: 'Royal Elite',
+  royal: {
+    gradient: 'luxury-tier-royal',
+    label: 'Black Reserve',
     icon: Crown,
-    glow: 'rgba(153, 50, 204, 0.3)'
+    glow: 'rgba(212, 175, 55, 0.3)'
   },
 };
 
