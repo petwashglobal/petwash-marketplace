@@ -403,7 +403,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!vd.ok) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
       const s = await fetch(getApiUrl('/api/auth/phone-session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ verificationToken: vd.verificationToken, dateOfBirth: dob }),
+        body: JSON.stringify({ verificationToken: vd.verificationToken, dateOfBirth: dob, email }),
       });
       const sd = await s.json();
       if (sd.customToken) {
@@ -616,7 +616,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     return a;
   })();
   const isAdult = age >= 18;
-  const readyForSubmit = !busy && (phoneValid || emailValid) && isAdult;
+  // Both contacts required: a new account collects phone AND email (step 1). The
+  // phone is verified now by OTP; the email is captured and verified next (step 2).
+  const readyForSubmit = !busy && phoneValid && emailValid && isAdult;
 
   const ctaLabel = busy ? '…' : (he ? 'המשך' : 'Continue');
 
@@ -667,7 +669,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     privLink: he ? 'מדיניות הפרטיות' : 'Privacy Policy',
 
     cta: he ? 'צור חשבון מאובטח' : 'Create Secure Account',
-    completeFields: he ? 'אשר תנאים והזן פרטים כדי להמשיך.' : 'Accept the terms and enter your details to continue.',
+    completeFields: he ? 'יש להזין נייד, אימייל ותאריך לידה (18+), ולאשר את התנאים.' : 'Enter mobile, email and date of birth (18+), and accept the terms.',
     bank: he ? 'מאובטח ומוצפן' : 'Secure & encrypted',
     enc: he ? 'הצפנת 256-bit' : '256-bit encryption',
     safe: he ? 'הנתונים שלך בטוחים' : 'Your data is safe',
@@ -845,7 +847,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
               {signupFlags.emailPassword && (
                 <>
-                  <div className="sl-div">{he ? 'או' : 'or'}</div>
+                  <div className="sl-div">{he ? 'וגם' : 'and'}</div>
                   <div className="sl-field">
                     <label className="sl-label">{t.emailLabel}</label>
                     <div className="sl-inputWrap">

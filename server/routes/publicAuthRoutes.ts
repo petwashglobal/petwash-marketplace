@@ -576,6 +576,19 @@ async function persistDob(uid: string, isoDob: string): Promise<void> {
 }
 
 /**
+ * Best-effort store the signup email as contact-on-file (NOT a verified credential
+ * — a later step verifies it by code). Validated shape only; never blocks signup.
+ */
+async function persistSignupEmail(uid: string, email: unknown): Promise<void> {
+  if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email)) return;
+  try {
+    await pool.query(`UPDATE users SET email = $1 WHERE id = $2 AND (email IS NULL OR email = '')`, [email.toLowerCase(), uid]);
+  } catch (e: any) {
+    logger.warn('[Signup] signup-email persist skipped (non-blocking)', { error: e?.message });
+  }
+}
+
+/**
  * POST /api/auth/phone-session
  * REQUIRES: verificationToken from successful /verify-code response
  */
@@ -619,6 +632,9 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
           displayName: `User ${formattedPhone.slice(-4)}`,
         });
         await persistDob(user.uid, ageCheck.iso!);
+        // Collect the email provided at signup (step 1). It is NOT yet verified —
+        // a follow-up step verifies it by code; we store it as contact-on-file.
+        await persistSignupEmail(user.uid, req.body?.email);
         logger.info('[PhoneAuth] Created new user for phone:', formattedPhone.slice(0, 6) + '****');
 
         try {
