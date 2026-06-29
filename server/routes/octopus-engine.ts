@@ -75,7 +75,22 @@ function generateId(prefix: string) {
 // previously left active despite being mounted with apiLimiter only and
 // trusting client-supplied body.userId/body.amount — a public money-mutation
 // surface. Audit confirmed zero legitimate callers in client/ or server/.
-// Egift routes (/v1/egift*) remain active by design.
+// 2026-06-29 money audit: POST /v1/egift/purchase was ALSO a public mint —
+// it called egiftFinancialService.purchaseEgift which credited egiftBalanceCents
+// with NO payment verification (paymentMethodRef stored as metadata only), so
+// any authed user could self-issue spendable eGift balance. Zero client callers.
+// Disabled below (410). The read-only GET /v1/egift/:id/events routes stay.
+// Canonical pay-first eGift rail = Nayax/SUMIT purchase → webhook → activation.
+router.all('/v1/egift/purchase', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    error: 'Gone',
+    code: 'V1_DEPRECATED',
+    message: 'Octopus V1 eGift purchase has been permanently removed (it minted balance without verifying payment). Use the canonical pay-first eGift purchase.',
+    migration: {
+      purchase: 'POST /api/gift-cards/purchase  (Bearer token; Nayax/SUMIT payment first, voucher issued by webhook)',
+    },
+  });
+});
 router.all('/v1/bookings*', (_req: Request, res: Response) => {
   return res.status(410).json({
     error: 'Gone',
