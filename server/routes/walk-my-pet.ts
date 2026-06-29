@@ -28,6 +28,7 @@ import crypto from 'crypto';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
 import { isSuperAdminVerified } from '../middleware/rbac';
+import { checkBookingProximity } from '../lib/proximity';
 import { bookingLimiter } from '../middleware/rateLimiter';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
@@ -427,12 +428,16 @@ router.post('/walks/book', requireAuth, async (req, res) => {
     const endDateTime = new Date(startDateTime.getTime() + durationNum * 60000);
     const scheduledDateOnly = new Date(scheduledDate); // Keep day-only for queries
 
-    // Calculate distance (default 5km for walk radius)
-    const distanceKm = 5; // Most walks are local 5km radius
-
     // Verify walker exists, is active and verified before booking
     const [walkerProfile] = await db
-      .select({ walkerId: walkerProfiles.walkerId, isActive: walkerProfiles.isActive, verificationStatus: walkerProfiles.verificationStatus })
+      .select({
+        walkerId: walkerProfiles.walkerId,
+        isActive: walkerProfiles.isActive,
+        verificationStatus: walkerProfiles.verificationStatus,
+        currentLatitude: walkerProfiles.currentLatitude,
+        currentLongitude: walkerProfiles.currentLongitude,
+        serviceRadiusKm: walkerProfiles.serviceRadiusKm,
+      })
       .from(walkerProfiles)
       .where(eq(walkerProfiles.walkerId, walkerId))
       .limit(1);
@@ -445,6 +450,26 @@ router.post('/walks/book', requireAuth, async (req, res) => {
     if (walkerProfile.verificationStatus !== 'verified') {
       return res.status(400).json({ error: 'Walker is not verified and cannot accept bookings' });
     }
+
+    // Enforce the walker's SERVICE AREA. Was a hardcoded distanceKm=5 that never
+    // actually checked pickup vs the walker — out-of-range walks could be booked.
+    // checkBookingProximity fails OPEN on missing coords (won't block coord-less
+    // bookings) and is env-toggleable (BOOKING_PROXIMITY_ENFORCED).
+    const proximity = checkBookingProximity({
+      customerLat: pickupLatitude,
+      customerLng: pickupLongitude,
+      providerLat: walkerProfile.currentLatitude,
+      providerLng: walkerProfile.currentLongitude,
+      maxKm: walkerProfile.serviceRadiusKm,
+    });
+    if (!proximity.ok) {
+      return res.status(422).json({
+        error: 'OUT_OF_RANGE',
+        message: `This walker serves up to ${proximity.maxKm}km; the pickup is about ${Math.round(proximity.distanceKm)}km away.`,
+      });
+    }
+    // Store the REAL distance when we could compute it, else the local default.
+    const distanceKm = proximity.distanceKm ?? 5;
 
     // STEP 1: Check availability using LUXURY ENGINE
     const availability = await walkEliteBookingEngine.checkAvailability({
