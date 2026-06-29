@@ -702,7 +702,18 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           walker.userId
         );
       } catch (escrowErr: any) {
-        console.error('[Walk My Pet] Escrow confirmation failed for bookingId:', bookingId, escrowErr);
+        // FAIL CLOSED: if the escrow hold can't be placed we must NOT confirm the
+        // booking, write a PAYMENT_CAPTURED ledger, or issue an Israeli tax receipt —
+        // doing so records a paid, confirmed walk with no money actually held (free
+        // service + a real tax document). Stop here and surface the failure.
+        logger.error('[Walk My Pet] Escrow confirmation FAILED — booking NOT confirmed', {
+          bookingId, error: escrowErr?.message,
+        });
+        return res.status(502).json({
+          success: false,
+          error: 'Could not secure the payment hold for this booking. Please try again.',
+          code: 'ESCROW_HOLD_FAILED',
+        });
       }
 
       await db
