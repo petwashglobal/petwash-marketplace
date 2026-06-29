@@ -106,6 +106,7 @@ import captchaProbeRoutes from "./routes/captcha-probe";
 import meetingsRoutes from "./routes/meetings";
 import unifiedVouchersRoutes from "./routes/unified-vouchers";
 import esignRoutes from "./routes/esign";
+import inboxV2Routes from "./routes/inbox-v2";
 import providerDeclarationsRoutes from "./routes/provider-declarations";
 import israeli2025EsignRoutes from "./routes/israeli-2025-esign";
 import notificationsRoutes from "./routes/notifications";
@@ -12483,6 +12484,10 @@ self.addEventListener('notificationclick', (event) => {
   
   // DocuSeal E-Signature (FREE - Hebrew RTL Support)
   app.use('/api/esign', apiLimiter, esignRoutes);
+
+  // Smart inbox feed (Communication Hub) — threads decorated with status badge +
+  // next action. Fail-safe: empty until migration 0084 (chat_threads) is applied.
+  app.use('/api/inbox/v2', apiLimiter, inboxV2Routes);
 
   // Provider Protection Book — signed-declaration surface (epic #49, Phase 1).
   // Reuses the DocuSeal engine above; DARK until DOCUSEAL_API_KEY is set AND each
