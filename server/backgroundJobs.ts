@@ -26,6 +26,7 @@ import FinancialReconciliationService from './services/FinancialReconciliationSe
 import { emailSpendGuard } from './services/EmailSpendGuard';
 import { geminiPlatformMonitor } from './services/GeminiPlatformSecurityMonitor';
 import { sendSecurityAlert } from './services/alerts';
+import { redis } from './services/redis';
 
 export class BackgroundJobProcessor {
   private static jobLocks = new Map<string, boolean>(); // Per-task locking
@@ -35,6 +36,26 @@ export class BackgroundJobProcessor {
    * Acquire lock for a specific job - prevents overlapping executions
    */
   private static async acquireLock(jobName: string): Promise<boolean> {
+    // LEADER ELECTION across Cloud Run instances. The in-process Map alone cannot
+    // coordinate >1 instance, so every instance would run the same cron — duplicate
+    // payouts, duplicate emails/SMS, redundant backups. Redis SET NX EX is atomic:
+    // exactly one instance wins per tick. The TTL is a safety net so a crashed
+    // instance's lock auto-expires (every job here runs well under it). Falls back to
+    // the in-process Map when Redis is down (single-instance / dev).
+    const LOCK_TTL_SECONDS = 600;
+    if (redis.isConnected()) {
+      try {
+        const won = await redis.setNx(`cron:lock:${jobName}`, process.env.K_REVISION || 'instance', LOCK_TTL_SECONDS);
+        if (!won) {
+          logger.warn(`[BackgroundJobs] Job "${jobName}" claimed by another instance - skipping`);
+          return false;
+        }
+        this.jobLocks.set(jobName, true);
+        return true;
+      } catch (e: any) {
+        logger.warn(`[BackgroundJobs] Redis lock failed for "${jobName}" — falling back to in-process`, { error: e?.message });
+      }
+    }
     if (this.jobLocks.get(jobName)) {
       logger.warn(`[BackgroundJobs] Job "${jobName}" already running - skipping execution`);
       return false;
@@ -44,10 +65,14 @@ export class BackgroundJobProcessor {
   }
 
   /**
-   * Release lock for a specific job
+   * Release lock for a specific job (clears the in-process flag + the Redis lock so
+   * the next scheduled tick can re-acquire; if the Redis del fails the TTL expires it).
    */
   private static releaseLock(jobName: string): void {
     this.jobLocks.set(jobName, false);
+    if (redis.isConnected()) {
+      redis.del(`cron:lock:${jobName}`).catch(() => {});
+    }
   }
 
   /**
