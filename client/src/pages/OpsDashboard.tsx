@@ -276,7 +276,7 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
                   <a href="/metrics" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     📊 Prometheus Metrics
                   </a>
-                  <a href="/firebase-debug" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
+                  <a href="/api/auth/signing-health" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     🔥 Firebase Diagnostics
                   </a>
                   <a href="/api/synthetic/e2e-login" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
@@ -285,7 +285,7 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
                   <a href="/healthz" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     ❤️ Health Check
                   </a>
-                  <a href="/readiness" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
+                  <a href="/api/health/strict" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     ✅ Readiness Check
                   </a>
                 </div>

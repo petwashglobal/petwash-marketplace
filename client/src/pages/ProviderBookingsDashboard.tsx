@@ -744,7 +744,7 @@ function ActiveBookingCard({
             data-testid={`button-photo-update-${booking.requestId}`}
           >
             <Camera className="h-4 w-4 mr-2" />
-            {isHebrew ? 'שלח תמונה' : 'Send Photo Update'}
+            {isHebrew ? 'שלח תמונה — בקרוב' : 'Send Photo · Coming soon'}
           </Button>
           <Button
             className="flex-1 bg-gradient-to-r from-emerald-500 to-green-500 text-white"

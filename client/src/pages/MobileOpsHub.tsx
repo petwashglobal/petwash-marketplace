@@ -270,7 +270,7 @@ export default function MobileOpsHub() {
             <span className="text-xs text-gray-600">Stations</span>
           </button>
           <button
-            onClick={() => setLocation('/admin/analytics')}
+            onClick={() => setLocation('/admin/providers/analytics')}
             className="flex flex-col items-center gap-1 p-2 rounded-xl"
           >
             <TrendingUp className="w-5 h-5 text-gray-500" />
