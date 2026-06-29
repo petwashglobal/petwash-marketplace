@@ -576,6 +576,65 @@ async function persistDob(uid: string, isoDob: string): Promise<void> {
 }
 
 /**
+ * Best-effort store the signup email as contact-on-file (NOT a verified credential
+ * — a later step verifies it by code). Validated shape only; never blocks signup.
+ */
+async function persistSignupEmail(uid: string, email: unknown): Promise<void> {
+  if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email)) return;
+  try {
+    await pool.query(`UPDATE users SET email = $1 WHERE id = $2 AND (email IS NULL OR email = '')`, [email.toLowerCase(), uid]);
+  } catch (e: any) {
+    logger.warn('[Signup] signup-email persist skipped (non-blocking)', { error: e?.message });
+  }
+}
+
+/**
+ * POST /api/auth/verify-signup-email — step 2 of dual-verify.
+ * The user already signed in via phone OTP; this proves they also own the email
+ * (via the 6-digit email code) and marks it verified on THEIR account. Auth is the
+ * just-issued Firebase idToken; the email is proven by the email-verified token.
+ */
+publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, res) => {
+  try {
+    const { idToken, sessionToken } = req.body || {};
+    if (!idToken || !sessionToken) {
+      return res.status(400).json({ ok: false, error: 'idToken and sessionToken are required' });
+    }
+    let uid: string;
+    try {
+      const decoded = await fbAdminAuth.verifyIdToken(idToken, true);
+      uid = decoded.uid;
+    } catch {
+      return res.status(401).json({ ok: false, error: 'Invalid session — please sign in again.' });
+    }
+    const check = validateEmailVerifiedToken(sessionToken);
+    if (!check.valid || !check.email) {
+      return res.status(401).json({ ok: false, error: 'Email verification expired — request a new code.' });
+    }
+    const email = check.email.toLowerCase();
+    try {
+      await fbAdminAuth.updateUser(uid, { email, emailVerified: true });
+    } catch (e: any) {
+      if (e?.code === 'auth/email-already-exists') {
+        return res.status(409).json({ ok: false, error: 'This email is already linked to another account.', code: 'EMAIL_IN_USE' });
+      }
+      logger.warn('[Signup] verify-signup-email updateUser failed', { error: e?.message });
+      return res.status(500).json({ ok: false, error: 'Could not verify email — please try again.' });
+    }
+    // Best-effort DB flag (email_verified column may not exist → harmless skip).
+    try {
+      await pool.query(`UPDATE users SET email = $1, email_verified = true WHERE id = $2`, [email, uid]);
+    } catch (e: any) {
+      try { await pool.query(`UPDATE users SET email = $1 WHERE id = $2`, [email, uid]); } catch { /* ignore */ }
+    }
+    return res.json({ ok: true });
+  } catch (e: any) {
+    logger.error('[Signup] verify-signup-email error', { error: e?.message });
+    return res.status(500).json({ ok: false, error: 'Email verification failed.' });
+  }
+});
+
+/**
  * POST /api/auth/phone-session
  * REQUIRES: verificationToken from successful /verify-code response
  */
@@ -605,10 +664,12 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
     const adminAuth = fbAdminAuth;
 
     let user;
+    let isNewUser = false;
     try {
       user = await adminAuth.getUserByPhoneNumber(formattedPhone);
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
+        isNewUser = true;
         // 18+ gate — new accounts only.
         const ageCheck = checkSignupAge(req.body?.dateOfBirth);
         if (!ageCheck.ok) {
@@ -619,6 +680,9 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
           displayName: `User ${formattedPhone.slice(-4)}`,
         });
         await persistDob(user.uid, ageCheck.iso!);
+        // Collect the email provided at signup (step 1). It is NOT yet verified —
+        // a follow-up step verifies it by code; we store it as contact-on-file.
+        await persistSignupEmail(user.uid, req.body?.email);
         logger.info('[PhoneAuth] Created new user for phone:', formattedPhone.slice(0, 6) + '****');
 
         try {
@@ -714,6 +778,7 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
       ok: true,
       userId: user.uid,
       customToken,
+      isNewUser,
       message: 'Phone verified. Use customToken with signInWithCustomToken, then POST /api/auth/session to set session cookie.'
     });
   } catch (err) {

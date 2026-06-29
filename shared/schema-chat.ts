@@ -335,3 +335,64 @@ export const insertChatEventOutboxSchema = createInsertSchema(chatEventOutbox).o
 });
 export type InsertChatEventOutbox = z.infer<typeof insertChatEventOutboxSchema>;
 export type ChatEventOutbox = typeof chatEventOutbox.$inferSelect;
+
+// =================== CANONICAL ENTITY-LINKED THREAD (Communication Hub spine) ===================
+// CEO Communication Hub: ONE thread model that every message hangs off, so the
+// core rule holds — every conversation links to a REAL entity. thread_type picks
+// which entity FK is the anchor. Entity ids are varchar (booking ids vary: uuid /
+// requestId / numeric across tables) — stored as text references, validated at the
+// service layer. This is the spine the inbox status-badge + smart-action layer reads.
+export const chatThreads = pgTable("chat_threads", {
+  id: serial("id").primaryKey(),
+  threadId: varchar("thread_id").unique().notNull(), // UUID for client reference
+  threadType: varchar("thread_type").notNull(), // BOOKING|SUPPORT|INCIDENT|K9000|PAW_FINDER|SHOP_ORDER|GIFT|PROVIDER_APPLICATION|ADMIN
+
+  // Entity anchors — at least one must be set (enforced in the service layer).
+  bookingId: varchar("booking_id"),
+  caseId: varchar("case_id"),
+  orderId: varchar("order_id"),
+  giftId: varchar("gift_id"),
+  stationId: varchar("station_id"),
+  applicationId: varchar("application_id"),
+  petId: varchar("pet_id"),
+
+  // Participants (Firebase UIDs).
+  customerUserId: varchar("customer_user_id"),
+  providerUserId: varchar("provider_user_id"),
+  supportOwnerId: varchar("support_owner_id"),
+
+  status: varchar("status").notNull().default("active"), // active | archived
+  unreadCustomerCount: integer("unread_customer_count").notNull().default(0),
+  unreadProviderCount: integer("unread_provider_count").notNull().default(0),
+  unreadAdminCount: integer("unread_admin_count").notNull().default(0),
+
+  lastMessageAt: timestamp("last_message_at"),
+  archivedAt: timestamp("archived_at"),
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+}, (table) => ({
+  threadIdIdx: index("idx_chat_threads_thread_id").on(table.threadId),
+  typeIdx: index("idx_chat_threads_type").on(table.threadType),
+  bookingIdx: index("idx_chat_threads_booking").on(table.bookingId),
+  caseIdx: index("idx_chat_threads_case").on(table.caseId),
+  orderIdx: index("idx_chat_threads_order").on(table.orderId),
+  customerIdx: index("idx_chat_threads_customer").on(table.customerUserId),
+  providerIdx: index("idx_chat_threads_provider").on(table.providerUserId),
+  statusIdx: index("idx_chat_threads_status").on(table.status),
+  lastMsgIdx: index("idx_chat_threads_last_msg").on(table.lastMessageAt),
+}));
+
+export const insertChatThreadSchema = createInsertSchema(chatThreads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertChatThread = z.infer<typeof insertChatThreadSchema>;
+export type ChatThread = typeof chatThreads.$inferSelect;
+
+/** Canonical thread types — the only allowed thread_type values. */
+export const CHAT_THREAD_TYPES = [
+  "BOOKING", "SUPPORT", "INCIDENT", "K9000",
+  "PAW_FINDER", "SHOP_ORDER", "GIFT", "PROVIDER_APPLICATION", "ADMIN",
+] as const;
+export type ChatThreadType = (typeof CHAT_THREAD_TYPES)[number];
