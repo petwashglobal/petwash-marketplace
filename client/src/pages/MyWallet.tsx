@@ -74,14 +74,15 @@ const GOLD = '#D9B84C';
 const formatCurrency = (cents: number) =>
   `₪${(cents / 100).toLocaleString('en-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
+// Canonical luxe labels — internal ids unchanged (no money-math change). Mirror of lib/loyalty.ts TIER_DISPLAY_LABELS.
 const TIER_LABELS: Record<string, { en: string; he: string; emoji: string }> = {
-  bronze: { en: 'Bronze', he: 'ארד', emoji: '🥉' },
+  bronze: { en: 'Member', he: 'חבר', emoji: '🥉' },
   silver: { en: 'Silver', he: 'כסף', emoji: '🥈' },
   gold: { en: 'Gold', he: 'זהב', emoji: '🥇' },
   platinum: { en: 'Platinum', he: 'פלטינה', emoji: '💎' },
   diamond: { en: 'Diamond', he: 'יהלום', emoji: '💠' },
   emerald: { en: 'Emerald', he: 'אמרלד', emoji: '💚' },
-  royal: { en: 'Royal', he: 'מלכותי', emoji: '👑' },
+  royal: { en: 'Black Reserve', he: 'Black Reserve', emoji: '👑' },
 };
 
 const TX_TYPE_ICONS: Record<string, { icon: typeof ArrowUpRight; color: string }> = {

@@ -6,7 +6,8 @@ import { z } from 'zod';
  * 🏆 7-STAR LUXURY LOYALTY SYSTEM
  * 
  * Multi-dimensional rewards platform with:
- * - 7-tier luxury progression (Bronze, Silver, Gold, Platinum, Diamond, Emerald, Royal)
+ * - 7-tier luxury progression. Internal ids: bronze, silver, gold, platinum, diamond, emerald, royal.
+ *   Public display labels (CEO-locked 2026-06-29): Member, Silver, Gold, Platinum, Diamond, Emerald, Black Reserve.
  * - Points & XP system (Pyramid-style accumulation like US leaders 2025)
  * - Special categories: Verified Disabled (10%), Seniors/Golden Age (10%)
  * - Base club members: 5% discount
@@ -453,8 +454,8 @@ export interface TierConfig {
 export const TIER_CONFIGS: TierConfig[] = [
   {
     id: 'bronze',
-    name: 'Bronze',
-    nameHe: 'ברונזה',
+    name: 'Member',
+    nameHe: 'חבר',
     color: '#cd7f32',
     icon: '🥉',
     threshold: 0,
@@ -567,9 +568,9 @@ export const TIER_CONFIGS: TierConfig[] = [
   },
   {
     id: 'royal',
-    name: 'Royal',
-    nameHe: 'מלכותי',
-    color: '#8b5cf6',
+    name: 'Black Reserve',
+    nameHe: 'Black Reserve',
+    color: '#D4AF37',
     icon: '👑',
     threshold: 50000, // ~100 washes
     washesRequired: 100,

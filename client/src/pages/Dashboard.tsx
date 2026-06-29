@@ -53,14 +53,16 @@ interface WalletSummary {
   tierPointsThisYear: number;
 }
 
+// Canonical luxe labels — internal ids unchanged (no money-math change). Mirror of lib/loyalty.ts TIER_DISPLAY_LABELS.
+// "Black Reserve" is a product/tier NAME — stays English in every language (brand rule).
 const tierLabels: Record<string, Record<string, string>> = {
-  bronze: { en: 'Bronze', he: 'Bronze', ar: 'برونزي', es: 'Bronce', fr: 'Bronze', ru: 'Бронза' },
+  bronze: { en: 'Member', he: 'חבר', ar: 'عضو', es: 'Miembro', fr: 'Membre', ru: 'Участник' },
   silver: { en: 'Silver', he: 'Silver', ar: 'فضي', es: 'Plata', fr: 'Argent', ru: 'Серебро' },
   gold: { en: 'Gold', he: 'Gold', ar: 'ذهبي', es: 'Oro', fr: 'Or', ru: 'Золото' },
   platinum: { en: 'Platinum', he: 'Platinum', ar: 'بلاتيني', es: 'Platino', fr: 'Platine', ru: 'Платина' },
   diamond: { en: 'Diamond', he: 'Diamond', ar: 'ألماسي', es: 'Diamante', fr: 'Diamant', ru: 'Бриллиант' },
   emerald: { en: 'Emerald', he: 'Emerald', ar: 'زمردي', es: 'Esmeralda', fr: 'Émeraude', ru: 'Изумруд' },
-  royal: { en: 'Royal', he: 'Royal', ar: 'ملكي', es: 'Real', fr: 'Royal', ru: 'Королевский' },
+  royal: { en: 'Black Reserve', he: 'Black Reserve', ar: 'Black Reserve', es: 'Black Reserve', fr: 'Black Reserve', ru: 'Black Reserve' },
 };
 
 const dashText: Record<string, Record<string, string>> = {
@@ -581,7 +583,7 @@ export default function Dashboard() {
   const greeting = getTimeGreeting(language);
   const formatCurrency = (cents: number) => `${(cents / 100).toFixed(0)}`;
   const tierKey = (wallet?.loyaltyTier || 'bronze').toLowerCase();
-  const tierLabel = tierLabels[tierKey]?.[language] || tierLabels[tierKey]?.en || 'Bronze';
+  const tierLabel = tierLabels[tierKey]?.[language] || tierLabels[tierKey]?.en || 'Member';
   const loyaltyPoints = wallet?.loyaltyPointsBalance || 0;
   const totalBalance = wallet ? formatCurrency(wallet.totalCreditsValueCents) : '0';
   const giftBalance = wallet ? formatCurrency(wallet.egiftBalanceCents) : '0';
