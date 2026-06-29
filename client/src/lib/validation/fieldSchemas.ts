@@ -1,21 +1,19 @@
 /**
- * Centralized field validation — the single source of truth every form imports.
+ * Common field validation — reusable primitives every form composes from.
  *
  * Stack (all already installed, no new deps): zod + libphonenumber-js.
  * Pair with react-hook-form via zodResolver, and render errors with the
  * existing <FormMessage /> component (client/src/components/ui/form.tsx).
  *
  * Usage:
- *   const schemas = fieldSchemas(language);            // language-aware messages
- *   const formSchema = z.object({
- *     email: schemas.email,
- *     phone: schemas.phone,
- *     fullName: schemas.requiredName,
- *   });
+ *   const f = fieldSchemas(language);                  // language-aware messages
+ *   const formSchema = z.object({ email: f.email, phone: f.phone });
  *   const form = useForm({ resolver: zodResolver(formSchema) });
  *
  * Standalone validators (isValidIsraeliId, isValidPhone) are exported for
- * non-zod call sites that need a quick boolean.
+ * non-zod call sites. Domain object schemas live in the sibling files
+ * (users.ts, providers.ts, pets.ts, bookings.ts, pawFinder.ts, …) and the
+ * barrel is index.ts.
  */
 
 import { z } from 'zod';
@@ -59,35 +57,35 @@ export function isValidPhone(value: string): boolean {
 }
 
 /** Israeli postal code: 5–7 digits. */
-const POSTAL_CODE_RE = /^\d{5,7}$/;
+export const POSTAL_CODE_RE = /^\d{5,7}$/;
 
 /**
  * Build the canonical set of reusable field schemas with localized messages.
  * Call per render with the active language so error copy matches the UI.
  */
-export function fieldSchemas(lang: ValidationLang | string = 'en') {
+export function fieldSchemas(lang: ValidationLang = 'en') {
   const m = (key: Parameters<typeof vmsg>[0]) => vmsg(key, lang);
 
   return {
     /** Required, format-checked email. */
-    email: z.string().trim().min(1, m('required')).email(m('email_invalid')),
+    email: z.string().trim().min(1, m('validation.required')).email(m('validation.email.invalid')),
 
     /** Optional email — empty allowed, but if present must be valid. */
     emailOptional: z
       .string()
       .trim()
-      .refine((v) => v === '' || z.string().email().safeParse(v).success, m('email_invalid'))
+      .refine((v) => v === '' || z.string().email().safeParse(v).success, m('validation.email.invalid'))
       .optional()
       .or(z.literal('')),
 
     /** Required intl phone (E.164). */
-    phone: z.string().trim().min(1, m('required')).refine(isValidPhone, m('phone_invalid')),
+    phone: z.string().trim().min(1, m('validation.required')).refine(isValidPhone, m('validation.phone.invalid')),
 
     /** Optional phone — empty allowed, but if present must be valid. */
     phoneOptional: z
       .string()
       .trim()
-      .refine((v) => !v || isValidPhone(v), m('phone_invalid'))
+      .refine((v) => !v || isValidPhone(v), m('validation.phone.invalid'))
       .optional()
       .or(z.literal('')),
 
@@ -95,45 +93,45 @@ export function fieldSchemas(lang: ValidationLang | string = 'en') {
     israeliId: z
       .string()
       .trim()
-      .min(1, m('required'))
-      .refine((v) => isValidIsraeliId(v), m('israeli_id_invalid')),
+      .min(1, m('validation.required'))
+      .refine((v) => isValidIsraeliId(v), m('validation.id.invalid')),
 
     /** Israeli postal code (5–7 digits). */
-    postalCode: z.string().trim().regex(POSTAL_CODE_RE, m('postal_code_invalid')),
+    postalCode: z.string().trim().regex(POSTAL_CODE_RE, m('validation.postalCode.invalid')),
 
     /** Optional postal code. */
     postalCodeOptional: z
       .string()
       .trim()
-      .refine((v) => !v || POSTAL_CODE_RE.test(v), m('postal_code_invalid'))
+      .refine((v) => !v || POSTAL_CODE_RE.test(v), m('validation.postalCode.invalid'))
       .optional()
       .or(z.literal('')),
 
     /** Required full name (≥2 chars). */
-    requiredName: z.string().trim().min(2, m('name_too_short')),
+    requiredName: z.string().trim().min(2, m('validation.name.required')),
 
     /** Strong password: ≥8 chars, one uppercase, one number. */
     password: z
       .string()
-      .min(8, m('password_too_short'))
-      .regex(/[A-Z]/, m('password_needs_upper'))
-      .regex(/\d/, m('password_needs_number')),
+      .min(8, m('validation.password.tooShort'))
+      .regex(/[A-Z]/, m('validation.password.needsUpper'))
+      .regex(/\d/, m('validation.password.needsNumber')),
 
     /** Consent checkbox — must be true. */
     consent: z.literal(true, {
-      errorMap: () => ({ message: m('consent_required') }),
+      errorMap: () => ({ message: m('validation.consent.required') }),
     }),
 
     /** Generic required string. */
-    requiredString: z.string().trim().min(1, m('required')),
+    requiredString: z.string().trim().min(1, m('validation.required')),
 
     /** Required text with min/max length. */
     text: (min = 1, max = 5000) =>
       z
         .string()
         .trim()
-        .min(min, min <= 1 ? m('required') : m('text_too_short'))
-        .max(max, m('text_too_long')),
+        .min(min, min <= 1 ? m('validation.required') : m('validation.text.tooShort'))
+        .max(max, m('validation.text.tooLong')),
 
     /**
      * Positive money amount within [min, max], parsed from string. Returns a
@@ -143,9 +141,9 @@ export function fieldSchemas(lang: ValidationLang | string = 'en') {
       z
         .union([z.string(), z.number()])
         .transform((v) => (typeof v === 'number' ? v : Number(String(v).replace(/[^\d.]/g, ''))))
-        .refine((n) => !Number.isNaN(n) && n > 0, m('amount_invalid'))
-        .refine((n) => n >= min, m('amount_min'))
-        .refine((n) => n <= max, m('amount_max')),
+        .refine((n) => !Number.isNaN(n) && n > 0, m('validation.payment.amountInvalid'))
+        .refine((n) => n >= min, m('validation.payment.amountMin'))
+        .refine((n) => n <= max, m('validation.payment.amountMax')),
   };
 }
 
