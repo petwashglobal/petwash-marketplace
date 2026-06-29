@@ -285,6 +285,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
   // Date of birth — required, 18+. Server re-enforces at account creation.
   const [dob, setDob] = useState('');
+  // Step 2 of dual-verify: after the phone code + account, we verify the email too.
+  const [emailStep, setEmailStep] = useState(false);
   // Passkey / Face ID (returning users): device-bound, the 2026 way to skip codes.
   const [bioAvailable, setBioAvailable] = useState(false);
   const [bioName, setBioName] = useState('Face ID');
@@ -414,6 +416,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           body: JSON.stringify({ idToken }),
         });
       }
+      // Step 2 — NEW accounts only: phone verified + account live, now verify the
+      // EMAIL with its own code before we route (both contacts confirmed). Returning
+      // users (already verified) skip straight through.
+      if (sd.isNewUser && emailValid) {
+        setEmailStep(true);
+        setMethod('email');
+        setSent(true);
+        try {
+          await fetch(getApiUrl('/api/auth/email/start'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ email, purpose: 'signup', language }),
+          });
+          toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
+        } catch { /* the email OTP screen has a resend */ }
+        return;
+      }
       await finishAndRoute();
     } catch (e) { logger.error('[signup] verify', e); fail(he ? 'האימות נכשל' : 'Verification failed'); }
     finally { setBusy(false); }
@@ -449,6 +467,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       });
       const vd = await v.json();
       if (!vd.ok || !vd.sessionToken) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
+
+      // Step 2 path: the user is already signed in via phone — attach + verify the
+      // email on their account, then route. (No second account is created.)
+      if (emailStep) {
+        const idToken = await auth.currentUser?.getIdToken(true);
+        const a = await fetch(getApiUrl('/api/auth/verify-signup-email'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ idToken, sessionToken: vd.sessionToken }),
+        });
+        const ad = await a.json();
+        if (!ad.ok) { fail(ad.error || (he ? 'אימות האימייל נכשל' : 'Email verification failed')); return; }
+        await finishAndRoute();
+        return;
+      }
       const s = await fetch(getApiUrl('/api/auth/email-session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ sessionToken: vd.sessionToken, dateOfBirth: dob }),
