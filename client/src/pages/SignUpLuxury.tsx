@@ -77,6 +77,7 @@ import { signupFlags } from '@/lib/authSignupFlags';
 import { seedSignupIntentCookie } from '@/lib/seedIntent';
 import { applyIntentFromUrl } from '@/lib/intentParam';
 import { setProviderSignupIntent } from '@/lib/becomeProvider';
+import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
 import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import {
   isPlatformAuthenticatorAvailable,
@@ -282,6 +283,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
+  // Date of birth — required, 18+. Server re-enforces at account creation.
+  const [dob, setDob] = useState('');
   // Passkey / Face ID (returning users): device-bound, the 2026 way to skip codes.
   const [bioAvailable, setBioAvailable] = useState(false);
   const [bioName, setBioName] = useState('Face ID');
@@ -400,7 +403,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!vd.ok) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
       const s = await fetch(getApiUrl('/api/auth/phone-session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ verificationToken: vd.verificationToken }),
+        body: JSON.stringify({ verificationToken: vd.verificationToken, dateOfBirth: dob }),
       });
       const sd = await s.json();
       if (sd.customToken) {
@@ -448,7 +451,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (!vd.ok || !vd.sessionToken) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
       const s = await fetch(getApiUrl('/api/auth/email-session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ sessionToken: vd.sessionToken }),
+        body: JSON.stringify({ sessionToken: vd.sessionToken, dateOfBirth: dob }),
       });
       const sd = await s.json();
       if (sd.customToken) {
@@ -601,7 +604,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // paths are passwordless 6-digit codes — one easy button, no method to pick.
   const emailValid = /\S+@\S+\.\S+/.test(email);
   const phoneValid = phone.replace(/\D/g, '').length > 6;
-  const readyForSubmit = !busy && (phoneValid || emailValid);
+  // 18+ gate: DOB required, and computed age must be ≥18. The wheel only offers
+  // adult years, but we still verify here (and the server re-checks at creation).
+  const dobValid = /^\d{4}-\d{2}-\d{2}$/.test(dob);
+  const age = (() => {
+    if (!dobValid) return -1;
+    const b = new Date(dob + 'T00:00:00'); const n = new Date();
+    let a = n.getFullYear() - b.getFullYear();
+    const m = n.getMonth() - b.getMonth();
+    if (m < 0 || (m === 0 && n.getDate() < b.getDate())) a--;
+    return a;
+  })();
+  const isAdult = age >= 18;
+  const readyForSubmit = !busy && (phoneValid || emailValid) && isAdult;
 
   const ctaLabel = busy ? '…' : (he ? 'המשך' : 'Continue');
 
@@ -797,6 +812,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   </button>
                 </div>
                 <div className="sl-intentHint">{he ? 'אפשר גם וגם — תמיד תהיו חברים, וגם ספקים אם תבחרו.' : 'Either or both — you’re always a member, and a provider too if you choose.'}</div>
+              </div>
+
+              {/* Date of birth — required, 18+. iOS finger-scroll wheel; only adult
+                  years are offered, and age is re-verified on the server at creation. */}
+              <div className="sl-field">
+                <label className="sl-label">{he ? 'תאריך לידה · גיל 18 ומעלה' : 'Date of birth · 18+'}</label>
+                <AppleWheelDatePicker
+                  value={dob || `${new Date().getFullYear() - 25}-06-15`}
+                  onChange={setDob}
+                  minYear={new Date().getFullYear() - 100}
+                  maxYear={new Date().getFullYear() - 18}
+                  monthNames={he ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : undefined}
+                  dayLabel={he ? 'יום' : 'Day'}
+                  monthLabel={he ? 'חודש' : 'Month'}
+                  yearLabel={he ? 'שנה' : 'Year'}
+                />
+                {!dobValid && <div className="sl-hint">{he ? 'גללו לבחירת תאריך הלידה.' : 'Scroll to set your date of birth.'}</div>}
+                {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
               </div>
 
               {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
