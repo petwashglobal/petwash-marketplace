@@ -14,6 +14,20 @@ const OTP_PHONE_MAX_PER_HOUR = 3;
 const OTP_IP_MAX_PER_HOUR = 15;
 const OTP_DEVICE_MAX_PER_HOUR = 10;
 
+/**
+ * WebOTP suffix for Android Chrome one-tap autofill. The browser auto-fills the
+ * code only if the SMS's LAST line is `@<bound-domain> #<code>` AND that domain
+ * equals the page's serving origin. The bound domain is OPS-set via WEBOTP_DOMAIN
+ * (e.g. "petwash.co.il" or "app.petwash.co.il") — when unset we append NOTHING, so
+ * this is zero-risk off. iOS already autofills without it (the input carries
+ * autocomplete="one-time-code" and iOS reads "PetWash: <code>"); this only adds
+ * Android support. SMS-only — not appended to WhatsApp/email (WebOTP is SMS-only).
+ */
+function withWebOtp(body: string, code: string): string {
+  const domain = process.env.WEBOTP_DOMAIN?.trim();
+  return domain ? `${body}\n\n@${domain} #${code}` : body;
+}
+
 const memoryStore = new Map<string, { value: string; expiresAt: number }>();
 const memoryCounters = new Map<string, { count: number; expiresAt: number }>();
 
@@ -265,7 +279,7 @@ export class RegistrationOTPService {
       if (channel === 'whatsapp') {
         sendResult = await twilioSMSService.sendWhatsApp(phoneE164, smsBody);
       } else {
-        sendResult = await twilioSMSService.sendSMS(phoneE164, smsBody);
+        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code));
       }
       if (sendResult.success && sendResult.messageId) {
         providerMessageId = sendResult.messageId;
@@ -458,7 +472,7 @@ export class RegistrationOTPService {
       if (channel === 'whatsapp') {
         sendResult = await twilioSMSService.sendWhatsApp(phoneE164, smsBody);
       } else {
-        sendResult = await twilioSMSService.sendSMS(phoneE164, smsBody);
+        sendResult = await twilioSMSService.sendSMS(phoneE164, withWebOtp(smsBody, code));
       }
 
       const providerLabel = channel === 'whatsapp' ? 'twilio_whatsapp' : 'twilio';
