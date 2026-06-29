@@ -225,8 +225,8 @@ function BenefitsSection({ he, tier }: { he: boolean; tier: string }) {
       bg: 'rgba(34,197,94,0.08)',
       titleEn: 'K9000 Wash Station',
       titleHe: 'תחנת K9000',
-      descEn: isGold ? '10% off every wash + priority bay access' : 'Pay via Privilege balance — any bay',
-      descHe: isGold ? '10% הנחה בכל שטיפה + עדיפות בתא' : 'תשלום ביתרת Privilege — כל תא',
+      descEn: isGold ? 'Member savings on eligible K9000 washes + priority bay access' : 'Pay via Privilege balance — any bay',
+      descHe: isGold ? 'חיסכון לחברים על רחיצות K9000 זכאיות + עדיפות בתא' : 'תשלום ביתרת Privilege — כל תא',
     },
     {
       icon: <MapPin size={20} color="#0ea5e9" />,
