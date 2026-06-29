@@ -117,8 +117,21 @@ export default function PetWashInbox() {
   (smartData?.threads ?? []).forEach(t => { if (t.bookingId) smartByBooking.set(t.bookingId, t); });
 
   const active = conversations.filter(c => c.chatStatus === 'active');
+  const archived = conversations.filter(c => c.chatStatus === 'archived');
   const unreadMsgs = active.reduce((s, c) => s + (user?.uid === c.customerId ? (c.customerUnread ?? 0) : (c.providerUnread ?? 0)), 0);
   const unreadAlerts = alerts.filter(a => !a.readAt).length;
+
+  // Category tabs (spec): organise the inbox. Bookings is the live data today;
+  // Support fills in as the hub's SUPPORT threads come online. Archived stays
+  // readable (never deleted) per the spec.
+  const [cat, setCat] = useState<'all' | 'bookings' | 'support' | 'archived'>('all');
+  const CATS = [
+    { id: 'all' as const,       label: he ? 'הכול' : 'All',        list: active },
+    { id: 'bookings' as const,  label: he ? 'הזמנות' : 'Bookings', list: active },
+    { id: 'support' as const,   label: he ? 'תמיכה' : 'Support',   list: [] as typeof active },
+    { id: 'archived' as const,  label: he ? 'ארכיון' : 'Archived', list: archived },
+  ];
+  const shown = CATS.find(x => x.id === cat)?.list ?? active;
 
   const TABS: { id: Tab; label: string; badge?: number }[] = [
     { id: 'messages',  label: 'Messages',  badge: unreadMsgs },
@@ -155,6 +168,22 @@ export default function PetWashInbox() {
               );
             })}
           </div>
+
+          {/* Category filter — only under Messages */}
+          {tab === 'messages' && (
+            <div className="flex gap-1.5 mt-2 overflow-x-auto" style={{ scrollbarWidth: 'none' }}>
+              {CATS.map(x => {
+                const on = cat === x.id;
+                return (
+                  <button key={x.id} onClick={() => setCat(x.id)}
+                    className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-[12px] whitespace-nowrap shrink-0 transition-colors"
+                    style={on ? { background: EMERALD_DEEP, color: '#fff' } : { background: '#F3F4F6', color: '#4b5563' }}>
+                    {x.label}{x.list.length > 0 && <span style={{ opacity: 0.7 }}>· {x.list.length}</span>}
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* MESSAGES */}
@@ -162,11 +191,16 @@ export default function PetWashInbox() {
           <div>
             {msgLoading ? (
               <div className="px-4 py-6 text-[13px] text-gray-400">Loading…</div>
-            ) : active.length === 0 ? (
-              <EmptyState Icon={MessageSquare} title="No messages yet"
-                sub="When you book a walker, sitter or groomer, your chat appears here." />
+            ) : shown.length === 0 ? (
+              <EmptyState Icon={MessageSquare}
+                title={cat === 'archived' ? (he ? 'אין שיחות בארכיון' : 'No archived chats')
+                  : cat === 'support' ? (he ? 'אין שיחות תמיכה' : 'No support chats')
+                  : (he ? 'אין הודעות עדיין' : 'No messages yet')}
+                sub={cat === 'support'
+                  ? (he ? 'שיחות תמיכה ואירועים יופיעו כאן.' : 'Support and incident chats appear here.')
+                  : (he ? 'כשתזמינו טיפול, הצ׳אט יופיע כאן.' : 'When you book a walker, sitter or groomer, your chat appears here.')} />
             ) : (
-              active.map(c => {
+              shown.map(c => {
                 const cfg = PLATFORM[c.platform] ?? { label: (c.platform || '').replace(/_/g, ' '), Icon: PawPrint };
                 const Icon = cfg.Icon;
                 const unread = user?.uid === c.customerId ? (c.customerUnread ?? 0) : (c.providerUnread ?? 0);
