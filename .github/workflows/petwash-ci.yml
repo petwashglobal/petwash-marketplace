@@ -1350,6 +1350,10 @@ jobs:
             "LYNX_USER_TOKEN=LYNX_USER_TOKEN:latest"
             "NAYAX_CORTINA_SECRET_TOKEN=NAYAX_CORTINA_SECRET_TOKEN:latest"
             "NAYAX_CORTINA_INTEGRATOR_NAME=NAYAX_CORTINA_INTEGRATOR_NAME:latest"
+            # Shared secret for the Cloud-Scheduler backup trigger (/api/cron/backup/*)
+            # AND the existing credit-wallet expired-credits cron. Optional so the
+            # deploy doesn't fail before it's created; auto-mounts once it exists.
+            "CRON_SECRET=CRON_SECRET:latest"
           )
 
           for mapping in "${required_mappings[@]}"; do
