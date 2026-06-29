@@ -76,6 +76,7 @@ import { signupFlags } from '@/lib/authSignupFlags';
 // provider/loyalty signup intent through a cross-origin Firebase redirect.
 import { seedSignupIntentCookie } from '@/lib/seedIntent';
 import { applyIntentFromUrl } from '@/lib/intentParam';
+import { setProviderSignupIntent } from '@/lib/becomeProvider';
 import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import {
   FaApple, FaFacebookF, FaInstagram, FaLock,
@@ -169,7 +170,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''),
     [],
   );
-  const flow = normalizeFlow(params.get('flow') || params.get('intent'));
+  // Flow is stateful so the on-screen intent selector (member / provider) can
+  // change it after arrival, not just the URL. Defaults to whatever ?flow=/?intent=
+  // the user arrived with (else 'prestige' member).
+  const [flow, setFlow] = useState<Flow>(() => normalizeFlow(params.get('flow') || params.get('intent')));
+  const wantsProvider = flow === 'provider';
+  // Toggle the provider intent. Routes through the CANONICAL signup-intent path
+  // (localStorage signup_intent) that the post-login decider already consumes —
+  // identical to arriving via ?flow=provider — so no routing logic is forked.
+  function toggleProviderIntent() {
+    const on = flow !== 'provider';
+    setFlow(on ? 'provider' : 'prestige');
+    try { if (on) setProviderSignupIntent(); else localStorage.removeItem('signup_intent'); } catch { /* private mode */ }
+  }
   // ?redirect=/shop — return the user where they came from (shop cart, booking…).
   // Internal paths only: must start with a single '/' (blocks //evil.com and
   // proto:// open-redirects).
@@ -183,7 +196,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // Only the EXPLICIT ?flow=/?intent= the user actually arrived with (not the
   // 'prestige' default) — passed to the decider so a deliberate "become provider"
   // deep-link still routes to onboarding.
-  const explicitIntent = params.get('flow') || params.get('intent') || undefined;
+  const explicitIntent = wantsProvider ? 'provider' : (params.get('flow') || params.get('intent') || undefined);
   const { user } = useFirebaseAuth();
   // Already signed in on /signup → route by the user's ACTUAL role/status via the
   // server post-login decider: returning approved provider → /provider-os, member →
@@ -705,6 +718,33 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               just types whichever they like and presses Continue (we detect which). === */}
           {!sent && (
             <>
+              {/* === Clear intent up front: member and/or provider (non-exclusive) === */}
+              <div className="sl-intent">
+                <div className="sl-intentQ">{he ? 'איך תרצו להצטרף?' : 'How would you like to join?'}</div>
+                <div className="sl-intentGrid">
+                  <div className="sl-intentCard sl-intentCard--on">
+                    <FaGift className="sl-intentIcon" aria-hidden />
+                    <div className="sl-intentText">
+                      <div className="sl-intentName">{he ? 'חבר/ת PetWash Prestige' : 'PetWash Prestige member'}</div>
+                      <div className="sl-intentSub">{he ? 'תגמולי VIP · 5% על כל רחיצת K9000' : 'VIP rewards · 5% on every K9000 wash'}</div>
+                    </div>
+                    <span className="sl-intentTick" aria-hidden>✓</span>
+                  </div>
+                  <button type="button"
+                    className={`sl-intentCard${wantsProvider ? ' sl-intentCard--on' : ''}`}
+                    aria-pressed={wantsProvider}
+                    onClick={toggleProviderIntent}>
+                    <FaPaw className="sl-intentIcon" aria-hidden />
+                    <div className="sl-intentText">
+                      <div className="sl-intentName">{he ? 'להפוך לספק/ית' : 'Become a provider'}</div>
+                      <div className="sl-intentSub">{he ? 'בכפוף לתנאים ואישור' : 'Conditions apply · approval required'}</div>
+                    </div>
+                    <span className={wantsProvider ? 'sl-intentTick' : 'sl-intentAdd'} aria-hidden>{wantsProvider ? '✓' : '+'}</span>
+                  </button>
+                </div>
+                <div className="sl-intentHint">{he ? 'אפשר גם וגם — תמיד תהיו חברים, וגם ספקים אם תבחרו.' : 'Either or both — you’re always a member, and a provider too if you choose.'}</div>
+              </div>
+
               {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
                 <p className="sl-inlineError" role="status">
                   {he ? 'SMS אינו זמין כעת — אפשר להמשיך עם אימייל למטה.' : 'SMS is temporarily unavailable — continue with email below.'}
@@ -1069,6 +1109,26 @@ function styles(he: boolean) {
     .sl-soc--apple svg{ font-size:22px }
     .sl-div{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; color:var(--muted); font-size:13px; font-weight:600; padding:4px 0 }
     .sl-div:before, .sl-div:after{ content:""; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent) }
+
+    /* Intent selector — full-width, fills the form on every size: 1 column on a
+       small iPhone, 2 columns once there is room. No dead space, same on tablet. */
+    .sl-intent{ display:flex; flex-direction:column; gap:8px; width:100%; margin-bottom:2px }
+    .sl-intentQ{ color:var(--white); font-size:13px; font-weight:800; opacity:.92 }
+    /* Always one column: full-width cards read the same on a small iPhone and a
+       big tablet, use 100% of the form width, and never cramp/wrap the card text. */
+    .sl-intentGrid{ display:grid; grid-template-columns:1fr; gap:10px; width:100% }
+    .sl-intentCard{ display:flex; align-items:center; gap:10px; width:100%; text-align:start;
+      min-height:64px; padding:12px 14px; border-radius:14px; box-sizing:border-box;
+      background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--white);
+      cursor:pointer; appearance:none; -webkit-appearance:none; transition:border-color .2s, background .2s }
+    .sl-intentCard--on{ border-color:var(--gold); background:rgba(176,132,28,.12) }
+    .sl-intentIcon{ color:var(--gold2); font-size:20px; flex-shrink:0 }
+    .sl-intentText{ flex:1; min-width:0 }
+    .sl-intentName{ font-size:14px; font-weight:700; line-height:1.2 }
+    .sl-intentSub{ font-size:12px; color:var(--muted); line-height:1.35 }
+    .sl-intentTick{ color:var(--gold2); font-size:18px; font-weight:900; flex-shrink:0 }
+    .sl-intentAdd{ color:var(--muted); font-size:22px; font-weight:700; flex-shrink:0; line-height:1 }
+    .sl-intentHint{ font-size:11.5px; color:var(--muted); line-height:1.4 }
 
     /* Method tabs */
     .sl-tabs{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px }
