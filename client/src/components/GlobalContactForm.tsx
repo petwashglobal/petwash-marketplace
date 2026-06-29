@@ -5,11 +5,12 @@
  * Supports bilingual (Hebrew/English) and automatically logs to Google Sheets
  */
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { useTranslation } from 'react-i18next';
+import { fieldSchemas } from '@/lib/validation/fieldSchemas';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -27,15 +28,21 @@ import { useToast } from '@/hooks/use-toast';
 import { apiRequest } from '@/lib/queryClient';
 import { Loader2, Send, CheckCircle2 } from 'lucide-react';
 
-const contactFormSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters'),
-  email: z.string().email('Invalid email address'),
-  phone: z.string().optional(),
-  subject: z.string().min(5, 'Subject must be at least 5 characters'),
-  message: z.string().min(10, 'Message must be at least 10 characters'),
-});
+// Schema built from the centralized field library (client/src/lib/validation).
+// Built per-language so error messages match the UI; the static 'en' instance
+// below is only used for the TypeScript type.
+const buildContactSchema = (lang: string) => {
+  const f = fieldSchemas(lang);
+  return z.object({
+    name: f.requiredName,
+    email: f.email,
+    phone: f.phoneOptional,
+    subject: f.text(5),
+    message: f.text(10),
+  });
+};
 
-type ContactFormData = z.infer<typeof contactFormSchema>;
+type ContactFormData = z.infer<ReturnType<typeof buildContactSchema>>;
 
 interface GlobalContactFormProps {
   platform: 'K9000' | 'SITTER' | 'WALKER' | 'PETTREK' | 'ACADEMY' | 'PLUSH' | 'WASH' | 'CLUB';
@@ -53,6 +60,8 @@ export default function GlobalContactForm({
   const { t, i18n } = useTranslation();
   const { toast } = useToast();
   const [isSubmitted, setIsSubmitted] = useState(false);
+
+  const contactFormSchema = useMemo(() => buildContactSchema(i18n.language), [i18n.language]);
 
   const form = useForm<ContactFormData>({
     resolver: zodResolver(contactFormSchema),
