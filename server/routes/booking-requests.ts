@@ -35,6 +35,7 @@ import {
 import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
+import { isSuperAdminVerified } from '../middleware/rbac';
 import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
 
@@ -456,8 +457,12 @@ router.post('/', async (req, res) => {
       }
 
       // Admin-created bookings may bypass the geofence (e.g. concierge placing a
-      // booking on behalf of a customer). Reversible header flag.
-      const adminBypass = String(req.headers['x-admin-booking'] || '').toLowerCase() === 'true';
+      // booking on behalf of a customer). MUST be a VERIFIED super-admin — the
+      // header alone is spoofable by any client, which defeated the service-area
+      // geofence. isSuperAdminVerified checks a real, email-verified admin claim.
+      const adminBypass =
+        String(req.headers['x-admin-booking'] || '').toLowerCase() === 'true' &&
+        isSuperAdminVerified(req as any);
 
       const prox = checkBookingProximity({
         customerLat: cLat,
@@ -3528,6 +3533,13 @@ router.post('/:requestId/reprice', async (req, res) => {
     }
 
     const br = booking[0];
+
+    // AUTH + OWNERSHIP (IDOR fix): only the booking owner (or a verified admin) may
+    // reprice. Without this, any caller could reprice any requestId and attach their
+    // own promo/wallet/gift-card flags, overwriting the victim's persisted quote.
+    if (!userId || (br.ownerId !== userId && !isSuperAdminVerified(req as any))) {
+      return res.status(403).json({ error: 'Not authorized to reprice this booking' });
+    }
 
     // Rebuild quote from saved pet details snapshot
     const savedPets: any[] = (br.petDetails as any[]) ?? [];
