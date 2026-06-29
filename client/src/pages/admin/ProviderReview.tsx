@@ -351,7 +351,7 @@ export default function ProviderReview() {
                   {isHebrew ? 'ממתינים לאישור ידני — KYC2026' : 'KYC2026 Manual Review Queue'}
                   <Badge className="bg-amber-500 text-white ml-2">{kycPendingCount}</Badge>
                 </CardTitle>
-                <Link href="/admin/providers/review">
+                <Link href="/admin/provider-review">
                   <span className="text-xs text-amber-700 hover:underline cursor-pointer">
                     {isHebrew ? 'ראה הכל' : 'View all'} →
                   </span>

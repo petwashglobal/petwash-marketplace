@@ -407,7 +407,7 @@ export default function ReferralPage() {
           * קרדיט יינתן רק לאחר תשלום ראשון של ₪20 לפחות בפועל.
           ניתן לצבור עד ₪1,000 קרדיט סה"כ ו-₪200 ביום.
           הקרדיט תקף לשנה מיום קבלתו. 
-          <a href="/legal/referral-terms" className="text-emerald-600 hover:underline mr-1">תנאים מלאים</a>
+          <a href="/legal/loyalty-terms" className="text-emerald-600 hover:underline mr-1">תנאים מלאים</a>
         </p>
       </div>
     </div>
