@@ -76,12 +76,19 @@ import { signupFlags } from '@/lib/authSignupFlags';
 // provider/loyalty signup intent through a cross-origin Firebase redirect.
 import { seedSignupIntentCookie } from '@/lib/seedIntent';
 import { applyIntentFromUrl } from '@/lib/intentParam';
+import { setProviderSignupIntent } from '@/lib/becomeProvider';
 import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
+import {
+  isPlatformAuthenticatorAvailable,
+  getBiometricMethodName,
+  signInWithPasskey,
+  signInWithPasskeyConditional,
+} from '@/auth/passkey';
 import {
   FaApple, FaFacebookF, FaInstagram, FaLock,
   FaShieldAlt, FaAppStoreIos, FaGooglePlay,
   FaCog, FaGift, FaCalendarAlt, FaHeartbeat,
-  FaEnvelope, FaPhoneAlt, FaPaw,
+  FaEnvelope, FaPhoneAlt, FaPaw, FaFingerprint,
 } from 'react-icons/fa';
 
 interface Props {
@@ -169,7 +176,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     () => new URLSearchParams(typeof window !== 'undefined' ? window.location.search : ''),
     [],
   );
-  const flow = normalizeFlow(params.get('flow') || params.get('intent'));
+  // Flow is stateful so the on-screen intent selector (member / provider) can
+  // change it after arrival, not just the URL. Defaults to whatever ?flow=/?intent=
+  // the user arrived with (else 'prestige' member).
+  const [flow, setFlow] = useState<Flow>(() => normalizeFlow(params.get('flow') || params.get('intent')));
+  const wantsProvider = flow === 'provider';
+  // Toggle the provider intent. Routes through the CANONICAL signup-intent path
+  // (localStorage signup_intent) that the post-login decider already consumes —
+  // identical to arriving via ?flow=provider — so no routing logic is forked.
+  function toggleProviderIntent() {
+    const on = flow !== 'provider';
+    setFlow(on ? 'provider' : 'prestige');
+    try { if (on) setProviderSignupIntent(); else localStorage.removeItem('signup_intent'); } catch { /* private mode */ }
+  }
   // ?redirect=/shop — return the user where they came from (shop cart, booking…).
   // Internal paths only: must start with a single '/' (blocks //evil.com and
   // proto:// open-redirects).
@@ -183,7 +202,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // Only the EXPLICIT ?flow=/?intent= the user actually arrived with (not the
   // 'prestige' default) — passed to the decider so a deliberate "become provider"
   // deep-link still routes to onboarding.
-  const explicitIntent = params.get('flow') || params.get('intent') || undefined;
+  const explicitIntent = wantsProvider ? 'provider' : (params.get('flow') || params.get('intent') || undefined);
   const { user } = useFirebaseAuth();
   // Already signed in on /signup → route by the user's ACTUAL role/status via the
   // server post-login decider: returning approved provider → /provider-os, member →
@@ -263,8 +282,44 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
+  // Passkey / Face ID (returning users): device-bound, the 2026 way to skip codes.
+  const [bioAvailable, setBioAvailable] = useState(false);
+  const [bioName, setBioName] = useState('Face ID');
 
   const fail = (msg: string) => setInlineError(msg);
+
+  // On mount: detect a platform authenticator (Face ID / Touch ID / fingerprint)
+  // and ARM conditional passkey autofill so a returning user sees their passkey in
+  // the email field with no extra tap. Fire-and-forget; never blocks the page.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const avail = await isPlatformAuthenticatorAvailable();
+        if (cancelled) return;
+        setBioAvailable(avail);
+        if (avail) setBioName(getBiometricMethodName());
+        signInWithPasskeyConditional().catch(() => {});
+      } catch { /* passkeys unsupported — silent, normal flow continues */ }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Explicit "Sign in with Face ID" tap. On success the useFirebaseAuth user
+  // effect routes via the post-login decider; no consent gate (returning user
+  // already accepted terms at original signup).
+  async function handlePasskeyLogin() {
+    setBusy(true);
+    setInlineError(null);
+    try {
+      const r = await signInWithPasskey();
+      if (!r.success) fail(r.error || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+    } catch (e: any) {
+      fail(e?.message || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   useEffect(() => {
     if (!signupFlags.smsFallbackAndRealErrors || !signupFlags.emailPassword) return;
@@ -705,6 +760,45 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               just types whichever they like and presses Continue (we detect which). === */}
           {!sent && (
             <>
+              {/* === Returning users: one-tap Face ID / Touch ID (passkey). Shown only
+                  when the device has a platform authenticator. No consent gate — a
+                  returning user already accepted terms at original signup. === */}
+              {bioAvailable && (
+                <>
+                  <button type="button" className="sl-bio" disabled={busy} onClick={handlePasskeyLogin}>
+                    <FaFingerprint aria-hidden /> {he ? `התחברות עם ${bioName}` : `Sign in with ${bioName}`}
+                  </button>
+                  <div className="sl-div">{he ? 'או הצטרפו לחשבון חדש' : 'or create a new account'}</div>
+                </>
+              )}
+
+              {/* === Clear intent up front: member and/or provider (non-exclusive) === */}
+              <div className="sl-intent">
+                <div className="sl-intentQ">{he ? 'איך תרצו להצטרף?' : 'How would you like to join?'}</div>
+                <div className="sl-intentGrid">
+                  <div className="sl-intentCard sl-intentCard--on">
+                    <FaGift className="sl-intentIcon" aria-hidden />
+                    <div className="sl-intentText">
+                      <div className="sl-intentName">{he ? 'חבר/ת PetWash Prestige' : 'PetWash Prestige member'}</div>
+                      <div className="sl-intentSub">{he ? 'תגמולי VIP · 5% על כל רחיצת K9000' : 'VIP rewards · 5% on every K9000 wash'}</div>
+                    </div>
+                    <span className="sl-intentTick" aria-hidden>✓</span>
+                  </div>
+                  <button type="button"
+                    className={`sl-intentCard${wantsProvider ? ' sl-intentCard--on' : ''}`}
+                    aria-pressed={wantsProvider}
+                    onClick={toggleProviderIntent}>
+                    <FaPaw className="sl-intentIcon" aria-hidden />
+                    <div className="sl-intentText">
+                      <div className="sl-intentName">{he ? 'להפוך לספק/ית' : 'Become a provider'}</div>
+                      <div className="sl-intentSub">{he ? 'בכפוף לתנאים ואישור' : 'Conditions apply · approval required'}</div>
+                    </div>
+                    <span className={wantsProvider ? 'sl-intentTick' : 'sl-intentAdd'} aria-hidden>{wantsProvider ? '✓' : '+'}</span>
+                  </button>
+                </div>
+                <div className="sl-intentHint">{he ? 'אפשר גם וגם — תמיד תהיו חברים, וגם ספקים אם תבחרו.' : 'Either or both — you’re always a member, and a provider too if you choose.'}</div>
+              </div>
+
               {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
                 <p className="sl-inlineError" role="status">
                   {he ? 'SMS אינו זמין כעת — אפשר להמשיך עם אימייל למטה.' : 'SMS is temporarily unavailable — continue with email below.'}
@@ -723,7 +817,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     <label className="sl-label">{t.emailLabel}</label>
                     <div className="sl-inputWrap">
                       <FaEnvelope className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                         value={email} onChange={(e) => setEmail(e.target.value)}
                         placeholder={t.emailPh} />
                     </div>
@@ -938,9 +1032,9 @@ function styles(he: boolean) {
     }
 
     .sl-shell{
-      --gold:#b0841c; --gold2:#d9bd72; --gold3:#8f6a16; --white:#fffaf0;
+      --gold:#D4AF37; --gold2:#E6C766; --gold3:#B8932F; --white:#fffaf0;
       --muted:rgba(255,250,240,.6); --line:rgba(255,255,255,.10);
-      --line2:rgba(176,132,28,.22); --ink:#0a0a0a;
+      --line2:rgba(212,175,55,.22); --ink:#0a0a0a;
       position:relative; min-height:100dvh; background:#000 !important;
       background-color:#000 !important;
       color:var(--white);
@@ -973,7 +1067,7 @@ function styles(he: boolean) {
     .sl-sub{ margin:0 auto; color:var(--muted); font-size:clamp(14px,1.4vw,17px); line-height:1.5; max-width:520px; text-align:center }
 
     .sl-divPaw{ display:flex; align-items:center; gap:10px; color:var(--gold); margin:2px 0 }
-    .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(176,132,28,.45), transparent); flex:1 }
+    .sl-divPaw span{ height:1px; background:linear-gradient(90deg, transparent, rgba(212,175,55,.45), transparent); flex:1 }
     .sl-divPaw svg{ width:14px; height:14px }
 
     /* Dog can be large and emotional, but it supports the brand identity. */
@@ -1015,7 +1109,7 @@ function styles(he: boolean) {
       background:linear-gradient(135deg, var(--gold2), var(--gold));
       color:#0a0a0a; font-weight:900; font-size:11px;
     }
-    .sl-stars{ color:var(--gold2); font-size:18px; letter-spacing:4px; text-shadow:0 0 12px rgba(176,132,28,.5) }
+    .sl-stars{ color:var(--gold2); font-size:18px; letter-spacing:4px; text-shadow:0 0 12px rgba(212,175,55,.5) }
     .sl-ratingTxt{ color:var(--white); font-weight:800; font-size:14px }
 
     .sl-secBadge{
@@ -1045,7 +1139,7 @@ function styles(he: boolean) {
       color:var(--white); font-weight:700; font-size:13px;
       border-radius:999px; padding:10px 16px; min-height:44px;
     }
-    .sl-lang:hover{ border-color:rgba(176,132,28,.5) }
+    .sl-lang:hover{ border-color:rgba(212,175,55,.5) }
 
     /* Social tiles 2x2 */
     .sl-social4{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
@@ -1070,6 +1164,36 @@ function styles(he: boolean) {
     .sl-div{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; color:var(--muted); font-size:13px; font-weight:600; padding:4px 0 }
     .sl-div:before, .sl-div:after{ content:""; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent) }
 
+    /* Intent selector — full-width, fills the form on every size: 1 column on a
+       small iPhone, 2 columns once there is room. No dead space, same on tablet. */
+    .sl-intent{ display:flex; flex-direction:column; gap:8px; width:100%; margin-bottom:2px }
+    .sl-intentQ{ color:var(--white); font-size:13px; font-weight:800; opacity:.92 }
+    /* Always one column: full-width cards read the same on a small iPhone and a
+       big tablet, use 100% of the form width, and never cramp/wrap the card text. */
+    .sl-intentGrid{ display:grid; grid-template-columns:1fr; gap:10px; width:100% }
+
+    /* Face ID / Touch ID passkey button — white-on-dark secondary, gold-tinted. */
+    .sl-bio{ display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
+      min-height:56px; border-radius:12px; box-sizing:border-box; cursor:pointer; appearance:none;
+      -webkit-appearance:none; font-size:15px; font-weight:700;
+      background:rgba(212,175,55,.10); border:1px solid var(--gold); color:var(--white);
+      transition:background .2s, filter .15s }
+    .sl-bio:hover:not(:disabled){ background:rgba(212,175,55,.18); filter:brightness(1.04) }
+    .sl-bio:disabled{ opacity:.5; cursor:not-allowed }
+    .sl-bio svg{ color:var(--gold2); font-size:18px }
+    .sl-intentCard{ display:flex; align-items:center; gap:10px; width:100%; text-align:start;
+      min-height:64px; padding:12px 14px; border-radius:14px; box-sizing:border-box;
+      background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--white);
+      cursor:pointer; appearance:none; -webkit-appearance:none; transition:border-color .2s, background .2s }
+    .sl-intentCard--on{ border-color:var(--gold); background:rgba(212,175,55,.12) }
+    .sl-intentIcon{ color:var(--gold2); font-size:20px; flex-shrink:0 }
+    .sl-intentText{ flex:1; min-width:0 }
+    .sl-intentName{ font-size:14px; font-weight:700; line-height:1.2 }
+    .sl-intentSub{ font-size:12px; color:var(--muted); line-height:1.35 }
+    .sl-intentTick{ color:var(--gold2); font-size:18px; font-weight:900; flex-shrink:0 }
+    .sl-intentAdd{ color:var(--muted); font-size:22px; font-weight:700; flex-shrink:0; line-height:1 }
+    .sl-intentHint{ font-size:11.5px; color:var(--muted); line-height:1.4 }
+
     /* Method tabs */
     .sl-tabs{ display:grid; grid-template-columns:repeat(3, 1fr); gap:8px }
     .sl-tab{
@@ -1080,8 +1204,8 @@ function styles(he: boolean) {
       padding:0 8px; transition:background .15s ease, border-color .15s ease, color .15s ease;
     }
     .sl-tab svg{ font-size:16px }
-    .sl-tab[aria-selected="true"]{ background:rgba(176,132,28,.12); border-color:rgba(176,132,28,.4); color:var(--white) }
-    .sl-tab:hover{ border-color:rgba(176,132,28,.35) }
+    .sl-tab[aria-selected="true"]{ background:rgba(212,175,55,.12); border-color:rgba(212,175,55,.4); color:var(--white) }
+    .sl-tab:hover{ border-color:rgba(212,175,55,.35) }
 
     /* Fields */
     .sl-field{ display:grid; gap:8px }
@@ -1102,7 +1226,7 @@ function styles(he: boolean) {
     }
     .sl-input--icon{ ${he ? 'padding-right:42px; padding-left:16px' : 'padding-left:42px; padding-right:16px'} }
     .sl-input::placeholder{ color:rgba(255,250,240,.4); font-weight:400 }
-    .sl-input:focus{ border-color:rgba(176,132,28,.55); box-shadow:0 0 0 3px rgba(176,132,28,.18) }
+    .sl-input:focus{ border-color:rgba(212,175,55,.55); box-shadow:0 0 0 3px rgba(212,175,55,.18) }
     .sl-hint{ color:var(--muted); font-size:12.5px; line-height:1.4 }
     .sl-inlineError{
       margin:0;
@@ -1148,9 +1272,9 @@ function styles(he: boolean) {
     .sl-terms--quick{
       margin:-2px 0 0;
       padding:10px 12px;
-      border:1px solid rgba(176,132,28,.24);
+      border:1px solid rgba(212,175,55,.24);
       border-radius:14px;
-      background:rgba(176,132,28,.06);
+      background:rgba(212,175,55,.06);
     }
 
     /* CTA — premium gold gradient (luxury house brand). Min-height 58px keeps
@@ -1162,11 +1286,11 @@ function styles(he: boolean) {
       color:#0a0a0a;
       display:flex; align-items:center; justify-content:center; gap:10px;
       font-weight:900; font-size:16px; letter-spacing:.02em;
-      box-shadow:0 18px 50px rgba(176,132,28,.28);
+      box-shadow:0 18px 50px rgba(212,175,55,.28);
       transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
       -webkit-tap-highlight-color:transparent;
     }
-    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(176,132,28,.5) }
+    .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(212,175,55,.5) }
     .sl-cta:disabled{ opacity:.5; cursor:not-allowed }
     .sl-cta svg{ font-size:18px }
     .sl-btn{
@@ -1184,8 +1308,8 @@ function styles(he: boolean) {
 
     /* 2026 Advanced Security trust row */
     .sl-secRow{
-      margin-top:12px; padding:10px 12px; border:1px solid rgba(176,132,28,.22);
-      border-radius:12px; background:rgba(176,132,28,.04);
+      margin-top:12px; padding:10px 12px; border:1px solid rgba(212,175,55,.22);
+      border-radius:12px; background:rgba(212,175,55,.04);
     }
     .sl-secTitle{
       text-align:center; font-size:10px; letter-spacing:.18em; text-transform:uppercase;
@@ -1219,7 +1343,7 @@ function styles(he: boolean) {
       color:#fff; text-decoration:none; min-height:54px;
       transition:border-color .15s ease, box-shadow .15s ease;
     }
-    .sl-store:hover{ border-color:rgba(176,132,28,.4); box-shadow:0 0 0 3px rgba(176,132,28,.1) }
+    .sl-store:hover{ border-color:rgba(212,175,55,.4); box-shadow:0 0 0 3px rgba(212,175,55,.1) }
     .sl-store svg{ font-size:26px; flex:0 0 auto }
     .sl-store span{ display:flex; flex-direction:column; line-height:1.05; align-items:flex-start }
     .sl-store small{ font-size:10px; opacity:.78; font-weight:700; letter-spacing:.06em; text-transform:uppercase }
