@@ -18,10 +18,12 @@ Verified 2026-06-30 against **gov.il (Israel Tax Authority + Bituach Leumi)** an
 ## How a provider is handled, per ID
 1. **Onboarding captures** `taxStatus` (osek_patur | osek_murshe | company | not_registered) + `osekNumber`/`vatNumber` + Israeli ID (`provider-onboarding.ts`).
 2. **The provider signs** the agreement (#02) + **tax/business-status declaration (#09)** via DocuSeal, bound to their ID — attesting their Osek status and that THEY handle their own VAT, Bituach Leumi, and income tax (independent contractor).
-3. **Invoicing/VAT branches on status:** Osek Murshe → 18% VAT in the document; Osek Patur → VAT-exempt. Above the SHAAM threshold → ITA allocation number obtained automatically (`israeliTax.ts`).
+3. **Allocation numbers** are obtained automatically above the SHAAM threshold (`israeliTax.ts` → RASA). **PetWash's own commission VAT** (the 15% platform fee) is computed at a flat 18% on every payout receipt (`ProviderPayoutService.ts`, back-calc 18/118) — correct, and provider-status-independent.
 
-## ⚠️ The ONE thing to confirm (CPA + a code check)
-That the **provider's captured `taxStatus` actually flows into the payout/invoice VAT branch** — i.e. an Osek-Murshe provider's payout/receipt reflects 18% VAT they remit, an Osek-Patur provider's does not. This is the disclosed-agent VAT question ([[platform-tax-360-findings]], [[money-tax-integrity-sweep-2026-06-29]]) — the BIGGEST tax-policy call, and it needs the CPA, not a guess. Everything else above is built + gov-verified.
+## ⚠️ The ONE thing to confirm → CODE CHECK DONE: gap is real
+**Verified 2026-06-30 by reading the code.** The provider's captured `taxStatus`/`osekNumber` do **NOT** flow into any VAT computation today. They are consumed only as a *gate/risk input*: onboarding capture (`provider-onboarding.ts`) → admin review display (`admin-applications.ts`) → risk-engine flag (`applicationRiskEngine.ts`: `wantsPayout && !taxStatus`) → onboarding blocker (`PROVIDER_TAX_CHECK_REQUIRED`). Every VAT figure in the payout/invoice path (`ProviderPayoutService`, `IsraeliInvoiceGenerator`, `LuxuryInvoiceService`, `israeliTax.ts`) is a **flat 18% on PetWash's own commission** — there is **no branch on provider Osek status**. So an Osek-Murshe provider's receipt does **not** yet differ from an Osek-Patur provider's.
+
+Whether it *should* — i.e. modelling the provider's own-service VAT under a disclosed-agent treatment — is the BIGGEST open tax-policy call ([[platform-tax-360-findings]], [[money-tax-integrity-sweep-2026-06-29]]). It needs the CPA, not a guess; do **not** build a VAT-by-status branch without sign-off. The captured fields are ready for it. Everything else above is built + gov-verified.
 
 ## NOT US / NOT Australia
 No 1099, no SSN, no Stripe-Connect, no AU ABN. This is the Israeli עוסק framework: Osek Patur/Murshe/Company, 18% VAT, חשבוניות-ישראל allocation numbers, Bituach Leumi, ITA via SUMIT/RASA.
