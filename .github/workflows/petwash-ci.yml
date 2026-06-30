@@ -1519,7 +1519,15 @@ jobs:
             --cpu=2
             --memory=2Gi
             --min-instances=0
-            --max-instances=20
+            # --max-instances=4 (was 20): COST BLAST-RADIUS CAP. 2026-06-30 a flood of
+            # requests (via an unrestricted Maps API key, since deleted) auto-scaled this
+            # service and drove a ₪8,227 Cloud Run bill — 73% of an ₪11.3k month that
+            # closed the billing account. 20 × (2 vCPU + 2Gi) is wildly oversized for a
+            # pre-launch app; 4 is ample for real traffic and hard-caps a runaway. Google
+            # Billing Support's own recommendation was to set a Cloud Run max-instance
+            # limit. RAISE deliberately (with a budget alert in place) when real load
+            # justifies it — never silently. See memory: google-cost-incident-2026-06.
+            --max-instances=4
             --timeout=600
             --port=8080
             --execution-environment=gen2
