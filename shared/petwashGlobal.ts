@@ -565,7 +565,7 @@ export const paymentOrchestrationConfig = {
   taxRules: {
     defaultCountry: "IL",
     includeVatInPrice: true,
-    vatPercent: 17,
+    vatPercent: 18, // Israeli VAT 18% (raised from 17% on 1 Jan 2025). Canonical: ISRAEL_VAT_RATE in shared/israel-compliance-config.
   },
   bookAndPayFlow: {
     timeoutMinutes: 15,

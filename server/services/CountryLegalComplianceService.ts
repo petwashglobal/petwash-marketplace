@@ -71,7 +71,7 @@ export class CountryLegalComplianceService {
       requiresExplicitConsent: true,
       rightToForgotten: true,
       
-      vatGstRate: 17, // Israeli VAT
+      vatGstRate: 18, // Israeli VAT 18% (raised from 17% on 1 Jan 2025; canonical ISRAEL_VAT_RATE)
       brokerCommissionTaxable: true,
       requiresTaxId: true, // תעודת עוסק מורשה
       
