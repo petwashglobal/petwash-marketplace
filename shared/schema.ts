@@ -8690,13 +8690,20 @@ export const superAppPayouts = pgTable("super_app_payouts", {
   aiVerifiedAt: timestamp("ai_verified_at"),
   aiVerificationNotes: text("ai_verification_notes"),
   aiRiskLevel: varchar("ai_risk_level"), // low | medium | high | critical
-  
+
+  // Double-payout guard: deterministic dedupe key `payout:{bookingId}:{providerId}`.
+  // NULL when a payout has no bookingId (manual/batch) — Postgres unique index ignores NULLs,
+  // so only booking-anchored payouts are deduped. A 2nd insert for the same booking+provider
+  // collides and is skipped (onConflictDoNothing) — no money is paid twice.
+  idempotencyKey: varchar("idempotency_key"),
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => ({
   providerIdx: index("super_app_payout_provider_idx").on(table.providerId),
   statusIdx: index("super_app_payout_status_idx").on(table.status),
   aiVerifiedIdx: index("super_app_payout_ai_verified_idx").on(table.aiVerified),
+  idemUnique: uniqueIndex("super_app_payout_idem_unique").on(table.idempotencyKey),
 }));
 
 // ===== BOOKING PHOTOS TABLE (for AI verification) =====

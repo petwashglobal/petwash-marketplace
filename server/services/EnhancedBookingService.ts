@@ -2,6 +2,7 @@ import { db } from "../db";
 import { bookings, bookingItems, domainEvents, superAppPayments, superAppPayouts, providers } from "@shared/schema";
 import { eq, and, sql, desc } from "drizzle-orm";
 import crypto from "crypto";
+import { logger } from "../lib/logger";
 import type { PlatformConfig } from "../middleware/platformContext";
 
 export const BOOKING_STATUS = {
@@ -388,16 +389,25 @@ export class EnhancedBookingService {
 
     const escrowReleaseDate = new Date(Date.now() + 72 * 60 * 60 * 1000);
 
-    await db.insert(superAppPayouts).values({
+    // Double-payout guard: dedupe by booking+provider; a re-run is a no-op (no second escrow row).
+    const insertedPayout = await db.insert(superAppPayouts).values({
       providerId: booking.providerId,
       bookingId: booking.id,
+      idempotencyKey: `payout:${booking.id}:${booking.providerId}`,
       amount: booking.total,
       platformFee: booking.platformFee || "0",
       netAmount: booking.providerPayout || booking.total,
       currency: booking.currency || "ILS",
       status: "in_escrow",
       escrowReleaseDate,
-    });
+    }).onConflictDoNothing({ target: superAppPayouts.idempotencyKey }).returning({ id: superAppPayouts.id });
+
+    if (insertedPayout.length === 0) {
+      logger.warn("[EnhancedBooking] Escrow payout already exists for booking — skipped duplicate", {
+        bookingId: booking.id, providerId: booking.providerId,
+      });
+      return;
+    }
 
     await this.logEvent("escrow.scheduled", "booking", booking.id, {
       providerId: booking.providerId,

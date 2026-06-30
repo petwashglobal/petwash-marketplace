@@ -809,18 +809,28 @@ export class BookingService {
     const platformFee = parseFloat(booking.platformFee);
     const netAmount = parseFloat(booking.providerPayout);
 
-    await db.insert(superAppPayouts).values({
+    // Double-payout guard: dedupe by booking+provider. If the payout already exists,
+    // skip BOTH the insert and the earnings increment (else earnings double-count).
+    const insertedPayout = await db.insert(superAppPayouts).values({
       providerId: booking.providerId,
       bookingId: booking.id,
+      idempotencyKey: `payout:${booking.id}:${booking.providerId}`,
       amount: amount.toString(),
       platformFee: platformFee.toString(),
       netAmount: netAmount.toString(),
       currency: booking.currency,
       status: 'pending',
       scheduledFor: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000) // 7 days
-    });
+    }).onConflictDoNothing({ target: superAppPayouts.idempotencyKey }).returning({ id: superAppPayouts.id });
 
-    // Update provider earnings
+    if (insertedPayout.length === 0) {
+      logger.warn('[BookingService] Payout already exists for booking — skipped duplicate payout + earnings increment', {
+        bookingId: booking.id, providerId: booking.providerId,
+      });
+      return;
+    }
+
+    // Update provider earnings (only when a new payout row was actually created)
     await db
       .update(providers)
       .set({

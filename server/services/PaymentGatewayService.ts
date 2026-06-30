@@ -621,11 +621,13 @@ export class PaymentGatewayService {
       const escrowReleaseDate = new Date();
       escrowReleaseDate.setHours(escrowReleaseDate.getHours() + 72);
 
-      // Create payout record in 'in_escrow' status
-      await db.insert(superAppPayouts).values({
+      // Create payout record in 'in_escrow' status.
+      // Double-payout guard: dedupe by booking+provider; a re-run is a no-op (no second escrow row).
+      const insertedPayout = await db.insert(superAppPayouts).values({
         id: nanoid(),
         providerId: booking.providerId,
         bookingId: booking.id,
+        idempotencyKey: `payout:${booking.id}:${booking.providerId}`,
         amount: booking.total,
         platformFee: platformFee.toFixed(2),
         netAmount: netAmount.toFixed(2),
@@ -633,16 +635,22 @@ export class PaymentGatewayService {
         status: 'in_escrow',
         escrowReleaseDate,
         scheduledFor: escrowReleaseDate,
-      });
+      }).onConflictDoNothing({ target: superAppPayouts.idempotencyKey }).returning({ id: superAppPayouts.id });
 
-      logger.info('[PaymentGateway] Escrow payout created', {
-        bookingId: booking.id,
-        providerId: booking.providerId,
-        amount: booking.total,
-        platformFee: platformFee.toFixed(2),
-        netAmount: netAmount.toFixed(2),
-        escrowReleaseDate,
-      });
+      if (insertedPayout.length === 0) {
+        logger.warn('[PaymentGateway] Escrow payout already exists for booking — skipped duplicate', {
+          bookingId: booking.id, providerId: booking.providerId,
+        });
+      } else {
+        logger.info('[PaymentGateway] Escrow payout created', {
+          bookingId: booking.id,
+          providerId: booking.providerId,
+          amount: booking.total,
+          platformFee: platformFee.toFixed(2),
+          netAmount: netAmount.toFixed(2),
+          escrowReleaseDate,
+        });
+      }
 
     } catch (error) {
       logger.error('[PaymentGateway] Error creating escrow payout', error);
