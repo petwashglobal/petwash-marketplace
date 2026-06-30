@@ -200,6 +200,7 @@ const CaseQueue = lazy(() => import("@/pages/CaseQueue"));
 const ManagerDashboard = lazy(() => import("@/pages/ManagerDashboard"));
 const GovernancePolicies = lazy(() => import("@/pages/GovernancePolicies"));
 const AdminInbox = lazy(() => import("@/pages/AdminInbox"));
+const AdminChatRisk = lazy(() => import("@/pages/AdminChatRisk"));
 const WalletDownload = lazy(() => import("@/pages/WalletDownload"));
 const MyWallet = lazy(() => import("@/pages/MyWallet"));
 const PrestigePassWallet = lazy(() => import("@/pages/PrestigePassWallet"));
@@ -3305,6 +3306,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminInbox />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/chat-risk">
+          {() => (
+            <AdminRouteGuard>
+              <Suspense fallback={<PageLoader />}>
+                <AdminChatRisk />
+              </Suspense>
             </AdminRouteGuard>
           )}
         </Route>
