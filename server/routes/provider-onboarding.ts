@@ -20,6 +20,7 @@ import multer from 'multer';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { generateProviderWelcomeEmail } from '../email/templates/welcome-provider-signup-2026';
 import { writeProviderAudit } from '../services/providerAudit';
+import { seedProviderServicesOnApproval } from '../services/providerServiceApproval';
 import { emitProviderEvent } from '../services/providerMonitoring';
 import { logProviderMessage } from '../services/providerMessageLog';
 import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFromDecision as _queuePriority } from '../services/providerQueue';
@@ -1779,6 +1780,28 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
         logger.info(`[Provider Onboarding] Custom claims set for approved provider`, { userId: application.userId, providerType: application.providerType });
       } catch (claimsErr) {
         logger.warn('[Provider Onboarding] Failed to set custom claims', { claimsErr });
+      }
+
+      // Seed provider_services at WAITLIST (legal-spec core rule) — the OTHER approval
+      // endpoint (/api/provider-applications/admin/:id/approve) already does this; the
+      // KYC-review approval path did not, so providers approved here had zero service
+      // rows → declaration scopes (epic #49) couldn't resolve. Idempotent + fail-open.
+      try {
+        const svcTypes = ((application as any).providerTypes as string[] | null | undefined)
+          ?? (application.providerType ? [application.providerType] : null);
+        const seeded = await seedProviderServicesOnApproval(application.userId, svcTypes);
+        writeProviderAudit({
+          applicationId: (application as any).id,
+          eventType: 'provider_services_seeded',
+          actorUserId: adminUid || 'admin',
+          actorRole: 'admin',
+          payload: { services: seeded.map((s) => s.serviceType), level: 'waitlist', via: 'kyc_review_approve' },
+        }).catch(() => {});
+        logger.info('[Provider Onboarding] provider_services seeded at waitlist', {
+          userId: application.userId, services: seeded.map((s) => s.serviceType),
+        });
+      } catch (seedErr: any) {
+        logger.warn('[Provider Onboarding] provider_services seed failed (non-fatal)', { error: seedErr?.message });
       }
     }
 
