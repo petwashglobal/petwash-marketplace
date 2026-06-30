@@ -32,6 +32,7 @@ import {
 import { syncChatToBookingStatus } from '../lib/booking-chat-sync';
 import { auth as firebaseAuth, storage as firebaseStorage } from '../lib/firebase-admin';
 import sgMail from '../lib/sendgrid';
+import { scanChatRisk } from '../services/chatRiskScanner';
 import { sendPushToUser } from '../lib/fcm-push';
 
 // Multer for in-memory image upload (max 8MB)
@@ -638,9 +639,21 @@ router.post('/:bookingId/send', async (req, res) => {
       }
     }
 
-    // 7. Contact info + URL + @handle detection (§7)
-    const isFlagged = contactInfoPattern.test(safeContent);
-    const flagReason = isFlagged ? detectFlagReason(safeContent) : null;
+    // 7. Contact info + URL + @handle detection (§7) + broader bilingual risk scan.
+    // ADVISORY only: a flagged message still sends — flags surface it for human
+    // (support/admin) review. Never blocks, pays, refunds, or bans.
+    const contactFlagged = contactInfoPattern.test(safeContent);
+    const risk = scanChatRisk(safeContent);
+    const isFlagged = contactFlagged || risk.level !== 'LOW';
+    const flagReason = contactFlagged
+      ? detectFlagReason(safeContent)
+      : (risk.flags.length ? risk.flags.map((f) => f.code).join(',') : null);
+    if (risk.level === 'HIGH') {
+      logger.warn('[BookingChat] HIGH-risk message flagged for review', {
+        bookingId, conversationId: conv.conversationId, senderUid: uid,
+        signals: risk.flags.map((f) => f.code), score: risk.score,
+      });
+    }
 
     // 8. Insert message
     const messageId = `BM-${nanoid()}`;
