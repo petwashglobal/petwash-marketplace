@@ -20,6 +20,7 @@ import {
   Info,
   RefreshCw,
   Clock,
+  FileText,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { getAuth } from 'firebase/auth';
@@ -55,6 +56,22 @@ interface DeclarationDetail {
   bodyHe: string;
   reviewedByCounsel: boolean;
 }
+
+// Source legal-pack PDF backing each declaration (committed at
+// client/public/documents/legal/legal-protection-pack-2026/). These are the CEO's
+// DRAFT documents for Israeli-counsel review — shown as the source-of-truth document
+// behind the on-screen declaration text. Only declarations with a real source PDF
+// appear here; the rest have no standalone document.
+const LEGAL_PACK_BASE = '/documents/legal/legal-protection-pack-2026';
+const SOURCE_PDF: Record<string, string> = {
+  provider_service_agreement: `${LEGAL_PACK_BASE}/02_provider_agreement_draft.pdf`,
+  insurance_disclosure: `${LEGAL_PACK_BASE}/03_petwash_not_insurance_disclaimer.pdf`,
+  home_hosting_protocol: `${LEGAL_PACK_BASE}/04_provider_host_premises_addendum.pdf`,
+  owner_home_visit_protocol: `${LEGAL_PACK_BASE}/05_customer_premises_addendum.pdf`,
+  privacy_data_handling: `${LEGAL_PACK_BASE}/06_privacy_policy_operational_draft.pdf`,
+  tax_business_status: `${LEGAL_PACK_BASE}/09_provider_tax_insurance_declaration.pdf`,
+  incident_reporting: `${LEGAL_PACK_BASE}/10_incident_claim_report_form.pdf`,
+};
 
 async function bearer(): Promise<string> {
   const user = getAuth().currentUser;
@@ -98,6 +115,7 @@ const L = {
     draftNotice: 'הנוסח המשפטי בבדיקה. לא ניתן לחתום על מסמך עד לאישור.',
     opened: 'חלון החתימה נפתח בכרטיסייה חדשה.',
     help: 'שאלות? ',
+    viewSource: 'צפייה במסמך המקור (טיוטה)',
   },
   en: {
     title: 'Provider Declarations',
@@ -116,6 +134,7 @@ const L = {
     draftNotice: 'This wording is under legal review. It cannot be signed until approved.',
     opened: 'The signing window opened in a new tab.',
     help: 'Questions? ',
+    viewSource: 'View source document (draft)',
   },
 };
 
@@ -319,6 +338,17 @@ export default function ProviderDeclarations() {
               <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line text-start">
                 {isRtl ? detailDoc.bodyHe : detailDoc.bodyEn}
               </p>
+              {SOURCE_PDF[detailDoc.key] && (
+                <a
+                  href={SOURCE_PDF[detailDoc.key]}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-[#B8932F] hover:underline"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  {t.viewSource}
+                </a>
+              )}
               {!detailDoc.reviewedByCounsel && (
                 <div className="text-xs text-[#B8932F] bg-[#FBF6E7] rounded p-3 flex items-start gap-2">
                   <Clock className="h-4 w-4 shrink-0 mt-0.5" />
