@@ -167,6 +167,7 @@ import { postLoginDecider, chooseRole, approveAccess, completeProfile, getWhoami
 import accessRequestsRoutes from "./routes/access-requests";
 import adminProviderReviewRoutes from "./routes/admin-provider-review";
 import adminLoyaltyRoutes from "./routes/admin-loyalty";
+import adminChatRiskRoutes from "./routes/admin-chat-risk";
 import adminMemberDiscountRoutes from "./routes/admin-member-discount";
 import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
@@ -11477,6 +11478,8 @@ self.addEventListener('notificationclick', (event) => {
   // auth (docstring claimed aspirational protection that wasn't wired) —
   // adding validateFirebaseToken here closes that gap.
   app.use('/api/admin/loyalty', validateFirebaseToken, adminLimiter, adminLoyaltyRoutes);
+  // Communication Hub — admin review of flagged chat messages (advisory risk flags).
+  app.use('/api/admin/chat-risk', validateFirebaseToken, adminLimiter, requireAdmin, adminChatRiskRoutes);
   // Member wash discount engine — set/approve/revoke senior & disability wash
   // discounts (postal review). requireAdmin inside the router; mutations are
   // audit-logged. Stores NO ID/passport data — only the approved percent.
