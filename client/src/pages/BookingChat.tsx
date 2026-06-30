@@ -63,6 +63,7 @@ import {
 } from "lucide-react";
 import { formatDistance } from "date-fns";
 import { sanitizeUrl } from "@/lib/utils";
+import { smartActionHref } from "@/lib/smartActionHref";
 
 // ─── Platform labels ──────────────────────────────────────────────────────────
 const PLATFORM_LABELS: Record<string, string> = {
@@ -1010,7 +1011,7 @@ export default function BookingChat() {
                 </span>
               )}
               {smartStatus && smartStatus.action !== 'OPEN_CHAT' && (
-                <button onClick={() => setLocation('/my-bookings')}
+                <button onClick={() => setLocation(smartActionHref(smartStatus.action, bookingId))}
                   className="text-[10px] font-bold px-2 py-0.5 rounded-full text-white active:opacity-80"
                   style={{ background: '#B8860B' }}>
                   {heChat ? smartStatus.actionLabel.he : smartStatus.actionLabel.en}

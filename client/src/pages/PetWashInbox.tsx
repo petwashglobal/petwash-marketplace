@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Link, useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
+import { smartActionHref } from '@/lib/smartActionHref';
 import { formatDistanceToNow } from 'date-fns';
 import type { BookingConversation } from '@shared/schema';
 
@@ -231,7 +232,10 @@ export default function PetWashInbox() {
                                 {he ? smart.badgeLabel.he : smart.badgeLabel.en}
                               </span>
                               {smart.action !== 'OPEN_CHAT' && (
-                                <span className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold shrink-0"
+                                <span role="button" tabIndex={0}
+                                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); navigate(smartActionHref(smart.action, c.bookingId ? String(c.bookingId) : null)); }}
+                                  onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); navigate(smartActionHref(smart.action, c.bookingId ? String(c.bookingId) : null)); } }}
+                                  className="inline-flex items-center px-2.5 py-1 rounded-full text-[11.5px] font-semibold shrink-0 cursor-pointer active:opacity-80"
                                   style={{ background: EMERALD, color: '#fff' }}>
                                   {he ? smart.actionLabel.he : smart.actionLabel.en}
                                 </span>
