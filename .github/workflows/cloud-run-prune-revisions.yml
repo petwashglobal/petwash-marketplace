@@ -47,10 +47,20 @@ jobs:
           SVC="${SERVICE_NAME}"; REGION="${REGION}"; KEEP="${KEEP:-3}"
           echo "Service=$SVC  region=$REGION  keep-newest=$KEEP  mode=$MODE"
 
-          # Revisions currently serving ANY traffic (live + tagged candidates) — protected.
+          # Protect ONLY revisions serving REAL traffic (percent>0). Stale canary
+          # 'cand-*' tags sit in the traffic table at 0% — those are junk, not live.
           PROTECT=$(gcloud run services describe "$SVC" --region="$REGION" \
-            --format="value(status.traffic[].revisionName)" | tr ';' '\n' | sort -u | grep -v '^$' || true)
-          echo "Protected (serving traffic):"; echo "${PROTECT:-<none>}"
+            --flatten="status.traffic[]" --filter="status.traffic.percent>0" \
+            --format="value(status.traffic.revisionName)" | sort -u | grep -v '^$' || true)
+          echo "Protected (live traffic >0%):"; echo "${PROTECT:-<none>}"
+
+          # Stale candidate TAGS (cand-*) at 0% — a tagged revision can't be deleted,
+          # so strip the tags first (this never touches live traffic).
+          TAGS=$(gcloud run services describe "$SVC" --region="$REGION" \
+            --flatten="status.traffic[]" --filter="status.traffic.tag ~ ^cand-" \
+            --format="value(status.traffic.tag)" | sort -u | grep -v '^$' || true)
+          TAGCOUNT=$([ -n "$TAGS" ] && echo "$TAGS" | wc -l | tr -d ' ' || echo 0)
+          echo "Stale cand-* tags: $TAGCOUNT"
 
           SKIP=$((KEEP + 1))
           CANDIDATES=$(gcloud run revisions list --service="$SVC" --region="$REGION" \
@@ -58,18 +68,24 @@ jobs:
             | tail -n +"$SKIP" \
             | { if [ -n "$PROTECT" ]; then grep -vxF -f <(echo "$PROTECT"); else cat; fi; } || true)
 
-          if [ -z "${CANDIDATES// /}" ]; then echo "Nothing to prune. ✅"; exit 0; fi
-          echo "--- Revisions to prune ($(echo "$CANDIDATES" | wc -l)) ---"; echo "$CANDIDATES"
+          if [ -z "${CANDIDATES// /}" ] && [ "$TAGCOUNT" = "0" ]; then echo "Nothing to prune. ✅"; exit 0; fi
+          echo "--- Revisions to prune ($(echo "${CANDIDATES:-}" | grep -c . || true)) ---"; echo "${CANDIDATES:-<none>}"
 
           if [ "$MODE" != "delete" ]; then
-            echo "DRY-RUN — re-run with mode=delete to remove the revisions listed above."
+            echo "DRY-RUN — re-run with mode=delete to strip the $TAGCOUNT stale tags and delete the revisions above."
             exit 0
           fi
 
-          echo "$CANDIDATES" | while read -r REV; do
+          if [ -n "$TAGS" ]; then
+            REMOVE=$(echo "$TAGS" | paste -sd, -)
+            echo "Removing stale tags: $REMOVE"
+            gcloud run services update-traffic "$SVC" --region="$REGION" --remove-tags="$REMOVE" --quiet || true
+          fi
+
+          echo "${CANDIDATES:-}" | while read -r REV; do
             [ -z "$REV" ] && continue
             echo "Deleting $REV"
             gcloud run revisions delete "$REV" --region="$REGION" --quiet \
-              || echo "  (skipped $REV — serving/protected or already gone)"
+              || echo "  (skipped $REV — still serving or already gone)"
           done
           echo "Prune complete. ✅"
