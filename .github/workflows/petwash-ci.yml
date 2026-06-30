@@ -1507,10 +1507,16 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE }}:${{ github.sha }}
           secrets_update_strategy: overwrite
+          # --min-instances=0 (was 1): a no-traffic canary must NOT reserve always-on
+          # CPU, or it trips the me-west1 "total allowable CPU" quota alongside the live
+          # revision (deploy failed with: Quota exceeded for total allowable CPU).
+          # TRADE-OFF: promotion is `update-traffic --to-latest` (does not reset
+          # min-instances) so production runs min=0 → occasional cold starts. RESTORE to
+          # --min-instances=1 once the me-west1 Cloud Run CPU quota is raised.
           flags: |
             --cpu=2
             --memory=2Gi
-            --min-instances=1
+            --min-instances=0
             --max-instances=20
             --timeout=600
             --port=8080
