@@ -5,7 +5,7 @@
  * - Step 1: Select service/package
  * - Step 2: Choose date/time
  * - Step 3: Add pet details
- * - Step 4: Review pricing (base + platform fee + 17% VAT)
+ * - Step 4: Review pricing (base + platform fee + 18% VAT)
  * - Step 5: Proceed to Nayax payment
  */
 
