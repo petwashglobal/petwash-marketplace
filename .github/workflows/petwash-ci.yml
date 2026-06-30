@@ -1515,29 +1515,36 @@ jobs:
           # TRADE-OFF: promotion is `update-traffic --to-latest` (does not reset
           # min-instances) so production runs min=0 → occasional cold starts. RESTORE to
           # --min-instances=1 once the me-west1 Cloud Run CPU quota is raised.
+          #
+          # --max-instances=4 (was 20): COST BLAST-RADIUS CAP. 2026-06-30 a flood of
+          # requests (via an unrestricted Maps API key, since deleted) auto-scaled this
+          # service and drove a ₪8,227 Cloud Run bill — 73% of an ₪11.3k month that
+          # closed the billing account. 20 × (2 vCPU + 2Gi) is wildly oversized for a
+          # pre-launch app; 4 is ample for real traffic and hard-caps a runaway. Google
+          # Billing Support's own recommendation was to set a Cloud Run max-instance
+          # limit. RAISE deliberately (with a budget alert in place) when real load
+          # justifies it — never silently. See memory: google-cost-incident-2026-06.
+          #
+          # SMS_GLOBAL_*_LIMIT env vars below: pre-launch global SMS ceiling
+          # (SmsAbuseDetector kill-switch trips here). Code default is 1000/hr·6000/day
+          # (scaled-launch volume); for a pre-launch app with ~no users that is
+          # ₪600–1,800/day of worst-case bleed before the cut-off. Pinned low here
+          # (120/hr·400/day ≈ a few ₪/day worst case) — RAISE at real launch by editing
+          # these env values, no code change. Pairs with the Maps-key + Cloud Run caps
+          # after the 2026-06 spike. See memory: google-cost-incident-2026-06.
+          #
+          # NOTE: do NOT put explanatory comments inside the `flags: |` block below —
+          # they're passed to gcloud as positional args and break parsing on
+          # apostrophes/quotes (real outage: PR #448). Keep all comments up here.
           flags: |
             --cpu=2
             --memory=2Gi
             --min-instances=0
-            # --max-instances=4 (was 20): COST BLAST-RADIUS CAP. 2026-06-30 a flood of
-            # requests (via an unrestricted Maps API key, since deleted) auto-scaled this
-            # service and drove a ₪8,227 Cloud Run bill — 73% of an ₪11.3k month that
-            # closed the billing account. 20 × (2 vCPU + 2Gi) is wildly oversized for a
-            # pre-launch app; 4 is ample for real traffic and hard-caps a runaway. Google
-            # Billing Support's own recommendation was to set a Cloud Run max-instance
-            # limit. RAISE deliberately (with a budget alert in place) when real load
-            # justifies it — never silently. See memory: google-cost-incident-2026-06.
             --max-instances=4
             --timeout=600
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            # SMS cost cap: pre-launch global SMS ceiling (SmsAbuseDetector kill-switch trips here).
-            # Code default is 1000/hr·6000/day (scaled-launch volume); for a pre-launch app with
-            # ~no users that is ₪600–1,800/day of worst-case bleed before the cut-off. Pin it low
-            # here (120/hr·400/day ≈ a few ₪/day worst case) and RAISE at real launch by editing
-            # these env values — no code change. Pairs with the Maps-key + Cloud Run caps after the
-            # 2026-06 spike. See memory: google-cost-incident-2026-06.
             --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=true,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false,SUMIT_ENABLED=true,SMS_GLOBAL_HOURLY_LIMIT=120,SMS_GLOBAL_DAILY_LIMIT=400
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
