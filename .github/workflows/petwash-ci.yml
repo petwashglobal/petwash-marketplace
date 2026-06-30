@@ -2092,6 +2092,39 @@ jobs:
           curl -s --max-time 10 "$HEALTH_URL" | jq . || echo "(curl failed)"
           exit 1
 
+      # SELF-HEAL: after a SUCCESSFUL deploy, delete stale revisions so they can't
+      # accumulate and exhaust the me-west1 CPU quota — the root cause of the
+      # recurring "Quota exceeded for total allowable CPU" deploy failures. Keeps the
+      # newest 5 + the live revision; strips stale cand-* tags first. continue-on-error
+      # + `|| true` everywhere: cleanup NEVER fails or blocks a good deploy.
+      - name: Prune old Cloud Run revisions (post-deploy self-heal)
+        if: success()
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          SVC="${{ env.SERVICE_NAME }}"; REGION="${{ env.REGION }}"; KEEP=5
+          echo "Auto-prune: keep newest $KEEP, delete the rest"
+          LIVE=$(gcloud run services describe "$SVC" --region="$REGION" \
+            --flatten="status.traffic[]" --filter="status.traffic.percent>0" \
+            --format="value(status.traffic.revisionName)" | sort -u | grep -v '^$' || true)
+          TAGS=$(gcloud run services describe "$SVC" --region="$REGION" \
+            --flatten="status.traffic[]" --filter="status.traffic.tag ~ ^cand-" \
+            --format="value(status.traffic.tag)" | sort -u | grep -v '^$' || true)
+          if [ -n "$TAGS" ]; then
+            gcloud run services update-traffic "$SVC" --region="$REGION" \
+              --remove-tags="$(echo "$TAGS" | paste -sd, -)" --quiet || true
+          fi
+          gcloud run revisions list --service="$SVC" --region="$REGION" \
+            --sort-by="~metadata.creationTimestamp" --format="value(metadata.name)" \
+            | tail -n +$((KEEP + 1)) \
+            | { if [ -n "$LIVE" ]; then grep -vxF -f <(echo "$LIVE"); else cat; fi; } \
+            | while read -r REV; do
+                [ -z "$REV" ] && continue
+                echo "Pruning $REV"
+                gcloud run revisions delete "$REV" --region="$REGION" --quiet || true
+              done
+          echo "Auto-prune done. ✅"
+
       # Issue #143 — failure path: dump diagnostics from inside GitHub Actions
       # so operators don't need to switch to the GCP console to triage. CRITICAL:
       # this query intentionally does NOT filter by severity=ERROR. Cloud Run
