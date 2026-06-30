@@ -1,0 +1,75 @@
+# One-click cleanup of stale Cloud Run revisions (they pin warm instances and burn
+# the me-west1 CPU quota). DRY-RUN by default — run once to preview, then re-run with
+# mode=delete. NEVER deletes the live revision or any tagged/traffic-serving one, and
+# keeps the newest N for rollback. Trigger from the Actions tab → "Run workflow".
+name: Prune old Cloud Run revisions
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: "dry-run (list only) or delete"
+        type: choice
+        options: [dry-run, delete]
+        default: dry-run
+      keep:
+        description: "How many newest revisions to keep"
+        type: string
+        default: "3"
+
+permissions:
+  contents: read
+  id-token: write
+
+env:
+  PROJECT_ID: signinpetwash
+  REGION: me-west1
+  SERVICE_NAME: petwash-api
+
+jobs:
+  prune:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Prune old revisions
+        env:
+          MODE: ${{ inputs.mode }}
+          KEEP: ${{ inputs.keep }}
+        run: |
+          set -euo pipefail
+          SVC="${SERVICE_NAME}"; REGION="${REGION}"; KEEP="${KEEP:-3}"
+          echo "Service=$SVC  region=$REGION  keep-newest=$KEEP  mode=$MODE"
+
+          # Revisions currently serving ANY traffic (live + tagged candidates) — protected.
+          PROTECT=$(gcloud run services describe "$SVC" --region="$REGION" \
+            --format="value(status.traffic[].revisionName)" | tr ';' '\n' | sort -u | grep -v '^$' || true)
+          echo "Protected (serving traffic):"; echo "${PROTECT:-<none>}"
+
+          SKIP=$((KEEP + 1))
+          CANDIDATES=$(gcloud run revisions list --service="$SVC" --region="$REGION" \
+            --sort-by="~metadata.creationTimestamp" --format="value(metadata.name)" \
+            | tail -n +"$SKIP" \
+            | { if [ -n "$PROTECT" ]; then grep -vxF -f <(echo "$PROTECT"); else cat; fi; } || true)
+
+          if [ -z "${CANDIDATES// /}" ]; then echo "Nothing to prune. ✅"; exit 0; fi
+          echo "--- Revisions to prune ($(echo "$CANDIDATES" | wc -l)) ---"; echo "$CANDIDATES"
+
+          if [ "$MODE" != "delete" ]; then
+            echo "DRY-RUN — re-run with mode=delete to remove the revisions listed above."
+            exit 0
+          fi
+
+          echo "$CANDIDATES" | while read -r REV; do
+            [ -z "$REV" ] && continue
+            echo "Deleting $REV"
+            gcloud run revisions delete "$REV" --region="$REGION" --quiet \
+              || echo "  (skipped $REV — serving/protected or already gone)"
+          done
+          echo "Prune complete. ✅"
