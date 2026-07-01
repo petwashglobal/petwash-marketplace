@@ -22,11 +22,14 @@ import { redis } from '../services/redis';
 import { tryClaimWebhookEvent } from '../lib/nayaxWebhookDedup';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
-import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings } from '@shared/schema';
+import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings, users } from '@shared/schema';
 import { eq, sql } from 'drizzle-orm';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from '../services/googleSheetsIntegration';
+import { canConfirmBooking } from '../services/DealGateService';
+import { dispatchNotifications } from '../services/PetWashNotificationEngine';
+import { createOrUpdateAlert } from '../services/AlertEngine';
 
 const SHEETS_API_ERRORS = 'API Error Log';
 
@@ -1234,6 +1237,45 @@ router.post(
           return res.status(400).json({ error: 'Amount mismatch', expected: bookingTotalCents, received: payload.amountCents });
         }
 
+        // ── Deal Gate (2026-07-01): do not fake a booking confirmation ────────
+        // Money has just cleared, but this is the canonical provider-marketplace
+        // path (booking-requests.ts records BOTH sides into deal_acceptances:
+        // provider on /accept, customer on /pay) — so canConfirmBooking() has
+        // real evidence to check here, unlike UnifiedBookingEngine which never
+        // populates that table (see docs/architecture RESET RFC decision:
+        // booking-requests.ts is the canonical provider booking path).
+        // If a payment somehow arrived without proper provider/customer
+        // acceptance on record, we hold the money (already escrowed) but do
+        // NOT flip status to 'confirmed' and do NOT tell the customer/provider
+        // "confirmed" — that would be exactly the fake confirmation the CEO's
+        // spec forbids. A human reviews via the admin alert instead.
+        const dealGate = await canConfirmBooking(payload.bookingId);
+        if (!dealGate.can_confirm) {
+          logger.error('[BookingReqWebhook] Deal Gate blocked — payment received but booking not confirmable', {
+            bookingId: payload.bookingId,
+            transactionId: payload.transactionId,
+            missing: dealGate.missing_requirements,
+          });
+          await createOrUpdateAlert({
+            dedupeKey: `deal_gate_payment_blocked:${payload.bookingId}`,
+            category: 'payment',
+            severity: 'critical',
+            title: 'Payment received but Deal Gate blocked booking confirmation',
+            message: `Booking ${payload.bookingId}: Nayax payment ${payload.transactionId} succeeded but canConfirmBooking() reports missing: ${dealGate.missing_requirements.join(', ')}. Money is held in escrow, not lost — but the booking was NOT auto-confirmed. Needs manual review.`,
+            linkedEntityType: 'booking',
+            linkedEntityId: payload.bookingId,
+            source: 'nayax_booking_request_payment_webhook',
+          });
+          // 200, not 4xx/5xx: we successfully RECEIVED and recorded the payment
+          // event (escrow already holds the money); Nayax must not retry this.
+          // The block is a data/process problem for a human, not a delivery failure.
+          return res.status(200).json({
+            received: true,
+            note: 'deal_gate_blocked',
+            missingRequirements: dealGate.missing_requirements,
+          });
+        }
+
         // Update the Firestore escrow document that was created during /pay.
         // Replace the placeholder sessionId with the real Nayax transactionId.
         // Uses getEscrowsByBooking so the escrow ID doesn't need to be stored separately.
@@ -1276,6 +1318,114 @@ router.post(
           bookingId: payload.bookingId,
           transactionId: payload.transactionId,
           amountCents: payload.amountCents,
+        });
+
+        // ── Customer + provider confirmation notification (2026-07-01) ────────
+        // This webhook is the ONLY place a booking-requests.ts booking flips
+        // payment_pending -> confirmed, and until now nothing here told the
+        // customer or provider that happened (the SMS/email code elsewhere in
+        // booking-requests.ts belongs to /complete — service completion — not
+        // payment confirmation). Fire-and-forget: must never delay or fail the
+        // webhook's 200 response or roll back the just-committed status update.
+        setImmediate(async () => {
+          try {
+            const [owner] = await db.select().from(users).where(eq(users.id, booking.ownerId)).limit(1);
+            const [provider] = await db.select().from(users).where(eq(users.id, booking.providerId)).limit(1);
+
+            const SERVICE_NAMES: Record<string, { he: string; en: string }> = {
+              sitter: { he: 'שמרטפות', en: 'Pet Sitting' },
+              walker: { he: 'הליכה עם הכלב', en: 'Dog Walking' },
+              trainer: { he: 'אקדמיית PetWash', en: 'PetWash Academy' },
+              driver: { he: 'הסעת חיות מחמד', en: 'Pet Transport' },
+            };
+            const serviceName = SERVICE_NAMES[booking.providerType]?.he
+              ? SERVICE_NAMES[booking.providerType]
+              : { he: booking.serviceType, en: booking.serviceType };
+
+            const petName = (Array.isArray(booking.petDetails) && (booking.petDetails as any[])[0]?.name)
+              ? String((booking.petDetails as any[])[0].name)
+              : (owner?.language === 'en' ? 'your pet' : 'חיית המחמד שלך');
+            const providerDisplayName = provider?.firstName || (owner?.language === 'en' ? 'your provider' : 'הספק');
+            const isHe = (owner?.language ?? 'he') !== 'en';
+            const dateFmt = (d: Date | null) => d ? new Date(d).toLocaleDateString(isHe ? 'he-IL' : 'en-GB', { timeZone: 'Asia/Jerusalem' }) : '';
+
+            const subject = isHe
+              ? `ההזמנה שלך ב-PetWash אושרה ✨ מס׳ ${payload.bookingId}`
+              : `Your PetWash booking is confirmed ✨ Ref: ${payload.bookingId}`;
+
+            const emailHtml = `<!DOCTYPE html><html lang="${isHe ? 'he' : 'en'}" dir="${isHe ? 'rtl' : 'ltr'}"><body style="font-family:Arial;padding:24px;color:#111;background:#fff;">
+<h1 style="font-size:20px;margin-bottom:4px;">PetWash™</h1>
+<p style="color:#555;margin-top:0;">${isHe ? 'הטיפול בחיית המחמד שלך אושר' : 'Your pet’s care is confirmed'}</p>
+<p>${isHe ? `שלום ${owner?.firstName ?? ''},` : `Hi ${owner?.firstName ?? ''},`}</p>
+<p>${isHe
+    ? `התשלום התקבל וההזמנה שלך עם ${providerDisplayName} אושרה.`
+    : `Your payment has been received and your PetWash booking with ${providerDisplayName} is now confirmed.`}</p>
+<table style="width:100%;border-collapse:collapse;font-size:14px;margin:16px 0;">
+  <tr><td style="padding:6px 0;color:#666;">${isHe ? 'מס׳ הזמנה' : 'Booking Ref'}</td><td style="padding:6px 0;font-weight:bold;">${payload.bookingId}</td></tr>
+  <tr><td style="padding:6px 0;color:#666;">${isHe ? 'שירות' : 'Service'}</td><td style="padding:6px 0;">${isHe ? serviceName.he : serviceName.en}</td></tr>
+  <tr><td style="padding:6px 0;color:#666;">${isHe ? 'חיית מחמד' : 'Pet'}</td><td style="padding:6px 0;">${petName}</td></tr>
+  <tr><td style="padding:6px 0;color:#666;">${isHe ? 'תאריך התחלה' : 'Start date'}</td><td style="padding:6px 0;">${dateFmt(booking.startDate)}</td></tr>
+  <tr><td style="padding:6px 0;color:#666;">${isHe ? 'תאריך סיום' : 'End date'}</td><td style="padding:6px 0;">${dateFmt(booking.endDate)}</td></tr>
+  <tr><td style="padding:6px 0;color:#666;">${isHe ? 'ספק' : 'Provider'}</td><td style="padding:6px 0;">${providerDisplayName}</td></tr>
+</table>
+<p style="font-size:13px;color:#666;">${isHe
+    ? 'לביטחון כולם, נא לשמור על כל ההודעות, השיחות והתשלומים בתוך PetWash.'
+    : 'For everyone’s safety, keep all messages, calls, updates and payments inside PetWash.'}</p>
+<p style="margin-top:20px;"><a href="https://petwash.co.il/me" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">${isHe ? 'השלמת פרטי טיפול' : 'Complete Care Notes'}</a></p>
+<p style="font-size:12px;color:#888;margin-top:20px;">${isHe
+    ? 'התשלום שלך נרשם בבטחה ב-PetWash. תשלום הספק לא משתלם באופן מיידי — היתרה מוחזקת בהתאם לכללי PetWash ומשולמת רק לאחר השלמת השירות, בכפוף לביטולים, מחלוקות, החזרים, תקריות ומדיניות הפלטפורמה.'
+    : 'Your payment is safely recorded by PetWash. Provider payout is not released immediately. The provider balance is held according to PetWash rules and released only after the service is completed, subject to cancellations, disputes, refunds, incidents and platform policy.'}</p>
+<p style="font-size:12px;color:#888;">${isHe ? 'צריך עזרה?' : 'Need help?'} support@petwash.co.il · +972549833355</p>
+<p style="font-size:11px;color:#aaa;margin-top:16px;">PetWash Ltd — PetWash.co.il</p>
+</body></html>`;
+
+            if (owner?.email || owner?.phone) {
+              await dispatchNotifications({
+                userId: booking.ownerId,
+                eventType: 'booking_confirmed',
+                templateKey: 'booking_requests.payment_confirmed',
+                channels: [owner?.email ? 'email' : null, owner?.phone ? 'sms' : null, 'push'].filter((c): c is 'email' | 'sms' | 'push' => !!c),
+                bookingId: payload.bookingId,
+                transactionId: payload.transactionId,
+                idempotencyKey: `booking_payment_confirmed:${payload.bookingId}:customer`,
+                email: owner?.email ? { to: owner.email, subject, html: emailHtml } : undefined,
+                sms: owner?.phone ? {
+                  to: owner.phone,
+                  text: isHe
+                    ? `PetWash: ההזמנה שלך ל${petName} אושרה. מס׳ ${payload.bookingId}. נא להשלים פרטי טיפול, מסירה/איסוף ואיש קשר לחירום באפליקציה.`
+                    : `PetWash: your booking for ${petName} is confirmed. Ref ${payload.bookingId}. Please finalise care notes, pickup/drop-off and emergency details in the app.`,
+                } : undefined,
+                push: {
+                  userId: booking.ownerId,
+                  title: isHe ? 'ההזמנה שלך אושרה ✨' : 'Booking confirmed ✨',
+                  body: isHe ? `ההזמנה שלך ל${petName} אושרה.` : `Your PetWash booking is confirmed for ${petName}.`,
+                  data: { type: 'booking_confirmed', bookingId: payload.bookingId },
+                },
+              });
+            }
+
+            if (provider?.email || provider?.phone) {
+              await dispatchNotifications({
+                userId: booking.providerId,
+                eventType: 'booking_confirmed',
+                templateKey: 'booking_requests.payment_confirmed_provider',
+                channels: ['push'],
+                bookingId: payload.bookingId,
+                transactionId: payload.transactionId,
+                idempotencyKey: `booking_payment_confirmed:${payload.bookingId}:provider`,
+                push: {
+                  userId: booking.providerId,
+                  title: 'Booking confirmed',
+                  body: `Payment received by PetWash for booking ${payload.bookingId}. Your payout will become available after the booking is completed according to PetWash payout rules.`,
+                  data: { type: 'booking_confirmed', bookingId: payload.bookingId },
+                },
+              });
+            }
+          } catch (notifyErr: any) {
+            logger.error('[BookingReqWebhook] Confirmation notification failed (non-fatal)', {
+              bookingId: payload.bookingId, error: notifyErr?.message,
+            });
+          }
         });
 
         // ── Calendar sync AFTER payment truth (non-blocking, idempotent) ──────
