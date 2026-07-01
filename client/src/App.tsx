@@ -756,11 +756,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
 
   // Smart app-purpose routing — each app opens to the experience its user needs.
   // The PROVIDER (driver-style) app serves providers: from the root, a provider
-  // lands in Provider OS (jobs/earnings); a signed-in non-provider is sent to
-  // provider onboarding ("become a provider"); a signed-out user goes to signup.
-  // The CUSTOMER (member) app opens a SIGNED-IN member onto their member home
-  // (/dashboard — loyalty tier + wallet + activity; honors VITE_DASHBOARD_V2_ENABLED),
-  // not the marketing Landing; a signed-out customer stays on Landing to sign up.
+  // lands on ProviderHome (/provider/home — the CEO 2026-06-24 design: green ID
+  // card, stats, jobs, earnings, compliance); a signed-in non-provider is sent
+  // to provider onboarding ("become a provider"); a signed-out user goes to signup.
+  // The CUSTOMER (member) app opens a SIGNED-IN member onto PrestigeHome
+  // (/prestige/home — the same design, gold/luxury: membership card + live QR,
+  // stats, quick actions, pets, rewards), not the marketing Landing or the older
+  // /dashboard; a signed-out customer stays on Landing to sign up.
   // Only fires at "/" so it never hijacks deliberate navigation. Native only —
   // web (both flavors false) is untouched and keeps Landing/Home at "/".
   useEffect(() => {
@@ -768,11 +770,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     if (window.location.pathname !== '/') return;
     if (isProviderApp) {
       if (!user) { setLocation('/signup'); return; }
-      setLocation(role === 'provider' ? '/provider-os' : '/provider-onboarding');
+      setLocation(role === 'provider' ? '/provider/home' : '/provider-onboarding');
       return;
     }
     if (isCustomerApp && user) {
-      setLocation('/dashboard');
+      setLocation('/prestige/home');
     }
   }, [isProviderApp, isCustomerApp, user, loading, role, roleLoading, setLocation]);
 
