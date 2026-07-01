@@ -2,7 +2,7 @@
  * Incident engine + emergency-vet authorization schema
  * (see migrations/0056_incident_engine.sql).
  */
-import { pgTable, serial, varchar, text, boolean, timestamp } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, text, boolean, timestamp, integer, primaryKey } from 'drizzle-orm/pg-core';
 
 export const incidentReports = pgTable('incident_reports', {
   id: serial('id').primaryKey(),
@@ -31,6 +31,20 @@ export const incidentReports = pgTable('incident_reports', {
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+/**
+ * Atomic per-day, per-category counters for human-readable case IDs
+ * (see migrations/0087_case_id_sequences.sql and server/lib/caseIdGenerator.ts).
+ * One row per (caseDate, category); nextSeq is incremented atomically.
+ */
+export const caseIdSequences = pgTable('case_id_sequences', {
+  caseDate: varchar('case_date', { length: 8 }).notNull(),   // YYYYMMDD
+  category: varchar('category', { length: 16 }).notNull(),   // PET, PROP, HOME, CARE, STATION, PAY, TRUST, CASE
+  nextSeq: integer('next_seq').notNull().default(1),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
+}, (table) => ({
+  pk: primaryKey({ columns: [table.caseDate, table.category] }),
+}));
 
 export const emergencyVetAuthorizations = pgTable('emergency_vet_authorizations', {
   id: serial('id').primaryKey(),

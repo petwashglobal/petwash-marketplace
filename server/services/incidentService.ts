@@ -15,6 +15,7 @@ import { incidentReports, emergencyVetAuthorizations } from '@shared/schema-inci
 import {
   isValidIncidentType, isCriticalIncident, freezesPayout, effectiveSeverity, type IncidentSeverityX,
 } from '@shared/incident-engine';
+import { generateCaseId, categoryForIncidentType } from '../lib/caseIdGenerator';
 import { logger } from '../lib/logger';
 
 export interface OpenIncidentInput {
@@ -34,7 +35,9 @@ export async function openIncident(input: OpenIncidentInput): Promise<OpenIncide
   const sev = effectiveSeverity(type, input.severity);     // auto-escalate
   const critical = isCriticalIncident(type, input.severity);
   const payoutHold = freezesPayout(type, input.severity);
-  const incidentId = `inc_${nanoid(16)}`;
+  // Human-readable, date-visible, category-visible case ID (2026-07-01) —
+  // e.g. CARE-20260701-000044 — replaces the previous opaque inc_<nanoid>.
+  const incidentId = await generateCaseId(categoryForIncidentType(type));
 
   await db.insert(incidentReports).values({
     incidentId, incidentType: type, severity: sev, status: 'open',
