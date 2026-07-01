@@ -8,6 +8,7 @@
 
 import { google } from 'googleapis';
 import { logger } from '../lib/logger';
+import { resolveGoogleServiceAccountJson } from '../lib/googleServiceAccount';
 
 // Google Sheets Configuration
 const SPREADSHEET_ID = process.env.GOOGLE_FORMS_SPREADSHEET_ID || 'CREATE_NEW';
@@ -253,11 +254,8 @@ const GOOGLE_SHEETS_SCOPES = [
  * Production: service account auth. Development: Replit OAuth connector.
  */
 async function getUncachableGoogleSheetsClient() {
-  // Production path: use Google service account JSON (any of the 3 known env vars)
-  const serviceAccountJson =
-    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  // Production path: use the shared Google service-account credential chain
+  const serviceAccountJson = resolveGoogleServiceAccountJson();
 
   if (serviceAccountJson) {
     try {

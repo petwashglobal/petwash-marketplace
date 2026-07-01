@@ -9,6 +9,7 @@
 
 import { google } from 'googleapis';
 import { logger } from '../lib/logger';
+import { resolveGoogleServiceAccountJson } from '../lib/googleServiceAccount';
 
 let connectionSettings: any;
 let serviceAccountAuth: any = null;
@@ -20,9 +21,10 @@ const isProduction = process.env.NODE_ENV === 'production';
  */
 async function getAuthClient() {
   // Production: Use service account credentials (works in Cloud Run)
-  if (isProduction || process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_KEY) {
+  const credentialsJsonPreCheck = resolveGoogleServiceAccountJson();
+  if (isProduction || credentialsJsonPreCheck) {
     if (!serviceAccountAuth) {
-      const credentialsJson = process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON || process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+      const credentialsJson = credentialsJsonPreCheck;
       if (!credentialsJson) {
         throw new Error('Google service account credentials not configured for production');
       }

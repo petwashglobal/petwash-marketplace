@@ -17,7 +17,8 @@
  *   - All network calls are wrapped in try/catch with structured error logging.
  *
  * GOOGLE OAUTH:
- *   Uses GOOGLE_SERVICE_ACCOUNT_JSON (existing env var, same as Sheets integration).
+ *   Uses the shared Google service-account credential chain
+ *   (see server/lib/googleServiceAccount.ts).
  *   Required Drive scope: https://www.googleapis.com/auth/drive.file
  *   (app-created files only — narrowest scope per policy Section 7.2)
  */
@@ -28,6 +29,7 @@ import { pwTaxDocuments } from '@shared/schema-payments';
 import { sql, eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { COMPANY_TAX_ID, COMPANY_NAME_EN } from '@shared/finance-identity';
+import { resolveGoogleServiceAccountJson } from '../lib/googleServiceAccount';
 
 const DRIVE_PARENT_FOLDER_ID = process.env.GOOGLE_DRIVE_TAX_DOCS_FOLDER_ID ?? null;
 const DRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
@@ -66,9 +68,9 @@ function generatePdfStub(taxDocId: string, documentType: string, payload: Record
  * Returns null (and logs a warning) if credentials are not configured.
  */
 async function getDriveClient(): Promise<any | null> {
-  const saJson = (process.env.GOOGLE_SERVICE_ACCOUNT_JSON ?? '').trim();
-  if (!saJson || saJson === 'null') {
-    logger.warn('[DriveArchival] GOOGLE_SERVICE_ACCOUNT_JSON not set — Drive upload skipped');
+  const saJson = resolveGoogleServiceAccountJson();
+  if (!saJson) {
+    logger.warn('[DriveArchival] No Google service-account credentials configured — Drive upload skipped');
     return null;
   }
 
