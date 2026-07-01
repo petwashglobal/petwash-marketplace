@@ -25,7 +25,7 @@ import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 
 export interface AuditEvent {
-  eventType: 'wallet_generated' | 'voucher_redeemed' | 'loyalty_updated' | 'discount_used' | 'package_redeemed' | 'points_earned' | 'points_spent' | 'tier_changed' | 'auth_biometric_failure';
+  eventType: 'wallet_generated' | 'wallet_redeemed' | 'voucher_redeemed' | 'loyalty_updated' | 'discount_used' | 'package_redeemed' | 'points_earned' | 'points_spent' | 'tier_changed' | 'auth_biometric_failure';
   userId: string;
   entityType: 'voucher' | 'loyalty_card' | 'discount' | 'wash_package' | 'wallet_pass' | 'points' | 'biometric_auth';
   entityId: string;

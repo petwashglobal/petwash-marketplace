@@ -40,6 +40,8 @@ import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken } from '../lib/passTokens';
 import { petwashPassAccounts, users } from '@shared/schema';
+import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
+import { AuditLedgerService } from '../services/AuditLedgerService';
 
 // Multer: in-memory storage for CSV reconciliation uploads (max 4 MB)
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
@@ -628,6 +630,93 @@ async function applySmartRedemption(
   };
 }
 
+// ─────────────────────────────────────────────────────────
+// Wallet-redemption traceability (2026-07-01)
+//
+// Every wallet/wash redemption below now runs through the PetWash
+// operating-system rulebook (WALLET_CREDIT_REDEEM) and gets a real
+// hash-chained record in the blockchain-style audit ledger
+// (AuditLedgerService.recordEvent → auditLedger table, SHA-256
+// previousHash chain). Closes the gap where K9000/online/staff
+// redemptions had zero rulebook coverage and zero audit trail.
+//
+// SHADOW MODE, not enforced: `evaluateOperatingControlGate` computes the
+// decision and we log/record it, but we never block the wash on it here.
+// Two concrete reasons this must stay shadow-only until a deliberate
+// follow-up:
+//   1. `applyWalletCredit` unconditionally blocks on `!facts.vatStatusReviewed`
+//      (CREDIT_VAT_ACCOUNTANT_PENDING). Redemption spends value that was
+//      already taxed/invoiced at TOP-UP time, so we pass
+//      `vatStatusReviewed: true` here — but that's this session's business
+//      read, not an accountant-confirmed rule. Get that confirmed before
+//      ever enforcing.
+//   2. The real deduction engine (WalletEngine.applyDeduction) already
+//      handles insufficient balance gracefully via card fallback. A naive
+//      hard-block on the rulebook's simpler balance check could reject a
+//      redemption the engine would have covered correctly.
+// Fire-and-forget: must never delay or fail the customer's wash response.
+function traceWalletRedemption(
+  req: Request,
+  params: {
+    route: string;
+    userId: string;
+    amountCents: number;
+    remainingBalanceCents?: number;
+    redemptionOrderLinked: boolean;
+    entityId: string;
+    newState: Record<string, unknown>;
+  },
+): void {
+  void (async () => {
+    try {
+      const gate = evaluateOperatingControlGate(req, {
+        actionType: 'WALLET_CREDIT_REDEEM',
+        route: params.route,
+        targetId: `wallet:${params.userId}`,
+        facts: {
+          redemptionOrderLinked: params.redemptionOrderLinked,
+          vatStatusReviewed: true, // see note above — redemption, not a new taxable event
+        },
+        money: {
+          creditRedemptionAmountCents: params.amountCents,
+          creditRemainingBalanceCents: params.remainingBalanceCents,
+        },
+      });
+
+      if (!gate.allowed) {
+        logger.warn('[WalletRedeem] Operating-control SHADOW block (not enforced)', {
+          route: params.route,
+          userId: params.userId,
+          riskLevel: gate.decision.riskLevel,
+          blockers: gate.decision.blockers.map((b) => b.code),
+        });
+      }
+
+      await AuditLedgerService.recordEvent({
+        eventType: 'wallet_redeemed',
+        userId: params.userId,
+        entityType: 'wallet_pass',
+        entityId: params.entityId,
+        action: 'redeemed',
+        newState: params.newState,
+        metadata: {
+          route: params.route,
+          operatingControlShadowMode: true,
+          operatingControlAllowed: gate.allowed,
+          operatingControlRiskLevel: gate.decision.riskLevel,
+          operatingControlBlockers: gate.decision.blockers.map((b) => b.code),
+        },
+      });
+    } catch (err) {
+      logger.error('[WalletRedeem] traceWalletRedemption failed (non-fatal)', {
+        route: params.route,
+        userId: params.userId,
+        error: err instanceof Error ? err.message : String(err),
+      });
+    }
+  })();
+}
+
 router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) => {
   try {
     const parsed = redeemSchema.safeParse(req.body);
@@ -698,6 +787,19 @@ router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) 
     logger.info('[PrestigePass] Token redeemed', {
       jti, userId, stationId, bay: effectiveBay,
       source: result.source, deducted: result.deductedCents, idempotent: result.idempotent,
+    });
+
+    traceWalletRedemption(req, {
+      route: 'prestige-pass/token/redeem',
+      userId,
+      amountCents: result.deductedCents,
+      redemptionOrderLinked: true, // jti + stationId is the linked K9000 transaction record
+      entityId: jti,
+      newState: {
+        stationId, bay: effectiveBay, source: result.source,
+        deductedCents: result.deductedCents, newCashWalletCents: result.newCashWalletCents,
+        txnId: result.txnId, idempotent: result.idempotent,
+      },
     });
 
     // ── Real-time SSE push → user's open wallet tab sees "Wash started" instantly ──
@@ -1566,6 +1668,19 @@ router.post('/redeem-online', async (req: Request, res: Response) => {
       promo: result.breakdown.promo, gift: result.breakdown.gift, wallet: result.breakdown.wallet,
     });
 
+    traceWalletRedemption(req, {
+      route: 'prestige-pass/redeem-online',
+      userId,
+      amountCents: amountGross,
+      remainingBalanceCents: totalAvailable,
+      redemptionOrderLinked: true, // real bookingId
+      entityId: result.txnId || bookingId,
+      newState: {
+        bookingId, serviceType, amountGross,
+        breakdown: result.breakdown, txnId: result.txnId,
+      },
+    });
+
     return res.json({
       ok:               true,
       bookingConfirmed: true,
@@ -2212,6 +2327,19 @@ router.post('/staff/charge', async (req: Request, res: Response) => {
     logger.info('[PrestigePass] Staff POS charge', {
       cardId, targetUserId, serviceType, amountCents, staffUserId,
       deducted: result.deductedCents, source: result.source,
+    });
+
+    traceWalletRedemption(req, {
+      route: 'prestige-pass/staff/charge',
+      userId: targetUserId,
+      amountCents,
+      remainingBalanceCents: totalAvail,
+      redemptionOrderLinked: true, // synthetic STAFF-POS bookingId
+      entityId: bookingId,
+      newState: {
+        bookingId, cardId, serviceType, amountCents, staffUserId,
+        deductedCents: result.deductedCents, source: result.source,
+      },
     });
 
     return res.json({
