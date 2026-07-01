@@ -12,6 +12,7 @@ import { execFile } from 'child_process';
 import { promisify } from 'util';
 import * as crypto from 'crypto';
 import sgMail from '../lib/sendgrid';
+import { resolveGoogleServiceAccountJson } from '../lib/googleServiceAccount';
 
 const execFileAsync = promisify(execFile);
 
@@ -23,14 +24,10 @@ const TEMP_DIR = '/tmp/petwash-backups';
 let storage: Storage | null = null;
 
 // Initialize storage client - PRODUCTION: Environment variables ONLY
-// Accepts GOOGLE_APPLICATION_CREDENTIALS_JSON (preferred) or legacy GOOGLE_APPLICATION_CREDENTIALS
+// Uses the shared Google service-account credential chain (see server/lib/googleServiceAccount.ts).
 function getStorageClient(): Storage {
   if (!storage) {
-    const credentialsJson =
-      process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
-      process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
-      process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-      process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+    const credentialsJson = resolveGoogleServiceAccountJson();
 
     if (!credentialsJson) {
       throw new Error('[GCS] No Google credentials found. Set GOOGLE_APPLICATION_CREDENTIALS_JSON in Replit Secrets.');
@@ -522,11 +519,7 @@ export async function performFirestoreExport(): Promise<{
  * Check if GCS backups are configured - PRODUCTION: Environment variables ONLY
  */
 export function isGcsConfigured(): boolean {
-  const credentialsJson =
-    process.env.GOOGLE_APPLICATION_CREDENTIALS_JSON ||
-    process.env.GOOGLE_SERVICE_ACCOUNT_JSON ||
-    process.env.GOOGLE_APPLICATION_CREDENTIALS ||
-    process.env.FIREBASE_SERVICE_ACCOUNT_KEY;
+  const credentialsJson = resolveGoogleServiceAccountJson();
 
   if (!credentialsJson) {
     return false;

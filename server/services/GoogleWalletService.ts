@@ -12,8 +12,9 @@
  *
  * Env vars required:
  *   GOOGLE_WALLET_ISSUER_ID      — numeric issuer ID from Google Pay & Wallet Console
- *   GOOGLE_WALLET_SA_KEY         — service account JSON string
- *                                   (also accepts GOOGLE_SERVICE_ACCOUNT_JSON)
+ *   GOOGLE_WALLET_SA_KEY         — service account JSON string, optional override
+ *                                   (falls back to the shared Google credential chain —
+ *                                   see server/lib/googleServiceAccount.ts)
  *   GOOGLE_WALLET_CLASS_ID       — optional class suffix (default: petwash_premium_v1)
  */
 
@@ -21,10 +22,11 @@ import jwt from 'jsonwebtoken';
 import { google } from 'googleapis';
 import { buildQrRedeemToken } from '../lib/passTokens';
 import { logger } from '../lib/logger';
+import { resolveGoogleServiceAccountJson } from '../lib/googleServiceAccount';
 
 const ISSUER_ID    = process.env.GOOGLE_WALLET_ISSUER_ID;
 const CLASS_SUFFIX = process.env.GOOGLE_WALLET_CLASS_ID || 'petwash_premium_v1';
-const SA_RAW       = process.env.GOOGLE_WALLET_SA_KEY || process.env.GOOGLE_SERVICE_ACCOUNT_JSON;
+const SA_RAW       = resolveGoogleServiceAccountJson(process.env.GOOGLE_WALLET_SA_KEY);
 const BASE_URL     = process.env.BASE_URL || 'https://petwash.co.il';
 const PUBLIC_SITE_URL = process.env.PUBLIC_SITE_URL || process.env.APP_PUBLIC_URL || 'https://petwash.co.il';
 
