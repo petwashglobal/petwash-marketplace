@@ -55,6 +55,8 @@ const TRANSACTIONAL_EVENTS = new Set([
   'wash_started',
   'wash_completed',
   'k9000_compensation',
+  'care_notes_reminder_6h',
+  'care_notes_reminder_24h',
 ]);
 
 export interface EmailChannelPayload {

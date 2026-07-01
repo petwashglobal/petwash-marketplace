@@ -18,6 +18,7 @@ import { GeminiUpdateAdvisor } from './services/GeminiUpdateAdvisor';
 import { startAutoVoidCron } from './cron/auto-void-expired-payments';
 import { runAlertSweep } from './services/AlertEngine';
 import { runWashReminderCron } from './cron/wash-reminder';
+import { runCareNotesReminderCron } from './cron/care-notes-reminder';
 import { runReconfirmationCron } from './cron/reconfirmation-enforcer';
 import { assertMarketingConsent } from './services/CampaignDeliveryService';
 import ProviderPayoutService from './services/ProviderPayoutService';
@@ -206,6 +207,20 @@ export class BackgroundJobProcessor {
       }
     }, {
       timezone: 'Asia/Jerusalem'
+    });
+
+    // Care-notes reminder — nudges customers to finish pet care details on a
+    // paid, confirmed booking (6h push, 24h SMS/email + support alert if still
+    // incomplete). Transactional, not marketing — no consent gate needed.
+    // OFF by default (CARE_NOTES_REMINDER_CRON_ENABLED). Every 15 minutes.
+    cron.schedule('*/15 * * * *', async () => {
+      if (await this.acquireLock('careNotesReminder')) {
+        try {
+          await runCareNotesReminderCron();
+        } finally {
+          this.releaseLock('careNotesReminder');
+        }
+      }
     });
 
     // Alerts Center sweep — reconcile the admin_alerts queue with reality

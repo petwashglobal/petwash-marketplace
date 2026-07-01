@@ -43,6 +43,11 @@ export const SMS_TEMPLATES: Record<string, SmsTemplate> = {
   reward_expiring: { category: 'transactional', he: 'תזכורת: ההטבה שלך ב-PetWash תפוג בתאריך {{date}}. למימוש: {{link}}' },
   booking_confirmed: { category: 'transactional', he: 'ההזמנה שלך אושרה. שירות: {{service}}, תאריך: {{date}}, שעה: {{time}}.' },
   booking_reminder: { category: 'transactional', he: 'תזכורת להזמנת PetWash שלך מחר בשעה {{time}}. לפרטים: {{link}}' },
+  care_notes_reminder_24h: {
+    category: 'transactional',
+    he: 'PetWash: ההזמנה שלך ל{{pet_name}} מתחילה בפחות מ-24 שעות. נא להשלים פרטי טיפול: {{link}}',
+    en: 'PetWash: your booking for {{pet_name}} starts in under 24 hours. Please complete care details: {{link}}',
+  },
   booking_cancelled: { category: 'transactional', he: 'ההזמנה שלך בוטלה. פרטי הביטול וההחזר, ככל שקיים, זמינים כאן: {{link}}' },
   refund_request_received: { category: 'transactional', he: 'בקשת ההחזר שלך התקבלה ונמצאת בבדיקה. מספר פנייה: {{ticket_id}}.' },
   refund_approved: { category: 'transactional', he: 'בקשת ההחזר אושרה. ההחזר יבוצע לאמצעי התשלום המקורי בהתאם למדיניות.' },
