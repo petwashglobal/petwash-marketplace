@@ -9,9 +9,18 @@
  *
  * Signature formula:
  *   HMAC-SHA256(
- *     key  = MACHINE_SECRET_KEY,
+ *     key  = per-kiosk secret if issued, else the shared MACHINE_SECRET_KEY,
  *     data = "<X-K9000-ID>:<X-K9000-TS>:<sha256hex(rawRequestBody)>"
  *   ) → lowercase hex
+ *
+ * PER-MACHINE SECRETS (2026-07-01): every kiosk previously verified against
+ * ONE global MACHINE_SECRET_KEY — a single leak (technician laptop, leaked
+ * config) would have compromised every station simultaneously. Each kiosk
+ * can now carry its own secret in kiosk_machines.hmac_secret_encrypted
+ * (AES-256-GCM at rest, see server/lib/k9000MachineSecrets.ts). A kiosk with
+ * no per-machine secret issued yet (hmac_secret_encrypted IS NULL) falls back
+ * to the shared MACHINE_SECRET_KEY — fully additive, no existing kiosk breaks.
+ * Issue/rotate secrets via scripts/k9000/issue-machine-secret.ts.
  *
  * Security properties:
  *   ✓ Timestamp staleness rejection (>30 seconds → 401)
@@ -30,6 +39,33 @@ import { db } from '../db';
 import { kioskMachines } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { decryptMachineSecret } from '../lib/k9000MachineSecrets';
+
+/**
+ * Resolve the HMAC key to verify THIS request against: the kiosk's own
+ * per-machine secret if one has been issued, otherwise the shared
+ * MACHINE_SECRET_KEY. Never throws — a decrypt failure (e.g. master key
+ * rotated without re-encrypting kiosk secrets) logs and falls back to the
+ * shared secret rather than taking down every kiosk on a single bad row.
+ */
+async function resolveHmacKey(kioskId: string): Promise<string> {
+  try {
+    const [record] = await db
+      .select({ hmacSecretEncrypted: kioskMachines.hmacSecretEncrypted })
+      .from(kioskMachines)
+      .where(eq(kioskMachines.kioskId, kioskId))
+      .limit(1);
+
+    if (record?.hmacSecretEncrypted) {
+      return decryptMachineSecret(record.hmacSecretEncrypted);
+    }
+  } catch (err: any) {
+    logger.error('[K9000 Security] Per-machine secret lookup/decrypt failed — falling back to shared secret', {
+      kioskId, error: err?.message,
+    });
+  }
+  return MACHINE_SECRET_KEY;
+}
 
 // ─── Environment ──────────────────────────────────────────────────────────────
 
@@ -117,11 +153,11 @@ export function validateK9000MachineIP(
 // PRIMARY auth method for production kiosks.
 // Falls back to legacy body secret in DEV mode when headers are absent.
 
-export function validateK9000HmacHeaders(
+export async function validateK9000HmacHeaders(
   req: Request,
   res: Response,
   next: NextFunction,
-): void {
+): Promise<void> {
   const kioskId = req.headers['x-k9000-id'] as string | undefined;
   const tsStr   = req.headers['x-k9000-ts'] as string | undefined;
   const sign    = req.headers['x-k9000-sign'] as string | undefined;
@@ -169,7 +205,10 @@ export function validateK9000HmacHeaders(
   }
 
   // ── HMAC verification ─────────────────────────────────────────────────────
-  if (!MACHINE_SECRET_KEY) {
+  // Per-kiosk secret if one has been issued, else the shared MACHINE_SECRET_KEY.
+  const hmacKey = await resolveHmacKey(kioskId);
+
+  if (!hmacKey) {
     if (IS_PROD) {
       logger.error('[K9000 Security] MACHINE_SECRET_KEY missing in production!');
       res.status(503).json({ error: 'Server misconfiguration' });
@@ -184,7 +223,7 @@ export function validateK9000HmacHeaders(
   const bodyHash = crypto.createHash('sha256').update(rawBody).digest('hex');
   const message  = `${kioskId}:${tsStr}:${bodyHash}`;
   const expectedSign = crypto
-    .createHmac('sha256', MACHINE_SECRET_KEY)
+    .createHmac('sha256', hmacKey)
     .update(message)
     .digest('hex');
 

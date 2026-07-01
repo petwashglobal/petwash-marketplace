@@ -3515,7 +3515,15 @@ export const kioskMachines = pgTable("kiosk_machines", {
   nayaxTerminalId: varchar("nayax_terminal_id").unique(),
   nayaxMerchantId: varchar("nayax_merchant_id"),
   qrReaderEnabled: boolean("qr_reader_enabled").default(true),
-  
+
+  // Per-machine HMAC secret (2026-07-01 secrets audit): AES-256-GCM encrypted
+  // at rest via DocumentEncryption (DOCUMENT_ENCRYPTION_KEY). NULL = no
+  // per-kiosk secret issued yet — k9000Security middleware falls back to the
+  // shared MACHINE_SECRET_KEY for that kiosk only. Never store the plaintext
+  // secret anywhere; issue/rotate via scripts/k9000/issue-machine-secret.ts.
+  hmacSecretEncrypted: text("hmac_secret_encrypted"),
+  hmacSecretRotatedAt: timestamp("hmac_secret_rotated_at"),
+
   // Capacity
   totalSlots: integer("total_slots").default(36),
   activeSlots: integer("active_slots").default(0),
