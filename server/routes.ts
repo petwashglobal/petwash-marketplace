@@ -804,7 +804,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     const isNayaxConfigured = !!(
       process.env.NAYAX_API_KEY &&
       process.env.NAYAX_MERCHANT_ID &&
-      process.env.NAYAX_SECRET_KEY &&
+      process.env.NAYAX_SECRET &&
       process.env.NAYAX_WEBHOOK_SECRET
     );
     
