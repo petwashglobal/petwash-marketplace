@@ -35,6 +35,7 @@ import { usePersonalizedGreeting } from "@/hooks/usePersonalizedGreeting";
 import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { ActivationBanner } from "@/components/ActivationBanner";
 import { PromoAdPopup } from "@/components/PromoAdPopup";
+import { useAppFlavor } from "@/lib/appFlavor";
 import { Layout } from "@/components/Layout";
 import { isStickyAccountPath } from "@/lib/sticky-account-paths";
 import { isImmersiveRoute } from "@/lib/immersive-routes";
@@ -774,8 +775,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       setLocation(role === 'provider' ? '/provider/home' : '/provider-onboarding');
       return;
     }
-    if (isCustomerApp && user) {
-      setLocation('/prestige/home');
+    if (isCustomerApp) {
+      // CEO 2026-07-02 (TestFlight walkthrough): a signed-out CUSTOMER app must
+      // NEVER show the web marketing Landing / welcome-intent screen — that is
+      // the "website wrapper" behavior the two-app spec bans. Straight to the
+      // luxury sign-in/sign-up screen (Google/Apple/phone/email — returning
+      // users sign in on the same screen); signed-in members → PrestigeHome.
+      setLocation(user ? '/prestige/home' : '/signup');
     }
   }, [isProviderApp, isCustomerApp, user, loading, role, roleLoading, setLocation]);
 
@@ -3848,7 +3854,13 @@ function App() {
     /^\/(paw-finder|admin|provider|dashboard|booking|my-account|my-wallet|my-bookings|marketplace\/booking|marketplace\/review|report-problem|payment|control-panel|management|accounting|receipt|ops|ceo|franchise|station|legal-agreement)(\/|$)/;
 
   const isImmersive = isImmersiveRoute(currentPath);
-  const showPromoPopup = !isImmersive && !PROMO_OPERATIONAL_PATTERN.test(currentPath);
+  // NATIVE APPS ARE NOT THE WEBSITE (CEO 2026-07-02 TestFlight walkthrough): the
+  // web marketing promo popup letterboxed itself over the Prestige app on first
+  // open — a "website wrapper" leak. Native flavors never see web marketing
+  // chrome; the App Store product IS the ad.
+  const appFlavor = useAppFlavor();
+  const isNativeApp = appFlavor !== 'web';
+  const showPromoPopup = !isNativeApp && !isImmersive && !PROMO_OPERATIONAL_PATTERN.test(currentPath);
   const showFloatingStack = !isImmersive;
   const showMobileNav = !isImmersive;
 
