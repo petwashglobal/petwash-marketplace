@@ -13761,6 +13761,59 @@ export const insertBookingRequestAddonSchema = createInsertSchema(bookingRequest
 export type BookingRequestAddon = typeof bookingRequestAddons.$inferSelect;
 export type InsertBookingRequestAddon = z.infer<typeof insertBookingRequestAddonSchema>;
 
+// ── Host Stay Booking Journey (migration 0088) ────────────────────────────────
+// Completes the Pet Sitter Suite lifecycle beyond "paid": the care/handover data
+// pack + handover confirmations. Checklist completeness is COMPUTED from these
+// rows at read time (single source of truth), so there is no checklist table.
+export const hostStayDetails = pgTable("host_stay_details", {
+  id:                    varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingRequestId:      integer("booking_request_id").notNull().unique().references(() => bookingRequests.id, { onDelete: 'cascade' }),
+  requestId:             varchar("request_id", { length: 24 }).notNull(),
+  ownerId:               varchar("owner_id", { length: 128 }).notNull(),
+  flowType:              varchar("flow_type", { length: 20 }).notNull().default('HOST_HOME'), // HOST_HOME | CUSTOMER_HOME | WALK | ACADEMY
+  pickupAt:              timestamp("pickup_at"),
+  dropoffAt:             timestamp("dropoff_at"),
+  meetingLocation:       text("meeting_location"),
+  emergencyContactName:  varchar("emergency_contact_name", { length: 160 }),
+  emergencyContactPhone: varchar("emergency_contact_phone", { length: 40 }),
+  vetName:               varchar("vet_name", { length: 160 }),
+  vetPhone:              varchar("vet_phone", { length: 40 }),
+  foodInstructions:      text("food_instructions"),
+  medication:            text("medication"),
+  medicationDosage:      text("medication_dosage"),
+  allergies:             text("allergies"),
+  behaviourNotes:        text("behaviour_notes"),
+  specialInstructions:   text("special_instructions"),
+  providerHomeReady:     boolean("provider_home_ready").notNull().default(false),
+  providerReadiness:     jsonb("provider_readiness"),
+  extra:                 jsonb("extra"),
+  createdAt:             timestamp("created_at").notNull().defaultNow(),
+  updatedAt:             timestamp("updated_at").notNull().defaultNow(),
+}, (t) => ({
+  bookingIdx: index("idx_hsd_booking_request_id").on(t.bookingRequestId),
+  ownerIdx:   index("idx_hsd_owner_id").on(t.ownerId),
+}));
+export const insertHostStayDetailsSchema = createInsertSchema(hostStayDetails).omit({ id: true, createdAt: true, updatedAt: true });
+export type HostStayDetails = typeof hostStayDetails.$inferSelect;
+export type InsertHostStayDetails = z.infer<typeof insertHostStayDetailsSchema>;
+
+export const bookingHandoverEvents = pgTable("booking_handover_events", {
+  id:                varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  bookingRequestId:  integer("booking_request_id").notNull().references(() => bookingRequests.id, { onDelete: 'cascade' }),
+  requestId:         varchar("request_id", { length: 24 }).notNull(),
+  direction:         varchar("direction", { length: 10 }).notNull(), // DROPOFF | PICKUP
+  confirmedByRole:   varchar("confirmed_by_role", { length: 16 }).notNull(), // owner | provider
+  confirmedByUid:    varchar("confirmed_by_uid", { length: 128 }).notNull(),
+  notes:             text("notes"),
+  photoUrl:          text("photo_url"),
+  occurredAt:        timestamp("occurred_at").notNull().defaultNow(),
+  createdAt:         timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  bookingIdx:   index("idx_bhe_booking_request_id").on(t.bookingRequestId),
+  directionIdx: index("idx_bhe_direction").on(t.bookingRequestId, t.direction),
+}));
+export type BookingHandoverEvent = typeof bookingHandoverEvents.$inferSelect;
+
 // Audit log — every quote returned by the engine, keyed by pricing_version
 export const quoteEngineLogs = pgTable("quote_engine_logs", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
