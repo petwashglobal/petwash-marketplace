@@ -990,6 +990,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   </button>
                 )}
               </div>
+
+              {/* Honest activation note (CEO 2026-07-02 "both need verify"): social
+                  sign-ups arrive with a verified email only — full membership
+                  activates once the mobile number is verified too (the account
+                  engine already withholds 'active' until BOTH are confirmed). */}
+              <p className="sl-hint" style={{ textAlign: 'center', marginTop: 6 }}>
+                {he
+                  ? 'חברות מלאה מופעלת לאחר אימות אימייל וגם נייד.'
+                  : 'Full membership activates after both email and mobile are verified.'}
+              </p>
             </>
           )}
         </main>
@@ -1229,7 +1239,12 @@ function styles(he: boolean) {
     .sl-fbIcon svg{ font-size:14px }
     .sl-igIcon{ width:24px; height:24px; flex:0 0 auto; border-radius:6px; background:linear-gradient(135deg, #fdc468 0%, #d83689 50%, #5b4ad0 100%); display:inline-flex; align-items:center; justify-content:center; color:#fff }
     .sl-igIcon svg{ font-size:14px }
-    .sl-soc--apple svg{ font-size:22px }
+    /* Apple HIG "Sign in with Apple": solid black button, PURE white mark + label
+       (the generic tile tinted the logo cream via --white — CEO 2026-07-02). */
+    .sl-soc--apple{ background:#000; border-color:rgba(255,255,255,.32) }
+    .sl-soc--apple svg{ font-size:22px; color:#fff }
+    .sl-soc--apple .sl-socLabel{ color:#fff }
+    .sl-soc--apple:hover:not(:disabled){ border-color:rgba(255,255,255,.55); box-shadow:0 0 0 3px rgba(255,255,255,.10) }
     .sl-div{ display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:12px; color:var(--muted); font-size:13px; font-weight:600; padding:4px 0 }
     .sl-div:before, .sl-div:after{ content:""; height:1px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.18), transparent) }
 
