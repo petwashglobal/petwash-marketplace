@@ -9,6 +9,7 @@ import { useLanguage } from '@/lib/languageStore';
 import { useToast } from '@/hooks/use-toast';
 import { FaApple } from 'react-icons/fa';
 import { Layout } from '@/components/Layout';
+import { ExperienceSwitcher } from '@/components/ExperienceSwitcher';
 import { PetWashIcon } from '@/components/PetWashIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -487,6 +488,9 @@ function PrestigeAccountCommandCenter({
 
   return (
     <section className="pw-command-center" aria-label="Prestige Account Command Center">
+      {/* CEO 2026-07-03: multi-role users (member + provider + admin) flip
+          between their worlds here. Hidden for single-role members. */}
+      <ExperienceSwitcher />
       {/* CEO 2026-07-02: the member's pass must be ONE TAP from the profile —
           official Add-to-Wallet badges, Apple/Google consent-honest copy. */}
       <WalletPassBadges isHebrew={isHebrew} />
