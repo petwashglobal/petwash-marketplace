@@ -112,6 +112,17 @@ const ALREADY_EXISTS_CODES = new Set([
 const UNDEFINED_REFERENCE_CODES = new Set([
   '42P01', // undefined_table
   '42703', // undefined_column
+  // Same "prod diverged from what this migration assumed" drift class, added
+  // 2026-07-02 after the walker died at 0018 on `function lower(pet_temperament)
+  // does not exist` and never reached the newer migrations (0088 host-stay etc.).
+  // These fire when an old migration references a function/object shape (e.g. a
+  // functional index over a column that prod created as an enum, not text) that
+  // this deployment's out-of-band `drizzle-kit push` never produced. In --lenient
+  // catch-up mode we log them ORPHANED and continue so genuinely-new migrations
+  // still apply. New migrations use CREATE TABLE IF NOT EXISTS and don't throw
+  // these, so tolerance can't hide a broken NEW migration.
+  '42883', // undefined_function  (e.g. lower(<non-text enum>))
+  '42704', // undefined_object    (missing type/collation/opclass)
 ]);
 
 // PG error codes that indicate a migration would be valid after a
