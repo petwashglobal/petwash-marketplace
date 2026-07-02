@@ -21,6 +21,7 @@ import adminSumitRoutes from "./routes/admin-sumit";
 import adminLynxRoutes from "./routes/admin-lynx";
 import cronBackupRoutes from "./routes/cron-backup";
 import cronComplianceRoutes from "./routes/cron-compliance";
+import cronAuditVerifyRoutes from "./routes/cron-audit-verify";
 import supplierFraudFlagsRoutes from "./routes/supplier-fraud-flags";
 import providerInsuranceRoutes from "./routes/provider-insurance";
 import adminUpayRoutes from "./routes/admin-upay";
@@ -11024,6 +11025,8 @@ self.addEventListener('notificationclick', (event) => {
   // Compliance-expiry scan (Provider app "insurance expiring" push — spec §11).
   // Same x-cron-secret pattern; READ-ONLY scan, writes notifications only. No money.
   app.use('/api/cron', cronComplianceRoutes);
+  // Nightly audit-chain integrity verify (money-integrity). x-cron-secret; read-only.
+  app.use('/api/cron', cronAuditVerifyRoutes);
   // Supplier Fraud Control (spec §20) — READ-ONLY detector. Same flag gate as
   // supplier-invoices (404 when ff.supplier_invoice_control.enabled is OFF).
   app.use('/api/admin', supplierFraudFlagsRoutes);
