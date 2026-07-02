@@ -58,6 +58,7 @@ import { db } from '../db';
 import { nayaxTransactions, auditLedger, walletAccounts, creditTransactions, k9000WashEvents, stationBays, baySessions, bayEvents, bayFaults, bayReaders, stations, machineCommands, kioskMachines, users } from '@shared/schema';
 import { eq, and, gt, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { alertManager } from '../lib/alerts';
 import { nanoid } from 'nanoid';
 import { isK9000MachineConfigured } from '../lib/k9000-env-guard';
 import VATCalculatorService from '../services/VATCalculatorService';
@@ -454,7 +455,52 @@ router.post('/wash/start_cycle', async (req, res) => {
       });
     }
 
-    // Simulate successful activation
+    // ── FAIL-CLOSED: paid but the machine did NOT start (CEO 2026-07-03) ──────
+    // In LIVE mode (MACHINE_ACTIVATION_URL set), a failed/timed-out activation
+    // means the Nayax terminal already CAPTURED the card payment but no wash
+    // began. We must NEVER return success + record revenue for a wash that
+    // didn't happen. There is no automated Nayax refund rail, so we mark the
+    // transaction failed + refund-due and page ops to credit the customer.
+    const liveActivationFailed = !!machineActivationUrl && !machineCommandSent;
+    if (liveActivationFailed && !isFreeWash) {
+      logger.error('[K9000 Wash] LIVE machine activation FAILED after payment — refund DUE', {
+        washId, machineId, side: resolvedSide, transactionId, correlationId,
+      });
+
+      if (transactionId) {
+        await db.update(nayaxTransactions)
+          .set({ status: 'failed', updatedAt: new Date() })
+          .where(eq(nayaxTransactions.id, transactionId))
+          .catch((e: any) => logger.error('[K9000 Wash] mark txn failed error', { error: e?.message }));
+      }
+
+      await db.insert(auditLedger).values({
+        id: `audit_wash_fail_${Date.now()}_${nanoid(12)}`,
+        eventType: 'k9000_wash_activation_failed_refund_due',
+        customerUid: customerUid || null,
+        metadata: JSON.stringify({ machineId, side: resolvedSide, washType, transactionId, washId, reason: 'machine_activation_failed', refundStatus: 'refund_pending' }),
+        ipAddress: clientIP, userAgent: req.headers['user-agent'] || null, previousHash: null,
+      }).catch((e: any) => logger.error('[K9000 Wash] fail audit error', { error: e?.message }));
+
+      await alertManager.triggerAlert({
+        name: 'K9000_PAID_WASH_NOT_STARTED',
+        message: `Machine ${machineId} took payment (txn ${transactionId}) but did NOT start. Customer refund DUE — no auto-refund rail, credit manually.`,
+        severity: 'critical', timestamp: new Date(),
+        metadata: { machineId, side: resolvedSide, washType, transactionId, washId, correlationId },
+      }).catch(() => {});
+
+      // Honest response — NOT success. Kiosk shows an error; no revenue recorded.
+      return res.status(502).json({
+        success: false,
+        error: 'MACHINE_ACTIVATION_FAILED',
+        errorCode: 'MACHINE_NOT_STARTED',
+        refundStatus: 'refund_pending',
+        message: 'Payment was taken but the wash could not start. A refund is being processed — please contact support with your receipt.',
+        washId, transactionId,
+      });
+    }
+
+    // Successful activation (live command sent, or demo mode with no live URL).
     logger.info('[K9000 Wash] ✅ Wash cycle activated', {
       washId,
       machineId,
