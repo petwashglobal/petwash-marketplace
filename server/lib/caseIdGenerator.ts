@@ -38,7 +38,7 @@ const INCIDENT_TYPE_TO_CATEGORY: Record<IncidentTypeX, CaseCategory> = {
   station_malfunction: 'STATION',
   payment_failure: 'PAY',
   privacy_breach: 'TRUST', document_fraud: 'TRUST', customer_abuse: 'TRUST',
-  provider_misconduct: 'TRUST', customer_complaint: 'TRUST',
+  provider_misconduct: 'TRUST', customer_complaint: 'TRUST', off_platform_circumvention: 'TRUST',
   other: 'CASE',
 };
 
