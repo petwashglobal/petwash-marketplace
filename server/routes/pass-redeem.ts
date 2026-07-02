@@ -211,6 +211,24 @@ router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
       return res.status(400).json({ ok: false, error: msg });
     }
 
+    // ── 1b. DYNAMIC-TOKEN-ONLY GATE (CEO 2026-07-03) ──────────────────────────
+    // The redemption credential must be DYNAMIC, UNIQUE and TRACED — never a
+    // static barcode a screenshot can reuse. Only the live 45-second qr-redeem
+    // token (fresh id + single-use nonce every scan) may DEBIT a wash. The
+    // long-lived wallet-barcode baked into an Apple/Google pass identifies the
+    // member but can NOT spend on its own, so a photo of it is worthless at the
+    // reader. Members redeem with the live QR the app rotates on screen.
+    if (payload.purpose !== 'qr-redeem') {
+      logger.warn('[PassRedeem] Static/non-dynamic token refused at debit', {
+        purpose: payload.purpose, passId: payload.passId, kioskId,
+      });
+      return res.status(403).json({
+        ok: false,
+        error: 'DYNAMIC_TOKEN_REQUIRED',
+        message: 'Open the PetWash app and scan the live pass QR to redeem.',
+      });
+    }
+
     // ── 2. Machine binding check ──────────────────────────────────────────────
     if (payload.machineId && payload.machineId !== kioskId) {
       logger.warn('[PassRedeem] Machine mismatch', { tokenMachine: payload.machineId, kioskId });
