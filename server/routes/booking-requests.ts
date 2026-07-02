@@ -30,11 +30,14 @@ import {
   providerProfiles,
   createBookingRequestSchema,
   providerBookingResponseSchema,
-  type BookingRequest
+  type BookingRequest,
+  hostStayDetails,
+  bookingHandoverEvents,
 } from '@shared/schema';
 import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
+import { z } from 'zod';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
@@ -3730,5 +3733,242 @@ router.post('/rebook-triggers/:triggerId/:action', async (req, res) => {
 // AND earlier in this file (~line 714). Express serves the first match, so this
 // second copy was dead code. Removed to eliminate the shadowing conflict; the
 // canonical handler earlier in the file is unchanged.
+
+// ═══════════════════════════════════════════════════════════════════════════
+// HOST STAY BOOKING JOURNEY (CEO 2026-07-02/03) — completes Pet Sitter Suite
+// beyond "paid": care details, provider readiness, handover confirmations, and
+// the computed safety checklist. Reference case: the founder's Kenzo booking.
+// Payment confirmation is not the end — it starts the safety journey.
+// ═══════════════════════════════════════════════════════════════════════════
+
+/** Resolve a booking the caller is a party to (owner OR provider). */
+async function loadBookingForParty(requestId: string, userId: string) {
+  const [booking] = await db.select().from(bookingRequests)
+    .where(eq(bookingRequests.requestId, requestId)).limit(1);
+  if (!booking) return { booking: null as any, role: null as 'owner' | 'provider' | null };
+  const role: 'owner' | 'provider' | null =
+    booking.ownerId === userId ? 'owner' : booking.providerId === userId ? 'provider' : null;
+  return { booking, role };
+}
+
+/** Overnight/long host-stays need the stronger safety set (vet, meds dosage). */
+function isOvernightOrLong(booking: any): boolean {
+  try {
+    const start = booking.startDate ? new Date(booking.startDate).getTime() : 0;
+    const end = booking.endDate ? new Date(booking.endDate).getTime() : 0;
+    return end - start >= 20 * 60 * 60 * 1000; // ≥ ~overnight
+  } catch { return false; }
+}
+
+/** Compute the safety checklist from the care details — single source of truth,
+ *  no separate checklist table to drift. Returns which CRITICAL items are
+ *  present/missing and whether the booking is ready to start. */
+function computeChecklist(booking: any, d: any | null) {
+  const has = (v: any) => v !== null && v !== undefined && String(v).trim().length > 0;
+  const overnight = isOvernightOrLong(booking);
+  const medsMentioned = has(d?.medication);
+
+  const items: { key: string; label: string; required: boolean; present: boolean }[] = [
+    { key: 'pickup_dropoff',    label: 'Pickup / drop-off time',     required: true,       present: has(d?.pickupAt) || has(d?.dropoffAt) },
+    { key: 'meeting_location',  label: 'Meeting location',           required: true,       present: has(d?.meetingLocation) },
+    { key: 'emergency_contact', label: 'Emergency contact',          required: true,       present: has(d?.emergencyContactName) && has(d?.emergencyContactPhone) },
+    { key: 'vet',               label: 'Vet contact',                required: overnight,  present: has(d?.vetName) && has(d?.vetPhone) },
+    { key: 'food',              label: 'Food instructions',          required: true,       present: has(d?.foodInstructions) },
+    { key: 'medication_dosage', label: 'Medication dosage',          required: medsMentioned, present: !medsMentioned || has(d?.medicationDosage) },
+    { key: 'behaviour',         label: 'Behaviour / safety notes',   required: true,       present: has(d?.behaviourNotes) },
+  ];
+  const missing = items.filter(i => i.required && !i.present).map(i => i.key);
+  return { items, missing, ready: missing.length === 0, overnight };
+}
+
+// ── GET /:requestId/care-details — the journey pack + computed checklist ──────
+router.get('/:requestId/care-details', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+    const { booking, role } = await loadBookingForParty(req.params.requestId, userId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (!role) return res.status(403).json({ error: 'Not a party to this booking' });
+
+    const [details] = await db.select().from(hostStayDetails)
+      .where(eq(hostStayDetails.bookingRequestId, booking.id)).limit(1);
+    const handovers = await db.select().from(bookingHandoverEvents)
+      .where(eq(bookingHandoverEvents.bookingRequestId, booking.id));
+
+    // Provider only sees the care pack once they've accepted (address-reveal rule).
+    const accepted = ['confirmed', 'in_progress', 'completed'].includes(booking.status);
+    const visibleDetails = (role === 'owner' || accepted) ? (details ?? null) : null;
+
+    return res.json({
+      ok: true,
+      requestId: booking.requestId,
+      role,
+      status: booking.status,
+      details: visibleDetails,
+      handovers,
+      checklist: computeChecklist(booking, details ?? null),
+    });
+  } catch (err: any) {
+    logger.error('[HostStay] care-details GET error', { error: err?.message });
+    return res.status(500).json({ error: 'Failed to load care details' });
+  }
+});
+
+// ── POST /:requestId/care-details — OWNER upserts the care pack ───────────────
+const careDetailsSchema = z.object({
+  flowType:              z.enum(['HOST_HOME', 'CUSTOMER_HOME', 'WALK', 'ACADEMY']).optional(),
+  pickupAt:              z.string().datetime().optional().nullable(),
+  dropoffAt:             z.string().datetime().optional().nullable(),
+  meetingLocation:       z.string().max(500).optional().nullable(),
+  emergencyContactName:  z.string().max(160).optional().nullable(),
+  emergencyContactPhone: z.string().max(40).optional().nullable(),
+  vetName:               z.string().max(160).optional().nullable(),
+  vetPhone:              z.string().max(40).optional().nullable(),
+  foodInstructions:      z.string().max(4000).optional().nullable(),
+  medication:            z.string().max(2000).optional().nullable(),
+  medicationDosage:      z.string().max(1000).optional().nullable(),
+  allergies:             z.string().max(2000).optional().nullable(),
+  behaviourNotes:        z.string().max(4000).optional().nullable(),
+  specialInstructions:   z.string().max(4000).optional().nullable(),
+});
+
+router.post('/:requestId/care-details', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+    const { booking, role } = await loadBookingForParty(req.params.requestId, userId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (role !== 'owner') return res.status(403).json({ error: 'Only the pet owner can set care details' });
+
+    const parsed = careDetailsSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid care details', details: parsed.error.flatten() });
+    const b = parsed.data;
+    const toDate = (s?: string | null) => (s ? new Date(s) : null);
+
+    const [existing] = await db.select({ id: hostStayDetails.id }).from(hostStayDetails)
+      .where(eq(hostStayDetails.bookingRequestId, booking.id)).limit(1);
+
+    const values: any = {
+      bookingRequestId: booking.id,
+      requestId: booking.requestId,
+      ownerId: booking.ownerId,
+      ...(b.flowType ? { flowType: b.flowType } : {}),
+      pickupAt: toDate(b.pickupAt), dropoffAt: toDate(b.dropoffAt),
+      meetingLocation: b.meetingLocation ?? null,
+      emergencyContactName: b.emergencyContactName ?? null,
+      emergencyContactPhone: b.emergencyContactPhone ?? null,
+      vetName: b.vetName ?? null, vetPhone: b.vetPhone ?? null,
+      foodInstructions: b.foodInstructions ?? null,
+      medication: b.medication ?? null, medicationDosage: b.medicationDosage ?? null,
+      allergies: b.allergies ?? null, behaviourNotes: b.behaviourNotes ?? null,
+      specialInstructions: b.specialInstructions ?? null,
+      updatedAt: new Date(),
+    };
+
+    if (existing) {
+      await db.update(hostStayDetails).set(values).where(eq(hostStayDetails.id, existing.id));
+    } else {
+      await db.insert(hostStayDetails).values(values);
+    }
+
+    const [details] = await db.select().from(hostStayDetails)
+      .where(eq(hostStayDetails.bookingRequestId, booking.id)).limit(1);
+    return res.json({ ok: true, details, checklist: computeChecklist(booking, details) });
+  } catch (err: any) {
+    logger.error('[HostStay] care-details POST error', { error: err?.message });
+    return res.status(500).json({ error: 'Failed to save care details' });
+  }
+});
+
+// ── POST /:requestId/provider-readiness — PROVIDER confirms home-ready set ─────
+router.post('/:requestId/provider-readiness', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+    const { booking, role } = await loadBookingForParty(req.params.requestId, userId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (role !== 'provider') return res.status(403).json({ error: 'Only the provider can confirm readiness' });
+    if (!['confirmed', 'in_progress'].includes(booking.status)) {
+      return res.status(409).json({ error: 'Confirm readiness only after accepting the booking' });
+    }
+
+    const readiness = (req.body && typeof req.body.readiness === 'object') ? req.body.readiness : {};
+    const homeReady = req.body?.homeReady === true;
+
+    const [existing] = await db.select({ id: hostStayDetails.id }).from(hostStayDetails)
+      .where(eq(hostStayDetails.bookingRequestId, booking.id)).limit(1);
+    if (existing) {
+      await db.update(hostStayDetails)
+        .set({ providerReadiness: readiness, providerHomeReady: homeReady, updatedAt: new Date() })
+        .where(eq(hostStayDetails.id, existing.id));
+    } else {
+      await db.insert(hostStayDetails).values({
+        bookingRequestId: booking.id, requestId: booking.requestId, ownerId: booking.ownerId,
+        providerReadiness: readiness, providerHomeReady: homeReady,
+      } as any);
+    }
+    return res.json({ ok: true, homeReady });
+  } catch (err: any) {
+    logger.error('[HostStay] provider-readiness error', { error: err?.message });
+    return res.status(500).json({ error: 'Failed to save readiness' });
+  }
+});
+
+// ── POST /:requestId/handover — confirm DROPOFF (start) or PICKUP (end) ───────
+const handoverSchema = z.object({
+  direction: z.enum(['DROPOFF', 'PICKUP']),
+  notes:     z.string().max(2000).optional(),
+  photoUrl:  z.string().url().max(1000).optional(),
+});
+
+router.post('/:requestId/handover', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
+    const { booking, role } = await loadBookingForParty(req.params.requestId, userId);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (!role) return res.status(403).json({ error: 'Not a party to this booking' });
+
+    const parsed = handoverSchema.safeParse(req.body);
+    if (!parsed.success) return res.status(400).json({ error: 'Invalid handover', details: parsed.error.flatten() });
+    const { direction, notes, photoUrl } = parsed.data;
+
+    // Idempotent per (booking, direction, role): a party confirms each handover once.
+    const existing = await db.select({ id: bookingHandoverEvents.id }).from(bookingHandoverEvents)
+      .where(and(
+        eq(bookingHandoverEvents.bookingRequestId, booking.id),
+        eq(bookingHandoverEvents.direction, direction),
+        eq(bookingHandoverEvents.confirmedByRole, role),
+      )).limit(1);
+    if (existing.length) {
+      return res.json({ ok: true, alreadyConfirmed: true, direction, role });
+    }
+
+    await db.insert(bookingHandoverEvents).values({
+      bookingRequestId: booking.id, requestId: booking.requestId,
+      direction, confirmedByRole: role, confirmedByUid: userId,
+      notes: notes ?? null, photoUrl: photoUrl ?? null,
+    } as any);
+
+    // Notify the other party in-app (best-effort, non-blocking).
+    const otherUid = role === 'owner' ? booking.providerId : booking.ownerId;
+    if (otherUid) {
+      const label = direction === 'DROPOFF' ? 'Pet drop-off confirmed' : 'Pet pickup confirmed';
+      db.insert(superAppNotifications).values({
+        userId: otherUid, type: 'booking_handover',
+        title: `✅ ${label}`, titleHe: direction === 'DROPOFF' ? '✅ מסירת החיה אושרה' : '✅ איסוף החיה אושר',
+        body: `${label} for booking ${booking.requestId}.`,
+        bodyHe: `${direction === 'DROPOFF' ? 'מסירת החיה אושרה' : 'איסוף החיה אושר'} עבור הזמנה ${booking.requestId}.`,
+        actionUrl: `/booking/confirmation/${booking.requestId}`, actionType: 'open_booking',
+        channels: ['in_app'], isRead: false, createdAt: new Date(),
+      } as any).catch((e: any) => logger.warn('[HostStay] handover notify failed', { error: e?.message }));
+    }
+
+    return res.json({ ok: true, direction, role, confirmedAt: new Date().toISOString() });
+  } catch (err: any) {
+    logger.error('[HostStay] handover error', { error: err?.message });
+    return res.status(500).json({ error: 'Failed to confirm handover' });
+  }
+});
 
 export default router;
