@@ -876,6 +876,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             the ideal paths real targets so later PRs (whoami remap, Octopus) can
             link to them without 404s. No new pages are introduced here. */}
         <Route path="/account">{() => <Redirect to={`/my-account${window.location.search}`} />}</Route>
+        {/* PRINTED station-board QR (CEO 2026-07-02): the physical Kfar Saba board
+            encodes https://petwash.co.il/qr — this route did not exist and 404'd.
+            The URL is on PRINTED signage, so it must resolve forever: a customer
+            standing at the K9000 lands on the stations/wash experience. Add a
+            utm so scans are measurable in analytics. */}
+        <Route path="/qr">{() => <Redirect to="/locations?utm_source=station_qr&utm_medium=board" />}</Route>
         <Route path="/octopus">{() => <Redirect to={`/admin/dashboard${window.location.search}`} />}</Route>
         <Route path="/profile/complete">{() => <Redirect to={`/complete-profile${window.location.search}`} />}</Route>
         <Route path="/provider/onboarding">{() => <Redirect to={`/provider-onboarding${window.location.search}`} />}</Route>
