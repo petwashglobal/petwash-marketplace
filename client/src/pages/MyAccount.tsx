@@ -7,6 +7,7 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { useToast } from '@/hooks/use-toast';
+import { FaApple } from 'react-icons/fa';
 import { Layout } from '@/components/Layout';
 import { PetWashIcon } from '@/components/PetWashIcon';
 import { Button } from '@/components/ui/button';
@@ -288,7 +289,77 @@ function formatCurrency(cents: number): string {
   return `₪${(cents / 100).toFixed(2)}`;
 }
 
-function WalletActionButton({ 
+/**
+ * WalletPassBadges — ONE-TAP pass download from the profile (CEO 2026-07-02).
+ * Official-style Add to Apple Wallet / Add to Google Wallet badges wired to the
+ * SAME signed-link rail the Prestige Pass page uses (/generate-wallet-links).
+ * Consent is honest and explicit: tapping opens the Apple/Google system sheet,
+ * which is where the user's platform-level "Add" consent legally happens —
+ * we never install anything silently.
+ */
+function WalletPassBadges({ isHebrew }: { isHebrew: boolean }) {
+  const { toast } = useToast();
+  const linkMutation = useMutation({
+    mutationFn: async (platform: 'apple' | 'google') => {
+      const resp = await apiRequest('POST', '/api/prestige-pass/generate-wallet-links', {});
+      const data = await resp.json();
+      if (!data.ok) throw new Error(data.error || 'Wallet link unavailable');
+      const url = platform === 'apple' ? data.appleWalletUrl : data.googleWalletUrl;
+      if (!url) throw new Error(isHebrew ? 'ה-Wallet עדיין לא הופעל לחשבון זה' : 'Wallet is not configured for this pass yet');
+      return url as string;
+    },
+    onSuccess: (url) => { window.location.assign(url); },
+    onError: (err: any) => toast({
+      title: isHebrew ? 'Wallet לא זמין' : 'Wallet unavailable',
+      description: err?.message || (isHebrew ? 'לא ניתן ליצור קישור כרגע.' : 'Could not create a Wallet link right now.'),
+      variant: 'destructive',
+    }),
+  });
+  const busy = linkMutation.isPending;
+
+  return (
+    <div className="mb-6 rounded-2xl border border-[#E7D38f] p-4"
+      style={{ background: 'linear-gradient(135deg, #FFFDF7, #FBF3DA)' }}>
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <p className="text-sm font-semibold text-gray-900">
+            {isHebrew ? 'כרטיס החבר שלך — בארנק של הטלפון' : 'Your Member Pass — in your phone wallet'}
+          </p>
+          <p className="text-[11px] text-gray-600 mt-0.5 leading-relaxed">
+            {isHebrew
+              ? 'הקישו להורדה מאובטחת. האישור הסופי נעשה במסך המערכת של Apple/Google — הכרטיס נשמר במכשיר שלכם בלבד, עם ה-QR האישי למימוש בעמדות.'
+              : 'Tap to download securely. Final approval happens on the Apple/Google system sheet — the pass is stored on your device only, with your personal QR for station redemption.'}
+          </p>
+        </div>
+        <div className="flex gap-2 shrink-0">
+          {/* Apple badge — HIG: black, white mark, "Add to Apple Wallet" */}
+          <button
+            onClick={() => linkMutation.mutate('apple')}
+            disabled={busy}
+            aria-label="Add to Apple Wallet"
+            className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-white text-[13px] font-semibold disabled:opacity-60"
+            style={{ background: '#000', border: '1px solid rgba(255,255,255,.25)' }}
+          >
+            <FaApple aria-hidden style={{ fontSize: 16 }} />
+            {busy ? (isHebrew ? 'מכין…' : 'Preparing…') : (isHebrew ? 'הוסף ל-Apple Wallet' : 'Add to Apple Wallet')}
+          </button>
+          <button
+            onClick={() => linkMutation.mutate('google')}
+            disabled={busy}
+            aria-label="Add to Google Wallet"
+            className="inline-flex items-center gap-2 rounded-lg px-3.5 py-2 text-[13px] font-semibold disabled:opacity-60"
+            style={{ background: '#fff', color: '#1a1a1a', border: '1px solid #dadce0' }}
+          >
+            <span aria-hidden style={{ fontSize: 14, lineHeight: 1 }}>🔵</span>
+            {isHebrew ? 'Google Wallet' : 'Google Wallet'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function WalletActionButton({
   icon: Icon, 
   label, 
   href, 
@@ -416,6 +487,9 @@ function PrestigeAccountCommandCenter({
 
   return (
     <section className="pw-command-center" aria-label="Prestige Account Command Center">
+      {/* CEO 2026-07-02: the member's pass must be ONE TAP from the profile —
+          official Add-to-Wallet badges, Apple/Google consent-honest copy. */}
+      <WalletPassBadges isHebrew={isHebrew} />
       <div className="flex flex-col md:flex-row md:items-end md:justify-between gap-5 mb-5">
         <div>
           <p className="pw-command-eyebrow">Prestige Account Command Center</p>
