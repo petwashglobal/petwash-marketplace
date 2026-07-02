@@ -6,6 +6,8 @@ import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { isImmersiveRoute } from '@/lib/immersive-routes';
+import { useAppFlavor } from '@/lib/appFlavor';
+import { PrestigeTabsBar, ProviderTabsBar } from '@/components/app-shell/FlavorBottomNav';
 
 const GOLD = '#D9B84C';
 const GRAY = '#9CA3AF';
@@ -80,6 +82,7 @@ export function MobileBottomNav() {
   const { language } = useLanguage();
   const { resolveAccountRoute } = useAccountNavigation();
   const [isResolvingAccount, setIsResolvingAccount] = useState(false);
+  const flavor = useAppFlavor();
   const isRTL = language === 'he' || language === 'ar';
 
   if (loading || roleLoading || !user) return null;
@@ -104,6 +107,18 @@ export function MobileBottomNav() {
   };
 
   if (isImmersiveRoute(location)) return null;
+
+  // APP-FLAVOR SHELLS (CEO 2026-06-23 spec): each native app carries its OWN
+  // persistent tab bar on every non-immersive screen — Prestige gets
+  // Home/Book/Shop/Wallet/Account + center QR, Provider gets
+  // Jobs/Calendar/Earnings/Compliance/Account + center Home. The web bundle
+  // keeps the classic role-aware nav below, except when previewing the app
+  // surfaces themselves (/prestige/*, /provider/*) where parity with the
+  // native experience is wanted.
+  const onPrestigeSurface = location.startsWith('/prestige');
+  const onProviderSurface = location.startsWith('/provider/');
+  if (flavor === 'customer' || (flavor === 'web' && onPrestigeSurface)) return <PrestigeTabsBar />;
+  if (flavor === 'provider' || (flavor === 'web' && onProviderSurface)) return <ProviderTabsBar />;
 
   const isProvider = role === 'provider';
   const NAV_ITEMS = isProvider ? PROVIDER_NAV : CUSTOMER_NAV;

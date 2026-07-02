@@ -24,9 +24,9 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest } from '@/lib/queryClient';
 import {
   Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
-  Home as HomeIcon, CalendarDays, ShoppingBag, Wallet as WalletIcon, User,
+  CalendarDays, ShoppingBag, Wallet as WalletIcon,
   Droplets, Dog, Footprints, Gift, CreditCard, GraduationCap, PawPrint, Mountain,
-  Star, Award,
+  Star, Award, Receipt,
 } from 'lucide-react';
 
 const GOLD = '#D4AF37';
@@ -141,7 +141,19 @@ export default function PrestigeHome() {
     refetchInterval: 110_000,
   });
 
+  // Latest wallet/receipt activity — real ledger events, newest first.
+  const { data: hist } = useQuery({
+    queryKey: ['/api/prestige-pass/history'],
+    queryFn: async () => {
+      const r = await fetch(getApiUrl('/api/prestige-pass/history'), { credentials: 'include' });
+      return r.ok ? r.json() : {};
+    },
+    enabled: !!user,
+    staleTime: 60_000,
+  });
+
   const s = normalizeSummary(me, sum);
+  const lastEvent: any = Array.isArray(hist?.events) && hist.events.length > 0 ? hist.events[0] : null;
   const pets: any[] = Array.isArray(petsData?.pets) ? petsData.pets : Array.isArray(petsData) ? petsData : [];
   const firstName = s.displayName || user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || (isHe ? 'חבר' : 'Member');
   const qrToken: string | undefined = qr?.token || qr?.qrToken || qr?.value;
@@ -277,6 +289,23 @@ export default function PrestigeHome() {
           </div>
         </section>
 
+        {/* Next booking — real data from the summary; hidden when none (the
+            quick-actions grid below is the booking entry point). */}
+        {s.nextBooking && (s.nextBooking.date || s.nextBooking.time) && (
+          <section className="px-4 mt-4">
+            <button onClick={() => navigate('/my-bookings')} className="w-full text-left rounded-2xl border border-[#F0E9D4] bg-[#FFFDF7] p-4 flex items-center gap-3">
+              <CalendarDays className="w-6 h-6 shrink-0" style={{ color: GOLD }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{isHe ? 'ההזמנה הבאה שלך' : 'Your Next Booking'}</p>
+                <p className="text-xs text-gray-600 mt-0.5 truncate">
+                  {[s.nextBooking.date, s.nextBooking.time].filter(Boolean).join(' · ')}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+            </button>
+          </section>
+        )}
+
         {/* Quick actions */}
         <section className="px-4 mt-5">
           <h2 className="text-base font-semibold text-gray-900 mb-3">{isHe ? 'פעולות מהירות' : 'Quick Actions'}</h2>
@@ -390,38 +419,47 @@ export default function PrestigeHome() {
             })}
           </div>
         </section>
+
+        {/* Latest activity / receipt — newest real ledger event; honest empty state */}
+        <section className="px-4 mt-5">
+          <div className="flex items-center justify-between mb-3">
+            <h2 className="text-base font-semibold text-gray-900">{isHe ? 'פעילות אחרונה' : 'Latest Activity'}</h2>
+            <button onClick={() => navigate('/my-wallet')} className="text-xs font-medium" style={{ color: GOLD }}>{isHe ? 'הצג הכל' : 'View all'}</button>
+          </div>
+          {lastEvent ? (
+            <button
+              onClick={() => navigate(lastEvent.transactionId ? `/receipt/${lastEvent.transactionId}` : '/my-wallet')}
+              className="w-full text-left rounded-2xl border border-gray-100 shadow-sm p-4 flex items-center gap-3"
+            >
+              <span className="w-10 h-10 rounded-full bg-[#FBF6E7] border border-[#ECDFB4] flex items-center justify-center shrink-0">
+                <Receipt className="w-5 h-5" style={{ color: GOLD }} />
+              </span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900 truncate">
+                  {String(lastEvent.description ?? lastEvent.transactionType ?? lastEvent.creditType ?? (isHe ? 'תנועה' : 'Transaction')).replace(/_/g, ' ')}
+                </p>
+                <p className="text-[11px] text-gray-500 mt-0.5">
+                  {lastEvent.createdAt ? new Date(lastEvent.createdAt).toLocaleDateString(isHe ? 'he-IL' : 'en-IL', { day: 'numeric', month: 'short', year: 'numeric' }) : ''}
+                </p>
+              </div>
+              {typeof lastEvent.amountCents === 'number' && (
+                <span className={`text-sm font-semibold shrink-0 ${lastEvent.amountCents < 0 ? 'text-gray-900' : 'text-emerald-700'}`}>
+                  {lastEvent.amountCents < 0 ? '−' : '+'}{ils(Math.abs(lastEvent.amountCents))}
+                </span>
+              )}
+            </button>
+          ) : (
+            <div className="rounded-2xl border border-dashed border-gray-200 p-4 text-center text-xs text-gray-500">
+              {isHe ? 'אין עדיין פעילות — הקבלות והתנועות שלך יופיעו כאן.' : 'No activity yet — your receipts and transactions will appear here.'}
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* Bottom nav with elevated center QR / Card */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="max-w-md mx-auto relative flex items-stretch justify-between h-16 px-2">
-          <NavBtn icon={HomeIcon} label={isHe ? 'בית' : 'Home'} active onClick={() => navigate('/prestige/home')} />
-          <NavBtn icon={CalendarDays} label={isHe ? 'הזמנות' : 'Book'} onClick={() => navigate('/bookings')} />
-          <div className="w-16" />
-          <NavBtn icon={WalletIcon} label={isHe ? 'ארנק' : 'Wallet'} onClick={() => navigate('/my-wallet')} />
-          <NavBtn icon={User} label={isHe ? 'חשבון' : 'Account'} onClick={() => navigate('/my-account')} />
-
-          {/* Center: QR / Card = redeem at the bay */}
-          <button
-            onClick={() => navigate('/prestige-pass')}
-            className="absolute left-1/2 -translate-x-1/2 -top-5 w-16 h-16 rounded-full flex flex-col items-center justify-center text-white shadow-lg"
-            style={{ background: `linear-gradient(135deg, ${GOLD}, #c79a2e)` }}
-            aria-label={isHe ? 'מימוש QR / כרטיס' : 'QR / Card redeem'}
-          >
-            <QrCode className="w-6 h-6" />
-            <span className="text-[8.5px] mt-0.5">QR / Card</span>
-          </button>
-        </div>
-      </nav>
+      {/* Bottom tabs (Home · Book · Shop | QR | Wallet · Account) are the
+          PERSISTENT app-shell PrestigeTabsBar rendered by MobileBottomNav —
+          extracted from this page so the tabs follow the member on every
+          screen (CEO 2026-06-23 spec: a real app, not a one-page nav). */}
     </div>
-  );
-}
-
-function NavBtn({ icon: Icon, label, active, onClick }: { icon: any; label: string; active?: boolean; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="flex-1 flex flex-col items-center justify-center gap-0.5">
-      <Icon className="w-5 h-5" style={{ color: active ? GOLD : '#9ca3af' }} />
-      <span className="text-[10px]" style={{ color: active ? GOLD : '#9ca3af' }}>{label}</span>
-    </button>
   );
 }
