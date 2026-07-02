@@ -39,7 +39,7 @@ import { EmailService } from '../emailService';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { buildPrestigePassLuxuryEmail } from '../email/templates/prestige-pass-luxury-2026';
 import { buildPassLinkToken } from '../lib/passTokens';
-import { petwashPassAccounts, users } from '@shared/schema';
+import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
 
@@ -2383,19 +2383,70 @@ router.post('/revoke-pass', async (req: Request, res: Response) => {
       revokedReason: reason,
     });
 
-    // Deactivate wallet account in PostgreSQL
+    // Deactivate wallet account in PostgreSQL — this is the MONEY door:
+    // K9000RedemptionService rejects WALLET_SUSPENDED when isActive=false, so a
+    // revoked pass can no longer redeem a wash even if its QR is screenshotted.
     await db
       .update(walletAccounts)
       .set({ isActive: false, updatedAt: new Date() })
       .where(eq(walletAccounts.userId, targetUserId));
 
-    logger.warn('[PrestigePass] Pass revoked', { targetUserId, reason });
+    // ── COMPLETE the revocation (audit finding #9, 2026-07-02) ──────────────
+    // Bumping qrTokenVersion is the true revocation primitive: it instantly
+    // invalidates the Apple pass web-service auth token (pass-universal.ts
+    // verifyApplePassRequest binds to qrTokenVersion) AND future-proofs the
+    // kiosk against replaying an old static wallet-barcode once the version
+    // check lands. Then drop every device registration so no phone keeps
+    // receiving pass updates for a revoked member.
+    let unregisteredDevices = 0;
+    try {
+      const [pass] = await db
+        .update(petwashPassAccounts)
+        .set({ qrTokenVersion: sql`${petwashPassAccounts.qrTokenVersion} + 1` })
+        .where(eq(petwashPassAccounts.userId, targetUserId))
+        .returning({ passId: petwashPassAccounts.passId });
+
+      if (pass?.passId) {
+        const deleted = await db
+          .delete(appleWalletDeviceRegistrations)
+          .where(eq(appleWalletDeviceRegistrations.serialNumber, pass.passId))
+          .returning({ id: appleWalletDeviceRegistrations.id });
+        unregisteredDevices = deleted.length;
+      }
+    } catch (revErr: any) {
+      // Never fail the revocation on the cleanup step — the money door (isActive)
+      // is already shut above. Surface the cleanup miss for follow-up.
+      logger.error('[PrestigePass] Pass revoke device-cleanup failed (money door already shut)', {
+        targetUserId, error: revErr?.message,
+      });
+    }
+
+    logger.warn('[PrestigePass] Pass revoked', { targetUserId, reason, unregisteredDevices });
+
+    // Compliance trail: who revoked whom, when, why (queryable, not just logs).
+    try {
+      await logAuditEvent({
+        actorRole: 'admin',
+        actionType: 'PRESTIGE_PASS_REVOKED',
+        targetType: 'user',
+        targetId: targetUserId,
+        ip: (req.ip || (req.headers['x-forwarded-for'] as string)) ?? undefined,
+        userAgent: req.headers['user-agent'],
+        traceId: (req as any).traceId,
+        metadata: { reason, unregisteredDevices },
+      });
+    } catch (auditErr: any) {
+      logger.warn('[PrestigePass] Audit write for pass-revoke failed (non-blocking)', {
+        targetUserId, error: auditErr?.message,
+      });
+    }
 
     return res.json({
       ok:           true,
       revoked:      true,
       targetUserId,
       reason,
+      unregisteredDevices,
       revokedAt:    new Date().toISOString(),
     });
   } catch (err) {
