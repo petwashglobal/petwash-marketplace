@@ -34,6 +34,7 @@ const INCIDENT_TYPE_TO_CATEGORY: Record<IncidentTypeX, CaseCategory> = {
   home_left_unlocked: 'HOME', unauthorised_guest: 'HOME', unauthorised_access_claim: 'HOME',
   medication_error: 'CARE', feeding_error: 'CARE', provider_no_show: 'CARE',
   missed_visit: 'CARE', owner_unreachable: 'CARE', emergency_vet: 'CARE',
+  care_details_incomplete: 'CARE',
   station_malfunction: 'STATION',
   payment_failure: 'PAY',
   privacy_breach: 'TRUST', document_fraud: 'TRUST', customer_abuse: 'TRUST',

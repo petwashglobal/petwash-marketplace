@@ -15,6 +15,10 @@ export const INCIDENT_TYPES = [
   'building_security_issue', 'home_left_unlocked', 'unauthorised_guest', 'unauthorised_access_claim',
   // care / service
   'medication_error', 'feeding_error', 'provider_no_show', 'missed_visit', 'owner_unreachable', 'emergency_vet',
+  // pre-service readiness (Host Stay Journey): critical care details missing
+  // before start. Deliberately NOT payout-blocking and NOT critical — this is a
+  // "complete the paperwork" nudge case, not a real incident.
+  'care_details_incomplete',
   // station / platform
   'station_malfunction', 'payment_failure',
   // trust / conduct
