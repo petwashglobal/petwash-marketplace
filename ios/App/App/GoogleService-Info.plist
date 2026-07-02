@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CLIENT_ID</key>
+	<string>136197986889-j4r1ma9tamead4hqsrag0psov3mhv51c.apps.googleusercontent.com</string>
+	<key>REVERSED_CLIENT_ID</key>
+	<string>com.googleusercontent.apps.136197986889-j4r1ma9tamead4hqsrag0psov3mhv51c</string>
+	<key>API_KEY</key>
+	<string>AIzaSyCrjfHTnFz-yz9ZhXt3XovZamJ8eKrAMKk</string>
+	<key>GCM_SENDER_ID</key>
+	<string>136197986889</string>
+	<key>PLIST_VERSION</key>
+	<string>1</string>
+	<key>BUNDLE_ID</key>
+	<string>il.co.petwash.provider</string>
+	<key>PROJECT_ID</key>
+	<string>signinpetwash</string>
+	<key>STORAGE_BUCKET</key>
+	<string>signinpetwash.firebasestorage.app</string>
+	<key>IS_ADS_ENABLED</key>
+	<false></false>
+	<key>IS_ANALYTICS_ENABLED</key>
+	<false></false>
+	<key>IS_APPINVITE_ENABLED</key>
+	<true></true>
+	<key>IS_GCM_ENABLED</key>
+	<true></true>
+	<key>IS_SIGNIN_ENABLED</key>
+	<true></true>
+	<key>GOOGLE_APP_ID</key>
+	<string>1:136197986889:ios:720c82226c03ab28a67d98</string>
+</dict>
+</plist>
