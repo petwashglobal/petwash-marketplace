@@ -10,6 +10,8 @@ import { useToast } from '@/hooks/use-toast';
 import { FaApple } from 'react-icons/fa';
 import { Layout } from '@/components/Layout';
 import { ExperienceSwitcher } from '@/components/ExperienceSwitcher';
+import { useWhoami } from '@/auth/useWhoami';
+import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { PetWashIcon } from '@/components/PetWashIcon';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -544,7 +546,19 @@ function PrestigeAccountCommandCenter({
 export default function MyAccount() {
   const { user } = useFirebaseAuth();
   const firebaseUser = user;
+  const { dashboardsAllowed } = useWhoami();
   const { language } = useLanguage();
+
+  // Luxury "become a provider" invite (CEO 2026-07-03): suggest it IN the member
+  // profile — but only to members who aren't providers yet, and only after the
+  // account has settled (~a week), so it feels earned, not spammed. PetWash Ltd
+  // stays protected: the tap opens the vetted application (pending → admin picks).
+  const isAlreadyProvider = dashboardsAllowed.includes('provider');
+  const accountAgeDays = (() => {
+    const t = user?.metadata?.creationTime;
+    return t ? (Date.now() - new Date(t).getTime()) / 86_400_000 : 0;
+  })();
+  const showProviderInvite = !isAlreadyProvider && accountAgeDays >= 7;
   const { toast } = useToast();
   const isHebrew = language === 'he';
 
@@ -1680,6 +1694,15 @@ export default function MyAccount() {
               </a>
             ))}
           </div>
+
+          {/* Luxury "join the PetWash family as a provider" invite — members only,
+              not existing providers, after ~a week. Vetted application (pending →
+              admin approves); PetWash Ltd stays protected. (CEO 2026-07-03) */}
+          {showProviderInvite && (
+            <div className="mt-6 mb-2">
+              <ProviderRegistrationBanner variant="section" platform="all" />
+            </div>
+          )}
 
           <PrestigeAccountCommandCenter
             isHebrew={isHebrew}
