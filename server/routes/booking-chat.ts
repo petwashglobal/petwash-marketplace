@@ -653,6 +653,44 @@ router.post('/:bookingId/send', async (req, res) => {
         bookingId, conversationId: conv.conversationId, senderUid: uid,
         signals: risk.flags.map((f) => f.code), score: risk.score,
       });
+
+      // ── ESCALATE off-platform circumvention to a TRACKED CASE (CEO 2026-07-03) ──
+      // A HIGH-risk off-platform message opens an off_platform_circumvention TRUST
+      // case with the message as evidence — so booker↔provider dealing outside
+      // PetWash becomes a case with an ID an admin can action (warn / terminate +
+      // Israel-law). NOT auto-punitive, NOT payout-freezing — a human decides.
+      // De-duped to ONE open case per booking. Best-effort; never blocks the send.
+      const offPlatformSignals = risk.flags.filter((f) =>
+        ['OFF_PLATFORM_PAYMENT', 'OFF_PLATFORM_CONTACT', 'OFF_PLATFORM_BOOKING', 'PRIVATE_NUMBER_SHARED'].includes(f.code));
+      if (offPlatformSignals.length > 0) {
+        const roleLabel = isCustomer ? 'customer' : 'provider';
+        void (async () => {
+          try {
+            const { incidentReports } = await import('@shared/schema-incidents');
+            const existing = await db.select({ id: incidentReports.id }).from(incidentReports)
+              .where(and(
+                eq(incidentReports.bookingId, String(bookingId)),
+                eq(incidentReports.incidentType, 'off_platform_circumvention'),
+                eq(incidentReports.status, 'open'),
+              )).limit(1);
+            if (existing.length === 0) {
+              const { openIncident } = await import('../services/incidentService');
+              const snippet = safeContent.slice(0, 140).replace(/\s+/g, ' ');
+              const inc = await openIncident({
+                type: 'off_platform_circumvention', severity: 'medium',
+                description: `Possible off-platform dealing in booking ${bookingId}. Signals: ${offPlatformSignals.map((f) => f.code).join(', ')}. First flagged (${roleLabel}): "${snippet}"`,
+                bookingId: String(bookingId),
+                memberId: isCustomer ? uid : undefined,
+                providerId: isCustomer ? undefined : uid,
+                reportedBy: 'system:chat-risk-scanner',
+              });
+              logger.warn('[BookingChat] Off-platform case opened', { bookingId, caseId: inc.incidentId, senderRole: roleLabel });
+            }
+          } catch (e: any) {
+            logger.warn('[BookingChat] Off-platform case escalation failed (non-blocking)', { bookingId, error: e?.message });
+          }
+        })();
+      }
     }
 
     // 8. Insert message

@@ -22,7 +22,12 @@ export const INCIDENT_TYPES = [
   // station / platform
   'station_malfunction', 'payment_failure',
   // trust / conduct
-  'privacy_breach', 'document_fraud', 'customer_abuse', 'provider_misconduct', 'customer_complaint', 'other',
+  'privacy_breach', 'document_fraud', 'customer_abuse', 'provider_misconduct', 'customer_complaint',
+  // off-platform circumvention: booker↔provider trying to deal outside PetWash
+  // (like an Airbnb cut-out). NOT auto-payout-freezing — it opens a tracked case
+  // with evidence so an admin can decide (warn / terminate + Israel-law action).
+  'off_platform_circumvention',
+  'other',
 ] as const;
 export type IncidentTypeX = (typeof INCIDENT_TYPES)[number];
 
