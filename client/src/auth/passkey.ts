@@ -111,10 +111,16 @@ export function getDeviceType(): string {
  */
 export function getBiometricMethodName(): string {
   const ua = navigator.userAgent;
-  
-  if (/iPhone|iPad|iPod/.test(ua)) {
-    const isNewerIOS = /iPhone1[0-9]|iPhone[2-9][0-9]/.test(ua) || /iPad Pro/.test(ua);
-    return isNewerIOS ? 'Face ID' : 'Touch ID';
+
+  if (/iPhone|iPod/.test(ua)) {
+    // Modern iOS Safari user-agents do NOT expose the device model, so the old
+    // /iPhone1[0-9]/ model sniff never matched and EVERY iPhone was labelled
+    // "Touch ID" (CEO caught it on a Face ID iPhone). Every iPhone sold since
+    // 2018 (except the discontinued SE line) uses Face ID — label it Face ID;
+    // the iOS system sheet itself shows the exact method at auth time.
+    return 'Face ID';
+  } else if (/iPad/.test(ua)) {
+    return /iPad Pro/.test(ua) ? 'Face ID' : 'Touch ID';
   } else if (/Android/.test(ua)) {
     return 'Biometric';
   } else if (/Macintosh|Mac OS X/.test(ua)) {
