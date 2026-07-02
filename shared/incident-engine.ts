@@ -27,6 +27,10 @@ export const INCIDENT_TYPES = [
   // (like an Airbnb cut-out). NOT auto-payout-freezing — it opens a tracked case
   // with evidence so an admin can decide (warn / terminate + Israel-law action).
   'off_platform_circumvention',
+  // linked-account fraud: booker & provider on a booking are DIFFERENT accounts
+  // sharing the SAME saved address (self-dealing / duplicate account / review or
+  // referral gaming). NOT auto-punitive — opens a case for an admin to review.
+  'linked_account_address_match',
   'other',
 ] as const;
 export type IncidentTypeX = (typeof INCIDENT_TYPES)[number];
