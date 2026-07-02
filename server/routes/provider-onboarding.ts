@@ -518,12 +518,25 @@ router.post('/apply', upload.fields([
       return res.status(400).json({ error: 'Missing required fields: firstName, lastName, phoneNumber, city, and providerType are required', errorCode: 'MISSING_FIELDS' });
     }
 
-    // Government-issued ID is REQUIRED for every provider (Israel-safe spec).
-    if (!files?.governmentId || !files.governmentId[0]) {
-      logger.warn('[Provider Onboarding] Missing government ID upload', { traceId, userId: authenticatedUser.uid });
+    // PROVIDER ID SAFETY (CEO 2026-07-03): do NOT force an ID/passport IMAGE
+    // upload online by default. The lawful, privacy-first minimum is STRUCTURED
+    // identity data — document type + number + expiry — plus the signed
+    // declarations. A real document copy is requested ONLY at final acceptance,
+    // by POST to the registered office (or an admin-approved secure exception).
+    // So a government-ID IMAGE is now OPTIONAL; the structured fields are required.
+    const kycDocumentType = String(req.body.kycDocumentType || req.body.idDocumentType || '').trim();
+    const kycDocumentExpiryRaw = String(req.body.kycDocumentExpiry || req.body.idExpiry || '').trim();
+    if (!idNumber || idNumber.trim().length < 4) {
+      logger.warn('[Provider Onboarding] Missing structured ID number', { traceId, userId: authenticatedUser.uid });
       return res.status(400).json({
-        error: 'Government-issued ID is required for every provider.',
-        errorCode: 'ID_REQUIRED',
+        error: 'Your ID / passport / licence number is required.',
+        errorCode: 'ID_NUMBER_REQUIRED',
+      });
+    }
+    if (!kycDocumentType) {
+      return res.status(400).json({
+        error: 'Please select which document your number is from (ID / passport / driving licence).',
+        errorCode: 'ID_DOC_TYPE_REQUIRED',
       });
     }
 
@@ -906,6 +919,9 @@ router.post('/apply', upload.fields([
       // the redacted last-4 (kycIdLastFour) and, when retained, an encrypted
       // blob (israeliIdEncrypted, set in the post-insert UPDATE below).
       kycIdLastFour: idLastFour,
+      // Structured ID (no image forced): which document + when it expires.
+      kycDocumentType: kycDocumentType || null,
+      kycDocumentExpiry: (() => { const d = kycDocumentExpiryRaw ? new Date(kycDocumentExpiryRaw) : null; return d && !isNaN(d.getTime()) ? d : null; })(),
       internalNotes: Object.keys(declarations).length > 0 ? JSON.stringify({ declarations, providerTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })() }) : null,
       status: 'pending',
     }).returning();

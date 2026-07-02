@@ -132,6 +132,11 @@ export default function ProviderOnboarding() {
   const [phoneOtpVerifying, setPhoneOtpVerifying] = useState(false);
   const [phoneOtpError, setPhoneOtpError] = useState('');
   const [idNumber, setIdNumber] = useState('');
+  // Structured ID (Provider ID Safety, CEO 2026-07-03): which document the number
+  // is from + its expiry. No ID/passport IMAGE forced online — a real copy is
+  // posted only if we ask at final acceptance.
+  const [idDocumentType, setIdDocumentType] = useState('');
+  const [idExpiry, setIdExpiry] = useState('');
   const [ageConfirmed18Plus, setAgeConfirmed18Plus] = useState(false);
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('IL');
@@ -452,11 +457,14 @@ export default function ProviderOnboarding() {
       return;
     }
 
-    if (!selfiePhoto || !governmentId) {
+    // Structured ID is the required minimum — NOT an uploaded image (privacy-first).
+    if (!idNumber || !idDocumentType) {
       toast({
         variant: 'destructive',
         title: t.error,
-        description: isHebrew ? 'נדרש סלפי ותעודה ממשלתית' : 'Selfie and government ID required'
+        description: isHebrew
+          ? 'נדרשים מספר תעודה וסוג המסמך (ת"ז / דרכון / רישיון). אין צורך להעלות תמונה.'
+          : 'Your document number and type (ID / passport / licence) are required. No photo upload needed.',
       });
       return;
     }
@@ -490,13 +498,16 @@ export default function ProviderOnboarding() {
       formData.append('lastName', lastName);
       formData.append('phoneNumber', phoneNumber);
       formData.append('idNumber', idNumber);
+      formData.append('kycDocumentType', idDocumentType);
+      if (idExpiry) formData.append('kycDocumentExpiry', idExpiry);
       formData.append('ageConfirmed18Plus', ageConfirmed18Plus ? 'true' : 'false');
       formData.append('city', city);
       formData.append('country', country);
       formData.append('providerType', providerTypes[0]);
       formData.append('providerTypes', JSON.stringify(providerTypes));
-      formData.append('selfiePhoto', selfiePhoto);
-      formData.append('governmentId', governmentId);
+      // Images are OPTIONAL now — only attach if the provider chose to add one.
+      if (selfiePhoto) formData.append('selfiePhoto', selfiePhoto);
+      if (governmentId) formData.append('governmentId', governmentId);
       
       formData.append('residentialHistory', JSON.stringify(residentialHistory.filter(addr => addr.trim())));
       formData.append('backgroundCheckConsent', backgroundCheckConsent.toString());
@@ -959,6 +970,42 @@ export default function ProviderOnboarding() {
                   )}
                 </div>
 
+                {/* Structured ID: which document + expiry. No image forced online. */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <Label htmlFor="idDocumentType">{isHebrew ? 'סוג המסמך' : 'Document type'}</Label>
+                    <select
+                      id="idDocumentType"
+                      value={idDocumentType}
+                      onChange={(e) => setIdDocumentType(e.target.value)}
+                      className="w-full bg-white text-gray-900 border border-gray-200 rounded-xl h-10 px-3"
+                      data-testid="select-id-doc-type"
+                    >
+                      <option value="">{isHebrew ? 'בחר/י…' : 'Select…'}</option>
+                      <option value="national_id">{isHebrew ? 'תעודת זהות' : 'National ID'}</option>
+                      <option value="passport">{isHebrew ? 'דרכון' : 'Passport'}</option>
+                      <option value="drivers_license">{isHebrew ? 'רישיון נהיגה' : 'Driving licence'}</option>
+                      <option value="disability_certificate">{isHebrew ? 'תעודת נכות' : 'Disability card'}</option>
+                    </select>
+                  </div>
+                  <div>
+                    <Label htmlFor="idExpiry">{isHebrew ? 'תוקף (אם קיים)' : 'Expiry (if any)'}</Label>
+                    <Input
+                      id="idExpiry" type="date" value={idExpiry}
+                      onChange={(e) => setIdExpiry(e.target.value)}
+                      className="bg-white !text-gray-900 border border-gray-200 rounded-xl"
+                      data-testid="input-id-expiry"
+                    />
+                  </div>
+                </div>
+
+                {/* Privacy-first note (CEO 2026-07-03): no forced online ID upload. */}
+                <div className="rounded-xl border border-[#E7D38f] bg-[#FFFDF7] p-3 text-xs text-gray-600 leading-relaxed">
+                  {isHebrew
+                    ? '🔒 אין צורך להעלות תמונת תעודה עכשיו. די בפרטים המובנים (מספר, סוג ותוקף) ובהצהרות. אם נדרש אימות מוגבר בשלב האישור הסופי, תתבקש/י לשלוח עותק בדואר לכתובת הרשומה של PetWash — בטוח ופרטי.'
+                    : '🔒 No need to upload an ID photo now. Your structured details (number, type, expiry) plus the declarations are enough. If enhanced verification is needed at final approval, we\'ll ask you to POST a copy to PetWash\'s registered office — safe and private.'}
+                </div>
+
                 <label className="flex items-start gap-3 cursor-pointer">
                   <Checkbox
                     checked={ageConfirmed18Plus}
@@ -1243,10 +1290,10 @@ export default function ProviderOnboarding() {
                   <Button onClick={() => setStep(1)} className="luxury-btn-secondary" data-testid="button-back-step1">
                     {t.back}
                   </Button>
-                  <Button 
-                    onClick={() => setStep(3)} 
+                  <Button
+                    onClick={() => setStep(3)}
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
-                    disabled={!selfiePhoto || !governmentId}
+                    disabled={!idNumber || !idDocumentType}
                     data-testid="button-next-step3"
                   >
                     {t.next}
