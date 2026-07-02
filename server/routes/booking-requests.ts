@@ -744,6 +744,42 @@ router.post('/', async (req, res) => {
       }
     });
 
+    // ── LINK-TWO-USERS FRAUD SIGNAL (CEO 2026-07-03) ─────────────────────────
+    // If the booker and provider are different accounts sharing the SAME saved
+    // address, flag a self-dealing / duplicate-account risk for admin review.
+    // Best-effort + non-blocking — never affects the booking. De-duped: one open
+    // case per (owner, provider) pair.
+    if (booking.providerId && booking.ownerId && booking.providerId !== booking.ownerId) {
+      const bOwnerId = booking.ownerId;
+      const bProviderId = booking.providerId;
+      void (async () => {
+        try {
+          const { checkBookingAddressMatch } = await import('../lib/addressMatch');
+          const verdict = await checkBookingAddressMatch(bOwnerId, bProviderId);
+          if (!verdict.match) return;
+          const { incidentReports } = await import('@shared/schema-incidents');
+          const existing = await db.select({ id: incidentReports.id }).from(incidentReports)
+            .where(and(
+              eq(incidentReports.incidentType, 'linked_account_address_match'),
+              eq(incidentReports.memberId, bOwnerId),
+              eq(incidentReports.providerId, bProviderId),
+              eq(incidentReports.status, 'open'),
+            )).limit(1);
+          if (existing.length > 0) return;
+          const { openIncident } = await import('../services/incidentService');
+          const inc = await openIncident({
+            type: 'linked_account_address_match', severity: 'medium',
+            description: `Booker and provider are different accounts sharing the same saved address (possible self-dealing / duplicate account). Booking ${requestId}.`,
+            bookingId: String(requestId), memberId: bOwnerId, providerId: bProviderId,
+            reportedBy: 'system:address-match',
+          });
+          logger.warn('[BookingRequests] Same-address fraud signal — case opened', { requestId, caseId: inc.incidentId });
+        } catch (e: any) {
+          logger.warn('[BookingRequests] address-match check failed (non-blocking)', { requestId, error: e?.message });
+        }
+      })();
+    }
+
     // Notify provider of new booking request — in-app + email + SMS (non-blocking, best-effort)
     if (booking.providerId) {
       // Fetch provider contact details for email/SMS channels
