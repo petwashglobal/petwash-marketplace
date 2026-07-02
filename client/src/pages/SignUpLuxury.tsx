@@ -920,7 +920,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <div className="sl-consent" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 6px', fontSize: '13px', lineHeight: 1.6, textAlign: he ? 'right' : 'left' }}>
                 <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0 }} />
+                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0, accentColor: '#E6C766' }} />
                   <span>
                     {he ? 'אני מסכים/ה ל' : 'I agree to the '}
                     <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
@@ -929,7 +929,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   </span>
                 </label>
                 <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer', marginTop: '8px' }}>
-                  <input type="checkbox" checked={over18} onChange={(e) => setOver18(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0 }} />
+                  <input type="checkbox" checked={over18} onChange={(e) => setOver18(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0, accentColor: '#E6C766' }} />
                   <span>{he ? 'אני מאשר/ת שאני בן/בת 18 ומעלה' : 'I confirm I am 18 years or older'}</span>
                 </label>
               </div>
@@ -1101,7 +1101,9 @@ function styles(he: boolean) {
     .sl-shell{
       --gold:#D4AF37; --gold2:#E6C766; --gold3:#B8932F; --white:#fffaf0;
       --muted:rgba(255,250,240,.6); --line:rgba(255,255,255,.10);
-      --line2:rgba(212,175,55,.22); --ink:#0a0a0a;
+      /* Field/box edges: FRESH BRIGHT gold thin line (CEO 2026-07-02 — the old
+         .22 alpha over black read as rust/brown). gold2 = the bright champagne. */
+      --line2:rgba(230,199,102,.50); --ink:#0a0a0a;
       position:relative; min-height:100dvh; background:#000 !important;
       background-color:#000 !important;
       color:var(--white);
@@ -1243,16 +1245,16 @@ function styles(he: boolean) {
     .sl-bio{ display:flex; align-items:center; justify-content:center; gap:10px; width:100%;
       min-height:56px; border-radius:12px; box-sizing:border-box; cursor:pointer; appearance:none;
       -webkit-appearance:none; font-size:15px; font-weight:700;
-      background:rgba(212,175,55,.10); border:1px solid var(--gold); color:var(--white);
+      background:rgba(212,175,55,.04); border:1px solid var(--gold2); color:var(--white);
       transition:background .2s, filter .15s }
-    .sl-bio:hover:not(:disabled){ background:rgba(212,175,55,.18); filter:brightness(1.04) }
+    .sl-bio:hover:not(:disabled){ background:rgba(212,175,55,.10); filter:brightness(1.04) }
     .sl-bio:disabled{ opacity:.5; cursor:not-allowed }
     .sl-bio svg{ color:var(--gold2); font-size:18px }
     .sl-intentCard{ display:flex; align-items:center; gap:10px; width:100%; text-align:start;
       min-height:64px; padding:12px 14px; border-radius:14px; box-sizing:border-box;
       background:rgba(255,255,255,.04); border:1px solid var(--line); color:var(--white);
       cursor:pointer; appearance:none; -webkit-appearance:none; transition:border-color .2s, background .2s }
-    .sl-intentCard--on{ border-color:var(--gold); background:rgba(212,175,55,.12) }
+    .sl-intentCard--on{ border-color:var(--gold2); background:rgba(212,175,55,.05); box-shadow:0 0 0 1px rgba(230,199,102,.25) }
     .sl-intentIcon{ color:var(--gold2); font-size:20px; flex-shrink:0 }
     .sl-intentText{ flex:1; min-width:0 }
     .sl-intentName{ font-size:14px; font-weight:700; line-height:1.2 }
@@ -1271,8 +1273,8 @@ function styles(he: boolean) {
       padding:0 8px; transition:background .15s ease, border-color .15s ease, color .15s ease;
     }
     .sl-tab svg{ font-size:16px }
-    .sl-tab[aria-selected="true"]{ background:rgba(212,175,55,.12); border-color:rgba(212,175,55,.4); color:var(--white) }
-    .sl-tab:hover{ border-color:rgba(212,175,55,.35) }
+    .sl-tab[aria-selected="true"]{ background:rgba(212,175,55,.05); border-color:var(--line2); color:var(--white) }
+    .sl-tab:hover{ border-color:rgba(230,199,102,.4) }
 
     /* Fields */
     .sl-field{ display:grid; gap:8px }
@@ -1286,7 +1288,7 @@ function styles(he: boolean) {
     }
     .sl-input{
       width:100%; min-height:54px; border-radius:12px;
-      border:1px solid var(--line); background:rgba(0,0,0,.55);
+      border:1px solid var(--line2); background:rgba(0,0,0,.55);
       color:var(--white); font-size:16px; font-weight:500;
       padding:0 16px; outline:none;
       transition:border-color .15s ease, box-shadow .15s ease;
@@ -1312,7 +1314,7 @@ function styles(he: boolean) {
       border-radius:12px !important;
       padding:9px 14px !important;
       background:rgba(0,0,0,.55) !important;
-      border-color:var(--line) !important;
+      border-color:var(--line2) !important;
       color:var(--white) !important;
     }
     .sl-field .intl-phone-wrapper .PhoneInput{ gap:10px }
@@ -1454,7 +1456,7 @@ function styles(he: boolean) {
         border-radius:14px !important;
         padding:8px 12px !important;
         background:rgba(0,0,0,.55) !important;
-        border-color:var(--line) !important;
+        border-color:var(--line2) !important;
         color:var(--white) !important;
       }
       .sl-field .intl-phone-wrapper .PhoneInput{ gap:10px }
