@@ -4443,6 +4443,13 @@ html[dir="rtl"] .rdp-cell:has(.rdp-day_range_end:not(.rdp-day_range_start))::aft
 }
 
 /* International Phone Input Styling */
+/* Phone numbers are ALWAYS LTR — even in the Hebrew/RTL UI the field renders
+   flag → +code → national number left-to-right (defence-in-depth alongside
+   the dir="ltr" on the wrapper; RTL bidi was scrambling typed numbers). */
+.intl-phone-wrapper {
+  direction: ltr;
+  text-align: left;
+}
 .intl-phone-wrapper .PhoneInput {
   display: flex;
   align-items: center;

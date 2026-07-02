@@ -98,7 +98,11 @@ export function PhoneInput({
 
   return (
     <div className="space-y-1">
-      <div className="intl-phone-wrapper rounded-xl border border-black/10 bg-white px-3 py-2">
+      {/* Phone numbers are ALWAYS LTR (CEO 2026-07-02): in the Hebrew UI the
+          bidi algorithm was scrambling "+972 54..." into "972 ...54+" and the
+          flag/code jumped right. dir="ltr" pins flag → country code → national
+          number left-to-right in EVERY language, like every serious platform. */}
+      <div dir="ltr" className="intl-phone-wrapper rounded-xl border border-black/10 bg-white px-3 py-2" style={{ textAlign: 'left' }}>
         <PhoneInputLib
           international
           withCountryCallingCode
