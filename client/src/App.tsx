@@ -92,6 +92,7 @@ const ProviderCompliance = lazy(() => import("@/pages/ProviderCompliance"));
 const ProviderBookingsDashboard = lazy(() => import("@/pages/ProviderBookingsDashboard"));
 const ProviderTaskInbox = lazy(() => import("@/pages/ProviderTaskInbox"));
 const ProviderEarningsPage = lazy(() => import("@/pages/ProviderEarningsPage"));
+const ProviderJobDetail = lazy(() => import("@/pages/ProviderJobDetail"));
 const AccountingDashboard = lazy(() => import("@/pages/AccountingDashboard"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
@@ -1823,6 +1824,22 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
+
+        {/* Job detail — accept/decline → start → complete → care notes (spec §8 screens 15–18) */}
+        <Route path="/provider/jobs/:requestId">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderJobDetail />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* Spec §15 route aliases — every spec path resolves to its real surface */}
+        <Route path="/provider/account">{() => <Redirect to="/provider-os?m=profile" />}</Route>
+        <Route path="/provider/payouts">{() => <Redirect to="/provider/earnings" />}</Route>
+        <Route path="/provider/incident">{() => <Redirect to="/provider-os?m=safety" />}</Route>
 
         {/* ⁦PetTrek™⁩ - ALL FROZEN: Coming Soon */}
         <Route path="/pettrek/provider/dashboard">

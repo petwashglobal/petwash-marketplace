@@ -20,6 +20,7 @@ import adminIdentityMergeRoutes from "./routes/admin-identity-merge";
 import adminSumitRoutes from "./routes/admin-sumit";
 import adminLynxRoutes from "./routes/admin-lynx";
 import cronBackupRoutes from "./routes/cron-backup";
+import cronComplianceRoutes from "./routes/cron-compliance";
 import supplierFraudFlagsRoutes from "./routes/supplier-fraud-flags";
 import providerInsuranceRoutes from "./routes/provider-insurance";
 import adminUpayRoutes from "./routes/admin-upay";
@@ -11020,6 +11021,9 @@ self.addEventListener('notificationclick', (event) => {
   // Cloud-Scheduler backup trigger (reliable replacement for in-process night cron).
   // Auth = x-cron-secret (CRON_SECRET) or super-admin; CSRF-exempt below. No money.
   app.use('/api/cron', cronBackupRoutes);
+  // Compliance-expiry scan (Provider app "insurance expiring" push — spec §11).
+  // Same x-cron-secret pattern; READ-ONLY scan, writes notifications only. No money.
+  app.use('/api/cron', cronComplianceRoutes);
   // Supplier Fraud Control (spec §20) — READ-ONLY detector. Same flag gate as
   // supplier-invoices (404 when ff.supplier_invoice_control.enabled is OFF).
   app.use('/api/admin', supplierFraudFlagsRoutes);

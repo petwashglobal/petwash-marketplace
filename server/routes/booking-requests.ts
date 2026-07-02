@@ -763,9 +763,14 @@ router.post('/', async (req, res) => {
         bodyHtml: `<p>You have a new <strong>${serviceLabel}</strong> booking request.</p><p>Please <a href="${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}">review and respond</a> within 24 hours.</p>`,
         bodyText: notifBody,
         ctaText: 'View Booking',
-        ctaUrl: `${process.env.APP_URL || 'https://petwash.co.il'}/provider/bookings/${requestId}`,
-        channels: ['in_app', 'email', 'sms'],
+        // Deep-link straight to the provider job-detail screen (accept/decline lives there).
+        ctaUrl: `${process.env.APP_URL || 'https://petwash.co.il'}/provider/jobs/${requestId}`,
+        // 'in_app' was a silent no-op — the dispatcher's channel is named 'inbox',
+        // so providers were getting email+SMS but NO inbox message. Fixed, and
+        // 'push' added so the Provider app buzzes like a real work app (spec §11).
+        channels: ['inbox', 'email', 'sms', 'push'],
         priority: 10,
+        meta: { bookingId: requestId },
       }).catch((notifErr: any) =>
         logger.warn('[BookingRequests] Provider notification failed (non-blocking)', { error: notifErr?.message, requestId })
       );
@@ -3486,6 +3491,20 @@ router.post('/:requestId/cancel', async (req, res) => {
         isRead: false,
         createdAt: new Date(),
       });
+
+      // FCM push to the same party (spec §11: "booking cancelled" must buzz the
+      // app, not just sit in the in-app list). Fire-and-forget; never blocks cancel.
+      if (notifyUid) {
+        import('../services/FCMService')
+          .then(({ FCMService }) => FCMService.sendToUser({
+            userId: notifyUid,
+            title: titleText,
+            body: bodyText.slice(0, 200),
+            clickAction: notifyingCustomer ? `/booking/confirmation/${requestId}` : `/provider/jobs/${requestId}`,
+            data: { type: 'booking_cancelled', bookingId: requestId },
+          }))
+          .catch((e: any) => logger.warn('[BookingRequests] cancel push failed (non-blocking)', { error: e?.message, requestId }));
+      }
     } catch (notifErr: any) {
       logger.warn('[BookingRequests] superAppNotifications insert failed (cancel)', { error: notifErr.message });
     }

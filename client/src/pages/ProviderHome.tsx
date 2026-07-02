@@ -24,8 +24,8 @@ import { queryClient } from '@/lib/queryClient';
 import {
   Bell, MessageCircle, Power, ShieldCheck, Star, ChevronRight, TrendingUp,
   Briefcase, CalendarDays, Wallet as WalletIcon, ClipboardList, FileText, User,
-  Dog, Footprints, GraduationCap, Mountain, MapPin, Clock, Navigation, CheckCircle2,
-  Home as HomeIcon, DollarSign,
+  Dog, Footprints, GraduationCap, Mountain, MapPin, Navigation, CheckCircle2,
+  DollarSign, LifeBuoy, AlertCircle,
 } from 'lucide-react';
 
 const GOLD = '#D4AF37';
@@ -57,7 +57,18 @@ export default function ProviderHome() {
   const earn: any = earnRes?.earnings ?? earnRes ?? {};
   const upcoming: any[] = Array.isArray(upcomingRes?.upcoming) ? upcomingRes.upcoming : Array.isArray(upcomingRes?.bookings) ? upcomingRes.bookings : Array.isArray(upcomingRes) ? upcomingRes : [];
   const newRequests = Number(countsRes?.counts?.new_request ?? countsRes?.new_request ?? countsRes?.newRequests ?? 0);
-  const tasksBadge = newRequests;
+
+  // Application status — spec §B: "application status if not approved".
+  // Silent when there's no application or it's already approved.
+  const { data: appStatusRes } = useQuery({
+    queryKey: ['/api/provider-onboarding/my/status'],
+    queryFn: () => fetchJson('/api/provider-onboarding/my/status'),
+    enabled: !!user,
+    staleTime: 120_000,
+  });
+  const application: any = (appStatusRes as any)?.application ?? null;
+  const appStatus: string | null = application?.status ?? null;
+  const showApplicationCard = !!appStatus && !['approved', 'approved_as_provider'].includes(appStatus);
 
   const providerId: number | undefined = stats?.platforms?.[0]?.id ?? profile?.id;
   const name = profile?.businessName || profile?.displayName || user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || (isHe ? 'ספק' : 'Provider');
@@ -100,6 +111,8 @@ export default function ProviderHome() {
     { label: isHe ? 'ארנק' : 'Wallet', icon: WalletIcon, to: '/provider-os?m=wallet' },
     { label: isHe ? 'ציות' : 'Compliance', icon: ShieldCheck, to: '/provider-compliance' },
     { label: isHe ? 'פרופיל' : 'Profile', icon: User, to: '/provider-os?m=profile' },
+    { label: isHe ? 'דיווח אירוע' : 'Incident', icon: AlertCircle, to: '/provider/incident' },
+    { label: isHe ? 'תמיכה' : 'Support', icon: LifeBuoy, to: '/support' },
   ];
 
   const statTiles = [
@@ -141,6 +154,37 @@ export default function ProviderHome() {
             </div>
           </div>
         </header>
+
+        {/* Application status — only while the application is NOT approved */}
+        {showApplicationCard && (
+          <section className="px-4 pt-1 pb-2">
+            <button onClick={() => navigate('/provider-application/status')} className="w-full text-left rounded-2xl border border-[#E7D38f] bg-[#FFFDF7] p-4 flex items-center gap-3">
+              <AlertCircle className="w-6 h-6 shrink-0" style={{ color: GOLD }} />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{isHe ? 'הבקשה שלך בבדיקה' : 'Your application is in review'}</p>
+                <p className="text-xs text-gray-600 mt-0.5">
+                  {isHe ? 'סטטוס: ' : 'Status: '}<span className="font-medium">{String(appStatus).replace(/_/g, ' ')}</span>
+                  {isHe ? ' · השלימו מסמכים חסרים כדי לזרז את האישור.' : ' · complete any missing documents to speed up approval.'}
+                </p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+            </button>
+          </section>
+        )}
+
+        {/* Pending job requests — spec §B home item; tap = triage them */}
+        {newRequests > 0 && (
+          <section className="px-4 pt-1 pb-1">
+            <button onClick={() => navigate('/provider-os?m=jobs')} className="w-full text-left rounded-2xl p-4 flex items-center gap-3" style={{ background: 'linear-gradient(135deg, #FFFDF7, #FBF3DA)', border: `1px solid ${GOLD}` }}>
+              <span className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-bold shrink-0" style={{ background: GOLD }}>{newRequests}</span>
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-semibold text-gray-900">{isHe ? 'בקשות עבודה חדשות ממתינות לך' : 'New job requests waiting for you'}</p>
+                <p className="text-[11px] text-gray-600">{isHe ? 'מענה מהיר מעלה את הדירוג שלך.' : 'Fast responses lift your ranking.'}</p>
+              </div>
+              <ChevronRight className="w-4 h-4 text-gray-300 shrink-0" />
+            </button>
+          </section>
+        )}
 
         {/* Greeting + provider ID card (metallic green) */}
         <section className="px-4 pt-1">
@@ -274,8 +318,8 @@ export default function ProviderHome() {
                       </div>
                     </div>
                     <div className="flex gap-2 mt-3">
-                      <button onClick={() => navigate(reqId ? `/provider-os?m=jobs` : '/provider-os?m=jobs')} className="flex-1 text-center text-xs font-medium border border-gray-200 rounded-lg py-2 text-gray-700">{isHe ? 'פרטים' : 'Details'}</button>
-                      <button onClick={() => navigate('/provider-os?m=jobs')} className="flex-1 text-center text-xs font-medium rounded-lg py-2 text-white" style={{ background: '#0e7a54' }}>{isHe ? 'התחל' : 'Start'}</button>
+                      <button onClick={() => navigate(reqId ? `/provider/jobs/${reqId}` : '/provider-os?m=jobs')} className="flex-1 text-center text-xs font-medium border border-gray-200 rounded-lg py-2 text-gray-700">{isHe ? 'פרטים' : 'Details'}</button>
+                      <button onClick={() => navigate(reqId ? `/provider/jobs/${reqId}` : '/provider-os?m=jobs')} className="flex-1 text-center text-xs font-medium rounded-lg py-2 text-white" style={{ background: '#0e7a54' }}>{isHe ? 'התחל' : 'Start'}</button>
                     </div>
                   </div>
                 );
@@ -320,33 +364,10 @@ export default function ProviderHome() {
         </section>
       </div>
 
-      {/* Provider bottom nav */}
-      <nav className="fixed bottom-0 inset-x-0 z-40 bg-white border-t border-gray-200" style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}>
-        <div className="max-w-md mx-auto relative flex items-stretch justify-between h-16 px-2">
-          <NavBtn icon={User} label={isHe ? 'פרופיל' : 'Profile'} onClick={() => navigate('/provider-os?m=profile')} />
-          <NavBtn icon={FileText} label={isHe ? 'מסמכים' : 'Docs'} onClick={() => navigate('/provider-os?m=documents')} />
-          <div className="w-16" />
-          <NavBtn icon={DollarSign} label={isHe ? 'הכנסות' : 'Income'} onClick={() => navigate('/provider/earnings')} />
-          <NavBtn icon={ClipboardList} label={isHe ? 'משימות' : 'Tasks'} badge={tasksBadge} onClick={() => navigate('/provider/tasks')} />
-
-          <button onClick={() => navigate('/provider/home')} className="absolute left-1/2 -translate-x-1/2 -top-5 w-16 h-16 rounded-full flex flex-col items-center justify-center text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #0e7a54, #0c6b48)' }} aria-label="Home">
-            <HomeIcon className="w-6 h-6" />
-            <span className="text-[8.5px] mt-0.5">{isHe ? 'בית' : 'Home'}</span>
-          </button>
-        </div>
-      </nav>
+      {/* Bottom tabs (Jobs · Calendar | Home | Earnings · Compliance · Account)
+          are the PERSISTENT app-shell ProviderTabsBar rendered by
+          MobileBottomNav — extracted from this page so the work tabs follow
+          the provider on every screen (CEO 2026-06-23 spec tabs). */}
     </div>
-  );
-}
-
-function NavBtn({ icon: Icon, label, badge, onClick }: { icon: any; label: string; badge?: number; onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="flex-1 flex flex-col items-center justify-center gap-0.5 relative">
-      <span className="relative">
-        <Icon className="w-5 h-5 text-gray-400" />
-        {badge ? <span className="absolute -top-1.5 -right-2 bg-red-500 text-white text-[8px] font-bold rounded-full min-w-[14px] h-[14px] flex items-center justify-center px-0.5">{badge}</span> : null}
-      </span>
-      <span className="text-[10px] text-gray-400">{label}</span>
-    </button>
   );
 }

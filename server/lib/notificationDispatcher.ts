@@ -18,7 +18,7 @@ import { COMPANY_TAX_ID } from '@shared/finance-identity';
 import { isSendGridConfigured, sgMail } from './sendgrid';
 import { twilioSMSService } from '../services/TwilioSMSService';
 
-export type NotificationChannel = 'inbox' | 'email' | 'sms';
+export type NotificationChannel = 'inbox' | 'email' | 'sms' | 'push';
 export type NotificationMessageType = 'voucher' | 'system' | 'receipt' | 'promo';
 
 export interface DispatchOptions {
@@ -147,6 +147,7 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
   inboxId: string;
   emailSent: boolean;
   smsSent: boolean;
+  pushSent?: boolean;
   errors: string[];
 }> {
   const {
@@ -169,6 +170,7 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
   const inboxId = randomUUID();
   let emailSent = false;
   let smsSent = false;
+  let pushSent = false;
 
   // ── 1. Write to Firestore inbox (primary, always attempted) ──────────────
   if (channels.includes('inbox')) {
@@ -243,7 +245,32 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
     }
   }
 
-  return { ok: true, inboxId, emailSent, smsSent, errors };
+  // ── 4. Send FCM push (native apps) ──────────────────────────────────────
+  // Uses the user's registered fcmTokens (Firestore users/{uid}); no-op when
+  // the user has no tokens. Never blocks the inbox/email/SMS channels.
+  if (channels.includes('push')) {
+    try {
+      const { FCMService } = await import('../services/FCMService');
+      pushSent = await FCMService.sendToUser({
+        userId: uid,
+        title,
+        body: (bodyText || stripHtml(bodyHtml)).slice(0, 200),
+        clickAction: ctaUrl,
+        data: {
+          type,
+          ...(meta?.bookingId ? { bookingId: String(meta.bookingId) } : {}),
+          ...(ctaUrl ? { url: ctaUrl } : {}),
+        },
+      });
+      if (pushSent) logger.info('[NotificationDispatcher] Push sent', { uid, type });
+    } catch (err) {
+      const msg = `Push send failed: ${err instanceof Error ? err.message : err}`;
+      errors.push(msg);
+      logger.error('[NotificationDispatcher] ' + msg);
+    }
+  }
+
+  return { ok: true, inboxId, emailSent, smsSent, pushSent, errors };
 }
 
 // ── Convenience wrappers ───────────────────────────────────────────────────
