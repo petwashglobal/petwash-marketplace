@@ -675,7 +675,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     secure: he ? 'מאובטח · פרטי · מוצפן' : 'SECURE · PRIVATE · ENCRYPTED',
     secureSub: he ? 'הנתונים שלך מוגנים ומוצפנים.' : 'Your data is protected and encrypted.',
 
-    create: he ? 'צור את חשבון PetWash שלך' : 'Create your PetWash account',
+    /* One door for everyone (CEO 2026-07-02): returning members sign in HERE —
+       same phone/email code, Google, Apple or Face ID — no separate login page. */
+    create: he ? 'התחברות או יצירת חשבון PetWash' : 'Sign in or create your PetWash account',
     helper: he
       ? 'הצטרף ל־PetWash Prestige וקבל 5% תגמול על כל רחיצה זכאית במכונת K9000.'
       : 'Join PetWash Prestige and earn 5% rewards on every eligible K9000 wash.',
