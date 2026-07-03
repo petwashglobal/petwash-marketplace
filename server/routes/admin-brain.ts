@@ -25,6 +25,7 @@ import { sql } from 'drizzle-orm';
 import { db } from '../db';
 import { logger } from '../lib/logger';
 import { requireBrainAccess } from '../middleware/requireBrainAccess';
+import { sumitClient } from '../services/SumitClient';
 
 const router = Router();
 
@@ -377,9 +378,70 @@ async function loadAgreements() {
   };
 }
 
+// ─── Payments panel — SUMIT + UPay clearing + Nayax online (the money arm) ────
+// Octopus "arm" for the charging + fiscal-invoice rail. Reports whether money
+// can actually move, WITHOUT ever returning a secret value (presence booleans
+// only) and WITHOUT moving any money. When SUMIT creds are present it runs the
+// SAFE getvatrate auth probe (authenticates; issues no document, charges
+// nothing). UPay is SUMIT's built-in clearing/acquirer — enabled on the SUMIT
+// account, not a separate API — so its readiness == SUMIT wired.
+async function loadPayments() {
+  const enabled = process.env.SUMIT_ENABLED === 'true';
+  const companyId = (process.env.SUMIT_COMPANY_ID || '').trim();
+  // A real SUMIT company id is numeric; guard against a pasted instruction blob.
+  const companyIdConfigured = /^\d{3,}$/.test(companyId);
+  const apiKeyConfigured = Boolean(process.env.SUMIT_API_KEY);
+  const webhookSecretConfigured = Boolean(process.env.SUMIT_WEBHOOK_SECRET);
+  const sandbox = process.env.SUMIT_SANDBOX !== 'false';
+  const wired = sumitClient.isWired();
+
+  const blockers: string[] = [];
+  if (!enabled) blockers.push('SUMIT_ENABLED is not "true"');
+  if (!companyIdConfigured) blockers.push('SUMIT_COMPANY_ID missing or not a clean numeric id');
+  if (!apiKeyConfigured) blockers.push('SUMIT_API_KEY missing');
+  if (!webhookSecretConfigured) blockers.push('SUMIT_WEBHOOK_SECRET missing');
+
+  // Nayax online card rail (sibling of the SUMIT/UPay redirect rail).
+  const nayaxKey = (process.env.NAYAX_API_KEY || '').toLowerCase();
+  const nayaxLive = Boolean(nayaxKey) && !nayaxKey.includes('placeholder');
+  if (!nayaxLive) blockers.push('NAYAX_API_KEY missing/placeholder → online card rail in DEMO_MODE');
+
+  // Safe live auth probe — only when SUMIT creds present (else it's pointless).
+  let liveProbe: { ran: boolean; ok?: boolean; reachable?: boolean; authRejected?: boolean; reason?: string } =
+    { ran: false, reason: 'SUMIT creds not configured — probe skipped' };
+  if (companyIdConfigured && apiKeyConfigured) {
+    const probe = await safeQuery(() => sumitClient.connectionTest(), 'sumitConnectionTest');
+    liveProbe = probe.ok
+      ? { ran: true, ok: probe.value.ok, reachable: probe.value.reachable, authRejected: probe.value.authRejected, reason: probe.value.reason }
+      : { ran: true, ok: false, reason: probe.error };
+  }
+
+  const ready = wired && liveProbe.ok === true && nayaxLive;
+
+  return {
+    wired: true,   // the ARM is live — it reports real config + probe state
+    ready,         // can the money rail actually charge a card end-to-end?
+    sumit: {
+      enabled, companyIdConfigured, apiKeyConfigured, webhookSecretConfigured, wired, sandbox,
+      chargeEndpoint: '/billing/payments/beginredirect/',
+      recurringEndpoint: '/billing/recurring/charge/',
+      docEndpoint: '/accounting/documents/create/',
+    },
+    upay: {
+      role: 'SUMIT built-in clearing / acquirer (סליקה) — enabled on the SUMIT account, no separate API',
+      clearingReady: wired,
+    },
+    nayaxOnline: { live: nayaxLive, mode: nayaxLive ? 'live' : 'DEMO_MODE (placeholder key)' },
+    itaConnection: 'SUMIT ↔ רשות המסים active (verified 2026-07-03)',
+    liveProbe,
+    blockers,
+    note: 'Secrets never returned — presence booleans only. Probe (getvatrate) moves no money and issues no document.',
+  };
+}
+
 // ─── GET /api/admin/brain/summary ────────────────────────────────────────────
 router.get('/summary', async (_req: Request, res: Response) => {
-  const [stations, revenue, approvals, alerts, systemFaults, activity, agreements] = await Promise.all([
+  const [stations, revenue, approvals, alerts, systemFaults, activity, agreements, payments] = await Promise.all([
     loadStations(),
     loadRevenue(),
     loadApprovals(),
@@ -387,6 +449,7 @@ router.get('/summary', async (_req: Request, res: Response) => {
     loadSystemFaults(),
     loadActivity(),
     loadAgreements(),
+    loadPayments(),
   ]);
 
   const gaps: string[] = [];
@@ -397,6 +460,9 @@ router.get('/summary', async (_req: Request, res: Response) => {
   if (!('wired' in systemFaults) || systemFaults.wired === false) gaps.push('systemFaults');
   if (!('wired' in activity) || activity.wired === false) gaps.push('activity');
   if (!('wired' in agreements) || agreements.wired === false) gaps.push('agreements');
+  // Payments arm is "wired" as a monitor, but flag it as a gap when the money
+  // rail can't actually charge (so the brain shows red until SUMIT/UPay is live).
+  if (!('ready' in payments) || payments.ready !== true) gaps.push('payments');
 
   res.json({
     generatedAt: new Date().toISOString(),
@@ -408,6 +474,7 @@ router.get('/summary', async (_req: Request, res: Response) => {
     systemFaults,
     activity,
     agreements,
+    payments,
   });
 });
 
