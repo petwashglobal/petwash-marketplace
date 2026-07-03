@@ -702,8 +702,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   const { role, isLoading: roleLoading } = useWhoami();
   const { trackLanguageChange } = useAnalytics();
   const [, setLocation] = useLocation();
-  const [isProviderApp, setIsProviderApp] = useState(false);
-  const [isCustomerApp, setIsCustomerApp] = useState(false);
+  // Seed from the BUILD-TIME flavor (VITE_APP_FLAVOR) so the app knows which of
+  // the two it is at frame 0 — no async bundle-id lookup needed. The effect
+  // below still runs as a runtime fallback for web/dev where the var is unset.
+  const BUILD_FLAVOR = ((import.meta as any)?.env?.VITE_APP_FLAVOR ?? '') as string;
+  const [isProviderApp, setIsProviderApp] = useState(BUILD_FLAVOR === 'provider');
+  const [isCustomerApp, setIsCustomerApp] = useState(BUILD_FLAVOR === 'customer');
   const IS_DEV = import.meta.env.DEV === true;
   // SYNCHRONOUS "is this a native app?" — available at frame 0 (unlike the async
   // bundle-id flavor below). This is the fix for "the app looks like a browser":
