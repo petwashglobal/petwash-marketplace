@@ -95,6 +95,7 @@ const ProviderBookingsDashboard = lazy(() => import("@/pages/ProviderBookingsDas
 const ProviderTaskInbox = lazy(() => import("@/pages/ProviderTaskInbox"));
 const ProviderEarningsPage = lazy(() => import("@/pages/ProviderEarningsPage"));
 const ProviderJobDetail = lazy(() => import("@/pages/ProviderJobDetail"));
+const HostStayJourney = lazy(() => import("@/components/booking/HostStayJourney"));
 const AccountingDashboard = lazy(() => import("@/pages/AccountingDashboard"));
 const UnifiedControlPanel = lazy(() => import("@/pages/UnifiedControlPanel"));
 const MarketplaceBookingFlow = lazy(() => import("@/pages/MarketplaceBookingFlow"));
@@ -1869,6 +1870,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                 <ProviderJobDetail />
               </Suspense>
             </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* Host Stay care journey — owner care pack + provider readiness + handover.
+            Party-aware inside the component; any authenticated party to the booking. */}
+        <Route path="/booking/:requestId/care">
+          {(params) => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <HostStayJourney requestId={params.requestId} />
+              </Suspense>
+            </RequireAuth>
           )}
         </Route>
 
