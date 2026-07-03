@@ -1,0 +1,98 @@
+name: Migration Test (prod-baseline)
+
+# Foundation safety gate (council 2026-07-03, top item #1).
+#
+# The production deploy's "Apply pending SQL migrations" step runs against the
+# REAL prod database. Nothing tests a migration BEFORE it reaches prod. This
+# workflow closes that gap without any prod access or risk:
+#   1. spin up a throwaway Postgres 18 (matches Neon prod major version),
+#   2. load the committed prod SCHEMA snapshot (structure only, no data) —
+#      docs/recovery/2026-07-03-db-migration-recovery/prod-schema-2026-07-03.sql,
+#   3. apply ONLY the migration files this PR ADDS, in strict mode.
+# If a new migration can't apply against the real prod shape, the PR fails here
+# instead of breaking production. Read-only w.r.t. prod (uses the static dump).
+#
+# On manual dispatch (no PR diff) it self-tests that the baseline loads.
+
+on:
+  pull_request:
+    paths:
+      - 'migrations/**'
+      - 'shared/schema*.ts'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  prod-baseline:
+    name: New migrations vs prod baseline
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: petwash_baseline
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s --health-timeout 5s --health-retries 15
+    env:
+      DUMP: docs/recovery/2026-07-03-db-migration-recovery/prod-schema-2026-07-03.sql
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Load prod baseline schema (structure only)
+        run: |
+          set -e
+          # psql from the postgres:18 image so client >= server; --network=host
+          # reaches the published service port on localhost.
+          run_psql() {
+            docker run --rm --network=host -e PGPASSWORD=postgres -v "$PWD:/repo" postgres:18 \
+              psql -h localhost -U postgres -d petwash_baseline "$@"
+          }
+          # ON_ERROR_STOP=0 for the load: a --no-owner --no-privileges dump can carry
+          # a few harmless SET/comment lines; we assert success by table count below.
+          run_psql -v ON_ERROR_STOP=0 -q -f "/repo/$DUMP" > load.log 2>&1 || true
+          TABLES=$(run_psql -tAc "SELECT count(*) FROM pg_tables WHERE schemaname='public'" | tr -d '[:space:]')
+          echo "Loaded $TABLES tables from the prod baseline."
+          if [ "${TABLES:-0}" -lt 600 ]; then
+            echo "::error::Baseline load looks incomplete (${TABLES} tables, expected ~690)."
+            tail -40 load.log
+            exit 1
+          fi
+
+      - name: Determine NEW migrations added by this PR
+        id: newmig
+        run: |
+          set -e
+          NEW=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            git fetch origin "${{ github.base_ref }}" --depth=1 --quiet || true
+            NEW=$(git diff --name-only --diff-filter=A "origin/${{ github.base_ref }}...HEAD" -- 'migrations/*.sql' | sort || true)
+          fi
+          {
+            echo "new<<EOF"
+            echo "$NEW"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
+          if [ -z "$NEW" ]; then
+            echo "No new migration files in this run — baseline load self-test only."
+          else
+            echo "New migrations to test against prod shape:"; echo "$NEW"
+          fi
+
+      - name: Apply NEW migrations against prod baseline (STRICT)
+        if: steps.newmig.outputs.new != ''
+        run: |
+          set -e
+          echo "${{ steps.newmig.outputs.new }}" | while read -r f; do
+            [ -z "$f" ] && continue
+            echo "── applying $f (ON_ERROR_STOP=1) ──"
+            docker run --rm --network=host -e PGPASSWORD=postgres -v "$PWD:/repo" postgres:18 \
+              psql -h localhost -U postgres -d petwash_baseline -v ON_ERROR_STOP=1 -f "/repo/$f"
+          done
+          echo "✅ All new migrations applied cleanly against the real prod schema shape."
