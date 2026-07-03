@@ -13,8 +13,9 @@
 
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
-import { bookingRequests, providers, superAppNotifications } from '@shared/schema';
+import { bookingRequests, providers, superAppNotifications, providerProfiles } from '@shared/schema';
 import { eq, sql, count, desc, inArray, and, gte, lte } from 'drizzle-orm';
+import { assertServiceApproved, providerHasAnyServiceRows } from '../services/providerServiceApproval';
 import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { pool } from '../db';
@@ -719,6 +720,61 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
         currentStatus: oldStatus,
         allowedFrom: allowed,
       });
+    }
+
+    // ── ACCEPT SAFETY GATES (2026-07-03, CEO-approved) ──────────────────────────
+    // This V2 action path previously let a provider accept a job with NONE of the
+    // vetting gates V1 (/api/booking-requests/:id/respond) enforces — so an
+    // un-background-checked or un-approved provider could take a real booking.
+    // Port V1's two ALWAYS-ON hard gates here, fail-closed, so both accept paths
+    // apply the same safety rules. (V1's flag-gated reconfirmation/declarations
+    // gates default to shadow/off and remain V1-only for now — no live gap.)
+    if (action === 'accept') {
+      // Gate 1 — background check must be approved.
+      const [profile] = await db
+        .select({ backgroundCheckStatus: providerProfiles.backgroundCheckStatus })
+        .from(providerProfiles)
+        .where(eq(providerProfiles.userId, user.uid))
+        .limit(1);
+      if (!profile || profile.backgroundCheckStatus !== 'approved') {
+        logger.warn('[ProviderV2] accept blocked — BGC not approved', {
+          providerId: user.uid, backgroundCheckStatus: profile?.backgroundCheckStatus,
+        });
+        return res.status(403).json({
+          error: 'BACKGROUND_CHECK_REQUIRED',
+          message: 'Your background check must be approved before you can accept bookings.',
+        });
+      }
+      // Gate 2 — per-service booking approval (legacy fail-open ONLY when the
+      // provider has zero provider_services rows; block if they have rows and this
+      // service isn't approved; on a genuine lookup failure fail-closed with 503).
+      try {
+        const gate = await assertServiceApproved(user.uid, booking.service_type, 'booking');
+        if (!gate.ok) {
+          const hasRows = await providerHasAnyServiceRows(user.uid);
+          if (hasRows) {
+            logger.warn('[ProviderV2] accept blocked — service not approved for booking', {
+              providerId: user.uid, serviceType: booking.service_type, reason: gate.reason,
+            });
+            return res.status(403).json({
+              error: 'SERVICE_NOT_APPROVED_FOR_BOOKING',
+              message: 'This service is not yet approved for bookings on your account. Contact PetWash support.',
+              reason: gate.reason,
+            });
+          }
+          logger.info('[ProviderV2] provider has no provider_services rows — legacy fail-open allow', {
+            providerId: user.uid, serviceType: booking.service_type,
+          });
+        }
+      } catch (gateErr: any) {
+        logger.error('[ProviderV2] booking-gate lookup error', { error: gateErr?.message, providerId: user.uid });
+        try {
+          const hasRows = await providerHasAnyServiceRows(user.uid);
+          if (hasRows) {
+            return res.status(503).json({ error: 'SERVICE_GATE_UNAVAILABLE', message: 'Could not verify service approval. Please retry.' });
+          }
+        } catch { /* double failure → legacy-allow (no rows assumed) */ }
+      }
     }
 
     const now = new Date();
