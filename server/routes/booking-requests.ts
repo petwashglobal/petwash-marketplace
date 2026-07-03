@@ -2488,8 +2488,37 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         platformFeePercent,
       });
     } catch (earningError: any) {
-      logger.warn('[BookingRequests] payoutLedger failed, continuing', {
-        error: earningError.message,
+      // FAIL-CLOSED (2026-07-03, CEO-approved money fix): do NOT silently
+      // continue. If the provider earning record can't be created, we must NOT
+      // fall through to release escrow / mark the booking complete — otherwise
+      // the booking finishes, the money leaves escrow, and the provider is
+      // silently NEVER recorded as owed (never paid). Instead: keep the booking
+      // at provider_marked_complete (retryable), raise a critical alert + a
+      // tracked case, and return an error the owner can retry.
+      logger.error('[BookingRequests] Earning-record creation FAILED — refusing to complete (fail-closed)', {
+        requestId, providerId: booking.providerId, error: earningError?.message,
+      });
+      try {
+        const { alertManager } = await import('../services/alertManager');
+        await alertManager.triggerAlert({
+          name: 'PROVIDER_EARNING_RECORD_FAILED',
+          message: `Earning record could not be created for booking ${requestId} — payout blocked, completion refused (fail-closed). Needs settlement repair.`,
+          severity: 'critical', timestamp: new Date(),
+          metadata: { requestId, providerId: booking.providerId, error: earningError?.message },
+        }).catch(() => {});
+      } catch { /* alerting best-effort */ }
+      try {
+        const { openIncident } = await import('../services/incidentService');
+        await openIncident({
+          type: 'payment_failure', severity: 'high',
+          description: `Provider earning record FAILED on confirm-completion for booking ${requestId}. Escrow NOT released, booking NOT completed (fail-closed) so the provider is not silently unpaid. Repair settlement then retry. Error: ${earningError?.message}`,
+          bookingId: String(requestId), memberId: booking.ownerId, providerId: booking.providerId,
+          reportedBy: 'system:earning-fail-closed',
+        });
+      } catch { /* incident best-effort */ }
+      return res.status(500).json({
+        error: 'EARNING_RECORD_FAILED',
+        message: 'We could not finalize the provider payout for this booking, so it has NOT been completed. Please try again shortly or contact PetWash support.',
       });
     }
 
