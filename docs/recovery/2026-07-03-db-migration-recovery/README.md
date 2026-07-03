@@ -38,33 +38,36 @@ Drive folder, per the requirement that any hotfix/baseline be *tracked in the re
 | `04-migration-run-log-28633508916.txt` | Raw CI log proving 0088 applied | 4 |
 | `05-host-stay-verify-and-rollback.sql` | Verification queries + rollback for the Host Stay tables | E |
 | `06-pr-index.md` | PR links + commit SHAs for #1255–#1260 | 5 |
+| `07-schema-audit-2026-07-03.md` | **Real code-vs-prod diff** (690 prod tables vs 670 ORM models) | 1, 2, C |
+| `prod-schema-2026-07-03.sql` | **Production schema export** (`pg_dump --schema-only`; 690 tables, no data) | 1 |
+| `audit/` | Derived lists (prod/code tables, diffs, raw-SQL usage) | supporting |
 | `_applied-this-run.txt` | The 69 filenames applied in the proving run | supporting |
 
 ---
 
 ## 2. "What is live in production now" checklist
 
-Legend: ✅ VERIFIED (I have direct evidence) · 🟡 STRONG SIGNAL (inferred from CI apply log, not a direct prod query) · ⬜ UNVERIFIED (needs a prod query — see file 03)
+Legend: ✅ VERIFIED (direct evidence) · 🟡 STRONG SIGNAL (CI apply log) · ⬜ open item
 
 | Capability | Live? | Basis |
 |---|---|---|
-| Host Stay tables (`host_stay_details`, `booking_handover_events`) | ✅ | CI `✅ applied: 0088` on prod DATABASE_URL |
-| Case-ID sequences (`case_id_sequences`, 0087) | 🟡 | in the 69 applied this run |
+| Prod schema now exported + diffed against code | ✅ | `prod-schema-2026-07-03.sql` + file 07 |
+| Every table the live app uses exists in prod | ✅ | file 07 Finding 1: 0 live tables missing (4 code-only are obsolete, 0 queries) |
+| Host Stay tables (`host_stay_details`, `booking_handover_events`) | ✅ | CI `✅ applied: 0088`; present in prod dump |
+| Case-ID sequences (`case_id_sequences`, 0087) | ✅ | in prod dump + 69 applied this run |
 | K9000 per-machine secrets (0086) | 🟡 | in the 69 applied this run |
-| The 69 migration files listed in `_applied-this-run.txt` | 🟡 | CI apply log, this run |
-| `0010_registration_tables` objects | ⬜ | ORPHANED (skipped) — `applicant_id` column missing in prod; needs reconcile |
-| `0018_privacy_first_account_schema` objects | ⬜ | ORPHANED (skipped) — `lower(pet_temperament)` functional index invalid in prod; needs reconcile |
-| Full prod schema == `schema.ts` (671 tables) | ⬜ | **cannot confirm without a prod schema export** — file 03 |
+| 24 prod tables run on raw SQL with no ORM model (money-heavy) | ⚠️ | file 07 Finding 2 — reconcile in baseline §B |
+| `host_stay_details.id` type drift (prod uuid vs code varchar) | ⚠️ | file 07 Finding 3 |
+| `0010` / `0018` legacy migrations never applied (ORPHANED) | ⬜ | reconcile in baseline §B/§C |
 
 ---
 
-## 3. The one thing blocking a complete audit
+## 3. Prod truth is now available (blocker cleared)
 
-I do **not** hold the production `DATABASE_URL` / Neon credentials, so I cannot read the
-live schema directly. Two clean ways to unblock, both in `03-schema-audit-and-neon-export.md`:
+The original blocker — no prod schema on hand — is **resolved**. The `Schema Snapshot (prod,
+read-only)` workflow (merged, PR #1262/#1263) dumped the live Neon schema to an artifact; it is
+committed here as `prod-schema-2026-07-03.sql` (690 tables, `--schema-only`, no data). The
+code-vs-prod diff is done in `07-schema-audit-2026-07-03.md`.
 
-- **Option A (fastest, you run one command):** `pg_dump --schema-only` against Neon → paste/upload the file → I diff it against `schema.ts`.
-- **Option B (repeatable, we build once):** a `workflow_dispatch` "schema-snapshot" CI job that dumps the schema to a downloadable **artifact** (never to logs), so we can re-baseline anytime without anyone handling the URL by hand.
-
-Recommendation: **B**, because it makes prod-truth a one-click, credential-safe, repeatable
-operation instead of a manual chore — which is the whole point of this recovery.
+Re-run anytime: **Actions ▸ "Schema Snapshot (prod, read-only)" ▸ Run workflow**, then
+`gh run download <run-id> -n prod-schema-snapshot`. No one handles the connection string by hand.
