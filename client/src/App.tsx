@@ -36,6 +36,7 @@ import { GoogleOneTap } from "@/components/GoogleOneTap";
 import { ActivationBanner } from "@/components/ActivationBanner";
 import { PromoAdPopup } from "@/components/PromoAdPopup";
 import { useAppFlavor } from "@/lib/appFlavor";
+import { Capacitor } from "@capacitor/core";
 import { Layout } from "@/components/Layout";
 import { isStickyAccountPath } from "@/lib/sticky-account-paths";
 import { isImmersiveRoute } from "@/lib/immersive-routes";
@@ -704,6 +705,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   const [isProviderApp, setIsProviderApp] = useState(false);
   const [isCustomerApp, setIsCustomerApp] = useState(false);
   const IS_DEV = import.meta.env.DEV === true;
+  // SYNCHRONOUS "is this a native app?" — available at frame 0 (unlike the async
+  // bundle-id flavor below). This is the fix for "the app looks like a browser":
+  // a native app must NEVER render the web marketing Landing/Home, not even for
+  // the millisecond it takes the async flavor to resolve. Web = false → untouched.
+  const isNativeApp = Capacitor.isNativePlatform();
   
   // Initialize FCM push notifications (auto-registers after login)
   useFCMNotifications(true);
@@ -737,7 +743,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   // provider (il.co.petwash.provider) apps ship the SAME web bundle. On a cold
   // Detect the native app flavor once (provider vs customer bundle id). Web stays false.
   useEffect(() => {
+    if (!isNativeApp) return; // web: leave both flavors false, Landing/Home as-is.
     let cancelled = false;
+    // Safety net: if bundle-id detection is slow or unavailable in the native
+    // build, we still must NOT strand the user on a blank/loader screen. Default
+    // a native app to the CUSTOMER (member) experience after a short beat; a
+    // real provider-id result below overrides it. Net effect: a native app is
+    // ALWAYS one of the two app experiences, NEVER the web site.
+    const fallback = setTimeout(() => {
+      if (!cancelled) setIsCustomerApp((prev) => prev || !isProviderApp);
+    }, 1200);
     import('@capacitor/app')
       .then(async ({ App: CapApp }) => {
         try {
@@ -747,14 +762,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             const provider = id.includes('.provider');
             setIsProviderApp(provider);
             // CUSTOMER flavor = the native app that is NOT the provider build
-            // (com.petwash.il / il.co.petwash.customer). Web has no native id → both false.
-            setIsCustomerApp(id !== '' && !provider);
+            // (com.petwash.il / il.co.petwash.customer).
+            setIsCustomerApp(!provider);
           }
-        } catch { /* no native app info (web) */ }
+        } catch { if (!cancelled) setIsCustomerApp(true); }
       })
-      .catch(() => { /* web — no Capacitor plugin */ });
-    return () => { cancelled = true; };
-  }, []);
+      .catch(() => { if (!cancelled) setIsCustomerApp(true); });
+    return () => { cancelled = true; clearTimeout(fallback); };
+  }, [isNativeApp]);
 
   // Smart app-purpose routing — each app opens to the experience its user needs.
   // The PROVIDER (driver-style) app serves providers: from the root, a provider
@@ -810,6 +825,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Public routes */}
         <Route path="/">
           {() => {
+            // Native apps NEVER render the web Landing/Home. Show a loader while
+            // the flavor-redirect effect above moves to /prestige/home or
+            // /provider/home (or /signup when signed-out). Web is unaffected.
+            if (isNativeApp) return <PageLoader />;
             if (loading) return <PageLoader />;
             return user ? (
               <Home language={language} onLanguageChange={handleLanguageChange} />
@@ -820,6 +839,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/home">
           {() => {
+            if (isNativeApp) return <PageLoader />;
             if (loading) return <PageLoader />;
             return user ? (
               <Home language={language} onLanguageChange={handleLanguageChange} />
