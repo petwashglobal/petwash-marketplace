@@ -13,6 +13,7 @@
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Copy, Share2, Gift, Users, Trophy, ChevronRight, Check, Clock, Coins } from "lucide-react";
+import { shareOrCopy } from "@/lib/share";
 import { SiWhatsapp } from "react-icons/si";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -156,6 +157,25 @@ export default function ReferralPage() {
       `קבל ₪25 קרדיט ב-⁦Pet Wash™⁩! ${referralData.referralLink}`
     );
     window.open(`sms:?body=${text}`, "_blank");
+  };
+
+  // Native "share to any channel" — opens the OS sheet (WhatsApp, Messages, Mail,
+  // AirDrop, and every other installed app in one place). Falls back to copying
+  // the link where the Web Share API isn't available (older desktop browsers).
+  const shareNative = async () => {
+    if (!referralData?.referralLink) return;
+    const outcome = await shareOrCopy({
+      title: "Pet Wash™",
+      text: `🐾 קבל ₪25 קרדיט ב-⁦Pet Wash™⁩ עם הקישור שלי:`,
+      url: referralData.referralLink,
+    });
+    if (outcome === "copied") {
+      setCopied(true);
+      toast({ title: "הקישור הועתק!", description: "שתף את הקישור עם חברים" });
+      setTimeout(() => setCopied(false), 2000);
+    } else if (outcome === "unavailable") {
+      toast({ title: "שגיאה", description: "לא ניתן לשתף כרגע", variant: "destructive" });
+    }
   };
 
   if (isLoading) {
@@ -363,7 +383,16 @@ export default function ReferralPage() {
           <CardContent className="p-6">
             <h3 className="font-bold text-lg mb-4 text-center">שתף עכשיו</h3>
             <div className="flex flex-wrap justify-center gap-3">
-              <Button 
+              <Button
+                onClick={shareNative}
+                className="bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white"
+                size="lg"
+              >
+                <Share2 className="w-5 h-5 ml-2" />
+                שתף
+              </Button>
+
+              <Button
                 onClick={shareWhatsApp}
                 className="bg-green-500 hover:bg-green-600 text-white"
                 size="lg"
