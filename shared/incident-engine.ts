@@ -31,6 +31,10 @@ export const INCIDENT_TYPES = [
   // sharing the SAME saved address (self-dealing / duplicate account / review or
   // referral gaming). NOT auto-punitive — opens a case for an admin to review.
   'linked_account_address_match',
+  // pass replay: a single-use redeem token (nonce) was presented again after it
+  // was already burned. The redemption is refused at the door (409); this opens a
+  // review case so repeated abuse is visible. NOT auto-punitive.
+  'pass_replay_attempt',
   'other',
 ] as const;
 export type IncidentTypeX = (typeof INCIDENT_TYPES)[number];
