@@ -634,6 +634,24 @@ function DigitalCardSection({
             <button onClick={() => { generateQr(); }} style={{ display:'flex', alignItems:'center', gap:'6px', background:'none', border:'none', cursor:'pointer', color:'#9E9E9E', fontSize:'0.78rem', fontWeight:600, padding:'4px 8px' }}>
               <RefreshCw size={13} /> {he ? 'רענן קוד' : 'Refresh code'}
             </button>
+            {/* Dynamic-QR trust card. Turns the usual "keep this secret" warning into
+                a premium confidence message: the code is alive, so a screenshot can't
+                be reused. Only shown while a live token is on screen. */}
+            <div style={{ width:'100%', display:'flex', gap:'10px', alignItems:'flex-start', background:'linear-gradient(135deg, rgba(217,184,76,0.08), rgba(217,184,76,0.03))', border:'1px solid rgba(217,184,76,0.25)', borderRadius:'12px', padding:'12px 14px', direction: he ? 'rtl' : 'ltr' }}>
+              <div style={{ flexShrink:0, width:'28px', height:'28px', borderRadius:'8px', background:'rgba(217,184,76,0.15)', display:'flex', alignItems:'center', justifyContent:'center' }}>
+                <Shield size={16} color="#B8860B" />
+              </div>
+              <div style={{ textAlign: he ? 'right' : 'left' }}>
+                <p style={{ margin:0, fontSize:'0.78rem', fontWeight:700, color:'#1A1A1A' }}>
+                  {he ? 'מאובטח בעיצוב' : 'Safe by design'}
+                </p>
+                <p style={{ margin:'3px 0 0', fontSize:'0.72rem', lineHeight:1.5, color:'#7A7068' }}>
+                  {he
+                    ? 'הקוד מתחדש כל 45 שניות וניתן לשימוש פעם אחת בלבד — צילום מסך חסר ערך. הצג אותו רק לקורא ב-K9000.'
+                    : 'This code refreshes every 45 seconds and can be used only once — a screenshot is worthless. Show it only to the reader at the K9000.'}
+                </p>
+              </div>
+            </div>
           </div>
         ) : (
           <div style={{ display:'flex', flexDirection:'column', alignItems:'center', gap:'16px', padding:'20px 0' }}>
