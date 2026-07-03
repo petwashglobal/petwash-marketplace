@@ -52,11 +52,12 @@ jobs:
           echo "::add-mask::$DB_URL"
           echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
 
-      - name: Dump schema only (pg_dump 17 via docker, version-safe for Neon)
+      - name: Dump schema only (pg_dump 18 via docker, version-safe for Neon)
         run: |
           set -e
-          # Run pg_dump from the postgres:17 image so the client version always
-          # matches/exceeds Neon's server (avoids "server version mismatch").
+          # Run pg_dump from the postgres:18 image. pg_dump requires client
+          # version >= server; Neon prod is Postgres 18.x (verified 2026-07-03:
+          # server 18.4). If Neon later upgrades its major version, bump this tag.
           # --schema-only: structure only, no data. --no-owner/--no-privileges:
           # portable, no role noise. URL passed via env into the container so it
           # never appears in the command line / process list.
@@ -68,7 +69,7 @@ jobs:
           if printf '%s' "$DATABASE_URL" | grep -q -- '-pooler'; then
             echo "::warning::DATABASE_URL looks like the Neon POOLED endpoint; pg_dump may need the direct (non-pooler) host."
           fi
-          docker run --rm -e PGURL="$DATABASE_URL" postgres:17 \
+          docker run --rm -e PGURL="$DATABASE_URL" postgres:18 \
             sh -c 'pg_dump --schema-only --no-owner --no-privileges "$PGURL"' \
             > prod-schema-snapshot.sql
           echo "Lines: $(wc -l < prod-schema-snapshot.sql)"
