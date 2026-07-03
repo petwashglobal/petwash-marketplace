@@ -54,6 +54,12 @@
  *     migrations (0015 etc.) cannot run until either the table is
  *     created via a new migration, or the file is moved to the
  *     manual-migrations allowlist.
+ *     Additionally, ANY hard error on a LEGACY migration (numeric prefix
+ *     <= MIGRATION_BASELINE) is soft-skipped as drift. This ends the
+ *     "endless catch-up" of adding one more drift code per merge: legacy
+ *     files can no longer block the newer migrations behind them. A NEW
+ *     migration (prefix > baseline) is unaffected and still fails closed
+ *     on any unexpected error, so real bugs in new work still block deploy.
  *     End-of-run summary lists every ORPHANED and DATA_CONFLICT file
  *     with the PG error code so an operator can resolve via the
  *     fix-forward options printed at the end.
@@ -132,6 +138,39 @@ const UNDEFINED_REFERENCE_CODES = new Set([
 const DATA_CONFLICT_CODES = new Set([
   '23505', // unique_violation, e.g. CREATE UNIQUE INDEX found duplicates
 ]);
+
+// Legacy baseline: the numeric prefix of the newest migration that predates
+// this runner's strict enforcement. Every migration at or below the baseline
+// was authored before _petwash_migrations tracking existed and was applied to
+// prod out-of-band via `drizzle-kit push` against shared/schema.ts. Those old
+// files therefore replay against a prod schema that has drifted from what they
+// assumed, and can throw ANY of an open-ended set of drift errors (42883 at
+// 0018, then the next code, then the next — the "endless catch-up").
+//
+// Rather than chase each drift code into UNDEFINED_REFERENCE_CODES one merge at
+// a time, in --lenient (CI catch-up) mode we treat ANY hard error on a legacy
+// migration (prefix <= baseline) as an ORPHANED drift skip and keep going, so
+// genuinely-new migrations downstream always get their turn.
+//
+// CRITICAL SAFETY BOUND: this catch-all applies ONLY to files <= the baseline.
+// A migration ABOVE the baseline (a genuinely-new one, 0089+) still fails closed
+// on any unexpected error, so a real bug in new migration work still blocks the
+// deploy exactly as before — the tolerance can never silently swallow it.
+// Override via PETWASH_MIGRATE_BASELINE for future re-baselining after the
+// legacy backlog is reconciled.
+const MIGRATION_BASELINE = Number(process.env.PETWASH_MIGRATE_BASELINE ?? '88');
+
+/** Numeric prefix of a `NNNN_name.sql` migration filename, or NaN. */
+function migrationNumber(file: string): number {
+  const m = /^(\d{4})_/.exec(file);
+  return m ? Number(m[1]) : NaN;
+}
+
+/** True when this file predates strict enforcement (prefix <= baseline). */
+function isLegacyMigration(file: string): boolean {
+  const n = migrationNumber(file);
+  return Number.isFinite(n) && n <= MIGRATION_BASELINE;
+}
 
 // Statements that CANNOT run inside a transaction block. Postgres
 // returns code 25001 (active_sql_transaction) if any of these are sent
@@ -401,7 +440,23 @@ async function main() {
           continue;
         }
 
-        // Real error (or strict mode) — fail closed so deploy blocks.
+        // Legacy-baseline catch-all (lenient only): any hard error on a
+        // migration authored before strict enforcement (prefix <= baseline)
+        // is treated as prod-schema drift and skipped, so an unanticipated
+        // drift code on an OLD file can't block the newer migrations behind
+        // it. New migrations (prefix > baseline) never reach here — they fall
+        // through to fail-closed below. Recorded nothing, same as ORPHANED, so
+        // a future schema-aligned run can still apply it.
+        if (lenient && isLegacyMigration(file)) {
+          console.error(
+            `[migrate] 🟧 LEGACY-DRIFT ${file} (code=${code ?? 'none'}) — pre-baseline (<=${MIGRATION_BASELINE}) file errored against drifted prod schema. Skipping (lenient). msg: ${msg}`,
+          );
+          orphanedFiles.push({ file, code: code ?? 'legacy-drift', message: msg });
+          continue;
+        }
+
+        // Real error (or strict mode, or a NEW migration above the baseline) —
+        // fail closed so deploy blocks.
         console.error(
           `[migrate] ❌ ${file} failed (code=${code ?? 'none'}): ${msg}`,
         );
