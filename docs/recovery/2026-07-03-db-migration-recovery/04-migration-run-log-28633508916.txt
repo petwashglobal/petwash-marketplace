@@ -1,0 +1,77 @@
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:11.2739581Z [migrate] LENIENT mode enabled — orphaned ALTER/INDEX targets will be logged + skipped, not fatal.
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:11.7861071Z [migrate] found 87 migration files; 16 already recorded as applied; 0 declared manual.
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:12.2421353Z [migrate] 🟧 ORPHANED 0010_registration_tables.sql (code=42703) — target missing from prod schema. Skipping (lenient). msg: column "applicant_id" does not exist
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:12.5196798Z [migrate] 🟧 ORPHANED 0018_privacy_first_account_schema.sql (code=42883) — target missing from prod schema. Skipping (lenient). msg: function lower(pet_temperament) does not exist
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:12.8938145Z [migrate] ✅ applied: 0019_provider_self_declaration.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:13.2623879Z [migrate] ✅ applied: 0020_provider_self_declaration_backfill.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:13.6322950Z [migrate] ✅ applied: 0021_booking_requests_address_snapshot.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:14.0071876Z [migrate] ✅ applied: 0022_provider_service_areas_city_symbol.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:14.3765832Z [migrate] ✅ applied: 0024_supplier_invoices_screening.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:14.7471977Z [migrate] ✅ applied: 0025_supplier_invoices_sumit_linkage.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:15.1156262Z [migrate] ✅ applied: 0026_supplier_invoices_shaam.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:15.4867248Z [migrate] ✅ applied: 0027_suppliers_osek_classification.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:15.8566996Z [migrate] ✅ applied: 0028_marketplace_booking_slot_locks.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:16.2354585Z [migrate] ✅ applied: 0028_maya_reception_intake_foundation.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:16.6044490Z [migrate] ✅ applied: 0029_nayax_processed_event_ids.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:16.9745607Z [migrate] ✅ applied: 0030_maya_voice_channel.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:17.3454667Z [migrate] ✅ applied: 0031_payment_devices.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:17.7147409Z [migrate] ✅ applied: 0033_soft_delete_accounts_payable_receivable.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:18.0870137Z [migrate] ✅ applied: 0034_vat_rate_configs.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:18.4540899Z [migrate] ✅ applied: 0035_maya_whatsapp_channel.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:18.8239651Z [migrate] ✅ applied: 0036_retention_policies.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:19.1947086Z [migrate] ✅ applied: 0037_app_sessions.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:19.5719109Z [migrate] ✅ applied: 0038_analytics_aggregates.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:19.9413335Z [migrate] ✅ applied: 0039_provider_health_and_rectification.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:20.3110032Z [migrate] ✅ applied: 0040_pseudonymous_tracking_consent.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:23.7299470Z [migrate] ✅ applied: 0041_retire_hello_email.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:24.0990162Z [migrate] ✅ applied: 0042_verification_challenges.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:24.4677944Z [migrate] ✅ applied: 0043_identity_accounts.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:24.8370874Z [migrate] ✅ applied: 0044_user_passkeys.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:25.2059419Z [migrate] ✅ applied: 0045_admin_invitations.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:25.6646426Z [migrate] ✅ applied: 0046_shop_tables.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:26.0336094Z [migrate] ✅ applied: 0047_shop_example_products.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:26.4012682Z [migrate] ✅ applied: 0048_shop_personalization.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:26.7711411Z [migrate] ✅ applied: 0049_provider_tax_identity.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:27.1422925Z [migrate] ✅ applied: 0050_trust_instantbook_safety.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:27.5103439Z [migrate] ✅ applied: 0051_provider_insurance_docs.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:27.8790202Z [migrate] ✅ applied: 0053_legal_gates_foundation.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:28.2500518Z [migrate] ✅ applied: 0054_home_access_subsystem.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:28.6172397Z [migrate] ✅ applied: 0055_service_verification.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:28.9870139Z [migrate] ✅ applied: 0056_incident_engine.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:29.3556445Z [migrate] ✅ applied: 0057_k9000_redeemed_nonces.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:29.7264099Z [migrate] ✅ applied: 0058_commerce_os_foundation.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:30.0986134Z [migrate] ✅ applied: 0059_booking_hardening.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:30.4675809Z [migrate] ✅ applied: 0059_member_wash_discounts.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:30.8349350Z [migrate] ✅ applied: 0060_member_wash_discounts.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:31.2045769Z [migrate] ✅ applied: 0061_coupon_deactivate_reason.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:31.5739797Z [migrate] ✅ applied: 0062_admin_alerts.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:31.9424635Z [migrate] ✅ applied: 0063_provider_full_verification.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:32.3119405Z [migrate] ✅ applied: 0064_pet_sex_desexed.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:32.6795429Z [migrate] ✅ applied: 0065_notification_events_push_devices.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:33.0502613Z [migrate] ✅ applied: 0066_sumit_document_linkage.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:33.4183758Z [migrate] ✅ applied: 0067_credit_transactions_service_tag.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:33.7876511Z [migrate] ✅ applied: 0068_membership_cards.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:34.1556053Z [migrate] ✅ applied: 0069_provider_tax_status.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:34.5239801Z [migrate] ✅ applied: 0070_long_stay_rate_engine.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:34.8920612Z [migrate] ✅ applied: 0071_provider_application_intake_columns.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:35.2617652Z [migrate] ✅ applied: 0072_schema_drift_catchup.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:35.6321417Z [migrate] ✅ applied: 0073_notification_preferences_drift_fix.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:36.0009193Z [migrate] ✅ applied: 0074_pets_country_of_birth.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:36.3722582Z [migrate] ✅ applied: 0075_coupon_engine_integrity.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:36.7786873Z [migrate] ✅ applied: 0076_k9000_redemption_reservations.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:37.1572388Z [migrate] ✅ applied: 0077_member_discount_applications.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:37.5284087Z [migrate] ✅ applied: 0078_member_discount_application_id_hash.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:37.9579950Z [migrate] ✅ applied: 0079_treasury_phantom_tables.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:38.3422308Z [migrate] ✅ applied: 0080_waitlist_entries.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:38.7575802Z [migrate] ✅ applied: 0081_deal_gate.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:39.1619082Z [migrate] ✅ applied: 0082_conversion_rescue.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:39.5396624Z [migrate] ✅ applied: 0083_communication_events.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:39.9251510Z [migrate] ✅ applied: 0084_chat_threads.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:40.2967103Z [migrate] ✅ applied: 0085_payout_double_payout_guard.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:40.6662199Z [migrate] ✅ applied: 0086_k9000_per_machine_secrets.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:41.0487476Z [migrate] ✅ applied: 0087_case_id_sequences.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:41.4381866Z [migrate] ✅ applied: 0088_host_stay_journey.sql
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:41.4383471Z [migrate] summary: 69 newly applied, 0 bootstrapped as already-existing, 0 skipped via manual allowlist, 2 ORPHANED (lenient skip), 0 DATA_CONFLICT (lenient skip).
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:41.4389663Z [migrate] ORPHANED migrations — these reference tables/columns missing from the prod schema:
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:41.4393309Z [migrate] Fix-forward options for each ORPHANED entry:
+Apply pending SQL migrations	Apply pending SQL migrations	2026-07-03T02:04:41.4396272Z [migrate] These DID NOT block this deploy (lenient mode) but will keep firing on every run until resolved.
