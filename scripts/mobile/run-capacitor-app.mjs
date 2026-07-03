@@ -32,11 +32,12 @@ async function selectConfig(selectedAppName) {
   console.log(`Selected ${selectedAppName} Capacitor config.`);
 }
 
-function run(command, args) {
+function run(command, args, extraEnv) {
   const result = spawnSync(command, args, {
     cwd: repoRoot,
     stdio: "inherit",
     shell: false,
+    env: extraEnv ? { ...process.env, ...extraEnv } : process.env,
   });
 
   if (result.error) {
@@ -52,7 +53,11 @@ try {
   await selectConfig(appName);
 
   if (action === "sync") {
-    run("npm", ["run", "build"]);
+    // Stamp the JS bundle with its app identity at BUILD time so the two apps
+    // are hardcoded-distinct from frame 0 — no shared runtime, no async
+    // bundle-id lookup, no web-experience flash. Vite exposes any VITE_*
+    // env var to client code via import.meta.env.
+    run("npm", ["run", "build"], { VITE_APP_FLAVOR: appName });
     run("npx", ["cap", "sync"]);
     run("npm", ["run", "cap:clean-sourcemaps"]);
   } else if (action === "open:ios") {

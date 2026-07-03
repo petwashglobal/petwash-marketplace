@@ -15,7 +15,15 @@ import { useEffect, useState } from 'react';
 
 export type AppFlavor = 'provider' | 'customer' | 'web';
 
-let cachedFlavor: AppFlavor | null = null;
+// Build-time flavor: each native app is built with VITE_APP_FLAVOR stamped in
+// (scripts/mobile/run-capacitor-app.mjs), so the flavor is known SYNCHRONOUSLY
+// at frame 0 — no async bundle-id lookup, no web-experience flash, and the two
+// apps are hardcoded-distinct. Falls through to runtime detection on web/dev
+// where the var is unset.
+const BUILD_FLAVOR = ((import.meta as any)?.env?.VITE_APP_FLAVOR ?? '') as string;
+
+let cachedFlavor: AppFlavor | null =
+  BUILD_FLAVOR === 'provider' ? 'provider' : BUILD_FLAVOR === 'customer' ? 'customer' : null;
 let pending: Promise<AppFlavor> | null = null;
 const listeners = new Set<(f: AppFlavor) => void>();
 
