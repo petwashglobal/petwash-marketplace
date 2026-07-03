@@ -1,0 +1,89 @@
+name: Schema Snapshot (prod, read-only)
+
+# Produces a STRUCTURE-ONLY dump of the production Neon schema as a downloadable
+# artifact. No data, no row values, no secrets — `pg_dump --schema-only`.
+#
+# WHY: the DB/migration recovery (docs/recovery/2026-07-03-db-migration-recovery/)
+# needs the real prod schema to diff against shared/schema.ts (the audit) and to
+# author a clean production baseline. The prod DATABASE_URL lives in GCP Secret
+# Manager and must never be handled by hand — this job fetches it, masks it, dumps
+# schema only, and uploads the result. Nobody touches the connection string.
+#
+# Manual-only. Read-only. Cannot mutate prod (pg_dump issues no DDL/DML).
+#
+# Usage: Actions ▸ "Schema Snapshot (prod, read-only)" ▸ Run workflow.
+# Then:  gh run download <run-id> -n prod-schema-snapshot
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: schema-snapshot
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  snapshot:
+    name: Dump prod schema → artifact
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: signinpetwash
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Fetch DATABASE_URL from Secret Manager (masked)
+        id: fetch-db-url
+        run: |
+          set -e
+          if ! gcloud secrets describe "DATABASE_URL" --project="$PROJECT_ID" --quiet &>/dev/null; then
+            echo "::error::DATABASE_URL secret missing from Secret Manager."
+            exit 1
+          fi
+          DB_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+
+      - name: Dump schema only (pg_dump 17 via docker, version-safe for Neon)
+        run: |
+          set -e
+          # Run pg_dump from the postgres:17 image so the client version always
+          # matches/exceeds Neon's server (avoids "server version mismatch").
+          # --schema-only: structure only, no data. --no-owner/--no-privileges:
+          # portable, no role noise. URL passed via env into the container so it
+          # never appears in the command line / process list.
+          #
+          # NOTE: pg_dump needs a SESSION-mode connection. If DATABASE_URL is the
+          # Neon POOLED url (host contains "-pooler"), pg_dump can fail under
+          # pgbouncer. In that case set a repo/Secret-Manager direct URL, or strip
+          # "-pooler" from the host. We detect + warn below.
+          if printf '%s' "$DATABASE_URL" | grep -q -- '-pooler'; then
+            echo "::warning::DATABASE_URL looks like the Neon POOLED endpoint; pg_dump may need the direct (non-pooler) host."
+          fi
+          docker run --rm -e PGURL="$DATABASE_URL" postgres:17 \
+            sh -c 'pg_dump --schema-only --no-owner --no-privileges "$PGURL"' \
+            > prod-schema-snapshot.sql
+          echo "Lines: $(wc -l < prod-schema-snapshot.sql)"
+          echo "Tables: $(grep -c '^CREATE TABLE' prod-schema-snapshot.sql || true)"
+          echo "Indexes: $(grep -c '^CREATE INDEX\|^CREATE UNIQUE INDEX' prod-schema-snapshot.sql || true)"
+          # Safety assertion: schema-only must contain no COPY/INSERT data blocks.
+          if grep -qE '^(COPY |INSERT INTO )' prod-schema-snapshot.sql; then
+            echo "::error::Dump unexpectedly contains data rows — aborting to avoid leaking data."
+            exit 1
+          fi
+
+      - name: Upload schema snapshot artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: prod-schema-snapshot
+          path: prod-schema-snapshot.sql
+          retention-days: 14
+          if-no-files-found: error
