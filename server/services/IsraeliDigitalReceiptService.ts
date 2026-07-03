@@ -149,7 +149,52 @@ export class IsraeliDigitalReceiptService {
    */
   static async generateReceiptNumber(): Promise<string> {
     const { year, sequenceNumber } = await allocateTaxSequenceNumber('RECEIPT');
-    return `PW-${year}-${sequenceNumber.toString().padStart(6, '0')}`;
+
+    // The allocator reads MAX from pw_tax_documents, but this ledger
+    // (digital_receipts, UNIQUE on receipt_number) advances independently of
+    // it. Floor the candidate at this ledger's own MAX for the year so the
+    // number is monotonic HERE too — otherwise a receipt issued between
+    // pw_tax_documents RECEIPT rows collides with an earlier digital receipt.
+    const prefix = `PW-${year}-`;
+    const [row] = await db
+      .select({
+        maxSeq: sql<number | null>`MAX(CAST(SUBSTRING(${digitalReceipts.receiptNumber} FROM ${prefix.length + 1}) AS INTEGER))`,
+      })
+      .from(digitalReceipts)
+      .where(sql`${digitalReceipts.receiptNumber} ~ ${`^${prefix}[0-9]+$`}`);
+
+    const ownMax = Number(row?.maxSeq ?? 0) || 0;
+    const seq = Math.max(sequenceNumber, ownMax + 1);
+    return `${prefix}${seq.toString().padStart(6, '0')}`;
+  }
+
+  /**
+   * Allocate a receipt number and run the caller's INSERT, retrying with a
+   * FRESH number if the insert loses a receipt_number unique race (Postgres
+   * 23505). Two concurrent issuances can allocate the same candidate — the
+   * loser must re-allocate (which now sees the winner's committed row), not
+   * throw. Without this, one of two simultaneous receipts crashes.
+   */
+  private static async withReceiptNumberRetry<T>(
+    insertWithNumber: (receiptNumber: string) => Promise<T>,
+    maxAttempts = 3,
+  ): Promise<T> {
+    let lastErr: unknown;
+    for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+      const receiptNumber = await this.generateReceiptNumber();
+      try {
+        return await insertWithNumber(receiptNumber);
+      } catch (err: any) {
+        const code = err?.code ?? err?.cause?.code;
+        if (code !== '23505' || attempt === maxAttempts) throw err;
+        lastErr = err;
+        logger.warn('[Digital Receipt] receipt_number unique race — retrying with a fresh number', {
+          attempt, receiptNumber, error: err?.message,
+        });
+        await new Promise((r) => setTimeout(r, 50 * attempt));
+      }
+    }
+    throw lastErr;
   }
 
   /**
@@ -316,7 +361,6 @@ export class IsraeliDigitalReceiptService {
         }
       }
 
-      const receiptNumber = await this.generateReceiptNumber();
       const issuedAt = new Date();
 
       const vatBreakdown = this.calculateVATBreakdown(params.totalAmount);
@@ -324,6 +368,7 @@ export class IsraeliDigitalReceiptService {
       // SHAAM allocation number requirement (ITA Digital Invoice Law 2026)
       const shaamRequired = this.isShaamRequired(vatBreakdown.subtotalBeforeVAT, issuedAt);
 
+      const { receipt, receiptNumber } = await this.withReceiptNumberRetry(async (receiptNumber) => {
       const auditHash = this.generateAuditHash({
         receiptNumber,
         totalAmount: params.totalAmount,
@@ -365,6 +410,8 @@ export class IsraeliDigitalReceiptService {
         issuedAt,
         accountingRecorded: true,
       }).returning();
+      return { receipt, receiptNumber };
+      });
 
       if (shaamRequired) {
         logger.warn('[Digital Receipt] SHAAM allocation number required — pending SHAAM API integration', {
@@ -517,7 +564,7 @@ export class IsraeliDigitalReceiptService {
         transactionDate: new Date(),
       });
 
-      const receiptNumber = await this.generateReceiptNumber();
+      await this.withReceiptNumberRetry(async (receiptNumber) => {
       const auditHash = this.generateAuditHash({
         receiptNumber,
         totalAmount: settlement.grossPayout,
@@ -526,7 +573,7 @@ export class IsraeliDigitalReceiptService {
         issuedAt: new Date().toISOString(),
       });
 
-      await db.insert(digitalReceipts).values({
+      return db.insert(digitalReceipts).values({
         receiptNumber,
         receiptType: 'provider_settlement',
         platform: 'sitter-suite',
@@ -552,6 +599,7 @@ export class IsraeliDigitalReceiptService {
         shaamRequired: this.isShaamRequired(settlement.grossPayout),
         accountingRecorded: true,
         issuedAt: new Date(),
+      });
       });
 
       // ── Withholding remittance ledger — ITA Form 856 quarterly tracking ───────
@@ -1003,13 +1051,13 @@ export class IsraeliDigitalReceiptService {
         return { success: false, error: `Original receipt ${params.originalReceiptId} not found` };
       }
 
-      const creditNoteNumber = await this.generateReceiptNumber();
       const issuedAt = new Date();
 
       const refundAmount = Math.abs(params.refundAmount);
       const vatBreakdown = this.calculateVATBreakdown(refundAmount);
       const shaamRequired = this.isShaamRequired(vatBreakdown.subtotalBeforeVAT, issuedAt);
 
+      const { creditNote, creditNoteNumber } = await this.withReceiptNumberRetry(async (creditNoteNumber) => {
       const auditHash = this.generateAuditHash({
         receiptNumber: creditNoteNumber,
         totalAmount: -refundAmount,
@@ -1044,6 +1092,8 @@ export class IsraeliDigitalReceiptService {
         issuedAt,
         accountingRecorded: true,
       }).returning();
+      return { creditNote, creditNoteNumber };
+      });
 
       // Mark the original receipt as voided
       await db

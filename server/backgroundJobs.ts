@@ -118,6 +118,24 @@ export class BackgroundJobProcessor {
         }
       }
     });
+    // K9000 bay-release sweep (every minute) — the non-Cortina half of "a bay
+    // can never hang busy": finalizes cleanup sessions whose in-process 30 s
+    // timer died with the server, and times out active sessions far past their
+    // expected duration (the K9000 emits no "wash finished" signal). Cheap,
+    // indexed on status, and a no-op while there are no stale sessions.
+    cron.schedule('* * * * *', async () => {
+      if (await this.acquireLock('k9000BayReleaseSweep')) {
+        try {
+          const { releaseStaleBaySessions } = await import('./services/K9000RedemptionService');
+          const r = await releaseStaleBaySessions();
+          if (r.finalized || r.timedOut) logger.info('[K9000ReleaseSweep] release sweep', r);
+        } catch (e: any) {
+          logger.error('[K9000ReleaseSweep] failed', { error: e?.message });
+        } finally {
+          this.releaseLock('k9000BayReleaseSweep');
+        }
+      }
+    });
     // Daily K9000 reconciliation at 02:30 — writes k9000_reconciliation_breaks.
     cron.schedule('30 2 * * *', async () => {
       if (await this.acquireLock('k9000Reconciliation')) {
@@ -131,7 +149,7 @@ export class BackgroundJobProcessor {
         }
       }
     });
-    logger.info('[Cortina] release sweep (1m) + K9000 reconciliation (daily 02:30) scheduled');
+    logger.info('[Cortina] release sweep (1m) + K9000 bay-release sweep (1m) + K9000 reconciliation (daily 02:30) scheduled');
 
     // Phase 12.10 — SLA breach detection + auto-escalation (every 5 minutes)
     import('./jobs/sla-monitor').then(({ runSlaMonitor }) => {
