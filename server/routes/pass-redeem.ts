@@ -246,6 +246,16 @@ router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
       const nonceConsumed = await burnNonce(payload.nonce, payload.passId, payload.expiresAt);
       if (!nonceConsumed) {
         logger.warn('[PassRedeem] REPLAY ATTACK — nonce already used', { nonce: payload.nonce, passId: payload.passId });
+        // Open a review-required TRUST case so repeated replay abuse is visible
+        // (the redemption is already refused below). Fire-and-forget, non-blocking;
+        // single-use 45s tokens make this naturally rare, so no de-dupe needed.
+        void import('../lib/trustBridge')
+          .then(({ openTrustCase }) => openTrustCase({
+            type: 'pass_replay_attempt', severity: 'medium',
+            description: `A single-use redeem token was replayed after being burned. passId=${payload.passId}, kiosk=${kioskId}, nonce=${payload.nonce}.`,
+            stationId: kioskId,
+          }))
+          .catch(() => { /* trust bridge is best-effort */ });
         return res.status(409).json({ ok: false, error: 'TOKEN_ALREADY_USED — replay rejected' });
       }
     }
