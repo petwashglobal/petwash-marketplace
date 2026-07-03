@@ -756,7 +756,18 @@ router.post('/', async (req, res) => {
         try {
           const { checkBookingAddressMatch } = await import('../lib/addressMatch');
           const verdict = await checkBookingAddressMatch(bOwnerId, bProviderId);
-          if (!verdict.match) return;
+          if (!verdict.match || !verdict.evidence) return;
+          const ev = verdict.evidence;
+          // GUARDRAIL: a LOW-confidence match (backed only by free-text, no
+          // matching structured/postal fields) is the most likely legitimate
+          // overlap (same building, coincidental format) — log it, but do NOT
+          // open a case, to avoid falsely accusing real customers.
+          if (verdict.confidence === 'low') {
+            logger.info('[BookingRequests] address-match LOW confidence — logged, no case', {
+              requestId, reasonCode: ev.reasonCode, matchedFields: ev.matchedFields,
+            });
+            return;
+          }
           const { incidentReports } = await import('@shared/schema-incidents');
           const existing = await db.select({ id: incidentReports.id }).from(incidentReports)
             .where(and(
@@ -767,13 +778,31 @@ router.post('/', async (req, res) => {
             )).limit(1);
           if (existing.length > 0) return;
           const { openIncident } = await import('../services/incidentService');
+          // Full evidence bundle in the description so a human can judge without
+          // guessing — raw addresses (spelling visible), reason code, confidence,
+          // matched fields, and account-age (staleness) signals.
+          const description = [
+            `REVIEW REQUIRED — non-punitive. Do NOT auto-terminate. Booker and provider are different accounts with the same saved address (possible self-dealing / duplicate account, but could be a shared household/building — a human must decide).`,
+            `Booking: ${requestId}`,
+            `Reason code: ${ev.reasonCode} · Confidence: ${ev.confidence}`,
+            `Matched structured fields: ${ev.matchedFields.join(', ') || '(free-text only)'}`,
+            `Owner address: "${ev.ownerRaw}"`,
+            `Provider address: "${ev.providerRaw}"`,
+            `Normalized match: "${ev.normalized}"`,
+            `Owner account last updated: ${ev.ownerAccountUpdatedAt ?? 'unknown'} · Provider: ${ev.providerAccountUpdatedAt ?? 'unknown'}`,
+            `Checked at: ${ev.checkedAt}`,
+          ].join('\n');
           const inc = await openIncident({
-            type: 'linked_account_address_match', severity: 'medium',
-            description: `Booker and provider are different accounts sharing the same saved address (possible self-dealing / duplicate account). Booking ${requestId}.`,
+            // High-confidence (postal + street number) → medium severity; otherwise low.
+            type: 'linked_account_address_match',
+            severity: verdict.confidence === 'high' ? 'medium' : 'low',
+            description,
             bookingId: String(requestId), memberId: bOwnerId, providerId: bProviderId,
             reportedBy: 'system:address-match',
           });
-          logger.warn('[BookingRequests] Same-address fraud signal — case opened', { requestId, caseId: inc.incidentId });
+          logger.warn('[BookingRequests] Same-address fraud signal — case opened', {
+            requestId, caseId: inc.incidentId, confidence: ev.confidence, reasonCode: ev.reasonCode,
+          });
         } catch (e: any) {
           logger.warn('[BookingRequests] address-match check failed (non-blocking)', { requestId, error: e?.message });
         }
