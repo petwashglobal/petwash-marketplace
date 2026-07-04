@@ -300,11 +300,19 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
           if (!cart) return res.status(400).json({ error: 'Cart not found or already checked out' });
           if (cart.items.length === 0) return res.status(400).json({ error: 'Cart is empty' });
 
-      // 2. Apply coupon discount if provided
-      let discountAmountCents = 0;
+      // 2. Coupons — K9000-only discount doctrine (docs/compliance/
+      //    2026-05-27-discount-scope-k9000-only.md): shop items are FULL
+      //    retail price. The old ShopService.applyCoupon path is gone — it
+      //    queried columns that don't exist in the real coupons table, so any
+      //    code crashed checkout with a DB error. Reject explicitly so the
+      //    customer gets the truth instead of a 500.
+      const discountAmountCents = 0;
           if (body.couponCode) {
-                  const coupon = await shopService.applyCoupon(body.couponCode, cart.subtotalCents, uid);
-                  discountAmountCents = coupon.discountCents;
+                  return res.status(400).json({
+                          error: 'Coupons apply to K9000 washes only — shop items are full price.',
+                          errorHe: 'קופונים חלים רק על שטיפות K9000 — מוצרי החנות במחיר מלא.',
+                          code: 'SCOPE_NOT_K9000',
+                  });
           }
 
       // 3. Calculate delivery cost
@@ -399,6 +407,13 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
 
       // 7. Owned-inventory direct sale: payment is already captured to the company.
       //    No provider-escrow hold (reversal = refund-on-cancel).
+
+      // 7b. Israeli law: the fiscal receipt is issued at the moment of SALE —
+      //     not on delivery (closes audit #11). generateTaxInvoice handles its
+      //     own errors (non-fatal, admin can re-trigger via the delivered
+      //     safety net) and the dedup guard in IsraeliDigitalReceiptService
+      //     makes it exactly-once per order.
+      await shopService.generateTaxInvoice(order.id);
 
       // 8. Send luxury confirmation email
       try {
@@ -647,9 +662,11 @@ router.patch('/admin/orders/:id/status', adminLimiter, requireAdmin, async (req:
       if (newStatus === 'delivered') {
               // Owned-inventory sale: revenue was already captured at checkout, so
               // there is no escrow to release on delivery.
-              // STAGED (audit #11): the tax invoice should be issued at SALE, not on
-              // delivery — move generateTaxInvoice into the checkout flow (with the
-              // tax-sequence concurrency guard) before enabling cards.
+              // Audit #11 CLOSED: the receipt is issued at SALE time in the checkout
+              // flow. This call is an idempotent SAFETY NET only — for pre-fix orders
+              // or a checkout where issuance failed. The dedup guard in
+              // IsraeliDigitalReceiptService returns the existing receipt, so a
+              // delivered transition can never double-issue.
             await shopService.generateTaxInvoice(orderId);
       }
 

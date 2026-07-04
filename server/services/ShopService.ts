@@ -338,50 +338,14 @@ export class ShopService {
   }
 
   // ─── Coupons ───────────────────────────────────────────────────────────────
-
-  async applyCoupon(code: string, subtotalCents: number, uid: string): Promise<{ discountCents: number; description: string }> {
-        const result = await db.execute(sql`
-              SELECT * FROM coupons
-                    WHERE code = ${code.toUpperCase()}
-                            AND is_active = true
-                                    AND (expires_at IS NULL OR expires_at > NOW())
-                                            AND (min_order_cents IS NULL OR min_order_cents <= ${subtotalCents})
-                                                    AND (max_uses IS NULL OR uses_count < max_uses)
-                                                            AND scope IN ('shop', 'all')
-                                                                `);
-
-      if (!result.rows.length) throw new Error('Invalid or expired coupon code');
-
-      const coupon = result.rows[0] as any;
-
-      // Check per-user usage limit
-      if (coupon.max_uses_per_user) {
-              const userUses = await db.execute(sql`
-                      SELECT COUNT(*) AS cnt FROM shop_orders
-                              WHERE user_id = ${uid} AND coupon_code = ${code.toUpperCase()}
-                                    `);
-              if (Number(userUses.rows[0]?.cnt ?? 0) >= coupon.max_uses_per_user) {
-                        throw new Error('Coupon already used by this account');
-              }
-      }
-
-      let discountCents = 0;
-        if (coupon.discount_type === 'percent') {
-                discountCents = Math.round(subtotalCents * coupon.discount_value / 100);
-        } else {
-                discountCents = coupon.discount_value;
-        }
-
-      // Cap at max_discount_cents if set
-      if (coupon.max_discount_cents) {
-              discountCents = Math.min(discountCents, coupon.max_discount_cents);
-      }
-
-      return {
-              discountCents,
-              description: coupon.description_he || coupon.description_en || `${coupon.discount_value}% off`,
-      };
-  }
+  // applyCoupon REMOVED 2026-07-04: it queried columns that do not exist in
+  // the real coupons table (expires_at / min_order_cents / uses_count /
+  // scope — prod has valid_until / min_spend_cents / total_redemptions /
+  // scope_type), so ANY coupon code at checkout crashed with a Postgres
+  // undefined-column error. It also bypassed the canonical CouponService
+  // ledger. Per the K9000-only discount doctrine (docs/compliance/
+  // 2026-05-27-discount-scope-k9000-only.md) shop items are FULL retail
+  // price — the checkout route now rejects coupon codes explicitly.
 
   // ─── Delivery ─────────────────────────────────────────────────────────────
 
@@ -807,7 +771,10 @@ export class ShopService {
             subtotalAmount: netCents / 100,
             platformFeeAmount: 0,
             totalAmount: totalCents / 100,
-            paymentMethod: 'Credit Card (SUMIT)',
+            // Real tender from the order row — the wallet path was previously
+            // stamped "Credit Card (SUMIT)" on the fiscal receipt, which is
+            // false on a legal document.
+            paymentMethod: order.payment_method === 'wallet' ? 'PetWash Wallet' : 'Credit Card (SUMIT)',
           });
 
           logger.info('[ShopService] Tax invoice generated via SUMIT', { orderId, orderNumber: order.order_number });
