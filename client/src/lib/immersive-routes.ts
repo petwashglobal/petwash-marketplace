@@ -77,7 +77,6 @@ export const IMMERSIVE_ROUTES: readonly string[] = [
 
   // ── Onboarding flows ───────────────────────────────────────────────────
   '/complete-profile',
-  '/choose-role',
   '/consent-onboarding',
   '/internal/onboard',
   '/internal/onboarding',

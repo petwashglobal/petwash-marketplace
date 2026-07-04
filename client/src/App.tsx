@@ -68,7 +68,6 @@ const StaffApplication = lazy(() => import("@/pages/StaffApplication"));
 const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
 // LAZY LOAD: All other routes (code split for performance)
-const ChooseRole = lazy(() => import("@/pages/ChooseRole"));
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
 const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
 const ProviderRejected = lazy(() => import("@/pages/ProviderRejected"));
@@ -914,16 +913,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/booking/intake">{() => <Redirect to={`/booking${window.location.search}`} />}</Route>
         <Route path="/guest/checkout">{() => <Redirect to={`/egift${window.location.search}`} />}</Route>
 
-        {/* Dual-purpose gate: PUBLIC so it works as the pre-signup customer/provider
-            fork (anonymous → /signup or /become-provider via the component's fallback)
-            AND as the post-login role chooser (authed → /api/auth/choose-role redirect). */}
-        <Route path="/choose-role">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <ChooseRole />
-            </Suspense>
-          )}
-        </Route>
+        {/* The role-gate interstitial is DEAD (CEO order 2026-07-04). SignUpLuxury
+            is the single door; providers enter via /become-provider. Old links and
+            cached post-login responses land on signup instead of a removed page. */}
+        <Route path="/choose-role">{() => <Redirect to={`/signup${window.location.search}`} />}</Route>
         {/* Other post-login role routing pages still require auth */}
         <Route path="/complete-profile">
           {() => (

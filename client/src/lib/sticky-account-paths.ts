@@ -39,7 +39,6 @@ export const STICKY_ACCOUNT_PATHS: readonly string[] = [
   '/join-team',
   // Customer onboarding flows
   '/complete-profile',
-  '/choose-role',
   '/verify-email',
   // Sign-in / sign-up flows (Firebase OAuth callbacks ride these)
   '/signin',
