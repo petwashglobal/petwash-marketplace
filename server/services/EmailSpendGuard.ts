@@ -64,6 +64,19 @@ class EmailSpendGuard {
   }
 
   /**
+   * Read-only state for the Octopus Brain integrations arm. No side effects
+   * beyond the same window-reset bookkeeping every check() performs.
+   */
+  snapshot() {
+    this.tick();
+    return {
+      hourly: { count: this.hourly.count, limit: HOURLY_BLOCK, resetAt: new Date(this.hourly.resetAt).toISOString() },
+      daily:  { count: this.daily.count,  limit: DAILY_BLOCK,  resetAt: new Date(this.daily.resetAt).toISOString() },
+      circuitOpen: this.hourly.count >= HOURLY_BLOCK || this.daily.count >= DAILY_BLOCK,
+    };
+  }
+
+  /**
    * Call BEFORE every sgMail.send() call.
    * Returns { allowed: true } if send is permitted.
    * Returns { allowed: false, reason } if circuit is open.

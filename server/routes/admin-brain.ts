@@ -439,9 +439,78 @@ async function loadPayments() {
   };
 }
 
+// ─── Integrations panel — the platform's HANDS (Sheets/Drive/email/jobs) ─────
+// The 2026-07-05 360 audit found these pipelines run fail-soft but BLIND: the
+// Sheets ops-log has a retry queue nobody watches, tax-doc Drive archival is
+// visible only in raw pw_tax_documents, the async Google job queue has no
+// dashboard, and the EmailSpendGuard circuit state lives in memory. This arm
+// surfaces data that ALREADY EXISTS — read-only, no new pipelines.
+async function loadIntegrations() {
+  const [sheets, asyncJobs, taxArchive] = await Promise.all([
+    safeQuery(async () => {
+      const { getReconciliationReport } = await import('../services/googleSheetsIntegration');
+      return getReconciliationReport();
+    }, 'sheetsReconciliation'),
+    safeQuery(async () => {
+      const rows = await db.execute(sql`
+        SELECT status, COUNT(*)::int AS cnt, MIN(created_at) AS oldest
+        FROM pw_async_jobs
+        WHERE status IN ('PENDING', 'PROCESSING', 'FAILED')
+        GROUP BY status
+      `);
+      const byStatus: Record<string, { count: number; oldest: string | null }> = {};
+      for (const r of rows.rows as any[]) {
+        byStatus[String(r.status)] = { count: Number(r.cnt), oldest: r.oldest ? String(r.oldest) : null };
+      }
+      return byStatus;
+    }, 'asyncJobs'),
+    safeQuery(async () => {
+      const rows = await db.execute(sql`
+        SELECT archive_status, COUNT(*)::int AS cnt
+        FROM pw_tax_documents
+        GROUP BY archive_status
+      `);
+      const byStatus: Record<string, number> = {};
+      for (const r of rows.rows as any[]) byStatus[String(r.archive_status)] = Number(r.cnt);
+      return byStatus;
+    }, 'taxArchive'),
+  ]);
+
+  let emailGuard: any = null;
+  try {
+    const { emailSpendGuard } = await import('../services/EmailSpendGuard');
+    emailGuard = emailSpendGuard.snapshot();
+  } catch (err: any) {
+    emailGuard = { error: String(err?.message ?? err).slice(0, 120) };
+  }
+
+  // "attention" = anything an operator should look at NOW.
+  const attention: string[] = [];
+  if (sheets.ok && sheets.value.failed > 0) attention.push(`${sheets.value.failed} Sheets ops-log writes failed permanently`);
+  if (sheets.ok && sheets.value.pending > 20) attention.push(`${sheets.value.pending} Sheets writes stuck pending`);
+  const failedJobs = asyncJobs.ok ? (asyncJobs.value['FAILED']?.count ?? 0) : 0;
+  if (failedJobs > 0) attention.push(`${failedJobs} async Google jobs FAILED (Drive archival / Sheets export / SUMIT sync)`);
+  if (taxArchive.ok && (taxArchive.value['FAILED'] ?? 0) > 0) attention.push(`${taxArchive.value['FAILED']} tax documents failed Drive archival (7-year ITA retention)`);
+  if (emailGuard?.circuitOpen) attention.push('Email spend-guard circuit OPEN — outbound email is being rejected');
+
+  // This tsc config does not narrow safeQuery's union in a ternary (same
+  // baseline quirk as loadPayments' probe.error) — read the message explicitly.
+  const errMsg = (r: { ok: boolean }): string => (r as { error?: string }).error ?? 'unknown';
+
+  return {
+    wired: true,
+    sheets: sheets.ok ? sheets.value : { error: errMsg(sheets) },
+    asyncJobs: asyncJobs.ok ? asyncJobs.value : { error: errMsg(asyncJobs) },
+    taxArchive: taxArchive.ok ? taxArchive.value : { error: errMsg(taxArchive) },
+    emailGuard,
+    attention,
+    note: 'Read-only view of pipelines that already exist (Sheets retry queue, pw_async_jobs, pw_tax_documents.archive_status, EmailSpendGuard). No new pipelines, no secrets.',
+  };
+}
+
 // ─── GET /api/admin/brain/summary ────────────────────────────────────────────
 router.get('/summary', async (_req: Request, res: Response) => {
-  const [stations, revenue, approvals, alerts, systemFaults, activity, agreements, payments] = await Promise.all([
+  const [stations, revenue, approvals, alerts, systemFaults, activity, agreements, payments, integrations] = await Promise.all([
     loadStations(),
     loadRevenue(),
     loadApprovals(),
@@ -450,6 +519,7 @@ router.get('/summary', async (_req: Request, res: Response) => {
     loadActivity(),
     loadAgreements(),
     loadPayments(),
+    loadIntegrations(),
   ]);
 
   const gaps: string[] = [];
@@ -463,6 +533,8 @@ router.get('/summary', async (_req: Request, res: Response) => {
   // Payments arm is "wired" as a monitor, but flag it as a gap when the money
   // rail can't actually charge (so the brain shows red until SUMIT/UPay is live).
   if (!('ready' in payments) || payments.ready !== true) gaps.push('payments');
+  // Integrations arm: gap when any pipeline needs operator attention NOW.
+  if (Array.isArray((integrations as any).attention) && (integrations as any).attention.length > 0) gaps.push('integrations');
 
   res.json({
     generatedAt: new Date().toISOString(),
@@ -475,6 +547,7 @@ router.get('/summary', async (_req: Request, res: Response) => {
     activity,
     agreements,
     payments,
+    integrations,
   });
 });
 

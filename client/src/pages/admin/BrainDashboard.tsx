@@ -22,7 +22,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { getApiUrl } from '@/lib/apiConfig';
 import {
   Activity, AlertTriangle, Banknote, Bug, FileSignature, MapPin,
-  Server, ShieldCheck, Users, Loader2, RefreshCw,
+  Server, ShieldCheck, Users, Loader2, RefreshCw, Plug,
 } from 'lucide-react';
 
 // ─── Types (mirror server/routes/admin-brain.ts response) ─────────────────────
@@ -146,6 +146,20 @@ interface AgreementsPanel {
   notes: string[];
 }
 
+interface IntegrationsPanel {
+  sheets: { pending?: number; failed?: number; recentSuccesses?: number; oldestPending?: string | null; error?: string };
+  asyncJobs: Record<string, { count: number; oldest: string | null }> & { error?: string };
+  taxArchive: Record<string, number> & { error?: string };
+  emailGuard: {
+    hourly?: { count: number; limit: number };
+    daily?: { count: number; limit: number };
+    circuitOpen?: boolean;
+    error?: string;
+  } | null;
+  attention: string[];
+  note: string;
+}
+
 interface BrainSummary {
   generatedAt: string;
   gaps: string[];
@@ -156,6 +170,7 @@ interface BrainSummary {
   systemFaults: Wired<SystemFaultsPanel>;
   activity: Wired<ActivityPanel>;
   agreements: Wired<AgreementsPanel>;
+  integrations?: Wired<IntegrationsPanel>;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -402,6 +417,29 @@ export default function BrainDashboard() {
             )}
           </PanelShell>
 
+          {/* Integrations — Sheets / Drive archive / async jobs / email guard */}
+          {data.integrations && (
+            <PanelShell
+              title="Integrations"
+              icon={Plug}
+              right={
+                data.integrations.wired && data.integrations.attention.length > 0 ? (
+                  <span className="text-xs font-semibold text-red-600">
+                    {data.integrations.attention.length} need attention
+                  </span>
+                ) : (
+                  <span className="text-xs text-emerald-600">all pipelines healthy</span>
+                )
+              }
+            >
+              {data.integrations.wired ? (
+                <IntegrationsGrid panel={data.integrations} />
+              ) : (
+                <NotWiredYet reason={(data.integrations as any).reason} />
+              )}
+            </PanelShell>
+          )}
+
           <p className="text-[10px] text-gray-400 text-center pt-4">
             Generated {data.generatedAt}. PR-1: read-only wire-up. PR-2: gap fixes (revenue-by-station, agreements audit, alerts feed, hash-chain verification).
           </p>
@@ -412,6 +450,70 @@ export default function BrainDashboard() {
 }
 
 // ─── Sub-panels ───────────────────────────────────────────────────────────────
+function IntegrationsGrid({ panel }: { panel: IntegrationsPanel }) {
+  const jobs = panel.asyncJobs || {};
+  const archive = panel.taxArchive || {};
+  const guard = panel.emailGuard;
+  return (
+    <div className="space-y-4">
+      {panel.attention.length > 0 && (
+        <ul className="rounded-xl border border-red-200 bg-red-50/60 p-4 space-y-1">
+          {panel.attention.map((a, i) => (
+            <li key={i} className="text-sm font-medium text-red-700">⚠ {a}</li>
+          ))}
+        </ul>
+      )}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="rounded-xl border border-gray-100 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Sheets ops-log</p>
+          <p className="text-lg font-semibold text-gray-900 mt-1">
+            {panel.sheets.error ? '—' : `${panel.sheets.pending ?? 0} pending`}
+          </p>
+          <p className="text-xs text-gray-500">
+            {panel.sheets.error
+              ? panel.sheets.error
+              : `${panel.sheets.failed ?? 0} failed · ${panel.sheets.recentSuccesses ?? 0} writes 24h`}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-100 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Async Google jobs</p>
+          <p className="text-lg font-semibold text-gray-900 mt-1">
+            {(jobs as any).error ? '—' : `${jobs['PENDING']?.count ?? 0} pending`}
+          </p>
+          <p className="text-xs text-gray-500">
+            {(jobs as any).error
+              ? (jobs as any).error
+              : `${jobs['FAILED']?.count ?? 0} failed · ${jobs['PROCESSING']?.count ?? 0} running`}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-100 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Tax-doc Drive archive</p>
+          <p className="text-lg font-semibold text-gray-900 mt-1">
+            {(archive as any).error ? '—' : `${archive['ARCHIVED'] ?? 0} archived`}
+          </p>
+          <p className="text-xs text-gray-500">
+            {(archive as any).error
+              ? (archive as any).error
+              : `${archive['PENDING'] ?? 0} pending · ${archive['FAILED'] ?? 0} failed`}
+          </p>
+        </div>
+        <div className="rounded-xl border border-gray-100 p-4">
+          <p className="text-xs text-gray-500 uppercase tracking-wider">Email spend-guard</p>
+          <p className={`text-lg font-semibold mt-1 ${guard?.circuitOpen ? 'text-red-600' : 'text-gray-900'}`}>
+            {guard?.error ? '—' : guard?.circuitOpen ? 'CIRCUIT OPEN' : 'flowing'}
+          </p>
+          <p className="text-xs text-gray-500">
+            {guard?.error
+              ? guard.error
+              : `${guard?.hourly?.count ?? 0}/${guard?.hourly?.limit ?? '—'} hr · ${guard?.daily?.count ?? 0}/${guard?.daily?.limit ?? '—'} day`}
+          </p>
+        </div>
+      </div>
+      <p className="text-[10px] text-gray-400">{panel.note}</p>
+    </div>
+  );
+}
+
 function RevenueGrid({ panel }: { panel: RevenuePanel }) {
   const cells = [
     { label: 'Today', gross: panel.totals.grossCents24h, net: panel.totals.netCents24h, count: panel.totals.txCount24h },
