@@ -420,34 +420,12 @@ export class ShopService {
   }
 
   // ─── Orders ───────────────────────────────────────────────────────────────
-
-  async createPendingOrder(uid: string, cart: any, opts: any) {
-        const orderNumber = this._generateOrderNumber();
-        const result = await db.execute(sql`
-              INSERT INTO shop_orders (
-                      order_number, user_id, cart_id, status,
-                              subtotal_cents, discount_cents, delivery_cents,
-                                      gift_wrap_cents, net_cents, vat_cents, total_cents,
-                                              payment_method, delivery_method, delivery_address_id,
-                                                      coupon_code, notes, language, created_at, updated_at
-                                                            ) VALUES (
-                                                                    ${orderNumber}, ${uid}, ${cart.id}, 'payment_required',
-                                                                            ${cart.subtotalCents}, ${opts.discountAmountCents}, ${opts.deliveryCents},
-                                                                                    ${opts.giftWrap ? GIFT_WRAP_CENTS : 0}, 0, 0, 0,
-                                                                                            ${opts.paymentMethod ?? 'nayax'}, ${opts.deliveryMethod},
-                                                                                                    ${opts.deliveryAddressId ?? null}, ${opts.couponCode ?? null},
-                                                                                                            ${opts.notes ?? null}, ${opts.language ?? 'he'},
-                                                                                                                    NOW(), NOW()
-                                                                                                                          )
-                                                                                                                                RETURNING *
-                                                                                                                                    `);
-        const order = result.rows[0] as any;
-        await this._insertOrderItems(order.id, cart.items);
-
-      // TODO: generate Nayax/CC payment URL and attach to order
-      order.paymentUrl = `/api/payments/nayax/initiate?orderId=${order.id}`;
-        return order;
-  }
+  // createPendingOrder REMOVED 2026-07-05 (audit #10 closed): it created the
+  // shop_orders row BEFORE any money was captured and attached a stub
+  // paymentUrl to a route that does not exist for shop. The card path is now
+  // capture-then-create: checkout records a `purchases` shadow row + SUMIT
+  // redirect; PurchaseActivationService case 'SHOP_ORDER' builds the order
+  // (via createOrder below) only after the signed webhook confirms payment.
 
   async createOrder(uid: string, cart: any, opts: any): Promise<ShopOrder & { items: ShopOrderItem[]; deliveryAddress: any }> {
         const orderNumber = this._generateOrderNumber();

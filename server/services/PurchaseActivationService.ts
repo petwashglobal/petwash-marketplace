@@ -376,7 +376,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
   // is the activation-side enforcement of "provider commerce disabled"; the
   // /begin allowlist is the first gate, this is defence-in-depth so a row that
   // somehow carries a non-owned productType can never silently credit a wallet.
-  const OWNED: ReadonlySet<string> = new Set(['ACCOUNT_CREDIT', 'WASH_PACKAGE', 'SINGLE_WASH', 'EGIFT']);
+  const OWNED: ReadonlySet<string> = new Set(['ACCOUNT_CREDIT', 'WASH_PACKAGE', 'SINGLE_WASH', 'EGIFT', 'SHOP_ORDER']);
   if (!OWNED.has(String(purchase.productType))) {
     return false;
   }
@@ -427,6 +427,114 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
         'Single wash via SUMIT',
       );
       await issueWashSaleReceipt(purchase, 'PW_SELF_SERVICE_DOG_WASH_SINGLE');
+      return true;
+    }
+
+    case 'SHOP_ORDER': {
+      // CAPTURE-THEN-CREATE for shop card orders (audit #10): the money was
+      // just captured (status flipped to 'paid' under the activation lock);
+      // only NOW does the shop_orders row come into existence. Stock is
+      // re-checked + decremented atomically inside createOrder. Any failure
+      // returns false → 'activation_pending' + alert: the charge is flagged
+      // for admin action, never silently lost, and no mismatched order is
+      // ever created.
+      const cartId = String((meta as any).cartId ?? '');
+      if (!cartId || !purchase.buyerUserId) {
+        logger.error('[PurchaseActivation] SHOP_ORDER missing cartId or buyer', { purchaseId: purchase.id });
+        return false;
+      }
+      const { ShopService } = await import('./ShopService');
+      const shopService = new ShopService();
+
+      const cart = await shopService.validateCartForCheckout(purchase.buyerUserId, cartId);
+      if (!cart) {
+        logger.error('[PurchaseActivation] SHOP_ORDER cart missing or already checked out', {
+          purchaseId: purchase.id, cartId,
+        });
+        return false;
+      }
+      // Cart-drift guard (fail closed): the cart stays mutable while the
+      // customer is on the SUMIT payment page. If its subtotal no longer
+      // matches what was priced and charged, do NOT build a mismatched order.
+      if (Number(cart.subtotalCents) !== Number((meta as any).subtotalCents)) {
+        logger.error('[PurchaseActivation] SHOP_ORDER cart drifted after payment — leaving paid+pending', {
+          purchaseId: purchase.id, cartId,
+          pricedSubtotalCents: (meta as any).subtotalCents, currentSubtotalCents: cart.subtotalCents,
+        });
+        return false;
+      }
+
+      let order: any;
+      try {
+        order = await shopService.createOrder(purchase.buyerUserId, cart, {
+          paymentRef: purchase.transactionId || `sumit:${purchase.id}`,
+          paymentMethod: 'credit_card',
+          discountAmountCents: 0,
+          deliveryCents: Number((meta as any).deliveryCents ?? 0),
+          giftWrap: !!(meta as any).giftWrap,
+          deliveryMethod: (meta as any).deliveryMethod,
+          deliveryAddressId: (meta as any).deliveryAddressId ?? null,
+          notes: (meta as any).notes ?? null,
+          language: (meta as any).language ?? 'he',
+          netCents: Number((meta as any).netCents ?? 0),
+          vatCents: Number((meta as any).vatCents ?? 0),
+          totalCents: Number((meta as any).totalCents ?? purchase.amountCents),
+        });
+      } catch (err: any) {
+        // OUT_OF_STOCK race or any create failure: money captured, no order —
+        // exactly the case markActivationPending + its alert exist for.
+        logger.error('[PurchaseActivation] SHOP_ORDER createOrder failed after capture', {
+          purchaseId: purchase.id, cartId, err: err?.message,
+        });
+        return false;
+      }
+
+      // Fiscal receipt AT CAPTURE (same rule as the wallet path, PR #1282).
+      // generateTaxInvoice handles its own errors; the dedup guard makes it
+      // exactly-once per order.
+      await shopService.generateTaxInvoice(order.id);
+
+      // Luxury confirmation email — non-fatal.
+      try {
+        const profile = await shopService.getUserProfile(purchase.buyerUserId);
+        const { shopOrderConfirmation } = await import('../email/templates/shop-order-confirmation-2026');
+        const { sendLuxuryEmail } = await import('../email/luxury-email-service');
+        const lang = String((meta as any).language ?? 'he');
+        const html = shopOrderConfirmation({
+          orderId: order.orderNumber,
+          customerName: profile.displayName || profile.email,
+          customerEmail: profile.email,
+          items: order.items,
+          subtotalCents: Number((meta as any).subtotalCents ?? 0),
+          discountCents: 0,
+          deliveryCents: Number((meta as any).deliveryCents ?? 0),
+          giftWrapCents: Number((meta as any).giftWrapCents ?? 0),
+          netCents: Number((meta as any).netCents ?? 0),
+          vatCents: Number((meta as any).vatCents ?? 0),
+          totalCents: Number((meta as any).totalCents ?? purchase.amountCents),
+          paymentMethod: 'credit_card',
+          deliveryMethod: (meta as any).deliveryMethod,
+          estimatedDelivery: (meta as any).estimatedDelivery ?? null,
+          deliveryAddress: order.deliveryAddress,
+          language: lang,
+          orderDate: new Date().toISOString(),
+        });
+        await sendLuxuryEmail({
+          to: profile.email,
+          subject: lang === 'he'
+            ? `אישור הזמנה #${order.orderNumber} — Pet Wash™ Shop`
+            : `Order Confirmation #${order.orderNumber} — Pet Wash™ Shop`,
+          html,
+        });
+      } catch (emailErr: any) {
+        logger.warn('[PurchaseActivation] SHOP_ORDER confirmation email failed (non-fatal)', {
+          purchaseId: purchase.id, err: emailErr?.message,
+        });
+      }
+
+      logger.info('[PurchaseActivation] ✅ SHOP_ORDER activated — order created after capture', {
+        purchaseId: purchase.id, orderId: order.id, orderNumber: order.orderNumber,
+      });
       return true;
     }
 
