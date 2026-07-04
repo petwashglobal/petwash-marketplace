@@ -55,6 +55,8 @@ import { deductFromWallet as ledgerDeduct, refundToWallet as ledgerRefund } from
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { shopOrderConfirmation } from '../email/templates/shop-order-confirmation-2026';
 import { ShopService } from '../services/ShopService';
+import { sumitClient } from '../services/SumitClient';
+import { purchases } from '@shared/schema';
 import { apiLimiter, paymentLimiter, adminLimiter } from '../middleware/rateLimiter';
 import { logAuditEvent } from '../middleware/auditLog';
 
@@ -344,22 +346,72 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
                   });
                   paymentRef = ded.txnId;
           } else {
-                  // Nayax / credit card: create pending order and return payment URL.
-                  // STAGED: this still creates the order before capture (audit #10) —
-                  // move to capture-then-create via the Nayax webhook before enabling cards.
-            const pendingOrder = await shopService.createPendingOrder(uid, cart, {
-                      discountAmountCents,
-                      deliveryCents,
-                      giftWrap: body.giftWrap,
-                      deliveryMethod: body.deliveryMethod,
-                      deliveryAddressId: body.deliveryAddressId,
-                      notes: body.notes,
-                      language: body.language,
-            });
+                  // Card → SUMIT hosted payment page, CAPTURE-THEN-CREATE (closes
+                  // audit #10): NO shop_orders row exists until SUMIT's signed
+                  // webhook confirms the money. This branch only records a shadow
+                  // `purchases` row — the same engine wallet top-up / eGift / wash
+                  // packages ride (4 idempotency layers) — and redirects to the
+                  // payment page. Activation (PurchaseActivationService case
+                  // 'SHOP_ORDER') re-checks stock atomically, creates the order,
+                  // and issues the fiscal receipt AT CAPTURE.
+                  const externalId = `shop-${body.cartId}`;
+                  try {
+                          await db.insert(purchases).values({
+                                  surface: 'shop',
+                                  surfaceRefId: externalId,
+                                  buyerUserId: uid,
+                                  productType: 'SHOP_ORDER',
+                                  amountCents: totalCents,
+                                  currency: 'ILS',
+                                  status: 'payment_pending',
+                                  paymentMethod: 'credit_card',
+                                  segment: 'b2c',
+                                  acquirer: 'upay_via_sumit',
+                                  systemOfRecord: 'sumit',
+                                  // Server-owned pricing + fulfilment facts. Activation
+                                  // rebuilds the order from THESE, never from the client.
+                                  metadataJson: {
+                                          cartId: body.cartId,
+                                          deliveryMethod: body.deliveryMethod,
+                                          deliveryAddressId: body.deliveryAddressId ?? null,
+                                          giftWrap: !!body.giftWrap,
+                                          notes: body.notes ?? null,
+                                          language: body.language ?? 'he',
+                                          subtotalCents: cart.subtotalCents,
+                                          deliveryCents,
+                                          giftWrapCents: body.giftWrap ? 990 : 0,
+                                          netCents,
+                                          vatCents,
+                                          totalCents,
+                                          estimatedDelivery: deliveryCost.estimatedDate ?? null,
+                                          itemCount: cart.items.length,
+                                  },
+                          });
+                  } catch (purchaseErr: any) {
+                          // unique(surface, surfaceRefId): a retried checkout on the same
+                          // cart reuses the existing pending purchase — continue to redirect.
+                          if (purchaseErr?.code !== '23505') throw purchaseErr;
+                  }
+
+                  const profile = await shopService.getUserProfile(uid).catch(() => null);
+                  const redirect = await sumitClient.beginRedirect({
+                          externalId,
+                          amountIls: totalCents / 100,
+                          description: `PetWash Shop order (${cart.items.length} item${cart.items.length === 1 ? '' : 's'})`,
+                          redirectUrl: `${process.env.BASE_URL || 'https://petwash.co.il'}/api/payments/sumit/return?ext=${encodeURIComponent(externalId)}`,
+                          customerName: profile?.displayName ?? undefined,
+                          customerEmail: profile?.email ?? undefined,
+                  });
+                  if (!redirect.wired) {
+                          return res.status(503).json({ error: 'Card payments are not enabled yet', code: 'CARD_RAIL_NOT_WIRED', reason: redirect.reason });
+                  }
+                  if (!redirect.redirectUrl) {
+                          return res.status(502).json({ error: 'Could not start card payment', reason: redirect.reason });
+                  }
                   return res.status(202).json({
                             status: 'payment_required',
-                            orderId: pendingOrder.id,
-                            paymentUrl: pendingOrder.paymentUrl,
+                            paymentUrl: redirect.redirectUrl,
+                            externalId,
                             totalCents,
                   });
           }

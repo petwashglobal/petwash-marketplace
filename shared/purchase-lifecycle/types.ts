@@ -21,7 +21,12 @@ export type ProductType =
   | 'PET_SITTING_BOOKING'
   | 'DOG_WALKING_BOOKING'
   | 'GROOMING_BOOKING'
-  | 'SAAS_SUBSCRIPTION';
+  | 'SAAS_SUBSCRIPTION'
+  // Shop physical-goods order — capture-then-create: the shop_orders row is
+  // built by PurchaseActivationService only after the SUMIT webhook confirms
+  // payment. (Kept OUT of PRODUCT_TYPES below: that array pins the Phase-1
+  // /begin catalog, and SHOP_ORDER is never client-purchasable by SKU.)
+  | 'SHOP_ORDER';
 
 export const PRODUCT_TYPES: readonly ProductType[] = [
   'SINGLE_WASH', 'WASH_PACKAGE', 'EGIFT_CARD', 'MEMBERSHIP',
