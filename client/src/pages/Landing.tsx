@@ -169,7 +169,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 ) : (
                   <div className="flex justify-center items-center">
                     <Button
-                      onClick={() => setLocation('/choose-role')}
+                      onClick={() => setLocation('/signup')}
                       className="gold-shimmer-btn text-[#0a0a0a] px-10 py-4 text-sm uppercase tracking-[0.2em] font-light w-full sm:w-auto rounded-none"
                       data-testid="button-signin-or-signup-hero"
                     >
@@ -469,7 +469,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
             <div className="mt-12 text-center">
               <Button
-                onClick={() => user ? handleAuthNavigate() : setLocation('/choose-role')}
+                onClick={() => user ? handleAuthNavigate() : setLocation('/signup')}
                 className="h-14 px-12 rounded-none text-[#0a0a0a] text-sm font-semibold tracking-widest uppercase"
                 style={{
                   background: 'linear-gradient(135deg,#C6A664 0%,#D9B84C 50%,#C6A664 100%)',

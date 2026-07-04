@@ -1,9 +1,9 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "wouter";
-import { Button } from "@/components/ui/button";
-import { Loader2, Paw, Briefcase, ChevronDown } from "lucide-react";
+import { Loader2, Briefcase, ChevronDown, ShieldCheck } from "lucide-react";
 import { PetWashIcon } from "@/components/PetWashIcon";
 import { getApiUrl } from "@/lib/apiConfig";
+import { useFirebaseAuth } from "@/auth/AuthProvider";
 import { SIGNUP_INTENT, type SignupIntent } from "@shared/lib/onboardingIntent";
 
 // Phase D — explicit pick. The previous 10-second auto-customer
@@ -11,19 +11,28 @@ import { SIGNUP_INTENT, type SignupIntent } from "@shared/lib/onboardingIntent";
 // on slow devices, accessibility readers, or who simply paused to
 // read got the wrong role with no second chance. The page now waits
 // for an explicit click.
+//
+// 2026-07-03 — this page is POST-LOGIN ONLY. SignUpLuxury is the single
+// pre-signup door (#1189); the old dark pre-signup fork here was off-brand
+// and is gone. Anonymous visitors are redirected to /signup. The page
+// remains only for the authenticated NO_ROLE fork (post-login.ts), now in
+// brand style: white, black type, gold accents.
 
 export default function ChooseRole() {
   const [, navigate] = useLocation();
+  const { user, loading: authLoading } = useFirebaseAuth();
   const [loading, setLoading] = useState<string | null>(null);
   const [showStaff, setShowStaff] = useState(false);
   const lang = localStorage.getItem("i18nextLng") || "he";
   const isHe = lang === "he";
 
-  // Pre-signup fallback: when the visitor has no account yet, /api/auth/choose-role
-  // (requireAuth) returns 401 with no destination — so we route them straight to the
-  // right signup based on their pick. This makes the gate work BEFORE signup (the
-  // customer/provider fork) as well as after login. No one gets stranded.
-  const PRE_SIGNUP_ROUTE: Record<SignupIntent, string> = {
+  // Anonymous visitors never see this screen — the single signup door decides.
+  useEffect(() => {
+    if (!authLoading && !user) navigate("/signup", { replace: true });
+  }, [authLoading, user, navigate]);
+
+  // Defensive fallback if /api/auth/choose-role fails — never strand the user.
+  const FALLBACK_ROUTE: Record<SignupIntent, string> = {
     [SIGNUP_INTENT.CUSTOMER]: "/signup",
     [SIGNUP_INTENT.PROVIDER]: "/become-provider",
     [SIGNUP_INTENT.STAFF]: "/signup",
@@ -40,53 +49,61 @@ export default function ChooseRole() {
         body: JSON.stringify({ intent }),
       });
       const data = await res.json().catch(() => ({}));
-      const destination = data.redirectTo || data.nextUrl || PRE_SIGNUP_ROUTE[intent];
+      const destination = data.redirectTo || data.nextUrl || FALLBACK_ROUTE[intent];
       navigate(destination);
     } catch (err) {
       console.error("[ChooseRole] Error:", err);
-      // Network/endpoint failure — still send them to the right signup, never strand.
-      navigate(PRE_SIGNUP_ROUTE[intent]);
+      navigate(FALLBACK_ROUTE[intent]);
     }
   };
 
   const busy = !!loading;
 
+  if (authLoading || !user) {
+    return (
+      <div className="min-h-[100dvh] bg-white flex items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-[#D4AF37]" />
+      </div>
+    );
+  }
+
   return (
     <div
-      className="min-h-screen bg-gradient-to-b from-[#0a0a0a] to-[#111827] flex items-center justify-center p-4"
+      className="min-h-[100dvh] bg-white flex items-center justify-center p-4"
       dir={isHe ? "rtl" : "ltr"}
     >
-      <div className="w-full max-w-md space-y-5">
+      <div className="w-full max-w-md space-y-4">
         {/* Header */}
-        <div className="text-center mb-6">
-          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-amber-400/10 mb-4">
+        <div className="text-center mb-8">
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-full border border-[#D4AF37]/40 mb-5">
             <PetWashIcon name="brand_paw" size={30} label="PetWash" />
           </div>
-          <h1 className="text-2xl font-semibold text-white mb-1">
+          <h1 className="text-2xl font-light tracking-wide text-[#0a0a0a] mb-2">
             {isHe ? "ברוכים הבאים ל-PetWash™" : "Welcome to PetWash™"}
           </h1>
-          <p className="text-gray-400 text-sm">
-            {isHe ? "אנחנו רק רוצים לדעת — מה מביא אותך לכאן?" : "Just one quick question — what brings you here?"}
+          <p className="text-gray-500 text-sm">
+            {isHe ? "רק שאלה אחת — מה מביא אותך לכאן?" : "Just one quick question — what brings you here?"}
           </p>
         </div>
 
-        {/* Primary CTA — Book services. Explicit pick — no countdown. */}
+        {/* Primary — Book services. Explicit pick — no countdown. */}
         <button
           disabled={busy}
           onClick={() => handleChoice(SIGNUP_INTENT.CUSTOMER)}
-          className="w-full group relative bg-gradient-to-br from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-black rounded-2xl p-5 text-start transition-all shadow-lg hover:shadow-amber-500/20 disabled:opacity-70"
+          className="w-full bg-white border border-gray-200 hover:border-[#D4AF37] rounded-2xl p-5 text-start transition-all shadow-sm hover:shadow-md disabled:opacity-70"
+          data-testid="choose-role-customer"
         >
           <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 bg-black/10 rounded-xl p-3">
+            <div className="flex-shrink-0 rounded-xl p-3 border border-[#D4AF37]/30">
               {loading === SIGNUP_INTENT.CUSTOMER
-                ? <Loader2 className="h-7 w-7 animate-spin" />
+                ? <Loader2 className="h-7 w-7 animate-spin text-[#D4AF37]" />
                 : <PetWashIcon name="product_organic_soap" size={24} label="Book pet services" />}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="font-bold text-lg leading-tight">
+              <p className="font-semibold text-lg leading-tight text-[#0a0a0a]">
                 {isHe ? "הזמנת שירותים לחיית המחמד" : "Book pet services"}
               </p>
-              <p className="text-black/60 text-sm mt-0.5">
+              <p className="text-gray-500 text-sm mt-0.5">
                 {isHe
                   ? "שטיפה · טיפוח · שמרטפות · טיולים · ועוד"
                   : "Washing · Grooming · Sitting · Walking · and more"}
@@ -95,24 +112,25 @@ export default function ChooseRole() {
           </div>
         </button>
 
-        {/* Secondary option — Become a provider */}
+        {/* Secondary — Become a provider */}
         <button
           disabled={busy}
           onClick={() => handleChoice(SIGNUP_INTENT.PROVIDER)}
-          className="w-full bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white rounded-2xl p-5 text-start transition-all disabled:opacity-70"
+          className="w-full bg-white border border-gray-200 hover:border-[#D4AF37] rounded-2xl p-5 text-start transition-all shadow-sm hover:shadow-md disabled:opacity-70"
+          data-testid="choose-role-provider"
         >
           <div className="flex items-center gap-4">
-            <div className="flex-shrink-0 bg-white/5 rounded-xl p-3">
+            <div className="flex-shrink-0 rounded-xl p-3 border border-[#D4AF37]/30">
               {loading === SIGNUP_INTENT.PROVIDER
-                ? <Loader2 className="h-7 w-7 animate-spin text-white" />
-                : <Briefcase className="h-7 w-7 text-amber-400" />}
+                ? <Loader2 className="h-7 w-7 animate-spin text-[#D4AF37]" />
+                : <Briefcase className="h-7 w-7 text-[#D4AF37]" />}
             </div>
             <div>
-              <p className="font-semibold text-base">
+              <p className="font-semibold text-base text-[#0a0a0a]">
                 {isHe ? "אני רוצה להציע שירותים" : "I want to offer services"}
               </p>
               <p className="text-gray-500 text-sm mt-0.5">
-                {isHe ? "הפך לנותן שירות ורוויח עם PetWash™" : "Join our provider network and earn"}
+                {isHe ? "הפוך לנותן שירות והרוויח עם PetWash™" : "Join our provider network and earn"}
               </p>
             </div>
           </div>
@@ -121,7 +139,7 @@ export default function ChooseRole() {
         {/* Tertiary — Staff / Admin (collapsed by default) */}
         {!showStaff ? (
           <button
-            className="w-full text-center text-gray-600 hover:text-gray-400 text-sm py-2 transition-colors"
+            className="w-full text-center text-gray-400 hover:text-gray-600 text-sm py-2 transition-colors"
             onClick={() => setShowStaff(true)}
           >
             <span className="inline-flex items-center gap-1">
@@ -133,19 +151,20 @@ export default function ChooseRole() {
           <button
             disabled={busy}
             onClick={() => handleChoice(SIGNUP_INTENT.STAFF)}
-            className="w-full bg-white/5 hover:bg-white/8 border border-white/5 text-gray-400 rounded-2xl p-4 text-start transition-all disabled:opacity-70"
+            className="w-full bg-white border border-gray-100 hover:border-gray-300 text-gray-600 rounded-2xl p-4 text-start transition-all shadow-sm disabled:opacity-70"
+            data-testid="choose-role-staff"
           >
             <div className="flex items-center gap-3">
-              <div className="flex-shrink-0 bg-white/5 rounded-xl p-2.5">
+              <div className="flex-shrink-0 rounded-xl p-2.5 border border-gray-200">
                 {loading === SIGNUP_INTENT.STAFF
                   ? <Loader2 className="h-5 w-5 animate-spin text-gray-400" />
-                  : <span className="text-lg">🪪</span>}
+                  : <ShieldCheck className="h-5 w-5 text-gray-400" />}
               </div>
               <div>
                 <p className="font-medium text-sm">
                   {isHe ? "גישת צוות / ניהול" : "Staff / Admin access"}
                 </p>
-                <p className="text-gray-600 text-xs mt-0.5">
+                <p className="text-gray-400 text-xs mt-0.5">
                   {isHe ? "נדרש אישור מנהל" : "Requires manager approval"}
                 </p>
               </div>
