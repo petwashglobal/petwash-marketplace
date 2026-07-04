@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { getApiUrl } from '@/lib/apiConfig';
+import { apiRequest } from '@/lib/queryClient';
 import { AppleWheelDatePicker } from "@/components/ui/apple-wheel-picker";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -44,6 +45,7 @@ const strToDate = (s: string) => {
 export function BookingCalendar({ platform, providerId, onSlotSelected, bookingMode, onRequestCustomDate }: BookingCalendarProps) {
   const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<AvailabilitySlot | null>(null);
+  const [lockingSlotId, setLockingSlotId] = useState<number | null>(null);
   const { toast } = useToast();
 
   const fromDate = selectedDate || new Date();
@@ -77,7 +79,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
     setSelectedSlot(null);
   }, [selectedDate]);
 
-  const handleSlotClick = (slot: AvailabilitySlot) => {
+  const handleSlotClick = async (slot: AvailabilitySlot) => {
     if (slot.status !== 'AVAILABLE') {
       toast({
         title: "Slot Unavailable",
@@ -86,26 +88,52 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
       });
       return;
     }
+    if (lockingSlotId !== null) return;
 
-    setSelectedSlot(slot);
-    
-    const startTime = new Date(slot.start);
-    const endTime = new Date(slot.end);
-    const expiresAt = new Date();
-    expiresAt.setMinutes(expiresAt.getMinutes() + 15); // 15 minute client-side hold
+    // Acquire the REAL server-side lock. Checkout's atomic claim requires the
+    // DB-persisted lockToken + status='held' — a client-generated token can
+    // never satisfy it, and without this call the slot is not protected from
+    // a concurrent customer.
+    setLockingSlotId(slot.id);
+    try {
+      const res = await apiRequest('POST', '/api/provider-slots/lock', {
+        slotId: slot.id,
+        platformId: slot.platform || platform,
+      });
+      const lock = await res.json();
+      if (!lock?.lockToken) {
+        throw new Error(lock?.error || 'Could not reserve this time slot');
+      }
 
-    onSlotSelected({
-      slotId: slot.id,
-      lockToken: `client_hold_${Date.now()}_${crypto.randomUUID().replace(/-/g, '').slice(0, 9)}`,
-      expiresAt,
-      startTime,
-      endTime,
-    });
+      setSelectedSlot(slot);
 
-    toast({
-      title: "Time Slot Selected ✓",
-      description: `Reserved for 15 minutes: ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
-    });
+      const startTime = new Date(slot.start);
+      const endTime = new Date(slot.end);
+
+      onSlotSelected({
+        slotId: slot.id,
+        lockToken: lock.lockToken,
+        expiresAt: new Date(lock.lockExpiresAt),
+        startTime,
+        endTime,
+      });
+
+      toast({
+        title: "Time Slot Reserved ✓",
+        description: `Held for 5 minutes: ${startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}`,
+      });
+    } catch (err: any) {
+      toast({
+        title: "Slot Unavailable",
+        description: err?.message?.includes('held by another')
+          ? "Another customer is holding this time slot. Please try again shortly or pick another time."
+          : "Could not reserve this time slot. Please try another time or sign in and retry.",
+        variant: "destructive",
+      });
+      refetch();
+    } finally {
+      setLockingSlotId(null);
+    }
   };
 
   const slotsForSelectedDate = effectiveSlots.filter(slot => {
@@ -198,13 +226,14 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
                 const timeLabel = startTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
                 const isSelected = selectedSlot?.id === slot.id;
                 const isAvailable = slot.status === 'AVAILABLE';
+                const isLocking = lockingSlotId === slot.id;
 
                 return (
                   <Button
                     key={slot.id}
                     variant={isSelected ? "default" : "outline"}
                     onClick={() => handleSlotClick(slot)}
-                    disabled={!isAvailable}
+                    disabled={!isAvailable || lockingSlotId !== null}
                     className={`${
                       isSelected
                         ? 'bg-gradient-to-r from-[#B8932F] to-[#B8932F] text-white'
@@ -214,7 +243,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
                     }`}
                     data-testid={`time-slot-${timeLabel}`}
                   >
-                    {timeLabel}
+                    {isLocking ? <Loader2 className="w-4 h-4 animate-spin" /> : timeLabel}
                   </Button>
                 );
               })}
@@ -230,7 +259,7 @@ export function BookingCalendar({ platform, providerId, onSlotSelected, bookingM
               ✓ Selected: {new Date(selectedSlot.start).toLocaleDateString()} at {new Date(selectedSlot.start).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
             </p>
             <p className="text-xs text-green-700 dark:text-green-300 mt-1">
-              Reserved for 15 minutes - complete your booking to confirm
+              Reserved for 5 minutes - complete your booking to confirm
             </p>
           </CardContent>
         </Card>

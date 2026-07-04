@@ -673,6 +673,64 @@ export async function registerCleanupRecovery(): Promise<void> {
 }
 
 /**
+ * releaseStaleBaySessions — periodic sweep (cron, every minute) so a bay can
+ * never hang 'busy'/'cleanup' forever. This is the non-Cortina counterpart of
+ * releaseStaleCortinaReservations(): the K9000 emits no reliable "wash
+ * finished" signal, and the 30-second cleanup timer scheduled in
+ * enterCleanupPhase() is an in-process setTimeout that dies with the server
+ * (registerCleanupRecovery only runs at boot).
+ *
+ *   • 'cleanup' sessions past cleanupEndsAt + 60 s (the buffer lets a live
+ *     in-process timer win first) → finalizeCleanup (idempotent).
+ *   • 'active' sessions past startedAt + expectedDurationSeconds (default
+ *     SESSION_TIMEOUT_SECONDS) + cleanup window + 120 s grace → closeBaySession
+ *     with 'timed_out', which resets the bay to 'ready'.
+ */
+export async function releaseStaleBaySessions(): Promise<{ finalized: number; timedOut: number }> {
+  let finalized = 0;
+  let timedOut = 0;
+
+  // 1) Cleanup sessions whose window elapsed and whose timer never fired
+  const stuckCleanup = await db
+    .select({ id: baySessions.id })
+    .from(baySessions)
+    .where(and(
+      eq(baySessions.status, 'cleanup'),
+      sql`COALESCE(${baySessions.cleanupEndsAt}, ${baySessions.updatedAt}) < NOW() - INTERVAL '60 seconds'`,
+    ));
+  for (const row of stuckCleanup) {
+    try {
+      await finalizeCleanup(row.id);
+      finalized++;
+    } catch (err: any) {
+      logger.warn('[K9000ReleaseSweep] finalizeCleanup failed', { sessionId: row.id, error: err?.message });
+    }
+  }
+
+  // 2) Active sessions far past their expected end — never got a cleanup signal
+  const overdue = await db
+    .select({ id: baySessions.id })
+    .from(baySessions)
+    .where(and(
+      eq(baySessions.status, 'active'),
+      sql`${baySessions.startedAt} < NOW() - make_interval(secs => COALESCE(${baySessions.expectedDurationSeconds}, ${SESSION_TIMEOUT_SECONDS}) + 150)`,
+    ));
+  for (const row of overdue) {
+    try {
+      await closeBaySession(row.id, 'timed_out');
+      timedOut++;
+    } catch (err: any) {
+      logger.warn('[K9000ReleaseSweep] closeBaySession failed', { sessionId: row.id, error: err?.message });
+    }
+  }
+
+  if (finalized || timedOut) {
+    logger.warn('[K9000ReleaseSweep] released stale bay sessions', { finalized, timedOut });
+  }
+  return { finalized, timedOut };
+}
+
+/**
  * handleFaultDuringCleanup — called when the IoT controller reports a hardware
  * fault on a bay that is currently in "cleanup" status.
  *
