@@ -1,0 +1,113 @@
+name: Identity Shadow Report (prod, read-only)
+
+# Prints the loginOrLink SHADOW dry-run evidence as counts — the numbers the
+# CEO needs to decide whether to flip IDENTITY_UNIFIED_ENABLED (real identity
+# merge). The shadow probe has been live on every login since PR #898
+# ("timetable mission D"): it records IDENTITY_SHADOW_WOULD_MERGE rows in
+# audit_events whenever a login WOULD have linked to a different existing
+# account. Nothing is ever merged by the shadow.
+#
+# This job is the REVIEW half: read-only SELECTs, COUNTS ONLY — no emails, no
+# phones, no names ever reach the job log. Mirrors the credential-safe pattern
+# of schema-snapshot.yml (DATABASE_URL from Secret Manager, masked, never
+# handled by hand).
+#
+# Manual-only. Read-only. Cannot mutate prod.
+#
+# Usage: Actions ▸ "Identity Shadow Report (prod, read-only)" ▸ Run workflow,
+# then read the numbers straight in the job log.
+
+on:
+  workflow_dispatch: {}
+
+concurrency:
+  group: identity-shadow-report
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  report:
+    name: Shadow would-merge counts → job log
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: signinpetwash
+    steps:
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud CLI
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Fetch DATABASE_URL from Secret Manager (masked)
+        run: |
+          set -e
+          if ! gcloud secrets describe "DATABASE_URL" --project="$PROJECT_ID" --quiet &>/dev/null; then
+            echo "::error::DATABASE_URL secret missing from Secret Manager."
+            exit 1
+          fi
+          DB_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")
+          echo "::add-mask::$DB_URL"
+          echo "DATABASE_URL=$DB_URL" >> "$GITHUB_ENV"
+
+      - name: Run read-only shadow report (counts only — no PII)
+        run: |
+          set -e
+          # psql from the postgres:18 image (Neon prod is PG 18.x — same
+          # version-safety note as schema-snapshot.yml). URL passed via env so
+          # it never appears in the command line / process list. Every query
+          # is a SELECT of COUNTS — no email, phone, or name columns are ever
+          # selected, so nothing personal can land in this public job log.
+          cat > /tmp/report.sql <<'SQL'
+          \echo '=== 1. SHADOW TOTALS (since PR #898 went live) ==='
+          SELECT COUNT(*)                       AS would_merge_events,
+                 COUNT(DISTINCT actor_user_id)  AS distinct_logging_in_users,
+                 COUNT(DISTINCT target_id)      AS distinct_accounts_they_would_join,
+                 MIN(created_at)::date          AS first_seen,
+                 MAX(created_at)::date          AS last_seen
+          FROM audit_events
+          WHERE action_type = 'IDENTITY_SHADOW_WOULD_MERGE';
+
+          \echo ''
+          \echo '=== 2. BY DAY (last 30 days with activity) ==='
+          SELECT created_at::date               AS day,
+                 COUNT(*)                       AS events,
+                 COUNT(DISTINCT actor_user_id)  AS users
+          FROM audit_events
+          WHERE action_type = 'IDENTITY_SHADOW_WOULD_MERGE'
+          GROUP BY 1 ORDER BY 1 DESC LIMIT 30;
+
+          \echo ''
+          \echo '=== 3. BY LOGIN PROVIDER x MATCH FIELD ==='
+          SELECT COALESCE(metadata->>'provider', 'unknown')  AS provider,
+                 COALESCE(metadata->>'matchedOn', 'unknown') AS matched_on,
+                 COUNT(*)                                    AS events
+          FROM audit_events
+          WHERE action_type = 'IDENTITY_SHADOW_WOULD_MERGE'
+          GROUP BY 1, 2 ORDER BY events DESC;
+
+          \echo ''
+          \echo '=== 4. DUPLICATE-ACCOUNT GROUPS SITTING IN users (counts only) ==='
+          SELECT
+            (SELECT COUNT(*) FROM (
+               SELECT email FROM users
+               WHERE email IS NOT NULL AND email_verified = true
+               GROUP BY email HAVING COUNT(*) > 1) e) AS verified_email_groups,
+            (SELECT COUNT(*) FROM (
+               SELECT phone FROM users
+               WHERE phone IS NOT NULL AND phone <> ''
+               GROUP BY phone HAVING COUNT(*) > 1) p) AS phone_groups;
+          SQL
+          docker run --rm -e PGURL="$DATABASE_URL" \
+            -v /tmp/report.sql:/report.sql:ro postgres:18 \
+            sh -c 'psql "$PGURL" --set=ON_ERROR_STOP=1 --pset=pager=off -f /report.sql'
+          echo ""
+          echo "HOW TO READ THIS:"
+          echo "  §1-3 = real logins where the merge WOULD have happened (shadow evidence)."
+          echo "  §4   = how many duplicate-account clusters exist overall."
+          echo "  Per-account detail (PII-masked): GET /api/admin/identity-merge-candidates"
+          echo "  Decision: steady low-conflict numbers -> flip IDENTITY_UNIFIED_ENABLED."
