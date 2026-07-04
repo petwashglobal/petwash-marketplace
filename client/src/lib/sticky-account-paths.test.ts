@@ -67,7 +67,6 @@ describe('isStickyAccountPath', () => {
     expect(STICKY_ACCOUNT_PATHS).toContain('/provider-onboarding');
     expect(STICKY_ACCOUNT_PATHS).toContain('/become-provider');
     expect(STICKY_ACCOUNT_PATHS).toContain('/complete-profile');
-    expect(STICKY_ACCOUNT_PATHS).toContain('/choose-role');
     expect(STICKY_ACCOUNT_PATHS).toContain('/join');
     expect(STICKY_ACCOUNT_PATHS).toContain('/join/walker');
     expect(STICKY_ACCOUNT_PATHS).toContain('/join/sitter');

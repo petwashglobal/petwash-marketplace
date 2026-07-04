@@ -128,7 +128,9 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
   }
 
   if (!role || role === 'new') {
-    return { nextUrl: '/choose-role', reason: 'NO_ROLE', profileStatus: 'incomplete', role: 'customer', userStatus: 'new' };
+    // /choose-role no longer exists — a role-less account behaves as a
+    // customer completing their profile (providers enter via /become-provider).
+    return { nextUrl: '/complete-profile', reason: 'NO_ROLE', profileStatus: 'incomplete', role: 'customer', userStatus: 'new' };
   }
 
   if (missingFields.length > 0) {
@@ -526,13 +528,18 @@ export async function postLoginDecider(req: Request, res: Response) {
           }
         }
       } else {
-        return res.json({
-          nextUrl: '/choose-role',
-          reason: 'NO_ROLE',
-          profileStatus: 'incomplete',
+        // No stored intent — default to customer. The /choose-role interstitial
+        // is gone (CEO order 2026-07-04): providers pick their door explicitly
+        // via /become-provider BEFORE signup, so an intent-less login is a
+        // customer. Flow continues to buildRoutingResponse, which sends
+        // incomplete profiles to /complete-profile.
+        await storage.updateUser(userId, {
           role: 'customer',
-          userStatus: 'new',
-        } as PostLoginResponse);
+          signupIntent: 'customer',
+          accessLevel: 1,
+          userStatus: 'profile_incomplete',
+        } as any);
+        userRole = 'customer';
       }
 
       // Issue #153 PR-BPV-2: HOISTED provider-draft + welcome-email block.
