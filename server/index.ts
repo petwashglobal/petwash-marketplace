@@ -495,6 +495,30 @@ app.use(helmet({
 // B. Compression (Makes your site load 70% faster)
 app.use(compression());
 
+// B2. Maintenance mode — deliberate, operator-controlled kill switch.
+// When MAINTENANCE_MODE=true, the API returns 503 for customer-facing
+// requests so NO payment, booking, wash activation or wallet mutation can
+// run while a partner system is down or during a risky deploy. Deliberately
+// lets through:
+//   • /api/health*  — so Cloud Run / uptime probes and the maintenance
+//     page's auto-retry can tell when we're back
+//   • /api/cron/*   — so nightly backups and scheduled jobs keep running
+// The branded bilingual page itself is the static /maintenance.html served
+// by Firebase Hosting (survives even a fully-dead backend). Default OFF.
+app.use((req: any, res: any, next: any) => {
+  if (process.env.MAINTENANCE_MODE !== 'true') return next();
+  const p = req.path || '';
+  if (p.startsWith('/api/health') || p.startsWith('/api/cron/')) return next();
+  if (!p.startsWith('/api/')) return next(); // non-API (SPA/static) is CDN-served anyway
+  res.set('Retry-After', '120');
+  return res.status(503).json({
+    maintenance: true,
+    error: 'PetWash is temporarily under maintenance — please try again shortly.',
+    errorHe: 'PetWash בתחזוקה זמנית — נסו שוב בקרוב.',
+    page: '/maintenance.html',
+  });
+});
+
 // C. CORS — strict allowlist with credential safety (CWE-942)
 // Access-Control-Allow-Credentials is ONLY set when the request origin exactly
 // matches an entry in the static CORS_EXACT_ORIGINS list.  This is enforced by
