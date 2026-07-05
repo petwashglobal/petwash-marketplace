@@ -86,7 +86,17 @@ describe('SumitClient.createCustomerReceipt', () => {
     expect(res.sumitDocumentId).toBe('INV-999');
     expect(sentBody.Details.Type).toBe('InvoiceAndReceipt');
     expect(sentBody.Payments?.[0]?.Amount).toBe(59);
-    expect(sentBody.Details.ExternalIdentifier).toBe(SAMPLE.idempotencyKey);
+    // Shape facts VERIFIED LIVE 2026-07-05 (document #10000):
+    // - Language must be the enum NAME ('Hebrew'), never ISO 'he' (SUMIT 400s).
+    // - A payment line needs Type + Details_* or SUMIT rejects with
+    //   "יש להזין מוטב/מחויב"; bare {Amount} is not a valid payment.
+    // - The Details-level idempotency field is ExternalReference
+    //   (ExternalIdentifier only exists on Customer).
+    expect(sentBody.Details.Language).toBe('Hebrew');
+    expect(sentBody.Payments?.[0]?.Type).toBe('CreditCard');
+    expect(sentBody.Payments?.[0]?.Details_CreditCard).toBeDefined();
+    expect(sentBody.Details.ExternalReference).toBe(SAMPLE.idempotencyKey);
+    expect(sentBody.Details.ExternalIdentifier).toBeUndefined();
   });
 });
 

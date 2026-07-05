@@ -233,9 +233,13 @@ export class SumitClient {
         },
         Description: input.description,
         Currency: input.currency,
-        Language: 'he',
+        // Enum NAME, not ISO code — 'he' is rejected by SUMIT
+        // (verified live 2026-07-05, document #10000 walk).
+        Language: 'Hebrew',
         // Document-level idempotency hint (plus the Idempotency-Key header below).
-        ExternalIdentifier: input.idempotencyKey,
+        // Swagger field is ExternalReference at Details level (ExternalIdentifier
+        // exists only on Customer).
+        ExternalReference: input.idempotencyKey,
       },
       Items: [
         {
@@ -350,6 +354,8 @@ export class SumitClient {
     vatAmount: number;
     totalAmount: number;
     currency: 'ILS';
+    /** Card metadata when the caller has it — enriches the receipt's payment line. */
+    card?: { last4?: string; brand?: string };
     /** caller context for the audit log (platform, bookingId) */
     context?: Record<string, unknown>;
   }): Promise<SumitDocumentResult> {
@@ -382,8 +388,10 @@ export class SumitClient {
         },
         Description: input.description,
         Currency: input.currency,
-        Language: 'he',
-        ExternalIdentifier: input.idempotencyKey,
+        // Enum NAME, not ISO code — 'he' is rejected by SUMIT
+        // (verified live 2026-07-05, document #10000 walk).
+        Language: 'Hebrew',
+        ExternalReference: input.idempotencyKey,
       },
       Items: [
         {
@@ -394,7 +402,18 @@ export class SumitClient {
         },
       ],
       // The sale is already paid — record the payment so the doc is a receipt too.
-      Payments: [{ Amount: input.totalAmount }],
+      // A bare {Amount} is rejected ("יש להזין מוטב/מחויב"): SUMIT needs the
+      // payment TYPE plus its (possibly empty) details object to post the
+      // ledger line. Card is our only online rail; last4/brand enrich the doc
+      // when the caller has them.
+      Payments: [{
+        Amount: input.totalAmount,
+        Type: 'CreditCard',
+        Details_CreditCard: {
+          ...(input.card?.last4 ? { Last4Digits: input.card.last4 } : {}),
+          ...(input.card?.brand ? { CardBrand: input.card.brand } : {}),
+        },
+      }],
       VATIncluded: false,
     };
 
@@ -623,7 +642,8 @@ export class SumitClient {
       },
       Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountIls }],
       VATIncluded: true, // gross amount already includes VAT
-      Language: 'he',
+      // Enum NAME, not ISO code (same Accounting_Typed_Language enum as documents).
+      Language: 'Hebrew',
     };
     try {
       const res = await fetch(`${env.baseUrl}/billing/payments/beginredirect/`, {
