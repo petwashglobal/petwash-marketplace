@@ -13,7 +13,8 @@
 
 export type IncomeModule =
   | 'self_service_wash' | 'wash_package' | 'gift' | 'shop' | 'academy'
-  | 'pet_sitter' | 'walk_my_pet' | 'provider_marketplace' | 'platform_commission';
+  | 'pet_sitter' | 'walk_my_pet' | 'provider_marketplace' | 'platform_commission'
+  | 'wallet';
 
 export interface IncomeItem {
   code: string;          // stable PW_* code (never changes)
@@ -35,6 +36,8 @@ export const PETWASH_INCOME_ITEMS: Record<string, IncomeItem> = {
   // Gift
   PW_GIFT_CARD:         { code: 'PW_GIFT_CARD',         module: 'gift', he: 'שובר מתנה PetWash', en: 'PetWash gift card' },
   PW_GIFT_WASH_PACKAGE: { code: 'PW_GIFT_WASH_PACKAGE', module: 'gift', he: 'חבילת רחיצות במתנה', en: 'Gift wash package' },
+  // Wallet / prepaid credit (money-value instrument — receipt at load, VAT at 18%)
+  PW_WALLET_TOPUP:      { code: 'PW_WALLET_TOPUP',      module: 'wallet', he: 'טעינת ארנק PetWash', en: 'PetWash wallet top-up' },
   // Shop
   PW_SHOP_COLLAR:      { code: 'PW_SHOP_COLLAR',      module: 'shop', he: 'קולר', en: 'Pet collar' },
   PW_SHOP_ENGRAVED_TAG:{ code: 'PW_SHOP_ENGRAVED_TAG',module: 'shop', he: 'תג חריטה', en: 'Engraved pet tag' },

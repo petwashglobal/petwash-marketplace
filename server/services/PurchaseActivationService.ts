@@ -41,29 +41,45 @@ import { IsraeliDigitalReceiptService } from './IsraeliDigitalReceiptService';
 import { PETWASH_INCOME_ITEMS } from '@shared/petwashIncomeItems';
 
 /**
- * Issue a customer tax receipt for a DIRECT PetWash wash sale (package / single)
- * bought via SUMIT. Reuses the live IsraeliDigitalReceiptService (writes
- * digital_receipts + emails the customer) — the same engine academy/sitter/walk use.
+ * Issue a customer tax receipt for a DIRECT PetWash sale bought via SUMIT —
+ * a wash package/single, an eGift voucher, or a wallet top-up. All are
+ * PetWash's OWN income (no provider, no marketplace commission), so VAT is on
+ * the full amount at point of sale. Reuses the live IsraeliDigitalReceiptService
+ * (writes digital_receipts + emails the buyer) — the same engine sitter/walk/
+ * academy use.
  *
- * The accounting audit found wash-package purchases on the SUMIT path issued NO
- * receipt (the one un-documented sale). This closes that gap. Direct PetWash sale →
- * no provider, no marketplace commission. NON-BLOCKING: a receipt failure must never
- * block the credit grant or risk a double-charge — it logs, like the other modules.
+ * The 2026-07-05 fiscal audit found three money classes issuing NO receipt:
+ * wash packages (fixed earlier), eGift purchases and wallet top-ups (fixed
+ * here). Each takes real money and must produce a חשבונית מס/קבלה.
+ * NON-BLOCKING: a receipt failure must never block the credit/voucher grant or
+ * risk a double-charge — it logs, like the other modules.
  */
-async function issueWashSaleReceipt(purchase: Purchase, incomeCode: string): Promise<void> {
+async function issueDirectSaleReceipt(
+  purchase: Purchase,
+  incomeCode: string,
+  opts?: { email?: string; name?: string },
+): Promise<void> {
   try {
     const item = PETWASH_INCOME_ITEMS[incomeCode];
     if (!item) return;
     const total = (purchase.amountCents ?? 0) / 100;
     if (total <= 0) return;
-    const [buyer] = await db
-      .select({ email: users.email, first: users.firstName, last: users.lastName })
-      .from(users).where(eq(users.id, purchase.buyerUserId)).limit(1);
+    // Prefer an explicit buyer contact (eGift buyers can be guests with no
+    // user row); otherwise resolve from the buyer's account.
+    let email = opts?.email;
+    let name = opts?.name;
+    if (!email && purchase.buyerUserId) {
+      const [buyer] = await db
+        .select({ email: users.email, first: users.firstName, last: users.lastName })
+        .from(users).where(eq(users.id, purchase.buyerUserId)).limit(1);
+      email = buyer?.email;
+      name = [buyer?.first, buyer?.last].filter(Boolean).join(' ');
+    }
     await IsraeliDigitalReceiptService.generateReceipt({
-      platform: item.module,                 // 'wash_package' | 'self_service_wash'
+      platform: item.module,                 // wash_package | self_service_wash | gift | wallet
       bookingId: `sumit:${purchase.id}`,
-      customerEmail: buyer?.email || '',
-      customerName: [buyer?.first, buyer?.last].filter(Boolean).join(' '),
+      customerEmail: email || '',
+      customerName: name || '',
       serviceDescription: item.en,
       serviceDescriptionHe: item.he,
       subtotalAmount: total,
@@ -72,7 +88,7 @@ async function issueWashSaleReceipt(purchase: Purchase, incomeCode: string): Pro
       paymentMethod: 'Credit Card (SUMIT)',
     });
   } catch (err) {
-    logger.warn('[PurchaseActivation] Wash-sale receipt failed (non-blocking)', { purchaseId: purchase.id, error: (err as any)?.message });
+    logger.warn('[PurchaseActivation] Direct-sale receipt failed (non-blocking)', { purchaseId: purchase.id, incomeCode, error: (err as any)?.message });
   }
 }
 
@@ -395,6 +411,9 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
       purchase.id,
       'Account credit via SUMIT',
     );
+    // Real money loaded → issue the חשבונית מס/קבלה (fiscal audit 2026-07-05:
+    // wallet top-ups previously granted credit with NO receipt).
+    await issueDirectSaleReceipt(purchase, 'PW_WALLET_TOPUP');
     return true;
   }
 
@@ -411,7 +430,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
         'Wash package via SUMIT',
       );
       // Close the audit gap: issue the customer receipt for the package sale.
-      await issueWashSaleReceipt(purchase, washCount === 5 ? 'PW_WASH_PACKAGE_5' : washCount === 10 ? 'PW_WASH_PACKAGE_10' : 'PW_WASH_PACKAGE_CUSTOM');
+      await issueDirectSaleReceipt(purchase, washCount === 5 ? 'PW_WASH_PACKAGE_5' : washCount === 10 ? 'PW_WASH_PACKAGE_10' : 'PW_WASH_PACKAGE_CUSTOM');
       return true;
     }
 
@@ -426,7 +445,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
         purchase.id,
         'Single wash via SUMIT',
       );
-      await issueWashSaleReceipt(purchase, 'PW_SELF_SERVICE_DOG_WASH_SINGLE');
+      await issueDirectSaleReceipt(purchase, 'PW_SELF_SERVICE_DOG_WASH_SINGLE');
       return true;
     }
 
@@ -592,6 +611,11 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
       } catch (mailErr: any) {
         logger.warn('[Activation] eGift email send failed (non-fatal; voucher already created)', { err: mailErr?.message, giftCardId: gift.giftCardId });
       }
+      // The eGift is a money-value instrument — the BUYER (who paid) gets the
+      // חשבונית מס/קבלה now (VAT at 18% on the gift value at point of sale).
+      // Redemption is NOT re-receipted (would double-VAT). Fiscal audit
+      // 2026-07-05: eGift purchases previously issued no receipt at all.
+      await issueDirectSaleReceipt(purchase, 'PW_GIFT_CARD', { email: purchaserEmail, name: senderName });
       return true;
     }
 
