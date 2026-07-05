@@ -880,54 +880,64 @@ class WalletService {
     const auditId = `AUD-${nanoid(12).toUpperCase()}`;
     const now = new Date();
 
-    const updates: Partial<typeof walletAccounts.$inferInsert> = {
+    // ATOMIC balance (cross-exam 2026-07-05 #4): use DB-side increments, not
+    // read-compute-write of an absolute value. The old code read wallet.xxx
+    // BEFORE the transaction (no lock) and wrote balanceBefore+amount, so a
+    // concurrent credit (eGift top-up, gift activation, a second injection)
+    // that committed in between was silently overwritten — a lost update that
+    // corrupts money balances. Mirror addCredits(): increment in place and
+    // derive before/after from the RETURNING row (the true committed values).
+    const updates: Record<string, any> = {
       updatedAt: now,
       lastActivityAt: now,
     };
 
-    let balanceBefore = 0;
-    let balanceAfter = 0;
     let isUnits = false;
 
     switch (creditType) {
       case 'egift':
-        balanceBefore = wallet.egiftBalanceCents || 0;
-        updates.egiftBalanceCents = balanceBefore + amount;
-        balanceAfter = updates.egiftBalanceCents;
+        updates.egiftBalanceCents = sql`COALESCE(egift_balance_cents, 0) + ${amount}`;
         break;
       case 'wash_package':
-        balanceBefore = wallet.washPackageCredits || 0;
-        updates.washPackageCredits = balanceBefore + amount;
-        balanceAfter = updates.washPackageCredits;
+        updates.washPackageCredits = sql`COALESCE(wash_package_credits, 0) + ${amount}`;
         isUnits = true;
         break;
       case 'loyalty_points':
-        balanceBefore = wallet.loyaltyPointsBalance || 0;
-        updates.loyaltyPointsBalance = balanceBefore + amount;
-        updates.tierPointsThisYear = (wallet.tierPointsThisYear || 0) + amount;
-        balanceAfter = updates.loyaltyPointsBalance;
+        updates.loyaltyPointsBalance = sql`COALESCE(loyalty_points_balance, 0) + ${amount}`;
+        updates.tierPointsThisYear  = sql`COALESCE(tier_points_this_year, 0) + ${amount}`;
         isUnits = true;
         break;
       case 'promo_credit':
-        balanceBefore = wallet.promoBalanceCents || 0;
-        updates.promoBalanceCents = balanceBefore + amount;
-        balanceAfter = updates.promoBalanceCents;
+        updates.promoBalanceCents = sql`COALESCE(promo_balance_cents, 0) + ${amount}`;
         break;
       case 'referral_credit':
-        balanceBefore = wallet.referralBalanceCents || 0;
-        updates.referralBalanceCents = balanceBefore + amount;
-        balanceAfter = updates.referralBalanceCents;
+        updates.referralBalanceCents = sql`COALESCE(referral_balance_cents, 0) + ${amount}`;
         break;
     }
+
+    let balanceBefore = 0;
+    let balanceAfter = 0;
 
     // ATOMIC balance + ledger (audit 2026-06-24 finding #4): previously two
     // separate awaits — a crash between them moved the balance with NO audit
     // row, leaving an unreconcilable credit. Wrap both in one transaction.
     await db.transaction(async (tx) => {
-      // Update wallet balance
-      await tx.update(walletAccounts)
+      // Update wallet balance (in-place increment) and read back the committed value.
+      const [updated] = await tx.update(walletAccounts)
         .set(updates)
-        .where(eq(walletAccounts.walletId, wallet.walletId));
+        .where(eq(walletAccounts.walletId, wallet.walletId))
+        .returning();
+
+      if (updated) {
+        switch (creditType) {
+          case 'egift':           balanceAfter = updated.egiftBalanceCents ?? 0; break;
+          case 'wash_package':    balanceAfter = updated.washPackageCredits ?? 0; break;
+          case 'loyalty_points':  balanceAfter = updated.loyaltyPointsBalance ?? 0; break;
+          case 'promo_credit':    balanceAfter = updated.promoBalanceCents ?? 0; break;
+          case 'referral_credit': balanceAfter = updated.referralBalanceCents ?? 0; break;
+        }
+      }
+      balanceBefore = balanceAfter - amount;
 
       // Create credit transaction with admin injection marker
       await tx.insert(creditTransactions).values({

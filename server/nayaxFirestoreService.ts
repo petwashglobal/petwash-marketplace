@@ -642,15 +642,24 @@ export async function markEventProcessed(eventId: string): Promise<void> {
 }
 
 export function verifyWebhookSignature(rawBody: string, signature: string): boolean {
-  const expectedSignature = crypto
-    .createHmac('sha256', WEBHOOK_SECRET)
-    .update(rawBody)
-    .digest('hex');
-  
-  return crypto.timingSafeEqual(
-    Buffer.from(signature),
-    Buffer.from(expectedSignature)
-  );
+  try {
+    const expectedSignature = crypto
+      .createHmac('sha256', WEBHOOK_SECRET)
+      .update(rawBody)
+      .digest('hex');
+
+    const a = Buffer.from(signature ?? '');
+    const b = Buffer.from(expectedSignature);
+    // Length check BEFORE timingSafeEqual (cross-exam 2026-07-05 #5):
+    // timingSafeEqual THROWS when the buffers differ in length, so a
+    // malformed/garbage signature would bubble a 500 and trigger Nayax
+    // retry storms. A wrong-length signature is simply invalid → false.
+    // Same guard already used in SumitClient / NayaxOnlinePaymentService.
+    if (a.length !== b.length) return false;
+    return crypto.timingSafeEqual(a, b);
+  } catch {
+    return false;
+  }
 }
 
 // =====================================

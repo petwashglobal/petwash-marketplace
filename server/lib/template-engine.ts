@@ -184,7 +184,11 @@ export function replaceTemplates(
   Object.entries(allVars).forEach(([key, value]) => {
     // Support both exact and flexible spacing: {{key}} and {{ key }}
     const regex = new RegExp(`{{\\s*${key}\\s*}}`, 'g');
-    processedContent = processedContent.replace(regex, value);
+    // Replacer FUNCTION, not a string (cross-exam 2026-07-05 #6): a raw string
+    // makes String.replace interpret $-sequences ($1, $&, $') in the value as
+    // replacement patterns, garbling any customer name or voucher code that
+    // contains '$'. A function's return value is substituted literally.
+    processedContent = processedContent.replace(regex, () => value);
   });
   
   // Remove any remaining unreplaced placeholders (optional - helps with debugging)
