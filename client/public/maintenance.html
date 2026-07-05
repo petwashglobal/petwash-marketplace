@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>PetWash™ — Temporarily Unavailable · אנו זמנית לא זמינים</title>
+<meta name="robots" content="noindex" />
+<meta name="theme-color" content="#ffffff" />
+<style>
+  :root{
+    --ink:#111114; --muted:#6b6b70; --line:#ece7d6;
+    --gold:#d4af37; --gold-deep:#9a7218; --gold-bright:#f3da82;
+    --gold-grad:linear-gradient(180deg,#f3da82 0%,#d4af37 48%,#9a7218 100%);
+    --font:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,"Assistant","Rubik",sans-serif;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{
+    font-family:var(--font); color:var(--ink); line-height:1.6;
+    background:#ffffff;              /* PURE WHITE — no tint, no gray */
+    min-height:100vh;
+  }
+  .ltr{direction:ltr; unicode-bidi:isolate; display:inline-block}
+  .wrap{max-width:1180px; margin:0 auto; padding:0 22px 60px}
+
+  /* ---- Header: real logo on pure white + gold water-drop ---- */
+  .top{text-align:center; padding:48px 16px 30px; position:relative}
+  .top::after{
+    content:""; display:block; width:min(560px,78%); height:2px; margin:30px auto 0;
+    background:linear-gradient(90deg,transparent,var(--gold),transparent);
+  }
+  .drop{height:46px; width:auto; display:block; margin:0 auto 14px}
+  .logo{height:56px; width:auto; display:block; margin:0 auto 12px}
+  .brandline{font-size:13px; letter-spacing:.3em; text-transform:uppercase; color:var(--ink); font-weight:600}
+  .brandline b{
+    background:var(--gold-grad); -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent; color:var(--gold-deep);
+  }
+
+  /* ---- Hero: English (LTR) | Hebrew (RTL) ---- */
+  .cols{display:grid; grid-template-columns:1fr 1px 1fr; margin-top:6px}
+  .col{padding:22px 36px}
+  .col.he{direction:rtl; text-align:right}
+  .vline{background:linear-gradient(180deg,transparent,var(--line),transparent)}
+  h1{font-size:clamp(26px,3.4vw,38px); line-height:1.14; margin:0 0 14px; color:var(--ink); font-weight:800; letter-spacing:-.01em}
+  h1 .g{
+    background:var(--gold-grad); -webkit-background-clip:text; background-clip:text;
+    -webkit-text-fill-color:transparent;
+  }
+  .lede{font-size:16px; color:var(--muted); margin:0}
+
+  /* ---- Section card — WHITE with thin gold hairline, NO gray fill ---- */
+  .card{
+    background:#ffffff; border:1px solid var(--line); border-radius:20px;
+    padding:28px 32px; margin-top:28px;
+    box-shadow:0 20px 60px -34px rgba(154,114,24,.30);
+  }
+  .card-title{text-align:center; font-size:13px; letter-spacing:.22em; text-transform:uppercase; color:var(--gold-deep); font-weight:700; margin:0 0 24px}
+  .split{display:grid; grid-template-columns:1fr 1px 1fr}
+  .half{padding:0 30px}
+  .half.he{direction:rtl; text-align:right}
+
+  /* ---- Affected services: white tiles, gold hairline, gold icon ---- */
+  .svc{display:grid; grid-template-columns:repeat(3,1fr); gap:16px}
+  .tile{
+    text-align:center; padding:18px 8px; border:1px solid var(--line); border-radius:14px;
+    background:#ffffff; font-size:12.5px; color:var(--ink); line-height:1.4;
+    transition:border-color .2s;
+  }
+  .tile:hover{border-color:var(--gold)}
+  .tile img{height:34px; width:34px; object-fit:contain; display:block; margin:0 auto 10px}
+
+  /* ---- Safety checklist — gold ticks ---- */
+  .safe-head{display:flex; align-items:center; gap:12px; margin:0 0 18px}
+  .half.he .safe-head{flex-direction:row-reverse}
+  .safe-head img{height:40px; width:40px; object-fit:contain}
+  .safe-head b{font-size:15px; color:var(--ink)}
+  ul.check{list-style:none; margin:0; padding:0}
+  ul.check li{position:relative; padding:8px 0 8px 30px; font-size:14.5px; color:var(--ink)}
+  .half.he ul.check li{padding:8px 30px 8px 0}
+  ul.check li::before{
+    content:"✓"; position:absolute; left:0; top:9px; width:20px; height:20px; border-radius:50%;
+    background:var(--gold-grad); color:#fff; font-size:12px; font-weight:700; display:grid; place-items:center;
+    box-shadow:0 2px 6px -2px rgba(154,114,24,.6);
+  }
+  .half.he ul.check li::before{left:auto; right:0}
+
+  /* ---- Help ---- */
+  .help{display:grid; grid-template-columns:1fr 1px 1fr; margin-top:28px;
+    background:#fff; border:1px solid var(--line); border-radius:20px; overflow:hidden}
+  .help .half{padding:26px 32px}
+  .help a{color:var(--gold-deep); text-decoration:none; font-weight:600}
+  .help .lbl{font-size:12px; letter-spacing:.18em; text-transform:uppercase; color:var(--gold-deep); font-weight:700; margin:0 0 12px}
+  .contact{margin:7px 0; font-size:14.5px}
+
+  .cta{
+    display:block; margin:32px auto 0; width:max-content;
+    background:var(--gold-grad); color:#1a1200; border:none; border-radius:999px; cursor:pointer;
+    padding:16px 44px; font-size:15px; font-weight:800; font-family:inherit; letter-spacing:.01em;
+    box-shadow:0 16px 34px -16px rgba(154,114,24,.7);
+  }
+  .cta:hover{filter:brightness(1.05)}
+
+  .footer{text-align:center; margin-top:36px; padding-top:24px; border-top:1px solid var(--line); color:var(--muted); font-size:12.5px}
+  .footer b{color:var(--ink)}
+
+  @media (max-width:760px){
+    .cols,.split,.help{grid-template-columns:1fr}
+    .cols .vline,.split .vline,.help .vline{display:none}
+    .col{padding:14px 4px}
+    .half{padding:18px 4px}
+    .col.he,.half.he{border-top:1px solid var(--line); margin-top:8px; padding-top:20px}
+    .svc{grid-template-columns:repeat(2,1fr)}
+  }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <img class="drop" src="/assets/icons/petwash/gold/nature/nature_water_drop.png" alt="" onerror="this.style.display='none'" />
+      <img class="logo" src="/brand/petwash-logo-official.png" alt="PetWash™" onerror="this.style.display='none'" />
+      <div class="brandline">Pet<b>Wash</b>™ &nbsp;·&nbsp; PetWash.co.il</div>
+    </header>
+
+    <section class="cols">
+      <div class="col en">
+        <h1>We're <span class="g">temporarily</span> unavailable</h1>
+        <p class="lede">To protect our customers and the integrity of every payment, some PetWash™ services are briefly paused while a critical partner system is unavailable or under maintenance. We'll be back shortly.</p>
+      </div>
+      <div class="vline"></div>
+      <div class="col he" dir="rtl" lang="he">
+        <h1>אנחנו <span class="g">זמנית</span> לא זמינים</h1>
+        <p class="lede">כדי להגן על הלקוחות שלנו ועל תקינות התשלומים, חלק משירותי <span class="ltr">PetWash™</span> מושהים באופן זמני בזמן שמערכת שותפה חיונית אינה זמינה או נמצאת בתחזוקה. נחזור בקרוב.</p>
+      </div>
+    </section>
+
+    <section class="card">
+      <p class="card-title">Services that may be affected · שירותים שעשויים להיות מושפעים</p>
+      <div class="split">
+        <div class="half en">
+          <div class="svc">
+            <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_sparkle.png" alt="" onerror="this.style.display='none'">Website &amp; app access</div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_pet_owner.png" alt="" onerror="this.style.display='none'">Payment processing</div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/products/product_treat.png" alt="" onerror="this.style.display='none'">Wallet / eGift redemption</div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_paw.png" alt="" onerror="this.style.display='none'">QR code activation</div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/nature/nature_water_drop.png" alt="" onerror="this.style.display='none'">K9000 wash activation</div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/nature/nature_bubbles.png" alt="" onerror="this.style.display='none'">Booking checkout</div>
+          </div>
+        </div>
+        <div class="vline"></div>
+        <div class="half he" dir="rtl" lang="he">
+          <div class="svc">
+            <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_sparkle.png" alt="" onerror="this.style.display='none'">גישה לאתר ולאפליקציה</div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_pet_owner.png" alt="" onerror="this.style.display='none'">עיבוד תשלומים</div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/products/product_treat.png" alt="" onerror="this.style.display='none'">מימוש ארנק / <span class="ltr">eGift</span></div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_paw.png" alt="" onerror="this.style.display='none'">הפעלת קוד <span class="ltr">QR</span></div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/nature/nature_water_drop.png" alt="" onerror="this.style.display='none'">הפעלת שטיפת <span class="ltr">K9000</span></div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/nature/nature_bubbles.png" alt="" onerror="this.style.display='none'">תשלום על הזמנה</div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="split">
+        <div class="half en">
+          <div class="safe-head">
+            <img src="/assets/icons/petwash/gold/trust/trust_pet_safe.png" alt="" onerror="this.style.display='none'">
+            <b>Our safety policy</b>
+          </div>
+          <ul class="check">
+            <li>We pause affected services to protect you.</li>
+            <li>We never allow an uncertain charge.</li>
+            <li>We never start a machine session without valid confirmation.</li>
+            <li>We reopen only after full testing and reconciliation.</li>
+          </ul>
+        </div>
+        <div class="vline"></div>
+        <div class="half he" dir="rtl" lang="he">
+          <div class="safe-head">
+            <img src="/assets/icons/petwash/gold/trust/trust_pet_safe.png" alt="" onerror="this.style.display='none'">
+            <b>מדיניות הבטיחות שלנו</b>
+          </div>
+          <ul class="check">
+            <li>אנחנו משהים שירותים מושפעים כדי להגן עליכם.</li>
+            <li>לעולם לא נבצע חיוב שאינו ודאי.</li>
+            <li>לעולם לא נפעיל מכונה ללא אישור תקין.</li>
+            <li>נפתח מחדש רק לאחר בדיקות מלאות והתאמת חשבונות.</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <section class="help">
+      <div class="half en">
+        <p class="lbl">Need help?</p>
+        <p class="contact">✉︎ <a href="mailto:support@petwash.co.il"><span class="ltr">support@petwash.co.il</span></a></p>
+        <p class="contact">🌐 <a href="https://petwash.co.il"><span class="ltr">PetWash.co.il</span></a></p>
+        <p class="contact" style="color:var(--muted)">Our team is here and will respond as soon as possible.</p>
+      </div>
+      <div class="vline"></div>
+      <div class="half he" dir="rtl" lang="he">
+        <p class="lbl">זקוקים לעזרה?</p>
+        <p class="contact">✉︎ <a href="mailto:support@petwash.co.il"><span class="ltr">support@petwash.co.il</span></a></p>
+        <p class="contact">🌐 <a href="https://petwash.co.il"><span class="ltr">PetWash.co.il</span></a></p>
+        <p class="contact" style="color:var(--muted)">הצוות שלנו כאן ויגיב בהקדם האפשרי.</p>
+      </div>
+    </section>
+
+    <button class="cta" onclick="location.reload()">↻ &nbsp;Check again shortly · בדקו שוב בקרוב</button>
+
+    <div class="footer">
+      <b>Pet Wash Ltd</b> · PetWash.co.il · <span class="ltr">support@petwash.co.il</span><br />
+      Your safety and trust come first. You are never charged where verification cannot be completed.
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var tries = 0;
+      function ping() {
+        tries++;
+        fetch('/api/health', { cache: 'no-store' })
+          .then(function (r) { if (r && r.ok) location.reload(); })
+          .catch(function () {});
+        var next = tries < 3 ? 15000 : (tries < 8 ? 30000 : 120000);
+        setTimeout(ping, next);
+      }
+      setTimeout(ping, 15000);
+    })();
+  </script>
+</body>
+</html>
