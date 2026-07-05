@@ -116,14 +116,26 @@ router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response
       return res.status(400).json({ error: 'settlement_ids required' });
     }
 
-    // Sum up the settlements
+    // Sum up the settlements. Exclude any settlement already present in a
+    // payout batch item — without this a second POST with the same
+    // settlement_ids would pay the station twice (cross-exam 2026-07-05 #1).
     const ids = settlement_ids.map(Number).filter(Boolean);
     const idList = sql.join(ids.map((id: number) => sql`${id}`), sql`, `);
     const settlements = await db.execute(sql`
       SELECT id, station_amount_cents, held_in_reserve, payout_hold_reason
       FROM station_settlements
       WHERE id IN (${idList})
+        AND id NOT IN (SELECT settlement_id FROM payout_batch_items)
     `);
+
+    const foundIds = new Set((settlements.rows as any[]).map(s => Number(s.id)));
+    const alreadyBatched = ids.filter((id: number) => !foundIds.has(id));
+    if (alreadyBatched.length) {
+      return res.status(409).json({
+        error: 'One or more settlements are already in a payout batch',
+        alreadyBatched,
+      });
+    }
 
     const blocked = (settlements.rows as any[]).filter(s => s.held_in_reserve || s.payout_hold_reason);
     if (blocked.length) {
@@ -158,15 +170,20 @@ router.post('/batches', requireTreasuryAdmin, async (req: Request, res: Response
     `);
     const batch = batchRaw.rows[0] as any;
 
-    // Insert batch items
+    // Insert batch items. ON CONFLICT on the unique settlement_id index
+    // (migration 0089) makes a concurrent second batch fail closed rather
+    // than double-insert — the last line of defense behind the NOT IN guard.
+    let inserted = 0;
     for (const s of settlements.rows as any[]) {
-      await db.execute(sql`
+      const r = await db.execute(sql`
         INSERT INTO payout_batch_items (batch_id, settlement_id, amount_cents)
         VALUES (${batch.id}, ${s.id}, ${s.station_amount_cents})
+        ON CONFLICT (settlement_id) DO NOTHING
       `);
+      inserted += r.rowCount ?? 0;
     }
 
-    return res.status(201).json({ batch, items: settlements.rows.length });
+    return res.status(201).json({ batch, items: inserted });
   } catch (err: any) {
     return res.status(500).json({ error: err.message });
   }
