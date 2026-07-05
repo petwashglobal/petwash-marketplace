@@ -45,7 +45,9 @@ describe('SMS template registry', () => {
     const keys = Object.keys(SMS_TEMPLATES);
     expect(keys.filter((k) => k.startsWith('provider_')).length).toBe(30);
     expect(keys.filter((k) => k.startsWith('admin_')).length).toBe(10);
-    expect(keys.length).toBe(70);
+    // 70 original (#948) + care_notes_reminder_24h (#1228, pin was not bumped)
+    // + booking_reminder_today (booking-reminder engine, day-of T-2h copy).
+    expect(keys.length).toBe(72);
   });
 
   it('every MARKETING template carries an {{unsubscribe}} opt-out; transactional must NOT', () => {
