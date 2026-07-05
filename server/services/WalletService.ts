@@ -263,18 +263,25 @@ class WalletService {
     };
   }
 
-  async confirmRedemption(sessionId: string, paymentConfirmed: boolean = false, idempotencyKey?: string): Promise<boolean> {
+  async confirmRedemption(sessionId: string, paymentConfirmed: boolean = false, idempotencyKey?: string, userId?: string): Promise<boolean> {
     // ATOMIC (2026-06-13, audit C1): the ENTIRE confirm runs inside ONE
     // transaction so the FOR UPDATE locks on the redemption_session + wallet
     // rows are HELD until commit. Previously each statement auto-committed and
     // the locks released instantly, leaving a window where two concurrent
     // confirms both read the same balance and both deducted (double-spend).
     // Early `return` commits; any thrown error rolls the whole thing back.
+    //
+    // SECURITY 2026-07-05 (cross-exam #3): scope the lookup to the owner.
+    // Was sessionId-only → anyone who learns a pending sessionId (e.g. from a
+    // shared kiosk QR) could force the victim's OWN wallet credits to be spent
+    // and bypass the cash-due gate (IDOR). userId is required by the route now;
+    // the optional default keeps backward-compat for internal callers.
+    const ownerClause = userId ? sql`AND user_id = ${userId}` : sql``;
     return await (db as any).transaction(async (tx: typeof db) => {
     const result = await tx.execute(sql`
       WITH session_check AS (
-        SELECT * FROM redemption_sessions 
-        WHERE session_id = ${sessionId}
+        SELECT * FROM redemption_sessions
+        WHERE session_id = ${sessionId} ${ownerClause}
         FOR UPDATE NOWAIT
       )
       SELECT * FROM session_check

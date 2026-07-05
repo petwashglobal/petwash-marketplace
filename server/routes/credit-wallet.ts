@@ -476,8 +476,10 @@ router.post('/redemptions/:sessionId/confirm', async (req, res) => {
 
     const { sessionId } = req.params;
     const { paymentConfirmed, idempotencyKey } = req.body;
-    
-    const success = await walletService.confirmRedemption(sessionId, paymentConfirmed, idempotencyKey);
+
+    // Pass userId so a user can only confirm their OWN session (IDOR fix
+    // 2026-07-05, cross-exam #3) — matches the /cancel route pattern.
+    const success = await walletService.confirmRedemption(sessionId, paymentConfirmed, idempotencyKey, userId);
     
     res.json({ success, message: success ? 'Redemption confirmed' : 'Confirmation failed' });
   } catch (error: any) {
