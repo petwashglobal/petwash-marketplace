@@ -100,6 +100,8 @@
     box-shadow:0 16px 34px -16px rgba(154,114,24,.7);
   }
   .cta:hover{filter:brightness(1.05)}
+  .cta-en,.cta-he{display:block; line-height:1.35}
+  .cta-he{font-size:13px; opacity:.9}
 
   .footer{text-align:center; margin-top:36px; padding-top:24px; border-top:1px solid var(--line); color:var(--muted); font-size:12.5px}
   .footer b{color:var(--ink)}
@@ -135,26 +137,27 @@
     </section>
 
     <section class="card">
-      <p class="card-title">Services that may be affected · שירותים שעשויים להיות מושפעים</p>
       <div class="split">
         <div class="half en">
+          <p class="card-title">Services that may be affected</p>
           <div class="svc">
             <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_sparkle.png" alt="" onerror="this.style.display='none'">Website &amp; app access</div>
             <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_pet_owner.png" alt="" onerror="this.style.display='none'">Payment processing</div>
             <div class="tile"><img src="/assets/icons/petwash/gold/products/product_treat.png" alt="" onerror="this.style.display='none'">Wallet / eGift redemption</div>
             <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_paw.png" alt="" onerror="this.style.display='none'">QR code activation</div>
-            <div class="tile"><img src="/assets/icons/petwash/gold/nature/nature_water_drop.png" alt="" onerror="this.style.display='none'">K9000 wash activation</div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/products/product_shampoo.png" alt="" onerror="this.style.display='none'">K9000 wash activation</div>
             <div class="tile"><img src="/assets/icons/petwash/gold/nature/nature_bubbles.png" alt="" onerror="this.style.display='none'">Booking checkout</div>
           </div>
         </div>
         <div class="vline"></div>
         <div class="half he" dir="rtl" lang="he">
+          <p class="card-title">שירותים שעשויים להיות מושפעים</p>
           <div class="svc">
             <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_sparkle.png" alt="" onerror="this.style.display='none'">גישה לאתר ולאפליקציה</div>
             <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_pet_owner.png" alt="" onerror="this.style.display='none'">עיבוד תשלומים</div>
             <div class="tile"><img src="/assets/icons/petwash/gold/products/product_treat.png" alt="" onerror="this.style.display='none'">מימוש ארנק / <span class="ltr">eGift</span></div>
             <div class="tile"><img src="/assets/icons/petwash/gold/brand/brand_paw.png" alt="" onerror="this.style.display='none'">הפעלת קוד <span class="ltr">QR</span></div>
-            <div class="tile"><img src="/assets/icons/petwash/gold/nature/nature_water_drop.png" alt="" onerror="this.style.display='none'">הפעלת שטיפת <span class="ltr">K9000</span></div>
+            <div class="tile"><img src="/assets/icons/petwash/gold/products/product_shampoo.png" alt="" onerror="this.style.display='none'">הפעלת שטיפת <span class="ltr">K9000</span></div>
             <div class="tile"><img src="/assets/icons/petwash/gold/nature/nature_bubbles.png" alt="" onerror="this.style.display='none'">תשלום על הזמנה</div>
           </div>
         </div>
@@ -207,7 +210,10 @@
       </div>
     </section>
 
-    <button class="cta" onclick="location.reload()">↻ &nbsp;Check again shortly · בדקו שוב בקרוב</button>
+    <button class="cta" onclick="location.reload()">
+      <span class="cta-en">↻ &nbsp;Check again shortly</span>
+      <span class="cta-he" dir="rtl" lang="he">בדקו שוב בקרוב</span>
+    </button>
 
     <div class="footer">
       <b>Pet Wash Ltd</b> · PetWash.co.il · <span class="ltr">support@petwash.co.il</span><br />
