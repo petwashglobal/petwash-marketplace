@@ -114,35 +114,48 @@ export async function performWeeklyCodeBackup(): Promise<{
     const timestamp = new Date().toISOString();
     
     logger.info(`[GCS] ✅ Code backup complete in ${duration}s: ${gcsUrl}`);
-    
+
     // Clean up local file
     fs.unlinkSync(localPath);
-    
-    // Log to Firestore
-    await db.collection('backup_logs').add({
-      type: 'code',
-      status: 'success',
-      backupFile,
-      sizeMB: parseFloat(sizeMB),
-      gcsUrl,
-      sha256: fileHash,
-      duration: parseFloat(duration),
-      timestamp
-    });
-    
-    // Send backup summary email with CSV attachment
-    await sendBackupSummaryEmail({
-      type: 'code',
-      timestamp,
-      codeBackup: {
-        file: backupFile,
-        size: `${sizeMB} MB`,
-        hash: fileHash,
-        gcsUrl
-      },
-      includeCSV: true
-    });
-    
+
+    // Log to Firestore — BEST EFFORT. The upload above is the backup; the
+    // runtime SA can lack Firestore write (PERMISSION_DENIED), and an
+    // unguarded await here turned a SUCCESSFUL upload into a 500 → Cloud
+    // Scheduler status 13 (the weekly code-backup failure). Mirror the
+    // postgres path (#1168): a dump that landed in GCS IS a success.
+    try {
+      await db.collection('backup_logs').add({
+        type: 'code',
+        status: 'success',
+        backupFile,
+        sizeMB: parseFloat(sizeMB),
+        gcsUrl,
+        sha256: fileHash,
+        duration: parseFloat(duration),
+        timestamp
+      });
+    } catch (logErr: any) {
+      logger.warn('[GCS] Code backup uploaded OK but backup_logs write failed (non-fatal)', { error: logErr?.message });
+    }
+
+    // Send backup summary email with CSV attachment — also best-effort; an
+    // email/SendGrid failure must not fail a backup that already landed.
+    try {
+      await sendBackupSummaryEmail({
+        type: 'code',
+        timestamp,
+        codeBackup: {
+          file: backupFile,
+          size: `${sizeMB} MB`,
+          hash: fileHash,
+          gcsUrl
+        },
+        includeCSV: true
+      });
+    } catch (emailErr: any) {
+      logger.warn('[GCS] Code backup summary email failed (non-fatal)', { error: emailErr?.message });
+    }
+
     return {
       success: true,
       backupFile,
@@ -459,37 +472,47 @@ export async function performFirestoreExport(): Promise<{
     const timestamp = new Date().toISOString();
     
     logger.info(`[GCS] ✅ Firestore export complete in ${duration}s: ${fullGcsPath}`);
-    
-    // Log to Firestore
-    await db.collection('backup_logs').add({
-      type: 'firestore',
-      status: 'success',
-      collections: results.length,
-      totalDocs,
-      gcsPath: fullGcsPath,
-      details: results,
-      duration: parseFloat(duration),
-      timestamp
-    });
-    
-    // Send backup summary email with CSV attachment
-    await sendBackupSummaryEmail({
-      type: 'firestore',
-      timestamp,
-      firestoreBackup: {
-        path: fullGcsPath,
+
+    // Log to Firestore — BEST EFFORT (same guard as the code/postgres paths):
+    // a completed export must not be turned into a 500 by a backup_logs write
+    // that the runtime SA may lack permission for.
+    try {
+      await db.collection('backup_logs').add({
+        type: 'firestore',
+        status: 'success',
         collections: results.length,
         totalDocs,
-        files: results.map(r => ({
-          collection: r.collection,
-          docs: r.docs || 0,
-          sizeMB: r.sizeMB,
-          error: r.error
-        }))
-      },
-      includeCSV: true
-    });
-    
+        gcsPath: fullGcsPath,
+        details: results,
+        duration: parseFloat(duration),
+        timestamp
+      });
+    } catch (logErr: any) {
+      logger.warn('[GCS] Firestore export uploaded OK but backup_logs write failed (non-fatal)', { error: logErr?.message });
+    }
+
+    // Send backup summary email with CSV attachment — best-effort.
+    try {
+      await sendBackupSummaryEmail({
+        type: 'firestore',
+        timestamp,
+        firestoreBackup: {
+          path: fullGcsPath,
+          collections: results.length,
+          totalDocs,
+          files: results.map(r => ({
+            collection: r.collection,
+            docs: r.docs || 0,
+            sizeMB: r.sizeMB,
+            error: r.error
+          }))
+        },
+        includeCSV: true
+      });
+    } catch (emailErr: any) {
+      logger.warn('[GCS] Firestore backup summary email failed (non-fatal)', { error: emailErr?.message });
+    }
+
     return {
       success: true,
       collections: results.length,
