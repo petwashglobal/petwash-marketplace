@@ -43,6 +43,9 @@ export const SMS_TEMPLATES: Record<string, SmsTemplate> = {
   reward_expiring: { category: 'transactional', he: 'תזכורת: ההטבה שלך ב-PetWash תפוג בתאריך {{date}}. למימוש: {{link}}' },
   booking_confirmed: { category: 'transactional', he: 'ההזמנה שלך אושרה. שירות: {{service}}, תאריך: {{date}}, שעה: {{time}}.' },
   booking_reminder: { category: 'transactional', he: 'תזכורת להזמנת PetWash שלך מחר בשעה {{time}}. לפרטים: {{link}}' },
+  // Same reminder, day-of wording (T-2h tier of cron-booking-reminders.ts) —
+  // the 'booking_reminder' row says "מחר" which would lie 2 hours before start.
+  booking_reminder_today: { category: 'transactional', he: 'ההזמנה שלך ב-PetWash מתחילה היום בשעה {{time}}. לפרטים: {{link}}' },
   care_notes_reminder_24h: {
     category: 'transactional',
     he: 'PetWash: ההזמנה שלך ל{{pet_name}} מתחילה בפחות מ-24 שעות. נא להשלים פרטי טיפול: {{link}}',
