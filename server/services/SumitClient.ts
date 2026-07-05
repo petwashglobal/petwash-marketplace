@@ -463,6 +463,83 @@ export class SumitClient {
     return { wired: true, idempotencyKey: input.idempotencyKey, sumitDocumentId, rawResponse: parsedBody };
   }
 
+  /**
+   * Issue a CREDIT document (חשבונית זיכוי/קבלה) for a refund — the fiscal
+   * counterpart of createCustomerReceipt. Israeli law requires an explicit
+   * credit document when money is returned after a receipt was issued; the
+   * original must NOT be deleted. Type 'CreditInvoiceAndReceipt' + the original
+   * SUMIT document id links the credit to what it reverses.
+   *
+   * Same safety contract as createCustomerReceipt: no-op {wired:false} when
+   * unwired, NEVER throws (a credit-doc hiccup must not fail a refund the
+   * customer is already owed). Shapes verified live 2026-07-05 (doc #10000).
+   */
+  async createCreditDocument(input: {
+    idempotencyKey: string;
+    originalSumitDocumentId?: string | number;
+    customer: { name: string; email?: string; phone?: string };
+    description: string;
+    amountBeforeVat: number;
+    vatAmount: number;
+    totalAmount: number;
+    currency: 'ILS';
+    context?: Record<string, unknown>;
+  }): Promise<SumitDocumentResult> {
+    const env = readEnv();
+    if (!isWired()) {
+      return { wired: false, idempotencyKey: input.idempotencyKey, reason: 'SumitClient not wired' };
+    }
+    const originalId = input.originalSumitDocumentId != null ? Number(input.originalSumitDocumentId) : undefined;
+    const body: Record<string, unknown> = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Details: {
+        Type: 'CreditInvoiceAndReceipt',
+        Customer: {
+          Name: input.customer.name,
+          EmailAddress: input.customer.email || undefined,
+          Phone: input.customer.phone || undefined,
+          ExternalIdentifier: input.idempotencyKey,
+        },
+        Description: input.description,
+        Currency: input.currency,
+        Language: 'Hebrew',
+        ExternalReference: input.idempotencyKey,
+      },
+      Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountBeforeVat }],
+      Payments: [{ Amount: input.totalAmount, Type: 'CreditCard', Details_CreditCard: {} }],
+      VATIncluded: false,
+      ...(originalId ? { OriginalDocumentID: originalId } : {}),
+    };
+    const url = `${env.baseUrl}/accounting/documents/create/`;
+    const startMs = Date.now();
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Idempotency-Key': input.idempotencyKey,
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (networkErr) {
+      const msg = (networkErr as Error).message;
+      logger.error('[SumitClient] createCreditDocument network error', { idempotencyKey: input.idempotencyKey, err: msg, ...input.context });
+      return { wired: false, idempotencyKey: input.idempotencyKey, reason: `Network error: ${msg}` };
+    }
+    let parsedBody: unknown = null;
+    try { parsedBody = await res.json(); } catch { /* non-JSON on errors */ }
+    if (!res.ok) {
+      logger.warn('[SumitClient] createCreditDocument non-2xx', { idempotencyKey: input.idempotencyKey, status: res.status, elapsedMs: Date.now() - startMs, ...input.context });
+      return { wired: true, idempotencyKey: input.idempotencyKey, reason: `SUMIT returned ${res.status}`, rawResponse: parsedBody };
+    }
+    const sumitDocumentId = extractDocumentId(parsedBody);
+    logger.info('[SumitClient] credit document created', { idempotencyKey: input.idempotencyKey, sumitDocumentId, originalId, ...input.context });
+    return { wired: true, idempotencyKey: input.idempotencyKey, sumitDocumentId, rawResponse: parsedBody };
+  }
+
   /** Public accessor so callers can branch without firing a no-op call. */
   isWired(): boolean {
     return isWired();

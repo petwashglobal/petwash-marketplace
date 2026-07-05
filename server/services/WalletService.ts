@@ -1407,6 +1407,27 @@ IP Address: ${ipAddress || 'unknown'}
       ipAddress:      params.ipAddress,
       metadata:       params.metadata,
     });
+
+    // Fiscal (audit 2026-07-05): a refund of a receipted booking requires a
+    // credit note (זיכוי) reversing the original — Israeli law forbids deleting
+    // the original receipt. Only on a REAL refund (not an idempotent replay),
+    // and NON-BLOCKING: the customer's refund must never fail on a doc hiccup.
+    // Emits nothing when the booking was never receipted (returns no_original).
+    if (!result.idempotent) {
+      try {
+        const { IsraeliDigitalReceiptService } = await import('./IsraeliDigitalReceiptService');
+        await IsraeliDigitalReceiptService.issueCreditNoteForBooking({
+          bookingId: params.bookingId,
+          refundAmount: params.amountCents / 100,
+          reason: params.reason ?? 'booking_cancelled',
+        });
+      } catch (creditErr: any) {
+        logger.warn('[Wallet] booking refunded but credit note failed (non-blocking)', {
+          bookingId: params.bookingId, error: creditErr?.message,
+        });
+      }
+    }
+
     return { txnId: result.txnId, idempotent: result.idempotent };
   }
 

@@ -1125,6 +1125,37 @@ export class IsraeliDigitalReceiptService {
         });
       }
 
+      // Route to SUMIT above threshold (mirrors generateReceipt) so the credit
+      // reaches the ITA with a government allocation number. Below threshold
+      // the gapless local credit_note above is already valid. NEVER throws — a
+      // SUMIT hiccup must not fail a refund the customer is already owed.
+      const { sumitClient } = await import('./SumitClient');
+      if (shaamRequired && sumitClient.isWired()) {
+        try {
+          const creditResult = await sumitClient.createCreditDocument({
+            idempotencyKey: creditNoteNumber,
+            originalSumitDocumentId: original.sumitDocumentId ?? undefined,
+            customer: { name: original.customerName || params.customerEmail, email: params.customerEmail },
+            description: `זיכוי על ${original.receiptNumber} — ${params.reason}`,
+            amountBeforeVat: vatBreakdown.subtotalBeforeVAT,
+            vatAmount: vatBreakdown.vatAmount,
+            totalAmount: refundAmount,
+            currency: 'ILS',
+            context: { platform: params.platform, bookingId: params.bookingId, creditNoteNumber },
+          });
+          if (creditResult.sumitDocumentId) {
+            await db.update(digitalReceipts)
+              .set({ sumitDocumentId: creditResult.sumitDocumentId })
+              .where(eq(digitalReceipts.id, creditNote.id))
+              .catch(() => {});
+          }
+        } catch (sumitErr: any) {
+          logger.warn('[Digital Receipt] credit note issued locally but SUMIT credit failed (non-fatal)', {
+            creditNoteNumber, error: sumitErr?.message,
+          });
+        }
+      }
+
       logger.info('[Digital Receipt] Credit note issued', {
         creditNoteNumber,
         originalReceiptNumber: original.receiptNumber,
@@ -1139,6 +1170,47 @@ export class IsraeliDigitalReceiptService {
       };
     } catch (error: any) {
       logger.error('[Digital Receipt] issueCreditNote failed', { error: error.message });
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
+   * Refund-flow convenience: find the original (non-voided) customer receipt for
+   * a booking/transaction and issue its credit note (זיכוי). Returns
+   * {success:false, error:'no_original_receipt'} when nothing was receipted (so
+   * a refund of an un-receipted charge is surfaced, not silently skipped).
+   * NON-BLOCKING at the call site — a refund must complete regardless.
+   */
+  static async issueCreditNoteForBooking(params: {
+    bookingId: string;
+    refundAmount: number;
+    reason: string;
+  }): Promise<{ success: boolean; creditNoteNumber?: string; error?: string }> {
+    try {
+      const [original] = await db
+        .select()
+        .from(digitalReceipts)
+        .where(and(
+          eq(digitalReceipts.bookingId, params.bookingId),
+          eq(digitalReceipts.receiptType, 'customer_payment'),
+          eq(digitalReceipts.isVoided, false),
+        ))
+        .orderBy(desc(digitalReceipts.id))
+        .limit(1);
+      if (!original) {
+        logger.warn('[Digital Receipt] refund with no original receipt to credit', { bookingId: params.bookingId });
+        return { success: false, error: 'no_original_receipt' };
+      }
+      return await this.issueCreditNote({
+        originalReceiptId: original.id,
+        refundAmount: params.refundAmount,
+        reason: params.reason,
+        platform: original.platform,
+        bookingId: params.bookingId,
+        customerEmail: original.customerEmail,
+      });
+    } catch (error: any) {
+      logger.error('[Digital Receipt] issueCreditNoteForBooking failed', { error: error.message });
       return { success: false, error: error.message };
     }
   }
