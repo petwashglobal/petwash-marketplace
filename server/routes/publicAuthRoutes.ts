@@ -580,7 +580,9 @@ async function persistDob(uid: string, isoDob: string): Promise<void> {
  * — a later step verifies it by code). Validated shape only; never blocks signup.
  */
 async function persistSignupEmail(uid: string, email: unknown): Promise<void> {
-  if (typeof email !== 'string' || !/^\S+@\S+\.\S+$/.test(email)) return;
+  // Linear, non-backtracking email shape ([^\s@] can't match '@', removing the
+  // ambiguity that made \S+@\S+\.\S+ polynomial-ReDoS-prone). Length-capped too.
+  if (typeof email !== 'string' || email.length > 320 || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return;
   try {
     await pool.query(`UPDATE users SET email = $1 WHERE id = $2 AND (email IS NULL OR email = '')`, [email.toLowerCase(), uid]);
   } catch (e: any) {

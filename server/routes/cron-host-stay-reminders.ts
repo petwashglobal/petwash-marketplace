@@ -27,6 +27,7 @@
  */
 import { Router, type Request, type Response } from 'express';
 import { and, eq, gte, lte, inArray } from 'drizzle-orm';
+import { apiLimiter } from '../middleware/rateLimiter';
 import { isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
@@ -96,7 +97,7 @@ async function markSent(details: any | null, bookingId: number, requestId: strin
 }
 
 // POST /api/cron/host-stay-reminders
-router.post('/host-stay-reminders', async (req: Request, res: Response) => {
+router.post('/host-stay-reminders', apiLimiter, async (req: Request, res: Response) => {
   if (!(await authorized(req))) {
     logger.warn('[HostStayReminders] Unauthorized', { ip: req.ip });
     return res.status(403).json({ success: false, error: 'Unauthorized' });

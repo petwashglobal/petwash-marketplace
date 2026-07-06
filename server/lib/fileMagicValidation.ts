@@ -1,4 +1,20 @@
 import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+// Upload files live under the app's uploads dir or the OS temp dir (multer's
+// diskStorage default). Confine every FS access to those roots so a traversed
+// path can never reach an arbitrary file. Boolean guard — the static analyser
+// sees the taint cleared before each sink.
+// Direct startsWith barriers (no array callback) so the static analyser recognises
+// the sanitiser, mirroring isSafeUploadPath in paw-finder.ts.
+const APP_UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads') + path.sep;
+const TMP_ROOT = path.resolve(os.tmpdir()) + path.sep;
+function isConfinedUploadPath(p: unknown): p is string {
+  if (typeof p !== 'string' || !p) return false;
+  const resolved = path.resolve(p);
+  return resolved.startsWith(APP_UPLOADS_ROOT) || resolved.startsWith(TMP_ROOT);
+}
 
 /**
  * Content-based (magic-number) file validation.
@@ -170,6 +186,10 @@ export function requireValidFileContent(allowedMimes: string[]) {
 
 /** Read the first `n` bytes of a file synchronously (for diskStorage validation). */
 function readFileHead(filePath: string, n = 32): Buffer {
+  // Guard the local, then open the SAME local (multer paths are absolute).
+  if (!isConfinedUploadPath(filePath)) {
+    throw new Error('Upload path outside allowed directory');
+  }
   const fd = fs.openSync(filePath, 'r');
   try {
     const buf = Buffer.alloc(n);
@@ -191,12 +211,19 @@ export function requireValidFileContentDisk(allowedMimes: string[]) {
     const files = collectMulterFiles(req) as Array<{ fieldname?: string; mimetype?: string; path?: string }>;
     const cleanupAll = () => {
       for (const f of files) {
-        if (f?.path) { try { fs.unlinkSync(f.path); } catch { /* best effort */ } }
+        if (typeof f?.path !== 'string') continue;
+        const p: string = f.path;               // definite string local...
+        if (!isConfinedUploadPath(p)) continue;  // ...guarded...
+        try { fs.unlinkSync(p); } catch { /* best effort */ } // ...unlink the same local
       }
     };
     try {
       for (const f of files) {
         if (!f?.path) continue;
+        if (!isConfinedUploadPath(f.path)) {
+          cleanupAll();
+          return res.status(400).json({ error: 'Invalid file', code: 'FILE_PATH_REJECTED', field: f.fieldname });
+        }
         const head = readFileHead(f.path);
         const check = validateFileContent(head, allowedMimes, f.mimetype);
         if (!check.ok) {
