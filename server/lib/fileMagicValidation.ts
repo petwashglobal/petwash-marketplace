@@ -183,9 +183,13 @@ export function requireValidFileContent(allowedMimes: string[]) {
 
 /** Read the first `n` bytes of a file synchronously (for diskStorage validation). */
 function readFileHead(filePath: string, n = 32): Buffer {
-  // Confine to the upload roots before opening — never read an arbitrary path.
-  if (!isConfinedUploadPath(filePath)) throw new Error('Upload path outside allowed directory');
-  const fd = fs.openSync(path.resolve(filePath), 'r');
+  // Resolve, then confine THAT local before opening — the analyser tracks the
+  // barrier on `resolved`, which is exactly the value passed to openSync.
+  const resolved = path.resolve(filePath);
+  if (!UPLOAD_ROOTS.some((root) => resolved === root || resolved.startsWith(root + path.sep))) {
+    throw new Error('Upload path outside allowed directory');
+  }
+  const fd = fs.openSync(resolved, 'r');
   try {
     const buf = Buffer.alloc(n);
     const read = fs.readSync(fd, buf, 0, n, 0);
@@ -206,7 +210,11 @@ export function requireValidFileContentDisk(allowedMimes: string[]) {
     const files = collectMulterFiles(req) as Array<{ fieldname?: string; mimetype?: string; path?: string }>;
     const cleanupAll = () => {
       for (const f of files) {
-        if (isConfinedUploadPath(f?.path)) { try { fs.unlinkSync(path.resolve(f.path!)); } catch { /* best effort */ } }
+        if (typeof f?.path !== 'string') continue;
+        const resolved = path.resolve(f.path);
+        if (UPLOAD_ROOTS.some((root) => resolved === root || resolved.startsWith(root + path.sep))) {
+          try { fs.unlinkSync(resolved); } catch { /* best effort */ }
+        }
       }
     };
     try {

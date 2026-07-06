@@ -177,19 +177,19 @@ router.post('/upload', requireAuth, upload.single('photo'), async (req: any, res
       return res.status(400).json({ error: 'NO_FILE', message: 'Upload a photo (JPEG/PNG/WebP/HEIC max 15MB)' });
     }
 
-    // Neutralise the upload path BEFORE any filesystem use (boolean guard so the
-    // static analyser sees the taint cleared ahead of every FS sink below).
-    if (!isSafeUploadPath(req.file.path)) {
-      try { fs.unlinkSync(req.file.path); } catch { /* best effort */ }
+    // Capture into a LOCAL and neutralise THAT variable before any filesystem use —
+    // the analyser only narrows the same local it guarded, so every FS sink below
+    // must use `uploadedPath`, not a fresh read of req.file.path.
+    const uploadedPath: string = req.file.path;
+    if (!isSafeUploadPath(uploadedPath)) {
       return res.status(400).json({ error: 'INVALID_UPLOAD_PATH' });
     }
-    const safePath = req.file.path;
 
-    await compressIfNeeded(safePath);
+    await compressIfNeeded(uploadedPath);
 
-    const hash     = sha256File(safePath);
+    const hash     = sha256File(uploadedPath);
     const filePath = `/uploads/paw-finder/${req.file.filename}`;
-    const fileSize = fs.statSync(safePath).size;
+    const fileSize = fs.statSync(uploadedPath).size;
 
     // Duplicate image detection across all posts
     const dupCheck = await pool.query(
