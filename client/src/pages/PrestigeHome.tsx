@@ -18,6 +18,7 @@ import { useState, useEffect } from 'react';
 import { useLocation } from 'wouter';
 import { useQuery } from '@tanstack/react-query';
 import { QRCodeSVG } from 'qrcode.react';
+import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -192,7 +193,7 @@ export default function PrestigeHome() {
           <div className="flex items-center justify-between">
             <div className="w-20" />
             <div className="flex flex-col items-center">
-              <img src="/brand/petwash-logo-official.png" alt="PetWash" className="h-7 object-contain" loading="eager" />
+              <PetWashLogo size={28} priority />
               <span className="text-[9px] tracking-[0.3em] text-[#9a8a5c] mt-0.5">PRESTIGE</span>
             </div>
             <div className="w-20 flex items-center justify-end gap-3">
@@ -247,7 +248,7 @@ export default function PrestigeHome() {
           <div className="mt-4 rounded-3xl p-5 relative overflow-hidden" style={{ background: 'linear-gradient(140deg, #0c6b48 0%, #1aa86f 48%, #0e7a54 100%)', border: `1px solid ${GOLD}77` }}>
             <div className="flex items-start justify-between">
               <div className="flex flex-col">
-                <img src="/brand/petwash-logo-white.png" alt="PetWash" className="h-6 object-contain self-start" onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }} />
+                <PetWashLogo variant="white" size={24} className="self-start" />
                 <span className="text-[9px] tracking-[0.3em] mt-1" style={{ color: GOLD }}>PRESTIGE</span>
               </div>
               <Crown className="w-5 h-5" style={{ color: GOLD }} />

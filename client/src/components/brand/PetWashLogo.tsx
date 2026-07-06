@@ -18,7 +18,7 @@ export type PetWashLogoVariant = 'default' | 'white' | 'black';
 // The official IP assets — the ONLY files the app may use for the logo.
 const SRC: Record<PetWashLogoVariant, string> = {
   default: '/brand/petwash-logo-official.png',
-  white:   '/brand/petwash-logo-white-bg.png',
+  white:   '/brand/petwash-logo-white.png',      // transparent white mark for dark/gold/green bgs
   black:   '/brand/petwash-logo-black-bg.png',
 };
 
