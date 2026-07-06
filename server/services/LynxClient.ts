@@ -7,13 +7,18 @@
  * health + CONSUMABLE restocking for the K9000 (shampoo / conditioner / tea-tree)
  * with REAL data instead of estimates, and to generate restock pick lists.
  *
- * AUTH: a per-user Bearer token (Account Settings → Security & Login → User
- * Tokens). The token is a SECRET — it is read from LYNX_USER_TOKEN, never logged,
- * never returned in any health/response payload.
+ * AUTH — two modes, whichever is configured (token preferred):
+ *   1. Bearer token (LYNX_USER_TOKEN) — a per-user API token from Account Settings
+ *      → Security & Login → User Tokens. Cleanest, but must be created by Nayax.
+ *   2. Login session (LYNX_USERNAME + LYNX_PASSWORD) — when no API token exists, we
+ *      POST /operational/v1/signin to get a ~24h session cookie and reuse it,
+ *      re-signing in automatically when it expires or a call returns 401. This lets
+ *      the estate connect with the operator's own login when no scoped token is
+ *      available. Credentials are SECRETS — read from env, never logged/returned.
  *
- * GATING (mirrors SumitClient): every call is a safe no-op unless
- * LYNX_ENABLED=true AND LYNX_USER_TOKEN is present. isWired() is the single gate,
- * so this ships DARK and is flipped on only after the token is set in QA.
+ * GATING (mirrors SumitClient): every call is a safe no-op unless LYNX_ENABLED=true
+ * AND at least one auth mode is configured (token OR username+password). isWired()
+ * is the single gate, so this ships DARK until credentials are set in QA.
  *
  * SCOPE: this client is READ + restock-ops only (machine products, device status,
  * reports, generate pick list). It NEVER touches customer money, balances,
@@ -28,6 +33,8 @@ const DEFAULT_TIMEOUT_MS = 12_000;
 export interface LynxConfig {
   baseUrl: string;
   token?: string;
+  username?: string;
+  password?: string;
   enabled: boolean;
   sandbox: boolean;
   operatorId?: string;
@@ -43,6 +50,8 @@ function readEnv(): LynxConfig {
   return {
     baseUrl: baseUrl.replace(/\/+$/, ''),
     token: process.env.LYNX_USER_TOKEN?.trim() || undefined,
+    username: process.env.LYNX_USERNAME?.trim() || undefined,
+    password: process.env.LYNX_PASSWORD || undefined,   // no trim — passwords may have edge whitespace
     enabled: (process.env.LYNX_ENABLED || '').trim().toLowerCase() === 'true',
     sandbox,
     operatorId: process.env.LYNX_OPERATOR_ID?.trim() || undefined,
@@ -50,10 +59,15 @@ function readEnv(): LynxConfig {
   };
 }
 
-/** Wired only when LYNX_ENABLED=true AND a token is present. */
+/** True when credentials (username+password) are the configured auth mode. */
+function hasCredentials(e: LynxConfig): boolean {
+  return Boolean(e.username) && Boolean(e.password);
+}
+
+/** Wired when LYNX_ENABLED=true AND some auth mode is configured (token OR login). */
 function isWired(): boolean {
   const e = readEnv();
-  return e.enabled && Boolean(e.token);
+  return e.enabled && (Boolean(e.token) || hasCredentials(e));
 }
 
 export interface LynxHealth {
@@ -62,6 +76,8 @@ export interface LynxHealth {
   baseUrl: string;
   sandbox: boolean;
   tokenConfigured: boolean;        // boolean only — never the token itself
+  loginConfigured: boolean;        // username+password present (session mode)
+  authMode: 'token' | 'login' | 'none';
   operatorConfigured: boolean;
   testMachineConfigured: boolean;
 }
@@ -69,16 +85,19 @@ export interface LynxHealth {
 export function health(): LynxHealth {
   const e = readEnv();
   const wired = isWired();
+  const authMode: 'token' | 'login' | 'none' = e.token ? 'token' : (hasCredentials(e) ? 'login' : 'none');
   return {
     wired,
     reason: wired
-      ? 'Lynx wired (LYNX_ENABLED=true + token present).'
+      ? `Lynx wired (LYNX_ENABLED=true, auth=${authMode}).`
       : !e.enabled
         ? 'Dark: LYNX_ENABLED is not "true".'
-        : 'Dark: LYNX_USER_TOKEN is missing.',
+        : 'Dark: set LYNX_USER_TOKEN, or LYNX_USERNAME + LYNX_PASSWORD.',
     baseUrl: e.baseUrl,
     sandbox: e.sandbox,
     tokenConfigured: Boolean(e.token),
+    loginConfigured: hasCredentials(e),
+    authMode,
     operatorConfigured: Boolean(e.operatorId),
     testMachineConfigured: Boolean(e.testMachineId),
   };
@@ -93,7 +112,49 @@ export interface LynxResult<T = unknown> {
   endpoint: string;
 }
 
-/** Low-level authed request. Returns a structured result; never throws to caller. */
+// ── Login-session cache (mode 2) ──────────────────────────────────────────────
+// When authenticating by login, POST /signin returns ~24h session cookies. We
+// cache the cookie string in-process and refresh a little early, or on any 401.
+let sessionCookie: string | null = null;
+let sessionExpiresAt = 0;
+
+/** Sign in with the operator login and cache the session cookie. Never logs creds. */
+async function signInForSession(e: LynxConfig): Promise<boolean> {
+  if (!hasCredentials(e)) return false;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+  try {
+    const res = await fetch(`${e.baseUrl}/operational/v1/signin`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify({ usr: e.username, pwd: e.password }),
+      signal: controller.signal,
+    });
+    if (!res.ok) { logger.warn('[Lynx] signin non-2xx', { status: res.status }); return false; }
+    // Collect Set-Cookie header(s) and keep only the name=value part of each.
+    const raw: string[] = typeof (res.headers as any).getSetCookie === 'function'
+      ? (res.headers as any).getSetCookie()
+      : [res.headers.get('set-cookie')].filter((v): v is string => Boolean(v));
+    const pairs = raw.map((c) => c.split(';')[0]).filter(Boolean);
+    if (!pairs.length) { logger.warn('[Lynx] signin ok but no session cookie returned'); return false; }
+    sessionCookie = pairs.join('; ');
+    sessionExpiresAt = Date.now() + 20 * 60 * 60 * 1000; // refresh ~4h before the ~24h expiry
+    logger.info('[Lynx] session established via operator login');
+    return true;
+  } catch (err: any) {
+    logger.error('[Lynx] signin failed', { err: err?.message });
+    return false;
+  } finally { clearTimeout(timer); }
+}
+
+/** Ensure a valid session cookie exists (login mode). */
+async function ensureSession(e: LynxConfig): Promise<boolean> {
+  if (sessionCookie && Date.now() < sessionExpiresAt) return true;
+  return signInForSession(e);
+}
+
+/** Low-level authed request. Uses Bearer token if set, else a login session.
+ *  Returns a structured result; never throws to caller. */
 async function request<T = unknown>(
   method: 'GET' | 'POST',
   path: string,
@@ -104,19 +165,33 @@ async function request<T = unknown>(
   if (!isWired()) {
     return { ok: false, status: 0, wired: false, error: 'lynx_not_wired', endpoint };
   }
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
-  try {
-    const res = await fetch(`${e.baseUrl}${path}`, {
+  const usingToken = Boolean(e.token);
+  if (!usingToken && !(await ensureSession(e))) {
+    return { ok: false, status: 401, wired: true, error: 'lynx_login_failed', endpoint };
+  }
+
+  const doFetch = (): Promise<Response> => {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), DEFAULT_TIMEOUT_MS);
+    return fetch(`${e.baseUrl}${path}`, {
       method,
       headers: {
-        Authorization: `Bearer ${e.token}`,
+        ...(usingToken ? { Authorization: `Bearer ${e.token}` } : { Cookie: sessionCookie! }),
         Accept: 'application/json',
         ...(body ? { 'Content-Type': 'application/json' } : {}),
       },
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
-    });
+    }).finally(() => clearTimeout(timer));
+  };
+
+  try {
+    let res = await doFetch();
+    // Login mode: a 401 usually means the session expired — re-login once and retry.
+    if (res.status === 401 && !usingToken) {
+      sessionCookie = null;
+      if (await ensureSession(e)) res = await doFetch();
+    }
     // Some Lynx endpoints return an empty body on success (documented pitfall).
     const text = await res.text();
     let data: T | undefined;
@@ -130,8 +205,6 @@ async function request<T = unknown>(
     const aborted = err?.name === 'AbortError';
     logger.error('[Lynx] request failed', { endpoint, aborted, err: err?.message });
     return { ok: false, status: 0, wired: true, error: aborted ? 'timeout' : (err?.message || 'network_error'), endpoint };
-  } finally {
-    clearTimeout(timer);
   }
 }
 
