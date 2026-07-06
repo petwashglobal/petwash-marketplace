@@ -394,23 +394,38 @@ export class ShopService {
   async calculateDelivery(
         method: string,
         addressId: number | undefined,
-        cart: { subtotalCents: number }
+        cart: { subtotalCents: number; items?: Array<{ weight_grams?: number | string; quantity?: number | string }> }
       ): Promise<{ cents: number; estimatedDate: string }> {
         if (method === 'pickup_station' || method === 'pickup_groomer') {
                 return { cents: 0, estimatedDate: new Date().toISOString().split('T')[0] };
         }
 
-      // Free delivery for orders over threshold
-      if (cart.subtotalCents >= DELIVERY_RATES.FREE_THRESHOLD_CENTS) {
-              return {
-                        cents: 0,
-                        estimatedDate: this._addBusinessDays(DELIVERY_RATES.STANDARD_DAYS),
-              };
-      }
+      // The charge must reflect HOW HEAVY the order is and HOW FAR it travels — not
+      // a flat rate. We price via the SAME vetted DeliveryRouter the estimate uses
+      // (weight tiers ₪19.90–₪69.90 + a periphery surcharge for remote areas + the
+      // central-zone free-shipping threshold), so the amount charged matches the
+      // amount quoted. Previously this returned a flat ₪29.90/free — undercharging
+      // heavy/periphery orders (PetWash ate the difference) and overcharging light
+      // central ones. See server/services/shop/DeliveryRouter.ts.
+      const address = addressId != null ? await this._getAddress(addressId) : null;
+      const totalGrams = (cart.items ?? []).reduce(
+              (g, i) => g + (Number(i.weight_grams) || 0) * (Number(i.quantity) || 1),
+              0,
+      );
+
+      const options = getDeliveryOptions({
+              city: (address as any)?.city ?? '',
+              postcode: (address as any)?.zip_code ?? null,
+              totalGrams,
+              subtotalCents: cart.subtotalCents,
+      });
+      // Checkout offers the standard (Israel Post) nationwide service; pick it.
+      const chosen = options.find((o) => o.serviceCode === 'standard') ?? options[0];
+      const extraDays = chosen?.zone === 'periphery' ? 2 : 0;
 
       return {
-              cents: DELIVERY_RATES.STANDARD_CENTS,
-              estimatedDate: this._addBusinessDays(DELIVERY_RATES.STANDARD_DAYS),
+              cents: chosen?.cents ?? DELIVERY_RATES.STANDARD_CENTS,
+              estimatedDate: this._addBusinessDays(DELIVERY_RATES.STANDARD_DAYS + extraDays),
       };
   }
 
