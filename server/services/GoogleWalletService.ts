@@ -124,6 +124,9 @@ function buildObjectBody(visual: PassVisual): Record<string, unknown> {
     textModulesData: textModules,
     linksModuleData: {
       uris: [
+        // Redeem a prepaid wash — opens the DYNAMIC (rotating 45s) redeem QR. The
+        // pass barcode is identity-only; a paid wash needs the rotating QR (anti-replay).
+        { uri: `${PUBLIC_SITE_URL}/wallet/redeem`, description: 'Redeem a wash', id: 'redeem_link' },
         { uri: PUBLIC_SITE_URL, description: 'Open PetWash', id: 'site_link' },
         { uri: `${PUBLIC_SITE_URL}/book`, description: 'Book services', id: 'book_link' },
         { uri: `${PUBLIC_SITE_URL}/prestige-pass`, description: 'Prestige member portal', id: 'prestige_link' },

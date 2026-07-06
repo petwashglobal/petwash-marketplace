@@ -37,7 +37,18 @@ Base: `https://petwash.co.il/api/webhooks/nayax/cortina`
 (We also answer the PascalCase and `/staticqr/<cmd>` variants, so a base-URL +
 auto-append config resolves too.)
 
-## What to get from Nayax (their team provisions this — you can't self-serve)
+## Self-serve in devzone.nayax.com (CORRECTED 2026-07-06 — no integrator engineer)
+
+The full partner "Integration Process" page (kickoff → certification) is the ENTERPRISE
+track. For an operator who already owns the machines, Cortina is self-serve online via
+the **devzone.nayax.com** developer portal + the **OnboardActor / OnboardMachine** API:
+- `POST /OnboardActor` (op 1=Register) registers PetWash as the payment method and
+  returns credentials (API key / merchant id).
+- `POST /OnboardMachine` links each bay and returns its **TerminalId / QrString**.
+- The **SecretToken** is issued to your integrator/payment-method in the portal
+  (sandbox first). It is sent PLAINTEXT in our outbound Start body (verified spec).
+
+You (logged into devzone) grab these two values; everything else is already built.
 
 1. Register **PetWash as a Cortina payment method** (integrator/payment-method name).
 2. **Secret token** → set as `NAYAX_CORTINA_SECRET_TOKEN`.

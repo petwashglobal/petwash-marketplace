@@ -368,6 +368,73 @@ router.get('/reconciliation-breaks', async (req: Request, res: Response) => {
   }
 });
 
+// ── GET /api/admin/bay-control/cortina-monitor ───────────────────────────────
+// The Octopus live watchdog feed: a real-time snapshot of the prepaid-redemption
+// rail so ops can see leaks/fraud/hangs the moment they happen — not at the next
+// daily reconciliation. Read-only, cheap indexed aggregates, no external calls.
+router.get('/cortina-monitor', async (_req: Request, res: Response) => {
+  try {
+    const { pool } = await import('../db');
+    const [statusToday, recent, breaks, bays, integrity] = await Promise.all([
+      // reservation lifecycle counts for today
+      pool.query(
+        `SELECT status, COUNT(*)::int AS c FROM k9000_redemption_reservations
+          WHERE created_at::date = CURRENT_DATE GROUP BY status`),
+      // the last 25 redemptions across all bays
+      pool.query(
+        `SELECT reservation_ref, status, station_id, bay_id, side, redemption_type,
+                nayax_transaction_id, session_id, created_at, committed_at
+           FROM k9000_redemption_reservations
+          ORDER BY created_at DESC LIMIT 25`),
+      // open reconciliation breaks by severity (the watchdog's findings)
+      pool.query(
+        `SELECT severity, COUNT(*)::int AS c FROM k9000_reconciliation_breaks
+          WHERE status = 'open' GROUP BY severity`),
+      // per-bay wiring + status + last activity
+      pool.query(
+        `SELECT b.id AS bay_id, b.station_id, b.side, b.status,
+                (b.nayax_terminal_id IS NOT NULL AND b.nayax_terminal_id <> '') AS nayax_mapped,
+                (SELECT MAX(created_at) FROM k9000_redemption_reservations r WHERE r.bay_id = b.id) AS last_activity
+           FROM station_bays b ORDER BY b.station_id, b.side`),
+      // live integrity counters — the two leak/fraud signals we can compute instantly
+      pool.query(
+        `SELECT
+           (SELECT COUNT(*)::int FROM k9000_redemption_reservations
+             WHERE status='committed' AND (nayax_transaction_id IS NULL OR nayax_transaction_id='')
+               AND committed_at::date = CURRENT_DATE) AS committed_without_evidence_today,
+           (SELECT COUNT(*)::int FROM (
+              SELECT 1 FROM k9000_redemption_reservations
+               WHERE status='committed' AND nayax_transaction_id IS NOT NULL AND nayax_transaction_id<>''
+               GROUP BY nayax_transaction_id HAVING COUNT(*) > 1) d) AS duplicate_ref_count,
+           (SELECT COUNT(*)::int FROM k9000_redemption_reservations
+             WHERE status='reserved' AND expires_at < NOW() - INTERVAL '15 minutes') AS stale_reserved_count`),
+    ]);
+    const asMap = (rows: any[]) => rows.reduce((m, r) => { m[r.status ?? r.severity] = Number(r.c); return m; }, {} as Record<string, number>);
+    const intg = integrity.rows[0] ?? {};
+    const healthy = Number(intg.duplicate_ref_count ?? 0) === 0
+      && Number(intg.committed_without_evidence_today ?? 0) === 0
+      && Number(intg.stale_reserved_count ?? 0) === 0
+      && Number(asMap(breaks.rows).critical ?? 0) === 0;
+    return res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      healthy,                                   // one-glance green/red for the panel
+      reservationsToday: asMap(statusToday.rows),
+      openBreaksBySeverity: asMap(breaks.rows),
+      integrity: {
+        committedWithoutEvidenceToday: Number(intg.committed_without_evidence_today ?? 0),
+        duplicateRefCount: Number(intg.duplicate_ref_count ?? 0),   // double-vend / double-debit
+        staleReservedCount: Number(intg.stale_reserved_count ?? 0), // release cron health
+      },
+      bays: bays.rows,
+      recent: recent.rows,
+    });
+  } catch (err: any) {
+    logger.error('[AdminBayControl] cortina-monitor failed', { err: err?.message });
+    return res.status(500).json({ error: 'cortina_monitor_failed' });
+  }
+});
+
 // ── POST /api/admin/bay-control/reconciliation-breaks/:id/resolve ────────────
 // Close a break (resolved | accepted). Audit-logged.
 router.post('/reconciliation-breaks/:id/resolve', async (req: Request, res: Response) => {

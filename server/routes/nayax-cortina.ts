@@ -34,7 +34,23 @@ import { db, pool } from '../db';
 import { stationBays, walletAccounts } from '@shared/schema';
 import { eq, or } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { verifyPassLinkToken } from '../lib/passTokens';
+import { verifyQrRedeemToken } from '../lib/passTokens';
+
+/**
+ * Resolve the customer's userId from the DYNAMIC QR the bay reader scanned.
+ *
+ * ANTI-FRAUD (CEO rule 2026-07-06 "dynamic not static, no leak, no fraud"): the
+ * redemption/money path accepts ONLY the short-lived (45s) `qr-redeem` token that
+ * the app/dashboard/wallet rotates per redemption. We deliberately DO NOT accept
+ * the durable `wallet-barcode` (365d) or `wallet-link` (72h) tokens here — those
+ * are printed openly on the member pass ("Scan to identify") and could be
+ * screenshotted and replayed by a third party to burn the victim's prepaid credit.
+ * A rotating 45s QR can't be replayed. Identity-only lookups (staff) keep using
+ * the durable barcode via server/routes/pass-redeem.ts; that flow moves no money.
+ */
+function resolveUserIdFromDynamicQr(code: string): string {
+  return verifyQrRedeemToken(code).userId; // throws on any non-dynamic / expired QR
+}
 import { authorizeRedemption, closeBaySession, type K9000RedemptionType } from '../services/K9000RedemptionService';
 import { logger } from '../lib/logger';
 
@@ -141,7 +157,7 @@ router.post(['/authorize', '/sale', '/Authorization', '/Sale', '/staticqr/author
     if (bay.status !== 'ready') return res.json(cortinaDecline(6, `bay_${bay.status}`));
 
     let userId: string;
-    try { userId = verifyPassLinkToken(code).userId; }
+    try { userId = resolveUserIdFromDynamicQr(code); }
     catch { return res.json(cortinaDecline(2, 'invalid_or_expired_qr')); } // 2 = Transaction ID unknown
 
     const type = await pickRedemptionType(userId);
@@ -188,13 +204,14 @@ router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement',
     const bay = await resolveBay(terminalId);
     if (!bay) return res.json(cortinaDecline(50, 'bay_not_found')); // 50 = Unknown machine Id (NOT 5=fraud)
 
-    let userId: string;
-    try { userId = verifyPassLinkToken(code).userId; }
-    catch { return res.json(cortinaDecline(2, 'invalid_or_expired_qr')); } // 2 = Transaction ID unknown
-
+    // NOTE: we do NOT re-verify the scanned QR here. The dynamic (45s) redeem token
+    // may already have expired between /authorize and this /settlement, which is
+    // normal. Identity was bound at /authorize onto the reservation row; settlement
+    // reads the userId back from that row, so the debit can't be pinned on the wrong
+    // person and a late settlement can't fail on an expired token.
+    const idemKey = `cortina:${terminalId}:${transactionId ?? code}`;
     // EXACTLY-ONCE: a replayed/late Settlement (same Nayax txn) finds the
     // reservation already committed → Approved, NO re-debit.
-    const idemKey = `cortina:${terminalId}:${transactionId ?? code}`;
     const replay = await pool.query(
       `SELECT status, session_id FROM k9000_redemption_reservations WHERE idempotency_key = $1 LIMIT 1`,
       [idemKey],
@@ -203,15 +220,17 @@ router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement',
       return res.json(cortinaApprove({ replay: true, sessionId: replay.rows[0].session_id }));
     }
 
-    // CLAIM the active reservation for this bay+user (atomic flip reserved→committed).
+    // CLAIM the one active reservation for this bay (atomic flip reserved→committed).
+    // The partial-unique index guarantees at most one 'reserved' row per bay, so
+    // bay_id alone identifies it; we read the reserving user back from the row.
     let claimed;
     try {
       claimed = await pool.query(
         `UPDATE k9000_redemption_reservations
            SET status='committed', idempotency_key=$1, nayax_transaction_id=$2, committed_at=NOW(), updated_at=NOW()
-         WHERE bay_id=$3 AND user_id=$4 AND status='reserved'
-         RETURNING id, reservation_ref, redemption_type`,
-        [idemKey, transactionId ?? null, bay.bayId, userId],
+         WHERE bay_id=$3 AND status='reserved'
+         RETURNING id, reservation_ref, redemption_type, user_id`,
+        [idemKey, transactionId ?? null, bay.bayId],
       );
     } catch (e: any) {
       if (isUniqueViolation(e)) return res.json(cortinaApprove({ replay: true })); // concurrent same-key settlement
@@ -222,8 +241,10 @@ router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement',
     const resv = claimed.rows[0];
     try {
       // COMMIT the money: atomic ledger debit + open bay session (NO card charge).
+      // userId comes from the reservation row bound at /authorize — never from a
+      // (possibly expired) settlement token.
       const result = await authorizeRedemption({
-        userId,
+        userId: resv.user_id,
         redemptionType: resv.redemption_type as K9000RedemptionType,
         kioskId: bay.stationId,
         side: bay.side,

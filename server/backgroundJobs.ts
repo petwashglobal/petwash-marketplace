@@ -149,7 +149,26 @@ export class BackgroundJobProcessor {
         }
       }
     });
-    logger.info('[Cortina] release sweep (1m) + K9000 bay-release sweep (1m) + K9000 reconciliation (daily 02:30) scheduled');
+    // Near-real-time watchdog (every 15 min) — the daily pass is too slow to catch a
+    // double-vend / leak the day it happens. runK9000Reconciliation is idempotent
+    // (an OPEN break for the same offender is not re-inserted) and cheap (indexed,
+    // no-op when there are no reservations), and it sendAlert()s ONCE on the first
+    // critical detection — so running it every 15 min tightens detection without
+    // spamming. This is the live half of the Octopus watchdog.
+    cron.schedule('*/15 * * * *', async () => {
+      if (await this.acquireLock('k9000ReconLive')) {
+        try {
+          const { runK9000Reconciliation } = await import('./services/K9000ReconciliationService');
+          const r = await runK9000Reconciliation();
+          if (r.critical > 0) logger.warn('[K9000Recon] live watchdog found CRITICAL', r);
+        } catch (e: any) {
+          logger.error('[K9000Recon] live watchdog failed', { error: e?.message });
+        } finally {
+          this.releaseLock('k9000ReconLive');
+        }
+      }
+    });
+    logger.info('[Cortina] release sweep (1m) + K9000 bay-release sweep (1m) + K9000 reconciliation (daily 02:30 + live 15m) scheduled');
 
     // Phase 12.10 — SLA breach detection + auto-escalation (every 5 minutes)
     import('./jobs/sla-monitor').then(({ runSlaMonitor }) => {

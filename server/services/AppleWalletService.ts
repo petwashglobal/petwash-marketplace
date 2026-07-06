@@ -198,6 +198,15 @@ export async function generateAppleWalletPass(visual: PassVisual): Promise<Buffe
     value: CANONICAL_SUPPORT_EMAIL,
   } as any);
 
+  // Redeem a prepaid wash — opens the app's DYNAMIC (rotating 45s) redeem QR.
+  // The front barcode is IDENTITY only (static); starting a paid wash requires the
+  // rotating QR so a screenshot of the pass can't be replayed to burn credit.
+  pass.backFields.push({
+    key: 'redeemWash',
+    label: 'Redeem a Wash',
+    value: `${PUBLIC_SITE_URL}/wallet/redeem`,
+  } as any);
+
   pass.backFields.push({
     key: 'website',
     label: 'PetWash Website',

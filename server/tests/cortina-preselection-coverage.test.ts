@@ -48,6 +48,28 @@ describe('Cortina StaticQR — request parser reads the spec fields', () => {
   });
 });
 
+describe('Cortina StaticQR — redemption is DYNAMIC-QR-ONLY, anti-replay (2026-07-06)', () => {
+  // CEO rule "dynamic not static, no fraud": the money path accepts ONLY the
+  // short-lived (45s) qr-redeem token, never the durable wallet-barcode (365d) or
+  // wallet-link (72h) — those are printed openly on the pass and could be
+  // screenshotted + replayed to burn the victim's credit.
+  it('resolves the user only from the dynamic qr-redeem token', () => {
+    expect(SRC).toMatch(/verifyQrRedeemToken/);
+    expect(SRC).toMatch(/resolveUserIdFromDynamicQr/);
+    // must NOT accept the durable/static tokens on the money path
+    expect(SRC).not.toMatch(/verifyWalletBarcodeToken/);
+    expect(SRC).not.toMatch(/verifyPassLinkToken/);
+  });
+  it('binds identity at authorize; settlement reads user from the reservation, not the token', () => {
+    // authorize resolves from the scanned dynamic QR
+    expect(SRC).toMatch(/resolveUserIdFromDynamicQr\(code\)/);
+    // settlement claims by bay_id alone and reads user_id back (no token re-verify)
+    expect(SRC).toMatch(/WHERE bay_id=\$3 AND status='reserved'/);
+    expect(SRC).toMatch(/RETURNING id, reservation_ref, redemption_type, user_id/);
+    expect(SRC).toMatch(/userId:\s*resv\.user_id/);
+  });
+});
+
 describe('Cortina StaticQR — response contract + decline codes', () => {
   it('responds with { Status: { Verdict, Code?, StatusMessage } }', () => {
     expect(SRC).toMatch(/Status:\s*\{\s*Verdict:\s*'Approved'/);

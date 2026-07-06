@@ -11852,8 +11852,8 @@ self.addEventListener('notificationclick', (event) => {
    */
   app.post('/api/k9000/generate-qr', apiLimiter, requireAuth, async (req: any, res) => {
     try {
-      const { generateSignedRedeemToken } = await import('./lib/signedRedeemToken');
-      const { walletAccounts: walletAccountsTable } = await import('@shared/schema');
+      const { buildQrRedeemToken } = await import('./lib/passTokens');
+      const { walletAccounts: walletAccountsTable, petwashPassAccounts } = await import('@shared/schema');
       const { redemptionSessions } = await import('@shared/schema');
 
       const userId = req.firebaseUser?.uid;
@@ -11877,16 +11877,29 @@ self.addEventListener('notificationclick', (event) => {
       const passSerial = wallet?.walletId ?? userId;
       const TTL_SECONDS = 45;
 
-      const qrToken = generateSignedRedeemToken({
-        userId,
-        passSerial,
-        machineId: req.body?.kioskId ?? null,
-        ttlSeconds: TTL_SECONDS,
-      });
+      // DYNAMIC redeem token (45s, rotating). The Cortina money path accepts ONLY
+      // this short-lived qr-redeem token (server/routes/nayax-cortina.ts) — a static
+      // wallet-barcode is rejected at the bay so a screenshot can't be replayed to
+      // burn the victim's credit. The client re-fetches before expiry to rotate it.
+      const [passAcct] = await db
+        .select({ passId: petwashPassAccounts.passId, qrTokenVersion: petwashPassAccounts.qrTokenVersion })
+        .from(petwashPassAccounts)
+        .where(eq(petwashPassAccounts.userId, userId))
+        .limit(1);
 
-      if (!qrToken) {
+      const bayId = req.body?.side === 'LEFT' || req.body?.side === 'RIGHT' ? req.body.side : undefined;
+      let qrToken: string;
+      try {
+        qrToken = buildQrRedeemToken(
+          passAcct?.passId ?? passSerial,
+          userId,
+          passAcct?.qrTokenVersion ?? 1,
+          req.body?.kioskId ?? undefined,
+          bayId,
+        );
+      } catch (tokErr: any) {
         return res.status(503).json({
-          error: 'QR token generation unavailable — PASS_TOKEN_SECRET is not configured',
+          error: 'QR token generation unavailable — PRESTIGE_QR_SECRET is not configured',
           errorCode: 'MISSING_SECRET',
         });
       }
