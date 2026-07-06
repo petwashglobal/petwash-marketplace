@@ -6,11 +6,14 @@ import os from 'os';
 // diskStorage default). Confine every FS access to those roots so a traversed
 // path can never reach an arbitrary file. Boolean guard — the static analyser
 // sees the taint cleared before each sink.
-const UPLOAD_ROOTS = [path.resolve(process.cwd(), 'uploads'), path.resolve(os.tmpdir())];
+// Direct startsWith barriers (no array callback) so the static analyser recognises
+// the sanitiser, mirroring isSafeUploadPath in paw-finder.ts.
+const APP_UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads') + path.sep;
+const TMP_ROOT = path.resolve(os.tmpdir()) + path.sep;
 function isConfinedUploadPath(p: unknown): p is string {
   if (typeof p !== 'string' || !p) return false;
   const resolved = path.resolve(p);
-  return UPLOAD_ROOTS.some((root) => resolved === root || resolved.startsWith(root + path.sep));
+  return resolved.startsWith(APP_UPLOADS_ROOT) || resolved.startsWith(TMP_ROOT);
 }
 
 /**
@@ -183,13 +186,11 @@ export function requireValidFileContent(allowedMimes: string[]) {
 
 /** Read the first `n` bytes of a file synchronously (for diskStorage validation). */
 function readFileHead(filePath: string, n = 32): Buffer {
-  // Resolve, then confine THAT local before opening — the analyser tracks the
-  // barrier on `resolved`, which is exactly the value passed to openSync.
-  const resolved = path.resolve(filePath);
-  if (!UPLOAD_ROOTS.some((root) => resolved === root || resolved.startsWith(root + path.sep))) {
+  // Guard the local, then open the SAME local (multer paths are absolute).
+  if (!isConfinedUploadPath(filePath)) {
     throw new Error('Upload path outside allowed directory');
   }
-  const fd = fs.openSync(resolved, 'r');
+  const fd = fs.openSync(filePath, 'r');
   try {
     const buf = Buffer.alloc(n);
     const read = fs.readSync(fd, buf, 0, n, 0);
@@ -210,11 +211,9 @@ export function requireValidFileContentDisk(allowedMimes: string[]) {
     const files = collectMulterFiles(req) as Array<{ fieldname?: string; mimetype?: string; path?: string }>;
     const cleanupAll = () => {
       for (const f of files) {
-        if (typeof f?.path !== 'string') continue;
-        const resolved = path.resolve(f.path);
-        if (UPLOAD_ROOTS.some((root) => resolved === root || resolved.startsWith(root + path.sep))) {
-          try { fs.unlinkSync(resolved); } catch { /* best effort */ }
-        }
+        const p = f?.path;
+        if (!isConfinedUploadPath(p)) continue;   // guard the local...
+        try { fs.unlinkSync(p); } catch { /* best effort */ } // ...unlink the same local
       }
     };
     try {
