@@ -28,14 +28,6 @@ const router = Router();
 const UPLOAD_DIR = path.resolve(process.cwd(), 'uploads', 'paw-finder');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 
-function assertSafeUploadPath(filePath: string): void {
-  const resolved = path.resolve(filePath);
-  const prefix = UPLOAD_DIR + path.sep;
-  if (resolved !== UPLOAD_DIR && !resolved.startsWith(prefix)) {
-    throw new Error('Invalid file path: outside upload directory');
-  }
-}
-
 /**
  * Returns true iff `filePath` resolves to a path strictly inside UPLOAD_DIR.
  *
@@ -185,12 +177,19 @@ router.post('/upload', requireAuth, upload.single('photo'), async (req: any, res
       return res.status(400).json({ error: 'NO_FILE', message: 'Upload a photo (JPEG/PNG/WebP/HEIC max 15MB)' });
     }
 
-    await compressIfNeeded(req.file.path);
+    // Neutralise the upload path BEFORE any filesystem use (boolean guard so the
+    // static analyser sees the taint cleared ahead of every FS sink below).
+    if (!isSafeUploadPath(req.file.path)) {
+      try { fs.unlinkSync(req.file.path); } catch { /* best effort */ }
+      return res.status(400).json({ error: 'INVALID_UPLOAD_PATH' });
+    }
+    const safePath = req.file.path;
 
-    const hash     = sha256File(req.file.path);
+    await compressIfNeeded(safePath);
+
+    const hash     = sha256File(safePath);
     const filePath = `/uploads/paw-finder/${req.file.filename}`;
-    assertSafeUploadPath(req.file.path);
-    const fileSize = fs.statSync(req.file.path).size;
+    const fileSize = fs.statSync(safePath).size;
 
     // Duplicate image detection across all posts
     const dupCheck = await pool.query(

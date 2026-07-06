@@ -1,4 +1,17 @@
 import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+// Upload files live under the app's uploads dir or the OS temp dir (multer's
+// diskStorage default). Confine every FS access to those roots so a traversed
+// path can never reach an arbitrary file. Boolean guard — the static analyser
+// sees the taint cleared before each sink.
+const UPLOAD_ROOTS = [path.resolve(process.cwd(), 'uploads'), path.resolve(os.tmpdir())];
+function isConfinedUploadPath(p: unknown): p is string {
+  if (typeof p !== 'string' || !p) return false;
+  const resolved = path.resolve(p);
+  return UPLOAD_ROOTS.some((root) => resolved === root || resolved.startsWith(root + path.sep));
+}
 
 /**
  * Content-based (magic-number) file validation.
@@ -170,7 +183,9 @@ export function requireValidFileContent(allowedMimes: string[]) {
 
 /** Read the first `n` bytes of a file synchronously (for diskStorage validation). */
 function readFileHead(filePath: string, n = 32): Buffer {
-  const fd = fs.openSync(filePath, 'r');
+  // Confine to the upload roots before opening — never read an arbitrary path.
+  if (!isConfinedUploadPath(filePath)) throw new Error('Upload path outside allowed directory');
+  const fd = fs.openSync(path.resolve(filePath), 'r');
   try {
     const buf = Buffer.alloc(n);
     const read = fs.readSync(fd, buf, 0, n, 0);
@@ -191,12 +206,16 @@ export function requireValidFileContentDisk(allowedMimes: string[]) {
     const files = collectMulterFiles(req) as Array<{ fieldname?: string; mimetype?: string; path?: string }>;
     const cleanupAll = () => {
       for (const f of files) {
-        if (f?.path) { try { fs.unlinkSync(f.path); } catch { /* best effort */ } }
+        if (isConfinedUploadPath(f?.path)) { try { fs.unlinkSync(path.resolve(f.path!)); } catch { /* best effort */ } }
       }
     };
     try {
       for (const f of files) {
         if (!f?.path) continue;
+        if (!isConfinedUploadPath(f.path)) {
+          cleanupAll();
+          return res.status(400).json({ error: 'Invalid file', code: 'FILE_PATH_REJECTED', field: f.fieldname });
+        }
         const head = readFileHead(f.path);
         const check = validateFileContent(head, allowedMimes, f.mimetype);
         if (!check.ok) {
