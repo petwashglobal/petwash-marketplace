@@ -371,7 +371,14 @@ export async function checkInvoiceStatus(
     // Query RASA for invoice status.
     // RASA_API_ENDPOINT is a static env-config constant (see top of file).
     // safeAllocationNumber is digits-only, re-extracted from the validated match.
-    const rasaUrl = new URL(`${RASA_API_ENDPOINT}/${safeAllocationNumber}`);
+    // Explicit local SSRF sanitiser (also clears static-analysis taint): the
+    // allocation number MUST be digits-only, and it is URL-encoded, so it can
+    // neither change the host nor traverse the path.
+    if (!/^\d{1,32}$/.test(safeAllocationNumber)) {
+      res.status(400).json({ error: 'Invalid allocation number' });
+      return;
+    }
+    const rasaUrl = new URL(`${RASA_API_ENDPOINT}/${encodeURIComponent(safeAllocationNumber)}`);
     const rasaHost = new URL(RASA_API_ENDPOINT).hostname;
     // Host barrier (SSRF sanitiser): pin the request to RASA's constant host.
     if (rasaUrl.hostname !== rasaHost) {

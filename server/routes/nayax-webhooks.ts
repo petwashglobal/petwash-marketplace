@@ -84,9 +84,14 @@ function validateNayaxSignature(
   next: express.NextFunction
 ) {
   try {
-    const signature = req.headers['x-nayax-signature'] as string;
-    
-    if (!signature) {
+    // Headers arrive as string | string[] | undefined. A duplicated header makes
+    // this an ARRAY (parameter tampering) — normalise to a single string and reject
+    // anything that isn't one, so the downstream .replace()/HMAC compare can't be
+    // confused by a non-string value.
+    const rawSig = req.headers['x-nayax-signature'];
+    const signature = Array.isArray(rawSig) ? rawSig[0] : rawSig;
+
+    if (typeof signature !== 'string' || !signature) {
       logger.warn('[NayaxWebhook] Missing signature', {
         ip: req.ip,
         url: req.url,
@@ -99,11 +104,12 @@ function validateNayaxSignature(
       return res.status(500).json({ error: 'Webhook validation not configured' });
     }
     
-    // Get raw body bytes (critical for signature validation)
-    const rawBody = req.rawBody || req.body as Buffer;
-    
-    if (!rawBody) {
-      logger.error('[NayaxWebhook] No raw body available for signature validation');
+    // Get raw body bytes (critical for signature validation). Only trust the
+    // captured raw Buffer — NEVER HMAC a parsed body object (type confusion).
+    const rawBody = req.rawBody;
+
+    if (!Buffer.isBuffer(rawBody)) {
+      logger.error('[NayaxWebhook] No raw body buffer available for signature validation');
       return res.status(500).json({ error: 'Cannot validate signature' });
     }
     
@@ -114,12 +120,15 @@ function validateNayaxSignature(
       .digest('hex');
     
     const providedSignature = signature.replace('sha256=', '');
-    
-    // Constant-time comparison to prevent timing attacks
-    const isValid = crypto.timingSafeEqual(
-      Buffer.from(expectedSignature),
-      Buffer.from(providedSignature)
-    );
+
+    // Constant-time comparison to prevent timing attacks. timingSafeEqual throws a
+    // RangeError on unequal-length buffers, so length-check first (a mismatched
+    // length is simply an invalid signature — not a 500).
+    const expectedBuf = Buffer.from(expectedSignature);
+    const providedBuf = Buffer.from(providedSignature);
+    const isValid =
+      expectedBuf.length === providedBuf.length &&
+      crypto.timingSafeEqual(expectedBuf, providedBuf);
     
     if (!isValid) {
       logger.warn('[NayaxWebhook] Invalid signature', {
