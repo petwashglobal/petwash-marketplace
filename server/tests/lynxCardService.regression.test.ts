@@ -10,10 +10,19 @@ import { resolve } from 'path';
 const SRC = readFileSync(resolve(__dirname, '..', 'services', 'LynxCardService.ts'), 'utf8');
 
 describe('LynxCardService — money-safe mint', () => {
-  it('is DOUBLY gated: Lynx auth wired AND explicit LYNX_CARD_MINT_ENABLED AND an operator id', () => {
+  it('is gated on Lynx auth + explicit LYNX_CARD_MINT_ENABLED; admin test can bypass the flag', () => {
     expect(SRC).toMatch(/LYNX_CARD_MINT_ENABLED/);
-    expect(SRC).toMatch(/return lynxIsWired\(\) && c\.mintEnabled && Boolean\(c\.operatorId\)/);
-    expect(SRC).toMatch(/if \(!cardMintWired\(\)\)/);
+    expect(SRC).toMatch(/return lynxIsWired\(\) && cfg\(\)\.mintEnabled/);
+    expect(SRC).toMatch(/if \(!lynxIsWired\(\)\)/);                     // always needs auth
+    expect(SRC).toMatch(/if \(!opts\?\.adminTest && !c\.mintEnabled\)/); // customer needs flag; adminTest bypasses
+  });
+
+  it('auto-discovers the operator ActorID (env override, else from the actor hierarchy)', () => {
+    expect(SRC).toMatch(/getActorHierarchy/);
+    expect(SRC).toMatch(/resolveOperatorId/);
+    expect(SRC).toMatch(/const operatorId = await resolveOperatorId\(\)/);
+    expect(SRC).toMatch(/if \(!operatorId\)/); // fail-closed when it can't be resolved
+    expect(SRC).toMatch(/ActorID: Number\(operatorId\)/);
   });
 
   it('mints a PREPAID card of QR physical type', () => {
@@ -31,7 +40,7 @@ describe('LynxCardService — money-safe mint', () => {
   });
 
   it('reuses LynxClient auth (no re-implemented auth) and never logs card internals', () => {
-    expect(SRC).toMatch(/import \{ lynxRequest, lynxIsWired \} from '\.\/LynxClient'/);
+    expect(SRC).toMatch(/import \{ lynxRequest, lynxIsWired, getActorHierarchy \} from '\.\/LynxClient'/);
     expect(SRC).not.toMatch(/logger\.[a-z]+\([^)]*CardUniqueIdentifier/);
     expect(SRC).toMatch(/cardUidTail: cardUid\.slice\(-6\)/); // only a tail is logged
   });

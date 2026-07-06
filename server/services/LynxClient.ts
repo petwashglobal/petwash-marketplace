@@ -220,6 +220,13 @@ export function getDevice(deviceId: string): Promise<LynxResult> {
   return request('GET', `/operational/v1/devices/${encodeURIComponent(deviceId)}`);
 }
 
+// ── READ: the current user's actor hierarchy (discovers the operator ActorID) ─
+/** GET the signed-in user's actor hierarchy — used to auto-discover the operator
+ *  ActorID that issues cards, so LYNX_OPERATOR_ID need not be set by hand. */
+export function getActorHierarchy(): Promise<LynxResult> {
+  return request('GET', '/operational/v1/actors/hierarchy');
+}
+
 // ── OPS: generate a restock pick list for a machine (inventory action) ────────
 /** POST a pick-list generation for a machine. Inventory/logistics, NOT money. */
 export function generatePickList(machineId: string): Promise<LynxResult> {
@@ -253,6 +260,7 @@ export const LynxClient = {
   health,
   getMachineProducts,
   getDevice,
+  getActorHierarchy,
   generatePickList,
   connectionTest,
 };

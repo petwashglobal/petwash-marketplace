@@ -112,19 +112,34 @@ router.post('/machine/:machineId/pick-list', ...requireSuperAdmin, async (req: R
   }
 });
 
-// MONEY (mint) — verification endpoint: mint ONE small single-use prepaid QR card
-// against live Lynx to prove the Cortina-free rail works. Doubly gated in the
-// service (LYNX_CARD_MINT_ENABLED + operator id). Audited. Default ₪1.
+// Who am I on Nayax — the operator ActorID auto-discovered from the connected Lynx
+// account (so LYNX_OPERATOR_ID need not be set by hand). Read-only.
+router.get('/whoami', ...requireSuperAdmin, async (_req: Request, res: Response) => {
+  try {
+    const [hierarchy, operatorId] = await Promise.all([
+      LynxClient.getActorHierarchy(),
+      LynxCardService.resolveOperatorId(),
+    ]);
+    return res.json({ ok: hierarchy.ok, operatorId, status: hierarchy.status, hierarchy: hierarchy.data });
+  } catch (err: any) {
+    logger.error('[AdminLynx] whoami failed', { err: err?.message });
+    return res.status(500).json({ ok: false, error: 'whoami_crashed' });
+  }
+});
+
+// MONEY (mint) — one-click verification: mint ONE small single-use prepaid QR card
+// against live Lynx to PROVE the Cortina-free rail + reveal the card's QR field.
+// adminTest bypasses the production LYNX_CARD_MINT_ENABLED flag (super-admin only,
+// clamped ₪1–10, audited) so we can verify BEFORE turning the customer flow on.
+// The operator ActorID is auto-discovered — no manual config needed.
 router.post('/test-mint', ...requireSuperAdmin, async (req: Request, res: Response) => {
-  const amountIls = Math.min(Math.max(Number(req.body?.amountIls) || 1, 1), 10); // clamp 1–10 for a test
+  const amountIls = Math.min(Math.max(Number(req.body?.amountIls) || 1, 1), 10);
   try {
     const adminId = (req as any).user?.uid || 'admin';
-    const result = await LynxCardService.mintWashCard({
-      userId: `admin-test-${adminId}`.slice(0, 40),
-      amountIls,
-      holderName: 'PetWash Test',
-      remarks: 'admin verification mint',
-    });
+    const result = await LynxCardService.mintWashCard(
+      { userId: `admin-test-${adminId}`.slice(0, 40), amountIls, holderName: 'PetWash Test', remarks: 'admin verification mint' },
+      { adminTest: true },
+    );
     await audit(req, 'lynx.test_mint', { ok: result.ok, status: result.status, wired: result.wired, amountIls, cardUidTail: result.cardUid?.slice(-6) });
     return res.json(result); // includes the raw create response so we can see the card's QR field
   } catch (err: any) {

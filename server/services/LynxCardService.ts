@@ -20,7 +20,7 @@
  * LYNX_CARD_MINT_ENABLED=true, because this MOVES VALUE. Safe no-op otherwise.
  * Uses LynxClient's shared auth (token or operator-login session) via lynxRequest.
  */
-import { lynxRequest, lynxIsWired } from './LynxClient';
+import { lynxRequest, lynxIsWired, getActorHierarchy } from './LynxClient';
 import { logger } from '../lib/logger';
 
 // ── Nayax card constants (from the Lynx Create Card reference) ────────────────
@@ -38,10 +38,32 @@ function cfg() {
   };
 }
 
-/** Wired only when the Lynx auth is up AND card-mint is explicitly enabled AND an operator id is set. */
+/** Wired when the Lynx auth is up AND card-mint is explicitly enabled. The operator
+ *  ActorID is resolved (env override or auto-discovered) at mint time. */
 export function cardMintWired(): boolean {
-  const c = cfg();
-  return lynxIsWired() && c.mintEnabled && Boolean(c.operatorId);
+  return lynxIsWired() && cfg().mintEnabled;
+}
+
+// The operator ActorID that issues cards: env override, else auto-discovered from
+// the connected Lynx account and cached — so LYNX_OPERATOR_ID need not be set by hand.
+let cachedOperatorId: string | null = null;
+function extractOperatorActorId(data: any): string | null {
+  const nodes: any[] = Array.isArray(data) ? data : (Array.isArray(data?.Hierarchy) ? data.Hierarchy : [data]);
+  for (const n of nodes) if (n && n.OperatorActorID) return String(n.OperatorActorID); // explicit operator
+  for (const n of nodes) if (n && n.ParentActorID == null && n.ActorID) return String(n.ActorID); // hierarchy root
+  for (const n of nodes) if (n && n.ActorID) return String(n.ActorID); // fallback: first actor
+  return null;
+}
+/** Resolve the issuing operator ActorID: env override, else discover it once. */
+export async function resolveOperatorId(): Promise<string | null> {
+  const envId = cfg().operatorId;
+  if (envId) return envId;
+  if (cachedOperatorId) return cachedOperatorId;
+  const r = await getActorHierarchy();
+  if (!r.ok) { logger.warn('[LynxCard] could not discover operator ActorID', { status: r.status }); return null; }
+  const id = extractOperatorActorId(r.data);
+  if (id) { cachedOperatorId = id; logger.info('[LynxCard] discovered operator ActorID', { actorId: id }); }
+  return cachedOperatorId;
 }
 
 export interface MintWashCardParams {
@@ -71,18 +93,27 @@ function newCardUid(userId: string): string {
  * Mint a SINGLE-USE prepaid QR card loaded with `amountIls`, tied to the customer.
  * Money-safe: doubly gated, single-use, exact amount, never logs card internals.
  */
-export async function mintWashCard(p: MintWashCardParams): Promise<MintWashCardResult> {
+export async function mintWashCard(p: MintWashCardParams, opts?: { adminTest?: boolean }): Promise<MintWashCardResult> {
   const c = cfg();
-  if (!cardMintWired()) {
-    return { ok: false, wired: false, status: 0, error: 'card_mint_not_wired' };
+  if (!lynxIsWired()) {
+    return { ok: false, wired: false, status: 0, error: 'lynx_not_wired' };
+  }
+  // Customer mints require the production flag. A super-admin adminTest (one small,
+  // audited card) bypasses it so the rail can be PROVEN before it's turned on live.
+  if (!opts?.adminTest && !c.mintEnabled) {
+    return { ok: false, wired: true, status: 0, error: 'card_mint_disabled' };
   }
   if (!(p.amountIls > 0)) {
     return { ok: false, wired: true, status: 0, error: 'invalid_amount' };
   }
+  const operatorId = await resolveOperatorId();
+  if (!operatorId) {
+    return { ok: false, wired: true, status: 0, error: 'operator_id_unresolved' };
+  }
   const cardUid = newCardUid(p.userId);
   const body = {
     CardDetails: {
-      ActorID: Number(c.operatorId),
+      ActorID: Number(operatorId),
       CardUniqueIdentifier: cardUid,
       CardTypeID: CARD_TYPE_PREPAID,
       PhysicalTypeID: PHYSICAL_TYPE_QR,
@@ -130,4 +161,4 @@ export async function validateForMachine(machineId: string, cardUid: string): Pr
   return { ok: r.ok, status: r.status, data: r.data, error: r.ok ? undefined : (r.error || `http_${r.status}`) };
 }
 
-export const LynxCardService = { cardMintWired, mintWashCard, getPrepaidCard, validateForMachine };
+export const LynxCardService = { cardMintWired, resolveOperatorId, mintWashCard, getPrepaidCard, validateForMachine };
