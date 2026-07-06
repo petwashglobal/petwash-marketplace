@@ -211,8 +211,9 @@ export function requireValidFileContentDisk(allowedMimes: string[]) {
     const files = collectMulterFiles(req) as Array<{ fieldname?: string; mimetype?: string; path?: string }>;
     const cleanupAll = () => {
       for (const f of files) {
-        const p = f?.path;
-        if (!isConfinedUploadPath(p)) continue;   // guard the local...
+        if (typeof f?.path !== 'string') continue;
+        const p: string = f.path;               // definite string local...
+        if (!isConfinedUploadPath(p)) continue;  // ...guarded...
         try { fs.unlinkSync(p); } catch { /* best effort */ } // ...unlink the same local
       }
     };
