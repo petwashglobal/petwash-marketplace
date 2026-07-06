@@ -16,6 +16,10 @@ concurrency:
   group: uptime-healthcheck
   cancel-in-progress: true
 
+# Least privilege: this job only checks out the repo and pings the live site.
+permissions:
+  contents: read
+
 jobs:
   healthcheck:
     runs-on: ubuntu-latest
