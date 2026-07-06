@@ -48,6 +48,23 @@ describe('Cortina StaticQR — request parser reads the spec fields', () => {
   });
 });
 
+describe('Cortina StaticQR — accepts any pass token the customer presents (2026-07-06)', () => {
+  // A customer at the bay may present ANY of our signed pass tokens: the durable
+  // wallet-barcode (365d, baked into the saved Apple/Google pass), a fresh
+  // qr-redeem (45s, in-app), or a wallet-link (72h). Cortina must resolve the
+  // userId from all three — verifying only wallet-link would decline a real pass.
+  it('imports and tries all three pass-token verifiers', () => {
+    expect(SRC).toMatch(/verifyWalletBarcodeToken/);
+    expect(SRC).toMatch(/verifyQrRedeemToken/);
+    expect(SRC).toMatch(/verifyPassLinkToken/);
+  });
+  it('resolves userId via a unified resolver at both authorize and settlement', () => {
+    expect(SRC).toMatch(/resolveUserIdFromScannedCode/);
+    const calls = SRC.match(/resolveUserIdFromScannedCode\(code\)/g) || [];
+    expect(calls.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
 describe('Cortina StaticQR — response contract + decline codes', () => {
   it('responds with { Status: { Verdict, Code?, StatusMessage } }', () => {
     expect(SRC).toMatch(/Status:\s*\{\s*Verdict:\s*'Approved'/);

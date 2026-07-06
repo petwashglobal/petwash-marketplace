@@ -34,7 +34,24 @@ import { db, pool } from '../db';
 import { stationBays, walletAccounts } from '@shared/schema';
 import { eq, or } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
-import { verifyPassLinkToken } from '../lib/passTokens';
+import { verifyPassLinkToken, verifyWalletBarcodeToken, verifyQrRedeemToken } from '../lib/passTokens';
+
+/**
+ * Resolve the customer's userId from the QR the bay reader scanned. A customer
+ * can legitimately present ANY of our signed pass tokens — the durable
+ * `wallet-barcode` (365d, baked into the saved Apple/Google pass), a fresh
+ * `qr-redeem` (45s, in-app), or a `wallet-link` (72h) — so we accept all three.
+ * Each is HMAC-signed, so it can't be forged; the token only IDENTIFIES the user.
+ * All money is still gated downstream by the prepaid-credit check + the
+ * reserve→commit exactly-once ledger debit, so accepting a long-lived token here
+ * moves no money on its own.
+ */
+function resolveUserIdFromScannedCode(code: string): string {
+  for (const verify of [verifyWalletBarcodeToken, verifyQrRedeemToken, verifyPassLinkToken]) {
+    try { return verify(code).userId; } catch { /* try the next format */ }
+  }
+  throw new Error('invalid_or_expired_qr');
+}
 import { authorizeRedemption, closeBaySession, type K9000RedemptionType } from '../services/K9000RedemptionService';
 import { logger } from '../lib/logger';
 
@@ -141,7 +158,7 @@ router.post(['/authorize', '/sale', '/Authorization', '/Sale', '/staticqr/author
     if (bay.status !== 'ready') return res.json(cortinaDecline(6, `bay_${bay.status}`));
 
     let userId: string;
-    try { userId = verifyPassLinkToken(code).userId; }
+    try { userId = resolveUserIdFromScannedCode(code); }
     catch { return res.json(cortinaDecline(2, 'invalid_or_expired_qr')); } // 2 = Transaction ID unknown
 
     const type = await pickRedemptionType(userId);
@@ -189,7 +206,7 @@ router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement',
     if (!bay) return res.json(cortinaDecline(50, 'bay_not_found')); // 50 = Unknown machine Id (NOT 5=fraud)
 
     let userId: string;
-    try { userId = verifyPassLinkToken(code).userId; }
+    try { userId = resolveUserIdFromScannedCode(code); }
     catch { return res.json(cortinaDecline(2, 'invalid_or_expired_qr')); } // 2 = Transaction ID unknown
 
     // EXACTLY-ONCE: a replayed/late Settlement (same Nayax txn) finds the
