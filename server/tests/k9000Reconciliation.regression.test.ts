@@ -52,3 +52,19 @@ describe('K9000 reconciliation + release-sweep wiring', () => {
     expect(bayCtl).toMatch(/K9000_RECON_BREAK_RESOLVE/); // audit-logged
   });
 });
+
+describe('Octopus live watchdog (2026-07-06)', () => {
+  it('near-real-time recon runs every 15 min, not just daily', () => {
+    expect(jobs).toMatch(/cron\.schedule\('\*\/15 \* \* \* \*'/);
+    expect(jobs).toMatch(/acquireLock\('k9000ReconLive'\)/);
+  });
+
+  it('exposes a live cortina-monitor snapshot for the panel', () => {
+    expect(bayCtl).toMatch(/router\.get\('\/cortina-monitor'/);
+    // the one-glance health flag + the two instant leak/fraud signals
+    expect(bayCtl).toMatch(/healthy/);
+    expect(bayCtl).toMatch(/duplicateRefCount/);           // double-vend
+    expect(bayCtl).toMatch(/committedWithoutEvidenceToday/); // leak
+    expect(bayCtl).toMatch(/staleReservedCount/);          // release-cron health
+  });
+});
