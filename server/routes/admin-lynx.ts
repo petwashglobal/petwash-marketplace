@@ -20,6 +20,7 @@ import { Router, type Request, type Response, type NextFunction } from 'express'
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { loadUserRole, checkAccessLevel, isSuperAdminVerified } from '../middleware/rbac';
 import { LynxClient } from '../services/LynxClient';
+import { LynxCardService } from '../services/LynxCardService';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -108,6 +109,27 @@ router.post('/machine/:machineId/pick-list', ...requireSuperAdmin, async (req: R
   } catch (err: any) {
     logger.error('[AdminLynx] pick-list failed', { err: err?.message });
     return res.status(500).json({ error: 'Lynx pick-list generation failed' });
+  }
+});
+
+// MONEY (mint) — verification endpoint: mint ONE small single-use prepaid QR card
+// against live Lynx to prove the Cortina-free rail works. Doubly gated in the
+// service (LYNX_CARD_MINT_ENABLED + operator id). Audited. Default ₪1.
+router.post('/test-mint', ...requireSuperAdmin, async (req: Request, res: Response) => {
+  const amountIls = Math.min(Math.max(Number(req.body?.amountIls) || 1, 1), 10); // clamp 1–10 for a test
+  try {
+    const adminId = (req as any).user?.uid || 'admin';
+    const result = await LynxCardService.mintWashCard({
+      userId: `admin-test-${adminId}`.slice(0, 40),
+      amountIls,
+      holderName: 'PetWash Test',
+      remarks: 'admin verification mint',
+    });
+    await audit(req, 'lynx.test_mint', { ok: result.ok, status: result.status, wired: result.wired, amountIls, cardUidTail: result.cardUid?.slice(-6) });
+    return res.json(result); // includes the raw create response so we can see the card's QR field
+  } catch (err: any) {
+    logger.error('[AdminLynx] test-mint failed', { err: err?.message });
+    return res.status(500).json({ ok: false, error: 'test_mint_crashed' });
   }
 });
 

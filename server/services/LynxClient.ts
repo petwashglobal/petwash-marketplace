@@ -244,6 +244,10 @@ export async function connectionTest(): Promise<LynxResult & { sandbox: boolean 
   return { ...r, sandbox: e.sandbox };
 }
 
+// Expose the authed low-level request + wiring gate so money-adjacent services
+// (LynxCardService) reuse the exact same token/login-session auth.
+export { request as lynxRequest, isWired as lynxIsWired };
+
 export const LynxClient = {
   isWired,
   health,
