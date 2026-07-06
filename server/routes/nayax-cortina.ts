@@ -92,9 +92,15 @@ function parseCortinaRequest(body: any): CortinaRequest {
   const machine = b.MachineInfo ?? b.machineInfo ?? {};
   const device  = b.DeviceInfo  ?? b.deviceInfo  ?? {};
   const machineId = String(machine.Id ?? machine.id ?? '') || undefined;
+  // Verified StaticQR payloads put the operator-defined terminal id on
+  // MachineInfo.TerminalId (spec: "Terminal identifier. Contact Nayax TPOC to
+  // define") — that's what maps to a PetWash bay. Prefer it, then MachineInfo.Id
+  // (stable virtual-machine id), then any flat/UniQR fallbacks. Never key on
+  // DeviceInfo.HwSerial (it changes on a device swap).
+  const machineTerminalId = String(machine.TerminalId ?? machine.terminalId ?? '') || undefined;
   return {
-    // Match on MachineInfo.Id (stable) first, then the flat TerminalId/UniQR.
     terminalId: String(
+      machineTerminalId ??
       b.TerminalId ?? b.terminalId ?? b.UniQR ?? b.uniqr ??
       basic.TerminalId ?? basic.terminalId ?? machineId ?? '',
     ),
@@ -121,8 +127,12 @@ const cortinaApprove = (extra: Record<string, unknown> = {}) =>
 const cortinaDecline = (code: number, reason: string) =>
   ({ Status: { Verdict: 'Declined', Code: code, StatusMessage: reason } });
 
-// POST /api/nayax/cortina/authorize — Nayax asks: may this scan get a wash here?
-router.post('/authorize', async (req: Request, res: Response) => {
+// Nayax asks: may this scan get a wash here? (RESERVE, no debit yet.)
+// PreAuthorization flow calls /Authorization; PreSelection flow calls /Sale.
+// Same PetWash logic (verify credit → reserve → approve → the machine vends),
+// so we answer BOTH, in the spec's PascalCase and our lowercase, so either
+// Cortina machine configuration works without a code change.
+router.post(['/authorize', '/sale', '/Authorization', '/Sale', '/staticqr/authorization', '/staticqr/sale'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
   try {
     const { terminalId, code } = parseCortinaRequest(req.body);
@@ -165,7 +175,10 @@ router.post('/authorize', async (req: Request, res: Response) => {
 });
 
 // POST /api/nayax/cortina/settlement — Nayax confirms the product vended → COMMIT.
-router.post('/settlement', async (req: Request, res: Response) => {
+// Nayax confirms the product vended → COMMIT (debit the pre-paid ledger, open
+// the bay session). PreAuthorization calls /Settlement; PreSelection calls the
+// /Sale End Notification. Same commit logic serves both.
+router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement', '/SaleEndNotification', '/staticqr/settlement', '/staticqr/saleendnotification'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
   const { terminalId, code, transactionId, vended } = parseCortinaRequest(req.body);
   try {
@@ -247,7 +260,7 @@ router.post('/settlement', async (req: Request, res: Response) => {
 // Ack-on-error is deliberate: a reserved hold TTL-expires via the sweep regardless,
 // and a committed mismatch is caught by daily reconciliation — far safer than a
 // decline that triggers a Nayax retry storm.
-router.post(['/void', '/cancel'], async (req: Request, res: Response) => {
+router.post(['/void', '/cancel', '/Void', '/Cancel', '/staticqr/void', '/staticqr/cancel'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
   const { terminalId, transactionId } = parseCortinaRequest(req.body);
   try {
@@ -309,7 +322,7 @@ router.post(['/void', '/cancel'], async (req: Request, res: Response) => {
 // record a CRITICAL reconciliation break (break_type 'refund_requested') for an
 // operator to action, and ACK. Wiring the real credit-back belongs in the audited
 // refund rail, not here. Idempotent + ack-on-error (same rationale as void).
-router.post('/refund', async (req: Request, res: Response) => {
+router.post(['/refund', '/Refund', '/staticqr/refund'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled'));
   const { terminalId, transactionId, amount } = parseCortinaRequest(req.body);
   try {

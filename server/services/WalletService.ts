@@ -1,8 +1,9 @@
 import { db } from '../db';
-import { 
-  walletAccounts, 
-  creditTransactions, 
+import {
+  walletAccounts,
+  creditTransactions,
   redemptionSessions,
+  users,
   InsertWalletAccount,
   InsertCreditTransaction,
   InsertRedemptionSession,
@@ -1426,6 +1427,17 @@ IP Address: ${ipAddress || 'unknown'}
           bookingId: params.bookingId, error: creditErr?.message,
         });
       }
+
+      // Transactional refund confirmation SMS (audit 2026-07-05: refund_approved
+      // was an orphaned template). Best-effort — never affects the refund.
+      try {
+        const [u] = await db.select({ phone: users.phone, lang: users.language })
+          .from(users).where(eq(users.id, params.userId)).limit(1);
+        if (u?.phone) {
+          const { sendSmsTemplate } = await import('./smsTemplates');
+          await sendSmsTemplate('refund_approved', u.phone, {}, { lang: u.lang === 'en' ? 'en' : 'he', userId: params.userId });
+        }
+      } catch { /* best effort */ }
     }
 
     return { txnId: result.txnId, idempotent: result.idempotent };
