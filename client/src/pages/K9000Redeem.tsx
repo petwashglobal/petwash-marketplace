@@ -132,15 +132,17 @@ export default function K9000Redeem() {
     const interval = setInterval(() => {
       setSecondsLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(interval);
-          setError(isHebrew ? 'הקוד פג תוקף' : 'Code expired');
-          return 0;
+          // Don't expire — ROTATE to a fresh dynamic QR so a live, replay-proof
+          // code is always on screen while the customer is at the bay.
+          void handleGenerate({ silent: true });
+          return qrTtlSeconds;
         }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(interval);
-  }, [step, redemption, isHebrew]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [step, redemption, qrTtlSeconds]);
 
   const generateQrCode = useCallback(async (data: string) => {
     try {
@@ -173,9 +175,10 @@ export default function K9000Redeem() {
 
   const [qrTtlSeconds, setQrTtlSeconds] = useState(45);
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (opts?: { silent?: boolean }) => {
     if (!selectedOption) return;
-    setIsGenerating(true);
+    // `silent` = a background rotation of the dynamic QR: no spinner, no step change.
+    if (!opts?.silent) setIsGenerating(true);
     setError('');
     try {
       // Map the UI option to the redemption type expected by the K9000 QR endpoint
@@ -197,11 +200,12 @@ export default function K9000Redeem() {
       const expMs = new Date(r.expiresAt).getTime() - Date.now();
       setSecondsLeft(Math.max(0, Math.floor(expMs / 1000)));
       await generateQrCode(r.qrData);
-      setStep('qr');
+      if (!opts?.silent) setStep('qr');
     } catch (err: any) {
-      setError(err.message || (isHebrew ? 'שגיאה' : 'Error'));
+      // A failed silent rotation shouldn't blow away a still-valid on-screen QR.
+      if (!opts?.silent) setError(err.message || (isHebrew ? 'שגיאה' : 'Error'));
     } finally {
-      setIsGenerating(false);
+      if (!opts?.silent) setIsGenerating(false);
     }
   };
 
