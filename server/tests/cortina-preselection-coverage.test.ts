@@ -48,20 +48,25 @@ describe('Cortina StaticQR — request parser reads the spec fields', () => {
   });
 });
 
-describe('Cortina StaticQR — accepts any pass token the customer presents (2026-07-06)', () => {
-  // A customer at the bay may present ANY of our signed pass tokens: the durable
-  // wallet-barcode (365d, baked into the saved Apple/Google pass), a fresh
-  // qr-redeem (45s, in-app), or a wallet-link (72h). Cortina must resolve the
-  // userId from all three — verifying only wallet-link would decline a real pass.
-  it('imports and tries all three pass-token verifiers', () => {
-    expect(SRC).toMatch(/verifyWalletBarcodeToken/);
+describe('Cortina StaticQR — redemption is DYNAMIC-QR-ONLY, anti-replay (2026-07-06)', () => {
+  // CEO rule "dynamic not static, no fraud": the money path accepts ONLY the
+  // short-lived (45s) qr-redeem token, never the durable wallet-barcode (365d) or
+  // wallet-link (72h) — those are printed openly on the pass and could be
+  // screenshotted + replayed to burn the victim's credit.
+  it('resolves the user only from the dynamic qr-redeem token', () => {
     expect(SRC).toMatch(/verifyQrRedeemToken/);
-    expect(SRC).toMatch(/verifyPassLinkToken/);
+    expect(SRC).toMatch(/resolveUserIdFromDynamicQr/);
+    // must NOT accept the durable/static tokens on the money path
+    expect(SRC).not.toMatch(/verifyWalletBarcodeToken/);
+    expect(SRC).not.toMatch(/verifyPassLinkToken/);
   });
-  it('resolves userId via a unified resolver at both authorize and settlement', () => {
-    expect(SRC).toMatch(/resolveUserIdFromScannedCode/);
-    const calls = SRC.match(/resolveUserIdFromScannedCode\(code\)/g) || [];
-    expect(calls.length).toBeGreaterThanOrEqual(2);
+  it('binds identity at authorize; settlement reads user from the reservation, not the token', () => {
+    // authorize resolves from the scanned dynamic QR
+    expect(SRC).toMatch(/resolveUserIdFromDynamicQr\(code\)/);
+    // settlement claims by bay_id alone and reads user_id back (no token re-verify)
+    expect(SRC).toMatch(/WHERE bay_id=\$3 AND status='reserved'/);
+    expect(SRC).toMatch(/RETURNING id, reservation_ref, redemption_type, user_id/);
+    expect(SRC).toMatch(/userId:\s*resv\.user_id/);
   });
 });
 
