@@ -19,6 +19,11 @@ const buttonVariants = cva(
           "bg-gradient-to-r from-neutral-100 to-neutral-50 dark:from-neutral-800 dark:to-neutral-900 text-neutral-900 dark:text-neutral-100 hover:from-neutral-200 hover:to-neutral-100 dark:hover:from-neutral-700 dark:hover:to-neutral-800 active:from-neutral-300 active:to-neutral-200 dark:active:from-neutral-600 dark:active:to-neutral-700 shadow-md",
         ghost: "hover:bg-neutral-100/80 dark:hover:bg-neutral-800/80 hover:text-neutral-900 dark:hover:text-neutral-100 active:bg-neutral-200/80 dark:active:bg-neutral-700/80 backdrop-blur-sm",
         link: "text-primary underline-offset-4 hover:underline font-medium",
+        // ── CEO canonical mockup buttons (2026-07-06) ──
+        // Gold pill — Prestige / luxury / shop CTAs (REDEEM, PAY, PLACE ORDER).
+        prestige: "bg-gradient-to-r from-[#E1BE58] via-[#D4AF37] to-[#B8891F] text-[#3a2c08] hover:from-[#E7C86A] hover:to-[#C79A26] active:from-[#D4AF37] active:to-[#A87C18] shadow-lg shadow-[#B8891F]/30 hover:shadow-xl",
+        // Green pill — Pet Passport / care CTAs (green-marble brand).
+        passport: "bg-gradient-to-r from-[#1E5A3A] to-[#14402D] text-white hover:from-[#236A45] hover:to-[#1A5236] active:from-[#14402D] active:to-[#0E2E20] shadow-lg shadow-[#14402D]/25 hover:shadow-xl",
       },
       size: {
         default: "h-14 px-8 py-4",
