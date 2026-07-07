@@ -225,7 +225,7 @@ export default function MarketplaceReviewPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
+                  className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black"
                   onClick={() => navigate(`/report-problem/${bookingId}`)}
                 >
                   <AlertTriangle className="w-3.5 h-3.5 mr-1" />

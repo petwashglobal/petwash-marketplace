@@ -89,9 +89,9 @@ interface ReserveSummary {
 
 const ROLE_COLOR: Record<string, string> = {
   agent: 'bg-white text-gray-700',
-  manager: 'bg-[#D4AF37] text-[#B8932F]',
-  franchise_owner: 'bg-[#D4AF37] text-[#B8932F]',
-  admin: 'bg-[#D4AF37] text-[#B8932F]',
+  manager: 'bg-[#D4AF37] text-black',
+  franchise_owner: 'bg-[#D4AF37] text-black',
+  admin: 'bg-[#D4AF37] text-black',
   executive: 'bg-red-100 text-red-700',
 };
 
@@ -106,7 +106,7 @@ const STATUS_COLOR: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800',
   approved: 'bg-green-100 text-green-800',
   rejected: 'bg-red-100 text-red-800',
-  executed: 'bg-[#D4AF37] text-[#B8932F]',
+  executed: 'bg-[#D4AF37] text-black',
 };
 
 function ils(cents: number | null | undefined) {

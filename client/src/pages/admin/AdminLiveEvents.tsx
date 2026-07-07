@@ -197,7 +197,7 @@ export default function AdminLiveEvents() {
               size="sm"
               onClick={fireTestEvents}
               disabled={firing}
-              className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
+              className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black"
             >
               <FlaskConical className="h-3.5 w-3.5 mr-1.5" />
               {firing ? 'Firing…' : 'Fire test events'}

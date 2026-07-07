@@ -113,12 +113,12 @@ const stageLabels: Record<string, { en: string; he: string }> = {
 };
 
 const stageColors: Record<string, string> = {
-  application_submitted: 'bg-[#D4AF37] text-[#B8932F]',
+  application_submitted: 'bg-[#D4AF37] text-black',
   documents_pending: 'bg-yellow-100 text-yellow-700',
-  documents_under_review: 'bg-[#D4AF37] text-[#B8932F]',
-  background_check_pending: 'bg-[#D4AF37] text-[#B8932F]',
+  documents_under_review: 'bg-[#D4AF37] text-black',
+  background_check_pending: 'bg-[#D4AF37] text-black',
   background_check_complete: 'bg-teal-100 text-teal-700',
-  admin_final_review: 'bg-[#D4AF37] text-[#B8932F]',
+  admin_final_review: 'bg-[#D4AF37] text-black',
   approved: 'bg-green-100 text-green-700',
   rejected: 'bg-red-100 text-red-700',
   withdrawn: 'bg-white text-gray-700',
@@ -663,7 +663,7 @@ export default function ProviderReview() {
                             <Badge className={
                               check.resultStatus === 'clear' ? 'bg-green-100 text-green-700' :
                               check.resultStatus === 'flagged' ? 'bg-red-100 text-red-700' :
-                              check.status === 'in_progress' ? 'bg-[#D4AF37] text-[#B8932F]' :
+                              check.status === 'in_progress' ? 'bg-[#D4AF37] text-black' :
                               'bg-yellow-100 text-yellow-700'
                             }>
                               {check.resultStatus || check.status}

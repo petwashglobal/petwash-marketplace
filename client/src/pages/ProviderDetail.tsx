@@ -125,7 +125,7 @@ export default function ProviderDetail() {
     if (provider.kind === 'walker') {
       if (provider.bodyCamera) {
         badges.push(
-          <Badge key="bodycam" variant="secondary" className="bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]" data-testid="badge-body-camera">
+          <Badge key="bodycam" variant="secondary" className="bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]" data-testid="badge-body-camera">
             <Video className="w-4 h-4 mr-1" />
             {isHebrew ? 'מצלמת גוף' : 'Body Camera'}
           </Badge>
@@ -133,7 +133,7 @@ export default function ProviderDetail() {
       }
       if (provider.droneAccess) {
         badges.push(
-          <Badge key="drone" variant="secondary" className="bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]" data-testid="badge-drone">
+          <Badge key="drone" variant="secondary" className="bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]" data-testid="badge-drone">
             <Plane className="w-4 h-4 mr-1" />
             {isHebrew ? 'גישה לרחפן' : 'Drone Access'}
           </Badge>

@@ -477,7 +477,7 @@ export default function PersonalInbox() {
                             );
                           })()}
                           {selectedMessage.messageType !== 'general' && (
-                            <span className="text-xs px-2 py-1 rounded-lg bg-[#D4AF37] text-[#B8932F]">
+                            <span className="text-xs px-2 py-1 rounded-lg bg-[#D4AF37] text-black">
                               {selectedMessage.messageType}
                             </span>
                           )}

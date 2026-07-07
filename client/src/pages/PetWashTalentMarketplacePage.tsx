@@ -64,7 +64,7 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     fullName: "PetTrek Transport",
     tagLine: "On-demand pet rides with live tracking.",
     accent: "border-[#D4AF37] text-[#D4AF37]",
-    chipColor: "bg-[#D4AF37] text-[#B8932F]",
+    chipColor: "bg-[#D4AF37] text-black",
     description:
       "Safe drivers and vehicles for vet visits, washes, airport trips and longer journeys.",
   },
@@ -74,7 +74,7 @@ const PLATFORM_CONFIG: PlatformConfig[] = [
     fullName: "⁦Pet Wash™⁩ Hub Operators",
     tagLine: "Operators of premium natural wash hubs.",
     accent: "border-[#D4AF37] text-[#D4AF37]",
-    chipColor: "bg-[#D4AF37] text-[#B8932F]",
+    chipColor: "bg-[#D4AF37] text-black",
     description:
       "Local hub operators who run ⁦Pet Wash™⁩ stations with strict hygiene, maintenance and guest service standards.",
   },

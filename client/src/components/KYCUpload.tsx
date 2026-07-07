@@ -263,7 +263,7 @@ export function KYCUpload({ language }: KYCUploadProps) {
                 dir={isHe ? 'rtl' : 'ltr'}
                 data-testid={`doc-type-${dt.id}`}
               >
-                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${docType === dt.id ? 'bg-[#D4AF37] text-[#B8932F]' : 'bg-white text-gray-500'}`}>
+                <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${docType === dt.id ? 'bg-[#D4AF37] text-black' : 'bg-white text-gray-500'}`}>
                   {dt.icon}
                 </div>
                 <div className="flex-1">

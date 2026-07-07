@@ -84,7 +84,7 @@ export default function AdminBayMap() {
           </div>
           <div className="flex items-center gap-2">
             {summary && (
-              <Badge className={cn("text-xs", summary.anyFault ? "bg-red-100 text-red-800" : summary.allReady ? "bg-emerald-100 text-emerald-800" : "bg-[#D4AF37] text-[#B8932F]")}>
+              <Badge className={cn("text-xs", summary.anyFault ? "bg-red-100 text-red-800" : summary.allReady ? "bg-emerald-100 text-emerald-800" : "bg-[#D4AF37] text-black")}>
                 {summary.anyFault ? "תקלה פעילה" : summary.allReady ? "כל העמדות מוכנות" : "פעיל"}
               </Badge>
             )}

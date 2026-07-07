@@ -20,11 +20,11 @@ const CMD_LABELS: Record<string, string> = {
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: any }> = {
   pending:      { label: "ממתין",     color: "bg-white text-gray-700",    icon: Clock },
-  sent:         { label: "נשלח",      color: "bg-[#D4AF37] text-[#B8932F]",    icon: Zap },
+  sent:         { label: "נשלח",      color: "bg-[#D4AF37] text-black",    icon: Zap },
   acknowledged: { label: "אושר",      color: "bg-emerald-100 text-emerald-700", icon: CheckCircle2 },
   completed:    { label: "הושלם",     color: "bg-emerald-100 text-emerald-800", icon: CheckCircle2 },
   failed:       { label: "נכשל",      color: "bg-red-100 text-red-700",      icon: XCircle },
-  expired:      { label: "פג תוקף",   color: "bg-[#D4AF37] text-[#B8932F]", icon: Clock },
+  expired:      { label: "פג תוקף",   color: "bg-[#D4AF37] text-black", icon: Clock },
 };
 
 function RelTime({ ts }: { ts: string | null }) {

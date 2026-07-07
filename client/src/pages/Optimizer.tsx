@@ -28,7 +28,7 @@ function pretty(value: unknown) {
 function statusClass(status: Proposal['status']) {
   switch (status) {
     case 'proposed': return 'bg-amber-100 text-amber-800 border-amber-200';
-    case 'accepted': return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+    case 'accepted': return 'bg-[#D4AF37] text-black border-[#D4AF37]';
     case 'rejected': return 'bg-red-100 text-red-800 border-red-200';
     case 'promoted': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
     default:         return 'bg-white text-slate-800 border-slate-200';

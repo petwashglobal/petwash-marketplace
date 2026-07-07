@@ -65,9 +65,9 @@ function ServiceGlyph({ svc, size, label }: { svc: { emoji: string; iconKey?: st
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   pending: { label: 'Awaiting Groomer', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
-  accepted: { label: 'Confirmed', color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]' },
+  accepted: { label: 'Confirmed', color: 'bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]' },
   confirmed: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-300' },
-  in_progress: { label: '✂️ Grooming Now', color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F]/30 dark:text-[#D4AF37]' },
+  in_progress: { label: '✂️ Grooming Now', color: 'bg-[#D4AF37] text-black dark:bg-[#B8932F]/30 dark:text-[#D4AF37]' },
   completed: { label: 'Done', color: 'bg-white text-gray-700 dark:bg-white/40 dark:text-black' },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-300' },
 };

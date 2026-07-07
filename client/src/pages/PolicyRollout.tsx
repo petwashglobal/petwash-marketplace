@@ -78,10 +78,10 @@ const STATUS_CFG: Record<string, { color: string; icon: React.ReactNode; label: 
   draft:       { color: 'text-gray-700 bg-white border-gray-300',       icon: <Clock className="w-3 h-3" />,        label: 'Draft' },
   active:      { color: 'text-emerald-700 bg-emerald-50 border-emerald-200', icon: <CheckCircle2 className="w-3 h-3" />, label: 'Active' },
   archived:    { color: 'text-gray-500 bg-white border-gray-200',         icon: <Layers className="w-3 h-3" />,       label: 'Archived' },
-  planned:     { color: 'text-[#B8932F] bg-[#D4AF37] border-[#D4AF37]',         icon: <Clock className="w-3 h-3" />,        label: 'Planned' },
+  planned:     { color: 'text-black bg-[#D4AF37] border-[#D4AF37]',         icon: <Clock className="w-3 h-3" />,        label: 'Planned' },
   paused:      { color: 'text-amber-700 bg-amber-50 border-amber-200',      icon: <Minus className="w-3 h-3" />,        label: 'Paused' },
   rolled_back: { color: 'text-red-700 bg-red-50 border-red-200',            icon: <RotateCcw className="w-3 h-3" />,    label: 'Rolled back' },
-  completed:   { color: 'text-[#B8932F] bg-[#D4AF37] border-[#D4AF37]',   icon: <CheckCircle2 className="w-3 h-3" />, label: 'Completed' },
+  completed:   { color: 'text-black bg-[#D4AF37] border-[#D4AF37]',   icon: <CheckCircle2 className="w-3 h-3" />, label: 'Completed' },
 };
 
 const SCOPE_LABELS: Record<string, string> = {

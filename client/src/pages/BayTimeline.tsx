@@ -67,7 +67,7 @@ export default function BayTimeline() {
         </Link>
         <h1 className="text-xl font-bold flex-1">פיד עמדה — {bayId}</h1>
         <Link href="/admin/compensation">
-          <Button variant="outline" size="sm" className="gap-1 text-xs border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]">
+          <Button variant="outline" size="sm" className="gap-1 text-xs border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black">
             <AlertTriangle className="h-3.5 w-3.5" />
             פיצויים
           </Button>
@@ -155,7 +155,7 @@ export default function BayTimeline() {
                         )}
                         {isUrgent && (
                           <Link href="/admin/compensation">
-                            <Badge className="text-[10px] bg-[#D4AF37] text-[#B8932F] cursor-pointer underline">
+                            <Badge className="text-[10px] bg-[#D4AF37] text-black cursor-pointer underline">
                               דרוש פיצוי ›
                             </Badge>
                           </Link>

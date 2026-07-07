@@ -707,7 +707,7 @@ export default function Pets() {
                     {/* Health Journal toggle */}
                     <button
                       onClick={() => setExpandedHealthPet(expandedHealthPet === pet.id ? null : pet.id)}
-                      className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-[#B8932F] hover:bg-[#D4AF37] transition-colors border-t border-slate-100 rounded-b-xl"
+                      className="w-full flex items-center justify-between px-4 py-2.5 text-xs font-semibold text-[#B8932F] hover:bg-[#D4AF37] hover:text-black transition-colors border-t border-slate-100 rounded-b-xl"
                     >
                       <span className="flex items-center gap-1.5">
                         <Stethoscope className="w-3.5 h-3.5" />

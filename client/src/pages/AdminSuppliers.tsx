@@ -53,9 +53,9 @@ function OsekBadge({ value }: { value: Osek }) {
     value === "unknown"
       ? "bg-amber-100 text-amber-800"
       : value === "patur"
-      ? "bg-[#D4AF37] text-[#B8932F]"
+      ? "bg-[#D4AF37] text-black"
       : value === "chevra"
-      ? "bg-[#D4AF37] text-[#B8932F]"
+      ? "bg-[#D4AF37] text-black"
       : "bg-emerald-100 text-emerald-800";
   return <Badge className={cn("text-[10px] font-medium", cls)}>{OSEK_LABEL_HE[value]}</Badge>;
 }

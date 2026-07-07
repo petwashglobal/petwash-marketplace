@@ -436,7 +436,7 @@ export default function K9000Redeem() {
             <div className="space-y-5 luxury-animate-slide-up">
 
               <div className="text-center">
-                <div className="inline-flex items-center gap-2 bg-[#D4AF37] text-[#B8932F] rounded-full px-4 py-2 text-sm font-medium mb-4">
+                <div className="inline-flex items-center gap-2 bg-[#D4AF37] text-black rounded-full px-4 py-2 text-sm font-medium mb-4">
                   <Smartphone className="w-4 h-4" />
                   {isHebrew ? 'הצג את הקוד לסורק בתחנה' : 'Show this QR to the K9000 scanner'}
                 </div>

@@ -196,7 +196,7 @@ export function AddressPicker({
         type="button"
         onClick={handleCurrentLocation}
         disabled={geoLoading}
-        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-[#D4AF37] bg-[#D4AF37]/60 text-[#B8932F] text-sm font-medium hover:bg-[#D4AF37] active:bg-[#D4AF37] transition-colors"
+        className="w-full flex items-center gap-3 px-4 py-3 rounded-xl border border-[#D4AF37] bg-[#D4AF37]/60 text-black text-sm font-medium hover:bg-[#D4AF37] active:bg-[#D4AF37] transition-colors"
       >
         {geoLoading ? (
           <Loader2 className="w-4 h-4 shrink-0 animate-spin" />

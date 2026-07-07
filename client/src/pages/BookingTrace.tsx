@@ -114,8 +114,8 @@ const dtShort = (s: string | null) => s ? new Date(s).toLocaleDateString('he-IL'
 function bookingStatusBadge(status: string) {
   const map: Record<string, string> = {
     completed:   'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200',
-    confirmed:   'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
-    in_progress: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+    confirmed:   'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
+    in_progress: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
     cancelled:   'bg-white text-gray-700 dark:bg-white dark:text-black',
     disputed:    'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
     draft:       'bg-white text-gray-600 dark:bg-white dark:text-gray-400',
@@ -137,7 +137,7 @@ function settlementBadge(status: string) {
 
 function disputeBadge(status: string) {
   if (status === 'open')         return <Badge className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 border-0 text-xs"><ShieldAlert className="h-3 w-3 mr-1" />Open</Badge>;
-  if (status === 'under_review') return <Badge className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs"><Clock className="h-3 w-3 mr-1" />Under Review</Badge>;
+  if (status === 'under_review') return <Badge className="bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs"><Clock className="h-3 w-3 mr-1" />Under Review</Badge>;
   if (status === 'resolved')     return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border-0 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Resolved</Badge>;
   if (status === 'rejected')     return <Badge className="bg-white text-gray-700 border-0 text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
   if (status === 'closed')       return <Badge className="bg-white text-gray-600 border-0 text-xs">Closed</Badge>;
@@ -146,9 +146,9 @@ function disputeBadge(status: string) {
 }
 
 function nextActionBadge(owner: string) {
-  if (owner === 'platform')          return <Badge className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Platform action needed</Badge>;
-  if (owner === 'system')            return <Badge className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Awaiting system</Badge>;
-  if (owner === 'franchise_owner')   return <Badge className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Owner action needed</Badge>;
+  if (owner === 'platform')          return <Badge className="bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Platform action needed</Badge>;
+  if (owner === 'system')            return <Badge className="bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Awaiting system</Badge>;
+  if (owner === 'franchise_owner')   return <Badge className="bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37] border-0 text-xs">Owner action needed</Badge>;
   return <Badge className="bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200 border-0 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Complete</Badge>;
 }
 
@@ -373,7 +373,7 @@ export default function BookingTrace() {
                 <Banknote className="h-4 w-4 text-gray-400" />
                 Settlement Split
                 {settlement.hasReconciliationMismatch && (
-                  <Badge className="bg-[#D4AF37] text-[#B8932F] border-0 text-xs ml-auto">
+                  <Badge className="bg-[#D4AF37] text-black border-0 text-xs ml-auto">
                     <TriangleAlert className="h-3 w-3 mr-1" />Mismatch
                   </Badge>
                 )}

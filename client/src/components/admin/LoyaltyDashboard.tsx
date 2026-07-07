@@ -63,9 +63,9 @@ const getTierIcon = (tier: string) => {
 const getTierColor = (tier: string) => {
   switch (tier.toLowerCase()) {
     case 'diamond':
-      return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+      return 'bg-[#D4AF37] text-black border-[#D4AF37]';
     case 'platinum':
-      return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+      return 'bg-[#D4AF37] text-black border-[#D4AF37]';
     case 'gold':
       return 'bg-yellow-100 text-yellow-800 border-yellow-200';
     case 'silver':

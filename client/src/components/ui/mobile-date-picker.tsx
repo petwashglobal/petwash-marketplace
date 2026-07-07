@@ -205,7 +205,7 @@ export function QuickDateButtons({ onSelect }: { onSelect: (date: Date) => void 
           key={label}
           type="button"
           onClick={() => onSelect(date)}
-          className="px-4 py-2 min-h-[44px] rounded-lg border-2 border-[#D4AF37] bg-[#D4AF37] text-[#B8932F] font-medium hover:bg-[#D4AF37] active:scale-95 transition-all"
+          className="px-4 py-2 min-h-[44px] rounded-lg border-2 border-[#D4AF37] bg-[#D4AF37] text-black font-medium hover:bg-[#D4AF37] active:scale-95 transition-all"
           data-testid={`button-quick-date-${label.toLowerCase()}`}
         >
           {label}

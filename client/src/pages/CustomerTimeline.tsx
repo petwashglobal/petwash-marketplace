@@ -34,8 +34,8 @@ const BOOKING_STATUS_LABELS: Record<string, string> = {
 
 const BOOKING_STATUS_COLOR: Record<string, string> = {
   completed:   "bg-green-100 text-green-800",
-  in_progress: "bg-[#D4AF37] text-[#B8932F]",
-  confirmed:   "bg-[#D4AF37] text-[#B8932F]",
+  in_progress: "bg-[#D4AF37] text-black",
+  confirmed:   "bg-[#D4AF37] text-black",
   pending:     "bg-yellow-100 text-yellow-800",
   cancelled:   "bg-white text-gray-600",
   declined:    "bg-white text-gray-600",

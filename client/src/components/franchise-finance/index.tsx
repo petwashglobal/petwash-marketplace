@@ -468,7 +468,7 @@ interface PayoutCycleListProps {
 
 const CYCLE_STATUS_CONFIG: Record<CycleStatus, { label: string; className: string; icon: React.ReactNode }> = {
   pending:     { label: 'Pending',            className: 'border-yellow-400 text-yellow-700 bg-yellow-50 dark:bg-yellow-950 dark:text-yellow-300',  icon: <Clock className="h-3 w-3 mr-1" /> },
-  in_progress: { label: 'In Progress',        className: 'border-[#D4AF37] text-[#B8932F] bg-[#D4AF37] dark:bg-[#B8932F] dark:text-[#D4AF37]',             icon: <Wrench className="h-3 w-3 mr-1" /> },
+  in_progress: { label: 'In Progress',        className: 'border-[#D4AF37] text-black bg-[#D4AF37] dark:bg-[#B8932F] dark:text-[#D4AF37]',             icon: <Wrench className="h-3 w-3 mr-1" /> },
   completed:   { label: 'Completed',          className: 'border-green-400 text-green-700 bg-green-50 dark:bg-green-950 dark:text-green-300',         icon: <CheckCircle2 className="h-3 w-3 mr-1" /> },
   internal:    { label: 'Internal Settlement', className: 'border-gray-300 text-gray-600 bg-white dark:bg-white dark:text-gray-400',             icon: <CalendarCheck className="h-3 w-3 mr-1" /> },
 };

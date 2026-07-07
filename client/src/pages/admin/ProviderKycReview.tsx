@@ -398,7 +398,7 @@ export default function ProviderKycReview() {
           )}
 
           {isPendingResubmission && (
-            <Badge variant="outline" className="border-[#D4AF37] text-[#B8932F] bg-[#D4AF37]">
+            <Badge variant="outline" className="border-[#D4AF37] text-black bg-[#D4AF37]">
               RESUBMISSION PENDING
             </Badge>
           )}
@@ -438,7 +438,7 @@ export default function ProviderKycReview() {
             <MessageSquare className="h-4 w-4" />
             Messages
             {messages.length > 0 && (
-              <span className="ml-1 bg-[#D4AF37] text-[#B8932F] rounded-full text-xs px-1.5">{messages.length}</span>
+              <span className="ml-1 bg-[#D4AF37] text-black rounded-full text-xs px-1.5">{messages.length}</span>
             )}
           </TabsTrigger>
           <TabsTrigger value="audit" className="flex items-center gap-1.5">
@@ -707,7 +707,7 @@ export default function ProviderKycReview() {
                       <Clock className="h-4 w-4 shrink-0" />
                       Waiting for applicant to upload updated documents.
                     </div>
-                    <Button size="sm" variant="outline" className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
+                    <Button size="sm" variant="outline" className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black"
                       onClick={() => setShowResubmitPanel(true)}>
                       Request again
                     </Button>
@@ -810,7 +810,7 @@ export default function ProviderKycReview() {
                         {canResubmit && (
                           <Button
                             variant="outline"
-                            className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
+                            className="border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black"
                             onClick={() => setShowResubmitPanel(true)}
                           >
                             <RefreshCw className="h-4 w-4 mr-2" />

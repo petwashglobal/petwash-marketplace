@@ -154,9 +154,9 @@ export default function K9000Documents() {
       case 'k9000_invoice':
         return 'bg-green-50 text-green-700 border-green-200';
       case 'k9000_technical':
-        return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+        return 'bg-[#D4AF37] text-black border-[#D4AF37]';
       case 'k9000_manual':
-        return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+        return 'bg-[#D4AF37] text-black border-[#D4AF37]';
       case 'k9000_contract':
         return 'bg-white text-[#B8932F] border-[#D4AF37]';
       default:

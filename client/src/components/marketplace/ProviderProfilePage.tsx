@@ -393,7 +393,7 @@ export function ProviderProfilePage(props: ProviderProfileProps) {
                 {stats?.repeatClientCount !== null && (stats?.repeatClientCount ?? 0) > 0 && (
                   <>
                     <div className="h-4 w-px bg-white" />
-                    <div className="flex items-center gap-1.5 px-3 py-1 bg-[#D4AF37] text-[#B8932F] rounded-full text-xs font-semibold border border-[#D4AF37]">
+                    <div className="flex items-center gap-1.5 px-3 py-1 bg-[#D4AF37] text-black rounded-full text-xs font-semibold border border-[#D4AF37]">
                       <Users className="w-3 h-3" />
                       {stats!.repeatClientCount} {isHebrew ? 'לקוחות חוזרים' : 'repeat clients'}
                     </div>

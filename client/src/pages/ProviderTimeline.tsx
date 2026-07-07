@@ -13,8 +13,8 @@ import { cn } from "@/lib/utils";
 
 const STATUS_CONFIG: Record<string, { color: string; label: string; icon: any }> = {
   completed:   { color: "bg-green-100 text-green-800",  label: "הושלם",    icon: CheckCircle2 },
-  in_progress: { color: "bg-[#D4AF37] text-[#B8932F]",    label: "בתהליך",   icon: Clock },
-  confirmed:   { color: "bg-[#D4AF37] text-[#B8932F]",    label: "מאושר",    icon: Clock },
+  in_progress: { color: "bg-[#D4AF37] text-black",    label: "בתהליך",   icon: Clock },
+  confirmed:   { color: "bg-[#D4AF37] text-black",    label: "מאושר",    icon: Clock },
   pending:     { color: "bg-yellow-100 text-yellow-800",label: "ממתין",    icon: Clock },
   cancelled:   { color: "bg-white text-gray-600",    label: "בוטל",     icon: XCircle },
   declined:    { color: "bg-white text-gray-600",    label: "נדחה",     icon: XCircle },
