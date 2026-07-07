@@ -144,7 +144,9 @@ export default function AddPetPassport() {
                 className="relative h-28 w-28 rounded-full overflow-hidden flex items-center justify-center bg-[#EEF3EC] border-2"
                 style={{ borderColor: GOLD }}
               >
-                {photoPreview ? (
+                {photoPreview.startsWith('blob:') ? (
+                  // Render only our own local object-URL preview (blob:) — never an
+                  // arbitrary string — so a tainted value can't reach the img src.
                   <img src={photoPreview} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <span className="text-5xl">{species.emoji}</span>
