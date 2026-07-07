@@ -1513,12 +1513,16 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE }}:${{ github.sha }}
           secrets_update_strategy: overwrite
-          # --min-instances=0 (was 1): a no-traffic canary must NOT reserve always-on
-          # CPU, or it trips the me-west1 "total allowable CPU" quota alongside the live
-          # revision (deploy failed with: Quota exceeded for total allowable CPU).
-          # TRADE-OFF: promotion is `update-traffic --to-latest` (does not reset
-          # min-instances) so production runs min=0 → occasional cold starts. RESTORE to
-          # --min-instances=1 once the me-west1 Cloud Run CPU quota is raised.
+          # --min-instances=1 (restored 2026-07-07): keeps one warm instance so real
+          # users — and the every-15-min uptime health-check — never hit a cold start
+          # (/api/health was timing out at 15s on cold boot and false-paging).
+          # The old min=0 was a stopgap for a me-west1 "total allowable CPU" quota that
+          # has since been raised massively: verified effectiveLimit=200000 for
+          # run.googleapis.com/cpu_allocation in me-west1 (2026-07-07), vs our peak of
+          # max-instances(4) × 2 vCPU = 8 vCPU. The brief 2-revision deploy overlap
+          # (~4 vCPU) is trivially within quota, so canary min=1 no longer trips it.
+          # Cost of one always-on 2 vCPU / 2Gi instance is bounded and predictable;
+          # max-instances=4 still hard-caps the runaway blast radius.
           #
           # --max-instances=4 (was 20): COST BLAST-RADIUS CAP. 2026-06-30 a flood of
           # requests (via an unrestricted Maps API key, since deleted) auto-scaled this
@@ -1543,7 +1547,7 @@ jobs:
           flags: |
             --cpu=2
             --memory=2Gi
-            --min-instances=0
+            --min-instances=1
             --max-instances=4
             --timeout=600
             --port=8080
