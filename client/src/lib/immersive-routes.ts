@@ -106,6 +106,13 @@ export const IMMERSIVE_ROUTES: readonly string[] = [
   // it here suppresses the GLOBAL MobileBottomNav so the two don't double-stack.
   '/provider-os',
 
+  // ── Pet Passport (the CEO 2026-07-07 design) ──────────────────────────
+  // The Pet Passport renders its OWN bottom nav (Home·Pets·Health·Documents·
+  // Alerts, per the mockup). Suppress the global nav + floating widgets here so
+  // only the passport's designed nav shows and nothing overlaps it. Covers
+  // /pet-passport and /pet-passport/add (prefix match).
+  '/pet-passport',
+
   // ── Loyalty / Prestige join flows ─────────────────────────────────────
   '/prestige-club',
   '/prestige-pass',
