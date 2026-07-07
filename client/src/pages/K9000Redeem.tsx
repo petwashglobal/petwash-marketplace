@@ -76,6 +76,7 @@ export default function K9000Redeem() {
   const [redemption, setRedemption] = useState<RedemptionResult | null>(null);
   const [qrDataUrl, setQrDataUrl] = useState<string>('');
   const [secondsLeft, setSecondsLeft] = useState(45);
+  const [qrTtlSeconds, setQrTtlSeconds] = useState(45); // must be declared before the rotate effect that reads it
   const [isGenerating, setIsGenerating] = useState(false);
   const [isCancelling, setIsCancelling] = useState(false);
   const [error, setError] = useState('');
@@ -100,7 +101,18 @@ export default function K9000Redeem() {
     queryKey: ['/api/credit-wallet/summary'],
   });
 
-  const wallet = walletData?.wallet;
+  // Never crash the redeem screen when the wallet fails/loads/empties: default every
+  // field to 0 so the UI shows zeros instead of throwing on wallet.<field>.
+  const wallet: WalletSummary = walletData?.wallet ?? {
+    walletId: '',
+    egiftBalanceCents: 0,
+    washPackageCredits: 0,
+    loyaltyPointsBalance: 0,
+    promoBalanceCents: 0,
+    referralBalanceCents: 0,
+    totalCreditsValueCents: 0,
+    loyaltyTier: '',
+  };
 
   const { data: statusData } = useQuery<{ success: boolean; status: string }>({
     queryKey: ['/api/credit-wallet/redemptions', redemption?.sessionId, 'status'],
@@ -172,8 +184,6 @@ export default function K9000Redeem() {
         return { deducted: 0, cashDue: WASH_PRICE_CENTS };
     }
   };
-
-  const [qrTtlSeconds, setQrTtlSeconds] = useState(45);
 
   const handleGenerate = async (opts?: { silent?: boolean }) => {
     if (!selectedOption) return;
