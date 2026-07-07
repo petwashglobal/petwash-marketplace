@@ -51,6 +51,10 @@ export default function AddPetPassport() {
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
 
+  // Only ever feed the preview <img> our own object URL (blob:) — captured into a
+  // definite local and scheme-guarded so no arbitrary string can reach the src.
+  const previewSrc = photoPreview.startsWith('blob:') ? photoPreview : '';
+
   function pickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
@@ -144,10 +148,10 @@ export default function AddPetPassport() {
                 className="relative h-28 w-28 rounded-full overflow-hidden flex items-center justify-center bg-[#EEF3EC] border-2"
                 style={{ borderColor: GOLD }}
               >
-                {photoPreview.startsWith('blob:') ? (
-                  // Render only our own local object-URL preview (blob:) — never an
-                  // arbitrary string — so a tainted value can't reach the img src.
-                  <img src={photoPreview} alt="" className="h-full w-full object-cover" />
+                {previewSrc ? (
+                  // previewSrc is a definite local guarded to the blob: scheme (our own
+                  // object URL) — the img src can never receive an arbitrary string.
+                  <img src={previewSrc} alt="" className="h-full w-full object-cover" />
                 ) : (
                   <span className="text-5xl">{species.emoji}</span>
                 )}
