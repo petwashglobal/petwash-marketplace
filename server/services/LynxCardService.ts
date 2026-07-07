@@ -27,6 +27,8 @@ import { logger } from '../lib/logger';
 const CARD_TYPE_PREPAID = 33;
 const PHYSICAL_TYPE_QR = 943237560;      // "QR Code" physical type
 const DEFAULT_CURRENCY_ID = 1;           // ILS in the Nayax lookups (override via env)
+const ISRAEL_COUNTRY_ID = 376;           // ISO 3166 numeric for Israel; CardHolderDetails.CountryID
+                                         // is MANDATORY on the Lynx v2 create-card endpoint.
 
 function cfg() {
   return {
@@ -123,6 +125,7 @@ export async function mintWashCard(p: MintWashCardParams, opts?: { adminTest?: b
     },
     CardHolderDetails: {
       CardHolderName: p.holderName || 'PetWash Member',
+      CountryID: ISRAEL_COUNTRY_ID,                 // MANDATORY on v2; omitting it fails the mint
       MemberTypeID: 801,
     },
     CardCreditAttributes: {
