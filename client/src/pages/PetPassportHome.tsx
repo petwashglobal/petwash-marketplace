@@ -36,7 +36,8 @@ interface Pet {
   name: string;
   species: Species;
   breed?: string | null;
-  birthdate?: string | null;
+  birthday?: string | null;   // server field is `birthday` (YYYY-MM-DD)
+  birthdate?: string | null;  // legacy alias — read as fallback
   gender?: 'MALE' | 'FEMALE' | 'UNKNOWN' | string | null;
   photoUrl?: string | null;
 }
@@ -173,7 +174,7 @@ export default function PetPassportHome() {
                   {hero.breed || speciesLabel(hero.species)}
                 </div>
                 <div className="mt-0.5 text-[15px] text-white/80" dir={isHe ? 'rtl' : 'ltr'}>
-                  {[ageText(hero.birthdate, isHe), genderText(hero.gender, isHe)].filter(Boolean).join(' • ')}
+                  {[ageText(hero.birthday ?? hero.birthdate, isHe), genderText(hero.gender, isHe)].filter(Boolean).join(' • ')}
                 </div>
               </div>
               <button
@@ -191,7 +192,7 @@ export default function PetPassportHome() {
                 {tr('עדיין אין חיות מחמד', 'No pets yet')}
               </div>
               <button
-                onClick={() => navigate('/pets')}
+                onClick={() => navigate('/pet-passport/add')}
                 className="mt-2 rounded-full bg-white/15 px-4 py-1.5 text-sm font-semibold text-white"
               >
                 {tr('הוסף חיית מחמד', 'Add a pet')}
@@ -235,7 +236,7 @@ export default function PetPassportHome() {
           ))}
           {/* Add pet */}
           <button
-            onClick={() => navigate('/pets')}
+            onClick={() => navigate('/pet-passport/add')}
             className="flex min-h-[118px] w-[92px] shrink-0 flex-col items-center justify-center gap-1 rounded-2xl border border-dashed border-[#B8B8B8]"
           >
             <Plus className="h-8 w-8" style={{ color: GREEN }} />
