@@ -15,7 +15,7 @@ import { useLocation } from 'wouter';
 import { useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
-import { ArrowRight, ArrowLeft, Camera, Loader2 } from 'lucide-react';
+import { ArrowRight, ArrowLeft, Camera, Loader2, Check } from 'lucide-react';
 
 const GREEN = '#063B22';
 const GOLD = '#D6B56D';
@@ -46,22 +46,18 @@ export default function AddPetPassport() {
   const [birthday, setBirthday] = useState('');
   const [gender, setGender] = useState<'male' | 'female' | 'unknown'>('unknown');
   const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string>('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const fileRef = useRef<HTMLInputElement>(null);
-
-  // Only ever feed the preview <img> our own object URL (blob:) — captured into a
-  // definite local and scheme-guarded so no arbitrary string can reach the src.
-  const previewSrc = photoPreview.startsWith('blob:') ? photoPreview : '';
 
   function pickPhoto(e: React.ChangeEvent<HTMLInputElement>) {
     const f = e.target.files?.[0];
     if (!f) return;
     if (f.size > 5 * 1024 * 1024) { setError(tr('התמונה גדולה מדי (עד 5MB)', 'Photo too large (max 5MB)')); return; }
     setError('');
+    // Keep only the File for upload; we don't render a local blob thumbnail — the
+    // real photo is shown from the server URL on the passport after save.
     setPhotoFile(f);
-    setPhotoPreview(URL.createObjectURL(f));
   }
 
   async function save() {
@@ -148,15 +144,14 @@ export default function AddPetPassport() {
                 className="relative h-28 w-28 rounded-full overflow-hidden flex items-center justify-center bg-[#EEF3EC] border-2"
                 style={{ borderColor: GOLD }}
               >
-                {previewSrc ? (
-                  // previewSrc is a definite local guarded to the blob: scheme (our own
-                  // object URL) — the img src can never receive an arbitrary string.
-                  <img src={previewSrc} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  <span className="text-5xl">{species.emoji}</span>
+                <span className="text-5xl">{species.emoji}</span>
+                {photoFile && (
+                  <span className="absolute top-1 right-1 flex h-6 w-6 items-center justify-center rounded-full bg-[#063B22] text-white">
+                    <Check className="h-4 w-4" />
+                  </span>
                 )}
                 <span className="absolute bottom-0 inset-x-0 flex items-center justify-center gap-1 bg-black/45 py-1 text-[11px] font-semibold text-white">
-                  <Camera className="h-3.5 w-3.5" /> {tr('תמונה', 'Photo')}
+                  <Camera className="h-3.5 w-3.5" /> {photoFile ? tr('תמונה נבחרה', 'Photo added') : tr('תמונה', 'Photo')}
                 </span>
               </button>
               <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={pickPhoto} />
