@@ -209,6 +209,7 @@ const MyWallet = lazy(() => import("@/pages/MyWallet"));
 const PrestigePassWallet = lazy(() => import("@/pages/PrestigePassWallet"));
 const PrestigeHome = lazy(() => import("@/pages/PrestigeHome"));
 const PetPassportHome = lazy(() => import("@/pages/PetPassportHome"));
+const AddPetPassport = lazy(() => import("@/pages/AddPetPassport"));
 const StaffScan = lazy(() => import("@/pages/staff/StaffScan"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
@@ -1082,6 +1083,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <PetPassportHome />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/pet-passport/add">
+          {() => (
+            <RequireAuth>
+              <AddPetPassport />
             </RequireAuth>
           )}
         </Route>
