@@ -318,7 +318,7 @@ export default function AdminSystemConfig() {
 
             return (
               <div key={key} className="flex items-start gap-4 p-4 bg-white">
-                <div className="mt-0.5 p-2 rounded-lg bg-[#D4AF37] text-[#D4AF37]">
+                <div className="mt-0.5 p-2 rounded-lg bg-[#D4AF37] text-black">
                   <Icon className="w-4 h-4" />
                 </div>
                 <div className="flex-1 min-w-0">
