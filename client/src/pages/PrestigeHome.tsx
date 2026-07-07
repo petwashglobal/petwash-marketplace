@@ -193,7 +193,7 @@ export default function PrestigeHome() {
           <div className="flex items-center justify-between">
             <div className="w-20" />
             <div className="flex flex-col items-center">
-              <PetWashLogo size={28} priority />
+              <PetWashLogo size={44} priority />
               <span className="text-[9px] tracking-[0.3em] text-[#9a8a5c] mt-0.5">PRESTIGE</span>
             </div>
             <div className="w-20 flex items-center justify-end gap-3">
