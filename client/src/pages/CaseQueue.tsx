@@ -184,7 +184,7 @@ function dtShort(s: string | null): string {
 function SeverityBadge({ s }: { s: Severity }) {
   const styles = {
     critical: 'bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-200',
-    high:     'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+    high:     'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
     medium:   'bg-yellow-100 text-yellow-800 dark:bg-yellow-950 dark:text-yellow-200',
     low:      'bg-white text-gray-600 dark:bg-white dark:text-gray-400',
   };
@@ -232,8 +232,8 @@ function AssignedBadge({ uid, isMe }: { uid: string; isMe: boolean }) {
     <Badge className={cn(
       'border-0 text-xs font-mono flex items-center gap-1 max-w-[100px]',
       isMe
-        ? 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]'
-        : 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]'
+        ? 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]'
+        : 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]'
     )}>
       <User className="h-2.5 w-2.5 flex-shrink-0" />
       <span className="truncate">{isMe ? 'Me' : shortUid(uid)}</span>
@@ -500,7 +500,7 @@ function RowAssignControls({ caseType, caseRefId, assignedToUid, currentUid, onM
       <Button
         size="sm"
         variant="ghost"
-        className="h-6 text-xs gap-1 text-[#B8932F] hover:text-[#B8932F] hover:bg-[#D4AF37] dark:text-[#D4AF37] px-2"
+        className="h-6 text-xs gap-1 text-[#B8932F] hover:text-[#B8932F] hover:bg-[#D4AF37] hover:text-black dark:text-[#D4AF37] px-2"
         disabled={isPending}
         onClick={e => { e.stopPropagation(); assignMe.mutate(); }}
       >
@@ -530,7 +530,7 @@ function RowAssignControls({ caseType, caseRefId, assignedToUid, currentUid, onM
     <Button
       size="sm"
       variant="ghost"
-      className="h-6 text-xs gap-1 text-[#B8932F] hover:text-[#B8932F] hover:bg-[#D4AF37] px-2"
+      className="h-6 text-xs gap-1 text-[#B8932F] hover:text-[#B8932F] hover:bg-[#D4AF37] hover:text-black px-2"
       disabled={isPending}
       onClick={e => { e.stopPropagation(); assignMe.mutate(); }}
       title={`Currently: ${assignedToUid}`}
@@ -546,7 +546,7 @@ function RowAssignControls({ caseType, caseRefId, assignedToUid, currentUid, onM
 function CaseTypeBadge({ type }: { type: string }) {
   const styles = {
     dispute:  'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300',
-    mismatch: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+    mismatch: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
     refund:   'bg-yellow-100 text-yellow-700 dark:bg-yellow-950 dark:text-yellow-300',
   }[type] ?? 'bg-white text-gray-600';
   return <Badge className={cn('border-0 text-xs capitalize', styles)}>{type}</Badge>;
@@ -581,7 +581,7 @@ function ReopenButton({ bookingId, onDone }: { bookingId: string; onDone: () => 
     return (
       <Button
         size="sm" variant="ghost"
-        className="h-6 text-xs gap-1 px-2 text-[#B8932F] hover:bg-[#D4AF37]"
+        className="h-6 text-xs gap-1 px-2 text-[#B8932F] hover:bg-[#D4AF37] hover:text-black"
         onClick={e => { e.stopPropagation(); setOpen(true); }}
       >
         <RotateCcw className="h-3 w-3" />Reopen
@@ -830,8 +830,8 @@ function EscalatedTab({ cases, isLoading, currentUid }: {
                       <Badge className={cn(
                         'border-0 text-xs font-mono',
                         c.escalatedToUid === currentUid
-                          ? 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]'
-                          : 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]'
+                          ? 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]'
+                          : 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]'
                       )}>
                         {c.escalatedToUid === currentUid ? 'Me' : c.escalatedToUid === 'platform_admin' ? 'Admin' : c.escalatedToUid.slice(0, 8) + '…'}
                       </Badge>
@@ -841,7 +841,7 @@ function EscalatedTab({ cases, isLoading, currentUid }: {
                   </TableCell>
                   <TableCell className="py-3">
                     {c.assignedToUid ? (
-                      <Badge className="border-0 text-xs font-mono bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]">
+                      <Badge className="border-0 text-xs font-mono bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]">
                         {c.assignedToUid === currentUid ? 'Me' : c.assignedToUid.slice(0, 8) + '…'}
                       </Badge>
                     ) : (
@@ -1062,8 +1062,8 @@ export default function CaseQueue() {
                 className={cn(
                   'h-6 text-xs gap-1 px-2',
                   isExpanded
-                    ? 'text-[#B8932F] bg-[#D4AF37] dark:bg-[#B8932F]'
-                    : 'text-gray-500 hover:text-[#B8932F] hover:bg-[#D4AF37]'
+                    ? 'text-black bg-[#D4AF37] dark:bg-[#B8932F]'
+                    : 'text-gray-500 hover:text-[#B8932F] hover:bg-[#D4AF37] hover:text-black'
                 )}
                 onClick={e => { e.stopPropagation(); toggleNotes(c.caseId); }}
               >
@@ -1106,7 +1106,7 @@ export default function CaseQueue() {
     return (
       <TableCell className="py-3 space-y-0.5">
         {assignee.assignedTeamId != null && (
-          <Badge className="border-0 text-xs flex items-center gap-1 bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] max-w-[110px]">
+          <Badge className="border-0 text-xs flex items-center gap-1 bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37] max-w-[110px]">
             <Building2 className="h-2.5 w-2.5 flex-shrink-0" />
             <span className="truncate">{assignee.teamName ?? `Team ${assignee.assignedTeamId}`}</span>
           </Badge>
@@ -1291,7 +1291,7 @@ export default function CaseQueue() {
                           <Badge className={cn(
                             'border-0 text-xs capitalize',
                             c.status === 'open'         ? 'bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300' :
-                            c.status === 'under_review' ? 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]' :
+                            c.status === 'under_review' ? 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]' :
                             'bg-white text-gray-600'
                           )}>
                             {c.status.replace(/_/g, ' ')}
@@ -1487,7 +1487,7 @@ export default function CaseQueue() {
                           <Badge className={cn(
                             'border-0 text-xs capitalize',
                             c.refundStatus === 'pending'    ? 'bg-yellow-100 text-yellow-700' :
-                            c.refundStatus === 'processing' ? 'bg-[#D4AF37] text-[#B8932F]' :
+                            c.refundStatus === 'processing' ? 'bg-[#D4AF37] text-black' :
                             'bg-white text-gray-600'
                           )}>
                             {c.refundStatus}

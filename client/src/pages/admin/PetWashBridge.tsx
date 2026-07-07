@@ -132,9 +132,9 @@ const SIGNUP_ACTION_LABEL: Record<string, string> = {
   SIGNUP_FAILED: 'Failed',
 };
 const SIGNUP_ACTION_TONE: Record<string, string> = {
-  SIGNUP_OTP_SENT: 'bg-[#D4AF37] text-[#B8932F]',
+  SIGNUP_OTP_SENT: 'bg-[#D4AF37] text-black',
   SIGNUP_AUTH_VERIFIED: 'bg-emerald-100 text-emerald-700',
-  SIGNUP_SESSION_CREATED: 'bg-[#D4AF37] text-[#B8932F]',
+  SIGNUP_SESSION_CREATED: 'bg-[#D4AF37] text-black',
   SIGNUP_FAILED: 'bg-rose-100 text-rose-700',
 };
 
@@ -214,7 +214,7 @@ const PLACEHOLDER_PANELS: Array<{ key: keyof BridgeSummary; icon: ReactNode; tit
 
 const STATUS_TONE: Record<string, string> = {
   pending: 'bg-amber-50 text-amber-700',
-  under_review: 'bg-[#D4AF37] text-[#B8932F]',
+  under_review: 'bg-[#D4AF37] text-black',
   approved: 'bg-emerald-50 text-emerald-700',
   rejected: 'bg-rose-50 text-rose-700',
   on_hold: 'bg-gray-100 text-gray-600',

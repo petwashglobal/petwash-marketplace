@@ -69,7 +69,7 @@ export function SmartReceiptViewer() {
       case 'silver':
         return 'bg-white text-gray-800 border-gray-200';
       default:
-        return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+        return 'bg-[#D4AF37] text-black border-[#D4AF37]';
     }
   };
 

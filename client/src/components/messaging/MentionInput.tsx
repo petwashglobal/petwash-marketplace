@@ -133,12 +133,12 @@ export function MentionInput({ value, onChange, placeholder, disabled, className
                 data-testid={`mention-suggestion-${suggestion.id}`}
                 className={`w-full text-left px-3 py-2 rounded text-sm transition-colors ${
                   index === selectedIndex
-                    ? 'bg-[#D4AF37] text-[#B8932F]'
+                    ? 'bg-[#D4AF37] text-black'
                     : 'hover:bg-white'
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold px-2 py-0.5 bg-[#D4AF37] text-[#B8932F] rounded">
+                  <span className="text-xs font-semibold px-2 py-0.5 bg-[#D4AF37] text-black rounded">
                     @{suggestion.id}
                   </span>
                   <span className="text-gray-600">{suggestion.display}</span>

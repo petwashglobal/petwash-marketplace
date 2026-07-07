@@ -202,7 +202,7 @@ export function BookingRequestModal({
                   {provider.photo ? (
                     <img src={provider.photo} alt={provider.name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-[#D4AF37] text-[#B8932F] text-xl font-bold">
+                    <div className="w-full h-full flex items-center justify-center bg-[#D4AF37] text-black text-xl font-bold">
                       {provider.name.charAt(0)}
                     </div>
                   )}

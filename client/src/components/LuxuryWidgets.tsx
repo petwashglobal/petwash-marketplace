@@ -187,7 +187,7 @@ export const StatusBadge = ({
     active: 'bg-green-100 text-green-700 dark:bg-white dark:text-green-300',
     pending: 'bg-yellow-100 text-yellow-700 dark:bg-white dark:text-yellow-300',
     inactive: 'bg-white text-gray-700 dark:bg-white/30 dark:text-black',
-    verified: 'bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]',
+    verified: 'bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]',
   };
 
   return (

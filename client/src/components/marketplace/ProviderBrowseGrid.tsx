@@ -464,7 +464,7 @@ export function ProviderBrowseGrid({
                 </span>
               )}
               {filters.backgroundCheckOnly && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#D4AF37] text-[#B8932F] rounded-full text-xs font-medium border border-[#D4AF37]">
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#D4AF37] text-black rounded-full text-xs font-medium border border-[#D4AF37]">
                   🛡️ {isHebrew ? 'בדיקת רקע' : 'Background check'}
                   <button onClick={() => updateFilter('backgroundCheckOnly', false)} className="ml-1 text-[#D4AF37] hover:text-[#B8932F]">×</button>
                 </span>
@@ -476,7 +476,7 @@ export function ProviderBrowseGrid({
                 </span>
               )}
               {filters.noPetsAtHomeOnly && (
-                <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#D4AF37] text-[#B8932F] rounded-full text-xs font-medium border border-[#D4AF37]">
+                <span className="inline-flex items-center gap-1 px-3 py-1 bg-[#D4AF37] text-black rounded-full text-xs font-medium border border-[#D4AF37]">
                   🐾 {isHebrew ? 'ללא חיות בית' : 'No other pets'}
                   <button onClick={() => updateFilter('noPetsAtHomeOnly', false)} className="ml-1 text-[#D4AF37] hover:text-[#B8932F]">×</button>
                 </span>
@@ -676,7 +676,7 @@ export function ProviderBrowseGrid({
                           )}
                           {/* Repeat clients — only when repeatClientCount is real and > 0 */}
                           {provider.repeatClientCount !== null && provider.repeatClientCount > 0 && (
-                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#D4AF37] text-[#B8932F] rounded-full text-[10px] font-semibold border border-[#D4AF37]">
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#D4AF37] text-black rounded-full text-[10px] font-semibold border border-[#D4AF37]">
                               <CheckCircle className="w-2.5 h-2.5" />
                               {provider.repeatClientCount} {isHebrew ? 'לקוחות חוזרים' : 'repeat clients'}
                             </span>

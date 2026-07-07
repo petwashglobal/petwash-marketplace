@@ -68,7 +68,7 @@ export function IntelligenceBadge({
             <TooltipTrigger asChild>
               <span
                 className={cn(
-                  'inline-flex items-center gap-1 rounded-full font-medium bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]',
+                  'inline-flex items-center gap-1 rounded-full font-medium bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]',
                   isSmall ? 'text-xs px-2 py-0.5' : 'text-sm px-2.5 py-1',
                 )}
               >

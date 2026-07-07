@@ -64,7 +64,7 @@ interface MarketplaceBooking {
 
 const PAYOUT_BADGE: Record<string, { label: string; className: string }> = {
   pending:   { label: "Payout Pending",  className: "bg-yellow-100 text-yellow-800 border-yellow-200" },
-  released:  { label: "Payout Released", className: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]" },
+  released:  { label: "Payout Released", className: "bg-[#D4AF37] text-black border-[#D4AF37]" },
   paid_out:  { label: "Paid Out",        className: "bg-green-100 text-green-800 border-green-200" },
   failed:    { label: "Payout Failed",   className: "bg-red-100 text-red-800 border-red-200" },
 };
@@ -252,7 +252,7 @@ export default function ProviderTaskInbox() {
               Needs Your Decision
             </h2>
             {totalPending > 0 && (
-              <span className="ml-auto bg-[#D4AF37] text-[#B8932F] text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="ml-auto bg-[#D4AF37] text-black text-xs font-bold px-2 py-0.5 rounded-full">
                 {totalPending}
               </span>
             )}
@@ -408,7 +408,7 @@ export default function ProviderTaskInbox() {
               Marketplace Bookings
             </h2>
             {mktBookings.length > 0 && (
-              <span className="ml-auto bg-[#D4AF37] text-[#B8932F] text-xs font-bold px-2 py-0.5 rounded-full">
+              <span className="ml-auto bg-[#D4AF37] text-black text-xs font-bold px-2 py-0.5 rounded-full">
                 {mktBookings.length}
               </span>
             )}
@@ -458,7 +458,7 @@ export default function ProviderTaskInbox() {
                     {b.addons.map((addon) => (
                       <span
                         key={addon.code}
-                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37] dark:bg-white dark:text-[#D4AF37] dark:border-[#B8932F]"
+                        className="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full bg-[#D4AF37] text-black border border-[#D4AF37] dark:bg-white dark:text-[#D4AF37] dark:border-[#B8932F]"
                       >
                         {addon.labelEn}
                         <span className="text-[#D4AF37]">

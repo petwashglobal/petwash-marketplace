@@ -72,7 +72,7 @@ export default function AdminCompensation() {
           </div>
           <div className="flex items-center gap-2">
             {!isLoading && (
-              <Badge className={cn("text-xs", pending.length > 0 ? "bg-[#D4AF37] text-[#B8932F]" : "bg-emerald-100 text-emerald-800")}>
+              <Badge className={cn("text-xs", pending.length > 0 ? "bg-[#D4AF37] text-black" : "bg-emerald-100 text-emerald-800")}>
                 {pending.length > 0 ? `${pending.length} ממתינים` : "הכל תקין"}
               </Badge>
             )}
@@ -109,7 +109,7 @@ export default function AdminCompensation() {
                   <div className="flex items-start justify-between gap-4">
                     <div className="flex-1 min-w-0 space-y-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <Badge className="bg-[#D4AF37] text-[#B8932F] text-[10px]">
+                        <Badge className="bg-[#D4AF37] text-black text-[10px]">
                           <AlertTriangle className="h-2.5 w-2.5 mr-1" />
                           פיצוי נדרש
                         </Badge>
@@ -176,7 +176,7 @@ export default function AdminCompensation() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="text-xs gap-1.5 border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]"
+                          className="text-xs gap-1.5 border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black"
                           onClick={() => setConfirming(item.sessionId)}
                         >
                           <Wallet className="h-3 w-3" />

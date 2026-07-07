@@ -1117,7 +1117,7 @@ const LocationDashboardPanel: React.FC = () => {
                 <div className={`h-8 w-8 rounded-full flex items-center justify-center text-sm font-semibold shrink-0 ${
                   loc.role === 'provider'
                     ? 'bg-emerald-100 text-emerald-700'
-                    : 'bg-[#D4AF37] text-[#B8932F]'
+                    : 'bg-[#D4AF37] text-black'
                 }`}>
                   {loc.role === 'provider' ? '🐾' : '👤'}
                 </div>
@@ -1127,10 +1127,10 @@ const LocationDashboardPanel: React.FC = () => {
                     <span className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${
                       loc.role === 'provider'
                         ? 'bg-emerald-100 text-emerald-600'
-                        : 'bg-[#D4AF37] text-[#B8932F]'
+                        : 'bg-[#D4AF37] text-black'
                     }`}>{loc.role}</span>
                     {loc.source === 'device_gps' && (
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] font-medium">GPS</span>
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-black font-medium">GPS</span>
                     )}
                   </div>
                   <div className="text-xs text-slate-400 mt-0.5">

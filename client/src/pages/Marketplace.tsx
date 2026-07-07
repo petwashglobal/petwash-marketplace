@@ -56,12 +56,12 @@ import type { MarketplaceSearchFilters, MarketplacePlatformId } from '@shared/sc
 type TierFilter = 'prestige' | 'gold' | 'silver' | 'bronze' | undefined;
 
 const TIER_CONFIG = {
-  prestige: { label: 'Prestige', icon: Crown, color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
+  prestige: { label: 'Prestige', icon: Crown, color: 'bg-[#D4AF37] text-black border-[#D4AF37]' },
   gold: { label: 'Gold', icon: Award, color: 'bg-yellow-100 text-yellow-700 border-yellow-300' },
   silver: { label: 'Silver', icon: Shield, color: 'bg-white text-gray-600 border-gray-300' },
-  bronze: { label: 'Bronze', icon: Zap, color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
+  bronze: { label: 'Bronze', icon: Zap, color: 'bg-[#D4AF37] text-black border-[#D4AF37]' },
   at_risk: { label: 'At Risk', icon: Zap, color: 'bg-red-100 text-red-700 border-red-300' },
-  new: { label: 'New', icon: TrendingUp, color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
+  new: { label: 'New', icon: TrendingUp, color: 'bg-[#D4AF37] text-black border-[#D4AF37]' },
 } as const;
 
 export default function Marketplace() {

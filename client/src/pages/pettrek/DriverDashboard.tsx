@@ -89,8 +89,8 @@ export default function DriverDashboard() {
   const getStatusBadge = (status: string) => {
     const variants: Record<string, { color: string; label: string }> = {
       pending: { color: 'bg-yellow-100 text-yellow-800 dark:bg-white dark:text-yellow-400', label: 'New Request' },
-      accepted: { color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]', label: 'Accepted' },
-      arrived: { color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]', label: 'Arrived' },
+      accepted: { color: 'bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]', label: 'Accepted' },
+      arrived: { color: 'bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]', label: 'Arrived' },
       in_progress: { color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-400', label: 'In Transit' },
       completed: { color: 'bg-white text-gray-800 dark:bg-white/20 dark:text-gray-400', label: 'Completed' },
       cancelled: { color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-400', label: 'Cancelled' },

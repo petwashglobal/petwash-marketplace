@@ -165,7 +165,7 @@ export function QueueHealthCard() {
               </div>
             )}
             {allDisarmed && (
-              <div className="flex items-start gap-2 text-xs bg-[#D4AF37] text-[#B8932F] rounded-xl px-3 py-2">
+              <div className="flex items-start gap-2 text-xs bg-[#D4AF37] text-black rounded-xl px-3 py-2">
                 <ShieldOff className="w-3.5 h-3.5 mt-0.5 shrink-0" />
                 <span>כל טריגרי ה-winback מושבתים (armed=false). הפעל לפחות אחד בלשונית הכללים.</span>
               </div>
@@ -238,7 +238,7 @@ export function QueueHealthCard() {
                 disabled={proofMut.isPending}
                 className={`text-[10px] px-2.5 py-1 rounded-full border transition-colors font-medium ${
                   activeScenario === s.id
-                    ? 'border-[#D4AF37] bg-[#D4AF37] text-[#B8932F]'
+                    ? 'border-[#D4AF37] bg-[#D4AF37] text-black'
                     : 'border-gray-200 text-gray-500 hover:border-[#D4AF37] hover:text-[#B8932F]'
                 }`}
               >

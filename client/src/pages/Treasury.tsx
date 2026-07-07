@@ -126,8 +126,8 @@ function ils(cents: number | string | null | undefined) {
 
 const STATUS_COLOR: Record<string, string> = {
   pending: 'bg-yellow-100 text-yellow-800 border-yellow-200',
-  approved: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',
-  submitted: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',
+  approved: 'bg-[#D4AF37] text-black border-[#D4AF37]',
+  submitted: 'bg-[#D4AF37] text-black border-[#D4AF37]',
   paid: 'bg-green-100 text-green-800 border-green-200',
   failed: 'bg-red-100 text-red-800 border-red-200',
   reconciled: 'bg-emerald-100 text-emerald-800 border-emerald-200',

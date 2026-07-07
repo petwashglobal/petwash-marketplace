@@ -108,8 +108,8 @@ function StatusBadge({ status }: { status: string }) {
     approved: { color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle },
     rejected: { color: "bg-red-100 text-red-800 border-red-200", icon: XCircle },
     active: { color: "bg-emerald-100 text-emerald-800 border-emerald-200", icon: CheckCircle },
-    interview: { color: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]", icon: AlertCircle },
-    review: { color: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]", icon: AlertCircle },
+    interview: { color: "bg-[#D4AF37] text-black border-[#D4AF37]", icon: AlertCircle },
+    review: { color: "bg-[#D4AF37] text-black border-[#D4AF37]", icon: AlertCircle },
   };
   const variant = variants[status?.toLowerCase()] || variants.pending;
   const Icon = variant.icon;
@@ -123,13 +123,13 @@ function StatusBadge({ status }: { status: string }) {
 
 function LoyaltyBadge({ tier }: { tier: string }) {
   const colors: Record<string, string> = {
-    bronze: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
+    bronze: "bg-[#D4AF37] text-black border-[#D4AF37]",
     silver: "bg-white text-gray-700 border-gray-200",
     gold: "bg-yellow-100 text-yellow-800 border-yellow-200",
     platinum: "bg-white text-slate-800 border-slate-200",
-    diamond: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
-    elite: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
-    royal: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
+    diamond: "bg-[#D4AF37] text-black border-[#D4AF37]",
+    elite: "bg-[#D4AF37] text-black border-[#D4AF37]",
+    royal: "bg-[#D4AF37] text-black border-[#D4AF37]",
   };
   return (
     <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium border ${colors[tier?.toLowerCase()] || colors.bronze}`}>

@@ -124,7 +124,7 @@ export default function ProviderFeedbackDashboard() {
               <BigStat
                 value={data?.stats?.reviewCount ?? 0}
                 label={isHebrew ? "ביקורות" : "Reviews"}
-                color="bg-[#D4AF37] text-[#B8932F] dark:bg-white dark:text-[#D4AF37]"
+                color="bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]"
               />
               <BigStat
                 value={data?.stats?.flaggedCount ?? 0}
@@ -196,7 +196,7 @@ export default function ProviderFeedbackDashboard() {
                             {review.isFlagged && (
                               <Badge
                                 variant="secondary"
-                                className="bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F]/30 dark:text-[#D4AF37] text-xs"
+                                className="bg-[#D4AF37] text-black dark:bg-[#B8932F]/30 dark:text-[#D4AF37] text-xs"
                               >
                                 <AlertTriangle className="w-3 h-3 mr-1" />
                                 {isHebrew ? "מסומן" : "Flagged"}

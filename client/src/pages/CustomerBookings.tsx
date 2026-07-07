@@ -608,7 +608,7 @@ function BookingCard({
                     )}
                     {booking.kind === 'walker' && (
                       <span
-                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]"
+                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-black border border-[#D4AF37]"
                         data-testid="badge-walker-source"
                       >
                         {isRTL ? 'הולך' : 'Walker'}
@@ -616,7 +616,7 @@ function BookingCard({
                     )}
                     {booking.kind === 'academy' && (
                       <span
-                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]"
+                        className="ml-1.5 inline-flex items-center text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-[#D4AF37] text-black border border-[#D4AF37]"
                         data-testid="badge-academy-source"
                       >
                         {isRTL ? 'אקדמיה' : 'Academy'}
@@ -662,7 +662,7 @@ function BookingCard({
               {/* Contextual chips */}
               {hasMeetGreet && (
                 <div className="flex items-center gap-1.5 mt-2 flex-wrap">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D4AF37] text-black border border-[#D4AF37]">
                     <HandshakeIcon size={9} />
                     {isRTL ? 'פגישת היכרות' : 'Meet & Greet'}
                     {booking.meetGreetDate && ` · ${formatDateShort(booking.meetGreetDate, locale)}`}
@@ -677,7 +677,7 @@ function BookingCard({
 
               {booking.status === 'disputed' && (
                 <div className="mt-2 flex items-center gap-1.5">
-                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-[#D4AF37] text-black border border-[#D4AF37]">
                     <AlertTriangle size={9} />
                     {isRTL ? 'תיק במחלוקת — בטיפול' : 'Dispute under review'}
                   </span>

@@ -373,7 +373,7 @@ export default function POSJobs({ activePlatform }: { activePlatform: Platform }
                       <button key={pm.id} type="button"
                         onClick={() => setFinishModal(m => m ? { ...m, paymentMethod: pm.id } : null)}
                         className={`flex flex-col items-center gap-1 p-2.5 rounded-xl border-2 text-xs font-medium transition-all ${
-                          selected ? 'border-[#D4AF37] bg-[#D4AF37] text-[#B8932F]' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-white'
+                          selected ? 'border-[#D4AF37] bg-[#D4AF37] text-black' : 'border-gray-200 text-gray-600 hover:border-gray-300 hover:bg-white'
                         }`}>
                         <Icon className="w-4 h-4" />
                         <span>{pm.label}</span>

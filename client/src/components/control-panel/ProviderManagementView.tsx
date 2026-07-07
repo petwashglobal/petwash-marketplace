@@ -101,15 +101,15 @@ const statusStyles: Record<string, string> = {
   pending: "bg-yellow-100 text-yellow-800 border-yellow-200",
   approved: "bg-green-100 text-green-800 border-green-200",
   rejected: "bg-red-100 text-red-800 border-red-200",
-  on_hold: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
-  under_review: "bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]",
+  on_hold: "bg-[#D4AF37] text-black border-[#D4AF37]",
+  under_review: "bg-[#D4AF37] text-black border-[#D4AF37]",
   expired: "bg-white text-gray-800 border-gray-200",
 };
 
 const priorityStyles: Record<string, string> = {
   low: "bg-white text-gray-700",
-  normal: "bg-[#D4AF37] text-[#B8932F]",
-  high: "bg-[#D4AF37] text-[#B8932F]",
+  normal: "bg-[#D4AF37] text-black",
+  high: "bg-[#D4AF37] text-black",
   urgent: "bg-red-100 text-red-700 animate-pulse",
 };
 
@@ -527,7 +527,7 @@ export default function ProviderManagementView() {
                         data-testid={`expiring-check-${check.id}`}
                       >
                         <span className="font-medium">{check.providerId}</span>
-                        <Badge className="bg-[#D4AF37] text-[#B8932F]">
+                        <Badge className="bg-[#D4AF37] text-black">
                           {check.daysUntilExpiry} ימים נותרו
                         </Badge>
                       </div>

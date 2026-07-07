@@ -119,11 +119,11 @@ export default function LogisticsFleetView() {
 
   const getTypeBadge = (type: TaskType) => {
     const colors: Record<TaskType, string> = {
-      install: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
+      install: "bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]",
       service: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-      repair: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
-      inspection: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
-      relocation: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
+      repair: "bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]",
+      inspection: "bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]",
+      relocation: "bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]",
     };
     return (
       <Badge className={colors[type]} variant="outline">

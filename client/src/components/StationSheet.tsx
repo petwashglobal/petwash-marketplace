@@ -454,7 +454,7 @@ export function StationSheet({ stationId, open, onOpenChange }: StationSheetProp
               <span className="font-mono text-xs text-slate-700 font-semibold">{stationId}</span>
             </div>
             <div className="flex items-center gap-3 text-sm">
-              <span className="font-mono font-bold text-[#B8932F] bg-[#D4AF37] px-3 py-1 rounded-lg border border-[#D4AF37]">
+              <span className="font-mono font-bold text-black bg-[#D4AF37] px-3 py-1 rounded-lg border border-[#D4AF37]">
                 {stationData?.station?.serialNumber}
               </span>
               <span className="text-slate-600">•</span>

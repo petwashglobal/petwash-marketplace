@@ -90,7 +90,7 @@ const LEVEL_CONFIG = {
 
 const STATUS_CONFIG = {
   PENDING_SIGNUP: { label: "ממתין להרשמה", color: "bg-white text-gray-600", icon: Clock },
-  SIGNED_UP: { label: "נרשם", color: "bg-[#D4AF37] text-[#B8932F]", icon: Users },
+  SIGNED_UP: { label: "נרשם", color: "bg-[#D4AF37] text-black", icon: Users },
   WAITING_FIRST_PAYMENT: { label: "ממתין לתשלום", color: "bg-yellow-100 text-yellow-700", icon: Clock },
   COMPLETED: { label: "הושלם!", color: "bg-green-100 text-green-700", icon: Check },
   REJECTED: { label: "נדחה", color: "bg-red-100 text-red-600", icon: Clock },

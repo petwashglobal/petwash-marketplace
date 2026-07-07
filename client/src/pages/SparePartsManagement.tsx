@@ -161,11 +161,11 @@ export default function SparePartsManagement() {
       case 'pending':
         return <Badge variant="outline">{isHebrew ? 'ממתין' : 'Pending'}</Badge>;
       case 'approved':
-        return <Badge className="bg-[#D4AF37] text-[#B8932F]">{isHebrew ? 'אושר' : 'Approved'}</Badge>;
+        return <Badge className="bg-[#D4AF37] text-black">{isHebrew ? 'אושר' : 'Approved'}</Badge>;
       case 'ordered':
-        return <Badge className="bg-[#D4AF37] text-[#B8932F]">{isHebrew ? 'הוזמן' : 'Ordered'}</Badge>;
+        return <Badge className="bg-[#D4AF37] text-black">{isHebrew ? 'הוזמן' : 'Ordered'}</Badge>;
       case 'shipped':
-        return <Badge className="bg-[#D4AF37] text-[#B8932F]">{isHebrew ? 'נשלח' : 'Shipped'}</Badge>;
+        return <Badge className="bg-[#D4AF37] text-black">{isHebrew ? 'נשלח' : 'Shipped'}</Badge>;
       case 'delivered':
         return <Badge className="bg-green-100 text-green-700">{isHebrew ? 'נמסר' : 'Delivered'}</Badge>;
       case 'cancelled':

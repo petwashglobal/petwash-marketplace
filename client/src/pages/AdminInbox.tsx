@@ -223,7 +223,7 @@ export default function AdminInbox() {
       case 'urgent':
         return 'bg-red-100 text-red-700 border-red-300';
       case 'high':
-        return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+        return 'bg-[#D4AF37] text-black border-[#D4AF37]';
       default:
         return 'luxury-badge';
     }

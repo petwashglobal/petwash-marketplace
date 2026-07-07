@@ -250,10 +250,10 @@ export default function CustomerManagement() {
   // Loyalty tier color mapping (7-TIER LUXURY SYSTEM: Bronze→Royal)
   const getLoyaltyTierColor = (tier: string) => {
     switch (tier) {
-      case 'royal': return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+      case 'royal': return 'bg-[#D4AF37] text-black border-[#D4AF37]';
       case 'emerald': return 'bg-emerald-100 text-emerald-800 border-emerald-300';
-      case 'diamond': return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
-      case 'platinum': return 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]';
+      case 'diamond': return 'bg-[#D4AF37] text-black border-[#D4AF37]';
+      case 'platinum': return 'bg-[#D4AF37] text-black border-[#D4AF37]';
       case 'gold': return 'bg-yellow-100 text-yellow-800 border-yellow-300';
       case 'silver': return 'bg-white text-gray-800 border-gray-300';
       case 'bronze': return 'bg-amber-100 text-amber-800 border-amber-300';
@@ -265,8 +265,8 @@ export default function CustomerManagement() {
   // Customer value calculation
   const getCustomerValueTier = (totalSpent: string) => {
     const spent = parseFloat(totalSpent);
-    if (spent >= 5000) return { tier: t('customers.value.vip', language), color: 'bg-[#D4AF37] text-[#B8932F]' };
-    if (spent >= 2000) return { tier: t('customers.value.highValue', language), color: 'bg-[#D4AF37] text-[#B8932F]' };
+    if (spent >= 5000) return { tier: t('customers.value.vip', language), color: 'bg-[#D4AF37] text-black' };
+    if (spent >= 2000) return { tier: t('customers.value.highValue', language), color: 'bg-[#D4AF37] text-black' };
     if (spent >= 500) return { tier: t('customers.value.regular', language), color: 'bg-green-100 text-green-800' };
     return { tier: t('customers.value.new', language), color: 'bg-white text-gray-800' };
   };

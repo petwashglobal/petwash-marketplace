@@ -142,12 +142,12 @@ export default function DocumentManagement() {
   const getDocumentTypeColor = (type: string): string => {
     const colors: Record<string, string> = {
       invoice: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200',
-      contract: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
-      agreement: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
-      specification: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+      contract: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
+      agreement: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
+      specification: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
       legal: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200',
-      trademark: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
-      certificate: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]',
+      trademark: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
+      certificate: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]',
     };
     return colors[type] || 'bg-white text-gray-800 dark:bg-white dark:text-black';
   };
@@ -286,7 +286,7 @@ export default function DocumentManagement() {
                   <div className="space-y-3">
                   <div className="flex flex-wrap gap-2">
                     <span className={`luxury-badge ${doc.documentType === 'invoice' ? 'bg-green-100 text-green-700' :
-                      doc.documentType === 'contract' ? 'bg-[#D4AF37] text-[#B8932F]' :
+                      doc.documentType === 'contract' ? 'bg-[#D4AF37] text-black' :
                       doc.documentType === 'legal' ? 'bg-red-100 text-red-700' :
                       'luxury-badge'}`}>
                       {doc.documentType}

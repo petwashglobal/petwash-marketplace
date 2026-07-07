@@ -2082,7 +2082,7 @@ export default function MyAccount() {
                             </code>
                             <Button
                               size="sm" variant="outline"
-                              className="rounded-xl border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] shrink-0"
+                              className="rounded-xl border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black shrink-0"
                               onClick={() => { navigator.clipboard.writeText(seasonalPromo.code!); toast({ title: isHebrew ? 'הקוד הועתק!' : 'Code copied!' }); }}
                             >
                               <Copy className="w-4 h-4" />
@@ -2104,7 +2104,7 @@ export default function MyAccount() {
                         <span className="text-sm font-semibold text-[#B8932F]">
                           {isHebrew ? `🎂 קוד הנחה ליום הולדת ${birthdayPromo.year}` : `🎂 ${birthdayPromo.year} Birthday Discount`}
                         </span>
-                        <Badge className="ml-auto bg-[#D4AF37] text-[#B8932F] border-0 text-xs">
+                        <Badge className="ml-auto bg-[#D4AF37] text-black border-0 text-xs">
                           {birthdayPromo.discountPercent}% {isHebrew ? 'הנחה' : 'off'}
                         </Badge>
                       </div>
@@ -2123,7 +2123,7 @@ export default function MyAccount() {
                             <Button
                               size="sm"
                               variant="outline"
-                              className="rounded-xl border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] shrink-0"
+                              className="rounded-xl border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black shrink-0"
                               onClick={() => handleCopyPromo(birthdayPromo.code)}
                             >
                               {promoCopied ? <CheckCircle2 className="w-4 h-4 text-green-500" /> : <Copy className="w-4 h-4" />}
@@ -2352,7 +2352,7 @@ export default function MyAccount() {
                                 type="button"
                                 variant="outline"
                                 size="sm"
-                                className="w-full border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] gap-2"
+                                className="w-full border-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37] hover:text-black gap-2"
                                 onClick={() => {
                                   if (!navigator.geolocation) return;
                                   navigator.geolocation.getCurrentPosition(
@@ -2422,7 +2422,7 @@ export default function MyAccount() {
                         )}
                         {/* Temporary address badge */}
                         {(profile as any).addressIsTemporary && (profile as any).temporaryAddress && (
-                          <div className="flex items-center gap-1.5 mt-1 text-xs text-[#B8932F] bg-[#D4AF37] rounded-lg px-2 py-1 w-fit">
+                          <div className="flex items-center gap-1.5 mt-1 text-xs text-black bg-[#D4AF37] rounded-lg px-2 py-1 w-fit">
                             <MapPin className="w-3 h-3" />
                             <span>{isHebrew ? 'זמני: ' : 'Temp: '}{(profile as any).temporaryAddress}</span>
                           </div>
@@ -2518,9 +2518,9 @@ export default function MyAccount() {
                       };
                       const typeColors: Record<string, string> = {
                         receipt: 'bg-green-100 text-green-700',
-                        promo:   'bg-[#D4AF37] text-[#B8932F]',
+                        promo:   'bg-[#D4AF37] text-black',
                         system:  'bg-white text-gray-600',
-                        voucher: 'bg-[#D4AF37] text-[#B8932F]',
+                        voucher: 'bg-[#D4AF37] text-black',
                       };
                       return (
                         <div
@@ -3349,10 +3349,10 @@ export default function MyAccount() {
                     {recentLoginsData.events.map((ev: LoginSecurityEvent) => {
                       const flagLabel = (flags: string[]): { label: string; color: string } => {
                         if (flags.includes('HIGH_RISK_IP'))  return { label: isHebrew ? 'סיכון גבוה' : 'High Risk',     color: 'bg-red-100 text-red-700' };
-                        if (flags.includes('NEW_DEVICE'))    return { label: isHebrew ? 'מכשיר חדש' : 'New Device',    color: 'bg-[#D4AF37] text-[#B8932F]' };
+                        if (flags.includes('NEW_DEVICE'))    return { label: isHebrew ? 'מכשיר חדש' : 'New Device',    color: 'bg-[#D4AF37] text-black' };
                         if (flags.includes('NEW_BROWSER'))   return { label: isHebrew ? 'דפדפן חדש' : 'New Browser',   color: 'bg-amber-100 text-amber-700' };
                         if (flags.includes('NEW_COUNTRY') || flags.includes('NEW_CITY'))
-                          return { label: isHebrew ? 'מיקום חדש' : 'New Location', color: 'bg-[#D4AF37] text-[#B8932F]' };
+                          return { label: isHebrew ? 'מיקום חדש' : 'New Location', color: 'bg-[#D4AF37] text-black' };
                         return { label: isHebrew ? 'כניסה רגילה' : 'Normal Login', color: 'bg-green-100 text-green-700' };
                       };
                       const badge = flagLabel(ev.riskFlags || []);
@@ -3979,7 +3979,7 @@ export default function MyAccount() {
                                 </div>
                               </div>
                               {isToday ? (
-                                <span className="flex items-center gap-1 text-xs font-semibold text-[#B8932F] bg-[#D4AF37] rounded-full px-2 py-0.5">
+                                <span className="flex items-center gap-1 text-xs font-semibold text-black bg-[#D4AF37] rounded-full px-2 py-0.5">
                                   <PartyPopper className="w-3 h-3" />
                                   {isHebrew ? 'היום!' : 'Today!'}
                                 </span>
@@ -4101,7 +4101,7 @@ export default function MyAccount() {
                                 href={buildPetBirthdayCalendarUrl(pet.name, pet.birthday, '🐾')}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="flex items-center gap-1.5 text-[11px] font-semibold text-[#B8932F] bg-[#D4AF37] border border-[#D4AF37] rounded-lg px-2.5 py-1.5 hover:bg-[#D4AF37] transition-colors"
+                                className="flex items-center gap-1.5 text-[11px] font-semibold text-black bg-[#D4AF37] border border-[#D4AF37] rounded-lg px-2.5 py-1.5 hover:bg-[#D4AF37] transition-colors"
                                 title={isHebrew ? 'הוסף ליומן Google (חוזר שנתי)' : 'Add to Google Calendar (yearly)'}
                               >
                                 <CalendarCheck className="w-3.5 h-3.5" />
@@ -4743,7 +4743,7 @@ export default function MyAccount() {
                             </p>
                           </div>
                         </div>
-                        <span className="text-xs bg-[#D4AF37] text-[#B8932F] px-2 py-0.5 rounded-full font-medium">
+                        <span className="text-xs bg-[#D4AF37] text-black px-2 py-0.5 rounded-full font-medium">
                           {f.status === 'submitted' ? (isHebrew ? 'הוגש' : 'Submitted') : f.status}
                         </span>
                       </div>
@@ -4819,9 +4819,9 @@ export default function MyAccount() {
                         };
                         const typeColors: Record<string, string> = {
                           receipt: 'bg-green-100 text-green-700 border-green-200',
-                          promo:   'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',
+                          promo:   'bg-[#D4AF37] text-black border-[#D4AF37]',
                           system:  'bg-white text-gray-600 border-gray-200',
-                          voucher: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',
+                          voucher: 'bg-[#D4AF37] text-black border-[#D4AF37]',
                         };
 
                         return (
@@ -4923,9 +4923,9 @@ function ActivityHistorySection({ isHebrew, firebaseUser }: { isHebrew: boolean;
 
   const statusColor = (s: string) => {
     if (s === 'completed') return 'bg-green-100 text-green-800';
-    if (s === 'confirmed') return 'bg-[#D4AF37] text-[#B8932F]';
+    if (s === 'confirmed') return 'bg-[#D4AF37] text-black';
     if (s === 'cancelled') return 'bg-red-100 text-red-800';
-    if (s === 'disputed') return 'bg-[#D4AF37] text-[#B8932F]';
+    if (s === 'disputed') return 'bg-[#D4AF37] text-black';
     return 'bg-white text-gray-600';
   };
 
@@ -5034,7 +5034,7 @@ function DocumentVaultSection({ isHebrew, firebaseUser }: { isHebrew: boolean; f
                 </p>
               </div>
               {s.gcsPath && (
-                <span className="px-1.5 py-0.5 text-[9px] rounded bg-[#D4AF37] text-[#B8932F] font-medium flex-shrink-0">GCS</span>
+                <span className="px-1.5 py-0.5 text-[9px] rounded bg-[#D4AF37] text-black font-medium flex-shrink-0">GCS</span>
               )}
             </div>
           ))

@@ -21,10 +21,10 @@ const SOURCE_LABELS: Record<string, string> = {
 
 const STATUS_COLOR: Record<string, string> = {
   completed: "bg-green-100 text-green-800",
-  active:    "bg-[#D4AF37] text-[#B8932F]",
+  active:    "bg-[#D4AF37] text-black",
   cleanup:   "bg-yellow-100 text-yellow-800",
   pending:   "bg-white text-gray-700",
-  timed_out: "bg-[#D4AF37] text-[#B8932F]",
+  timed_out: "bg-[#D4AF37] text-black",
   aborted:   "bg-red-100 text-red-800",
   fault:     "bg-red-200 text-red-900",
 };

@@ -120,7 +120,7 @@ export default function FinanceSettlementsView() {
     const colors: Record<SettlementStatus, string> = {
       pending: "",
       approved: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-      paid: "bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]",
+      paid: "bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]",
     };
     return (
       <Badge variant={variants[status]} className={colors[status]}>

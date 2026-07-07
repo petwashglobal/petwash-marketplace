@@ -126,25 +126,25 @@ interface PolicyVersion {
 
 const TYPE_META: Record<string, { label: string; icon: React.ReactNode; color: string }> = {
   approval_threshold: { label: 'Approval', icon: <CheckCircle2 className="h-3.5 w-3.5" />, color: 'bg-green-100 text-green-700 dark:bg-green-950 dark:text-green-300' },
-  auto_routing:       { label: 'Routing',  icon: <Route className="h-3.5 w-3.5" />,       color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]' },
-  escalation_rule:    { label: 'Escalation', icon: <AlertTriangle className="h-3.5 w-3.5" />, color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]' },
-  playbook:           { label: 'Playbook', icon: <Zap className="h-3.5 w-3.5" />,         color: 'bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37]' },
+  auto_routing:       { label: 'Routing',  icon: <Route className="h-3.5 w-3.5" />,       color: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]' },
+  escalation_rule:    { label: 'Escalation', icon: <AlertTriangle className="h-3.5 w-3.5" />, color: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]' },
+  playbook:           { label: 'Playbook', icon: <Zap className="h-3.5 w-3.5" />,         color: 'bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]' },
 };
 
 const OUTCOME_META: Record<string, { label: string; color: string }> = {
   auto_approve:       { label: 'AUTO-APPROVED',      color: 'bg-green-100 text-green-700 border-green-200' },
   level_2_required:   { label: 'LEVEL-2 REQUIRED',   color: 'bg-red-100 text-red-700 border-red-200' },
   level_1_required:   { label: 'MANAGER REVIEW',     color: 'bg-yellow-100 text-yellow-700 border-yellow-200' },
-  actions_queued:     { label: 'ACTIONS QUEUED',      color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' },
+  actions_queued:     { label: 'ACTIONS QUEUED',      color: 'bg-[#D4AF37] text-black border-[#D4AF37]' },
   no_match:           { label: 'NO POLICIES MATCHED', color: 'bg-white text-gray-600 border-gray-200' },
 };
 
 const CHANGE_TYPE_META: Record<string, { label: string; color: string }> = {
   created:      { label: 'Created',      color: 'bg-green-100 text-green-700' },
-  updated:      { label: 'Updated',      color: 'bg-[#D4AF37] text-[#B8932F]' },
+  updated:      { label: 'Updated',      color: 'bg-[#D4AF37] text-black' },
   deactivated:  { label: 'Deactivated',  color: 'bg-red-100 text-red-700' },
   activated:    { label: 'Activated',    color: 'bg-green-100 text-green-700' },
-  rolled_back:  { label: 'Rolled Back',  color: 'bg-[#D4AF37] text-[#B8932F]' },
+  rolled_back:  { label: 'Rolled Back',  color: 'bg-[#D4AF37] text-black' },
 };
 
 function TypeBadge({ type }: { type: string }) {
@@ -469,7 +469,7 @@ function SimulateTab() {
                           <div className="text-xs font-medium text-gray-500 mt-2 mb-1">Actions</div>
                           <div className="flex flex-wrap gap-1">
                             {p.actions.map((a: any, i: number) => (
-                              <Badge key={i} className="border-0 bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">
+                              <Badge key={i} className="border-0 bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">
                                 {a.type}{a.level ? `:L${a.level}` : ''}{a.role ? `:${a.role}` : ''}
                               </Badge>
                             ))}
@@ -637,7 +637,7 @@ function TraceTab() {
                             <div className="text-xs font-medium text-gray-500 mb-1">Actions taken</div>
                             <div className="flex flex-wrap gap-1">
                               {step.actionsTaken.map((a, i) => (
-                                <Badge key={i} className="border-0 bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">{a}</Badge>
+                                <Badge key={i} className="border-0 bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">{a}</Badge>
                               ))}
                             </div>
                           </div>
@@ -751,7 +751,7 @@ function VersionsTab() {
                       <TableRow key={v.versionId} className={isCurrent ? 'bg-[#D4AF37]/50 dark:bg-[#B8932F]/10' : ''}>
                         <TableCell className="py-2.5 font-mono text-sm font-semibold">
                           v{v.versionNumber}
-                          {isCurrent && <Badge className="border-0 ml-1.5 text-xs bg-[#D4AF37] text-[#B8932F]">current</Badge>}
+                          {isCurrent && <Badge className="border-0 ml-1.5 text-xs bg-[#D4AF37] text-black">current</Badge>}
                         </TableCell>
                         <TableCell className="py-2.5">
                           <Badge className={cn('border-0 text-xs', meta.color)}>{meta.label}</Badge>
@@ -765,7 +765,7 @@ function VersionsTab() {
                           {!isCurrent && (
                             <Button
                               size="sm" variant="ghost"
-                              className="h-7 gap-1 text-xs text-[#B8932F] hover:bg-[#D4AF37] hover:text-[#B8932F]"
+                              className="h-7 gap-1 text-xs text-[#B8932F] hover:bg-[#D4AF37] hover:text-black hover:text-[#B8932F]"
                               onClick={() => setRollbackId({ versionId: v.versionId, versionNumber: v.versionNumber })}
                             >
                               <RotateCcw className="h-3 w-3" />Rollback
@@ -858,7 +858,7 @@ function ExecutionLog() {
                 <TableCell className="py-2.5">
                   <div className="flex flex-wrap gap-1">
                     {e.actionsTaken.map((a, i) => (
-                      <Badge key={i} className="border-0 bg-[#D4AF37] text-[#B8932F] dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">{a}</Badge>
+                      <Badge key={i} className="border-0 bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37] text-xs">{a}</Badge>
                     ))}
                   </div>
                 </TableCell>

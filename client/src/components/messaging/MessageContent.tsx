@@ -56,7 +56,7 @@ export function MessageContent({ content, className = "" }: MessageContentProps)
           <Link
             key={index}
             href={`/stations/${part.content}`}
-            className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#D4AF37] text-[#B8932F] rounded font-mono text-sm hover:bg-[#D4AF37] transition-colors"
+            className="inline-flex items-center gap-1 px-2 py-0.5 bg-[#D4AF37] text-black rounded font-mono text-sm hover:bg-[#D4AF37] transition-colors"
             data-testid={`link-station-${part.content}`}
           >
             <span className="text-xs">🏪</span>
@@ -81,7 +81,7 @@ export function MessageContent({ content, className = "" }: MessageContentProps)
         return (
           <span
             key={index}
-            className="inline-flex items-center px-2 py-0.5 bg-[#D4AF37] text-[#B8932F] rounded font-medium text-sm"
+            className="inline-flex items-center px-2 py-0.5 bg-[#D4AF37] text-black rounded font-medium text-sm"
             data-testid={`mention-${part.content}`}
           >
             @{part.content}

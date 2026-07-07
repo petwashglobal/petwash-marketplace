@@ -341,7 +341,7 @@ export default function AdminTeamInvitations({ language, onLanguageChange }: Adm
                               employee.status === 'active' 
                                 ? 'bg-green-100 text-green-700 hover:bg-green-200' 
                                 : employee.status === 'suspended'
-                                ? 'bg-[#D4AF37] text-[#B8932F] hover:bg-[#D4AF37]'
+                                ? 'bg-[#D4AF37] text-black hover:bg-[#D4AF37]'
                                 : 'bg-white text-gray-700 hover:bg-white'
                             }
                           >

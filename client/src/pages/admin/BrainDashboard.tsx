@@ -686,7 +686,7 @@ function ApprovalsList({ panel }: { panel: ApprovalsPanel }) {
                 </span>
               )}
               {app.biometricStatus === 'verified' && (
-                <span className="inline-block px-1.5 py-0.5 rounded bg-[#D4AF37] text-[#B8932F] text-[9px] border border-[#D4AF37]">
+                <span className="inline-block px-1.5 py-0.5 rounded bg-[#D4AF37] text-black text-[9px] border border-[#D4AF37]">
                   biometric
                 </span>
               )}
@@ -710,7 +710,7 @@ function ActivityList({ panel }: { panel: ActivityPanel }) {
             <span className={`inline-block px-1.5 py-0.5 rounded text-[9px] font-bold uppercase ${
               e.kind === 'payment'
                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-100'
-                : 'bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]'
+                : 'bg-[#D4AF37] text-black border border-[#D4AF37]'
             }`}>
               {e.kind}
             </span>

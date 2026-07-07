@@ -31,12 +31,12 @@ import {
 // ─── Tier config ──────────────────────────────────────────────────────────────
 
 const TIER_CONFIG = {
-  prestige: { label: 'Prestige', labelHe: 'Prestige', icon: Crown, color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
+  prestige: { label: 'Prestige', labelHe: 'Prestige', icon: Crown, color: 'bg-[#D4AF37] text-black border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
   gold:     { label: 'Gold',     labelHe: 'זהב',    icon: Award,  color: 'bg-yellow-100 text-yellow-700 border-yellow-300', barColor: 'bg-yellow-500' },
   silver:   { label: 'Silver',   labelHe: 'כסף',   icon: Shield, color: 'bg-white text-gray-600 border-gray-300',       barColor: 'bg-gray-400' },
-  bronze:   { label: 'Bronze',   labelHe: 'ארד',   icon: Zap,    color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
+  bronze:   { label: 'Bronze',   labelHe: 'ארד',   icon: Zap,    color: 'bg-[#D4AF37] text-black border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
   at_risk:  { label: 'At Risk',  labelHe: 'בסיכון',icon: AlertTriangle, color: 'bg-red-100 text-red-700 border-red-300',   barColor: 'bg-red-500' },
-  new:      { label: 'New',      labelHe: 'חדש',   icon: TrendingUp,    color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
+  new:      { label: 'New',      labelHe: 'חדש',   icon: TrendingUp,    color: 'bg-[#D4AF37] text-black border-[#D4AF37]', barColor: 'bg-[#D4AF37]' },
 } as const;
 
 type TierKey = keyof typeof TIER_CONFIG;
@@ -196,7 +196,7 @@ export default function ProviderRankingPanel() {
                     {isHebrew ? tierCfg.labelHe : tierCfg.label}
                   </span>
                   {data.isFlagged && (
-                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]">
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-[#D4AF37] text-black border border-[#D4AF37]">
                       <AlertTriangle className="w-3 h-3" />
                       {isHebrew ? 'בבדיקה' : 'Under Review'}
                     </span>

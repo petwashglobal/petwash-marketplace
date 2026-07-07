@@ -56,7 +56,7 @@ interface CaseListResponse {
 
 const STATUS_CFG = {
   open:        { label: 'Open',        color: 'bg-amber-100 text-amber-800 border-amber-300',    icon: <Clock className="w-3 h-3" /> },
-  in_progress: { label: 'In progress', color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',       icon: <ArrowUpRight className="w-3 h-3" /> },
+  in_progress: { label: 'In progress', color: 'bg-[#D4AF37] text-black border-[#D4AF37]',       icon: <ArrowUpRight className="w-3 h-3" /> },
   resolved:    { label: 'Resolved',    color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: <CheckCircle2 className="w-3 h-3" /> },
   escalated:   { label: 'Escalated',  color: 'bg-red-100 text-red-800 border-red-300',           icon: <XCircle className="w-3 h-3" /> },
 };
@@ -345,7 +345,7 @@ function CasesTable({ cases }: { cases: InterventionCase[] }) {
                 <TableCell className="text-xs text-muted-foreground font-mono">{c.id}</TableCell>
                 <TableCell>
                   <div className="font-medium text-sm">{c.entityName}</div>
-                  <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${c.entityType === 'station' ? 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' : c.entityType === 'network' ? 'bg-white text-slate-700 border-slate-200' : 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]'}`}>
+                  <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${c.entityType === 'station' ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : c.entityType === 'network' ? 'bg-white text-slate-700 border-slate-200' : 'bg-[#D4AF37] text-black border-[#D4AF37]'}`}>
                     {c.entityType}
                   </span>
                 </TableCell>

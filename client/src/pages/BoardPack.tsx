@@ -105,19 +105,19 @@ function ils(v: number | null | undefined) {
 
 const SIGNAL_CFG: Record<ExpansionSignal, { label: string; color: string; icon: React.ReactNode }> = {
   expand_now:            { label: 'Expand now',           color: 'bg-emerald-100 text-emerald-800 border-emerald-300', icon: <TrendingUp className="w-3 h-3" /> },
-  expand_carefully:      { label: 'Expand carefully',     color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',         icon: <TrendingUp className="w-3 h-3" /> },
+  expand_carefully:      { label: 'Expand carefully',     color: 'bg-[#D4AF37] text-black border-[#D4AF37]',         icon: <TrendingUp className="w-3 h-3" /> },
   fix_operations_first:  { label: 'Fix ops first',        color: 'bg-amber-100 text-amber-800 border-amber-300',      icon: <AlertTriangle className="w-3 h-3" /> },
-  freeze_capex:          { label: 'Freeze capex',         color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',   icon: <Minus className="w-3 h-3" /> },
-  review_franchise:      { label: 'Review franchise',     color: 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',   icon: <AlertTriangle className="w-3 h-3" /> },
+  freeze_capex:          { label: 'Freeze capex',         color: 'bg-[#D4AF37] text-black border-[#D4AF37]',   icon: <Minus className="w-3 h-3" /> },
+  review_franchise:      { label: 'Review franchise',     color: 'bg-[#D4AF37] text-black border-[#D4AF37]',   icon: <AlertTriangle className="w-3 h-3" /> },
   restructure:           { label: 'Restructure',          color: 'bg-red-100 text-red-800 border-red-300',            icon: <TrendingDown className="w-3 h-3" /> },
   maintain:              { label: 'Maintain',             color: 'bg-white text-gray-700 border-gray-300',         icon: <Minus className="w-3 h-3" /> },
 };
 
 const GRADE_CFG: Record<NetworkGrade, { color: string; label: string }> = {
   A: { color: 'text-emerald-700 bg-emerald-50 border-emerald-200', label: 'Excellent' },
-  B: { color: 'text-[#B8932F] bg-[#D4AF37] border-[#D4AF37]',         label: 'Good' },
+  B: { color: 'text-black bg-[#D4AF37] border-[#D4AF37]',         label: 'Good' },
   C: { color: 'text-amber-700 bg-amber-50 border-amber-200',      label: 'Acceptable' },
-  D: { color: 'text-[#B8932F] bg-[#D4AF37] border-[#D4AF37]',   label: 'Weak' },
+  D: { color: 'text-black bg-[#D4AF37] border-[#D4AF37]',   label: 'Weak' },
   E: { color: 'text-red-700 bg-red-50 border-red-200',            label: 'Critical' },
 };
 
@@ -299,7 +299,7 @@ function StationRanking({ stations }: { stations: ExpansionStationScore[] }) {
                 </div>
               </TableCell>
               <TableCell>
-                <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${s.ownershipType === 'company' ? 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]' : 'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]'}`}>
+                <span className={`text-xs px-1.5 py-0.5 rounded border font-medium ${s.ownershipType === 'company' ? 'bg-[#D4AF37] text-black border-[#D4AF37]' : 'bg-[#D4AF37] text-black border-[#D4AF37]'}`}>
                   {s.ownershipType === 'company' ? 'Company' : 'Franchise'}
                 </span>
               </TableCell>

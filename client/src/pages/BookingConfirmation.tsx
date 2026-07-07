@@ -932,10 +932,10 @@ export default function BookingConfirmation() {
                   <span className="text-gray-500 text-sm">{t.status}</span>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
                     confirmed || booking.status === 'reviewed' ? 'bg-emerald-100 text-emerald-700'
-                    : booking.status === 'completed'           ? 'bg-[#D4AF37] text-[#B8932F]'
+                    : booking.status === 'completed'           ? 'bg-[#D4AF37] text-black'
                     : booking.status === 'confirmed'           ? 'bg-green-100 text-green-700'
                     : booking.status === 'declined'            ? 'bg-red-100 text-red-700'
-                    : booking.status === 'cancelled'           ? 'bg-[#D4AF37] text-[#B8932F]'
+                    : booking.status === 'cancelled'           ? 'bg-[#D4AF37] text-black'
                     : 'bg-white text-gray-700'
                   }`}>
                     {confirmed ? t.confirmed : booking.status}

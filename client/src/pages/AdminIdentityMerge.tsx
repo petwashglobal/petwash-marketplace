@@ -117,7 +117,7 @@ export default function AdminIdentityMerge() {
                       className={cn(
                         "text-[10px] font-medium",
                         g.matchedOn === "email"
-                          ? "bg-[#D4AF37] text-[#B8932F]"
+                          ? "bg-[#D4AF37] text-black"
                           : "bg-emerald-100 text-emerald-800",
                       )}
                     >

@@ -131,7 +131,7 @@ export default function InventoryManagement() {
         );
       case 'critical':
         return (
-          <Badge className="bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]">
+          <Badge className="bg-[#D4AF37] text-black border-[#D4AF37]">
             <TrendingDown className="w-3 h-3 mr-1" />
             {isHebrew ? 'קריטי' : 'Critical'}
           </Badge>

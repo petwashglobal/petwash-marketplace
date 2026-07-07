@@ -78,10 +78,10 @@ function getStepIndex(status: string) {
 function StatusBadge({ status }: { status: string }) {
   const map: Record<string, { label: string; variant: 'default' | 'outline' | 'destructive' | 'secondary'; className?: string }> = {
     draft: { label: 'Draft', variant: 'secondary' },
-    submitted: { label: 'Submitted', variant: 'outline', className: 'border-[#D4AF37] text-[#B8932F] bg-[#D4AF37]' },
-    processing: { label: 'Processing', variant: 'outline', className: 'border-[#D4AF37] text-[#B8932F] bg-[#D4AF37]' },
+    submitted: { label: 'Submitted', variant: 'outline', className: 'border-[#D4AF37] text-black bg-[#D4AF37]' },
+    processing: { label: 'Processing', variant: 'outline', className: 'border-[#D4AF37] text-black bg-[#D4AF37]' },
     pending_review: { label: 'Under Review', variant: 'outline', className: 'border-amber-400 text-amber-700 bg-amber-50' },
-    pending_resubmission: { label: 'Resubmission Needed', variant: 'outline', className: 'border-[#D4AF37] text-[#B8932F] bg-[#D4AF37]' },
+    pending_resubmission: { label: 'Resubmission Needed', variant: 'outline', className: 'border-[#D4AF37] text-black bg-[#D4AF37]' },
     approved: { label: 'Approved', variant: 'default', className: 'bg-green-600 text-white' },
     rejected: { label: 'Rejected', variant: 'destructive' },
     withdrawn: { label: 'Withdrawn', variant: 'secondary' },
@@ -356,7 +356,7 @@ export default function ProviderApplicationStatus() {
                   </a>
                 </Button>
               ) : (
-                <div className="text-sm text-[#B8932F] bg-[#D4AF37] rounded p-3 flex items-start gap-2">
+                <div className="text-sm text-black bg-[#D4AF37] rounded p-3 flex items-start gap-2">
                   <Clock className="h-4 w-4 shrink-0 mt-0.5" />
                   <span>A secure upload link is being generated. You'll receive it by email shortly.</span>
                 </div>
@@ -430,7 +430,7 @@ export default function ProviderApplicationStatus() {
                 <MessageSquare className="h-4 w-4" />
                 Messages
                 {messages.length > 0 && (
-                  <span className="bg-[#D4AF37] text-[#B8932F] rounded-full text-xs px-1.5 font-normal">
+                  <span className="bg-[#D4AF37] text-black rounded-full text-xs px-1.5 font-normal">
                     {messages.length}
                   </span>
                 )}

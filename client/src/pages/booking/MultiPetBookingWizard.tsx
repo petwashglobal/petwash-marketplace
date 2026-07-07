@@ -1112,7 +1112,7 @@ function ConfirmStep({
               </div>
               <div className="flex items-center gap-1.5">
                 {pc.requiresMedication && (
-                  <span className="flex items-center gap-0.5 text-[10px] text-[#B8932F] bg-[#D4AF37] px-1.5 py-0.5 rounded-full">
+                  <span className="flex items-center gap-0.5 text-[10px] text-black bg-[#D4AF37] px-1.5 py-0.5 rounded-full">
                     <Pill className="w-2.5 h-2.5" /> תרופות
                   </span>
                 )}
@@ -1122,7 +1122,7 @@ function ConfirmStep({
                   </span>
                 )}
                 {pc.hasSpecialNeeds && (
-                  <span className="flex items-center gap-0.5 text-[10px] text-[#B8932F] bg-[#D4AF37] px-1.5 py-0.5 rounded-full">
+                  <span className="flex items-center gap-0.5 text-[10px] text-black bg-[#D4AF37] px-1.5 py-0.5 rounded-full">
                     <Info className="w-2.5 h-2.5" /> מיוחד
                   </span>
                 )}

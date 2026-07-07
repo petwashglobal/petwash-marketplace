@@ -244,7 +244,7 @@ function FeaturedPetCard({ post, onContact, user }: { post: PawPost; onContact?:
 
 const STATUS_COLORS: Record<string, string> = {
   published:      'bg-emerald-50 text-emerald-700 border-emerald-200',
-  matched:        'bg-[#D4AF37] text-[#B8932F] border-[#D4AF37]',
+  matched:        'bg-[#D4AF37] text-black border-[#D4AF37]',
   resolved:       'bg-slate-50 text-slate-500 border-slate-200',
   pending_review: 'bg-amber-50 text-amber-700 border-amber-200',
   rejected:       'bg-rose-50 text-rose-700 border-rose-200',
@@ -414,7 +414,7 @@ function PostCard({ post, onContact, onResolve, isOwner = false, showResolve = f
                 </span>
               )}
               {post.matched_post_count > 0 && (
-                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#D4AF37] text-[#B8932F] border border-[#D4AF37]">
+                <span className="text-xs font-medium px-2 py-0.5 rounded-full bg-[#D4AF37] text-black border border-[#D4AF37]">
                   {post.matched_post_count} התאמות
                 </span>
               )}

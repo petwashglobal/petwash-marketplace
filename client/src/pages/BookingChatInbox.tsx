@@ -203,7 +203,7 @@ export default function BookingChatInbox() {
               Active
               {activeConversations.length > 0 && (
                 <span className={`ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === "active" ? "bg-[#D4AF37] text-[#B8932F]" : "bg-white text-gray-400"
+                  activeTab === "active" ? "bg-[#D4AF37] text-black" : "bg-white text-gray-400"
                 }`}>
                   {activeConversations.length}
                 </span>
@@ -221,7 +221,7 @@ export default function BookingChatInbox() {
               Archived
               {archivedConversations.length > 0 && (
                 <span className={`ml-0.5 text-[10px] font-bold px-1.5 py-0.5 rounded-full ${
-                  activeTab === "archived" ? "bg-[#D4AF37] text-[#B8932F]" : "bg-white text-gray-400"
+                  activeTab === "archived" ? "bg-[#D4AF37] text-black" : "bg-white text-gray-400"
                 }`}>
                   {archivedConversations.length}
                 </span>
