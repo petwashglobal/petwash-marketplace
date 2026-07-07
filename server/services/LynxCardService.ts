@@ -27,8 +27,12 @@ import { logger } from '../lib/logger';
 const CARD_TYPE_PREPAID = 33;
 const PHYSICAL_TYPE_QR = 943237560;      // "QR Code" physical type
 const DEFAULT_CURRENCY_ID = 1;           // ILS in the Nayax lookups (override via env)
-const ISRAEL_COUNTRY_ID = 376;           // ISO 3166 numeric for Israel; CardHolderDetails.CountryID
-                                         // is MANDATORY on the Lynx v2 create-card endpoint.
+const CARD_VALID_YEARS = 2;              // CardDateRules window for a single-use wash card
+// CardHolderDetails.CountryID is MANDATORY on v2 and must be Nayax's INTERNAL
+// CountryID — NOT the ISO numeric (per the sandbox-verified nayax-lynx-prepaid-cards
+// skill: "card endpoints use Nayax's CountryID (225 for US), not 840"). So we resolve
+// Israel's value from Get-Countries at mint time (see resolveCountryId), never hardcode
+// the ISO 376. Override with LYNX_COUNTRY_ID if you already know the Nayax value.
 
 function cfg() {
   return {
@@ -66,6 +70,30 @@ export async function resolveOperatorId(): Promise<string | null> {
   const id = extractOperatorActorId(r.data);
   if (id) { cachedOperatorId = id; logger.info('[LynxCard] discovered operator ActorID', { actorId: id }); }
   return cachedOperatorId;
+}
+
+// Nayax's INTERNAL CountryID for Israel (NOT the ISO 376). Resolved once from the
+// Get-Countries lookup — which returns both CountryID (Nayax) and CountryCode/ISO —
+// so we always send the value Nayax's card endpoint actually expects.
+let cachedCountryId: number | null = null;
+export async function resolveCountryId(): Promise<number | null> {
+  const envId = Number((process.env.LYNX_COUNTRY_ID || '').trim());
+  if (Number.isFinite(envId) && envId > 0) return envId;
+  if (cachedCountryId != null) return cachedCountryId;
+  // Filter by Israel's dialing code (972) to get just its row.
+  const r = await lynxRequest('GET', '/operational/v1/countries?DialCode=972');
+  const list: any[] = Array.isArray(r.data)
+    ? r.data
+    : (Array.isArray((r.data as any)?.items) ? (r.data as any).items : []);
+  const il = list.find((c) => c?.CountryCode === 'IL' || c?.CountryISONumericCode === 376 || c?.CountryDialingCode === 972);
+  const id = il?.CountryID != null ? Number(il.CountryID) : NaN;
+  if (Number.isFinite(id) && id > 0) {
+    cachedCountryId = id;
+    logger.info('[LynxCard] resolved Israel CountryID from Get-Countries', { countryId: id });
+  } else {
+    logger.warn('[LynxCard] could not resolve Israel CountryID', { status: r.status });
+  }
+  return cachedCountryId;
 }
 
 export interface MintWashCardParams {
@@ -112,7 +140,14 @@ export async function mintWashCard(p: MintWashCardParams, opts?: { adminTest?: b
   if (!operatorId) {
     return { ok: false, wired: true, status: 0, error: 'operator_id_unresolved' };
   }
+  // Fail CLOSED on the CountryID rather than send a wrong (ISO) value.
+  const countryId = await resolveCountryId();
+  if (!countryId) {
+    return { ok: false, wired: true, status: 0, error: 'country_id_unresolved' };
+  }
   const cardUid = newCardUid(p.userId);
+  const nowIso = new Date().toISOString();
+  const expiryIso = new Date(Date.now() + CARD_VALID_YEARS * 365 * 24 * 60 * 60 * 1000).toISOString();
   const body = {
     CardDetails: {
       ActorID: Number(operatorId),
@@ -125,7 +160,7 @@ export async function mintWashCard(p: MintWashCardParams, opts?: { adminTest?: b
     },
     CardHolderDetails: {
       CardHolderName: p.holderName || 'PetWash Member',
-      CountryID: ISRAEL_COUNTRY_ID,                 // MANDATORY on v2; omitting it fails the mint
+      CountryID: countryId,                         // Nayax's internal CountryID (resolved), MANDATORY
       MemberTypeID: 801,
     },
     CardCreditAttributes: {
@@ -135,8 +170,19 @@ export async function mintWashCard(p: MintWashCardParams, opts?: { adminTest?: b
       CreditSingleUseBit: true,                    // ← spent after one wash (anti-replay)
       CreditAccumulateBit: false,
     },
+    // v2 REQUIRES CardDateRules (ActivationDate + ExpirationDate) or the request fails.
+    CardDateRules: {
+      ActivationDate: nowIso,
+      ExpirationDate: expiryIso,
+    },
   };
 
+  // SHAPE NOTE: this NESTED body follows the official Nayax v2 docs. The
+  // nayax-lynx-prepaid-cards skill shows a FLAT body for /v2/cards — the two
+  // authoritative sources conflict. The first admin test-mint is the tiebreaker:
+  // if a nested body 400s, flatten CardDetails/CardHolderDetails/CardCreditAttributes
+  // to top level and keep CardDateRules. Do NOT enable live mints until a sandbox
+  // mint returns 2xx with a usable QR.
   const r = await lynxRequest('POST', '/operational/v2/cards', body);
   if (!r.ok) {
     logger.warn('[LynxCard] mint failed', { status: r.status, error: r.error, cardUidTail: cardUid.slice(-6) });
