@@ -293,7 +293,7 @@ export default function K9000Redeem() {
                     <span className="text-sm font-medium text-gray-500">
                       {isHebrew ? 'מחיר שטיפה סטנדרטי' : 'Standard K9000 Wash'}
                     </span>
-                    <Badge className="bg-[#D4AF37] text-[#B8932F] border-0">K9000</Badge>
+                    <Badge className="bg-[#D4AF37] text-black font-bold tracking-wide border-0">K9000</Badge>
                   </div>
                   <div className="text-3xl font-bold text-gray-900">{formatCurrency(WASH_PRICE_CENTS)}</div>
                 </CardContent>
