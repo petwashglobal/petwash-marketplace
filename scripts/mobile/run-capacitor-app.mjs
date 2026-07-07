@@ -1,5 +1,5 @@
 import { spawnSync } from "node:child_process";
-import { copyFile } from "node:fs/promises";
+import { copyFile, mkdir } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -32,6 +32,32 @@ async function selectConfig(selectedAppName) {
   console.log(`Selected ${selectedAppName} Capacitor config.`);
 }
 
+// Each app ships its OWN store icon, stamped into the native projects at build
+// time (the ios/ + android/ trees are shared, so the icon is a per-flavor build
+// artifact — never committed for one flavor). Sources live in
+// config/capacitor/icons/<flavor>.png. Background colour drives the Android
+// adaptive-icon backdrop: black for the Prestige (customer) icon, white for the
+// green Provider icon.
+const iconBackground = new Map([
+  ["customer", "#000000"],
+  ["provider", "#FFFFFF"],
+]);
+
+async function generateIcons(selectedAppName) {
+  const source = path.join(repoRoot, "config", "capacitor", "icons", `${selectedAppName}.png`);
+  const assetsDir = path.join(repoRoot, "assets");
+  await mkdir(assetsDir, { recursive: true });
+  // @capacitor/assets reads assets/icon.png (>=1024px) and generates every iOS
+  // + Android size. Limit to native platforms so no PWA/web output is touched.
+  await copyFile(source, path.join(assetsDir, "icon.png"));
+  const bg = iconBackground.get(selectedAppName) ?? "#FFFFFF";
+  run("npx", [
+    "@capacitor/assets", "generate", "--ios", "--android",
+    "--iconBackgroundColor", bg, "--iconBackgroundColorDark", bg,
+  ]);
+  console.log(`Stamped ${selectedAppName} app icon.`);
+}
+
 function run(command, args, extraEnv) {
   const result = spawnSync(command, args, {
     cwd: repoRoot,
@@ -59,6 +85,9 @@ try {
     // env var to client code via import.meta.env.
     run("npm", ["run", "build"], { VITE_APP_FLAVOR: appName });
     run("npx", ["cap", "sync"]);
+    // Stamp this flavor's own store icon into the native projects (after sync,
+    // which (re)creates the native icon slots).
+    await generateIcons(appName);
     run("npm", ["run", "cap:clean-sourcemaps"]);
   } else if (action === "open:ios") {
     run("npx", ["cap", "open", "ios"]);
