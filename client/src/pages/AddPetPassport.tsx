@@ -70,7 +70,10 @@ export default function AddPetPassport() {
       if (photoFile) {
         const fd = new FormData();
         fd.append('photo', photoFile);
-        const pr = await apiRequest('POST', '/api/pets/photo', fd);
+        // MUST use the options-object form — only it is FormData-aware. The 3-arg
+        // form JSON.stringifies the body (breaking multipart) and sets a JSON
+        // Content-Type, which drops the file server-side.
+        const pr = await apiRequest('/api/pets/photo', { method: 'POST', body: fd });
         if (pr.ok) photoUrl = (await pr.json())?.photoUrl;
       }
       const body: Record<string, unknown> = {
