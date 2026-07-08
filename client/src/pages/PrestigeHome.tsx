@@ -21,7 +21,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
-import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest } from '@/lib/queryClient';
 import {
   Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
@@ -101,8 +100,13 @@ export default function PrestigeHome() {
   const { data: me } = useQuery({
     queryKey: ['/api/prestige-pass/me'],
     queryFn: async () => {
-      const r = await fetch(getApiUrl('/api/prestige-pass/me'), { credentials: 'include' });
-      return r.ok ? r.json() : {};
+      // apiRequest attaches the Firebase Bearer token; a raw credentials fetch
+      // sends no auth (no pw_session cookie), so these returned empty for every
+      // real user and the dashboard showed blank stats/pets.
+      try {
+        const r = await apiRequest('GET', '/api/prestige-pass/me');
+        return r.ok ? await r.json() : {};
+      } catch { return {}; }
     },
     enabled: !!user,
     staleTime: 60_000,
@@ -111,8 +115,10 @@ export default function PrestigeHome() {
   const { data: sum } = useQuery({
     queryKey: ['/api/prestige-pass/summary'],
     queryFn: async () => {
-      const r = await fetch(getApiUrl('/api/prestige-pass/summary'), { credentials: 'include' });
-      return r.ok ? r.json() : {};
+      try {
+        const r = await apiRequest('GET', '/api/prestige-pass/summary');
+        return r.ok ? await r.json() : {};
+      } catch { return {}; }
     },
     enabled: !!user,
     staleTime: 60_000,
@@ -121,8 +127,10 @@ export default function PrestigeHome() {
   const { data: petsData } = useQuery({
     queryKey: ['/api/pets'],
     queryFn: async () => {
-      const r = await fetch(getApiUrl('/api/pets'), { credentials: 'include' });
-      return r.ok ? r.json() : {};
+      try {
+        const r = await apiRequest('GET', '/api/pets');
+        return r.ok ? await r.json() : { pets: [] };
+      } catch { return { pets: [] }; }
     },
     enabled: !!user,
     staleTime: 60_000,
@@ -146,8 +154,10 @@ export default function PrestigeHome() {
   const { data: hist } = useQuery({
     queryKey: ['/api/prestige-pass/history'],
     queryFn: async () => {
-      const r = await fetch(getApiUrl('/api/prestige-pass/history'), { credentials: 'include' });
-      return r.ok ? r.json() : {};
+      try {
+        const r = await apiRequest('GET', '/api/prestige-pass/history');
+        return r.ok ? await r.json() : {};
+      } catch { return {}; }
     },
     enabled: !!user,
     staleTime: 60_000,

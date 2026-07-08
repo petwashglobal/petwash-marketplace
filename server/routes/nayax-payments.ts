@@ -432,11 +432,18 @@ router.get('/transactions/:id', requireAuth, async (req, res) => {
     }
     
     const transaction = await NayaxSparkService.getTransaction(transactionId);
-    
+
     if (!transaction) {
       return res.status(404).json({ error: 'Transaction not found' });
     }
-    
+
+    // IDOR guard: a transaction (card last-4, amount, payment token) is only
+    // readable by the customer it belongs to. 404 (not 403) so IDs can't be
+    // enumerated to confirm existence.
+    if ((transaction as any).customerUid !== (req as any).userId) {
+      return res.status(404).json({ error: 'Transaction not found' });
+    }
+
     res.json(transaction);
     
   } catch (error: any) {
@@ -453,7 +460,12 @@ router.get('/transactions/customer/:customerUid', requireAuth, async (req, res) 
   try {
     const { customerUid } = req.params;
     const limit = parseInt(req.query.limit as string) || 10;
-    
+
+    // IDOR guard: a customer can only read their OWN transaction history.
+    if (customerUid !== (req as any).userId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const transactions = await NayaxSparkService.getCustomerTransactions(customerUid, limit);
     
     res.json(transactions);
