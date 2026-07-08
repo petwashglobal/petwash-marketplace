@@ -54,14 +54,26 @@ describe('backup report honesty (2026-07-08)', () => {
     expect(SRC).toMatch(/results\.push\(\{ collection: collectionName, error: true, errorMessage \}\)/);
   });
 
-  it('read-back verification: each uploaded object is re-downloaded and doc-count checked', () => {
+  it('read-back verification: re-downloads and doc-count checks each object', () => {
     expect(SRC).toMatch(/const \[readBack\] = await file\.download\(\)/);
-    expect(SRC).toMatch(/read-back verification failed/);
-    // a count mismatch throws → the collection is demoted to FAILED by the catch
     expect(SRC).toMatch(/if \(verifiedCount !== documents\.length\)/);
   });
 
-  it('the report shows the read-back verified count', () => {
+  it('a read-back COUNT MISMATCH is fatal, but "cannot re-read" (create-only SA) is NOT', () => {
+    // corruption throws READBACK_MISMATCH and is re-thrown (fatal)
+    expect(SRC).toMatch(/READBACK_MISMATCH/);
+    expect(SRC).toMatch(/if \(\/READBACK_MISMATCH\/\.test\(verifyErr\?\.message \|\| ''\)\) throw verifyErr/);
+    // a plain download/permission failure is logged and continues (non-fatal)
+    expect(SRC).toMatch(/read-back verify skipped/);
+  });
+
+  it('ROOT-CAUSE FIX: backup files use a per-run stamp so writes never overwrite (create-only SA)', () => {
+    expect(SRC).toMatch(/const runStamp = Date\.now\(\)/);
+    expect(SRC).toMatch(/const fileName = `\$\{collectionName\}_\$\{date\}_\$\{runStamp\}\.json`/);
+  });
+
+  it('the report shows the read-back verified count (using the real verified flag)', () => {
     expect(SRC).toMatch(/Read-back Verified/);
+    expect(SRC).toMatch(/files\.filter\(f => f\.verified\)\.length/);
   });
 });
