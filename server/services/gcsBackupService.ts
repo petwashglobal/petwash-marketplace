@@ -461,26 +461,48 @@ export async function performFirestoreExport(): Promise<{
         });
         
         logger.info(`[GCS] ✅ Exported ${documents.length} docs from ${collectionName} (${fileSizeMB} MB)`);
-      } catch (error) {
-        logger.error(`[GCS] Failed to export ${collectionName}:`, error);
-        results.push({ collection: collectionName, error: true });
+      } catch (error: any) {
+        // Capture the REAL error (PERMISSION_DENIED / NOT_FOUND / project-not-found)
+        // instead of a bare error:true — the old report hid the root cause.
+        const errorMessage = error?.message || String(error);
+        logger.error(`[GCS] Failed to export ${collectionName}: ${errorMessage}`);
+        results.push({ collection: collectionName, error: true, errorMessage });
       }
     }
     
     const duration = ((Date.now() - startTime) / 1000).toFixed(1);
     const fullGcsPath = `gs://${FIRESTORE_BUCKET}/${gcsPath}`;
     const timestamp = new Date().toISOString();
-    
-    logger.info(`[GCS] ✅ Firestore export complete in ${duration}s: ${fullGcsPath}`);
 
-    // Log to Firestore — BEST EFFORT (same guard as the code/postgres paths):
-    // a completed export must not be turned into a 500 by a backup_logs write
-    // that the runtime SA may lack permission for.
+    // ── HONEST STATUS ────────────────────────────────────────────────────────
+    // The old code ALWAYS returned success:true and logged status:'success',
+    // even when every collection threw and totalDocs was 0 — the "green
+    // checkmark on a dead backup" that hid a total backup failure. Overall
+    // success now requires BOTH: zero failed collections AND at least one
+    // document actually exported.
+    const failed = results.filter(r => r.error);
+    const zeroDocs = totalDocs === 0;
+    const ok = failed.length === 0 && !zeroDocs;
+    const overallStatus: 'success' | 'failed' = ok ? 'success' : 'failed';
+
+    if (ok) {
+      logger.info(`[GCS] ✅ Firestore export complete in ${duration}s: ${fullGcsPath} (${totalDocs} docs)`);
+    } else {
+      logger.error(
+        `[GCS] 🚨 Firestore export FAILED in ${duration}s — ${failed.length}/${results.length} collections failed, ${totalDocs} docs exported`,
+        { failedCollections: failed.map(f => f.collection), firstError: failed[0]?.errorMessage },
+      );
+    }
+
+    // Log to backup_logs — BEST EFFORT, but with the REAL status (never a false
+    // 'success'). A completed run must not be turned into a 500 by a log write
+    // the runtime SA may lack permission for.
     try {
       await db.collection('backup_logs').add({
         type: 'firestore',
-        status: 'success',
+        status: overallStatus,
         collections: results.length,
+        failedCollections: failed.map(f => f.collection),
         totalDocs,
         gcsPath: fullGcsPath,
         details: results,
@@ -488,14 +510,32 @@ export async function performFirestoreExport(): Promise<{
         timestamp
       });
     } catch (logErr: any) {
-      logger.warn('[GCS] Firestore export uploaded OK but backup_logs write failed (non-fatal)', { error: logErr?.message });
+      logger.warn('[GCS] Firestore export backup_logs write failed (non-fatal)', { error: logErr?.message });
     }
 
-    // Send backup summary email with CSV attachment — best-effort.
+    // Fire a LOUD alert on ANY failure — mirrors the postgres path. A backup
+    // that exported nothing must never pass silently as it did before.
+    if (!ok) {
+      try {
+        const { sendSecurityAlert } = await import('./alerts');
+        await sendSecurityAlert(
+          zeroDocs ? '🚨 Firestore backup FAILED — 0 DOCUMENTS' : '🚨 Firestore backup FAILED — collections did not export',
+          `<p><strong>The daily Firestore export did not produce a usable backup.</strong></p>` +
+          `<p>Path: ${fullGcsPath}<br/>Documents exported: <strong>${totalDocs}</strong><br/>` +
+          `Failed collections (${failed.length}/${results.length}): ${failed.map(f => f.collection).join(', ') || 'none'}</p>` +
+          `<p>First captured error: <code>${failed[0]?.errorMessage || '(none)'}</code></p>` +
+          `<p>Likely: the runtime service account lacks Firestore read (datastore.viewer) or the target project/database is wrong. ` +
+          `The Postgres nightly dump is the source-of-truth backup — verify it succeeded independently.</p>`,
+        );
+      } catch { /* best effort */ }
+    }
+
+    // Send backup summary email — subject + body now reflect the REAL status.
     try {
       await sendBackupSummaryEmail({
         type: 'firestore',
         timestamp,
+        status: overallStatus,
         firestoreBackup: {
           path: fullGcsPath,
           collections: results.length,
@@ -504,7 +544,8 @@ export async function performFirestoreExport(): Promise<{
             collection: r.collection,
             docs: r.docs || 0,
             sizeMB: r.sizeMB,
-            error: r.error
+            error: r.error,
+            errorMessage: r.errorMessage,
           }))
         },
         includeCSV: true
@@ -514,10 +555,11 @@ export async function performFirestoreExport(): Promise<{
     }
 
     return {
-      success: true,
+      success: ok,
       collections: results.length,
       totalDocs,
-      gcsPath: fullGcsPath
+      gcsPath: fullGcsPath,
+      ...(ok ? {} : { error: zeroDocs ? '0 documents exported — backup is NOT usable' : `${failed.length} collection(s) failed to export` }),
     };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : 'Unknown error';
@@ -732,8 +774,9 @@ function generateBackupCSV(data: {
 async function sendBackupSummaryEmail(data: {
   type: 'code' | 'firestore';
   timestamp: string;
+  status?: 'success' | 'failed';
   codeBackup?: { file: string; size: string; hash: string; gcsUrl: string };
-  firestoreBackup?: { path: string; collections: number; totalDocs: number; files: Array<{ collection: string; docs: number; sizeMB?: number; error?: boolean }> };
+  firestoreBackup?: { path: string; collections: number; totalDocs: number; files: Array<{ collection: string; docs: number; sizeMB?: number; error?: boolean; errorMessage?: string }> };
   includeCSV?: boolean;
 }): Promise<void> {
   if (!process.env.SENDGRID_API_KEY) {
@@ -750,7 +793,26 @@ async function sendBackupSummaryEmail(data: {
     timeZone: 'Asia/Jerusalem'
   });
 
-  const subject = `✅ ⁦Pet Wash™⁩ Backup Summary — ${new Date(data.timestamp).toLocaleDateString('en-US')}`;
+  // SUBJECT MUST REFLECT REALITY — a green ✅ is only allowed when the backup
+  // genuinely succeeded. The old hardcoded ✅ subject made a total failure (0
+  // docs, all collections dead) look like a success in the inbox.
+  const dateStr = new Date(data.timestamp).toLocaleDateString('en-US');
+  let subject: string;
+  if (data.type === 'firestore') {
+    const files = data.firestoreBackup?.files || [];
+    const anyFail = files.some(f => f.error);
+    const total = data.firestoreBackup?.totalDocs ?? 0;
+    if (total === 0) {
+      subject = `🚨 ⁦Pet Wash™⁩ Backup FAILED — 0 DOCUMENTS — ${dateStr}`;
+    } else if (anyFail) {
+      subject = `❌ ⁦Pet Wash™⁩ Backup FAILED (some collections) — ${dateStr}`;
+    } else {
+      subject = `✅ ⁦Pet Wash™⁩ Backup SUCCESS — ${dateStr}`;
+    }
+  } else {
+    // Code backup only reaches the email on a successful upload (failures throw earlier).
+    subject = `✅ ⁦Pet Wash™⁩ Code Backup SUCCESS — ${dateStr}`;
+  }
 
   let htmlContent = `
     <!DOCTYPE html>
@@ -857,7 +919,7 @@ async function sendBackupSummaryEmail(data: {
             return `
               <div class="detail">
                 <span class="label">${file.collection}:</span>
-                <span class="value" style="color: #ef4444;">❌ FAILED</span>
+                <span class="value" style="color: #ef4444;">❌ FAILED — ${(file.errorMessage || 'no error captured').replace(/</g, '&lt;')}</span>
               </div>
             `;
           }
@@ -869,10 +931,13 @@ async function sendBackupSummaryEmail(data: {
           `;
         }).join('')}
         <div style="margin-top: 15px;">
-          ${data.firestoreBackup.files.some(f => f.error) 
-            ? '<span style="color: #ef4444; font-weight: 600;">⚠️ Warning - Some Collections Failed to Export</span>'
-            : '<span class="success">✅ Verified - All Collections Exported Successfully</span>'
-          }
+          ${(() => {
+            const anyFail = data.firestoreBackup!.files.some(f => f.error);
+            const total = data.firestoreBackup!.totalDocs ?? 0;
+            if (total === 0) return '<span style="color: #ef4444; font-weight: 700;">🚨 BACKUP FAILED — 0 documents exported. This backup is NOT usable.</span>';
+            if (anyFail) return '<span style="color: #ef4444; font-weight: 600;">❌ FAILED — one or more collections did not export. Backup is incomplete.</span>';
+            return '<span class="success">✅ Verified - All Collections Exported Successfully</span>';
+          })()}
         </div>
       </div>
     `;
