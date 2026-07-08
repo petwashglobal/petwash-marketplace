@@ -419,6 +419,15 @@ router.get("/contractors/:id/compliance-status", authMiddleware, async (req: any
   try {
     const contractorId = req.params.id;
 
+    // SECURITY (2026-07-08): was authMiddleware-only — any logged-in user could
+    // read ANY contractor's compliance dossier (identity/criminal-check status,
+    // driver record, ratings, critical-incident flags). Restrict to compliance
+    // staff. (Internal tool — no customer/self client path uses it.)
+    const PRIVILEGED = ["admin", "compliance", "hr"];
+    if (!(req.authRoles || []).some((r: string) => PRIVILEGED.includes(r))) {
+      return res.status(403).json({ error: "FORBIDDEN", message: "Compliance status is restricted to compliance staff" });
+    }
+
     // Load all contractor compliance data
     const data = await loadContractorComplianceData(contractorId);
 

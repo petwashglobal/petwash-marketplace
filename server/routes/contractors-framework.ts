@@ -55,8 +55,12 @@ router.post("/contractors", authMiddleware, requireRoles("admin", "hr", "complia
   }
 });
 
-// GET /api/contractors - Get all contractors (PROTECTED)
-router.get("/contractors", authMiddleware, async (req, res) => {
+// GET /api/contractors - Get all contractors (ADMIN/HR/COMPLIANCE ONLY)
+// SECURITY (2026-07-08): was authMiddleware-only — any logged-in user could dump
+// the whole contractor roster (names, emails, phones, ids) and enumerate ids to
+// pivot into the per-contractor ID-document leak below. The sibling write routes
+// were already role-gated; the reads were not. Gated to match.
+router.get("/contractors", authMiddleware, requireRoles("admin", "hr", "compliance"), async (req, res) => {
   try {
     const result = await db.select().from(contractors);
     res.json(result);
@@ -69,8 +73,12 @@ router.get("/contractors", authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/contractors/:id - Get single contractor with full profile (PROTECTED)
-router.get("/contractors/:id", authMiddleware, async (req, res) => {
+// GET /api/contractors/:id - Get single contractor with full profile (ADMIN/HR/COMPLIANCE ONLY)
+// SECURITY (2026-07-08): was authMiddleware-only — this returns identity_documents
+// (national ID / passport / licence NUMBERS), the driver record and ratings for
+// ANY contractor id, to ANY logged-in user. Gated to admin/hr/compliance to match
+// the write routes. (No client calls this — it is an internal HR/compliance tool.)
+router.get("/contractors/:id", authMiddleware, requireRoles("admin", "hr", "compliance"), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -188,8 +196,10 @@ router.post("/drivers", authMiddleware, requireRoles("admin", "compliance", "hr"
   }
 });
 
-// GET /api/drivers - Get all drivers (PROTECTED)
-router.get("/drivers", authMiddleware, async (req, res) => {
+// GET /api/drivers - Get all drivers (ADMIN/HR/COMPLIANCE ONLY)
+// SECURITY (2026-07-08): was authMiddleware-only — dumps every driver record
+// (licence details) to any logged-in user. Gated to match the write routes.
+router.get("/drivers", authMiddleware, requireRoles("admin", "hr", "compliance"), async (req, res) => {
   try {
     const result = await db.select().from(drivers);
     res.json(result);

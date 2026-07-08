@@ -257,11 +257,19 @@ router.get("/:id/identity-docs", authMiddleware, async (req: any, res) => {
       return res.status(404).json({ error: "NOT_FOUND", message: "Contractor not found" });
     }
 
-    // If user is a contractor, enforce ownership
-    if (req.authRoles.includes("contractor")) {
-      // Check userId field - contractor profile has userId that maps to auth user ID
+    // SECURITY (2026-07-08): FAIL-CLOSED authorization. This returns identity
+    // verification records WITH files (ID / passport / licence images). The old
+    // check only enforced ownership WHEN the caller's roles included "contractor"
+    // — so a customer (or any token with empty/other roles) skipped the check
+    // entirely and could read ANY contractor's ID documents. Now: privileged
+    // staff may view any; a contractor may view ONLY their own; everyone else 403.
+    const PRIVILEGED = ["admin", "compliance", "hr"];
+    const isPrivileged = (req.authRoles || []).some((r: string) => PRIVILEGED.includes(r));
+    if (!isPrivileged) {
       const contractorUserId = (contractor as any).userId || contractor.id;
-      if (contractorUserId !== req.authUserId) {
+      const isOwningContractor =
+        (req.authRoles || []).includes("contractor") && contractorUserId === req.authUserId;
+      if (!isOwningContractor) {
         return res.status(403).json({ error: "FORBIDDEN", message: "Cannot view documents of another contractor" });
       }
     }
