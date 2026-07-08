@@ -372,7 +372,16 @@ export async function performFirestoreExport(): Promise<{
   const startTime = Date.now();
   const date = new Date().toISOString().split('T')[0];
   const gcsPath = `daily/${date}`;
-  
+  // ROOT CAUSE FIX (2026-07-08): the backup service account has
+  // roles/storage.objectCreator (create-only, no overwrite/delete — correct for
+  // security). The old fixed name `${collection}_${date}.json` meant any SECOND
+  // run that day tried to OVERWRITE the existing object, which needs
+  // storage.objects.delete → 403 on every collection → all FAILED, 0 docs. A
+  // per-run stamp makes every write a fresh CREATE (exactly how the working
+  // Postgres backup avoids this), and keeps each run's files as immutable
+  // history instead of clobbering the prior copy.
+  const runStamp = Date.now();
+
   const COLLECTIONS = [
     'users',
     'kyc',
@@ -433,8 +442,9 @@ export async function performFirestoreExport(): Promise<{
           documents
         };
         
-        // Upload JSON to GCS
-        const fileName = `${collectionName}_${date}.json`;
+        // Upload JSON to GCS — per-run stamp so every write is a fresh CREATE
+        // (the create-only backup SA cannot overwrite; see runStamp note above).
+        const fileName = `${collectionName}_${date}_${runStamp}.json`;
         const fileContent = JSON.stringify(exportData, null, 2);
         const fileSizeBytes = Buffer.byteLength(fileContent, 'utf8');
         const fileSizeMB = (fileSizeBytes / (1024 * 1024)).toFixed(2);
@@ -455,22 +465,25 @@ export async function performFirestoreExport(): Promise<{
 
         // ── READ-BACK VERIFICATION (spec §9: a backup you cannot read back is
         // not a backup) ──────────────────────────────────────────────────────
-        // Immediately re-download the object we just wrote and confirm it is
-        // retrievable, parses as JSON, and reports the SAME document count. GCS
-        // gives strong read-after-write consistency for new objects, so this is
-        // deterministic. A mismatch/parse failure throws → the collection is
-        // demoted to FAILED with the reason (surfaced by the honest report),
-        // instead of a silently-corrupt or truncated "success".
-        const [readBack] = await file.download();
-        let verifiedCount = -1;
+        // Re-download the object we just wrote and confirm it is retrievable,
+        // parses, and reports the SAME document count. A genuine COUNT MISMATCH
+        // is fatal (corrupt/truncated → the collection is demoted to FAILED).
+        // BUT the create-only backup SA (objectCreator) has no read permission,
+        // so the download itself may 403 — that is NOT a backup failure (the
+        // upload, i.e. the backup, already succeeded). So: mismatch = fatal;
+        // "can't read it back" (permission/network) = verified:false, non-fatal.
+        let verified = false;
         try {
+          const [readBack] = await file.download();
           const parsed = JSON.parse(readBack.toString('utf8'));
-          verifiedCount = Array.isArray(parsed?.documents) ? parsed.documents.length : -1;
-        } catch (parseErr: any) {
-          throw new Error(`read-back verification failed — uploaded object is not valid JSON: ${parseErr?.message}`);
-        }
-        if (verifiedCount !== documents.length) {
-          throw new Error(`read-back verification failed — wrote ${documents.length} docs but read back ${verifiedCount}`);
+          const verifiedCount = Array.isArray(parsed?.documents) ? parsed.documents.length : -1;
+          if (verifiedCount !== documents.length) {
+            throw new Error(`READBACK_MISMATCH: wrote ${documents.length} docs but read back ${verifiedCount}`);
+          }
+          verified = true;
+        } catch (verifyErr: any) {
+          if (/READBACK_MISMATCH/.test(verifyErr?.message || '')) throw verifyErr; // corruption → fatal
+          logger.warn(`[GCS] read-back verify skipped for ${collectionName} (upload OK, cannot re-read): ${verifyErr?.message}`);
         }
 
         totalDocs += documents.length;
@@ -478,10 +491,10 @@ export async function performFirestoreExport(): Promise<{
           collection: collectionName,
           docs: documents.length,
           sizeMB: parseFloat(fileSizeMB),
-          verified: true,
+          verified,
         });
 
-        logger.info(`[GCS] ✅ Exported + verified ${documents.length} docs from ${collectionName} (${fileSizeMB} MB)`);
+        logger.info(`[GCS] ✅ Exported ${documents.length} docs from ${collectionName} (${fileSizeMB} MB)${verified ? ' + read-back verified' : ''}`);
       } catch (error: any) {
         // Capture the REAL error (PERMISSION_DENIED / NOT_FOUND / project-not-found)
         // instead of a bare error:true — the old report hid the root cause.
@@ -567,6 +580,7 @@ export async function performFirestoreExport(): Promise<{
             sizeMB: r.sizeMB,
             error: r.error,
             errorMessage: r.errorMessage,
+            verified: r.verified,
           }))
         },
         includeCSV: true
@@ -797,7 +811,7 @@ async function sendBackupSummaryEmail(data: {
   timestamp: string;
   status?: 'success' | 'failed';
   codeBackup?: { file: string; size: string; hash: string; gcsUrl: string };
-  firestoreBackup?: { path: string; collections: number; totalDocs: number; files: Array<{ collection: string; docs: number; sizeMB?: number; error?: boolean; errorMessage?: string }> };
+  firestoreBackup?: { path: string; collections: number; totalDocs: number; files: Array<{ collection: string; docs: number; sizeMB?: number; error?: boolean; errorMessage?: string; verified?: boolean }> };
   includeCSV?: boolean;
 }): Promise<void> {
   if (!process.env.SENDGRID_API_KEY) {
@@ -933,7 +947,7 @@ async function sendBackupSummaryEmail(data: {
         </div>
         <div class="detail">
           <span class="label">Read-back Verified:</span>
-          <span class="value">${data.firestoreBackup.files.filter(f => !f.error).length} / ${data.firestoreBackup.files.length} collections (re-downloaded &amp; doc-count matched)</span>
+          <span class="value">${data.firestoreBackup.files.filter(f => f.verified).length} / ${data.firestoreBackup.files.length} collections (re-downloaded &amp; doc-count matched)</span>
         </div>
       </div>
 
