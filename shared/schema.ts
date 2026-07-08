@@ -5597,10 +5597,17 @@ export const contractorEarnings = pgTable("contractor_earnings", {
   taxYear: integer("tax_year"),
   taxQuarter: integer("tax_quarter"), // 1-4
   includeInTaxReport: boolean("include_in_tax_report").default(true),
-  
+
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Double-payout DB backstop (2026-07-08): at most ONE earning per (booking,
+  // contractor). The cron leader-lock (#1334) stops the multi-replica race; this
+  // guard also stops the cross-path race (cron vs Nayax webhook vs confirm route)
+  // where a lockless SELECT-then-INSERT could otherwise double-create. Verified
+  // 0 rows in prod before adding — no existing dupes to collide with.
+  uniqueIndex("uniq_contractor_earnings_booking_type").on(table.bookingId, table.contractorType),
+]);
 
 // Zod Schemas for new tables
 export const insertContractorViolationSchema = createInsertSchema(contractorViolations).omit({ 
@@ -9190,7 +9197,13 @@ export const settlements = pgTable("settlements", {
   auditHash: varchar("audit_hash"), // SHA-256 for immutability
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
-});
+}, (table) => [
+  // Double-payout DB backstop (2026-07-08): ONE settlement per partner per
+  // period. The monthly cron leader-lock (#1334) stops the multi-replica race;
+  // this guard makes the lockless findFirst-then-insert dedup race-safe. Verified
+  // 0 rows in prod before adding.
+  uniqueIndex("uniq_settlements_partner_period").on(table.partnerId, table.periodStart, table.periodEnd),
+]);
 
 /**
  * CPI Index History - Israeli Consumer Price Index (מדד המחירים לצרכן)
