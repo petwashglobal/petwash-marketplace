@@ -45,6 +45,7 @@ const STATUS_STYLES: Record<string, { label: string; color: string; bg: string; 
   payment_pending:      { label: 'Awaiting Pmt', color: '#b45309', bg: '#fef3c7', border: '#fbbf24' },
   confirmed:            { label: 'Confirmed',    color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
   in_progress:          { label: 'In Progress',  color: '#5b21b6', bg: '#ede9fe', border: '#a78bfa' },
+  provider_marked_complete: { label: 'Awaiting Confirm', color: '#5b21b6', bg: '#ede9fe', border: '#a78bfa' },
   completed:            { label: 'Completed',    color: '#374151', bg: '#f3f4f6', border: '#d1d5db' },
   reviewed:             { label: 'Reviewed',     color: '#374151', bg: '#f3f4f6', border: '#d1d5db' },
   cancelled:            { label: 'Cancelled',    color: '#991b1b', bg: '#fee2e2', border: '#fca5a5' },

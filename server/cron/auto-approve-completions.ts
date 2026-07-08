@@ -24,7 +24,7 @@
 
 import cron from 'node-cron';
 import { db } from '../db';
-import { bookingRequests, superAppNotifications, contractorEarnings } from '@shared/schema';
+import { bookingRequests, superAppNotifications, contractorEarnings, bookingDisputes } from '@shared/schema';
 import { and, eq, lt, sql, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { createEarningRecord } from '../services/payoutLedger';
@@ -63,6 +63,27 @@ async function autoApproveExpiredCompletions(): Promise<void> {
   for (const booking of stale) {
     try {
       const now = new Date();
+
+      // Dispute guard (2026-07-08): NEVER auto-approve — and pay out — a booking
+      // that has an OPEN dispute. A dispute filed on the escrow rail mirrors into
+      // booking_disputes (server/routes/escrow.ts) and freezes the escrow; the
+      // SQL payout gate reads booking_disputes only. Without this skip, the 24h
+      // auto-approve would create the earning + release escrow for a disputed
+      // booking. Statuses mirror payoutGate.OPEN_DISPUTE_STATUSES.
+      const openDispute = await db
+        .select({ id: bookingDisputes.id })
+        .from(bookingDisputes)
+        .where(and(
+          eq(bookingDisputes.bookingId, booking.requestId),
+          inArray(bookingDisputes.status, ['open', 'under_review', 'pending', 'escalated']),
+        ))
+        .limit(1);
+      if (openDispute.length > 0) {
+        logger.warn('[AutoApprove] SKIPPED — booking has an open dispute; not auto-releasing', {
+          requestId: booking.requestId,
+        });
+        continue;
+      }
 
       // Idempotency guard: if an earning record already exists for this booking, skip.
       const existing = await db

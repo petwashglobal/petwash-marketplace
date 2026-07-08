@@ -46,7 +46,12 @@ async function getAuthenticatedUser(req: Request, res: Response) {
 // UI tab names → actual DB status values in new system
 const STATUS_GROUP_MAP: Record<string, string[]> = {
   new_request:  ['pending', 'accepted', 'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending'],
-  active:       ['confirmed', 'in_progress'],
+  // 'provider_marked_complete' = provider said done, awaiting customer approval.
+  // Keep it under the provider's ACTIVE tab (still open, NOT yet earned) so the
+  // job stays visible and is NOT counted as completed/earned until it truly
+  // reaches 'completed'. (Earnings math reads status IN ('completed','reviewed')
+  // via raw SQL, independent of this map, so it stays correct.)
+  active:       ['confirmed', 'in_progress', 'provider_marked_complete'],
   completed:    ['completed', 'reviewed'],
   cancelled:    ['cancelled', 'declined', 'disputed'],
   // V1 compat aliases — old UI sent these tab IDs, map them to V2 enum values
@@ -664,7 +669,15 @@ const TO_STATUS: Record<string, string> = {
   decline:  'declined',
   cancel:   'cancelled',
   start:    'in_progress',
-  complete: 'completed',
+  // SECURITY (2026-07-08): provider 'complete' must NOT jump straight to the
+  // payable 'completed' state. That let a provider self-serve a booking into a
+  // payout-eligible status (payoutGate COMPLETED_STATUSES) with no customer
+  // confirmation. It now lands in the dual-approval gate 'provider_marked_complete'
+  // (exactly like the V1 path, booking-requests.ts:2255). The customer confirms
+  // via POST /api/booking-requests/:id/confirm → 'completed' + escrow release, or
+  // the auto-approve cron (server/cron/auto-approve-completions.ts) advances it
+  // after 24h of customer inaction so the provider is never trapped unpaid.
+  complete: 'provider_marked_complete',
   report:   'disputed',
 };
 
@@ -820,7 +833,13 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
     }
 
     if (action === 'complete') {
+      // Stamp BOTH timestamps like the V1 mark-complete path
+      // (booking-requests.ts:2255): service_completed_at drives the payout
+      // refund window; provider_completed_at is what the auto-approve cron keys
+      // its 24-hour dual-approval window off of.
       setClauses.push(`service_completed_at = $${p++}`);
+      params.push(now);
+      setClauses.push(`provider_completed_at = $${p++}`);
       params.push(now);
     }
 

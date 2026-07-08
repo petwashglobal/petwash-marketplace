@@ -45,6 +45,8 @@ const STATUS_LABEL: Record<string, { en: string; he: string; tone: string }> = {
   quote_sent:   { en: 'Quote sent',   he: 'הצעה נשלחה',  tone: '#b45309' },
   confirmed:    { en: 'Confirmed',    he: 'מאושרת',       tone: GREEN },
   in_progress:  { en: 'In progress',  he: 'בביצוע',       tone: '#1d4ed8' },
+  // Provider marked done — waiting on the customer to approve (or 24h auto-approve).
+  provider_marked_complete: { en: 'Awaiting confirmation', he: 'ממתין לאישור הלקוח', tone: '#1d4ed8' },
   completed:    { en: 'Completed',    he: 'הושלמה',       tone: GREEN },
   declined:     { en: 'Declined',     he: 'נדחתה',        tone: '#991b1b' },
   cancelled:    { en: 'Cancelled',    he: 'בוטלה',        tone: '#991b1b' },
