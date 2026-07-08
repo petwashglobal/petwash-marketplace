@@ -285,8 +285,13 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
                WHERE user_id = $2`,
               [refund, customerId],
             );
-            // Mark escrow as refunded
-            await client.query(
+            // Mark escrow as refunded — CONDITIONAL on it not already being
+            // settled. The escrow.status guard at line ~212 is read BEFORE this
+            // transaction, so two concurrent resolves both passed it and both
+            // credited. This WHERE ... AND status NOT IN (...) is atomic under
+            // Postgres row-locking: the 2nd tx sees 0 rows and rolls back its
+            // wallet credit with it. (2026-07-08)
+            const cfEscrow = await client.query(
               `UPDATE escrow_holdings
                SET status = 'refunded',
                    refund_amount_cents = $1,
@@ -294,9 +299,13 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
                    dispute_resolution = 'customer_favor',
                    dispute_resolved_at = NOW(),
                    updated_at = NOW()
-               WHERE escrow_id = $2`,
+               WHERE escrow_id = $2 AND status NOT IN ('refunded', 'released')`,
               [refund, escrow.escrowId],
             );
+            if (cfEscrow.rowCount === 0) {
+              await client.query('ROLLBACK');
+              return res.status(409).json({ error: 'Escrow already settled (refunded/released) — concurrent resolution rejected' });
+            }
 
             moneyMovementResult = `customer_credited_${refund}_agorot`;
             logger.info('[Disputes] Customer wallet credited (dispute customer_favor)', {
@@ -304,17 +313,22 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
             });
 
           } else if (resolutionType === 'provider_favor') {
-            // Release escrow to provider (mark for payout pipeline)
-            await client.query(
+            // Release escrow to provider (mark for payout pipeline) — CONDITIONAL
+            // on not already settled (see customer_favor note above).
+            const pfEscrow = await client.query(
               `UPDATE escrow_holdings
                SET status = 'released',
                    released_at = NOW(),
                    dispute_resolution = 'provider_favor',
                    dispute_resolved_at = NOW(),
                    updated_at = NOW()
-               WHERE escrow_id = $1`,
+               WHERE escrow_id = $1 AND status NOT IN ('refunded', 'released')`,
               [escrow.escrowId],
             );
+            if (pfEscrow.rowCount === 0) {
+              await client.query('ROLLBACK');
+              return res.status(409).json({ error: 'Escrow already settled (refunded/released) — concurrent resolution rejected' });
+            }
 
             moneyMovementResult = `provider_escrow_released_${escrow.netProviderAmountCents}_agorot`;
             logger.info('[Disputes] Escrow released to provider (dispute provider_favor)', {
@@ -347,7 +361,9 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
                WHERE user_id = $2`,
               [customerRefund, customerId],
             );
-            await client.query(
+            // Settle escrow (split) — CONDITIONAL on not already settled
+            // (see customer_favor note above). Guards the customer credit above.
+            const splitEscrow = await client.query(
               `UPDATE escrow_holdings
                SET status = 'released',
                    refund_amount_cents = $1,
@@ -356,9 +372,13 @@ router.patch('/:id/resolve', async (req: Request, res: Response) => {
                    dispute_resolution = 'split',
                    dispute_resolved_at = NOW(),
                    updated_at = NOW()
-               WHERE escrow_id = $2`,
+               WHERE escrow_id = $2 AND status NOT IN ('refunded', 'released')`,
               [customerRefund, escrow.escrowId],
             );
+            if (splitEscrow.rowCount === 0) {
+              await client.query('ROLLBACK');
+              return res.status(409).json({ error: 'Escrow already settled (refunded/released) — concurrent resolution rejected' });
+            }
 
             moneyMovementResult = `split_customer_${customerRefund}_provider_${escrow.grossAmountCents - customerRefund}_agorot`;
             logger.info('[Disputes] Split resolution executed', {

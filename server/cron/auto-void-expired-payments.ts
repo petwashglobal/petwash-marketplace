@@ -85,10 +85,14 @@ async function voidExpiredPayments() {
     const results = await Promise.allSettled(
       filteredPayments.map(async (paymentIntent) => {
         try {
-          const result = await NayaxJobDispatchPaymentService.voidPayment(
-            paymentIntent.id!,
-            'Booking expired - no operator accepted'
-          );
+          // voidPayment takes a single VoidPaymentParams object, not positional
+          // args. Passing (id, reason) made params = the id string, so
+          // params.paymentIntentId was undefined → the lookup failed and EVERY
+          // void was a silent no-op (expired card holds never released). (2026-07-08)
+          const result = await NayaxJobDispatchPaymentService.voidPayment({
+            paymentIntentId: paymentIntent.id!,
+            reason: 'Booking expired - no operator accepted',
+          });
           
           if (result.success) {
             logger.info('[AutoVoid] Payment voided successfully', {
