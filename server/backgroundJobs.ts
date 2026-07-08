@@ -291,6 +291,20 @@ export class BackgroundJobProcessor {
       }
     });
 
+    // Prune stale, never-completed redemption sessions daily. The rotating redeem
+    // QR writes a fresh session row every ~45s, so abandoned code_generated /
+    // expired / cancelled rows accumulate. COMPLETED (money-moved) sessions are
+    // never touched. From the redeem money-flow audit 2026-07-08.
+    cron.schedule('15 3 * * *', async () => {
+      if (await this.acquireLock('pruneRedemptionSessions')) {
+        try {
+          await this.pruneStaleRedemptionSessions();
+        } finally {
+          this.releaseLock('pruneRedemptionSessions');
+        }
+      }
+    });
+
     // Daily Firestore backup at midnight Israel time
     cron.schedule('0 0 * * *', async () => {
       await this.performDailyBackup();
@@ -1159,6 +1173,24 @@ export class BackgroundJobProcessor {
       
     } catch (error) {
       logger.error('Error cleaning up old logs', error);
+    }
+  }
+
+  /** Prune never-completed redemption sessions older than 14 days. The rotating
+   *  redeem QR creates a fresh session every ~45s, so abandoned code_generated /
+   *  expired / cancelled rows pile up. COMPLETED sessions moved money and are KEPT
+   *  for audit — the WHERE clause excludes them, so this can never delete a real
+   *  transaction record. */
+  private static async pruneStaleRedemptionSessions(): Promise<void> {
+    try {
+      const res = await pool.query(
+        `DELETE FROM redemption_sessions
+         WHERE status IN ('code_generated', 'expired', 'cancelled')
+           AND expires_at < NOW() - INTERVAL '14 days'`,
+      );
+      logger.info('[Cleanup] Pruned stale redemption sessions', { deleted: res.rowCount ?? 0 });
+    } catch (error) {
+      logger.error('[Cleanup] Error pruning redemption sessions', error);
     }
   }
 
