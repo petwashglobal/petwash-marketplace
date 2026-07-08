@@ -313,7 +313,15 @@ export function startMonthlySettlementsCron() {
   // Run on the 1st of each month at 00:05
   cron.schedule('5 0 1 * *', async () => {
     logger.info('[MonthlySettlements] Cron job triggered');
-    await generateMonthlySettlements();
+    // Leader-elected: on multi-replica Cloud Run exactly ONE instance runs this,
+    // so two replicas can't both generate a partner settlement for the same
+    // period (2026-07-08 double-payout fix). Fail-safe: runs anyway if Redis is down.
+    try {
+      const { BackgroundJobProcessor } = await import('../backgroundJobs');
+      await BackgroundJobProcessor.runWithLock('monthlySettlements', generateMonthlySettlements);
+    } catch (err: any) {
+      logger.error('[MonthlySettlements] Cron run failed', { error: err?.message });
+    }
   });
 
   logger.info('[MonthlySettlements] Cron job scheduled successfully (1st of month at 00:05)');

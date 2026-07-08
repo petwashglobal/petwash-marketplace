@@ -222,17 +222,26 @@ export function startAutoApproveCompletionsCron(): void {
   logger.info('[AutoApprove] Initializing auto-approve completions cron (every 15 minutes)');
 
   cron.schedule('*/15 * * * *', async () => {
-    await autoApproveExpiredCompletions().catch((err) => {
+    // Leader-elected: on multi-replica Cloud Run exactly ONE instance runs this
+    // tick, so two replicas can't both create an earning for the same booking
+    // (2026-07-08 double-payout fix). Fail-safe: runs anyway if Redis is down.
+    try {
+      const { BackgroundJobProcessor } = await import('../backgroundJobs');
+      await BackgroundJobProcessor.runWithLock('autoApproveCompletions', autoApproveExpiredCompletions);
+    } catch (err: any) {
       logger.error('[AutoApprove] Cron run failed', { error: err.message });
-    });
+    }
   });
 
   // Run once shortly after startup to catch any stale bookings from before this
   // cron was introduced (give the server 3 minutes to finish its startup checks).
-  setTimeout(() => {
-    autoApproveExpiredCompletions().catch((err) => {
+  setTimeout(async () => {
+    try {
+      const { BackgroundJobProcessor } = await import('../backgroundJobs');
+      await BackgroundJobProcessor.runWithLock('autoApproveCompletions', autoApproveExpiredCompletions);
+    } catch (err: any) {
       logger.error('[AutoApprove] Startup scan failed', { error: err.message });
-    });
+    }
   }, 3 * 60 * 1000);
 }
 

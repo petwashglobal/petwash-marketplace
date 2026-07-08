@@ -77,6 +77,26 @@ export class BackgroundJobProcessor {
   }
 
   /**
+   * PUBLIC leader-elected wrapper for crons that live OUTSIDE this class's own
+   * schedule() (server/cron/auto-approve-completions.ts,
+   * server/cron/monthly-settlements.ts). Those crons run on EVERY Cloud Run
+   * replica; without leader election two replicas process the same tick and can
+   * double-create a provider earning / partner settlement (the 2026-07-08
+   * double-payout finding). Exactly one instance wins acquireLock per tick; the
+   * others skip. FAIL-SAFE by construction: when Redis is down acquireLock falls
+   * back to the in-process Map and returns true, so a single instance still runs
+   * — the lock can never STOP payouts, only de-duplicate them across replicas.
+   */
+  static async runWithLock(jobName: string, fn: () => Promise<unknown>): Promise<void> {
+    if (!(await this.acquireLock(jobName))) return; // another replica owns this tick
+    try {
+      await fn();
+    } finally {
+      this.releaseLock(jobName);
+    }
+  }
+
+  /**
    * Start the background job scheduler
    */
   static start(): void {
