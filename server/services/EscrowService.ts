@@ -173,7 +173,7 @@ class EscrowService {
   async releaseEscrowPayment(
     escrowId: string,
     releasedBy: string,
-    opts?: { bypassGate?: boolean },
+    opts?: { bypassGate?: boolean; enforceGate?: boolean },
   ): Promise<void> {
     const escrowRef = this.db.collection("escrow_payments").doc(escrowId);
 
@@ -194,7 +194,14 @@ class EscrowService {
             serviceType: (e.metadata as any)?.serviceType ?? null,
           });
           if (!gate.ok) {
-            const enforce = process.env.ESCROW_PAYOUT_GATE_ENFORCE === "true";
+            // enforceGate:true forces the fail-closed HOLD for a specific caller
+            // regardless of the global env flag. Used by the TIME-BASED orphan
+            // auto-release (autoReleaseExpiredHolds) so it can NEVER release an
+            // escrow whose booking isn't actually completed — WITHOUT changing
+            // behavior for explicit, already-authorized releases (owner-confirm,
+            // manual party release, octopus completion), which release now and
+            // must not be blocked by the 48h refund-window gate.
+            const enforce = opts?.enforceGate === true || process.env.ESCROW_PAYOUT_GATE_ENFORCE === "true";
             console.warn(
               `[Escrow] payout gate ${enforce ? "HELD" : "WOULD HOLD (shadow)"} ` +
                 `escrow ${escrowId} — ${gate.reason}: ${gate.message}`,
@@ -491,7 +498,13 @@ class EscrowService {
           continue;
         }
 
-        await this.releaseEscrowPayment(escrow.id, "system_auto_release");
+        // Time-based orphan release: FORCE the payout gate (fail-closed). An
+        // escrow reaches holdUntil still 'held' only if no explicit release
+        // happened — i.e. no owner confirmation and not caught by the 24h
+        // auto-approve. If the booking never actually completed (provider
+        // no-show / abandoned), the gate HOLDS and we do NOT release. Legit
+        // completed-but-stuck escrows still pass the gate and release here.
+        await this.releaseEscrowPayment(escrow.id, "system_auto_release", { enforceGate: true });
         releasedCount++;
       } catch (error) {
         console.error(`[Escrow] Failed to auto-release ${escrow.id}:`, error);
