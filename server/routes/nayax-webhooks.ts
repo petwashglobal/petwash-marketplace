@@ -932,14 +932,22 @@ router.post(
         return res.status(400).json({ error: 'Invalid JSON body' });
       }
 
-      // Signature check (same as /nayax/payment)
+      // Signature check — FAIL-CLOSED (2026-07-08), truly matching /nayax/payment.
+      // This webhook CREDITS wallets, so an unsigned request must NEVER be
+      // accepted. The old `signatureEnforced && !signature` form silently
+      // ACCEPTED unsigned bodies whenever NAYAX_WEBHOOK_SECRET was unset in the
+      // runtime — a wide-open wallet-credit endpoint. Now: no secret → 503;
+      // missing signature → 401; bad signature → 401.
       const signature = req.headers['x-nayax-signature'] as string | undefined;
-      const signatureEnforced = NayaxOnlinePaymentService.isSignatureEnforced();
-      if (signatureEnforced && !signature) {
+      if (!NayaxOnlinePaymentService.isSignatureEnforced()) {
+        logger.error('[CheckoutWebhook] NAYAX_WEBHOOK_SECRET not configured — rejecting (fail-closed)');
+        return res.status(503).json({ error: 'Webhook signature verification not configured' });
+      }
+      if (!signature) {
         logger.warn('[CheckoutWebhook] Missing required signature header');
         return res.status(401).json({ error: 'X-Nayax-Signature header is required' });
       }
-      if (signature && !NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
+      if (!NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
         logger.warn('[CheckoutWebhook] Invalid signature');
         return res.status(401).json({ error: 'Invalid signature' });
       }
@@ -1164,14 +1172,20 @@ router.post(
         return res.status(400).json({ error: 'Invalid JSON body' });
       }
 
-      // Signature check
+      // Signature check — FAIL-CLOSED (2026-07-08), matching /nayax/payment. This
+      // webhook flips a booking to 'confirmed' (a paid state), so an unsigned
+      // request must never be accepted. No secret → 503; no signature → 401;
+      // bad signature → 401 (was fail-open when NAYAX_WEBHOOK_SECRET was unset).
       const signature = req.headers['x-nayax-signature'] as string | undefined;
-      const signatureEnforced = NayaxOnlinePaymentService.isSignatureEnforced();
-      if (signatureEnforced && !signature) {
+      if (!NayaxOnlinePaymentService.isSignatureEnforced()) {
+        logger.error('[BookingReqWebhook] NAYAX_WEBHOOK_SECRET not configured — rejecting (fail-closed)');
+        return res.status(503).json({ error: 'Webhook signature verification not configured' });
+      }
+      if (!signature) {
         logger.warn('[BookingReqWebhook] Missing required signature header');
         return res.status(401).json({ error: 'X-Nayax-Signature header is required' });
       }
-      if (signature && !NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
+      if (!NayaxOnlinePaymentService.verifyWebhookSignature(rawBody, signature)) {
         logger.warn('[BookingReqWebhook] Invalid signature');
         return res.status(401).json({ error: 'Invalid signature' });
       }
