@@ -13154,8 +13154,11 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // Create User Profile - Server-side profile creation for new signups
-  // This bypasses Firestore security rules using Admin SDK
-  app.post('/api/users/create-profile', async (req, res) => {
+  // This bypasses Firestore security rules using Admin SDK.
+  // authLimiter (2026-07-08): this endpoint MINTS accounts and was previously
+  // unthrottled, unlike every sibling /api/auth/* signup route — an open door
+  // for automated account-farming. Rate-limited to match.
+  app.post('/api/users/create-profile', authLimiter, async (req, res) => {
     try {
       const authHeader = req.headers.authorization;
       if (!authHeader?.startsWith('Bearer ')) {
@@ -13259,7 +13262,13 @@ self.addEventListener('notificationclick', (event) => {
         if (isNaN(dobDate.getTime())) validationErrors.push('Date of birth is invalid');
         else {
           const age = Math.floor((Date.now() - dobDate.getTime()) / (365.25 * 24 * 60 * 60 * 1000));
-          if (age < 13) validationErrors.push('Must be at least 13 years old');
+          // 18+ (2026-07-08): PetWash is an 18+ marketplace. The phone/email
+          // signup rails already reject under-18 (checkSignupAge, fail-closed);
+          // this path previously allowed 13+, an inconsistency. Match the floor.
+          // (Social sign-in currently attests 18+ via checkbox rather than a
+          // verified DOB — strengthening that to a required birthdate is a
+          // separate product/conversion decision.)
+          if (age < 18) validationErrors.push('You must be at least 18 years old');
         }
       }
 
