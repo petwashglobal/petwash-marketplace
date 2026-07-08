@@ -4427,7 +4427,7 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  app.post('/api/wash-history', requireAuth, async (req: any, res) => {
+  app.post('/api/wash-history', requireAdmin, async (req: any, res) => {
     try {
       const customerId = (req.session as any)?.customerId;
       const customer = await storage.getCustomer(customerId);
@@ -4457,51 +4457,16 @@ self.addEventListener('notificationclick', (event) => {
 
       const history = await storage.createWashHistory(historyData);
 
-      // PR-W10: wash credits go to walletAccounts.washPackageCredits, not
-      // customers.washBalance. The legacy column is invisible at the
-      // K9000 kiosk (server/services/K9000RedemptionService.ts:782 reads
-      // walletAccounts only). Bridge customer → user via email; if no
-      // user record exists yet, log and skip the credit so the customer
-      // can be backfilled rather than orphaning more shekels.
-      if (user) {
-        const { walletService } = await import('./services/WalletService');
-        await walletService.addCredits(
-          user.id,
-          'wash_package',
-          pkg.washCount,
-          'wash_history_create',
-          String(history.id),
-          `Wash history credit (${pkg.washCount} washes)`,
-        );
-      } else {
-        logger.warn('[wash-history] Customer has no linked user — wash-pack credit skipped', {
-          customerId,
-          customerEmail: customer.email,
-          packageId,
-          washCount: pkg.washCount,
-        });
-      }
-
-      const newTotalSpent = parseFloat(customer.totalSpent || '0') + finalPrice;
-      await storage.updateCustomer(customerId, {
-        totalSpent: newTotalSpent.toString(),
-      });
-
-      // Also update user loyalty tier if user exists
-      if (user) {
-        const userTotalSpent = parseFloat(user.totalSpent || '0') + finalPrice;
-        let newTier = user.loyaltyTier;
-        
-        if (newTier === "new" && userTotalSpent > 0) {
-          newTier = "regular";
-        }
-
-        await storage.updateUser(user.id, {
-          totalSpent: userTotalSpent.toString(),
-          loyaltyTier: newTier,
-        });
-      }
-
+      // SECURITY (2026-07-08): this route no longer grants ANY economic benefit.
+      // It previously called walletService.addCredits(...) and bumped
+      // totalSpent/loyaltyTier with NO payment verification — any authenticated
+      // caller could self-mint free K9000 wash-package credits (a fresh
+      // history.id was used as the credit sourceId, so the in-app dedup never
+      // tripped → unlimited free washes) and inflate their own loyalty tier.
+      // Wash-package credits are granted ONLY by the payment-verified Nayax
+      // checkout webhook (server/routes/nayax-webhooks.ts:1036, which validates
+      // the paid amount against the wash-history finalPrice). This endpoint is
+      // now admin-only (requireAdmin) and records a history row only.
       res.json(history);
     } catch (error) {
       logger.error('Error creating wash history:', error);
