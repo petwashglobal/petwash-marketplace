@@ -4,6 +4,9 @@ import { requireAuth } from "../customAuth";
 import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from "../services/googleSheetsIntegration";
+import { db } from "../db";
+import { bookingDisputes } from "@shared/schema";
+import { and, eq } from "drizzle-orm";
 
 const SHEETS_DISPUTE_CASES = 'Dispute Cases';
 
@@ -160,6 +163,41 @@ router.post("/:escrowId/dispute", requireAuth, async (req, res) => {
     const escrow = await assertEscrowParticipant(escrowId, callerId);
 
     await EscrowService.disputeEscrowPayment(escrowId, reason, callerId);
+
+    // Cross-rail dispute visibility (2026-07-08): the Firestore freeze inside
+    // disputeEscrowPayment (autoReleaseBlocked) only stops the ESCROW rail's
+    // auto-release. The SQL payout gate (payoutGate.ts gate (d)) reads
+    // booking_disputes ONLY — so the parallel contractor_earnings /
+    // super_app_payouts for the SAME booking would still auto-release after the
+    // refund window. Mirror the dispute into booking_disputes so EVERY payout
+    // rail holds. Non-fatal (the Firestore freeze already protects escrow) and
+    // de-duped so re-filing doesn't pile up rows.
+    try {
+      if (escrow.bookingId) {
+        const [existing] = await db
+          .select({ id: bookingDisputes.id })
+          .from(bookingDisputes)
+          .where(and(
+            eq(bookingDisputes.bookingId, String(escrow.bookingId)),
+            eq(bookingDisputes.status, 'open'),
+          ))
+          .limit(1);
+        if (!existing) {
+          await db.insert(bookingDisputes).values({
+            bookingId: String(escrow.bookingId),
+            customerId: String(escrow.customerId),
+            reason: 'escrow_dispute',
+            description: typeof reason === 'string' ? reason.slice(0, 1000) : null,
+            status: 'open',
+          });
+        }
+      }
+    } catch (e: any) {
+      logger.warn('[Escrow] Failed to mirror dispute into booking_disputes (non-fatal)', {
+        escrowId, bookingId: escrow.bookingId, error: e?.message,
+      });
+    }
+
     res.json({ success: true });
 
     // ── Fire-and-forget: Dispute cases sheet + live feed ──────────────────
