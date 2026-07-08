@@ -170,17 +170,18 @@ router.post('/redeem', async (req: AuthenticatedRequest, res: Response) => {
   });
 });
 
-router.post('/restore/:id', async (req: AuthenticatedRequest, res: Response) => {
-  const userId = req.firebaseUser?.uid;
-  if (!userId) return res.status(401).json({ error: 'AUTH_REQUIRED' });
-
+// ADMIN-ONLY. Restoring a redemption re-activates a single-use coupon; letting the
+// owning user self-restore (the old behaviour) was a coupon-farming hole: redeem a
+// one-time coupon at a real wash, restore it, redeem again — unlimited. Legitimate
+// cancellation-driven restores go through UnifiedPricingService.restoreRedemption
+// (server-side, after the order is actually cancelled), and admins have this route +
+// /api/admin/coupons/restore. The client never called this endpoint.
+router.post('/restore/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const redemptionId = parseInt(req.params.id, 10);
   if (isNaN(redemptionId)) return res.status(400).json({ error: 'מזהה לא תקין' });
 
-  // Only allow restore by the owning user or admin
   const check = await pool.query(`SELECT user_id FROM coupon_redemptions WHERE id = $1`, [redemptionId]);
   if (!check.rows.length) return res.status(404).json({ error: 'מימוש לא נמצא' });
-  if (check.rows[0].user_id !== userId) return res.status(403).json({ error: 'גישה נדחתה' });
 
   const parsed = restoreSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'בקשה לא תקינה' });

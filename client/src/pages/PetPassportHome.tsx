@@ -20,7 +20,7 @@ import { useQuery } from '@tanstack/react-query';
 import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
-import { getApiUrl } from '@/lib/apiConfig';
+import { apiRequest } from '@/lib/queryClient';
 import {
   BriefcaseMedical, Syringe, ShieldCheck, CalendarDays, Stethoscope, MapPin,
   ShoppingBag, MoreHorizontal, Home, PawPrint, Heart, FileText, Bell, Pencil, Plus,
@@ -121,8 +121,11 @@ export default function PetPassportHome() {
   const { data, isLoading } = useQuery({
     queryKey: ['/api/pets'],
     queryFn: async () => {
-      const r = await fetch(getApiUrl('/api/pets'), { credentials: 'include' });
-      return r.ok ? r.json() : { pets: [] };
+      // MUST use apiRequest — it attaches the Firebase Bearer token. A raw
+      // fetch sends no auth header (there is no pw_session cookie), so /api/pets
+      // 401s and the passport falsely shows "no pets" to every real owner.
+      const r = await apiRequest('GET', '/api/pets');
+      return r.json();
     },
     enabled: !!user,
     staleTime: 60_000,
