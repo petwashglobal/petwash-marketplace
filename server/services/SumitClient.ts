@@ -1,13 +1,18 @@
 /**
  * SUMIT Client (sumit.co.il)
  *
- * Read-only stub. NOT wired to any caller. NOT mounted on any route.
- * NO feature flag flips this on yet. health() returns wired:false until
- * a future PR (PR-S4) adds the admin "Send to SUMIT" button + flag.
+ * ⚠️ LIVE (updated 2026-07-08): this header formerly said "read-only stub, not
+ * wired". That is NO LONGER TRUE. SumitClient is imported by shop.ts,
+ * payments-sumit.ts, sumit-webhook.ts, IsraeliDigitalReceiptService,
+ * SumitReceiptService, PurchaseActivationService, admin-sumit and the SumitSync
+ * services, and it fires live HTTP against https://api.sumit.co.il
+ * (/accounting/documents/create/, /billing/payments/beginredirect/). Do NOT
+ * treat it as a no-op — gutting or disabling it stops real fiscal documents
+ * (official Israeli חשבונית/קבלה) from being issued.
  *
- * Why exist now: gives a single, audited place where every future SUMIT
- * call will live (createDocument, multivendorcharge, webhook verification)
- * so wiring it later is a one-PR change, not a refactor.
+ * It is the single, audited place where every SUMIT call lives (createDocument,
+ * multivendorcharge, webhook verification). Auth = body-embedded
+ * Credentials:{CompanyID, APIKey}; single base host.
  *
  * Companion: docs/finance/sumit-readiness-check-2026-05-23.md
  * Design:    docs/design/2026-05-22-supplier-invoice-sumit-fraud-control.md

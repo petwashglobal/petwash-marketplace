@@ -139,7 +139,10 @@ export class NayaxJobDispatchPaymentService {
           amountCents: params.amountCents,
           currency: params.currency,
           status: 'authorized',
-          authorizationId: authResponse.AuthorizationId,
+          // Column is nayax_authorization_id — capture/void read intent.nayaxAuthorizationId.
+          // Writing the wrong field name (authorizationId) left it NULL → every
+          // capture/void failed "Missing authorization ID". (2026-07-08)
+          nayaxAuthorizationId: authResponse.AuthorizationId,
           expiresAt,
           metadata: params.metadata || {},
           createdAt: new Date(),
