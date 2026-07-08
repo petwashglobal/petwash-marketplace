@@ -64,10 +64,15 @@ function hasCredentials(e: LynxConfig): boolean {
   return Boolean(e.username) && Boolean(e.password);
 }
 
-/** Wired when LYNX_ENABLED=true AND some auth mode is configured (token OR login). */
+/** Wired ONLY when LYNX_ENABLED=true AND a real Bearer USER TOKEN is set.
+ *  Username/password (operator login) is NOT a valid Lynx API auth method: the
+ *  Lynx API is Bearer-token-only. Proven 2026-07-07 — POST /operational/v1/signin
+ *  returns HTTP 500 with our creds, and Nayax's Security doc requires a User Token
+ *  in the Authorization header. So credentials alone must NOT report "wired" — that
+ *  was a false green. See memory lynx-auth-needs-user-token-2026-07-07. */
 function isWired(): boolean {
   const e = readEnv();
-  return e.enabled && (Boolean(e.token) || hasCredentials(e));
+  return e.enabled && Boolean(e.token);
 }
 
 export interface LynxHealth {
@@ -89,10 +94,12 @@ export function health(): LynxHealth {
   return {
     wired,
     reason: wired
-      ? `Lynx wired (LYNX_ENABLED=true, auth=${authMode}).`
+      ? 'Lynx wired (LYNX_ENABLED=true, Bearer User Token set).'
       : !e.enabled
         ? 'Dark: LYNX_ENABLED is not "true".'
-        : 'Dark: set LYNX_USER_TOKEN, or LYNX_USERNAME + LYNX_PASSWORD.',
+        : hasCredentials(e)
+          ? 'Dark: username/password is NOT a valid Lynx API auth method (Bearer-token-only). Set LYNX_USER_TOKEN — the API User Token from Nayax Core → Account Settings → Security & Login → User Tokens.'
+          : 'Dark: set LYNX_USER_TOKEN (the API User Token from Nayax Core → Security & Login → User Tokens).',
     baseUrl: e.baseUrl,
     sandbox: e.sandbox,
     tokenConfigured: Boolean(e.token),
