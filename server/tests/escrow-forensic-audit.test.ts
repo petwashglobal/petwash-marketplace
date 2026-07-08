@@ -51,6 +51,17 @@ function methodBody(name: string): string {
   return nextAsync > 0 ? after.slice(0, nextAsync) : after;
 }
 
+// Index of the SPECIFIC logAuditEvent call that emits `actionType` — NOT just
+// the first logAuditEvent in the method. releaseEscrowPayment also emits an
+// EARLIER payout-gate-peek audit (ESCROW_GATE_HELD / ESCROW_GATE_WOULD_HOLD)
+// that correctly runs BEFORE the tx; anchoring on the forensic action type
+// pins the post-tx release/refund/dispute audit, which is what this asserts.
+function auditIdxFor(body: string, actionType: string): number {
+  const at = body.indexOf(actionType);
+  if (at < 0) return -1;
+  return body.lastIndexOf('logAuditEvent(', at);
+}
+
 describe('Issue #153 PR-TAX-3 — Escrow forensic audit emission', () => {
   it('imports logAuditEvent from the existing middleware (no new dependency)', () => {
     expect(SRC).toMatch(
@@ -64,9 +75,9 @@ describe('Issue #153 PR-TAX-3 — Escrow forensic audit emission', () => {
     expect(body).toMatch(/logAuditEvent\(\s*\{/);
     expect(body).toMatch(/actionType:\s*["']ESCROW_RELEASED["']/);
     expect(body).toMatch(/targetType:\s*["']escrow_payment["']/);
-    // Order: runTransaction → logAuditEvent → first NotificationService call
+    // Order: runTransaction → ESCROW_RELEASED audit → first NotificationService call
     const txIdx     = body.indexOf('this.db.runTransaction');
-    const auditIdx  = body.indexOf('logAuditEvent(');
+    const auditIdx  = auditIdxFor(body, 'ESCROW_RELEASED');
     const notifyIdx = body.indexOf('NotificationService.sendNotification', auditIdx);
     expect(txIdx).toBeGreaterThan(0);
     expect(auditIdx).toBeGreaterThan(txIdx);
@@ -80,7 +91,7 @@ describe('Issue #153 PR-TAX-3 — Escrow forensic audit emission', () => {
     expect(body).toMatch(/actionType:\s*["']ESCROW_REFUNDED["']/);
     expect(body).toMatch(/targetType:\s*["']escrow_payment["']/);
     const txIdx     = body.indexOf('this.db.runTransaction');
-    const auditIdx  = body.indexOf('logAuditEvent(');
+    const auditIdx  = auditIdxFor(body, 'ESCROW_REFUNDED');
     const notifyIdx = body.indexOf('NotificationService.sendNotification', auditIdx);
     expect(txIdx).toBeGreaterThan(0);
     expect(auditIdx).toBeGreaterThan(txIdx);
@@ -94,7 +105,7 @@ describe('Issue #153 PR-TAX-3 — Escrow forensic audit emission', () => {
     expect(body).toMatch(/actionType:\s*["']ESCROW_DISPUTED["']/);
     expect(body).toMatch(/targetType:\s*["']escrow_payment["']/);
     const txIdx     = body.indexOf('this.db.runTransaction');
-    const auditIdx  = body.indexOf('logAuditEvent(');
+    const auditIdx  = auditIdxFor(body, 'ESCROW_DISPUTED');
     const notifyIdx = body.indexOf('NotificationService.sendNotification', auditIdx);
     expect(txIdx).toBeGreaterThan(0);
     expect(auditIdx).toBeGreaterThan(txIdx);
