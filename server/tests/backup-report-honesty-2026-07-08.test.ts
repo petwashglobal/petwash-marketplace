@@ -53,4 +53,15 @@ describe('backup report honesty (2026-07-08)', () => {
   it('the real per-collection error is captured (not discarded as bare error:true)', () => {
     expect(SRC).toMatch(/results\.push\(\{ collection: collectionName, error: true, errorMessage \}\)/);
   });
+
+  it('read-back verification: each uploaded object is re-downloaded and doc-count checked', () => {
+    expect(SRC).toMatch(/const \[readBack\] = await file\.download\(\)/);
+    expect(SRC).toMatch(/read-back verification failed/);
+    // a count mismatch throws → the collection is demoted to FAILED by the catch
+    expect(SRC).toMatch(/if \(verifiedCount !== documents\.length\)/);
+  });
+
+  it('the report shows the read-back verified count', () => {
+    expect(SRC).toMatch(/Read-back Verified/);
+  });
 });

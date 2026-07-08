@@ -452,15 +452,36 @@ export async function performFirestoreExport(): Promise<{
             }
           }
         });
-        
+
+        // ── READ-BACK VERIFICATION (spec §9: a backup you cannot read back is
+        // not a backup) ──────────────────────────────────────────────────────
+        // Immediately re-download the object we just wrote and confirm it is
+        // retrievable, parses as JSON, and reports the SAME document count. GCS
+        // gives strong read-after-write consistency for new objects, so this is
+        // deterministic. A mismatch/parse failure throws → the collection is
+        // demoted to FAILED with the reason (surfaced by the honest report),
+        // instead of a silently-corrupt or truncated "success".
+        const [readBack] = await file.download();
+        let verifiedCount = -1;
+        try {
+          const parsed = JSON.parse(readBack.toString('utf8'));
+          verifiedCount = Array.isArray(parsed?.documents) ? parsed.documents.length : -1;
+        } catch (parseErr: any) {
+          throw new Error(`read-back verification failed — uploaded object is not valid JSON: ${parseErr?.message}`);
+        }
+        if (verifiedCount !== documents.length) {
+          throw new Error(`read-back verification failed — wrote ${documents.length} docs but read back ${verifiedCount}`);
+        }
+
         totalDocs += documents.length;
-        results.push({ 
-          collection: collectionName, 
+        results.push({
+          collection: collectionName,
           docs: documents.length,
-          sizeMB: parseFloat(fileSizeMB)
+          sizeMB: parseFloat(fileSizeMB),
+          verified: true,
         });
-        
-        logger.info(`[GCS] ✅ Exported ${documents.length} docs from ${collectionName} (${fileSizeMB} MB)`);
+
+        logger.info(`[GCS] ✅ Exported + verified ${documents.length} docs from ${collectionName} (${fileSizeMB} MB)`);
       } catch (error: any) {
         // Capture the REAL error (PERMISSION_DENIED / NOT_FOUND / project-not-found)
         // instead of a bare error:true — the old report hid the root cause.
@@ -909,6 +930,10 @@ async function sendBackupSummaryEmail(data: {
         <div class="detail">
           <span class="label">Total Documents:</span>
           <span class="value">${data.firestoreBackup.totalDocs}</span>
+        </div>
+        <div class="detail">
+          <span class="label">Read-back Verified:</span>
+          <span class="value">${data.firestoreBackup.files.filter(f => !f.error).length} / ${data.firestoreBackup.files.length} collections (re-downloaded &amp; doc-count matched)</span>
         </div>
       </div>
 
