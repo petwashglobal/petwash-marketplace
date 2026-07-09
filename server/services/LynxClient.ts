@@ -227,6 +227,15 @@ export function getDevice(deviceId: string): Promise<LynxResult> {
   return request('GET', `/operational/v1/devices/${encodeURIComponent(deviceId)}`);
 }
 
+// ── READ: a machine's recent sales (bay-transaction reconciliation feed) ──────
+/** GET a machine's last sales — the pull-based transaction feed for Tower Control
+ *  reconciliation (Nayax Lynx is PULL, not push: verified against the dev portal,
+ *  `GET /operational/v1/machines/{MachineID}/lastSales`). READ-ONLY: it views what
+ *  already happened at the bay; it never moves money or touches the wash ledger. */
+export function getLastSales(machineId: string): Promise<LynxResult> {
+  return request('GET', `/operational/v1/machines/${encodeURIComponent(machineId)}/lastSales`);
+}
+
 // ── READ: the current user's actor hierarchy (discovers the operator ActorID) ─
 /** GET the signed-in user's actor hierarchy — used to auto-discover the operator
  *  ActorID that issues cards, so LYNX_OPERATOR_ID need not be set by hand. */
@@ -267,6 +276,7 @@ export const LynxClient = {
   health,
   getMachineProducts,
   getDevice,
+  getLastSales,
   getActorHierarchy,
   generatePickList,
   connectionTest,
