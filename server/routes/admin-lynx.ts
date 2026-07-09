@@ -87,6 +87,23 @@ router.get('/machine/:machineId/products', ...requireSuperAdmin, async (req: Req
   }
 });
 
+// Bay-transaction reconciliation feed for Tower Control — Nayax Lynx is PULL, not
+// push (verified against the dev portal: GET /operational/v1/machines/{id}/lastSales).
+// READ-ONLY: views what already happened at the bay; never moves money. Dark until
+// LYNX_ENABLED=true + LYNX_USER_TOKEN set (returns {wired:false} otherwise).
+router.get('/machine/:machineId/last-sales', ...requireSuperAdmin, async (req: Request, res: Response) => {
+  const machineId = String(req.params.machineId || '').trim();
+  if (!machineId) return res.status(400).json({ error: 'machineId required' });
+  try {
+    const result = await LynxClient.getLastSales(machineId);
+    await audit(req, 'ADMIN_LYNX_LAST_SALES', { machineId, ok: result.ok, status: result.status });
+    return res.json(result);
+  } catch (err: any) {
+    logger.error('[AdminLynx] last sales failed', { err: err?.message });
+    return res.status(500).json({ error: 'Lynx last sales failed' });
+  }
+});
+
 router.get('/device/:deviceId', ...requireSuperAdmin, async (req: Request, res: Response) => {
   const deviceId = String(req.params.deviceId || '').trim();
   if (!deviceId) return res.status(400).json({ error: 'deviceId required' });
