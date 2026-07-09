@@ -140,11 +140,15 @@ function petName(b: any, lang: 'he' | 'en'): string {
 }
 
 // POST /api/cron/booking-reminders
-router.post('/booking-reminders', async (req: Request, res: Response) => {
-  if (!(await authorized(req))) {
-    logger.warn('[BookingReminders] Unauthorized', { ip: req.ip });
-    return res.status(403).json({ success: false, error: 'Unauthorized' });
-  }
+/**
+ * Core booking-reminder run — extracted so BOTH the HTTP route (external
+ * scheduler / manual) and the in-process scheduler in backgroundJobs.ts can call
+ * it. Mirrors runWashReminderCron(): does NOT schedule itself, records its own
+ * cron execution, returns the counts, and throws on failure for the caller to
+ * handle. This is what makes booking reminders actually fire without depending on
+ * an external Cloud Scheduler job.
+ */
+export async function runBookingRemindersCron(): Promise<{ scanned: number; emails: number; smses: number; inApp: number }> {
   const startedAt = Date.now();
   try {
     const now = Date.now();
@@ -257,10 +261,26 @@ router.post('/booking-reminders', async (req: Request, res: Response) => {
     logger.info('[BookingReminders] Run complete', {
       scanned: upcoming.length, emails, smses, inApp, ms: Date.now() - startedAt,
     });
-    return res.json({ success: true, scanned: upcoming.length, emails, smses, inApp });
+    return { scanned: upcoming.length, emails, smses, inApp };
   } catch (err: any) {
     await recordCronExecution('booking-reminders', false, err?.message).catch(() => {});
     logger.error('[BookingReminders] Run failed', { error: err?.message });
+    throw err;
+  }
+}
+
+// HTTP route (external scheduler / manual trigger) — thin wrapper over the
+// callable above. The in-process scheduler in backgroundJobs.ts ALSO calls
+// runBookingRemindersCron() hourly, so reminders fire without a Cloud Scheduler.
+router.post('/booking-reminders', async (req: Request, res: Response) => {
+  if (!(await authorized(req))) {
+    logger.warn('[BookingReminders] Unauthorized', { ip: req.ip });
+    return res.status(403).json({ success: false, error: 'Unauthorized' });
+  }
+  try {
+    const result = await runBookingRemindersCron();
+    return res.json({ success: true, ...result });
+  } catch (err: any) {
     return res.status(500).json({ success: false, error: err?.message || 'run_failed' });
   }
 });
