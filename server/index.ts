@@ -318,6 +318,7 @@ import { fileURLToPath } from "node:url";
 import cors from "cors";
 import { doubleCsrf } from "csrf-csrf";
 import { initSentry } from "./lib/observability";
+import { initializeGoogleServices } from "./config/google-services";
 
 // --- CRITICAL: Early startup logging for Cloud Run debugging ---
 console.log('--------------------------------------------------');
@@ -398,6 +399,19 @@ try {
   initSentry();
 } catch (e) {
   console.warn('[startup] Sentry init skipped:', (e as Error)?.message);
+}
+
+// GOOGLE SERVICES 2026-07-09: initializeGoogleServices() was fully built but,
+// exactly like Sentry above, was NEVER called at boot — so the Places singleton
+// stayed null and every place-details lookup threw "Google Maps Places service
+// not initialized" (station reviews / place details). Wire it now; it logs a
+// warning and no-ops cleanly when GOOGLE_MAPS_API_KEY is unset. (Address
+// autocomplete uses the key directly and is a SEPARATE issue — the key itself is
+// currently EXPIRED, an ops renewal, not a code fix.)
+try {
+  initializeGoogleServices();
+} catch (e) {
+  console.warn('[startup] Google Services init skipped:', (e as Error)?.message);
 }
 
 // Trust proxy for Replit/Cloud Run deployment
