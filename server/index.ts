@@ -134,9 +134,12 @@ const _startupSecurityViolations: string[] = [];
     },
     {
       // SendGrid API key — required for ALL transactional email.
-      // Must start with "SG." — the only format accepted by the SendGrid SDK.
+      // Format is SG.<id>.<secret> — note the SECOND dot separating the two
+      // parts. The old class [A-Za-z0-9_-] excluded that dot, so this rule
+      // false-flagged EVERY valid key as "🚨 FATAL unexpected format" at boot
+      // (harmless — email still worked — but alarming noise). [\w.-] allows it.
       key: 'SENDGRID_API_KEY',
-      pattern: /^SG\.[A-Za-z0-9_-]{20,}$/,
+      pattern: /^SG\.[\w.-]{20,}$/,
       hint: 'Must start with "SG." — create at app.sendgrid.com → Settings → API Keys',
       fatalInProd: true,
     },
