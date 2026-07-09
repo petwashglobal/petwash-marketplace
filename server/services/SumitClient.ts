@@ -107,8 +107,10 @@ function extractDocumentId(body: unknown): string | undefined {
  *  - SUMIT_COMPANY_ID present
  *  - SUMIT_WEBHOOK_SECRET present
  *
- * At time of writing (May 2026) none of the env is set in production
- * and no caller exists, so isWired() always returns false.
+ * Callers exist (IsraeliDigitalReceiptService issues customer receipts + credit
+ * documents through this client). Until SUMIT_ENABLED=true and all creds are set
+ * in prod, isWired() returns false and every method is a safe no-op — but it goes
+ * live the instant those are set. Not inert.
  */
 function isWired(): boolean {
   const e = readEnv();
@@ -155,10 +157,13 @@ export interface SumitDocumentResult {
 }
 
 /**
- * Stub client. No HTTP calls fire in this PR. Every method that would talk
- * to api.sumit.co.il is currently a no-op that returns wired:false + the
- * reason. PR-S4 will replace these stubs with real fetch() calls behind
- * the ff.supplier_invoice_control.sumit_send.enabled feature flag.
+ * LIVE client (2026-07-09: corrected the stale "stub" note below). Every method
+ * — createDocument, createCustomerReceipt, createCreditDocument, beginRedirect —
+ * fires REAL fetch() HTTP against api.sumit.co.il when isWired() is true. It is a
+ * no-op that returns {wired:false} ONLY while SUMIT is not wired (SUMIT_ENABLED
+ * !== 'true' or a credential is missing). Do NOT treat this as inert: the moment
+ * SUMIT_ENABLED=true and creds are set, these calls hit SUMIT for real. Callers
+ * exist today (server/services/IsraeliDigitalReceiptService.ts).
  */
 export class SumitClient {
   health(): SumitHealth {
@@ -168,7 +173,7 @@ export class SumitClient {
       wired,
       reason: wired
         ? 'SUMIT_ENABLED=true and all credentials present'
-        : 'SUMIT not enabled or credentials missing (expected in current PR)',
+        : 'SUMIT not enabled or credentials missing (set SUMIT_ENABLED=true + API key/company id/webhook secret to go live)',
       baseUrl: e.baseUrl,
       companyIdConfigured: Boolean(e.companyId),
       webhookSecretConfigured: Boolean(e.webhookSecret),
