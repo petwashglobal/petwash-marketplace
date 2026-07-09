@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { MapPin, Home, Briefcase, Clock, Star, Plus, Loader2, Navigation } from "lucide-react";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
@@ -180,6 +180,36 @@ export function AddressPicker({
     },
     [onChange, onPlaceSelected, user?.uid, saveMutation]
   );
+
+  // ── Auto-select the pinned default address (2026-07-09) ───────────────────
+  // Rover/Uber behaviour: if the user has a saved default address (label 'home',
+  // isDefault — now pinned at enrol), pre-fill it instead of re-asking. Runs once,
+  // only when the parent has no value yet, and does NOT bump usageCount (that's a
+  // real selection, not an auto-fill). The user can still tap another saved
+  // address or enter a new one. This makes the enrol-pinned address flow through
+  // every AddressPicker consumer (bookings, shop) with no extra wiring.
+  const autoSelectedRef = useRef(false);
+  useEffect(() => {
+    if (autoSelectedRef.current) return;
+    if (value) { autoSelectedRef.current = true; return; }
+    if (!showSavedList || savedAddresses.length === 0) return;
+    const def = savedAddresses.find((a) => a.isDefault);
+    if (!def) return;
+    autoSelectedRef.current = true;
+    const place: PlaceDetails = {
+      formattedAddress: def.address,
+      street: def.street ?? undefined,
+      streetNumber: def.streetNumber ?? undefined,
+      apartment: def.apartment ?? undefined,
+      city: def.city ?? undefined,
+      postalCode: def.postalCode ?? undefined,
+      lat: def.lat ? Number(def.lat) : undefined,
+      lng: def.lng ? Number(def.lng) : undefined,
+    };
+    onChange(def.address, place);
+    onPlaceSelected?.(place);
+    setShowNew(false);
+  }, [savedAddresses, value, showSavedList, onChange, onPlaceSelected]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
