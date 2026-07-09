@@ -1208,6 +1208,51 @@ export async function completeProfile(req: Request, res: Response) {
 
     await storage.updateUser(userId, updates);
 
+    // Pin the enrol address into the reusable multi-address book (CEO 2026-07-09:
+    // "address of the user gets saved when he enrols — pin it — or he might have
+    // more than one address under profile"). The users-table write above keeps the
+    // inline profile address; this ALSO seeds userAddresses (label 'home', default)
+    // so shop delivery, bookings and proximity reuse a saved+pinned address instead
+    // of re-asking, and the customer can add more addresses later. The full
+    // multi-address book already existed (user-addresses.ts) but enrol never wrote
+    // to it — this closes that gap. First-address-only + non-fatal: never dupes,
+    // never blocks profile completion.
+    if (address && String(address).trim()) {
+      try {
+        const { db } = await import('../db');
+        const { userAddresses } = await import('../../shared/schema');
+        const { eq } = await import('drizzle-orm');
+        const existing = await db
+          .select({ id: userAddresses.id })
+          .from(userAddresses)
+          .where(eq(userAddresses.userId, userId))
+          .limit(1);
+        if (existing.length === 0) {
+          let latStr: string | undefined;
+          let lngStr: string | undefined;
+          try {
+            const { geocodeAddress } = await import('../lib/geocode');
+            const composed = [address, city, postalCode, country || 'Israel'].filter(Boolean).join(', ');
+            const point = await geocodeAddress(composed);
+            if (point) { latStr = point.lat.toString(); lngStr = point.lng.toString(); }
+          } catch { /* geocode is best-effort — save the address regardless */ }
+          await db.insert(userAddresses).values({
+            userId,
+            address: String(address),
+            label: 'home',
+            city: city || undefined,
+            postalCode: postalCode || undefined,
+            lat: latStr,
+            lng: lngStr,
+            isDefault: true,
+          } as any);
+          logger.info('[CompleteProfile] Pinned enrol address into userAddresses (home, default)', { userId });
+        }
+      } catch (addrErr: any) {
+        logger.warn('[CompleteProfile] Could not pin enrol address (non-fatal)', { userId, error: String(addrErr) });
+      }
+    }
+
     const newStatus = updates.userStatus || (user as any)?.userStatus || 'new';
 
     logger.info(`[CompleteProfile] Profile updated for ${userId} (status=${newStatus}, missing=${missingAfterUpdate.length})`);
