@@ -411,14 +411,6 @@ export class SumitClient {
         Language: 'Hebrew',
         ExternalReference: input.idempotencyKey,
       },
-      Items: [
-        {
-          Item: { Name: input.description },
-          Quantity: 1,
-          // UnitPrice before VAT; VATIncluded:false → SUMIT adds the 18%.
-          UnitPrice: input.amountBeforeVat,
-        },
-      ],
       // The sale is already paid — record the payment so the doc is a receipt too.
       // A bare {Amount} is rejected ("יש להזין מוטב/מחויב"): SUMIT needs the
       // payment TYPE plus its (possibly empty) details object to post the
@@ -432,8 +424,22 @@ export class SumitClient {
           ...(input.card?.brand ? { CardBrand: input.card.brand } : {}),
         },
       }],
-      VATIncluded: false,
-    };
+    } as Record<string, any>;
+
+    // Stored-value Receipt (wallet top-up / eGift purchase) is PAYMENT-ONLY with
+    // NO VAT-bearing items — the payment records the money received and VAT is
+    // deferred to redemption (CPA order #5). VERIFIED LIVE 2026-07-09: SUMIT doc
+    // #30000 (Type=Receipt, Payments only) → Status 0, zero VAT, on a separate
+    // number series from invoices. Every other type (InvoiceAndReceipt / Invoice)
+    // carries the taxable line with VATIncluded:false so SUMIT adds the 18%.
+    if ((input.documentType || 'InvoiceAndReceipt') !== 'Receipt') {
+      body.Items = [{
+        Item: { Name: input.description },
+        Quantity: 1,
+        UnitPrice: input.amountBeforeVat,
+      }];
+      body.VATIncluded = false;
+    }
 
     const url = `${env.baseUrl}/accounting/documents/create/`;
     const startMs = Date.now();
