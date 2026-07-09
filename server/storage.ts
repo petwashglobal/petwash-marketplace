@@ -271,8 +271,10 @@ export interface IStorage {
   
   // Wash packages
   getWashPackages(): Promise<WashPackage[]>;
+  getAllWashPackages(): Promise<WashPackage[]>;
   getWashPackage(id: number): Promise<WashPackage | undefined>;
   createWashPackage(pkg: InsertWashPackage): Promise<WashPackage>;
+  updateWashPackage(id: number, patch: Partial<InsertWashPackage>): Promise<WashPackage | undefined>;
   
   // E-Vouchers (Gift cards) - UUID-based modern system
   createVoucher(data: {
@@ -1444,6 +1446,11 @@ export class DatabaseStorage implements IStorage {
     return await db.select().from(washPackages).where(eq(washPackages.isActive, true));
   }
 
+  // Admin: ALL packages incl. inactive, ordered by wash count (for the manager UI).
+  async getAllWashPackages(): Promise<WashPackage[]> {
+    return await db.select().from(washPackages).orderBy(washPackages.washCount);
+  }
+
   async getWashPackage(id: number): Promise<WashPackage | undefined> {
     const [pkg] = await db.select().from(washPackages).where(eq(washPackages.id, id));
     return pkg;
@@ -1452,6 +1459,11 @@ export class DatabaseStorage implements IStorage {
   async createWashPackage(pkg: InsertWashPackage): Promise<WashPackage> {
     const [newPkg] = await db.insert(washPackages).values(pkg).returning();
     return newPkg;
+  }
+
+  async updateWashPackage(id: number, patch: Partial<InsertWashPackage>): Promise<WashPackage | undefined> {
+    const [updated] = await db.update(washPackages).set(patch).where(eq(washPackages.id, id)).returning();
+    return updated;
   }
 
   // E-Voucher operations (modern 2025-2026 secure voucher system)
