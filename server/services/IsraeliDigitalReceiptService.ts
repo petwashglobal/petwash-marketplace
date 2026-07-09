@@ -495,7 +495,11 @@ export class IsraeliDigitalReceiptService {
             // document is retrievable later (was previously only logged → lost).
             try {
               await db.update(digitalReceipts)
-                .set({ sumitDocumentId: sumitResult.sumitDocumentId })
+                // SUMIT is now the issuer of record (CPA 2026-07-09): its document
+                // is the official tax invoice/receipt; this PW- row is an internal
+                // ledger reference. Best-effort — a not-yet-migrated column just
+                // leaves it null and the receipt is unaffected.
+                .set({ sumitDocumentId: sumitResult.sumitDocumentId, issuerOfRecord: 'sumit' })
                 .where(eq(digitalReceipts.id, receipt.id));
             } catch (persistErr: any) {
               logger.warn('[Digital Receipt] could not persist sumitDocumentId (doc still issued)', {
@@ -1152,7 +1156,7 @@ export class IsraeliDigitalReceiptService {
           });
           if (creditResult.sumitDocumentId) {
             await db.update(digitalReceipts)
-              .set({ sumitDocumentId: creditResult.sumitDocumentId })
+              .set({ sumitDocumentId: creditResult.sumitDocumentId, issuerOfRecord: 'sumit' })
               .where(eq(digitalReceipts.id, creditNote.id))
               .catch(() => {});
           }

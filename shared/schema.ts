@@ -12196,6 +12196,12 @@ export const digitalReceipts = pgTable("digital_receipts", {
   // SHAAM threshold (self-issued only). The document id is the canonical key.
   sumitDocumentId: varchar("sumit_document_id"),
   sumitDocumentUrl: varchar("sumit_document_url"),
+  // Issuer of record for this document (CPA 2026-07-09: SUMIT is the single issuer
+  // and owns the numbering when wired). 'sumit' = SUMIT's document is the official
+  // tax invoice/receipt and this local PW- row is an internal ledger reference;
+  // NULL/'self' = we self-issued the PW- gapless doc (SUMIT dormant/below-SHAAM),
+  // which remains valid under חשבונית ישראל. Set best-effort alongside sumitDocumentId.
+  issuerOfRecord: varchar("issuer_of_record", { length: 20 }),
 
   issuedAt: timestamp("issued_at").defaultNow().notNull(),
   createdAt: timestamp("created_at").defaultNow().notNull(),
