@@ -3934,6 +3934,16 @@ self.addEventListener('notificationclick', (event) => {
   app.post('/api/admin/wash-packages', requireAdmin, async (req, res) => {
     try {
       const data = insertWashPackageSchema.parse(req.body);
+      // Money-facing field (shown on the homepage) — reject negative/absurd values.
+      // createInsertSchema alone lets a fat-fingered admin post a negative or ₪0
+      // price / zero wash count (bug hunt 2026-07-09).
+      const priceNum = Number(data.price);
+      if (!Number.isFinite(priceNum) || priceNum < 0) {
+        return res.status(400).json({ error: 'INVALID_PRICE', message: 'price must be a non-negative number' });
+      }
+      if (!Number.isInteger(data.washCount) || data.washCount < 1) {
+        return res.status(400).json({ error: 'INVALID_WASH_COUNT', message: 'washCount must be an integer ≥ 1' });
+      }
       const created = await storage.createWashPackage(data);
       res.status(201).json(created);
     } catch (error: any) {
@@ -3947,6 +3957,16 @@ self.addEventListener('notificationclick', (event) => {
       const id = parseInt(req.params.id, 10);
       if (isNaN(id)) return res.status(400).json({ error: 'BAD_ID' });
       const patch = insertWashPackageSchema.partial().parse(req.body);
+      // Validate money-facing fields when present (bug hunt 2026-07-09).
+      if (patch.price !== undefined) {
+        const priceNum = Number(patch.price);
+        if (!Number.isFinite(priceNum) || priceNum < 0) {
+          return res.status(400).json({ error: 'INVALID_PRICE', message: 'price must be a non-negative number' });
+        }
+      }
+      if (patch.washCount !== undefined && (!Number.isInteger(patch.washCount) || patch.washCount < 1)) {
+        return res.status(400).json({ error: 'INVALID_WASH_COUNT', message: 'washCount must be an integer ≥ 1' });
+      }
       const updated = await storage.updateWashPackage(id, patch);
       if (!updated) return res.status(404).json({ error: 'NOT_FOUND' });
       res.json(updated);

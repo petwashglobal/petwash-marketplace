@@ -977,17 +977,24 @@ router.post(
         return res.status(400).json({ error: 'Invalid washHistoryId' });
       }
 
-      // Deduplicate using Redis (same helper used by /nayax/terminal)
-      const dedupKey = `checkout-webhook:${payload.transactionId}`;
+      // Fail-CLOSED DB dedup (insert-first on nayax_processed_event_ids) — the same
+      // helper /nayax/terminal + /nayax/settlement use. Replaces the old fail-OPEN
+      // Redis dedup: on a concurrent Nayax retry with Redis down, that path
+      // "proceeded without dedup" and could DOUBLE-MINT a wash package (bug hunt
+      // 2026-07-09, HIGH). The DB PK makes the claim atomic, and a claim failure
+      // fails closed (Nayax retries) instead of processing an unclaimed event.
       try {
-        const alreadyProcessed = await redis.get(dedupKey);
-        if (alreadyProcessed) {
+        const claim = await tryClaimWebhookEvent({
+          eventId: `checkout:${payload.transactionId}`,
+          sourceRoute: req.originalUrl || req.url,
+        });
+        if (claim.processed === 'duplicate') {
           logger.info('[CheckoutWebhook] Duplicate — already processed', { transactionId: payload.transactionId });
           return res.status(200).json({ received: true, note: 'already_processed' });
         }
-        await redis.setEx(dedupKey, WEBHOOK_DEDUP_TTL_SECONDS, '1');
-      } catch (redisErr: any) {
-        logger.warn('[CheckoutWebhook] Redis dedup unavailable — proceeding without dedup', { error: redisErr.message });
+      } catch (dedupErr: any) {
+        logger.error('[CheckoutWebhook] DB dedup unavailable — failing closed (Nayax will retry)', { error: dedupErr?.message });
+        return res.status(503).json({ error: 'dedup_unavailable_retry' });
       }
 
       // Load pending washHistory record
