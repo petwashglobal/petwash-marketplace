@@ -10,7 +10,7 @@ import {
   Bell, Settings, FileText, Shield, Bot,
   Menu, X, ChevronRight, Power, LogOut,
   Dog, MapPin, Car, GraduationCap, Star,
-  DollarSign, ClipboardList, ShieldCheck, ThumbsUp, TrendingUp,
+  DollarSign, ClipboardList, ShieldCheck, ThumbsUp, TrendingUp, Crown,
 } from 'lucide-react';
 import POSDashboard from './POSDashboard';
 import POSJobs from './POSJobs';
@@ -100,6 +100,12 @@ export default function ProviderOS() {
   });
   const unreadCount = Array.isArray(notifications) ? notifications.filter((n: any) => !n.isRead).length : 0;
 
+  // Router navigation (distinct from `navigate` below, which switches the
+  // in-shell provider module). Used by the "Switch to Member" bridge so an
+  // approved provider — who is ALSO always a member — can jump to their
+  // customer/member world instead of being trapped inside provider-os.
+  const [, setRoute] = useLocation();
+
   const navigate = (mod: Module) => {
     setActiveModule(mod);
     setMoreMenuOpen(false);
@@ -172,6 +178,23 @@ export default function ProviderOS() {
             <span className="hidden sm:block">{isAvailable ? 'Available' : 'Offline'}</span>
           </button>
 
+          {/* Switch to Member world — the persistent one-tap bridge back to the
+              customer side (book, wash, wallet, rewards). A PetWash account is a
+              SET of roles (CEO 2026-07-03): a provider is ALWAYS also a member,
+              so this is always offered. Mirrors the full ExperienceSwitcher —
+              which was mounted ONLY on /my-account and so invisible from here —
+              as an Uber-style mode switch so an approved provider is never
+              trapped in provider-os with no way back to their member home. */}
+          <button
+            onClick={() => setRoute('/prestige/home')}
+            className="flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-[#FBF6E7] text-[#9a7d2e] border border-[#ECDFB4] hover:bg-[#F5EAC8] transition-colors"
+            data-testid="switch-to-member"
+            title="Switch to your Member world"
+          >
+            <Crown className="w-3 h-3" />
+            <span className="hidden sm:block">Member</span>
+          </button>
+
           <button
             onClick={() => navigate('notifications')}
             className="relative p-1.5 text-gray-500 hover:bg-white rounded-md transition-colors"
@@ -184,9 +207,17 @@ export default function ProviderOS() {
             )}
           </button>
 
-          <div className="w-7 h-7 rounded-full bg-[#FBF6E7] border border-[#ECDFB4] flex items-center justify-center text-[#9a7d2e] text-xs font-semibold">
+          {/* Was a dead <div> (a real dead-click on the account avatar). Now a
+              button to the account hub, where the full ExperienceSwitcher +
+              settings live. */}
+          <button
+            onClick={() => setRoute('/my-account')}
+            className="w-7 h-7 rounded-full bg-[#FBF6E7] border border-[#ECDFB4] flex items-center justify-center text-[#9a7d2e] text-xs font-semibold hover:ring-2 hover:ring-[#ECDFB4] transition-shadow"
+            data-testid="provider-account"
+            title="Account & settings"
+          >
             {displayName.charAt(0).toUpperCase()}
-          </div>
+          </button>
         </div>
       </header>
       </div>
