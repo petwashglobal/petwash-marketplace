@@ -792,6 +792,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         const ownerName = [owner?.first, owner?.last].filter(Boolean).join(' ');
         await IsraeliDigitalReceiptService.generateReceipt({
           platform: 'walk-my-pet',
+          paymentClass: 'PROVIDER_BOOKING_COMMISSION',
           bookingId: booking.bookingId,
           nayaxTransactionId: undefined,
           customerEmail: ownerEmail,

@@ -578,6 +578,7 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
         const platformFeeAmount = Math.round(totalAmount * PETWASH_COMMISSION_RATE * 100) / 100;
         await IsraeliDigitalReceiptService.generateReceipt({
           platform: 'academy',
+          paymentClass: 'PROVIDER_BOOKING_COMMISSION',
           bookingId,
           customerEmail: cust?.email || '',
           customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),

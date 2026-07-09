@@ -28,6 +28,7 @@ import { db } from '../db';
 import { digitalReceipts, providerCommissions, withholdingRemittanceLedger, octopusLedger } from '@shared/schema';
 import { eq, and, sql, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { getSumitDocumentMapping, type PetWashPaymentClass } from './sumitDocumentMapping';
 import { nanoid } from 'nanoid';
 import { createHash } from 'crypto';
 import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
@@ -58,6 +59,13 @@ const FROM_NAME = '⁦Pet Wash™⁩';
 
 export interface ReceiptGenerationParams {
   platform: string;
+  /**
+   * PetWash payment class — drives the SUMIT document type per the CPA mapping
+   * (getSumitDocumentMapping). Optional: when omitted, SUMIT issues the default
+   * InvoiceAndReceipt. Used only when SUMIT is the issuer (isWired()); the local
+   * self-issued PW- path is unchanged.
+   */
+  paymentClass?: PetWashPaymentClass;
   bookingId: string;
   nayaxTransactionId?: string;
   customerEmail: string;
@@ -476,8 +484,15 @@ export class IsraeliDigitalReceiptService {
       try {
         const { sumitClient } = await import('./SumitClient');
         if (sumitClient.isWired()) {
+          // Per-class SUMIT document type from the CPA mapping (#1359). Refund
+          // classes go through the credit-note path below, not here, so a
+          // CreditInvoice mapping is never used for a customer receipt.
+          const classDocType = params.paymentClass
+            ? getSumitDocumentMapping(params.paymentClass).documentType
+            : undefined;
           const sumitResult = await sumitClient.createCustomerReceipt({
             idempotencyKey: receiptNumber,
+            documentType: classDocType && classDocType !== 'CreditInvoice' ? classDocType : undefined,
             customer: {
               name: params.customerName || params.customerEmail,
               email: params.customerEmail,
