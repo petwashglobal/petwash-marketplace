@@ -140,7 +140,7 @@ export default function AdminWashPackages() {
             </label>
             <label className="text-xs font-semibold text-gray-500">Price ₪ (VAT-incl)
               <input type="number" step="0.01" value={newPkg.price} onChange={e => setNewPkg(v => ({ ...v, price: e.target.value }))}
-                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="48.00" />
+                className="mt-1 w-full rounded-lg border border-gray-200 px-3 py-2 text-sm" placeholder="55.00" />
             </label>
             <label className="text-xs font-semibold text-gray-500">Wash count
               <input type="number" value={newPkg.washCount} onChange={e => setNewPkg(v => ({ ...v, washCount: e.target.value }))}

@@ -130,12 +130,13 @@ export function WashPackages({ language }: WashPackagesProps) {
   });
   
   // FALLBACK_PACKAGES is a marketing safety net for a hard API ERROR only.
-  // We deliberately do NOT substitute it for an EMPTY (200 []) response: prod
-  // /api/packages currently returns [] (wash_packages table empty/inactive), and
-  // the fallback prices (₪55 single) do NOT match the live Kfar Saba price — showing
-  // them as purchasable would mis-price a real sale. So an empty list renders
-  // nothing (guard below) rather than a header-with-no-cards ghost, until the real
-  // packages are seeded. (2026-07-09 — root-caused live: section was blank for all.)
+  // We deliberately do NOT substitute it for an EMPTY (200 []) response: packages
+  // are now CEO-managed (/admin/wash-packages, #1350). The single price is ₪55
+  // (CEO-confirmed 2026-07-09) but the fallback BUNDLE prices (3/5/10-pack) are
+  // unconfirmed marketing values — auto-selling them could mis-price a real sale.
+  // So an empty list renders nothing (guard below) rather than a header-with-no-
+  // cards ghost, until real packages are added in admin. (2026-07-09 — root-caused
+  // live: prod /api/packages returned [].)
   const displayPackages = packages || (isError ? FALLBACK_PACKAGES : []);
 
   const handleExpressCheckout = (pkg: WashPackage) => {
