@@ -2294,6 +2294,34 @@ router.post('/:requestId/complete', async (req, res) => {
       logger.warn('[BookingRequests] Completion approval notification failed', { error: notifErr.message });
     }
 
+    // KEEP-IN-LOOP (2026-07-09): the in-app row above reaches the customer ONLY
+    // inside the app. But this is a MONEY deadline — if they do nothing, the
+    // auto-approve cron releases their payment to the provider in 24h. So they
+    // MUST be reachable off-app: also send EMAIL + SMS. dispatchNotification
+    // resolves the owner's email/phone from their uid; non-fatal + fire-and-forget
+    // (channels omit 'inbox' to avoid duplicating the row already written above).
+    try {
+      await dispatchNotification({
+        uid: booking.ownerId,
+        type: 'system',
+        title: 'PetWash — אשרו את ההזמנה תוך 24 שעות / Confirm within 24h',
+        bodyHtml:
+          `<p>הספק דיווח שהשירות עבור הזמנה <strong>${requestId}</strong> הסתיים. ` +
+          `אשרו כדי לשחרר את התשלום, או פתחו מחלוקת <strong>תוך 24 שעות</strong> — ` +
+          `אחרת ההזמנה תאושר אוטומטית והתשלום ישוחרר לספק.</p>` +
+          `<p>Your provider marked booking <strong>${requestId}</strong> complete. ` +
+          `Confirm to release payment, or open a dispute <strong>within 24 hours</strong> — ` +
+          `otherwise it auto-approves and payment is released.</p>`,
+        ctaText: 'אשרו / Confirm',
+        ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+        channels: ['email', 'sms'],
+        priority: 8,
+        meta: { bookingId: requestId, actionType: 'approve_completion' },
+      });
+    } catch (notifErr: any) {
+      logger.warn('[BookingRequests] provider_marked_complete email/SMS failed (non-fatal)', { error: notifErr.message });
+    }
+
     // ── Non-blocking: Schedule rebook nudges after service completion ─────────
     if (booking.ownerId) {
       const triggerBase = {
