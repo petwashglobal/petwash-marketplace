@@ -15,6 +15,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from '@/components/ui/button';
+import { NavigationButton } from '@/components/NavigationButton';
 import { MapPin, Clock, Loader2, Accessibility, Car, CreditCard, Smartphone, Waves, ArrowRight } from 'lucide-react';
 import { useSEO, injectStructuredData } from '@/lib/seo';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -213,19 +214,21 @@ export default function StationPage({ slug }: StationPageProps) {
           </p>
         </div>
 
+        {/* Navigation (2026-07-09): replaced two inline Google+Waze buttons with
+            the canonical NavigationButton — adds Apple Maps + device detection
+            (offers the right app per platform) so a customer can open the station
+            in Waze / Google Maps / Apple Maps. */}
         <div className="flex flex-wrap gap-4">
-          <Button
+          <NavigationButton
+            latitude={lat}
+            longitude={lng}
+            address={`${station.address}, ${station.city}`}
+            placeName={`Pet Wash™ — ${station.stationName}`}
+            variant="default"
+            size="lg"
             className="luxury-btn-primary luxury-shadow-xl"
-            onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank')}
-          >
-            <MapPin className="w-5 h-5 mr-2" /> Navigate · ניווט
-          </Button>
-          <Button
-            className="luxury-btn-outline"
-            onClick={() => window.open(`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`, '_blank')}
-          >
-            Waze
-          </Button>
+            testId="station-navigate"
+          />
         </div>
       </div>
     </div>
