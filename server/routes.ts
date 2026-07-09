@@ -3916,6 +3916,46 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // ── Admin: manage wash packages (2026-07-09) ────────────────────────────────
+  // The homepage /api/packages returns only ACTIVE packages. Prod was empty
+  // (section blank) and the only source was a STALE hardcoded seed (₪39 vs the
+  // live ₪48). This lets the CEO set the real packages + prices himself — no code
+  // deploy, no guessing — and the homepage populates the moment a package is
+  // active. Admin-gated.
+  app.get('/api/admin/wash-packages', requireAdmin, async (req, res) => {
+    try {
+      res.json(await storage.getAllWashPackages());
+    } catch (error) {
+      logger.error('[AdminPackages] list failed', error);
+      res.status(500).json({ error: 'LIST_FAILED' });
+    }
+  });
+
+  app.post('/api/admin/wash-packages', requireAdmin, async (req, res) => {
+    try {
+      const data = insertWashPackageSchema.parse(req.body);
+      const created = await storage.createWashPackage(data);
+      res.status(201).json(created);
+    } catch (error: any) {
+      logger.error('[AdminPackages] create failed', error);
+      res.status(400).json({ error: 'CREATE_FAILED', message: error?.message || 'Invalid package' });
+    }
+  });
+
+  app.patch('/api/admin/wash-packages/:id', requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id, 10);
+      if (isNaN(id)) return res.status(400).json({ error: 'BAD_ID' });
+      const patch = insertWashPackageSchema.partial().parse(req.body);
+      const updated = await storage.updateWashPackage(id, patch);
+      if (!updated) return res.status(404).json({ error: 'NOT_FOUND' });
+      res.json(updated);
+    } catch (error: any) {
+      logger.error('[AdminPackages] update failed', error);
+      res.status(400).json({ error: 'UPDATE_FAILED', message: error?.message || 'Invalid update' });
+    }
+  });
+
   app.get('/api/packages/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);

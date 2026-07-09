@@ -386,6 +386,7 @@ const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDas
 const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplicationStatus"));
 const ProviderDeclarations = lazy(() => import("@/pages/ProviderDeclarations"));
 const AdminLoyaltyRules = lazy(() => import("@/pages/admin/AdminLoyaltyRules"));
+const AdminWashPackages = lazy(() => import("@/pages/AdminWashPackages"));
 const AdminOpsMonitor = lazy(() => import("@/pages/admin/AdminOpsMonitor"));
 const AdminTreasurySettings = lazy(() => import("@/pages/admin/AdminTreasurySettings"));
 const AdminSystemConfig = lazy(() => import("@/pages/admin/AdminSystemConfig"));
@@ -2346,6 +2347,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminLoyaltyRules />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* CEO sets the homepage wash packages + prices himself (no code deploy) */}
+        <Route path="/admin/wash-packages">
+          {() => (
+            <AdminRouteGuard>
+              <AdminWashPackages />
             </AdminRouteGuard>
           )}
         </Route>
