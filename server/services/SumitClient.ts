@@ -364,6 +364,12 @@ export class SumitClient {
     vatAmount: number;
     totalAmount: number;
     currency: 'ILS';
+    /**
+     * SUMIT document type per the CPA per-class mapping (getSumitDocumentMapping):
+     * 'InvoiceAndReceipt' (principal sale), 'Receipt' (stored value — top-up/eGift,
+     * no VAT), 'Invoice' (disclosed-agent commission). Defaults to InvoiceAndReceipt.
+     */
+    documentType?: 'InvoiceAndReceipt' | 'Receipt' | 'Invoice';
     /** Card metadata when the caller has it — enriches the receipt's payment line. */
     card?: { last4?: string; brand?: string };
     /** caller context for the audit log (platform, bookingId) */
@@ -386,8 +392,10 @@ export class SumitClient {
     const body = {
       Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
       Details: {
-        // חשבונית מס/קבלה — invoice + receipt for an already-paid B2C sale.
-        Type: 'InvoiceAndReceipt',
+        // Document type per the CPA per-class mapping (default InvoiceAndReceipt =
+        // חשבונית מס/קבלה for an already-paid principal sale). 'Receipt' for stored
+        // value (top-up/eGift, no VAT), 'Invoice' for disclosed-agent commission.
+        Type: input.documentType || 'InvoiceAndReceipt',
         Customer: {
           Name: input.customer.name,
           EmailAddress: input.customer.email || undefined,
