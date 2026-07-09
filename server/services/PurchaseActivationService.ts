@@ -77,6 +77,11 @@ async function issueDirectSaleReceipt(
     }
     await IsraeliDigitalReceiptService.generateReceipt({
       platform: item.module,                 // wash_package | self_service_wash | gift | wallet
+      // CPA per-class SUMIT doc: gift/wallet are STORED VALUE (Receipt, no VAT at
+      // purchase — tax at redemption); wash = principal InvoiceAndReceipt.
+      paymentClass: item.module === 'gift' ? 'EGIFT_PURCHASE'
+        : item.module === 'wallet' ? 'WALLET_TOPUP'
+        : 'K9000_WASH',
       bookingId: `sumit:${purchase.id}`,
       customerEmail: email || '',
       customerName: name || '',

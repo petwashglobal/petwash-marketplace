@@ -470,6 +470,7 @@ export class UnifiedBookingEngine {
 
           const receiptResult = await IsraeliDigitalReceiptService.generateReceipt({
             platform: booking.serviceId.split('_')[0] || booking.platform,
+            paymentClass: 'PROVIDER_BOOKING_COMMISSION',
             bookingId: booking.id,
             nayaxTransactionId: platformData.transactionId,
             customerEmail: receiptData.customerEmail,

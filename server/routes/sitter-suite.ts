@@ -1123,6 +1123,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           .limit(1);
         await IsraeliDigitalReceiptService.generateReceipt({
           platform: 'sitter-suite',
+          paymentClass: 'PROVIDER_BOOKING_COMMISSION',
           bookingId: booking.bookingId,
           nayaxTransactionId: paymentResult.nayaxTransactionId,
           customerEmail: owner?.email || '',

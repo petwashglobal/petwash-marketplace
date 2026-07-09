@@ -756,6 +756,7 @@ export class ShopService {
           const { IsraeliDigitalReceiptService } = await import('./IsraeliDigitalReceiptService');
           await IsraeliDigitalReceiptService.generateReceipt({
             platform: 'shop',
+            paymentClass: 'SHOP_ITEM',
             bookingId: `shop:${order.order_number ?? orderId}`,
             customerEmail: order.email || '',
             customerName: order.display_name || '',
