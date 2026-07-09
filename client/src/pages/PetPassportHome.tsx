@@ -206,7 +206,7 @@ export default function PetPassportHome() {
 
         {/* ── 3 passport tiles ── */}
         <div className="mt-5 grid grid-cols-3 gap-3">
-          <Tile icon={<BriefcaseMedical />} label={tr('רשומות רפואיות', 'Medical records')} onClick={() => navigate('/pet-documents')} />
+          <Tile icon={<BriefcaseMedical />} label={tr('רשומות רפואיות', 'Medical records')} onClick={() => navigate('/documents')} />
           <Tile icon={<Syringe />} label={tr('חיסונים', 'Vaccines')} onClick={() => navigate('/pets')} />
           <Tile icon={<ShieldCheck />} label={tr('ביטוחים', 'Insurance')} onClick={() => navigate('/pets')} />
         </div>
@@ -270,7 +270,7 @@ export default function PetPassportHome() {
         <NavItem icon={<Home />} label={tr('דף הבית', 'Home')} onClick={() => navigate('/prestige/home')} />
         <NavItem icon={<PawPrint />} label={tr('חיות מחמד', 'Pets')} active onClick={() => navigate('/pet-passport')} />
         <NavItem icon={<Heart />} label={tr('בריאות', 'Health')} onClick={() => navigate('/pets')} />
-        <NavItem icon={<FileText />} label={tr('מסמכים', 'Documents')} onClick={() => navigate('/pet-documents')} />
+        <NavItem icon={<FileText />} label={tr('מסמכים', 'Documents')} onClick={() => navigate('/documents')} />
         <NavItem icon={<Bell />} label={tr('התראות', 'Alerts')} onClick={() => navigate('/notifications')} />
       </nav>
     </div>
