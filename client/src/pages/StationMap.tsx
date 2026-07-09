@@ -1,8 +1,7 @@
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { useLanguage } from "@/lib/languageStore";
 import { useLocation } from "wouter";
-import { MapPin, Navigation, Search, Filter } from "lucide-react";
+import { MapPin } from "lucide-react";
 
 export default function StationMap() {
   const { language } = useLanguage();
@@ -27,27 +26,13 @@ export default function StationMap() {
           </p>
         </div>
 
-        {/* Search Bar */}
-        <div className="luxury-glass-card luxury-shadow-xl p-6 mb-12 luxury-animate-slide-up luxury-delay-1">
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <Search className={`absolute ${isHe ? 'right-4' : 'left-4'} top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400`} />
-              <Input
-                className={isHe ? 'pr-12 py-6 text-lg border-0 bg-transparent focus-visible:ring-0' : 'pl-12 py-6 text-lg border-0 bg-transparent focus-visible:ring-0'}
-                placeholder={isHe ? 'חיפוש לפי עיר, כתובת או מיקוד...' : 'Search by city, address, or postal code...'}
-                data-testid="input-search-location"
-              />
-            </div>
-            <Button className="luxury-btn-primary" data-testid="button-current-location">
-              <Navigation className="w-5 h-5 mr-2" />
-              {isHe ? 'מיקום נוכחי' : 'Use My Location'}
-            </Button>
-            <Button className="luxury-btn-secondary" data-testid="button-filters">
-              <Filter className="w-5 h-5 mr-2" />
-              {isHe ? 'סינון' : 'Filters'}
-            </Button>
-          </div>
-        </div>
+        {/* Search / location / filter controls were REMOVED (2026-07-09): they
+            rendered as fully-enabled inputs+buttons but had zero handlers — a
+            dead-click on a page a customer visits to find a wash station. Live
+            search needs the interactive map (still "coming soon" below), so —
+            consistent with the fake-stats removal in this file — we don't show
+            controls that don't work. The honest next-step (View Station List)
+            lives in the map card below. */}
 
         {/* Map Placeholder */}
         <div className="luxury-glass-card luxury-shadow-xl h-[600px] flex items-center justify-center mb-12 overflow-hidden luxury-animate-scale-in luxury-delay-2">
