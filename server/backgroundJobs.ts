@@ -19,6 +19,7 @@ import { startAutoVoidCron } from './cron/auto-void-expired-payments';
 import { runAlertSweep } from './services/AlertEngine';
 import { runWashReminderCron } from './cron/wash-reminder';
 import { runCareNotesReminderCron } from './cron/care-notes-reminder';
+import { runBookingRemindersCron } from './routes/cron-booking-reminders';
 import { runReconfirmationCron } from './cron/reconfirmation-enforcer';
 import { assertMarketingConsent } from './services/CampaignDeliveryService';
 import ProviderPayoutService from './services/ProviderPayoutService';
@@ -265,6 +266,26 @@ export class BackgroundJobProcessor {
     }, {
       timezone: 'Asia/Jerusalem'
     });
+
+    // Booking reminders (T-24h full + T-2h nudge) — the route existed but nothing
+    // triggered it, so confirmed bookings never got a reminder. Run it in-process
+    // hourly (the route is built for an hourly tick with a 25h scan horizon) so it
+    // fires without an external Cloud Scheduler job. Transactional (not marketing)
+    // + idempotent (markAndNotify dedup per tier) → ON by default; kill switch
+    // BOOKING_REMINDER_CRON_ENABLED=false.
+    if (process.env.BOOKING_REMINDER_CRON_ENABLED !== 'false') {
+      cron.schedule('0 * * * *', async () => {
+        if (await this.acquireLock('bookingReminders')) {
+          try {
+            await runBookingRemindersCron();
+          } finally {
+            this.releaseLock('bookingReminders');
+          }
+        }
+      }, {
+        timezone: 'Asia/Jerusalem'
+      });
+    }
 
     // Care-notes reminder — nudges customers to finish pet care details on a
     // paid, confirmed booking (6h push, 24h SMS/email + support alert if still
