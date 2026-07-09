@@ -179,6 +179,36 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [cart?.subtotalCents, addressId]);
 
+  // Reuse the user's pinned saved address (2026-07-09). The shop keeps its own
+  // delivery-address book because shipping needs recipient name + phone + notes
+  // that the location book (userAddresses) doesn't carry — so this is NOT a table
+  // merge. It just pre-fills the LOCATION (street/city/zip) from the pinned
+  // default address when the customer opens "add address", so they don't re-type
+  // where they live. They still add name + phone for the courier before saving.
+  const [pinnedAddr, setPinnedAddr] = useState<any>(null);
+  useEffect(() => {
+    if (!user?.uid) return;
+    fetch(getApiUrl('/api/user/addresses'), { credentials: 'include' })
+      .then(r => (r.ok ? r.json() : []))
+      .then((rows: any) => {
+        const def = Array.isArray(rows) ? (rows.find((a: any) => a.isDefault) || rows[0]) : null;
+        if (def) setPinnedAddr(def);
+      })
+      .catch(() => { /* pre-fill is best-effort */ });
+  }, [user?.uid]);
+
+  useEffect(() => {
+    if (!addingAddress || !pinnedAddr) return;
+    setAddr(v => (v.street || v.city) ? v : {
+      ...v,
+      street: pinnedAddr.street || pinnedAddr.address || '',
+      city: pinnedAddr.city || '',
+      zipCode: pinnedAddr.postalCode || '',
+      fullName: v.fullName || user?.displayName || '',
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [addingAddress, pinnedAddr]);
+
   async function loadAddresses(preferId?: number) {
     try {
       const r = await fetch(getApiUrl('/api/shop/delivery/addresses'), { credentials: 'include' });
