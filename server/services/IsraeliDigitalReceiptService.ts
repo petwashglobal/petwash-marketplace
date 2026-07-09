@@ -459,17 +459,23 @@ export class IsraeliDigitalReceiptService {
       // Below the SHAAM threshold (≈ every PetWash sale — ex-VAT ≤ ₪5,000 from
       // 2026-06) a self-issued חשבונית מס/קבלה with our gapless PW-YYYY-NNNNNN
       // numbering is FULLY VALID and needs NO government allocation number and
-      // NO SUMIT/ITA call — that receipt is already persisted above. We only
-      // route through SUMIT to obtain the government allocation number (מספר
-      // הקצאה) when the invoice is ABOVE threshold (shaamRequired). This keeps
-      // the common path fast, free and independent of SUMIT.
-      // SAFE no-op even above threshold until SUMIT creds are set —
-      // createCustomerReceipt() returns {wired:false} with no HTTP call. It must
-      // NEVER throw: a SUMIT hiccup cannot fail a receipt for an already-
-      // completed payment. Idempotency key = our sequential receiptNumber.
+      // SUMIT is the fiscal ISSUER OF RECORD for EVERY sale when the account is
+      // wired (CEO 2026-07-09: "all templates at SUMIT, automatic"). We call SUMIT
+      // on every receipt — not just above the ₪5k SHAAM threshold — so each sale
+      // gets a SUMIT-issued חשבונית/קבלה reported to the ITA. sumitDocumentId is
+      // persisted onto the local row below, which becomes our internal ledger
+      // reference to the official SUMIT document.
+      // Dormant until the account is switched on: isWired() is false unless
+      // SUMIT_ENABLED=true AND api key/company id/webhook secret are all set, so
+      // this is a no-op (returns {wired:false}, no HTTP) until go-live. It must
+      // NEVER throw: a SUMIT hiccup cannot fail a receipt for an already-completed
+      // payment. Idempotency key = our sequential receiptNumber.
+      // GO-LIVE CHECK: on the first real sale after enabling, confirm SUMIT issues
+      // exactly ONE document per sale (SUMIT's), so the local doc is a reference,
+      // not a second official tax invoice.
       try {
         const { sumitClient } = await import('./SumitClient');
-        if (shaamRequired && sumitClient.isWired()) {
+        if (sumitClient.isWired()) {
           const sumitResult = await sumitClient.createCustomerReceipt({
             idempotencyKey: receiptNumber,
             customer: {
@@ -1125,12 +1131,13 @@ export class IsraeliDigitalReceiptService {
         });
       }
 
-      // Route to SUMIT above threshold (mirrors generateReceipt) so the credit
-      // reaches the ITA with a government allocation number. Below threshold
-      // the gapless local credit_note above is already valid. NEVER throws — a
-      // SUMIT hiccup must not fail a refund the customer is already owed.
+      // Mirror generateReceipt: when SUMIT is wired it is the issuer of record for
+      // EVERY credit note (זיכוי), not just above the ₪5k threshold, so each
+      // refund reaches the ITA as a proper SUMIT credit document. Dormant until
+      // the account is switched on (isWired() false until SUMIT_ENABLED + creds).
+      // NEVER throws — a SUMIT hiccup must not fail a refund the customer is owed.
       const { sumitClient } = await import('./SumitClient');
-      if (shaamRequired && sumitClient.isWired()) {
+      if (sumitClient.isWired()) {
         try {
           const creditResult = await sumitClient.createCreditDocument({
             idempotencyKey: creditNoteNumber,
