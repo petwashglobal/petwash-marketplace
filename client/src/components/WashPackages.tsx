@@ -129,6 +129,13 @@ export function WashPackages({ language }: WashPackagesProps) {
     queryKey: ['/api/packages'],
   });
   
+  // FALLBACK_PACKAGES is a marketing safety net for a hard API ERROR only.
+  // We deliberately do NOT substitute it for an EMPTY (200 []) response: prod
+  // /api/packages currently returns [] (wash_packages table empty/inactive), and
+  // the fallback prices (₪55 single) do NOT match the live Kfar Saba price — showing
+  // them as purchasable would mis-price a real sale. So an empty list renders
+  // nothing (guard below) rather than a header-with-no-cards ghost, until the real
+  // packages are seeded. (2026-07-09 — root-caused live: section was blank for all.)
   const displayPackages = packages || (isError ? FALLBACK_PACKAGES : []);
 
   const handleExpressCheckout = (pkg: WashPackage) => {
@@ -153,6 +160,13 @@ export function WashPackages({ language }: WashPackagesProps) {
         </div>
       </section>
     );
+  }
+
+  // No packages to sell (empty API + no error) → render nothing rather than a
+  // broken empty section. Prevents the "packages missing / section looks broken"
+  // report. Restored automatically the moment real packages are seeded.
+  if (displayPackages.length === 0) {
+    return null;
   }
 
   const getTierBadge = (index: number) => {
