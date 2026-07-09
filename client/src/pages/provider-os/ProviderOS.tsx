@@ -100,6 +100,38 @@ export default function ProviderOS() {
   });
   const unreadCount = Array.isArray(notifications) ? notifications.filter((n: any) => !n.isRead).length : 0;
 
+  // Provider availability — read the REAL state + PERSIST toggles (2026-07-09 fix).
+  // The header Available/Offline toggle previously only flipped local state and
+  // never saved, so a provider who tapped "Offline" was still shown available to
+  // customers and it reverted on refresh. providerId + the true isAvailable come
+  // from the same stats payload the dashboard already uses.
+  const { data: provStats } = useQuery<any>({
+    queryKey: ['/api/provider-dashboard/v2/stats'],
+    queryFn: () => fetch('/api/provider-dashboard/v2/stats', { credentials: 'include' }).then(r => r.json()),
+    staleTime: 30_000,
+  });
+  const providerId: number | undefined = provStats?.platforms?.[0]?.id;
+  useEffect(() => {
+    const serverAvail = provStats?.platforms?.[0]?.isAvailable;
+    if (typeof serverAvail === 'boolean') setIsAvailable(serverAvail);
+  }, [provStats]);
+
+  const persistAvailability = async (next: boolean) => {
+    setIsAvailable(next); // optimistic
+    if (!providerId) return;
+    try {
+      const r = await fetch('/api/provider-dashboard/availability', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ providerId, isAvailable: next }),
+      });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    } catch {
+      setIsAvailable(!next); // revert on failure — never leave a lying toggle
+    }
+  };
+
   // Router navigation (distinct from `navigate` below, which switches the
   // in-shell provider module). Used by the "Switch to Member" bridge so an
   // approved provider — who is ALSO always a member — can jump to their
@@ -169,7 +201,7 @@ export default function ProviderOS() {
 
         <div className="flex items-center gap-2 shrink-0">
           <button
-            onClick={() => setIsAvailable(!isAvailable)}
+            onClick={() => persistAvailability(!isAvailable)}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium transition-colors ${
               isAvailable ? 'bg-green-100 text-green-700' : 'bg-white text-gray-500'
             }`}
