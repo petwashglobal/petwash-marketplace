@@ -304,7 +304,7 @@ export default function PrestigeHome() {
             quick-actions grid below is the booking entry point). */}
         {s.nextBooking && (s.nextBooking.date || s.nextBooking.time) && (
           <section className="px-4 mt-4">
-            <button onClick={() => navigate('/my-bookings')} className="w-full text-left rounded-2xl border border-[#F0E9D4] bg-[#FFFDF7] p-4 flex items-center gap-3">
+            <button onClick={() => navigate('/bookings')} className="w-full text-left rounded-2xl border border-[#F0E9D4] bg-[#FFFDF7] p-4 flex items-center gap-3">
               <CalendarDays className="w-6 h-6 shrink-0" style={{ color: GOLD }} />
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-semibold text-gray-900">{isHe ? 'ההזמנה הבאה שלך' : 'Your Next Booking'}</p>
@@ -413,7 +413,7 @@ export default function PrestigeHome() {
           <h2 className="text-base font-semibold text-gray-900 mb-3">{isHe ? 'מומלצים עבורך' : 'Recommended For You'}</h2>
           <div className="grid grid-cols-2 gap-3">
             {[
-              { t: isHe ? 'חבילת 5 שטיפות' : '5 Wash Package', s: isHe ? 'חיסכון משתלם' : 'Save more', cta: isHe ? 'רכישה' : 'Buy Now', to: '/buy-package', icon: Droplets },
+              { t: isHe ? 'חבילת 5 שטיפות' : '5 Wash Package', s: isHe ? 'חיסכון משתלם' : 'Save more', cta: isHe ? 'רכישה' : 'Buy Now', to: '/packages', icon: Droplets },
               { t: isHe ? 'מתנת שטיפה' : 'Gift a Wash', s: isHe ? 'שתפו דאגה' : 'Share the care', cta: isHe ? 'שליחה' : 'Send Gift', to: '/buy-gift-card', icon: Gift },
               { t: isHe ? 'מוצרי החנות' : 'Shop Bestsellers', s: isHe ? 'הנבחרים' : 'Top picks', cta: isHe ? 'לחנות' : 'Shop Now', to: '/shop', icon: ShoppingBag },
               { t: isHe ? 'קורסי אקדמיה' : 'Academy Courses', s: isHe ? 'למדו וטפחו' : 'Learn. Care.', cta: isHe ? 'גילוי' : 'Explore', to: '/academy', icon: GraduationCap },
