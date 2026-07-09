@@ -3976,6 +3976,45 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // ── Tower Control — finance reconciliation (2026-07-09) ──────────────────────
+  // The cockpit's SUMIT-document reconciliation tile (SUMIT = issuer of record;
+  // PetWash Tower Control = the business cockpit above it). How many receipts SUMIT
+  // issued vs self-issued PW-, SUMIT-doc coverage, voids, and the gross/VAT for the
+  // window. Read-only, admin-gated, a single cheap aggregate — no external calls.
+  // Fully populated the moment SUMIT is switched on; today it reports the
+  // self-issued baseline. Builds on issuer_of_record (#1358).
+  app.get('/api/admin/tower/finance-reconciliation', requireAdmin, async (req, res) => {
+    try {
+      const days = Math.min(90, Math.max(1, parseInt(String(req.query.days ?? '7'), 10) || 7));
+      const r: any = await db.execute(sql`
+        SELECT
+          COUNT(*)::int AS total,
+          COUNT(*) FILTER (WHERE issuer_of_record = 'sumit')::int AS sumit_issued,
+          COUNT(*) FILTER (WHERE issuer_of_record IS DISTINCT FROM 'sumit')::int AS self_issued,
+          COUNT(*) FILTER (WHERE sumit_document_id IS NOT NULL)::int AS with_sumit_doc,
+          COUNT(*) FILTER (WHERE is_voided = true)::int AS voided,
+          COALESCE(SUM(total_amount::numeric) FILTER (WHERE is_voided = false), 0)::float AS gross,
+          COALESCE(SUM(vat_amount::numeric)   FILTER (WHERE is_voided = false), 0)::float AS vat
+        FROM digital_receipts
+        WHERE issued_at >= NOW() - make_interval(days => ${days})
+      `);
+      const row = (r.rows && r.rows[0]) || {};
+      res.json({
+        windowDays: days,
+        total: row.total ?? 0,
+        sumitIssued: row.sumit_issued ?? 0,
+        selfIssued: row.self_issued ?? 0,
+        withSumitDoc: row.with_sumit_doc ?? 0,
+        voided: row.voided ?? 0,
+        grossAmount: row.gross ?? 0,
+        vatAmount: row.vat ?? 0,
+      });
+    } catch (error: any) {
+      logger.error('[Tower] finance reconciliation failed', error);
+      res.status(500).json({ error: 'RECONCILIATION_FAILED' });
+    }
+  });
+
   app.get('/api/packages/:id', async (req, res) => {
     try {
       const id = parseInt(req.params.id);
