@@ -901,6 +901,21 @@ export default function EGift() {
         return;
       }
 
+      // The legacy /api/multi-service-gift rail is permanently sealed (HTTP 410 —
+      // the old free-mint hole, #1184). Until the canonical eGift purchase rail is
+      // switched on, give an HONEST "coming soon" next-step (point to the working
+      // Gift Cards page) instead of the generic "error creating gift card" dead-end
+      // this flagship page showed before (2026-07-09 root-caused).
+      if (response.status === 410) {
+        toast({
+          title: lang === 'he' ? 'רכישת שובר מתנה תיפתח בקרוב' : 'Gift purchases are coming soon',
+          description: lang === 'he'
+            ? 'בקרוב תוכלו לרכוש שובר מתנה כאן. בינתיים אפשר לרכוש כרטיס מתנה בעמוד כרטיסי המתנה או לפנות לתמיכה.'
+            : 'You’ll be able to buy a gift here soon. Meanwhile you can buy a gift card on our Gift Cards page, or contact support.',
+        });
+        return;
+      }
+
       if (response.ok && data.success) {
         setPurchasedGift({
           giftCardId: data.giftCardId,

@@ -1,0 +1,26 @@
+{
+  "applinks": {
+    "details": [
+      {
+        "appIDs": ["U22NC3Q5Z4.il.co.petwash.provider"],
+        "components": [
+          { "/": "/provider/*" },
+          { "/": "/dashboard/*" },
+          { "/": "/jobs/*" }
+        ]
+      },
+      {
+        "appIDs": ["U22NC3Q5Z4.com.petwash.il"],
+        "components": [
+          { "/": "/*" }
+        ]
+      }
+    ]
+  },
+  "webcredentials": {
+    "apps": [
+      "U22NC3Q5Z4.com.petwash.il",
+      "U22NC3Q5Z4.il.co.petwash.provider"
+    ]
+  }
+}

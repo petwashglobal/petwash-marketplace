@@ -1,0 +1,1 @@
+import"./vendor-react-BCjBfcUn.js";import{l as n}from"./firebase-CnYXWNeX.js";async function r(t="submit"){return n.warn("[Turnstile] VITE_TURNSTILE_SITE_KEY not set — skipping Turnstile"),null}export{r as e};
