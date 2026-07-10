@@ -9,6 +9,9 @@
  *   GET  /api/admin/lynx/health                  → wired status + env presence
  *   POST /api/admin/lynx/connection-test         → one real authed Lynx call
  *   GET  /api/admin/lynx/machine/:id/products    → a machine's planogram + stock
+ *   GET  /api/admin/lynx/machine/:id/last-sales  → the bay's recent transactions (pull)
+ *   GET  /api/admin/lynx/reports/widgets         → discover dashboard report widgets
+ *   POST /api/admin/lynx/reports/widget-data     → deep fleet revenue analytics (filters)
  *   GET  /api/admin/lynx/device/:id              → device status (station health)
  *   POST /api/admin/lynx/machine/:id/pick-list   → generate a restock pick list
  *
@@ -101,6 +104,37 @@ router.get('/machine/:machineId/last-sales', ...requireSuperAdmin, async (req: R
   } catch (err: any) {
     logger.error('[AdminLynx] last sales failed', { err: err?.message });
     return res.status(500).json({ error: 'Lynx last sales failed' });
+  }
+});
+
+// Deep fleet REPORTS for Tower Control — the dual-bay analytics (revenue per
+// machine/day/month, sales-by-period). Two steps mirror the dev portal: discover
+// widgets, then fetch a widget's data with filters. READ-ONLY (analytics over past
+// sales); never moves money. Dark until LYNX_ENABLED + LYNX_USER_TOKEN.
+router.get('/reports/widgets', ...requireSuperAdmin, async (req: Request, res: Response) => {
+  const screenTypeId = Number(req.query.screenTypeId) || 1;
+  try {
+    const result = await LynxClient.getReportWidgets(screenTypeId);
+    await audit(req, 'ADMIN_LYNX_REPORT_WIDGETS', { screenTypeId, ok: result.ok, status: result.status });
+    return res.json(result);
+  } catch (err: any) {
+    logger.error('[AdminLynx] report widgets failed', { err: err?.message });
+    return res.status(500).json({ error: 'Lynx report widgets failed' });
+  }
+});
+
+router.post('/reports/widget-data', ...requireSuperAdmin, async (req: Request, res: Response) => {
+  const widgetTypeId = Number(req.body?.widgetTypeId);
+  if (!Number.isFinite(widgetTypeId)) return res.status(400).json({ error: 'widgetTypeId required' });
+  const { entityId, screenTypeId, filters } = req.body || {};
+  if (filters !== undefined && !Array.isArray(filters)) return res.status(400).json({ error: 'filters must be an array' });
+  try {
+    const result = await LynxClient.getReportWidgetData({ widgetTypeId, entityId, screenTypeId, filters });
+    await audit(req, 'ADMIN_LYNX_REPORT_WIDGET_DATA', { widgetTypeId, entityId: entityId ?? null, filterCount: Array.isArray(filters) ? filters.length : 0, ok: result.ok, status: result.status });
+    return res.json(result);
+  } catch (err: any) {
+    logger.error('[AdminLynx] report widget-data failed', { err: err?.message });
+    return res.status(500).json({ error: 'Lynx report widget-data failed' });
   }
 });
 
