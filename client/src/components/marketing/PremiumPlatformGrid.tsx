@@ -47,18 +47,22 @@ export function PremiumPlatformGrid({ language }: PremiumPlatformGridProps) {
 
   return (
     <section
-      className="bg-[#fbfbf7] pt-[clamp(40px,8vw,96px)] pb-[calc(clamp(56px,10vw,96px)_+_env(safe-area-inset-bottom))]"
+      className="overflow-x-clip bg-[#fbfbf7] pt-[clamp(40px,8vw,96px)] pb-[calc(clamp(56px,10vw,96px)_+_env(safe-area-inset-bottom))]"
       data-pr-premium-grid="true"
       aria-labelledby="petwash-platform-universe-heading"
     >
-      {/* Container width: min(92%, 1560px) — 4% breathing room on
-          each side of the card column on every viewport, capped at
-          1560px on large desktops so 3 cards at xl get a real
-          editorial width (~480px each at 1560px ÷ 3 col − gaps)
-          instead of the cramped ~430px the older 1400px cap produced.
-          No horizontal padding on the inner container; the 92% width
+      {/* Container width: min(92vw, 1560px) — 4% breathing room on
+          each side of the card column, capped at 1560px on large
+          desktops so 3 cards at xl get a real editorial width (~480px
+          each). VIEWPORT-anchored (92vw, NOT 92%): on iOS Safari the
+          global `body{overflow-x:hidden}` guard leaks, the page can
+          inflate, and a container-relative `92%` then grows PAST the
+          screen — cropping the right edge of the poster cards (the
+          4th feature / logo were cut off on iPhone, 2026-07-10). `vw`
+          is anchored to device-width, immune to that inflation.
+          max-w-full is a final belt. No inner padding; the width
           creates the margin. */}
-      <div className="mx-auto w-[min(92%,1560px)]">
+      <div className="mx-auto w-[min(92vw,1560px)] max-w-full">
         <header className="mb-[clamp(28px,5vw,56px)] text-center">
           <h2
             id="petwash-platform-universe-heading"
