@@ -10,6 +10,7 @@
  *   POST /api/admin/lynx/connection-test         → one real authed Lynx call
  *   GET  /api/admin/lynx/machine/:id/products    → a machine's planogram + stock
  *   GET  /api/admin/lynx/machine/:id/last-sales  → the bay's recent transactions (pull)
+ *   GET  /api/admin/lynx/machine/:id/reconciliation → summarized: settled/unsettled/prepaid
  *   GET  /api/admin/lynx/reports/widgets         → discover dashboard report widgets
  *   POST /api/admin/lynx/reports/widget-data     → deep fleet revenue analytics (filters)
  *   POST /api/admin/lynx/ereceipt/generate       → fiscal eReceipt for a bay tx (no email by default)
@@ -25,6 +26,7 @@ import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { loadUserRole, checkAccessLevel, isSuperAdminVerified } from '../middleware/rbac';
 import { LynxClient } from '../services/LynxClient';
 import { LynxCardService } from '../services/LynxCardService';
+import { summarizeBaySales } from '../services/lynxReconciliation';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -105,6 +107,33 @@ router.get('/machine/:machineId/last-sales', ...requireSuperAdmin, async (req: R
   } catch (err: any) {
     logger.error('[AdminLynx] last sales failed', { err: err?.message });
     return res.status(500).json({ error: 'Lynx last sales failed' });
+  }
+});
+
+// RECONCILIATION — pulls a bay's last-sales and summarizes them for Tower Control:
+// totals, settled-vs-unsettled, authorize/settle discrepancies, per-payment-method,
+// and the prepaid (member QR-redeem) slice that is OURS to receipt vs public card
+// sales that are Nayax's. READ-ONLY; pure transform over the pull feed. Dark until
+// LYNX_ENABLED + LYNX_USER_TOKEN.
+router.get('/machine/:machineId/reconciliation', ...requireSuperAdmin, async (req: Request, res: Response) => {
+  const machineId = String(req.params.machineId || '').trim();
+  if (!machineId) return res.status(400).json({ error: 'machineId required' });
+  try {
+    const result = await LynxClient.getLastSales(machineId);
+    if (!result.ok) {
+      // Surface the dark/failed state honestly instead of a fake all-zero summary.
+      await audit(req, 'ADMIN_LYNX_RECONCILIATION', { machineId, ok: false, status: result.status });
+      return res.json({ ok: false, wired: result.wired, status: result.status, error: result.error, machineId });
+    }
+    const summary = summarizeBaySales(machineId, result.data);
+    await audit(req, 'ADMIN_LYNX_RECONCILIATION', {
+      machineId, ok: true, status: result.status,
+      totalCount: summary.totalCount, needsAttentionCount: summary.needsAttentionCount,
+    });
+    return res.json({ ok: true, wired: result.wired, status: result.status, summary });
+  } catch (err: any) {
+    logger.error('[AdminLynx] reconciliation failed', { err: err?.message });
+    return res.status(500).json({ error: 'Lynx reconciliation failed' });
   }
 });
 
