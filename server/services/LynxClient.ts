@@ -243,6 +243,41 @@ export function getActorHierarchy(): Promise<LynxResult> {
   return request('GET', '/operational/v1/actors/hierarchy');
 }
 
+// ── READ: dashboard REPORT widgets — the deep fleet analytics for the dual bays ─
+// The Widgets Dashboard API (verified against the dev portal) is how Lynx exposes
+// operator reporting: revenue per machine/day/month, sales-by-period, most-popular
+// machines, YoY. Two steps: discover the widget IDs for a screen, then fetch data
+// with date/machine filters. READ-ONLY: pure analytics over sales that already
+// happened; never moves money or touches the wash ledger.
+/** GET the widgets configured for a Lynx screen (screenTypeId 1 = the main
+ *  dashboard). Returns each widget's `widgetTypeId` — the id you feed to
+ *  getReportWidgetData (e.g. the "Revenue / Sales" widget). */
+export function getReportWidgets(screenTypeId = 1): Promise<LynxResult> {
+  return request('GET', `/operational/v1/dashboard/widgets?screenTypeId=${encodeURIComponent(String(screenTypeId))}`);
+}
+
+/** Lynx widget filter tuple — e.g. { name:'startDate', value:'2026-07-01', type:'Date' },
+ *  { name:'groupBy', value:'day', type:'string' }, { name:'MachineId', value:'182443', type:'string' }. */
+export interface LynxWidgetFilter { name: string; value: string; type: 'Date' | 'string' | 'number' | 'boolean' }
+export interface LynxWidgetDataRequest {
+  widgetTypeId: number;
+  entityId?: number | string;      // operator ActorID, or a machine id for machine-scoped widgets
+  screenTypeId?: number;           // defaults to 1 (main dashboard)
+  filters?: LynxWidgetFilter[];    // date range, groupBy, MachineId, payment method, …
+}
+/** POST fetch a report widget's data (recommended variant, supports filters).
+ *  Use for revenue-per-machine-per-day/month and sales-by-period across the two
+ *  Kfar Saba bays. READ-ONLY. */
+export function getReportWidgetData(input: LynxWidgetDataRequest): Promise<LynxResult> {
+  const body = {
+    screenTypeId: input.screenTypeId ?? 1,
+    widgetTypeId: input.widgetTypeId,
+    ...(input.entityId !== undefined ? { entityId: input.entityId } : {}),
+    filters: Array.isArray(input.filters) ? input.filters : [],
+  };
+  return request('POST', '/operational/v1/dashboard/get-widget-data', body);
+}
+
 // ── OPS: generate a restock pick list for a machine (inventory action) ────────
 /** POST a pick-list generation for a machine. Inventory/logistics, NOT money. */
 export function generatePickList(machineId: string): Promise<LynxResult> {
@@ -277,6 +312,8 @@ export const LynxClient = {
   getMachineProducts,
   getDevice,
   getLastSales,
+  getReportWidgets,
+  getReportWidgetData,
   getActorHierarchy,
   generatePickList,
   connectionTest,
