@@ -20,6 +20,7 @@
  * LYNX_CARD_MINT_ENABLED=true, because this MOVES VALUE. Safe no-op otherwise.
  * Uses LynxClient's shared auth (token or operator-login session) via lynxRequest.
  */
+import { randomBytes } from 'node:crypto';
 import { lynxRequest, lynxIsWired, getActorHierarchy } from './LynxClient';
 import { logger } from '../lib/logger';
 
@@ -113,9 +114,11 @@ export interface MintWashCardResult {
   error?: string;
 }
 
-/** A collision-resistant, non-PII unique id for the card. */
+/** A collision-resistant, non-PII unique id for the card. Uses a CSPRNG (crypto),
+ *  not Math.random — a card UID must be unguessable, not just unique (Math.random
+ *  is predictable and would let UIDs be enumerated). 8 random bytes = 64 bits. */
 function newCardUid(userId: string): string {
-  const rand = Math.random().toString(36).slice(2, 10);
+  const rand = randomBytes(8).toString('hex');
   return `PWWASH-${userId.slice(-8)}-${Date.now().toString(36)}-${rand}`.toUpperCase();
 }
 
