@@ -101,7 +101,13 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange}>
-      <div className="min-h-screen bg-white">
+      {/* overflow-x-clip: page-level belt against horizontal overflow on iOS Safari,
+          where the global body{overflow-x:hidden} guard leaks (see #1371). `clip`
+          (not `hidden`) does NOT create a scroll container, so sticky/absolute
+          descendants and decorative bleeds still work — it only kills the rogue
+          horizontal scroll (e.g. the hero's -inset-4 gold glow extending past the
+          viewport). Belt-and-suspenders with the per-section clips. (2026-07-10) */}
+      <div className="min-h-screen overflow-x-clip bg-white">
         {/* Hero Section with Main Image - Luxury Design with Animations */}
         <section className="luxury-services-hero overflow-hidden">
           <div className="max-w-6xl mx-auto">
