@@ -129,15 +129,14 @@ export function WashPackages({ language }: WashPackagesProps) {
     queryKey: ['/api/packages'],
   });
   
-  // FALLBACK_PACKAGES is a marketing safety net for a hard API ERROR only.
-  // We deliberately do NOT substitute it for an EMPTY (200 []) response: packages
-  // are now CEO-managed (/admin/wash-packages, #1350). The single price is ₪55
-  // (CEO-confirmed 2026-07-09) but the fallback BUNDLE prices (3/5/10-pack) are
-  // unconfirmed marketing values — auto-selling them could mis-price a real sale.
-  // So an empty list renders nothing (guard below) rather than a header-with-no-
-  // cards ghost, until real packages are added in admin. (2026-07-09 — root-caused
-  // live: prod /api/packages returned [].)
-  const displayPackages = packages || (isError ? FALLBACK_PACKAGES : []);
+  // Packages source of truth = the DB (/api/packages, CEO-managed via
+  // /admin/wash-packages, #1350). If admin has seeded real packages, show those.
+  // If the DB is EMPTY or the API errors, fall back to FALLBACK_PACKAGES so the
+  // section NEVER silently vanishes. (2026-07-10 — CEO reported the whole packages
+  // section gone on iPhone: prod /api/packages returned [] and the old empty-guard
+  // hid it. The single price is ₪55, CEO-CONFIRMED; admin-seeded packages override
+  // this fallback. A visible, correctly-priced section beats a blank one.)
+  const displayPackages = (packages && packages.length > 0) ? packages : FALLBACK_PACKAGES;
 
   const handleExpressCheckout = (pkg: WashPackage) => {
     logger.debug('Express checkout clicked', { packageName: pkg.name });
