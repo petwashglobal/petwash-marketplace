@@ -38,6 +38,9 @@ Prefer measurement over screenshots for anything precise:
 - **Check both breakpoints** (mobile 390, desktop ≥1280) and **both languages** (en, he).
 - **Confirm the fix** by re-running the overflow probe → empty result.
 
+## 2a. The iOS "some devices only" crop (learned 2026-07-10, #1371)
+When something looks perfect on Android/desktop but is **cropped on the right on iPhone**, suspect a **container-relative width on full-bleed media**. `body{overflow-x:hidden}` exists globally, but **iOS Safari leaks that guard** — the page inflates, and a width like `w-[min(92%,1560px)]` (the `%` is relative to the possibly-inflated containing block) then computes *wider than the screen* and clips. Fix: anchor full-bleed columns/media to the **viewport** — `92vw`, not `92%` (`vw` = device-width, immune to inflation) — plus `max-w-full` and an `overflow-x-clip` belt on the section. **Rule: for any full-width poster/hero/card column, use `vw`-based widths, never container-`%`.** Before blaming a cropped image, verify the *source asset* is actually complete (convert the `.webp`/`.png` and look) — a display overflow and a bad export look identical but need opposite fixes.
+
 ## 3. Common PetWash fixes (reach for these)
 - Grid cell text bleeding: add `min-w-0` to the flex/grid child and `line-clamp-*` / `break-words` to the text.
 - Row overflowing on mobile: `flex-wrap`, or make it an intentional `overflow-x-auto` scroller (with `snap`), never a silent cut-off.
