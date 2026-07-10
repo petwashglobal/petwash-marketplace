@@ -236,6 +236,49 @@ export function getLastSales(machineId: string): Promise<LynxResult> {
   return request('GET', `/operational/v1/machines/${encodeURIComponent(machineId)}/lastSales`);
 }
 
+// ── FISCAL: generate the eReceipt for a specific bay transaction ──────────────
+// Turns a lastSales TransactionID into its electronic receipt (returns ReceiptURL
+// + EreceiptID). This is the link that ties a bay transaction → its fiscal
+// receipt for reconciliation (dev-portal verified: POST /operational/v1/ereceipt/generate).
+//
+// SIDE-EFFECT GUARD: if `email` is provided, Nayax EMAILS the receipt to that
+// address (response EmailSent:true). We DEFAULT TO NOT EMAILING — omit email and
+// you just get the ReceiptURL back (pure reconciliation). Only pass an email when
+// a super-admin explicitly intends to send one.
+//
+// FIELD-NAME NOTE: the Nayax reference spells the keys `TrasactionID` /
+// `TrasactionSiteID` (missing the 'n') while lastSales returns the correctly-spelled
+// `TransactionID` / `SiteID`. We can't live-test which the API actually accepts
+// (dark until LYNX_USER_TOKEN), so we send BOTH spellings — REST APIs ignore
+// unknown fields, and this avoids a silent failure the day the token is set.
+export interface LynxEReceiptRequest {
+  transactionId: number | string;
+  transactionDateTime: string;      // ISO, from the lastSales row (AuthorizationDateTimeGMT)
+  siteId: number | string;          // lastSales SiteID
+  machineId: number | string;       // lastSales MachineID
+  fullName?: string | null;
+  email?: string | null;            // OMIT to avoid emailing the customer (default)
+}
+export function generateEReceipt(input: LynxEReceiptRequest): Promise<LynxResult> {
+  const txId = Number(input.transactionId);
+  const siteId = Number(input.siteId);
+  const machineId = Number(input.machineId);
+  const body: Record<string, unknown> = {
+    // documented (misspelled) keys — the literal contract
+    TrasactionID: txId,
+    TrasactionSiteID: siteId,
+    // correctly-spelled keys — belt-and-suspenders (see FIELD-NAME NOTE)
+    TransactionID: txId,
+    TransactionSiteID: siteId,
+    MachineID: machineId,
+    TransactionDateTime: input.transactionDateTime,
+    FullName: input.fullName ?? null,
+    // Only include Email when explicitly given → otherwise Nayax won't send one.
+    ...(input.email ? { Email: input.email } : {}),
+  };
+  return request('POST', '/operational/v1/ereceipt/generate', body);
+}
+
 // ── READ: the current user's actor hierarchy (discovers the operator ActorID) ─
 /** GET the signed-in user's actor hierarchy — used to auto-discover the operator
  *  ActorID that issues cards, so LYNX_OPERATOR_ID need not be set by hand. */
@@ -312,6 +355,7 @@ export const LynxClient = {
   getMachineProducts,
   getDevice,
   getLastSales,
+  generateEReceipt,
   getReportWidgets,
   getReportWidgetData,
   getActorHierarchy,

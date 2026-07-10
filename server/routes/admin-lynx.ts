@@ -12,6 +12,7 @@
  *   GET  /api/admin/lynx/machine/:id/last-sales  → the bay's recent transactions (pull)
  *   GET  /api/admin/lynx/reports/widgets         → discover dashboard report widgets
  *   POST /api/admin/lynx/reports/widget-data     → deep fleet revenue analytics (filters)
+ *   POST /api/admin/lynx/ereceipt/generate       → fiscal eReceipt for a bay tx (no email by default)
  *   GET  /api/admin/lynx/device/:id              → device status (station health)
  *   POST /api/admin/lynx/machine/:id/pick-list   → generate a restock pick list
  *
@@ -135,6 +136,27 @@ router.post('/reports/widget-data', ...requireSuperAdmin, async (req: Request, r
   } catch (err: any) {
     logger.error('[AdminLynx] report widget-data failed', { err: err?.message });
     return res.status(500).json({ error: 'Lynx report widget-data failed' });
+  }
+});
+
+// FISCAL reconciliation — generate the eReceipt for one bay transaction (from a
+// lastSales row) so a bay sale can be tied to its receipt. By DEFAULT this does
+// NOT email anyone: an email is sent ONLY when the caller explicitly passes
+// sendEmail:true AND an email address, so a reconciliation pull never spams customers.
+router.post('/ereceipt/generate', ...requireSuperAdmin, async (req: Request, res: Response) => {
+  const { transactionId, transactionDateTime, siteId, machineId, fullName } = req.body || {};
+  if (transactionId === undefined || transactionDateTime === undefined || siteId === undefined || machineId === undefined) {
+    return res.status(400).json({ error: 'transactionId, transactionDateTime, siteId, machineId are required' });
+  }
+  // Email is a customer-facing side-effect — require an explicit opt-in flag AND an address.
+  const email = (req.body?.sendEmail === true && typeof req.body?.email === 'string') ? req.body.email : undefined;
+  try {
+    const result = await LynxClient.generateEReceipt({ transactionId, transactionDateTime, siteId, machineId, fullName, email });
+    await audit(req, 'ADMIN_LYNX_ERECEIPT_GENERATE', { transactionId, machineId, emailed: Boolean(email), ok: result.ok, status: result.status });
+    return res.json(result);
+  } catch (err: any) {
+    logger.error('[AdminLynx] ereceipt generate failed', { err: err?.message });
+    return res.status(500).json({ error: 'Lynx eReceipt generation failed' });
   }
 });
 
