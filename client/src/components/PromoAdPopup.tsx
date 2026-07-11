@@ -478,11 +478,25 @@ function PosterTemplate({ config, title, subtitle }: PosterTemplateProps) {
   // laptop (wide), no crop, no black. The shell already provides the floating ✕.
   if (config?.imageUrl) {
     return (
-      <div className="absolute inset-0 bg-white flex items-center justify-center">
+      <div className="absolute inset-0 bg-white flex items-center justify-center overflow-hidden">
+        {/* Large-screen immersive backdrop: the poster is a tall PORTRAIT image,
+            so on a wide laptop/desktop `object-contain` leaves stark white
+            pillars on both sides and the popup reads as a narrow phone column.
+            Fill those sides with a blurred, dimmed cover of the SAME poster so
+            the popup is edge-to-edge and immersive on large devices — while the
+            full sharp poster below is never cropped. Hidden on small screens
+            (md-), where the portrait poster already fills the phone. */}
+        <img
+          src={config.imageUrl}
+          alt=""
+          aria-hidden="true"
+          className="hidden md:block absolute inset-0 w-full h-full object-cover scale-110 blur-2xl opacity-40"
+        />
+        {/* The complete, sharp poster — always object-contain, never cropped. */}
         <img
           src={config.imageUrl}
           alt={title || 'PetWash'}
-          className="w-full h-full"
+          className="relative w-full h-full"
           style={{ objectFit: 'contain' }}
         />
       </div>
