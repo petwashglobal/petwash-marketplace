@@ -16391,3 +16391,27 @@ export const paymentProviderRoutes = pgTable("payment_provider_routes", {
 }));
 export type PaymentProviderRoute = typeof paymentProviderRoutes.$inferSelect;
 export type InsertPaymentProviderRoute = typeof paymentProviderRoutes.$inferInsert;
+
+// ===== SOCIAL GROWTH METRICS (in-house social dashboard) =====
+// Time-series snapshots of PetWash's OWN social accounts (@petwashltd on
+// Instagram/TikTok/Facebook), captured by SocialInsightsService — dark until
+// platform API tokens are set. Read-only analytics; no PII. See migration 0091.
+export const socialMetricSnapshots = pgTable("social_metric_snapshots", {
+  id:           serial("id").primaryKey(),
+  platform:     varchar("platform", { length: 20 }).notNull(), // instagram | tiktok | facebook
+  handle:       varchar("handle", { length: 80 }),
+  followers:    integer("followers"),
+  following:    integer("following"),
+  posts:        integer("posts"),
+  reach:        integer("reach"),
+  impressions:  integer("impressions"),
+  engagement:   integer("engagement"),
+  profileViews: integer("profile_views"),
+  linkClicks:   integer("link_clicks"),
+  capturedAt:   timestamp("captured_at", { withTimezone: true }).notNull().defaultNow(),
+  source:       varchar("source", { length: 20 }).notNull().default("api"), // api | manual
+}, (t) => ({
+  platformTimeIdx: index("idx_social_snapshots_platform_time").on(t.platform, t.capturedAt),
+}));
+export type SocialMetricSnapshot = typeof socialMetricSnapshots.$inferSelect;
+export type InsertSocialMetricSnapshot = typeof socialMetricSnapshots.$inferInsert;
