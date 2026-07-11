@@ -41,21 +41,24 @@ export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls:
   offline: { en: 'Temporarily unavailable', he: 'לא זמינה זמנית', cls: 'text-gray-400' },
 };
 
-// Announced sites — REAL planned stations, honestly labelled "opening soon",
-// shown before any DB hardware row exists (CEO 2026-06-11: Kfar Saba must be
-// visible to everyone now). NOT fake operating stations — every field is true;
-// data mirrors docs/stations/launch-stations-2026-06.md. Remove an entry once
-// its live pet_wash_stations row exists (it'll then show in the live list).
-const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string }[] = [
+// Announced sites — REAL planned stations, honestly labelled, shown before any
+// DB hardware row exists (CEO 2026-06-11: Kfar Saba must be visible to everyone
+// now). NOT fake operating stations — every field is true; data mirrors
+// docs/stations/launch-stations-2026-06.md. Set `open: true` once a site is
+// actually operating (it then shows as "Open" instead of "Opening soon"), or
+// remove the entry once its live pet_wash_stations row exists.
+const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string; open?: boolean }[] = [
   {
+    // LIVE: Isaac Wald Park is open — two K9000 bays operating (Nayax online).
     code: 'PWS-IL-KFS-001',
     city: 'כפר סבא',
     nameHe: 'פארק יצחק ולד, כפר סבא',
     nameEn: 'Isaac Wald Park, Kfar Saba',
     area: 'Isaac Wald Park',
     lat: 32.179964, lng: 34.925016,
-    etaHe: 'נפתחת בקרוב — תחנת השטיפה החכמה הראשונה',
-    etaEn: 'Opening soon — our first smart wash hub',
+    open: true,
+    etaHe: 'פעילה עכשיו — תחנת השטיפה החכמה הראשונה שלנו',
+    etaEn: 'Open now — our first smart wash hub',
   },
   {
     // Station 2 — exact street address still TBD (CEO), so we name the
@@ -152,7 +155,11 @@ export default function Locations() {
                 <div className="rounded-2xl bg-white p-6 sm:p-8">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
-                      <span className="text-xs font-semibold tracking-wide text-[#D4AF37]">✦ OPENING SOON · נפתחת בקרוב</span>
+                      {a.open ? (
+                        <span className="text-xs font-semibold tracking-wide text-emerald-600">● OPEN NOW · פעילה עכשיו</span>
+                      ) : (
+                        <span className="text-xs font-semibold tracking-wide text-[#D4AF37]">✦ OPENING SOON · נפתחת בקרוב</span>
+                      )}
                       <h2 className="text-2xl font-bold luxury-gradient-text mt-1">{a.nameEn}</h2>
                       <p className="text-lg luxury-text-body" dir="rtl">{a.nameHe}</p>
                       <p className="luxury-text-body mt-1">{a.etaEn} · {a.etaHe}</p>
