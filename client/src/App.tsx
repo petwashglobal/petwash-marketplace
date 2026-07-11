@@ -252,6 +252,7 @@ const Subscriptions = lazy(() => import("@/pages/Subscriptions"));
 const MySubscriptions = lazy(() => import("@/pages/MySubscriptions"));
 const BackendTeam = lazy(() => import("@/pages/BackendTeam"));
 const Locations = lazy(() => import("@/pages/Locations"));
+const Follow = lazy(() => import("@/pages/Follow"));
 const Packages = lazy(() => import("@/pages/Packages"));
 const DiscountApplication = lazy(() => import("@/pages/DiscountApplication"));
 const CompanyReports = lazy(() => import("@/pages/CompanyReports"));
@@ -2828,6 +2829,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         <Route path="/locations">{() => <Layout><Locations /></Layout>}</Route>
+        <Route path="/follow">{() => <Follow />}</Route>
         <Route path="/stations/:slug">{(params) => <StationPage slug={params.slug} />}</Route>
         <Route path="/wallet/redeem">
           {() => (

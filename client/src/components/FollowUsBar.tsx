@@ -6,12 +6,15 @@
  */
 import { SiInstagram, SiFacebook, SiTiktok, SiSpotify } from 'react-icons/si';
 
-const LINKS = [
+// Canonical PetWash™ social links (all @petwashltd, #PetWashLtd). Exported so the
+// /follow QR-destination page reuses the exact same handles — one source of truth.
+export const SOCIAL_LINKS = [
   { key: 'instagram', href: 'https://www.instagram.com/petwashltd', label: 'Pet Wash on Instagram', Icon: SiInstagram },
   { key: 'tiktok',    href: 'https://www.tiktok.com/@petwashltd',     label: 'Pet Wash on TikTok',     Icon: SiTiktok },
   { key: 'facebook',  href: 'https://www.facebook.com/petwashltd',    label: 'Pet Wash on Facebook',   Icon: SiFacebook },
   { key: 'spotify',   href: 'https://open.spotify.com/user/31ff52czgq4ezgui5ufyplo5mrbq', label: 'Pet Wash on Spotify', Icon: SiSpotify },
 ];
+const LINKS = SOCIAL_LINKS;
 
 export function FollowUsBar({ className = '' }: { className?: string }) {
   return (
