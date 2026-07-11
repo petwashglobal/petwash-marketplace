@@ -22,6 +22,7 @@ import adminLynxRoutes from "./routes/admin-lynx";
 import cronBackupRoutes from "./routes/cron-backup";
 import cronComplianceRoutes from "./routes/cron-compliance";
 import cronNayaxSumitRoutes from "./routes/cron-nayax-sumit";
+import cronSocialRoutes from "./routes/cron-social";
 import cronBookingRemindersRoutes from "./routes/cron-booking-reminders";
 import cronAuditVerifyRoutes from "./routes/cron-audit-verify";
 import supplierFraudFlagsRoutes from "./routes/supplier-fraud-flags";
@@ -11099,6 +11100,7 @@ self.addEventListener('notificationclick', (event) => {
   // bay sale so the books are complete automatically. Same x-cron-secret pattern.
   // TRIPLE-DARK + idempotent: a complete no-op until NAYAX_SUMIT_BRIDGE_ENABLED=true.
   app.use('/api/cron', cronNayaxSumitRoutes);
+  app.use('/api/cron', cronSocialRoutes); // daily @petwashltd social metrics snapshot (dark until tokens)
   // Booking reminders T-24h/T-2h (email+SMS+inbox; fires the orphaned
   // booking-reminder-2026 template). Same x-cron-secret pattern. No money.
   app.use('/api/cron', cronBookingRemindersRoutes);
