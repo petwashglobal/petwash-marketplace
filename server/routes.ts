@@ -371,6 +371,7 @@ import adminFaultIntelRouter from './routes/admin-fault-intel';
 import adminReconfirmationRouter from './routes/admin-reconfirmation';
 import adminStaffAcademyRouter from './routes/admin-staff-academy';
 import adminExpansionMarketingRouter from './routes/admin-expansion-marketing';
+import adminSocialRouter from './routes/admin-social';
 import adminStockReportsRouter from './routes/admin-stock-reports';
 import adminSupportIncidentRouter from './routes/admin-support-incident';
 import adminBuildingsPartnersRouter from './routes/admin-buildings-partners';
@@ -517,6 +518,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   app.use('/api/admin', adminFaultIntelRouter); // §11 fault-cost + §12 predictive-maintenance (read-only)
   app.use('/api/admin', adminStaffAcademyRouter); // §16 staff-performance + §17 academy (read-only)
   app.use('/api/admin', adminExpansionMarketingRouter); // §9 location-scoring (model) + §25 marketing-campaigns (read-only)
+  // In-house Social Growth analytics (@petwashltd IG/TikTok/FB). READ-ONLY;
+  // dark until platform API tokens are set. No PII, no social writes.
+  app.use('/api/admin/social', adminSocialRouter);
   app.use('/api/admin', adminStockReportsRouter); // §10 stock-prediction + §24 reports-summary (read-only)
   app.use('/api/admin', adminSupportIncidentRouter); // §15 support-scripts + §18 incidents (read-only / record-only)
   app.use('/api/admin', adminBuildingsPartnersRouter); // §8 buildings/resident + §28 partner-report (read-only)

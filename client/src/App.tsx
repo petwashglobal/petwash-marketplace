@@ -129,6 +129,7 @@ const Contact = lazy(() => import("@/pages/Contact"));
 const OurService = lazy(() => import("@/pages/OurService"));
 const Gallery = lazy(() => import("@/pages/Gallery"));
 const AdminBackendPanel = lazy(() => import("@/pages/AdminBackendPanel"));
+const AdminSocialGrowth = lazy(() => import("@/pages/AdminSocialGrowth"));
 const AdminGoogleForms = lazy(() => import("@/pages/AdminGoogleForms"));
 const FormsHub = lazy(() => import("@/pages/forms/FormsHub"));
 const ReviewForm = lazy(() => import("@/pages/forms/ReviewForm"));
@@ -823,6 +824,29 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
     }
   };
 
+  // Root "/" (and "/home") render. A native/flavored app (the Prestige or Provider
+  // build) must NEVER show the web marketing Landing — it redirects DURING RENDER to
+  // its own experience, so it does not depend on a delayed useEffect that could miss
+  // (the bug: auth `loading` stays true ~8s on native, then the effect-based redirect
+  // didn't fire, leaving the app on the website — 2026-07-11). BUILD_FLAVOR makes
+  // isProviderApp/isCustomerApp reliable from frame 0. Web (no flavor) is unchanged.
+  const renderRootForApp = () => {
+    const flavored = isNativeApp || isProviderApp || isCustomerApp;
+    if (flavored) {
+      if (loading) return <PageLoader />; // brief; the AuthProvider watchdog caps at 8s
+      if (isProviderApp) return <Redirect to={user ? '/provider/home' : '/signup'} />;
+      // customer flavor (or a generic native build) → the member experience
+      return <Redirect to={user ? '/prestige/home' : '/signup'} />;
+    }
+    // Web browser — marketing Landing for signed-out, Home for signed-in (unchanged).
+    if (loading) return <PageLoader />;
+    return user ? (
+      <Home language={language} onLanguageChange={handleLanguageChange} />
+    ) : (
+      <Landing language={language} onLanguageChange={handleLanguageChange} />
+    );
+  };
+
   return (
     <Suspense fallback={<PageLoader />}>
       {/* Google One Tap - shows floating "Continue as …?" card for signed-in Google users */}
@@ -831,29 +855,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       <Switch>
         {/* Public routes */}
         <Route path="/">
-          {() => {
-            // Native apps NEVER render the web Landing/Home. Show a loader while
-            // the flavor-redirect effect above moves to /prestige/home or
-            // /provider/home (or /signup when signed-out). Web is unaffected.
-            if (isNativeApp) return <PageLoader />;
-            if (loading) return <PageLoader />;
-            return user ? (
-              <Home language={language} onLanguageChange={handleLanguageChange} />
-            ) : (
-              <Landing language={language} onLanguageChange={handleLanguageChange} />
-            );
-          }}
+          {() => renderRootForApp()}
         </Route>
         <Route path="/home">
-          {() => {
-            if (isNativeApp) return <PageLoader />;
-            if (loading) return <PageLoader />;
-            return user ? (
-              <Home language={language} onLanguageChange={handleLanguageChange} />
-            ) : (
-              <Landing language={language} onLanguageChange={handleLanguageChange} />
-            );
-          }}
+          {() => renderRootForApp()}
         </Route>
         <Route path="/signin">
           {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
@@ -3310,6 +3315,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminBackendPanel />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/social">
+          {() => (
+            <AdminRouteGuard>
+              <AdminSocialGrowth />
             </AdminRouteGuard>
           )}
         </Route>
