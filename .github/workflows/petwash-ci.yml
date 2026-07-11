@@ -487,6 +487,56 @@ jobs:
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
 
+      # ── HARD GATE: block the deploy when a genuinely-new migration is unapplied.
+      # The soft "Detect new migrations" reminder above only WARNS, and it was
+      # forgotten for 0089/0090 (both sat unapplied in prod). This gate turns that
+      # silent gap into a loud, deploy-blocking failure: any migrations/NNNN_*.sql
+      # with prefix > MIGRATION_BASELINE (88) that is NOT recorded in
+      # _petwash_migrations (and not manual-skipped) fails the deploy. Old drifted
+      # files (<=88, e.g. the 0010/0018 orphans) are excluded — same bound the
+      # migration walker uses. Skipped on workflow_dispatch so the manual apply run
+      # (`-f run_migrations=true`) can apply + deploy together without self-blocking.
+      - name: Gate — block deploy on unapplied migrations
+        if: github.event_name == 'push'
+        run: |
+          set -euo pipefail
+          BASELINE=88
+          command -v psql >/dev/null 2>&1 || { sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client; }
+          DB_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")
+          echo "::add-mask::$DB_URL"
+          export PGSSLMODE=require
+          if ! APPLIED=$(psql "$DB_URL" -tAc "SELECT filename FROM _petwash_migrations"); then
+            echo "::error title=Migration gate::Could not query _petwash_migrations (DB unreachable?). Failing deploy for safety."
+            exit 1
+          fi
+          APPLIED=$(printf '%s\n' "$APPLIED" | sed '/^[[:space:]]*$/d' | tr -d ' ' | sort -u)
+          SKIP=$(grep -vE '^[[:space:]]*#' migrations/.manual-migrations.txt 2>/dev/null | sed '/^[[:space:]]*$/d' | tr -d ' ' | sort -u || true)
+          PENDING=""
+          for f in migrations/[0-9][0-9][0-9][0-9]_*.sql; do
+            base=$(basename "$f")
+            num=$(echo "$base" | cut -c1-4 | sed 's/^0*//'); num=${num:-0}
+            [ "$num" -gt "$BASELINE" ] || continue
+            printf '%s\n' "$SKIP"    | grep -qxF "$base" && continue
+            printf '%s\n' "$APPLIED" | grep -qxF "$base" && continue
+            PENDING="$PENDING $base"
+          done
+          if [ -n "$PENDING" ]; then
+            echo "::error title=Unapplied migrations block this deploy::${PENDING# }"
+            {
+              echo "### 🛑 Deploy blocked — unapplied SQL migrations"
+              echo ""
+              echo "These migrations are in the repo but NOT recorded in \`_petwash_migrations\`:"
+              for m in $PENDING; do echo "- \`$m\`"; done
+              echo ""
+              echo "Apply them, then re-run this deploy:"
+              echo '```'
+              echo "gh workflow run petwash-ci.yml -f run_migrations=true"
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          echo "✅ No unapplied migrations (prefix > $BASELINE). Deploy may proceed."
+
       - name: Ensure required GCP secrets exist (base + generated)
         env:
           # Passed via env to handle JSON with embedded double-quotes and newlines safely.
