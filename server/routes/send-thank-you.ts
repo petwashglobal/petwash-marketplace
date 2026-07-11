@@ -4,7 +4,7 @@
  */
 
 import { Router } from 'express';
-import sgMail from '../lib/sendgrid';
+import { sendGuardedEmail } from '../lib/guarded-sendgrid';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -95,7 +95,8 @@ router.post('/send-signature-invite', async (req, res) => {
       html: emailHtml,
     };
 
-    await sgMail.send(msg);
+    const esignSend = await sendGuardedEmail({ service: 'esign-invitation', msg });
+    if (!esignSend.ok) throw new Error(`e-signature invite email failed: ${esignSend.reason}`);
 
     logger.info('E-signature invitation sent to Ido Shakarzi');
 
@@ -440,7 +441,8 @@ Launching Soon at: https://petwash.co.il
       `.trim()
     };
 
-    await sgMail.send(emailData);
+    const thankYouSend = await sendGuardedEmail({ service: 'thank-you-email', msg: emailData });
+    if (!thankYouSend.ok) throw new Error(`thank-you email failed: ${thankYouSend.reason}`);
 
     logger.info('[Thank You Email] Sent successfully', {
       to: recipientEmail,
