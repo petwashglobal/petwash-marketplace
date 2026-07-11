@@ -11,9 +11,45 @@ import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { Button } from "@/components/ui/button";
 import { MapPin, Navigation, Clock, Waves, Loader2, Accessibility, Car } from "lucide-react";
-import { useSEO, pageSEO } from '@/lib/seo';
+import { useSEO, pageSEO, injectStructuredData, generateBreadcrumbSchema } from '@/lib/seo';
 import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
+
+// AEO/GEO — visible FAQ mirrored 1:1 into FAQPage JSON-LD so answer engines
+// (ChatGPT/Claude/Perplexity) can lift a factual sentence verbatim. Truthful,
+// legal-safe (no guaranteed/medical claims); price ₪55 incl VAT per CEO 2026-07-09.
+const STATION_FAQ: { qHe: string; qEn: string; aHe: string; aEn: string }[] = [
+  {
+    qHe: 'כמה עולה שטיפת כלב בשירות עצמי?',
+    qEn: 'How much is a self-service dog wash?',
+    aHe: 'שטיפה עצמית סטנדרטית עולה ₪55 (כולל מע״מ).',
+    aEn: 'A standard self-service wash is ₪55 (VAT included).',
+  },
+  {
+    qHe: 'איפה אפשר לשטוף כלב בכפר סבא?',
+    qEn: 'Where can I wash my dog in Kfar Saba?',
+    aHe: 'בעמדת ⁦Pet Wash™⁩ בפארק יצחק ולד, כפר סבא — עמדת שטיפה עצמית ⁦K9000⁩, פתוחה עכשיו.',
+    aEn: 'At the Pet Wash™ station in Isaac Wald Park, Kfar Saba — a self-service K9000 bay, open now.',
+  },
+  {
+    qHe: 'איך עובדת עמדת השטיפה?',
+    qEn: 'How does the wash station work?',
+    aHe: 'בוחרים תוכנית, מכניסים את הכלב לעמדה, ומשתמשים בשמפו, מים חמים וייבוש — הכל בשירות עצמי, בלי תור.',
+    aEn: 'Pick a program, place your dog in the bay, then use shampoo, warm water and drying — all self-service, no queue.',
+  },
+  {
+    qHe: 'האם זה מתאים לכלבים גדולים?',
+    qEn: 'Is it suitable for large dogs?',
+    aHe: 'כן, עמדת ⁦K9000⁩ מתאימה לכלבים בגדלים שונים.',
+    aEn: 'Yes, the K9000 bay fits dogs of different sizes.',
+  },
+  {
+    qHe: 'אילו אמצעי תשלום מתקבלים?',
+    qEn: 'What payment methods are accepted?',
+    aHe: 'תשלום בכרטיס אשראי בעמדה, ולחברי מועדון גם דרך אפליקציית ⁦Pet Wash™⁩.',
+    aEn: 'Credit card at the station, and members can also pay via the Pet Wash™ app.',
+  },
+];
 
 export interface PublicStation {
   stationCode: string;
@@ -75,11 +111,74 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
 ];
 
 export default function Locations() {
-  useSEO(pageSEO.locations);
+  useSEO({
+    ...pageSEO.locations,
+    title: 'שטיפת כלבים בשירות עצמי בכפר סבא — עמדות ⁦K9000⁩ | Pet Wash™',
+    description: 'עמדת שטיפת כלבים בשירות עצמי ⁦K9000⁩ בפארק יצחק ולד, כפר סבא — פתוחה עכשיו. קל, נקי ובשליטה שלכם. מצאו את התחנה הקרובה.',
+    keywords: 'שטיפת כלבים כפר סבא, שטיפת כלבים בשירות עצמי, עמדת שטיפה לכלבים, מקלחת לכלב כפר סבא, dog wash Kfar Saba, K9000',
+  });
   const [, navigate] = useLocation();
   const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [stations, setStations] = useState<PublicStation[] | null>(null);
   const [loadFailed, setLoadFailed] = useState(false);
+
+  // AEO/SEO structured data — Organization + LocalBusiness (only for the OPEN
+  // announced station, truthful geo/address; hours/phone omitted as unknown) +
+  // FAQPage + Breadcrumb, emitted as one @graph. Live-data-only, no invented fields.
+  useEffect(() => {
+    const openStation = ANNOUNCED_LOCATIONS.find((a) => a.open);
+    const socials = [
+      'https://www.instagram.com/petwashltd',
+      'https://www.tiktok.com/@petwashltd',
+      'https://www.facebook.com/petwashltd',
+    ];
+    const graph: object[] = [
+      {
+        '@type': 'Organization',
+        '@id': 'https://petwash.co.il/#org',
+        name: 'Pet Wash™',
+        url: 'https://petwash.co.il',
+        sameAs: socials,
+      },
+      ...(openStation ? [{
+        '@type': 'LocalBusiness',
+        '@id': `https://petwash.co.il/locations#${openStation.code}`,
+        name: `Pet Wash™ — ${openStation.nameEn}`,
+        url: 'https://petwash.co.il/locations',
+        image: 'https://petwash.co.il/logo.png',
+        priceRange: '₪₪',
+        address: {
+          '@type': 'PostalAddress',
+          streetAddress: openStation.area,
+          addressLocality: openStation.city,
+          addressCountry: 'IL',
+        },
+        geo: { '@type': 'GeoCoordinates', latitude: openStation.lat, longitude: openStation.lng },
+        areaServed: openStation.city,
+        parentOrganization: { '@id': 'https://petwash.co.il/#org' },
+        sameAs: socials,
+        makesOffer: {
+          '@type': 'Offer',
+          priceCurrency: 'ILS',
+          price: '55',
+          itemOffered: { '@type': 'Service', name: 'שטיפת כלבים בשירות עצמי (K9000)' },
+        },
+      }] : []),
+      {
+        '@type': 'FAQPage',
+        mainEntity: STATION_FAQ.map((f) => ({
+          '@type': 'Question',
+          name: f.qHe,
+          acceptedAnswer: { '@type': 'Answer', text: f.aHe },
+        })),
+      },
+      generateBreadcrumbSchema([
+        { name: 'בית', url: 'https://petwash.co.il/' },
+        { name: 'תחנות', url: 'https://petwash.co.il/locations' },
+      ]),
+    ];
+    injectStructuredData({ '@context': 'https://schema.org', '@graph': graph });
+  }, []);
 
   useEffect(() => {
     window.scrollTo(0, 0);
@@ -239,6 +338,24 @@ export default function Locations() {
               </div>
             );
           })}
+        </div>
+
+        {/* AEO/SEO — visible FAQ, mirrored 1:1 into FAQPage JSON-LD above so an
+            answer engine can lift a factual sentence verbatim. */}
+        <div className="max-w-3xl mx-auto mt-16" dir="rtl">
+          <h2 className="text-2xl sm:text-3xl font-bold luxury-gradient-text mb-6 text-center">שאלות נפוצות · FAQ</h2>
+          <div className="space-y-3">
+            {STATION_FAQ.map((f, i) => (
+              <details key={i} className="rounded-2xl border border-gray-100 bg-white p-4 sm:p-5 group">
+                <summary className="cursor-pointer font-semibold text-gray-900 list-none flex items-center justify-between gap-3">
+                  <span>{f.qHe}</span>
+                  <span className="text-[#D4AF37] group-open:rotate-45 transition-transform text-xl leading-none">＋</span>
+                </summary>
+                <p className="text-gray-600 mt-3 leading-relaxed">{f.aHe}</p>
+                <p className="text-gray-400 text-sm mt-1" dir="ltr">{f.aEn}</p>
+              </details>
+            ))}
+          </div>
         </div>
 
         {/* Location request CTA — lead capture for new deployments.
