@@ -26,6 +26,7 @@ import { LynxClient } from './LynxClient';
 import { sumitClient } from './SumitClient';
 import { getSumitDocumentMapping } from './sumitDocumentMapping';
 import type { LynxSaleRow } from './lynxReconciliation';
+import { terminalForMachine, terminalLabel } from './nayaxTerminals';
 import { logger } from '../lib/logger';
 
 const VAT_RATE = 0.18; // Israeli VAT (bay prices are VAT-inclusive consumer prices)
@@ -54,6 +55,7 @@ function looksPrepaid(row: LynxSaleRow): boolean {
 /** A bay sale PetWash must issue a fiscal document for. */
 export interface DocumentableSale {
   transactionId: string;
+  machineId?: string;      // Nayax MachineID → station/bay via the terminal registry
   totalInclVat: number;    // what the customer paid (VAT-inclusive)
   amountBeforeVat: number; // backed out for the SUMIT line (VATIncluded:false)
   vatAmount: number;
@@ -88,6 +90,7 @@ export function selectDocumentableSales(rows: unknown): DocumentableSale[] {
     const cardNum = typeof (r as any).CardNumber === 'string' ? (r as any).CardNumber : '';
     out.push({
       transactionId: String(r.TransactionID),
+      machineId: r.MachineID != null ? String(r.MachineID) : undefined,
       totalInclVat: total,
       amountBeforeVat,
       vatAmount: round2(total - amountBeforeVat),
@@ -106,11 +109,15 @@ export function selectDocumentableSales(rows: unknown): DocumentableSale[] {
 /** PURE: build the exact SumitClient.createCustomerReceipt input for a bay sale. */
 export function buildReceiptInput(sale: DocumentableSale) {
   const mapping = getSumitDocumentMapping('K9000_PUBLIC_CARD'); // InvoiceAndReceipt, full VAT
+  // Tag the document to the STATION + BAY (the terminal registry), so each invoice
+  // reads "…כפר סבא פארק ולד — ימין" instead of a bare machine number.
+  const terminal = terminalForMachine(sale.machineId);
+  const where = terminal ? terminalLabel(terminal) : (sale.machineName || 'עמדת PetWash');
   return {
     idempotencyKey: idempotencyKeyFor(sale.transactionId),
     // Walk-up retail sale → a generic casual customer (no PII collected at the bay).
     customer: { name: 'לקוח מזדמן' },
-    description: `רחיצת חיית מחמד — ${sale.machineName || 'עמדת PetWash'}`,
+    description: `רחיצת חיית מחמד בשירות עצמי K9000 — ${where}`,
     amountBeforeVat: sale.amountBeforeVat,
     vatAmount: sale.vatAmount,
     totalAmount: sale.totalInclVat,
@@ -122,6 +129,10 @@ export function buildReceiptInput(sale: DocumentableSale) {
       nayaxTransactionId: sale.transactionId,
       nayaxReference: sale.reference,
       machine: sale.machineName,
+      machineId: sale.machineId,
+      stationId: terminal?.stationId,
+      bay: terminal?.bay,
+      deviceId: terminal?.deviceId,
       site: sale.siteName,
     },
   };
