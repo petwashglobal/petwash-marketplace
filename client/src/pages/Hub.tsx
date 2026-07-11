@@ -3,7 +3,6 @@ import { useAuth } from "@/hooks/useAuth";
 import { useLanguage } from "@/lib/languageStore";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/Layout";
-import { SpotifyPartyPlaylist } from "@/components/SpotifyPartyPlaylist";
 import { ArrowLeft, ArrowRight } from "lucide-react";
 import {
   Home,
@@ -590,11 +589,6 @@ export default function Hub() {
               );
             })}
           </div>
-        </div>
-
-        {/* Pet Wash Party — public Spotify playlist embedded directly (no Replit). */}
-        <div className="max-w-2xl mx-auto mb-12">
-          <SpotifyPartyPlaylist />
         </div>
 
         {/* Recent activity + loyalty status panels — both contain hardcoded
