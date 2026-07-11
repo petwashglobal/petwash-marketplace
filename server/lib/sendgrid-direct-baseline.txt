@@ -1,0 +1,20 @@
+# SendGrid direct-send baseline — files that currently call sgMail.send() directly.
+# The SendGrid Guard Gate (.github/workflows/sendgrid-guard-gate.yml) blocks any NEW
+# file from adding a direct send; these legacy sites are grandfathered until migrated
+# to sendGuardedEmail() (server/lib/guarded-sendgrid.ts). Remove a line once migrated
+# to ratchet the gate down. Do NOT add new lines to widen it. (P0 #148 Priority 5.)
+#
+server/email/luxury-email-service.ts
+server/israeliTaxReport.ts
+server/lib/guarded-sendgrid.ts
+server/lib/notificationDispatcher.ts
+server/routes/booking-chat.ts
+server/routes/ceo-wallet.ts
+server/routes/provider-onboarding.ts
+server/routes/send-thank-you.ts
+server/routes/wallet.ts
+server/services/EmailSpendGuard.ts
+server/services/GoogleMessagingService.ts
+server/services/KYC2026/KYCSecurityAlerts.ts
+server/services/SmsAbuseDetector.ts
+server/services/gcsBackupService.ts

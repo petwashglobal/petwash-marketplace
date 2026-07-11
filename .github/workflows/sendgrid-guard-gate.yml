@@ -1,0 +1,32 @@
+name: SendGrid Guard Gate (no new unguarded sends)
+
+# Every customer email must go through sendGuardedEmail() (server/lib/guarded-sendgrid.ts)
+# so it passes the EmailSpendGuard spend caps. A raw sgMail.send(...) bypasses that.
+# This gate baselines the ~14 legacy direct-send files and blocks PRs that add a NEW
+# one. Ratchet server/lib/sendgrid-direct-baseline.txt down as sites are migrated.
+# (P0 execution queue #148, Priority 5 "PR-EMAIL-LAST".)
+
+on:
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - 'docs/**'
+      - '.claude/**'
+      - '**/*.md'
+  workflow_dispatch:
+
+concurrency:
+  group: sendgrid-guard-gate-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  sendgrid-guard-gate:
+    name: Gate — no new unguarded sgMail.send()
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v5
+      # No npm ci: the checker is dependency-free pure Node, so this gate is fast.
+      - name: Run SendGrid direct-send ratchet
+        run: node scripts/check-no-new-direct-sendgrid.mjs
