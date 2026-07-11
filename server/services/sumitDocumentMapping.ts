@@ -21,6 +21,7 @@
 
 export type PetWashPaymentClass =
   | 'K9000_WASH'
+  | 'K9000_PUBLIC_CARD'
   | 'SHOP_ITEM'
   | 'WALLET_TOPUP'
   | 'EGIFT_PURCHASE'
@@ -69,7 +70,13 @@ export interface SumitDocumentMapping {
 export function getSumitDocumentMapping(paymentClass: PetWashPaymentClass): SumitDocumentMapping {
   switch (paymentClass) {
     // PetWash principal sales — full VAT, invoice + receipt.
+    // K9000_PUBLIC_CARD = a walk-up public credit-card wash at the K9000, CLEARED BY
+    // NAYAX (not our checkout). Fiscally IDENTICAL to K9000_WASH (PetWash is the
+    // principal operator; the price is a full-VAT wash sale) — the only difference
+    // is the money was cleared externally by Nayax, which does not change the VAT or
+    // document type. So it reuses the exact K9000_WASH CPA treatment; no new tax logic.
     case 'K9000_WASH':
+    case 'K9000_PUBLIC_CARD':
     case 'SHOP_ITEM':
       return { documentType: 'InvoiceAndReceipt', vatMode: 'FULL_VAT', issuer: 'PETWASH_PRINCIPAL' };
 

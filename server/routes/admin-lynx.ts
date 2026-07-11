@@ -11,6 +11,8 @@
  *   GET  /api/admin/lynx/machine/:id/products    → a machine's planogram + stock
  *   GET  /api/admin/lynx/machine/:id/last-sales  → the bay's recent transactions (pull)
  *   GET  /api/admin/lynx/machine/:id/reconciliation → summarized: settled/unsettled/prepaid
+ *   POST /api/admin/lynx/machine/:id/sumit-reconcile → issue SUMIT docs for public-card sales (dry-run default)
+ *   GET  /api/admin/lynx/sumit-bridge/health     → is the Nayax→SUMIT fiscal bridge ready?
  *   GET  /api/admin/lynx/reports/widgets         → discover dashboard report widgets
  *   POST /api/admin/lynx/reports/widget-data     → deep fleet revenue analytics (filters)
  *   POST /api/admin/lynx/ereceipt/generate       → fiscal eReceipt for a bay tx (no email by default)
@@ -27,6 +29,7 @@ import { loadUserRole, checkAccessLevel, isSuperAdminVerified } from '../middlew
 import { LynxClient } from '../services/LynxClient';
 import { LynxCardService } from '../services/LynxCardService';
 import { summarizeBaySales } from '../services/lynxReconciliation';
+import { reconcileMachineToSumit, bridgeWired } from '../services/nayaxSumitBridge';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -134,6 +137,43 @@ router.get('/machine/:machineId/reconciliation', ...requireSuperAdmin, async (re
   } catch (err: any) {
     logger.error('[AdminLynx] reconciliation failed', { err: err?.message });
     return res.status(500).json({ error: 'Lynx reconciliation failed' });
+  }
+});
+
+// NAYAX → SUMIT fiscal bridge — issue a SUMIT חשבונית מס/קבלה for each SETTLED public
+// credit-card bay sale (PetWash is the station operator → that revenue must be
+// documented). Prepaid member-redeems are skipped (already documented when the
+// customer paid us). DEFAULTS TO DRY-RUN (preview only). Live issuance requires
+// body {dryRun:false} AND SUMIT wired AND Lynx wired AND NAYAX_SUMIT_BRIDGE_ENABLED
+// — triple-dark, idempotent (nayax-bay:<txid> can never issue twice). MONEY/FISCAL:
+// super-admin + audited.
+router.post('/machine/:machineId/sumit-reconcile', ...requireSuperAdmin, async (req: Request, res: Response) => {
+  const machineId = String(req.params.machineId || '').trim();
+  if (!machineId) return res.status(400).json({ error: 'machineId required' });
+  // Live issuance is opt-in per request; anything but explicit false stays dry-run.
+  const dryRun = req.body?.dryRun === false ? false : true;
+  try {
+    const result = await reconcileMachineToSumit(machineId, { dryRun });
+    await audit(req, 'ADMIN_NAYAX_SUMIT_RECONCILE', {
+      machineId, requestedDryRun: dryRun, effectiveDryRun: result.dryRun,
+      canIssue: result.wired.canIssue, candidateCount: result.candidateCount,
+      issued: result.issued, failed: result.failed, ok: result.ok,
+    });
+    return res.json(result);
+  } catch (err: any) {
+    logger.error('[AdminLynx] sumit-reconcile failed', { err: err?.message });
+    return res.status(500).json({ error: 'Nayax→SUMIT reconcile failed' });
+  }
+});
+
+// Bridge status — is the Nayax→SUMIT fiscal bridge ready to issue? (booleans only,
+// never secrets) so the Tower UI can show what's still needed to go live.
+router.get('/sumit-bridge/health', ...requireSuperAdmin, (_req: Request, res: Response) => {
+  try {
+    return res.json({ bridge: bridgeWired() });
+  } catch (err: any) {
+    logger.error('[AdminLynx] sumit-bridge health failed', { err: err?.message });
+    return res.status(500).json({ error: 'bridge health failed' });
   }
 });
 
