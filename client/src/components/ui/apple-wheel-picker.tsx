@@ -230,7 +230,12 @@ export function AppleWheelPicker({
       <div
         ref={containerRef}
         className="relative overflow-hidden select-none cursor-grab active:cursor-grabbing rounded-xl"
-        style={{ height: containerHeight, width: '100%' }}
+        // touchAction:'none' is the real fix: React's onTouchMove is passive on iOS
+        // Safari, so preventDefault() there is a no-op and dragging the wheel used
+        // to scroll the whole page. This tells the browser we own the gesture — only
+        // this wheel moves, the page stays put (native-Apple-picker behaviour).
+        // overscrollBehavior:'contain' stops any scroll-chaining to the page.
+        style={{ height: containerHeight, width: '100%', touchAction: 'none', overscrollBehavior: 'contain' }}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
         onTouchEnd={handleTouchEnd}
