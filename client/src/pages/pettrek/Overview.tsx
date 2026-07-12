@@ -4,6 +4,7 @@ import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
+import { MarketplaceFAQ } from "@/components/marketplace/MarketplaceFAQ";
 import { GooglePlacesAutocomplete } from "@/components/ui/google-places-autocomplete";
 import { 
   Car, 
@@ -513,6 +514,8 @@ export default function PetTrekOverview() {
         </section>
 
         {/* Become a Driver - Provider Registration */}
+        <MarketplaceFAQ platform="driver" language={language === 'he' ? 'he' : 'en'} className="max-w-3xl mx-auto px-4 pt-6 pb-10" />
+
         <ProviderRegistrationBanner variant="section" platform="driver" />
       </div>
     </Layout>
