@@ -2,10 +2,18 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { Star, Crown, Award, Gem, Heart, Trophy, Medal, ArrowLeft, Sparkles, Check, Lock, ChevronRight } from 'lucide-react';
 import { TIER_CONFIGS } from '@shared/schema-loyalty';
+import { useSEO } from '@/lib/seo';
 
 export default function LoyaltyTiers() {
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
   const isHebrew = language === 'he';
+  useSEO({
+    title: '⁦Pet Wash™⁩ Prestige — Loyalty Tiers | דרגות נאמנות ⁦Prestige⁩',
+    description: 'The ⁦Pet Wash™⁩ Prestige loyalty ladder — earn points on every wash and climb tiers for bigger rewards. Status never expires. מועדון הנאמנות ⁦Prestige⁩ — צברו נקודות בכל שטיפה ועלו דרגות; הסטטוס לעולם לא פג.',
+    keywords: 'pet wash loyalty, prestige tiers, rewards, membership, מועדון נאמנות, דרגות, נקודות, הטבות',
+    canonical: 'https://petwash.co.il/loyalty/tiers',
+    ogType: 'website',
+  });
   const currentTier = 'bronze';
   const [selectedTier, setSelectedTier] = useState<string | null>(null);
 
