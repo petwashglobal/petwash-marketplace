@@ -127,10 +127,14 @@ export default function LoyaltyBirthday() {
               </div>
             </div>
 
-            <Button className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#D9B84C] to-[#D9B84C] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(217, 184, 76,0.3)] hover:scale-105">
-              <Gift className="w-5 h-5" />
-              <span>{isHebrew ? 'הגדירו הטבות יום הולדת' : 'Set Up Birthday Rewards'}</span>
-            </Button>
+            {/* Was a dead button (no onClick). Birthday rewards need each pet's
+                date of birth — send the member to pet management to add/edit it. */}
+            <Link href="/pets">
+              <Button className="inline-flex items-center gap-2 px-8 py-3.5 bg-gradient-to-r from-[#D9B84C] to-[#D9B84C] text-[#0A0A0F] font-semibold rounded-xl transition-all duration-300 hover:shadow-[0_0_25px_rgba(217, 184, 76,0.3)] hover:scale-105" data-testid="button-setup-birthday">
+                <Gift className="w-5 h-5" />
+                <span>{isHebrew ? 'הגדירו הטבות יום הולדת' : 'Set Up Birthday Rewards'}</span>
+              </Button>
+            </Link>
           </div>
         </div>
 
