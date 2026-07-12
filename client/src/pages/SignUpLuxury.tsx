@@ -155,6 +155,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [over18, setOver18] = useState(false);
   const consentOk = agreedTerms && over18;
 
+  // De-clutter (CEO 2026-07-12): lead with phone/email + Google; Apple/Facebook/
+  // Instagram fold under a "more options" toggle so the first screen is calm.
+  const [showMoreMethods, setShowMoreMethods] = useState(false);
+
   // Capture ?intent=provider|loyalty|staff_request from the URL into the signup
   // intent cookie on arrival, so it survives the OAuth redirect and post-login
   // routing sends the user to the right place. (Ported from SignIn.tsx.)
@@ -972,26 +976,37 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   </button>
                 )}
 
-                {signupFlags.appleSignin && (
-                  <button className="sl-soc sl-soc--apple" disabled={busy || !consentOk} onClick={() => social('apple')}>
-                    <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
-                  </button>
-                )}
+                {/* Secondary methods fold under "more options" — calmer first screen. */}
+                {showMoreMethods && (
+                  <>
+                    {signupFlags.appleSignin && (
+                      <button className="sl-soc sl-soc--apple" disabled={busy || !consentOk} onClick={() => social('apple')}>
+                        <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
+                      </button>
+                    )}
 
-                {signupFlags.facebookSignin && (
-                  <button className="sl-soc sl-soc--fb" disabled={busy || !consentOk} onClick={() => social('facebook')}>
-                    <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
-                    <span className="sl-socLabel">{t.cwFb}</span>
-                  </button>
-                )}
+                    {signupFlags.facebookSignin && (
+                      <button className="sl-soc sl-soc--fb" disabled={busy || !consentOk} onClick={() => social('facebook')}>
+                        <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
+                        <span className="sl-socLabel">{t.cwFb}</span>
+                      </button>
+                    )}
 
-                {signupFlags.instagramSignin && (
-                  <button className="sl-soc sl-soc--ig" disabled={busy || !consentOk} onClick={() => socialExternal('instagram')}>
-                    <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
-                    <span className="sl-socLabel">{t.cwIg}</span>
-                  </button>
+                    {signupFlags.instagramSignin && (
+                      <button className="sl-soc sl-soc--ig" disabled={busy || !consentOk} onClick={() => socialExternal('instagram')}>
+                        <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
+                        <span className="sl-socLabel">{t.cwIg}</span>
+                      </button>
+                    )}
+                  </>
                 )}
               </div>
+
+              {(signupFlags.appleSignin || signupFlags.facebookSignin || signupFlags.instagramSignin) && !showMoreMethods && (
+                <button type="button" className="sl-btn sl-center" onClick={() => setShowMoreMethods(true)}>
+                  {he ? 'עוד אפשרויות התחברות ›' : 'More sign-in options ›'}
+                </button>
+              )}
 
               {/* Honest activation note (CEO 2026-07-02 "both need verify"): social
                   sign-ups arrive with a verified email only — full membership
