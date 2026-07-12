@@ -32,6 +32,13 @@ export const pageSEO: Record<string, SEOConfig> = {
     keywords: 'pet wash Israel, self-service dog wash, K9000, smart pet care, שטיפת כלבים בשירות עצמי, תחנות שטיפה חכמות',
     ogType: 'website',
   },
+  locations: {
+    title: 'Locations - ⁦Pet Wash™⁩ | תחנות שטיפת כלבים בישראל',
+    description: 'Find a ⁦Pet Wash™⁩ K9000 self-service dog wash station near you in Israel — addresses, hours and live status. מצאו תחנת שטיפת כלבים בשירות עצמי K9000 קרובה אליכם בישראל.',
+    keywords: 'pet wash locations, dog wash near me, K9000 stations Israel, תחנות שטיפת כלבים, שטיפת כלבים בשירות עצמי ליד, מיקומים',
+    canonical: 'https://petwash.co.il/locations',
+    ogType: 'website',
+  },
   pricing: {
     title: 'Pricing & Packages - ⁦Pet Wash™⁩ | מחירים וחבילות',
     description: 'Transparent, all-inclusive pricing for premium pet washing — VAT included, no surprises. Loyalty tier discounts and gift cards available. מחירים שקופים כולל מע״מ, הנחות נאמנות ושוברי מתנה.',
@@ -105,6 +112,78 @@ export const pageSEO: Record<string, SEOConfig> = {
     keywords: 'pet grooming Israel, dog grooming, mobile grooming, pet salon, גרומינג לכלבים, טיפוח כלבים, תספורת לכלבים',
     ogType: 'website',
   },
+  // Added 2026-07-12: these pages called useSEO(pageSEO.<key>) for keys that did
+  // not exist, so each silently fell back to the generic home title/description.
+  packages: {
+    title: 'Wash Packages & Pricing - ⁦Pet Wash™⁩ | חבילות שטיפה ומחירים',
+    description: 'Self-service ⁦K9000⁩ dog-wash packages and pricing in Israel — a standard wash is ₪55 (VAT included). Loyalty members save more. חבילות שטיפה עצמית ⁦K9000⁩ ומחירים — שטיפה סטנדרטית ₪55 כולל מע״מ, וחברי מועדון חוסכים יותר.',
+    keywords: 'pet wash packages, dog wash price Israel, K9000 pricing, חבילות שטיפת כלבים, מחיר שטיפת כלב, ₪55',
+    canonical: 'https://petwash.co.il/packages',
+    ogType: 'product',
+  },
+  shop: {
+    title: 'Pet Shop - Premium Pet Products | חנות מוצרים לחיות מחמד',
+    description: 'Browse premium pet-care products from ⁦Pet Wash™⁩ — shampoos, accessories and more. Online purchases opening soon. עיינו במוצרי טיפוח פרימיום לחיות מחמד — הרכישה אונליין תיפתח בקרוב.',
+    keywords: 'pet shop Israel, dog products, pet accessories, מוצרים לחיות מחמד, חנות כלבים, טיפוח כלבים',
+    canonical: 'https://petwash.co.il/shop',
+    ogType: 'website',
+  },
+  academy: {
+    title: '⁦Pet Wash™⁩ Academy - Dog Training | אקדמיה ואילוף כלבים',
+    description: 'Dog-training bookings and pet-care know-how from vetted trainers in Israel. הזמנת אילוף כלבים ותכני טיפוח ממאלפים מנוסים בישראל.',
+    keywords: 'dog training Israel, dog trainer, puppy training, אילוף כלבים, מאלף כלבים, אקדמיה לכלבים',
+    canonical: 'https://petwash.co.il/academy',
+    ogType: 'website',
+  },
+  subscriptions: {
+    title: 'Membership & Plans - ⁦Pet Wash™⁩ | מנויים וחברות מועדון',
+    description: 'Join ⁦Pet Wash™⁩ membership for wash savings, loyalty rewards and member-only pricing. הצטרפו לחברות מועדון ⁦Pet Wash™⁩ להטבות, נקודות נאמנות ומחירי חברים.',
+    keywords: 'pet wash membership, loyalty club, dog wash subscription, מנוי שטיפת כלבים, מועדון לקוחות, חברות',
+    canonical: 'https://petwash.co.il/subscriptions',
+    ogType: 'website',
+  },
+  buyGiftCard: {
+    title: 'Buy a Gift Card - ⁦Pet Wash™⁩ | קניית שובר מתנה',
+    description: 'Buy a digital ⁦Pet Wash™⁩ gift card — instant delivery by email, Apple Wallet and Google Wallet. קנו שובר מתנה דיגיטלי ⁦Pet Wash™⁩ — משלוח מיידי במייל ובארנק הדיגיטלי.',
+    keywords: 'pet wash gift card, buy gift card, e-voucher Israel, שובר מתנה, גיפט קארד, קניית שובר',
+    canonical: 'https://petwash.co.il/buy-gift-card',
+    ogType: 'product',
+  },
+  petCarePlanner: {
+    title: 'Pet Care Planner - ⁦Pet Wash™⁩ | מתכנן הטיפוח לחיה שלכם',
+    description: 'Plan your pet\'s care — washes, grooming, walks and reminders — in one place with ⁦Pet Wash™⁩. תכננו את הטיפוח של החיה שלכם — שטיפות, גרומינג, טיולים ותזכורות — במקום אחד.',
+    keywords: 'pet care planner, dog care schedule, pet reminders, מתכנן טיפוח לכלב, לוח טיפול בחיה, תזכורות',
+    canonical: 'https://petwash.co.il/pet-care-planner',
+    ogType: 'website',
+  },
+  ourService: {
+    title: 'Our Services - ⁦Pet Wash™⁩ | השירותים שלנו',
+    description: 'Everything ⁦Pet Wash™⁩ offers — ⁦K9000⁩ self-service dog wash, grooming, dog-walking, pet-sitting and transport, all in one app. כל שירותי ⁦Pet Wash™⁩ — שטיפה עצמית, גרומינג, דוגווקר, פנסיון והסעות באפליקציה אחת.',
+    keywords: 'pet services Israel, dog wash grooming walking sitting, שירותי חיות מחמד, שטיפה גרומינג דוגווקר פנסיון',
+    canonical: 'https://petwash.co.il/our-service',
+    ogType: 'website',
+  },
+  gallery: {
+    title: 'Gallery - ⁦Pet Wash™⁩ | גלריה',
+    description: 'See ⁦Pet Wash™⁩ ⁦K9000⁩ stations and happy, clean dogs. צפו בעמדות ⁦K9000⁩ של ⁦Pet Wash™⁩ ובכלבים מטופחים ומאושרים.',
+    keywords: 'pet wash gallery, K9000 photos, dog wash Israel, גלריה שטיפת כלבים, תמונות עמדת שטיפה',
+    canonical: 'https://petwash.co.il/gallery',
+    ogType: 'website',
+  },
+  careers: {
+    title: 'Careers - ⁦Pet Wash™⁩ | דרושים וקריירה',
+    description: 'Join the ⁦Pet Wash™⁩ team — open roles for people who love pets and great service. הצטרפו לצוות ⁦Pet Wash™⁩ — משרות פתוחות לאוהבי חיות מחמד ושירות מעולה.',
+    keywords: 'pet wash careers, jobs Israel pets, dog company jobs, דרושים, קריירה, משרות',
+    canonical: 'https://petwash.co.il/careers',
+    ogType: 'website',
+  },
+  trust: {
+    title: 'Trust, Safety & Compliance - ⁦Pet Wash™⁩ | אמון, בטיחות ותאימות',
+    description: 'How ⁦Pet Wash™⁩ keeps pets, customers and data safe — vetting, security and compliance standards. כך ⁦Pet Wash™⁩ שומר על חיות המחמד, הלקוחות והמידע — סינון, אבטחה ותקני תאימות.',
+    keywords: 'pet wash trust safety, data security, provider vetting, אמון ובטיחות, אבטחת מידע, תאימות',
+    canonical: 'https://petwash.co.il/trust',
+    ogType: 'website',
+  },
 };
 
 /**
@@ -166,7 +245,16 @@ export function useSEO(config?: Partial<SEOConfig>) {
     setMeta('og:title', seoConfig.title, true);
     setMeta('og:description', seoConfig.description, true);
     setMeta('og:type', seoConfig.ogType || 'website', true);
-    setMeta('og:url', seoConfig.canonical || window.location.href, true);
+    // Canonical/og:url — default to the PRODUCTION origin + current path (query &
+    // hash dropped) so every route self-canonicalizes correctly. Before this,
+    // useSEO only set a canonical when one was passed explicitly, so every route
+    // except home + StationPage inherited index.html's "/" canonical. Uses the
+    // hardcoded prod origin (not window.location.origin) so staging/preview hosts
+    // never leak into the canonical. An explicit config.canonical still wins.
+    const path = window.location.pathname;
+    const canonicalHref =
+      seoConfig.canonical ?? `https://petwash.co.il${path === '/' ? '/' : path.replace(/\/+$/, '')}`;
+    setMeta('og:url', canonicalHref, true);
     setMeta('og:site_name', '⁦Pet Wash™⁩', true);
     setMeta('og:locale', seoConfig.locale || 'he_IL', true);
     setMeta('og:locale:alternate', seoConfig.locale === 'he_IL' ? 'en_US' : 'he_IL', true);
@@ -186,15 +274,16 @@ export function useSEO(config?: Partial<SEOConfig>) {
       setMeta('twitter:image', seoConfig.ogImage);
     }
     
-    // Canonical URL
-    if (seoConfig.canonical) {
+    // Canonical URL — always set (defaulted above), so non-home routes stop
+    // inheriting index.html's "/" canonical.
+    {
       let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
       if (!canonical) {
         canonical = document.createElement('link');
         canonical.setAttribute('rel', 'canonical');
         document.head.appendChild(canonical);
       }
-      canonical.setAttribute('href', seoConfig.canonical);
+      canonical.setAttribute('href', canonicalHref);
     }
     
     // Speed/Performance meta tags (2026 best practices)

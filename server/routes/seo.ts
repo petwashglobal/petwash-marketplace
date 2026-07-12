@@ -1,5 +1,7 @@
 import { Router } from 'express';
-import { pool } from '../db';
+import { db } from '../db';
+import { petWashStations } from '@shared/schema-enterprise';
+import { ne } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -81,19 +83,28 @@ ${hreflangs}
   </url>`;
 }
 
-/** Fetch active station slugs from DB. Never throws — returns [] on any error. */
+/**
+ * Fetch station slugs for the sitemap from the SAME table + filter the public
+ * station API uses (pet_wash_stations, non-decommissioned) so every sitemap URL
+ * resolves. The URL slug IS the stationCode: /stations/:slug → the API
+ * uppercases it and looks up by station_code, and StationPage's canonical is
+ * `/stations/${stationCode.toLowerCase()}`. So we emit the lowercased
+ * stationCode as the slug — sitemap URL === page canonical, no 404s, no
+ * self-canonical mismatch. Read-only; never throws — returns [] on any error.
+ */
 async function fetchActiveStationSlugs(): Promise<{ slug: string; name: string }[]> {
   try {
-    const result = await pool.query(
-      `SELECT
-         COALESCE(slug, 'station-' || id::text) AS slug,
-         name
-       FROM stations
-       WHERE is_active = true
-       ORDER BY name
-       LIMIT 500`
-    );
-    return result.rows;
+    const rows = await db
+      .select({
+        stationCode: petWashStations.stationCode,
+        name: petWashStations.stationName,
+      })
+      .from(petWashStations)
+      .where(ne(petWashStations.operationalStatus, 'decommissioned'))
+      .limit(500);
+    return rows
+      .filter((r) => !!r.stationCode)
+      .map((r) => ({ slug: r.stationCode.toLowerCase(), name: r.name }));
   } catch (err: any) {
     logger.warn('[SEO] Could not fetch active stations for sitemap', { error: err?.message });
     return [];
@@ -141,10 +152,10 @@ router.get('/sitemap.xml', async (req, res) => {
     { url: '/accessibility-statement', changefreq: 'monthly', priority: '0.3' },
   ];
 
-  // Station URLs are EXCLUDED until the /stations/:slug route exists in
-  // App.tsx — a sitemap pointing crawlers at 404s is worse than a thin one.
-  // fetchActiveStationSlugs() stays for the station-pages PR to re-enable.
-  const stations: { slug: string; name: string }[] = [];
+  // /stations/:slug is live (App.tsx) and StationPage renders truthful live
+  // per-station data, so re-enable station URLs. fetchActiveStationSlugs emits
+  // the lowercased stationCode as the slug, matching the page canonical exactly.
+  const stations = await fetchActiveStationSlugs();
 
   const staticEntries = staticPages
     .map(p => buildUrlEntry(baseUrl, p.url, p.changefreq, p.priority))
