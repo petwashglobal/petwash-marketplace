@@ -8,7 +8,6 @@ import { useLanguage } from '@/lib/languageStore';
 import { usePaymentStatus } from '@/hooks/use-payment-status';
 import { X, Rocket, Briefcase, Star } from 'lucide-react';
 import { Link } from 'wouter';
-import { becomeProviderHref, setProviderSignupIntent } from '@/lib/becomeProvider';
 
 interface LayoutProps {
   children: React.ReactNode;

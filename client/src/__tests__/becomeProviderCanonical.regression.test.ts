@@ -133,13 +133,13 @@ describe('PR-FRES-3 caller-integration source pins', () => {
     expect(window_).toMatch(/<Link\s+href=\{becomeProviderHref\(\)\}\s+onClick=\{setProviderSignupIntent\}/);
   });
 
-  it('10. ProviderDashboard.tsx <a href> full reload converted to Link + helper', () => {
-    const src = read('client/src/pages/ProviderDashboard.tsx');
-    expect(src).toMatch(/from\s*['"]@\/lib\/becomeProvider['"]/);
-    // No more <a href="/become-provider"> full-reload pattern
+  it('10. pettrek/ProviderDashboard.tsx has no full-reload /become-provider anchor', () => {
+    // The old root-level ProviderDashboard.tsx was refactored into pettrek/.
+    // A provider's OWN dashboard should not recruit providers, so there is no
+    // become-provider CTA here — the invariant that survives is: never a raw
+    // full-reload <a href="/become-provider"> (which would drop signup intent).
+    const src = read('client/src/pages/pettrek/ProviderDashboard.tsx');
     expect(src).not.toMatch(/<a\s+href=["']\/become-provider["']/);
-    // Link with helper
-    expect(src).toMatch(/<Link\s+href=\{becomeProviderHref\(\)\}\s+onClick=\{setProviderSignupIntent\}/);
   });
 
   it('11. ProviderApplicationStatus.tsx wrong-route /provider-application is gone', () => {
@@ -150,14 +150,12 @@ describe('PR-FRES-3 caller-integration source pins', () => {
     expect(src).toMatch(/<Link\s+href=\{becomeProviderHref\(\)\}\s+onClick=\{setProviderSignupIntent\}/);
   });
 
-  it('12. Layout.tsx Join-as-Provider Link uses helper href + onClick', () => {
-    const src = read('client/src/components/Layout.tsx');
-    expect(src).toMatch(/from\s*['"]@\/lib\/becomeProvider['"]/);
-    const idx = src.indexOf('Join as Provider');
-    expect(idx).toBeGreaterThan(0);
-    const window_ = src.slice(Math.max(0, idx - 600), idx + 200);
-    expect(window_).toMatch(/href=\{becomeProviderHref\(\)\}/);
-    expect(window_).toMatch(/onClick=\{setProviderSignupIntent\}/);
+  it('12. Landing.tsx (public homepage) mounts the provider-entry banner', () => {
+    // The Join-as-Provider CTA moved off the global Layout chrome onto the
+    // primary surfaces. The public homepage is the canonical entry: it must
+    // mount <ProviderRegistrationBanner>, which sets signup intent on click.
+    const src = read('client/src/pages/Landing.tsx');
+    expect(src).toMatch(/ProviderRegistrationBanner/);
   });
 
   it('13. legal/MarketplaceTerms.tsx Join-as-Provider Link uses helper', () => {
@@ -166,21 +164,24 @@ describe('PR-FRES-3 caller-integration source pins', () => {
     expect(src).toMatch(/<Link\s+href=\{becomeProviderHref\(\)\}\s+onClick=\{setProviderSignupIntent\}/);
   });
 
-  it('14. SitterSuite.tsx all 3 /join/sitter Links carry onClick={setProviderSignupIntent}', () => {
-    const src = read('client/src/pages/SitterSuite.tsx');
+  it('14. sitter-suite/BrowseSitters.tsx become-provider CTA uses canonical helper + banner', () => {
+    // SitterSuite.tsx was split into the sitter-suite/ folder. The recruit CTA
+    // now routes through the canonical onClickBecomeProvider() helper (which sets
+    // intent + navigates) and the shared ProviderRegistrationBanner.
+    const src = read('client/src/pages/sitter-suite/BrowseSitters.tsx');
     expect(src).toMatch(/from\s*['"]@\/lib\/becomeProvider['"]/);
-    const matches = src.match(/<Link\s+href="\/join\/sitter"\s+onClick=\{setProviderSignupIntent\}/g) || [];
-    expect(matches.length).toBeGreaterThanOrEqual(3);
-    // No remaining bare-Link pattern
-    expect(src).not.toMatch(/<Link\s+href="\/join\/sitter">/);
+    expect(src).toMatch(/onClickBecomeProvider\(\s*setLocation\s*,\s*['"]sitter['"]\s*\)/);
+    expect(src).toMatch(/ProviderRegistrationBanner/);
   });
 
-  it('15. WalkMyPet.tsx all 2 /join/walker Links carry onClick={setProviderSignupIntent}', () => {
-    const src = read('client/src/pages/WalkMyPet.tsx');
+  it('15. walk-my-pet/BrowseWalkers.tsx become-provider CTA uses canonical helper + banner', () => {
+    // WalkMyPet.tsx was split into the walk-my-pet/ folder. Same canonical
+    // pattern as sitter-suite: onClickBecomeProvider() sets intent, and the
+    // shared ProviderRegistrationBanner carries the secondary entry.
+    const src = read('client/src/pages/walk-my-pet/BrowseWalkers.tsx');
     expect(src).toMatch(/from\s*['"]@\/lib\/becomeProvider['"]/);
-    const matches = src.match(/<Link\s+href="\/join\/walker"\s+onClick=\{setProviderSignupIntent\}/g) || [];
-    expect(matches.length).toBeGreaterThanOrEqual(2);
-    expect(src).not.toMatch(/<Link\s+href="\/join\/walker">/);
+    expect(src).toMatch(/onClickBecomeProvider\(\s*setLocation\s*,\s*['"]walker['"]\s*\)/);
+    expect(src).toMatch(/ProviderRegistrationBanner/);
   });
 
   it('16. sitter-suite/Overview.tsx Become-a-Sitter Link uses helper with type=sitter', () => {
