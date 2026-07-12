@@ -2560,6 +2560,18 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         const spendPoints = Math.floor((booking.totalCents || 0) / 100);
         if (spendPoints > 0) {
           await updateLoyalty(ownerId, spendPoints, 'booking_completed', { bookingId: bId });
+          // ALSO feed the CANONICAL loyaltyProfiles store the Prestige UI reads —
+          // updateLoyalty() above writes a different legacy store, so bookings
+          // never showed up in a member's Prestige balance/tier. Idempotent per
+          // bookingId; never throws. (Full 3-ledger consolidation is task #14.)
+          const { awardLoyaltyPoints } = await import('../services/loyaltyEarn');
+          await awardLoyaltyPoints({
+            userId: ownerId,
+            amount: spendPoints,
+            source: 'booking_completed',
+            sourceId: String(bId),
+            description: 'Booking completed',
+          });
         }
 
         // 1. Count owner's lifetime completed bookings
