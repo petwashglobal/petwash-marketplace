@@ -1085,6 +1085,26 @@ router.post(
           .set({ status: 'completed' })
           .where(eq(washHistoryTable.id, washHistoryId));
 
+        // Award canonical loyalty points (1 pt/₪ of confirmed spend) into the
+        // loyaltyProfiles store the Prestige UI actually reads — before this, no
+        // wash-package purchase earned points, so tiers never moved. Non-blocking
+        // + idempotent per washHistoryId so a webhook retry can't double-award.
+        // (Prestige earn engine, task #13.)
+        setImmediate(async () => {
+          try {
+            const { awardLoyaltyPoints, pointsForSpend } = await import('../services/loyaltyEarn');
+            await awardLoyaltyPoints({
+              userId,
+              amount: pointsForSpend(Number(finalPrice)),
+              source: 'wash_package_purchase',
+              sourceId: String(washHistoryId),
+              description: `Wash package purchase (${washCount} washes)`,
+            });
+          } catch (earnErr: any) {
+            logger.warn('[CheckoutWebhook] Loyalty earn failed (non-blocking)', { error: earnErr?.message, userId });
+          }
+        });
+
         // Log discount usage to loyalty ledger (fire-and-forget)
         setImmediate(async () => {
           try {
