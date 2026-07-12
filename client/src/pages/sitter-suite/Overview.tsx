@@ -3,6 +3,7 @@ import { becomeProviderHref, setProviderSignupIntent } from "@/lib/becomeProvide
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
+import { MarketplaceFAQ } from "@/components/marketplace/MarketplaceFAQ";
 import { 
   Home, 
   Search, 
@@ -276,6 +277,8 @@ export default function SitterSuiteOverview() {
                 </Link>
               </div>
             </div>
+
+            <MarketplaceFAQ platform="sitter" language={language === 'he' ? 'he' : 'en'} className="max-w-3xl mx-auto px-4 pt-6 pb-10" />
 
             {/* Become a Sitter - Provider Registration */}
             <ProviderRegistrationBanner variant="section" platform="sitter" className="mt-16" />

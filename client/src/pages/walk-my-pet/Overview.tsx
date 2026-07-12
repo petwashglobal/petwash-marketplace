@@ -2,6 +2,7 @@ import { Link } from "wouter";
 import { Layout } from "@/components/Layout";
 import { Button } from "@/components/ui/button";
 import ProviderRegistrationBanner from "@/components/ProviderRegistrationBanner";
+import { MarketplaceFAQ } from "@/components/marketplace/MarketplaceFAQ";
 import { 
   Dog, 
   Calendar, 
@@ -162,6 +163,8 @@ export default function WalkMyPetOverview() {
             </div>
           </div>
         </div>
+
+        <MarketplaceFAQ platform="walker" language={language === 'he' ? 'he' : 'en'} className="max-w-3xl mx-auto px-4 pt-6 pb-10" />
 
         {/* Become a Walker - Provider Registration */}
         <ProviderRegistrationBanner variant="section" platform="walker" />
