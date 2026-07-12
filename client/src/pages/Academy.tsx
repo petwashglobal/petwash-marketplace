@@ -9,6 +9,7 @@ import { GlassCard } from '@/components/LuxuryWidgets';
 import { Slider } from '@/components/ui/slider';
 import { Checkbox } from '@/components/ui/checkbox';
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
+import { MarketplaceFAQ } from '@/components/marketplace/MarketplaceFAQ';
 import { 
   Star, MapPin, Heart, Search, Filter, Shield, CheckCircle2, 
   Award, TrendingUp, Users, Clock, ThumbsUp, Sparkles,
@@ -63,7 +64,7 @@ const SPECIALTY_OPTIONS = [
 
 export default function Academy() {
   useSEO(pageSEO.academy);
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const { user } = useFirebaseAuth();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCity, setSelectedCity] = useState('');
@@ -420,6 +421,8 @@ export default function Academy() {
           )}
 
           {/* Become a Trainer - Provider Registration */}
+          <MarketplaceFAQ platform="trainer" language={language === 'he' ? 'he' : 'en'} className="max-w-3xl mx-auto px-4 pt-6 pb-10" />
+
           <ProviderRegistrationBanner variant="section" platform="trainer" className="mt-16" />
         </section>
       </div>
