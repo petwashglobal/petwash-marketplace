@@ -944,9 +944,20 @@ router.post('/apply', upload.fields([
           })
           .where(eq(providerApplications.id, application.id));
       } catch (sealPersistErr: any) {
-        logger.warn('[Provider Onboarding] Declaration attestation persist skipped (columns not migrated yet?)', {
-          applicationId, error: sealPersistErr?.message,
-        });
+        // 42703 = undefined_column → expected during the migration window (the
+        // columns aren't pushed yet); the write starts working once they land.
+        // ANY OTHER error means the signature evidence genuinely failed to
+        // persist — surface it at ERROR level (→ monitoring) instead of silently
+        // losing it as a benign "skip".
+        if (sealPersistErr?.code === '42703') {
+          logger.warn('[Provider Onboarding] Declaration attestation persist skipped — columns not migrated yet', {
+            applicationId, error: sealPersistErr?.message,
+          });
+        } else {
+          logger.error('[Provider Onboarding] Declaration attestation persist FAILED (not a migration issue) — signature evidence NOT saved', {
+            applicationId, code: sealPersistErr?.code, error: sealPersistErr?.message,
+          });
+        }
       }
     }
 
@@ -967,9 +978,19 @@ router.post('/apply', upload.fields([
           })
           .where(eq(providerApplications.id, application.id));
       } catch (identityPersistErr: any) {
-        logger.warn('[Provider Onboarding] Identity-hardening persist skipped (columns not migrated yet?)', {
-          applicationId, error: identityPersistErr?.message,
-        });
+        // Same rule as the attestation block: 42703 (undefined_column) is the
+        // expected migration-window skip; anything else means encrypted ID / DOB
+        // / age-proof genuinely failed to save — raise it to ERROR (→ monitoring),
+        // don't lose it silently.
+        if (identityPersistErr?.code === '42703') {
+          logger.warn('[Provider Onboarding] Identity-hardening persist skipped — columns not migrated yet', {
+            applicationId, error: identityPersistErr?.message,
+          });
+        } else {
+          logger.error('[Provider Onboarding] Identity-hardening persist FAILED (not a migration issue) — encrypted ID / DOB NOT saved', {
+            applicationId, code: identityPersistErr?.code, error: identityPersistErr?.message,
+          });
+        }
       }
     }
 
