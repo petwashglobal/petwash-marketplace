@@ -53,7 +53,15 @@ export function FloatingStack({ language, onAIClick }: FloatingStackProps) {
       buttons.forEach((btn: Element) => {
         const htmlBtn = btn as HTMLElement;
         const baseBottom = parseInt(htmlBtn.getAttribute('data-base-bottom') || '0');
-        htmlBtn.style.bottom = `${baseBottom + extraOffset}px`;
+        // Only override `bottom` while the keyboard is actually up. When it's
+        // NOT (extraOffset === 0), CLEAR the inline style so the CSS rule
+        // `bottom: calc(<base> + --pw-bottom-nav-offset + safe-area)` applies —
+        // otherwise this wrote a raw `bottom: 16px`, dropping the FABs ONTO the
+        // mobile bottom nav (they covered the "Account" tab). When the keyboard
+        // IS up, preserve the nav offset + safe area and just add the keyboard.
+        htmlBtn.style.bottom = extraOffset > 0
+          ? `calc(${baseBottom}px + var(--pw-bottom-nav-offset, 0px) + env(safe-area-inset-bottom, 0px) + ${extraOffset}px)`
+          : '';
       });
     }
 
