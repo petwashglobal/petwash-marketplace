@@ -8,8 +8,20 @@
  * - Station performance analytics
  */
 
-import { db } from '../lib/firebase-admin';
+// Reads REAL data from Postgres (Drizzle). Was reading Firestore collections
+// (`nayax_transactions`, `users`, `stations`) that don't hold the live data —
+// the money/transactions/stations live in Postgres — so the admin analytics
+// dashboard showed all zeros. Rewritten 2026-07-12 to query Postgres, matching
+// the control-tower endpoint (routes.ts /api/admin/control-tower).
+import { db } from '../db';
+import { nayaxTransactions, users } from '@shared/schema';
+import { petWashStations } from '@shared/schema-enterprise';
+import { sql, and, gte, lte, eq, ne } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+
+// A settled Nayax sale = real revenue. The Postgres status flow is
+// initiated→authorized→vend_pending→vend_success→settled|voided|failed.
+const REVENUE_STATUS = 'settled';
 
 /**
  * Analytics overview structure - FLATTENED for frontend compatibility
@@ -104,30 +116,22 @@ function getDateBoundaries() {
  * FIXED: Now accepts optional stationId filter
  */
 async function getRevenueForRange(
-  startDate: Date, 
-  endDate: Date, 
+  startDate: Date,
+  endDate: Date,
   stationId?: string
 ): Promise<number> {
   try {
-    let query: any = db.collection('nayax_transactions')
-      .where('status', '==', 'approved')
-      .where('createdAt', '>=', startDate)
-      .where('createdAt', '<=', endDate);
-    
-    // CRITICAL FIX: Filter by stationId if provided
-    if (stationId) {
-      query = query.where('stationId', '==', stationId);
-    }
-    
-    const snapshot = await query.get();
-    
-    let total = 0;
-    snapshot.forEach((doc: any) => {
-      const data = doc.data();
-      total += data.amount || 0;
-    });
-    
-    return total;
+    const conds = [
+      eq(nayaxTransactions.status, REVENUE_STATUS),
+      gte(nayaxTransactions.createdAt, startDate),
+      lte(nayaxTransactions.createdAt, endDate),
+    ];
+    if (stationId) conds.push(eq(nayaxTransactions.stationId, stationId));
+    const [row] = await db
+      .select({ total: sql<string>`COALESCE(SUM(CAST(${nayaxTransactions.amount} AS DECIMAL)), 0)` })
+      .from(nayaxTransactions)
+      .where(and(...conds));
+    return Number(row?.total ?? 0);
   } catch (error) {
     logger.error('[Analytics] Error calculating revenue', error, { stationId });
     return 0;
@@ -139,27 +143,23 @@ async function getRevenueForRange(
  * FIXED: Now accepts optional stationId filter
  */
 async function getTransactionCountForRange(
-  startDate: Date, 
-  endDate: Date, 
+  startDate: Date,
+  endDate: Date,
   status?: string,
   stationId?: string
 ): Promise<number> {
   try {
-    let query: any = db.collection('nayax_transactions')
-      .where('createdAt', '>=', startDate)
-      .where('createdAt', '<=', endDate);
-    
-    if (status) {
-      query = query.where('status', '==', status);
-    }
-    
-    // CRITICAL FIX: Filter by stationId if provided
-    if (stationId) {
-      query = query.where('stationId', '==', stationId);
-    }
-    
-    const snapshot = await query.get();
-    return snapshot.size;
+    const conds = [
+      gte(nayaxTransactions.createdAt, startDate),
+      lte(nayaxTransactions.createdAt, endDate),
+    ];
+    if (status) conds.push(eq(nayaxTransactions.status, status));
+    if (stationId) conds.push(eq(nayaxTransactions.stationId, stationId));
+    const [row] = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(nayaxTransactions)
+      .where(and(...conds));
+    return Number(row?.c ?? 0);
   } catch (error) {
     logger.error('[Analytics] Error counting transactions', error, { status, stationId });
     return 0;
@@ -171,21 +171,15 @@ async function getTransactionCountForRange(
  */
 async function getActiveCustomersForRange(startDate: Date, endDate: Date): Promise<number> {
   try {
-    const snapshot = await db.collection('nayax_transactions')
-      .where('status', '==', 'approved')
-      .where('createdAt', '>=', startDate)
-      .where('createdAt', '<=', endDate)
-      .get();
-    
-    const uniqueCustomers = new Set();
-    snapshot.forEach((doc: any) => {
-      const data = doc.data();
-      if (data.userId) {
-        uniqueCustomers.add(data.userId);
-      }
-    });
-    
-    return uniqueCustomers.size;
+    const [row] = await db
+      .select({ c: sql<number>`COUNT(DISTINCT ${nayaxTransactions.customerUid})` })
+      .from(nayaxTransactions)
+      .where(and(
+        eq(nayaxTransactions.status, REVENUE_STATUS),
+        gte(nayaxTransactions.createdAt, startDate),
+        lte(nayaxTransactions.createdAt, endDate),
+      ));
+    return Number(row?.c ?? 0);
   } catch (error) {
     logger.error('[Analytics] Error counting active customers', error);
     return 0;
@@ -197,12 +191,11 @@ async function getActiveCustomersForRange(startDate: Date, endDate: Date): Promi
  */
 async function getNewCustomersForRange(startDate: Date, endDate: Date): Promise<number> {
   try {
-    const snapshot = await db.collection('users')
-      .where('createdAt', '>=', startDate)
-      .where('createdAt', '<=', endDate)
-      .get();
-    
-    return snapshot.size;
+    const [row] = await db
+      .select({ c: sql<number>`count(*)` })
+      .from(users)
+      .where(and(gte(users.createdAt, startDate), lte(users.createdAt, endDate)));
+    return Number(row?.c ?? 0);
   } catch (error) {
     logger.error('[Analytics] Error counting new customers', error);
     return 0;
@@ -218,103 +211,75 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
   try {
     logger.info('[Analytics] Generating overview...');
     
-    // Parallel queries for optimal performance
+    // Parallel Postgres queries (was Firestore — see file header).
     const [
-      // Revenue metrics
       revenueToday,
       revenueThisWeek,
       revenueThisMonth,
       revenueLastMonth,
       revenueThisYear,
-      
-      // Customer metrics
-      totalCustomersSnapshot,
+      totalCustomers,
       activeCustomersThisMonth,
       newCustomersThisMonth,
       newCustomersLastMonth,
-      
-      // Transaction metrics
-      totalTransactionsSnapshot,
-      completedTransactionsSnapshot,
-      pendingTransactionsSnapshot,
-      failedTransactionsSnapshot,
-      
-      // Station metrics
-      allStationsSnapshot,
-      
-      // Loyalty metrics
-      loyaltySnapshot,
+      txnTotals,
+      stationTotals,
+      loyaltyTierRows,
     ] = await Promise.all([
-      // Revenue
       getRevenueForRange(dates.today, dates.now),
       getRevenueForRange(dates.thisWeekStart, dates.now),
       getRevenueForRange(dates.thisMonthStart, dates.now),
       getRevenueForRange(dates.lastMonthStart, dates.lastMonthEnd),
       getRevenueForRange(dates.thisYearStart, dates.now),
-      
-      // Customers
-      db.collection('users').count().get(),
+      // total customers
+      db.select({ c: sql<number>`count(*)` }).from(users).then((r) => Number(r[0]?.c ?? 0)),
       getActiveCustomersForRange(dates.thisMonthStart, dates.now),
       getNewCustomersForRange(dates.thisMonthStart, dates.now),
       getNewCustomersForRange(dates.lastMonthStart, dates.lastMonthEnd),
-      
-      // Transactions
-      db.collection('nayax_transactions').count().get(),
-      db.collection('nayax_transactions').where('status', '==', 'approved').count().get(),
-      db.collection('nayax_transactions').where('status', '==', 'pending').count().get(),
-      db.collection('nayax_transactions').where('status', '==', 'failed').count().get(),
-      
-      // Stations
-      db.collection('stations').get(),
-      
-      // Loyalty
-      db.collection('users').where('loyalty', '!=', null).get(),
+      // transactions bucketed by status (all-time)
+      db.select({
+        total: sql<number>`count(*)`,
+        completed: sql<number>`count(*) filter (where ${nayaxTransactions.status} = ${REVENUE_STATUS})`,
+        pending: sql<number>`count(*) filter (where ${nayaxTransactions.status} in ('initiated','authorized','vend_pending','pending'))`,
+        failed: sql<number>`count(*) filter (where ${nayaxTransactions.status} in ('failed','voided'))`,
+      }).from(nayaxTransactions).then((r) => r[0]),
+      // stations by operational status (exclude decommissioned)
+      db.select({
+        total: sql<number>`count(*)`,
+        active: sql<number>`count(*) filter (where ${petWashStations.operationalStatus} = 'active')`,
+        offline: sql<number>`count(*) filter (where ${petWashStations.operationalStatus} = 'offline')`,
+      }).from(petWashStations).where(ne(petWashStations.operationalStatus, 'decommissioned')).then((r) => r[0]),
+      // loyalty membership by tier (users.loyaltyTier)
+      db.select({ tier: users.loyaltyTier, c: sql<number>`count(*)` }).from(users).groupBy(users.loyaltyTier),
     ]);
-    
-    // Process stations
-    const stations = allStationsSnapshot.docs.map((doc: any) => ({
-      id: doc.id,
-      ...doc.data(),
-    }));
-    
-    const activeStations = stations.filter((s: any) => s.status === 'active').length;
-    const offlineStations = stations.filter((s: any) => s.status === 'offline').length;
-    const utilizationRate = stations.length > 0 ? (activeStations / stations.length) * 100 : 0;
-    
-    // Process loyalty tiers (7-TIER LUXURY SYSTEM: Bronze→Royal)
-    const loyaltyTiers = {
-      bronze: 0,
-      silver: 0,
-      gold: 0,
-      platinum: 0,
-      diamond: 0,
-      emerald: 0,
-      royal: 0,
-      new: 0, // Legacy support
-    };
-    
-    loyaltySnapshot.forEach((doc: any) => {
-      const user = doc.data();
-      const tier = user.loyalty?.tier?.toLowerCase();
-      if (tier && loyaltyTiers.hasOwnProperty(tier)) {
-        loyaltyTiers[tier as keyof typeof loyaltyTiers]++;
-      }
-    });
-    
-    // Calculate growth rates
+
+    const totalTxns = Number(txnTotals?.total ?? 0);
+    const completedTxns = Number(txnTotals?.completed ?? 0);
+    const successRate = totalTxns > 0 ? (completedTxns / totalTxns) * 100 : 0;
+
+    const activeStations = Number(stationTotals?.active ?? 0);
+    const offlineStations = Number(stationTotals?.offline ?? 0);
+    const totalStations = Number(stationTotals?.total ?? 0);
+    const utilizationRate = totalStations > 0 ? (activeStations / totalStations) * 100 : 0;
+
+    // Tally loyalty tiers (7-tier system). Members without an explicit tier
+    // default to 'bronze'.
+    const tiers: Record<string, number> = {};
+    let totalMembers = 0;
+    for (const row of loyaltyTierRows) {
+      const tier = (row.tier || 'bronze').toLowerCase();
+      const n = Number(row.c ?? 0);
+      tiers[tier] = (tiers[tier] || 0) + n;
+      totalMembers += n;
+    }
+
     const revenueGrowthRate = revenueLastMonth > 0
       ? ((revenueThisMonth - revenueLastMonth) / revenueLastMonth) * 100
       : 0;
-    
     const customerGrowthRate = newCustomersLastMonth > 0
       ? ((newCustomersThisMonth - newCustomersLastMonth) / newCustomersLastMonth) * 100
       : 0;
-    
-    // Calculate success rate
-    const totalTxns = totalTransactionsSnapshot.data().count;
-    const completedTxns = completedTransactionsSnapshot.data().count;
-    const successRate = totalTxns > 0 ? (completedTxns / totalTxns) * 100 : 0;
-    
+
     const overview = {
       revenue: {
         today: revenueToday,
@@ -324,13 +289,13 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
         growthRate: revenueGrowthRate,
       },
       customers: {
-        total: totalCustomersSnapshot.data().count,
+        total: totalCustomers,
         active: activeCustomersThisMonth,
         new: newCustomersThisMonth,
         growthRate: customerGrowthRate,
       },
       stations: {
-        total: stations.length,
+        total: totalStations,
         active: activeStations,
         offline: offlineStations,
         utilizationRate,
@@ -338,17 +303,17 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
       transactions: {
         total: totalTxns,
         completed: completedTxns,
-        pending: pendingTransactionsSnapshot.data().count,
-        failed: failedTransactionsSnapshot.data().count,
+        pending: Number(txnTotals?.pending ?? 0),
+        failed: Number(txnTotals?.failed ?? 0),
         successRate,
       },
       loyalty: {
-        totalMembers: loyaltySnapshot.size,
-        new: loyaltyTiers.new,
-        silver: loyaltyTiers.silver,
-        gold: loyaltyTiers.gold,
-        platinum: loyaltyTiers.platinum,
-        diamond: loyaltyTiers.diamond,
+        totalMembers,
+        new: tiers['bronze'] ?? 0,
+        silver: tiers['silver'] ?? 0,
+        gold: tiers['gold'] ?? 0,
+        platinum: tiers['platinum'] ?? 0,
+        diamond: tiers['diamond'] ?? 0,
       },
     };
     
@@ -385,9 +350,9 @@ export async function getRevenueTimeSeries(days: number = 30): Promise<RevenueTi
       
       const [revenue, transactions] = await Promise.all([
         getRevenueForRange(date, nextDate),
-        getTransactionCountForRange(date, nextDate, 'approved'),
+        getTransactionCountForRange(date, nextDate, REVENUE_STATUS),
       ]);
-      
+
       result.push({
         date: date.toISOString().split('T')[0], // YYYY-MM-DD format
         revenue,
@@ -413,30 +378,32 @@ export async function getStationPerformanceAnalytics(): Promise<StationPerforman
   try {
     logger.info('[Analytics] Generating station performance...');
     
-    const stationsSnapshot = await db.collection('stations').get();
-    
-    // Process each station with proper filtering
+    const stationRows = await db
+      .select({ stationCode: petWashStations.stationCode, stationName: petWashStations.stationName })
+      .from(petWashStations)
+      .where(ne(petWashStations.operationalStatus, 'decommissioned'));
+
+    // Process each station with proper filtering. Transactions are matched by
+    // nayaxTransactions.stationId == the station's code.
     const performanceData = await Promise.all(
-      stationsSnapshot.docs.map(async (doc: any) => {
-        const station = doc.data();
-        const stationId = doc.id;
-        
-        // CRITICAL FIX: Pass stationId to filter queries
+      stationRows.map(async (station) => {
+        const stationId = station.stationCode;
+
         const [revenue, transactions] = await Promise.all([
           getRevenueForRange(dates.thisMonthStart, dates.now, stationId),
-          getTransactionCountForRange(dates.thisMonthStart, dates.now, 'approved', stationId),
+          getTransactionCountForRange(dates.thisMonthStart, dates.now, REVENUE_STATUS, stationId),
         ]);
-        
+
         const averageTransaction = transactions > 0 ? revenue / transactions : 0;
-        
-        // Calculate utilization based on actual usage vs expected
-        const utilizationRate = transactions > 0 ? 
-          Math.min(100, (transactions / 30) * 100) : // Simple metric: transactions per day
-          0;
-        
+
+        // Simple utilization metric: transactions per day this month.
+        const utilizationRate = transactions > 0
+          ? Math.min(100, (transactions / 30) * 100)
+          : 0;
+
         return {
           stationId,
-          stationName: station.name || stationId,
+          stationName: station.stationName || stationId,
           totalRevenue: revenue,
           totalTransactions: transactions,
           averageTransaction,
