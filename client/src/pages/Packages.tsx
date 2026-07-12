@@ -14,8 +14,45 @@ import greenCardFront from '@assets/IMG_3091_1770832584882.png';
 import blackCardFront from '@assets/IMG_1998_1770750271081.png';
 import goldCardFront from '@assets/IMG_1996_1770750271081.png';
 import { useSEO, pageSEO } from '@/lib/seo';
+import { SeoFaqSection, type SeoFaqItem } from '@/components/SeoFaqSection';
 
 const WASH_PRICE = 55;
+
+// AEO/GEO — visible FAQ mirrored 1:1 into FAQPage JSON-LD so answer engines can
+// lift a factual sentence verbatim. Truthful, legal-safe; price ₪55 incl VAT
+// (CEO 2026-07-09). Module-level = stable reference (no effect re-run per render).
+const PACKAGES_FAQ: SeoFaqItem[] = [
+  {
+    qHe: 'כמה עולה שטיפה אחת?',
+    qEn: 'How much is a single wash?',
+    aHe: 'שטיפה עצמית סטנדרטית עולה ₪55 (כולל מע״מ).',
+    aEn: 'A standard self-service wash is ₪55 (VAT included).',
+  },
+  {
+    qHe: 'האם חבילות רב-שטיפה זולות יותר לשטיפה?',
+    qEn: 'Do multi-wash packages cost less per wash?',
+    aHe: 'כן — חבילות רב-שטיפה וחברות מועדון מפחיתות את המחיר לשטיפה.',
+    aEn: 'Yes — multi-wash packages and club membership lower the price per wash.',
+  },
+  {
+    qHe: 'איך משתמשים בחבילה?',
+    qEn: 'How do I use a package?',
+    aHe: 'רוכשים חבילה, ומממשים כל שטיפה בעמדה דרך אפליקציית ⁦Pet Wash™⁩.',
+    aEn: 'Buy a package, then redeem each wash at the station via the ⁦Pet Wash™⁩ app.',
+  },
+  {
+    qHe: 'אפשר לתת חבילה במתנה?',
+    qEn: 'Can I give a package as a gift?',
+    aHe: 'כן — ניתן לרכוש שובר מתנה דיגיטלי.',
+    aEn: 'Yes — you can buy a digital gift card.',
+  },
+  {
+    qHe: 'באילו עמדות אפשר לממש את החבילות?',
+    qEn: 'Which stations accept the packages?',
+    aHe: 'בכל עמדות ⁦K9000⁩ הפעילות שלנו בישראל.',
+    aEn: 'At all our active ⁦K9000⁩ stations in Israel.',
+  },
+];
 
 interface PackageOption {
   washes: number;
@@ -519,6 +556,8 @@ export default function Packages() {
           </div>
         </div>
       </div>
+
+      <SeoFaqSection faq={PACKAGES_FAQ} isHebrew={isHe} />
     </div>
   );
 }
