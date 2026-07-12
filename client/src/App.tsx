@@ -382,7 +382,6 @@ const AdminCustomerDetail = lazy(() => import("@/pages/admin/AdminCustomerDetail
 const AdminBayControl = lazy(() => import("@/pages/admin/AdminBayControl"));
 const AdminAlertsCenter = lazy(() => import("@/pages/admin/AdminAlertsCenter"));
 const AdminProviderVerification = lazy(() => import("@/pages/admin/AdminProviderVerification"));
-const ProviderReview = lazy(() => import("@/pages/admin/ProviderReview"));
 const ProviderKycReview = lazy(() => import("@/pages/admin/ProviderKycReview"));
 const ManagementKycDashboard = lazy(() => import("@/pages/admin/ManagementKycDashboard"));
 const ProviderApplicationStatus = lazy(() => import("@/pages/ProviderApplicationStatus"));
@@ -2479,12 +2478,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* Admin route - Provider Applications Review Dashboard */}
+        {/* Legacy provider-review screen read the OLD provider_applicants table
+            (empty of new applications — which is why apps "disappeared" from admin)
+            and its approve actions hit that table. New applications live in the
+            canonical provider_applications table, surfaced by the /admin/applications
+            triage queue → /admin/providers approve flow. Redirect staff there so
+            they always land on the queue that actually shows real applications.
+            (Provider onboarding two-table consolidation, slice 2, 2026-07-12.) */}
         <Route path="/admin/provider-review">
-          {() => (
-            <AdminRouteGuard>
-              <ProviderReview />
-            </AdminRouteGuard>
-          )}
+          {() => <Redirect to="/admin/applications" />}
         </Route>
 
         {/* Admin KYC review — single application deep-dive */}
