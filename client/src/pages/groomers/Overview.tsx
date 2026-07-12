@@ -3,7 +3,9 @@ import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useSEO, pageSEO } from "@/lib/seo";
-import { 
+import { useLanguage } from "@/lib/languageStore";
+import { MarketplaceFAQ } from "@/components/marketplace/MarketplaceFAQ";
+import {
   Scissors, 
   Search, 
   Calendar, 
@@ -19,7 +21,8 @@ import {
 export default function GroomersOverview() {
   // Apply SEO metadata
   useSEO(pageSEO.groomingMarketplace);
-  
+  const { language } = useLanguage();
+
   const features = [
     {
       icon: <Search className="h-8 w-8 text-[#B8932F]" />,
@@ -166,6 +169,8 @@ export default function GroomersOverview() {
           </div>
         </div>
       </div>
+
+      <MarketplaceFAQ platform="groomer" language={language === 'he' ? 'he' : 'en'} className="max-w-3xl mx-auto px-4 pt-6 pb-14" />
     </Layout>
   );
 }
