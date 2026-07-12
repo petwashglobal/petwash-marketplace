@@ -158,7 +158,7 @@ export default function Locations() {
         },
         geo: { '@type': 'GeoCoordinates', latitude: openStation.lat, longitude: openStation.lng },
         areaServed: openStation.city,
-        parentOrganization: { '@id': 'https://petwash.co.il/#org' },
+        parentOrganization: { '@id': 'https://petwash.co.il/#organization' },
         sameAs: socials,
         makesOffer: {
           '@type': 'Offer',
