@@ -49,8 +49,11 @@ const APP_SRC = fs.readFileSync(
   path.resolve(__dirname, '..', 'App.tsx'),
   'utf8',
 );
+// The standalone SignIn.tsx was consolidated into the single-door SignUpLuxury,
+// which now backs /signin, /sign-in and /login (App.tsx). The redirect-race
+// guarantee moved with it — see the second describe block below.
 const SIGNIN_SRC = fs.readFileSync(
-  path.resolve(__dirname, '..', 'pages', 'SignIn.tsx'),
+  path.resolve(__dirname, '..', 'pages', 'SignUpLuxury.tsx'),
   'utf8',
 );
 
@@ -117,46 +120,38 @@ describe('Issue #153 PR-BPV-1 — App.tsx /become-provider straight-through', ()
   });
 });
 
-describe('Issue #153 PR-BPV-1 — SignIn.tsx redirect race collapse', () => {
-  it('second already-signed-in effect short-circuits when customRedirect is set', () => {
-    // We anchor on the existing `logger.info("User already logged in,
-    // auto-redirecting to homepage")` log line — it's unique to the
-    // second effect. The customRedirect guard MUST appear inside the
-    // same effect, BEFORE the navigatePostLogin call.
-    const homepageLog = SIGNIN_SRC.indexOf(
-      'logger.info("User already logged in, auto-redirecting to homepage")',
-    );
-    expect(homepageLog).toBeGreaterThan(0);
-    // Walk back ~600 chars to capture the effect body opening.
-    const before = SIGNIN_SRC.slice(Math.max(0, homepageLog - 600), homepageLog);
-    expect(before).toMatch(/if\s*\(\s*customRedirect\s*\)\s*return\s*;/);
+describe('Issue #153 PR-BPV-1 — consolidated /signin page honors ?redirect= without a race', () => {
+  // The old SignIn.tsx had TWO already-signed-in effects and PR-BPV-1 added a
+  // `if (customRedirect) return;` guard to the second so the async post-login
+  // navigate could not overwrite the synchronous customRedirect navigation.
+  // SignUpLuxury replaced it with a SINGLE effect that early-returns on the
+  // redirect BEFORE the async post-login resolve — so the race is structurally
+  // impossible, not merely guarded. These pins protect that structure.
+
+  it('validates ?redirect=/?from= against open-redirects (internal single-slash paths only)', () => {
+    // Blocks //evil.com and proto:// open redirects — must accept ?redirect= AND ?from=.
+    expect(SIGNIN_SRC).toMatch(/params\.get\(['"]redirect['"]\)\s*\|\|\s*params\.get\(['"]from['"]\)/);
+    expect(SIGNIN_SRC).toMatch(/\/\^\\\/\(\?!\\\/\)\//); // the /^\/(?!\/)/ guard literal
   });
 
-  it('second already-signed-in effect lists customRedirect in its dependency array', () => {
-    // The deps array must include customRedirect now that the guard
-    // reads it. Without the dep, ESLint exhaustive-deps would flag it
-    // and a future PR could "fix" it by removing the guard.
-    const homepageLog = SIGNIN_SRC.indexOf(
-      'logger.info("User already logged in, auto-redirecting to homepage")',
-    );
-    expect(homepageLog).toBeGreaterThan(0);
-    // Find the closing `}, [` after the log line — that's the deps array.
-    const after = SIGNIN_SRC.slice(homepageLog, homepageLog + 600);
-    expect(after).toMatch(
-      /\}\s*,\s*\[[^\]]*customRedirect[^\]]*\]\s*\)/,
-    );
+  it('already-signed-in effect early-returns to the safe redirect BEFORE any async post-login navigate', () => {
+    // The single effect: `if (!user) return;` then `if (safeRedirect) { navigate(safeRedirect); return; }`
+    // The early return is what makes the old dual-effect race impossible.
+    const userGuard = SIGNIN_SRC.indexOf('if (!user) return;');
+    expect(userGuard).toBeGreaterThan(0);
+    const effectBody = SIGNIN_SRC.slice(userGuard, userGuard + 400);
+    expect(effectBody).toMatch(/if\s*\(\s*safeRedirect\s*\)\s*\{\s*navigate\(\s*safeRedirect\s*\)\s*;\s*return\s*;\s*\}/);
+    // The async post-login resolve must appear AFTER the safeRedirect short-circuit.
+    const asyncResolve = SIGNIN_SRC.indexOf('resolvePostLogin', userGuard);
+    const safeRedirectReturn = SIGNIN_SRC.indexOf('navigate(safeRedirect)', userGuard);
+    expect(safeRedirectReturn).toBeGreaterThan(0);
+    expect(asyncResolve).toBeGreaterThan(safeRedirectReturn);
   });
 
-  it('first already-signed-in effect (customRedirect-aware) is preserved (regression)', () => {
-    // PR-BPV-1 must NOT touch the FIRST already-signed-in effect — only
-    // adds a guard to the second. Pin the canonical shape of the first
-    // so a future PR that decides to "merge" the two effects flips the
-    // test.
-    expect(SIGNIN_SRC).toMatch(
-      /\[Auth\] User already signed in, redirecting/,
-    );
-    expect(SIGNIN_SRC).toMatch(
-      /if\s*\(\s*customRedirect\s*\)\s*\{\s*navigate\(\s*customRedirect\s*\)\s*;\s*\}\s*else\s*\{\s*navigatePostLogin\(\s*\)\s*;\s*\}/,
-    );
+  it('post-login resolution routes by the user\'s real role (no static flow→dest map)', () => {
+    // Returning approved provider → /provider-os, member → /home, etc. — via the
+    // server decider, not a hard-coded map that used to send providers to /home.
+    expect(SIGNIN_SRC).toMatch(/resolvePostLogin/);
+    expect(SIGNIN_SRC).toMatch(/data\?\.nextUrl/);
   });
 });
