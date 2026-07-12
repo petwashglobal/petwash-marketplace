@@ -56,18 +56,24 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
       {/* ── Brand bar: REAL logo, top-center ───────────────────────────── */}
       <div className="border-b border-black/10 bg-white">
         <div className="max-w-[1800px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative flex items-center justify-center h-16">
-            <button
-              onClick={() => setToolsOpen(true)}
-              className="absolute left-0 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-black hover:bg-black/[0.04] transition-colors"
-              aria-label="Open tools menu"
-              data-testid="button-open-tools"
-            >
-              <Menu className="w-5 h-5" />
-              <span className="hidden sm:inline">{language === 'he' ? 'כלים' : 'Tools'}</span>
-            </button>
+          <div className="flex items-center h-16 gap-1">
+            {/* 3-slot flex: [flex-1 left] [logo] [flex-1 right] — keeps the logo
+                centered WITHOUT absolutely-positioned sides overlapping it on
+                narrow phones (the previous absolute layout collided the language
+                toggle + clock onto the logo on mobile). */}
+            <div className="flex-1 flex justify-start min-w-0">
+              <button
+                onClick={() => setToolsOpen(true)}
+                className="inline-flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-black hover:bg-black/[0.04] transition-colors shrink-0"
+                aria-label="Open tools menu"
+                data-testid="button-open-tools"
+              >
+                <Menu className="w-5 h-5" />
+                <span className="hidden sm:inline">{language === 'he' ? 'כלים' : 'Tools'}</span>
+              </button>
+            </div>
 
-            <Link href="/" className="pw-logo-link" aria-label="PetWash home">
+            <Link href="/" className="pw-logo-link shrink-0" aria-label="PetWash home">
               <img
                 src="/brand/petwash-logo-official.png"
                 alt="PetWash"
@@ -75,7 +81,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
               />
             </Link>
 
-            <div className="absolute right-0 flex items-center gap-1">
+            <div className="flex-1 flex items-center justify-end gap-1 min-w-0">
               {/* Live Hebrew⇄English swap. Reuses the app-wide languageStore, so the
                   whole UI (and RTL/LTR direction) flips instantly and the choice
                   persists in localStorage (pw_lang). Hebrew is the default. */}
@@ -110,7 +116,7 @@ export function DashboardShell({ role, title, subtitle, actions, children }: Das
                 </button>
               </div>
               {now && (
-                <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-black/55 font-mono mr-2" data-testid="shell-live-clock" title={now.toLocaleString(he ? 'he-IL' : 'en-GB')}>
+                <div className="hidden sm:flex items-center gap-1.5 text-[11px] sm:text-xs text-black/55 font-mono mr-2" data-testid="shell-live-clock" title={now.toLocaleString(he ? 'he-IL' : 'en-GB')}>
                   <Clock className="w-3.5 h-3.5 shrink-0" />
                   <div className="leading-tight text-right">
                     <div className="hidden sm:block text-black/45">
