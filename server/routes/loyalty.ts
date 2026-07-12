@@ -792,6 +792,118 @@ router.get('/rewards', async (_req: AuthenticatedRequest, res: Response) => {
 });
 
 /**
+ * Admin reward-catalog CRUD (Prestige #15). rewards_marketplace shipped EMPTY and
+ * had no admin writer, so "points buy moments" had nothing to buy. These let an
+ * admin build + manage the catalog. A new reward defaults to isActive=false, and
+ * GET /rewards only surfaces active, in-date rewards — so nothing becomes
+ * member-redeemable until an admin deliberately activates it (no risk of members
+ * spending points on a reward that can't yet be fulfilled).
+ */
+const REWARD_TYPES = ['discount', 'free_wash', 'voucher', 'partner_product', 'vip_experience'];
+const REWARD_CATEGORIES = ['wash', 'merchandise', 'partner', 'experience'];
+
+// GET /api/loyalty/admin/rewards — list ALL rewards (incl. inactive/expired).
+router.get('/admin/rewards', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+  try {
+    const all = await db.select().from(rewardsMarketplace).orderBy(rewardsMarketplace.displayOrder);
+    res.json(all);
+  } catch (error: any) {
+    logger.error('[Loyalty] Admin list rewards failed', { error: error?.message });
+    res.status(500).json({ error: 'Failed to list rewards' });
+  }
+});
+
+// POST /api/loyalty/admin/rewards — create a reward.
+router.post('/admin/rewards', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const b = req.body || {};
+    const code = String(b.code || '').trim();
+    const name = String(b.name || '').trim();
+    const description = String(b.description || '').trim();
+    const type = String(b.type || '').trim();
+    const category = String(b.category || '').trim();
+    const pointsCost = Number(b.pointsCost);
+    const errors: string[] = [];
+    if (!code) errors.push('code is required');
+    if (!name) errors.push('name is required');
+    if (!description) errors.push('description is required');
+    if (!REWARD_TYPES.includes(type)) errors.push(`type must be one of: ${REWARD_TYPES.join(', ')}`);
+    if (!REWARD_CATEGORIES.includes(category)) errors.push(`category must be one of: ${REWARD_CATEGORIES.join(', ')}`);
+    if (!Number.isFinite(pointsCost) || pointsCost <= 0) errors.push('pointsCost must be a positive number');
+    if (errors.length) return res.status(400).json({ error: 'Validation failed', details: errors });
+
+    const [created] = await db.insert(rewardsMarketplace).values({
+      code, name, description, type, category, pointsCost,
+      imageUrl: b.imageUrl ?? null,
+      cashValue: b.cashValue != null ? String(b.cashValue) : null,
+      currency: b.currency ?? 'ILS',
+      stock: b.stock != null ? Number(b.stock) : null,
+      maxRedemptionsPerUser: b.maxRedemptionsPerUser != null ? Number(b.maxRedemptionsPerUser) : 1,
+      minTier: b.minTier ?? null,
+      partnerId: b.partnerId != null ? Number(b.partnerId) : null,
+      partnerName: b.partnerName ?? null,
+      externalUrl: b.externalUrl ?? null,
+      isActive: b.isActive === true,   // default INACTIVE — activate deliberately
+      isFeatured: b.isFeatured === true,
+      displayOrder: b.displayOrder != null ? Number(b.displayOrder) : 0,
+      validFrom: b.validFrom ? new Date(b.validFrom) : null,
+      validUntil: b.validUntil ? new Date(b.validUntil) : null,
+    }).returning();
+    logger.info('[Loyalty] Admin created reward', { code, id: created?.id });
+    res.status(201).json(created);
+  } catch (error: any) {
+    if (error?.code === '23505') return res.status(409).json({ error: 'A reward with that code already exists' });
+    logger.error('[Loyalty] Admin create reward failed', { error: error?.message });
+    res.status(500).json({ error: 'Failed to create reward' });
+  }
+});
+
+// PATCH /api/loyalty/admin/rewards/:id — partial update.
+router.patch('/admin/rewards/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+    const b = req.body || {};
+    const patch: Record<string, unknown> = { updatedAt: new Date() };
+    for (const f of ['name', 'description', 'imageUrl', 'type', 'category', 'currency', 'minTier', 'partnerName', 'externalUrl']) {
+      if (b[f] !== undefined) patch[f] = b[f];
+    }
+    for (const f of ['pointsCost', 'stock', 'maxRedemptionsPerUser', 'partnerId', 'displayOrder']) {
+      if (b[f] !== undefined) patch[f] = Number(b[f]);
+    }
+    for (const f of ['isActive', 'isFeatured']) {
+      if (b[f] !== undefined) patch[f] = b[f] === true;
+    }
+    if (b.cashValue !== undefined) patch.cashValue = b.cashValue != null ? String(b.cashValue) : null;
+    if (b.validFrom !== undefined) patch.validFrom = b.validFrom ? new Date(b.validFrom) : null;
+    if (b.validUntil !== undefined) patch.validUntil = b.validUntil ? new Date(b.validUntil) : null;
+    const [updated] = await db.update(rewardsMarketplace).set(patch).where(eq(rewardsMarketplace.id, id)).returning();
+    if (!updated) return res.status(404).json({ error: 'Reward not found' });
+    res.json(updated);
+  } catch (error: any) {
+    logger.error('[Loyalty] Admin update reward failed', { error: error?.message });
+    res.status(500).json({ error: 'Failed to update reward' });
+  }
+});
+
+// DELETE /api/loyalty/admin/rewards/:id — soft-delete (deactivate).
+router.delete('/admin/rewards/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+    const [deactivated] = await db.update(rewardsMarketplace)
+      .set({ isActive: false, updatedAt: new Date() })
+      .where(eq(rewardsMarketplace.id, id))
+      .returning();
+    if (!deactivated) return res.status(404).json({ error: 'Reward not found' });
+    res.json({ ok: true, id, isActive: false });
+  } catch (error: any) {
+    logger.error('[Loyalty] Admin deactivate reward failed', { error: error?.message });
+    res.status(500).json({ error: 'Failed to deactivate reward' });
+  }
+});
+
+/**
  * POST /api/loyalty/rewards/redeem - Redeem a reward
  */
 router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) => {
