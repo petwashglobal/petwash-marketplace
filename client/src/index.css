@@ -4562,3 +4562,7 @@ body[data-pw-page="signup"] #petwash-signup-page main.sl-panel {
   background: linear-gradient(180deg, rgba(20, 20, 20, 0.95), rgba(8, 8, 8, 0.95)) !important;
   background-color: #090909 !important;
 }
+
+/* Apple-style wheel picker (apple-wheel-picker.tsx): native scroll + snap, no scrollbar. */
+.wheel-scroll { -ms-overflow-style: none; scrollbar-width: none; }
+.wheel-scroll::-webkit-scrollbar { display: none; }

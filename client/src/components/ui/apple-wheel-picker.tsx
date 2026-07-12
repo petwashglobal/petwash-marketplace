@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useCallback, useState } from 'react';
 import { cn } from '@/lib/utils';
 
 export interface WheelPickerItem {
@@ -16,9 +16,17 @@ interface AppleWheelPickerProps {
   className?: string;
 }
 
-const DECELERATION = 0.95;
-const MIN_VELOCITY = 0.5;
-
+/**
+ * AppleWheelPicker — a single scrolling wheel column.
+ *
+ * Built on NATIVE scroll + CSS scroll-snap (not a JS translateY drag). This is
+ * the whole point: iOS provides real momentum + rubber-band + snap for free, so
+ * it actually feels like Apple's picker, and `overscroll-behavior: contain` on
+ * the native scroller reliably keeps the drag inside the wheel — the page never
+ * moves. (The old transform-drag reimplemented iOS physics in JS and fought the
+ * browser; touch-action patches only masked it.) selectedValue → scrollTop is
+ * kept in sync both ways, guarded so programmatic scrolls don't loop.
+ */
 export function AppleWheelPicker({
   items,
   selectedValue,
@@ -28,282 +36,95 @@ export function AppleWheelPicker({
   label,
   className,
 }: AppleWheelPickerProps) {
-  const containerRef = useRef<HTMLDivElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const animFrameRef = useRef<number>(0);
-  const touchStartY = useRef(0);
-  const touchStartTime = useRef(0);
-  const lastTouchY = useRef(0);
-  const lastTouchTime = useRef(0);
-  const currentOffset = useRef(0);
-  const isDragging = useRef(false);
+  const programmatic = useRef(false);
+  const settleTimer = useRef<number>(0);
 
   const halfVisible = Math.floor(visibleItems / 2);
   const containerHeight = itemHeight * visibleItems;
-  const paddingTop = halfVisible * itemHeight;
+  const padHeight = halfVisible * itemHeight;
 
-  const selectedIndex = items.findIndex(item => item.value === selectedValue);
-  const initialIndex = selectedIndex >= 0 ? selectedIndex : 0;
+  const indexOfSelected = useCallback(() => {
+    const i = items.findIndex((it) => it.value === selectedValue);
+    return i >= 0 ? i : 0;
+  }, [items, selectedValue]);
 
-  const [offset, setOffset] = useState(-initialIndex * itemHeight);
+  // Programmatic scroll to an item's centre, guarded so it does NOT echo back
+  // through onScroll as a user change (which would loop with the parent state).
+  const scrollToIndex = useCallback((index: number, smooth: boolean) => {
+    const el = scrollRef.current;
+    if (!el) return;
+    programmatic.current = true;
+    el.scrollTo({ top: index * itemHeight, behavior: smooth ? 'smooth' : 'auto' });
+    window.clearTimeout(settleTimer.current);
+    settleTimer.current = window.setTimeout(() => { programmatic.current = false; }, smooth ? 350 : 60);
+  }, [itemHeight]);
 
+  // Position on mount at the initially-selected item (no animation).
   useEffect(() => {
-    const idx = items.findIndex(item => item.value === selectedValue);
-    if (idx >= 0 && !isDragging.current) {
-      const newOffset = -idx * itemHeight;
-      currentOffset.current = newOffset;
-      setOffset(newOffset);
-    }
-  }, [selectedValue, items, itemHeight]);
-
-  const snapToNearest = useCallback((currentOff: number, velocity = 0) => {
-    cancelAnimationFrame(animFrameRef.current);
-
-    if (Math.abs(velocity) > MIN_VELOCITY) {
-      let vel = velocity;
-      let off = currentOff;
-
-      const animate = () => {
-        vel *= DECELERATION;
-        off += vel;
-
-        const maxOffset = 0;
-        const minOffset = -(items.length - 1) * itemHeight;
-        off = Math.max(minOffset, Math.min(maxOffset, off));
-
-        currentOffset.current = off;
-        setOffset(off);
-
-        if (Math.abs(vel) > MIN_VELOCITY && off > minOffset && off < maxOffset) {
-          animFrameRef.current = requestAnimationFrame(animate);
-        } else {
-          const index = Math.round(-off / itemHeight);
-          const clampedIndex = Math.max(0, Math.min(items.length - 1, index));
-          const snapOffset = -clampedIndex * itemHeight;
-          currentOffset.current = snapOffset;
-          setOffset(snapOffset);
-          if (items[clampedIndex]) {
-            onValueChange(items[clampedIndex].value);
-          }
-        }
-      };
-      animFrameRef.current = requestAnimationFrame(animate);
-    } else {
-      const index = Math.round(-currentOff / itemHeight);
-      const clampedIndex = Math.max(0, Math.min(items.length - 1, index));
-      const snapOffset = -clampedIndex * itemHeight;
-      currentOffset.current = snapOffset;
-      setOffset(snapOffset);
-      if (items[clampedIndex]) {
-        onValueChange(items[clampedIndex].value);
-      }
-    }
-  }, [items, itemHeight, onValueChange]);
-
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    cancelAnimationFrame(animFrameRef.current);
-    isDragging.current = true;
-    const touch = e.touches[0];
-    touchStartY.current = touch.clientY;
-    touchStartTime.current = Date.now();
-    lastTouchY.current = touch.clientY;
-    lastTouchTime.current = Date.now();
+    scrollToIndex(indexOfSelected(), false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!isDragging.current) return;
-    e.preventDefault();
-    const touch = e.touches[0];
-    const delta = touch.clientY - lastTouchY.current;
-    lastTouchY.current = touch.clientY;
-    lastTouchTime.current = Date.now();
-
-    let newOffset = currentOffset.current + delta;
-    const maxOffset = itemHeight * 0.5;
-    const minOffset = -(items.length - 1) * itemHeight - itemHeight * 0.5;
-    newOffset = Math.max(minOffset, Math.min(maxOffset, newOffset));
-
-    currentOffset.current = newOffset;
-    setOffset(newOffset);
-  }, [items.length, itemHeight]);
-
-  const handleTouchEnd = useCallback(() => {
-    isDragging.current = false;
-    const timeDelta = Date.now() - lastTouchTime.current;
-    const totalDelta = lastTouchY.current - touchStartY.current;
-    const totalTime = Date.now() - touchStartTime.current;
-
-    let velocity = 0;
-    if (timeDelta < 100 && totalTime < 300) {
-      velocity = totalDelta / Math.max(totalTime, 1) * 15;
-    } else if (timeDelta < 50) {
-      velocity = totalDelta / Math.max(timeDelta, 1) * 5;
-    }
-
-    snapToNearest(currentOffset.current, velocity);
-  }, [snapToNearest]);
-
-  const handleMouseDown = useCallback((e: React.MouseEvent) => {
-    cancelAnimationFrame(animFrameRef.current);
-    isDragging.current = true;
-    touchStartY.current = e.clientY;
-    touchStartTime.current = Date.now();
-    lastTouchY.current = e.clientY;
-    lastTouchTime.current = Date.now();
-
-    const handleMouseMove = (ev: MouseEvent) => {
-      if (!isDragging.current) return;
-      const delta = ev.clientY - lastTouchY.current;
-      lastTouchY.current = ev.clientY;
-      lastTouchTime.current = Date.now();
-
-      let newOffset = currentOffset.current + delta;
-      const maxOffset = itemHeight * 0.5;
-      const minOffset = -(items.length - 1) * itemHeight - itemHeight * 0.5;
-      newOffset = Math.max(minOffset, Math.min(maxOffset, newOffset));
-      currentOffset.current = newOffset;
-      setOffset(newOffset);
-    };
-
-    const handleMouseUp = () => {
-      isDragging.current = false;
-      const timeDelta = Date.now() - lastTouchTime.current;
-      const totalDelta = lastTouchY.current - touchStartY.current;
-      const totalTime = Date.now() - touchStartTime.current;
-
-      let velocity = 0;
-      if (timeDelta < 100 && totalTime < 300) {
-        velocity = totalDelta / Math.max(totalTime, 1) * 15;
-      }
-      snapToNearest(currentOffset.current, velocity);
-
-      document.removeEventListener('mousemove', handleMouseMove);
-      document.removeEventListener('mouseup', handleMouseUp);
-    };
-
-    mouseCleanupRef.current = { move: handleMouseMove, up: handleMouseUp };
-    document.addEventListener('mousemove', handleMouseMove);
-    document.addEventListener('mouseup', handleMouseUp);
-  }, [items.length, itemHeight, snapToNearest]);
-
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    e.preventDefault();
-    cancelAnimationFrame(animFrameRef.current);
-    const delta = -e.deltaY;
-    let newOffset = currentOffset.current + delta * 0.5;
-    const maxOffset = 0;
-    const minOffset = -(items.length - 1) * itemHeight;
-    newOffset = Math.max(minOffset, Math.min(maxOffset, newOffset));
-    currentOffset.current = newOffset;
-    setOffset(newOffset);
-
-    snapToNearest(newOffset, 0);
-  }, [items.length, itemHeight, snapToNearest]);
-
-  const handleItemClick = useCallback((index: number) => {
-    const newOffset = -index * itemHeight;
-    currentOffset.current = newOffset;
-    setOffset(newOffset);
-    if (items[index]) {
-      onValueChange(items[index].value);
-    }
-  }, [itemHeight, items, onValueChange]);
-
-  const mouseCleanupRef = useRef<{ move: (ev: MouseEvent) => void; up: () => void } | null>(null);
-
+  // Re-sync when the value changes from OUTSIDE (e.g. day clamped to 28, reset).
   useEffect(() => {
-    return () => {
-      cancelAnimationFrame(animFrameRef.current);
-      if (mouseCleanupRef.current) {
-        document.removeEventListener('mousemove', mouseCleanupRef.current.move);
-        document.removeEventListener('mouseup', mouseCleanupRef.current.up);
-        mouseCleanupRef.current = null;
-      }
-    };
-  }, []);
+    const el = scrollRef.current;
+    if (!el || programmatic.current) return;
+    const idx = indexOfSelected();
+    if (Math.round(el.scrollTop / itemHeight) !== idx) scrollToIndex(idx, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedValue, items.length]);
+
+  // On settle, report the centred item up. Debounced so it fires once per flick.
+  const handleScroll = useCallback(() => {
+    if (programmatic.current) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    window.clearTimeout(settleTimer.current);
+    settleTimer.current = window.setTimeout(() => {
+      const idx = Math.max(0, Math.min(items.length - 1, Math.round(el.scrollTop / itemHeight)));
+      const item = items[idx];
+      if (item && item.value !== selectedValue) onValueChange(item.value);
+    }, 100);
+  }, [itemHeight, items, onValueChange, selectedValue]);
+
+  useEffect(() => () => window.clearTimeout(settleTimer.current), []);
 
   return (
     <div className={cn('flex flex-col items-center', className)}>
       {label && (
         <span className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">{label}</span>
       )}
-      <div
-        ref={containerRef}
-        className="relative overflow-hidden select-none cursor-grab active:cursor-grabbing rounded-xl"
-        // touchAction:'none' is the real fix: React's onTouchMove is passive on iOS
-        // Safari, so preventDefault() there is a no-op and dragging the wheel used
-        // to scroll the whole page. This tells the browser we own the gesture — only
-        // this wheel moves, the page stays put (native-Apple-picker behaviour).
-        // overscrollBehavior:'contain' stops any scroll-chaining to the page.
-        style={{ height: containerHeight, width: '100%', touchAction: 'none', overscrollBehavior: 'contain' }}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
-        onMouseDown={handleMouseDown}
-        onWheel={handleWheel}
-      >
+      <div className="relative rounded-xl overflow-hidden" style={{ height: containerHeight, width: '100%' }}>
+        {/* Static chrome: soft top/bottom fade + centre selection band. */}
         <div className="absolute inset-0 pointer-events-none z-10">
-          <div
-            className="absolute top-0 left-0 right-0"
-            style={{
-              height: paddingTop,
-              background: 'linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.6))',
-            }}
-          />
-          <div
-            className="absolute left-0 right-0"
-            style={{
-              top: paddingTop,
-              height: itemHeight,
-              borderTop: '1.5px solid rgba(0,0,0,0.08)',
-              borderBottom: '1.5px solid rgba(0,0,0,0.08)',
-              background: 'rgba(245,245,247,0.5)',
-            }}
-          />
-          <div
-            className="absolute bottom-0 left-0 right-0"
-            style={{
-              height: paddingTop,
-              background: 'linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0.6))',
-            }}
-          />
+          <div className="absolute top-0 left-0 right-0" style={{ height: padHeight, background: 'linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.55))' }} />
+          <div className="absolute left-0 right-0" style={{ top: padHeight, height: itemHeight, borderTop: '1.5px solid rgba(0,0,0,0.08)', borderBottom: '1.5px solid rgba(0,0,0,0.08)', background: 'rgba(245,245,247,0.5)' }} />
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: padHeight, background: 'linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0.55))' }} />
         </div>
 
+        {/* Native scroller — real iOS momentum + snap; overscroll-contain keeps
+            the gesture in the wheel so the page never moves. */}
         <div
           ref={scrollRef}
-          className="absolute left-0 right-0"
-          style={{
-            transform: `translateY(${offset + paddingTop}px)`,
-            transition: isDragging.current ? 'none' : 'transform 0.15s ease-out',
-          }}
+          onScroll={handleScroll}
+          className="wheel-scroll h-full overflow-y-scroll"
+          style={{ scrollSnapType: 'y mandatory', overscrollBehavior: 'contain', WebkitOverflowScrolling: 'touch' }}
         >
-          {items.map((item, index) => {
-            const itemOffset = offset + index * itemHeight + paddingTop;
-            const center = containerHeight / 2;
-            const distance = Math.abs(itemOffset + itemHeight / 2 - center);
-            const maxDistance = containerHeight / 2;
-            const normalizedDistance = Math.min(distance / maxDistance, 1);
-            const scale = 1 - normalizedDistance * 0.25;
-            const opacity = 1 - normalizedDistance * 0.6;
-
-            return (
-              <div
-                key={item.value}
-                className="flex items-center justify-center"
-                style={{
-                  height: itemHeight,
-                  transform: `scale(${scale})`,
-                  opacity,
-                  transition: isDragging.current ? 'none' : 'transform 0.15s ease-out, opacity 0.15s ease-out',
-                }}
-                onClick={() => handleItemClick(index)}
-              >
-                <span className="text-lg font-semibold text-gray-900 whitespace-nowrap px-2 text-center">
-                  {item.label}
-                </span>
-              </div>
-            );
-          })}
+          <div style={{ height: padHeight }} aria-hidden="true" />
+          {items.map((item, index) => (
+            <div
+              key={item.value}
+              onClick={() => { onValueChange(item.value); scrollToIndex(index, true); }}
+              className="flex items-center justify-center cursor-pointer"
+              style={{ height: itemHeight, scrollSnapAlign: 'center' }}
+            >
+              <span className="text-lg font-semibold text-gray-900 whitespace-nowrap px-2 text-center">
+                {item.label}
+              </span>
+            </div>
+          ))}
+          <div style={{ height: padHeight }} aria-hidden="true" />
         </div>
       </div>
     </div>
