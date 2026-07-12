@@ -32,6 +32,13 @@ export const pageSEO: Record<string, SEOConfig> = {
     keywords: 'pet wash Israel, self-service dog wash, K9000, smart pet care, שטיפת כלבים בשירות עצמי, תחנות שטיפה חכמות',
     ogType: 'website',
   },
+  locations: {
+    title: 'Locations - ⁦Pet Wash™⁩ | תחנות שטיפת כלבים בישראל',
+    description: 'Find a ⁦Pet Wash™⁩ K9000 self-service dog wash station near you in Israel — addresses, hours and live status. מצאו תחנת שטיפת כלבים בשירות עצמי K9000 קרובה אליכם בישראל.',
+    keywords: 'pet wash locations, dog wash near me, K9000 stations Israel, תחנות שטיפת כלבים, שטיפת כלבים בשירות עצמי ליד, מיקומים',
+    canonical: 'https://petwash.co.il/locations',
+    ogType: 'website',
+  },
   pricing: {
     title: 'Pricing & Packages - ⁦Pet Wash™⁩ | מחירים וחבילות',
     description: 'Transparent, all-inclusive pricing for premium pet washing — VAT included, no surprises. Loyalty tier discounts and gift cards available. מחירים שקופים כולל מע״מ, הנחות נאמנות ושוברי מתנה.',
@@ -166,7 +173,16 @@ export function useSEO(config?: Partial<SEOConfig>) {
     setMeta('og:title', seoConfig.title, true);
     setMeta('og:description', seoConfig.description, true);
     setMeta('og:type', seoConfig.ogType || 'website', true);
-    setMeta('og:url', seoConfig.canonical || window.location.href, true);
+    // Canonical/og:url — default to the PRODUCTION origin + current path (query &
+    // hash dropped) so every route self-canonicalizes correctly. Before this,
+    // useSEO only set a canonical when one was passed explicitly, so every route
+    // except home + StationPage inherited index.html's "/" canonical. Uses the
+    // hardcoded prod origin (not window.location.origin) so staging/preview hosts
+    // never leak into the canonical. An explicit config.canonical still wins.
+    const path = window.location.pathname;
+    const canonicalHref =
+      seoConfig.canonical ?? `https://petwash.co.il${path === '/' ? '/' : path.replace(/\/+$/, '')}`;
+    setMeta('og:url', canonicalHref, true);
     setMeta('og:site_name', '⁦Pet Wash™⁩', true);
     setMeta('og:locale', seoConfig.locale || 'he_IL', true);
     setMeta('og:locale:alternate', seoConfig.locale === 'he_IL' ? 'en_US' : 'he_IL', true);
@@ -186,15 +202,16 @@ export function useSEO(config?: Partial<SEOConfig>) {
       setMeta('twitter:image', seoConfig.ogImage);
     }
     
-    // Canonical URL
-    if (seoConfig.canonical) {
+    // Canonical URL — always set (defaulted above), so non-home routes stop
+    // inheriting index.html's "/" canonical.
+    {
       let canonical = document.querySelector('link[rel="canonical"]') as HTMLLinkElement;
       if (!canonical) {
         canonical = document.createElement('link');
         canonical.setAttribute('rel', 'canonical');
         document.head.appendChild(canonical);
       }
-      canonical.setAttribute('href', seoConfig.canonical);
+      canonical.setAttribute('href', canonicalHref);
     }
     
     // Speed/Performance meta tags (2026 best practices)

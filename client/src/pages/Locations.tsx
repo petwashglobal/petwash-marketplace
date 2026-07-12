@@ -135,9 +135,12 @@ export default function Locations() {
     const graph: object[] = [
       {
         '@type': 'Organization',
-        '@id': 'https://petwash.co.il/#org',
+        // Same @id the site-wide Organization uses in index.html — one canonical
+        // Organization node, referenced (not re-declared thin) across the graph.
+        '@id': 'https://petwash.co.il/#organization',
         name: 'Pet Wash™',
         url: 'https://petwash.co.il',
+        logo: 'https://petwash.co.il/brand/petwash-logo-official.png',
         sameAs: socials,
       },
       ...(openStation ? [{
@@ -145,7 +148,7 @@ export default function Locations() {
         '@id': `https://petwash.co.il/locations#${openStation.code}`,
         name: `Pet Wash™ — ${openStation.nameEn}`,
         url: 'https://petwash.co.il/locations',
-        image: 'https://petwash.co.il/logo.png',
+        image: 'https://petwash.co.il/brand/petwash-logo-official.png',
         priceRange: '₪₪',
         address: {
           '@type': 'PostalAddress',
