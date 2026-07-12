@@ -13,6 +13,7 @@ import {
   insertProviderDocumentSchema,
   insertProviderStageTransitionSchema
 } from '@shared/schema-enterprise';
+import { providerApplications } from '@shared/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
@@ -661,9 +662,41 @@ router.get('/my', async (req: Request, res: Response) => {
       .limit(1);
     
     if (!application) {
+      // BRIDGE (2026-07-12): the live onboarding form writes to the CANONICAL
+      // provider_applications table (POST /api/provider-onboarding/apply), NOT
+      // this legacy provider_applicants table. Before this bridge, a provider who
+      // used the real form got 404 here → the client bounced them to
+      // /become-provider, i.e. "my application disappeared, start over". Fall back
+      // to the canonical table so their real status shows. Read-only; only runs
+      // when no legacy row exists, so existing legacy applicants are unaffected.
+      const [canonical] = await db.select()
+        .from(providerApplications)
+        .where(eq(providerApplications.userId, userId))
+        .orderBy(desc(providerApplications.createdAt))
+        .limit(1);
+      if (canonical) {
+        return res.json({
+          id: canonical.id,
+          applicationId: canonical.applicationId,
+          status: canonical.status,
+          stage: canonical.status, // client checks data.stage === 'approved'
+          firstName: canonical.firstName,
+          lastName: canonical.lastName,
+          providerType: canonical.providerType,
+          submittedAt: canonical.submittedAt,
+          rejectionReason: canonical.rejectionReason,
+          createdAt: canonical.createdAt,
+          updatedAt: canonical.updatedAt,
+          source: 'provider_applications', // marker: bridged from the canonical table
+          documents: [],
+          tasks: [],
+          backgroundChecks: [],
+          progress: canonical.status === 'approved' ? 100 : 0,
+        });
+      }
       return res.status(404).json({ error: 'No application found' });
     }
-    
+
     // Get documents
     const documents = await db.select()
       .from(providerDocuments)
