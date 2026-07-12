@@ -896,12 +896,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   });
 
   // PUBLIC LOYALTY TIERS - No auth required (for marketing display)
+  // NOTE: tier names/order here must match the canonical TIER_CONFIGS in
+  // shared/schema-loyalty.ts (CEO-locked: "Member" … "Black Reserve"). This list
+  // is hardcoded for the public marketing view; a follow-up (#14) should derive
+  // it from TIER_CONFIGS so it can never drift again.
   app.get('/api/loyalty/tiers', (req, res) => {
     const LOYALTY_TIERS = [
       {
         id: 'bronze',
-        name: 'Bronze',
-        nameHe: 'ברונזה',
+        name: 'Member',
+        nameHe: 'חבר',
         icon: '🥉',
         color: '#CD7F32',
         pointsRequired: 0,
@@ -966,8 +970,8 @@ export async function registerRoutes(app: Express): Promise<void> {
       },
       {
         id: 'royal',
-        name: 'Royal',
-        nameHe: 'מלכותי',
+        name: 'Black Reserve',
+        nameHe: 'Black Reserve',
         icon: '👑',
         color: '#8B5CF6',
         pointsRequired: 50000,
