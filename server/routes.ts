@@ -335,7 +335,6 @@ import {
   nayaxTransactions,
   hrDocuments,
   washHistory,
-  customerPets,
   users,
   stationBays,
   baySessions,
@@ -16751,30 +16750,14 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     }
   });
 
-  // Get user's pets - REAL DATABASE INTEGRATION
-  app.get('/api/pets', async (req, res) => {
-    try {
-      const userId = (req.session as any)?.userId;
-      
-      if (!userId) {
-        return res.status(401).json({ error: 'Authentication required' });
-      }
-      
-      // Fetch REAL pets from database
-      const userPets = await db
-        .select()
-        .from(customerPets)
-        .where(eq(customerPets.userId, userId));
-      
-      // Owner reads their own pets — strip internal audit fields only.
-      const { withOwnerMedicalFields } = await import('./lib/petPrivacy');
-      const filteredPets = userPets.map(p => withOwnerMedicalFields(p as Record<string, unknown>));
-      res.json(filteredPets);
-    } catch (error: any) {
-      logger.error('[PetCare] Fetch pets failed', error);
-      res.status(500).json({ error: error.message });
-    }
-  });
+  // NOTE: the /api/pets route is served by the Firestore-backed router mounted
+  // earlier in this file (petsRoutes.default). A second inline GET handler for
+  // this same path used to live here — it was dead code (shadowed by the earlier
+  // mount so it never ran) AND broken: it filtered by a userId column that does
+  // not exist on customer_pets (that table is keyed by customerId → customers.id,
+  // a legacy CRM identity, not the Firebase UID). If the mount order had ever
+  // changed it would have thrown a 500 on every request. Removed 2026-07-12.
+  // The canonical pet read/write is server/routes/pets.ts.
 
   // Get user loyalty profile (tier, washes, gift balance) - REAL DATABASE INTEGRATION
   app.get('/api/loyalty/user-profile', async (req, res) => {

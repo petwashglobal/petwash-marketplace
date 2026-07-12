@@ -120,23 +120,27 @@ describe('PR-PET-1 — pin: /api/pets duplicate mount + client defensive parsing
     expect(routes).toMatch(/app\.use\(\s*['"]\/api\/pets['"]/);
   });
 
-  it('11. server/routes.ts ALSO defines /api/pets as a single GET handler', () => {
-    expect(routes).toMatch(/app\.get\(\s*['"]\/api\/pets['"]/);
+  it('11. the duplicate inline GET /api/pets handler has been REMOVED (2026-07-12)', () => {
+    // Was a dead, shadowed, broken handler (filtered customerPets.userId — a
+    // non-existent column). Now /api/pets is served ONLY by the router mount.
+    expect(routes).not.toMatch(/app\.get\(\s*['"]\/api\/pets['"]/);
   });
 
-  it('12. BOTH mount sites coexist in the same file (the bug)', () => {
+  it('12. exactly ONE /api/pets mount site remains (router only, duplicate resolved)', () => {
     const useMatches = routes.match(/app\.use\(\s*['"]\/api\/pets['"]/g) || [];
     const getMatches = routes.match(/app\.get\(\s*['"]\/api\/pets['"]/g) || [];
-    expect(useMatches.length).toBeGreaterThanOrEqual(1);
-    expect(getMatches.length).toBeGreaterThanOrEqual(1);
+    expect(useMatches.length).toBe(1);
+    expect(getMatches.length).toBe(0);
   });
 
-  it('13. client/src/pages/GroomersBook.tsx has the defensive `.pets || d || []` parse', () => {
+  it('13. client/src/pages/GroomersBook.tsx still defensively unwraps the pets response', () => {
     const path = 'client/src/pages/GroomersBook.tsx';
     const src = read(path);
-    // The defensive parse is the smoking gun that the prior programmer
-    // KNEW two response shapes existed.
-    expect(src).toMatch(/\.pets\s*\|\|\s*d\s*\|\|\s*\[\]/);
+    // The defensive parse is the smoking gun that the prior programmer KNEW two
+    // response shapes existed. Now vestigial (server returns one shape after the
+    // dead-handler removal) but harmless — accepts `.pets || d || []` OR the
+    // nullish `?.pets ?? d ?? []` form the file currently uses.
+    expect(src).toMatch(/\.pets\s*(\|\||\?\?)\s*d\s*(\|\||\?\?)\s*\[\]/);
   });
 
   it('14. at least 3 client files defensively branch on response shape', () => {
