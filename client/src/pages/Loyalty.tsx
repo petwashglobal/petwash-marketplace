@@ -144,6 +144,35 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             </p>
           </motion.div>
 
+          {/* The three promises — the spine of Prestige (per the loyalty blueprint):
+              Instant (welcome perks on join), Forever (status never expires — no
+              decay logic anywhere), Beyond discounts (points buy moments via the
+              rewards catalog). All truthful — no guaranteed/unverifiable claims. */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.15, duration: 0.7 }}
+            className="mt-10 grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-2xl mx-auto"
+          >
+            {[
+              { icon: Zap, he: ['מיידי', 'הטבות מהרגע שאתם מצטרפים'], en: ['Instant', 'Perks the moment you join'] },
+              { icon: Shield, he: ['לתמיד', 'הסטטוס שלכם לעולם לא פג'], en: ['Forever', 'Your status never expires'] },
+              { icon: Sparkles, he: ['מעבר להנחות', 'נקודות קונות רגעים, לא רק כסף'], en: ['Beyond discounts', 'Points buy moments, not just money off'] },
+            ].map((p, i) => {
+              const Icon = p.icon;
+              const [title, sub] = language === 'he' ? p.he : p.en;
+              return (
+                <div key={i} className="flex flex-col items-center text-center gap-2 px-3 py-4">
+                  <span className="w-10 h-10 rounded-full bg-[#D4AF37]/10 flex items-center justify-center">
+                    <Icon className="w-5 h-5 text-[#B8932F]" />
+                  </span>
+                  <span className="text-sm font-semibold text-gray-900">{title}</span>
+                  <span className="text-xs text-gray-500 leading-snug">{sub}</span>
+                </div>
+              );
+            })}
+          </motion.div>
+
           {/* Hero Privilege Card — Ultra Premium Credit Card */}
           <motion.div
             initial={{ opacity: 0, y: 40, scale: 0.95 }}
