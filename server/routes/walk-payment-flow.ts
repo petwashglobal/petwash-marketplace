@@ -13,6 +13,9 @@ import { Router } from 'express';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import { requireAuth } from '../customAuth';
+import { db } from '../db';
+import { walkSlotHolds } from '@shared/schema';
+import { eq } from 'drizzle-orm';
 
 const router = Router();
 
@@ -37,19 +40,39 @@ router.post('/payments/nayax/walk-session', requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
 
-    const { holdId, amount, service } = req.body;
+    const { holdId, service } = req.body;
 
-    if (!holdId || !amount) {
-      return res.status(400).json({ error: 'Missing holdId or amount' });
+    if (!holdId) {
+      return res.status(400).json({ error: 'Missing holdId' });
     }
 
-    // Validate holdId format (in-memory holds from walk-my-pet.ts)
+    // Validate holdId format
     if (!holdId.startsWith('HOLD-')) {
       return res.status(400).json({ error: 'Invalid holdId format' });
     }
 
+    // SECURITY (price-tampering guard, sweep 2026-07-13): the charge amount is read
+    // from the SERVER-STORED hold — never from req.body. The hold's amount was
+    // floor-validated at creation (walk-my-pet.ts /walks/holds), so a client can no
+    // longer set its own price here. A missing/expired hold cannot be paid.
+    const [hold] = await db
+      .select({ estimatedAmount: walkSlotHolds.estimatedAmount, expiresAt: walkSlotHolds.expiresAt })
+      .from(walkSlotHolds)
+      .where(eq(walkSlotHolds.holdId, holdId))
+      .limit(1);
+    if (!hold) {
+      return res.status(404).json({ error: 'Hold not found or expired — please re-request the walk.' });
+    }
+    if (hold.expiresAt && new Date(hold.expiresAt).getTime() < Date.now()) {
+      return res.status(410).json({ error: 'Hold expired — please re-request the walk.' });
+    }
+    const amount = hold.estimatedAmount; // server-authoritative
+    if (!amount || Number(amount) <= 0) {
+      return res.status(409).json({ error: 'Hold has no valid amount.' });
+    }
+
     const sessionId = `NAYAX-${crypto.randomUUID()}`;
-    const redirectUrl = `/api/payments/nayax/redirect/${sessionId}?holdId=${holdId}&amount=${amount}&service=${service || 'emergency_walk'}`;
+    const redirectUrl = `/api/payments/nayax/redirect/${sessionId}?holdId=${encodeURIComponent(holdId)}&amount=${encodeURIComponent(String(amount))}&service=${encodeURIComponent(service || 'emergency_walk')}`;
 
     logger.info('[WalkPayment] Payment session created', { sessionId, holdId, amount });
 

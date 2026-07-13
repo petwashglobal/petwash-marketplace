@@ -1021,6 +1021,21 @@ router.post('/walks/holds', requireAuth, async (req, res) => {
     if (!slotId || !walkerId) {
       return res.status(400).json({ success: false, error: 'slotId and walkerId are required' });
     }
+    // SECURITY (price-tampering guard, sweep 2026-07-13): the client echoes back the
+    // price we quoted, but must NOT be trusted. Enforce a server-side FLOOR from the
+    // canonical base-price table (mirrors EmergencyWalkService) so a tampered request
+    // can never hold — and later pay for — a walk below its real minimum. The stored
+    // hold amount is what the payment step charges (it no longer reads req.body.amount).
+    const WALK_BASE_FLOOR_CENTS: Record<number, number> = { 30: 8000, 60: 15000 };
+    const _durMin = Number(walkDuration) || 30;
+    const _floorCents = WALK_BASE_FLOOR_CENTS[_durMin] ?? 8000;
+    const _amountCents = Math.round(Number(estimatedAmount || 0) * 100);
+    if (!Number.isFinite(_amountCents) || _amountCents < _floorCents) {
+      return res.status(400).json({
+        success: false,
+        error: 'Amount is below the minimum price for this walk.',
+      });
+    }
     const now = new Date();
     // Purge expired holds first (lazy cleanup) so a stale row never poisons the slot.
     await db.delete(walkSlotHolds).where(lt(walkSlotHolds.expiresAt, now));
