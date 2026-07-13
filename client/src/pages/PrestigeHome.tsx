@@ -167,6 +167,22 @@ export default function PrestigeHome() {
   const lastEvent: any = Array.isArray(hist?.events) && hist.events.length > 0 ? hist.events[0] : null;
   const pets: any[] = Array.isArray(petsData?.pets) ? petsData.pets : Array.isArray(petsData) ? petsData : [];
   const firstName = s.displayName || user?.displayName?.split(' ')[0] || user?.email?.split('@')[0] || (isHe ? 'חבר' : 'Member');
+
+  // Personal warmth — a time-aware greeting that changes through the day, so the
+  // home feels alive and addressed to *this* member, not a static banner.
+  const _hour = new Date().getHours();
+  const greeting = isHe
+    ? (_hour < 12 ? 'בוקר טוב' : _hour < 18 ? 'צהריים טובים' : 'ערב טוב')
+    : (_hour < 12 ? 'Good morning' : _hour < 18 ? 'Good afternoon' : 'Good evening');
+  // Pet-aware subline — naming their companion is the single most personal touch.
+  const _petNames: string[] = pets.map((p: any) => p?.name).filter(Boolean);
+  const petLine =
+    _petNames.length === 0
+      ? (isHe ? 'מוכנים לפנק חבר חדש? הוסיפו את החיה שלכם 🐾' : 'Ready to pamper someone special? Add your pet 🐾')
+      : _petNames.length === 1
+        ? (isHe ? `${_petNames[0]} מוכן/ה לפינוק הבא ✨` : `${_petNames[0]} is ready for the next pamper ✨`)
+        : (isHe ? `${_petNames.slice(0, 2).join(' ו')} מחכים לפינוק הבא ✨` : `${_petNames.slice(0, 2).join(' & ')} are ready for the next pamper ✨`);
+
   const qrToken: string | undefined = qr?.token || qr?.qrToken || qr?.value;
   const memberId = s.memberId || '—';
 
@@ -243,8 +259,9 @@ export default function PrestigeHome() {
 
         {/* Greeting + membership card */}
         <section className="px-4 pt-1">
-          <p className="text-xl text-gray-500">{isHe ? 'שלום,' : 'Welcome back,'}</p>
+          <p className="text-xl text-gray-500">{greeting},</p>
           <h1 className="text-3xl font-semibold text-emerald-800 leading-tight">{firstName} 👋</h1>
+          <p className="text-sm text-gray-400 mt-1">{petLine}</p>
           <button
             onClick={() => navigate('/prestige-club')}
             className="mt-2 inline-flex items-center gap-2 rounded-full border border-[#ECDFB4] bg-[#FFFDF7] px-3 py-1.5"
