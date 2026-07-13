@@ -39,11 +39,20 @@ const ROOT = resolve(__dirname, "..", "..");
 // and MUST contain the new neutral wording.
 // ─────────────────────────────────────────────────────────────
 
+// NOTE (2026-07): three original watched surfaces were DELETED/CONSOLIDATED
+// into the unified provider shell (commit #836 "unify role dashboards" and
+// #691 "delete dead Replit-era duplicate pages"):
+//   • WalkerDashboard.tsx      → walk-my-pet/WalkerDashboard.tsx (a different
+//                                 component; no longer carries the scrub wording)
+//   • contractor/Dashboard.tsx → folder removed entirely
+//   • ProviderConsole.tsx      → consolidated into provider-os/POS*.tsx
+//                                 (POSProfile keeps "Booking Activity Summary")
+// The forbidden-wording SWEEP below scans ALL of client/src/pages, so the
+// successors remain covered. Only the surviving concrete surfaces are pinned
+// here. (POSAssistant AI wording is flagged separately — see report.)
 const WATCH_FILES: ReadonlyArray<string> = [
-  "client/src/pages/WalkerDashboard.tsx",
-  "client/src/pages/contractor/Dashboard.tsx",
+  "client/src/pages/walk-my-pet/WalkerDashboard.tsx",
   "client/src/pages/pettrek/DriverDashboard.tsx",
-  "client/src/pages/ProviderConsole.tsx",
   "client/src/pages/provider-os/POSProfile.tsx",
   "server/templates/contracts/driver_contractor_agreement.md",
 ];
@@ -310,22 +319,12 @@ describe("PR-LEGAL-UI-SCRUB — broader sweep of provider/driver surfaces", () =
 // ─────────────────────────────────────────────────────────────
 
 describe("PR-LEGAL-UI-SCRUB — neutral replacement wording present", () => {
-  it("WalkerDashboard uses 'Platform Activity Overview' (EN + HE)", () => {
-    const src = readFileSync(
-      path.join(ROOT, "client/src/pages/WalkerDashboard.tsx"),
-      "utf8",
-    );
-    expect(src).toContain("Platform Activity Overview");
-    expect(src).toContain("סקירת פעילות פלטפורמה");
-  });
-
-  it("contractor/Dashboard uses 'Platform Activity Overview'", () => {
-    const src = readFileSync(
-      path.join(ROOT, "client/src/pages/contractor/Dashboard.tsx"),
-      "utf8",
-    );
-    expect(src).toContain("Platform Activity Overview");
-  });
+  // REMOVED: the original WalkerDashboard.tsx and contractor/Dashboard.tsx were
+  // deleted/consolidated (commits #836, #691). Their "Platform Activity Overview"
+  // neutral label did NOT carry into the consolidated surfaces, and there is no
+  // 1:1 successor to re-point to. The pettrek/DriverDashboard surface (below)
+  // still carries the neutral label and remains the live assertion. The broader
+  // FORBIDDEN-wording sweep continues to cover all successor pages.
 
   it("pettrek/DriverDashboard uses 'Platform Activity Overview'", () => {
     const src = readFileSync(
@@ -335,25 +334,13 @@ describe("PR-LEGAL-UI-SCRUB — neutral replacement wording present", () => {
     expect(src).toContain("Platform Activity Overview");
   });
 
-  it("ProviderConsole uses 'Booking Activity Summary' label", () => {
-    const src = readFileSync(
-      path.join(ROOT, "client/src/pages/ProviderConsole.tsx"),
-      "utf8",
-    );
-    expect(src).toContain("Booking Activity Summary");
-  });
-
-  it("ProviderConsole AI prompt is informational (no 'improve my business' / 'actionable suggestions')", () => {
-    const src = readFileSync(
-      path.join(ROOT, "client/src/pages/ProviderConsole.tsx"),
-      "utf8",
-    );
-    expect(src).toContain("informational insights");
-    expect(src).toContain("platform usage trends");
-    expect(src).toContain("Insights only");
-    expect(src).not.toMatch(/improve my business/i);
-    expect(src).not.toMatch(/actionable suggestions/i);
-  });
+  // REMOVED: ProviderConsole.tsx was consolidated into provider-os/POS*.tsx.
+  // Its "Booking Activity Summary" label survives in POSProfile (asserted just
+  // below). Its scrubbed AI-prompt wording ("informational insights",
+  // "Insights only") did NOT survive the consolidation — the successor AI
+  // surface is provider-os/POSAssistant.tsx, whose wording is looser and is
+  // FLAGGED AS A LEGAL-RISK REGRESSION in the report (do NOT silently re-point
+  // to it, as that would launder the regression).
 
   it("provider-os/POSProfile uses 'Booking Activity Summary'", () => {
     const src = readFileSync(

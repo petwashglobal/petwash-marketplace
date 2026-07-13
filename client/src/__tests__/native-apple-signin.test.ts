@@ -12,7 +12,10 @@ import { describe, it, expect } from 'vitest';
 
 const ROOT = path.resolve(__dirname, '..');
 const handler = fs.readFileSync(path.join(ROOT, 'lib', 'iosAuthHandler.ts'), 'utf8');
-const signin = fs.readFileSync(path.join(ROOT, 'pages', 'SignIn.tsx'), 'utf8');
+// The old white SignIn.tsx page was killed in #1139 — ALL login was unified
+// onto the premium screen (SignUpLuxury.tsx). The native-Apple decision now
+// lives there.
+const signin = fs.readFileSync(path.join(ROOT, 'pages', 'SignUpLuxury.tsx'), 'utf8');
 
 describe('native Sign in with Apple', () => {
   it('exports a native-iOS guard + the native sign-in helper', () => {
@@ -35,9 +38,14 @@ describe('native Sign in with Apple', () => {
     expect(handler).not.toMatch(/from '@capacitor-community\/apple-sign-in'/); // never a static import
   });
 
-  it('SignIn only takes the native path for apple + native platform, else web OAuth', () => {
-    expect(signin).toMatch(/provider === 'apple' && isNativeApplePlatform\(\)/);
-    expect(signin).toMatch(/userCredential = await signInWithAppleNative\(auth\)/);
-    expect(signin).toMatch(/if \(!userCredential\) \{/); // web popup/redirect only when native didn't handle it
+  it('the premium login only takes the native path for apple + native platform, else web OAuth', () => {
+    // Unified login (SignUpLuxury.tsx, #1139): on a native platform the
+    // apple/google branch uses the native sheet; otherwise it falls through
+    // to the web provider (popup/redirect) path.
+    expect(signin).toMatch(/isNativePlatform\(\)\s*&&\s*\(which === 'google' \|\| which === 'apple'\)/);
+    expect(signin).toMatch(/await signInWithAppleNative\(auth\)/);
+    // Native branch returns early; the web provider path only runs when the
+    // native branch did NOT handle it.
+    expect(signin).toMatch(/which === 'apple'\s*\?\s*createAppleProvider\(\)/);
   });
 });

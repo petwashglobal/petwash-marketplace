@@ -31,15 +31,26 @@ describe('signup SMS fallback and real errors', () => {
     expect(block).toContain('continue with email');
   });
 
-  it('only renders the SMS-unavailable banner inside the mobile method panel', () => {
+  it('renders the SMS-unavailable banner only in the pre-send form, gated on provider health', () => {
+    // The signup form was unified (#): instead of separate mobile/email
+    // method panels, there is now ONE pre-send form (`{!sent && (`) that
+    // offers phone AND email together, with the OTP screens rendered
+    // separately once `sent` is true. The SMS-unavailable banner must live
+    // inside that pre-send form, gated on the feature flag + !smsProviderHealthy,
+    // and steer the user to email — never render in the post-send OTP view.
     const src = read('client/src/pages/SignUpLuxury.tsx');
-    const mobilePanel = src.slice(
-      src.indexOf("{method === 'mobile' && !sent && ("),
-      src.indexOf("{(method === 'email' || method === 'other') && !sent && ("),
-    );
+    const preSendStart = src.indexOf('{!sent && (');
+    expect(preSendStart).toBeGreaterThan(0);
+    // The pre-send form ends where the post-send OTP block begins.
+    const otpStart = src.indexOf("{method === 'mobile' && sent && (");
+    expect(otpStart).toBeGreaterThan(preSendStart);
+    const preSendForm = src.slice(preSendStart, otpStart);
 
-    expect(mobilePanel).toContain('!smsProviderHealthy');
-    expect(mobilePanel).toContain('SMS is temporarily unavailable');
+    expect(preSendForm).toContain('signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy');
+    expect(preSendForm).toContain('SMS is temporarily unavailable');
+    // The banner must NOT appear in the post-send OTP region.
+    const otpRegion = src.slice(otpStart);
+    expect(otpRegion).not.toContain('SMS is temporarily unavailable');
   });
 
   it('does not log full phone numbers before SMS send', () => {

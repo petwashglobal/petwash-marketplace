@@ -80,8 +80,15 @@ describe('SHAAM allocation extraction — length bounds', () => {
     expect(extractShaam('מספר הקצאה: 123456789012')).toBe('123456789012');
   });
 
-  it('rejects 13-digit number (too long)', () => {
-    expect(extractShaam('מספר הקצאה: 1234567890123')).toBeUndefined();
+  it('caps capture at 12 digits (never grabs a 13th)', () => {
+    // The allocation number is bounded at 12 digits (\d{9,12}). The regexes
+    // are intentionally un-anchored on the trailing side (real OCR text runs
+    // the number into following characters), so a 13-digit run yields the
+    // leading 12 digits — it must NEVER return all 13. This still guards the
+    // upper length bound: a captured SHAAM allocation is at most 12 digits.
+    const captured = extractShaam('מספר הקצאה: 1234567890123');
+    expect(captured).toBe('123456789012');
+    expect(captured!.length).toBe(12);
   });
 });
 

@@ -53,7 +53,12 @@ describe("provider Capacitor foundation", () => {
     const androidConfig = read("android/app/src/main/assets/capacitor.config.json");
 
     expect(xcodeProject).toContain("PRODUCT_BUNDLE_IDENTIFIER = il.co.petwash.provider");
-    expect(xcodeProject).not.toContain("DEVELOPMENT_TEAM =");
+    // The provider app now ships to TestFlight, so it IS signed. Guard that the
+    // ONLY signing team present is PetWash's known Apple team (U22NC3Q5Z4) — a
+    // foreign / stray DEVELOPMENT_TEAM must never leak into the project.
+    for (const team of xcodeProject.match(/DEVELOPMENT_TEAM = ([^;]+);/g) || []) {
+      expect(team).toBe("DEVELOPMENT_TEAM = U22NC3Q5Z4;");
+    }
     expect(iosPackage).toContain('exact: "8.4.0"');
 
     expect(androidGradle).toContain('namespace = "il.co.petwash.provider"');

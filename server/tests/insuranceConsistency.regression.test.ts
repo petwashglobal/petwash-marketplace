@@ -231,6 +231,15 @@ interface ForbiddenPattern {
   readonly id: string;
   readonly pattern: RegExp;
   readonly reason: string;
+  /**
+   * Optional narrow carve-out. When set, a `pattern` hit is IGNORED only
+   * when the matched text sits inside this exempt context. Used exclusively
+   * for §8-ALIGNED DISCLAIMERS whose surface text superficially trips a
+   * forbidden pattern (e.g. an explicit NEGATION of "fully insured"). The
+   * exempt regex must contain the forbidden phrase as a sub-part AND the
+   * disambiguating negation, so it can never re-admit an affirmative claim.
+   */
+  readonly exemptContext?: RegExp;
 }
 
 const FORBIDDEN: ReadonlyArray<ForbiddenPattern> = [
@@ -250,7 +259,14 @@ const FORBIDDEN: ReadonlyArray<ForbiddenPattern> = [
   { id: "FULLY_COVERED",         pattern: /fully covered/i,                         reason: "claim that pets/bookings are fully covered" },
 
   // Pet Wash–branded insurance / protection programs
-  { id: "PW_PROTECT_BRAND",      pattern: /Pet ?Wash[™]?\s*Protect/i,               reason: "PetWash-branded protection program" },
+  // "PetWash Protect" / "PetWash Protect™" / "PetWash Protection" = a
+  // branded insurance/protection PROGRAM (banned). The (?!ed) guard excludes
+  // the neutral trust label "PetWash Protected Booking" (הזמנה מוגנת) —
+  // counsel-gated wording that makes NO coverage/guarantee claim. The
+  // KNOWN_BAD anchors ("PetWash Protect™ guarantee", "Every booking
+  // protected by PetWash Protect", "Pet Wash Protect covers") all still
+  // match because none of them is the word "Protected".
+  { id: "PW_PROTECT_BRAND",      pattern: /Pet ?Wash[™]?\s*Protect(?:ion)?\b(?!ed)/i, reason: "PetWash-branded protection program" },
   { id: "PW_ACCIDENT_COVER",     pattern: /Pet ?Wash[™]?\s*Accident\s*Cover/i,      reason: "PetWash-branded accident cover" },
   { id: "COVERED_BY_PW",         pattern: /Covered\s+by\s+Pet ?Wash/i,              reason: "claim that PetWash covers" },
   { id: "PW_PROVIDES_COVERAGE",  pattern: /Pet ?Wash[™]?\s+provides\s+[^.\n]*\b(coverage|liability\s+coverage)\b/i,
@@ -267,7 +283,14 @@ const FORBIDDEN: ReadonlyArray<ForbiddenPattern> = [
                                                                                     reason: "monetary coverage claim in USD" },
 
   // Hebrew dangerous phrasing
-  { id: "HE_MEVUTACH_BIMLOA",    pattern: /מבוטח\s+במלוא|מבוטחת\s+במלואה/,           reason: "Hebrew 'fully insured'" },
+  // Affirmative "fully insured" in Hebrew (banned). The exemptContext
+  // carve-out permits ONLY the §8-aligned DISCLAIMER that explicitly NEGATES
+  // it: "זו אינה הצהרה שהחברה מבוטחת במלואה" ("this is NOT a statement that
+  // the company is fully insured"). The exempt regex requires the negation
+  // "אינה הצהרה ...", so an affirmative claim like the KNOWN_BAD anchor
+  // "הסעת חיות מחמד מבוטחת במלואה" is NOT exempted and still fails.
+  { id: "HE_MEVUTACH_BIMLOA",    pattern: /מבוטח\s+במלוא|מבוטחת\s+במלואה/,           reason: "Hebrew 'fully insured'",
+    exemptContext: /אינה\s+הצהרה[^.]*?מבוטחת\s+במלואה/ },
   { id: "HE_KISUI_MALE",         pattern: /כיסוי\s+מלא/,                            reason: "Hebrew 'full coverage'" },
   { id: "HE_BITUACH_MAKIF",      pattern: /ביטוח\s+מקיף/,                           reason: "Hebrew 'comprehensive insurance'" },
   { id: "HE_BITUACH_MALE",       pattern: /ביטוח\s+מלא/,                            reason: "Hebrew 'full insurance'" },
@@ -288,7 +311,14 @@ describe("PR-LEGAL-B — insurance-consistency scan", () => {
     it(`no file under scan roots contains pattern ${rule.id} (${rule.reason})`, () => {
       const hits: string[] = [];
       for (const path of SCAN_FILES) {
-        const scrubbed = readScrubbed(path);
+        let scrubbed = readScrubbed(path);
+        // Remove §8-aligned disclaimer contexts (explicit negations) so they
+        // do not trip the forbidden-phrase scan. The carve-out itself embeds
+        // the forbidden phrase + its negation, so an affirmative claim can
+        // never be laundered through it.
+        if (rule.exemptContext) {
+          scrubbed = scrubbed.replace(new RegExp(rule.exemptContext, "g"), "");
+        }
         if (rule.pattern.test(scrubbed)) {
           const rel = path.slice(ROOT.length + 1).split(sep).join("/");
           hits.push(rel);

@@ -25,7 +25,10 @@ describe('ProviderHome (provider luxury home)', () => {
 
   it('uses bright gold + real logo + ₪ (and drops wash from upcoming jobs)', () => {
     expect(home).toMatch(/#D4AF37/);
-    expect(home).toMatch(/\/brand\/petwash-logo-official\.png/);
+    // Inline <img src="/brand/petwash-logo-official.png"> was replaced by
+    // the shared <PetWashLogo> component (renders the same real asset —
+    // see client/src/components/brand/PetWashLogo.tsx).
+    expect(home).toMatch(/PetWashLogo/);
     expect(home).toMatch(/₪/);
     expect(home).toMatch(/includes\('wash'\)/); // filters wash out of upcoming
   });

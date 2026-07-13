@@ -202,8 +202,10 @@ const ROUTE_CODE = codeOnly(ROUTE_SRC);
 
 describe("C. server/routes/google-services.ts — guard wired into both endpoints", () => {
   it("imports requireGooglePlacesEnabled from the feature-flag module", () => {
-    expect(ROUTE_CODE).toMatch(
-      /requireGooglePlacesEnabled[\s\S]*from\s*['""][^'""]*feature-flags\/googlePlaces/,
+    // Scan ROUTE_SRC (raw), NOT ROUTE_CODE: codeOnly() blanks string literals,
+    // which would erase the import PATH we are asserting on ("from ''").
+    expect(ROUTE_SRC).toMatch(
+      /import\s*\{[^}]*requireGooglePlacesEnabled[^}]*\}\s*from\s*['"][^'"]*feature-flags\/googlePlaces['"]/,
     );
   });
 

@@ -133,7 +133,12 @@ describe('SumitClient — createDocument HTTP shape (sandbox)', () => {
     expect(body.Details.Customer.Name).toBe('Acme Supplies Ltd');
     expect(body.Details.Customer.ExternalIdentifier).toBe('517145033');
     expect(body.Details.Currency).toBe('ILS');
-    expect(body.Details.ExternalIdentifier).toBe(sampleInput.idempotencyKey);
+    // Idempotency/dedup key lives on Details as ExternalReference — the
+    // Swagger field for a document-level external key. (ExternalIdentifier
+    // exists only on Customer in the OfficeGuy schema; carrying the dedup
+    // key there would tag the CUSTOMER, not the document, and break
+    // SUMIT-side de-duplication of re-sent invoices.)
+    expect(body.Details.ExternalReference).toBe(sampleInput.idempotencyKey);
     expect(body.Items[0].UnitPrice).toBe(100);
     expect(body.VATIncluded).toBe(false);
   });

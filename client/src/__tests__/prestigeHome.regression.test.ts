@@ -18,7 +18,11 @@ describe('PrestigeHome (customer luxury home)', () => {
   });
 
   it('uses the real PetWash logo asset top-center (never a recreated mark)', () => {
-    expect(home).toMatch(/\/brand\/petwash-logo-official\.png/);
+    // The inline <img src="/brand/petwash-logo-official.png"> was replaced
+    // by the shared <PetWashLogo> component, which renders the SAME real
+    // asset (see client/src/components/brand/PetWashLogo.tsx). The
+    // never-recreate-the-mark invariant is preserved via that component.
+    expect(home).toMatch(/PetWashLogo/);
     expect(home).toMatch(/PRESTIGE/);
   });
 
@@ -26,9 +30,17 @@ describe('PrestigeHome (customer luxury home)', () => {
     expect(home).toMatch(/#D4AF37/);
   });
 
-  it('the center QR / Card button opens the redeem flow (wash is redeem, not bookable)', () => {
-    expect(home).toMatch(/navigate\('\/prestige-pass'\)/);
-    expect(home).toMatch(/QR \/ Card/);
+  it('wash is redeem-by-QR (not bookable): live QR on the card + Book Wash -> stations', () => {
+    // UX refactor: the old center "QR / Card" button that navigated to
+    // /prestige-pass was replaced by rendering the live, short-lived QR
+    // token directly on the membership card ("Show at the bay to redeem").
+    // The load-bearing invariant is unchanged — wash is redeemed by QR at
+    // the bay, and "Book Wash" points at the stations/redeem flow, NOT a
+    // booking engine.
+    expect(home).toMatch(/QRCodeSVG\s+value=\{qrToken\}/);
+    expect(home).toMatch(/\/api\/prestige-pass\/token\/generate/);
+    // "Book Wash" routes to /stations (redeem), never a booking engine.
+    expect(home).toMatch(/label:\s*'Book Wash'[\s\S]{0,120}to:\s*'\/stations'/);
   });
 
   it('PetTrek is present but coming-soon / disabled', () => {

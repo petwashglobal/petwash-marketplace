@@ -24,8 +24,13 @@ describe('refund credit-note (זיכוי) — audit 2026-07-05', () => {
     expect(SUMIT).toMatch(/OriginalDocumentID/);
   });
 
-  it('issueCreditNote routes to SUMIT above the SHAAM threshold', () => {
-    expect(RECEIPT).toMatch(/if \(shaamRequired && sumitClient\.isWired\(\)\)[\s\S]*createCreditDocument\(/);
+  it('issueCreditNote routes to SUMIT (as issuer of record) via createCreditDocument when wired', () => {
+    // Design evolved: SUMIT is the issuer of record for EVERY credit note (זיכוי),
+    // mirroring generateReceipt — no longer gated on the ₪5k SHAAM threshold, so
+    // every refund reaches the ITA as a proper SUMIT credit document (see the
+    // "issuer of record for EVERY credit note" comment in the service). We still
+    // pin that the credit ONLY leaves for SUMIT behind the isWired() dark-gate.
+    expect(RECEIPT).toMatch(/if \(sumitClient\.isWired\(\)\)[\s\S]*createCreditDocument\(/);
   });
 
   it('issueCreditNoteForBooking looks up the original non-voided receipt', () => {

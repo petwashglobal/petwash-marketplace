@@ -189,12 +189,15 @@ describe("E. PRIVACY.md — legal-citation anchors", () => {
   });
 
   it("cites Israeli tax law section 25 (7-year retention)", () => {
-    expect(DOC).toMatch(/Income Tax Ordinance.*section 25|section 25.*Income Tax/);
+    // [\s\S] (not .) so the citation still matches when the doc is word-wrapped
+    // across a newline ("Income Tax Ordinance,\nsection 25").
+    expect(DOC).toMatch(/Income Tax Ordinance[\s\S]*?section 25|section 25[\s\S]*?Income Tax/);
     expect(DOC).toMatch(/7-year/);
   });
 
   it("cites §29A of the Israeli Privacy Protection Law (emergency disclosure)", () => {
-    expect(DOC).toMatch(/§29A.*Israeli Privacy Protection Law|Israeli Privacy Protection Law[^.]*§29A/);
+    // Newline-tolerant: "under §29A of the\nIsraeli Privacy Protection Law".
+    expect(DOC).toMatch(/§29A[\s\S]*?Israeli Privacy Protection Law|Israeli Privacy Protection Law[\s\S]*?§29A/);
   });
 });
 
@@ -208,7 +211,8 @@ describe("F. PR-LOCATION-PRIVACY-1 — doc-only invariants", () => {
   });
 
   it("doc states no UI / no route / no env var ships in this PR", () => {
-    expect(DOC).toMatch(/no UI, no route, no env var/i);
+    // Newline-tolerant: the doc wraps "no env\nvar" across a line break.
+    expect(DOC).toMatch(/no UI, no route, no env\s+var/i);
   });
 
   it("references the existing dataset PR by id (so a reader cannot mis-identify the foundation)", () => {

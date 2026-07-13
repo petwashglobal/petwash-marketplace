@@ -139,10 +139,35 @@ beforeAll(async () => {
   }
 });
 
+// ─── Env gate ──────────────────────────────────────────────────────────────────
+// This is a LIVE integration suite (see the header): every scenario makes a real
+// HTTP call against a running server, and the authenticated scenarios require the
+// server-shared TEST_BYPASS_TOKEN (authHeaders() throws without it). It is meant
+// to run ONLY via `npm run test:integration` with the documented env vars set.
+//
+// The default vitest run (vitest.config.ts include: 'tests/**/*.test.ts') would
+// otherwise pick it up with no env and FAIL every scenario — not a source
+// regression, just a missing-harness false negative. Skip cleanly when the
+// required secret is absent so the default/CI run is honest; the real
+// integration run (with TEST_BYPASS_TOKEN set) still exercises every assertion,
+// including the 401-for-signed-out auth checks below — DO NOT weaken those to
+// 403: if they ever start returning 403 under the live harness, that is a real
+// auth-semantics regression (or a CSRF middleware ordering change) worth a human
+// look, and this suite must surface it.
+const INTEGRATION_READY = Boolean(BYPASS_TOKEN);
+const describeIntegration = INTEGRATION_READY ? describe : describe.skip;
+if (!INTEGRATION_READY) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[live-booking] SKIPPED — TEST_BYPASS_TOKEN not set. ' +
+    'Run with `npm run test:integration` and the env vars documented in this file.',
+  );
+}
+
 // ═══════════════════════════════════════════════════════════════════════════════
 // TEST SUITE
 // ═══════════════════════════════════════════════════════════════════════════════
-describe('PetWash™ Live Integration — Booking + Auth (9 scenarios)', () => {
+describeIntegration('PetWash™ Live Integration — Booking + Auth (9 scenarios)', () => {
 
   // ───────────────────────────────────────────────────────────────────────────
   // SCENARIO 1 — Sitter booking with 1 pet (authenticated)

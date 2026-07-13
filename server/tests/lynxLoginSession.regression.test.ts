@@ -20,8 +20,16 @@ describe('LynxClient — login-session auth mode', () => {
     expect(SRC).toMatch(/LYNX_PASSWORD/);
   });
 
-  it('is wired by EITHER a token OR username+password', () => {
-    expect(SRC).toMatch(/return e\.enabled && \(Boolean\(e\.token\) \|\| hasCredentials\(e\)\)/);
+  it('is wired ONLY by a real Bearer USER TOKEN (creds alone are NOT a valid Lynx auth mode)', () => {
+    // SECURITY CORRECTION (2026-07-07, memory lynx-auth-needs-user-token):
+    // username/password (operator login) was PROVEN to be an invalid Lynx API
+    // auth method — POST /operational/v1/signin returns HTTP 500 with our creds,
+    // and Nayax requires a Bearer User Token. Reporting "wired" on creds alone
+    // was a false green. isWired() was hardened to require the token. This test
+    // now guards that stricter invariant (do NOT relax back to "token OR creds").
+    expect(SRC).toMatch(/return e\.enabled && Boolean\(e\.token\)/);
+    // And must NOT fall back to credentials to decide wired-ness.
+    expect(SRC).not.toMatch(/return e\.enabled && \([^)]*\|\|\s*hasCredentials\(e\)\)/);
   });
 
   it('signs in against /operational/v1/signin with {usr,pwd} and caches the cookie', () => {

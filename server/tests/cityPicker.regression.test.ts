@@ -342,7 +342,7 @@ describe("E. CityPicker.tsx — mobile UX invariants", () => {
 
   it("declares a 44px+ touch target on each result row", () => {
     expect(COMPONENT_SRC).toMatch(
-      /data-testid=\`city-picker-row-\$\{city\.citySymbol\}\`[\s\S]{0,2000}min-h-\[44px\]/,
+      /data-testid=\{\`city-picker-row-\$\{city\.citySymbol\}\`\}[\s\S]{0,2000}min-h-\[44px\]/,
     );
   });
 

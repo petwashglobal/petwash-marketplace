@@ -399,8 +399,13 @@ describe('PR-LOCATION-CITIES-1 — H. isolation — no backend route / schema / 
     }
   });
 
-  it('H2. shared/schema files are not touched by this PR', () => {
-    // The new dataset must not be imported from any schema file.
+  it('H2. schema files never IMPORT the dataset (schema must not depend on it)', () => {
+    // The invariant is a dependency-direction guard: schema files may MENTION
+    // the dataset in doc-comments (e.g. "citySymbol from shared/data/israel-cities.ts")
+    // but must never `import` it — schema must not depend on the data module.
+    // (Original assertion matched any substring, which false-positived on those
+    // legitimate doc-comments once they were added.)
+    const importRe = /(?:import[^;]*from|require\()\s*['"][^'"]*shared\/data\/israel-cities['"]/;
     const schemaCandidates = [
       'shared/schema.ts',
       'shared/firestore-schema.ts',
@@ -410,45 +415,16 @@ describe('PR-LOCATION-CITIES-1 — H. isolation — no backend route / schema / 
       if (!existsSync(abs)) continue;
       const src = read(rel);
       expect(
-        src.includes('shared/data/israel-cities'),
+        importRe.test(src),
         `${rel} imports the new dataset (schema must not depend on it)`,
       ).toBe(false);
     }
   });
 
-  it('H3. dataset is not yet wired into any client UI component', () => {
-    // Phase-1 is data-only. UI wiring belongs to a later PR. We
-    // assert nothing under client/src imports the module.
-    const clientDir = resolve(ROOT, 'client', 'src');
-    if (!existsSync(clientDir)) return;
-    function walk(dir: string): string[] {
-      const out: string[] = [];
-      const stack = [dir];
-      while (stack.length) {
-        const cur = stack.pop()!;
-        for (const entry of readdirSync(cur, { withFileTypes: true })) {
-          if (entry.name.startsWith('.')) continue;
-          if (entry.name === 'node_modules') continue;
-          const full = resolve(cur, entry.name);
-          if (entry.isDirectory()) {
-            stack.push(full);
-          } else if (
-            entry.name.endsWith('.ts') ||
-            entry.name.endsWith('.tsx')
-          ) {
-            out.push(full);
-          }
-        }
-      }
-      return out;
-    }
-    for (const file of walk(clientDir)) {
-      const src = readFileSync(file, 'utf8');
-      expect(
-        src.includes('shared/data/israel-cities') ||
-          src.includes("from '@shared/data/israel-cities'"),
-        `${file.replace(ROOT + '/', '')} imports the dataset (Phase-1 is data-only)`,
-      ).toBe(false);
-    }
-  });
+  // H3 REMOVED (intentionally superseded): "dataset is not yet wired into any
+  // client UI component" was a Phase-1 scope guard. The UI wiring shipped in a
+  // later PR — the CityPicker feature (client/src/components/location/
+  // cityPickerHelpers.ts imports @shared/data/israel-cities) is exactly that
+  // deferred work, and is now guarded by cityPicker.regression.test.ts.
+  // Re-asserting "no UI imports the dataset" would contradict shipped behavior.
 });

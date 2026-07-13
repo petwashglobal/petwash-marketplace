@@ -178,17 +178,21 @@ describe('PR-HEALTH-BUILD-SHA — secret-leak guards', () => {
 // ── C. /HEALTH WIRING ─────────────────────────────────────────────────────
 
 describe('PR-HEALTH-BUILD-SHA — /health endpoint wiring', () => {
-  it('11. server/index.ts /health imports the helper via require/lazy load', () => {
+  it('11. server/index.ts imports the buildInfo helper (no circular-import risk)', () => {
     expect(indexSrc).toMatch(/getBuildInfo\b/);
-    // Lazy require avoids any circular-import risk at boot.
-    expect(indexSrc).toMatch(/require\(\s*['"]\.\/lib\/buildInfo['"]\s*\)/);
+    // Imported at module top from ./lib/buildInfo (aliased as _getBuildInfo).
+    // buildInfo.ts has no server-index dependency, so a static import is safe —
+    // no lazy require needed. Pin the import so the helper can't be dropped.
+    expect(indexSrc).toMatch(/import\s*\{[^}]*getBuildInfo[^}]*\}\s*from\s*['"]\.\/lib\/buildInfo['"]/);
   });
 
   it('12. /health response embeds build identifiers under the `build` key', () => {
     const idx = indexSrc.indexOf("app.get('/health'");
     expect(idx).toBeGreaterThan(0);
-    const window_ = indexSrc.slice(idx, idx + 1500);
-    expect(window_).toMatch(/build:\s*getBuildInfo\(\)/);
+    // The early handler is defined just ABOVE app.get('/health'); scan a window
+    // that spans the handler body (it precedes the route registration).
+    const window_ = indexSrc.slice(Math.max(0, idx - 900), idx + 200);
+    expect(window_).toMatch(/build:\s*_?getBuildInfo\(\)/);
   });
 
   it('13. PR-HEALTH-BUILD-SHA retirement comment documents the operational rule', () => {
@@ -198,7 +202,9 @@ describe('PR-HEALTH-BUILD-SHA — /health endpoint wiring', () => {
 
   it('14. /health remains 200 OK (status field present, never thrown out)', () => {
     const idx = indexSrc.indexOf("app.get('/health'");
-    const window_ = indexSrc.slice(idx, idx + 1500);
+    // Handler is the named _earlyHealthHandler defined just ABOVE the route
+    // registration, so scan the window that precedes app.get('/health').
+    const window_ = indexSrc.slice(Math.max(0, idx - 900), idx + 200);
     expect(window_).toMatch(/res\.status\(\s*200\s*\)\.json/);
     expect(window_).toMatch(/status:\s*isDegraded\s*\?\s*['"]DEGRADED['"]\s*:\s*['"]OK['"]/);
   });

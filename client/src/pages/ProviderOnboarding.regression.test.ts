@@ -26,14 +26,28 @@ describe('ProviderOnboarding — Issue #148 P1 regression pin', () => {
     expect(SRC).not.toMatch(/navigate\(\s*['"]\/post-login['"]\s*\)/);
   });
 
-  it('POSTs to the canonical /api/auth/post-login decider endpoint', () => {
-    expect(SRC).toMatch(/getApiUrl\(\s*['"]\/api\/auth\/post-login['"]\s*\)/);
-    expect(SRC).toMatch(/method:\s*['"]POST['"]/);
+  it('routes the blocked-role bounce through the canonical /api/auth/post-login decider', () => {
+    // PR-FRES-B consolidated the 7 client call sites of POST /api/auth/post-login
+    // into ONE shared pipeline: client/src/lib/postLoginCoordinator.ts. This page
+    // no longer fetches inline — it calls resolvePostLogin(), which POSTs to the
+    // canonical server endpoint under the hood. The invariant (route through the
+    // SERVER decider, never a client <Route>) is unchanged.
+    expect(SRC).toMatch(/import\s*\{\s*resolvePostLogin\s*\}\s*from\s*['"]@\/lib\/postLoginCoordinator['"]/);
+    expect(SRC).toMatch(/await\s+resolvePostLogin\(\s*\)/);
+    // Prove the coordinator still hits the canonical POST endpoint.
+    const coord = fs.readFileSync(
+      path.resolve(__dirname, '..', 'lib', 'postLoginCoordinator.ts'),
+      'utf8',
+    );
+    expect(coord).toMatch(/getApiUrl\(\s*['"]\/api\/auth\/post-login['"]\s*\)/);
+    expect(coord).toMatch(/method:\s*['"]POST['"]/);
   });
 
   it('navigates to the server-resolved nextUrl with a /home fallback', () => {
-    expect(SRC).toMatch(/data\?\.nextUrl/);
-    expect(SRC).toMatch(/['"]\/home['"]/);
+    // The nextUrl (+ /home fallback) handling stays in the page after the
+    // coordinator refactor.
+    expect(SRC).toMatch(/data\.nextUrl\s*\|\|\s*data\.redirectTo\s*\|\|\s*['"]\/home['"]/);
+    expect(SRC).toMatch(/navigate\('\/home'\)/); // catch-all fallback on error
   });
 
   it('still gates blocked roles (loyalty / staff / admin / management / franchise_owner)', () => {

@@ -50,9 +50,19 @@ describe('Prestige public application gate', () => {
   });
 
   it('keeps provider application copy approval-based instead of promising instant earnings or fixed fees', () => {
-    const providerForm = read('client/src/pages/ProviderApplicationForm.tsx');
-    expect(providerForm).toContain('Approval requires photo, address, rates, documents');
-    expect(providerForm).toContain('Payout preview only');
+    // ProviderApplicationForm.tsx was a DEAD Replit-era duplicate (a dead-end
+    // form with no KYC/approval) — deleted in #691. The canonical, live
+    // provider application is ProviderOnboarding.tsx (all /apply-provider,
+    // /join-team, /become-provider routes redirect there). Re-point the legal
+    // marketing-copy invariant to the LIVE page.
+    const providerForm = read('client/src/pages/ProviderOnboarding.tsx');
+    // Approval-based: application is REVIEWED (24-48h), documents are manually
+    // verified — never an instant/auto-approved promise.
+    expect(providerForm).toMatch(/review your application within 24-48 hours/i);
+    expect(providerForm).toMatch(/manually verified by the PetWash/i);
+    expect(providerForm).toMatch(/Review time: up to 24 business hours/i);
+    // The specific false promises from the deleted duplicate must never return:
+    // no "leading pet services platform" hype and no baked-in fixed commission.
     expect(providerForm).not.toContain('start earning! The leading pet services platform');
     expect(providerForm).not.toContain('15% platform commission');
   });

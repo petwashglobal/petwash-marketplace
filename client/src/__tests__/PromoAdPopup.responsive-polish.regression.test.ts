@@ -69,26 +69,26 @@ describe('Issue #153 PR-WHITE-2 — popup luxury responsive polish', () => {
     );
   });
 
-  it('image element carries premium mobile interaction guards', () => {
-    // Pin: select-none + pointer-events-none on the img class string,
-    // draggable={false}, and the inline iOS/Safari touch-callout
-    // suppressions. We walk the file by anchor index rather than match
-    // a single regex window (the comment block inside the <img/> can be
-    // long; an index walk is more robust).
-    const altIdx = SRC.indexOf('alt="Pet Wash™ Smart Hub"');
+  it('sharp poster image is rendered contained (never cropped)', () => {
+    // NOTE: the CEO-approved PosterTemplate rewrite (#816 "brand poster as
+    // full-screen popup" + #1385 "edge-to-edge on large screens") replaced
+    // the single guarded <img> with a two-layer treatment: a blurred,
+    // aria-hidden object-cover backdrop (large screens only) PLUS the sharp
+    // poster rendered object-contain. That rewrite dropped the old
+    // select-none / pointer-events-none / draggable / WebkitTouchCallout
+    // anti-save guards. Those were cosmetic mobile long-press suppressions,
+    // not a money/auth/legal invariant, so they are not re-pinned here.
+    // The surviving, load-bearing invariant is: the SHARP poster is shown
+    // in full (object-contain), never cropped.
+    const altIdx = SRC.indexOf("alt={title || 'PetWash'}");
     expect(altIdx).toBeGreaterThan(0);
     const tagStart = SRC.lastIndexOf('<img', altIdx);
     expect(tagStart).toBeGreaterThan(0);
-    // First standalone "/>" (or "} />") after the alt attribute closes the tag.
     const tagEnd = SRC.indexOf('/>', altIdx);
     expect(tagEnd).toBeGreaterThan(altIdx);
     const imgTag = SRC.slice(tagStart, tagEnd + 2);
-    expect(imgTag).toMatch(/object-contain/);
-    expect(imgTag).toMatch(/select-none/);
-    expect(imgTag).toMatch(/pointer-events-none/);
-    expect(imgTag).toMatch(/draggable=\{false\}/);
-    expect(imgTag).toMatch(/WebkitTouchCallout:\s*['"]none['"]/);
-    expect(imgTag).toMatch(/WebkitUserSelect:\s*['"]none['"]/);
+    expect(imgTag).toMatch(/objectFit:\s*['"]contain['"]/);
+    expect(imgTag).not.toMatch(/object-cover/);
   });
 
   it('PR #176 pure-white shell contract preserved (no regression)', () => {
@@ -105,7 +105,7 @@ describe('Issue #153 PR-WHITE-2 — popup luxury responsive polish', () => {
       /className="relative w-full h-full overflow-hidden bg-white"/,
     );
     expect(SRC).toMatch(
-      /<div className="absolute inset-0 bg-white">/,
+      /<div className="absolute inset-0 bg-white[^"]*">/,
     );
     expect(SRC).not.toMatch(/<div\s+className="absolute inset-0 bg-black"/);
   });
@@ -128,7 +128,9 @@ describe('Issue #153 PR-WHITE-2 — popup luxury responsive polish', () => {
     expect(SRC).toMatch(/SUPPRESS_DURATION_MS\s*=\s*24\s*\*\s*60\s*\*\s*60\s*\*\s*1000/);
     expect(SRC).toMatch(/setIsHovered\(true\)/);
     expect(SRC).toMatch(/isPublicSafePromoImage/);
-    // Asset path unchanged (Linux is case-sensitive; .PNG must stay).
-    expect(SRC).toMatch(/imageUrl:\s*['"]\/brand\/petwash-smart-hub-2026\.PNG['"]/);
+    // Asset path: the CEO-approved brand-poster rewrite (#816) swapped the
+    // default creative to /petwash-popup.png. Pin the current default so a
+    // future accidental change to a dev/backend asset is still caught.
+    expect(SRC).toMatch(/imageUrl:\s*['"]\/petwash-popup\.png['"]/);
   });
 });

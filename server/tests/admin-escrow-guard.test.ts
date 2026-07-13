@@ -69,8 +69,12 @@ describe('admin-escrow — Issue #148/#153 P5 regression pin', () => {
   });
 
   it('does NOT modify the existing escrow money math (commission/VAT formulas preserved)', () => {
-    // Spot-check: the existing constants must remain.
-    expect(ESCROW_SRC).toMatch(/const commissionPct = 0\.15/);
+    // Spot-check: the money formulas must remain. Commission moved from a local
+    // `const commissionPct = 0.15` to the canonical PETWASH_COMMISSION_RATE
+    // (= 0.15 in shared/schema.ts, single source of truth) — still 15%, just no
+    // longer a duplicated literal. VAT on the fee is unchanged at 18%.
+    expect(ESCROW_SRC).toMatch(/PETWASH_COMMISSION_RATE/);
+    expect(ESCROW_SRC).toMatch(/Math\.round\(amountCents \* PETWASH_COMMISSION_RATE\)/);
     expect(ESCROW_SRC).toMatch(/Math\.round\(platformFeeCents \* 0\.18\)/);
   });
 

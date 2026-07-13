@@ -40,7 +40,12 @@ function sliceHandlePaymentApproved(src: string): string {
 function sliceActivateWalletHandler(src: string): string {
   const start = src.indexOf("'/:voucherId/activate-wallet'");
   if (start < 0) throw new Error('activate-wallet route not found');
-  return src.slice(start, start + 4000);
+  // Slice to the START of the NEXT route so the whole handler is captured no
+  // matter how long it grows (it gained a challenge/OTP verification step, which
+  // pushed the wallet-credit past a former fixed 4000-char window). Fall back to
+  // a generous length if this is the last route in the file.
+  const next = src.indexOf('router.', start + 1);
+  return src.slice(start, next > start ? next : start + 8000);
 }
 
 describe('PR-W11 — writer side (nayaxService.handlePaymentApproved)', () => {
