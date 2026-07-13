@@ -1385,8 +1385,15 @@ router.post('/:bookingId/messages/:messageId/translate', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // SECURITY (IDOR fix, sweep 2026-07-13): scope the message to the caller's OWN
+    // conversation. Authorizing against :bookingId (above) is not enough — without
+    // this conversationId filter, a participant could pass their own bookingId plus a
+    // stranger's messageId and read a private message between two other users.
     const [msg] = await db.select().from(bookingMessages)
-      .where(eq(bookingMessages.messageId, messageId)).limit(1);
+      .where(and(
+        eq(bookingMessages.messageId, messageId),
+        eq(bookingMessages.conversationId, conv.conversationId),
+      )).limit(1);
     if (!msg || !msg.content) {
       return res.status(404).json({ error: 'Message not found' });
     }
@@ -1629,6 +1636,19 @@ router.post('/:bookingId/messages/:messageId/react', async (req, res) => {
       return res.status(403).json({ error: 'Access denied' });
     }
 
+    // SECURITY (IDOR fix, sweep 2026-07-13): confirm the message belongs to the
+    // caller's OWN conversation before mutating reactions. Without this a user could
+    // pass their own bookingId + a stranger's messageId and add/remove reactions on
+    // messages in other people's chats.
+    const [ownMsg] = await db.select({ id: bookingMessages.id }).from(bookingMessages)
+      .where(and(
+        eq(bookingMessages.messageId, messageId),
+        eq(bookingMessages.conversationId, conv.conversationId),
+      )).limit(1);
+    if (!ownMsg) {
+      return res.status(404).json({ error: 'Message not found' });
+    }
+
     // Toggle: try insert, on conflict delete (remove reaction)
     const existing = await db.execute(
       sql`SELECT id FROM message_reactions WHERE message_id = ${messageId} AND user_id = ${uid} AND reaction = ${reaction} LIMIT 1`
@@ -1678,6 +1698,17 @@ router.get('/:bookingId/messages/:messageId/reactions', async (req, res) => {
 
     if (!conv || (conv.customerId !== uid && conv.providerId !== uid)) {
       return res.status(403).json({ error: 'Access denied' });
+    }
+
+    // SECURITY (IDOR fix, sweep 2026-07-13): scope to the caller's OWN conversation
+    // so reaction counts can't be read for an arbitrary stranger's messageId.
+    const [ownMsg] = await db.select({ id: bookingMessages.id }).from(bookingMessages)
+      .where(and(
+        eq(bookingMessages.messageId, messageId),
+        eq(bookingMessages.conversationId, conv.conversationId),
+      )).limit(1);
+    if (!ownMsg) {
+      return res.status(404).json({ error: 'Message not found' });
     }
 
     const countsResult = await db.execute(
