@@ -652,12 +652,23 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
     }
 
     const tokenValidation = twilioSMSService.validateVerificationToken(verificationToken);
-    
+
     if (!tokenValidation.valid || !tokenValidation.phone) {
       logger.warn('[PhoneAuth] Invalid or expired verification token attempted');
       return res.status(401).json({
         ok: false,
         error: 'Invalid or expired verification token. Please verify your phone again.'
+      });
+    }
+
+    // SECURITY (single-use, sweep 2026-07-13): consume the proof token so it can't be
+    // replayed within its 5-min TTL to mint additional sessions. First use wins; a
+    // replay of the same token is rejected here at the session-minting step.
+    if (!twilioSMSService.consumeVerificationNonce(tokenValidation.nonce || '')) {
+      logger.warn('[PhoneAuth] verification token REPLAY rejected at phone-session');
+      return res.status(401).json({
+        ok: false,
+        error: 'This verification was already used. Please verify your phone again.'
       });
     }
 

@@ -27,6 +27,9 @@ const MAX_VERIFICATION_ATTEMPTS = 5;
 const VERIFICATION_TOKEN_EXPIRY_MINUTES = 5;
 const LOCKOUT_DURATION_MS = 15 * 60 * 1000;
 const phoneLockouts = new Map<string, number>();
+// Single-use guard for sms-verified proof tokens (nonce -> expiry epoch ms). See
+// consumeVerificationNonce(). Pruned lazily; entries live at most the token TTL.
+const consumedVerificationNonces = new Map<string, number>();
 
 // LAUNCH-SAFETY 2026-06-18: was 5 — a user who mistypes their number or hits a
 // carrier delay burns 5 sends and is locked out until midnight. Raised + env-tunable.
@@ -737,20 +740,39 @@ class TwilioSMSService {
     };
   }
 
-  validateVerificationToken(token: string): { valid: boolean; phone?: string } {
+  validateVerificationToken(token: string): { valid: boolean; phone?: string; nonce?: string } {
     if (!token) return { valid: false };
     try {
       const secret = process.env.JWT_SECRET || process.env.COOKIE_SECRET;
       if (!secret) return { valid: false };
-      const decoded = jwt.verify(token, secret) as { phone?: string; type?: string };
+      const decoded = jwt.verify(token, secret) as { phone?: string; type?: string; nonce?: string };
       if (decoded.type !== 'sms-verified' || !decoded.phone) return { valid: false };
       logger.info('[TwilioSMS] JWT verification token validated', {
         phone: decoded.phone.slice(0, 6) + '****'
       });
-      return { valid: true, phone: decoded.phone };
+      return { valid: true, phone: decoded.phone, nonce: decoded.nonce };
     } catch {
       return { valid: false };
     }
+  }
+
+  /**
+   * SECURITY (single-use proof token, sweep 2026-07-13): mark a verification-token
+   * nonce as consumed. Returns true on FIRST consume, false if the nonce was already
+   * used — the caller (session-minting) rejects a replay so a captured token can't be
+   * re-POSTed within its 5-min TTL to mint multiple sessions. In-memory (single-instance;
+   * the 5-min TTL keeps the set tiny). Scoped to session minting so multi-step signup
+   * flows that re-validate the same token are unaffected.
+   */
+  consumeVerificationNonce(nonce: string): boolean {
+    if (!nonce) return true; // legacy token without a nonce — nothing to dedupe
+    const now = Date.now();
+    for (const [n, exp] of consumedVerificationNonces) {
+      if (exp <= now) consumedVerificationNonces.delete(n);
+    }
+    if (consumedVerificationNonces.has(nonce)) return false;
+    consumedVerificationNonces.set(nonce, now + VERIFICATION_TOKEN_EXPIRY_MINUTES * 60 * 1000);
+    return true;
   }
 
   async sendWhatsApp(to: string, body: string): Promise<{
