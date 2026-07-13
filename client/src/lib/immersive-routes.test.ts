@@ -132,10 +132,18 @@ describe('PR-SHELL-IMMERSIVE caller-integration pins', () => {
     expect(src).toMatch(/\{showMobileNav\s*&&\s*<MobileBottomNav\s*\/>\}/);
   });
 
-  it('12. App.tsx PromoAdPopup gate now uses isImmersiveRoute (no legacy regex)', () => {
+  it('12. App.tsx PromoAdPopup gate still composes isImmersiveRoute (no legacy exclude regex)', () => {
     const src = read('client/src/App.tsx');
-    expect(src).toMatch(/const\s+showPromoPopup\s*=\s*!isImmersive/);
-    // The drifting all-purpose PROMO_EXCLUDED_PATTERN regex is gone
+    // The promo gate must still be gated on !isImmersive. It now ALSO composes
+    // two purposeful, documented guards (both additive, not a revert of the
+    // immersive suppression):
+    //   - !isNativeApp: native apps never show the web marketing promo
+    //     (CEO 2026-07-02 — it letterboxed over the Prestige app).
+    //   - !PROMO_OPERATIONAL_PATTERN.test(...): a narrow, named operational-page
+    //     suppression (admin/dashboard/booking/etc.).
+    expect(src).toMatch(/const\s+showPromoPopup\s*=[^;]*!isImmersive/);
+    expect(src).toMatch(/const\s+showPromoPopup\s*=[^;]*!isNativeApp/);
+    // The drifting legacy all-purpose PROMO_EXCLUDED_PATTERN regex is gone.
     expect(src).not.toMatch(/PROMO_EXCLUDED_PATTERN/);
   });
 

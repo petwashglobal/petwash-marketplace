@@ -54,9 +54,15 @@ describe('provider-applications admin role-shape — Issue #153 regression pin',
     expect(codeOnly).not.toMatch(/firebaseUser\?\.\s*accountType/);
   });
 
-  it('uses callerIsAdmin(req) on every admin handler (5 endpoints)', () => {
-    const matches = SRC.match(/if\s*\(\s*!callerIsAdmin\(\s*req\s*\)\s*\)/g) || [];
-    expect(matches.length).toBe(5);
+  it('uses callerIsAdmin(req) on every admin handler (one guard per /admin/ route)', () => {
+    // Invariant: EVERY /admin/* route is gated by callerIsAdmin(req). Tie the
+    // expected count to the actual number of /admin/ routes so adding a new
+    // admin endpoint (a 6th was added: /admin/:id/advance-stage) keeps the test
+    // honest — it fails if any admin route is added WITHOUT the guard.
+    const guardMatches = SRC.match(/if\s*\(\s*!callerIsAdmin\(\s*req\s*\)\s*\)/g) || [];
+    const adminRoutes = SRC.match(/router\.(?:get|post|put|patch|delete)\(\s*['"]\/admin\//g) || [];
+    expect(adminRoutes.length).toBeGreaterThanOrEqual(6);
+    expect(guardMatches.length).toBe(adminRoutes.length);
   });
 
   it('still returns 403 with "Admin access required" message on rejection', () => {

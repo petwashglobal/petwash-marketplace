@@ -26,13 +26,21 @@ describe('signup black luxury canvas', () => {
     expect(css).toMatch(/background(?:-color)?:\s*#000000\s*!important/);
   });
 
-  it('bumps the cache purge version when signup shell rendering changes', () => {
-    expect(main).toContain('2026-06-04-signup-clean-auth-surface');
-    expect(html).toContain('2026-06-04-inline-signup-clean-auth-surface');
+  it('ships the signup cache-purge mechanism (Safari SW/cache cleanup before the bundle)', () => {
+    // The exact version DATE string is a cache-bust token that legitimately
+    // changes on every signup-shell edit — pinning a frozen date protects
+    // nothing and rots. Instead guard that the MECHANISM is present: main.tsx
+    // carries a cache-bust marker, and index.html runs the inline
+    // pre-bundle cache purge with a versioned token.
+    expect(main).toMatch(/Cache bust:\s*\d{4}-\d{2}-\d{2}/);
+    expect(html).toContain('petwashInlineCachePurge');
+    expect(html).toMatch(/var version = '20\d{2}-\d{2}-\d{2}-inline-signup-clean-auth-surface'/);
   });
 
   it('keeps the mobile hero hierarchy locked to logo first, headline second', () => {
-    expect(signup).toContain('--gold:#b0841c');
+    // Brand gold was corrected to the canonical #D4AF37 (brand palette);
+    // the old #b0841c was superseded.
+    expect(signup).toContain('--gold:#D4AF37');
     expect(signup).toContain('petwash-logo-white-tight.png');
     expect(signup).toContain('.sl-frame{ gap:10px; padding:max(6px, env(safe-area-inset-top))');
     expect(signup).toContain('.sl-logo{ width:min(86vw, 382px)');
@@ -57,15 +65,27 @@ describe('signup black luxury canvas', () => {
     expect(signup).toContain('if (!requireTerms()) return;');
     expect(signup).toContain('sl-inlineError');
     expect(signup).toContain('role="alert"');
-    expect(signup).toContain('const readyForSubmit = terms && !busy');
-    expect(signup).toContain('disabled={!readyForSubmit}');
+    // Submit stays gated on consent + not-busy. The old single
+    // `readyForSubmit = terms && !busy` was SPLIT and STRENGTHENED:
+    //   consentOk    = agreedTerms && over18            (terms + 18+)
+    //   readyForSubmit = !busy && phoneValid && emailValid && isAdult
+    // and the CTA is disabled unless BOTH hold. The invariant (no submit
+    // without accepted terms, and never while busy) is preserved + stronger.
+    expect(signup).toContain('const consentOk = agreedTerms && over18');
+    expect(signup).toMatch(/const readyForSubmit = !busy &&/);
+    expect(signup).toContain('disabled={!readyForSubmit || !consentOk}');
     expect(signup).toContain('sl-submitHint');
     expect(signup).not.toContain('sl-entryBtn');
     expect(signup).not.toContain('entryBtn');
     expect(signup).not.toContain('EntryCodeField');
     expect(signup).not.toContain('sl-entryStatus');
     expect(signup).not.toContain('sl-adv');
-    expect(signup).not.toContain('sl-consent');
+    // NOTE: the `sl-consent` ban was DROPPED — that class name is now reused
+    // for the ESSENTIAL Terms + 18-plus consent checkbox block (required
+    // before signup). The dead "advanced consent / wallet / biometric" bloat
+    // this test guards against is still banned by the semantic strings below
+    // (Mobile Wallet Consent / Face ID Biometric Consent / Add to Apple
+    // Wallet / etc.) plus the sl-wallets / sl-wbtn / sl-adv class bans.
     expect(signup).not.toContain('sl-wallets');
     expect(signup).not.toContain('sl-wbtn');
     expect(signup).not.toContain('sl-soonPill');

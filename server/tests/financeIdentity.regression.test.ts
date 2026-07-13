@@ -155,15 +155,22 @@ describe('PR-G — the wrong literal 516788400 is gone from runtime sources', ()
     expect(hits).toEqual([]);
   });
 
-  it('9. The two schema-DEFAULT exceptions are explicitly accounted for (follow-up migration)', () => {
-    // This is a *negative* test that fails LOUDLY if either schema file
-    // is silently changed AND the historical default is silently removed.
-    // It documents the scope split between PR-G (runtime) and the future
-    // schema-default migration PR.
+  it('9. Both schema-DEFAULT exceptions are now RESOLVED to the correct company number', () => {
+    // Previously these two columns defaulted to the WRONG legacy number
+    // 516788400 as documented pending exceptions (the follow-up schema-default
+    // migration). Both are now fixed to the canonical 517145033:
+    //   • schema-payments.ts vat_number            → fixed earlier
+    //   • schema.ts digital_receipts.company_tax_id → fixed here + migration 0093
+    // So a future insert path that forgets the column can never stamp a tax
+    // document with the wrong legal identity. This test now guards the CORRECT
+    // value and fails loudly if the wrong number is ever reintroduced.
     const schemaSrc = readFileSync(resolve(ROOT, 'shared/schema.ts'), 'utf8');
     const schemaPaySrc = readFileSync(resolve(ROOT, 'shared/schema-payments.ts'), 'utf8');
-    expect(schemaSrc).toMatch(/company_tax_id["']?\)\s*\.default\(["']516788400["']/);
-    expect(schemaPaySrc).toMatch(/vat_number["']?\)\s*\.default\(["']516788400["']/);
+    expect(schemaSrc).toMatch(/company_tax_id["']?\)\s*\.default\(["']517145033["']/);
+    expect(schemaPaySrc).toMatch(/vat_number["']?\)\s*\.default\(["']517145033["']/);
+    // The retired wrong number must not reappear as a default in either file.
+    expect(schemaSrc).not.toMatch(/\.default\(["']516788400["']/);
+    expect(schemaPaySrc).not.toMatch(/\.default\(["']516788400["']/);
   });
 });
 

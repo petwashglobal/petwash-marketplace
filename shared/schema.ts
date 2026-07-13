@@ -12165,7 +12165,12 @@ export const digitalReceipts = pgTable("digital_receipts", {
   paymentStatus: varchar("payment_status", { length: 30 }).default("completed").notNull(),
 
   companyName: varchar("company_name").default("Pet Wash Ltd").notNull(),
-  companyTaxId: varchar("company_tax_id").default("516788400").notNull(),
+  // Canonical Pet Wash Ltd company/VAT number (ח.פ 517145033). Was the wrong
+  // 516788400 (forensic finding F-01) — fixed here so a future insert path that
+  // forgets to set companyTaxId can never stamp a tax document with the wrong
+  // legal number. Live DB default aligned by migration 0093. All current insert
+  // paths already pass COMPANY_TAX_ID explicitly from shared/finance-identity.ts.
+  companyTaxId: varchar("company_tax_id").default("517145033").notNull(),
   companyAddress: varchar("company_address").default("Israel").notNull(),
 
   emailSent: boolean("email_sent").default(false).notNull(),

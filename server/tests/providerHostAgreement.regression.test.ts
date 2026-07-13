@@ -110,37 +110,48 @@ describe("A. providerHostAgreement.ts — module shape + gates", () => {
 // ─────────────────────────────────────────────────────────────
 
 describe("B. English body", () => {
-  it("has exactly 16 sections", () => {
-    expect(PROVIDER_HOST_AGREEMENT_EN.sections.length).toBe(16);
+  // PR-LEGAL-A-REWRITE (May 2026): the agreement was rewritten from the old
+  // 16-section, 1-indexed layout to a 23-section, 0-indexed bilingual structure.
+  // Every core protection SURVIVES (verified below); the section numbering and
+  // titles are the new canonical list.
+  it("has exactly 23 sections", () => {
+    expect(PROVIDER_HOST_AGREEMENT_EN.sections.length).toBe(23);
   });
 
-  it("sections are numbered 1..16 in order", () => {
+  it("sections are numbered 0..22 in order", () => {
     const ids = PROVIDER_HOST_AGREEMENT_EN.sections.map((s) => s.id);
     expect(ids).toEqual([
-      "1", "2", "3", "4", "5", "6", "7", "8",
-      "9", "10", "11", "12", "13", "14", "15", "16",
+      "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "10", "11",
+      "12", "13", "14", "15", "16", "17", "18", "19", "20", "21", "22",
     ]);
   });
 
   it("section titles match the canonical list (verbatim)", () => {
     const titles = PROVIDER_HOST_AGREEMENT_EN.sections.map((s) => s.title);
     expect(titles).toEqual([
-      "ABOUT PET WASH",
-      "INDEPENDENT PROVIDER STATUS",
-      "ELIGIBILITY REQUIREMENTS",
-      "PROVIDER RESPONSIBILITIES",
-      "HOSTING & HOME-BASED SERVICES",
-      "BOOKINGS & PLATFORM OPERATIONS",
-      "PAYMENTS & FEES",
+      "DEFINITIONS",
+      "PLATFORM ROLE",
+      "INDEPENDENT CONTRACTOR STATUS",
+      "PROVIDER RESPONSIBILITY",
+      "ANIMAL WELFARE AND DOG SUPERVISION",
+      "HOST AND HOME-BASED SERVICES",
       "INSURANCE DISCLAIMER",
-      "PET HEALTH & SAFETY",
-      "BACKGROUND CHECKS & VERIFICATION",
-      "PRIVACY & DATA",
-      "PLATFORM ACCESS & SUSPENSION",
+      "PRIVACY AND PERSONAL DATA",
+      "NON-DISCRIMINATION AND ACCESSIBILITY",
+      "TAX, BUSINESS AND LEGAL COMPLIANCE",
+      "PAYMENTS AND PLATFORM FEES",
+      "VERIFICATION AND SAFETY CHECKS",
+      "CUSTOMER RELATIONSHIP",
+      "INTELLECTUAL PROPERTY AND CONTENT LICENCE",
+      "ACCOUNT SUSPENSION AND TERMINATION",
       "LIMITATION OF LIABILITY",
-      "TAXES & COMPLIANCE",
-      "DIGITAL SIGNATURE & CONSENT",
-      "GOVERNING LAW",
+      "MODIFICATIONS AND EFFECTIVE DATE",
+      "GOVERNING LAW AND JURISDICTION",
+      "DISPUTE RESOLUTION",
+      "LANGUAGE PRECEDENCE",
+      "NOTICES AND CONTACTS",
+      "SEVERABILITY",
+      "DIGITAL ACCEPTANCE",
     ]);
   });
 
@@ -164,56 +175,61 @@ describe("B. English body", () => {
   // platform. Every other UI surface that mentions insurance
   // must co-locate this exact phrase per PROGRAM.md / Gate-1
   // mandatory-phrase rule.
-  it("§8 contains the mandatory 'not insurance company/broker/adviser' phrase", () => {
-    const s8 = PROVIDER_HOST_AGREEMENT_EN.sections.find((s) => s.id === "8");
-    expect(s8).toBeDefined();
-    expect(s8!.body).toMatch(
-      /Pet Wash Ltd is not an insurance company, insurance broker or insurance adviser\./,
+  // INSURANCE DISCLAIMER is now §6 (id "6"). The mandatory anchor phrase survives
+  // and is STRENGTHENED — it now also names "insurance agent" (…company, broker,
+  // agent or adviser). Tolerate the added word so the guard still fires but isn't
+  // brittle to the stronger wording.
+  it("§6 contains the mandatory 'not insurance company/broker/(agent/)adviser' phrase", () => {
+    const s = PROVIDER_HOST_AGREEMENT_EN.sections.find((x) => x.id === "6");
+    expect(s).toBeDefined();
+    expect(s!.body).toMatch(
+      /Pet Wash Ltd is not an insurance company, insurance broker,(?: insurance agent,?)? (?:or )?insurance adviser\./,
     );
   });
 
-  it("§8 explicitly denies any guarantee that a claim will be approved or covered", () => {
-    const s8 = PROVIDER_HOST_AGREEMENT_EN.sections.find((s) => s.id === "8");
-    expect(s8!.body).toMatch(
-      /makes no guarantee that any claim will be approved or covered/,
-    );
+  it("§6 explicitly denies any guarantee that a claim will be approved or covered", () => {
+    const s = PROVIDER_HOST_AGREEMENT_EN.sections.find((x) => x.id === "6");
+    // New prose: "…guarantees that any claim, loss, damage … will be covered" and
+    // "Pet Wash does not guarantee claim approval or payment."
+    expect(s!.body).toMatch(/any claim[^.]*will be covered/);
+    expect(s!.body).toMatch(/does not guarantee claim approval or payment/);
   });
 
-  it("§8 explicitly preserves the Provider's own insurance obligation", () => {
-    const s8 = PROVIDER_HOST_AGREEMENT_EN.sections.find((s) => s.id === "8");
-    expect(s8!.body).toMatch(
-      /does not replace the Provider'?s own obligation to maintain legally required insurance/,
+  it("§6 explicitly preserves the Provider's own insurance obligation", () => {
+    const s = PROVIDER_HOST_AGREEMENT_EN.sections.find((x) => x.id === "6");
+    expect(s!.body).toMatch(
+      /Providers remain solely responsible for obtaining and maintaining any insurance required by law/,
     );
   });
 
   it("§2 declares independent contractor status, not employee", () => {
     const s2 = PROVIDER_HOST_AGREEMENT_EN.sections.find((s) => s.id === "2");
     expect(s2!.body).toMatch(/independent contractor/i);
-    expect(s2!.body).toMatch(/Pet Wash is not your employer/);
+    // New prose: "not as an employee …" + "Nothing in this Agreement creates an
+    // employment relationship …" — the not-an-employer guarantee is preserved.
+    expect(s2!.body).toMatch(/not as an employee/i);
+    expect(s2!.body).toMatch(/creates an employment relationship/i);
   });
 
-  it("§14 mentions both Israeli business types verbatim", () => {
-    const s14 = PROVIDER_HOST_AGREEMENT_EN.sections.find(
-      (s) => s.id === "14",
-    );
-    expect(s14!.body).toContain("עוסק פטור");
-    expect(s14!.body).toContain("עוסק מורשה");
+  it("§9 mentions both Israeli business types verbatim", () => {
+    // TAX, BUSINESS AND LEGAL COMPLIANCE is now §9 (id "9").
+    const s = PROVIDER_HOST_AGREEMENT_EN.sections.find((x) => x.id === "9");
+    expect(s!.body).toContain("עוסק פטור");
+    expect(s!.body).toContain("עוסק מורשה");
   });
 
-  it("§15 mentions IP logs, timestamps and electronic acceptance as evidence", () => {
-    const s15 = PROVIDER_HOST_AGREEMENT_EN.sections.find(
-      (s) => s.id === "15",
-    );
-    expect(s15!.body).toMatch(/IP logs/);
-    expect(s15!.body).toMatch(/timestamps/);
-    expect(s15!.body).toMatch(/electronic acceptance/i);
+  it("§22 mentions IP address, timestamps and digital acceptance as evidence", () => {
+    // DIGITAL ACCEPTANCE is now §22 (id "22").
+    const s = PROVIDER_HOST_AGREEMENT_EN.sections.find((x) => x.id === "22");
+    expect(s!.body).toMatch(/IP address/i);
+    expect(s!.body).toMatch(/timestamp/i);
+    expect(s!.body).toMatch(/digital(?:ly)? (?:acceptance|signing)/i);
   });
 
-  it("§16 declares Israeli governing law", () => {
-    const s16 = PROVIDER_HOST_AGREEMENT_EN.sections.find(
-      (s) => s.id === "16",
-    );
-    expect(s16!.body).toMatch(/State of Israel/);
+  it("§17 declares Israeli governing law", () => {
+    // GOVERNING LAW AND JURISDICTION is now §17 (id "17").
+    const s = PROVIDER_HOST_AGREEMENT_EN.sections.find((x) => x.id === "17");
+    expect(s!.body).toMatch(/laws of the State of Israel/);
   });
 });
 
@@ -235,8 +251,11 @@ describe("C. Hebrew body — unverified raw", () => {
   });
 
   it("PROVIDER_HOST_AGREEMENT_HE_RAW carries a clear awaiting-verified note", () => {
+    // The note now explains the mobile-RTL paste problem and that HE_VERIFIED
+    // must stay false until Counsel verifies the HE_DRAFT prose — same intent
+    // (raw Hebrew is NOT display-ready / awaiting verified prose).
     expect(PROVIDER_HOST_AGREEMENT_HE_RAW.notes).toMatch(
-      /Awaiting verified clean body/,
+      /must remain false until\s+Counsel verifies/,
     );
   });
 

@@ -14,7 +14,12 @@
  *   A. PAYMENT_PROVIDER_MODE is the canonical 2-value enum (live | mock).
  *      Default when unset is 'live' (so production never silently weakens).
  *   B. validateProductionPaymentSecrets() short-circuits on mock mode and
- *      returns no errors regardless of NODE_ENV.
+ *      returns no errors. EXCEPTION (S6 hardening, 2026-05-24): in
+ *      production, mock mode is honoured ONLY with the explicit second
+ *      opt-in PAYMENT_MOCK_PROD_ALLOWED=true; otherwise the mock override
+ *      is refused, the effective mode falls back to 'live', and missing
+ *      secrets surface as fail-closed errors. A single-var flip can no
+ *      longer weaken payment gates in production.
  *   C. validateProductionPaymentSecrets() in production:
  *        - NAYAX_ENABLED=true  → require NAYAX_API_KEY + NAYAX_WEBHOOK_SECRET
  *        - SUMIT_ENABLED=true  → require SUMIT_API_KEY + SUMIT_WEBHOOK_SECRET
@@ -85,13 +90,39 @@ describe('PR-CI-PAYMENT-MODE — mode enum and defaulting', () => {
 // ── B. Mock mode short-circuits secret requirements ──────────────────────
 
 describe('PR-CI-PAYMENT-MODE — mock mode short-circuits all secret requirements', () => {
-  it('5. mock mode + production + everything enabled + NO secrets → zero errors', () => {
+  it('5. mock mode in PRODUCTION is IGNORED without PAYMENT_MOCK_PROD_ALLOWED (S6 hardening) → falls back to live and surfaces secret errors', () => {
+    // SECURITY 2026-05-24 (audit finding S6): a single-var flip of
+    // PAYMENT_PROVIDER_MODE=mock must NOT weaken payment gates in
+    // production. Mock in production now requires an explicit SECOND
+    // opt-in (PAYMENT_MOCK_PROD_ALLOWED=true). Without it, the validator
+    // treats the box as live and fail-closes on the missing secrets —
+    // the opposite of silently mock-approving every charge.
     const r = validateProductionPaymentSecrets({
       NODE_ENV: 'production',
       PAYMENT_PROVIDER_MODE: 'mock',
       NAYAX_ENABLED: 'true',
       SUMIT_ENABLED: 'true',
-      // Deliberately missing every secret.
+      // Deliberately missing every secret AND the prod-mock opt-in.
+    });
+    expect(r.mode).toBe('live'); // mock override refused in prod
+    expect(r.errors).toEqual([
+      'NAYAX_ENABLED=true but NAYAX_API_KEY is missing — refusing to operate live',
+      'NAYAX_ENABLED=true but NAYAX_WEBHOOK_SECRET is missing — refusing to operate live',
+      'SUMIT_ENABLED=true but SUMIT_API_KEY is missing — refusing to operate live',
+      'SUMIT_ENABLED=true but SUMIT_WEBHOOK_SECRET is missing — refusing to operate live',
+    ]);
+  });
+
+  it('5b. mock mode + production WITH PAYMENT_MOCK_PROD_ALLOWED=true (CI smoke on prod image) → zero errors, mode=mock', () => {
+    // The legitimate CI-smoke path: boot the production container image in
+    // mock mode by setting BOTH env vars. A real prod deploy sets neither.
+    const r = validateProductionPaymentSecrets({
+      NODE_ENV: 'production',
+      PAYMENT_PROVIDER_MODE: 'mock',
+      PAYMENT_MOCK_PROD_ALLOWED: 'true',
+      NAYAX_ENABLED: 'true',
+      SUMIT_ENABLED: 'true',
+      // Deliberately missing every provider secret — mock short-circuits them.
     });
     expect(r.errors).toEqual([]);
     expect(r.mode).toBe('mock');

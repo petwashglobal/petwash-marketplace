@@ -33,7 +33,9 @@ describe('gcsBackupService — best-effort post-upload logging (code-backup stat
   });
 
   it('the firestore export guards its log write with a non-fatal warning', () => {
-    expect(SRC).toMatch(/Firestore export uploaded OK but backup_logs write failed \(non-fatal\)/);
+    // Phrase trimmed from "Firestore export uploaded OK but backup_logs..." to
+    // "Firestore export backup_logs write failed (non-fatal)" — same guard.
+    expect(SRC).toMatch(/Firestore export backup_logs write failed \(non-fatal\)/);
   });
 
   it('the summary email is best-effort on code and firestore paths', () => {

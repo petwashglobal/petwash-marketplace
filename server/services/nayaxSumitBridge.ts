@@ -28,8 +28,11 @@ import { getSumitDocumentMapping } from './sumitDocumentMapping';
 import type { LynxSaleRow } from './lynxReconciliation';
 import { terminalForMachine, terminalLabel } from './nayaxTerminals';
 import { logger } from '../lib/logger';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
-const VAT_RATE = 0.18; // Israeli VAT (bay prices are VAT-inclusive consumer prices)
+// Single source of truth — canonical rate (env-overridable) from israel-compliance-config.
+// Bay prices are VAT-inclusive consumer prices; we back the VAT out for the SUMIT line.
+const VAT_RATE = ISRAEL_VAT_RATE;
 const round2 = (n: number) => Math.round((n + Number.EPSILON) * 100) / 100;
 
 /** The explicit go-live flag ON TOP OF SUMIT + Lynx being wired. Default OFF. */

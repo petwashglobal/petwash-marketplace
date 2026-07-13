@@ -430,12 +430,20 @@ app.set('trust proxy', 1);
 let _initStartedTs = Date.now();
 let _initPhase = 'pre_middleware';
 let _initError: string | null = null;
+// PR-HEALTH-BUILD-SHA operational rule: CI green ≠ deployed. /health carries the
+// build identifier (git SHA + build time) under the `build` key so an operator can
+// open /health and confirm exactly which revision is actually live — not just that
+// a pipeline passed. _getBuildInfo() is a pure, never-throws helper (reads only env),
+// so embedding it keeps this ultra-early handler bulletproof for the Cloud Run
+// startup probe while restoring the deploy-identity observability.
 const _earlyHealthHandler = (_req: any, res: any) => {
+  const isDegraded = !!_initError;
   res.status(200).json({
-    status: _initPhase === 'ready' ? 'ok' : _initError ? 'degraded' : 'starting',
+    status: isDegraded ? 'DEGRADED' : 'OK',
     phase: _initPhase,
     elapsedMs: Date.now() - _initStartedTs,
     error: _initError,
+    build: _getBuildInfo(),
     ts: new Date().toISOString(),
   });
 };

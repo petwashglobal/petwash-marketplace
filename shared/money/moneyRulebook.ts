@@ -81,7 +81,7 @@ export const MONEY_RULEBOOK = {
       checks: [
         { id: 'cortina.dark-gated', says: 'All Cortina handlers are dark until NAYAX_CORTINA_ENABLED; verified spec response shape; no blind refund math.',
           file: 'server/routes/nayax-cortina.ts',
-          mustContain: ["if (!cortinaEnabled()) return res.status(503)", "router.post(['/void', '/cancel']", "router.post('/refund'", "Verdict: 'Approved'", "k9000_reconciliation_breaks"],
+          mustContain: ["if (!cortinaEnabled()) return res.status(503)", "router.post(['/void', '/cancel',", "router.post(['/refund'", "Verdict: 'Approved'", "k9000_reconciliation_breaks"],
           mustNotContain: ['refundToWallet', 'reverseEntry'] },
       ],
     },

@@ -131,8 +131,11 @@ describe('Issue #153 PR-WALK-1 — client owner-dashboard caller', () => {
     expect(DASHBOARD_SRC).toMatch(
       /queryKey:\s*\[\s*['"]\/api\/walk-my-pet\/walks\/mine['"]\s*\]/,
     );
+    // The canonical safe URL must be requested. The call site was refactored
+    // from a raw fetch() to the shared apiRequest('GET', ...) helper — accept
+    // either form, but the URL must be the canonical /walks/mine alias.
     expect(DASHBOARD_SRC).toMatch(
-      /fetch\(\s*['"]\/api\/walk-my-pet\/walks\/mine['"]/,
+      /(?:fetch|apiRequest)\(\s*(?:['"]GET['"]\s*,\s*)?['"]\/api\/walk-my-pet\/walks\/mine['"]/,
     );
     // The pre-fix anti-pattern (uid in the URL) must not remain.
     expect(DASHBOARD_SRC).not.toMatch(/\/api\/walk-my-pet\/users\/\$\{user\?\.id\}\/walks/);
@@ -140,6 +143,9 @@ describe('Issue #153 PR-WALK-1 — client owner-dashboard caller', () => {
   });
 
   it('OwnerDashboard.tsx still gates the query on a logged-in user (no anon fetch)', () => {
-    expect(DASHBOARD_SRC).toMatch(/enabled:\s*!!user\?\.id/);
+    // The query must be gated on a logged-in user. The gate was simplified from
+    // `!!user?.id` to `!!user` — both express the same "no anonymous fetch"
+    // invariant (the query is disabled until a user object exists).
+    expect(DASHBOARD_SRC).toMatch(/enabled:\s*!!user(?:\?\.id)?\b/);
   });
 });

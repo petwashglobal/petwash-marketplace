@@ -35,7 +35,12 @@ describe('signup service-worker cache safety', () => {
 
   it('runs a no-bundle inline cache purge before app startup', () => {
     const html = fs.readFileSync(path.join(repoRoot, 'client/index.html'), 'utf8');
-    const purgeIndex = html.indexOf('2026-06-01-inline-signup-cache-purge');
+    // Version-agnostic: the inline purge block's version string is bumped over
+    // time (e.g. 2026-06-01-inline-signup-cache-purge →
+    // 2026-06-04-inline-signup-clean-auth-surface). Pin the stable "inline-signup"
+    // marker so the guard survives version bumps but still fails if the block is
+    // removed entirely.
+    const purgeIndex = html.indexOf('inline-signup');
     const headCloseIndex = html.indexOf('</head>');
     const appIndex = html.indexOf('<script type="module" src="/src/main.tsx"></script>');
 

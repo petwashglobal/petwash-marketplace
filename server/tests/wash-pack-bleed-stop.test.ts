@@ -97,15 +97,38 @@ describe('PR-W10 — wash-pack bleed stop (writer side)', () => {
       expect(handler).not.toMatch(/updateCustomer\s*\([^)]*washBalance/i);
     });
 
-    it('credits walletAccounts.washPackageCredits via walletService.addCredits when user exists', () => {
-      expect(handler).toMatch(/walletService\.addCredits\s*\(/);
-      expect(handler).toMatch(/['"]wash_package['"]/);
-      expect(handler).toMatch(/pkg\.washCount/);
+    // SECURITY re-point (2026-07-08, matches routes.ts comment + fix #1325):
+    // POST /api/wash-history previously called walletService.addCredits(...)
+    // and bumped totalSpent/loyaltyTier with NO payment verification — a
+    // SELF-MINT hole (any authenticated caller minted free K9000 wash-package
+    // credits and inflated their own tier). The fix REMOVED all crediting
+    // from this route, made it requireAdmin, and moved wash-package credit
+    // grants to the payment-verified Nayax checkout webhook (asserted by the
+    // checkout-payment describe block above). The original tests below pinned
+    // the now-DELETED crediting path; they are re-pointed to lock the
+    // no-economic-benefit posture that closed the vulnerability.
+    // The source documents the fix in a provenance COMMENT that names the
+    // removed calls ("previously called walletService.addCredits(...) and
+    // bumped totalSpent/loyaltyTier"). Strip //-comments before asserting so
+    // the guard checks LIVE CODE only, not the historical note.
+    const liveHandler = handler
+      .split('\n')
+      .map((l) => l.replace(/\/\/.*$/, ''))
+      .join('\n');
+
+    it('grants NO wash-package credit from this route (self-mint closed — crediting moved to the paid webhook)', () => {
+      expect(liveHandler).not.toMatch(/walletService\.addCredits\s*\(/);
+      expect(liveHandler).not.toMatch(/['"]wash_package['"]/);
     });
 
-    it('logs a warning when no user is linked to the customer', () => {
-      // Audit trail for the orphan case — operator can backfill later.
-      expect(handler).toMatch(/wash-pack credit skipped/i);
+    it('does not mutate loyalty/spend economics (no totalSpent / loyaltyTier writes)', () => {
+      expect(liveHandler).not.toMatch(/totalSpent/i);
+      expect(liveHandler).not.toMatch(/loyaltyTier/i);
+    });
+
+    it('is admin-only (requireAdmin) — not reachable by an ordinary authenticated caller', () => {
+      // The gate is on the route declaration itself; assert it on the source.
+      expect(routesText).toMatch(/app\.post\('\/api\/wash-history',\s*requireAdmin\b/);
     });
   });
 });

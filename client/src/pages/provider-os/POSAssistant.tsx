@@ -20,7 +20,7 @@ const SUGGESTION_CHIPS = [
   { label: 'Explain my payout', icon: Wallet, prompt: 'Explain how the payout system works — escrow, platform fee, VAT, and when I receive my money.' },
   { label: 'Draft client reply', icon: MessageSquare, prompt: 'Help me write a professional reply to a client who asked if I have availability next weekend for a pet sitting session.' },
   { label: 'Check my documents', icon: FileText, prompt: 'What documents should I have in order as a PetWash provider? What expires regularly and needs renewal?' },
-  { label: 'Pricing advice', icon: TrendingUp, prompt: 'Give me advice on how to price my pet care services competitively in the Israeli market. What factors should I consider?' },
+  { label: 'Pricing information', icon: TrendingUp, prompt: 'Share general market information on how pet care services are typically priced in Israel. What factors do independent providers commonly consider when they set their own rates?' },
   { label: 'Improve my bio', icon: Star, prompt: 'Help me write an engaging provider bio that will attract more clients on the PetWash platform.' },
   { label: 'Handle cancellation', icon: RefreshCw, prompt: 'A client just cancelled 2 hours before the appointment. What should I do and what is my cancellation policy?' },
 ];
@@ -68,7 +68,7 @@ Provider context:
 - Platform: PetWash™ Israel (Hebrew/RTL market, ILS currency, VAT 18%)
 - Services: PetSitter, Walk My Pet, Academy (PetTrek coming soon)
 
-Be helpful, concise, and practical. Answer in English unless the user writes in Hebrew. Focus on actionable advice for Israeli pet care providers.`;
+Be helpful, concise, and practical. Answer in English unless the user writes in Hebrew. Provide general information and insights for Israeli pet care providers — not directives. Providers are independent contractors who run their own businesses and set their own prices; never tell them what to charge, and frame pricing only as general market information and factors to consider.`;
   };
 
   const sendMessage = async (text: string) => {

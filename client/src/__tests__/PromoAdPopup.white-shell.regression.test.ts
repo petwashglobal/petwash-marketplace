@@ -70,26 +70,32 @@ describe('Issue #153 PR-WHITE-1 — pure-white popup shell', () => {
   });
 
   it('PosterTemplate image panel uses bg-white (not bg-black)', () => {
+    // The PosterTemplate image panel wraps the poster in a bg-white panel.
+    // (Later CEO-approved rewrite #816/#1385 added flex/overflow utilities
+    // to the same panel and a blurred edge-to-edge backdrop; the bg-white
+    // contract of the panel must survive.)
     expect(SRC).toMatch(
-      /<div className="absolute inset-0 bg-white">\s*\n\s*<img/,
+      /<div className="absolute inset-0 bg-white[^"]*">/,
     );
     expect(SRC).not.toMatch(
-      /<div className="absolute inset-0 bg-black">\s*\n\s*<img/,
+      /<div className="absolute inset-0 bg-black[^"]*">\s*\n\s*<img/,
     );
   });
 
   it('image uses object-contain (not object-cover) so brand artwork is never cropped', () => {
-    // The <img> tag inside PosterTemplate must be object-contain. We
-    // walk the file by anchor index because the in-tag comment block
-    // can be long (PR-WHITE-2 added documentation inside the tag).
-    const altIdx = SRC.indexOf('alt="Pet Wash™ Smart Hub"');
+    // The sharp poster <img> inside PosterTemplate must render contained,
+    // never cropped. The later rewrite (#816/#1385) expresses this via an
+    // inline `objectFit: 'contain'` style on the sharp poster img (the
+    // blurred edge-to-edge backdrop img is object-cover + aria-hidden and
+    // is intentionally NOT the artwork). Pin the sharp poster.
+    const altIdx = SRC.indexOf("alt={title || 'PetWash'}");
     expect(altIdx).toBeGreaterThan(0);
     const tagStart = SRC.lastIndexOf('<img', altIdx);
     expect(tagStart).toBeGreaterThan(0);
     const tagEnd = SRC.indexOf('/>', altIdx);
     expect(tagEnd).toBeGreaterThan(altIdx);
     const imgTag = SRC.slice(tagStart, tagEnd + 2);
-    expect(imgTag).toMatch(/object-contain/);
+    expect(imgTag).toMatch(/objectFit:\s*['"]contain['"]/);
     expect(imgTag).not.toMatch(/object-cover/);
   });
 

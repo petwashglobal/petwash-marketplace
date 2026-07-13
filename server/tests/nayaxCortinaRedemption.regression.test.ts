@@ -40,8 +40,16 @@ describe('Nayax Cortina pre-paid redemption (reserve→commit→release)', () =>
 
   it('SETTLEMENT is exactly-once: replay → Approved, else claim reserved→committed then debit', () => {
     expect(src).toMatch(/status === 'committed'[^]*replay: true/);   // replay short-circuit
-    expect(src).toMatch(/SET status='committed', idempotency_key=\$1[^]*WHERE bay_id=\$3 AND user_id=\$4 AND status='reserved'/);
-    expect(src).toMatch(/await authorizeRedemption\(\{/);            // debit only after the claim
+    // Atomic claim reserved→committed. Keyed on bay_id alone: the
+    // uq_k9res_active_bay partial-unique index (tested above) guarantees at
+    // most one 'reserved' row per bay, so bay_id identifies it. The
+    // reserving user_id is NOT a WHERE key — it is read BACK via RETURNING
+    // and used for the debit (see resv.user_id assertion below), which pins
+    // the debit to the user bound at /authorize, never a settlement-token
+    // user. That is the money-safety invariant.
+    expect(src).toMatch(/SET status='committed', idempotency_key=\$1[^]*WHERE bay_id=\$3 AND status='reserved'/);
+    expect(src).toMatch(/RETURNING[^]*user_id/);                     // reserving user read back from the row
+    expect(src).toMatch(/await authorizeRedemption\(\{[^]*userId: resv\.user_id/); // debit pinned to the reserved user
     expect(src).toMatch(/SET status='cancelled'/);                   // roll back if debit fails
   });
 
@@ -69,7 +77,7 @@ describe('Nayax Cortina pre-paid redemption (reserve→commit→release)', () =>
   });
 
   it('VOID/CANCEL callbacks share money-safe logic (release reserve; flag — never auto-refund — a committed debit)', () => {
-    expect(src).toMatch(/router\.post\(\['\/void', '\/cancel'\]/);              // both share one handler
+    expect(src).toMatch(/router\.post\(\['\/void', '\/cancel'[^\]]*\]/);        // both share one handler (extra casing/path aliases allowed)
     expect(src).toMatch(/if \(!cortinaEnabled\(\)\) return res\.status\(503\)/); // dark-gated like the others
     expect(src).toMatch(/r\.status === 'reserved'[^]*status='cancelled'/);
     expect(src).toMatch(/r\.status === 'committed'[^]*k9000_reconciliation_breaks/);
@@ -78,7 +86,7 @@ describe('Nayax Cortina pre-paid redemption (reserve→commit→release)', () =>
   });
 
   it('REFUND callback flags a recon break — never blind refund math (refund rail is a known gap)', () => {
-    expect(src).toMatch(/router\.post\('\/refund'/);
+    expect(src).toMatch(/router\.post\(\['\/refund'/);              // array of path aliases; /refund is first
     expect(src).toMatch(/'refund_requested'/);
     expect(src).not.toMatch(/refund[^]*refundToWallet|refund[^]*reverseEntry/);
   });

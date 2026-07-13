@@ -9,8 +9,11 @@
  * ║    PATCH     /api/provider-dashboard/v2/bookings/:id/:action    ║
  * ║                                                                  ║
  * ║  No frontend surface calls these routes as of 2026-03.          ║
- * ║  Wallet (/v1/wallet*), ledger (/v1/ledger*) and egift routes    ║
- * ║  remain active and are NOT deprecated.                          ║
+ * ║                                                                  ║
+ * ║  SECURITY (see the 410 block below): the money-mutating V1       ║
+ * ║  routes — wallet (/v1/wallet*), ledger (/v1/ledger*) and the     ║
+ * ║  /v1/egift/purchase mint — are DISABLED with HTTP 410 Gone.      ║
+ * ║  Only the read-only GET /v1/egift/:id/events routes remain.     ║
  * ╚══════════════════════════════════════════════════════════════════╝
  */
 import { Router, Request, Response } from "express";

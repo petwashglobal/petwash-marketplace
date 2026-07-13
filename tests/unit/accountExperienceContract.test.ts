@@ -8,7 +8,10 @@ const read = (file: string) => fs.readFileSync(path.join(root, file), 'utf8');
 describe('PetWash member and provider experience contract', () => {
   const account = read('client/src/pages/MyAccount.tsx');
   const accountCss = read('client/src/styles/my-account-luxury.css');
-  const providerDashboard = read('client/src/pages/ProviderDashboard.tsx');
+  // ProviderDashboard.tsx was a dead Replit-era duplicate deleted in #691; the
+  // canonical provider surface is now ProviderHome.tsx (+ ProviderOS). The
+  // "readiness before work is payable" contract moved there.
+  const providerHome = read('client/src/pages/ProviderHome.tsx');
   const loyaltyDashboard = read('client/src/pages/LoyaltyDashboard.tsx');
   const egift = read('client/src/pages/EGift.tsx');
   const settings = read('client/src/pages/Settings.tsx');
@@ -24,19 +27,27 @@ describe('PetWash member and provider experience contract', () => {
     expect(account).toContain('/buy-gift-card');
   });
 
-  it('uses Nir-approved champagne gold instead of old yellow/orange account tokens', () => {
-    expect(accountCss).toContain('--gold-400: #b0841c');
+  it('uses the canonical brand gold instead of old yellow/orange account tokens', () => {
+    // Brand rebrand 2026-06-18: the account surface moved to the canonical
+    // bright METALLIC gold #D4AF37 (brand palette). The earlier champagne
+    // #b0841c was superseded — do not "restore" it. The command-center
+    // structure and the ban on old yellow/orange tokens stay.
     expect(accountCss).toContain('.pw-command-center');
-    expect(accountCss).not.toContain('--gold-400: #d4af37');
+    expect(accountCss).toMatch(/#D4AF37/i);
+    expect(accountCss).not.toContain('--gold-400: #b0841c');
     expect(accountCss).not.toContain('#f5d76e 0%, #d4af37');
   });
 
   it('shows provider readiness before work can feel active or payable', () => {
-    expect(providerDashboard).toContain('ProviderReadinessCommandPanel');
-    expect(providerDashboard).toContain('Provider Readiness Command Center');
-    expect(providerDashboard).toContain('מס, חוזה, ביטוח ובנק');
-    expect(providerDashboard).toContain('MISSING');
-    expect(providerDashboard).toContain('READY');
+    // Re-pointed to the canonical ProviderHome. The readiness contract is the
+    // same: an application-status card shows until approved, and a
+    // documents/compliance panel makes clear those items are REQUIRED TO
+    // RECEIVE PAYOUTS — work never feels payable before readiness is met.
+    expect(providerHome).toContain('Documents & Compliance');
+    expect(providerHome).toMatch(/required to receive payouts/i);
+    // Approval gate: the application-status card is shown until approved.
+    expect(providerHome).toMatch(/!\['approved', 'approved_as_provider'\]\.includes\(appStatus\)/);
+    expect(providerHome).toMatch(/complete any missing documents to speed up approval/i);
   });
 
   it('makes loyalty a wallet and credit operating product, not only points', () => {

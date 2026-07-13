@@ -49,7 +49,12 @@ describe('AuthService', () => {
     });
   });
 
-  describe('User Deletion', () => {
+  // These exercise the real DB (createUser/deleteUser/getUserById). They need a
+  // live DATABASE_URL; in a pure unit run there's no DB, so they ECONNREFUSE.
+  // Skip cleanly when unconfigured (they still run wherever DATABASE_URL is set)
+  // rather than fail-red and hide genuine regressions elsewhere. The Token Hashing
+  // and Cache Key Security blocks above are pure and always run.
+  describe.skipIf(!process.env.DATABASE_URL)('User Deletion', () => {
     it('should throw error when deleting non-existent user', async () => {
       const nonExistentUserId = 'non-existent-user-id';
 
