@@ -1106,11 +1106,30 @@ router.post('/payout-request', async (req: Request, res: Response) => {
     if (isNaN(amount) || amount <= 0) {
       return res.status(400).json({ error: 'Invalid payout amount' });
     }
+    // SECURITY (sweep 2026-07-13): the client `amountIls` is only a REQUESTED cap — it
+    // must never become the amount of record unchecked. Clamp against the provider's
+    // real available balance (completed/reviewed bookings not yet paid out) and reject
+    // an over-request, so a future processor/admin can trust this record.
+    const balRes = await pool.query(
+      `SELECT COALESCE(SUM(CASE WHEN status IN ('completed','reviewed') AND payout_status != 'paid_out'
+                THEN provider_payout_cents ELSE 0 END), 0)::bigint AS available_cents
+         FROM booking_requests WHERE provider_id = $1`,
+      [user.uid],
+    );
+    const availableCents = Number(balRes.rows[0]?.available_cents ?? 0);
+    const requestedCents = Math.round(amount * 100);
+    if (requestedCents > availableCents) {
+      return res.status(400).json({
+        error: 'Requested amount exceeds your available payout balance.',
+        availableIls: Number((availableCents / 100).toFixed(2)),
+      });
+    }
     const { getFirestore } = await import('firebase-admin/firestore');
     const firestore = getFirestore();
     const docRef = await firestore.collection('payout_requests').add({
       providerId: user.uid,
       amountIls: amount,
+      availableAtRequestIls: Number((availableCents / 100).toFixed(2)),
       iban: iban.trim(),
       bankName: bankName?.trim() || null,
       status: 'pending',

@@ -4237,19 +4237,36 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Request too old' });
       }
       
-      // Verify HMAC signature
+      // Verify signature. SendGrid Event Webhooks are signed with ECDSA (P-256),
+      // NOT HMAC — the verification key is a base64 DER (SPKI) PUBLIC key and the
+      // signature is base64 ECDSA over `timestamp + rawBody` (sweep 2026-07-13 fix:
+      // the previous HMAC-SHA256 check could never match a real SendGrid signature).
       const webhookKey = process.env.SENDGRID_WEBHOOK_VERIFICATION_KEY;
       if (webhookKey) {
-        const payload = timestamp + req.body.toString();
-        const expectedSignature = crypto
-          .createHmac('sha256', webhookKey)
-          .update(payload, 'utf8')
-          .digest('base64');
-        
-        if (signature !== expectedSignature) {
-          logger.error('SendGrid webhook: Invalid signature');
+        let sigOk = false;
+        try {
+          const publicKey = crypto.createPublicKey({
+            key: Buffer.from(webhookKey, 'base64'),
+            format: 'der',
+            type: 'spki',
+          });
+          sigOk = crypto
+            .createVerify('sha256')
+            .update(timestamp + req.body.toString())
+            .verify(publicKey, Buffer.from(signature, 'base64'));
+        } catch (e: any) {
+          logger.error('SendGrid webhook: signature verification error', { error: e?.message });
+          sigOk = false;
+        }
+        if (!sigOk) {
+          logger.error('SendGrid webhook: Invalid ECDSA signature — rejected');
           return res.status(401).json({ error: 'Invalid signature' });
         }
+      } else {
+        // No verification key configured → cannot cryptographically verify. This
+        // endpoint only writes comms-log delivery/open status (no money/auth), so we
+        // process but log loudly. Set SENDGRID_WEBHOOK_VERIFICATION_KEY to fail-closed.
+        logger.warn('SendGrid webhook: SENDGRID_WEBHOOK_VERIFICATION_KEY not set — processing UNVERIFIED (comms-log only)');
       }
       
       // Parse webhook events
