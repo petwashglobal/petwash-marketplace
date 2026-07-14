@@ -4,10 +4,10 @@ import os from 'os';
 
 // Upload files live under the app's uploads dir or the OS temp dir (multer's
 // diskStorage default). Confine every FS access to those roots so a traversed
-// path can never reach an arbitrary file. Boolean guard — the static analyser
-// sees the taint cleared before each sink.
-// Direct startsWith barriers (no array callback) so the static analyser recognises
-// the sanitiser, mirroring isSafeUploadPath in paw-finder.ts.
+// path can never reach an arbitrary file. NOTE: CodeQL does NOT credit this
+// boolean helper across the call boundary — any function that passes a
+// user-influenced path to an fs sink must ALSO inline the resolve+startsWith
+// barrier at the sink and use the resolved value (see readFileHead).
 const APP_UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads') + path.sep;
 const TMP_ROOT = path.resolve(os.tmpdir()) + path.sep;
 function isConfinedUploadPath(p: unknown): p is string {
@@ -186,11 +186,20 @@ export function requireValidFileContent(allowedMimes: string[]) {
 
 /** Read the first `n` bytes of a file synchronously (for diskStorage validation). */
 function readFileHead(filePath: string, n = 32): Buffer {
-  // Guard the local, then open the SAME local (multer paths are absolute).
-  if (!isConfinedUploadPath(filePath)) {
-    throw new Error('Upload path outside allowed directory');
-  }
-  const fd = fs.openSync(filePath, 'r');
+  // CodeQL js/path-injection (#229): the analyser's StartsWithDirSanitizer
+  // only credits a POSITIVE `startsWith` guard on a path.resolve()d value,
+  // taken in its own true-branch — it cannot split a negated conjunction
+  // (`!a && !b`) and it never credits a boolean helper across a call
+  // boundary. Keep this exact shape; roots carry a trailing path.sep.
+  const resolved = path.resolve(filePath);
+  if (resolved.startsWith(APP_UPLOADS_ROOT)) return readHeadBytes(resolved, n);
+  if (resolved.startsWith(TMP_ROOT)) return readHeadBytes(resolved, n);
+  throw new Error('Upload path outside allowed directory');
+}
+
+/** Open + read the head of an already-confined path (callers guard first). */
+function readHeadBytes(confinedPath: string, n: number): Buffer {
+  const fd = fs.openSync(confinedPath, 'r');
   try {
     const buf = Buffer.alloc(n);
     const read = fs.readSync(fd, buf, 0, n, 0);
