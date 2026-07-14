@@ -186,15 +186,20 @@ export function requireValidFileContent(allowedMimes: string[]) {
 
 /** Read the first `n` bytes of a file synchronously (for diskStorage validation). */
 function readFileHead(filePath: string, n = 32): Buffer {
-  // CodeQL js/path-injection (#229): the barrier must sit at the sink — the
-  // analyser does not credit the boolean helper across the call boundary.
-  // Resolve, prefix-check the resolved value (roots carry a trailing sep),
-  // and open the RESOLVED path, never the raw input.
+  // CodeQL js/path-injection (#229): the analyser's StartsWithDirSanitizer
+  // only credits a POSITIVE `startsWith` guard on a path.resolve()d value,
+  // taken in its own true-branch — it cannot split a negated conjunction
+  // (`!a && !b`) and it never credits a boolean helper across a call
+  // boundary. Keep this exact shape; roots carry a trailing path.sep.
   const resolved = path.resolve(filePath);
-  if (!resolved.startsWith(APP_UPLOADS_ROOT) && !resolved.startsWith(TMP_ROOT)) {
-    throw new Error('Upload path outside allowed directory');
-  }
-  const fd = fs.openSync(resolved, 'r');
+  if (resolved.startsWith(APP_UPLOADS_ROOT)) return readHeadBytes(resolved, n);
+  if (resolved.startsWith(TMP_ROOT)) return readHeadBytes(resolved, n);
+  throw new Error('Upload path outside allowed directory');
+}
+
+/** Open + read the head of an already-confined path (callers guard first). */
+function readHeadBytes(confinedPath: string, n: number): Buffer {
+  const fd = fs.openSync(confinedPath, 'r');
   try {
     const buf = Buffer.alloc(n);
     const read = fs.readSync(fd, buf, 0, n, 0);
