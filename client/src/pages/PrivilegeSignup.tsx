@@ -26,6 +26,7 @@ import {
   Award, Diamond, Globe, Clock, MapPin, Briefcase, ChevronDown, Activity,
   Dog, Cat, Gem, Trophy, Wallet, CreditCard, QrCode, Loader2
 } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface PrivilegeSignupProps {
   language: Language;
@@ -81,6 +82,7 @@ const gold = '#D9B84C'; // brand gold (was teal #85C4CE — a var literally name
 const MONTHS_HE_FULL = ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'];
 
 export default function PrivilegeSignup({ language, onLanguageChange }: PrivilegeSignupProps) {
+  useSEO(pageSEO.privilege);
   const { toast } = useToast();
   const isRTL = language === 'he' || language === 'ar';
   const fileInputRef = useRef<HTMLInputElement>(null);

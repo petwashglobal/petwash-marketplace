@@ -78,6 +78,7 @@ import { seedSignupIntentCookie } from '@/lib/seedIntent';
 import { applyIntentFromUrl } from '@/lib/intentParam';
 import { setProviderSignupIntent } from '@/lib/becomeProvider';
 import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
+import { useSEO, pageSEO } from '@/lib/seo';
 import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
 import {
   isPlatformAuthenticatorAvailable,
@@ -144,6 +145,9 @@ function clearSignupRedirectMarker(): void {
 }
 
 export default function SignUpLuxury({ language = 'en', onLanguageChange }: Props) {
+  // One component serves /signup AND the /signin|/login aliases — pick the
+  // matching SEO entry (login is noindex; signup is the indexable door).
+  useSEO(/\/(signin|sign-in|login)/.test(window.location.pathname) ? pageSEO.login : pageSEO.signup);
   const [, navigate] = useLocation();
   const { toast } = useToast();
   const he = language === 'he';

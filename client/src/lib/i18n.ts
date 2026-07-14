@@ -232,6 +232,7 @@ export const translations: TranslationStrings = {
   'loyalty.currentTier': { en: 'Current Status', he: 'דרגה נוכחית', ar: 'الحالة الحالية', ru: 'Текущий статус', fr: 'Statut actuel', es: 'Estado actual' },
   'loyalty.progress': { en: 'Progress', he: 'התקדמות', ar: 'التقدم', ru: 'Прогресс', fr: 'Progrès', es: 'Progreso' },
   'loyalty.washesUntil': { en: 'washes until', he: 'רחיצות עד', ar: 'غسلات حتى', ru: 'моек до', fr: 'lavages jusqu\'à', es: 'lavados hasta' },
+  'loyalty.pointsToNextTier': { en: 'You\'re {points} points from {tier}', he: 'עוד {points} נקודות ל־{tier}', ar: 'تفصلك {points} نقطة عن {tier}', ru: 'До {tier} осталось {points} баллов', fr: 'Plus que {points} points avant {tier}', es: 'Te faltan {points} puntos para {tier}' },
   'loyalty.washes': { en: 'washes', he: 'רחיצות', ar: 'غسلات', ru: 'моек', fr: 'lavages', es: 'lavados' },
   'loyalty.yourPerks': { en: 'Exclusive Benefits', he: 'הטבות בלעדיות', ar: 'الفوائد الحصرية', ru: 'Эксклюзивные преимущества', fr: 'Avantages exclusifs', es: 'Beneficios exclusivos' },
   'loyalty.totalSaved': { en: 'Total Savings', he: 'סה"כ חסכת', ar: 'إجمالي التوفير', ru: 'Общая экономия', fr: 'Économies totales', es: 'Ahorro total' },

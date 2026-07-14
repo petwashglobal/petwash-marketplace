@@ -15,6 +15,7 @@ import { Link } from 'wouter';
 import { Heart } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
 import { PetWashIcon } from '@/components/PetWashIcon';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const GOLD = '#D4AF37';
 
@@ -29,6 +30,7 @@ interface AdoptionPost {
 }
 
 export default function AdoptionMaison() {
+  useSEO(pageSEO.adoption);
   const { language } = useLanguage();
   const isHe = language === 'he';
 

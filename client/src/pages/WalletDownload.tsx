@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { SiAndroid } from "react-icons/si";
 import { useLocation } from "wouter";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 type WalletStep = {
   title: string;
@@ -22,6 +23,7 @@ type WalletStep = {
 };
 
 export default function WalletDownload() {
+  useSEO(pageSEO.wallet);
   const { language } = useLanguage();
   const { user, loading } = useFirebaseAuth();
   const [, setLocation] = useLocation();

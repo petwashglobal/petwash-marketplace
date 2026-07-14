@@ -4,6 +4,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { useSEO } from "@/lib/seo";
+import { SUPPORT_WHATSAPP_URL } from "@/lib/support-contact";
 
 export default function Support() {
   const [, setLocation] = useLocation();
@@ -66,7 +67,7 @@ export default function Support() {
             <p className="luxury-text-small mb-4">
               {t('supportPage.liveChatDesc')}
             </p>
-            <Button className="luxury-btn-secondary w-full" data-testid="button-live-chat">
+            <Button className="luxury-btn-secondary w-full" data-testid="button-live-chat" onClick={(e) => { e.stopPropagation(); setLocation("/live-chat"); }}>
               {t('supportPage.startChat')}
             </Button>
           </div>
@@ -79,7 +80,7 @@ export default function Support() {
             <p className="luxury-text-small mb-4">
               {t('supportPage.whatsappDesc')}
             </p>
-            <Button className="luxury-btn-secondary w-full" data-testid="button-whatsapp">
+            <Button className="luxury-btn-secondary w-full" data-testid="button-whatsapp" onClick={() => window.open(SUPPORT_WHATSAPP_URL, "_blank", "noopener,noreferrer")}>
               {t('supportPage.openWhatsapp')}
             </Button>
           </div>

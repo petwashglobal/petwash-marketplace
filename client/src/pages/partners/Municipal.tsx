@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { Building2, Users, TreePine, Shield } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function MunicipalPartners() {
+  useSEO(pageSEO.partnersMunicipal);
   const { language } = useLanguage();
   const isHe = language === 'he';
 

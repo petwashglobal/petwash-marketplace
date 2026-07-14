@@ -1,8 +1,10 @@
 import { useLocation } from "wouter";
 import { Camera, Video, FileText, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function Media() {
+  useSEO(pageSEO.media);
   const [, setLocation] = useLocation();
   return (
     <div className="min-h-screen luxury-bg-mesh">

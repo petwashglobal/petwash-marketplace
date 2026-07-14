@@ -1,6 +1,8 @@
 import { Heart, Lightbulb, Globe, Users } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function Story() {
+  useSEO(pageSEO.story);
   return (
     <div className="min-h-screen luxury-bg-mesh">
       <div className="container max-w-4xl mx-auto px-4 py-16">

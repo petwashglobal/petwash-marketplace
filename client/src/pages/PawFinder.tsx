@@ -24,6 +24,7 @@ import { apiRequest, getFirebaseBearerToken } from '@/lib/queryClient';
 import { sanitizeUrl } from '@/lib/utils';
 import { PetWashIcon } from '@/components/PetWashIcon';
 import { SocialShare } from '@/components/SocialShare';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 /* -------------------------------------------------------------------------
    TYPES
@@ -1188,6 +1189,7 @@ function ContactsTab({ user }: { user: any }) {
 }
 
 export default function PawFinder({ language }: PawFinderProps) {
+  useSEO(pageSEO.pawFinder);
   const isHe = language === 'he';
   const { user } = useFirebaseAuth();
   const { toast } = useToast();

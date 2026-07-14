@@ -1,7 +1,9 @@
 import { Layout } from '@/components/Layout';
 import { Eye, Shield, Users, Monitor, MapPin, TrendingUp, Mail, Phone, FileText, CheckCircle2, Accessibility as AccessibilityIcon } from 'lucide-react';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function Accessibility() {
+  useSEO(pageSEO.accessibility);
   return (
     <Layout>
       <div className="min-h-screen luxury-bg-mesh py-16">

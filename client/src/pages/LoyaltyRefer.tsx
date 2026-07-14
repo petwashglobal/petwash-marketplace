@@ -4,12 +4,14 @@ import { Share2, Users, Gift, Copy, Mail, MessageCircle, TrendingUp, Award, Arro
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 interface SummaryData {
   referralCode: string | null;
 }
 
 export default function LoyaltyRefer() {
+  useSEO(pageSEO.loyaltyRefer);
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
   const isHebrew = language === 'he';
   const { toast } = useToast();

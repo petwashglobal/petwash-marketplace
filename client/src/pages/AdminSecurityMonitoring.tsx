@@ -47,18 +47,20 @@ interface BiometricActivity {
 }
 
 interface LoyaltyActivityStats {
-  totalTierChanges: number;
-  productivityScore: number;
+  totalPerformers: number;
+  averageProductivityScore: number;
   tierDistribution: { tier: string; count: number }[];
-  recentChanges: LoyaltyChange[];
+  topPerformers: LoyaltyTopPerformer[];
 }
 
-interface LoyaltyChange {
-  id: number;
+interface LoyaltyTopPerformer {
   userId: string;
-  oldTier: string;
-  newTier: string;
-  timestamp: string;
+  email: string;
+  currentTier: string;
+  totalPoints: number;
+  productivityScore: number;
+  engagementScore: number;
+  lastPurchaseDate: string | null;
 }
 
 interface OAuthCertStats {
@@ -82,16 +84,10 @@ interface NotificationConsentStats {
   emailConsent: number;
   smsConsent: number;
   pushConsent: number;
+  marketingEmailConsent: number;
+  marketingSmsConsent: number;
+  marketingPushConsent: number;
   consentRate: number;
-  recentChanges: ConsentChange[];
-}
-
-interface ConsentChange {
-  id: number;
-  userId: string;
-  provider: string;
-  action: string;
-  timestamp: string;
 }
 
 const COLORS = ['#3b82f6', '#10b981', '#f59e0b', '#ef4444', '#333333'];
@@ -461,7 +457,7 @@ export default function AdminSecurityMonitoring() {
               </div>
 
               <div className="luxury-glass-card luxury-shadow-xl p-6" data-testid="card-loyalty-changes">
-                <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Recent Tier Changes</h3>
+                <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Top Performers</h3>
                 {loyaltyLoading ? (
                   <div className="space-y-3">
                     <div className="luxury-skeleton h-16"></div>
@@ -470,27 +466,29 @@ export default function AdminSecurityMonitoring() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {loyalty?.data?.recentChanges?.slice(0, 5).map((change, index) => (
-                      <div
-                        key={change.id}
-                        className="luxury-glass-minimal luxury-hover-lift p-4 luxury-animate-fade-in"
-                        style={{ animationDelay: `${index * 0.1}s` }}
-                        data-testid={`change-loyalty-${change.id}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="luxury-badge">{change.oldTier}</span>
-                            <TrendingUp className="h-4 w-4 text-green-600" />
-                            <span className="luxury-badge-success">
-                              {change.newTier}
-                            </span>
+                    {loyalty?.data?.topPerformers?.length ? (
+                      loyalty.data.topPerformers.slice(0, 5).map((performer, index) => (
+                        <div
+                          key={performer.userId}
+                          className="luxury-glass-minimal luxury-hover-lift p-4 luxury-animate-fade-in"
+                          style={{ animationDelay: `${index * 0.1}s` }}
+                          data-testid={`performer-loyalty-${performer.userId}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <span className="luxury-text-body font-semibold">{performer.email}</span>
+                              <span className="luxury-badge">{performer.currentTier}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <TrendingUp className="h-4 w-4 text-green-600" />
+                              <span className="luxury-text-small">{performer.totalPoints.toLocaleString()} pts</span>
+                            </div>
                           </div>
-                          <span className="luxury-text-small">
-                            {new Date(change.timestamp).toLocaleString()}
-                          </span>
                         </div>
-                      </div>
-                    )) || <p className="luxury-text-body text-center py-8">No recent changes</p>}
+                      ))
+                    ) : (
+                      <p className="luxury-text-body text-center py-8">No performer data yet</p>
+                    )}
                   </div>
                 )}
               </div>
@@ -590,7 +588,7 @@ export default function AdminSecurityMonitoring() {
               </div>
 
               <div className="luxury-glass-card luxury-shadow-xl p-6" data-testid="card-consent-recent">
-                <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Recent Changes</h3>
+                <h3 className="luxury-heading-sm luxury-text-gradient mb-6">Marketing Consent</h3>
                 {consentLoading ? (
                   <div className="space-y-3">
                     <div className="luxury-skeleton h-16"></div>
@@ -598,27 +596,40 @@ export default function AdminSecurityMonitoring() {
                     <div className="luxury-skeleton h-16"></div>
                   </div>
                 ) : (
-                  <div className="space-y-3">
-                    {consent?.data?.recentChanges?.slice(0, 5).map((change, index) => (
-                      <div
-                        key={change.id}
-                        className="luxury-glass-minimal luxury-hover-lift p-4 luxury-animate-fade-in"
-                        style={{ animationDelay: `${index * 0.1}s` }}
-                        data-testid={`change-consent-${change.id}`}
-                      >
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
-                            <span className="luxury-text-body font-semibold">
-                              {change.provider}
-                            </span>
-                            <span className="luxury-badge">{change.action}</span>
-                          </div>
-                          <span className="luxury-text-small">
-                            {new Date(change.timestamp).toLocaleString()}
-                          </span>
+                  <div className="space-y-4">
+                    <div className="luxury-glass-minimal p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-gradient-to-br from-blue-500/20 to-blue-600/20">
+                          <Mail className="h-5 w-5 text-blue-600" />
                         </div>
+                        <span className="luxury-text-body">Marketing Email</span>
                       </div>
-                    )) || <p className="luxury-text-body text-center py-8">No recent changes</p>}
+                      <span className="luxury-heading-sm luxury-text-gradient" data-testid="text-consent-marketing-email">
+                        {consent?.data?.marketingEmailConsent || 0}
+                      </span>
+                    </div>
+                    <div className="luxury-glass-minimal p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-gradient-to-br from-green-500/20 to-green-600/20">
+                          <Smartphone className="h-5 w-5 text-green-600" />
+                        </div>
+                        <span className="luxury-text-body">Marketing SMS</span>
+                      </div>
+                      <span className="luxury-heading-sm luxury-text-gradient" data-testid="text-consent-marketing-sms">
+                        {consent?.data?.marketingSmsConsent || 0}
+                      </span>
+                    </div>
+                    <div className="luxury-glass-minimal p-4 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-full bg-gradient-to-br from-purple-500/20 to-purple-600/20">
+                          <Bell className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <span className="luxury-text-body">Marketing Push</span>
+                      </div>
+                      <span className="luxury-heading-sm luxury-text-gradient" data-testid="text-consent-marketing-push">
+                        {consent?.data?.marketingPushConsent || 0}
+                      </span>
+                    </div>
                   </div>
                 )}
               </div>

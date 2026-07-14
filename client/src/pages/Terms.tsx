@@ -22,8 +22,10 @@ import {
   Mail
 } from 'lucide-react';
 import { Link } from 'wouter';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function Terms() {
+  useSEO(pageSEO.terms);
   const [language, setLanguage] = useState<Language>('en');
 
   // Initialize language from geolocation

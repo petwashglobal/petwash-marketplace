@@ -11,8 +11,10 @@ import {
   Package, Leaf, Truck, Award,
   Send, CheckCircle2, Loader2, Mail, Phone, User, MapPin, Globe, X,
 } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function SuppliersPartners() {
+  useSEO(pageSEO.partnersSuppliers);
   const { language } = useLanguage();
   const isHe = language === 'he';
   const { toast } = useToast();

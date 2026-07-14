@@ -20,6 +20,7 @@ import {
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { LuxuryHeroSearch } from '@/components/marketplace/LuxuryHeroSearch';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 type PetType = 'puppy' | 'dog' | 'cat' | 'other' | null;
 type ServiceType = 'boarding' | 'sitting' | 'daycare' | 'walking' | 'transport' | 'training' | 'wash' | null;
@@ -240,6 +241,7 @@ const serif = "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif";
 const sans  = "'Helvetica Neue', Helvetica, Arial, sans-serif";
 
 export default function PlatformHub() {
+  useSEO(pageSEO.platformHub);
   const [selectedPet, setSelectedPet] = useState<PetType>(null);
   const [selectedService, setSelectedService] = useState<ServiceType>(null);
   const [location, setLocation] = useState('');

@@ -3,10 +3,12 @@ import { Mail, ShieldCheck, Smartphone, UserRound, Clock3, Database } from 'luci
 import { Button } from '@/components/ui/button';
 import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const SUPPORT_EMAIL = 'Support@PetWash.co.il';
 
 export default function AccountDeletionResource() {
+  useSEO(pageSEO.accountDeletion);
   const { language, setLanguage } = useLanguage();
   const isHebrew = language === 'he';
   const dir = isHebrew ? 'rtl' : 'ltr';

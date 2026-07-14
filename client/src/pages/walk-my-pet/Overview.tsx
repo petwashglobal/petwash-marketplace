@@ -18,8 +18,10 @@ import {
   CheckCircle
 } from "lucide-react";
 import { useLanguage } from "@/lib/languageStore";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function WalkMyPetOverview() {
+  useSEO(pageSEO.walkMyPet);
   const { t, language } = useLanguage();
   const isRtl = language === 'he' || language === 'ar';
   const BackArrow = isRtl ? ArrowRight : ArrowLeft;

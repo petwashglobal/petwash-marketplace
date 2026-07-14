@@ -7,8 +7,10 @@ import { useLanguage } from "@/lib/languageStore";
 import { Layout } from "@/components/Layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { motion } from "framer-motion";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function PrivacyPolicy() {
+  useSEO(pageSEO.privacyPolicy);
   const { language, setLanguage } = useLanguage();
   
   if (language === 'he') {

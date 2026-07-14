@@ -1,8 +1,10 @@
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertCircle, Clock } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function SystemStatus() {
+  useSEO(pageSEO.status);
   const systems = [
     { name: "Pet Wash Stations (K9000)", status: "operational" },
     { name: "Pet Sitter Suite", status: "operational" },

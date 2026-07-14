@@ -14,6 +14,7 @@ import { apiRequest } from '@/lib/queryClient';
 import { PetWashIcon } from '@/components/PetWashIcon';
 import { useToast } from '@/hooks/use-toast';
 import { COMPANY_TAX_ID } from '@shared/finance-identity';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 type PetType = 'dog' | 'cat';
 type PetSize = 'small' | 'medium' | 'large' | 'giant';
@@ -61,6 +62,7 @@ const GOLD = '#D9B84C';
 function uid() { return Math.random().toString(36).slice(2, 8); }
 
 export default function DaycareCalculator() {
+  useSEO(pageSEO.daycareCalculator);
   const [pets, setPets] = useState<Pet[]>([
     { id: uid(), type: 'dog', size: 'medium', name: 'Dog 1' },
     { id: uid(), type: 'dog', size: 'medium', name: 'Dog 2' },
