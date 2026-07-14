@@ -4,10 +4,10 @@ import os from 'os';
 
 // Upload files live under the app's uploads dir or the OS temp dir (multer's
 // diskStorage default). Confine every FS access to those roots so a traversed
-// path can never reach an arbitrary file. Boolean guard — the static analyser
-// sees the taint cleared before each sink.
-// Direct startsWith barriers (no array callback) so the static analyser recognises
-// the sanitiser, mirroring isSafeUploadPath in paw-finder.ts.
+// path can never reach an arbitrary file. NOTE: CodeQL does NOT credit this
+// boolean helper across the call boundary — any function that passes a
+// user-influenced path to an fs sink must ALSO inline the resolve+startsWith
+// barrier at the sink and use the resolved value (see readFileHead).
 const APP_UPLOADS_ROOT = path.resolve(process.cwd(), 'uploads') + path.sep;
 const TMP_ROOT = path.resolve(os.tmpdir()) + path.sep;
 function isConfinedUploadPath(p: unknown): p is string {
@@ -186,11 +186,15 @@ export function requireValidFileContent(allowedMimes: string[]) {
 
 /** Read the first `n` bytes of a file synchronously (for diskStorage validation). */
 function readFileHead(filePath: string, n = 32): Buffer {
-  // Guard the local, then open the SAME local (multer paths are absolute).
-  if (!isConfinedUploadPath(filePath)) {
+  // CodeQL js/path-injection (#229): the barrier must sit at the sink — the
+  // analyser does not credit the boolean helper across the call boundary.
+  // Resolve, prefix-check the resolved value (roots carry a trailing sep),
+  // and open the RESOLVED path, never the raw input.
+  const resolved = path.resolve(filePath);
+  if (!resolved.startsWith(APP_UPLOADS_ROOT) && !resolved.startsWith(TMP_ROOT)) {
     throw new Error('Upload path outside allowed directory');
   }
-  const fd = fs.openSync(filePath, 'r');
+  const fd = fs.openSync(resolved, 'r');
   try {
     const buf = Buffer.alloc(n);
     const read = fs.readSync(fd, buf, 0, n, 0);
