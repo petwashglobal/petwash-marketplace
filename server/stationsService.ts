@@ -1017,7 +1017,7 @@ export async function calculateStationUptime(stationId: string, period: 'daily' 
       let totalOfflineMinutes = 0;
       snapshot.docs.forEach(doc => {
         const alert = doc.data();
-        const offlineStart = alert.createdAt.toDate();
+        const offlineStart = alert.createdAt?.toDate() || new Date();
         const offlineEnd = alert.resolvedAt?.toDate() || new Date();
         const offlineMinutes = (offlineEnd.getTime() - offlineStart.getTime()) / 1000 / 60;
         totalOfflineMinutes += offlineMinutes;

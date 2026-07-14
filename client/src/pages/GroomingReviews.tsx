@@ -10,6 +10,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { useLanguage } from "@/lib/languageStore";
 import { PetWashIcon } from "@/components/PetWashIcon";
 import { getApiUrl } from "@/lib/apiConfig";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 function StarDisplay({ rating, size = 16 }: { rating: number; size?: number }) {
   return (
@@ -136,6 +137,7 @@ function ReviewCard({ review, t, language }: { review: any; t: (key: string) => 
 }
 
 export default function GroomingReviews() {
+  useSEO(pageSEO.groomingReviews);
   const { t, dir, language } = useLanguage();
   const isRtl = dir === "rtl";
   const [selectedStation, setSelectedStation] = useState<string>("");

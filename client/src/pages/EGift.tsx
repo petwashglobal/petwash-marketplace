@@ -18,6 +18,7 @@ import pinkCard from '@assets/IMG_3094_1770832584882.png';
 import greenCard from '@assets/IMG_3091_1770832584882.png';
 import blackCard from '@assets/IMG_3090_1770824592770.png';
 import goldCard from '@assets/IMG_3089_1770824592770.png';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const cardImages: Record<string, string> = {
   CLASSIC: pinkCard,
@@ -743,6 +744,7 @@ function EgiftJourneyPanel({ lang }: { lang: string }) {
 }
 
 export default function EGift() {
+  useSEO(pageSEO.egift);
   const { toast } = useToast();
   const { language, dir } = useLanguage();
   const lang = language;

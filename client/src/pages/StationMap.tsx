@@ -2,8 +2,10 @@ import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { useLocation } from "wouter";
 import { MapPin } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function StationMap() {
+  useSEO(pageSEO.map);
   const { language } = useLanguage();
   const isHe = language === 'he';
   const [, setLocation] = useLocation();

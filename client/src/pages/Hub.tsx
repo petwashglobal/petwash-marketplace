@@ -19,6 +19,7 @@ import {
   Sparkles,
   Heart,
 } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const hubText: Record<string, Record<string, string>> = {
   title: {
@@ -380,6 +381,7 @@ function tx(key: string, lang: string): string {
 }
 
 export default function Hub() {
+  useSEO(pageSEO.platformsHub);
   const [, setLocation] = useLocation();
   const { user } = useAuth();
   const { language } = useLanguage();

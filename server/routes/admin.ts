@@ -1070,7 +1070,7 @@ router.post('/ceo/issue-free-voucher', validateFirebaseToken, requireCEO, async 
     }
 
     // Check if expired (5 minutes)
-    if (new Date() > request.expiresAt.toDate()) {
+    if (!request.expiresAt || new Date() > request.expiresAt.toDate()) {
       return res.status(403).json({ error: 'Verification code expired. Please request a new one.' });
     }
 

@@ -13,6 +13,7 @@ import {
   type LoyaltyTier 
 } from '@/lib/loyalty';
 import { formatILS } from '@/lib/currency';
+import { TIER_CONFIGS } from '@shared/schema-loyalty';
 import { Crown, Gift, Star, Sparkles, TrendingUp, Zap, Award, Heart, Diamond, Shield, ArrowRight, Users, Calendar, MapPin, Clock, Check, ChevronRight } from 'lucide-react';
 import { motion } from 'framer-motion';
 import type { Language } from '@/lib/i18n';
@@ -22,6 +23,7 @@ import { logger } from "@/lib/logger";
 import { useLocation, Link } from "wouter";
 import diamondLogo from "@assets/IMG_3257_1771244654511.png";
 import diamondLogoBlack from "@assets/IMG_3269_1771249415226.png";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 const gold = '#D9B84C'; // brand gold (was teal #85C4CE — a var named "gold" holding teal)
 
@@ -670,6 +672,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
 }
 
 export default function Loyalty() {
+  useSEO(pageSEO.loyalty);
   const { user: firebaseUser, loading: authLoading } = useFirebaseAuth();
   const { trackEvent } = useAnalytics();
   const [, setLocation] = useLocation();
@@ -751,6 +754,18 @@ export default function Loyalty() {
   const tierProgress = getTierProgress(washes);
   const currentTierConfig = getTierConfig(tierProgress.currentTier);
   const totalSaved = calculatePointsValue(washes);
+
+  // Tier nudge — READ-ONLY display derived from the same `washes` this page already fetches.
+  // Canonical ladder = shared/schema-loyalty.ts TIER_CONFIGS (10 pts per ₪1, avg wash ₪50 = 500 pts,
+  // so every threshold is exactly washesRequired × 500). No balance is read or written beyond `washes`.
+  const POINTS_PER_WASH = 500;
+  const nextTierCfg = tierProgress.nextTier ? TIER_CONFIGS.find(c => c.id === tierProgress.nextTier) : undefined;
+  const pointsToNextTier = nextTierCfg ? Math.max(0, nextTierCfg.threshold - washes * POINTS_PER_WASH) : null;
+  const nextTierPointsNudge = tierProgress.nextTier && pointsToNextTier !== null && pointsToNextTier > 0
+    ? t('loyalty.pointsToNextTier', language)
+        .replace('{points}', pointsToNextTier.toLocaleString(language === 'he' ? 'he-IL' : 'en-US'))
+        .replace('{tier}', getTierDisplay(tierProgress.nextTier, language as any))
+    : null;
   const memberSince = profileData?.createdAt ? new Date(profileData.createdAt.toDate()).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-US', { month: 'long', year: 'numeric' }) : '';
 
   const getPerkTranslation = (perkKey: string): string => {
@@ -858,6 +873,17 @@ export default function Loyalty() {
                           transition={{ delay: 0.8, duration: 1, ease: "easeOut" }}
                         />
                       </div>
+                      {nextTierPointsNudge && (
+                        <div className="flex justify-center mt-3">
+                          <span
+                            className="inline-flex items-center gap-1.5 px-3 py-1 text-[10px] uppercase tracking-wider font-bold"
+                            style={{ background: `${gold}12`, color: gold, borderRadius: '2px' }}
+                          >
+                            <Sparkles className="w-3 h-3" />
+                            {nextTierPointsNudge}
+                          </span>
+                        </div>
+                      )}
                     </div>
                   )}
 

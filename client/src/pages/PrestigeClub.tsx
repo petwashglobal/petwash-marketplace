@@ -6,6 +6,7 @@ import { Shield, Lock, Wallet, Fingerprint } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import '@/styles/luxury-system-2025.css';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 type Lang = 'he' | 'en';
 
@@ -326,6 +327,7 @@ function Reveal({ children, className = '' }: { children: React.ReactNode; class
 }
 
 export default function PrestigeClub() {
+  useSEO(pageSEO.prestigeClub);
   const { language: appLang } = useLanguage();
   const isRTL = appLang === 'he' || appLang === 'ar';
   const lang: Lang = (appLang === 'en' || appLang === 'fr' || appLang === 'es' || appLang === 'ru') ? 'en' : 'he';

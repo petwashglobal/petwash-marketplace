@@ -1,8 +1,10 @@
 import { useState } from 'react';
 import { Link } from 'wouter';
 import { Sparkles, Calendar, Gift, Percent, Crown, Zap, Star, Heart, ArrowLeft } from 'lucide-react';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function LoyaltyBenefits() {
+  useSEO(pageSEO.loyaltyBenefits);
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
   const isHebrew = language === 'he';
 

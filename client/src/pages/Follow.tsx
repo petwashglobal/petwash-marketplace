@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { SOCIAL_LINKS } from "@/components/FollowUsBar";
+import { useSEO, pageSEO } from "@/lib/seo";
 
 /**
  * /follow — the QR destination for in-station "film & tag @petwashltd" signage.
@@ -16,8 +17,8 @@ const BRAND: Record<string, { bg: string; label: string; handle: string }> = {
 };
 
 export default function Follow() {
+  useSEO(pageSEO.follow);
   useEffect(() => {
-    document.title = "עקבו אחרינו · PetWash™";
     window.scrollTo(0, 0);
   }, []);
 

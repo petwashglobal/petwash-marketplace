@@ -130,6 +130,7 @@ router.post("/board-members", requireAdmin, async (req, res) => {
        data.appointed_date ?? null, data.termination_date ?? null,
        data.voting_rights, data.equity_shares ?? null]
     );
+    if (!result.rows[0]) return res.status(500).json({ error: "Failed to create board member" });
     res.status(201).json(result.rows[0]);
   } catch (error: any) {
     if (error instanceof z.ZodError) return res.status(400).json({ error: "Validation error", details: error.errors });
@@ -212,6 +213,7 @@ router.post("/board-meetings", requireAdmin, async (req, res) => {
       [new Date(data.meeting_date), data.meeting_type, data.location ?? null,
        data.agenda ?? null, data.minutes_document ?? null, data.status]
     );
+    if (!result.rows[0]) return res.status(500).json({ error: "Failed to create meeting" });
     const meeting = result.rows[0];
     if (data.attendee_ids?.length) {
       for (const memberId of data.attendee_ids) {

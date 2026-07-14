@@ -1,4 +1,6 @@
+import { useMemo } from 'react';
 import { useLanguage } from '@/lib/languageStore';
+import { useSEO } from '@/lib/seo';
 import { Button } from '@/components/ui/button';
 import { Link } from 'wouter';
 import { ArrowLeft, Clock } from 'lucide-react';
@@ -44,6 +46,14 @@ export function PlatformComingSoon({
   const description = isHebrew
     ? (descriptionHe || `${platformNameHe || platformName} בדרך. ספרו לנו מה חיית המחמד שלכם צריכה ונעדכן אתכם כשהשירות יהיה זמין באזורכם.`)
     : (descriptionEn || `${platformName} is coming soon. Tell us what your pet needs and we'll notify you when it's available in your area.`);
+
+  // SEO from the real props — truthful "coming soon" title, never a generic
+  // fallback. Memoized so useSEO's effect doesn't re-run every render.
+  const seoConfig = useMemo(() => ({
+    title: `${platformName} — Coming Soon | ⁦Pet Wash™⁩ | בקרוב`,
+    description,
+  }), [platformName, description]);
+  useSEO(seoConfig);
 
   return (
     <div className="min-h-[100dvh] bg-white flex items-center justify-center px-4 py-10" dir={dir}>

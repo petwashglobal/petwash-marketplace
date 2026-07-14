@@ -3,8 +3,10 @@ import { Link } from 'wouter';
 import { Cake, Gift, Sparkles, Heart, PartyPopper, Star, ArrowLeft, Crown } from 'lucide-react';
 import { Button } from "@/components/ui/button";
 import { PetWashIcon } from '@/components/PetWashIcon';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function LoyaltyBirthday() {
+  useSEO(pageSEO.loyaltyBirthday);
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
   const isHebrew = language === 'he';
 

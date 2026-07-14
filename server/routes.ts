@@ -14496,7 +14496,7 @@ self.addEventListener('notificationclick', (event) => {
         const transactions = txSnapshot.docs.map(doc => {
           const data = doc.data();
           return {
-            date: data.createdAt.toDate(),
+            date: data.createdAt?.toDate() || new Date(),
             invoiceNumber: data.id || 'N/A',
             amount: data.grossAmount || 0,
             vat: data.vat || 0,
@@ -16416,35 +16416,37 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   app.get('/api/monitoring/loyalty-activity', requireAdmin, async (req, res) => {
     try {
       const performers = await loyaltyActivityMonitor.getTopPerformers(10);
-      
+
+      // Build a real tier distribution from the actual top performers instead of
+      // returning hardcoded mock counts. Preserve insertion order of tiers as seen.
+      const tierCounts = new Map<string, number>();
+      for (const p of performers) {
+        const tier = p.currentTier;
+        tierCounts.set(tier, (tierCounts.get(tier) || 0) + 1);
+      }
+      const tierDistribution = Array.from(tierCounts.entries()).map(
+        ([tier, count]) => ({ tier, count })
+      );
+
       res.json({
         success: true,
         data: {
-          totalTierChanges: 24,
-          productivityScore: 87.5,
-          tierDistribution: [
-            { tier: 'New', count: 45 },
-            { tier: 'Silver', count: 32 },
-            { tier: 'Gold', count: 18 },
-            { tier: 'Platinum', count: 8 },
-            { tier: 'Diamond', count: 2 },
-          ],
-          recentChanges: [
-            {
-              id: 1,
-              userId: 'user-004',
-              oldTier: 'Silver',
-              newTier: 'Gold',
-              timestamp: new Date().toISOString(),
-            },
-            {
-              id: 2,
-              userId: 'user-005',
-              oldTier: 'New',
-              newTier: 'Silver',
-              timestamp: new Date(Date.now() - 3600000).toISOString(),
-            },
-          ],
+          totalPerformers: performers.length,
+          averageProductivityScore: performers.length
+            ? performers.reduce((sum, p) => sum + p.productivityScore, 0) / performers.length
+            : 0,
+          tierDistribution,
+          topPerformers: performers.map((p) => ({
+            userId: p.userId,
+            email: p.email,
+            currentTier: p.currentTier,
+            totalPoints: p.totalPoints,
+            productivityScore: p.productivityScore,
+            engagementScore: p.engagementScore,
+            lastPurchaseDate: p.lastPurchaseDate
+              ? p.lastPurchaseDate.toISOString()
+              : null,
+          })),
         }
       });
     } catch (error: any) {
@@ -16495,30 +16497,35 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 
   app.get('/api/monitoring/notification-consent', requireAdmin, async (req, res) => {
     try {
+      // Query the real notification_preferences table instead of returning
+      // hardcoded mock consent counts.
+      const consentResult: any = await db.execute(sql`
+        SELECT
+          COUNT(*)::int AS total_users,
+          COUNT(*) FILTER (WHERE email = true)::int AS email_consent,
+          COUNT(*) FILTER (WHERE sms = true)::int AS sms_consent,
+          COUNT(*) FILTER (WHERE push = true)::int AS push_consent,
+          COUNT(*) FILTER (WHERE marketing_sms_consent_at IS NOT NULL)::int AS marketing_sms_consent,
+          COUNT(*) FILTER (WHERE marketing_email_consent_at IS NOT NULL)::int AS marketing_email_consent,
+          COUNT(*) FILTER (WHERE marketing_push_consent_at IS NOT NULL)::int AS marketing_push_consent
+        FROM notification_preferences
+      `);
+      const row = (consentResult.rows?.[0] ?? consentResult[0]) || {};
+
+      const totalUsers = Number(row?.total_users ?? 0);
+      const emailConsent = Number(row?.email_consent ?? 0);
+
       res.json({
         success: true,
         data: {
-          totalUsers: 100,
-          emailConsent: 78,
-          smsConsent: 45,
-          pushConsent: 62,
-          consentRate: 78.0,
-          recentChanges: [
-            {
-              id: 1,
-              userId: 'user-006',
-              provider: 'email',
-              action: 'granted',
-              timestamp: new Date().toISOString(),
-            },
-            {
-              id: 2,
-              userId: 'user-007',
-              provider: 'push',
-              action: 'revoked',
-              timestamp: new Date(Date.now() - 1800000).toISOString(),
-            },
-          ],
+          totalUsers,
+          emailConsent,
+          smsConsent: Number(row?.sms_consent ?? 0),
+          pushConsent: Number(row?.push_consent ?? 0),
+          marketingEmailConsent: Number(row?.marketing_email_consent ?? 0),
+          marketingSmsConsent: Number(row?.marketing_sms_consent ?? 0),
+          marketingPushConsent: Number(row?.marketing_push_consent ?? 0),
+          consentRate: totalUsers ? (emailConsent / totalUsers) * 100 : 0,
         }
       });
     } catch (error: any) {

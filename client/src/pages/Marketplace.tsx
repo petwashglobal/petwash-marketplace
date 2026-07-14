@@ -52,6 +52,7 @@ import {
   X,
 } from 'lucide-react';
 import type { MarketplaceSearchFilters, MarketplacePlatformId } from '@shared/schema';
+import { useSEO, pageSEO } from '@/lib/seo';
 
 type TierFilter = 'prestige' | 'gold' | 'silver' | 'bronze' | undefined;
 
@@ -65,6 +66,7 @@ const TIER_CONFIG = {
 } as const;
 
 export default function Marketplace() {
+  useSEO(pageSEO.marketplace);
   const [selectedPlatform, setSelectedPlatform] = useState<MarketplacePlatformId>('walk_my_pet');
   const [showFilters, setShowFilters] = useState(false);
   const [activeTierFilter, setActiveTierFilter] = useState<TierFilter>(undefined);

@@ -1,6 +1,7 @@
 import { Link } from "wouter";
 import { useLanguage } from "@/lib/languageStore";
 import { LegalPage } from "./LegalPage";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 type DocLink = { href: string; he: string; en: string };
 type Group = { titleHe: string; titleEn: string; items: DocLink[] };
@@ -69,6 +70,7 @@ const GROUPS: Group[] = [
 ];
 
 export default function LegalIndex() {
+  useSEO(pageSEO.legalIndex);
   const { language } = useLanguage();
   const isHebrew = language === "he";
   return (

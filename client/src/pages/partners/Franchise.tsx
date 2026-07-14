@@ -8,8 +8,10 @@ import { PhoneInput } from "@/components/PhoneInput";
 import { useToast } from "@/hooks/use-toast";
 import { useLanguage } from "@/lib/languageStore";
 import { Building2, ClipboardCheck, GraduationCap, Handshake, PackageCheck, Send, CheckCircle2, Loader2, Mail, Phone, User, MapPin, X } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function FranchisePartners() {
+  useSEO(pageSEO.partnersFranchise);
   const { language } = useLanguage();
   const isHe = language === 'he';
   const { toast } = useToast();

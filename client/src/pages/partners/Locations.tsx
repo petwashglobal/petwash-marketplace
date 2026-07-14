@@ -1,8 +1,10 @@
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { MapPin, Building, ShoppingCart, Fuel, Coffee } from "lucide-react";
+import { useSEO, pageSEO } from '@/lib/seo';
 
 export default function LocationPartners() {
+  useSEO(pageSEO.partnersLocations);
   const { language } = useLanguage();
   const isHe = language === 'he';
 
