@@ -27,103 +27,158 @@ import { useSEO, pageSEO } from '@/lib/seo';
 
 const gold = '#D9B84C'; // brand gold (was teal #85C4CE — a var named "gold" holding teal)
 
-const PRESTIGE_TIERS = [
+// ── Canonical 7-tier ladder (CEO-locked #1177; names match the public tiers
+// API #1414 and lib/loyalty.ts TIER_DISPLAY_LABELS). Tier NAMES stay English in
+// every locale (brand rule 2026-06-26).
+//
+// TRUTH RULES (A5 audit + discount-policy 2026-06-22): the ladder is a
+// RECOGNITION ladder — thresholds are real (LOYALTY_TIER_THRESHOLDS), earning
+// is a flat 1 point per ₪1 (loyaltyEarn.ts), and the 5% member discount is the
+// same at every tier. No escalating discounts, no concierge, no invite-only,
+// no free-wash promises — none of those are wired, so none are claimed.
+type TierL10n = { he: string; en: string; ar: string; ru: string; fr: string; es: string };
+const L = (he: string, en: string, ar: string, ru: string, fr: string, es: string): TierL10n =>
+  ({ he, en, ar, ru, fr, es });
+const tl = (d: TierL10n, lang: string) => (d as Record<string, string>)[lang] ?? d.en;
+
+const PRESTIGE_TIERS: Array<{
+  key: string;
+  name: string;              // canonical English display name, all locales
+  thresholdPoints: number;   // real: LOYALTY_TIER_THRESHOLDS
+  cardBg: string; shine: string; labelColor: string; tierNameColor: string;
+  borderColor: string; shadowMain: string;
+  benefits: TierL10n[];
+}> = [
   {
     key: 'member',
-    nameKey: 'privilege.tierMember',
-    descKey: 'privilege.tierMemberDesc',
-    cardBg: 'linear-gradient(145deg, #9B59B6 0%, #8844AA 20%, #7B2D9E 45%, #6A1B93 70%, #5B1088 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.18) 35%, rgba(255,255,255,0.28) 42%, transparent 55%)',
-    labelColor: '#e8d5f5',
-    tierNameColor: '#ffffff',
-    borderColor: 'rgba(200,160,255,0.25)',
-    shadowMain: '0 25px 60px rgba(91,16,136,0.40), 0 10px 25px rgba(91,16,136,0.25)',
-    benefits: ['privilege.tierMemberBenefit1', 'privilege.tierMemberBenefit2'],
+    name: 'Member',
+    thresholdPoints: 0,
+    cardBg: 'linear-gradient(145deg, #FBF8F1 0%, #F1EADA 25%, #E4D9C0 55%, #D4C5A4 80%, #C6B48D 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.45) 35%, rgba(255,255,255,0.55) 42%, transparent 55%)',
+    labelColor: '#7A6B4F',
+    tierNameColor: '#3E362A',
+    borderColor: 'rgba(160,140,100,0.30)',
+    shadowMain: '0 25px 60px rgba(160,140,100,0.28), 0 10px 25px rgba(160,140,100,0.18)',
+    benefits: [
+      L('5% הנחה על כל רחיצת K9000', '5% off every K9000 wash', 'خصم 5٪ على كل غسلة K9000', '5% скидка на каждую мойку K9000', '5% sur chaque lavage K9000', '5% en cada lavado K9000'),
+      L('נקודה על כל שקל, מהיום הראשון', 'A point on every shekel, from day one', 'نقطة على كل شيكل من اليوم الأول', 'Балл за каждый шекель с первого дня', 'Un point par shekel, dès le premier jour', 'Un punto por shekel, desde el primer día'),
+    ],
   },
   {
-    key: 'signature',
-    nameKey: 'privilege.tierSignature',
-    descKey: 'privilege.tierSignatureDesc',
-    cardBg: 'linear-gradient(145deg, #85C4CE 0%, #6AADB8 20%, #4F8FA0 45%, #3A7085 70%, #2A5568 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.22) 35%, rgba(255,255,255,0.32) 42%, transparent 55%)',
-    labelColor: '#D4EFF3',
-    tierNameColor: '#ffffff',
-    borderColor: 'rgba(133,196,206,0.30)',
-    shadowMain: '0 25px 60px rgba(42,85,104,0.45), 0 10px 25px rgba(42,85,104,0.28)',
-    benefits: ['privilege.tierSignatureBenefit1', 'privilege.tierSignatureBenefit2'],
+    key: 'silver',
+    name: 'Silver',
+    thresholdPoints: 2500,
+    cardBg: 'linear-gradient(145deg, #F4F6F8 0%, #DDE2E7 25%, #C2CAD2 55%, #A5AFBA 80%, #8D98A5 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.50) 35%, rgba(255,255,255,0.60) 42%, transparent 55%)',
+    labelColor: '#5A636D',
+    tierNameColor: '#2E353D',
+    borderColor: 'rgba(140,150,162,0.35)',
+    shadowMain: '0 25px 60px rgba(140,150,162,0.30), 0 10px 25px rgba(140,150,162,0.20)',
+    benefits: [
+      L('נפתחת ב-2,500 נקודות', 'Reached at 2,500 points', 'تُبلغ عند 2,500 نقطة', 'Достигается при 2 500 баллах', 'Atteint à 2 500 points', 'Se alcanza con 2.500 puntos'),
+      L('הנאמנות שלכם, גלויה', 'Your loyalty, recognised', 'ولاؤكم، محل تقدير', 'Ваша верность — признана', 'Votre fidélité, reconnue', 'Tu lealtad, reconocida'),
+    ],
   },
   {
-    key: 'elite',
-    nameKey: 'privilege.tierElite',
-    descKey: 'privilege.tierEliteDesc',
-    cardBg: 'linear-gradient(145deg, #27AE60 0%, #219A52 20%, #1B8A45 45%, #15793A 70%, #0D6830 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.16) 35%, rgba(255,255,255,0.26) 42%, transparent 55%)',
-    labelColor: '#b9f6ca',
-    tierNameColor: '#ffffff',
-    borderColor: 'rgba(100,255,160,0.22)',
-    shadowMain: '0 25px 60px rgba(21,121,58,0.40), 0 10px 25px rgba(21,121,58,0.25)',
-    benefits: ['privilege.tierEliteBenefit1', 'privilege.tierEliteBenefit2'],
-  },
-  {
-    key: 'privilege',
-    nameKey: 'privilege.tierPrivilege',
-    descKey: 'privilege.tierPrivilegeDesc',
-    cardBg: 'linear-gradient(145deg, #1E5799 0%, #1A4D8C 20%, #15407A 45%, #103468 70%, #0B2856 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.14) 35%, rgba(255,255,255,0.24) 42%, transparent 55%)',
-    labelColor: '#90CAF9',
-    tierNameColor: '#ffffff',
-    borderColor: 'rgba(100,180,255,0.22)',
-    shadowMain: '0 25px 60px rgba(16,52,104,0.45), 0 10px 25px rgba(16,52,104,0.30)',
-    benefits: ['privilege.tierPrivilegeBenefit1', 'privilege.tierPrivilegeBenefit2'],
-  },
-  {
-    key: 'diamond',
-    nameKey: 'privilege.tierDiamond',
-    descKey: 'privilege.tierDiamondDesc',
-    cardBg: 'linear-gradient(145deg, #EAF2F7 0%, #CBD9E3 22%, #AEC2D0 48%, #92A9BA 72%, #7A93A6 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.40) 35%, rgba(255,255,255,0.50) 42%, transparent 55%)',
-    labelColor: '#3A4D5A',
-    tierNameColor: '#1F2D38',
-    borderColor: 'rgba(110,137,158,0.35)',
-    shadowMain: '0 25px 60px rgba(110,137,158,0.35), 0 10px 25px rgba(110,137,158,0.22)',
-    benefits: ['privilege.tierDiamondBenefit1', 'privilege.tierDiamondBenefit2'],
-  },
-  {
-    key: 'blackReserve',
-    nameKey: 'privilege.tierBlackReserve',
-    descKey: 'privilege.tierBlackReserveDesc',
-    cardBg: 'linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 20%, #111111 45%, #080808 70%, #000000 100%)',
-    shine: 'linear-gradient(125deg, transparent 15%, rgba(133,196,206,0.08) 35%, rgba(255,255,255,0.06) 42%, transparent 55%)',
-    labelColor: gold,
-    tierNameColor: '#ffffff',
-    borderColor: `rgba(133,196,206,0.25)`,
-    shadowMain: '0 25px 60px rgba(0,0,0,0.50), 0 10px 25px rgba(0,0,0,0.35)',
-    isInviteOnly: true,
-    benefits: ['privilege.tierBlackReserveBenefit1', 'privilege.tierBlackReserveBenefit2'],
-  },
-  {
-    key: 'crown',
-    nameKey: 'privilege.tierCrown',
-    descKey: 'privilege.tierCrownDesc',
+    key: 'gold',
+    name: 'Gold',
+    thresholdPoints: 7500,
     cardBg: 'linear-gradient(145deg, #F4D77A 0%, #D9B84C 30%, #D4AF37 55%, #B8860B 80%, #9C7209 100%)',
     shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.30) 35%, rgba(255,255,255,0.42) 42%, transparent 55%)',
     labelColor: '#4A3808',
     tierNameColor: '#2E2204',
     borderColor: 'rgba(184,134,11,0.45)',
     shadowMain: '0 25px 60px rgba(156,114,9,0.40), 0 10px 25px rgba(156,114,9,0.28)',
-    isInviteOnly: true,
-    benefits: ['privilege.tierCrownBenefit1', 'privilege.tierCrownBenefit2'],
+    benefits: [
+      L('נפתחת ב-7,500 נקודות', 'Reached at 7,500 points', 'تُبلغ عند 7,500 نقطة', 'Достигается при 7 500 баллах', 'Atteint à 7 500 points', 'Se alcanza con 7.500 puntos'),
+      L('הסטנדרט הקלאסי של PetWash', 'The classic PetWash standing', 'المكانة الكلاسيكية في PetWash', 'Классический статус PetWash', 'Le rang classique PetWash', 'El estatus clásico de PetWash'),
+    ],
+  },
+  {
+    key: 'platinum',
+    name: 'Platinum',
+    thresholdPoints: 15000,
+    cardBg: 'linear-gradient(145deg, #565C63 0%, #43494F 25%, #33383E 55%, #26292E 80%, #1C1F23 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.20) 35%, rgba(255,255,255,0.30) 42%, transparent 55%)',
+    labelColor: '#C9CFD6',
+    tierNameColor: '#FFFFFF',
+    borderColor: 'rgba(201,207,214,0.25)',
+    shadowMain: '0 25px 60px rgba(28,31,35,0.45), 0 10px 25px rgba(28,31,35,0.30)',
+    benefits: [
+      L('נפתחת ב-15,000 נקודות', 'Reached at 15,000 points', 'تُبلغ عند 15,000 نقطة', 'Достигается при 15 000 баллах', 'Atteint à 15 000 points', 'Se alcanza con 15.000 puntos'),
+      L('מבין הנאמנים ביותר שלנו', 'Among our most devoted', 'من بين الأكثر إخلاصًا لدينا', 'Среди самых преданных', 'Parmi nos plus fidèles', 'Entre los más devotos'),
+    ],
+  },
+  {
+    key: 'diamond',
+    name: 'Diamond',
+    thresholdPoints: 25000,
+    cardBg: 'linear-gradient(145deg, #EAF2F7 0%, #CBD9E3 22%, #AEC2D0 48%, #92A9BA 72%, #7A93A6 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.40) 35%, rgba(255,255,255,0.50) 42%, transparent 55%)',
+    labelColor: '#3A4D5A',
+    tierNameColor: '#1F2D38',
+    borderColor: 'rgba(110,137,158,0.35)',
+    shadowMain: '0 25px 60px rgba(110,137,158,0.35), 0 10px 25px rgba(110,137,158,0.22)',
+    benefits: [
+      L('נפתחת ב-25,000 נקודות', 'Reached at 25,000 points', 'تُبلغ عند 25,000 نقطة', 'Достигается при 25 000 баллах', 'Atteint à 25 000 points', 'Se alcanza con 25.000 puntos'),
+      L('מעמד נדיר, שהושג ביושר', 'Rare standing, honestly earned', 'مكانة نادرة اكتُسبت بجدارة', 'Редкий статус, честно заслуженный', 'Un rang rare, honnêtement gagné', 'Un estatus raro, ganado con honestidad'),
+    ],
+  },
+  {
+    key: 'emerald',
+    name: 'Emerald',
+    thresholdPoints: 40000,
+    cardBg: 'linear-gradient(145deg, #157A4A 0%, #0F6B3E 25%, #0A5C36 50%, #07452A 75%, #063B22 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(255,255,255,0.18) 35%, rgba(255,255,255,0.28) 42%, transparent 55%)',
+    labelColor: '#CDE9DA',
+    tierNameColor: '#FFFFFF',
+    borderColor: 'rgba(205,233,218,0.25)',
+    shadowMain: '0 25px 60px rgba(6,59,34,0.45), 0 10px 25px rgba(6,59,34,0.28)',
+    benefits: [
+      L('נפתחת ב-40,000 נקודות', 'Reached at 40,000 points', 'تُبلغ عند 40,000 نقطة', 'Достигается при 40 000 баллах', 'Atteint à 40 000 points', 'Se alcanza con 40.000 puntos'),
+      L('הירוק העמוק של PetWash', 'The deep green of PetWash', 'الأخضر العميق لـ PetWash', 'Глубокая зелень PetWash', 'Le vert profond de PetWash', 'El verde profundo de PetWash'),
+    ],
+  },
+  {
+    key: 'blackReserve',
+    name: 'Black Reserve',
+    thresholdPoints: 50000,
+    cardBg: 'linear-gradient(145deg, #2a2a2a 0%, #1a1a1a 20%, #111111 45%, #080808 70%, #000000 100%)',
+    shine: 'linear-gradient(125deg, transparent 15%, rgba(212,175,55,0.10) 35%, rgba(255,255,255,0.06) 42%, transparent 55%)',
+    labelColor: gold,
+    tierNameColor: '#ffffff',
+    borderColor: 'rgba(212,175,55,0.30)',
+    shadowMain: '0 25px 60px rgba(0,0,0,0.50), 0 10px 25px rgba(0,0,0,0.35)',
+    benefits: [
+      L('נפתחת ב-50,000 נקודות', 'Reached at 50,000 points', 'تُبلغ عند 50,000 نقطة', 'Достигается при 50 000 баллах', 'Atteint à 50 000 points', 'Se alcanza con 50.000 puntos'),
+      L('פסגת PetWash Prestige', 'The summit of PetWash Prestige', 'قمة PetWash Prestige', 'Вершина PetWash Prestige', 'Le sommet de PetWash Prestige', 'La cima de PetWash Prestige'),
+    ],
   },
 ];
 
-const COMPARISON_ROWS = [
-  { key: 'privilege.compareBonusCredit', values: ['-', '+5%', '+10%', '+15%', '+15%', '+15%', '+15%'] },
-  { key: 'privilege.comparePriorityBooking', values: [false, true, true, true, true, true, true] },
-  { key: 'privilege.compareBirthdayReward', values: [true, true, true, true, true, true, true] },
-  { key: 'privilege.compareExclusiveOffers', values: [false, true, true, true, true, true, true] },
-  { key: 'privilege.compareFreeWashMilestone', values: [false, false, true, true, true, true, true] },
-  { key: 'privilege.compareConcierge', values: [false, false, false, true, true, true, true] },
-  { key: 'privilege.compareInviteOnly', values: [false, false, false, false, false, true, true] },
+// Truthful comparison — thresholds are real; every other row is a benefit EVERY
+// member enjoys (shown per-tier so the table reads "included at every level").
+const COMPARISON_ROWS: Array<{ label: TierL10n; values: Array<string | boolean> }> = [
+  {
+    label: L('נקודות לדרגה', 'Points to reach', 'النقاط المطلوبة', 'Баллы для уровня', 'Points requis', 'Puntos para alcanzar'),
+    values: ['0', '2,500', '7,500', '15,000', '25,000', '40,000', '50,000'],
+  },
+  {
+    label: L('5% הנחה על כל רחיצת K9000', '5% off every K9000 wash', 'خصم 5٪ على كل غسلة K9000', '5% на каждую мойку K9000', '5% sur chaque lavage K9000', '5% en cada lavado K9000'),
+    values: [true, true, true, true, true, true, true],
+  },
+  {
+    label: L('נקודה על כל שקל', 'A point on every shekel', 'نقطة على كل شيكل', 'Балл за каждый шекель', 'Un point par shekel', 'Un punto por shekel'),
+    values: [true, true, true, true, true, true, true],
+  },
+  {
+    label: L('מתנות יום הולדת', 'Birthday rewards', 'مكافآت أعياد الميلاد', 'Подарки на день рождения', "Récompenses d'anniversaire", 'Regalos de cumpleaños'),
+    values: [true, true, true, true, true, true, true],
+  },
+  {
+    label: L('Prestige Pass בארנק הדיגיטלי', 'Prestige Pass in your wallet', 'Prestige Pass في محفظتك', 'Prestige Pass в вашем кошельке', 'Prestige Pass dans votre portefeuille', 'Prestige Pass en tu billetera'),
+    values: [true, true, true, true, true, true, true],
+  },
 ];
 
 function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL: boolean }) {
@@ -390,7 +445,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                             PetWash™
                           </div>
                           <div className="text-[8px] tracking-[0.25em] uppercase mt-0.5 font-light" style={{ color: tier.labelColor, opacity: 0.6 }}>
-                            PRIVILEGE CLUB
+                            PRESTIGE CLUB
                           </div>
                         </div>
                         <div
@@ -401,12 +456,12 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                           }}
                         >
                           {tier.key === 'member' && <ChevronRight className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
-                          {tier.key === 'signature' && <Star className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
-                          {tier.key === 'elite' && <Crown className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
-                          {tier.key === 'privilege' && <Diamond className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'silver' && <Star className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'gold' && <Crown className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'platinum' && <Diamond className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
                           {tier.key === 'diamond' && <Sparkles className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
-                          {tier.key === 'blackReserve' && <Shield className="w-3.5 h-3.5" style={{ color: gold }} />}
-                          {tier.key === 'crown' && <Crown className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'emerald' && <Shield className="w-3.5 h-3.5" style={{ color: tier.labelColor }} />}
+                          {tier.key === 'blackReserve' && <Crown className="w-3.5 h-3.5" style={{ color: gold }} />}
                         </div>
                       </div>
                       <div>
@@ -419,7 +474,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                             className="text-[13px] tracking-[0.2em] uppercase font-bold"
                             style={{ color: tier.tierNameColor, textShadow: '0 2px 4px rgba(0,0,0,0.3)' }}
                           >
-                            {t(tier.nameKey, language)}
+                            {tier.name}
                           </div>
                           <div className="text-[8px] font-mono tracking-widest" style={{ color: tier.labelColor, opacity: 0.4 }}>
                             PWP ••••
@@ -431,13 +486,13 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
 
                   <div className="text-center sm:text-start space-y-2 flex-1">
                     <h3 className="text-lg font-semibold text-gray-900" style={{ fontFamily: serif }}>
-                      {t(tier.nameKey, language)}
+                      {tier.name}
                     </h3>
-                    {tier.benefits.map((bKey, bi) => (
+                    {tier.benefits.map((b, bi) => (
                       <div key={bi} className="flex items-center gap-2 justify-center sm:justify-start">
                         <Check className="w-3.5 h-3.5 flex-shrink-0" style={{ color: gold }} />
                         <p className="text-sm text-gray-500">
-                          {t(bKey, language)}
+                          {tl(b, language)}
                         </p>
                       </div>
                     ))}
@@ -566,13 +621,13 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
               <div className="p-2 sm:p-3" style={{ borderBottom: '1px solid #f0f0f0' }} />
               {PRESTIGE_TIERS.map((tier) => {
                 const headerColors: Record<string, string> = {
-                  member: '#7B2D9E',
-                  signature: '#937225',
-                  elite: '#1B8A45',
-                  privilege: '#15407A',
+                  member: '#8A7A57',
+                  silver: '#6E7883',
+                  gold: '#9C7209',
+                  platinum: '#3A3F45',
                   diamond: '#6E899E',
+                  emerald: '#0A5C36',
                   blackReserve: '#1a1a1a',
-                  crown: '#9C7209',
                 };
                 const c = headerColors[tier.key] || '#6b7280';
                 return (
@@ -587,7 +642,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
                       lineHeight: '1.2',
                     }}
                   >
-                    {t(tier.nameKey, language)}
+                    {tier.name}
                   </div>
                 );
               })}
@@ -596,7 +651,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
             {COMPARISON_ROWS.map((row, ri) => (
               <div key={ri} className="grid" style={{ gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr 1fr 1fr', minWidth: '620px' }}>
                 <div className="p-2 sm:p-3 text-[11px] sm:text-sm text-gray-600 font-medium flex items-center" style={{ borderBottom: '1px solid #f5f5f5' }}>
-                  {t(row.key, language)}
+                  {tl(row.label, language)}
                 </div>
                 {row.values.map((val, ci) => (
                   <div
@@ -1098,7 +1153,7 @@ export default function Loyalty() {
           </div>
         </section>
 
-        {/* CTA - JOIN PRIVILEGE CLUB */}
+        {/* CTA - JOIN PRESTIGE CLUB */}
         <section className="py-16 border-t border-gray-100">
           <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} className="space-y-6">
