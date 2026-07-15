@@ -102,7 +102,7 @@ const serviceData = [
     nameHe: "אילוף כלבים",
     description: "Private and group training sessions",
     descriptionHe: "אימון פרטי וקבוצתי",
-    features: ["Certified trainers", "Positive methods", "All ages"],
+    features: ["Professional trainers", "Positive methods", "All ages"],
     featuresHe: ["מאלפים מוסמכים", "גישה חיובית", "כל הגילאים"],
     priceFrom: 275,
     route: "/academy",

@@ -710,10 +710,10 @@ export default function BrowseSitters() {
                   <Wallet className="h-7 w-7 text-[#D4AF37]" />
                 </div>
                 <h4 className="font-semibold text-gray-900 mb-2">
-                  {isHebrew ? 'עד ₪200+/שעה' : 'Up to ₪200+/hour'}
+                  {isHebrew ? 'קבעו את התעריפים שלכם' : 'Set your own rates'}
                 </h4>
                 <p className="text-sm text-gray-500">
-                  {isHebrew ? 'קבעו את התעריפים שלכם' : 'Set your own rates'}
+                  {isHebrew ? 'הכנסה גמישה, בזמנים שלכם' : 'Flexible income, on your schedule'}
                 </p>
               </div>
               <div className="bg-white border border-gray-200 rounded-2xl p-6 text-center">

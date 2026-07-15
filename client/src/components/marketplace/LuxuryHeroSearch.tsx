@@ -376,8 +376,8 @@ export function LuxuryHeroSearch({
 
           <p className="text-center text-xs text-black/30 mt-6 font-light">
             {isHebrew 
-              ? 'אלפי נותני שירות מאומתים ברחבי ישראל'
-              : 'Thousands of verified providers across Israel'
+              ? 'נותני שירות לחיות מחמד ברחבי ישראל'
+              : 'Premium pet care providers across Israel'
             }
           </p>
         </div>

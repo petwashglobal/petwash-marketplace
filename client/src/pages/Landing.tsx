@@ -240,7 +240,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'url("data:image/svg+xml,%3Csvg width=\'60\' height=\'60\' viewBox=\'0 0 60 60\' xmlns=\'http://www.w3.org/2000/svg\'%3E%3Cpath d=\'M30 0L60 30L30 60L0 30L30 0z\' fill=\'%23c6a664\' fill-opacity=\'1\'/%3E%3C/svg%3E")', backgroundSize: '30px 30px' }} />
           
           <div className="max-w-5xl mx-auto text-center relative z-10">
-            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-2 block gold-shimmer-text">⁦Pet Wash™⁩ Ltd</span>
+            <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium mb-2 block gold-shimmer-text">⁦PetWash™⁩ Ltd</span>
             <h2 className="font-serif text-xl sm:text-2xl lg:text-3xl font-light text-[#111] mb-2 tracking-tight">
               {t('technology.title', language)}
             </h2>
@@ -323,7 +323,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 organicRevealed ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-8'
               }`}
             >
-              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium gold-shimmer-text">⁦Pet Wash™⁩ Promise</span>
+              <span className="text-[10px] sm:text-xs uppercase tracking-[0.3em] text-[#c6a664] font-medium gold-shimmer-text">⁦PetWash™⁩ Promise</span>
               <h2 className="font-serif text-lg sm:text-2xl lg:text-3xl font-light text-[#111] mt-2 mb-2 tracking-tight">
                 {t('organic.title', language)}
               </h2>
@@ -380,7 +380,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             <div className="text-center mb-14">
               <p className="text-[10px] font-light tracking-[5px] uppercase mb-4 text-[#C6A664]"
                 style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif", letterSpacing: '0.35em' }}>
-                PET WASH PRESTIGE™
+                PETWASH PRESTIGE™
               </p>
               <h2 className="text-3xl sm:text-4xl font-light text-[#0A0A0A] mb-4"
                 style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>
@@ -408,7 +408,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                   style={{ background: 'linear-gradient(90deg,#9CA3AF,#E5E7EB,#9CA3AF)' }} />
                 <span className="text-[9px] font-light tracking-[4px] uppercase text-[#9CA3AF] block mb-3"
                   style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
-                  Silver
+                  Member
                 </span>
                 <h3 className="text-lg font-light text-[#0A0A0A] mb-4"
                   style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>
@@ -434,7 +434,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                     WebkitTextFillColor: 'transparent',
                     backgroundClip: 'text',
                   }}>
-                  Gold
+                  Tiers
                 </span>
                 <h3 className="text-lg font-light text-[#0A0A0A] mb-4"
                   style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>
@@ -448,19 +448,13 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
               {/* Platinum */}
               <div className="group bg-white p-8 sm:p-10 text-center transition-all duration-500 hover:-translate-y-1"
-                style={{ boxShadow: '0 4px 24px rgba(0,197,105,0.10)' }}
+                style={{ boxShadow: '0 4px 24px rgba(0,0,0,0.08)' }}
               >
                 <div className="w-12 h-[2px] mx-auto mb-7"
-                  style={{ background: 'linear-gradient(90deg,#00C569,#00E87A,#00C569)' }} />
-                <span className="text-[9px] font-light tracking-[4px] uppercase block mb-3"
-                  style={{
-                    fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif",
-                    background: 'linear-gradient(90deg,#00C569,#00E87A,#00C569)',
-                    WebkitBackgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    backgroundClip: 'text',
-                  }}>
-                  Platinum
+                  style={{ background: 'linear-gradient(90deg,#0A0A0A,#3A3A3A,#0A0A0A)' }} />
+                <span className="text-[9px] font-light tracking-[4px] uppercase text-[#0A0A0A] block mb-3"
+                  style={{ fontFamily: "'Helvetica Neue', Helvetica, Arial, sans-serif" }}>
+                  Prestige Pass
                 </span>
                 <h3 className="text-lg font-light text-[#0A0A0A] mb-4"
                   style={{ fontFamily: "'Didot', 'Bodoni MT', 'Hoefler Text', Georgia, serif" }}>
