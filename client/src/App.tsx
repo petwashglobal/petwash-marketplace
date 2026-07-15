@@ -148,6 +148,7 @@ const GroupStatusMonitor = lazy(() => import("@/pages/admin/GroupStatusMonitor")
 const BrainDashboard = lazy(() => import("@/pages/admin/BrainDashboard"));
 const PetWashBridge = lazy(() => import("@/pages/admin/PetWashBridge"));
 const AdminLiveOps = lazy(() => import("@/pages/admin/AdminLiveOps"));
+const AdminNayaxEvents = lazy(() => import("@/pages/admin/AdminNayaxEvents"));
 const CEODashboard = lazy(() => import("@/pages/CEODashboard"));
 const AdminKYC = lazy(() => import("@/pages/AdminKYC"));
 const AdminSystemLogs = lazy(() => import("@/pages/AdminSystemLogs"));
@@ -2452,6 +2453,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminLiveOps />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Nayax / K9000 events — Tower Control reconciliation + manual report import. */}
+        <Route path="/admin/nayax-events">
+          {() => (
+            <AdminRouteGuard>
+              <AdminNayaxEvents />
             </AdminRouteGuard>
           )}
         </Route>
