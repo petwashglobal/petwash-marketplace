@@ -107,7 +107,7 @@ const PLATFORM_CONFIG: Record<Platform, {
   walker:  { title: 'Walk My Pet™',      titleHe: 'Walk My Pet™',      subtitle: 'Professional dog walking services',    subtitleHe: 'שירותי הליכת כלבים מקצועיים',                icon: '🐕', detailPath: '/walk-my-pet/walkers' },
   driver:  { title: 'PetTrek™',          titleHe: 'PetTrek™',          subtitle: 'Safe & comfortable pet transport',     subtitleHe: 'הסעות חיות מחמד בטוחות ונוחות',              icon: '🚗', detailPath: '/pettrek/drivers' },
   groomer: { title: 'Grooming Services', titleHe: 'שירותי טיפוח',      subtitle: 'Expert pet grooming & styling',        subtitleHe: 'טיפוח ועיצוב חיות מחמד מקצועי',              icon: '✂️', detailPath: '/groomers' },
-  trainer: { title: 'Pet Academy™',      titleHe: 'Pet Academy™',      subtitle: 'Certified trainers, proven methods',   subtitleHe: 'מאלפים מוסמכים, שיטות מוכחות',               icon: '🎓', detailPath: '/academy/trainers' },
+  trainer: { title: 'Pet Academy™',      titleHe: 'Pet Academy™',      subtitle: 'Professional trainers, proven methods',   subtitleHe: 'מאלפים מקצועיים, שיטות מוכחות',               icon: '🎓', detailPath: '/academy/trainers' },
 };
 
 const PET_TYPE_OPTIONS = [

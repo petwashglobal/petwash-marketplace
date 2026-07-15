@@ -167,15 +167,15 @@ export function createWashPackageData() {
     },
     // PR-W8: 10-wash "Mazon Collection" pack — matches the 4th card on
     // petwash.co.il and the UI fallback in
-    // client/src/components/WashPackages.tsx. ₪440 / 10 = ₪44 per wash
-    // (same per-wash unit as the 5-pack; the 10-pack adds family-
-    // sharing value rather than a deeper unit discount).
+    // client/src/components/WashPackages.tsx. ₪400 / 10 = ₪40 per wash
+    // (CEO decision 2026-07-15, A5 audit: the flagship must beat the
+    // 5-pack's ₪44/wash so the ladder is ₪50 → ₪44 → ₪40).
     {
       name: '10 Washes',
       nameHe: '10 רחיצות',
-      description: 'Ten complete washes — Mazon Collection. ₪44 per wash, family sharing, no expiration date, transferable credits',
-      descriptionHe: 'עשר רחיצות מלאות — קולקציית מזון. ₪44 לרחיצה, שיתוף משפחתי, ללא תאריך תפוגה, זיכויים ניתנים להעברה',
-      price: '440.00',
+      description: 'Ten complete washes — Maison Collection. ₪40 per wash, family sharing, no expiration date, transferable credits',
+      descriptionHe: 'עשר רחיצות מלאות — קולקציית מייזון. ₪40 לרחיצה, שיתוף משפחתי, ללא תאריך תפוגה, זיכויים ניתנים להעברה',
+      price: '400.00',
       washCount: 10,
       isActive: true
     }

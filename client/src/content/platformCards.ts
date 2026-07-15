@@ -47,8 +47,8 @@ export const PLATFORM_CARDS: readonly PlatformCardContent[] = [
       en: 'Smart care. Clean pets. Happy life.',
     },
     subtitle: {
-      he: 'רחצה עצמית פרימיום, פתוח 24/7.',
-      en: 'Premium self-service pet wash, open 24/7.',
+      he: 'רחצה עצמית פרימיום עם מוצרים ידידותיים לחיות מחמד.',
+      en: 'Premium self-service pet wash with pet-safe products.',
     },
     cta: {
       he: 'מצא תחנה',
@@ -68,8 +68,8 @@ export const PLATFORM_CARDS: readonly PlatformCardContent[] = [
       en: 'Trusted care when you can’t be there.',
     },
     subtitle: {
-      he: 'מטפלים מאומתים. אהבה אמיתית. שקט נפשי.',
-      en: 'Verified sitters. Real love. Peace of mind.',
+      he: 'מטפלים מסורים. אהבה אמיתית. שקט נפשי.',
+      en: 'Loving sitters. Real care. Peace of mind.',
     },
     cta: {
       he: 'מצא מטפל',
@@ -110,8 +110,8 @@ export const PLATFORM_CARDS: readonly PlatformCardContent[] = [
       en: 'Smart transport. Happy pets. Peace of mind.',
     },
     subtitle: {
-      he: 'נהגים מאומתים. טיפול אמיתי. שקט נפשי.',
-      en: 'Verified drivers. Real care. Peace of mind.',
+      he: 'הסעות מדלת לדלת. טיפול אמיתי. שקט נפשי.',
+      en: 'Door-to-door transport. Real care. Peace of mind.',
     },
     cta: {
       he: 'הצטרפו לרשימת ההמתנה',
@@ -156,8 +156,8 @@ export const PLATFORM_CARDS: readonly PlatformCardContent[] = [
       en: 'When you can’t be there, we’ll take the walk.',
     },
     subtitle: {
-      he: 'מולכי כלבים מאומתים. חיות מחמד שמחות. עדכונים בזמן אמת.',
-      en: 'Verified walkers. Happy pets. Real-time updates.',
+      he: 'טיולים יומיים. חיות מחמד שמחות. עדכונים בזמן אמת.',
+      en: 'Daily walks. Happy pets. Real-time updates.',
     },
     cta: {
       he: 'הזמן טיול',

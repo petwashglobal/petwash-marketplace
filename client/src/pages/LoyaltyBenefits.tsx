@@ -13,7 +13,7 @@ export default function LoyaltyBenefits() {
       icon: Percent,
       title: isHebrew ? 'הנחות בלעדיות' : 'Exclusive Discounts',
       subtitle: isHebrew ? 'Exclusive Discounts' : 'הנחות בלעדיות',
-      description: isHebrew ? 'חסכו עד 15% בכל הרחיצות בהתאם לדרגה שלכם' : 'Save up to 15% on all washes depending on your tier',
+      description: isHebrew ? 'חברי המועדון נהנים מ-5% הנחה על כל רחיצת K9000; זכאים מאושרים (ותיקים ונגישות) עד 10%' : 'Members save 5% on every K9000 wash; approved senior and accessibility members save up to 10%',
       tier: isHebrew ? 'כל הדרגות' : 'All Tiers',
     },
     {
