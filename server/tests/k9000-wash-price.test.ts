@@ -59,11 +59,12 @@ describe('K9000 wash price — single source of truth', () => {
       expect(perWash).toBeCloseTo(44, 2);
     }
 
-    // 10-pack ₪440 → ₪44/wash (only present after the 10-pack seed PR)
+    // 10-pack ₪400 → ₪40/wash (CEO decision 2026-07-15: flagship must
+    // beat the 5-pack's ₪44/wash so the ladder descends ₪50 → ₪44 → ₪40)
     const ten = findByCount(10);
     if (ten) {
       const perWash = parseFloat(ten.price) / 10;
-      expect(perWash).toBeCloseTo(44, 2);
+      expect(perWash).toBeCloseTo(40, 2);
     }
   });
 

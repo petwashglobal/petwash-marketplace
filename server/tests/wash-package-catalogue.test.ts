@@ -5,7 +5,7 @@
  *   1 wash   ₪55   (price === K9000 single-wash debit price)
  *   3 washes ₪150  (₪50 / wash)
  *   5 washes ₪220  (₪44 / wash)
- *  10 washes ₪440  (₪44 / wash)
+ *  10 washes ₪400  (₪40 / wash — CEO decision 2026-07-15, A5 audit)
  *
  * Pre-PR-W8, the seed stopped at 5 washes — so a request to
  * POST /api/checkout with packageId=4 (the 10-pack) returned 404.
@@ -61,11 +61,11 @@ describe('wash package catalogue', () => {
     expect(parseFloat(p!.price) / 5).toBeCloseTo(44, 2);
   });
 
-  it('10-pack price = ₪440 (₪44 / wash) — PR-W8 closes the 404 gap', () => {
+  it('10-pack price = ₪400 (₪40 / wash) — flagship beats the 5-pack rate', () => {
     const p = seed.find((x) => x.washCount === 10);
     expect(p).toBeDefined();
-    expect(parseFloat(p!.price)).toBeCloseTo(440, 2);
-    expect(parseFloat(p!.price) / 10).toBeCloseTo(44, 2);
+    expect(parseFloat(p!.price)).toBeCloseTo(400, 2);
+    expect(parseFloat(p!.price) / 10).toBeCloseTo(40, 2);
   });
 
   it('per-wash math is monotonically non-increasing as pack size grows', () => {

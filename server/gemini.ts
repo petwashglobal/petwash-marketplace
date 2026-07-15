@@ -65,7 +65,7 @@ const KENZO_KNOWLEDGE_2026 = `
 - Single wash session: ₪55 (includes all shampoo, conditioner, disinfectant, dryers)
 - 3-wash package: ₪150 (save ₪15)
 - 5-wash package: ₪220 (save ₪55 - best value!)
-- 10-wash package: ₪440 (save ₪110 - VIP value!)
+- 10-wash package: ₪400 (save ₪150 - VIP value!)
 - All packages include: organic shampoo, conditioner, flea rinse, disinfectant, warm water, dryers
 - No hidden fees, no time limits per wash session
 - E-gift cards available in ₪100, ₪250, ₪500, ₪1000 denominations

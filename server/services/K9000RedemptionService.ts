@@ -71,7 +71,7 @@ export type K9000RedemptionType =
 // SINGLE SOURCE OF TRUTH for K9000 wallet/egift/promo wash redemption price.
 // CEO-confirmed national price = ₪55.00 (matches petwash.co.il marketing
 // pages and the wash_packages seed: 1-pack price='55.00', 3-pack ₪150 →
-// ₪50/wash, 5-pack ₪220 → ₪44/wash, 10-pack ₪440 → ₪44/wash). Update HERE
+// ₪50/wash, 5-pack ₪220 → ₪44/wash, 10-pack ₪400 → ₪40/wash). Update HERE
 // only if pricing ever changes; the test in
 // server/tests/k9000-wash-price.test.ts pins this value.
 //

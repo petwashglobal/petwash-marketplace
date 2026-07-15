@@ -69,16 +69,19 @@ describe('AI chat package prices ↔ catalogue', () => {
     expect(geminiText).toContain(`5-wash package: ₪${fivePrice}`);
   });
 
-  it('10-wash pack price in chat matches catalogue (₪440)', () => {
-    expect(tenPrice).toBe(440);
+  it('10-wash pack price in chat matches catalogue (₪400)', () => {
+    // A5 audit / CEO decision 2026-07-15: Maison drops to ₪400 (₪40/wash)
+    // so the flagship beats the 5-pack's ₪44/wash.
+    expect(tenPrice).toBe(400);
     expect(aiChatText).toContain(`₪${tenPrice}`);
     expect(geminiText).toContain(`10-wash package: ₪${tenPrice}`);
   });
 
   it('chat does NOT quote any of the OLD pre-PR-W9 prices', () => {
-    // Old: 145, 225, 400. All three must be gone from package-pricing
-    // strings.
-    for (const oldPrice of ['₪145', '₪225', '₪400']) {
+    // Old: 145, 225, 440. All three must be gone from package-pricing
+    // strings. (₪440 was the 2026-H1 Maison price, retired 2026-07-15;
+    // ₪400 is now the CURRENT price, so it is no longer in this list.)
+    for (const oldPrice of ['₪145', '₪225', '₪440']) {
       expect(aiChatText).not.toContain(oldPrice);
       expect(geminiText).not.toContain(oldPrice);
     }
@@ -88,11 +91,11 @@ describe('AI chat package prices ↔ catalogue', () => {
     const expectedSavings = {
       three: onePrice * 3 - threePrice,  // 55*3 - 150 = 15
       five:  onePrice * 5 - fivePrice,   // 55*5 - 220 = 55
-      ten:   onePrice * 10 - tenPrice,   // 55*10 - 440 = 110
+      ten:   onePrice * 10 - tenPrice,   // 55*10 - 400 = 150
     };
     expect(expectedSavings.three).toBe(15);
     expect(expectedSavings.five).toBe(55);
-    expect(expectedSavings.ten).toBe(110);
+    expect(expectedSavings.ten).toBe(150);
 
     // Strings appear at least once in the chat copy
     expect(aiChatText).toContain(`₪${expectedSavings.three}`);

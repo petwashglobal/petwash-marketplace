@@ -64,7 +64,7 @@ const FALLBACK_PACKAGES: WashPackage[] = [
     name: '10-Wash Package',
     nameHe: 'חבילת 10 רחיצות',
     description: 'Ten premium natural washes - Family Pack',
-    price: '440',
+    price: '400',
     washCount: 10,
     isActive: true,
     createdAt: new Date(),
