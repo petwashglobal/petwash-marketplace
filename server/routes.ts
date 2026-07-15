@@ -188,6 +188,7 @@ import adminRetentionRouter from "./routes/admin-retention";
 import adminBrainRoutes from "./routes/admin-brain";
 import adminBridgeRoutes from "./routes/admin-bridge";
 import adminLiveOpsRoutes from "./routes/admin-live-ops";
+import adminNayaxEventsRoutes from "./routes/admin-nayax-events";
 import coworkerRoutes from "./routes/coworker";
 import adminNotificationsRoutes from "./routes/admin-notifications";
 import adminPawFinderRoutes from "./routes/admin-paw-finder";
@@ -11614,6 +11615,10 @@ self.addEventListener('notificationclick', (event) => {
   // Unified live-ops review screen (all-platform bookings + KPIs + alerts). NOT
   // feature-flagged — the CEO's "one place to review everything" surface.
   app.use('/api/admin/live-ops', validateFirebaseToken, adminLimiter, requireAdmin, adminLiveOpsRoutes);
+  // Nayax / K9000 events — Tower Control reconciliation over webhook-ingested +
+  // manually-imported Nayax transactions. Read + record-only import (no wallet
+  // writes, no loyalty awards). Same guard chain as live-ops.
+  app.use('/api/admin/nayax-events', validateFirebaseToken, adminLimiter, requireAdmin, adminNayaxEventsRoutes);
   // PR-20: AI Coworker Agents scaffold. Same gate as /admin/brain
   // (validateFirebaseToken at mount + requireBrainAccess inside the router).
   // Read-only — every family returns wired:false until PR-21+ implements it.
