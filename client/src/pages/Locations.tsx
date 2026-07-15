@@ -83,9 +83,10 @@ export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls:
 // docs/stations/launch-stations-2026-06.md. Set `open: true` once a site is
 // actually operating (it then shows as "Open" instead of "Opening soon"), or
 // remove the entry once its live pet_wash_stations row exists.
-const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string; open?: boolean }[] = [
+const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string; open?: boolean; hoursHe?: string; hoursEn?: string; opens?: string; closes?: string }[] = [
   {
     // LIVE: Isaac Wald Park is open — two K9000 bays operating (Nayax online).
+    // Hours are CEO-stated (2026-07-15): daily 05:30–23:00, closed on holidays.
     code: 'PWS-IL-KFS-001',
     city: 'כפר סבא',
     nameHe: 'פארק יצחק ולד, כפר סבא',
@@ -95,6 +96,9 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     open: true,
     etaHe: 'פעילה עכשיו — תחנת השטיפה החכמה הראשונה שלנו',
     etaEn: 'Open now — our first smart wash hub',
+    hoursHe: 'פתוחה כל יום 05:30–23:00 (למעט חגים)',
+    hoursEn: 'Open daily 05:30–23:00 (except holidays)',
+    opens: '05:30', closes: '23:00',
   },
   {
     // Station 2 — exact street address still TBD (CEO), so we name the
@@ -157,6 +161,16 @@ export default function Locations() {
           addressCountry: 'IL',
         },
         geo: { '@type': 'GeoCoordinates', latitude: openStation.lat, longitude: openStation.lng },
+        // Regular weekly hours only — holiday closures are stated in the visible
+        // card copy; schema.org has no clean "except holidays" expression.
+        ...(openStation.opens && openStation.closes ? {
+          openingHoursSpecification: {
+            '@type': 'OpeningHoursSpecification',
+            dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
+            opens: openStation.opens,
+            closes: openStation.closes,
+          },
+        } : {}),
         areaServed: openStation.city,
         parentOrganization: { '@id': 'https://petwash.co.il/#organization' },
         sameAs: socials,
@@ -265,6 +279,12 @@ export default function Locations() {
                       <h2 className="text-2xl font-bold luxury-gradient-text mt-1">{a.nameEn}</h2>
                       <p className="text-lg luxury-text-body" dir="rtl">{a.nameHe}</p>
                       <p className="luxury-text-body mt-1">{a.etaEn} · {a.etaHe}</p>
+                      {a.hoursHe && (
+                        <p className="luxury-text-body mt-1 flex items-center gap-1.5">
+                          <Clock className="w-4 h-4 shrink-0" />
+                          <span>{a.hoursEn} · {a.hoursHe}</span>
+                        </p>
+                      )}
                       <p className="text-[10px] text-gray-400 mt-1 font-mono tracking-wide" dir="ltr">{a.code}</p>
                     </div>
                     <Button
