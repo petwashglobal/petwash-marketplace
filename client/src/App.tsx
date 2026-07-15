@@ -2020,6 +2020,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </Suspense>
           )}
         </Route>
+        {/* A5 audit follow-up: /sitters was a dead 404 (linked externally & typed
+            by hand). Vanity alias → the Sitter Suite overview. */}
+        <Route path="/sitters">{() => <Redirect to="/sitter-suite" />}</Route>
 
         {/* ⁦The Sitter Suite™⁩ - Browse/Explore Sitters */}
         <Route path="/sitter-suite/explore">
