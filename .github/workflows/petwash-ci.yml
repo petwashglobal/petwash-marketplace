@@ -2360,6 +2360,12 @@ jobs:
           VITE_SHOP_LIVE_ENABLED: 'true'
           VITE_SHOP_CHECKOUT_ENABLED: 'false'
 
+      - name: Prerender public routes (SEO snapshots)
+        # Build-time prerender (audit #234): writes real HTML for the public
+        # marketing routes into dist/public so crawlers/AI engines see content.
+        # Fail-open per route — zero snapshots is the only failure mode.
+        run: npm run prerender
+
       - name: Authenticate to Google Cloud
         uses: google-github-actions/auth@v2
         with:

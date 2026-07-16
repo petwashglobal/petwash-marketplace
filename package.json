@@ -27,7 +27,8 @@
     "pass:founder:open": "bash scripts/pass/open-founder-pass.sh",
     "pass:images:prepare": "bash scripts/pass/prepare-luxury-pass-images.sh --apply",
     "prebuild": "npm run preflight",
-    "preflight": "tsx scripts/petwash-preflight.ts && tsx scripts/guards/retired-email-address-scanner.ts"
+    "preflight": "tsx scripts/petwash-preflight.ts && tsx scripts/guards/retired-email-address-scanner.ts",
+    "prerender": "node scripts/prerender.mjs"
   },
   "dependencies": {
     "@capacitor-firebase/authentication": "^8.3.0",
@@ -204,6 +205,7 @@
     "drizzle-kit": "^0.31.7",
     "esbuild": "^0.25.0",
     "postcss": "^8.4.47",
+    "puppeteer": "^25.3.0",
     "tailwindcss": "^3.4.17",
     "typescript": "^5.9.3",
     "vite": "^6.4.3",
