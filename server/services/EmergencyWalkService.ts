@@ -179,11 +179,19 @@ export class EmergencyWalkService {
       });
 
       // Step 6: Send WhatsApp notifications (Hebrew-first)
+      // Owner phone comes from the profile — never a placeholder in a safety flow.
+      const [ownerProfile] = await db
+        .select({ phone: users.phone })
+        .from(users)
+        .where(eq(users.id, request.ownerId))
+        .limit(1)
+        .catch(() => []);
+
       await this.sendEmergencyNotifications({
         bookingId,
         owner: {
           email: request.ownerEmail,
-          phone: 'TODO', // Get from user profile
+          phone: ownerProfile?.phone || '',
         },
         walker: {
           name: matchedWalker.walkerName,
