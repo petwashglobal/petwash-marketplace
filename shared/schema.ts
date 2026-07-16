@@ -11822,6 +11822,9 @@ export const creditTransactions = pgTable("credit_transactions", {
   index("idx_credit_txn_type").on(table.transactionType),
   index("idx_credit_txn_created").on(table.createdAt),
   index("idx_credit_txn_booking").on(table.bookingId),
+  // Partial UNIQUE (H1, migration 0096) — DB backstop against double-credit:
+  // one grant per (wallet, source_type, source_id) when a sourceId exists.
+  uniqueIndex("uq_credit_txn_wallet_source").on(table.walletId, table.sourceType, table.sourceId).where(sql`source_id IS NOT NULL`),
 ]);
 
 // Redemption Sessions - tracks mobile/hardware redemption flows
@@ -12407,7 +12410,9 @@ export const egiftEvents = pgTable("egift_events", {
   index("idx_egift_events_egift_id").on(table.egiftId),
   index("idx_egift_events_user_id").on(table.userId),
   index("idx_egift_events_type").on(table.eventType),
-  index("idx_egift_events_idempotency").on(table.idempotencyKey),
+  // Partial UNIQUE (H6b, migration 0096) — the arbiter for EgiftFinancialService's
+  // ON CONFLICT (idempotency_key) WHERE idempotency_key IS NOT NULL upsert.
+  uniqueIndex("uq_egift_events_idempotency_key").on(table.idempotencyKey).where(sql`idempotency_key IS NOT NULL`),
   index("idx_egift_events_created").on(table.createdAt),
 ]);
 

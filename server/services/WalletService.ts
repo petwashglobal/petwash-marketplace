@@ -683,27 +683,13 @@ class WalletService {
     // SQL `+= amount` at the DB level is inherently serialised by the engine.
     const wallet = await this.getOrCreateWallet(userId);
 
-    // IDEMPOTENCY (2026-06-13, audit C3): if this exact credit was already
-    // recorded (same wallet + sourceType + sourceId), skip it — prevents
-    // double-credit on a retry (e.g. a gift activation re-attempted after a
-    // partial failure). Only applies when a stable sourceId is supplied.
-    if (sourceId) {
-      const [dupe] = await db
-        .select({ transactionId: creditTransactions.transactionId })
-        .from(creditTransactions)
-        .where(and(
-          eq(creditTransactions.walletId, wallet.walletId),
-          eq(creditTransactions.sourceType, sourceType),
-          eq(creditTransactions.sourceId, sourceId),
-        ))
-        .limit(1);
-      if (dupe) {
-        logger.warn('[Wallet] addCredits idempotent skip — credit already recorded for this source', {
-          walletId: wallet.walletId, sourceType, sourceId,
-        });
-        return;
-      }
-    }
+    // IDEMPOTENCY (H1, go-live audit → hardened 2026-07-16): the dup check now
+    // runs INSIDE the transaction, after a FOR UPDATE lock on the wallet row —
+    // two concurrent grants for the same source serialize on the lock, so the
+    // second one SEES the first one's row and skips. (The old check ran outside
+    // the tx: both concurrent calls passed it and both inserted.) Migration
+    // 0096 adds a partial UNIQUE index as the DB backstop; a genuine conflict
+    // now rolls back the whole tx, balance increment included.
 
     const transactionId = `TXN-${nanoid(12).toUpperCase()}`;
     const now = new Date();
@@ -737,6 +723,27 @@ class WalletService {
     // changed with no ledger entry (or vice-versa).
     let balanceAfter = 0;
     await (db as any).transaction(async (tx: typeof db) => {
+      // Serialize concurrent grants on this wallet (H1).
+      await (tx as any).execute(sql`SELECT wallet_id FROM wallet_accounts WHERE wallet_id = ${wallet.walletId} FOR UPDATE`);
+
+      if (sourceId) {
+        const [dupe] = await (tx as any)
+          .select({ transactionId: creditTransactions.transactionId })
+          .from(creditTransactions)
+          .where(and(
+            eq(creditTransactions.walletId, wallet.walletId),
+            eq(creditTransactions.sourceType, sourceType),
+            eq(creditTransactions.sourceId, sourceId),
+          ))
+          .limit(1);
+        if (dupe) {
+          logger.warn('[Wallet] addCredits idempotent skip — credit already recorded for this source', {
+            walletId: wallet.walletId, sourceType, sourceId,
+          });
+          return;
+        }
+      }
+
       const [updated] = await tx.update(walletAccounts)
         .set(updateExpr)
         .where(eq(walletAccounts.walletId, wallet.walletId))
