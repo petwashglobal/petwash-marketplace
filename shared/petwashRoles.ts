@@ -1,5 +1,5 @@
 // FILE: shared/petwashRoles.ts
-// Pet Wash™ - Platform Roles & Permissions
+// PetWash™ - Platform Roles & Permissions
 // Defines all roles across the ecosystem
 
 export type PlatformRole =

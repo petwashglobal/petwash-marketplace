@@ -172,7 +172,7 @@ export default function PetPassport() {
               {/* Header band */}
               <div className="flex items-center justify-between px-6 pt-5">
                 <span className="text-[10px] uppercase tracking-[0.2em] text-amber-300/80 font-semibold">
-                  {tr('Pet Wash™ · Pet Passport', '⁦Pet Wash™⁩ · דרכון חיה')}
+                  {tr('PetWash™ · Pet Passport', '⁦PetWash™⁩ · דרכון חיה')}
                 </span>
                 <ShieldCheck className="w-4 h-4 text-amber-300/70" />
               </div>

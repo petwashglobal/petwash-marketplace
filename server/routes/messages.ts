@@ -277,12 +277,12 @@ router.post('/send', async (req, res) => {
       if (recipientUser?.email) {
         await EmailService.send({
           to: recipientUser.email,
-          subject: '📬 New Message in Your ⁦Pet Wash™⁩ Inbox',
+          subject: '📬 New Message in Your ⁦PetWash™⁩ Inbox',
           html: `
             <h2>You have a new message</h2>
-            <p><strong>From:</strong> ${req.firebaseUser?.email || '⁦Pet Wash™⁩ Team'}</p>
+            <p><strong>From:</strong> ${req.firebaseUser?.email || '⁦PetWash™⁩ Team'}</p>
             <p><strong>Subject:</strong> ${validated.subject}</p>
-            <p><em>Log in to your ⁦Pet Wash™⁩ account to read and reply.</em></p>
+            <p><em>Log in to your ⁦PetWash™⁩ account to read and reply.</em></p>
           `,
         }).catch(err => logger.error('[Secure Inbox] Failed to send email notification', err));
       }

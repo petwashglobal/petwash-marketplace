@@ -585,7 +585,7 @@ router.get('/compliance-report', async (req, res) => {
       success: true,
       ...reportData,
       integrityHash,
-      disclaimer: 'This report is generated from the Pet Wash™ financial system. All amounts in ILS. VAT rate: 18%. For Israeli Tax Authority compliance review.',
+      disclaimer: 'This report is generated from the PetWash™ financial system. All amounts in ILS. VAT rate: 18%. For Israeli Tax Authority compliance review.',
     });
   } catch (error: any) {
     logger.error('[TransactionAudit] Compliance report error', { error: error.message });

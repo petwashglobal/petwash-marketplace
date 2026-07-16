@@ -407,7 +407,7 @@ router.post('/:bookingId/complete', requireAuth, async (req: Request, res: Respo
       customerPhone: customerPhone || '',
       providerName: booking.resourceType === 'HUMAN' ? booking.resourceId : undefined,
       providerId: booking.resourceType === 'HUMAN' ? booking.resourceId : undefined,
-      serviceDescription: serviceDescription || `Pet Wash™ service - ${booking.serviceId}`,
+      serviceDescription: serviceDescription || `PetWash™ service - ${booking.serviceId}`,
       serviceDescriptionHe: serviceDescriptionHe || `שירות פט ווש™ - ${booking.serviceId}`,
     };
 

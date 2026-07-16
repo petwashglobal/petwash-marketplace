@@ -1,5 +1,5 @@
 /**
- * Kenzo AI Chat Widget — Pet Wash™
+ * Kenzo AI Chat Widget — PetWash™
  * Mobile: full-width bottom sheet (slides up from bottom)
  * Desktop ≥768px: right-side popup, 420px wide
  */
@@ -57,7 +57,7 @@ export function AiChatWidget({ isOpen: externalIsOpen, onClose }: AiChatWidgetPr
     setSessionId(`session-${nanoid(16)}`);
     setMessages([{
       id: 'welcome',
-      text: '👋 שלום! אני קנזו, העוזר החכם של ⁦Pet Wash™⁩. איך אוכל לעזור לך היום?',
+      text: '👋 שלום! אני קנזו, העוזר החכם של ⁦PetWash™⁩. איך אוכל לעזור לך היום?',
       sender: 'bot',
       timestamp: new Date(),
     }]);

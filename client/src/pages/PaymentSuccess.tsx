@@ -94,8 +94,8 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
   const shareVoucher = () => {
     if (navigator.share && voucherDetails) {
       navigator.share({
-        title: '⁦Pet Wash™⁩ Voucher',
-        text: `Your ⁦Pet Wash™⁩ voucher: ${voucherDetails.voucherCode}`,
+        title: '⁦PetWash™⁩ Voucher',
+        text: `Your ⁦PetWash™⁩ voucher: ${voucherDetails.voucherCode}`,
         url: window.location.href
       });
     }

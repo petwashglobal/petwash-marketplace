@@ -1,8 +1,8 @@
 /**
- * Admin Provider Review Service - ⁦Pet Wash™⁩
+ * Admin Provider Review Service - ⁦PetWash™⁩
  * 
  * Provider approval workflow with checklist verification
- * for ⁦Pet Wash™⁩ service providers.
+ * for ⁦PetWash™⁩ service providers.
  * 
  * Hebrew-dominant with English brand touches
  * Israeli Law 2025 compliance
@@ -585,7 +585,7 @@ class AdminProviderReviewService {
                 } : undefined,
                 push: {
                   userId: firebaseUid,
-                  title: `בקשתך אושרה! – Pet Wash™ ✅`,
+                  title: `בקשתך אושרה! – PetWash™ ✅`,
                   body: `חשבון הספק שלך אושר. לחץ/י להתחיל את תהליך ה-Onboarding.`,
                   data: { type: 'provider_approved', platform: review.application.platform },
                 },

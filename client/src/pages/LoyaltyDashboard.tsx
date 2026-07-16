@@ -213,7 +213,7 @@ function LoyaltyOperatingStrip({ isHebrew }: { isHebrew: boolean }) {
   );
 }
 
-// ⁦Pet Wash™⁩ Loyalty Dashboard
+// ⁦PetWash™⁩ Loyalty Dashboard
 export default function LoyaltyDashboard() {
   const { language } = useLanguage();
   const isHebrew = language === 'he';
@@ -323,7 +323,7 @@ export default function LoyaltyDashboard() {
             <div>
               <div className="flex items-center gap-3 mb-2">
                 <h1 className="luxury-heading-xl">
-                  {isHebrew ? '🏆 תוכנית הנאמנות ⁦Pet Wash™⁩' : '🏆 ⁦Pet Wash™⁩ Loyalty Program'}
+                  {isHebrew ? '🏆 תוכנית הנאמנות ⁦PetWash™⁩' : '🏆 ⁦PetWash™⁩ Loyalty Program'}
                 </h1>
                 <span className="px-2 py-0.5 text-[8px] tracking-[0.15em] uppercase font-semibold bg-amber-100 text-amber-700 border border-amber-200/60 rounded-sm dark:bg-amber-900/30 dark:text-amber-300 dark:border-amber-700/40">
                   {isHebrew ? 'חבר' : 'Member'}
@@ -638,7 +638,7 @@ export default function LoyaltyDashboard() {
           {/* Footer */}
           <div className="mt-8 text-center text-sm text-gray-500 dark:text-gray-400">
             <p>
-              ⁦Pet Wash™⁩ Loyalty Engine 2025-2026 • {isHebrew ? 'בנוי עם טכנולוגיה מתקדמת' : 'Built with Advanced Technology'}
+              ⁦PetWash™⁩ Loyalty Engine 2025-2026 • {isHebrew ? 'בנוי עם טכנולוגיה מתקדמת' : 'Built with Advanced Technology'}
             </p>
           </div>
         </div>

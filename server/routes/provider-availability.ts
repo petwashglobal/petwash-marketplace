@@ -173,7 +173,7 @@ router.post('/set', async (req, res) => {
           await calendarIntegrationService.createBookingEvent({
             platform,
             bookingId: `unavail-${providerId}-${date}`,
-            title: `⁦Pet Wash™⁩ - Unavailable`,
+            title: `⁦PetWash™⁩ - Unavailable`,
             description: `Provider marked as unavailable for ${platform}`,
             startTime,
             endTime,
@@ -362,7 +362,7 @@ router.post('/bulk-block', async (req, res) => {
       await calendarIntegrationService.createBookingEvent({
         platform,
         bookingId: `block-${providerId}-${startDate}-${endDate}`,
-        title: `⁦Pet Wash™⁩ - Blocked (${reason || 'Unavailable'})`,
+        title: `⁦PetWash™⁩ - Blocked (${reason || 'Unavailable'})`,
         description: `Provider blocked ${dates.length} days: ${reason || 'No reason specified'}`,
         startTime,
         endTime,

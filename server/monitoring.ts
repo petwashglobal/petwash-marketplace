@@ -869,7 +869,7 @@ export async function sendDailyNayaxReport() {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🐾 ⁦Pet Wash™⁩ Daily Nayax Report</h1>
+      <h1>🐾 ⁦PetWash™⁩ Daily Nayax Report</h1>
       <p>${reportDate}</p>
       <div class="rate-badges">
         <span class="rate-badge">VAT Rate: ${(VAT_RATE * 100).toFixed(0)}%</span>
@@ -1049,7 +1049,7 @@ export async function sendDailyNayaxReport() {
       <p style="color: #64748b; margin: 0 0 10px 0;">Review detailed transactions in the admin dashboard</p>
       <a href="https://petwash.co.il/admin/users" class="btn">View Admin Dashboard</a>
       <p style="color: #94a3b8; font-size: 12px; margin-top: 20px;">
-        ⁦Pet Wash™⁩ Automated Reporting System
+        ⁦PetWash™⁩ Automated Reporting System
       </p>
     </div>
   </div>

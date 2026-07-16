@@ -1,4 +1,4 @@
-// Firestore Schema Definitions for Pet Wash™
+// Firestore Schema Definitions for PetWash™
 // Collections: userInbox, franchiseInbox, pets, vouchers
 
 import { z } from "zod";

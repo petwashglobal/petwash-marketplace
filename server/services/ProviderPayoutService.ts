@@ -356,7 +356,7 @@ ${bookingRow}
               } : undefined,
               push: {
                 userId: providerUserId,
-                title: `תשלום הועבר – Pet Wash™ 💸`,
+                title: `תשלום הועבר – PetWash™ 💸`,
                 body: `${netAmountStr} ₪ הועברו לחשבונך. מס׳ העברה: ${payoutRef}`,
                 data: { type: 'payout_issued', payoutId, ...(bookingRef ? { bookingRef } : {}) },
               },
@@ -365,7 +365,7 @@ ${bookingRow}
                 netAmount: payout.netAmount,
                 bookingRef: bookingRef ?? null,
                 smsText: buildPayoutIssuedSms({ payoutRef, netAmount: netAmountStr, bookingRef: bookingRef ?? undefined }),
-                pushTitle: `תשלום הועבר – Pet Wash™ 💸`,
+                pushTitle: `תשלום הועבר – PetWash™ 💸`,
                 pushBody: `${netAmountStr} ₪ הועברו לחשבונך. מס׳ העברה: ${payoutRef}`,
               },
             });

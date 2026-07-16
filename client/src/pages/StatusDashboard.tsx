@@ -99,7 +99,7 @@ export default function StatusDashboard() {
   return (
     <LuxuryPageWrapper
       variant="dashboard"
-      title="⁦Pet Wash™⁩ System Status"
+      title="⁦PetWash™⁩ System Status"
       subtitle="Real-time platform health monitoring"
       icon={<Activity className="w-8 h-8 text-[#B8932F]" />}
     >

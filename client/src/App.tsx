@@ -435,7 +435,7 @@ const PawFinder = lazy(() => import("@/pages/PawFinder"));
 const AdoptionMaison = lazy(() => import("@/pages/AdoptionMaison"));
 const ServiceStatus = lazy(() => import("@/pages/ServiceStatus"));
 
-// ⁦Pet Wash™⁩ 2025 Global Architecture - Octopus Model Routes
+// ⁦PetWash™⁩ 2025 Global Architecture - Octopus Model Routes
 const Hub = lazy(() => import("@/pages/Hub"));
 const Shop = lazy(() => import("@/pages/Shop"));
 const ShopStore = lazy(() => import("@/pages/ShopStore"));
@@ -529,7 +529,7 @@ const TrackMyPetLive = lazy(() => import("@/pages/WalkTracking"));
 
 // ⁦PetTrek™⁩ - Legacy/Alias Pages
 
-// Unified Provider Dashboard (Pet Wash™ style)
+// Unified Provider Dashboard (PetWash™ style)
 
 // Provider Operations Console 2026
 
@@ -1201,7 +1201,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <Vouchers />}
         </Route>
         
-        {/* ⁦Pet Wash™⁩ 2025 Global Architecture - Octopus Model Routes */}
+        {/* ⁦PetWash™⁩ 2025 Global Architecture - Octopus Model Routes */}
         <Route path="/hub">
           {() => <Hub />}
         </Route>
@@ -1520,7 +1520,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           )}
         </Route>
         
-        {/* TALENT MARKETPLACE - 7-Platform ⁦Pet Wash™⁩ Directory */}
+        {/* TALENT MARKETPLACE - 7-Platform ⁦PetWash™⁩ Directory */}
         {/* /talent renders hardcoded DEMO sitters (fake names/ratings/prices). Gated OFF
             in production → real marketplace; flag on for demos only. No fake providers to users. */}
         <Route path="/talent">

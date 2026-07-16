@@ -6,7 +6,7 @@
  * rendering, legal footer, and ח.פ. compliance.
  *
  * Email family: provider_workflow — UNSUBSCRIBE FORBIDDEN on all.
- * Sender: SENDERS.provider — 'Pet Wash™ Providers' / noreply@petwash.co.il
+ * Sender: SENDERS.provider — 'PetWash™ Providers' / noreply@petwash.co.il
  * Reply-To: support@petwash.co.il
  *
  * Templates:
@@ -177,7 +177,7 @@ export function buildAdminReviewAlertEmail(p: AdminReviewAlertParams): { subject
     ${ctaButton('Review Application', p.reviewUrl)}
 
     <p style="font-size:11px;color:${DESIGN.lightGrey};margin:20px 0 0;font-family:${DESIGN.fontStack};">
-      Automated notification from the Pet Wash™ KYC2026 engine.
+      Automated notification from the PetWash™ KYC2026 engine.
       ${LEGAL_NAME_HE} / ${LEGAL_NAME_EN} &mdash; ח.פ. ${COMPANY_TAX_ID}
     </p>`;
 
@@ -266,20 +266,20 @@ export interface KycApprovedParams {
 export function buildKycApprovedEmail(p: KycApprovedParams): { subject: string; html: string } {
   const lang = p.language ?? 'he';
   const subject = lang === 'he'
-    ? 'בקשת הספק שלך אושרה — ברוך הבא ל-Pet Wash™'
-    : 'Your provider application has been approved — Welcome to Pet Wash™';
+    ? 'בקשת הספק שלך אושרה — ברוך הבא ל-PetWash™'
+    : 'Your provider application has been approved — Welcome to PetWash™';
 
   const bodyHtml = lang === 'he' ? `
     ${categoryLabel('בקשת ספק אושרה')}
     ${greeting(p.firstName, 'he')}
-    ${para(`שמחים לבשר לך! בקשת הספק שלך כ<strong>${p.providerTypeLabel}</strong> ב-Pet Wash™ אושרה.`)}
+    ${para(`שמחים לבשר לך! בקשת הספק שלך כ<strong>${p.providerTypeLabel}</strong> ב-PetWash™ אושרה.`)}
     ${para(`חשבונך פעיל כעת. תוכל להתחבר ולהתחיל להגדיר את פרופיל הספק שלך.`)}
     ${refPill('מזהה בקשה', p.applicationId)}
     ${supportLine('he')}
   ` : `
     ${categoryLabel('Provider Application Approved')}
     ${greeting(p.firstName, 'en')}
-    ${para(`Great news — your provider application as a <strong>${p.providerTypeLabel}</strong> on Pet Wash™ has been approved.`)}
+    ${para(`Great news — your provider application as a <strong>${p.providerTypeLabel}</strong> on PetWash™ has been approved.`)}
     ${para(`Your account is now active. You can log in and start setting up your provider profile.`)}
     ${refPill('Application ID', p.applicationId)}
     ${supportLine('en')}
@@ -348,13 +348,13 @@ export interface AdminApprovedParams {
 export function buildAdminApprovedEmail(p: AdminApprovedParams): { subject: string; html: string } {
   const lang = p.language ?? 'he';
   const subject = lang === 'he'
-    ? 'בקשת הספק שלך אושרה — ברוך הבא ל-Pet Wash™'
-    : 'Your provider application has been approved — Welcome to Pet Wash™';
+    ? 'בקשת הספק שלך אושרה — ברוך הבא ל-PetWash™'
+    : 'Your provider application has been approved — Welcome to PetWash™';
 
   const bodyHtml = lang === 'he' ? `
     ${categoryLabel('בקשת ספק אושרה')}
     ${greeting(p.firstName, 'he')}
-    ${para(`שמחים לבשר לך! צוות Pet Wash™ אישר את בקשת הספק שלך כ<strong>${p.providerTypeLabel}</strong>.`)}
+    ${para(`שמחים לבשר לך! צוות PetWash™ אישר את בקשת הספק שלך כ<strong>${p.providerTypeLabel}</strong>.`)}
     ${para(`חשבונך פעיל כעת. תוכל להתחבר ולהתחיל להגדיר את פרופיל הספק שלך.`)}
     <div style="margin:16px 0;">
       ${refPill('מזהה בקשה', p.applicationId)}&nbsp;
@@ -364,7 +364,7 @@ export function buildAdminApprovedEmail(p: AdminApprovedParams): { subject: stri
   ` : `
     ${categoryLabel('Provider Application Approved')}
     ${greeting(p.firstName, 'en')}
-    ${para(`Your provider application as a <strong>${p.providerTypeLabel}</strong> on Pet Wash™ has been approved by our team.`)}
+    ${para(`Your provider application as a <strong>${p.providerTypeLabel}</strong> on PetWash™ has been approved by our team.`)}
     ${para(`Your account is now active. You can log in and start setting up your provider profile.`)}
     <div style="margin:16px 0;">
       ${refPill('Application ID', p.applicationId)}&nbsp;

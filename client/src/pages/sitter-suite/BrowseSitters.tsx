@@ -694,7 +694,7 @@ export default function BrowseSitters() {
                 </span>
               </div>
               <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                {isHebrew ? 'הפכו לשמרטפים ב-⁦Pet Wash™⁩' : 'Become a ⁦Pet Wash™⁩ Sitter'}
+                {isHebrew ? 'הפכו לשמרטפים ב-⁦PetWash™⁩' : 'Become a ⁦PetWash™⁩ Sitter'}
               </h2>
               <p className="text-gray-600 max-w-2xl mx-auto">
                 {isHebrew 

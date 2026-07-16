@@ -20,7 +20,7 @@ export default function LiveChat() {
               AI Chat Assistant
             </h1>
             <p className="luxury-subtitle-lg">
-              Powered by Gemini AI — Kenzo, your ⁦Pet Wash™⁩ concierge. Hebrew & English support.
+              Powered by Gemini AI — Kenzo, your ⁦PetWash™⁩ concierge. Hebrew & English support.
             </p>
           </div>
 
@@ -29,7 +29,7 @@ export default function LiveChat() {
               Tap the chat button in the bottom corner to start chatting! 💬
             </p>
             <p className="text-white/80 text-lg">
-              Our AI assistant is available on every page of ⁦Pet Wash™⁩
+              Our AI assistant is available on every page of ⁦PetWash™⁩
             </p>
           </div>
 

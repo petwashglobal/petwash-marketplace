@@ -756,7 +756,7 @@ export default function K9000Redeem() {
           )}
 
           <div className="mt-8 text-center text-xs text-gray-400 pb-4">
-            <p>⁦Pet Wash™⁩ K9000 • {isHebrew ? 'מאובטח ומוצפן' : 'Secured & Encrypted'}</p>
+            <p>⁦PetWash™⁩ K9000 • {isHebrew ? 'מאובטח ומוצפן' : 'Secured & Encrypted'}</p>
           </div>
         </div>
       </div>

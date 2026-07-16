@@ -8,8 +8,8 @@ export default function LoyaltyTiers() {
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
   const isHebrew = language === 'he';
   useSEO({
-    title: '⁦Pet Wash™⁩ Prestige — Loyalty Tiers | דרגות נאמנות ⁦Prestige⁩',
-    description: 'The ⁦Pet Wash™⁩ Prestige loyalty ladder — earn points on every wash and climb tiers for bigger rewards. Status never expires. מועדון הנאמנות ⁦Prestige⁩ — צברו נקודות בכל שטיפה ועלו דרגות; הסטטוס לעולם לא פג.',
+    title: '⁦PetWash™⁩ Prestige — Loyalty Tiers | דרגות נאמנות ⁦Prestige⁩',
+    description: 'The ⁦PetWash™⁩ Prestige loyalty ladder — earn points on every wash and climb tiers for bigger rewards. Status never expires. מועדון הנאמנות ⁦Prestige⁩ — צברו נקודות בכל שטיפה ועלו דרגות; הסטטוס לעולם לא פג.',
     keywords: 'pet wash loyalty, prestige tiers, rewards, membership, מועדון נאמנות, דרגות, נקודות, הטבות',
     canonical: 'https://petwash.co.il/loyalty/tiers',
     ogType: 'website',
@@ -54,7 +54,7 @@ export default function LoyaltyTiers() {
         </Link>
 
         <div className="text-center mb-10">
-          <img src="/brand/petwash-logo-white-bg.png" alt="⁦Pet Wash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
+          <img src="/brand/petwash-logo-white-bg.png" alt="⁦PetWash™⁩" className="h-12 mx-auto mb-6 opacity-90" />
           <div className="inline-flex items-center gap-2 mb-4">
             <Star className="w-6 h-6 text-[#0a0a0a]" />
             <Sparkles className="w-5 h-5 text-[#0a0a0a]/60" />

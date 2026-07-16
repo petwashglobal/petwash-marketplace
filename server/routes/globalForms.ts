@@ -123,8 +123,8 @@ router.post('/newsletter', async (req, res) => {
 
     res.json({
       success: true,
-      message: 'Welcome to ⁦Pet Wash™⁩ Newsletter!',
-      messageHe: 'ברוכים הבאים לניוזלטר של ⁦Pet Wash™⁩!',
+      message: 'Welcome to ⁦PetWash™⁩ Newsletter!',
+      messageHe: 'ברוכים הבאים לניוזלטר של ⁦PetWash™⁩!',
     });
   } catch (error) {
     logger.error('[GlobalForms] Newsletter signup error:', error);

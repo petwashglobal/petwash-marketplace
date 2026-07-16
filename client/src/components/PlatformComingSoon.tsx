@@ -50,7 +50,7 @@ export function PlatformComingSoon({
   // SEO from the real props — truthful "coming soon" title, never a generic
   // fallback. Memoized so useSEO's effect doesn't re-run every render.
   const seoConfig = useMemo(() => ({
-    title: `${platformName} — Coming Soon | ⁦Pet Wash™⁩ | בקרוב`,
+    title: `${platformName} — Coming Soon | ⁦PetWash™⁩ | בקרוב`,
     description,
   }), [platformName, description]);
   useSEO(seoConfig);

@@ -9,7 +9,7 @@
  * - VAT (18%) applied on platform fee per Israeli law
  * - Withholding tax (ניכוי מס במקור) deducted from sitter payout at settlement
  * 
- * Payment Flow (Pet Wash™ escrow model):
+ * Payment Flow (PetWash™ escrow model):
  * 1. Owner pays base + 15% platform fee + VAT to PetWash via Nayax
  * 2. Platform holds funds in 72-hour escrow
  * 3. Upon job completion:

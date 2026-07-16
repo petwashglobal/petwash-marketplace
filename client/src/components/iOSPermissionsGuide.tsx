@@ -10,13 +10,13 @@ interface iOSPermissionsGuideProps {
 
 /**
  * LUXURY 2025: iOS Permissions Guide
- * Shows what iOS permissions ⁦Pet Wash™⁩ needs and why
+ * Shows what iOS permissions ⁦PetWash™⁩ needs and why
  * Matches iOS Settings style
  */
 export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuideProps) {
   const text = {
     en: {
-      title: 'Allow ⁦Pet Wash™⁩ to Access',
+      title: 'Allow ⁦PetWash™⁩ to Access',
       subtitle: 'Enable these permissions for the best experience',
       permissions: [
         {
@@ -40,7 +40,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
           iconBg: 'bg-[#B8932F]',
           name: 'Local Network',
           status: 'Enabled',
-          description: 'Connect to ⁦Pet Wash™⁩ smart stations for contactless payment',
+          description: 'Connect to ⁦PetWash™⁩ smart stations for contactless payment',
           enabled: true,
         },
         {
@@ -102,7 +102,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
       close: 'Got It',
     },
     he: {
-      title: 'אפשר ל-⁦Pet Wash™⁩ לגשת',
+      title: 'אפשר ל-⁦PetWash™⁩ לגשת',
       subtitle: 'הפעל הרשאות אלה לחוויה הטובה ביותר',
       permissions: [
         {
@@ -126,7 +126,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
           iconBg: 'bg-[#B8932F]',
           name: 'רשת מקומית',
           status: 'מופעל',
-          description: 'התחבר לתחנות ⁦Pet Wash™⁩ החכמות לתשלום ללא מגע',
+          description: 'התחבר לתחנות ⁦PetWash™⁩ החכמות לתשלום ללא מגע',
           enabled: true,
         },
         {
@@ -204,7 +204,7 @@ export function iOSPermissionsGuide({ language, onClose }: iOSPermissionsGuidePr
             <div className="flex items-center gap-3 mb-2">
               <FaChrome className="w-8 h-8 text-gray-700 dark:text-black" />
               <h1 className="text-2xl font-semibold text-gray-900 dark:text-black">
-                ⁦Pet Wash™⁩
+                ⁦PetWash™⁩
               </h1>
             </div>
             <p className="text-sm text-gray-600 dark:text-gray-400">

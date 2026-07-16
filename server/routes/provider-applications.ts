@@ -453,7 +453,7 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
       const adminHtml = `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
           <div style="background:#1a1a1a;padding:24px;text-align:center">
-            <h1 style="color:#c9a96e;font-size:22px;margin:0">🐾 Pet Wash™ — New Provider Application</h1>
+            <h1 style="color:#c9a96e;font-size:22px;margin:0">🐾 PetWash™ — New Provider Application</h1>
           </div>
           <div style="padding:28px">
             <table style="width:100%;border-collapse:collapse">
@@ -481,9 +481,9 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
         </div>`;
       await sendLuxuryEmail({
         to: process.env.SUPPORT_EMAIL || SUPPORT_EMAIL,
-        subject: `[Pet Wash™] New Provider Application #${application.id} — ${formData.firstName} ${formData.lastName}`,
+        subject: `[PetWash™] New Provider Application #${application.id} — ${formData.firstName} ${formData.lastName}`,
         html: adminHtml,
-        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ System' },
+        from: { email: 'noreply@petwash.co.il', name: 'PetWash™ System' },
       });
       logger.info('[ProviderApplication] Admin notification sent', { applicationId: application.id });
     } catch (adminEmailError) {
@@ -1373,14 +1373,14 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
       await EmailService.send({
         to: application.email,
         subject: application.preferredLanguage === 'he' 
-          ? '!ברוכים הבאים למשפחת ⁦Pet Wash™⁩ - הזמנה להצטרפות'
-          : 'Welcome to ⁦Pet Wash™⁩ - Your Provider Invitation',
+          ? '!ברוכים הבאים למשפחת ⁦PetWash™⁩ - הזמנה להצטרפות'
+          : 'Welcome to ⁦PetWash™⁩ - Your Provider Invitation',
         html: application.preferredLanguage === 'he' 
           ? `
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto; direction: rtl;">
               <h1 style="color: #7c3aed;">מזל טוב, ${application.firstName}!</h1>
               <p style="font-size: 16px; line-height: 1.6;">
-                אנו שמחים לעדכן אותך שבקשתך להצטרף לצוות ⁦Pet Wash™⁩ <strong>אושרה!</strong>
+                אנו שמחים לעדכן אותך שבקשתך להצטרף לצוות ⁦PetWash™⁩ <strong>אושרה!</strong>
               </p>
               <p style="font-size: 16px; line-height: 1.6;">
                 כדי להשלים את תהליך ההצטרפות שלך, לחץ על הכפתור למטה:
@@ -1393,7 +1393,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
               </p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
               <p style="font-size: 12px; color: #999;">
-                ⁦Pet Wash™⁩ - טיפוח פרימיום לחיית המחמד שלך
+                ⁦PetWash™⁩ - טיפוח פרימיום לחיית המחמד שלך
               </p>
             </div>
           `
@@ -1401,7 +1401,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
             <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
               <h1 style="color: #7c3aed;">Congratulations, ${application.firstName}!</h1>
               <p style="font-size: 16px; line-height: 1.6;">
-                We're excited to let you know that your application to join the ⁦Pet Wash™⁩ team has been <strong>approved!</strong>
+                We're excited to let you know that your application to join the ⁦PetWash™⁩ team has been <strong>approved!</strong>
               </p>
               <p style="font-size: 16px; line-height: 1.6;">
                 To complete your onboarding, please click the button below:
@@ -1414,7 +1414,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
               </p>
               <hr style="border: none; border-top: 1px solid #eee; margin: 20px 0;">
               <p style="font-size: 12px; color: #999;">
-                ⁦Pet Wash™⁩ - Premium care for your furry friends
+                ⁦PetWash™⁩ - Premium care for your furry friends
               </p>
             </div>
           `
@@ -1623,12 +1623,12 @@ router.post('/admin/:id/reject', async (req: Request, res: Response) => {
       try {
         const isHebrew = application.preferredLanguage === 'he' || !application.preferredLanguage;
         const rejectionSubject = isHebrew
-          ? `[Pet Wash™] עדכון בנוגע לבקשתך`
-          : `[Pet Wash™] Update on Your Provider Application`;
+          ? `[PetWash™] עדכון בנוגע לבקשתך`
+          : `[PetWash™] Update on Your Provider Application`;
         const rejectionHtml = `
           <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#ffffff">
             <div style="background:#1a1a1a;padding:24px;text-align:center">
-              <h1 style="color:#c9a96e;margin:0;font-size:22px;letter-spacing:2px">Pet Wash™</h1>
+              <h1 style="color:#c9a96e;margin:0;font-size:22px;letter-spacing:2px">PetWash™</h1>
             </div>
             <div style="padding:32px 24px">
               <p style="font-size:16px;color:#1a1a1a">${isHebrew ? `שלום ${application.firstName},` : `Hello ${application.firstName},`}</p>
@@ -1652,14 +1652,14 @@ router.post('/admin/:id/reject', async (req: Request, res: Response) => {
               </div>
             </div>
             <div style="background:#f9fafb;padding:16px;text-align:center;font-size:12px;color:#9ca3af">
-              Pet Wash™ · ${SUPPORT_EMAIL}
+              PetWash™ · ${SUPPORT_EMAIL}
             </div>
           </div>`;
         await sendLuxuryEmail({
           to: application.email,
           subject: rejectionSubject,
           html: rejectionHtml,
-          from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™' },
+          from: { email: 'noreply@petwash.co.il', name: 'PetWash™' },
         });
         logger.info('[ProviderApplication] Rejection email sent', { applicationId, email: application.email });
       } catch (rejEmailError) {

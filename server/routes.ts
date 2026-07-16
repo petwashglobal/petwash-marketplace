@@ -728,7 +728,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     res.set('Cache-Control', 'no-store').json({
       ok: true,
       status: 'healthy',
-      service: '⁦Pet Wash™⁩ API',
+      service: '⁦PetWash™⁩ API',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
@@ -739,7 +739,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     res.set('Cache-Control', 'no-store').json({
       ok: true,
       status: 'healthy',
-      service: '⁦Pet Wash™⁩ API',
+      service: '⁦PetWash™⁩ API',
       timestamp: new Date().toISOString(),
       uptime: process.uptime(),
       environment: process.env.NODE_ENV || 'development',
@@ -1027,7 +1027,7 @@ const messaging = firebase.messaging();
 messaging.onBackgroundMessage((payload) => {
   console.log('[firebase-messaging-sw.js] Received background message:', payload);
 
-  const notificationTitle = payload.notification?.title || '⁦Pet Wash™⁩';
+  const notificationTitle = payload.notification?.title || '⁦PetWash™⁩';
   const isJobOffer = payload.data?.type === 'job_offer';
   const notificationOptions = {
     body: payload.notification?.body || 'You have a new notification',
@@ -2644,8 +2644,8 @@ self.addEventListener('notificationclick', (event) => {
       // Fallback greeting
       const language = (req.query.language as string) || 'en';
       const fallback = language === 'he' 
-        ? 'שלום! ברוכים הבאים ל-⁦Pet Wash™⁩! 🐾'
-        : 'Welcome to ⁦Pet Wash™⁩! 🐾';
+        ? 'שלום! ברוכים הבאים ל-⁦PetWash™⁩! 🐾'
+        : 'Welcome to ⁦PetWash™⁩! 🐾';
       
       res.json({ 
         ok: true,
@@ -4393,7 +4393,7 @@ self.addEventListener('notificationclick', (event) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>⁦Pet Wash™⁩ - Invalid Unsubscribe Link</title>
+    <title>⁦PetWash™⁩ - Invalid Unsubscribe Link</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
@@ -4402,7 +4402,7 @@ self.addEventListener('notificationclick', (event) => {
 </head>
 <body>
     <div class="container">
-        <h1>⁦Pet Wash™⁩</h1>
+        <h1>⁦PetWash™⁩</h1>
         <h2>Invalid Unsubscribe Link</h2>
         <p>The unsubscribe link appears to be invalid or has expired.</p>
         <p>If you need assistance, please contact our support team at Support@PetWash.co.il</p>
@@ -4422,7 +4422,7 @@ self.addEventListener('notificationclick', (event) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>⁦Pet Wash™⁩ - Invalid Unsubscribe Link</title>
+    <title>⁦PetWash™⁩ - Invalid Unsubscribe Link</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
@@ -4431,7 +4431,7 @@ self.addEventListener('notificationclick', (event) => {
 </head>
 <body>
     <div class="container">
-        <h1>⁦Pet Wash™⁩</h1>
+        <h1>⁦PetWash™⁩</h1>
         <h2>Invalid or Expired Unsubscribe Link</h2>
         <p>This unsubscribe link is invalid or has expired for security reasons.</p>
         <p>If you need to unsubscribe from our emails, please contact us at Support@PetWash.co.il</p>
@@ -4486,7 +4486,7 @@ self.addEventListener('notificationclick', (event) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>⁦Pet Wash™⁩ - Successfully Unsubscribed</title>
+    <title>⁦PetWash™⁩ - Successfully Unsubscribed</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
@@ -4496,12 +4496,12 @@ self.addEventListener('notificationclick', (event) => {
 </head>
 <body>
     <div class="container">
-        <h1>⁦Pet Wash™⁩</h1>
+        <h1>⁦PetWash™⁩</h1>
         <h2 class="success">✅ Successfully Unsubscribed</h2>
         <p>You have been unsubscribed from marketing emails and SMS messages.</p>
         <p>You will still receive important service-related communications such as appointment reminders.</p>
         <p>If you have any questions, please contact us at Support@PetWash.co.il</p>
-        <p><strong>Thank you for using ⁦Pet Wash™⁩</strong></p>
+        <p><strong>Thank you for using ⁦PetWash™⁩</strong></p>
     </div>
 </body>
 </html>`);
@@ -4521,7 +4521,7 @@ self.addEventListener('notificationclick', (event) => {
 <!DOCTYPE html>
 <html>
 <head>
-    <title>⁦Pet Wash™⁩ - Unsubscribe Error</title>
+    <title>⁦PetWash™⁩ - Unsubscribe Error</title>
     <meta charset="UTF-8">
     <style>
         body { font-family: Arial, sans-serif; text-align: center; margin: 50px; }
@@ -4531,7 +4531,7 @@ self.addEventListener('notificationclick', (event) => {
 </head>
 <body>
     <div class="container">
-        <h1>⁦Pet Wash™⁩</h1>
+        <h1>⁦PetWash™⁩</h1>
         <h2 class="error">❌ Error Processing Unsubscribe</h2>
         <p>We encountered an error processing your unsubscribe request.</p>
         <p>Please contact our support team at Support@PetWash.co.il for assistance.</p>
@@ -4690,7 +4690,7 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // POST /api/nayax/redeem - Redeem QR voucher at ⁦Pet Wash™⁩ station (Firestore)
+  // POST /api/nayax/redeem - Redeem QR voucher at ⁦PetWash™⁩ station (Firestore)
   app.post('/api/nayax/redeem', paymentLimiter, async (req, res) => {
     try {
       // Validate station API key
@@ -11332,7 +11332,7 @@ self.addEventListener('notificationclick', (event) => {
         sheetsUrl: url,
         sheetsAvailable: !!url,
         message: url
-          ? 'Open the URL in your browser to view all Pet Wash™ data in Google Sheets'
+          ? 'Open the URL in your browser to view all PetWash™ data in Google Sheets'
           : 'Google Sheets not yet initialized - data will sync on first submission',
       });
     } catch (error: any) {
@@ -11681,7 +11681,7 @@ self.addEventListener('notificationclick', (event) => {
   // Israeli Subcontractor Agreement 2025 - FREE internal e-signature system (NO paid providers)
   app.use('/api/subcontractors/agreements', validateFirebaseToken, apiLimiter, subcontractorAgreementsRoutes);
   
-  // Provider Training - ⁦Pet Wash™⁩ professional training, quizzes, certificates
+  // Provider Training - ⁦PetWash™⁩ professional training, quizzes, certificates
   app.use('/api/provider-training', validateFirebaseToken, apiLimiter, providerTrainingRoutes);
 
   // Provider Command Center - Flow 01 decision preflight only.
@@ -11691,7 +11691,7 @@ self.addEventListener('notificationclick', (event) => {
   // Police Check Badge System - Israeli תעודת יושר verification
   app.use('/api/police-check', apiLimiter, policeCheckRoutes);
   
-  // Admin Provider Review Queue - ⁦Pet Wash™⁩ approval workflow (P0 gates: role + status + MFA)
+  // Admin Provider Review Queue - ⁦PetWash™⁩ approval workflow (P0 gates: role + status + MFA)
   // optFirebase is registered earlier (before the RBAC guard) to ensure req.firebaseUser is set.
   app.use('/api/provider-review', apiLimiter, requireAdminMfa, requireRole('admin', 'management', 'staff'), requireStaffApproved, requireMfaEnrolled, adminProviderReviewRoutes);
   
@@ -12530,7 +12530,7 @@ self.addEventListener('notificationclick', (event) => {
   // Returns normalized discriminated-union types for frontend
   app.use('/api/marketplace', apiLimiter, marketplaceRoutes);
 
-  // Pet Wash™ Booking Search (pet count, types, area, filters) - PUBLIC ACCESS
+  // PetWash™ Booking Search (pet count, types, area, filters) - PUBLIC ACCESS
   const bookingSearchRoutes = (await import('./routes/booking-search')).default;
   app.use('/api/booking-search', optionalFirebaseToken, apiLimiter, bookingSearchRoutes);
 
@@ -12544,7 +12544,7 @@ self.addEventListener('notificationclick', (event) => {
   const providerSlotsRoutes = (await import('./routes/provider-slots')).default;
   app.use('/api/provider-slots', optionalFirebaseToken, apiLimiter, providerSlotsRoutes);
 
-  // Pet Wash™ Booking Requests (complete flow: request → meet & greet → payment → service)
+  // PetWash™ Booking Requests (complete flow: request → meet & greet → payment → service)
   const bookingRequestsRoutes = (await import('./routes/booking-requests')).default;
   app.use('/api/booking-requests', optionalFirebaseToken, apiLimiter, bookingRequestsRoutes);
 
@@ -12552,7 +12552,7 @@ self.addEventListener('notificationclick', (event) => {
   const quotesRoutes = (await import('./routes/quotes')).default;
   app.use('/api/quotes', optionalFirebaseToken, apiLimiter, quotesRoutes);
 
-  // Pet Wash™ Marketplace Bookings (PostgreSQL - 12-status lifecycle, escrow, quotes)
+  // PetWash™ Marketplace Bookings (PostgreSQL - 12-status lifecycle, escrow, quotes)
   const marketplaceBookingsRoutes = (await import('./routes/marketplace-bookings')).default;
   app.use('/api/marketplace-bookings', optionalFirebaseToken, apiLimiter, marketplaceBookingsRoutes);
 
@@ -13113,7 +13113,7 @@ self.addEventListener('notificationclick', (event) => {
           <div style="font-family: Arial; text-align: center; padding: 50px;">
             <h1 style="color: #10B981;">✅ Feature Approved</h1>
             <p>The new AI feature has been approved and will be implemented soon.</p>
-            <p style="color: #6B7280; font-size: 14px;">⁦Pet Wash™⁩ AI Learning System</p>
+            <p style="color: #6B7280; font-size: 14px;">⁦PetWash™⁩ AI Learning System</p>
           </div>
         `);
       } else {
@@ -13143,7 +13143,7 @@ self.addEventListener('notificationclick', (event) => {
           <div style="font-family: Arial; text-align: center; padding: 50px;">
             <h1 style="color: #EF4444;">❌ Feature Rejected</h1>
             <p>The AI feature suggestion has been rejected.</p>
-            <p style="color: #6B7280; font-size: 14px;">⁦Pet Wash™⁩ AI Learning System</p>
+            <p style="color: #6B7280; font-size: 14px;">⁦PetWash™⁩ AI Learning System</p>
           </div>
         `);
       } else {
@@ -14100,7 +14100,7 @@ self.addEventListener('notificationclick', (event) => {
             <p><strong>ההודעה שלך:</strong></p>
             <p>${message}</p>
             <hr>
-            <p>בברכה,<br>צוות ⁦Pet Wash™⁩</p>
+            <p>בברכה,<br>צוות ⁦PetWash™⁩</p>
           `
           : `
             <h2>Hello ${name},</h2>
@@ -14108,7 +14108,7 @@ self.addEventListener('notificationclick', (event) => {
             <p><strong>Your message:</strong></p>
             <p>${message}</p>
             <hr>
-            <p>Best regards,<br>⁦Pet Wash™⁩ Team</p>
+            <p>Best regards,<br>⁦PetWash™⁩ Team</p>
           `
       });
       
@@ -15935,7 +15935,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
 <body>
   <div class="container">
     <div class="header">
-      <h1>🐾 ⁦Pet Wash™⁩ Platform</h1>
+      <h1>🐾 ⁦PetWash™⁩ Platform</h1>
       <p>Final Production Status Report</p>
       <p style="font-size: 14px; opacity: 0.9;">Generated: October 25, 2025 • 09:36 AM Israel Time</p>
       <div class="status-badge">✅ PLATFORM OPERATIONAL</div>
@@ -15944,7 +15944,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
     <div class="content" style="padding: 40px;">
       <h2 style="color: #1e293b; font-size: 24px; margin-top: 0;">Executive Summary</h2>
       <p style="color: #64748b; font-size: 15px; line-height: 1.7;">
-        This comprehensive report confirms that the ⁦Pet Wash™⁩ platform is <strong>LIVE and OPERATIONAL</strong> 
+        This comprehensive report confirms that the ⁦PetWash™⁩ platform is <strong>LIVE and OPERATIONAL</strong> 
         on production domain <strong>petwash.co.il</strong> with all critical authentication fixes successfully deployed.
       </p>
       
@@ -15978,7 +15978,7 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       
       const success = await EmailService.send({
         to: 'Support@PetWash.co.il',
-        subject: '🐾 ⁦Pet Wash™⁩ Platform - Final Status Report (Oct 25, 2025)',
+        subject: '🐾 ⁦PetWash™⁩ Platform - Final Status Report (Oct 25, 2025)',
         html: htmlContent,
         from: 'noreply@petwash.co.il'
       });

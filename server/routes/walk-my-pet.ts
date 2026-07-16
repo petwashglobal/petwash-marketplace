@@ -639,7 +639,7 @@ router.post('/walks/book', requireAuth, async (req, res) => {
             const smsService = new TwilioSMSService();
             await smsService.sendSMS(
               walkerPhone,
-              `🐾 ⁦Pet Wash™⁩ - בקשת טיול חדשה!\n` +
+              `🐾 ⁦PetWash™⁩ - בקשת טיול חדשה!\n` +
               `תאריך: ${scheduledDate} בשעה ${scheduledStartTime}\n` +
               `${durationMinutes} דקות · ₪${pricing.totalPrice.toFixed(0)}\n` +
               `אנא אשר/י את ההזמנה באפליקציה.`
@@ -957,7 +957,7 @@ router.get('/bookings/provider-pending', requireAuth, async (req, res) => {
   }
 });
 
-// EMERGENCY/ASAP WALK REQUEST (Pet Wash™ "Book Now" model)
+// EMERGENCY/ASAP WALK REQUEST (PetWash™ "Book Now" model)
 router.post('/walks/emergency-request', requireAuth, async (req, res) => {
   try {
     // Always derive ownerId from the verified Firebase token — never trust req.body.

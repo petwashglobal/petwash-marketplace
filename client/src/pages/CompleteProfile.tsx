@@ -354,8 +354,8 @@ export default function CompleteProfile() {
                     />
                     <Label htmlFor="terms" className="text-sm leading-snug cursor-pointer">
                       {isHe
-                        ? "אני מסכים/ה לתנאי השימוש של Pet Wash™"
-                        : "I agree to Pet Wash™ Terms of Service"}
+                        ? "אני מסכים/ה לתנאי השימוש של PetWash™"
+                        : "I agree to PetWash™ Terms of Service"}
                     </Label>
                   </div>
                   <div className="flex items-start gap-2">

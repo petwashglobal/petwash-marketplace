@@ -74,8 +74,8 @@ export const SMS_TEMPLATES: Record<string, SmsTemplate> = {
   provider_otp: { category: 'transactional', he: 'קוד האימות שלך ל-PetWash Provider הוא: {{code}}.' },
   provider_application_submitted: {
     category: 'transactional',
-    he: 'Pet Wash™ - ברוכים הבאים! 🐾\nשלום {{name}}, הבקשה שלך כספק התקבלה. מספר חברות: {{membership}}. הצוות יבדוק ויחזור אליך תוך 48 שעות.',
-    en: 'Pet Wash™ - Welcome! 🐾\nHi {{name}}, your provider application was received. Membership #: {{membership}}. Our team will review and reply within 48 hours.',
+    he: 'PetWash™ - ברוכים הבאים! 🐾\nשלום {{name}}, הבקשה שלך כספק התקבלה. מספר חברות: {{membership}}. הצוות יבדוק ויחזור אליך תוך 48 שעות.',
+    en: 'PetWash™ - Welcome! 🐾\nHi {{name}}, your provider application was received. Membership #: {{membership}}. Our team will review and reply within 48 hours.',
   },
   provider_pending: { category: 'transactional', he: 'בקשת הספק שלך ממתינה לאימות. חסר עוד שלב אחד להשלמת התהליך: {{link}}' },
   provider_missing_documents: { category: 'transactional', he: 'חסרים מסמכים בבקשת הספק שלך. להשלמה: {{link}}' },

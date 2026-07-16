@@ -3,7 +3,7 @@
  * 7-Star Luxury Metallic Emoji System (2025 Design Standards)
  * Crown Jewel Edition
  * 
- * Inspired by Pet Wash™ Premium Loyalty Tier Design:
+ * Inspired by PetWash™ Premium Loyalty Tier Design:
  * - Consistent metallic theme (🥉🥈🥇💎💠💚👑)
  * - Enterprise-grade visual hierarchy
  * - Production-ready audit logging
@@ -119,7 +119,7 @@ export const OCTOPUS_SECURITY = {
   ANOMALY: '🎭',
 } as const;
 
-// ==================== BUSINESS UNITS (Pet Wash™ Octopus Structure) ====================
+// ==================== BUSINESS UNITS (PetWash™ Octopus Structure) ====================
 
 export const OCTOPUS_UNITS = {
   /** 🏢 HEAD_OFFICE - Central administration (7-star management) */

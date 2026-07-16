@@ -109,7 +109,7 @@ export function providerPayout(p: ProviderPayoutParams): string {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>${isHe ? `משכורת שבועית — Pet Wash™` : `Weekly Payout — Pet Wash™`}</title>
+  <title>${isHe ? `משכורת שבועית — PetWash™` : `Weekly Payout — PetWash™`}</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f4f4">
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f4f4f4">
@@ -122,7 +122,7 @@ export function providerPayout(p: ProviderPayoutParams): string {
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td style="direction:rtl">
-            <img src="${PETWASH_LOGO_BASE64}" width="120" alt="Pet Wash™" style="display:block;margin-bottom:12px"/>
+            <img src="${PETWASH_LOGO_BASE64}" width="120" alt="PetWash™" style="display:block;margin-bottom:12px"/>
             <div style="color:${GOLD};font-size:18px;font-weight:700">
               ${isHe ? `תשלום שבועי — ${isHe ? typeLabel.he : typeLabel.en}` : `Weekly Payout — ${isHe ? typeLabel.he : typeLabel.en}`}
             </div>

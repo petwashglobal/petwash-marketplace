@@ -68,7 +68,7 @@ export type LocaleCode =
 
 export const petWashGlobalBrand = {
   companyLegalName: "Pet Wash Ltd",
-  trademarkName: "Pet Wash™",
+  trademarkName: "PetWash™",
   trademarkSymbol: "TM",
   legalCountryOfIncorporation: "Israel",
   primarySupportEmail: "support@petwash.co.il",

@@ -21,7 +21,7 @@ import {
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
-const FROM_NAME = 'Pet Wash™';
+const FROM_NAME = 'PetWash™';
 const SITE_URL = 'https://petwash.co.il';
 const COMPANY_NAME_HE = 'פט וואש בע"מ';
 const COMPANY_TAX_ID = '517145033';
@@ -224,7 +224,7 @@ export class BookingConfirmationEmailService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>הזמנה אושרה – Pet Wash™ #${params.booking.bookingNumber}</title>
+  <title>הזמנה אושרה – PetWash™ #${params.booking.bookingNumber}</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f4f4f5">
@@ -234,7 +234,7 @@ export class BookingConfirmationEmailService {
     <!-- ── HEADER ── -->
     <tr>
       <td style="background:#000;padding:28px 36px;text-align:center;">
-        <h1 style="margin:0;color:#fff;font-size:26px;letter-spacing:3px;font-family:Arial,sans-serif;">⁦Pet Wash™⁩</h1>
+        <h1 style="margin:0;color:#fff;font-size:26px;letter-spacing:3px;font-family:Arial,sans-serif;">⁦PetWash™⁩</h1>
         <p style="margin:6px 0 0;color:#aaa;font-size:11px;letter-spacing:1px;">${COMPANY_NAME_HE} | ח.פ ${COMPANY_TAX_ID}</p>
       </td>
     </tr>
@@ -246,7 +246,7 @@ export class BookingConfirmationEmailService {
           <span style="color:#16a34a;font-size:15px;font-weight:bold;font-family:Arial,sans-serif;">✓ ההזמנה אושרה / Booking Confirmed</span>
         </div>
         <h2 style="margin:0;font-size:20px;color:#111;font-family:Arial,sans-serif;">שלום ${customerFirstName},</h2>
-        <p style="margin:8px 0 0;color:#555;font-size:14px;line-height:1.6;">תודה שבחרת ב-⁦Pet Wash™⁩. הזמנתך התקבלה ואושרה בהצלחה.</p>
+        <p style="margin:8px 0 0;color:#555;font-size:14px;line-height:1.6;">תודה שבחרת ב-⁦PetWash™⁩. הזמנתך התקבלה ואושרה בהצלחה.</p>
       </td>
     </tr>
 
@@ -386,7 +386,7 @@ export class BookingConfirmationEmailService {
     <!-- ── FOOTER ── -->
     <tr>
       <td style="background:#000;padding:20px 36px;text-align:center;">
-        <p style="margin:0;color:#fff;font-size:12px;font-family:Arial,sans-serif;">⁦Pet Wash™⁩ | ${COMPANY_NAME_HE}</p>
+        <p style="margin:0;color:#fff;font-size:12px;font-family:Arial,sans-serif;">⁦PetWash™⁩ | ${COMPANY_NAME_HE}</p>
         <p style="margin:5px 0 0;color:#666;font-size:11px;font-family:Arial,sans-serif;">
           <a href="${SITE_URL}" style="color:#888;text-decoration:none;">${SITE_URL.replace('https://', '')}</a>
           &nbsp;·&nbsp;
@@ -406,7 +406,7 @@ export class BookingConfirmationEmailService {
         await mailService.send({
           to: customer.email,
           from: { email: FROM_EMAIL, name: FROM_NAME },
-          subject: `הזמנה אושרה ✓ – ⁦Pet Wash™⁩ #${params.booking.bookingNumber}`,
+          subject: `הזמנה אושרה ✓ – ⁦PetWash™⁩ #${params.booking.bookingNumber}`,
           html: customerHtml,
         });
 
@@ -462,7 +462,7 @@ export class BookingConfirmationEmailService {
           } : undefined,
           push: {
             userId: params.booking.userId,
-            title: `הזמנה אושרה – Pet Wash™ 🐾`,
+            title: `הזמנה אושרה – PetWash™ 🐾`,
             body: `הזמנה #${params.booking.bookingNumber} אושרה. ${serviceInfo.he} – ${smsDateStr}`,
             data: {
               bookingId: params.booking.id,
@@ -493,7 +493,7 @@ export class BookingConfirmationEmailService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>הזמנה חדשה – Pet Wash™ #${params.booking.bookingNumber}</title>
+  <title>הזמנה חדשה – PetWash™ #${params.booking.bookingNumber}</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f4f5;font-family:Arial,Helvetica,sans-serif;">
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f4f4f5">
@@ -503,7 +503,7 @@ export class BookingConfirmationEmailService {
     <!-- ── HEADER ── -->
     <tr>
       <td style="background:#000;padding:28px 36px;text-align:center;">
-        <h1 style="margin:0;color:#fff;font-size:26px;letter-spacing:3px;font-family:Arial,sans-serif;">⁦Pet Wash™⁩</h1>
+        <h1 style="margin:0;color:#fff;font-size:26px;letter-spacing:3px;font-family:Arial,sans-serif;">⁦PetWash™⁩</h1>
         <p style="margin:6px 0 0;color:#aaa;font-size:11px;letter-spacing:1px;">Provider Notification / הודעה לספק</p>
       </td>
     </tr>
@@ -615,7 +615,7 @@ export class BookingConfirmationEmailService {
     <!-- ── FOOTER ── -->
     <tr>
       <td style="background:#000;padding:20px 36px;text-align:center;">
-        <p style="margin:0;color:#fff;font-size:12px;font-family:Arial,sans-serif;">⁦Pet Wash™⁩ | ${COMPANY_NAME_HE}</p>
+        <p style="margin:0;color:#fff;font-size:12px;font-family:Arial,sans-serif;">⁦PetWash™⁩ | ${COMPANY_NAME_HE}</p>
         <p style="margin:5px 0 0;color:#666;font-size:11px;font-family:Arial,sans-serif;">
           <a href="${SITE_URL}" style="color:#888;text-decoration:none;">${SITE_URL.replace('https://', '')}</a>
           &nbsp;·&nbsp;
@@ -635,7 +635,7 @@ export class BookingConfirmationEmailService {
         await mailService.send({
           to: providerEmail,
           from: { email: FROM_EMAIL, name: FROM_NAME },
-          subject: `הזמנה חדשה שובצה 📋 – ⁦Pet Wash™⁩ #${params.booking.bookingNumber}`,
+          subject: `הזמנה חדשה שובצה 📋 – ⁦PetWash™⁩ #${params.booking.bookingNumber}`,
           html: providerHtml,
         });
 
@@ -690,7 +690,7 @@ export class BookingConfirmationEmailService {
             } : undefined,
             push: {
               userId: providerUserId,
-              title: `הזמנה חדשה – Pet Wash™ 📋`,
+              title: `הזמנה חדשה – PetWash™ 📋`,
               body: `הזמנה #${params.booking.bookingNumber} שובצה אליך. ${serviceInfo.he} – ${provSmsDateStr}`,
               data: {
                 bookingId: params.booking.id,

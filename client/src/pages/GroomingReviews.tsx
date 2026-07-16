@@ -126,7 +126,7 @@ function ReviewCard({ review, t, language }: { review: any; t: (key: string) => 
         {review.adminResponse && (
           <div className="mt-3 p-3 bg-white dark:bg-amber-900/20 rounded-lg border border-amber-200/50 dark:border-amber-800/30">
             <p className="text-xs font-medium text-amber-700 dark:text-amber-400 mb-1">
-              Pet Wash™ {t("groomingFeedback.response")}
+              PetWash™ {t("groomingFeedback.response")}
             </p>
             <p className="text-sm text-gray-600 dark:text-gray-400">{review.adminResponse}</p>
           </div>

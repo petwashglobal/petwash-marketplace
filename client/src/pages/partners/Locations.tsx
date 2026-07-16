@@ -43,8 +43,8 @@ export default function LocationPartners() {
           </h1>
           <p className="luxury-text-body max-w-2xl mx-auto">
             {isHe
-              ? 'הצטרפו ל-⁦Pet Wash™⁩ והוסיפו לנכס שלכם פתרון טיפוח חיות מחמד פרימיום.'
-              : 'Partner with ⁦Pet Wash™⁩ to add premium pet care amenities to your property'}
+              ? 'הצטרפו ל-⁦PetWash™⁩ והוסיפו לנכס שלכם פתרון טיפוח חיות מחמד פרימיום.'
+              : 'Partner with ⁦PetWash™⁩ to add premium pet care amenities to your property'}
           </p>
         </div>
 

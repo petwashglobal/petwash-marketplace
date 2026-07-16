@@ -111,8 +111,8 @@ export function checkPromptInjection(text: string, sessionId?: string): Injectio
         blocked: true,
         label,
         safeRefusal:
-          'אני כאן רק לעזור בנושאי Pet Wash™. לא אוכל לעזור בבקשה זו. 🐾\n' +
-          "I'm here to help with Pet Wash™ services only. I can't assist with that request. 🐾",
+          'אני כאן רק לעזור בנושאי PetWash™. לא אוכל לעזור בבקשה זו. 🐾\n' +
+          "I'm here to help with PetWash™ services only. I can't assist with that request. 🐾",
       };
     }
   }

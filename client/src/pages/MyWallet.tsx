@@ -240,7 +240,7 @@ export default function MyWallet() {
                 {isHebrew ? 'הארנק שלי' : 'My Wallet'}
               </h1>
               <p className="text-sm text-gray-500 mt-0.5">
-                {isHebrew ? '⁦Pet Wash™⁩ • קרדיטים ויתרות' : '⁦Pet Wash™⁩ • Credits & Balances'}
+                {isHebrew ? '⁦PetWash™⁩ • קרדיטים ויתרות' : '⁦PetWash™⁩ • Credits & Balances'}
               </p>
             </div>
             <Button
@@ -609,7 +609,7 @@ export default function MyWallet() {
           )}
 
           <div className="mt-8 text-center text-xs text-gray-400 pb-4">
-            <p>⁦Pet Wash™⁩ Wallet • {isHebrew ? 'מאובטח ומוצפן' : 'Secured & Encrypted'}</p>
+            <p>⁦PetWash™⁩ Wallet • {isHebrew ? 'מאובטח ומוצפן' : 'Secured & Encrypted'}</p>
           </div>
         </div>
       </div>

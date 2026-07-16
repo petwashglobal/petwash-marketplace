@@ -8,7 +8,7 @@ import { isProviderInsuranceCleared } from '../routes/provider-insurance';
 import { checkPayoutGates } from './payoutGate';
 
 /**
- * Financial Payout Ledger Service (2026 Pet Wash™ Model)
+ * Financial Payout Ledger Service (2026 PetWash™ Model)
  * 
  * Fee Structure (effective Jan 2026):
  * - Provider Service Fee: 15% (deducted from provider earnings)
@@ -24,7 +24,7 @@ import { checkPayoutGates } from './payoutGate';
  * - Trainers: Charged by session
  * 
  * Features:
- * - 72-hour escrow hold (Pet Wash™ model)
+ * - 72-hour escrow hold (PetWash™ model)
  * - ₪10M+ liability insurance coverage
  * - Automatic VAT calculation (18% Israeli compliance)
  * - Unified 15% platform fee across all provider types

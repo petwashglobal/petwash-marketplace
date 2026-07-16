@@ -1,7 +1,7 @@
 /**
  * BASE LUXURY BOOKING ENGINE
  * ===========================
- * Unified booking infrastructure for all Pet Wash™ platforms
+ * Unified booking infrastructure for all PetWash™ platforms
  * on-demand model: one core engine, platform-specific strategies
  * 
  * Provides:

@@ -143,8 +143,8 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
         </h1>
         <p style="font-size:14px;color:#1a1a1a;margin:0;line-height:1.7;max-width:400px;display:inline-block;">
           ${isHe
-            ? 'חברותך במועדון היוקרה הבלעדי של Pet Wash™ מאושרת. עולם של פריבילגיות מחכה לך.'
-            : 'Your place in the exclusive Pet Wash™ Privilege Club is confirmed. A world of distinction awaits.'}
+            ? 'חברותך במועדון היוקרה הבלעדי של PetWash™ מאושרת. עולם של פריבילגיות מחכה לך.'
+            : 'Your place in the exclusive PetWash™ Privilege Club is confirmed. A world of distinction awaits.'}
         </p>
       </div>
 
@@ -168,7 +168,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
             <!-- Card Header -->
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:24px;">
               <div style="text-align:left;">
-                <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);">Pet Wash™</div>
+                <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.4);">PetWash™</div>
                 <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:${t.accentColor};">Privilege</div>
               </div>
               <div style="font-size:24px;color:${t.accentColor};animation:float 3s ease-in-out infinite;">${t.icon}</div>
@@ -339,7 +339,7 @@ export function generateMembershipConfirmationEmail(params: MembershipConfirmati
           ${t.ornament} &nbsp; ${t.ornament} &nbsp; ${t.ornament}
         </div>
         <p style="font-size:12px;color:#ffffff;margin:0 0 10px;line-height:1.6;letter-spacing:0.3px;font-weight:500;">
-          ${isHe ? 'תודה שהצטרפת למשפחת Pet Wash™ Privilege' : 'Thank you for joining the Pet Wash™ Privilege family'}
+          ${isHe ? 'תודה שהצטרפת למשפחת PetWash™ Privilege' : 'Thank you for joining the PetWash™ Privilege family'}
         </p>
         <p style="font-size:11px;color:rgba(255,255,255,0.85);margin:0 0 16px;">
           <a href="https://petwash.co.il" style="color:#ffffff;text-decoration:underline;letter-spacing:1px;font-weight:600;">petwash.co.il</a>

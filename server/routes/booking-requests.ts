@@ -2779,7 +2779,7 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     const validEmail = ownerEmail && emailRegex.test(ownerEmail);
     if (validPhone && booking.ownerId === callerUserId) {
       try {
-        const smsBody = `Pet Wash™ ההזמנה אושרה!\n\nמזהה: ${requestId}\nשירות: ${booking.serviceType}\nתאריכים: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'}\nסכום: ₪${(booking.totalCents / 100).toFixed(2)}\nסטטוס: אושר ✅\n\nתודה שבחרת ב-PetWash™!`;
+        const smsBody = `PetWash™ ההזמנה אושרה!\n\nמזהה: ${requestId}\nשירות: ${booking.serviceType}\nתאריכים: ${booking.startDate ? new Date(booking.startDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'} - ${booking.endDate ? new Date(booking.endDate).toLocaleDateString('he-IL', { timeZone: ISRAEL_TIMEZONE }) : 'N/A'}\nסכום: ₪${(booking.totalCents / 100).toFixed(2)}\nסטטוס: אושר ✅\n\nתודה שבחרת ב-PetWash™!`;
         await twilioSMSService.sendSMS(ownerPhone, smsBody, { userId: callerUserId, ip: req.ip, ua: req.headers['user-agent'] });
         logger.info('[BookingRequests] Confirmation SMS sent', { requestId, phone: ownerPhone.slice(0, 6) + '****' });
       } catch (smsErr: any) {
@@ -2799,7 +2799,7 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         const receiptHtml = `
           <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 600px; margin: 0 auto; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 16px; overflow: hidden;">
             <div style="background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); padding: 32px; text-align: center;">
-              <h1 style="color: #ffffff; font-size: 24px; margin: 0;">Pet Wash™</h1>
+              <h1 style="color: #ffffff; font-size: 24px; margin: 0;">PetWash™</h1>
               <p style="color: #94a3b8; font-size: 14px; margin: 8px 0 0;">Booking Receipt</p>
             </div>
             <div style="padding: 32px;">
@@ -2831,7 +2831,7 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
 
         const delivered = await EmailService.send({
           to: recipientEmail,
-          subject: `Pet Wash™ Booking Receipt - ${requestId}`,
+          subject: `PetWash™ Booking Receipt - ${requestId}`,
           html: receiptHtml,
           from: 'noreply@petwash.co.il',
         });

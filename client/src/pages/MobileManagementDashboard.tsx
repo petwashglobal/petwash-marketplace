@@ -141,7 +141,7 @@ export default function MobileManagementDashboard() {
 
       sendMessageMutation.mutate({
         senderId: firebaseUser.uid,
-        senderName: '⁦Pet Wash™⁩ Management',
+        senderName: '⁦PetWash™⁩ Management',
         senderEmail: firebaseUser.email || 'admin@petwash.co.il',
         recipientId: recipientData.uid,
         recipientName: `${selectedProvider.firstName} ${selectedProvider.lastName}`,
@@ -569,7 +569,7 @@ export default function MobileManagementDashboard() {
                     <Sparkles className="h-6 w-6 text-[#1A1A1A]" />
                   </div>
                   <div>
-                    <h2 className="font-bold text-lg text-[#1A1A1A]">⁦Pet Wash™⁩</h2>
+                    <h2 className="font-bold text-lg text-[#1A1A1A]">⁦PetWash™⁩</h2>
                     <p className="text-xs text-[#8A8078]">{isHebrew ? 'מרכז ניהול' : 'Management'}</p>
                   </div>
                 </div>

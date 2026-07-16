@@ -64,7 +64,7 @@ router.post('/create-session', requireAuth, async (req, res) => {
       submissionId: submission.id,
       templateSlug,
       documentType,
-      documentName: `⁦Pet Wash™⁩ ${documentType}`,
+      documentName: `⁦PetWash™⁩ ${documentType}`,
       language: language || 'he',
       status: submission.status,
       signerEmail,

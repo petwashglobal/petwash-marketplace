@@ -616,7 +616,7 @@ export default function BrowseWalkers() {
                 </span>
               </div>
               <h2 className="text-3xl font-bold text-gray-900 mb-3">
-                {isHebrew ? 'הפכו למטיילי כלבים ב-⁦Pet Wash™⁩' : 'Become a ⁦Pet Wash™⁩ Dog Walker'}
+                {isHebrew ? 'הפכו למטיילי כלבים ב-⁦PetWash™⁩' : 'Become a ⁦PetWash™⁩ Dog Walker'}
               </h2>
               {/* PR-LEGAL-B: previously claimed "full insurance" — replaced
                   with neutral recruitment copy per §8 of the Provider &

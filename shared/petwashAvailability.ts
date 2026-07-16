@@ -1,5 +1,5 @@
 // FILE: shared/petwashAvailability.ts
-// Pet Wash™ - Contractor Availability Management
+// PetWash™ - Contractor Availability Management
 // Handles weekly schedules, time-off requests, and job slot conflicts
 
 export interface WeeklySchedule {

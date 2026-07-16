@@ -1,5 +1,5 @@
 /**
- * ⁦Pet Wash™⁩ - Personalized AI Greeting Hook
+ * ⁦PetWash™⁩ - Personalized AI Greeting Hook
  * 
  * Fetches personalized greetings from the AI service on app launch
  * Shows greetings based on:

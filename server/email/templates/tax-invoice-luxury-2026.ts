@@ -138,7 +138,7 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>${isHe ? invoiceTypeLabel.he : invoiceTypeLabel.en} ${padInvoice(p.invoiceNumber)} — Pet Wash™</title>
+  <title>${isHe ? invoiceTypeLabel.he : invoiceTypeLabel.en} ${padInvoice(p.invoiceNumber)} — PetWash™</title>
 </head>
 <body style="margin:0;padding:0;background:#f4f4f4">
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="#f4f4f4">
@@ -151,7 +151,7 @@ export function taxInvoiceLuxury(p: TaxInvoiceParams): string {
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td style="direction:rtl">
-            <img src="${PETWASH_LOGO_BASE64}" width="120" alt="Pet Wash™" style="display:block;margin-bottom:12px"/>
+            <img src="${PETWASH_LOGO_BASE64}" width="120" alt="PetWash™" style="display:block;margin-bottom:12px"/>
             <div style="color:${GOLD};font-size:18px;font-weight:700;letter-spacing:1px">
               ${isHe ? invoiceTypeLabel.he : invoiceTypeLabel.en}
             </div>

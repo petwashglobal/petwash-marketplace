@@ -838,15 +838,15 @@ async function sendBackupSummaryEmail(data: {
     const anyFail = files.some(f => f.error);
     const total = data.firestoreBackup?.totalDocs ?? 0;
     if (total === 0) {
-      subject = `🚨 ⁦Pet Wash™⁩ Backup FAILED — 0 DOCUMENTS — ${dateStr}`;
+      subject = `🚨 ⁦PetWash™⁩ Backup FAILED — 0 DOCUMENTS — ${dateStr}`;
     } else if (anyFail) {
-      subject = `❌ ⁦Pet Wash™⁩ Backup FAILED (some collections) — ${dateStr}`;
+      subject = `❌ ⁦PetWash™⁩ Backup FAILED (some collections) — ${dateStr}`;
     } else {
-      subject = `✅ ⁦Pet Wash™⁩ Backup SUCCESS — ${dateStr}`;
+      subject = `✅ ⁦PetWash™⁩ Backup SUCCESS — ${dateStr}`;
     }
   } else {
     // Code backup only reaches the email on a successful upload (failures throw earlier).
-    subject = `✅ ⁦Pet Wash™⁩ Code Backup SUCCESS — ${dateStr}`;
+    subject = `✅ ⁦PetWash™⁩ Code Backup SUCCESS — ${dateStr}`;
   }
 
   let htmlContent = `
@@ -871,7 +871,7 @@ async function sendBackupSummaryEmail(data: {
     </head>
     <body>
       <div class="header">
-        <h1>🐾 ⁦Pet Wash™⁩ Backup Summary</h1>
+        <h1>🐾 ⁦PetWash™⁩ Backup Summary</h1>
         <p style="margin: 10px 0 0 0; opacity: 0.9;">Automated Backup Report</p>
       </div>
   `;
@@ -1000,7 +1000,7 @@ async function sendBackupSummaryEmail(data: {
       </div>
 
       <div class="footer">
-        <p>⁦Pet Wash™⁩ Automated Backup System</p>
+        <p>⁦PetWash™⁩ Automated Backup System</p>
         <p>This is an automated report. For support, contact <a href="mailto:Support@PetWash.co.il">Support@PetWash.co.il</a></p>
       </div>
     </body>
@@ -1012,7 +1012,7 @@ async function sendBackupSummaryEmail(data: {
     cc: 'Support@PetWash.co.il',
     from: {
       email: 'noreply@petwash.co.il',
-      name: '⁦Pet Wash™⁩ Backup System'
+      name: '⁦PetWash™⁩ Backup System'
     },
     subject,
     html: htmlContent

@@ -375,14 +375,14 @@ export async function setupFormsSpreadsheet(): Promise<boolean> {
 }
 
 /**
- * Create master ⁦Pet Wash™⁩ Forms spreadsheet with all sheets
+ * Create master ⁦PetWash™⁩ Forms spreadsheet with all sheets
  */
 async function createMasterSpreadsheet(sheets: any): Promise<string> {
   try {
     const response = await sheets.spreadsheets.create({
       requestBody: {
         properties: {
-          title: '⁦Pet Wash™⁩ Global Forms - Master Tracking',
+          title: '⁦PetWash™⁩ Global Forms - Master Tracking',
         },
         sheets: Object.values(SHEETS).map(sheetName => ({
           properties: {

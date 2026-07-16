@@ -1226,8 +1226,8 @@ export default function Settings() {
                     />
                     <span className="luxury-dark-text-small text-amber-800 leading-relaxed">
                       {language === 'he'
-                        ? 'אני מאשר/ת בזאת כי אני מבקש/ת למחוק את חשבוני לצמיתות. אני מבין/ה שפעולה זו אינה ניתנת לביטול ושכל הנתונים האישיים שלי יימחקו בהתאם לחוק הגנת הפרטיות הישראלי 2025. Pet Wash™ תשמור רישומים חוקיים של בקשה זו למשך 90 יום.'
-                        : 'I hereby confirm that I am requesting permanent deletion of my account. I understand this action is irreversible and all my personal data will be deleted in accordance with the Israeli Privacy Protection Law 2025. Pet Wash™ will retain legal records of this request for 90 days.'}
+                        ? 'אני מאשר/ת בזאת כי אני מבקש/ת למחוק את חשבוני לצמיתות. אני מבין/ה שפעולה זו אינה ניתנת לביטול ושכל הנתונים האישיים שלי יימחקו בהתאם לחוק הגנת הפרטיות הישראלי 2025. PetWash™ תשמור רישומים חוקיים של בקשה זו למשך 90 יום.'
+                        : 'I hereby confirm that I am requesting permanent deletion of my account. I understand this action is irreversible and all my personal data will be deleted in accordance with the Israeli Privacy Protection Law 2025. PetWash™ will retain legal records of this request for 90 days.'}
                     </span>
                   </label>
                 </div>

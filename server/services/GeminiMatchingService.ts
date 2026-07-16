@@ -3,7 +3,7 @@ import { getVertexAIConfig } from '../lib/gemini-client';
  * Gemini AI Provider Matching Service
  * 
  * Smart AI-powered matching that finds the closest and best-suited providers
- * for any ⁦Pet Wash™⁩ service request. Uses Gemini 2.5 Flash for intelligent
+ * for any ⁦PetWash™⁩ service request. Uses Gemini 2.5 Flash for intelligent
  * recommendations based on client needs, location, and provider specializations.
  */
 
@@ -264,7 +264,7 @@ export class GeminiMatchingService {
         `${i + 1}. ${p.displayName} - ${p.distance}km away, ${p.averageRating}★ rating, ${p.totalBookings} bookings, ${p.isVerified ? 'verified' : 'pending verification'}`
       ).join('\n');
 
-      const prompt = `You are a helpful pet care concierge for ⁦Pet Wash™⁩, Israel's premier luxury pet services marketplace.
+      const prompt = `You are a helpful pet care concierge for ⁦PetWash™⁩, Israel's premier luxury pet services marketplace.
 
 A customer is looking for ${request.serviceType.replace(/_/g, ' ')} services.
 ${request.petType ? `Pet type: ${request.petType}` : ''}

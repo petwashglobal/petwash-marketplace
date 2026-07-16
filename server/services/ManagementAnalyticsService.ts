@@ -1,5 +1,5 @@
 /**
- * ⁦Pet Wash™⁩ Management Analytics Service
+ * ⁦PetWash™⁩ Management Analytics Service
  * Comprehensive financial tracking and AI-powered forecasting
  * 
  * Tracks 4 revenue streams separately:
@@ -458,7 +458,7 @@ export class ManagementAnalyticsService {
     currentPeriod: TimeFrame
   ): Promise<ComprehensiveMetrics['forecasting']> {
     try {
-      const prompt = `You are a financial analyst for ⁦Pet Wash™⁩, a multi-service pet care franchise in Israel.
+      const prompt = `You are a financial analyst for ⁦PetWash™⁩, a multi-service pet care franchise in Israel.
 
 Analyze the current performance data and generate revenue forecasts:
 

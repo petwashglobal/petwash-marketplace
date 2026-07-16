@@ -1215,7 +1215,7 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
           } : undefined,
           push: {
             userId,
-            title: `נקודות מומשו – Pet Wash™ 🏆`,
+            title: `נקודות מומשו – PetWash™ 🏆`,
             body: `${reward.name} ממתין לך! קוד: ${voucherCode} (${reward.pointsCost} נקודות)`,
             data: { rewardId: String(reward.id), documentRef: docRef, type: 'points_redeemed' },
           },
@@ -1223,7 +1223,7 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
             rewardName: reward.name,
             voucherCode,
             smsText: buildPointsRedeemedSms({ rewardName: reward.name, pointsCost: reward.pointsCost, voucherCode, newBalance }),
-            pushTitle: `נקודות מומשו – Pet Wash™ 🏆`,
+            pushTitle: `נקודות מומשו – PetWash™ 🏆`,
             pushBody: `${reward.name} — קוד ${voucherCode}`,
             documentRef: docRef,
           },

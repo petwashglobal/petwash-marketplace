@@ -40,8 +40,8 @@ const K9000_FAQ: SeoFaqItem[] = [
   {
     qHe: 'אילו אמצעי תשלום מתקבלים?',
     qEn: 'What payment methods are accepted?',
-    aHe: 'תשלום בכרטיס אשראי בעמדה, ולחברי מועדון גם דרך אפליקציית ⁦Pet Wash™⁩.',
-    aEn: 'Credit card at the station, and members can also pay via the ⁦Pet Wash™⁩ app.',
+    aHe: 'תשלום בכרטיס אשראי בעמדה, ולחברי מועדון גם דרך אפליקציית ⁦PetWash™⁩.',
+    aEn: 'Credit card at the station, and members can also pay via the ⁦PetWash™⁩ app.',
   },
   {
     qHe: 'האם זה מתאים לכלבים גדולים?',

@@ -10,8 +10,8 @@ export default function Support() {
   const [, setLocation] = useLocation();
   const { t, dir } = useLanguage();
   useSEO({
-    title: 'Support & Help - ⁦Pet Wash™⁩ | תמיכה ועזרה',
-    description: 'Get help with ⁦Pet Wash™⁩ — ⁦K9000⁩ washes, bookings, payments, membership and more. WhatsApp, email and phone support. תמיכה ועזרה ל-⁦Pet Wash™⁩ — שטיפות, הזמנות, תשלומים וחברות מועדון, ב-WhatsApp, אימייל וטלפון.',
+    title: 'Support & Help - ⁦PetWash™⁩ | תמיכה ועזרה',
+    description: 'Get help with ⁦PetWash™⁩ — ⁦K9000⁩ washes, bookings, payments, membership and more. WhatsApp, email and phone support. תמיכה ועזרה ל-⁦PetWash™⁩ — שטיפות, הזמנות, תשלומים וחברות מועדון, ב-WhatsApp, אימייל וטלפון.',
     keywords: 'pet wash support, help, customer service, contact, תמיכה, עזרה, שירות לקוחות, צור קשר',
     canonical: 'https://petwash.co.il/support',
     ogType: 'website',

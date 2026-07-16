@@ -176,7 +176,7 @@ export function k9000StationAlert(p: K9000StationAlertParams): string {
       <table width="100%" cellpadding="0" cellspacing="0">
         <tr>
           <td>
-            <img src="${PETWASH_LOGO_BASE64}" width="120" alt="Pet Wash™" style="display:block;margin-bottom:8px"/>
+            <img src="${PETWASH_LOGO_BASE64}" width="120" alt="PetWash™" style="display:block;margin-bottom:8px"/>
             <div style="color:${GOLD};font-size:16px;font-weight:700">K9000 • ${isHe ? 'מרכז ניטור' : 'Operations Hub'}</div>
           </td>
           <td align="left" style="vertical-align:top">
@@ -256,7 +256,7 @@ export function k9000StationAlert(p: K9000StationAlertParams): string {
   <tr>
     <td bgcolor="${HEADER_BG}" style="padding:16px 32px;text-align:center;background:${HEADER_BG}">
       <p style="margin:0 0 4px;font-size:11px;color:#888">
-        Pet Wash™ K9000 Operations | ${SUPPORT_EMAIL}
+        PetWash™ K9000 Operations | ${SUPPORT_EMAIL}
       </p>
       <p style="margin:0;font-size:10px;color:#555;direction:rtl">
         ${isHe ? 'הודעה תפעולית אוטומטית. אין צורך בביטול הרשמה.' : 'Automated operational alert. No unsubscribe required.'}
