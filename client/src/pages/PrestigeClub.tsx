@@ -109,7 +109,7 @@ const dict: Record<Lang, Record<string, string>> = {
     legal_p2: "פרטי ביטוח, כיסוי K9000, תנאים מסחריים ומידע פנימי מוצגים לציבור רק בנוסח שאושר לפרסום. פרמיות, עלויות, מסמכי חברה ומידע סודי אינם מוצגים באתר.",
     contact_title: "לינקים מהירים",
     metal_name: "ניר הדד",
-    metal_sub: "חבר פעיל · Gold tier · מאז 2024",
+    metal_sub: "חבר פעיל · דרגת Gold",
     metal_balance: "יתרה",
     metal_washes: "שטיפות",
     modal_h3: "תיאור",
@@ -215,7 +215,7 @@ const dict: Record<Lang, Record<string, string>> = {
     legal_p2: "Insurance, K9000 coverage, commercial terms and internal company information appear publicly only in approved wording. Premiums, costs, company documents and confidential details are never shown on public pages.",
     contact_title: "Quick links",
     metal_name: "Nir Hadad",
-    metal_sub: "Active member · Gold tier · Since 2024",
+    metal_sub: "Active member · Gold tier",
     metal_balance: "Balance",
     metal_washes: "Washes",
     modal_h3: "Description",
@@ -230,70 +230,123 @@ interface TierData {
   name: { he: string; en: string };
   gem: string;
   plateClass: string;
-  hint: string;
-  items: string[];
+  hint: { he: string; en: string };
+  items: { he: string; en: string }[];
   desc: { he: string; en: string };
   bullets: { he: string[]; en: string[] };
 }
 
-const TIERS: TierData[] = [
+// Canonical 7-tier ladder (CEO-locked #1177; matches the #1414 tiers API and
+// the approved PR #1429 card set). TRUTH RULES: thresholds are real
+// (LOYALTY_TIER_THRESHOLDS), earning is a flat 1 point per ₪1, the 5% member
+// discount is identical at every tier — no invented perks, no invite-only.
+// Plate mapping reuses the existing luxury plate washes (no new CSS).
+const TIERS = [
   {
-    id: 'pearl',
-    name: { he: 'Pearl', en: 'Pearl' },
+    id: 'member',
+    name: { he: 'Member', en: 'Member' },
     gem: 'gold',
     plateClass: 'pc-platePearl',
-    hint: 't_pearl_hint',
-    items: ['t_pearl_1', 't_pearl_2', 't_pearl_3'],
-    desc: { he: 'דרגת כניסה אלגנטית לאחר בקשת עניין, אימות ואישור. גישה בסיסית לארנק דיגיטלי, מתנות ומעקב נפתחת רק לחבר מאושר.', en: 'Elegant entry tier after interest, verification and approval. Basic wallet, gifts and tracking open only for an approved member.' },
-    bullets: { he: ['בקשת עניין 18+', 'גישה לארנק דיגיטלי לאחר אישור', 'מתנות דיגיטליות', 'היסטוריית פעילות'], en: ['18+ interest application', 'Digital wallet access after approval', 'Digital gifts', 'Activity history'] },
+    hint: { he: 'כאן מתחילים', en: 'Where it begins' },
+    items: [
+      { he: '5% על כל רחיצת K9000', en: '5% off every K9000 wash' },
+      { he: 'נקודה על כל שקל', en: 'A point on every shekel' },
+      { he: 'ארנק דיגיטלי ומתנות', en: 'Digital wallet & gifts' },
+    ],
+    desc: { he: 'החברות נפתחת עם ההרשמה. 5% הנחה על כל רחיצת K9000, נקודה על כל שקל, מתנות יום הולדת ו-Prestige Pass בארנק הדיגיטלי — מהיום הראשון.', en: 'Membership opens at signup. 5% off every K9000 wash, a point on every shekel, birthday rewards and the Prestige Pass in your wallet — from day one.' },
+    bullets: { he: ['5% הנחה על כל רחיצת K9000', 'נקודה על כל שקל', 'מתנות יום הולדת', 'Prestige Pass בארנק'], en: ['5% off every K9000 wash', 'A point on every shekel', 'Birthday rewards', 'Prestige Pass in your wallet'] },
   },
   {
-    id: 'signature',
-    name: { he: 'Signature', en: 'Signature' },
+    id: 'silver',
+    name: { he: 'Silver', en: 'Silver' },
     gem: 'platinum',
     plateClass: 'pc-platePlatinum',
-    hint: 't_sig_hint',
-    items: ['t_sig_1', 't_sig_2', 't_sig_3'],
-    desc: { he: 'חברי Signature נהנים מקדימות בהזמנות והצעות מותאמות.', en: 'Signature members enjoy booking priority and tailored offers.' },
-    bullets: { he: ['קדימות בהזמנות', 'הצעות ממוקדות', 'צבירה מהירה יותר', 'התראות מותאמות'], en: ['Booking priority', 'Targeted offers', 'Faster accumulation', 'Tailored notifications'] },
+    hint: { he: 'מ-2,500 נקודות', en: 'From 2,500 points' },
+    items: [
+      { he: 'נפתחת ב-2,500 נקודות', en: 'Reached at 2,500 points' },
+      { he: 'כל הטבות החברים', en: 'Every member benefit' },
+      { he: 'הנאמנות שלכם, גלויה', en: 'Your loyalty, recognised' },
+    ],
+    desc: { he: 'ההוקרה הראשונה בסולם. כל הטבות החברים נשמרות — והדרגה מספרת את הסיפור.', en: 'The first recognition on the ladder. Every member benefit stays — the tier tells the story.' },
+    bullets: { he: ['נפתחת ב-2,500 נקודות', 'כל הטבות החברים', 'הוקרה גלויה'], en: ['Reached at 2,500 points', 'Every member benefit', 'Visible recognition'] },
   },
   {
-    id: 'elite',
-    name: { he: 'Elite', en: 'Elite' },
-    gem: 'diamond',
+    id: 'gold',
+    name: { he: 'Gold', en: 'Gold' },
+    gem: 'gold',
     plateClass: 'pc-plateDiamond',
-    hint: 't_elite_hint',
-    items: ['t_elite_1', 't_elite_2', 't_elite_3'],
-    desc: { he: 'חברי Elite מקבלים בונוסים על כל טעינה, הטבות יום הולדת והצעות בלעדיות.', en: 'Elite members get top-up bonuses, birthday perks, and exclusive offers.' },
-    bullets: { he: ['בונוסים על טעינה', 'הטבות יום הולדת', 'הצעות בלעדיות', 'צבירה כפולה (אופציונלי)'], en: ['Top-up bonuses', 'Birthday perks', 'Exclusive offers', 'Double accumulation (optional)'] },
+    hint: { he: 'מ-7,500 נקודות', en: 'From 7,500 points' },
+    items: [
+      { he: 'נפתחת ב-7,500 נקודות', en: 'Reached at 7,500 points' },
+      { he: 'כל הטבות החברים', en: 'Every member benefit' },
+      { he: 'הסטנדרט הקלאסי', en: 'The classic standing' },
+    ],
+    desc: { he: 'הסטנדרט הקלאסי של PetWash — דרגת הזהב של חברים קבועים.', en: 'The classic PetWash standing — the gold mark of a regular.' },
+    bullets: { he: ['נפתחת ב-7,500 נקודות', 'כל הטבות החברים', 'הסטנדרט הקלאסי של PetWash'], en: ['Reached at 7,500 points', 'Every member benefit', 'The classic PetWash standing'] },
   },
   {
-    id: 'privilege',
-    name: { he: 'Privilege', en: 'Privilege' },
+    id: 'platinum',
+    name: { he: 'Platinum', en: 'Platinum' },
+    gem: 'platinum',
+    plateClass: 'pc-platePlatinum',
+    hint: { he: 'מ-15,000 נקודות', en: 'From 15,000 points' },
+    items: [
+      { he: 'נפתחת ב-15,000 נקודות', en: 'Reached at 15,000 points' },
+      { he: 'כל הטבות החברים', en: 'Every member benefit' },
+      { he: 'מבין הנאמנים ביותר', en: 'Among the most devoted' },
+    ],
+    desc: { he: 'מבין הנאמנים ביותר שלנו — מעמד שנבנה רחיצה אחר רחיצה.', en: 'Among our most devoted — a standing built wash after wash.' },
+    bullets: { he: ['נפתחת ב-15,000 נקודות', 'כל הטבות החברים', 'מעמד שנבנה ביושר'], en: ['Reached at 15,000 points', 'Every member benefit', 'A standing honestly built'] },
+  },
+  {
+    id: 'diamond',
+    name: { he: 'Diamond', en: 'Diamond' },
+    gem: 'diamond',
+    plateClass: 'pc-platePlatinum',
+    hint: { he: 'מ-25,000 נקודות', en: 'From 25,000 points' },
+    items: [
+      { he: 'נפתחת ב-25,000 נקודות', en: 'Reached at 25,000 points' },
+      { he: 'כל הטבות החברים', en: 'Every member benefit' },
+      { he: 'מעמד נדיר', en: 'Rare standing' },
+    ],
+    desc: { he: 'מעמד נדיר, שהושג ביושר. הדרגה החמישית בסולם ההוקרה.', en: 'Rare standing, honestly earned. The fifth step of the recognition ladder.' },
+    bullets: { he: ['נפתחת ב-25,000 נקודות', 'כל הטבות החברים', 'מעמד נדיר שהושג ביושר'], en: ['Reached at 25,000 points', 'Every member benefit', 'Rare, honestly earned'] },
+  },
+  {
+    id: 'emerald',
+    name: { he: 'Emerald', en: 'Emerald' },
     gem: 'emerald',
     plateClass: 'pc-plateEmerald',
-    hint: 't_priv_hint',
-    items: ['t_priv_1', 't_priv_2', 't_priv_3'],
-    desc: { he: 'למשפחות קבועות. יותר הטבות, יותר אקסקלוסיביות.', en: 'For consistent families. More advantages and exclusivity.' },
-    bullets: { he: ['הצעות פרימיום', 'קדימות גבוהה', 'הפתעות milestone', 'הטבות שותפים (אופציונלי)'], en: ['Premium offers', 'Higher priority', 'Milestone surprises', 'Partner perks (optional)'] },
+    hint: { he: 'מ-40,000 נקודות', en: 'From 40,000 points' },
+    items: [
+      { he: 'נפתחת ב-40,000 נקודות', en: 'Reached at 40,000 points' },
+      { he: 'כל הטבות החברים', en: 'Every member benefit' },
+      { he: 'הירוק העמוק של PetWash', en: 'The deep green of PetWash' },
+    ],
+    desc: { he: 'הירוק העמוק של PetWash — צעד אחד מתחת לפסגה.', en: 'The deep green of PetWash — one step below the summit.' },
+    bullets: { he: ['נפתחת ב-40,000 נקודות', 'כל הטבות החברים', 'צעד אחד מהפסגה'], en: ['Reached at 40,000 points', 'Every member benefit', 'One step from the summit'] },
   },
   {
     id: 'black',
     name: { he: 'Black Reserve', en: 'Black Reserve' },
     gem: 'gold',
     plateClass: 'pc-plateOnyx',
-    hint: 't_black_hint',
-    items: ['t_black_1', 't_black_2', 't_black_3'],
-    desc: { he: 'דרגת יוקרה עליונה. מיועדת למספר מוגבל של חברים.', en: 'Top prestige tier. Reserved for a limited set of members.' },
-    bullets: { he: ['תמיכה VIP', 'הצעות נדירות', 'אירועים פרטיים (אופציונלי)', 'גישה ראשונה להשקות (אופציונלי)'], en: ['VIP support', 'Rare offers', 'Private events (optional)', 'First access (optional)'] },
+    hint: { he: 'מ-50,000 נקודות', en: 'From 50,000 points' },
+    items: [
+      { he: 'נפתחת ב-50,000 נקודות', en: 'Reached at 50,000 points' },
+      { he: 'כל הטבות החברים', en: 'Every member benefit' },
+      { he: 'פסגת PetWash Prestige', en: 'The summit of PetWash Prestige' },
+    ],
+    desc: { he: 'פסגת PetWash Prestige. הדרגה העליונה בסולם — נפתחת ב-50,000 נקודות, ונרכשת רחיצה אחר רחיצה.', en: 'The summit of PetWash Prestige. The top of the ladder — reached at 50,000 points, earned wash after wash.' },
+    bullets: { he: ['נפתחת ב-50,000 נקודות', 'כל הטבות החברים', 'הדרגה העליונה בסולם'], en: ['Reached at 50,000 points', 'Every member benefit', 'The top of the ladder'] },
   },
 ];
 
 const TIER_CYCLE = [
-  { label: 'CHAMPAGNE DIAMOND', badge: 'Elite', color: '#B8860B' },
-  { label: 'EMERALD STONE', badge: 'Privilege', color: '#0F5E4A' },
-  { label: 'SAPPHIRE CRYSTAL', badge: 'Signature', color: '#0E2F5A' },
-  { label: 'PLATINUM', badge: 'Signature', color: '#C9C9C9' },
+  { label: 'CHAMPAGNE DIAMOND', badge: 'Gold', color: '#B8860B' },
+  { label: 'EMERALD STONE', badge: 'Emerald', color: '#0F5E4A' },
+  { label: 'SAPPHIRE CRYSTAL', badge: 'Diamond', color: '#0E2F5A' },
+  { label: 'PLATINUM', badge: 'Platinum', color: '#C9C9C9' },
   { label: 'ONYX + GOLD', badge: 'Black Reserve', color: '#C6A75E' },
 ];
 
@@ -570,12 +623,12 @@ export default function PrestigeClub() {
                     <div className={`pc-tierPlate ${tier.plateClass}`} />
                     <div className="pc-tierBody">
                       <h3 className="pc-tierName">{tier.name[lang]}</h3>
-                      <div className="pc-tierHint">{i(tier.hint)}</div>
+                      <div className="pc-tierHint">{tier.hint[lang]}</div>
                       <div className="pc-tierList">
                         {tier.items.map((item, idx) => (
                           <div key={idx} className="pc-tItem">
                             <span className="pc-check">✓</span>
-                            <span>{i(item)}</span>
+                            <span>{item[lang]}</span>
                           </div>
                         ))}
                       </div>
@@ -608,7 +661,7 @@ export default function PrestigeClub() {
                         </div>
                         <div>
                           <div className="pc-muted">{i('progress_next')}</div>
-                          <div style={{ fontSize: 14, fontWeight: 900 }}>Privilege</div>
+                          <div style={{ fontSize: 14, fontWeight: 900 }}>Platinum</div>
                         </div>
                       </div>
                     </div>
