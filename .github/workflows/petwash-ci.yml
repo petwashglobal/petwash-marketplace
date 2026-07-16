@@ -26,6 +26,11 @@ concurrency:
   cancel-in-progress: false
 
 env:
+  # puppeteer is a devDependency for the SEO prerender ONLY. Never download
+  # Chromium during npm ci (~300MB per job — overflowed the runner disk and
+  # failed the backend docker build on 2026-07-16). The frontend job installs
+  # the browser explicitly right before the prerender step.
+  PUPPETEER_SKIP_DOWNLOAD: "true"
   PROJECT_ID: signinpetwash
   REGION: me-west1
   SERVICE_NAME: petwash-api
@@ -2359,6 +2364,9 @@ jobs:
           # BOTH places.
           VITE_SHOP_LIVE_ENABLED: 'true'
           VITE_SHOP_CHECKOUT_ENABLED: 'false'
+
+      - name: Install Chrome for prerender
+        run: npx puppeteer browsers install chrome
 
       - name: Prerender public routes (SEO snapshots)
         # Build-time prerender (audit #234): writes real HTML for the public
