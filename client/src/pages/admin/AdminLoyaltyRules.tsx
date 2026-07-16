@@ -18,6 +18,7 @@ import {
   TrendingUp, TrendingDown, Users, ArrowUpRight, ArrowDownRight,
   Trophy, PauseCircle, PlayCircle, Zap, ShieldCheck, ShieldOff,
   Lock, Unlock, Timer, Activity, XCircle, Power, Radio,
+  Ticket, Search,
 } from "lucide-react";
 import { QueueHealthCard } from "@/components/loyalty/QueueHealthCard";
 import { Button } from "@/components/ui/button";
@@ -125,7 +126,7 @@ const STATUS_COLOR: Record<string, string> = {
 
 // ── Tab navigation ───────────────────────────────────────────────────────────
 
-type Tab = "rules" | "reporting" | "adjustments" | "winback" | "ledger" | "ops";
+type Tab = "rules" | "reporting" | "adjustments" | "winback" | "ledger" | "ops" | "redemptions";
 
 const TABS: { id: Tab; label: string; icon: any }[] = [
   { id: "rules",       label: "כללים",    icon: Settings2    },
@@ -134,6 +135,7 @@ const TABS: { id: Tab; label: string; icon: any }[] = [
   { id: "winback",     label: "Win-back", icon: RefreshCw    },
   { id: "ledger",      label: "יומן",     icon: ClipboardList },
   { id: "ops",         label: "מבצעי",    icon: Activity     },
+  { id: "redemptions", label: "מימושים",  icon: Ticket       },
 ];
 
 // ── Rules Tab ─────────────────────────────────────────────────────────────────
@@ -1630,6 +1632,233 @@ function SectionCard({ title, action, children }: { title: string; action?: Reac
   );
 }
 
+// ── Redemptions Tab — REWARD-* voucher fulfillment queue (#15 slice 3) ────────
+// Members spend points and get a REWARD-* voucher; this queue is where a human
+// closes the loop: verify the hand-off happened → Fulfill, or Cancel + refund
+// the points. Both actions are status-guarded and audit-logged server-side.
+
+interface RedemptionRowData {
+  redemption: {
+    id: number;
+    userId: string;
+    rewardId: number;
+    pointsCost: number;
+    status: string;
+    voucherCode: string | null;
+    fulfilledAt: string | null;
+    expiresAt: string | null;
+    notes: string | null;
+    createdAt: string;
+  };
+  rewardName: string | null;
+  rewardType: string | null;
+  memberEmail: string | null;
+  memberFirstName: string | null;
+  memberLastName: string | null;
+  effectiveStatus: string;
+}
+
+const REDEMPTION_STATUS_META: Record<string, { label: string; cls: string }> = {
+  pending:   { label: "ממתין",   cls: "bg-amber-50 text-amber-700 border-amber-200" },
+  fulfilled: { label: "מומש",    cls: "bg-emerald-50 text-emerald-700 border-emerald-200" },
+  cancelled: { label: "בוטל",    cls: "bg-gray-100 text-gray-500 border-gray-200" },
+  expired:   { label: "פג תוקף", cls: "bg-red-50 text-red-600 border-red-200" },
+};
+
+function RedemptionStatusBadge({ status }: { status: string }) {
+  const meta = REDEMPTION_STATUS_META[status] ?? { label: status, cls: "bg-gray-100 text-gray-500 border-gray-200" };
+  return (
+    <span className={`inline-block px-2 py-0.5 rounded-full text-[10px] font-bold border ${meta.cls}`}>
+      {meta.label}
+    </span>
+  );
+}
+
+function RedemptionsTab() {
+  const qc = useQueryClient();
+  const { toast } = useToast();
+  const [statusFilter, setStatusFilter] = useState<string>("pending");
+  const [actionId, setActionId] = useState<number | null>(null);
+  const [actionKind, setActionKind] = useState<"fulfill" | "cancel" | null>(null);
+  const [actionText, setActionText] = useState("");
+  const [lookupCode, setLookupCode] = useState("");
+  const [lookupResult, setLookupResult] = useState<(RedemptionRowData & { redeemable: boolean }) | null | "not_found">(null);
+
+  const { data, isLoading, isError } = useQuery<RedemptionRowData[]>({
+    queryKey: ["/api/loyalty/admin/redemptions"],
+    staleTime: 15_000,
+  });
+
+  const closeAction = () => { setActionId(null); setActionKind(null); setActionText(""); };
+
+  const actMut = useMutation({
+    mutationFn: async ({ id, kind, text }: { id: number; kind: "fulfill" | "cancel"; text: string }) => {
+      const body = kind === "fulfill" ? (text ? { notes: text } : {}) : { reason: text };
+      const r = await apiRequest("POST", `/api/loyalty/admin/redemptions/${id}/${kind}`, body);
+      const json = await r.json();
+      if (!r.ok) throw new Error(json?.error || "failed");
+      return json;
+    },
+    onSuccess: (json, { kind }) => {
+      qc.invalidateQueries({ queryKey: ["/api/loyalty/admin/redemptions"] });
+      closeAction();
+      toast({
+        title: kind === "fulfill" ? "המימוש סומן כמומש" : "המימוש בוטל והנקודות הוחזרו",
+        description: kind === "cancel" && typeof json?.refundedPoints === "number"
+          ? `הוחזרו ${json.refundedPoints} נקודות`
+          : undefined,
+      });
+    },
+    onError: (e: any) => {
+      const msg = String(e?.message || "");
+      toast({
+        variant: "destructive",
+        title: "הפעולה נכשלה",
+        description: /expired/.test(msg) ? "השובר פג תוקף"
+          : /not_pending/.test(msg) ? "המימוש כבר טופל (ייתכן על ידי אדמין אחר)"
+          : /not_found/.test(msg) ? "המימוש לא נמצא"
+          : "נסה שוב",
+      });
+    },
+  });
+
+  const runLookup = async () => {
+    const code = lookupCode.trim();
+    if (!code) return;
+    try {
+      const r = await apiRequest("GET", `/api/loyalty/admin/redemptions/lookup/${encodeURIComponent(code)}`);
+      if (r.status === 404) { setLookupResult("not_found"); return; }
+      if (!r.ok) throw new Error("lookup failed");
+      setLookupResult(await r.json());
+    } catch {
+      toast({ variant: "destructive", title: "בדיקת השובר נכשלה" });
+    }
+  };
+
+  if (isLoading) return <div className="flex justify-center p-10"><Loader2 className="w-5 h-5 animate-spin text-gray-300" /></div>;
+  if (isError) return <ErrorMsg />;
+
+  const rows = (data ?? []).filter(r => statusFilter === "all" || r.effectiveStatus === statusFilter);
+  const pendingCount = (data ?? []).filter(r => r.effectiveStatus === "pending").length;
+
+  return (
+    <div className="p-4 space-y-4">
+      {/* Voucher lookup */}
+      <SectionCard title="בדיקת קוד שובר (REWARD-*)">
+        <div className="flex gap-2">
+          <Input
+            dir="ltr"
+            value={lookupCode}
+            onChange={e => { setLookupCode(e.target.value); setLookupResult(null); }}
+            onKeyDown={e => e.key === "Enter" && runLookup()}
+            placeholder="REWARD-..."
+            className="text-xs font-mono"
+          />
+          <Button size="sm" variant="outline" onClick={runLookup} className="shrink-0">
+            <Search className="w-3.5 h-3.5 ml-1" /> בדוק
+          </Button>
+        </div>
+        {lookupResult === "not_found" && (
+          <p className="text-xs text-red-500 mt-2">שובר לא נמצא</p>
+        )}
+        {lookupResult && lookupResult !== "not_found" && (
+          <div className="mt-3 text-xs text-gray-700 flex flex-wrap items-center gap-x-3 gap-y-1">
+            <RedemptionStatusBadge status={lookupResult.effectiveStatus} />
+            <span className="font-bold">{lookupResult.rewardName ?? `פרס #${lookupResult.redemption.rewardId}`}</span>
+            <span className="text-gray-400">{lookupResult.memberEmail ?? lookupResult.redemption.userId}</span>
+            <span>{lookupResult.redemption.pointsCost} נק׳</span>
+            {lookupResult.redemption.expiresAt && (
+              <span className="text-gray-400">
+                בתוקף עד {new Date(lookupResult.redemption.expiresAt).toLocaleDateString("he-IL")}
+              </span>
+            )}
+          </div>
+        )}
+      </SectionCard>
+
+      {/* Status filter */}
+      <div className="flex gap-1.5 overflow-x-auto">
+        {["pending", "fulfilled", "cancelled", "expired", "all"].map(s => (
+          <button
+            key={s}
+            onClick={() => setStatusFilter(s)}
+            className={`px-3 py-1.5 rounded-full text-[11px] font-bold border shrink-0 transition-colors ${
+              statusFilter === s ? "bg-[#0a0a0a] text-white border-[#0a0a0a]" : "bg-white text-gray-500 border-gray-200"
+            }`}
+          >
+            {s === "all" ? "הכל" : REDEMPTION_STATUS_META[s].label}
+            {s === "pending" && pendingCount > 0 && ` (${pendingCount})`}
+          </button>
+        ))}
+      </div>
+
+      {/* Queue */}
+      {rows.length === 0 ? (
+        <p className="text-xs text-gray-400 text-center py-8">אין מימושים בסטטוס הזה</p>
+      ) : (
+        <div className="space-y-2">
+          {rows.map(r => {
+            const member = [r.memberFirstName, r.memberLastName].filter(Boolean).join(" ") || r.memberEmail || r.redemption.userId;
+            const isActing = actionId === r.redemption.id;
+            return (
+              <div key={r.redemption.id} className="bg-white rounded-2xl shadow-sm border border-gray-100 p-3">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="text-xs font-bold text-gray-800">{r.rewardName ?? `פרס #${r.redemption.rewardId}`}</p>
+                      <RedemptionStatusBadge status={r.effectiveStatus} />
+                    </div>
+                    <p className="text-[11px] text-gray-400 mt-0.5 truncate">{member} · {r.redemption.pointsCost} נק׳</p>
+                    <p className="text-[10px] font-mono text-gray-500 mt-1" dir="ltr">{r.redemption.voucherCode}</p>
+                    <p className="text-[10px] text-gray-300 mt-0.5">
+                      {new Date(r.redemption.createdAt).toLocaleDateString("he-IL")}
+                      {r.redemption.expiresAt && ` · בתוקף עד ${new Date(r.redemption.expiresAt).toLocaleDateString("he-IL")}`}
+                    </p>
+                    {r.redemption.notes && <p className="text-[10px] text-gray-400 mt-1">הערה: {r.redemption.notes}</p>}
+                  </div>
+                  {r.effectiveStatus === "pending" && !isActing && (
+                    <div className="flex flex-col gap-1.5 shrink-0">
+                      <Button size="sm" className="h-7 text-[11px] bg-emerald-600 hover:bg-emerald-700 text-white"
+                        onClick={() => { setActionId(r.redemption.id); setActionKind("fulfill"); setActionText(""); }}>
+                        <Check className="w-3 h-3 ml-1" /> מומש
+                      </Button>
+                      <Button size="sm" variant="outline" className="h-7 text-[11px] text-red-600 border-red-200"
+                        onClick={() => { setActionId(r.redemption.id); setActionKind("cancel"); setActionText(""); }}>
+                        <XCircle className="w-3 h-3 ml-1" /> בטל
+                      </Button>
+                    </div>
+                  )}
+                </div>
+                {isActing && (
+                  <div className="mt-3 pt-3 border-t border-gray-50 space-y-2">
+                    <Input
+                      value={actionText}
+                      onChange={e => setActionText(e.target.value)}
+                      placeholder={actionKind === "fulfill" ? "הערה (לא חובה)" : "סיבת ביטול (חובה) — הנקודות יוחזרו לחבר"}
+                      className="text-xs"
+                    />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        className="h-7 text-[11px]"
+                        disabled={actMut.isPending || (actionKind === "cancel" && !actionText.trim())}
+                        onClick={() => actMut.mutate({ id: r.redemption.id, kind: actionKind!, text: actionText.trim() })}
+                      >
+                        {actMut.isPending ? <Loader2 className="w-3 h-3 animate-spin" /> : "אישור"}
+                      </Button>
+                      <Button size="sm" variant="ghost" className="h-7 text-[11px]" onClick={closeAction}>ביטול</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── Main page ─────────────────────────────────────────────────────────────────
 
 export default function AdminLoyaltyRules() {
@@ -1672,6 +1901,7 @@ export default function AdminLoyaltyRules() {
         {tab === "winback"     && <WinbackTab />}
         {tab === "ledger"      && <LedgerTab />}
         {tab === "ops"         && <OpsTab />}
+        {tab === "redemptions" && <RedemptionsTab />}
       </div>
     </div>
   );
