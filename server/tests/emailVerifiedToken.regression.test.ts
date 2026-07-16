@@ -20,8 +20,13 @@ describe('emailVerifiedToken — passwordless email login proof', () => {
   it('rejects a tampered signature (cannot forge a session for any email)', async () => {
     const { mintEmailVerifiedToken, validateEmailVerifiedToken } = await load();
     const token = mintEmailVerifiedToken('victim@example.com');
-    // Flip the last char of the base64url token → broken HMAC.
-    const tampered = token.slice(0, -1) + (token.slice(-1) === 'A' ? 'B' : 'A');
+    // Flip a MID-token char, not the last one: unpadded base64url discards the
+    // final char's low bits, so a last-char "flip" decodes to the SAME bytes
+    // whenever the HMAC ends in hex '0' (~1 in 16 mints) — that was the
+    // "load-flaky" failure. A mid-token char always carries 6 significant
+    // bits, so this tamper deterministically breaks the HMAC.
+    const i = 10;
+    const tampered = token.slice(0, i) + (token[i] === 'A' ? 'B' : 'A') + token.slice(i + 1);
     const r = validateEmailVerifiedToken(tampered);
     expect(r.valid).toBe(false);
   });
