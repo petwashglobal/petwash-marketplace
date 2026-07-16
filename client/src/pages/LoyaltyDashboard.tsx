@@ -224,6 +224,12 @@ export default function LoyaltyDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [redeemingId, setRedeemingId] = useState<number | null>(null);
+  // Gift a Moment (#16): optional recipient for a redemption — the member
+  // spends their own points; only the voucher's destination changes.
+  const [giftFor, setGiftFor] = useState<any | null>(null);
+  const [giftName, setGiftName] = useState('');
+  const [giftEmail, setGiftEmail] = useState('');
+  const [giftMessage, setGiftMessage] = useState('');
 
   const { data: loyaltyProfile } = useQuery<any>({
     queryKey: ['/api/loyalty/profile'],
@@ -236,18 +242,21 @@ export default function LoyaltyDashboard() {
     queryKey: ['/api/loyalty/rewards'],
   });
 
-  const redeemReward = async (reward: any) => {
+  const redeemReward = async (reward: any, gift?: { recipientName: string; recipientEmail: string; message?: string }) => {
     setRedeemingId(reward.id);
     try {
-      const res = await apiRequest('POST', '/api/loyalty/rewards/redeem', { rewardId: reward.id });
+      const res = await apiRequest('POST', '/api/loyalty/rewards/redeem', { rewardId: reward.id, ...(gift ? { gift } : {}) });
       const data = await res.json();
       if (!res.ok) throw new Error(data?.error || 'Redeem failed');
       toast({
-        title: isHebrew ? 'הפרס נפדה! 🎉' : 'Reward redeemed! 🎉',
+        title: gift
+          ? (isHebrew ? `🎁 המתנה בדרך ל-${gift.recipientName}` : `🎁 Gift on its way to ${gift.recipientName}`)
+          : (isHebrew ? 'הפרס נפדה! 🎉' : 'Reward redeemed! 🎉'),
         description: data?.voucherCode
           ? (isHebrew ? `קוד שובר: ${data.voucherCode}` : `Voucher code: ${data.voucherCode}`)
           : reward.name,
       });
+      setGiftFor(null); setGiftName(''); setGiftEmail(''); setGiftMessage('');
       queryClient.invalidateQueries({ queryKey: ['/api/loyalty/profile'] });
       queryClient.invalidateQueries({ queryKey: ['/api/loyalty/rewards'] });
     } catch (e: any) {
@@ -508,15 +517,28 @@ export default function LoyaltyDashboard() {
                         )}
                       </div>
                     </div>
-                    <button
-                      disabled={!affordable || busy}
-                      onClick={() => redeemReward(reward)}
-                      className={affordable && !busy
-                        ? 'luxury-btn-primary text-sm px-4 py-2'
-                        : 'luxury-btn-secondary text-sm px-4 py-2 opacity-50 cursor-not-allowed'}
-                    >
-                      {busy ? '…' : (isHebrew ? 'פדה' : 'Redeem')}
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        disabled={!affordable || busy}
+                        onClick={() => setGiftFor(reward)}
+                        title={isHebrew ? 'שלחו כמתנה' : 'Send as a gift'}
+                        aria-label={isHebrew ? 'שלחו כמתנה' : 'Send as a gift'}
+                        className={affordable && !busy
+                          ? 'luxury-btn-secondary text-sm px-3 py-2'
+                          : 'luxury-btn-secondary text-sm px-3 py-2 opacity-50 cursor-not-allowed'}
+                      >
+                        🎁
+                      </button>
+                      <button
+                        disabled={!affordable || busy}
+                        onClick={() => redeemReward(reward)}
+                        className={affordable && !busy
+                          ? 'luxury-btn-primary text-sm px-4 py-2'
+                          : 'luxury-btn-secondary text-sm px-4 py-2 opacity-50 cursor-not-allowed'}
+                      >
+                        {busy ? '…' : (isHebrew ? 'פדה' : 'Redeem')}
+                      </button>
+                    </div>
                   </div>
                 </div>
                 );
@@ -526,6 +548,64 @@ export default function LoyaltyDashboard() {
                 </p>
               )}
             </div>
+
+            {/* Gift a Moment dialog (#16) */}
+            {giftFor && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true">
+                <div className="absolute inset-0 bg-black/40" onClick={() => setGiftFor(null)} />
+                <div className="relative bg-white rounded-xl shadow-xl w-full max-w-md p-6" dir={isHebrew ? 'rtl' : 'ltr'}>
+                  <h3 className="text-lg font-bold text-gray-900 mb-1">
+                    🎁 {isHebrew ? 'שלחו רגע במתנה' : 'Gift this moment'}
+                  </h3>
+                  <p className="text-sm text-gray-500 mb-4">
+                    {isHebrew
+                      ? `${giftFor.name} · ${Number(giftFor.pointsCost).toLocaleString()} נקודות מהיתרה שלכם — השובר יישלח למקבל/ת המתנה.`
+                      : `${giftFor.name} · ${Number(giftFor.pointsCost).toLocaleString()} points from your balance — the voucher goes to your recipient.`}
+                  </p>
+                  <div className="space-y-3">
+                    <input
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                      placeholder={isHebrew ? 'שם המקבל/ת' : 'Recipient name'}
+                      maxLength={80}
+                      value={giftName}
+                      onChange={(e) => setGiftName(e.target.value)}
+                    />
+                    <input
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                      placeholder={isHebrew ? 'אימייל המקבל/ת' : 'Recipient email'}
+                      type="email"
+                      dir="ltr"
+                      value={giftEmail}
+                      onChange={(e) => setGiftEmail(e.target.value)}
+                    />
+                    <textarea
+                      className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm"
+                      placeholder={isHebrew ? 'הקדשה אישית (רשות)' : 'Personal note (optional)'}
+                      maxLength={280}
+                      rows={2}
+                      value={giftMessage}
+                      onChange={(e) => setGiftMessage(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex items-center justify-end gap-2 mt-5">
+                    <button className="luxury-btn-secondary text-sm px-4 py-2" onClick={() => setGiftFor(null)}>
+                      {isHebrew ? 'ביטול' : 'Cancel'}
+                    </button>
+                    <button
+                      className="luxury-btn-primary text-sm px-4 py-2"
+                      disabled={redeemingId === giftFor.id || !giftName.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(giftEmail.trim())}
+                      onClick={() => redeemReward(giftFor, {
+                        recipientName: giftName.trim(),
+                        recipientEmail: giftEmail.trim(),
+                        ...(giftMessage.trim() ? { message: giftMessage.trim() } : {}),
+                      })}
+                    >
+                      {redeemingId === giftFor.id ? '…' : (isHebrew ? 'שלחו את המתנה' : 'Send the gift')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* LUXURY Points Activity Chart (Transaction History) */}
