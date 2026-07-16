@@ -56,14 +56,17 @@ const COUNTRIES = [
 
 const TOTAL_STEPS = 5;
 
+// Canonical 7-tier ladder (CEO-locked #1177; ids match schema-loyalty, labels
+// match the #1414 public tiers API; thresholds = LOYALTY_TIER_THRESHOLDS).
+// Colors = the approved Prestige card palette (PR #1429). Names stay English.
 const TIER_DATA = [
-  { id: 'bronze', label: 'Member', points: '0', color: '#7B2D9E', bg: 'from-[#D4AF37]/10 to-[#D4AF37]/5' },
-  { id: 'silver', label: 'Signature', points: '2,500', color: '#4F8FA0', bg: 'from-slate-300/10 to-slate-200/5' },
-  { id: 'gold', label: 'Elite', points: '7,500', color: '#1B8A45', bg: 'from-green-300/10 to-emerald-200/5' },
-  { id: 'platinum', label: 'Privilege', points: '15,000', color: '#15407A', bg: 'from-[#D4AF37]/10 to-[#D4AF37]/5' },
-  { id: 'diamond', label: 'Diamond', points: '25,000', color: '#6E899E', bg: 'from-slate-200/10 to-slate-100/5' },
-  { id: 'royal_black', label: 'Black Reserve', points: '40,000', color: '#2E3A4A', bg: 'from-gray-800/10 to-gray-700/5' },
-  { id: 'crown', label: 'Crown', points: '50,000', color: '#D9B84C', bg: 'from-amber-200/10 to-yellow-100/5' },
+  { id: 'bronze',   label: 'Member',        points: '0',      color: '#8A7A57', bg: 'from-[#E4D9C0]/20 to-[#FBF8F1]/10' },
+  { id: 'silver',   label: 'Silver',        points: '2,500',  color: '#6E7883', bg: 'from-slate-300/10 to-slate-200/5' },
+  { id: 'gold',     label: 'Gold',          points: '7,500',  color: '#9C7209', bg: 'from-[#D4AF37]/10 to-[#D4AF37]/5' },
+  { id: 'platinum', label: 'Platinum',      points: '15,000', color: '#3A3F45', bg: 'from-gray-400/10 to-gray-300/5' },
+  { id: 'diamond',  label: 'Diamond',       points: '25,000', color: '#6E899E', bg: 'from-slate-200/10 to-slate-100/5' },
+  { id: 'emerald',  label: 'Emerald',       points: '40,000', color: '#0A5C36', bg: 'from-emerald-900/10 to-emerald-700/5' },
+  { id: 'royal',    label: 'Black Reserve', points: '50,000', color: '#1a1a1a', bg: 'from-gray-800/10 to-gray-700/5' },
 ];
 
 const PLATFORMS = [
@@ -381,7 +384,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                   </div>
                   <div className="flex items-center gap-3 mb-5">
                     <span className="px-3 py-1 text-[10px] uppercase tracking-wider text-white/80" style={{ background: 'rgba(255,255,255,0.08)', borderRadius: '2px' }}>
-                      Signature Member
+                      Prestige Member
                     </span>
                     <span className="px-3 py-1 text-[10px] uppercase tracking-wider" style={{ background: `${gold}15`, color: gold, borderRadius: '2px' }}>
                       7 stamps
@@ -453,7 +456,7 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
             <div className="grid md:grid-cols-2 gap-12 items-start">
               <motion.div initial={{ opacity: 0 }} whileInView={{ opacity: 1 }} viewport={{ once: true }} className="space-y-5">
                 <p className="text-sm uppercase tracking-[0.2em] font-medium text-gray-400">{t('privilege.clubStory', language)}</p>
-                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>PetWash Privilege</h2>
+                <h2 className="text-3xl sm:text-4xl font-bold text-gray-900" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>PetWash Prestige</h2>
                 <p className="text-gray-500 text-lg leading-relaxed" style={{ fontFamily: 'Georgia, "Times New Roman", serif' }}>
                   {t('privilege.clubStoryText', language)}
                 </p>
