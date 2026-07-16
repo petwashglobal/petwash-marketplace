@@ -8,6 +8,7 @@
  */
 
 import { Router } from 'express';
+import { createHmac, timingSafeEqual } from 'crypto';
 import { NayaxSparkService } from '../services/NayaxSparkService';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
@@ -530,10 +531,34 @@ const nayaxUsageEventSchema = z.object({
  * This records the wash for analytics and loyalty purposes ONLY.
  * It does NOT create any financial document. Nayax is the payment processor.
  *
- * HMAC signature verification is enforced if X-Nayax-Signature is present.
+ * SECURITY (2026-07-16, forensic-audit F-17 residue): this endpoint was
+ * mounted with NO verification while this very comment claimed HMAC was
+ * enforced. Now actually enforced: HMAC-SHA256 over the JSON body with
+ * NAYAX_WEBHOOK_SECRET, fail-CLOSED in production when the secret is unset
+ * (mirrors nayax-monyx-events). Nothing calls this endpoint yet — when the
+ * real Nayax webhook lands, align its signing to JSON.stringify(body) or
+ * move this route onto a raw-body mount.
  */
 router.post('/usage-event', async (req, res) => {
   try {
+    const usageSecret = process.env.NAYAX_WEBHOOK_SECRET || '';
+    const providedSig = String(req.headers['x-nayax-signature'] || '').replace(/^sha256=/, '');
+    if (!usageSecret) {
+      if (process.env.NODE_ENV === 'production') {
+        logger.error('[NayaxPayments] usage-event rejected — NAYAX_WEBHOOK_SECRET unset in production (fail-closed)');
+        return res.status(503).json({ error: 'Webhook not configured' });
+      }
+      logger.warn('[NayaxPayments] usage-event signature check skipped — no secret (DEV ONLY)');
+    } else {
+      const expectedSig = createHmac('sha256', usageSecret).update(JSON.stringify(req.body)).digest('hex');
+      const a = Buffer.from(expectedSig);
+      const b = Buffer.from(providedSig);
+      if (a.length !== b.length || !timingSafeEqual(a, b)) {
+        logger.warn('[NayaxPayments] usage-event invalid signature', { ip: req.ip });
+        return res.status(401).json({ error: 'Invalid signature' });
+      }
+    }
+
     const parsed = nayaxUsageEventSchema.safeParse(req.body);
     if (!parsed.success) {
       return res.status(400).json({ error: 'Invalid usage event payload', details: parsed.error.errors });

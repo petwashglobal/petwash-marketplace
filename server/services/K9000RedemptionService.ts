@@ -52,7 +52,7 @@ import {
   bayEvents,
   bayFaults,
 } from '@shared/schema';
-import { eq, and, gt, gte, sql } from 'drizzle-orm';
+import { eq, and, gt, gte, ne, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
@@ -1213,6 +1213,20 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
   const refundCents = isMonetary ? WASH_PRICE_ILS_CENTS : null;
 
   await db.transaction(async (tx) => {
+    // ATOMIC CLAIM (H2, go-live audit #19/#20): flip →timed_out FIRST, guarded
+    // on current status — of two concurrent compensation calls exactly one wins
+    // this UPDATE (row lock serializes; the loser matches zero rows and bails).
+    // Closes the concurrent double-refund window the read-then-set left open.
+    const claimed = await tx
+      .update(baySessions)
+      .set({ status: 'timed_out', updatedAt: now } as any)
+      .where(and(eq(baySessions.id, sessionId), ne(baySessions.status, 'timed_out')))
+      .returning({ id: baySessions.id });
+    if (claimed.length === 0) {
+      logger.info('[AutoCompensation] Lost the claim race — another call already compensated', { sessionId });
+      return;
+    }
+
     // ── Restore the correct bucket ───────────────────────────────────────────
     switch (session.source as K9000RedemptionType) {
       case 'wash_package':
@@ -1302,11 +1316,7 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
       createdAt: now,
     } as any);
 
-    // ── Mark session as compensated ───────────────────────────────────────────
-    await tx
-      .update(baySessions)
-      .set({ status: 'timed_out', updatedAt: now } as any)
-      .where(eq(baySessions.id, sessionId));
+    // Session was already claimed as compensated at the top of this transaction.
   });
 
   logger.info('[AutoCompensation] ✅ Credit auto-restored', {
