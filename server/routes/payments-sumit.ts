@@ -46,7 +46,7 @@ const PHASE1_PRODUCTS = {
   SINGLE_WASH:     { surface: 'kiosk' as const, amountCents: 5500,  washCount: 1,  productType: 'SINGLE_WASH',  description: 'Single wash (K9000)' },
   WASH_PACKAGE_3:  { surface: 'kiosk' as const, amountCents: 15000, washCount: 3,  productType: 'WASH_PACKAGE', description: 'Wash package — 3 washes' },
   WASH_PACKAGE_5:  { surface: 'kiosk' as const, amountCents: 22000, washCount: 5,  productType: 'WASH_PACKAGE', description: 'Wash package — 5 washes' },
-  WASH_PACKAGE_10: { surface: 'kiosk' as const, amountCents: 44000, washCount: 10, productType: 'WASH_PACKAGE', description: 'Wash package — 10 washes' },
+  WASH_PACKAGE_10: { surface: 'kiosk' as const, amountCents: 40000, washCount: 10, productType: 'WASH_PACKAGE', description: 'Wash package — 10 washes' }, // ₪400 — CEO decision 2026-07-15 (Maison ladder fix, #1426)
   // eGift cards — the four CEO-confirmed tiers, server-owned prices (no client
   // amount = no tampering). Rail moved OFF Nayax → SUMIT/UPay. Recipient/sender
   // details ride in the client `metadata` (spread into the purchase row) and are
