@@ -1,5 +1,5 @@
 /**
- * Admin Provider Review Queue API Routes - ⁦Pet Wash™⁩
+ * Admin Provider Review Queue API Routes - ⁦PetWash™⁩
  * 
  * Provider approval workflow, checklist management, and statistics
  * Hebrew-dominant with English brand touches

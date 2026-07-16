@@ -98,8 +98,8 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
   const divisions = [
     {
       id: 1,
-      name: '⁦Pet Wash™⁩ Smart Hub',
-      nameHe: '⁦Pet Wash™⁩ סמארט האב',
+      name: '⁦PetWash™⁩ Smart Hub',
+      nameHe: '⁦PetWash™⁩ סמארט האב',
       tagline: t('divisions.smartHub.tagline', language),
       description: t('divisions.smartHub.description', language),
       icon: Sparkles,
@@ -181,7 +181,7 @@ export function PetWashDivisions({ language }: PetWashDivisionsProps) {
               {isHebrew ? 'עולם ' : 'The '}
             </span>
             <span className="font-medium">
-              ⁦Pet Wash™⁩
+              ⁦PetWash™⁩
             </span>
             <span>
               {isHebrew ? '' : ' Universe'}

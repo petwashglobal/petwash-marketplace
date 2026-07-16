@@ -855,7 +855,7 @@ export const nayaxTransactions = pgTable("nayax_transactions", {
   index("idx_nayax_tx_nayax_id").on(table.nayaxTransactionId),
 ]);
 
-// Nayax terminals (Pet Wash™ station hardware)
+// Nayax terminals (PetWash™ station hardware)
 export const nayaxTerminals = pgTable("nayax_terminals", {
   id: varchar("id").primaryKey(),
   name: varchar("name").notNull(),
@@ -1610,7 +1610,7 @@ export const smartWashReceipts = pgTable("smart_wash_receipts", {
   packageId: integer("package_id").references(() => washPackages.id),
   
   // Receipt details
-  locationName: varchar("location_name").notNull().default("Pet Wash™ Premium Station"),
+  locationName: varchar("location_name").notNull().default("PetWash™ Premium Station"),
   washType: varchar("wash_type").notNull(), // from package name
   washDuration: integer("wash_duration").default(15), // minutes
   customerIdMasked: varchar("customer_id_masked").notNull(), // masked phone/email
@@ -3716,7 +3716,7 @@ export type SelectLoyaltyCampaign = typeof loyaltyCampaigns.$inferSelect;
 
 // ==================== BLOCKCHAIN-STYLE AUDIT LEDGER ====================
 // Immutable, cryptographically-chained audit trail for fraud prevention
-// Similar to blockchain but optimized for Pet Wash™ operations
+// Similar to blockchain but optimized for PetWash™ operations
 
 export const auditLedger = pgTable("audit_ledger", {
   id: serial("id").primaryKey(),
@@ -4909,7 +4909,7 @@ export const walkBookings = pgTable("walk_bookings", {
   totalDistanceMeters: integer("total_distance_meters"), // Calculated from GPS points
   lastGPSUpdate: timestamp("last_gps_update"), // Last real-time GPS ping
   
-  // Bathroom Markers (Pet Wash™ pee/poo flags)
+  // Bathroom Markers (PetWash™ pee/poo flags)
   bathroomMarkers: jsonb("bathroom_markers"), // [{type: 'pee'|'poo', latitude, longitude, timestamp, accuracy}]
   
   // Vital Data Summary (Aggregated from walkHealthData)
@@ -4936,7 +4936,7 @@ export const walkBookings = pgTable("walk_bookings", {
   cancelledAt: timestamp("cancelled_at"),
   refundAmount: decimal("refund_amount", { precision: 10, scale: 2 }),
   
-  // Emergency/ASAP Walk Features (Pet Wash™ "Book Now" model)
+  // Emergency/ASAP Walk Features (PetWash™ "Book Now" model)
   isEmergencyWalk: boolean("is_emergency_walk").default(false), // ASAP booking with 90-min arrival
   emergencySurgeMultiplier: decimal("emergency_surge_multiplier", { precision: 3, scale: 2 }), // 1.0 = no surge, 1.5 = 50% increase, 2.0 = double
   emergencySurgeReason: text("emergency_surge_reason"), // High demand, Peak hours, etc.
@@ -5378,7 +5378,7 @@ export const providerIntakeQueue = pgTable("provider_intake_queue", {
   // Provider Type (legacy single type)
   providerType: varchar("provider_type").notNull(), // walker | sitter | station_operator | driver | groomer | trainer
   
-  // Multi-Platform Selection (Pet Wash™ marketplace)
+  // Multi-Platform Selection (PetWash™ marketplace)
   selectedPlatforms: text("selected_platforms").array().default([]), // ["sitter_suite", "walk_my_pet", ...]
   
   // Intended Pricing (provider's desired rates)
@@ -10377,7 +10377,7 @@ export type ApplicationFraudSignal = typeof applicationFraudSignals.$inferSelect
 
 export type ApplicationStepProgress = typeof applicationStepProgress.$inferSelect;
 
-// ==================== PROVIDER TRAINING SYSTEM (Pet Wash™) ====================
+// ==================== PROVIDER TRAINING SYSTEM (PetWash™) ====================
 
 // Training modules configuration (stored in code, referenced here for tracking)
 export const providerTrainingModules = pgTable("provider_training_modules", {
@@ -10534,7 +10534,7 @@ export const providerApprovalQueue = pgTable("provider_approval_queue", {
   status: varchar("status", { length: 20 }).default("pending"), // pending, under_review, approved, rejected, on_hold
   priority: varchar("priority", { length: 20 }).default("normal"), // low, normal, high, urgent
   
-  // Checklist items (Pet Wash™ 7-point verification)
+  // Checklist items (PetWash™ 7-point verification)
   photoApproved: boolean("photo_approved").default(false),
   certificateApproved: boolean("certificate_approved").default(false),
   idVerified: boolean("id_verified").default(false),
@@ -10695,7 +10695,7 @@ export type InsertPinAuthLog = z.infer<typeof insertPinAuthLogSchema>;
 export type PinAuthLog = typeof pinAuthLogs.$inferSelect;
 
 // ============================================================================
-// USER REGISTRATION TRACKING SYSTEM - Pet Wash™ stamping
+// USER REGISTRATION TRACKING SYSTEM - PetWash™ stamping
 // Comprehensive tracking of all user registrations with audit trail
 // ============================================================================
 
@@ -10780,7 +10780,7 @@ export type InsertUserRegistration = z.infer<typeof insertUserRegistrationSchema
 export type UserRegistration = typeof userRegistrations.$inferSelect;
 
 // ============================================================================
-// ENHANCED BOOKING SEARCH SYSTEM - Pet Wash™ with pet filters
+// ENHANCED BOOKING SEARCH SYSTEM - PetWash™ with pet filters
 // ============================================================================
 
 export const bookingSearchFiltersSchema = z.object({
@@ -11206,7 +11206,7 @@ export const serviceTypeEnum = pgEnum("marketplace_service_type", [
   "avatar_creation"  // AI pet avatar
 ]);
 
-// Provider Rate Cards - Pet Wash™ flexible pricing
+// Provider Rate Cards - PetWash™ flexible pricing
 export const providerRateCards = pgTable("provider_rate_cards", {
   id: serial("id").primaryKey(),
   rateCardId: varchar("rate_card_id").unique().notNull(), // RATE-UUID
@@ -11681,7 +11681,7 @@ export const insertEscrowHoldingSchema = createInsertSchema(escrowHoldings).omit
 export type InsertEscrowHolding = z.infer<typeof insertEscrowHoldingSchema>;
 export type EscrowHolding = typeof escrowHoldings.$inferSelect;
 
-// Pet Wash™ booking lifecycle type
+// PetWash™ booking lifecycle type
 export type BookingLifecycleStatus = 
   | "inquiry"
   | "quote_sent"

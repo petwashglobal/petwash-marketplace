@@ -1,7 +1,7 @@
 /**
  * Provider Bookings Dashboard
  * 
- * Pet Wash™ dashboard for service providers to:
+ * PetWash™ dashboard for service providers to:
  * - View incoming booking requests
  * - Accept/decline requests
  * - Schedule Meet & Greet sessions

@@ -330,7 +330,7 @@ export default function ProviderManagementView() {
         <TabsContent value="queue" className="space-y-4">
           <Card className="luxury-glass-card">
             <CardHeader>
-              <CardTitle>תור אישורים - ⁦Pet Wash™⁩</CardTitle>
+              <CardTitle>תור אישורים - ⁦PetWash™⁩</CardTitle>
               <CardDescription>
                 7-פריטים לבדיקה לכל ספק: תמונה, תעודות, זהות, כתובת, תעודת יושר, ביטוח, תמחור
               </CardDescription>
@@ -544,7 +544,7 @@ export default function ProviderManagementView() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <GraduationCap className="w-5 h-5" />
-                מערכת הכשרה - ⁦Pet Wash™⁩
+                מערכת הכשרה - ⁦PetWash™⁩
               </CardTitle>
               <CardDescription>
                 מודולים, מבחנים, ותעודות לכל פלטפורמה
@@ -579,7 +579,7 @@ export default function ProviderManagementView() {
                       {stats?.trainingCompletions || 0}
                     </div>
                     <p className="text-sm text-muted-foreground">
-                      תעודות ⁦Pet Wash™⁩ Certified שהופקו
+                      תעודות ⁦PetWash™⁩ Certified שהופקו
                     </p>
                   </div>
                 </div>

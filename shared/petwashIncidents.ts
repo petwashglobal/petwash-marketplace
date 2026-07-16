@@ -1,5 +1,5 @@
 // FILE: shared/petwashIncidents.ts
-// Pet Wash™ - Incident Management
+// PetWash™ - Incident Management
 // Tracks safety incidents, pet injuries, customer complaints, and critical events
 
 export type IncidentType =

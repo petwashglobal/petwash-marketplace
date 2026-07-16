@@ -705,12 +705,12 @@ export class ShopService {
                         subject: `הזמנה #${order.order_number} יצאה לדרך! 📦`,
                         html: `
                                   <div dir="rtl" style="font-family:Arial;background:#fff;padding:32px;max-width:600px">
-                                              <h2 style="color:#C9A96E">Pet Wash™ — ההזמנה שלך בדרך!</h2>
+                                              <h2 style="color:#C9A96E">PetWash™ — ההזמנה שלך בדרך!</h2>
                                                           <p>שלום ${user.displayName || 'לקוח יקר'},</p>
                                                                       <p>הזמנה מספר <strong>#${order.order_number}</strong> יצאה לדרך.</p>
                                                                                   ${order.tracking_number ? `<p>מספר מעקב: <strong>${order.tracking_number}</strong></p>` : ''}
                                                                                               ${order.tracking_url ? `<p><a href="${order.tracking_url}" style="color:#C9A96E">מעקב אחר המשלוח</a></p>` : ''}
-                                                                                                          <p>Pet Wash™ | noreply@petwash.co.il</p>
+                                                                                                          <p>PetWash™ | noreply@petwash.co.il</p>
                                                                                                                     </div>
                                                                                                                             `,
               });
@@ -723,7 +723,7 @@ export class ShopService {
               try {
                         await this.smsService.sendSMS(
                                     user.phone,
-                                    `Pet Wash™: הזמנה #${order.order_number} יצאה לדרך! ${order.tracking_number ? `מעקב: ${order.tracking_url}` : ''}`
+                                    `PetWash™: הזמנה #${order.order_number} יצאה לדרך! ${order.tracking_number ? `מעקב: ${order.tracking_url}` : ''}`
                                   );
               } catch (e: any) {
                         logger.warn('[ShopService] dispatch SMS failed', { orderId: order.id, err: e.message });

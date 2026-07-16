@@ -99,8 +99,8 @@ export function buildTierUpgradeEmail(p: TierUpgradeParams): string {
 
   const t = {
         preheader: isHe
-          ? `מזל טוב ${p.firstName}! עלית לדרגת ${tc.nameHe} ב-Pet Wash™`
-                : `Congratulations ${p.firstName}! You've reached ${tc.nameEn} tier at Pet Wash™`,
+          ? `מזל טוב ${p.firstName}! עלית לדרגת ${tc.nameHe} ב-PetWash™`
+                : `Congratulations ${p.firstName}! You've reached ${tc.nameEn} tier at PetWash™`,
         headline: isHe ? `ברוכים הבאים לדרגת ${tc.nameHe}!` : `Welcome to ${tc.nameEn}!`,
         sub: isHe
           ? `${p.firstName}, עברת לדרגה חדשה`

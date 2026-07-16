@@ -83,8 +83,8 @@ export default function SuppliersPartners() {
           </h1>
           <p className="luxury-text-body max-w-2xl mx-auto">
             {isHe
-              ? 'הצטרפו ל-⁦Pet Wash™⁩ כספקים מובילים או שותפי מותג פרימיום.'
-              : 'Partner with ⁦Pet Wash™⁩ as a premium supplier or brand partner'}
+              ? 'הצטרפו ל-⁦PetWash™⁩ כספקים מובילים או שותפי מותג פרימיום.'
+              : 'Partner with ⁦PetWash™⁩ as a premium supplier or brand partner'}
           </p>
         </div>
 

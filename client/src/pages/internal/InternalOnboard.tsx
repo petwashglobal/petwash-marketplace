@@ -173,7 +173,7 @@ export default function InternalOnboard() {
       
       toast({
         title: "ברוכים הבאים!",
-        description: `הצטרפת בהצלחה לצוות ⁦Pet Wash™⁩ כ${roleTitles[invitation.roleCode]?.he || invitation.roleCode}`
+        description: `הצטרפת בהצלחה לצוות ⁦PetWash™⁩ כ${roleTitles[invitation.roleCode]?.he || invitation.roleCode}`
       });
       
       await user.getIdToken(true);
@@ -248,7 +248,7 @@ export default function InternalOnboard() {
               הרשמה פנימית
             </div>
             <h1 className="text-3xl font-bold text-gray-900 dark:text-black mb-2">
-              ברוכים הבאים לצוות ⁦Pet Wash™⁩
+              ברוכים הבאים לצוות ⁦PetWash™⁩
             </h1>
             {invitation && (
               <p className="text-gray-600 dark:text-gray-400">
@@ -369,7 +369,7 @@ export default function InternalOnboard() {
                 </Button>
                 
                 <p className="text-xs text-gray-500 text-center mt-4">
-                  בהשלמת ההרשמה אתה מאשר את תנאי השימוש ומדיניות הפרטיות של ⁦Pet Wash™⁩
+                  בהשלמת ההרשמה אתה מאשר את תנאי השימוש ומדיניות הפרטיות של ⁦PetWash™⁩
                 </p>
               </form>
             </CardContent>

@@ -546,8 +546,8 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
         await sendLuxuryEmail({
           to: profile.email,
           subject: lang === 'he'
-            ? `אישור הזמנה #${order.orderNumber} — Pet Wash™ Shop`
-            : `Order Confirmation #${order.orderNumber} — Pet Wash™ Shop`,
+            ? `אישור הזמנה #${order.orderNumber} — PetWash™ Shop`
+            : `Order Confirmation #${order.orderNumber} — PetWash™ Shop`,
           html,
         });
       } catch (emailErr: any) {

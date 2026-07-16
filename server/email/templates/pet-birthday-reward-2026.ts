@@ -78,7 +78,7 @@ export function petBirthdayReward(p: PetBirthdayRewardParams): string {
   <!-- HEADER -->
   <tr>
     <td bgcolor="${HEADER_BG}" style="padding:28px 32px;text-align:center;background:${HEADER_BG}">
-      <img src="${PETWASH_LOGO_BASE64}" width="120" alt="Pet Wash™" style="display:block;margin:0 auto 16px"/>
+      <img src="${PETWASH_LOGO_BASE64}" width="120" alt="PetWash™" style="display:block;margin:0 auto 16px"/>
       <div style="font-size:52px;margin-bottom:8px">${petEmoji}</div>
       <div style="color:${GOLD_HERO};font-size:24px;font-weight:700;letter-spacing:1px">
         ${isHe ? `יום הולדת שמח, ${p.petName}!` : `Happy Birthday, ${p.petName}!`}

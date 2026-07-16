@@ -27,7 +27,7 @@ export const LEGAL_NAME_HE = 'פט וואש בע"מ';
 export const LEGAL_NAME_EN = 'PET WASH LTD';
 
 /** Brand display name (trademark symbol, no RTL embedding) */
-export const BRAND_NAME = 'Pet Wash™';
+export const BRAND_NAME = 'PetWash™';
 
 /** Company registration number (ח.פ.) issued by Israel Companies Registrar */
 export const COMPANY_TAX_ID = '517145033';
@@ -54,37 +54,37 @@ export const SENDERS = {
   /** Customer-facing transactional (bookings, activations, receipts) */
   transactional: {
     email: 'noreply@petwash.co.il',
-    name: 'Pet Wash™',
+    name: 'PetWash™',
     replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Finance/tax documents (invoices, VAT, wallet statements) */
   finance: {
     email: 'noreply@petwash.co.il',
-    name: 'Pet Wash™ Finance',
+    name: 'PetWash™ Finance',
     replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Provider/partner onboarding and workflow */
   provider: {
     email: 'noreply@petwash.co.il',
-    name: 'Pet Wash™ Providers',
+    name: 'PetWash™ Providers',
     replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Support-initiated messages (admin to applicant) */
   support: {
     email: 'noreply@petwash.co.il',
-    name: 'Pet Wash™ Support',
+    name: 'PetWash™ Support',
     replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Marketing / loyalty / club (requires unsubscribe) */
   marketing: {
     email: 'noreply@petwash.co.il',
-    name: 'Pet Wash™',
+    name: 'PetWash™',
     replyTo: CANONICAL_SUPPORT_EMAIL,
   },
   /** Internal ops / reports (no customer involvement) */
   internal: {
     email: 'noreply@petwash.co.il',
-    name: 'Pet Wash™ System',
+    name: 'PetWash™ System',
     replyTo: undefined,
   },
 } as const;

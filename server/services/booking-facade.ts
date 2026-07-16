@@ -1,7 +1,7 @@
 /**
  * UNIFIED LUXURY BOOKING FACADE
  * ==============================
- * Single entry point for all booking operations across ⁦Pet Wash™⁩ platforms
+ * Single entry point for all booking operations across ⁦PetWash™⁩ platforms
  * Routes to correct luxury engine based on platform type
  * 
  * on-demand model: One booking API, multiple service types

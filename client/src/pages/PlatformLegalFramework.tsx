@@ -27,7 +27,7 @@ export default function PlatformLegalFramework() {
               {isHebrew ? 'מסגרת משפטית של הפלטפורמה' : 'Platform Legal Framework'}
             </h1>
             <p className="luxury-heading-md mb-2">
-              {isHebrew ? '⁦Pet Wash™⁩ — פלטפורמת טכנולוגיה מקשרת בלבד' : '⁦Pet Wash™⁩ — Connector Technology Platform Only'}
+              {isHebrew ? '⁦PetWash™⁩ — פלטפורמת טכנולוגיה מקשרת בלבד' : '⁦PetWash™⁩ — Connector Technology Platform Only'}
             </p>
             <p className="luxury-text-small">
               {isHebrew ? 'עודכן לאחרונה: 29 באוקטובר 2025' : 'Last Updated: October 29, 2025'}

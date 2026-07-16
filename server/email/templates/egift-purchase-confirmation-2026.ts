@@ -97,7 +97,7 @@ const SEASONAL_THEMES: Record<SeasonalTheme, ThemeConfig> = {
     headerEmoji: '🎭',
     badgeBg: 'linear-gradient(135deg, #2a0845, #4a1080)',
     badgeText: 'PURIM GIFT',
-    badgeTextHe: 'משלוח מנות Pet Wash™',
+    badgeTextHe: 'משלוח מנות PetWash™',
     footerOrnament: '✦',
     heroTitle: 'Purim Gift — Purchase Confirmed',
     heroTitleHe: 'משלוח מנות — הרכישה אושרה',
@@ -235,7 +235,7 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
 
       <!-- Logo -->
       <div class="fi d1" style="padding:32px 40px 12px;text-align:center;background:white;">
-        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" style="max-width:120px;height:auto;" />
+        <img src="${PETWASH_LOGO_BASE64}" alt="PetWash™" style="max-width:120px;height:auto;" />
         <div style="margin-top:10px;font-size:8px;letter-spacing:5px;text-transform:uppercase;color:#bbb;">
           ${isHe ? 'אישור רכישה יוקרתי' : 'Luxury Purchase Confirmation'}
         </div>
@@ -464,7 +464,7 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
           ${theme.footerOrnament} &nbsp; ${theme.footerOrnament} &nbsp; ${theme.footerOrnament}
         </div>
         <p style="font-size:10px;color:rgba(255,255,255,0.4);margin:0 0 6px;line-height:1.5;letter-spacing:0.5px;">
-          ${isHe ? 'תודה שרכשת ב-Pet Wash™' : 'Thank you for purchasing from Pet Wash™'}
+          ${isHe ? 'תודה שרכשת ב-PetWash™' : 'Thank you for purchasing from PetWash™'}
         </p>
         <p style="font-size:10px;color:rgba(255,255,255,0.25);margin:0 0 12px;">
           <a href="https://petwash.co.il" style="color:${theme.accent};text-decoration:none;letter-spacing:1px;">petwash.co.il</a>
@@ -484,7 +484,7 @@ export function generateEGiftPurchaseConfirmation(params: EGiftPurchaseConfirmat
         </p>
         <p style="font-size:8px;color:rgba(255,255,255,0.12);margin:0;letter-spacing:1px;">
           Pet Wash Ltd. (Israel Company #516458396)
-          <br>&copy; ${new Date().getFullYear()} Pet Wash™. ${isHe ? 'כל הזכויות שמורות.' : 'All rights reserved.'}
+          <br>&copy; ${new Date().getFullYear()} PetWash™. ${isHe ? 'כל הזכויות שמורות.' : 'All rights reserved.'}
         </p>
       </div>
 

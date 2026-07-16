@@ -316,7 +316,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       const adminHtml = `
         <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;background:#fff;border:1px solid #e5e7eb;border-radius:8px;overflow:hidden">
           <div style="background:#1a1a1a;padding:24px;text-align:center">
-            <h1 style="color:#c9a96e;font-size:22px;margin:0">🐾 Pet Wash™ Prestige — New Member Registration</h1>
+            <h1 style="color:#c9a96e;font-size:22px;margin:0">🐾 PetWash™ Prestige — New Member Registration</h1>
           </div>
           <div style="padding:28px">
             <table style="width:100%;border-collapse:collapse">
@@ -343,9 +343,9 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
         </div>`;
       await sendLuxuryEmail({
         to: 'nirhadad1@gmail.com',
-        subject: `[Pet Wash™ Prestige] New Member — ${firstName} ${lastName} (${memberId})`,
+        subject: `[PetWash™ Prestige] New Member — ${firstName} ${lastName} (${memberId})`,
         html: adminHtml,
-        from: { email: 'noreply@petwash.co.il', name: 'Pet Wash™ System' },
+        from: { email: 'noreply@petwash.co.il', name: 'PetWash™ System' },
       });
       logger.info('[Privilege] Admin notification sent', { memberId });
     } catch (adminEmailErr) {

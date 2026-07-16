@@ -1,5 +1,5 @@
 /**
- * Canonical admin role list — single source of truth for Pet Wash™ platform.
+ * Canonical admin role list — single source of truth for PetWash™ platform.
  *
  * Any role in this list grants access to the admin dashboard and backend APIs.
  * Import this constant everywhere instead of defining local inline arrays:

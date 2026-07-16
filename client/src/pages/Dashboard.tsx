@@ -1000,7 +1000,7 @@ export default function Dashboard() {
               <div className="px-5 py-4 sm:py-5 flex items-center justify-between">
                 <div>
                   <p className="text-sm sm:text-base font-medium mb-0.5" style={{ color: '#111111' }}>
-                    ⁦Pet Wash™⁩ Station
+                    ⁦PetWash™⁩ Station
                   </p>
                   <p className="text-[10px]" style={{ color: '#666666' }}>{tx('findStation', language)}</p>
                 </div>
@@ -1340,7 +1340,7 @@ export default function Dashboard() {
             className="text-center pb-2"
           >
             <p className="text-[9px] tracking-[0.2em] uppercase" style={{ color: 'rgba(184, 151, 47, 0.5)' }}>
-              ⁦Pet Wash™⁩ 2025 - 2026
+              ⁦PetWash™⁩ 2025 - 2026
             </p>
           </motion.div>
         </div>

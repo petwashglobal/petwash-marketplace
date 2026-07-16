@@ -718,7 +718,7 @@ function PublicPrivilegeLanding({ language, isRTL }: { language: Language; isRTL
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <div className="flex items-center justify-center gap-2 text-xs text-gray-300">
             <Shield className="w-3.5 h-3.5" />
-            <span>⁦Pet Wash™⁩ Privilege · {t('privilege.dataProtected', language)}</span>
+            <span>⁦PetWash™⁩ Privilege · {t('privilege.dataProtected', language)}</span>
           </div>
         </div>
       </section>
@@ -890,7 +890,7 @@ export default function Loyalty() {
                 <div className="relative z-10">
                   <div className="flex items-center justify-between mb-6">
                     <div>
-                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/50">⁦Pet Wash™⁩</div>
+                      <div className="text-[11px] tracking-[0.2em] uppercase text-white/50">⁦PetWash™⁩</div>
                       <div className="text-[10px] tracking-[0.15em] uppercase mt-0.5" style={{ color: gold }}>PRIVILEGE CARD</div>
                     </div>
                     <div className="w-10 h-10 flex items-center justify-center" style={{ background: `${gold}15`, borderRadius: '2px' }}>
@@ -1188,7 +1188,7 @@ export default function Loyalty() {
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
             <div className="flex items-center justify-center gap-2 text-xs text-gray-300">
               <Shield className="w-3.5 h-3.5" />
-              <span>⁦Pet Wash™⁩ Privilege · {t('privilege.dataProtected', language)}</span>
+              <span>⁦PetWash™⁩ Privilege · {t('privilege.dataProtected', language)}</span>
             </div>
           </div>
         </section>

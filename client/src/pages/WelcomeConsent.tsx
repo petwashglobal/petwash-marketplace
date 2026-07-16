@@ -1,5 +1,5 @@
 /**
- * ⁦Pet Wash™⁩ - Luxury Welcome & Consent Page
+ * ⁦PetWash™⁩ - Luxury Welcome & Consent Page
  * 
  * Premium onboarding experience for new user registration
  * Features Gmail API integration, corporate guidelines, and luxury design

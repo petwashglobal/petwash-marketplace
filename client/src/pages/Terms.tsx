@@ -101,7 +101,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">1. Acceptance of Terms</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        By accessing or using ⁦Pet Wash™⁩ services (website, mobile application, physical washing stations), 
+                        By accessing or using ⁦PetWash™⁩ services (website, mobile application, physical washing stations), 
                         you agree to be bound by these Terms and Conditions. If you do not agree to these terms, 
                         please do not use our services.
                       </p>
@@ -120,7 +120,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">2. Service Description</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        ⁦Pet Wash™⁩ provides premium pet washing services, including:
+                        ⁦PetWash™⁩ provides premium pet washing services, including:
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingLeft: '0' }}>
                         <li className="flex items-start gap-3">
@@ -573,7 +573,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">12. Intellectual Property</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        All content on our website, app, and materials (including ⁦Pet Wash™⁩ logo, trademarks, text, graphics, 
+                        All content on our website, app, and materials (including ⁦PetWash™⁩ logo, trademarks, text, graphics, 
                         images, software) are the property of Pet Wash Ltd and protected by Israeli and international 
                         intellectual property laws.
                       </p>
@@ -607,7 +607,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">13. Service Area & Availability</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        ⁦Pet Wash™⁩ services are currently available throughout Israel. 
+                        ⁦PetWash™⁩ services are currently available throughout Israel. 
                         Station locations are listed on our website and mobile app.
                       </p>
                       <p className="luxury-text-body">
@@ -723,7 +723,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">1. קבלת התנאים</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        על ידי שימוש בשירותי ⁦Pet Wash™⁩ (אתר, אפליקציה, תחנות רחיצה), 
+                        על ידי שימוש בשירותי ⁦PetWash™⁩ (אתר, אפליקציה, תחנות רחיצה), 
                         אתה מסכים להיות כפוף לתנאים וההגבלות הללו.
                         אם אינך מסכים לתנאים אלו, אנא אל תשתמש בשירותינו.
                       </p>
@@ -741,7 +741,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">2. תיאור השירות</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        ⁦Pet Wash™⁩ מספקת שירותי רחצת חיות מחמד פרמיום, כולל:
+                        ⁦PetWash™⁩ מספקת שירותי רחצת חיות מחמד פרמיום, כולל:
                       </p>
                       <ul className="space-y-3 luxury-text-body" style={{ listStyle: 'none', paddingRight: '0' }}>
                         <li className="flex items-start gap-3">
@@ -986,7 +986,7 @@ export default function Terms() {
                       <div className="luxury-glass-panel p-6 border-r-4 border-yellow-500 mt-4">
                         <p className="luxury-heading-sm mb-3">תקופת תוקף מורחבת</p>
                         <p className="luxury-text-small">
-                          ⁦Pet Wash™⁩ מציעה מרצונה תקופת תוקף של 5 שנים כדי להבטיח ערך הוגן ללקוחות. 
+                          ⁦PetWash™⁩ מציעה מרצונה תקופת תוקף של 5 שנים כדי להבטיח ערך הוגן ללקוחות. 
                           שוברים שנרכשו לפני שינוי מדיניות זה שומרים על תאריך התפוגה המקורי שלהם או 5 שנים מהרכישה, לפי המאוחר.
                         </p>
                       </div>
@@ -1133,7 +1133,7 @@ export default function Terms() {
                     <h2 className="luxury-heading-md mb-6">12. קניין רוחני</h2>
                     <div className="space-y-4">
                       <p className="luxury-text-body">
-                        כל התוכן באתר, באפליקציה ובחומרים שלנו (כולל לוגו ⁦Pet Wash™⁩, סימנים מסחריים, טקסט, גרפיקה, 
+                        כל התוכן באתר, באפליקציה ובחומרים שלנו (כולל לוגו ⁦PetWash™⁩, סימנים מסחריים, טקסט, גרפיקה, 
                         תמונות, תוכנה) הם רכושה של ⁦Pet Wash™⁩ בע"מ ומוגנים על ידי חוקי קניין רוחני ישראליים ובינלאומיים.
                       </p>
                     </div>

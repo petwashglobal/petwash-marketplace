@@ -289,7 +289,7 @@ router.post('/test', async (req: Request, res: Response) => {
     // Send test notification to all user's devices
     const message: admin.messaging.MulticastMessage = {
       notification: {
-        title: '🐾 ⁦Pet Wash™⁩ Test Notification',
+        title: '🐾 ⁦PetWash™⁩ Test Notification',
         body: `Push notifications are working! Sent to ${deviceTokens.length} device(s).`,
       },
       data: {
@@ -298,7 +298,7 @@ router.post('/test', async (req: Request, res: Response) => {
       },
       webpush: {
         notification: {
-          title: '🐾 ⁦Pet Wash™⁩ Test Notification',
+          title: '🐾 ⁦PetWash™⁩ Test Notification',
           body: `Push notifications are working! Sent to ${deviceTokens.length} device(s).`,
           icon: '/brand/petwash-logo-official.png',
           badge: '/brand/petwash-logo-official.png',

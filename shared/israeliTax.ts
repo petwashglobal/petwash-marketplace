@@ -194,7 +194,7 @@ export class IsraeliTaxService {
 <body>
     <div class="invoice-header">
         <h1>חשבונית מס</h1>
-        <h2>Pet Wash™ - שטיפת חיות מחמד פרימיום</h2>
+        <h2>PetWash™ - שטיפת חיות מחמד פרימיום</h2>
         <p>מספר חשבונית: ${invoice.invoiceNumber}</p>
         <p>תאריך: ${formatDate(invoice.date)}</p>
     </div>
@@ -244,7 +244,7 @@ export class IsraeliTaxService {
         <p>אמצעי תשלום: ${invoice.paymentMethod}</p>
         ${invoice.nayaxTransactionId ? `<p>מספר עסקה: ${invoice.nayaxTransactionId}</p>` : ''}
         ${invoice.nayaxReference ? `<p>אסמכתא: ${invoice.nayaxReference}</p>` : ''}
-        <p>חשבונית זו הונפקה באופן אוטומטי על ידי מערכת Pet Wash™</p>
+        <p>חשבונית זו הונפקה באופן אוטומטי על ידי מערכת PetWash™</p>
     </div>
 </body>
 </html>`;
@@ -276,7 +276,7 @@ export class IsraeliTaxService {
 </head>
 <body>
     <div class="header">
-        <h1>Pet Wash™ Transaction Report</h1>
+        <h1>PetWash™ Transaction Report</h1>
         <h2>Transaction ID: ${transaction.id}</h2>
         <p>Generated: ${formatDate(new Date())}</p>
     </div>

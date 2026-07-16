@@ -92,7 +92,7 @@ export default function SecurityStatus() {
           </div>
 
           <h1 className="luxury-heading-xl mb-3">
-            ⁦Pet Wash™⁩ Shield
+            ⁦PetWash™⁩ Shield
           </h1>
           <p className="luxury-text-body mb-2">
             Enterprise Security Status

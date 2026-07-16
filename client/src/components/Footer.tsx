@@ -21,7 +21,7 @@ export function Footer({ language }: FooterProps) {
             <Link href="/" aria-label={t('footer.backToHome', language)}>
               <img 
                 src="/brand/petwash-logo-official.png" 
-                alt="⁦Pet Wash™⁩ Official Logo"
+                alt="⁦PetWash™⁩ Official Logo"
                 className="h-10 w-auto object-contain mx-auto md:mx-0 mb-4 cursor-pointer hover:opacity-90 transition-opacity"
                 style={{ backgroundColor: 'transparent' }}
               />
@@ -197,7 +197,7 @@ export function Footer({ language }: FooterProps) {
               <Link href="/" aria-label={t('footer.backToHome', language)}>
                 <img 
                   src="/brand/petwash-logo-official.png" 
-                  alt="⁦Pet Wash™⁩ Official Logo"
+                  alt="⁦PetWash™⁩ Official Logo"
                   width="160"
                   height="32"
                   className="h-8 md:h-10 w-auto object-contain mx-auto md:mx-0 mb-2 cursor-pointer hover:opacity-90 transition-opacity"

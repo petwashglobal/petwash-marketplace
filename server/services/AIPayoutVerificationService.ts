@@ -600,7 +600,7 @@ export class AIPayoutVerificationService {
    */
   private static async getGeminiAnalysis(evidence: WorkEvidence): Promise<string> {
     try {
-      const prompt = `You are a fraud detection AI for ⁦Pet Wash™⁩ subcontractor payout verification.
+      const prompt = `You are a fraud detection AI for ⁦PetWash™⁩ subcontractor payout verification.
 
 Analyze this work completion evidence for payout verification:
 

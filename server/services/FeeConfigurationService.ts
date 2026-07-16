@@ -1,5 +1,5 @@
 /**
- * ⁦Pet Wash™⁩ Fee Configuration Service (2026 Pet Wash™ Model)
+ * ⁦PetWash™⁩ Fee Configuration Service (2026 PetWash™ Model)
  * 
  * Fee Structure:
  * - Provider Service Fee: 15% (deducted from provider earnings)

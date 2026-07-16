@@ -222,7 +222,7 @@ function getEmailHtml(code: string, language: string, verifyLinkUrl: string): st
         <tr><td align="center">
           <table width="100%" style="max-width:480px;background:#ffffff;border-radius:2px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,0.06);">
             <tr><td style="background:linear-gradient(135deg,#1a1a1a,#2d2d2d);padding:32px;text-align:center;">
-              <h1 style="margin:0;color:#c9a96e;font-size:24px;font-weight:600;letter-spacing:0.5px;">⁦Pet Wash™⁩</h1>
+              <h1 style="margin:0;color:#c9a96e;font-size:24px;font-weight:600;letter-spacing:0.5px;">⁦PetWash™⁩</h1>
             </td></tr>
             <tr><td style="padding:40px 32px;text-align:center;">
               <h2 style="margin:0 0 8px;color:#1a1a1a;font-size:22px;font-weight:600;">${title}</h2>
@@ -299,7 +299,7 @@ router.post('/send-email-code', verificationLimiter, async (req: Request, res: R
     const baseUrl = getBaseUrl(req);
     const verifyLinkUrl = `${baseUrl}/api/onboarding-verification/verify-email-link?token=${linkToken}&lang=${language}`;
 
-    const subject = isHebrew ? `⁦Pet Wash™⁩ - קוד אימות` : `⁦Pet Wash™⁩ - Verification Code`;
+    const subject = isHebrew ? `⁦PetWash™⁩ - קוד אימות` : `⁦PetWash™⁩ - Verification Code`;
 
     const sent = await EmailService.send({
       to: normalizedEmail,
@@ -758,7 +758,7 @@ function renderLinkResultPage(success: boolean, message: string, isHebrew: boole
     <head>
       <meta charset="utf-8">
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <title>${title} - Pet Wash™</title>
+      <title>${title} - PetWash™</title>
       <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f8f9fa; display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 20px; }
@@ -774,7 +774,7 @@ function renderLinkResultPage(success: boolean, message: string, isHebrew: boole
     </head>
     <body>
       <div class="card">
-        <div class="header"><h1>⁦Pet Wash™⁩</h1></div>
+        <div class="header"><h1>⁦PetWash™⁩</h1></div>
         <div class="content">
           <div class="icon">${icon}</div>
           <div class="title">${title}</div>

@@ -56,7 +56,7 @@ export default function StationPage({ slug }: StationPageProps) {
 
   // Per-station SEO: city-targeted title built from LIVE data only.
   useSEO(station ? {
-    title: `שטיפת כלבים בשירות עצמי ב${station.city} — ${station.stationName} | Pet Wash™`,
+    title: `שטיפת כלבים בשירות עצמי ב${station.city} — ${station.stationName} | PetWash™`,
     description: `Self-service K9000 dog wash at ${station.stationName}, ${station.address}, ${station.city}. שטיפת כלבים בשירות עצמי ב${station.city} — ${station.address}. מוצרים המותאמים לחיות מחמד, קל, בטוח ונקי.`,
     keywords: `שטיפת כלבים ${station.city}, שטיפת כלבים בשירות עצמי ${station.city}, dog wash ${station.city}, K9000, מקלחת לכלב ${station.city}`,
     canonical: `https://petwash.co.il/stations/${station.stationCode.toLowerCase()}`,
@@ -80,7 +80,7 @@ export default function StationPage({ slug }: StationPageProps) {
       '@context': 'https://schema.org',
       '@type': 'LocalBusiness',
       '@id': `https://petwash.co.il/stations/${station.stationCode.toLowerCase()}#station`,
-      name: `Pet Wash™ — ${station.stationName}`,
+      name: `PetWash™ — ${station.stationName}`,
       url: `https://petwash.co.il/stations/${station.stationCode.toLowerCase()}`,
       image: 'https://petwash.co.il/IMG_7114_1751624638881.jpeg',
       address: {
@@ -206,10 +206,10 @@ export default function StationPage({ slug }: StationPageProps) {
 
         <div className="luxury-glass-card p-6 mb-10">
           <p className="luxury-text-body text-sm leading-relaxed">
-            תחנת ⁦Pet Wash™⁩ ב{station.city} מציעה שטיפת כלבים בשירות עצמי — קל, בטוח ונקי,
+            תחנת ⁦PetWash™⁩ ב{station.city} מציעה שטיפת כלבים בשירות עצמי — קל, בטוח ונקי,
             עם מוצרים המותאמים לחיות מחמד מתוצרת אוסטרליה.
             <br />
-            The ⁦Pet Wash™⁩ station in {station.city} offers premium self-service dog washing —
+            The ⁦PetWash™⁩ station in {station.city} offers premium self-service dog washing —
             easy, safe and clean, with Australian-made, pet-formulated products.
           </p>
         </div>
@@ -223,7 +223,7 @@ export default function StationPage({ slug }: StationPageProps) {
             latitude={lat}
             longitude={lng}
             address={`${station.address}, ${station.city}`}
-            placeName={`Pet Wash™ — ${station.stationName}`}
+            placeName={`PetWash™ — ${station.stationName}`}
             variant="default"
             size="lg"
             className="luxury-btn-primary luxury-shadow-xl"

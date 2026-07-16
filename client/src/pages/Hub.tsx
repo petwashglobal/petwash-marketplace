@@ -23,12 +23,12 @@ import { useSEO, pageSEO } from '@/lib/seo';
 
 const hubText: Record<string, Record<string, string>> = {
   title: {
-    en: '⁦Pet Wash™⁩ Hub',
-    he: '⁦Pet Wash™⁩ Hub',
-    ar: '⁦Pet Wash™⁩ Hub',
-    ru: '⁦Pet Wash™⁩ Hub',
-    fr: '⁦Pet Wash™⁩ Hub',
-    es: '⁦Pet Wash™⁩ Hub',
+    en: '⁦PetWash™⁩ Hub',
+    he: '⁦PetWash™⁩ Hub',
+    ar: '⁦PetWash™⁩ Hub',
+    ru: '⁦PetWash™⁩ Hub',
+    fr: '⁦PetWash™⁩ Hub',
+    es: '⁦PetWash™⁩ Hub',
   },
   welcomeBack: {
     en: 'Welcome back',
@@ -143,12 +143,12 @@ const hubText: Record<string, Record<string, string>> = {
     es: 'Ver recompensas',
   },
   experienceEcosystem: {
-    en: 'Experience the ⁦Pet Wash™⁩ Ecosystem',
-    he: 'חווה את המערכת האקולוגית של ⁦Pet Wash™⁩',
-    ar: 'اكتشف نظام ⁦Pet Wash™⁩',
-    ru: 'Откройте экосистему ⁦Pet Wash™⁩',
-    fr: 'Découvrez l\'écosystème ⁦Pet Wash™⁩',
-    es: 'Experimenta el ecosistema ⁦Pet Wash™⁩',
+    en: 'Experience the ⁦PetWash™⁩ Ecosystem',
+    he: 'חווה את המערכת האקולוגית של ⁦PetWash™⁩',
+    ar: 'اكتشف نظام ⁦PetWash™⁩',
+    ru: 'Откройте экосистему ⁦PetWash™⁩',
+    fr: 'Découvrez l\'écosystème ⁦PetWash™⁩',
+    es: 'Experimenta el ecosistema ⁦PetWash™⁩',
   },
   oneAccount: {
     en: 'One account. Eight premium platforms. Unlimited care for your pets.',
