@@ -88,9 +88,9 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
   }>> = {
     welcome: {
       he: {
-        subject: `ברוכים הבאים למועדון PetWash™ Privilege`,
+        subject: `ברוכים הבאים למועדון PetWash™ Prestige`,
         preheader: `החברות שלך פעילה. ארנק דיגיטלי, הטבות ורגעים פרימיום מחכים לך.`,
-        heroTitle: `ברוכים הבאים ל-Privilege Club`,
+        heroTitle: `ברוכים הבאים ל-Prestige Club`,
         heroSubtitle: `חברות פרימיום שנבנתה לשקט, איכות ותגמולים חכמים. הארנק הדיגיטלי שלך מוכן.`,
         ctaLabel: `פתח את החברות שלך`,
         benefitsTitle: `מה נפתח לכם כחברים`,
@@ -104,14 +104,14 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
           { title: '100 נקודות מתנה', desc: 'נקודות הצטרפות כבונוס פתיחה.' },
         ],
         moments: [
-          { label: 'שטיפה ראשונה', desc: 'כפל נקודות על השטיפה הראשונה שלך.' },
-          { label: 'הזמן חבר', desc: 'הזמינו חבר וקבלו שניכם 250 נקודות.' },
+          { label: 'שטיפה ראשונה', desc: 'נקודה על כל שקל — כבר מהשטיפה הראשונה.' },
+          { label: 'שתפו רגע', desc: 'ממשו פרס ושלחו אותו במתנה למי שאוהבים.' },
         ],
       },
       en: {
-        subject: `Welcome to PetWash™ Privilege Club`,
+        subject: `Welcome to PetWash™ Prestige Club`,
         preheader: `Your membership is active. Digital wallet, benefits, and premium moments await.`,
-        heroTitle: `Welcome to Privilege Club`,
+        heroTitle: `Welcome to Prestige Club`,
         heroSubtitle: `A premium membership built for calm, quality, and smart rewards. Your digital wallet is ready.`,
         ctaLabel: `Open your membership`,
         benefitsTitle: `What's unlocked for you`,
@@ -121,12 +121,12 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
         benefits: [
           { title: 'Digital Wallet', desc: 'Balance, top-ups and clear tracking.' },
           { title: 'Premium Gifting', desc: 'Send elegant digital gifts for any occasion.' },
-          { title: 'Tier Privileges', desc: `You start at ${tierName} — upgrade and unlock exclusive advantages.` },
+          { title: 'Tier Standing', desc: `You start at ${tierName} — your standing grows with every wash.` },
           { title: '100 Welcome Points', desc: 'Joining bonus to get you started.' },
         ],
         moments: [
-          { label: 'First Wash', desc: 'Double points on your first wash.' },
-          { label: 'Invite a Friend', desc: 'Invite a friend and both earn 250 points.' },
+          { label: 'First Wash', desc: 'A point on every shekel — from your very first wash.' },
+          { label: 'Share a Moment', desc: 'Redeem a reward and send it as a gift to someone you love.' },
         ],
       },
     },
@@ -143,8 +143,8 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
         momentsSubtitle: `כל דרגה מביאה יתרונות חדשים ורגעים בלתי נשכחים.`,
         benefits: [],
         moments: [
-          { label: 'הטבות משודרגות', desc: 'הנחות גדולות יותר, יותר נקודות לכל שטיפה.' },
-          { label: 'סטטוס פרימיום', desc: 'תמיכה בעדיפות גבוהה וגישה בלעדית.' },
+          { label: 'ההוקרה עלתה דרגה', desc: 'מעמד גבוה יותר בסולם Prestige — שנבנה רחיצה אחר רחיצה.' },
+          { label: 'הדרך נמשכת', desc: 'הדרגה הבאה קרובה משנדמה — כל שקל הוא נקודה.' },
         ],
       },
       en: {
@@ -159,8 +159,8 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
         momentsSubtitle: `Every tier brings new advantages and unforgettable moments.`,
         benefits: [],
         moments: [
-          { label: 'Enhanced Benefits', desc: 'Bigger discounts, more points per wash.' },
-          { label: 'Premium Status', desc: 'Priority support and exclusive access.' },
+          { label: 'Standing, Elevated', desc: 'A higher place on the Prestige ladder — built wash after wash.' },
+          { label: 'The Road Continues', desc: 'The next tier is closer than you think — every shekel is a point.' },
         ],
       },
     },
@@ -200,10 +200,10 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
     },
     club_event: {
       he: {
-        subject: `אירוע מיוחד ב-PetWash™ Privilege Club`,
+        subject: `אירוע מיוחד ב-PetWash™ Prestige Club`,
         preheader: `אירוע בלעדי לחברי המועדון. פרטים בפנים.`,
         heroTitle: `אירוע בלעדי למועדון`,
-        heroSubtitle: `הוזמנת לאירוע מיוחד בלעדי לחברי PetWash™ Privilege Club.`,
+        heroSubtitle: `הוזמנת לאירוע מיוחד בלעדי לחברי PetWash™ Prestige Club.`,
         ctaLabel: `פרטים נוספים`,
         benefitsTitle: `מה מחכה לכם`,
         benefitsSubtitle: `אירוע בלעדי לחברי מועדון.`,
@@ -213,10 +213,10 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
         moments: [],
       },
       en: {
-        subject: `Special Event at PetWash™ Privilege Club`,
+        subject: `Special Event at PetWash™ Prestige Club`,
         preheader: `An exclusive event for club members. Details inside.`,
         heroTitle: `Exclusive Club Event`,
-        heroSubtitle: `You're invited to a special event exclusive to PetWash™ Privilege Club members.`,
+        heroSubtitle: `You're invited to a special event exclusive to PetWash™ Prestige Club members.`,
         ctaLabel: `Learn More`,
         benefitsTitle: `What awaits you`,
         benefitsSubtitle: `An exclusive event for club members.`,
@@ -235,27 +235,27 @@ function getTierBenefitsForUpgrade(tier: string, lang: 'he' | 'en'): { title: st
   const config = TIER_CONFIGS.find(t => t.id === tier);
   if (!config) return [];
 
+  // TRUTH RULE (discount-policy 2026-06-22 + A5 audit): the tier ladder is
+  // recognition — the 5% member discount is identical at every tier, earning
+  // is a flat 1 point per ₪1, and no per-tier multiplier / free-wash quota /
+  // concierge is wired anywhere. This email says only what the platform does.
   if (lang === 'he') {
-    const items: { title: string; desc: string }[] = [];
-    if (config.benefits.tierBonusPercent > 0) items.push({ title: `${config.benefits.tierBonusPercent}% הנחה נוספת`, desc: 'על גבי הנחת החבר הבסיסית.' });
-    if (config.benefits.pointsMultiplier > 1) items.push({ title: `מכפיל נקודות x${config.benefits.pointsMultiplier}`, desc: 'צברו נקודות מהר יותר על כל שטיפה.' });
-    if (config.benefits.freeWashesPerYear > 0) items.push({ title: `${config.benefits.freeWashesPerYear} שטיפות חינם בשנה`, desc: 'מתנה מהמועדון עבורכם.' });
-    if (config.benefits.prioritySupport) items.push({ title: 'תמיכה בעדיפות', desc: 'מענה מהיר ומועדף.' });
-    if (config.benefits.exclusiveAccess) items.push({ title: 'גישה בלעדית', desc: 'גישה מוקדמת למוצרים ושירותים חדשים.' });
-    if (config.benefits.conciergeService) items.push({ title: 'שירות קונסיירז׳', desc: 'שירות אישי ומותאם.' });
-    items.push({ title: `${config.benefits.birthdayBonus} נקודות יום הולדת`, desc: 'בונוס מיוחד ביום ההולדת שלך.' });
-    return items;
+    return [
+      { title: `דרגת ${config.nameHe || config.name}`, desc: config.threshold > 0 ? `נפתחת ב-${config.threshold.toLocaleString()} נקודות.` : 'דרגת הפתיחה של כל חבר.' },
+      { title: '5% הנחה על כל רחיצת K9000', desc: 'לכל חבר, בכל דרגה — אוטומטית בעמדה.' },
+      { title: 'נקודה על כל שקל', desc: 'צבירה פשוטה ושקופה על כל רכישה.' },
+      { title: 'מתנות יום הולדת', desc: 'לכם ולחיית המחמד שלכם.' },
+      { title: 'Prestige Pass', desc: 'החברות שלכם ב-Apple Wallet וב-Google Wallet.' },
+    ];
   }
 
-  const items: { title: string; desc: string }[] = [];
-  if (config.benefits.tierBonusPercent > 0) items.push({ title: `${config.benefits.tierBonusPercent}% Extra Discount`, desc: 'On top of your base club discount.' });
-  if (config.benefits.pointsMultiplier > 1) items.push({ title: `${config.benefits.pointsMultiplier}x Points Multiplier`, desc: 'Earn points faster on every wash.' });
-  if (config.benefits.freeWashesPerYear > 0) items.push({ title: `${config.benefits.freeWashesPerYear} Free Washes/Year`, desc: 'A gift from the club for you.' });
-  if (config.benefits.prioritySupport) items.push({ title: 'Priority Support', desc: 'Fast and preferred response.' });
-  if (config.benefits.exclusiveAccess) items.push({ title: 'Exclusive Access', desc: 'Early access to new products and services.' });
-  if (config.benefits.conciergeService) items.push({ title: 'Concierge Service', desc: 'Personal and tailored service.' });
-  items.push({ title: `${config.benefits.birthdayBonus} Birthday Points`, desc: 'Special bonus on your birthday.' });
-  return items;
+  return [
+    { title: `${config.name} standing`, desc: config.threshold > 0 ? `Reached at ${config.threshold.toLocaleString()} points.` : 'Where every member begins.' },
+    { title: '5% off every K9000 wash', desc: 'For every member, at every tier — applied automatically.' },
+    { title: 'A point on every shekel', desc: 'Simple, transparent earning on every purchase.' },
+    { title: 'Birthday rewards', desc: 'For you and your pet.' },
+    { title: 'Prestige Pass', desc: 'Your membership in Apple Wallet and Google Wallet.' },
+  ];
 }
 
 export function generateLuxuryClubEmail(params: LuxuryClubEmailParams): { subject: string; html: string } {
@@ -291,7 +291,7 @@ export function generateLuxuryClubEmail(params: LuxuryClubEmailParams): { subjec
     : (lang === 'he' ? `שלום,` : `Hello,`);
 
   const brandName = 'Pet Wash\u2122';
-  const programName = 'Privilege Club';
+  const programName = 'Prestige Club';
   const supportEmail = CANONICAL_SUPPORT_EMAIL;
   const unsubscribeUrl = 'https://petwash.co.il/unsubscribe';
   const viewInBrowserUrl = 'https://petwash.co.il/app/loyalty';
