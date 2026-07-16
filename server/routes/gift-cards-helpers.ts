@@ -202,14 +202,14 @@ async function sendGiftCardToRecipient(params: {
       <div class="container">
         <div class="header">
           <h1>${isSelfPurchase ? '✨ Your e-gift is ready' : "🎁 You've received a gift!"}</h1>
-          <p style="margin:8px 0 0;opacity:0.9;">${isSelfPurchase ? 'Your Pet Wash™ E-Gift Card — ready to redeem' : `${senderName} sent you a Pet Wash™ E-Gift Card`}</p>
+          <p style="margin:8px 0 0;opacity:0.9;">${isSelfPurchase ? 'Your PetWash™ E-Gift Card — ready to redeem' : `${senderName} sent you a PetWash™ E-Gift Card`}</p>
         </div>
 
         <div class="content">
           <p style="font-size:16px;color:#333;">Hi <strong>${recipientName}</strong>,</p>
           <p style="color:#555;">${isSelfPurchase
-            ? 'Thank you for your purchase. Your Pet Wash™ E-Gift Card is loaded and ready — scan the QR or add it to your wallet to redeem at any K9000 station.'
-            : "You've received a Pet Wash™ E-Gift Card — premium organic pet care, whenever you need it."}</p>
+            ? 'Thank you for your purchase. Your PetWash™ E-Gift Card is loaded and ready — scan the QR or add it to your wallet to redeem at any K9000 station.'
+            : "You've received a PetWash™ E-Gift Card — premium organic pet care, whenever you need it."}</p>
 
           <div class="gift-amount">₪${voucher.initialAmount || voucher.remainingAmount}</div>
 

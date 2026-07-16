@@ -1,5 +1,5 @@
 // FILE: shared/globalCompliance.ts
-// Pet Wash™ Global Control Brain 2025
+// PetWash™ Global Control Brain 2025
 // Rules for drivers, sitters, hosts and any contractor platform wide.
 
 import {

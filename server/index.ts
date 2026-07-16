@@ -1126,7 +1126,7 @@ app.use((req, res, next) => {
 
   if (isProduction && !serverReady) {
     if (req.path === '/' || req.method === 'HEAD') {
-      return res.status(200).send('<!DOCTYPE html><html><head><title>Pet Wash™</title></head><body><p>Starting up...</p></body></html>');
+      return res.status(200).send('<!DOCTYPE html><html><head><title>PetWash™</title></head><body><p>Starting up...</p></body></html>');
     }
 
     // Wallet pass routes: return a retryable HTML page instead of raw JSON.

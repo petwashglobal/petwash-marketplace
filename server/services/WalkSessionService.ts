@@ -414,7 +414,7 @@ export class WalkSessionService {
   }
 
   /**
-   * Record bathroom marker (Pet Wash™ pee/poo flags)
+   * Record bathroom marker (PetWash™ pee/poo flags)
    * 
    * GPS bathroom markers for walk tracking
    * Allows walkers to flag when pet uses bathroom during walk
@@ -627,7 +627,7 @@ export class WalkSessionService {
         totalDistanceMeters: walk.totalDistanceMeters || 0,
       },
       vitals: walk.vitalDataSummary || {},
-      bathroomMarkers: walk.bathroomMarkers || [], // Pet Wash™ pee/poo flags
+      bathroomMarkers: walk.bathroomMarkers || [], // PetWash™ pee/poo flags
       tracking: {
         isLiveTrackingActive: walk.isLiveTrackingActive,
         isVideoStreamActive: walk.isVideoStreamActive,

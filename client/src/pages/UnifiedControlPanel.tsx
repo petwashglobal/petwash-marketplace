@@ -48,7 +48,7 @@ export default function UnifiedControlPanel() {
               Unified Control Panel
             </h1>
             <p className="text-muted-foreground mt-2">
-              Enterprise orchestration for all ⁦Pet Wash™⁩ platforms
+              Enterprise orchestration for all ⁦PetWash™⁩ platforms
             </p>
           </div>
           <div className="flex items-center gap-4">

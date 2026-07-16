@@ -110,7 +110,7 @@ class SystemStatusReportService {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>⁦Pet Wash™⁩ - דוח מצב מערכת</title>
+  <title>⁦PetWash™⁩ - דוח מצב מערכת</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap');
     
@@ -277,7 +277,7 @@ class SystemStatusReportService {
 <body>
   <div class="container">
     <div class="header">
-      <img src="${logoPath}" alt="⁦Pet Wash™⁩" class="logo">
+      <img src="${logoPath}" alt="⁦PetWash™⁩" class="logo">
       <div class="header-title">📊 דוח מצב מערכת</div>
       <div class="header-subtitle">System Status Report</div>
       <div class="timestamp">🕐 ${timestamp}</div>
@@ -385,7 +385,7 @@ class SystemStatusReportService {
     
     <div class="footer">
       <div class="footer-text">
-        <strong>✨ ⁦Pet Wash™⁩ Platform Status</strong><br>
+        <strong>✨ ⁦PetWash™⁩ Platform Status</strong><br>
         כל המערכות פועלות כשורה | All Systems Operational<br>
         אבטחה ומניטורינג פעילים 24/7 | Security & Monitoring Active 24/7
       </div>
@@ -416,7 +416,7 @@ class SystemStatusReportService {
 
       await sendLuxuryEmail({
         to: emailAddress,
-        subject: `🔒 ⁦Pet Wash™⁩ - דוח מצב מערכת ${new Date().toLocaleDateString('he-IL')}`,
+        subject: `🔒 ⁦PetWash™⁩ - דוח מצב מערכת ${new Date().toLocaleDateString('he-IL')}`,
         html
       });
 

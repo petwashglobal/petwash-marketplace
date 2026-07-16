@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ New-Login Alert Email
+ * PetWash™ New-Login Alert Email
  *
  * Branded transactional email sent to the user whenever a login is detected
  * from a new device, new browser, new location, or high-risk IP.
@@ -80,7 +80,7 @@ function buildBodyHtml(p: NewLoginAlertParams): string {
 <!-- Greeting -->
 <p style="font-family:${DESIGN.fontStack};font-size:16px;color:${DESIGN.black};margin-bottom:24px;line-height:1.6;">
   Hi,<br><br>
-  We noticed a new sign-in to your <strong>Pet Wash™</strong> account.
+  We noticed a new sign-in to your <strong>PetWash™</strong> account.
   Here are the details:
 </p>
 
@@ -135,7 +135,7 @@ function buildBodyHtml(p: NewLoginAlertParams): string {
 <!-- Sign-off -->
 <p style="font-family:${DESIGN.fontStack};font-size:13px;color:${DESIGN.grey};line-height:1.6;">
   Stay safe,<br>
-  <strong style="color:${DESIGN.black};">Pet Wash™ Security Team</strong>
+  <strong style="color:${DESIGN.black};">PetWash™ Security Team</strong>
 </p>
 `;
 }
@@ -160,7 +160,7 @@ export async function sendNewLoginAlert(params: NewLoginAlertParams): Promise<vo
   try {
     const bodyHtml = buildBodyHtml(params);
     const html = wrapEmailShell({
-      title:    'New login detected on your Pet Wash™ account',
+      title:    'New login detected on your PetWash™ account',
       bodyHtml,
       language: 'en',
       footerOptions: { language: 'en', includeUnsubscribe: false },
@@ -169,12 +169,12 @@ export async function sendNewLoginAlert(params: NewLoginAlertParams): Promise<vo
     const mailService = createMailService();
     await mailService.send({
       to:      params.to,
-      from:    { email: FROM_EMAIL, name: 'Pet Wash™ Security' },
-      subject: 'New login detected on your Pet Wash™ account',
+      from:    { email: FROM_EMAIL, name: 'PetWash™ Security' },
+      subject: 'New login detected on your PetWash™ account',
       html,
     });
 
-    await emailSpendGuard.record('NewLoginAlert', params.to, 'New login detected on your Pet Wash™ account');
+    await emailSpendGuard.record('NewLoginAlert', params.to, 'New login detected on your PetWash™ account');
 
     logger.info('[NewLoginAlert] Alert sent', {
       to:     params.to,

@@ -88,7 +88,7 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
   }>> = {
     welcome: {
       he: {
-        subject: `ברוכים הבאים למועדון Pet Wash™ Privilege`,
+        subject: `ברוכים הבאים למועדון PetWash™ Privilege`,
         preheader: `החברות שלך פעילה. ארנק דיגיטלי, הטבות ורגעים פרימיום מחכים לך.`,
         heroTitle: `ברוכים הבאים ל-Privilege Club`,
         heroSubtitle: `חברות פרימיום שנבנתה לשקט, איכות ותגמולים חכמים. הארנק הדיגיטלי שלך מוכן.`,
@@ -109,7 +109,7 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
         ],
       },
       en: {
-        subject: `Welcome to Pet Wash™ Privilege Club`,
+        subject: `Welcome to PetWash™ Privilege Club`,
         preheader: `Your membership is active. Digital wallet, benefits, and premium moments await.`,
         heroTitle: `Welcome to Privilege Club`,
         heroSubtitle: `A premium membership built for calm, quality, and smart rewards. Your digital wallet is ready.`,
@@ -132,7 +132,7 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
     },
     tier_upgrade: {
       he: {
-        subject: `שדרוג דרגה! עליתם ל-${newTierName} ב-Pet Wash™`,
+        subject: `שדרוג דרגה! עליתם ל-${newTierName} ב-PetWash™`,
         preheader: `מזל טוב! הדרגה החדשה שלכם: ${newTierName}. הטבות חדשות ממתינות.`,
         heroTitle: `שדרוג ל-${newTierName}!`,
         heroSubtitle: `עלייתם מ-${prevTierName} ל-${newTierName}. הטבות חדשות וסטטוס גבוה יותר ממתינים לכם.`,
@@ -148,7 +148,7 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
         ],
       },
       en: {
-        subject: `Tier Upgrade! You've reached ${newTierName} at Pet Wash™`,
+        subject: `Tier Upgrade! You've reached ${newTierName} at PetWash™`,
         preheader: `Congratulations! Your new tier: ${newTierName}. New benefits await.`,
         heroTitle: `Upgraded to ${newTierName}!`,
         heroSubtitle: `You've moved from ${prevTierName} to ${newTierName}. New benefits and higher status await.`,
@@ -166,7 +166,7 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
     },
     purchase_reward: {
       he: {
-        subject: `צברת ${params.pointsEarned || 0} נקודות חדשות ב-Pet Wash™!`,
+        subject: `צברת ${params.pointsEarned || 0} נקודות חדשות ב-PetWash™!`,
         preheader: `נקודות נוספו לארנק שלך. בדקו את היתרה המעודכנת.`,
         heroTitle: `+${params.pointsEarned || 0} נקודות!`,
         heroSubtitle: `נקודות חדשות נוספו לחשבון שלך. המשיכו לצבור ושדרגו את הדרגה.`,
@@ -182,7 +182,7 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
         ],
       },
       en: {
-        subject: `You earned ${params.pointsEarned || 0} new points at Pet Wash™!`,
+        subject: `You earned ${params.pointsEarned || 0} new points at PetWash™!`,
         preheader: `Points added to your wallet. Check your updated balance.`,
         heroTitle: `+${params.pointsEarned || 0} Points!`,
         heroSubtitle: `New points have been added to your account. Keep earning and upgrade your tier.`,
@@ -200,10 +200,10 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
     },
     club_event: {
       he: {
-        subject: `אירוע מיוחד ב-Pet Wash™ Privilege Club`,
+        subject: `אירוע מיוחד ב-PetWash™ Privilege Club`,
         preheader: `אירוע בלעדי לחברי המועדון. פרטים בפנים.`,
         heroTitle: `אירוע בלעדי למועדון`,
-        heroSubtitle: `הוזמנת לאירוע מיוחד בלעדי לחברי Pet Wash™ Privilege Club.`,
+        heroSubtitle: `הוזמנת לאירוע מיוחד בלעדי לחברי PetWash™ Privilege Club.`,
         ctaLabel: `פרטים נוספים`,
         benefitsTitle: `מה מחכה לכם`,
         benefitsSubtitle: `אירוע בלעדי לחברי מועדון.`,
@@ -213,10 +213,10 @@ function getDefaultContent(kind: ClubEmailEventKind, lang: 'he' | 'en', params: 
         moments: [],
       },
       en: {
-        subject: `Special Event at Pet Wash™ Privilege Club`,
+        subject: `Special Event at PetWash™ Privilege Club`,
         preheader: `An exclusive event for club members. Details inside.`,
         heroTitle: `Exclusive Club Event`,
-        heroSubtitle: `You're invited to a special event exclusive to Pet Wash™ Privilege Club members.`,
+        heroSubtitle: `You're invited to a special event exclusive to PetWash™ Privilege Club members.`,
         ctaLabel: `Learn More`,
         benefitsTitle: `What awaits you`,
         benefitsSubtitle: `An exclusive event for club members.`,

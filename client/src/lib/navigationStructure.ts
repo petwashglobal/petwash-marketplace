@@ -66,8 +66,8 @@ export const navigationTree: MenuItem[] = [
   // =============================================
   {
     id: 'petwash-hub',
-    label: '⁦Pet Wash™⁩ Hub',
-    labelHe: 'מרכז רחצת ⁦Pet Wash™⁩',
+    label: '⁦PetWash™⁩ Hub',
+    labelHe: 'מרכז רחצת ⁦PetWash™⁩',
     icon: Droplet,
     children: [
       {

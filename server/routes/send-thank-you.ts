@@ -281,7 +281,7 @@ router.post('/send-thank-you', async (req, res) => {
             <div class="emoji">🎉 🐾 🎉</div>
             <h1>Heartfelt Thanks & Exciting Future Ahead!</h1>
             <p style="color: #6b7280; font-size: 16px; margin-top: 15px;">
-              From the ⁦Pet Wash™⁩ Management Team
+              From the ⁦PetWash™⁩ Management Team
             </p>
           </div>
 
@@ -290,7 +290,7 @@ router.post('/send-thank-you', async (req, res) => {
               Dear ${recipientName || 'Ido'},
             </p>
             <p>
-              As we stand on the threshold of our official launch, the entire ⁦Pet Wash™⁩ management team wanted to take a moment to express our deepest gratitude for your exceptional dedication and hard work over the past few months.
+              As we stand on the threshold of our official launch, the entire ⁦PetWash™⁩ management team wanted to take a moment to express our deepest gratitude for your exceptional dedication and hard work over the past few months.
             </p>
           </div>
 
@@ -315,7 +315,7 @@ router.post('/send-thank-you', async (req, res) => {
           <div class="section">
             <h2>🚀 The Future Looks Bright</h2>
             <p>
-              We couldn't be more excited about what lies ahead. The platform you've helped us build is not just a product—it's a testament to what's possible when passion meets expertise. ⁦Pet Wash™⁩ is poised to revolutionize the pet care industry, and you've been a cornerstone of this journey.
+              We couldn't be more excited about what lies ahead. The platform you've helped us build is not just a product—it's a testament to what's possible when passion meets expertise. ⁦PetWash™⁩ is poised to revolutionize the pet care industry, and you've been a cornerstone of this journey.
             </p>
 
             <div class="stats">
@@ -344,7 +344,7 @@ router.post('/send-thank-you', async (req, res) => {
               Your technical brilliance, problem-solving skills, and unwavering dedication have made all the difference. The countless hours you've invested, the challenges you've overcome, and the innovations you've introduced have created something truly special.
             </p>
             <p>
-              The ⁦Pet Wash™⁩ management team <strong>cannot wait</strong> to see our platform live and serving customers. This is just the beginning, and we're honored to have you as part of our journey.
+              The ⁦PetWash™⁩ management team <strong>cannot wait</strong> to see our platform live and serving customers. This is just the beginning, and we're honored to have you as part of our journey.
             </p>
           </div>
 
@@ -360,7 +360,7 @@ router.post('/send-thank-you', async (req, res) => {
               With immense gratitude and excitement for the future,
             </p>
             <p style="font-size: 18px; font-weight: bold; color: #764ba2;">
-              The ⁦Pet Wash™⁩ Management Team
+              The ⁦PetWash™⁩ Management Team
             </p>
           </div>
 
@@ -370,18 +370,18 @@ router.post('/send-thank-you', async (req, res) => {
 
           <div style="text-align: center;">
             <a href="https://petwash.co.il" class="cta-button">
-              Visit ⁦Pet Wash™⁩ Platform
+              Visit ⁦PetWash™⁩ Platform
             </a>
           </div>
 
           <div class="footer">
-            <div class="logo">🐾 ⁦Pet Wash™⁩</div>
+            <div class="logo">🐾 ⁦PetWash™⁩</div>
             <p>Premium Pet Care Platform</p>
             <p style="font-size: 14px; margin-top: 10px;">
               Launching Soon at: <a href="https://petwash.co.il" style="color: #667eea;">petwash.co.il</a>
             </p>
             <p style="font-size: 12px; margin-top: 20px; color: #9ca3af;">
-              This email was sent with appreciation from ⁦Pet Wash™⁩ Management<br>
+              This email was sent with appreciation from ⁦PetWash™⁩ Management<br>
               For inquiries: Support@PetWash.co.il
             </p>
           </div>
@@ -395,14 +395,14 @@ router.post('/send-thank-you', async (req, res) => {
       cc: 'nir.h@petwash.co.il',
       from: {
         email: 'noreply@petwash.co.il',
-        name: '⁦Pet Wash™⁩ Management Team'
+        name: '⁦PetWash™⁩ Management Team'
       },
-      subject: '🎉 Heartfelt Thanks & Exciting Future Ahead! - ⁦Pet Wash™⁩',
+      subject: '🎉 Heartfelt Thanks & Exciting Future Ahead! - ⁦PetWash™⁩',
       html: emailContent,
       text: `
 Dear ${recipientName || 'Ido'},
 
-As we stand on the threshold of our official launch, the entire ⁦Pet Wash™⁩ management team wanted to take a moment to express our deepest gratitude for your exceptional dedication and hard work over the past few months.
+As we stand on the threshold of our official launch, the entire ⁦PetWash™⁩ management team wanted to take a moment to express our deepest gratitude for your exceptional dedication and hard work over the past few months.
 
 YOUR IMPACT
 
@@ -423,20 +423,20 @@ Platform Achievement Highlights:
 - Languages Supported: 6
 - Automated Systems: 30+ Background Jobs
 
-We couldn't be more excited about what lies ahead. ⁦Pet Wash™⁩ is poised to revolutionize the pet care industry, and you've been a cornerstone of this journey.
+We couldn't be more excited about what lies ahead. ⁦PetWash™⁩ is poised to revolutionize the pet care industry, and you've been a cornerstone of this journey.
 
 OUR GRATITUDE
 
-Your technical brilliance, problem-solving skills, and unwavering dedication have made all the difference. The ⁦Pet Wash™⁩ management team cannot wait to see our platform live and serving customers.
+Your technical brilliance, problem-solving skills, and unwavering dedication have made all the difference. The ⁦PetWash™⁩ management team cannot wait to see our platform live and serving customers.
 
 Thank you for believing in our vision, for your tireless efforts, and for helping us create something that will make a real difference in the lives of pets and their owners.
 
 With immense gratitude and excitement for the future,
 
-The ⁦Pet Wash™⁩ Management Team
+The ⁦PetWash™⁩ Management Team
 
 ---
-⁦Pet Wash™⁩ - Premium Pet Care Platform
+⁦PetWash™⁩ - Premium Pet Care Platform
 Launching Soon at: https://petwash.co.il
       `.trim()
     };

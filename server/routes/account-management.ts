@@ -19,7 +19,7 @@ import {
 const router = Router();
 
 /**
- * ⁦Pet Wash™⁩ Enterprise Account Management
+ * ⁦PetWash™⁩ Enterprise Account Management
  * 
  * Big-brand level account management with:
  * - 30-day grace period before permanent deletion
@@ -569,12 +569,12 @@ router.post('/egift/transfer', async (req, res) => {
     error: 'E-gift transfer not permitted',
     policy: {
       transferable: false,
-      reason: '⁦Pet Wash™⁩ e-gift cards are permanently tied to your account and cannot be transferred',
+      reason: '⁦PetWash™⁩ e-gift cards are permanently tied to your account and cannot be transferred',
       alternatives: [
         'Purchase a new e-gift card for the recipient',
         'Use your balance for services and pay for their booking separately',
       ],
-      legalReference: '⁦Pet Wash™⁩ Terms of Service Section 7.3 - Gift Card Non-Transferability',
+      legalReference: '⁦PetWash™⁩ Terms of Service Section 7.3 - Gift Card Non-Transferability',
     },
   });
 });

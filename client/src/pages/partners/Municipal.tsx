@@ -77,7 +77,7 @@ export default function MunicipalPartners() {
 
         <div className="luxury-glass-card luxury-shadow-xl p-8 text-center bg-gradient-to-r from-[#D4AF37]/10 to-[#D4AF37]/10 luxury-animate-fade-in luxury-delay-6">
           <h2 className="luxury-heading-lg mb-4">
-            {isHe ? 'שותפות עם ⁦Pet Wash™⁩' : 'Partner with ⁦Pet Wash™⁩'}
+            {isHe ? 'שותפות עם ⁦PetWash™⁩' : 'Partner with ⁦PetWash™⁩'}
           </h2>
           <p className="luxury-text-body mb-6">
             {isHe

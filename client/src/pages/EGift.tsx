@@ -168,12 +168,12 @@ const translations: Record<string, Record<string, string>> = {
     es: 'Vales regalo digitales',
   },
   description: {
-    en: 'Give the gift of premium pet care credit. Use anywhere across \u2066Pet Wash™\u2069 platforms - from self-service washes to pet sitting, dog walking, adventures, and more!',
-    he: 'תנו את מתנת הטיפוח המושלמת לחיות מחמד. ניתן לשימוש בכל פלטפורמות \u2066Pet Wash™\u2069 - משטיפה בשירות עצמי ועד שמרטפות, טיולי כלבים, הרפתקאות ועוד!',
-    ar: 'قدم هدية رعاية الحيوانات الأليفة المميزة. استخدمها في جميع منصات \u2066Pet Wash™\u2069 - من الغسيل الذاتي إلى رعاية الحيوانات والمشي والمغامرات والمزيد!',
-    ru: 'Подарите кредит на премиальный уход за питомцами. Используйте на всех платформах \u2066Pet Wash™\u2069 - от мойки самообслуживания до присмотра, выгула и приключений!',
-    fr: 'Offrez le cadeau des soins premium pour animaux. Utilisable sur toutes les plateformes \u2066Pet Wash™\u2069 - du lavage libre-service au pet sitting, promenades et aventures!',
-    es: 'Regala crédito de cuidado premium para mascotas. Úsalo en todas las plataformas \u2066Pet Wash™\u2069 - desde lavado autoservicio hasta cuidadores, paseos, aventuras y más!',
+    en: 'Give the gift of premium pet care credit. Use anywhere across \u2066PetWash™\u2069 platforms - from self-service washes to pet sitting, dog walking, adventures, and more!',
+    he: 'תנו את מתנת הטיפוח המושלמת לחיות מחמד. ניתן לשימוש בכל פלטפורמות \u2066PetWash™\u2069 - משטיפה בשירות עצמי ועד שמרטפות, טיולי כלבים, הרפתקאות ועוד!',
+    ar: 'قدم هدية رعاية الحيوانات الأليفة المميزة. استخدمها في جميع منصات \u2066PetWash™\u2069 - من الغسيل الذاتي إلى رعاية الحيوانات والمشي والمغامرات والمزيد!',
+    ru: 'Подарите кредит на премиальный уход за питомцами. Используйте на всех платформах \u2066PetWash™\u2069 - от мойки самообслуживания до присмотра, выгула и приключений!',
+    fr: 'Offrez le cadeau des soins premium pour animaux. Utilisable sur toutes les plateformes \u2066PetWash™\u2069 - du lavage libre-service au pet sitting, promenades et aventures!',
+    es: 'Regala crédito de cuidado premium para mascotas. Úsalo en todas las plataformas \u2066PetWash™\u2069 - desde lavado autoservicio hasta cuidadores, paseos, aventuras y más!',
   },
   usableAt: {
     en: 'Gift can be used at:',
@@ -360,12 +360,12 @@ const translations: Record<string, Record<string, string>> = {
     es: 'Pago seguro · Sin cuenta necesaria',
   },
   worksAtAll: {
-    en: 'Works at all \u2066Pet Wash™\u2069 services',
-    he: 'תקף בכל שירותי \u2066Pet Wash™\u2069',
-    ar: 'يعمل في جميع خدمات \u2066Pet Wash™\u2069',
-    ru: 'Действует во всех сервисах \u2066Pet Wash™\u2069',
-    fr: 'Valable dans tous les services \u2066Pet Wash™\u2069',
-    es: 'Válido en todos los servicios \u2066Pet Wash™\u2069',
+    en: 'Works at all \u2066PetWash™\u2069 services',
+    he: 'תקף בכל שירותי \u2066PetWash™\u2069',
+    ar: 'يعمل في جميع خدمات \u2066PetWash™\u2069',
+    ru: 'Действует во всех сервисах \u2066PetWash™\u2069',
+    fr: 'Valable dans tous les services \u2066PetWash™\u2069',
+    es: 'Válido en todos los servicios \u2066PetWash™\u2069',
   },
   required: {
     en: 'Required',
@@ -535,7 +535,7 @@ const platformServices = [
   { id: 'walk', name: '\u2066Walk My Pet™\u2069' },
   { id: 'trek', name: '\u2066PetTrek™\u2069' },
   { id: 'academy', name: '\u2066Pet Wash Academy™\u2069' },
-  { id: 'nayax', name: '\u2066Nayax Pet Wash™\u2069' }
+  { id: 'nayax', name: '\u2066Nayax PetWash™\u2069' }
 ];
 
 const giftOptions = [

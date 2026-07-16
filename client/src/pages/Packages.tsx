@@ -37,8 +37,8 @@ const PACKAGES_FAQ: SeoFaqItem[] = [
   {
     qHe: 'איך משתמשים בחבילה?',
     qEn: 'How do I use a package?',
-    aHe: 'רוכשים חבילה, ומממשים כל שטיפה בעמדה דרך אפליקציית ⁦Pet Wash™⁩.',
-    aEn: 'Buy a package, then redeem each wash at the station via the ⁦Pet Wash™⁩ app.',
+    aHe: 'רוכשים חבילה, ומממשים כל שטיפה בעמדה דרך אפליקציית ⁦PetWash™⁩.',
+    aEn: 'Buy a package, then redeem each wash at the station via the ⁦PetWash™⁩ app.',
   },
   {
     qHe: 'אפשר לתת חבילה במתנה?',
@@ -335,7 +335,7 @@ export default function Packages() {
               <div className="w-full mx-auto lg:sticky lg:top-8">
                 <div className="bg-gradient-to-b from-[#f8f8f6] to-[#f0eeea] p-4 sm:p-5 lg:p-6" style={{ borderRadius: '8px', border: '1px solid #eee' }}>
                   <p className="text-[10px] tracking-[0.25em] uppercase text-[#0a0a0a] font-medium mb-3 text-center">
-                    {tierLabel} · ⁦Pet Wash™⁩
+                    {tierLabel} · ⁦PetWash™⁩
                   </p>
                   <img 
                     src={selectedPackage.image} 

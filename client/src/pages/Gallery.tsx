@@ -8,67 +8,67 @@ import { useSEO, pageSEO } from '@/lib/seo';
 const galleryImages = [
   {
     src: '/gallery/C4EFE9DA-C7A6-4252-AB3F-7ED77BAC1A9B_1761100129902.png',
-    alt: 'Pet Wash™ Station Signage',
+    alt: 'PetWash™ Station Signage',
     category: 'branding',
     featured: true
   },
   {
     src: '/gallery/D8595123-1F98-4FC8-BE89-7D609439F334_1761100129902.png',
-    alt: 'Pet Wash™ Logo',
+    alt: 'PetWash™ Logo',
     category: 'branding',
     featured: false
   },
   {
     src: '/gallery/IMG_8664_1761100129901.jpeg',
-    alt: 'Pet Wash™ Station',
+    alt: 'PetWash™ Station',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/IMG_8665_1761100129901.jpeg',
-    alt: 'Pet Wash™ Station Interior',
+    alt: 'PetWash™ Station Interior',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8666_1761100129901.jpeg',
-    alt: 'Pet Wash™ Equipment',
+    alt: 'PetWash™ Equipment',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8667_1761100129901.jpeg',
-    alt: 'Pet Wash™ Station Setup',
+    alt: 'PetWash™ Station Setup',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/IMG_8668_1761100129901.jpeg',
-    alt: 'Pet Wash™ Station Details',
+    alt: 'PetWash™ Station Details',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8435_1761100129902.jpeg',
-    alt: 'Pet Wash™ Station',
+    alt: 'PetWash™ Station',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_9080_1761100129901.jpeg',
-    alt: 'Pet Wash™ Station',
+    alt: 'PetWash™ Station',
     category: 'station',
     featured: true
   },
   {
     src: '/gallery/35f36f7e-65cb-4c8c-8b8e-0207879dcc16_1761100129902.jpeg',
-    alt: 'Pet Wash™ Station',
+    alt: 'PetWash™ Station',
     category: 'station',
     featured: false
   },
   {
     src: '/gallery/IMG_8935_1761100227728.jpeg',
-    alt: 'Pet Wash™ Station',
+    alt: 'PetWash™ Station',
     category: 'station',
     featured: false
   }
@@ -119,7 +119,7 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                   <iframe
                     className="absolute inset-0 w-full h-full"
                     src="https://www.youtube.com/embed/Om-iwY_vt5M?si=vGYJEwYMFyYRSoow"
-                    title="⁦Pet Wash™⁩ - Premium Natural Pet Care Experience"
+                    title="⁦PetWash™⁩ - Premium Natural Pet Care Experience"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
                     data-testid="youtube-video"

@@ -28,8 +28,8 @@ const STATION_FAQ: { qHe: string; qEn: string; aHe: string; aEn: string }[] = [
   {
     qHe: 'איפה אפשר לשטוף כלב בכפר סבא?',
     qEn: 'Where can I wash my dog in Kfar Saba?',
-    aHe: 'בעמדת ⁦Pet Wash™⁩ בפארק יצחק ולד, כפר סבא — עמדת שטיפה עצמית ⁦K9000⁩, פתוחה עכשיו.',
-    aEn: 'At the Pet Wash™ station in Isaac Wald Park, Kfar Saba — a self-service K9000 bay, open now.',
+    aHe: 'בעמדת ⁦PetWash™⁩ בפארק יצחק ולד, כפר סבא — עמדת שטיפה עצמית ⁦K9000⁩, פתוחה עכשיו.',
+    aEn: 'At the PetWash™ station in Isaac Wald Park, Kfar Saba — a self-service K9000 bay, open now.',
   },
   {
     qHe: 'איך עובדת עמדת השטיפה?',
@@ -46,8 +46,8 @@ const STATION_FAQ: { qHe: string; qEn: string; aHe: string; aEn: string }[] = [
   {
     qHe: 'אילו אמצעי תשלום מתקבלים?',
     qEn: 'What payment methods are accepted?',
-    aHe: 'תשלום בכרטיס אשראי בעמדה, ולחברי מועדון גם דרך אפליקציית ⁦Pet Wash™⁩.',
-    aEn: 'Credit card at the station, and members can also pay via the Pet Wash™ app.',
+    aHe: 'תשלום בכרטיס אשראי בעמדה, ולחברי מועדון גם דרך אפליקציית ⁦PetWash™⁩.',
+    aEn: 'Credit card at the station, and members can also pay via the PetWash™ app.',
   },
 ];
 
@@ -117,7 +117,7 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
 export default function Locations() {
   useSEO({
     ...pageSEO.locations,
-    title: 'שטיפת כלבים בשירות עצמי בכפר סבא — עמדות ⁦K9000⁩ | Pet Wash™',
+    title: 'שטיפת כלבים בשירות עצמי בכפר סבא — עמדות ⁦K9000⁩ | PetWash™',
     description: 'עמדת שטיפת כלבים בשירות עצמי ⁦K9000⁩ בפארק יצחק ולד, כפר סבא — פתוחה עכשיו. קל, נקי ובשליטה שלכם. מצאו את התחנה הקרובה.',
     keywords: 'שטיפת כלבים כפר סבא, שטיפת כלבים בשירות עצמי, עמדת שטיפה לכלבים, מקלחת לכלב כפר סבא, dog wash Kfar Saba, K9000',
   });
@@ -142,7 +142,7 @@ export default function Locations() {
         // Same @id the site-wide Organization uses in index.html — one canonical
         // Organization node, referenced (not re-declared thin) across the graph.
         '@id': 'https://petwash.co.il/#organization',
-        name: 'Pet Wash™',
+        name: 'PetWash™',
         url: 'https://petwash.co.il',
         logo: 'https://petwash.co.il/brand/petwash-logo-official.png',
         sameAs: socials,
@@ -150,7 +150,7 @@ export default function Locations() {
       ...(openStation ? [{
         '@type': 'LocalBusiness',
         '@id': `https://petwash.co.il/locations#${openStation.code}`,
-        name: `Pet Wash™ — ${openStation.nameEn}`,
+        name: `PetWash™ — ${openStation.nameEn}`,
         url: 'https://petwash.co.il/locations',
         image: 'https://petwash.co.il/brand/petwash-logo-official.png',
         priceRange: '₪₪',
@@ -391,8 +391,8 @@ export default function Locations() {
             <span dir="rtl" className="block">רוצים תחנה בשכונה שלכם?</span>
           </h2>
           <p className="luxury-text-body text-base sm:text-lg mb-8">
-            <span dir="ltr" className="block">Tell us where a ⁦Pet Wash™⁩ station would serve your building, center or city.</span>
-            <span dir="rtl" className="block mt-1">ספרו לנו איפה תחנת ⁦Pet Wash™⁩ תשרת את הבניין, המרכז או העיר שלכם.</span>
+            <span dir="ltr" className="block">Tell us where a ⁦PetWash™⁩ station would serve your building, center or city.</span>
+            <span dir="rtl" className="block mt-1">ספרו לנו איפה תחנת ⁦PetWash™⁩ תשרת את הבניין, המרכז או העיר שלכם.</span>
           </p>
           <Button
             className="luxury-btn-outline luxury-shadow-lg w-full sm:w-auto h-auto whitespace-normal max-w-full py-3 leading-snug"

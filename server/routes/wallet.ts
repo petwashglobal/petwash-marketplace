@@ -724,7 +724,7 @@ router.post('/email-cards', requireAuth, async (req, res) => {
     const msg = {
       to: targetEmail,
       from: 'noreply@petwash.co.il',
-      subject: `${userName} - Your Premium ⁦Pet Wash™⁩ Wallet Cards`,
+      subject: `${userName} - Your Premium ⁦PetWash™⁩ Wallet Cards`,
       html: `
         <!DOCTYPE html>
         <html>

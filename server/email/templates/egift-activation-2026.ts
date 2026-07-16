@@ -73,8 +73,8 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
   const tierName = isHe ? tier.nameHe : tier.name;
 
   const subject = isHe
-    ? `✨ ${senderName} שלח/ה לך מתנה יוקרתית של Pet Wash™ — ${formattedValue}`
-    : `✨ ${senderName} sent you a Pet Wash™ Luxury Gift — ${formattedValue}`;
+    ? `✨ ${senderName} שלח/ה לך מתנה יוקרתית של PetWash™ — ${formattedValue}`
+    : `✨ ${senderName} sent you a PetWash™ Luxury Gift — ${formattedValue}`;
 
   const html = `<!DOCTYPE html>
 <html lang="${language}" dir="${dir}">
@@ -100,7 +100,7 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
 
       <!-- Logo -->
       <div class="fi d1" style="padding:36px 40px 16px;text-align:center;background:white;">
-        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" style="max-width:130px;height:auto;" />
+        <img src="${PETWASH_LOGO_BASE64}" alt="PetWash™" style="max-width:130px;height:auto;" />
         <div style="margin-top:14px;font-size:9px;letter-spacing:6px;text-transform:uppercase;color:#bbb;">
           ${tierName}
         </div>
@@ -118,8 +118,8 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
         </h1>
         <p style="font-size:14px;color:#888;margin:0;line-height:1.7;max-width:380px;display:inline-block;">
           ${isHe
-            ? `${senderName} בחר/ה עבורך כרטיס מתנה יוקרתי מקולקציית Pet Wash™`
-            : `${senderName} has selected a luxury gift card from the Pet Wash™ collection for you`}
+            ? `${senderName} בחר/ה עבורך כרטיס מתנה יוקרתי מקולקציית PetWash™`
+            : `${senderName} has selected a luxury gift card from the PetWash™ collection for you`}
         </p>
       </div>
 
@@ -142,7 +142,7 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
             <!-- Card Top -->
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
               <div style="text-align:left;">
-                <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.35);">Pet Wash™</div>
+                <div style="font-size:8px;letter-spacing:3px;text-transform:uppercase;color:rgba(255,255,255,0.35);">PetWash™</div>
                 <div style="font-size:9px;letter-spacing:2px;text-transform:uppercase;color:${tier.accent};">E-Gift</div>
               </div>
               <div style="font-size:22px;color:${tier.accent};animation:float 3s ease-in-out infinite;">${tier.icon}</div>
@@ -267,8 +267,8 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
       <div class="fi d5" style="padding:40px;text-align:center;background:white;border-top:1px solid #f0ede8;">
         <p style="font-size:13px;color:#888;margin:0 0 24px;line-height:1.7;max-width:360px;display:inline-block;">
           ${isHe
-            ? 'הפעל את כרטיס המתנה שלך ותיהנה מכל שירותי הפרימיום של Pet Wash™'
-            : 'Activate your gift card and enjoy the full Pet Wash™ premium experience'}
+            ? 'הפעל את כרטיס המתנה שלך ותיהנה מכל שירותי הפרימיום של PetWash™'
+            : 'Activate your gift card and enjoy the full PetWash™ premium experience'}
         </p>
         <div>
           <a href="https://petwash.co.il/gift-cards/activate?code=${giftCode}" style="display:inline-block;padding:16px 52px;border:1px solid #1a1a1a;color:#1a1a1a;text-decoration:none;font-size:11px;letter-spacing:4px;text-transform:uppercase;font-weight:500;">
@@ -283,7 +283,7 @@ export function generateEGiftActivationEmail(params: EGiftActivationParams): { s
           ${tier.ornament} &nbsp; ${tier.ornament} &nbsp; ${tier.ornament}
         </div>
         <p style="font-size:11px;color:rgba(255,255,255,0.4);margin:0 0 8px;line-height:1.6;letter-spacing:0.5px;">
-          ${isHe ? 'נשלח באהבה דרך Pet Wash™' : 'Sent with love via Pet Wash™'}
+          ${isHe ? 'נשלח באהבה דרך PetWash™' : 'Sent with love via PetWash™'}
         </p>
         <p style="font-size:10px;color:rgba(255,255,255,0.25);margin:0 0 16px;">
           <a href="https://petwash.co.il" style="color:${tier.accent};text-decoration:none;letter-spacing:1px;">petwash.co.il</a>

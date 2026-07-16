@@ -39,7 +39,7 @@ const DELIVERY_LABELS: Record<string, { he: string; en: string }> = {
   pickup_groomer: { he: 'איסוף מגרומר',         en: 'Pickup at groomer' },
 };
 const PAYMENT_LABELS: Record<string, { he: string; en: string }> = {
-  wallet:      { he: 'ארנק Pet Wash™', en: 'Pet Wash™ Wallet' },
+  wallet:      { he: 'ארנק PetWash™', en: 'PetWash™ Wallet' },
   nayax:       { he: 'Nayax',          en: 'Nayax' },
   credit_card: { he: 'כרטיס אשראי',   en: 'Credit card' },
 };
@@ -137,7 +137,7 @@ export function shopOrderConfirmation(p: ShopOrderConfirmationParams): string {
 <head>
   <meta charset="utf-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1"/>
-  <title>${isHe ? `אישור הזמנה #${p.orderId}` : `Order Confirmation #${p.orderId}`} — Pet Wash™</title>
+  <title>${isHe ? `אישור הזמנה #${p.orderId}` : `Order Confirmation #${p.orderId}`} — PetWash™</title>
 </head>
 <body style="margin:0;padding:0;background:${BODY_BG}">
 <table width="100%" cellpadding="0" cellspacing="0" bgcolor="${BODY_BG}">
@@ -147,7 +147,7 @@ export function shopOrderConfirmation(p: ShopOrderConfirmationParams): string {
   <!-- HEADER -->
   <tr>
     <td bgcolor="${HEADER_BG}" style="padding:28px 32px;text-align:center">
-      <img src="${PETWASH_LOGO_BASE64}" width="140" alt="Pet Wash™" style="display:block;margin:0 auto 16px"/>
+      <img src="${PETWASH_LOGO_BASE64}" width="140" alt="PetWash™" style="display:block;margin:0 auto 16px"/>
       <div style="color:#fff;font-size:11px;letter-spacing:3px;text-transform:uppercase;margin-bottom:4px">
         ${isHe ? 'אישור הזמנה' : 'ORDER CONFIRMATION'}
       </div>

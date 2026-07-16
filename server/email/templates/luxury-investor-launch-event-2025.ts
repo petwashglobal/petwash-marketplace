@@ -1,5 +1,5 @@
 /**
- * Luxury Investor Launch Event Email - ⁦Pet Wash™⁩ 2025
+ * Luxury Investor Launch Event Email - ⁦PetWash™⁩ 2025
  * Special event invitation with pure white background and premium design
  */
 
@@ -14,11 +14,11 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
   
   const content = {
     he: {
-      subject: '🚀 ⁦Pet Wash™⁩ - הזמנה מיוחדת לאירוע השקה | 7 בנובמבר 2025',
+      subject: '🚀 ⁦PetWash™⁩ - הזמנה מיוחדת לאירוע השקה | 7 בנובמבר 2025',
       greeting: `${data.recipientName} שלום,`,
       headline: 'אירוע השקה מיוחד',
       subheadline: '⁦Pet Wash™⁩ Ltd - הפלטפורמה הפרמיום הראשונה לטיפול אורגני בחיות מחמד בישראל',
-      intro: 'אנו מתכבדים להזמין אותך לאירוע ההשקה המיוחד של ⁦Pet Wash™⁩ - רגע היסטורי בתעשיית הטיפול בחיות המחמד בישראל.',
+      intro: 'אנו מתכבדים להזמין אותך לאירוע ההשקה המיוחד של ⁦PetWash™⁩ - רגע היסטורי בתעשיית הטיפול בחיות המחמד בישראל.',
       eventDate: '7 בנובמבר 2025',
       eventTime: '18:00',
       eventLocation: 'פארק וולד, כפר סבא',
@@ -37,11 +37,11 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
       footer: '⁦Pet Wash™⁩ Ltd | טיפול אורגני פרמיום בחיות מחמד | תוצרת ישראל 🇮🇱'
     },
     en: {
-      subject: '🚀 ⁦Pet Wash™⁩ - Special Launch Event Invitation | November 7, 2025',
+      subject: '🚀 ⁦PetWash™⁩ - Special Launch Event Invitation | November 7, 2025',
       greeting: `Dear ${data.recipientName},`,
       headline: 'Exclusive Launch Event',
       subheadline: '⁦Pet Wash™⁩ Ltd - Israel\'s First Premium Organic Pet Care Platform',
-      intro: 'We are honored to invite you to the special launch event of ⁦Pet Wash™⁩ - a historic moment in Israel\'s pet care industry.',
+      intro: 'We are honored to invite you to the special launch event of ⁦PetWash™⁩ - a historic moment in Israel\'s pet care industry.',
       eventDate: 'November 7, 2025',
       eventTime: '18:00',
       eventLocation: 'World Park, Kfar Saba',
@@ -280,7 +280,7 @@ export function generateInvestorLaunchEventEmail(data: InvestorLaunchEventData):
     <div class="container">
         <div class="header">
             <div class="logo">🐾</div>
-            <div class="brand">⁦Pet Wash™⁩</div>
+            <div class="brand">⁦PetWash™⁩</div>
         </div>
         
         <div class="content">

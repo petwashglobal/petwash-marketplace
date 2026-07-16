@@ -692,7 +692,7 @@ export default function WalkBookingFlow() {
               <div className="p-4 bg-[#D4AF37]/10 border border-[#D4AF37]/20 rounded-xl flex gap-3">
                 <Shield className="h-5 w-5 text-[#D4AF37] flex-shrink-0 mt-0.5" />
                 <div className="text-sm text-black leading-relaxed">
-                  <span className="font-semibold block mb-1">הגנת ⁦Pet Wash™⁩</span>
+                  <span className="font-semibold block mb-1">הגנת ⁦PetWash™⁩</span>
                   {PAYMENTS_CONFIG.escrowMessage.he} הכרטיס שלך לא יחויב כעת.
                 </div>
               </div>

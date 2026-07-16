@@ -25,9 +25,9 @@ const GOLD = '#D4AF37';
 
 export default function TrustSafety({ language }: TrustSafetyProps) {
   useSEO({
-    title: 'Trust & Safety — ⁦Pet Wash™⁩',
+    title: 'Trust & Safety — ⁦PetWash™⁩',
     description:
-      'How ⁦Pet Wash™⁩ protects you from scams, phishing and payment fraud. What we will never ask for, the warning signs, and how to report.',
+      'How ⁦PetWash™⁩ protects you from scams, phishing and payment fraud. What we will never ask for, the warning signs, and how to report.',
   });
   const [lang, setLang] = useState<Language>(language);
   useEffect(() => setLang(language), [language]);
@@ -41,11 +41,11 @@ export default function TrustSafety({ language }: TrustSafetyProps) {
 
   const neverRequire = he
     ? ['כרטיסי מתנה (gift cards)', 'מטבעות קריפטו', 'העברה בנקאית מחוץ לפלטפורמה למשתמש אחר', 'תשלום דרך קישורים אקראיים', 'אימות זהות באתרי צד-שלישי לא קשורים']
-    : ['Gift cards', 'Cryptocurrency', 'A bank transfer outside ⁦Pet Wash™⁩ to another user', 'Payment through random links', 'Identity verification on unrelated third-party websites'];
+    : ['Gift cards', 'Cryptocurrency', 'A bank transfer outside ⁦PetWash™⁩ to another user', 'Payment through random links', 'Identity verification on unrelated third-party websites'];
 
   const staySafe = he
-    ? ['שמרו הזמנות ותשלומים בתוך ⁦Pet Wash™⁩', 'אל תלחצו על קישורים חשודים', 'אל תשלחו כסף מחוץ לתשלום המאושר', 'דווחו מיד על התנהגות חריגה']
-    : ['Keep bookings and payments inside ⁦Pet Wash™⁩', 'Do not click suspicious links', 'Do not send money outside the approved checkout', 'Report unusual behaviour immediately'];
+    ? ['שמרו הזמנות ותשלומים בתוך ⁦PetWash™⁩', 'אל תלחצו על קישורים חשודים', 'אל תשלחו כסף מחוץ לתשלום המאושר', 'דווחו מיד על התנהגות חריגה']
+    : ['Keep bookings and payments inside ⁦PetWash™⁩', 'Do not click suspicious links', 'Do not send money outside the approved checkout', 'Report unusual behaviour immediately'];
 
   const categories = [
     {
@@ -66,8 +66,8 @@ export default function TrustSafety({ language }: TrustSafetyProps) {
       icon: CreditCard,
       t: he ? 'ניצול תשלומים' : 'Payment abuse',
       d: he
-        ? 'תשלום-יתר, החזר לחשבון אחר, העברה בנקאית מחוץ ל-⁦Pet Wash™⁩, gift cards, קריפטו, ״תשלום עתידי״, ״לא יכול/ה לשלם דרך הפלטפורמה״.'
-        : 'Overpayment, refund to a different account, bank transfer outside ⁦Pet Wash™⁩, gift cards, crypto, “future payment”, “I cannot pay through the platform”.',
+        ? 'תשלום-יתר, החזר לחשבון אחר, העברה בנקאית מחוץ ל-⁦PetWash™⁩, gift cards, קריפטו, ״תשלום עתידי״, ״לא יכול/ה לשלם דרך הפלטפורמה״.'
+        : 'Overpayment, refund to a different account, bank transfer outside ⁦PetWash™⁩, gift cards, crypto, “future payment”, “I cannot pay through the platform”.',
     },
     {
       icon: UserX,
@@ -80,8 +80,8 @@ export default function TrustSafety({ language }: TrustSafetyProps) {
       icon: Link2Off,
       t: he ? 'קישורים מזויפים' : 'Fake links',
       d: he
-        ? 'קישורים שמחקים את ⁦Pet Wash™⁩ עם שגיאות כתיב (petvvash, petwash-payment, petwashwallet) או קודי QR מזויפים לתשלום.'
-        : 'Links that imitate ⁦Pet Wash™⁩ with misspellings (petvvash, petwash-payment, petwashwallet) or fake QR payment links.',
+        ? 'קישורים שמחקים את ⁦PetWash™⁩ עם שגיאות כתיב (petvvash, petwash-payment, petwashwallet) או קודי QR מזויפים לתשלום.'
+        : 'Links that imitate ⁦PetWash™⁩ with misspellings (petvvash, petwash-payment, petwashwallet) or fake QR payment links.',
     },
   ];
 
@@ -109,13 +109,13 @@ export default function TrustSafety({ language }: TrustSafetyProps) {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: 'clamp(16px,3vw,24px)', marginBottom: 'clamp(24px,4vw,40px)' }}>
             <Panel
               icon={<Lock style={{ width: 22, height: 22, color: GOLD }} />}
-              title={he ? '⁦Pet Wash™⁩ לעולם לא תבקש' : '⁦Pet Wash™⁩ will never ask for'}
+              title={he ? '⁦PetWash™⁩ לעולם לא תבקש' : '⁦PetWash™⁩ will never ask for'}
               items={neverAsk}
               he={he}
             />
             <Panel
               icon={<Ban style={{ width: 22, height: 22, color: GOLD }} />}
-              title={he ? '⁦Pet Wash™⁩ לעולם לא תדרוש' : '⁦Pet Wash™⁩ will never require'}
+              title={he ? '⁦PetWash™⁩ לעולם לא תדרוש' : '⁦PetWash™⁩ will never require'}
               items={neverRequire}
               he={he}
             />

@@ -145,8 +145,8 @@ export default function TrustCompliance({ language, onLanguageChange }: TrustCom
 
               <p className="luxury-services-subtitle">
                 {en
-                  ? "Every ⁦Pet Wash™⁩ station runs on dog-wash equipment independently assessed and tested to international electrical-safety and electromagnetic-compatibility standards — and uses wash products manufactured under government-approved practice."
-                  : 'כל עמדת ⁦Pet Wash™⁩ מבוססת על ציוד שטיפה לכלבים שנבחן ונבדק באופן עצמאי לפי תקני בטיחות חשמלית ותאימות אלקטרומגנטית בינלאומיים — ומשתמשת במוצרי שטיפה המיוצרים בתקן ייצור מאושר.'}
+                  ? "Every ⁦PetWash™⁩ station runs on dog-wash equipment independently assessed and tested to international electrical-safety and electromagnetic-compatibility standards — and uses wash products manufactured under government-approved practice."
+                  : 'כל עמדת ⁦PetWash™⁩ מבוססת על ציוד שטיפה לכלבים שנבחן ונבדק באופן עצמאי לפי תקני בטיחות חשמלית ותאימות אלקטרומגנטית בינלאומיים — ומשתמשת במוצרי שטיפה המיוצרים בתקן ייצור מאושר.'}
               </p>
             </div>
           </div>

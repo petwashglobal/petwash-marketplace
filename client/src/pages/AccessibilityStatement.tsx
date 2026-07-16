@@ -28,7 +28,7 @@ export default function AccessibilityStatement() {
               <h2 className="luxury-heading-md mb-4">מחויבות לנגישות</h2>
               <div className="space-y-4 luxury-text-body">
                 <p>
-                  ⁦Pet Wash™⁩ מחויבת להנגשת אתר האינטרנט והאפליקציה שלה לאנשים עם מוגבלות,
+                  ⁦PetWash™⁩ מחויבת להנגשת אתר האינטרנט והאפליקציה שלה לאנשים עם מוגבלות,
                   בהתאם לחוק שוויון זכויות לאנשים עם מוגבלות ולתקן ישראלי 5568 (המבוסס על WCAG 2.0 Level AA).
                 </p>
                 <p>
@@ -144,7 +144,7 @@ export default function AccessibilityStatement() {
             <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-7 border-l-4 border-[#D4AF37]">
               <h2 className="luxury-heading-md mb-4">רכז נגישות</h2>
               <div className="space-y-4 luxury-text-body">
-                <p className="font-semibold">צוות הנגישות של ⁦Pet Wash™⁩ לשירותכם</p>
+                <p className="font-semibold">צוות הנגישות של ⁦PetWash™⁩ לשירותכם</p>
                 
                 <div className="mt-4 space-y-3">
                   <div className="flex items-center gap-3">
@@ -213,7 +213,7 @@ export default function AccessibilityStatement() {
             <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-10">
               <h2 className="luxury-heading-md mb-4">מחויבות מתמשכת</h2>
               <div className="space-y-4 luxury-text-body">
-                <p>⁦Pet Wash™⁩ רואה בנגישות ערך מרכזי ופועלת באופן מתמיד:</p>
+                <p>⁦PetWash™⁩ רואה בנגישות ערך מרכזי ופועלת באופן מתמיד:</p>
                 <ul className="list-disc mr-6 space-y-2">
                   <li>ביקורת נגישות שנתית על ידי מומחים חיצוניים</li>
                   <li>הדרכות צוות פיתוח בנושא נגישות</li>
@@ -259,7 +259,7 @@ export default function AccessibilityStatement() {
             <h2 className="luxury-heading-md mb-4">Commitment to Accessibility</h2>
             <div className="space-y-4 luxury-text-body">
               <p>
-                ⁦Pet Wash™⁩ is committed to making our website and app accessible to people with disabilities,
+                ⁦PetWash™⁩ is committed to making our website and app accessible to people with disabilities,
                 in accordance with the Equal Rights for Persons with Disabilities Law and Israeli Standard 5568 (based on WCAG 2.0 Level AA).
               </p>
               <p>
@@ -348,7 +348,7 @@ export default function AccessibilityStatement() {
           <div className="luxury-glass-panel p-8 luxury-animate-fade-in luxury-delay-5 border-l-4 border-[#D4AF37]">
             <h2 className="luxury-heading-md mb-4">Accessibility Coordinator</h2>
             <div className="space-y-4 luxury-text-body">
-              <p className="font-semibold">⁦Pet Wash™⁩ Accessibility Team at your service</p>
+              <p className="font-semibold">⁦PetWash™⁩ Accessibility Team at your service</p>
               
               <div className="mt-4 space-y-3">
                 <div className="flex items-center gap-3">

@@ -888,7 +888,7 @@ router.post("/v1/brain/redeem", requireAuth, async (req: Request, res: Response)
             } : undefined,
             push: {
               userId: body.userId,
-              title: `כרטיס מתנה מומש – Pet Wash™ ✅`,
+              title: `כרטיס מתנה מומש – PetWash™ ✅`,
               body: `₪${amountILS} מומשו בהצלחה! מס׳ ${redemptionRef}`,
               data: { egiftId: body.egiftId, documentRef: docRef, type: 'egift_redeemed' },
             },
@@ -897,7 +897,7 @@ router.post("/v1/brain/redeem", requireAuth, async (req: Request, res: Response)
               redemptionRef,
               amountILS,
               smsText: buildEgiftRedeemedSms({ redemptionRef, amountILS, stationId: body.stationId }),
-              pushTitle: `כרטיס מתנה מומש – Pet Wash™ ✅`,
+              pushTitle: `כרטיס מתנה מומש – PetWash™ ✅`,
               pushBody: `₪${amountILS} מומשו בהצלחה`,
               documentRef: docRef,
             },
@@ -1010,7 +1010,7 @@ router.post("/v1/egift/purchase", requireAuth, async (req: Request, res: Respons
             } : undefined,
             push: {
               userId: body.userId,
-              title: `כרטיס מתנה נרכש – Pet Wash™ 🎁`,
+              title: `כרטיס מתנה נרכש – PetWash™ 🎁`,
               body: `כרטיס מתנה בשווי ₪${giftValueILS} נרכש בהצלחה! מס׳ ${giftRef}`,
               data: { egiftId: body.egiftId, documentRef: docRef, type: 'egift_purchased' },
             },

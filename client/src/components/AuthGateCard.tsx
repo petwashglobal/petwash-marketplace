@@ -19,7 +19,7 @@ export function AuthGateCard({
   message,
   /** Where to send the user after they authenticate. Defaults to the current page. */
   redirectTo,
-  /** Show the "Join VIP Pet Wash™ Prestige" invitation. Default true. */
+  /** Show the "Join VIP PetWash™ Prestige" invitation. Default true. */
   showVip = true,
 }: {
   language: Language;
@@ -72,7 +72,7 @@ export function AuthGateCard({
           className="mt-4 text-xs font-semibold uppercase tracking-[0.16em] text-amber-700 underline underline-offset-4 hover:text-amber-900"
           data-testid="authgate-vip"
         >
-          {isHe ? 'מועדון VIP Pet Wash™ Prestige' : 'Join VIP Pet Wash™ Prestige'}
+          {isHe ? 'מועדון VIP PetWash™ Prestige' : 'Join VIP PetWash™ Prestige'}
         </button>
       )}
     </div>

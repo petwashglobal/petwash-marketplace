@@ -1,7 +1,7 @@
 /**
  * GEMINI AI WATCHDOG SERVICE
  * 
- * Master AI monitoring system that watches EVERYTHING on the ⁦Pet Wash™⁩ platform:
+ * Master AI monitoring system that watches EVERYTHING on the ⁦PetWash™⁩ platform:
  * - Real-time log monitoring
  * - User struggle detection
  * - Auto-fix engine
@@ -9,7 +9,7 @@
  * - User journey analytics
  * - Proactive issue reporting
  * 
- * Purpose: Ensure users have the smoothest experience so they recommend ⁦Pet Wash™⁩ to friends/family
+ * Purpose: Ensure users have the smoothest experience so they recommend ⁦PetWash™⁩ to friends/family
  * 
  * Uses: Google Gemini 2.5 Flash for intelligent monitoring and auto-fixing
  */
@@ -164,7 +164,7 @@ class GeminiWatchdogService {
     const batch = this.logBuffer.splice(0, this.BUFFER_SIZE);
     
     try {
-      const prompt = `You are a watchdog AI monitoring the ⁦Pet Wash™⁩ platform.
+      const prompt = `You are a watchdog AI monitoring the ⁦PetWash™⁩ platform.
 Analyze these ${batch.length} log entries and identify:
 1. Critical errors affecting users
 2. Performance bottlenecks
@@ -221,7 +221,7 @@ Respond in JSON format:
     if (!this.genAI) return;
 
     try {
-      const prompt = `URGENT: Error detected on ⁦Pet Wash™⁩ platform.
+      const prompt = `URGENT: Error detected on ⁦PetWash™⁩ platform.
 
 Error details:
 - Service: ${entry.service}
@@ -354,7 +354,7 @@ Respond in JSON:
     if (!this.genAI) return;
 
     try {
-      const prompt = `User is struggling on ⁦Pet Wash™⁩ platform:
+      const prompt = `User is struggling on ⁦PetWash™⁩ platform:
 
 User: ${struggle.userId}
 Action: ${struggle.action}
@@ -447,7 +447,7 @@ Respond in JSON:
     if (!this.genAI) return;
 
     try {
-      const prompt = `Checkout FAILED on ⁦Pet Wash™⁩:
+      const prompt = `Checkout FAILED on ⁦PetWash™⁩:
 
 User: ${params.userId}
 Amount: ${params.amount}
@@ -536,7 +536,7 @@ Respond in JSON:
     if (!this.genAI) return;
 
     try {
-      const prompt = `Registration FAILED on ⁦Pet Wash™⁩:
+      const prompt = `Registration FAILED on ⁦PetWash™⁩:
 
 Email: ${params.email}
 Reason: ${params.failureReason}
@@ -601,7 +601,7 @@ Respond in JSON:
       logger.info(`[Gemini Watchdog] 🔧 Attempting auto-fix: ${params.description}`);
 
       // Ask Gemini for executable fix code
-      const prompt = `You are an auto-fix engine for ⁦Pet Wash™⁩ platform.
+      const prompt = `You are an auto-fix engine for ⁦PetWash™⁩ platform.
 
 Issue: ${params.description}
 Service: ${params.service}
@@ -762,7 +762,7 @@ Respond in JSON:
         iotHardware: 'K9000 wash stations',
       };
 
-      const prompt = `You are a technology update advisor for the Pet Wash™ enterprise platform.
+      const prompt = `You are a technology update advisor for the PetWash™ enterprise platform.
 Current date: ${now.toISOString().split('T')[0]}
 
 Platform tech stack:

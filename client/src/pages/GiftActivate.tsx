@@ -291,7 +291,7 @@ export default function GiftActivate() {
             {isHe ? 'קיבלת מתנה! 🎁' : 'You received a gift! 🎁'}
           </h1>
           <p className="text-sm" style={{ color: `${GOLD}CC` }}>
-            {isHe ? 'כרטיס מתנה דיגיטלי — Pet Wash™' : 'Digital gift card — Pet Wash™'}
+            {isHe ? 'כרטיס מתנה דיגיטלי — PetWash™' : 'Digital gift card — PetWash™'}
           </p>
         </div>
 

@@ -15,8 +15,8 @@ import {
 
 const router = Router();
 
-const CONSENT_TEXT_HE = 'אני מאשר/ת בזאת כי אני מבקש/ת למחוק את חשבוני לצמיתות. אני מבין/ה שפעולה זו אינה ניתנת לביטול ושכל הנתונים האישיים שלי יימחקו בהתאם לחוק הגנת הפרטיות הישראלי 2025. Pet Wash™ תשמור רישומים חוקיים של בקשה זו למשך 90 יום.';
-const CONSENT_TEXT_EN = 'I hereby confirm that I am requesting permanent deletion of my account. I understand this action is irreversible and all my personal data will be deleted in accordance with the Israeli Privacy Protection Law 2025. Pet Wash™ will retain legal records of this request for 90 days.';
+const CONSENT_TEXT_HE = 'אני מאשר/ת בזאת כי אני מבקש/ת למחוק את חשבוני לצמיתות. אני מבין/ה שפעולה זו אינה ניתנת לביטול ושכל הנתונים האישיים שלי יימחקו בהתאם לחוק הגנת הפרטיות הישראלי 2025. PetWash™ תשמור רישומים חוקיים של בקשה זו למשך 90 יום.';
+const CONSENT_TEXT_EN = 'I hereby confirm that I am requesting permanent deletion of my account. I understand this action is irreversible and all my personal data will be deleted in accordance with the Israeli Privacy Protection Law 2025. PetWash™ will retain legal records of this request for 90 days.';
 
 function computeHash(data: object, previousHash?: string): string {
   const payload = JSON.stringify({ ...data, previousHash: previousHash || 'GENESIS' });

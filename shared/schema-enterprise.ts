@@ -1146,7 +1146,7 @@ export const companyProfile = pgTable("company_profile", {
   country: varchar("country").notNull().default("IL"), // Israel only
   
   // Business details
-  brandName: varchar("brand_name").notNull().default("Pet Wash™"),
+  brandName: varchar("brand_name").notNull().default("PetWash™"),
   tagline: text("tagline"),
   logo: varchar("logo"),
   website: varchar("website").default("https://petwash.co.il"),
@@ -1646,7 +1646,7 @@ export const insertLedgerTransactionSchema = createInsertSchema(ledgerTransactio
 export const insertInvoiceHeaderSchema = createInsertSchema(invoiceHeaders).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({ id: true, createdAt: true });
 
-// =================== PROVIDER APPLICATION SYSTEM (Pet Wash™) ===================
+// =================== PROVIDER APPLICATION SYSTEM (PetWash™) ===================
 // Complete 7-stage verification workflow for marketplace providers
 
 // Application stage enum

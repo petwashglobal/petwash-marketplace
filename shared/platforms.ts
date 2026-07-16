@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Platform Configuration
+ * PetWash™ Platform Configuration
  * Unified platform definitions for the entire ecosystem
  * 
  * Architecture: One "Smart Hub" platform with modes for:

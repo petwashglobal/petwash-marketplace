@@ -1,5 +1,5 @@
 /**
- * Pet Wash™ Booking Request Modal
+ * PetWash™ Booking Request Modal
  * 
  * Features:
  * - Service dates selection

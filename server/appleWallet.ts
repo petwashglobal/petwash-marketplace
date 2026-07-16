@@ -123,9 +123,9 @@ export class AppleWalletService {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.vip',
       teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
-      organizationName: '⁦Pet Wash™⁩',
+      organizationName: '⁦PetWash™⁩',
       description: `Pet Wash ${data.tier.toUpperCase()} VIP Card`,
-      logoText: '⁦Pet Wash™⁩',
+      logoText: '⁦PetWash™⁩',
       serialNumber: `VIP_${data.userId}_${data.tier}_${Date.now()}`,
       
       backgroundColor: colors.backgroundColor,
@@ -222,9 +222,9 @@ export class AppleWalletService {
       formatVersion: 1,
       passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher',
       teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
-      organizationName: '⁦Pet Wash™⁩',
+      organizationName: '⁦PetWash™⁩',
       description: 'Pet Wash E-Voucher',
-      logoText: '⁦Pet Wash™⁩',
+      logoText: '⁦PetWash™⁩',
       serialNumber: `VOUCHER_${data.voucherId}_${Date.now()}`,
 
       backgroundColor: 'rgb(12, 12, 12)',

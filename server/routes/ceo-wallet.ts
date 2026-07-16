@@ -28,7 +28,7 @@ router.get('/business-card', async (req, res) => {
     const businessCardData = {
       name: 'Nir Hadad',
       title: 'Founder & CEO',
-      company: '⁦Pet Wash™⁩',
+      company: '⁦PetWash™⁩',
       email: 'nir.h@petwash.co.il',
       phone: '+972-50-XXX-XXXX',
       website: 'https://petwash.co.il',
@@ -50,7 +50,7 @@ router.get('/business-card', async (req, res) => {
         <head>
           <meta charset="utf-8">
           <meta name="viewport" content="width=device-width, initial-scale=1">
-          <title>⁦Pet Wash™⁩ - CEO Business Card</title>
+          <title>⁦PetWash™⁩ - CEO Business Card</title>
           <style>
             body {
               font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -82,7 +82,7 @@ router.get('/business-card', async (req, res) => {
           <div class="card">
             <div class="logo">🎴</div>
             <h1>CEO Business Card</h1>
-            <p><strong>Nir Hadad</strong><br>Founder & CEO<br>⁦Pet Wash™⁩</p>
+            <p><strong>Nir Hadad</strong><br>Founder & CEO<br>⁦PetWash™⁩</p>
             <div class="info">
               <p style="font-size: 14px;">Apple Wallet pass generation is currently being configured. Your digital business card will be available soon.</p>
               <p style="font-size: 12px; margin-top: 15px;">Contact: nir.h@petwash.co.il</p>
@@ -113,7 +113,7 @@ router.get('/business-card', async (req, res) => {
       <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title>Error - ⁦Pet Wash™⁩</title>
+        <title>Error - ⁦PetWash™⁩</title>
         <style>
           body {
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
@@ -154,7 +154,7 @@ router.post('/business-card', async (req, res) => {
     const businessCardData = {
       name: name || 'Nir Hadad',
       title: title || 'Founder & CEO',
-      company: '⁦Pet Wash™⁩',
+      company: '⁦PetWash™⁩',
       email: email || 'nir.h@petwash.co.il',
       phone: '+972-50-XXX-XXXX',
       website: 'https://petwash.co.il',
@@ -219,7 +219,7 @@ router.post('/send-wallet-email', async (req, res) => {
     let emailContent = '';
 
     if (passType === 'business-card') {
-      emailSubject = '🎴 Your ⁦Pet Wash™⁩ Digital Business Card';
+      emailSubject = '🎴 Your ⁦PetWash™⁩ Digital Business Card';
       emailContent = `
         <!DOCTYPE html>
         <html>
@@ -235,11 +235,11 @@ router.post('/send-wallet-email', async (req, res) => {
         <body>
           <div class="header">
             <h1>🎴 Your Digital Business Card</h1>
-            <p>Founder & CEO - ⁦Pet Wash™⁩</p>
+            <p>Founder & CEO - ⁦PetWash™⁩</p>
           </div>
           <div class="content">
             <p>Dear ${name || 'Executive Team Member'},</p>
-            <p>Your premium ⁦Pet Wash™⁩ digital business card is ready to add to Apple Wallet.</p>
+            <p>Your premium ⁦PetWash™⁩ digital business card is ready to add to Apple Wallet.</p>
             <p><strong>Features:</strong></p>
             <ul>
               <li>✅ Luxury black design (Centurion-style)</li>
@@ -260,7 +260,7 @@ router.post('/send-wallet-email', async (req, res) => {
         </html>
       `;
     } else if (passType === 'loyalty') {
-      emailSubject = '🐾 Your ⁦Pet Wash™⁩ VIP Loyalty Card';
+      emailSubject = '🐾 Your ⁦PetWash™⁩ VIP Loyalty Card';
       emailContent = `
         <!DOCTYPE html>
         <html>
@@ -276,11 +276,11 @@ router.post('/send-wallet-email', async (req, res) => {
         <body>
           <div class="header">
             <h1>🐾 Your VIP Loyalty Card</h1>
-            <p>⁦Pet Wash™⁩ ${tier?.toUpperCase() || 'PLATINUM'} Member</p>
+            <p>⁦PetWash™⁩ ${tier?.toUpperCase() || 'PLATINUM'} Member</p>
           </div>
           <div class="content">
             <p>Dear ${name || 'VIP Member'},</p>
-            <p>Your ⁦Pet Wash™⁩ VIP loyalty card is ready to add to Apple Wallet.</p>
+            <p>Your ⁦PetWash™⁩ VIP loyalty card is ready to add to Apple Wallet.</p>
             <p><strong>Benefits:</strong></p>
             <ul>
               <li>✅ Instant loyalty discounts</li>
@@ -303,7 +303,7 @@ router.post('/send-wallet-email', async (req, res) => {
       to: email,
       from: {
         email: 'noreply@petwash.co.il',
-        name: '⁦Pet Wash™⁩'
+        name: '⁦PetWash™⁩'
       },
       subject: emailSubject,
       html: emailContent
@@ -479,7 +479,7 @@ router.post('/send-launch-invitation', async (req, res) => {
           <div class="header">
             <div class="logo">🐾</div>
             <h1>You're Officially Invited</h1>
-            <div class="subtitle">⁦Pet Wash™⁩ Israel Brand Launch 2026</div>
+            <div class="subtitle">⁦PetWash™⁩ Israel Brand Launch 2026</div>
           </div>
 
           <div class="section">
@@ -487,7 +487,7 @@ router.post('/send-launch-invitation', async (req, res) => {
               Dear Valued Team Member,
             </p>
             <p>
-              It is with immense pride and excitement that we invite you to the <strong>official launch</strong> of <strong>⁦Pet Wash™⁩</strong> in Israel. This milestone represents months of dedication, innovation, and unwavering commitment to revolutionizing premium pet care.
+              It is with immense pride and excitement that we invite you to the <strong>official launch</strong> of <strong>⁦PetWash™⁩</strong> in Israel. This milestone represents months of dedication, innovation, and unwavering commitment to revolutionizing premium pet care.
             </p>
           </div>
 
@@ -499,7 +499,7 @@ router.post('/send-launch-invitation', async (req, res) => {
           <div class="section">
             <h2>🌟 A New Era in Pet Care</h2>
             <p>
-              ⁦Pet Wash™⁩ isn't just launching a service—we're introducing a <strong>premium lifestyle brand</strong> that combines cutting-edge technology, organic excellence, and uncompromising quality. This is the culmination of our vision to provide Israel's pet owners with the finest care their beloved companions deserve.
+              ⁦PetWash™⁩ isn't just launching a service—we're introducing a <strong>premium lifestyle brand</strong> that combines cutting-edge technology, organic excellence, and uncompromising quality. This is the culmination of our vision to provide Israel's pet owners with the finest care their beloved companions deserve.
             </p>
           </div>
 
@@ -519,13 +519,13 @@ router.post('/send-launch-invitation', async (req, res) => {
           <div class="section">
             <h2>🚀 Our Mission</h2>
             <p>
-              To establish ⁦Pet Wash™⁩ as <strong>Israel's leading premium pet care brand</strong>, setting new standards for quality, convenience, and innovation. We're not just washing pets—we're creating an experience that celebrates the bond between pets and their families.
+              To establish ⁦PetWash™⁩ as <strong>Israel's leading premium pet care brand</strong>, setting new standards for quality, convenience, and innovation. We're not just washing pets—we're creating an experience that celebrates the bond between pets and their families.
             </p>
           </div>
 
           <div class="quote">
             "Excellence is not a destination; it is a continuous journey that never ends."
-            <div style="margin-top: 15px; color: #667eea; font-weight: 600;">— ⁦Pet Wash™⁩ Vision</div>
+            <div style="margin-top: 15px; color: #667eea; font-weight: 600;">— ⁦PetWash™⁩ Vision</div>
           </div>
 
           <div class="section">
@@ -540,19 +540,19 @@ router.post('/send-launch-invitation', async (req, res) => {
 
           <div class="cta">
             <a href="https://petwash.co.il" class="button">
-              Visit ⁦Pet Wash™⁩
+              Visit ⁦PetWash™⁩
             </a>
           </div>
 
           <div class="footer">
-            <div class="brand">🐾 ⁦Pet Wash™⁩</div>
+            <div class="brand">🐾 ⁦PetWash™⁩</div>
             <p><strong>Premium Pet Care Platform</strong></p>
             <p style="margin-top: 15px;">Launching in Israel - ${formattedDate}</p>
             <p style="font-size: 14px; margin-top: 20px;">
               <a href="https://petwash.co.il" style="color: #667eea; text-decoration: none;">petwash.co.il</a>
             </p>
             <p style="font-size: 12px; margin-top: 25px; color: #9ca3af;">
-              This invitation was sent by ⁦Pet Wash™⁩ Management<br>
+              This invitation was sent by ⁦PetWash™⁩ Management<br>
               For inquiries: Support@PetWash.co.il
             </p>
           </div>
@@ -566,9 +566,9 @@ router.post('/send-launch-invitation', async (req, res) => {
       cc: ccRecipients,
       from: {
         email: 'noreply@petwash.co.il',
-        name: '⁦Pet Wash™⁩ Management'
+        name: '⁦PetWash™⁩ Management'
       },
-      subject: `🐾 Official Invitation: ⁦Pet Wash™⁩ Israel Launch - ${formattedDate}`,
+      subject: `🐾 Official Invitation: ⁦PetWash™⁩ Israel Launch - ${formattedDate}`,
       html: emailContent
     };
 

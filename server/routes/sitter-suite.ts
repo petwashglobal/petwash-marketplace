@@ -937,7 +937,7 @@ router.post('/bookings', requireAuth, async (req, res) => {
           const ownerName = (req as any).user?.email?.split('@')[0] || 'לקוח/ה';
           await smsService.sendSMS(
             sitter.phone,
-            `🐾 ⁦Pet Wash™⁩ - בקשת הזמנה חדשה!\n` +
+            `🐾 ⁦PetWash™⁩ - בקשת הזמנה חדשה!\n` +
             `לקוח/ה: ${ownerName}\n` +
             `תאריכים: ${start.toLocaleDateString('he-IL')} - ${end.toLocaleDateString('he-IL')}\n` +
             `${totalDays} ימים · ₪${(pricing.subtotal).toFixed(0)}\n` +

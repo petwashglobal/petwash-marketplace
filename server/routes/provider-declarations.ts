@@ -147,7 +147,7 @@ router.post('/:key/start', requireAuth, async (req, res) => {
         submissionId: submission.id,
         templateSlug,
         documentType: declarationDocType(doc.key, doc.version),
-        documentName: `Pet Wash™ ${doc.titleEn}`,
+        documentName: `PetWash™ ${doc.titleEn}`,
         language,
         status: submission.status,
         signerEmail,

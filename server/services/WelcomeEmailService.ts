@@ -9,7 +9,7 @@ type WelcomeAudience = 'public_customer' | 'provider_applicant' | 'staff_request
 
 
 function getLogo(): string {
-    return `<img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" style="max-width:180px;height:auto;" />`;
+    return `<img src="${PETWASH_LOGO_BASE64}" alt="PetWash™" style="max-width:180px;height:auto;" />`;
 }
 function getWelcomeHtml(audience: WelcomeAudience, membershipNumber: string, language: string): string {
   const isHe = language === 'he';
@@ -19,14 +19,14 @@ function getWelcomeHtml(audience: WelcomeAudience, membershipNumber: string, lan
 
   const content: Record<WelcomeAudience, { title: string; subtitle: string; body: string; cta: string; ctaUrl: string }> = {
     public_customer: {
-      title: isHe ? 'ברוכים הבאים ל-Pet Wash™' : 'Welcome to Pet Wash™',
+      title: isHe ? 'ברוכים הבאים ל-PetWash™' : 'Welcome to PetWash™',
       subtitle: isHe ? 'חשבונך נוצר בהצלחה' : 'Your account has been created',
       body: isHe
         ? `<p style="margin:0 0 16px;color:#444;font-size:15px;line-height:1.6;">מספר החברות שלך:</p>
            <div style="background:#f0ead6;border:2px solid #c9a96e;border-radius:2px;padding:16px;text-align:center;margin:0 0 20px;">
              <span style="font-size:22px;font-weight:700;letter-spacing:2px;color:#1a1a1a;font-family:'Courier New',monospace;">${membershipNumber}</span>
            </div>
-           <p style="margin:0 0 12px;color:#444;font-size:14px;line-height:1.6;">עם Pet Wash™ תוכלו ליהנות מ:</p>
+           <p style="margin:0 0 12px;color:#444;font-size:14px;line-height:1.6;">עם PetWash™ תוכלו ליהנות מ:</p>
            <ul style="margin:0 0 20px;padding-right:20px;color:#555;font-size:14px;line-height:1.8;">
              <li>שטיפה עצמית 24/7 בתחנות K9000™</li>
              <li>שמפו אורגני 100% עם שמן עץ התה</li>
@@ -37,7 +37,7 @@ function getWelcomeHtml(audience: WelcomeAudience, membershipNumber: string, lan
            <div style="background:#f0ead6;border:2px solid #c9a96e;border-radius:2px;padding:16px;text-align:center;margin:0 0 20px;">
              <span style="font-size:22px;font-weight:700;letter-spacing:2px;color:#1a1a1a;font-family:'Courier New',monospace;">${membershipNumber}</span>
            </div>
-           <p style="margin:0 0 12px;color:#444;font-size:14px;line-height:1.6;">With Pet Wash™ you can enjoy:</p>
+           <p style="margin:0 0 12px;color:#444;font-size:14px;line-height:1.6;">With PetWash™ you can enjoy:</p>
            <ul style="margin:0 0 20px;padding-left:20px;color:#555;font-size:14px;line-height:1.8;">
              <li>24/7 self-wash at K9000™ stations</li>
              <li>100% organic tea tree oil shampoo</li>
@@ -48,7 +48,7 @@ function getWelcomeHtml(audience: WelcomeAudience, membershipNumber: string, lan
       ctaUrl: 'https://petwash.co.il/complete-profile',
     },
     provider_applicant: {
-      title: isHe ? 'ברוכים הבאים לצוות Pet Wash™' : 'Welcome to the Pet Wash™ Team',
+      title: isHe ? 'ברוכים הבאים לצוות PetWash™' : 'Welcome to the PetWash™ Team',
       subtitle: isHe ? 'הרשמתך כנותן שירות התקבלה' : 'Your provider application received',
       body: isHe
         ? `<p style="margin:0 0 16px;color:#444;font-size:15px;line-height:1.6;">מספר הזיהוי שלך כנותן שירות:</p>
@@ -80,7 +80,7 @@ function getWelcomeHtml(audience: WelcomeAudience, membershipNumber: string, lan
     },
     staff_request: {
       title: isHe ? 'בקשתך להצטרפות לצוות התקבלה' : 'Staff Access Request Received',
-      subtitle: isHe ? 'Pet Wash™ - צוות ההנהלה' : 'Pet Wash™ - Management Team',
+      subtitle: isHe ? 'PetWash™ - צוות ההנהלה' : 'PetWash™ - Management Team',
       body: isHe
         ? `<p style="margin:0 0 16px;color:#444;font-size:15px;line-height:1.6;">מספר הזיהוי שלך:</p>
            <div style="background:#f0ead6;border:2px solid #c9a96e;border-radius:2px;padding:16px;text-align:center;margin:0 0 20px;">
@@ -126,7 +126,7 @@ function getWelcomeHtml(audience: WelcomeAudience, membershipNumber: string, lan
           </div>
         </td></tr>
         <tr><td style="padding:24px 32px;border-top:1px solid #eee;text-align:center;">
-          <p style="margin:0 0 8px;color:#bbb;font-size:11px;">© ${year} Pet Wash™. ${isHe ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
+          <p style="margin:0 0 8px;color:#bbb;font-size:11px;">© ${year} PetWash™. ${isHe ? 'כל הזכויות שמורות.' : 'All rights reserved.'}</p>
           <p style="margin:0;color:#ccc;font-size:10px;">${isHe ? 'אימייל זה נשלח אוטומטית. אין להשיב.' : 'This is an automated email. Do not reply.'}</p>
         </td></tr>
       </table>

@@ -1,5 +1,5 @@
 /**
- * ⁦Pet Wash™⁩ Global Header 2025
+ * ⁦PetWash™⁩ Global Header 2025
  * Octopus model + Loyalty & VIP Club + 6 languages + luxury menus
  *
  * Platforms:

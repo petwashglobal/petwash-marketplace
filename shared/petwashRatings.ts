@@ -1,5 +1,5 @@
 // FILE: shared/petwashRatings.ts
-// Pet Wash™ - Rating System
+// PetWash™ - Rating System
 // Computes average ratings, identifies low performers, and triggers auto-reviews
 
 export interface Rating {

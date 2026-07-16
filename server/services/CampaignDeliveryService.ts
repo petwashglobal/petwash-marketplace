@@ -220,7 +220,7 @@ function buildEmailHtml(campaignType: CampaignType, couponCode: string, discount
 <body style="font-family:Arial,sans-serif;background:#f5f5f5;margin:0;padding:20px">
 <div style="max-width:560px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;box-shadow:0 2px 8px rgba(0,0,0,.1)">
   <div style="background:#000;padding:24px;text-align:center">
-    <h1 style="color:#fff;margin:0;font-size:24px">⁦Pet Wash™⁩</h1>
+    <h1 style="color:#fff;margin:0;font-size:24px">⁦PetWash™⁩</h1>
     <p style="color:#aaa;margin:4px 0 0;font-size:12px">ח.פ. 517145033 | petwash.co.il</p>
   </div>
   <div style="padding:32px;direction:rtl;text-align:right">

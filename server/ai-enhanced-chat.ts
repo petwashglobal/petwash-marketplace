@@ -155,20 +155,20 @@ function getOfflineFallbackAnswer(message: string, language: 'he' | 'en' | 'ar' 
 
   const answers: Record<string, Record<string, string>> = {
     pricing: {
-      he: "🐾 מחירון ⁦Pet Wash™⁩ 2026:\n\n💧 שטיפה בודדת: ₪55\n💧 חבילת 3 שטיפות: ₪150 (חיסכון ₪15)\n💧 חבילת 5 שטיפות: ₪220 (חיסכון ₪55)\n💧 חבילת 10 שטיפות: ₪400 (חיסכון ₪150!)\n\nכל חבילה כוללת: שמפו מותאם לחיות מחמד, מרכך, שטיפת פרעושים, חיטוי, מים חמים ומייבשים 🛁\nבלי עלויות נסתרות, בלי הגבלת זמן! ✨",
-      en: "🐾 ⁦Pet Wash™⁩ 2026 Pricing:\n\n💧 Single wash: ₪55\n💧 3-wash pack: ₪150 (save ₪15)\n💧 5-wash pack: ₪220 (save ₪55)\n💧 10-wash pack: ₪400 (save ₪150!)\n\nAll packs include: pet-formulated shampoo, conditioner, flea rinse, disinfectant, warm water & dryers 🛁\nNo hidden fees, no time limits! ✨",
-      ar: "🐾 أسعار ⁦Pet Wash™⁩ 2026:\n\n💧 غسلة واحدة: ₪55\n💧 حزمة 3 غسلات: ₪150 (وفر ₪15)\n💧 حزمة 5 غسلات: ₪220 (وفر ₪55)\n💧 حزمة 10 غسلات: ₪400 (وفر ₪150!)\n\nجميع الحزم تشمل: شامبو مخصص للحيوانات الأليفة، بلسم، غسول برغوث، مطهر، ماء دافئ ومجففات 🛁",
-      ru: "🐾 Цены ⁦Pet Wash™⁩ 2026:\n\n💧 Одна мойка: ₪55\n💧 Пакет 3 мойки: ₪150 (экономия ₪15)\n💧 Пакет 5 моек: ₪220 (экономия ₪55)\n💧 Пакет 10 моек: ₪400 (экономия ₪150!)\n\nВсе пакеты включают: шампунь, разработанный для питомцев, кондиционер, средство от блох, дезинфекцию, тёплую воду и сушилки 🛁",
-      fr: "🐾 Tarifs ⁦Pet Wash™⁩ 2026 :\n\n💧 Lavage unique : ₪55\n💧 Pack 3 lavages : ₪150 (économisez ₪15)\n💧 Pack 5 lavages : ₪220 (économisez ₪55)\n💧 Pack 10 lavages : ₪400 (économisez ₪150 !)\n\nTous les packs comprennent : shampooing formulé pour animaux, après-shampooing, rinçage anti-puces, désinfectant, eau chaude et séchoirs 🛁",
-      es: "🐾 Precios ⁦Pet Wash™⁩ 2026:\n\n💧 Lavado único: ₪55\n💧 Paquete 3 lavados: ₪150 (ahorra ₪15)\n💧 Paquete 5 lavados: ₪220 (ahorra ₪55)\n💧 Paquete 10 lavados: ₪400 (¡ahorra ₪150!)\n\nTodos los paquetes incluyen: champú formulado para mascotas, acondicionador, enjuague antipulgas, desinfectante, agua caliente y secadores 🛁"
+      he: "🐾 מחירון ⁦PetWash™⁩ 2026:\n\n💧 שטיפה בודדת: ₪55\n💧 חבילת 3 שטיפות: ₪150 (חיסכון ₪15)\n💧 חבילת 5 שטיפות: ₪220 (חיסכון ₪55)\n💧 חבילת 10 שטיפות: ₪400 (חיסכון ₪150!)\n\nכל חבילה כוללת: שמפו מותאם לחיות מחמד, מרכך, שטיפת פרעושים, חיטוי, מים חמים ומייבשים 🛁\nבלי עלויות נסתרות, בלי הגבלת זמן! ✨",
+      en: "🐾 ⁦PetWash™⁩ 2026 Pricing:\n\n💧 Single wash: ₪55\n💧 3-wash pack: ₪150 (save ₪15)\n💧 5-wash pack: ₪220 (save ₪55)\n💧 10-wash pack: ₪400 (save ₪150!)\n\nAll packs include: pet-formulated shampoo, conditioner, flea rinse, disinfectant, warm water & dryers 🛁\nNo hidden fees, no time limits! ✨",
+      ar: "🐾 أسعار ⁦PetWash™⁩ 2026:\n\n💧 غسلة واحدة: ₪55\n💧 حزمة 3 غسلات: ₪150 (وفر ₪15)\n💧 حزمة 5 غسلات: ₪220 (وفر ₪55)\n💧 حزمة 10 غسلات: ₪400 (وفر ₪150!)\n\nجميع الحزم تشمل: شامبو مخصص للحيوانات الأليفة، بلسم، غسول برغوث، مطهر، ماء دافئ ومجففات 🛁",
+      ru: "🐾 Цены ⁦PetWash™⁩ 2026:\n\n💧 Одна мойка: ₪55\n💧 Пакет 3 мойки: ₪150 (экономия ₪15)\n💧 Пакет 5 моек: ₪220 (экономия ₪55)\n💧 Пакет 10 моек: ₪400 (экономия ₪150!)\n\nВсе пакеты включают: шампунь, разработанный для питомцев, кондиционер, средство от блох, дезинфекцию, тёплую воду и сушилки 🛁",
+      fr: "🐾 Tarifs ⁦PetWash™⁩ 2026 :\n\n💧 Lavage unique : ₪55\n💧 Pack 3 lavages : ₪150 (économisez ₪15)\n💧 Pack 5 lavages : ₪220 (économisez ₪55)\n💧 Pack 10 lavages : ₪400 (économisez ₪150 !)\n\nTous les packs comprennent : shampooing formulé pour animaux, après-shampooing, rinçage anti-puces, désinfectant, eau chaude et séchoirs 🛁",
+      es: "🐾 Precios ⁦PetWash™⁩ 2026:\n\n💧 Lavado único: ₪55\n💧 Paquete 3 lavados: ₪150 (ahorra ₪15)\n💧 Paquete 5 lavados: ₪220 (ahorra ₪55)\n💧 Paquete 10 lavados: ₪400 (¡ahorra ₪150!)\n\nTodos los paquetes incluyen: champú formulado para mascotas, acondicionador, enjuague antipulgas, desinfectante, agua caliente y secadores 🛁"
     },
     loyalty: {
-      he: "⭐ תכנית נאמנות VIP של ⁦Pet Wash™⁩ - 7 דרגות:\n\n🥉 ברונזה: 5% הנחה בסיסית\n🥈 כסף (2,500 נק'): 6% הנחה\n🥇 זהב (7,500 נק'): 7% הנחה + שטיפה חינם ביום הולדת\n💎 פלטינום (15,000 נק'): 8% הנחה + תמיכה בעדיפות\n💠 יהלום (25,000 נק'): 9% הנחה + אירועים בלעדיים\n💚 אמרלד (40,000 נק'): 10% הנחה + מנהל חשבון אישי\n👑 רויאל (50,000 נק'): 15% הנחה + שירות קונסיירז׳ VIP!\n\nצוברים נקודה אחת על כל ₪1! 🐾",
-      en: "⭐ ⁦Pet Wash™⁩ VIP Loyalty Program - 7 Tiers:\n\n🥉 Bronze: 5% base discount\n🥈 Silver (2,500 pts): 6% discount\n🥇 Gold (7,500 pts): 7% discount + free birthday wash\n💎 Platinum (15,000 pts): 8% discount + priority support\n💠 Diamond (25,000 pts): 9% discount + exclusive events\n💚 Emerald (40,000 pts): 10% discount + personal account manager\n👑 Royal (50,000 pts): 15% discount + VIP concierge!\n\nEarn 1 point per ₪1 spent! 🐾",
-      ar: "⭐ برنامج ولاء ⁦Pet Wash™⁩ - 7 مستويات:\n\n🥉 برونزي: خصم 5% أساسي\n🥈 فضي (2,500 نقطة): خصم 6%\n🥇 ذهبي (7,500 نقطة): خصم 7% + غسلة مجانية بعيد الميلاد\n💎 بلاتيني (15,000 نقطة): خصم 8%\n💠 ماسي (25,000 نقطة): خصم 9%\n💚 زمردي (40,000 نقطة): خصم 10%\n👑 ملكي (50,000 نقطة): خصم 15%! 🐾",
-      ru: "⭐ Программа лояльности ⁦Pet Wash™⁩ - 7 уровней:\n\n🥉 Бронза: базовая скидка 5%\n🥈 Серебро (2500 баллов): скидка 6%\n🥇 Золото (7500 баллов): скидка 7% + бесплатная мойка в день рождения\n💎 Платина (15000 баллов): скидка 8%\n💠 Бриллиант (25000 баллов): скидка 9%\n💚 Изумруд (40000 баллов): скидка 10%\n👑 Королевский (50000 баллов): скидка 15%! 🐾",
-      fr: "⭐ Programme de fidélité VIP ⁦Pet Wash™⁩ - 7 niveaux :\n\n🥉 Bronze : réduction de base 5%\n🥈 Argent (2 500 pts) : 6% de réduction\n🥇 Or (7 500 pts) : 7% de réduction + lavage gratuit anniversaire\n💎 Platine (15 000 pts) : 8% de réduction\n💠 Diamant (25 000 pts) : 9% de réduction\n💚 Émeraude (40 000 pts) : 10% de réduction\n👑 Royal (50 000 pts) : 15% de réduction ! 🐾",
-      es: "⭐ Programa de lealtad VIP ⁦Pet Wash™⁩ - 7 niveles:\n\n🥉 Bronce: descuento base 5%\n🥈 Plata (2.500 pts): 6% de descuento\n🥇 Oro (7.500 pts): 7% de descuento + lavado gratis de cumpleaños\n💎 Platino (15.000 pts): 8% de descuento\n💠 Diamante (25.000 pts): 9% de descuento\n💚 Esmeralda (40.000 pts): 10% de descuento\n👑 Real (50.000 pts): ¡15% de descuento! 🐾"
+      he: "⭐ תכנית נאמנות VIP של ⁦PetWash™⁩ - 7 דרגות:\n\n🥉 ברונזה: 5% הנחה בסיסית\n🥈 כסף (2,500 נק'): 6% הנחה\n🥇 זהב (7,500 נק'): 7% הנחה + שטיפה חינם ביום הולדת\n💎 פלטינום (15,000 נק'): 8% הנחה + תמיכה בעדיפות\n💠 יהלום (25,000 נק'): 9% הנחה + אירועים בלעדיים\n💚 אמרלד (40,000 נק'): 10% הנחה + מנהל חשבון אישי\n👑 רויאל (50,000 נק'): 15% הנחה + שירות קונסיירז׳ VIP!\n\nצוברים נקודה אחת על כל ₪1! 🐾",
+      en: "⭐ ⁦PetWash™⁩ VIP Loyalty Program - 7 Tiers:\n\n🥉 Bronze: 5% base discount\n🥈 Silver (2,500 pts): 6% discount\n🥇 Gold (7,500 pts): 7% discount + free birthday wash\n💎 Platinum (15,000 pts): 8% discount + priority support\n💠 Diamond (25,000 pts): 9% discount + exclusive events\n💚 Emerald (40,000 pts): 10% discount + personal account manager\n👑 Royal (50,000 pts): 15% discount + VIP concierge!\n\nEarn 1 point per ₪1 spent! 🐾",
+      ar: "⭐ برنامج ولاء ⁦PetWash™⁩ - 7 مستويات:\n\n🥉 برونزي: خصم 5% أساسي\n🥈 فضي (2,500 نقطة): خصم 6%\n🥇 ذهبي (7,500 نقطة): خصم 7% + غسلة مجانية بعيد الميلاد\n💎 بلاتيني (15,000 نقطة): خصم 8%\n💠 ماسي (25,000 نقطة): خصم 9%\n💚 زمردي (40,000 نقطة): خصم 10%\n👑 ملكي (50,000 نقطة): خصم 15%! 🐾",
+      ru: "⭐ Программа лояльности ⁦PetWash™⁩ - 7 уровней:\n\n🥉 Бронза: базовая скидка 5%\n🥈 Серебро (2500 баллов): скидка 6%\n🥇 Золото (7500 баллов): скидка 7% + бесплатная мойка в день рождения\n💎 Платина (15000 баллов): скидка 8%\n💠 Бриллиант (25000 баллов): скидка 9%\n💚 Изумруд (40000 баллов): скидка 10%\n👑 Королевский (50000 баллов): скидка 15%! 🐾",
+      fr: "⭐ Programme de fidélité VIP ⁦PetWash™⁩ - 7 niveaux :\n\n🥉 Bronze : réduction de base 5%\n🥈 Argent (2 500 pts) : 6% de réduction\n🥇 Or (7 500 pts) : 7% de réduction + lavage gratuit anniversaire\n💎 Platine (15 000 pts) : 8% de réduction\n💠 Diamant (25 000 pts) : 9% de réduction\n💚 Émeraude (40 000 pts) : 10% de réduction\n👑 Royal (50 000 pts) : 15% de réduction ! 🐾",
+      es: "⭐ Programa de lealtad VIP ⁦PetWash™⁩ - 7 niveles:\n\n🥉 Bronce: descuento base 5%\n🥈 Plata (2.500 pts): 6% de descuento\n🥇 Oro (7.500 pts): 7% de descuento + lavado gratis de cumpleaños\n💎 Platino (15.000 pts): 8% de descuento\n💠 Diamante (25.000 pts): 9% de descuento\n💚 Esmeralda (40.000 pts): 10% de descuento\n👑 Real (50.000 pts): ¡15% de descuento! 🐾"
     },
     k9000: {
       he: "🏆 ⁦K9000™⁩ 2.0 - תחנת השטיפה המתקדמת בעולם!\n\n✅ עיצוב TWIN - 2 תאי רחצה, שירות ל-2 חיות במקביל\n✅ 4 משאבות בכל צד: שמפו מותאם לחיות מחמד, מרכך, נגד פרעושים, חיטוי\n✅ 100% שמן עץ התה האוסטרלי - דוחה מזיקים, אנטיבקטריאלי\n✅ מייבשים בשתי עוצמות - עדין וחזק\n✅ מים חמים תמיד - 27 אמפר תלת-פאזי\n✅ תשלום ללא מגע: NFC, QR, כרטיס אשראי, Apple Pay\n✅ תאורת LED 7 כוכבים\n✅ פעיל 24/7, בכל מזג אוויר\n✅ מתאים לכל גזע - מצ'יוואווה ועד דוג גדול 🐾",
@@ -187,20 +187,20 @@ function getOfflineFallbackAnswer(message: string, language: 'he' | 'en' | 'ar' 
       es: "🐾 Servicios ⁦Pet Wash™⁩:\n\n🛁 ⁦K9000™⁩ - Estaciones de lavado autoservicio\n🏠 ⁦The Sitter Suite™⁩ - Mercado de cuidadores\n🐕 ⁦Walk My Pet™⁩ - Paseo de perros con GPS\n🚗 ⁦PetTrek™⁩ - Transporte seguro de mascotas\n🎨 ⁦The Plush Lab™⁩ - Creador de avatar con IA\n🔍 ⁦Paw Finder™⁩ - Servicio gratuito de mascotas perdidas\n🎓 ⁦Pet Wash Academy™⁩ - Formación profesional\n\nMás info: petwash.co.il 🌟"
     },
     contact: {
-      he: "📞 צרו קשר עם ⁦Pet Wash™⁩:\n\n🌐 אתר: petwash.co.il\n📱 טלפון: 054-9833355\n\nנשמח לעזור בכל שאלה! 🐾",
-      en: "📞 Contact ⁦Pet Wash™⁩:\n\n🌐 Website: petwash.co.il\n📱 Phone: 054-9833355\n\nWe'd love to help! 🐾",
-      ar: "📞 تواصل مع ⁦Pet Wash™⁩:\n\n🌐 الموقع: petwash.co.il\n📱 الهاتف: 054-9833355\n\nنسعد بمساعدتكم! 🐾",
-      ru: "📞 Контакты ⁦Pet Wash™⁩:\n\n🌐 Сайт: petwash.co.il\n📱 Телефон: 054-9833355\n\nБудем рады помочь! 🐾",
-      fr: "📞 Contactez ⁦Pet Wash™⁩ :\n\n🌐 Site : petwash.co.il\n📱 Téléphone : 054-9833355\n\nNous serons ravis de vous aider ! 🐾",
-      es: "📞 Contacta con ⁦Pet Wash™⁩:\n\n🌐 Sitio web: petwash.co.il\n📱 Teléfono: 054-9833355\n\n¡Estaremos encantados de ayudarte! 🐾"
+      he: "📞 צרו קשר עם ⁦PetWash™⁩:\n\n🌐 אתר: petwash.co.il\n📱 טלפון: 054-9833355\n\nנשמח לעזור בכל שאלה! 🐾",
+      en: "📞 Contact ⁦PetWash™⁩:\n\n🌐 Website: petwash.co.il\n📱 Phone: 054-9833355\n\nWe'd love to help! 🐾",
+      ar: "📞 تواصل مع ⁦PetWash™⁩:\n\n🌐 الموقع: petwash.co.il\n📱 الهاتف: 054-9833355\n\nنسعد بمساعدتكم! 🐾",
+      ru: "📞 Контакты ⁦PetWash™⁩:\n\n🌐 Сайт: petwash.co.il\n📱 Телефон: 054-9833355\n\nБудем рады помочь! 🐾",
+      fr: "📞 Contactez ⁦PetWash™⁩ :\n\n🌐 Site : petwash.co.il\n📱 Téléphone : 054-9833355\n\nNous serons ravis de vous aider ! 🐾",
+      es: "📞 Contacta con ⁦PetWash™⁩:\n\n🌐 Sitio web: petwash.co.il\n📱 Teléfono: 054-9833355\n\n¡Estaremos encantados de ayudarte! 🐾"
     },
     discounts: {
-      he: "🎁 הנחות מיוחדות ב-⁦Pet Wash™⁩:\n\n👴 אזרחים ותיקים (65+): 15% הנחה\n♿ בעלי תעודת נכות: 15% הנחה\n🎖️ חיילי צה\"ל (סדיר): 10% הנחה\n🐾 בתים עם 3+ חיות: 10% הנחה\n⭐ חברי מועדון נאמנות: עד 15% הנחה בדרגת רויאל!\n\nכל ההנחות מאומתות דרך האפליקציה ✨",
-      en: "🎁 Special Discounts at ⁦Pet Wash™⁩:\n\n👴 Seniors (65+): 15% off\n♿ Disability ID holders: 15% off\n🎖️ IDF soldiers (active): 10% off\n🐾 Multi-pet households (3+): 10% off\n⭐ Loyalty members: up to 15% off at Royal tier!\n\nAll discounts verified via the app ✨",
-      ar: "🎁 خصومات خاصة في ⁦Pet Wash™⁩:\n\n👴 كبار السن (65+): خصم 15%\n♿ حاملي بطاقة إعاقة: خصم 15%\n🎖️ جنود الجيش: خصم 10%\n🐾 عائلات مع 3+ حيوانات: خصم 10%\n⭐ أعضاء الولاء: خصم حتى 15%! 🐾",
-      ru: "🎁 Специальные скидки ⁦Pet Wash™⁩:\n\n👴 Пенсионеры (65+): скидка 15%\n♿ Инвалиды: скидка 15%\n🎖️ Солдаты ЦАХАЛ: скидка 10%\n🐾 Семьи с 3+ питомцами: скидка 10%\n⭐ Участники программы лояльности: до 15% скидки! 🐾",
-      fr: "🎁 Réductions spéciales ⁦Pet Wash™⁩ :\n\n👴 Seniors (65+) : 15% de réduction\n♿ Personnes handicapées : 15% de réduction\n🎖️ Soldats : 10% de réduction\n🐾 Familles multi-animaux (3+) : 10% de réduction\n⭐ Membres fidélité : jusqu'à 15% ! 🐾",
-      es: "🎁 Descuentos especiales ⁦Pet Wash™⁩:\n\n👴 Mayores (65+): 15% descuento\n♿ Personas con discapacidad: 15% descuento\n🎖️ Soldados: 10% descuento\n🐾 Familias multi-mascota (3+): 10% descuento\n⭐ Miembros del programa: ¡hasta 15%! 🐾"
+      he: "🎁 הנחות מיוחדות ב-⁦PetWash™⁩:\n\n👴 אזרחים ותיקים (65+): 15% הנחה\n♿ בעלי תעודת נכות: 15% הנחה\n🎖️ חיילי צה\"ל (סדיר): 10% הנחה\n🐾 בתים עם 3+ חיות: 10% הנחה\n⭐ חברי מועדון נאמנות: עד 15% הנחה בדרגת רויאל!\n\nכל ההנחות מאומתות דרך האפליקציה ✨",
+      en: "🎁 Special Discounts at ⁦PetWash™⁩:\n\n👴 Seniors (65+): 15% off\n♿ Disability ID holders: 15% off\n🎖️ IDF soldiers (active): 10% off\n🐾 Multi-pet households (3+): 10% off\n⭐ Loyalty members: up to 15% off at Royal tier!\n\nAll discounts verified via the app ✨",
+      ar: "🎁 خصومات خاصة في ⁦PetWash™⁩:\n\n👴 كبار السن (65+): خصم 15%\n♿ حاملي بطاقة إعاقة: خصم 15%\n🎖️ جنود الجيش: خصم 10%\n🐾 عائلات مع 3+ حيوانات: خصم 10%\n⭐ أعضاء الولاء: خصم حتى 15%! 🐾",
+      ru: "🎁 Специальные скидки ⁦PetWash™⁩:\n\n👴 Пенсионеры (65+): скидка 15%\n♿ Инвалиды: скидка 15%\n🎖️ Солдаты ЦАХАЛ: скидка 10%\n🐾 Семьи с 3+ питомцами: скидка 10%\n⭐ Участники программы лояльности: до 15% скидки! 🐾",
+      fr: "🎁 Réductions spéciales ⁦PetWash™⁩ :\n\n👴 Seniors (65+) : 15% de réduction\n♿ Personnes handicapées : 15% de réduction\n🎖️ Soldats : 10% de réduction\n🐾 Familles multi-animaux (3+) : 10% de réduction\n⭐ Membres fidélité : jusqu'à 15% ! 🐾",
+      es: "🎁 Descuentos especiales ⁦PetWash™⁩:\n\n👴 Mayores (65+): 15% descuento\n♿ Personas con discapacidad: 15% descuento\n🎖️ Soldados: 10% descuento\n🐾 Familias multi-mascota (3+): 10% descuento\n⭐ Miembros del programa: ¡hasta 15%! 🐾"
     },
     washTime: {
       he: "⏱️ זמן שטיפה ממוצע: 15-25 דקות, תלוי בגודל הכלב.\n\nאין הגבלת זמן! קחו את הזמן שצריך לפנק את החבר הטוב ביותר שלכם 🐾\n\nהשטיפה כוללת: שמפו מותאם לחיות מחמד, מרכך, שטיפת פרעושים, חיטוי, מים חמים ומייבשים ✨",
@@ -211,20 +211,20 @@ function getOfflineFallbackAnswer(message: string, language: 'he' | 'en' | 'ar' 
       es: "⏱️ Tiempo promedio de lavado: 15-25 minutos según el tamaño del perro.\n\n¡Sin límite de tiempo! 🐾"
     },
     giftCard: {
-      he: "🎁 כרטיסי מתנה של ⁦Pet Wash™⁩:\n\nזמינים בסכומים: ₪100, ₪250, ₪500, ₪1000\n\nמתנה מושלמת לכל אוהב חיות! ניתן לרכישה באתר petwash.co.il 🐾✨",
-      en: "🎁 ⁦Pet Wash™⁩ E-Gift Cards:\n\nAvailable in: ₪100, ₪250, ₪500, ₪1000\n\nThe perfect gift for any pet lover! Purchase at petwash.co.il 🐾✨",
-      ar: "🎁 بطاقات هدايا ⁦Pet Wash™⁩:\n\nمتوفرة بقيم: ₪100، ₪250، ₪500، ₪1000\n\nالهدية المثالية لمحبي الحيوانات! 🐾",
-      ru: "🎁 Подарочные карты ⁦Pet Wash™⁩:\n\nДоступны номиналы: ₪100, ₪250, ₪500, ₪1000\n\nИдеальный подарок для любителей животных! 🐾",
-      fr: "🎁 Cartes cadeaux ⁦Pet Wash™⁩ :\n\nDisponibles en : ₪100, ₪250, ₪500, ₪1000\n\nLe cadeau parfait ! 🐾",
-      es: "🎁 Tarjetas de regalo ⁦Pet Wash™⁩:\n\nDisponibles en: ₪100, ₪250, ₪500, ₪1000\n\n¡El regalo perfecto! 🐾"
+      he: "🎁 כרטיסי מתנה של ⁦PetWash™⁩:\n\nזמינים בסכומים: ₪100, ₪250, ₪500, ₪1000\n\nמתנה מושלמת לכל אוהב חיות! ניתן לרכישה באתר petwash.co.il 🐾✨",
+      en: "🎁 ⁦PetWash™⁩ E-Gift Cards:\n\nAvailable in: ₪100, ₪250, ₪500, ₪1000\n\nThe perfect gift for any pet lover! Purchase at petwash.co.il 🐾✨",
+      ar: "🎁 بطاقات هدايا ⁦PetWash™⁩:\n\nمتوفرة بقيم: ₪100، ₪250، ₪500، ₪1000\n\nالهدية المثالية لمحبي الحيوانات! 🐾",
+      ru: "🎁 Подарочные карты ⁦PetWash™⁩:\n\nДоступны номиналы: ₪100, ₪250, ₪500, ₪1000\n\nИдеальный подарок для любителей животных! 🐾",
+      fr: "🎁 Cartes cadeaux ⁦PetWash™⁩ :\n\nDisponibles en : ₪100, ₪250, ₪500, ₪1000\n\nLe cadeau parfait ! 🐾",
+      es: "🎁 Tarjetas de regalo ⁦PetWash™⁩:\n\nDisponibles en: ₪100, ₪250, ₪500, ₪1000\n\n¡El regalo perfecto! 🐾"
     },
     greeting: {
-      he: "שלום! 👋 אני קנזו, הגולדן רטריבר הלבן של ⁦Pet Wash™⁩! 🐾\n\nאני שמח לעזור! אפשר לשאול אותי על:\n💰 מחירים וחבילות\n⭐ תכנית נאמנות VIP\n🏆 טכנולוגיית ⁦K9000™⁩\n🐾 השירותים שלנו\n🎁 הנחות וכרטיסי מתנה\n\nמה תרצו לדעת? ✨",
-      en: "Hello! 👋 I'm Kenzo, ⁦Pet Wash™⁩'s white Golden Retriever! 🐾\n\nI'm happy to help! Ask me about:\n💰 Prices & packages\n⭐ VIP loyalty program\n🏆 ⁦K9000™⁩ technology\n🐾 Our services\n🎁 Discounts & gift cards\n\nWhat would you like to know? ✨",
-      ar: "مرحبًا! 👋 أنا كنزو، كلب ⁦Pet Wash™⁩! 🐾\n\nيسعدني مساعدتك! اسألني عن:\n💰 الأسعار\n⭐ برنامج الولاء\n🏆 تقنية ⁦K9000™⁩\n🐾 خدماتنا\n\nكيف يمكنني مساعدتك؟ ✨",
-      ru: "Привет! 👋 Я Кензо, белый голден-ретривер ⁦Pet Wash™⁩! 🐾\n\nЯ рад помочь! Спросите меня о:\n💰 Ценах и пакетах\n⭐ Программе лояльности\n🏆 Технологии ⁦K9000™⁩\n🐾 Наших услугах\n\nЧто бы вы хотели узнать? ✨",
-      fr: "Bonjour ! 👋 Je suis Kenzo, le Golden Retriever de ⁦Pet Wash™⁩ ! 🐾\n\nJe suis ravi de vous aider ! Demandez-moi :\n💰 Prix et forfaits\n⭐ Programme de fidélité\n🏆 Technologie ⁦K9000™⁩\n🐾 Nos services\n\nQue souhaitez-vous savoir ? ✨",
-      es: "¡Hola! 👋 ¡Soy Kenzo, el Golden Retriever de ⁦Pet Wash™⁩! 🐾\n\nEstoy feliz de ayudar. Pregúntame sobre:\n💰 Precios y paquetes\n⭐ Programa de lealtad\n🏆 Tecnología ⁦K9000™⁩\n🐾 Nuestros servicios\n\n¿Qué te gustaría saber? ✨"
+      he: "שלום! 👋 אני קנזו, הגולדן רטריבר הלבן של ⁦PetWash™⁩! 🐾\n\nאני שמח לעזור! אפשר לשאול אותי על:\n💰 מחירים וחבילות\n⭐ תכנית נאמנות VIP\n🏆 טכנולוגיית ⁦K9000™⁩\n🐾 השירותים שלנו\n🎁 הנחות וכרטיסי מתנה\n\nמה תרצו לדעת? ✨",
+      en: "Hello! 👋 I'm Kenzo, ⁦PetWash™⁩'s white Golden Retriever! 🐾\n\nI'm happy to help! Ask me about:\n💰 Prices & packages\n⭐ VIP loyalty program\n🏆 ⁦K9000™⁩ technology\n🐾 Our services\n🎁 Discounts & gift cards\n\nWhat would you like to know? ✨",
+      ar: "مرحبًا! 👋 أنا كنزو، كلب ⁦PetWash™⁩! 🐾\n\nيسعدني مساعدتك! اسألني عن:\n💰 الأسعار\n⭐ برنامج الولاء\n🏆 تقنية ⁦K9000™⁩\n🐾 خدماتنا\n\nكيف يمكنني مساعدتك؟ ✨",
+      ru: "Привет! 👋 Я Кензо, белый голден-ретривер ⁦PetWash™⁩! 🐾\n\nЯ рад помочь! Спросите меня о:\n💰 Ценах и пакетах\n⭐ Программе лояльности\n🏆 Технологии ⁦K9000™⁩\n🐾 Наших услугах\n\nЧто бы вы хотели узнать? ✨",
+      fr: "Bonjour ! 👋 Je suis Kenzo, le Golden Retriever de ⁦PetWash™⁩ ! 🐾\n\nJe suis ravi de vous aider ! Demandez-moi :\n💰 Prix et forfaits\n⭐ Programme de fidélité\n🏆 Technologie ⁦K9000™⁩\n🐾 Nos services\n\nQue souhaitez-vous savoir ? ✨",
+      es: "¡Hola! 👋 ¡Soy Kenzo, el Golden Retriever de ⁦PetWash™⁩! 🐾\n\nEstoy feliz de ayudar. Pregúntame sobre:\n💰 Precios y paquetes\n⭐ Programa de lealtad\n🏆 Tecnología ⁦K9000™⁩\n🐾 Nuestros servicios\n\n¿Qué te gustaría saber? ✨"
     }
   };
 

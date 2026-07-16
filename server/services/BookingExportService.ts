@@ -159,7 +159,7 @@ async function createAccountingSpreadsheet(): Promise<string> {
   const response = await sheetsClient.spreadsheets.create({
     requestBody: {
       properties: {
-        title: '⁦Pet Wash™⁩ Accounting - הנהלת חשבונות',
+        title: '⁦PetWash™⁩ Accounting - הנהלת חשבונות',
       },
       sheets: Object.values(ACCOUNTING_SHEETS).map(sheetName => ({
         properties: { title: sheetName },
@@ -304,7 +304,7 @@ async function classifyTransactionWithAI(booking: any): Promise<AIClassification
   }
 
   try {
-    const prompt = `You are an Israeli certified public accountant (רואה חשבון מוסמך) for ⁦Pet Wash™⁩.
+    const prompt = `You are an Israeli certified public accountant (רואה חשבון מוסמך) for ⁦PetWash™⁩.
     
 Classify this booking transaction for Israeli tax compliance 2026:
 

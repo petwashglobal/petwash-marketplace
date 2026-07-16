@@ -792,7 +792,7 @@ export default function PlatformHub() {
               }} />
             </div>
             <p className="text-[10px] font-light text-[#D1D5DB] tracking-wider" style={{ fontFamily: sans }}>
-              © 2026 Pet Wash™ · Israel
+              © 2026 PetWash™ · Israel
             </p>
           </div>
         </section>

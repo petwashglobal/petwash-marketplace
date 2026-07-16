@@ -1,14 +1,14 @@
 /**
- * ⁦Pet Wash™⁩ Brand Constants & Utilities
+ * ⁦PetWash™⁩ Brand Constants & Utilities
  * 
  * CRITICAL BRAND RULE:
  * The trademark symbol (™) must ALWAYS appear to the RIGHT of "Wash"
  * regardless of text direction (LTR or RTL languages).
  * 
- * CORRECT: ⁦Pet Wash™⁩
+ * CORRECT: ⁦PetWash™⁩
  * WRONG: ™Pet Wash (can happen in RTL due to bidirectional text)
  * 
- * The brand name "⁦Pet Wash™⁩" must NEVER be transliterated.
+ * The brand name "⁦PetWash™⁩" must NEVER be transliterated.
  * Keep it in English in ALL languages (Hebrew, Arabic, Russian, etc.)
  */
 
@@ -20,8 +20,8 @@ const RLM = '\u200F'; // Right-to-Left Mark
  * Official brand name with proper bidirectional handling
  * Use this in all RTL contexts to ensure trademark stays on the right
  */
-export const BRAND_NAME = '⁦Pet Wash™⁩';
-export const BRAND_NAME_RTL_SAFE = `⁦Pet Wash™⁩${LRM}`; // LRM after ™ anchors it in RTL
+export const BRAND_NAME = '⁦PetWash™⁩';
+export const BRAND_NAME_RTL_SAFE = `⁦PetWash™⁩${LRM}`; // LRM after ™ anchors it in RTL
 
 /**
  * Sub-brands with proper trademark handling
@@ -86,7 +86,7 @@ export function getSubBrand(
 
 /**
  * Wrap a trademarked brand name to ensure proper RTL display
- * @param brandName - Brand name with trademark (e.g., "⁦Pet Wash™⁩")
+ * @param brandName - Brand name with trademark (e.g., "⁦PetWash™⁩")
  * @param isRTL - Whether the current language is RTL
  */
 export function wrapBrandForRTL(brandName: string, isRTL: boolean): string {

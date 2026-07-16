@@ -27,7 +27,7 @@ function generateExpiryEmailHtml(customerName: string, platform: string, service
     <div style="background: #ffffff; border-radius: 2px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.06);">
       <div style="background: linear-gradient(160deg, #0f172a 0%, #1e293b 50%, #334155 100%); padding: 40px; text-align: center; position: relative;">
         <div style="position: absolute; top: 0; left: 0; right: 0; height: 3px; background: linear-gradient(90deg, #c9a96e, #e8d5a3, #dcc07a, #c9a96e);"></div>
-        <img src="${PETWASH_LOGO_BASE64}" alt="Pet Wash™" style="max-width: 120px; height: auto; margin-bottom: 16px;" />
+        <img src="${PETWASH_LOGO_BASE64}" alt="PetWash™" style="max-width: 120px; height: auto; margin-bottom: 16px;" />
         <h1 style="color: #ffffff; font-size: 22px; font-weight: 400; margin: 0; font-family: 'Georgia', serif;">
           ${isHebrew ? 'הזמנה פגה' : 'Booking Expired'}
         </h1>
@@ -51,7 +51,7 @@ function generateExpiryEmailHtml(customerName: string, platform: string, service
         </div>
       </div>
       <div style="background: #0f172a; padding: 24px; text-align: center;">
-        <p style="color: rgba(255,255,255,0.4); font-size: 11px; margin: 0;">© ${new Date().getFullYear()} Pet Wash™</p>
+        <p style="color: rgba(255,255,255,0.4); font-size: 11px; margin: 0;">© ${new Date().getFullYear()} PetWash™</p>
       </div>
     </div>
   </div>
@@ -137,7 +137,7 @@ export class JobExpiryNotificationService {
         const html = generateExpiryEmailHtml(customerName, platform, serviceDate, 'he');
         emailSent = await sendLuxuryEmail({
           to: email,
-          subject: `הזמנה פגה — Pet Wash™`,
+          subject: `הזמנה פגה — PetWash™`,
           html,
         });
         if (emailSent) channels.push('email');

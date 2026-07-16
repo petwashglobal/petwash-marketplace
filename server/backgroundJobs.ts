@@ -784,7 +784,7 @@ export class BackgroundJobProcessor {
         appointmentDate: reminder.appointmentDate,
         appointmentType: reminder.appointmentType,
         serviceType: serviceDetails?.serviceType || 'Pet Wash Service',
-        location: serviceDetails?.location || '⁦Pet Wash™⁩ Station',
+        location: serviceDetails?.location || '⁦PetWash™⁩ Station',
         bookingReference: reminder.bookingReference
       };
 
@@ -1720,7 +1720,7 @@ export class BackgroundJobProcessor {
       appointmentDate: reminder.appointmentDate,
       appointmentType: reminder.appointmentType,
       serviceType: serviceDetails?.serviceType || 'Pet Wash Service',
-      location: serviceDetails?.location || '⁦Pet Wash™⁩ Station',
+      location: serviceDetails?.location || '⁦PetWash™⁩ Station',
       bookingReference: reminder.bookingReference
     };
 

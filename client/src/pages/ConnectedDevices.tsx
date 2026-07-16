@@ -187,8 +187,8 @@ export default function ConnectedDevices() {
             </h1>
             <p className="luxury-text-body">
               {isHebrew 
-                ? 'נהל מכשירים שניגשו לחשבון ⁦Pet Wash™⁩ שלך. הסר כל מכשיר שאינך מזהה.'
-                : "Manage devices that have accessed your ⁦Pet Wash™⁩ account. Remove any devices you don't recognize."}
+                ? 'נהל מכשירים שניגשו לחשבון ⁦PetWash™⁩ שלך. הסר כל מכשיר שאינך מזהה.'
+                : "Manage devices that have accessed your ⁦PetWash™⁩ account. Remove any devices you don't recognize."}
             </p>
           </motion.div>
 

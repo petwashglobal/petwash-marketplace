@@ -218,7 +218,7 @@ export default function PlatformShowcase() {
             </div>
             
             <h1 className="luxury-heading-xl">
-              ⁦Pet Wash™⁩ Platform
+              ⁦PetWash™⁩ Platform
             </h1>
             
             <p className="luxury-subtitle-lg max-w-4xl mx-auto">
@@ -454,7 +454,7 @@ export default function PlatformShowcase() {
             Innovation That Sets Industry Standards
           </h2>
           <p className="text-xl opacity-90">
-            ⁦Pet Wash™⁩ combines cutting-edge technology with luxury service delivery.
+            ⁦PetWash™⁩ combines cutting-edge technology with luxury service delivery.
             <br />
             Built with 2025 standards. Ready for global expansion.
           </p>

@@ -17,7 +17,7 @@ import { createMailService, isSendGridConfigured } from '../lib/sendgrid';
 import { emailSpendGuard } from '../services/EmailSpendGuard';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
-const FROM_NAME = 'Pet Wash™';
+const FROM_NAME = 'PetWash™';
 
 let sgMail: MailService | null = isSendGridConfigured() ? createMailService() : null;
 
@@ -249,7 +249,7 @@ export async function sendWorkflowNotification(
     actionBody,
     priority: options?.priority || 'medium',
     deadline: options?.deadline,
-    originator: options?.originator || '⁦Pet Wash™⁩ System',
+    originator: options?.originator || '⁦PetWash™⁩ System',
     approvalLink,
     logoUrl: options?.logoUrl
   });

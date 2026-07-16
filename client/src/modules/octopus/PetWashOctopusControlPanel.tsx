@@ -147,7 +147,7 @@ const PLATFORMS: PetWashPlatform[] = [
     name: "Home Sitting",
     labelHe: "ישיבה בבית הלקוח",
     description:
-      "מטפל מאושר נשאר בבית הלקוח, עם ביטוח וערבות ⁦Pet Wash™⁩.",
+      "מטפל מאושר נשאר בבית הלקוח, עם ביטוח וערבות ⁦PetWash™⁩.",
     status: "live",
     primaryKpiLabel: "Active stays",
     primaryKpiValue: "—",
