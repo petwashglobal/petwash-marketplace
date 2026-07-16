@@ -38,9 +38,11 @@ import type { AuthenticatedRequest } from '../middleware/rbac';
 import { requireAdmin } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
 import { fulfillRedemption, cancelRedemptionWithRefund, redemptionEffectiveStatus } from '../services/rewardFulfillment';
+import { validateGift, giftNoteLine, buildGiftEmail, type GiftRequest } from '../services/giftAMoment';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
+import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { logLoyaltyEnrollment } from '../services/googleSheetsIntegration';
@@ -1052,7 +1054,16 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
   try {
     // Security: Always use authenticated user's ID, never trust client input
     const userId = req.firebaseUser!.uid;
-    const { rewardId } = req.body;
+    const { rewardId, gift: rawGift } = req.body;
+
+    // Gift a Moment (#16): optional recipient — validated up front, the money
+    // path below is IDENTICAL either way (member spends own points, same tx).
+    let gift: GiftRequest | null = null;
+    if (rawGift !== undefined && rawGift !== null) {
+      const v = validateGift(rawGift);
+      if (!v.ok) return res.status(400).json({ error: v.error });
+      gift = v.gift;
+    }
 
     // Pre-flight reads (outside transaction — fast validation before we acquire locks)
     const [reward] = await db
@@ -1119,6 +1130,7 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
           status: 'pending',
           voucherCode,
           expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
+          ...(gift ? { notes: giftNoteLine(gift) } : {}),
         })
         .returning();
       redemption = inserted;
@@ -1221,7 +1233,32 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
       }
     })();
 
-    res.json({ redemption, voucherCode });
+    // Gift delivery — FAIL-OPEN: a mail failure never eats the member's
+    // points; they still hold the voucher code and can share it manually.
+    if (gift) {
+      const theGift = gift;
+      (async () => {
+        try {
+          const [sender] = await db.select({ firstName: users.firstName, lastName: users.lastName, email: users.email })
+            .from(users).where(eq(users.id, userId)).limit(1);
+          const senderName = [sender?.firstName, sender?.lastName].filter(Boolean).join(' ')
+            || sender?.email || 'A PetWash Prestige member';
+          const mail = buildGiftEmail({
+            gift: theGift,
+            senderName,
+            rewardName: reward.name,
+            voucherCode,
+            expiresAt: redemption?.expiresAt ?? null,
+          });
+          const sent = await sendLuxuryEmail({ to: theGift.recipientEmail, subject: mail.subject, html: mail.html });
+          logger.info('[Loyalty] Gift-a-moment voucher email', { redemptionId: redemption?.id, sent });
+        } catch (giftErr: any) {
+          logger.error('[Loyalty] Gift-a-moment email failed silently', { error: giftErr?.message });
+        }
+      })();
+    }
+
+    res.json({ redemption, voucherCode, gifted: !!gift });
   } catch (error: any) {
     if (error?.status === 400) {
       return res.status(400).json({ error: error.message });

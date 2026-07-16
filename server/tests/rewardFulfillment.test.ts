@@ -80,6 +80,20 @@ describe('redemptionEffectiveStatus — expiry is computed, never stored', () =>
   });
 });
 
+
+// Flatten a drizzle SQL fragment's chunks to the strings/params it carries
+// (the fragment also embeds the column object, which is circular — skip it).
+function sqlText(fragment: any): string {
+  const chunks = fragment?.queryChunks ?? [];
+  return chunks
+    .map((c: any) => {
+      if (c instanceof String || typeof c === 'string') return String(c); // boxed param
+      if (Array.isArray(c?.value)) return c.value.join('');               // StringChunk
+      return '';                                                          // column object etc.
+    })
+    .join('|');
+}
+
 describe('fulfillRedemption — pending → fulfilled, exactly once', () => {
   it('fulfills a pending, unexpired redemption', async () => {
     const fulfilled = { ...pendingRow, status: 'fulfilled' };
@@ -90,7 +104,9 @@ describe('fulfillRedemption — pending → fulfilled, exactly once', () => {
     expect(result).toEqual({ ok: true, redemption: fulfilled });
     expect(updates[0].vals.status).toBe('fulfilled');
     expect(updates[0].vals.fulfilledAt).toBeInstanceOf(Date);
-    expect(updates[0].vals.notes).toBe('handed over at station');
+    // Notes are APPENDED via SQL (gift lines from redeem time must survive) —
+    // assert the fragment carries the admin note as a bound param.
+    expect(sqlText(updates[0].vals.notes)).toContain('handed over at station');
   });
 
   it('reports not_found when the redemption does not exist', async () => {
@@ -127,7 +143,7 @@ describe('cancelRedemptionWithRefund — pending → cancelled + audited points 
       newBalance: 650,
     });
     expect(updates[0].vals.status).toBe('cancelled');
-    expect(updates[0].vals.notes).toBe('partner unavailable');
+    expect(sqlText(updates[0].vals.notes)).toContain('partner unavailable');
     expect(inserts).toHaveLength(1);
     expect(inserts[0].vals).toMatchObject({
       userId: 'user-1',

@@ -45,7 +45,9 @@ export async function fulfillRedemption(id: number, adminNote?: string): Promise
       status: 'fulfilled',
       fulfilledAt: now,
       updatedAt: now,
-      ...(adminNote ? { notes: adminNote } : {}),
+      // Append, never overwrite — a "GIFT → …" line written at redeem time
+      // must survive the admin's fulfillment note.
+      ...(adminNote ? { notes: sql`COALESCE(${userRedemptions.notes} || ' | ', '') || ${adminNote}` } : {}),
     })
     .where(and(
       eq(userRedemptions.id, id),
@@ -88,7 +90,7 @@ export async function cancelRedemptionWithRefund(id: number, reason: string): Pr
   return await db.transaction(async (tx) => {
     const [row] = await tx
       .update(userRedemptions)
-      .set({ status: 'cancelled', updatedAt: now, notes: reason })
+      .set({ status: 'cancelled', updatedAt: now, notes: sql`COALESCE(${userRedemptions.notes} || ' | ', '') || ${'CANCELLED: ' + reason}` })
       .where(and(
         eq(userRedemptions.id, id),
         eq(userRedemptions.status, 'pending'),
