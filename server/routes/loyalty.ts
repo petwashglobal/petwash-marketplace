@@ -36,6 +36,8 @@ import {
 import { users, loyaltyCampaigns } from '../../shared/schema';
 import type { AuthenticatedRequest } from '../middleware/rbac';
 import { requireAdmin } from '../middleware/rbac';
+import { logAuditEvent } from '../middleware/auditLog';
+import { fulfillRedemption, cancelRedemptionWithRefund, redemptionEffectiveStatus } from '../services/rewardFulfillment';
 import { adminAuth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { sendLoyaltyEnrollmentConfirmation, sendClubWelcomeEmail, sendTierUpgradeEmail, sendPurchaseRewardEmail, detectTierUpgrade } from '../email/luxury-email-service';
@@ -900,6 +902,146 @@ router.delete('/admin/rewards/:id', requireAdmin, async (req: AuthenticatedReque
   } catch (error: any) {
     logger.error('[Loyalty] Admin deactivate reward failed', { error: error?.message });
     res.status(500).json({ error: 'Failed to deactivate reward' });
+  }
+});
+
+// ── Redemption fulfillment (task #15 slice 3) ────────────────────────────────
+// Members redeem points and get a REWARD-* voucher; these are the admin rails
+// that make that voucher mean something: see pending redemptions, look a code
+// up when a member presents it, mark it fulfilled after the real-world hand-off,
+// or cancel it and refund the points. Every mutation is audit-logged.
+
+// GET /api/loyalty/admin/redemptions?status=pending — fulfillment queue.
+router.get('/admin/redemptions', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
+    const rows = await db
+      .select({
+        redemption: userRedemptions,
+        rewardName: rewardsMarketplace.name,
+        rewardType: rewardsMarketplace.type,
+        memberEmail: users.email,
+        memberFirstName: users.firstName,
+        memberLastName: users.lastName,
+      })
+      .from(userRedemptions)
+      .leftJoin(rewardsMarketplace, eq(userRedemptions.rewardId, rewardsMarketplace.id))
+      .leftJoin(users, eq(userRedemptions.userId, users.id))
+      .where(statusFilter ? eq(userRedemptions.status, statusFilter) : undefined)
+      .orderBy(desc(userRedemptions.createdAt))
+      .limit(200);
+
+    res.json(rows.map((r) => ({
+      ...r,
+      effectiveStatus: redemptionEffectiveStatus(r.redemption),
+    })));
+  } catch (error: any) {
+    logger.error('[Loyalty] Admin list redemptions failed', { error: error?.message });
+    res.status(500).json({ error: 'Failed to list redemptions' });
+  }
+});
+
+// GET /api/loyalty/admin/redemptions/lookup/:code — validate a presented voucher.
+router.get('/admin/redemptions/lookup/:code', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const code = String(req.params.code || '').trim();
+    if (!code) return res.status(400).json({ error: 'Missing code' });
+    const [row] = await db
+      .select({
+        redemption: userRedemptions,
+        rewardName: rewardsMarketplace.name,
+        rewardType: rewardsMarketplace.type,
+        memberEmail: users.email,
+        memberFirstName: users.firstName,
+        memberLastName: users.lastName,
+      })
+      .from(userRedemptions)
+      .leftJoin(rewardsMarketplace, eq(userRedemptions.rewardId, rewardsMarketplace.id))
+      .leftJoin(users, eq(userRedemptions.userId, users.id))
+      .where(eq(userRedemptions.voucherCode, code))
+      .limit(1);
+    if (!row) return res.status(404).json({ error: 'Voucher not found' });
+    const effectiveStatus = redemptionEffectiveStatus(row.redemption);
+    res.json({ ...row, effectiveStatus, redeemable: effectiveStatus === 'pending' });
+  } catch (error: any) {
+    logger.error('[Loyalty] Voucher lookup failed', { error: error?.message });
+    res.status(500).json({ error: 'Failed to look up voucher' });
+  }
+});
+
+// POST /api/loyalty/admin/redemptions/:id/fulfill — pending → fulfilled.
+router.post('/admin/redemptions/:id/fulfill', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+    const notes = typeof req.body?.notes === 'string' && req.body.notes.trim() ? req.body.notes.trim() : undefined;
+
+    const result = await fulfillRedemption(id, notes);
+    if (!result.ok) {
+      const httpStatus = result.reason === 'not_found' ? 404 : 409;
+      return res.status(httpStatus).json({ error: result.reason });
+    }
+
+    await logAuditEvent({
+      actorUserId: req.firebaseUser!.uid,
+      actorRole: 'admin',
+      actionType: 'loyalty_reward_fulfilled',
+      targetType: 'user_redemption',
+      targetId: String(id),
+      ip: req.ip,
+      traceId: req.traceId,
+      metadata: {
+        voucherCode: result.redemption.voucherCode,
+        rewardId: result.redemption.rewardId,
+        memberUserId: result.redemption.userId,
+        pointsCost: result.redemption.pointsCost,
+        notes: notes ?? null,
+      },
+    });
+
+    res.json({ ok: true, redemption: result.redemption });
+  } catch (error: any) {
+    logger.error('[Loyalty] Fulfill redemption failed', { error: error?.message });
+    res.status(500).json({ error: 'Failed to fulfill redemption' });
+  }
+});
+
+// POST /api/loyalty/admin/redemptions/:id/cancel — pending → cancelled + points refund.
+router.post('/admin/redemptions/:id/cancel', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+  try {
+    const id = Number(req.params.id);
+    if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
+    const reason = typeof req.body?.reason === 'string' ? req.body.reason.trim() : '';
+    if (!reason) return res.status(400).json({ error: 'A cancellation reason is required' });
+
+    const result = await cancelRedemptionWithRefund(id, reason);
+    if (!result.ok) {
+      const httpStatus = result.reason === 'not_found' ? 404 : 409;
+      return res.status(httpStatus).json({ error: result.reason });
+    }
+
+    await logAuditEvent({
+      actorUserId: req.firebaseUser!.uid,
+      actorRole: 'admin',
+      actionType: 'loyalty_reward_cancelled_refunded',
+      targetType: 'user_redemption',
+      targetId: String(id),
+      ip: req.ip,
+      traceId: req.traceId,
+      metadata: {
+        voucherCode: result.redemption.voucherCode,
+        rewardId: result.redemption.rewardId,
+        memberUserId: result.redemption.userId,
+        refundedPoints: result.refundedPoints,
+        newBalance: result.newBalance,
+        reason,
+      },
+    });
+
+    res.json({ ok: true, redemption: result.redemption, refundedPoints: result.refundedPoints, newBalance: result.newBalance });
+  } catch (error: any) {
+    logger.error('[Loyalty] Cancel redemption failed', { error: error?.message });
+    res.status(500).json({ error: 'Failed to cancel redemption' });
   }
 });
 
