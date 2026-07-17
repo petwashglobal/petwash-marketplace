@@ -492,16 +492,18 @@ jobs:
       - name: Set up gcloud CLI
         uses: google-github-actions/setup-gcloud@v2
 
-      # ── HARD GATE: block the deploy when a genuinely-new migration is unapplied.
-      # The soft "Detect new migrations" reminder above only WARNS, and it was
-      # forgotten for 0089/0090 (both sat unapplied in prod). This gate turns that
-      # silent gap into a loud, deploy-blocking failure: any migrations/NNNN_*.sql
-      # with prefix > MIGRATION_BASELINE (88) that is NOT recorded in
-      # _petwash_migrations (and not manual-skipped) fails the deploy. Old drifted
-      # files (<=88, e.g. the 0010/0018 orphans) are excluded — same bound the
-      # migration walker uses. Skipped on workflow_dispatch so the manual apply run
-      # (`-f run_migrations=true`) can apply + deploy together without self-blocking.
-      - name: Gate — block deploy on unapplied migrations
+      # ── SELF-HEALING MIGRATION GATE: apply genuinely-new migrations, then deploy.
+      # Previously this HARD-FAILED (red) whenever a migrations/NNNN_*.sql with
+      # prefix > MIGRATION_BASELINE (88) wasn't yet in _petwash_migrations, forcing
+      # a manual `-f run_migrations=true` recovery on EVERY migration PR. That
+      # recovery did nothing a human reviewed — it just re-applied — so the red was
+      # pure friction. Now the gate APPLIES the pending post-baseline files itself
+      # (they're clean, IF-NOT-EXISTS, validated pre-merge by migration-test.yml),
+      # records them, and proceeds. Still fail-CLOSED: if a migration errors, the
+      # step fails and the deploy is blocked (a broken migration must never ship).
+      # Old drifted files (<=88) are excluded — same bound the migration walker uses.
+      # Skipped on workflow_dispatch so the manual apply run still owns that path.
+      - name: Gate — apply unapplied migrations, then deploy (self-healing)
         if: github.event_name == 'push'
         run: |
           set -euo pipefail
@@ -510,6 +512,8 @@ jobs:
           DB_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")
           echo "::add-mask::$DB_URL"
           export PGSSLMODE=require
+          # Ensure the tracking table exists (mirrors scripts/apply-pending-migrations.ts).
+          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS _petwash_migrations (filename TEXT PRIMARY KEY, checksum TEXT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now(), bootstrapped BOOLEAN NOT NULL DEFAULT false)"
           if ! APPLIED=$(psql "$DB_URL" -tAc "SELECT filename FROM _petwash_migrations"); then
             echo "::error title=Migration gate::Could not query _petwash_migrations (DB unreachable?). Failing deploy for safety."
             exit 1
@@ -525,22 +529,28 @@ jobs:
             printf '%s\n' "$APPLIED" | grep -qxF "$base" && continue
             PENDING="$PENDING $base"
           done
-          if [ -n "$PENDING" ]; then
-            echo "::error title=Unapplied migrations block this deploy::${PENDING# }"
-            {
-              echo "### 🛑 Deploy blocked — unapplied SQL migrations"
-              echo ""
-              echo "These migrations are in the repo but NOT recorded in \`_petwash_migrations\`:"
-              for m in $PENDING; do echo "- \`$m\`"; done
-              echo ""
-              echo "Apply them, then re-run this deploy:"
-              echo '```'
-              echo "gh workflow run petwash-ci.yml -f run_migrations=true"
-              echo '```'
-            } >> "$GITHUB_STEP_SUMMARY"
-            exit 1
+          if [ -z "$PENDING" ]; then
+            echo "✅ No unapplied migrations (prefix > $BASELINE). Deploy may proceed."
+            exit 0
           fi
-          echo "✅ No unapplied migrations (prefix > $BASELINE). Deploy may proceed."
+          echo "🩹 Self-healing: applying pending migrations:${PENDING}"
+          APPLIED_NOW=""
+          for m in ${PENDING# }; do
+            echo "→ applying $m"
+            # ON_ERROR_STOP fails the step on any SQL error → deploy blocked (fail-closed).
+            # psql -f runs statements in autocommit, so CREATE INDEX CONCURRENTLY works too.
+            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "migrations/$m"
+            CHECKSUM=$(sha256sum "migrations/$m" | cut -d' ' -f1)
+            psql "$DB_URL" -v ON_ERROR_STOP=1 \
+              -c "INSERT INTO _petwash_migrations (filename, checksum) VALUES ('$m', '$CHECKSUM') ON CONFLICT (filename) DO NOTHING"
+            APPLIED_NOW="$APPLIED_NOW $m"
+          done
+          {
+            echo "### 🩹 Migrations auto-applied before deploy"
+            echo ""
+            for m in $APPLIED_NOW; do echo "- \`$m\`"; done
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "✅ Applied${APPLIED_NOW}. Deploy may proceed."
 
       - name: Ensure required GCP secrets exist (base + generated)
         env:
