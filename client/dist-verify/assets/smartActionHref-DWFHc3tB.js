@@ -1,1 +1,0 @@
-function s(E,e){switch(E){case"CONTACT_MORE_PROVIDERS":return"/booking";case"COMPLETE_PET_PROFILE":return"/pets";case"VIEW_CASE":case"UPLOAD_EVIDENCE":return"/support";case"OPEN_CHAT":return e?`/booking-chat/${e}`:"/booking-chat/inbox";case"CONFIRM_AND_PAY":case"TRY_PAYMENT_AGAIN":case"REVIEW_TIP":case"VIEW_CARE_NOTES":case"VIEW_BOOKING":default:return"/bookings"}}export{s};
