@@ -613,7 +613,17 @@ ${bookingRow}
   /**
    * Cancel escrow and refund customer (for booking cancellations)
    */
-  static async cancelEscrowAndRefund(payoutId: string, reason: string): Promise<{
+  static async cancelEscrowAndRefund(
+    payoutId: string,
+    reason: string,
+    opts?: {
+      /** Statutory refund owed to the customer (agorot), computed by the caller
+       *  via IsraeliCancellationPolicy. When given for a wallet-funded booking,
+       *  the wallet refund executes immediately; otherwise the obligation is
+       *  recorded pending. */
+      refundCents?: number;
+    },
+  ): Promise<{
     success: boolean;
     error?: string;
     refundId?: string;
@@ -678,7 +688,9 @@ ${bookingRow}
 
           if (booking?.userId) {
             const walletFunded = (booking.paymentMethod ?? '').toLowerCase() === 'wallet';
-            const policyCents = booking.refundAmountCents ?? null;
+            // Prefer the caller's policy-computed amount; fall back to a pre-set
+            // booking.refundAmountCents. Null → no trustworthy amount → record pending.
+            const policyCents = opts?.refundCents ?? booking.refundAmountCents ?? null;
             const fullChargeCents = Math.round(Number(booking.total ?? 0) * 100);
             // Execute wallet refunds only for the policy-computed amount; every
             // other case is recorded pending (card rail = Phase 2; unknown amount

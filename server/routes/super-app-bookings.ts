@@ -1096,17 +1096,33 @@ router.post(
         .where(eq(superAppPayouts.bookingId, bookingId))
         .limit(1);
 
-      // Cancel escrow (stops the provider being paid) and capture the result.
-      // IMPORTANT: cancelEscrowAndRefund flips the escrow to 'failed', but the
-      // customer refund itself is NOT automated yet (the Nayax refund webhook is a
-      // TODO). A successful escrow-cancel therefore means a refund is now DUE and
-      // PENDING — it has NOT been sent. We must never tell the customer it was
-      // transferred, and we must never mark the booking 'refunded'.
-      let refundPending = false;
+      // Compute the statutory refund owed (customer cancel → minus the 5%/₪100
+      // fee; provider/platform fault → full) so a wallet-funded booking can be
+      // refunded immediately by the rail rather than left pending.
+      const { customerCancellationRefundCents } = await import('../services/IsraeliCancellationPolicy');
+      const chargeCents = Math.round(Number(existingBooking.total ?? 0) * 100);
+      const policyRefund = customerCancellationRefundCents({
+        amountCents: chargeCents,
+        reason: isCustomer ? 'customer' : 'provider_fault',
+      });
+
+      // Cancel escrow (stops the provider being paid) and run the customer refund
+      // through the refund rail. cancelEscrowAndRefund records the obligation in
+      // refund_transactions and EXECUTES a wallet refund when the booking was
+      // wallet-funded; card refunds stay pending (Nayax void = Phase 2). We reflect
+      // the ACTUAL result — never claim a transfer that didn't happen.
+      let refundPending = false;   // recorded, awaiting a vendor/manual rail
+      let refundExecuted = false;  // money actually returned to the wallet
+      let refundId: string | undefined;
       if (payout && payout.status === 'in_escrow') {
-        const escrowResult = await ProviderPayoutService.cancelEscrowAndRefund(payout.id, reason);
-        refundPending = escrowResult.success === true;
-        if (!escrowResult.success) {
+        const escrowResult = await ProviderPayoutService.cancelEscrowAndRefund(
+          payout.id, reason, { refundCents: policyRefund.refundCents },
+        );
+        if (escrowResult.success) {
+          refundExecuted = escrowResult.refundExecuted === true;
+          refundPending = !refundExecuted && !!escrowResult.refundId;
+          refundId = escrowResult.refundId;
+        } else {
           logger.warn('[Booking] Escrow cancel failed during cancellation', {
             bookingId, payoutId: payout.id, error: escrowResult.error,
           });
@@ -1116,9 +1132,11 @@ router.post(
       const [updatedBooking] = await db.update(bookings)
         .set({
           status: 'cancelled',
-          // Honest status: a refund is only pending when an in-escrow payout was
-          // actually cancelled. Otherwise nothing is owed back, so just 'cancelled'.
-          paymentStatus: refundPending ? 'refund_pending' : 'cancelled',
+          // Honest status: 'refunded' only when the rail actually returned the
+          // money; 'refund_pending' when an obligation was recorded but not yet
+          // executed; otherwise nothing is owed → 'cancelled'.
+          paymentStatus: refundExecuted ? 'refunded' : (refundPending ? 'refund_pending' : 'cancelled'),
+          refundAmountCents: (refundExecuted || refundPending) ? policyRefund.refundCents : null,
           cancellationReason: reason,
           cancelledBy: isCustomer ? 'customer' : 'provider',
           cancelledAt: new Date(),
@@ -1194,7 +1212,7 @@ router.post(
             push: {
               userId: updatedBooking.userId,
               title: `הזמנה בוטלה – PetWash™`,
-              body: `הזמנה מס׳ ${bookingRef} בוטלה.${refundPending ? ' בקשת זיכוי נפתחה ותטופל ע"י הצוות.' : ''}`,
+              body: `הזמנה מס׳ ${bookingRef} בוטלה.${refundExecuted ? ' הזיכוי הוחזר לארנק PetWash שלך.' : (refundPending ? ' בקשת זיכוי נפתחה ותטופל ע"י הצוות.' : '')}`,
               data: { bookingId, documentRef: cancellationDocRef, type: 'booking_cancelled' },
             },
             debugPayload: {
@@ -1297,7 +1315,11 @@ router.post(
         success: true,
         booking: updatedBooking,
         refundPending,
-        message: refundPending
+        refundExecuted,
+        refundId,
+        message: refundExecuted
+          ? 'Booking cancelled. Your refund has been returned to your PetWash wallet.'
+          : refundPending
           ? 'Booking cancelled. Your refund request has been received and is under review by our team.'
           : 'Booking cancelled.',
       });
