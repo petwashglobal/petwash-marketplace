@@ -20,6 +20,15 @@ import {
 import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import {
+  awardLoyaltyPoints as awardCanonicalPoints,
+  reverseLoyaltyPoints as reverseCanonicalPoints,
+} from '../services/loyaltyEarn';
+
+// Stable source tag for kiosk (Nayax/Monyx) earns in the canonical Prestige
+// store. Distinct from the online 'wash_package_purchase' source, so the two
+// ingest paths never collide on idempotency.
+const KIOSK_LOYALTY_SOURCE = 'nayax_kiosk';
 
 const router = express.Router();
 
@@ -103,17 +112,34 @@ async function evaluateLoyaltyAward(
   return { canAward: true, pointsToAward: points };
 }
 
-// ─── Loyalty Award — atomic DB update ────────────────────────────────────────
-async function awardLoyaltyPoints(userId: string, points: number): Promise<void> {
-  // Update wallet loyalty balance
+// ─── Loyalty Award — dual-write ──────────────────────────────────────────────
+// Kiosk earns must land in BOTH loyalty stores, which different surfaces read:
+//   • walletAccounts.loyaltyPointsBalance / users.loyaltyPoints — the wallet
+//     pass, K9000 free-wash redemption, me-status, account pages.
+//   • loyaltyProfiles (canonical Prestige engine) — the tier ladder / Prestige UI.
+// Before this, kiosk washes fed only the wallet side, so paying at a station
+// never moved a member up the Prestige tiers (audit gap #2). userId here is the
+// linked PetWash Firebase UID (the key both stores use).
+async function awardLoyaltyPoints(userId: string, points: number, sourceId: string): Promise<void> {
+  // Wallet-side balance (unchanged — powers pass + redemption + me-status).
   await db.update(walletAccounts)
     .set({ loyaltyPointsBalance: sql`loyalty_points_balance + ${points}` })
     .where(eq(walletAccounts.userId, userId));
 
-  // Update user loyalty points (denormalized for dashboard display)
+  // Denormalized user field (dashboard display).
   await db.update(users)
     .set({ loyaltyPoints: sql`loyalty_points + ${points}` })
     .where(eq(users.firebaseUid, userId));
+
+  // Canonical Prestige store — moves the tier ladder. Idempotent per
+  // (userId, source, sourceId); fail-closed if the member has no profile.
+  await awardCanonicalPoints({
+    userId,
+    amount: points,
+    source: KIOSK_LOYALTY_SOURCE,
+    sourceId,
+    description: 'Station wash (Nayax/Monyx)',
+  });
 }
 
 // ─── Refund Reversal ─────────────────────────────────────────────────────────
@@ -138,6 +164,16 @@ async function reverseAwardedPoints(
   await db.update(users)
     .set({ loyaltyPoints: sql`GREATEST(0, loyalty_points - ${pointsToReverse})` })
     .where(eq(users.firebaseUid, userId));
+
+  // Symmetric reversal from the canonical Prestige store (idempotent per
+  // source/sourceId). Keyed by the ORIGINAL transaction id — the same sourceId
+  // the award used — so a refund unwinds the tier-ladder credit too.
+  await reverseCanonicalPoints({
+    userId,
+    source: KIOSK_LOYALTY_SOURCE,
+    sourceId: originalTxId,
+    description: 'Station wash refund (Nayax/Monyx)',
+  });
 
   await db.update(nayaxTransactionEvents)
     .set({ refundReversed: true, processedAt: new Date() })
@@ -303,7 +339,7 @@ router.post('/nayax-events',
     // 5. Award loyalty if all rules passed
     if (award.canAward && linkedPetwashUser) {
       try {
-        await awardLoyaltyPoints(String(linkedPetwashUser), award.pointsToAward);
+        await awardLoyaltyPoints(String(linkedPetwashUser), award.pointsToAward, String(externalTransactionId));
         logger.info('[NayaxEvents] Loyalty awarded', {
           externalTransactionId,
           userId: linkedPetwashUser,

@@ -119,3 +119,92 @@ export async function awardLoyaltyPoints(input: AwardPointsInput): Promise<Award
     return { awarded: false, skipped: 'error' };
   }
 }
+
+export interface ReversePointsInput {
+  userId: string;
+  /** Must match the source used at award time (e.g. 'nayax_kiosk'). */
+  source: string;
+  /** Must match the sourceId used at award time (e.g. external_transaction_id). */
+  sourceId: string;
+  description?: string;
+}
+
+export interface ReversePointsResult {
+  reversed: boolean;
+  skipped?: 'not_found' | 'already_reversed' | 'no_profile' | 'error';
+  points?: number;
+}
+
+/**
+ * Reverse a prior canonical award (refund/cancellation) from loyaltyProfiles.
+ * Deducts the originally-earned amount from the spendable `points` balance and
+ * writes an audit `reversed` row, idempotent per (userId, source, sourceId).
+ *
+ * lifetimePoints is intentionally NOT decremented — the schema treats it as
+ * monotonic ("never decreases") and tier is derived from it, so a refund lowers
+ * the spendable balance without demoting the member.
+ */
+export async function reverseLoyaltyPoints(input: ReversePointsInput): Promise<ReversePointsResult> {
+  const { userId, source, sourceId, description } = input;
+  if (!userId) return { reversed: false, skipped: 'error' };
+
+  try {
+    // The original earn must exist…
+    const [earned] = await db
+      .select({ amount: pointsTransactions.amount })
+      .from(pointsTransactions)
+      .where(and(
+        eq(pointsTransactions.userId, userId),
+        eq(pointsTransactions.source, source),
+        eq(pointsTransactions.sourceId, sourceId),
+        eq(pointsTransactions.type, 'earned'),
+      ))
+      .limit(1);
+    if (!earned) return { reversed: false, skipped: 'not_found' };
+
+    // …and must not already be reversed (idempotency).
+    const [priorReversal] = await db
+      .select({ id: pointsTransactions.id })
+      .from(pointsTransactions)
+      .where(and(
+        eq(pointsTransactions.userId, userId),
+        eq(pointsTransactions.source, source),
+        eq(pointsTransactions.sourceId, sourceId),
+        eq(pointsTransactions.type, 'reversed'),
+      ))
+      .limit(1);
+    if (priorReversal) return { reversed: false, skipped: 'already_reversed' };
+
+    const amount = Math.floor(earned.amount);
+
+    const [profile] = await db
+      .select()
+      .from(loyaltyProfiles)
+      .where(eq(loyaltyProfiles.userId, userId))
+      .limit(1);
+    if (!profile) return { reversed: false, skipped: 'no_profile' };
+
+    const newBalance = Math.max(0, profile.points - amount);
+
+    await db
+      .update(loyaltyProfiles)
+      .set({ points: newBalance, updatedAt: new Date() })
+      .where(eq(loyaltyProfiles.userId, userId));
+
+    await db.insert(pointsTransactions).values({
+      userId,
+      type: 'reversed',
+      amount: -amount,
+      balance: newBalance,
+      source,
+      sourceId,
+      description: description ?? `Reversed ${amount} points (refund)`,
+    });
+
+    logger.info('[LoyaltyEarn] Reversed points', { userId, amount, source, sourceId, newBalance });
+    return { reversed: true, points: amount };
+  } catch (err: any) {
+    logger.error('[LoyaltyEarn] Failed to reverse points', { error: err?.message, userId, source, sourceId });
+    return { reversed: false, skipped: 'error' };
+  }
+}
