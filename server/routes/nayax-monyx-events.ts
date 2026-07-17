@@ -30,6 +30,15 @@ import {
 // ingest paths never collide on idempotency.
 const KIOSK_LOYALTY_SOURCE = 'nayax_kiosk';
 
+// Phase-16 gate. At launch the BAY loyalty is Nayax's own Monyx 5+1 punch card
+// (configured in Nayax Core) — the operator plan is "one system first, keep
+// loyalty separate". Mirroring station spend into our app-side Prestige tier
+// ladder is a Phase-16 (Prestige app + Nayax API) concern, so it stays DARK until
+// this flag is explicitly enabled. The wallet-side balance (pass / K9000 redeem /
+// me-status) is unaffected — it is pre-existing and always written.
+const KIOSK_PRESTIGE_SYNC_ENABLED =
+  String(process.env.KIOSK_PRESTIGE_SYNC_ENABLED).toLowerCase().trim() === 'true';
+
 const router = express.Router();
 
 // ─── Configuration ───────────────────────────────────────────────────────────
@@ -131,15 +140,19 @@ async function awardLoyaltyPoints(userId: string, points: number, sourceId: stri
     .set({ loyaltyPoints: sql`loyalty_points + ${points}` })
     .where(eq(users.firebaseUid, userId));
 
-  // Canonical Prestige store — moves the tier ladder. Idempotent per
-  // (userId, source, sourceId); fail-closed if the member has no profile.
-  await awardCanonicalPoints({
-    userId,
-    amount: points,
-    source: KIOSK_LOYALTY_SOURCE,
-    sourceId,
-    description: 'Station wash (Nayax/Monyx)',
-  });
+  // Canonical Prestige store — moves the tier ladder. DARK until Phase 16
+  // (see KIOSK_PRESTIGE_SYNC_ENABLED): at launch the bay runs Nayax's Monyx 5+1
+  // punch card, not our tier ladder. Idempotent per (userId, source, sourceId);
+  // fail-closed if the member has no profile.
+  if (KIOSK_PRESTIGE_SYNC_ENABLED) {
+    await awardCanonicalPoints({
+      userId,
+      amount: points,
+      source: KIOSK_LOYALTY_SOURCE,
+      sourceId,
+      description: 'Station wash (Nayax/Monyx)',
+    });
+  }
 }
 
 // ─── Refund Reversal ─────────────────────────────────────────────────────────
@@ -165,15 +178,17 @@ async function reverseAwardedPoints(
     .set({ loyaltyPoints: sql`GREATEST(0, loyalty_points - ${pointsToReverse})` })
     .where(eq(users.firebaseUid, userId));
 
-  // Symmetric reversal from the canonical Prestige store (idempotent per
-  // source/sourceId). Keyed by the ORIGINAL transaction id — the same sourceId
-  // the award used — so a refund unwinds the tier-ladder credit too.
-  await reverseCanonicalPoints({
-    userId,
-    source: KIOSK_LOYALTY_SOURCE,
-    sourceId: originalTxId,
-    description: 'Station wash refund (Nayax/Monyx)',
-  });
+  // Symmetric reversal from the canonical Prestige store — only when the mirror
+  // is enabled (else there is no canonical credit to unwind). Idempotent per
+  // source/sourceId; keyed by the ORIGINAL transaction id (the award's sourceId).
+  if (KIOSK_PRESTIGE_SYNC_ENABLED) {
+    await reverseCanonicalPoints({
+      userId,
+      source: KIOSK_LOYALTY_SOURCE,
+      sourceId: originalTxId,
+      description: 'Station wash refund (Nayax/Monyx)',
+    });
+  }
 
   await db.update(nayaxTransactionEvents)
     .set({ refundReversed: true, processedAt: new Date() })
