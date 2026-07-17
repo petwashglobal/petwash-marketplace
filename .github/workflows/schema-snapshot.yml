@@ -16,13 +16,19 @@ name: Schema Snapshot (prod, read-only)
 
 on:
   workflow_dispatch: {}
+  schedule:
+    # Weekly, Monday 04:00 UTC — keeps the committed DR baseline from going stale.
+    # Before this the baseline was a one-time manual capture (2026-07-03) and the
+    # only automated output was a 14-day-retention artifact nobody committed.
+    - cron: '0 4 * * 1'
 
 concurrency:
   group: schema-snapshot
   cancel-in-progress: true
 
 permissions:
-  contents: read
+  contents: write        # push the refresh branch
+  pull-requests: write   # open/update the baseline-refresh PR (ruleset forbids direct pushes to main)
   id-token: write
 
 jobs:
@@ -88,3 +94,48 @@ jobs:
           path: prod-schema-snapshot.sql
           retention-days: 14
           if-no-files-found: error
+
+      # ── Durable DR baseline ─────────────────────────────────────────────────
+      # Turn the disposable artifact into a committed, versioned restore point.
+      # The repo ruleset requires PRs for every change to main (bot pushes are
+      # rejected GH013), and a docs-only change never triggers a deploy
+      # (petwash-ci paths-ignore: docs/**) — so we open/refresh a PR.
+      - name: Checkout repo (for the baseline PR)
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Refresh committed baseline + open PR if changed
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          BASELINE="repo/docs/recovery/prod-schema-latest.sql"
+          BRANCH="chore/dr-schema-refresh"
+
+          # Strip the volatile pg_dump header (version/timestamp lines) so the diff
+          # reflects real schema changes, not noise that would churn a PR weekly.
+          grep -vE '^-- (Dumped (from|by)|Started on|Completed on)' prod-schema-snapshot.sql > "$BASELINE.new"
+
+          mkdir -p "$(dirname "$BASELINE")"
+          if [ -f "$BASELINE" ] && diff -q "$BASELINE" "$BASELINE.new" >/dev/null 2>&1; then
+            echo "Baseline unchanged — nothing to refresh."
+            exit 0
+          fi
+          mv "$BASELINE.new" "$BASELINE"
+
+          cd repo
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git checkout -B "$BRANCH"
+          git add docs/recovery/prod-schema-latest.sql
+          git commit -m "chore(dr): refresh prod schema baseline [skip ci]"
+          git push --force origin "$BRANCH"
+
+          if gh pr view "$BRANCH" --json state --jq .state 2>/dev/null | grep -q OPEN; then
+            echo "PR already open — force-push refreshed it."
+          else
+            gh pr create --base main --head "$BRANCH" \
+              --title "chore(dr): refresh prod schema baseline" \
+              --body "Automated weekly refresh of the disaster-recovery schema baseline (\`docs/recovery/prod-schema-latest.sql\`) from a read-only \`pg_dump --schema-only\` of prod. Structure only — no data. Merge to keep the DR restore point current. Docs-only: does not trigger a deploy."
+          fi
