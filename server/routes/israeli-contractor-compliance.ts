@@ -27,6 +27,7 @@ import {
 import { db } from '../db';
 import { eq, desc, sql, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { maskPII } from '../lib/piiFieldCrypto';
 import { auth as fbAdminAuth } from '../lib/firebase-admin';
 
 const router = Router();
@@ -356,11 +357,20 @@ router.get('/admin/providers', async (req, res) => {
       conditions.push(eq(providerTaxCompliance.providerType, providerType as string));
     }
 
-    const providers = await db.select()
+    const rows = await db.select()
       .from(providerTaxCompliance)
       .where(conditions.length > 0 ? and(...conditions) : undefined)
       .orderBy(desc(providerTaxCompliance.createdAt))
       .limit(100);
+
+    // Never return regulated PII in the clear — mask tax ID / National Insurance /
+    // VAT to last-4 (handles both encrypted and legacy-plaintext stored forms).
+    const providers = rows.map((p) => ({
+      ...p,
+      taxId: maskPII(p.taxId),
+      nationalInsuranceNumber: maskPII(p.nationalInsuranceNumber),
+      vatNumber: maskPII(p.vatNumber),
+    }));
 
     res.json({ success: true, providers, count: providers.length });
   } catch (error: any) {

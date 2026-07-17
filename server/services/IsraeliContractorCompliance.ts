@@ -31,6 +31,7 @@ import {
 } from '@shared/schema';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { encryptPII } from '../lib/piiFieldCrypto';
 import { nanoid } from 'nanoid';
 import { generateCommissionInvoiceNumber } from '../lib/invoiceSequence';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
@@ -184,21 +185,28 @@ export class IsraeliContractorComplianceService {
       // Calculate risk level
       const riskLevel: ComplianceRiskLevel = this.calculateRiskLevel(issues, taxData);
 
-      // Save to database
-      // ⚠️ SECURITY WARNING: Tax IDs and National Insurance numbers are stored in plaintext
-      // TODO PRODUCTION: Encrypt sensitive PII (taxId, nationalInsuranceNumber) at rest using AES-256
-      // TODO PRODUCTION: Implement field-level encryption for GDPR/Israeli Privacy Law compliance
-      // TODO PRODUCTION: Redact sensitive fields in API responses (show only last 4 digits)
+      // Save to database.
+      // Regulated PII (tax ID, National Insurance, VAT) is encrypted at rest via
+      // AES-256-GCM (shared piiFieldCrypto — same scheme/key as contractor-onboarding,
+      // so the providerTaxCompliance column stays single-format). Validation above
+      // ran on the plaintext; we encrypt only at the insert. API responses mask these
+      // to last-4 (see israeli-contractor-compliance admin route).
       const expiresAt = new Date();
       expiresAt.setFullYear(expiresAt.getFullYear() + 1); // Tax registration valid for 1 year
 
       // NOTE: In production, status should remain 'pending' until admin/API verification completes
       const productionSafeStatus = verificationStatus === 'verified' ? 'pending' : verificationStatus;
-      
+
       await db.insert(providerTaxCompliance).values({
         providerId,
         providerType,
         ...taxData,
+        // Override the plaintext spread with encrypted PII fields.
+        taxId: taxData.taxId ? encryptPII(taxData.taxId) : taxData.taxId,
+        nationalInsuranceNumber: taxData.nationalInsuranceNumber
+          ? encryptPII(taxData.nationalInsuranceNumber)
+          : taxData.nationalInsuranceNumber,
+        vatNumber: taxData.vatNumber ? encryptPII(taxData.vatNumber) : taxData.vatNumber,
         verificationStatus: productionSafeStatus, // Force pending until real verification
         riskLevel,
         isCompliant: false, // Never auto-approve without real verification
