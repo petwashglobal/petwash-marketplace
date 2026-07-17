@@ -102,17 +102,19 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
   },
   {
     // Station 2 — Green Kfar Saba. Exact install coordinates confirmed by CEO
-    // (2026-07-17): dual K9000 bay; hardware installs 2026-07-18, opens next week.
-    // Still ANNOUNCED (not `open`) until it is actually operating + a real
-    // pet_wash_stations row exists — no fake operating station.
+    // (2026-07-17): dual K9000 bay, 24/7. CEO marked LIVE (opens 2026-07-18).
     code: 'PWS-IL-KFS-002',
     city: 'כפר סבא',
     nameHe: 'כפר סבא הירוקה',
     nameEn: 'Green Kfar Saba',
     area: 'Green Kfar Saba',
     lat: 32.1982242, lng: 34.892436,
-    etaHe: 'נפתחת בשבוע הבא — עמדה דו-תאית, פתוחה 24/7',
-    etaEn: 'Opening next week — dual bay, open 24/7',
+    open: true,
+    etaHe: 'פעילה — עמדה דו-תאית, פתוחה 24/7',
+    etaEn: 'Open — dual bay, 24/7',
+    hoursHe: 'פתוחה 24 שעות בכל יום',
+    hoursEn: 'Open 24/7',
+    opens: '00:00', closes: '23:59',
   },
 ];
 
@@ -132,7 +134,7 @@ export default function Locations() {
   // announced station, truthful geo/address; hours/phone omitted as unknown) +
   // FAQPage + Breadcrumb, emitted as one @graph. Live-data-only, no invented fields.
   useEffect(() => {
-    const openStation = ANNOUNCED_LOCATIONS.find((a) => a.open);
+    const openStations = ANNOUNCED_LOCATIONS.filter((a) => a.open);
     const socials = [
       'https://www.instagram.com/petwashltd',
       'https://www.tiktok.com/@petwashltd',
@@ -149,31 +151,33 @@ export default function Locations() {
         logo: 'https://petwash.co.il/brand/petwash-logo-official.png',
         sameAs: socials,
       },
-      ...(openStation ? [{
+      // One LocalBusiness node per OPEN station — so every live site (not just
+      // the first) is discoverable by search + answer engines.
+      ...openStations.map((s) => ({
         '@type': 'LocalBusiness',
-        '@id': `https://petwash.co.il/locations#${openStation.code}`,
-        name: `PetWash™ — ${openStation.nameEn}`,
+        '@id': `https://petwash.co.il/locations#${s.code}`,
+        name: `PetWash™ — ${s.nameEn}`,
         url: 'https://petwash.co.il/locations',
         image: 'https://petwash.co.il/brand/petwash-logo-official.png',
         priceRange: '₪₪',
         address: {
           '@type': 'PostalAddress',
-          streetAddress: openStation.area,
-          addressLocality: openStation.city,
+          streetAddress: s.area,
+          addressLocality: s.city,
           addressCountry: 'IL',
         },
-        geo: { '@type': 'GeoCoordinates', latitude: openStation.lat, longitude: openStation.lng },
+        geo: { '@type': 'GeoCoordinates', latitude: s.lat, longitude: s.lng },
         // Regular weekly hours only — holiday closures are stated in the visible
         // card copy; schema.org has no clean "except holidays" expression.
-        ...(openStation.opens && openStation.closes ? {
+        ...(s.opens && s.closes ? {
           openingHoursSpecification: {
             '@type': 'OpeningHoursSpecification',
             dayOfWeek: ['Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday', 'Sunday'],
-            opens: openStation.opens,
-            closes: openStation.closes,
+            opens: s.opens,
+            closes: s.closes,
           },
         } : {}),
-        areaServed: openStation.city,
+        areaServed: s.city,
         parentOrganization: { '@id': 'https://petwash.co.il/#organization' },
         sameAs: socials,
         makesOffer: {
@@ -182,7 +186,7 @@ export default function Locations() {
           price: '55',
           itemOffered: { '@type': 'Service', name: 'שטיפת כלבים בשירות עצמי (K9000)' },
         },
-      }] : []),
+      })),
       {
         '@type': 'FAQPage',
         mainEntity: STATION_FAQ.map((f) => ({
