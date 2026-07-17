@@ -616,6 +616,9 @@ ${bookingRow}
   static async cancelEscrowAndRefund(payoutId: string, reason: string): Promise<{
     success: boolean;
     error?: string;
+    refundId?: string;
+    refundStatus?: string;
+    refundExecuted?: boolean;
   }> {
     try {
       const [payout] = await db.select()
@@ -660,10 +663,64 @@ ${bookingRow}
         reason,
       });
 
-      // TODO: Trigger Nayax refund webhook to actually refund customer
+      // Record the customer refund obligation on the refund rail (was a silent
+      // TODO — escrow flipped to failed but the customer's money never moved).
+      // Auto-execute ONLY when the cancel flow already computed the exact refund
+      // (refundAmountCents) AND the booking was wallet-funded — otherwise record a
+      // tracked, alerted `pending` obligation rather than risk an over-refund.
+      let refund: { refundId: string; status: string; executed: boolean } | undefined;
+      try {
+        if (payout.bookingId) {
+          const [booking] = await db.select()
+            .from(bookings)
+            .where(eq(bookings.id, payout.bookingId))
+            .limit(1);
+
+          if (booking?.userId) {
+            const walletFunded = (booking.paymentMethod ?? '').toLowerCase() === 'wallet';
+            const policyCents = booking.refundAmountCents ?? null;
+            const fullChargeCents = Math.round(Number(booking.total ?? 0) * 100);
+            // Execute wallet refunds only for the policy-computed amount; every
+            // other case is recorded pending (card rail = Phase 2; unknown amount
+            // = human review).
+            const canAutoExecute = walletFunded && policyCents != null && policyCents > 0;
+            const refundCents = canAutoExecute ? policyCents! : (policyCents ?? fullChargeCents);
+
+            if (refundCents > 0) {
+              const { requestRefund } = await import('./RefundService');
+              refund = await requestRefund({
+                sourceType: 'escrow',
+                sourceId: String(payoutId),
+                userId: booking.userId,
+                instrument: canAutoExecute ? 'wallet' : 'card',
+                refundCents,
+                chargedCents: fullChargeCents || undefined,
+                divisionCode: 'general',
+                currency: booking.currency ?? 'ILS',
+                reason: `Escrow cancelled: ${reason}`,
+                idempotencyKey: `refund:escrow:${payoutId}`,
+                initiatedBy: 'escrow_cancel',
+              });
+            }
+          } else {
+            logger.warn('[ProviderPayout] Escrow cancel: booking/customer not found — refund not recorded', { payoutId, bookingId: payout.bookingId });
+          }
+        } else {
+          logger.warn('[ProviderPayout] Escrow cancel: payout has no bookingId — refund not recorded', { payoutId });
+        }
+      } catch (refundErr) {
+        // Never let a refund-recording failure mask the successful escrow cancel;
+        // requestRefund already fail-closes + alerts on rail errors.
+        logger.error('[ProviderPayout] Escrow cancel: refund rail error (escrow still cancelled)', {
+          payoutId, error: refundErr instanceof Error ? refundErr.message : String(refundErr),
+        });
+      }
 
       return {
         success: true,
+        refundId: refund?.refundId,
+        refundStatus: refund?.status,
+        refundExecuted: refund?.executed,
       };
     } catch (error) {
       logger.error('[ProviderPayout] Error cancelling escrow', error);

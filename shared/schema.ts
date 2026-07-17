@@ -14160,6 +14160,42 @@ export const refundApprovals = pgTable("refund_approvals", {
 export type RefundApproval       = typeof refundApprovals.$inferSelect;
 export type InsertRefundApproval = typeof refundApprovals.$inferInsert;
 
+// ─── Refund rail — canonical refund ledger (Phase 1) ──────────────────────────
+// One row per refund obligation, keyed by idempotencyKey. Wallet-instrument
+// refunds execute now (via WalletLedger.refundToWallet); card/Phase-2 obligations
+// are recorded 'pending' + alerted instead of silently dropped.
+// See docs/finance/refund-rail-design-2026-06-23.md.
+export const refundTransactions = pgTable("refund_transactions", {
+  id:                serial("id").primaryKey(),
+  refundId:          varchar("refund_id",        { length: 64  }).unique().notNull(),
+  idempotencyKey:    varchar("idempotency_key",  { length: 255 }).unique().notNull(),
+  sourceType:        varchar("source_type",      { length: 40  }).notNull(),
+  sourceId:          varchar("source_id",        { length: 128 }).notNull(),
+  userId:            varchar("user_id",          { length: 128 }).notNull(),
+  instrument:        varchar("instrument",       { length: 24  }).notNull(),
+  chargedCents:      integer("charged_cents"),
+  feeCents:          integer("fee_cents").notNull().default(0),
+  refundCents:       integer("refund_cents").notNull(),
+  currency:          varchar("currency",         { length: 8   }).notNull().default("ILS"),
+  status:            varchar("status",           { length: 16  }).notNull().default("pending"),
+  // pending | approved | executing | succeeded | failed | rejected
+  railRef:           varchar("rail_ref",             { length: 128 }),
+  sumitCreditDocRef: varchar("sumit_credit_doc_ref", { length: 128 }),
+  billingRecordId:   varchar("billing_record_id",    { length: 128 }),
+  auditHash:         varchar("audit_hash",           { length: 128 }),
+  approvalId:        varchar("approval_id",          { length: 128 }),
+  reason:            text("reason"),
+  initiatedBy:       varchar("initiated_by",         { length: 64  }),
+  createdAt:         timestamp("created_at").notNull().defaultNow(),
+  updatedAt:         timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("refund_tx_status_idx").on(table.status),
+  index("refund_tx_source_idx").on(table.sourceType, table.sourceId),
+  index("refund_tx_user_idx").on(table.userId),
+]);
+export type RefundTransaction       = typeof refundTransactions.$inferSelect;
+export type InsertRefundTransaction = typeof refundTransactions.$inferInsert;
+
 // ─── Phase 3.4: Dispute Cases routing columns ─────────────────────────────────
 // These columns are added to dispute_cases via ALTER TABLE in the DB; reflected here
 // as a separate extension type for reference (not a separate table).
