@@ -244,7 +244,12 @@
             window.__FIREBASE_CONFIG__ = null;
           }
         } catch (error) {
-          console.error('[Firebase Runtime Config] ❌ Failed - using env var fallback');
+          // AbortError = the visitor navigated away before this resolved (or the
+          // 3s guard fired). That is expected, not a failure — don't log it as an
+          // error. The env-var fallback covers config either way.
+          if (!error || error.name !== 'AbortError') {
+            console.error('[Firebase Runtime Config] ❌ Failed - using env var fallback');
+          }
           window.__FIREBASE_CONFIG__ = null;
         }
         return true;
