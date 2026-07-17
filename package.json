@@ -216,6 +216,7 @@
   },
   "overrides": {
     "form-data": "^4.0.6",
+    "tar": "$tar",
     "passkit-generator": {
       "joi": "^17.13.4"
     },

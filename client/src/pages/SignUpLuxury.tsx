@@ -87,7 +87,7 @@ import {
   signInWithPasskeyConditional,
 } from '@/auth/passkey';
 import {
-  FaApple, FaFacebookF, FaInstagram, FaLock,
+  FaApple, FaFacebookF, FaInstagram, FaTiktok, FaLock,
   FaShieldAlt, FaAppStoreIos, FaGooglePlay,
   FaCog, FaGift, FaCalendarAlt, FaHeartbeat,
   FaEnvelope, FaPhoneAlt, FaPaw, FaFingerprint,
@@ -690,6 +690,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     cwApple: he ? 'המשך עם Apple' : 'Continue with Apple',
     cwFb: he ? 'המשך עם Facebook' : 'Continue with Facebook',
     cwIg: he ? 'המשך עם Instagram' : 'Continue with Instagram',
+    cwTt: he ? 'המשך עם TikTok' : 'Continue with TikTok',
     soon: he ? 'בקרוב' : 'SOON',
     or: he ? 'או הירשם עם' : 'or sign up with',
     tabMobile: he ? 'נייד' : 'Mobile',
@@ -991,6 +992,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     <span className="sl-socLabel">{t.cwIg}</span>
                   </button>
                 )}
+                {signupFlags.tiktokSignin && (
+                  <button className="sl-soc sl-soc--tt" disabled={busy} onClick={() => socialExternal('tiktok')}>
+                    <span className="sl-ttIcon" aria-hidden><FaTiktok /></span>
+                    <span className="sl-socLabel">{t.cwTt}</span>
+                  </button>
+                )}
               </div>
 
               {/* Returning-user passkey/Face-ID — demoted to the bottom (see top note). */}
@@ -1251,6 +1258,8 @@ function styles(he: boolean) {
     .sl-fbIcon svg{ font-size:14px }
     .sl-igIcon{ width:24px; height:24px; flex:0 0 auto; border-radius:6px; background:linear-gradient(135deg, #fdc468 0%, #d83689 50%, #5b4ad0 100%); display:inline-flex; align-items:center; justify-content:center; color:#fff }
     .sl-igIcon svg{ font-size:14px }
+    .sl-ttIcon{ width:24px; height:24px; flex:0 0 auto; border-radius:6px; background:#000; display:inline-flex; align-items:center; justify-content:center; color:#fff }
+    .sl-ttIcon svg{ font-size:14px }
     /* Apple HIG "Sign in with Apple": solid black button, PURE white mark + label
        (the generic tile tinted the logo cream via --white — CEO 2026-07-02). */
     .sl-soc--apple{ background:#000; border-color:rgba(255,255,255,.32) }
@@ -1471,7 +1480,7 @@ function styles(he: boolean) {
       .sl-lang{ min-height:40px; padding:8px 12px; border-radius:999px }
       .sl-social4{ grid-template-columns:1fr 1fr; gap:8px }
       .sl-soc{ min-height:50px; border-radius:14px; padding:0 12px; gap:10px; font-size:13px; line-height:1.15 }
-      .sl-soc svg,.sl-fbIcon,.sl-igIcon{ flex:0 0 auto }
+      .sl-soc svg,.sl-fbIcon,.sl-igIcon,.sl-ttIcon{ flex:0 0 auto }
       .sl-div{ margin:2px 0; font-size:12px }
       .sl-tabs{ grid-template-columns:repeat(3, minmax(0,1fr)); gap:8px }
       .sl-tab{ min-height:46px; border-radius:14px; padding:8px 8px; font-size:13px; line-height:1.15 }
@@ -1591,7 +1600,7 @@ function styles(he: boolean) {
       .sl-lang{ min-height:34px; padding:6px 10px; font-size:12px }
       .sl-social4{ grid-template-columns:1fr 1fr; gap:7px }
       .sl-soc{ min-height:42px; border-radius:12px; padding:0 10px; gap:8px; font-size:12px; line-height:1.05 }
-      .sl-soc svg,.sl-fbIcon,.sl-igIcon{ width:21px; height:21px; flex:0 0 auto }
+      .sl-soc svg,.sl-fbIcon,.sl-igIcon,.sl-ttIcon{ width:21px; height:21px; flex:0 0 auto }
       .sl-div{ display:none }
       .sl-tabs{ gap:7px }
       .sl-tab{ min-height:40px; border-radius:12px; font-size:12px; padding:6px }
