@@ -746,6 +746,12 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // anonymous UX telemetry (no auth-sensitive state mutation), so the lack of a
     // CSRF token is acceptable. Live production was returning 403 on every flush.
     if (req.path === '/api/track/interactions') return true;
+    // Same class as /api/track/interactions: anonymous auth-event telemetry
+    // beacon (client/src/lib/authTelemetry via sendBeacon / fetch). The handler
+    // (routes.ts /api/telemetry/auth) only logs and returns 204 — no auth-
+    // sensitive mutation — but it was NOT exempted, so CSRF returned 403 on
+    // every anonymous pageview and the client logged an [API Error]. Exempt it.
+    if (req.path === '/api/telemetry/auth') return true;
     // Cloud-Scheduler backup trigger (server/routes/cron-backup.ts). Machine-to-
     // machine; authenticated by the x-cron-secret header (timing-safe vs CRON_SECRET),
     // not a browser cookie, so the double-submit CSRF token can't be sent. Without
