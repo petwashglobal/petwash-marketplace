@@ -101,16 +101,18 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     opens: '05:30', closes: '23:00',
   },
   {
-    // Station 2 — exact street address still TBD (CEO), so we name the
-    // neighbourhood only (no fake precise address); the map pin is real.
+    // Station 2 — Green Kfar Saba. Exact install coordinates confirmed by CEO
+    // (2026-07-17): dual K9000 bay; hardware installs 2026-07-18, opens next week.
+    // Still ANNOUNCED (not `open`) until it is actually operating + a real
+    // pet_wash_stations row exists — no fake operating station.
     code: 'PWS-IL-KFS-002',
     city: 'כפר סבא',
     nameHe: 'כפר סבא הירוקה',
     nameEn: 'Green Kfar Saba',
     area: 'Green Kfar Saba',
-    lat: 32.186193, lng: 34.897218,
-    etaHe: 'נפתחת בקרוב — פתוחה 24/7',
-    etaEn: 'Opening soon — open 24/7',
+    lat: 32.1982242, lng: 34.892436,
+    etaHe: 'נפתחת בשבוע הבא — עמדה דו-תאית, פתוחה 24/7',
+    etaEn: 'Opening next week — dual bay, open 24/7',
   },
 ];
 
