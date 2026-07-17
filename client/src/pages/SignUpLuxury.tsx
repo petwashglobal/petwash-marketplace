@@ -159,9 +159,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [over18, setOver18] = useState(false);
   const consentOk = agreedTerms && over18;
 
-  // De-clutter (CEO 2026-07-12): lead with phone/email + Google; Apple/Facebook/
-  // Instagram fold under a "more options" toggle so the first screen is calm.
-  const [showMoreMethods, setShowMoreMethods] = useState(false);
 
   // Capture ?intent=provider|loyalty|staff_request from the URL into the signup
   // intent cookie on arrival, so it survives the OAuth redirect and post-login
@@ -819,17 +816,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               just types whichever they like and presses Continue (we detect which). === */}
           {!sent && (
             <>
-              {/* === Returning users: one-tap Face ID / Touch ID (passkey). Shown only
-                  when the device has a platform authenticator. No consent gate — a
-                  returning user already accepted terms at original signup. === */}
-              {bioAvailable && (
-                <>
-                  <button type="button" className="sl-bio" disabled={busy} onClick={handlePasskeyLogin}>
-                    <FaFingerprint aria-hidden /> {he ? `התחברות עם ${bioName}` : `Sign in with ${bioName}`}
-                  </button>
-                  <div className="sl-div">{he ? 'או הצטרפו לחשבון חדש' : 'or create a new account'}</div>
-                </>
-              )}
+              {/* Passkey/Face-ID is a RETURNING-user shortcut and lives at the BOTTOM
+                  now (CEO 2026-07-17): a brand-new joiner has no passkey yet, so
+                  showing it first only 400s and confuses. See the returning-user
+                  block after the social options below. */}
 
               {/* === Clear intent up front: member and/or provider (non-exclusive) === */}
               <div className="sl-intent">
@@ -885,6 +875,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               <div className="sl-field">
                 <label className="sl-label">{t.phoneLabel}</label>
                 <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
+                <div className="sl-hint">{he ? 'נשלח קוד אימות חד-פעמי ב-SMS — בלי סיסמה. השם והעדפות נאספים אחרי ההצטרפות.' : 'We text you a one-time code — no password. Name & preferences are collected after you join.'}</div>
               </div>
 
               {signupFlags.emailPassword && (
@@ -973,43 +964,43 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               <div className="sl-div">{t.or}</div>
 
               {/* === Social tiles — real auth alternatives, below phone-first signup. === */}
+              {/* All sign-up methods visible (CEO 2026-07-17): no "more options" fold.
+                  Buttons are NOT disabled on missing consent — a tap calls social()/
+                  socialExternal(), which surface the "accept terms + 18+" message.
+                  Disabling silently made them look dead ("Gmail gives nothing"). */}
               <div className="sl-social4">
                 {signupFlags.googleSignin && (
-                  <button className="sl-soc" disabled={busy || !consentOk} onClick={() => social('google')}>
+                  <button className="sl-soc" disabled={busy} onClick={() => social('google')}>
                     <GoogleIcon /> <span className="sl-socLabel">{t.cwGoogle}</span>
                   </button>
                 )}
-
-                {/* Secondary methods fold under "more options" — calmer first screen. */}
-                {showMoreMethods && (
-                  <>
-                    {signupFlags.appleSignin && (
-                      <button className="sl-soc sl-soc--apple" disabled={busy || !consentOk} onClick={() => social('apple')}>
-                        <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
-                      </button>
-                    )}
-
-                    {signupFlags.facebookSignin && (
-                      <button className="sl-soc sl-soc--fb" disabled={busy || !consentOk} onClick={() => social('facebook')}>
-                        <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
-                        <span className="sl-socLabel">{t.cwFb}</span>
-                      </button>
-                    )}
-
-                    {signupFlags.instagramSignin && (
-                      <button className="sl-soc sl-soc--ig" disabled={busy || !consentOk} onClick={() => socialExternal('instagram')}>
-                        <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
-                        <span className="sl-socLabel">{t.cwIg}</span>
-                      </button>
-                    )}
-                  </>
+                {signupFlags.appleSignin && (
+                  <button className="sl-soc sl-soc--apple" disabled={busy} onClick={() => social('apple')}>
+                    <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
+                  </button>
+                )}
+                {signupFlags.facebookSignin && (
+                  <button className="sl-soc sl-soc--fb" disabled={busy} onClick={() => social('facebook')}>
+                    <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
+                    <span className="sl-socLabel">{t.cwFb}</span>
+                  </button>
+                )}
+                {signupFlags.instagramSignin && (
+                  <button className="sl-soc sl-soc--ig" disabled={busy} onClick={() => socialExternal('instagram')}>
+                    <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
+                    <span className="sl-socLabel">{t.cwIg}</span>
+                  </button>
                 )}
               </div>
 
-              {(signupFlags.appleSignin || signupFlags.facebookSignin || signupFlags.instagramSignin) && !showMoreMethods && (
-                <button type="button" className="sl-btn sl-center" onClick={() => setShowMoreMethods(true)}>
-                  {he ? 'עוד אפשרויות התחברות ›' : 'More sign-in options ›'}
-                </button>
+              {/* Returning-user passkey/Face-ID — demoted to the bottom (see top note). */}
+              {bioAvailable && (
+                <>
+                  <div className="sl-div">{he ? 'כבר חברים? התחברות מהירה' : 'Already a member? Quick sign-in'}</div>
+                  <button type="button" className="sl-bio" disabled={busy} onClick={handlePasskeyLogin}>
+                    <FaFingerprint aria-hidden /> {he ? `התחברות עם ${bioName}` : `Sign in with ${bioName}`}
+                  </button>
+                </>
               )}
 
               {/* Honest activation note (CEO 2026-07-02 "both need verify"): social
