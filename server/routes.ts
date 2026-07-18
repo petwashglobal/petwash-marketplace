@@ -339,7 +339,8 @@ import {
   users,
   stationBays,
   baySessions,
-  kioskMachines
+  kioskMachines,
+  userConsents
 } from "@shared/schema";
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
@@ -1711,9 +1712,56 @@ self.addEventListener('notificationclick', (event) => {
         source: 'web',
       };
       
-      // Save to Firestore for audit trail
-      await firestoreDb.collection('consent_records').add(consentRecord);
-      
+      // ── DURABLE audit trail → Postgres (primary) ────────────────────────────
+      // This endpoint used to persist ONLY to Firestore, and that write was
+      // failing in production: every visitor who accepted cookies got a 500
+      // ({"ok":false,"error":"Failed to save consent"}), so the banner never
+      // settled AND no consent was recorded anywhere — a GDPR audit-trail gap.
+      // Postgres is the reliable store and already has a purpose-built
+      // user_consents table, so it becomes the source of truth; one row per
+      // category gives a real per-purpose record.
+      const consentVersion = 'cookie-banner-v1';
+      const categories: Array<[string, boolean]> = [
+        ['necessary', consent.necessary],
+        ['functional', consent.functional],
+        ['analytics', consent.analytics],
+        ['marketing', consent.marketing],
+        ['location', consent.location],
+        ['camera', consent.camera],
+        ['wash_reminders', consent.washReminders],
+        ['vaccination_reminders', consent.vaccinationReminders],
+        ['promotional_notifications', consent.promotionalNotifications],
+      ];
+      const consentTextHash = crypto
+        .createHash('sha256')
+        .update(`${consentVersion}|${categories.map(([k, v]) => `${k}=${v}`).join(',')}`)
+        .digest('hex');
+
+      await db.insert(userConsents).values(
+        categories.map(([consentType, accepted]) => ({
+          userId: userId || 'anonymous',
+          consentType,
+          consentVersion,
+          consentTextHash,
+          accepted: Boolean(accepted),
+          method: 'banner',
+          ip,
+          userAgent,
+          source: 'web',
+        })),
+      );
+
+      // Firestore copy is BEST-EFFORT only. It is a secondary mirror; an outage
+      // or a service-account permission problem there must never break a
+      // visitor's consent or lose the record — Postgres already has it.
+      try {
+        await firestoreDb.collection('consent_records').add(consentRecord);
+      } catch (mirrorError) {
+        logger.error('[Consent] Firestore mirror failed (consent IS saved in Postgres)', {
+          error: mirrorError instanceof Error ? mirrorError.message : String(mirrorError),
+        });
+      }
+
       logger.info('[Consent] Saved user consent preferences', {
         userId: userId || 'anonymous',
         functional: consent.functional,
