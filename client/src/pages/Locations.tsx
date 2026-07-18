@@ -246,6 +246,19 @@ export default function Locations() {
       : stations
     : [];
 
+  // The page promises "Find a Station Near You" and asks for the visitor's GPS —
+  // but the distance sort above only covered DB stations, and every real station
+  // currently lives in ANNOUNCED_LOCATIONS. So a visitor granted location access
+  // and was still told nothing. Annotate + sort the announced cards too.
+  const announced = (userLocation
+    ? [...ANNOUNCED_LOCATIONS]
+        .map((a) => ({ ...a, km: calculateDistance(userLocation.lat, userLocation.lng, a.lat, a.lng) }))
+        .sort((a, b) => a.km - b.km)
+    : ANNOUNCED_LOCATIONS.map((a) => ({ ...a, km: undefined as number | undefined })));
+
+  /** "800 m" under a kilometre, otherwise one decimal — no false precision. */
+  const formatKm = (km: number) => (km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`);
+
   return (
     <div className="min-h-screen luxury-bg-mesh">
       <div className="container mx-auto px-4 py-16">
@@ -257,7 +270,7 @@ export default function Locations() {
           </p>
         </div>
 
-        {userLocation && sorted.length > 0 && (
+        {userLocation && (sorted.length > 0 || announced.length > 0) && (
           <div className="max-w-4xl mx-auto mb-8 luxury-glass-card luxury-bg-success p-6 text-center luxury-scale-in">
             <p className="text-white flex items-center justify-center gap-3 text-lg font-semibold">
               <Navigation className="w-6 h-6" />
@@ -282,7 +295,7 @@ export default function Locations() {
         {/* Announced sites — opening soon (real, honestly labelled). Always shown. */}
         {ANNOUNCED_LOCATIONS.length > 0 && (
           <div className="max-w-4xl mx-auto space-y-4 mb-8">
-            {ANNOUNCED_LOCATIONS.map((a) => (
+            {announced.map((a) => (
               <div key={a.nameEn} className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-[#D4AF37] via-[#F4E4A6] to-[#D4AF37] luxury-shadow-lg">
                 <div className="rounded-2xl bg-white p-6 sm:p-8">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
@@ -294,6 +307,12 @@ export default function Locations() {
                       )}
                       <h2 className="text-2xl font-bold luxury-gradient-text mt-1">{a.nameEn}</h2>
                       <p className="text-lg luxury-text-body" dir="rtl">{a.nameHe}</p>
+                      {a.km !== undefined && (
+                        <p className="text-sm font-semibold text-[#9C7209] mt-1 flex items-center gap-1.5">
+                          <Navigation className="w-4 h-4 shrink-0" />
+                          <span>{formatKm(a.km)} away · {formatKm(a.km)} ממך</span>
+                        </p>
+                      )}
                       <p className="luxury-text-body mt-1">{a.etaEn} · {a.etaHe}</p>
                       {a.hoursHe && (
                         <p className="luxury-text-body mt-1 flex items-center gap-1.5">
