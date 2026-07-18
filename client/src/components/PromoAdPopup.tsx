@@ -124,11 +124,21 @@ export function PromoAdPopup({
   useEffect(() => {
     if (!isVisible) return;
 
-    // Prevent page scroll while popup is open
-    const prevOverflow = document.body.style.overflow;
-    const prevTouchAction = document.body.style.touchAction;
+    // Prevent page scroll while the popup is open.
+    //
+    // overflow:hidden is ENOUGH. Never set `touch-action: none` on <body>:
+    // it disables every touch gesture, so if it ever leaks the whole site
+    // becomes unscrollable on iOS. It DID leak in production (CEO 2026-07-18:
+    // iPhone Safari couldn't scroll /locations at all) — the old code saved the
+    // "previous" value and restored it, so once that previous value was itself
+    // 'none' (two locks overlapping, or this effect re-running via its isHovered
+    // / handleClose deps) it restored 'none' forever. The stuck body carried
+    // touch-action:none with NO overflow:hidden — the restore had run and put
+    // the poisoned value back.
+    //
+    // Cleanup below therefore CLEARS the lock outright instead of restoring a
+    // value that may already be poisoned.
     document.body.style.overflow = 'hidden';
-    document.body.style.touchAction = 'none';
 
     // Auto-dismiss — passes 'auto' so the 24 h localStorage stamp is NOT set.
     // Skipped while user is hovering / touching the card (pause-on-hover).
@@ -143,8 +153,12 @@ export function PromoAdPopup({
     document.addEventListener('keydown', onKeyDown);
 
     return () => {
-      document.body.style.overflow = prevOverflow;
-      document.body.style.touchAction = prevTouchAction;
+      // Clear outright — never restore a captured value that may itself be a
+      // leaked lock. Leaving the page scrollable is always the safe failure mode.
+      document.body.style.overflow = '';
+      // Defensive: sweep up a touch-action lock leaked by an older build or
+      // another component, so one stale value can't freeze the whole site.
+      if (document.body.style.touchAction === 'none') document.body.style.touchAction = '';
       if (autoDismiss) clearTimeout(autoDismiss);
       document.removeEventListener('keydown', onKeyDown);
     };
