@@ -88,7 +88,7 @@ import {
 } from '@/auth/passkey';
 import {
   FaApple, FaFacebookF, FaInstagram, FaTiktok, FaLock,
-  FaShieldAlt, FaAppStoreIos, FaGooglePlay,
+  FaShieldAlt,
   FaCog, FaGift, FaCalendarAlt, FaHeartbeat,
   FaEnvelope, FaPhoneAlt, FaPaw, FaFingerprint,
 } from 'react-icons/fa';
@@ -714,13 +714,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     enc: he ? 'הצפנת 256-bit' : '256-bit encryption',
     safe: he ? 'הנתונים שלך בטוחים' : 'Your data is safe',
 
-    dlTitle: he ? 'הורד את האפליקציה שלנו' : 'Download Our App',
-    dlSub: he ? 'גש לכל הפיצ׳רים בנייד' : 'Access all features on the go',
-    storeApple: 'App Store',
-    storeAppleLine: he ? 'הורד מ-' : 'Download on the',
-    storeGoogle: 'Google Play',
-    storeGoogleLine: 'GET IT ON',
-    comingSoon: he ? 'בקרוב' : 'Coming soon',
   };
 
   return (
@@ -1025,36 +1018,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       </div>
 
       {/* ================= DOWNLOAD APP BANNER ================= */}
-      <section className="sl-dl">
-        <div className="sl-dlLeft">
-          <span className="sl-dlPaw" aria-hidden><FaPaw /></span>
-          <div>
-            <div className="sl-dlTitle">{t.dlTitle}</div>
-            <div className="sl-dlSub">{t.dlSub}</div>
-          </div>
-        </div>
-        <div className="sl-dlRight">
-          {/* App-store badges intentionally disabled until the native app is
-              actually published. The Apple URL still carried the placeholder
-              `id1234567890` (broken App Store page) and the Google Play bundle
-              id `co.il.petwash` did not match the registered Expo scaffold
-              `il.co.petwash.staff`. Both badges now render as disabled spans
-              with a "בקרוב / Coming soon" label so visitors get honest UX
-              instead of broken store links. When the app ships, swap the
-              spans back to <a> with the real URLs. */}
-          <span className="sl-store" aria-disabled="true" style={{ cursor: 'not-allowed', opacity: 0.6 }} title={t.comingSoon ?? 'בקרוב'}>
-            <FaAppStoreIos aria-hidden />
-            <span><small>{t.storeAppleLine}</small><strong>{t.storeApple}</strong></span>
-          </span>
-          <span className="sl-store" aria-disabled="true" style={{ cursor: 'not-allowed', opacity: 0.6 }} title={t.comingSoon ?? 'בקרוב'}>
-            <FaGooglePlay aria-hidden />
-            <span><small>{t.storeGoogleLine}</small><strong>{t.storeGoogle}</strong></span>
-          </span>
-          <div className="sl-qr" aria-hidden>
-            <QrSquare />
-          </div>
-        </div>
-      </section>
+      {/* The app-download section (paw + title + two "coming soon" store badges
+          + QR) used to sit here. REMOVED 2026-07-18 (CEO): the native app is not
+          ready, and pushing it on the signup page cost us signups — it added a
+          block of clutter to the one page that has to stay dead simple, and
+          advertised a product visitors can't actually get. Sign-up stays a
+          browser flow, full stop. When the app genuinely ships, add the badges
+          back with real store URLs (the old ones were a placeholder Apple id
+          `id1234567890` and a Google Play bundle that didn't match the
+          registered app), and put them somewhere other than signup. */}
 
     </div>
   );
@@ -1075,24 +1047,6 @@ function GoogleIcon() {
   );
 }
 
-function QrSquare() {
-  const cells = [
-    '1111111011111110', '1000001011001010', '1011101010111010',
-    '1011101011010110', '1011101011001010', '1000001010100110',
-    '1111111010101010', '0000000010111100', '1100110110010010',
-    '1011011000111110', '0010011011000110', '0001110110111010',
-    '1111111011010010', '1000001011111010', '1011101010001100',
-    '1011101011100110',
-  ];
-  return (
-    <svg className="sl-qrSvg" viewBox="0 0 16 16" role="img" aria-label="QR code">
-      <rect width="16" height="16" fill="#fffaf0" />
-      {cells.map((row, y) => row.split('').map((c, x) => (
-        c === '1' ? <rect key={`${x}-${y}`} x={x} y={y} width="1" height="1" fill="#0a0a0a" /> : null
-      )))}
-    </svg>
-  );
-}
 
 // ============================================================
 // Styles
@@ -1425,36 +1379,7 @@ function styles(he: boolean) {
     .sl-secItem svg{ color:var(--gold2); font-size:12px }
 
     /* DOWNLOAD APP BANNER */
-    .sl-dl{
-      max-width:1440px; margin:clamp(24px,3vw,40px) auto 0;
-      padding:clamp(18px,2.5vw,24px) clamp(16px,3vw,32px);
-      border-top:1px solid var(--line);
-      display:flex; align-items:center; justify-content:space-between; gap:18px; flex-wrap:wrap;
-    }
-    .sl-dlLeft{ display:flex; align-items:center; gap:14px; min-width:0 }
-    .sl-dlPaw{
-      width:54px; height:54px; border-radius:50%;
-      background:rgba(255,255,255,.06); border:1px solid var(--line);
-      display:inline-flex; align-items:center; justify-content:center;
-      color:var(--gold2); font-size:22px; flex:0 0 auto;
-    }
-    .sl-dlTitle{ font-family:"Playfair Display", Georgia, serif; font-size:22px; color:var(--white) }
-    .sl-dlSub{ color:var(--muted); font-size:13px; margin-top:2px }
-    .sl-dlRight{ display:flex; align-items:center; gap:10px; flex-wrap:wrap }
-    .sl-store{
-      display:flex; align-items:center; gap:10px;
-      padding:10px 16px; border-radius:12px;
-      background:#0a0a0a; border:1px solid rgba(255,255,255,.14);
-      color:#fff; text-decoration:none; min-height:54px;
-      transition:border-color .15s ease, box-shadow .15s ease;
-    }
-    .sl-store:hover{ border-color:rgba(212,175,55,.4); box-shadow:0 0 0 3px rgba(212,175,55,.1) }
-    .sl-store svg{ font-size:26px; flex:0 0 auto }
-    .sl-store span{ display:flex; flex-direction:column; line-height:1.05; align-items:flex-start }
-    .sl-store small{ font-size:10px; opacity:.78; font-weight:700; letter-spacing:.06em; text-transform:uppercase }
-    .sl-store strong{ font-size:14.5px; font-weight:900 }
-    .sl-qr{ width:54px; height:54px }
-    .sl-qrSvg{ width:54px; height:54px; border-radius:6px }
+    /* app-download section CSS removed with the section itself (2026-07-18) */
 
     /* ====== BREAKPOINTS ====== */
 
@@ -1509,7 +1434,6 @@ function styles(he: boolean) {
       .sl-badges{ grid-template-columns:1fr 1fr; gap:8px }
       .sl-badge{ min-height:54px; padding:10px 8px }
       .sl-terms{ align-items:flex-start; font-size:12.5px; line-height:1.35 }
-      .sl-dl{ display:none }
     }
 
     /* ≤ 420px (very small phones, iPhone SE) — keep the dog visible but
@@ -1587,7 +1511,7 @@ function styles(he: boolean) {
       .sl-divPaw{ display:none }
       .sl-dogWrap{ padding:0 }
       .sl-dog{ width:min(19vw, 96px); border-radius:12px; box-shadow:0 10px 28px rgba(0,0,0,.42) }
-      .sl-card,.sl-trustCard,.sl-secBadge,.sl-dl{ display:none }
+      .sl-card,.sl-trustCard,.sl-secBadge{ display:none }
       .sl-panel{
         padding:12px;
         border-radius:18px;
@@ -1618,7 +1542,7 @@ function styles(he: boolean) {
     }
 
     @media(prefers-reduced-motion:reduce){
-      .sl-soc, .sl-cta, .sl-store, .sl-tab{ transition:none }
+      .sl-soc, .sl-cta, .sl-tab{ transition:none }
     }
   `;
 }
