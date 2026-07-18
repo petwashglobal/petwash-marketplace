@@ -10,9 +10,6 @@
 import { logger } from '../lib/logger';
 import { eventBus } from './EventBus';
 import { walletService } from './WalletService';
-import { db } from '../db';
-import { walletAccounts } from '../../shared/schema';
-import { eq, sql } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 
 export interface WalletBalance {
@@ -110,45 +107,47 @@ export class UnifiedWalletService {
   async deductFunds(userId: string, amount: number, platform: string, description: string, referenceId?: string): Promise<WalletTransaction> {
     try {
       const amountCents = Math.round(amount * 100);
-      const txId = `UNI-DEB-${nanoid(12).toUpperCase()}`;
 
-      // Single atomic statement:
-      //   1. Deducts from promo first (LEAST(promo, amount))
-      //   2. Deducts remainder from cash
-      //   3. WHERE guard: total available >= amountCents (fails if insufficient)
-      //   4. RETURNING: lets us confirm the row was actually updated
-      const [updated] = await db.update(walletAccounts)
-        .set({
-          promoBalanceCents: sql`GREATEST(0, COALESCE(promo_balance_cents, 0) - LEAST(COALESCE(promo_balance_cents, 0), ${amountCents}))`,
-          cashWalletBalanceCents: sql`GREATEST(0, COALESCE(cash_wallet_balance_cents, 0) - GREATEST(0, ${amountCents} - LEAST(COALESCE(promo_balance_cents, 0), ${amountCents})))`,
-          updatedAt: new Date(),
-          lastActivityAt: new Date(),
-        })
-        .where(
-          sql`user_id = ${userId}
-              AND (COALESCE(promo_balance_cents, 0) + COALESCE(cash_wallet_balance_cents, 0)) >= ${amountCents}`
-        )
-        .returning();
-
-      if (!updated) {
-        // Either user has no wallet or insufficient funds — get actual balance to report correctly
-        const wallet = await walletService.getOrCreateWallet(userId);
-        const available = (wallet.promoBalanceCents || 0) + (wallet.cashWalletBalanceCents || 0);
-        throw new Error(`Insufficient balance: need ${amountCents} agorot, have ${available} agorot`);
-      }
+      // Delegate to the canonical hash-chained ledger.
+      //
+      // This used to decrement wallet_accounts directly with a raw UPDATE. The
+      // balance moved but NOTHING was written to wallet_ledger_entries, so real
+      // money left a user's wallet with no audit row, no hash-chain link, and
+      // permanent drift for the ledger drift-detector to trip over. The txId it
+      // returned existed only in the HTTP response — it was never persisted.
+      //
+      // deductFromWallet is the hardened primitive: row lock (FOR UPDATE),
+      // multi-bucket deduction, idempotency, velocity + fraud checks, and the
+      // hash-chained entry. It performs the balance change itself, so the raw
+      // UPDATE above had to go — keeping both would double-debit.
+      const { deductFromWallet } = await import('./WalletLedger');
+      const result = await deductFromWallet({
+        userId,
+        amountCents,
+        isKioskWash: false,
+        serviceType: platform,
+        description,
+        // A caller-supplied referenceId doubles as the idempotency key, so a
+        // retried request returns the original result instead of debiting twice.
+        idempotencyKey: referenceId,
+        sourceType: 'manual',
+        endpoint: '/api/unified/wallet/deduct-funds',
+      });
 
       await eventBus.publish({
         eventType: 'wallet.withdrawn',
         timestamp: new Date().toISOString(),
         platform,
         userId,
-        data: { transactionId: txId, amount, description, referenceId },
+        data: { transactionId: result.txnId, amount, description, referenceId },
       });
 
-      logger.info('[Unified Wallet] Funds deducted (atomic)', { userId, amountCents, platform, txId });
+      logger.info('[Unified Wallet] Funds deducted (ledger)', {
+        userId, amountCents, platform, txnId: result.txnId, idempotent: result.idempotent,
+      });
 
       return {
-        id: txId,
+        id: result.txnId,
         userId,
         amount,
         type: 'debit',
