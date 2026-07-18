@@ -106,11 +106,59 @@ for (const route of ROUTES) {
     // Give React a beat to settle post-idle (lazy chunks, useSEO effects).
     await new Promise((r) => setTimeout(r, 800));
 
-    const { html, textLen, title } = await page.evaluate(() => ({
-      html: '<!DOCTYPE html>\n' + document.documentElement.outerHTML,
-      textLen: (document.body.innerText || '').trim().length,
-      title: document.title,
-    }));
+    const { html, textLen, title, sanitized } = await page.evaluate(() => {
+      // ── CRITICAL: never bake a transient UI lock into the static HTML ──
+      //
+      // We serialise the LIVE DOM, so any state a component happened to apply
+      // at snapshot time ships to every visitor. The promo popup shows on load
+      // and locks background scroll (body{overflow:hidden}) — which got frozen
+      // into the prerendered HTML of every route. Real users then received an
+      // unscrollable <body> in the very first byte, before any JS ran, so the
+      // whole site was dead to touch AND to programmatic scrolling. (Reported
+      // 2026-07-18: "cannot scroll, website not responding".)
+      //
+      // Strip the scroll-lock properties and drop any open modal/overlay from
+      // the snapshot. These are runtime concerns; static HTML must always ship
+      // scrollable. The live app re-applies whatever it needs once hydrated.
+      const sanitized = [];
+
+      for (const el of [document.body, document.documentElement]) {
+        for (const prop of ['overflow', 'overflowY', 'overflowX', 'touchAction', 'position', 'height']) {
+          if (el.style[prop]) {
+            sanitized.push(`${el.tagName.toLowerCase()}.${prop}=${el.style[prop]}`);
+            el.style[prop] = '';
+          }
+        }
+        if (el.getAttribute('style') === '') el.removeAttribute('style');
+      }
+
+      // Transient overlays (promo popup, drawers, modal backdrops) must not be
+      // part of a cached page — they'd render on top of static HTML for users
+      // with JS disabled or before hydration.
+      for (const sel of ['.pw-drawer-overlay', '.pw-mobile-drawer', '[data-promo-popup]', '[role="dialog"]']) {
+        for (const node of document.querySelectorAll(sel)) {
+          sanitized.push(`removed ${sel}`);
+          node.remove();
+        }
+      }
+
+      return {
+        html: '<!DOCTYPE html>\n' + document.documentElement.outerHTML,
+        textLen: (document.body.innerText || '').trim().length,
+        title: document.title,
+        sanitized,
+      };
+    });
+
+    // Belt-and-braces: even if the DOM pass missed something, never let a
+    // scroll lock reach the file on disk.
+    const bodyTag = html.match(/<body[^>]*>/i)?.[0] ?? '';
+    if (/overflow\s*:\s*hidden|touch-action\s*:\s*none|position\s*:\s*fixed/i.test(bodyTag)) {
+      throw new Error(`refusing to write scroll-locked HTML for ${route}: ${bodyTag}`);
+    }
+    if (sanitized.length) {
+      console.log(`[prerender]   sanitized ${route}: ${sanitized.join(', ')}`);
+    }
 
     // A snapshot with no real text is worse than none — skip, keep SPA shell.
     if (textLen < 200) {
