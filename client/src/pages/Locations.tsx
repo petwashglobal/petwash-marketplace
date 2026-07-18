@@ -83,7 +83,12 @@ export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls:
 // docs/stations/launch-stations-2026-06.md. Set `open: true` once a site is
 // actually operating (it then shows as "Open" instead of "Opening soon"), or
 // remove the entry once its live pet_wash_stations row exists.
-const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string; open?: boolean; hoursHe?: string; hoursEn?: string; opens?: string; closes?: string }[] = [
+// arrivalHe/arrivalEn: plain-language "how do I actually find it" copy. A pin in
+// the middle of a park is useless to a driver — people navigate by entrances,
+// car parks and landmarks, so we state those in words (CEO 2026-07-18: visitors
+// were getting lost inside Isaac Wald Park). Only ever fill this with verified
+// on-the-ground detail — never guess an entrance.
+const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string; open?: boolean; hoursHe?: string; hoursEn?: string; opens?: string; closes?: string; arrivalHe?: string; arrivalEn?: string }[] = [
   {
     // LIVE: Isaac Wald Park is open — two K9000 bays operating (Nayax online).
     // Hours are CEO-stated (2026-07-15): daily 05:30–23:00, closed on holidays.
@@ -99,6 +104,8 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     hoursHe: 'פתוחה כל יום 05:30–23:00 (למעט חגים)',
     hoursEn: 'Open daily 05:30–23:00 (except holidays)',
     opens: '05:30', closes: '23:00',
+    arrivalHe: 'בתוך הפארק, ליד החניון הראשי — נכנסים מרחוב ויצמן (סמוך לוויצמן 185, מיקוד 4439654). חניה במקום בתשלום (כחול-לבן), ומשם הליכה קצרה אל העמדה.',
+    arrivalEn: 'Inside the park, beside the main car park — enter from Weizmann Street (near Weizmann 185, postcode 4439654). On-site paid parking (blue-and-white), then a short walk to the bay.',
   },
   {
     // Station 2 — Green Kfar Saba. Exact install coordinates confirmed by CEO
@@ -167,6 +174,9 @@ export default function Locations() {
           addressCountry: 'IL',
         },
         geo: { '@type': 'GeoCoordinates', latitude: s.lat, longitude: s.lng },
+        // Plain-language arrival directions — lets Google/answer engines tell a
+        // visitor which entrance and car park to use, not just a raw coordinate.
+        ...(s.arrivalEn ? { description: s.arrivalEn } : {}),
         // Regular weekly hours only — holiday closures are stated in the visible
         // card copy; schema.org has no clean "except holidays" expression.
         ...(s.opens && s.closes ? {
@@ -293,13 +303,34 @@ export default function Locations() {
                       )}
                       <p className="text-[10px] text-gray-400 mt-1 font-mono tracking-wide" dir="ltr">{a.code}</p>
                     </div>
-                    <Button
-                      className="luxury-btn-outline"
-                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`, '_blank')}
-                    >
-                      <MapPin className="w-5 h-5 mr-2" /> View on map · במפה
-                    </Button>
+                    <div className="flex flex-col gap-2">
+                      <Button
+                        className="luxury-btn-outline"
+                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`, '_blank')}
+                      >
+                        <MapPin className="w-5 h-5 mr-2" /> View on map · במפה
+                      </Button>
+                      {/* Walking route — a park pin is hard to reach by car, so give
+                          people the on-foot leg from wherever they parked. */}
+                      <Button
+                        className="luxury-btn-outline"
+                        onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${a.lat},${a.lng}&travelmode=walking`, '_blank')}
+                      >
+                        <Navigation className="w-5 h-5 mr-2" /> Walk here · הליכה
+                      </Button>
+                    </div>
                   </div>
+
+                  {/* How to actually find it — entrance, car park, landmarks. */}
+                  {a.arrivalHe && (
+                    <div className="mt-5 rounded-xl bg-[#FBF8F1] border border-[#EFE6CE] p-4">
+                      <p className="text-xs font-semibold tracking-wide text-[#9C7209] uppercase mb-1.5">
+                        Getting there · איך מגיעים
+                      </p>
+                      <p className="luxury-text-body text-sm" dir="ltr">{a.arrivalEn}</p>
+                      <p className="luxury-text-body text-sm mt-1" dir="rtl">{a.arrivalHe}</p>
+                    </div>
+                  )}
                 </div>
               </div>
             ))}
