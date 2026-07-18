@@ -122,6 +122,8 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     hoursHe: 'פתוחה 24 שעות בכל יום',
     hoursEn: 'Open 24/7',
     opens: '00:00', closes: '23:59',
+    arrivalHe: 'ממש בכניסה לפארק, ליד דוכן הקפה — אין צורך ללכת פנימה, העמדה נראית מהכניסה.',
+    arrivalEn: 'Right at the park entrance, beside the coffee kiosk — no walk into the park, the bay is visible from the entrance.',
   },
 ];
 
