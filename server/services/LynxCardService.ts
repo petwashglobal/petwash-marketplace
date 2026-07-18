@@ -151,46 +151,84 @@ export async function mintWashCard(p: MintWashCardParams, opts?: { adminTest?: b
   const cardUid = newCardUid(p.userId);
   const nowIso = new Date().toISOString();
   const expiryIso = new Date(Date.now() + CARD_VALID_YEARS * 365 * 24 * 60 * 60 * 1000).toISOString();
-  const body = {
+  // CardCreditAttributes is shared by both candidate shapes below.
+  //
+  // RevalueCashBit MUST be set here: it is the flag that lets a card ever receive
+  // "revalue" (the separate store Nayax uses for machine refunds and cashback).
+  // Per the sandbox-verified nayax-lynx-prepaid-cards skill it CANNOT be enabled
+  // after creation — a card minted without it returns 400 "This Card is not
+  // defined as Revalue" on every revalue call, forever. Since Monyx refunds and
+  // free-wash credit both ride the revalue rail, every card we mint needs it.
+  const creditAttributes = {
+    CurrencyID: c.currencyId,
+    Credit: p.amountIls,
+    CreditTypeMoneyBit: true,                    // money credit
+    CreditSingleUseBit: true,                    // ← spent after one wash (anti-replay)
+    CreditAccumulateBit: false,
+    RevalueCashBit: true,                        // ← irreversible; required for refunds/cashback
+  };
+  // v2 REQUIRES CardDateRules (ActivationDate + ExpirationDate) or the request fails.
+  const dateRules = { ActivationDate: nowIso, ExpirationDate: expiryIso };
+
+  // SHAPE: two authoritative sources disagree on the /v2/cards body. The
+  // sandbox-verified skill documents a FLAT body (CardTypeID / PhysicalTypeID /
+  // CardUniqueIdentifier / Status / CountryID at top level, only CardDateRules and
+  // CardCreditAttributes nested); the official Nayax v2 docs show a NESTED body.
+  // Rather than block live mints on a manual sandbox test that never happened, we
+  // try the flat shape first and fall back to nested.
+  //
+  // The retry is safe ONLY on HTTP 400: that is a validation rejection, so no card
+  // was created. We deliberately do NOT retry on 409/5xx/timeout, where a card may
+  // exist and a second attempt could mint a duplicate.
+  const flatBody = {
+    ActorID: Number(operatorId),
+    CardUniqueIdentifier: cardUid,
+    CardTypeID: CARD_TYPE_PREPAID,
+    PhysicalTypeID: PHYSICAL_TYPE_QR,
+    Status: 1,                                   // active
+    CountryID: countryId,                        // Nayax's internal CountryID (resolved), MANDATORY
+    ExternalApplicationUserID: p.userId,
+    Notes: p.remarks ?? 'PetWash prepaid wash',
+    CardHolderName: p.holderName || 'PetWash Member',
+    MemberTypeID: 801,
+    CardCreditAttributes: creditAttributes,
+    CardDateRules: dateRules,
+  };
+  const nestedBody = {
     CardDetails: {
       ActorID: Number(operatorId),
       CardUniqueIdentifier: cardUid,
       CardTypeID: CARD_TYPE_PREPAID,
       PhysicalTypeID: PHYSICAL_TYPE_QR,
-      Status: 1,                                   // active
+      Status: 1,
       ExternalApplicationUserID: p.userId,
       Notes: p.remarks ?? 'PetWash prepaid wash',
     },
     CardHolderDetails: {
       CardHolderName: p.holderName || 'PetWash Member',
-      CountryID: countryId,                         // Nayax's internal CountryID (resolved), MANDATORY
+      CountryID: countryId,
       MemberTypeID: 801,
     },
-    CardCreditAttributes: {
-      CurrencyID: c.currencyId,
-      Credit: p.amountIls,
-      CreditTypeMoneyBit: true,                    // money credit
-      CreditSingleUseBit: true,                    // ← spent after one wash (anti-replay)
-      CreditAccumulateBit: false,
-    },
-    // v2 REQUIRES CardDateRules (ActivationDate + ExpirationDate) or the request fails.
-    CardDateRules: {
-      ActivationDate: nowIso,
-      ExpirationDate: expiryIso,
-    },
+    CardCreditAttributes: creditAttributes,
+    CardDateRules: dateRules,
   };
 
-  // SHAPE NOTE: this NESTED body follows the official Nayax v2 docs. The
-  // nayax-lynx-prepaid-cards skill shows a FLAT body for /v2/cards — the two
-  // authoritative sources conflict. The first admin test-mint is the tiebreaker:
-  // if a nested body 400s, flatten CardDetails/CardHolderDetails/CardCreditAttributes
-  // to top level and keep CardDateRules. Do NOT enable live mints until a sandbox
-  // mint returns 2xx with a usable QR.
-  const r = await lynxRequest('POST', '/operational/v2/cards', body);
+  let shapeUsed: 'flat' | 'nested' = 'flat';
+  let r = await lynxRequest('POST', '/operational/v2/cards', flatBody);
+  if (!r.ok && r.status === 400) {
+    logger.info('[LynxCard] flat v2 body rejected (400) — retrying nested shape', {
+      cardUidTail: cardUid.slice(-6),
+    });
+    shapeUsed = 'nested';
+    r = await lynxRequest('POST', '/operational/v2/cards', nestedBody);
+  }
   if (!r.ok) {
-    logger.warn('[LynxCard] mint failed', { status: r.status, error: r.error, cardUidTail: cardUid.slice(-6) });
+    logger.warn('[LynxCard] mint failed', { status: r.status, error: r.error, shapeUsed, cardUidTail: cardUid.slice(-6) });
     return { ok: false, wired: true, status: r.status, error: r.error || `http_${r.status}`, raw: r.data };
   }
+  // Log which shape the live API actually accepted, so the ambiguity above can be
+  // settled from production logs and the loser deleted.
+  logger.info('[LynxCard] v2 mint accepted', { shapeUsed, cardUidTail: cardUid.slice(-6) });
   logger.info('[LynxCard] single-use wash card minted', { cardUidTail: cardUid.slice(-6), amountIls: p.amountIls });
   // The QR the customer presents is derived from the create response (QrString /
   // Monyx id / the CardUniqueIdentifier) — surfaced raw here; confirm the exact
