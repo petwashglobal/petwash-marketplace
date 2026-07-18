@@ -418,8 +418,18 @@ router.post('/wallet/deduct-funds', requireAuth, requireActive, async (req: any,
     res.json(transaction);
   } catch (error: any) {
     logger.error('[Wallet API] Failed to deduct funds', error);
-    if (error.message === 'Insufficient balance') {
+    // Map the ledger's error codes to honest HTTP status codes. The previous
+    // check compared against 'Insufficient balance', a string the code never
+    // threw — so a broke wallet returned a 500 "server error" instead of a 400.
+    const msg = String(error?.message ?? '');
+    if (msg.startsWith('INSUFFICIENT_BALANCE')) {
       res.status(400).json({ error: 'Insufficient balance' });
+    } else if (msg.startsWith('VELOCITY_EXCEEDED')) {
+      res.status(429).json({ error: 'Too many wallet operations. Please wait a minute and try again.' });
+    } else if (msg.startsWith('IDEMPOTENCY_CONFLICT')) {
+      res.status(409).json({ error: 'This reference was already used with different details. Use a new reference.' });
+    } else if (msg.startsWith('INVALID_AMOUNT') || msg.startsWith('INVALID_CONTEXT')) {
+      res.status(400).json({ error: 'Invalid amount' });
     } else {
       res.status(500).json({ error: 'Failed to deduct funds' });
     }
