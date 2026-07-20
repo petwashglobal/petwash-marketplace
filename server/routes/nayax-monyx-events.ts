@@ -24,6 +24,10 @@ import {
   awardLoyaltyPoints as awardCanonicalPoints,
   reverseLoyaltyPoints as reverseCanonicalPoints,
 } from '../services/loyaltyEarn';
+import {
+  recordQualifyingWash as recordPunch,
+  reverseWash as reversePunch,
+} from '../services/MonyxPunchCardService';
 
 // Stable source tag for kiosk (Nayax/Monyx) earns in the canonical Prestige
 // store. Distinct from the online 'wash_package_purchase' source, so the two
@@ -355,6 +359,24 @@ router.post('/nayax-events',
     if (award.canAward && linkedPetwashUser) {
       try {
         await awardLoyaltyPoints(String(linkedPetwashUser), award.pointsToAward, String(externalTransactionId));
+
+        // 5+1 punch card — ONLY for Monyx-paid washes in the standard-price band.
+        // A plain bank-card tap keeps working and simply earns nothing, exactly as
+        // the Nayax campaign would have behaved. The service filters and dedups
+        // itself (UNIQUE on external_transaction_id), so calling it is always safe.
+        if (paymentChannel === 'monyx_qr') {
+          const punch = await recordPunch({
+            userId: String(linkedPetwashUser),
+            externalTransactionId: String(externalTransactionId),
+            amountIls: amountGross,
+            machineId,
+          });
+          if (punch.rewardEarned) {
+            logger.info('[NayaxEvents] 5+1 COMPLETE — free wash earned', {
+              userId: linkedPetwashUser, cardId: punch.cardId, punches: punch.punches,
+            });
+          }
+        }
         logger.info('[NayaxEvents] Loyalty awarded', {
           externalTransactionId,
           userId: linkedPetwashUser,
@@ -380,6 +402,12 @@ router.post('/nayax-events',
       if (linkedPetwashUser) {
         await reverseAwardedPoints(originalTxId, String(linkedPetwashUser)).catch(err =>
           logger.error('[NayaxEvents] Refund reversal failed', { originalTxId, err })
+        );
+        // Un-punch the 5+1 card too — a refunded wash must not count toward the
+        // free one. Idempotent, and it deliberately leaves an ALREADY-COMPLETED
+        // card alone (the reward was earned in good faith).
+        await reversePunch(originalTxId).catch(err =>
+          logger.error('[NayaxEvents] Punch reversal failed', { originalTxId, err })
         );
       }
     }
