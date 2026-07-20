@@ -819,6 +819,29 @@ async function sendBackupSummaryEmail(data: {
     return;
   }
 
+  // ── FAILURES ONLY, by default ─────────────────────────────────────────────
+  // This used to email a full report on EVERY run, successes included. Backups
+  // run daily, so the inbox filled with "✅ SUCCESS" mail nobody reads — and that
+  // is not merely annoying, it is dangerous: a daily green mail trains you to
+  // ignore the whole thread, which is precisely how the July incident slipped
+  // through (a backup reporting ✅ while storing 0 documents sat unread).
+  //
+  // Silence on success, shout on failure. Set BACKUP_EMAIL_ON_SUCCESS=true to
+  // restore the old always-email behaviour (e.g. while verifying a new rail).
+  const isFailure =
+    data.status === 'failed' ||
+    (data.type === 'firestore' &&
+      (((data.firestoreBackup?.totalDocs ?? 0) === 0) ||
+        (data.firestoreBackup?.files || []).some((f) => f.error)));
+
+  if (!isFailure && String(process.env.BACKUP_EMAIL_ON_SUCCESS).toLowerCase().trim() !== 'true') {
+    logger.info('[GCS] Backup succeeded — success email suppressed (failures always email)', {
+      type: data.type,
+      totalDocs: data.firestoreBackup?.totalDocs,
+    });
+    return;
+  }
+
   const date = new Date(data.timestamp).toLocaleString('en-US', {
     year: 'numeric',
     month: 'long',
