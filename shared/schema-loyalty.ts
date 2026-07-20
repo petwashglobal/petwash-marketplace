@@ -610,3 +610,41 @@ export function calculateTotalDiscount(
   const totalDiscount = BASE_CLUB_DISCOUNT + tierBonus;
   return Math.min(totalDiscount, MAX_DISCOUNT_CAP);
 }
+
+// ─── Monyx 5+1 punch card (PetWash-operated) ────────────────────────────────
+// Nayax gates its own "Campaign" module server-side and it is not enabled on our
+// operator account (only a Nayax distributor can switch it on). So we run the
+// same 5+1 offer off the Nayax transaction feed we already ingest.
+// CEO-confirmed rule: 5 paid qualifying washes, the 6th is free.
+export const monyxPunchCards = pgTable('monyx_punch_cards', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull(),      // Firebase UID — same key as loyaltyProfiles
+  campaignCode: varchar('campaign_code', { length: 64 }).notNull().default('PW_KS_LOYALTY_5PLUS1_2026'),
+  cycle: integer('cycle').notNull().default(1),               // members can complete the card repeatedly
+  punches: integer('punches').notNull().default(0),
+  punchesRequired: integer('punches_required').notNull().default(5),
+  rewardStatus: varchar('reward_status', { length: 24 }).notNull().default('accruing'), // accruing|earned|issued|failed
+  completedAt: timestamp('completed_at', { withTimezone: true }),
+  rewardIssuedAt: timestamp('reward_issued_at', { withTimezone: true }),
+  rewardRef: varchar('reward_ref', { length: 128 }),
+  rewardError: text('reward_error'),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+// One row per qualifying wash. UNIQUE(external_transaction_id) is the structural
+// anti-double-punch guarantee — a replayed Nayax webhook cannot punch twice.
+export const monyxPunchEvents = pgTable('monyx_punch_events', {
+  id: serial('id').primaryKey(),
+  punchCardId: integer('punch_card_id').notNull(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  externalTransactionId: varchar('external_transaction_id', { length: 128 }).notNull(),
+  amountIls: decimal('amount_ils', { precision: 10, scale: 2 }),
+  machineId: varchar('machine_id', { length: 64 }),
+  reversed: boolean('reversed').notNull().default(false),
+  reversedAt: timestamp('reversed_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type MonyxPunchCard = typeof monyxPunchCards.$inferSelect;
+export type MonyxPunchEvent = typeof monyxPunchEvents.$inferSelect;
