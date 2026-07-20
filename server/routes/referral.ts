@@ -1,51 +1,51 @@
 /**
- * ⁦PetWash™⁩ Referral System API Routes
+ * PetWash™ Referral System API Routes
  * חבר מביא חבר - Friend Brings Friend
- * 
- * Connected to Octopus Brain for:
- * - Code generation & tracking
- * - Click & signup registration
- * - Credit granting on first payment
- * - Level progression
- * - Anti-fraud protection
+ *
+ * REWRITTEN 2026-07-20 — every piece of state is now in Postgres.
+ *
+ * What this replaced: the whole file kept its state in in-process JavaScript Maps
+ * (referralCodes / referrals / userCredits / userStats), under a comment that
+ * admitted it — "IN-MEMORY STORAGE (Production: Use Firestore/PostgreSQL)". That
+ * placeholder shipped, mounted at /api/referral, with a customer-facing
+ * ReferralPage reading it. Consequences:
+ *
+ *   • A member's referral CODE was regenerated whenever the Map was empty, so
+ *     links they had already shared silently stopped matching them after a deploy.
+ *   • Referral records vanished on restart — attribution lost.
+ *   • userCredits held real ₪25 balances that evaporated on every deploy. We
+ *     deploy several times a day.
+ *   • Those credits were never spendable anyway: plain numbers on an object,
+ *     never in walletAccounts, never in the hash-chained ledger.
+ *   • users.referred_by_code — which the booking flow READS — was never written,
+ *     so referral attribution never fired at booking time either.
+ *
+ * Storage now: users.referral_code (the member's code), the referrals table (the
+ * graph), referral_credits (the money owed). All pre-existing and unused, bar
+ * referral_credits which migration 0099 adds.
+ *
+ * DESIGN: earning a credit records an OBLIGATION (status 'earned'); it does not
+ * silently push ₪ into a wallet. Issuance is a separate audited step — the same
+ * discipline as the refund rail. Be truthful about what is owed first, pay second.
  */
 
 import { Router } from "express";
-import { db } from "../db";
-import { users } from "@shared/schema";
-import { eq, and, gte, sql } from "drizzle-orm";
 import { requireAuth } from "../customAuth";
 import { logger } from "../lib/logger";
 import { eventBus } from "../services/EventBus";
-import crypto from "crypto";
+import {
+  getOrCreateReferralCode,
+  linkSignup,
+  findPendingReferralForInvitee,
+  completeReferral,
+  totalEarnedIls,
+  outstandingCreditIls,
+  listReferrals,
+  getStats,
+  recordClick,
+} from "../services/ReferralStore";
 
 const router = Router();
-
-// ============================================
-// TYPES
-// ============================================
-
-interface ReferralStats {
-  totalInvites: number;
-  successfulInvites: number;
-  pendingInvites: number;
-  totalCreditsGrantedILS: number;
-  levelId: "BRONZE" | "SILVER" | "GOLD" | "DIAMOND";
-}
-
-interface Referral {
-  id: string;
-  fromUserId: string;
-  fromReferralCode: string;
-  toUserId?: string;
-  toEmail?: string;
-  toPhone?: string;
-  status: "PENDING_SIGNUP" | "SIGNED_UP" | "WAITING_FIRST_PAYMENT" | "COMPLETED" | "REJECTED";
-  createdAt: Date;
-  completedAt?: Date;
-  referrerCreditILS: number;
-  refereeCreditILS: number;
-}
 
 // ============================================
 // CONFIGURATION
@@ -64,104 +64,48 @@ const REFERRAL_CONFIG = {
   },
 };
 
-// ============================================
-// IN-MEMORY STORAGE (Production: Use Firestore/PostgreSQL)
-// ============================================
-
-const referralCodes = new Map<string, { userId: string; createdAt: Date }>();
-const referrals = new Map<string, Referral>();
-const userCredits = new Map<string, { balanceILS: number; totalEarnedILS: number }>();
-const userStats = new Map<string, ReferralStats>();
-
-// ============================================
-// HELPER FUNCTIONS
-// ============================================
-
-function generateReferralCode(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let code = "";
-  for (let i = 0; i < 8; i++) {
-    code += chars[crypto.randomInt(chars.length)];
-  }
-  return code;
-}
-
 function calculateLevel(successfulReferrals: number): "BRONZE" | "SILVER" | "GOLD" | "DIAMOND" {
-  if (successfulReferrals >= 25) return "DIAMOND";
-  if (successfulReferrals >= 10) return "GOLD";
-  if (successfulReferrals >= 5) return "SILVER";
+  if (successfulReferrals >= REFERRAL_CONFIG.levels.DIAMOND.minReferrals) return "DIAMOND";
+  if (successfulReferrals >= REFERRAL_CONFIG.levels.GOLD.minReferrals) return "GOLD";
+  if (successfulReferrals >= REFERRAL_CONFIG.levels.SILVER.minReferrals) return "SILVER";
   return "BRONZE";
 }
 
-function getUserReferralCode(userId: string): string {
-  for (const [code, data] of referralCodes.entries()) {
-    if (data.userId === userId) return code;
-  }
-  const newCode = generateReferralCode();
-  referralCodes.set(newCode, { userId, createdAt: new Date() });
-  return newCode;
-}
-
-function getUserStats(userId: string): ReferralStats {
-  const existing = userStats.get(userId);
-  if (existing) return existing;
-  
-  const stats: ReferralStats = {
-    totalInvites: 0,
-    successfulInvites: 0,
-    pendingInvites: 0,
-    totalCreditsGrantedILS: 0,
-    levelId: "BRONZE",
+/** Stats block in the shape the existing ReferralPage expects. */
+async function buildStats(userId: string) {
+  const s = await getStats(userId);
+  return {
+    totalInvites: s.totalInvites,
+    successfulInvites: s.successfulInvites,
+    pendingInvites: s.pendingInvites,
+    totalCreditsGrantedILS: s.totalCreditsGrantedILS,
+    levelId: calculateLevel(s.successfulInvites),
   };
-  userStats.set(userId, stats);
-  return stats;
 }
 
-function getUserCredits(userId: string) {
-  const existing = userCredits.get(userId);
-  if (existing) return existing;
-  
-  const credits = { balanceILS: 0, totalEarnedILS: 0 };
-  userCredits.set(userId, credits);
-  return credits;
-}
-
-function canReceiveCredit(userId: string, amountILS: number): { allowed: boolean; reason?: string } {
-  const credits = getUserCredits(userId);
-  
-  if (credits.totalEarnedILS + amountILS > REFERRAL_CONFIG.lifetimeCapILS) {
-    return { allowed: false, reason: "LIFETIME_CAP_REACHED" };
-  }
-  
-  return { allowed: true };
+function uid(req: any): string | undefined {
+  return req.firebaseUser?.uid || req.user?.uid || req.userId;
 }
 
 // ============================================
-// API ENDPOINTS
+// ROUTES
 // ============================================
 
-/**
- * GET /api/referral/link
- * Get user's referral code and link
- */
+/** GET /api/referral/link — the member's shareable code + link + stats. */
 router.get("/link", requireAuth, async (req: any, res) => {
   try {
-    const userId = req.firebaseUser?.uid || req.user?.uid || req.userId;
-    
-    if (!userId) {
-      return res.status(401).json({ error: "UNAUTHORIZED" });
-    }
-    
-    const referralCode = getUserReferralCode(userId);
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+
+    const referralCode = await getOrCreateReferralCode(userId);
+    if (!referralCode) return res.status(500).json({ error: "CODE_UNAVAILABLE" });
+
     const baseUrl = process.env.REFERRAL_BASE_URL || "https://petwash.co.il";
-    const referralLink = `${baseUrl}/ref?code=${referralCode}`;
-    const stats = getUserStats(userId);
-    
     res.json({
       userId,
       referralCode,
-      referralLink,
-      stats,
+      referralLink: `${baseUrl}/ref?code=${referralCode}`,
+      stats: await buildStats(userId),
     });
   } catch (error) {
     logger.error("[Referral] Failed to get referral link", error);
@@ -169,120 +113,51 @@ router.get("/link", requireAuth, async (req: any, res) => {
   }
 });
 
-/**
- * POST /api/referral/register-click
- * Register when someone clicks a referral link
- */
+/** POST /api/referral/register-click — someone opened a referral link. */
 router.post("/register-click", async (req, res) => {
   try {
-    const { referralCode, toEmail, toPhone, deviceId } = req.body;
-    
-    if (!referralCode) {
-      return res.status(400).json({ error: "MISSING_REFERRAL_CODE" });
-    }
-    
-    const codeData = referralCodes.get(referralCode.toUpperCase());
-    if (!codeData) {
-      return res.status(404).json({ error: "INVALID_REFERRAL_CODE" });
-    }
-    
-    const referralId = crypto.randomUUID();
-    const referral: Referral = {
-      id: referralId,
-      fromUserId: codeData.userId,
-      fromReferralCode: referralCode.toUpperCase(),
-      toEmail,
-      toPhone,
-      status: "PENDING_SIGNUP",
-      createdAt: new Date(),
-      referrerCreditILS: REFERRAL_CONFIG.creditPerReferralILS,
-      refereeCreditILS: REFERRAL_CONFIG.creditPerReferralILS,
-    };
-    
-    referrals.set(referralId, referral);
-    
-    const stats = getUserStats(codeData.userId);
-    stats.totalInvites++;
-    stats.pendingInvites++;
-    
-    await eventBus.emit({
-      type: "REFERRAL_CLICK",
-      aggregateId: referralId,
-      payload: { referralCode, deviceId },
-    });
-    
-    logger.info("[Referral] Click registered", { referralCode, referralId });
-    
-    res.json({ success: true, referralId });
+    const { referralCode, toEmail } = req.body ?? {};
+    if (!referralCode) return res.status(400).json({ error: "MISSING_CODE" });
+
+    const result = await recordClick(String(referralCode), toEmail ?? null);
+    if (!result.ok) return res.status(404).json({ error: "INVALID_CODE" });
+
+    res.json({ ok: true, referralCode: String(referralCode).toUpperCase() });
   } catch (error) {
     logger.error("[Referral] Failed to register click", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
 
-/**
- * POST /api/referral/link-signup
- * Link a new signup to a referral
- */
+/** POST /api/referral/link-signup — attach a new signup to the inviter's code. */
 router.post("/link-signup", async (req, res) => {
   try {
-    const { referralCode, newUserId, email, phone } = req.body;
-    
-    if (!referralCode || !newUserId) {
-      return res.status(400).json({ error: "MISSING_REQUIRED_FIELDS" });
-    }
-    
-    const codeData = referralCodes.get(referralCode.toUpperCase());
-    if (!codeData) {
-      return res.status(404).json({ error: "INVALID_REFERRAL_CODE" });
-    }
-    
-    if (codeData.userId === newUserId) {
-      return res.status(400).json({ error: "SELF_REFERRAL_NOT_ALLOWED" });
-    }
-    
-    let referral: Referral | undefined;
-    for (const r of referrals.values()) {
-      if (r.fromReferralCode === referralCode.toUpperCase() && 
-          r.status === "PENDING_SIGNUP" &&
-          (r.toEmail === email || r.toPhone === phone)) {
-        referral = r;
-        break;
-      }
-    }
-    
-    if (!referral) {
-      const referralId = crypto.randomUUID();
-      referral = {
-        id: referralId,
-        fromUserId: codeData.userId,
-        fromReferralCode: referralCode.toUpperCase(),
-        toUserId: newUserId,
-        toEmail: email,
-        toPhone: phone,
-        status: "WAITING_FIRST_PAYMENT",
-        createdAt: new Date(),
-        referrerCreditILS: REFERRAL_CONFIG.creditPerReferralILS,
-        refereeCreditILS: REFERRAL_CONFIG.creditPerReferralILS,
-      };
-      referrals.set(referralId, referral);
-    } else {
-      referral.toUserId = newUserId;
-      referral.status = "WAITING_FIRST_PAYMENT";
-    }
-    
-    const stats = getUserStats(codeData.userId);
-    stats.pendingInvites = Math.max(0, stats.pendingInvites - 1);
-    
-    await eventBus.emit({
-      type: "REFERRAL_SIGNUP",
-      aggregateId: referral.id,
-      payload: { referrerId: codeData.userId, refereeId: newUserId },
+    const { referralCode, userId, email } = req.body ?? {};
+    if (!referralCode || !userId) return res.status(400).json({ error: "MISSING_REQUIRED_FIELDS" });
+
+    const result = await linkSignup({
+      code: String(referralCode),
+      inviteeUserId: String(userId),
+      inviteeEmail: email ?? null,
     });
-    
-    logger.info("[Referral] Signup linked", { referralId: referral.id, newUserId });
-    
-    res.json({ success: true, referralId: referral.id, status: "WAITING_FIRST_PAYMENT" });
+
+    if (!result.ok) {
+      const status = result.reason === "UNKNOWN_CODE" ? 404 : 400;
+      return res.status(status).json({ error: result.reason });
+    }
+
+    // Telemetry must never block a signup.
+    Promise.resolve(
+      eventBus.publish({
+        eventType: "referral.signed_up",
+        timestamp: new Date().toISOString(),
+        platform: "referral",
+        userId: String(userId),
+        data: { referralId: result.referralId, code: String(referralCode).toUpperCase() },
+      } as any),
+    ).catch(() => {});
+
+    res.json({ ok: true, referralId: result.referralId });
   } catch (error) {
     logger.error("[Referral] Failed to link signup", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
@@ -290,9 +165,9 @@ router.post("/link-signup", async (req, res) => {
 });
 
 /**
- * POST /api/referral/complete
- * Complete a referral after first payment (internal — Nayax webhook handler only)
- * Requires PETWASH_ADMIN_SECRET header to prevent unauthenticated credit grants
+ * POST /api/referral/complete — the invitee made a qualifying first payment.
+ * Admin-secret gated (unchanged), and now idempotent at the database level:
+ * referral_credits has UNIQUE(referral_id, role), so a retry cannot double-credit.
  */
 router.post("/complete", async (req, res) => {
   try {
@@ -302,84 +177,44 @@ router.post("/complete", async (req, res) => {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
 
-    const { userId, transactionId, amountILS } = req.body;
-    
-    if (!userId || !transactionId || !amountILS) {
+    const { userId, transactionId, amountILS } = req.body ?? {};
+    if (!userId || !transactionId || amountILS == null) {
       return res.status(400).json({ error: "MISSING_REQUIRED_FIELDS" });
     }
-    
-    if (amountILS < REFERRAL_CONFIG.minFirstPaymentILS) {
-      return res.status(400).json({ 
-        error: "PAYMENT_TOO_SMALL", 
-        minRequired: REFERRAL_CONFIG.minFirstPaymentILS 
+    if (Number(amountILS) < REFERRAL_CONFIG.minFirstPaymentILS) {
+      return res.status(400).json({
+        error: "PAYMENT_TOO_SMALL",
+        minRequired: REFERRAL_CONFIG.minFirstPaymentILS,
       });
     }
-    
-    let referral: Referral | undefined;
-    for (const r of referrals.values()) {
-      if (r.toUserId === userId && r.status === "WAITING_FIRST_PAYMENT") {
-        referral = r;
-        break;
-      }
-    }
-    
-    if (!referral) {
-      return res.status(404).json({ error: "NO_PENDING_REFERRAL" });
-    }
-    
-    const referrerCheck = canReceiveCredit(referral.fromUserId, REFERRAL_CONFIG.creditPerReferralILS);
-    const refereeCheck = canReceiveCredit(userId, REFERRAL_CONFIG.creditPerReferralILS);
-    
-    if (!referrerCheck.allowed || !refereeCheck.allowed) {
-      referral.status = "REJECTED";
-      return res.status(400).json({ 
-        error: "CREDIT_CAP_REACHED",
-        referrerReason: referrerCheck.reason,
-        refereeReason: refereeCheck.reason,
-      });
-    }
-    
-    referral.status = "COMPLETED";
-    referral.completedAt = new Date();
-    
-    const referrerCredits = getUserCredits(referral.fromUserId);
-    referrerCredits.balanceILS += REFERRAL_CONFIG.creditPerReferralILS;
-    referrerCredits.totalEarnedILS += REFERRAL_CONFIG.creditPerReferralILS;
-    
-    const refereeCredits = getUserCredits(userId);
-    refereeCredits.balanceILS += REFERRAL_CONFIG.creditPerReferralILS;
-    refereeCredits.totalEarnedILS += REFERRAL_CONFIG.creditPerReferralILS;
-    
-    const referrerStats = getUserStats(referral.fromUserId);
-    referrerStats.successfulInvites++;
-    referrerStats.totalCreditsGrantedILS += REFERRAL_CONFIG.creditPerReferralILS;
-    referrerStats.levelId = calculateLevel(referrerStats.successfulInvites);
-    
-    await eventBus.emit({
-      type: "REFERRAL_COMPLETED",
-      aggregateId: referral.id,
-      payload: {
-        referrerId: referral.fromUserId,
-        refereeId: userId,
-        creditAmountILS: REFERRAL_CONFIG.creditPerReferralILS,
-        transactionId,
-      },
+
+    const pending = await findPendingReferralForInvitee(String(userId));
+    if (!pending) return res.status(404).json({ error: "NO_PENDING_REFERRAL" });
+
+    const result = await completeReferral({
+      referralId: Number(pending.id),
+      inviterUserId: String(pending.inviter_user_id),
+      inviteeUserId: String(userId),
+      creditIls: REFERRAL_CONFIG.creditPerReferralILS,
+      lifetimeCapIls: REFERRAL_CONFIG.lifetimeCapILS,
     });
-    
-    logger.info("[Referral] Completed successfully", {
-      referralId: referral.id,
-      referrerId: referral.fromUserId,
-      refereeId: userId,
+
+    if (!result.ok) {
+      const status = result.reason?.includes("CAP") ? 400 : 500;
+      return res.status(status).json({ error: result.reason });
+    }
+
+    logger.info("[Referral] completed", {
+      referralId: pending.id, transactionId, credited: result.credited,
     });
-    
+
     res.json({
-      success: true,
-      referralId: referral.id,
-      creditsGranted: {
-        referrer: REFERRAL_CONFIG.creditPerReferralILS,
-        referee: REFERRAL_CONFIG.creditPerReferralILS,
-      },
-      newLevel: referrerStats.levelId,
+      ok: true,
+      referralId: pending.id,
+      creditedRoles: result.credited,
+      creditPerReferralILS: REFERRAL_CONFIG.creditPerReferralILS,
+      // Honest: the credit is RECORDED as owed, not yet spendable wallet money.
+      creditStatus: "earned",
     });
   } catch (error) {
     logger.error("[Referral] Failed to complete referral", error);
@@ -387,56 +222,40 @@ router.post("/complete", async (req, res) => {
   }
 });
 
-/**
- * GET /api/referral/history
- * Get user's referral history
- */
+/** GET /api/referral/history — the member's referrals. */
 router.get("/history", requireAuth, async (req: any, res) => {
   try {
-    const userId = req.firebaseUser?.uid || req.user?.uid || req.userId;
-    
-    if (!userId) {
-      return res.status(401).json({ error: "UNAUTHORIZED" });
-    }
-    
-    const userReferrals: Referral[] = [];
-    for (const r of referrals.values()) {
-      if (r.fromUserId === userId) {
-        userReferrals.push(r);
-      }
-    }
-    
-    userReferrals.sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-    
-    res.json({
-      referrals: userReferrals.slice(0, 50),
-      total: userReferrals.length,
-    });
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+
+    const rows = await listReferrals(userId, 50);
+    res.json({ referrals: rows, total: rows.length });
   } catch (error) {
     logger.error("[Referral] Failed to get history", error);
     res.status(500).json({ error: "INTERNAL_ERROR" });
   }
 });
 
-/**
- * GET /api/referral/credits
- * Get user's credit balance
- */
+/** GET /api/referral/credits — what the member has earned and what is owed. */
 router.get("/credits", requireAuth, async (req: any, res) => {
   try {
-    const userId = req.firebaseUser?.uid || req.user?.uid || req.userId;
-    
-    if (!userId) {
-      return res.status(401).json({ error: "UNAUTHORIZED" });
-    }
-    
-    const credits = getUserCredits(userId);
-    
+    const userId = uid(req);
+    if (!userId) return res.status(401).json({ error: "UNAUTHORIZED" });
+
+    const [totalEarnedILS, outstandingILS] = await Promise.all([
+      totalEarnedIls(userId),
+      outstandingCreditIls(userId),
+    ]);
+
     res.json({
-      balanceILS: credits.balanceILS,
-      totalEarnedILS: credits.totalEarnedILS,
+      // balanceILS keeps its name for the existing page, but now means what is
+      // genuinely recorded as owed — not an in-memory number that resets.
+      balanceILS: outstandingILS,
+      totalEarnedILS,
       lifetimeCapILS: REFERRAL_CONFIG.lifetimeCapILS,
-      remainingCapILS: REFERRAL_CONFIG.lifetimeCapILS - credits.totalEarnedILS,
+      remainingCapILS: Math.max(0, REFERRAL_CONFIG.lifetimeCapILS - totalEarnedILS),
+      // Explicit, so no surface can imply this is already spendable balance.
+      creditStatus: outstandingILS > 0 ? "earned_pending_issue" : "none",
     });
   } catch (error) {
     logger.error("[Referral] Failed to get credits", error);
@@ -444,44 +263,33 @@ router.get("/credits", requireAuth, async (req: any, res) => {
   }
 });
 
-/**
- * GET /api/referral/admin/overview
- * Admin overview of referral program (requires admin auth)
- */
+/** GET /api/referral/admin/overview — programme totals. */
 router.get("/admin/overview", async (req, res) => {
   try {
     const adminSecret = req.headers["x-admin-secret"];
-    if (adminSecret !== process.env.PETWASH_ADMIN_SECRET) {
+    if (!process.env.PETWASH_ADMIN_SECRET || adminSecret !== process.env.PETWASH_ADMIN_SECRET) {
       return res.status(403).json({ error: "FORBIDDEN" });
     }
-    
-    let totalReferrals = 0;
-    let completedReferrals = 0;
-    let pendingReferrals = 0;
-    let rejectedReferrals = 0;
-    let totalCreditsILS = 0;
-    
-    for (const r of referrals.values()) {
-      totalReferrals++;
-      if (r.status === "COMPLETED") {
-        completedReferrals++;
-        totalCreditsILS += r.referrerCreditILS + r.refereeCreditILS;
-      } else if (r.status === "REJECTED") {
-        rejectedReferrals++;
-      } else {
-        pendingReferrals++;
-      }
-    }
-    
+
+    const { db } = await import("../db");
+    const { sql } = await import("drizzle-orm");
+    const r: any = await (db as any).execute(sql`
+      SELECT
+        (SELECT COUNT(*)::int FROM referrals)                                          AS total_referrals,
+        (SELECT COUNT(*)::int FROM referrals WHERE status = 'completed')               AS completed_referrals,
+        (SELECT COUNT(*)::int FROM referrals WHERE status IN ('pending','signed_up'))  AS pending_referrals,
+        (SELECT COALESCE(SUM(amount_ils),0) FROM referral_credits WHERE status <> 'void')   AS total_credits_ils,
+        (SELECT COALESCE(SUM(amount_ils),0) FROM referral_credits WHERE status = 'earned')  AS outstanding_credits_ils
+    `);
+    const row: any = r?.rows?.[0] ?? r?.[0] ?? {};
+
     res.json({
-      totalReferrals,
-      completedReferrals,
-      pendingReferrals,
-      rejectedReferrals,
-      totalCreditsILS,
-      conversionRate: totalReferrals > 0 
-        ? Math.round((completedReferrals / totalReferrals) * 100) 
-        : 0,
+      totalReferrals: Number(row.total_referrals ?? 0),
+      completedReferrals: Number(row.completed_referrals ?? 0),
+      pendingReferrals: Number(row.pending_referrals ?? 0),
+      totalCreditsILS: Number(row.total_credits_ils ?? 0),
+      outstandingCreditsILS: Number(row.outstanding_credits_ils ?? 0),
+      config: REFERRAL_CONFIG,
     });
   } catch (error) {
     logger.error("[Referral] Failed to get admin overview", error);
@@ -490,3 +298,4 @@ router.get("/admin/overview", async (req, res) => {
 });
 
 export default router;
+export { REFERRAL_CONFIG, calculateLevel };
