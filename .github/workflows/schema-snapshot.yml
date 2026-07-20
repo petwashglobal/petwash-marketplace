@@ -132,10 +132,24 @@ jobs:
           git commit -m "chore(dr): refresh prod schema baseline [skip ci]"
           git push --force origin "$BRANCH"
 
+          # The refreshed branch is pushed above and is the thing that actually
+          # matters — opening the PR is a convenience on top of it.
+          #
+          # `gh pr create` fails with "GitHub Actions is not permitted to create or
+          # approve pull requests" unless that repo/org setting is enabled, and a
+          # ruleset forbids pushing straight to main. That combination used to turn
+          # this whole job RED every week even though the snapshot itself succeeded
+          # — pure noise that trains people to ignore a failing pipeline.
+          #
+          # So: never fail the run over PR plumbing. Warn loudly with the exact fix
+          # instead. The snapshot is captured, the artifact is uploaded, and the
+          # branch is refreshed regardless.
           if gh pr view "$BRANCH" --json state --jq .state 2>/dev/null | grep -q OPEN; then
-            echo "PR already open — force-push refreshed it."
+            echo "✅ PR already open — force-push refreshed it."
+          elif gh pr create --base main --head "$BRANCH" \
+                 --title "chore(dr): refresh prod schema baseline" \
+                 --body "Automated weekly refresh of the disaster-recovery schema baseline (\`docs/recovery/prod-schema-latest.sql\`) from a read-only \`pg_dump --schema-only\` of prod. Structure only — no data. Merge to keep the DR restore point current. Docs-only: does not trigger a deploy."; then
+            echo "✅ opened baseline-refresh PR."
           else
-            gh pr create --base main --head "$BRANCH" \
-              --title "chore(dr): refresh prod schema baseline" \
-              --body "Automated weekly refresh of the disaster-recovery schema baseline (\`docs/recovery/prod-schema-latest.sql\`) from a read-only \`pg_dump --schema-only\` of prod. Structure only — no data. Merge to keep the DR restore point current. Docs-only: does not trigger a deploy."
+            echo "::warning title=DR baseline needs a PR::Schema snapshot succeeded and branch '$BRANCH' is refreshed, but this workflow cannot open the PR. Enable Settings → Actions → General → Workflow permissions → 'Allow GitHub Actions to create and approve pull requests', or open the PR manually from '$BRANCH'. The DR baseline stays stale until that branch is merged."
           fi
