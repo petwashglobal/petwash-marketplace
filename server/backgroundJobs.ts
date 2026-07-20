@@ -353,12 +353,26 @@ export class BackgroundJobProcessor {
       timezone: 'Asia/Jerusalem'
     });
 
-    // Daily revenue report at 9 AM Israel time
-    cron.schedule('0 9 * * *', async () => {
-      await this.generateDailyRevenueReport();
-    }, {
-      timezone: 'Asia/Jerusalem'
-    });
+    // Daily revenue report — OFF by default (CEO 2026-07-20: "no daily report,
+    // monthly only, it will drive me crazy with a million emails").
+    //
+    // It emailed an Excel + PDF + CSV pack to REPORTS_EMAIL (support@petwash.co.il)
+    // every morning at 09:00. The MONTHLY report on the 1st carries the same
+    // figures and is what the CPA actually books from, so the daily copy was pure
+    // inbox noise — and noise is not harmless: a support inbox full of routine
+    // green mail is how the genuinely urgent message gets missed.
+    //
+    // Set DAILY_REVENUE_REPORT_ENABLED=true to bring it back.
+    if (String(process.env.DAILY_REVENUE_REPORT_ENABLED).toLowerCase().trim() === 'true') {
+      cron.schedule('0 9 * * *', async () => {
+        await this.generateDailyRevenueReport();
+      }, {
+        timezone: 'Asia/Jerusalem'
+      });
+      logger.info('[Cron] Daily revenue report ENABLED (DAILY_REVENUE_REPORT_ENABLED=true)');
+    } else {
+      logger.info('[Cron] Daily revenue report disabled — monthly report on the 1st is unaffected');
+    }
 
     // Provider 6-month re-confirmation sweep — daily 7 AM Israel time.
     // Sends reminders + audits overdue providers. Enforcement is dynamic
