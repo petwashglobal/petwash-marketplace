@@ -74,6 +74,7 @@ import {
   closeBaySession,
 } from '../services/K9000RedemptionService';
 import * as MachineCommandService from '../services/MachineCommandService';
+import { createOrUpdateAlert } from '../services/AlertEngine';
 import { requireActive } from '../middleware/requireActive';
 
 const router = express.Router();
@@ -604,7 +605,10 @@ router.post('/wash/start_cycle', async (req, res) => {
 
       const chargeILS = nayaxRow.length > 0 ? parseFloat(nayaxRow[0].amount) : 0;
 
-      if (!isFreeWash && chargeILS > 0) {
+      if (isFreeWash) {
+        // Genuinely free (loyalty/voucher/staff) — correctly no revenue entry.
+        logger.info('[K9000 Revenue] Free wash — no revenue entry needed', { washId });
+      } else if (chargeILS > 0) {
         await VATCalculatorService.recordK9000Transaction({
           washId,
           machineId,
@@ -616,13 +620,48 @@ router.post('/wash/start_cycle', async (req, res) => {
           stationId: stationInfo?.stationId ?? undefined,
         });
       } else {
-        logger.info('[K9000 Revenue] Free wash — no revenue entry needed', { washId });
+        // A PAID wash whose charge we could not determine — the nayax_transactions
+        // row was missing or unreadable, so chargeILS came back 0.
+        //
+        // This used to fall into the same branch as a free wash and log
+        // "Free wash — no revenue entry needed". A wash the customer PAID for was
+        // therefore silently booked as free: revenue missing from the monthly
+        // report the CPA files from, with a log line stating all was well. Never
+        // conflate "free" with "unknown".
+        logger.error('[K9000 Revenue] UNBOOKED — paid wash with no resolvable charge', {
+          washId, machineId, transactionId, washType,
+        });
+        await createOrUpdateAlert({
+          dedupeKey: `k9000_revenue_unbooked:${washId}`,
+          category: 'payment',
+          severity: 'critical',
+          title: 'K9000 wash revenue not booked',
+          message: `Wash ${washId} on machine ${machineId} was not a free wash, but no charge could be resolved${transactionId ? ` from nayax transaction ${transactionId}` : ' (no transaction id on the wash)'}. Revenue is MISSING from the books — reconcile against Nayax before the monthly close.`,
+          linkedEntityType: 'wash',
+          linkedEntityId: String(washId),
+          source: 'k9000_revenue',
+          metadata: { washId, machineId, transactionId, washType, chargeILS },
+        }).catch(() => { /* alerting must never break the wash */ });
       }
     } catch (revenueError: any) {
+      // The wash already happened and the customer has been charged — we cannot
+      // undo it here. But swallowing this into a log line means the money quietly
+      // never reaches the books. Raise it so it is reconciled before month end.
       logger.error('[K9000 Revenue] Failed to record revenue', {
         washId,
         error: revenueError.message,
       });
+      await createOrUpdateAlert({
+        dedupeKey: `k9000_revenue_failed:${washId}`,
+        category: 'payment',
+        severity: 'critical',
+        title: 'K9000 revenue recording FAILED',
+        message: `Wash ${washId} on machine ${machineId} completed but recordK9000Transaction threw: ${revenueError?.message}. The customer was charged and the revenue is NOT in the books — reconcile against Nayax before the monthly close.`,
+        linkedEntityType: 'wash',
+        linkedEntityId: String(washId),
+        source: 'k9000_revenue',
+        metadata: { washId, machineId, transactionId, error: String(revenueError?.message) },
+      }).catch(() => { /* alerting must never break the wash */ });
     }
 
     // === STEP 4.8: LOG TO k9000_wash_events (FLOW A — NAYAX TERMINAL) ===
