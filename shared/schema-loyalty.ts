@@ -648,3 +648,23 @@ export const monyxPunchEvents = pgTable('monyx_punch_events', {
 
 export type MonyxPunchCard = typeof monyxPunchCards.$inferSelect;
 export type MonyxPunchEvent = typeof monyxPunchEvents.$inferSelect;
+
+// ─── Referral credits (durable) ─────────────────────────────────────────────
+// referral.ts previously held credit balances in an in-process Map, so a
+// member's earned ₪25 vanished on every deploy — and was never spendable, since
+// it never reached walletAccounts or the ledger. This records the OBLIGATION
+// durably; issuing it into the wallet stays an explicit audited step.
+export const referralCredits = pgTable('referral_credits', {
+  id: serial('id').primaryKey(),
+  userId: varchar('user_id', { length: 255 }).notNull(),
+  referralId: integer('referral_id'),
+  role: varchar('role', { length: 16 }).notNull(),      // inviter | invitee
+  amountIls: decimal('amount_ils', { precision: 10, scale: 2 }).notNull(),
+  status: varchar('status', { length: 24 }).notNull().default('earned'), // earned | issued | void
+  reason: text('reason'),
+  issuedAt: timestamp('issued_at', { withTimezone: true }),
+  issuedRef: varchar('issued_ref', { length: 128 }),
+  createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+});
+
+export type ReferralCredit = typeof referralCredits.$inferSelect;
