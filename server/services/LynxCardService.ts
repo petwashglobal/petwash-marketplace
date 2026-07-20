@@ -22,6 +22,7 @@
  */
 import { randomBytes } from 'node:crypto';
 import { lynxRequest, lynxIsWired, getActorHierarchy } from './LynxClient';
+import { buildDotQrPayload } from './DotQrService';
 import { logger } from '../lib/logger';
 
 // ── Nayax card constants (from the Lynx Create Card reference) ────────────────
@@ -109,7 +110,10 @@ export interface MintWashCardResult {
   wired: boolean;
   cardUid?: string;        // our unique id for the card (also the redemption key)
   status: number;
-  qr?: unknown;            // whatever QR/identifier the create response returns (verify on first mint)
+  /** The exact string the DOT reader must scan: `NYXPP;<cardUid>`.
+   *  Built deterministically from the UID we generated — NOT read out of the
+   *  create response, so it is correct on the very first mint. */
+  qrPayload?: string;
   raw?: unknown;
   error?: string;
 }
@@ -119,7 +123,14 @@ export interface MintWashCardResult {
  *  is predictable and would let UIDs be enumerated). 8 random bytes = 64 bits. */
 function newCardUid(userId: string): string {
   const rand = randomBytes(8).toString('hex');
-  return `PWWASH-${userId.slice(-8)}-${Date.now().toString(36)}-${rand}`.toUpperCase();
+  // The UID goes straight into the DOT QR payload (`NYXPP;<uid>`), which accepts
+  // letters, digits and dashes ONLY. Strip anything else out of the user-derived
+  // slice: a stray '.' or '_' in an id would otherwise produce a payload the
+  // reader silently refuses — or, now that we validate, fail the mint outright.
+  // Randomness and uniqueness come from the CSPRNG + timestamp, not from these
+  // 8 characters, so sanitising them costs nothing.
+  const safeUserPart = userId.replace(/[^A-Za-z0-9]/g, '').slice(-8) || 'ANON';
+  return `PWWASH-${safeUserPart}-${Date.now().toString(36)}-${rand}`.toUpperCase();
 }
 
 /**
@@ -233,7 +244,13 @@ export async function mintWashCard(p: MintWashCardParams, opts?: { adminTest?: b
   // The QR the customer presents is derived from the create response (QrString /
   // Monyx id / the CardUniqueIdentifier) — surfaced raw here; confirm the exact
   // field on the FIRST sandbox mint, then map it explicitly.
-  return { ok: true, wired: true, status: r.status, cardUid, qr: r.data, raw: r.data };
+  // The scannable payload is built from the UID we generated, not fished out of
+  // the create response. Previously this returned `qr: r.data` (the raw API body)
+  // with a note to "confirm the exact field on the first mint" — which meant no
+  // caller could actually produce a working QR. We know the UID, and the DOT
+  // format is fixed, so there is nothing to guess.
+  const qrPayload = buildDotQrPayload(cardUid);
+  return { ok: true, wired: true, status: r.status, cardUid, qrPayload, raw: r.data };
 }
 
 /** Read a card's live balance/usage — for reconciliation (did the bay deduct it?). */
