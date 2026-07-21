@@ -105,3 +105,22 @@ describe('leaks caught in the flavor demo (2026-07-22)', () => {
     expect(signup).not.toMatch(/Capacitor\.isNativePlatform/);
   });
 });
+
+describe('build-time flavor must actually work', () => {
+  const flavorLib = readFileSync(resolve(ROOT, 'client/src/lib/appFlavor.ts'), 'utf8');
+
+  it('reads the exact import.meta.env token Vite recognises', () => {
+    expect(flavorLib).toMatch(/import\.meta\.env\.VITE_APP_FLAVOR/);
+    // The optional-chained form is invisible to Vite's env injection AND its
+    // build-time define — VITE_APP_FLAVOR was silently never read.
+    expect(flavorLib).not.toMatch(/import\.meta as any\)\?\.env/);
+    expect(flavorLib).not.toMatch(/import\.meta\?\.env/);
+  });
+
+  it('App.tsx flavor seed uses the exact token too', () => {
+    expect(appSrc2).toMatch(/import\.meta\.env\.VITE_APP_FLAVOR/);
+    expect(appSrc2).not.toMatch(/import\.meta as any\)\?\.env/);
+  });
+});
+
+const appSrc2 = readFileSync(resolve(ROOT, 'client/src/App.tsx'), 'utf8');
