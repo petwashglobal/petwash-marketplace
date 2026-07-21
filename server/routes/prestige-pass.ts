@@ -1564,12 +1564,43 @@ router.get('/me', async (req: Request, res: Response) => {
 
     const displayName = (session?.user?.displayName as string | undefined) || passData.firstName as string | undefined || undefined;
 
+    // Next upcoming booking — the Prestige home has rendered a "Your Next
+    // Booking" card from this field since the canonical mockup landed, but no
+    // server code ever SENT it (and the /summary endpoint the client also polls
+    // never existed), so the card could never appear. Dangling wire, closed
+    // 2026-07-22 (CEO "everything wired, each button"). Best-effort: a failure
+    // here must never break the member summary.
+    let nextBooking: { date: string; time: string } | null = null;
+    try {
+      const rows: any = await (db as any).execute(sql`
+        SELECT start_time, timezone
+          FROM bookings
+         WHERE user_id = ${userId}
+           AND start_time > now()
+           AND status NOT IN ('cancelled', 'completed', 'rejected', 'draft', 'expired')
+         ORDER BY start_time ASC
+         LIMIT 1
+      `);
+      const row: any = rows?.rows?.[0] ?? rows?.[0];
+      if (row?.start_time) {
+        const tz = row.timezone || 'Asia/Jerusalem';
+        const dt = new Date(row.start_time);
+        nextBooking = {
+          date: dt.toLocaleDateString('he-IL', { timeZone: tz, day: 'numeric', month: 'numeric', year: 'numeric' }),
+          time: dt.toLocaleTimeString('he-IL', { timeZone: tz, hour: '2-digit', minute: '2-digit' }),
+        };
+      }
+    } catch (nbErr: any) {
+      logger.warn('[PrestigePass] nextBooking lookup failed (summary unaffected)', { error: nbErr?.message });
+    }
+
     return res.json({
       userId,
       tier,
       displayName,
       cardId,
       cardDisplay,
+      nextBooking,
       balances: {
         promo:         wallet?.promoBalanceCents        ?? 0,
         gift:          wallet?.egiftBalanceCents        ?? 0,
