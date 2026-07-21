@@ -38,6 +38,7 @@ import { useFirebaseAuth } from "../auth/AuthProvider";
 import { useAccountNavigation, getLiveFirebaseUser } from "../hooks/useAccountNavigation";
 import { useWhoami } from "../auth/useWhoami";
 import { accountButtonView, accountLabel } from "../lib/accountButton";
+import { useAppFlavor } from "../lib/appFlavor";
 import { isStickyAccountPath } from "../lib/sticky-account-paths";
 import { PetWashIcon } from "@/components/PetWashIcon";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
@@ -252,6 +253,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   const { user, loading, logout } = useFirebaseAuth();
   const { resolveAccountRoute } = useAccountNavigation();
   const [isResolvingProfile, setIsResolvingProfile] = useState(false);
+  // 'web' on browsers; resolves to 'provider'/'customer' inside the native apps.
+  const appFlavor = useAppFlavor();
 
   // Global account button: label + guest route from backend truth (whoami).
   // Authenticated routing stays with the P0-tested resolveAccountRoute() below.
@@ -426,6 +429,16 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
       }
     }
   };
+
+  // TWO-APP SPEC (CEO canonical designs, re-affirmed 2026-07-21 "app not
+  // supposed to look like web"): the WEBSITE header — mega menu, social row,
+  // web nav strip — must never render inside the native apps. The apps have
+  // their own chrome (FlavorBottomNav tab bars + the CEO's home-screen designs);
+  // showing the web header inside them is exactly the "website wrapper" the
+  // spec bans. Guard sits AFTER every hook so the hook order never changes when
+  // flavor resolves from 'web' → provider/customer post-detection. Web browsers
+  // are untouched.
+  if (appFlavor !== 'web') return null;
 
   return (
     <>

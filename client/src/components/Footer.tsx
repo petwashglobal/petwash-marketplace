@@ -4,6 +4,7 @@ import { FaWhatsapp } from 'react-icons/fa';
 import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles } from 'lucide-react';
 import { SUPPORT_WHATSAPP_URL } from '@/lib/support-contact';
 import { FollowUsBar } from './FollowUsBar';
+import { useAppFlavor } from '@/lib/appFlavor';
 
 
 interface FooterProps {
@@ -11,6 +12,12 @@ interface FooterProps {
 }
 
 export function Footer({ language }: FooterProps) {
+  // TWO-APP SPEC: the website footer (marketing links, socials, legal grid)
+  // must never render inside the native apps — they have their own chrome.
+  // Web browsers are untouched.
+  const appFlavor = useAppFlavor();
+  if (appFlavor !== 'web') return null;
+
   return (
     <footer className="footer bg-white border-t border-gray-200 py-12 px-4" role="contentinfo">
       <div className="max-w-6xl mx-auto">
