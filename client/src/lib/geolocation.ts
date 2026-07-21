@@ -1,5 +1,6 @@
 import type { Language } from './i18n';
 import { logger } from './logger';
+import { getApiUrl } from './apiConfig';
 
 export interface GeolocationData {
   country: string;
@@ -39,17 +40,27 @@ export async function getDefaultLanguageByLocation(): Promise<Language> {
     }
 
     // No saved preference — detect by IP for first-visit default only.
-    // Try multiple services for reliability, ordered by speed.
+    //
+    // OUR OWN endpoint goes FIRST: /api/geo/language resolves the country
+    // server-side (no CSP issue, no third-party rate limit) and returns
+    // { country, language } — `country` matches the field the loop below reads.
+    // The external services stay only as last-resort fallbacks; note the CSP
+    // blocks ipinfo.io and ip-api.com entirely, so before the server endpoint
+    // existed there was ONE working service with a ~1k/day free tier. When it
+    // rate-limited, detection failed and international visitors got stuck on
+    // the Hebrew boot default — the opposite of the rule (IL→he, world→en).
     const geolocationServices = [
-      'https://ipinfo.io/json',
+      getApiUrl('/api/geo/language'),
       'https://ipapi.co/json/',
-      'https://ip-api.com/json/'
     ];
 
     for (const service of geolocationServices) {
       try {
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 800);
+        // Our own endpoint does the upstream lookup server-side and may take up
+        // to ~2.5s on a cold cache — give it room. External fallbacks keep the
+        // tight budget so a dead service can't stall first paint.
+        const timeoutId = setTimeout(() => controller.abort(), service.includes('/api/geo/language') ? 3000 : 800);
 
         const response = await fetch(service, {
           method: 'GET',

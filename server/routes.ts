@@ -60,6 +60,7 @@ import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
 import googleServicesRoutes from "./routes/google-services";
 import geocodeRoutes from "./routes/geocode";
+import geoLanguageRoutes from "./routes/geo-language";
 import gmailRoutes from "./routes/gmail";
 import mobileAuthRoutes from "./routes/mobile-auth";
 import mobileBiometricRoutes from "./routes/mobile-biometric";
@@ -12175,6 +12176,10 @@ self.addEventListener('notificationclick', (event) => {
   // Google Services (Business Profile, Maps Places API, Reviews - 2025)
   app.use('/api/google', apiLimiter, googleServicesRoutes);
   app.use('/api/geocode', geocodeRoutes); // free OSM address autocomplete (no Google billing)
+  // First-visit language default by caller country (IL→he, else en). Server-side
+  // so the client never fetches third-party geo APIs (CSP blocked 2 of its 3
+  // fallbacks, and ipapi.co's free tier rate-limits) — our own origin always works.
+  app.use('/api/geo', apiLimiter, geoLanguageRoutes);
   
   // Gmail OAuth Integration (Premium Luxury 2025)
   app.use('/api/gmail', apiLimiter, gmailRoutes);
