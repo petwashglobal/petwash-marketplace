@@ -338,7 +338,7 @@ router.get('/earnings', async (req: Request, res: Response) => {
     const user = await getAuthenticatedUser(req, res);
     if (!user) return;
 
-    const [totals, recents] = await Promise.all([
+    const [totals, recents, weekly] = await Promise.all([
       pool.query(
         `SELECT
           COALESCE(SUM(CASE WHEN payout_status = 'paid_out' THEN provider_payout_cents ELSE 0 END), 0)::bigint AS paid_payouts_cents,
@@ -373,10 +373,45 @@ router.get('/earnings', async (req: Request, res: Response) => {
          LIMIT 20`,
         [user.uid],
       ),
+      // Weekly buckets of the CURRENT month — feeds the provider-home income
+      // chart (canonical mockup: "סקירת חודש" with week-by-week bars). Weeks are
+      // day-of-month sevenths (1–7 → week 1, 8–14 → week 2 …): deterministic and
+      // immune to ISO year-boundary week numbering.
+      pool.query(
+        `SELECT
+          CEIL(EXTRACT(DAY FROM service_completed_at) / 7.0)::int AS week_of_month,
+          COALESCE(SUM(provider_payout_cents), 0)::bigint AS cents
+         FROM booking_requests
+         WHERE provider_id = $1
+           AND status IN ('completed','reviewed')
+           AND service_completed_at >= date_trunc('month', NOW())
+         GROUP BY 1
+         ORDER BY 1`,
+        [user.uid],
+      ),
     ]);
 
     const row = totals.rows[0] ?? {};
     const toILS = (c: number | string) => Number((Number(c) / 100).toFixed(2));
+
+    // Weekly series padded to the month's real week count (a 31-day month has 5
+    // buckets) so the chart's axis is stable even when some weeks earned 0.
+    const daysInMonth = new Date(new Date().getFullYear(), new Date().getMonth() + 1, 0).getDate();
+    const weekCount = Math.ceil(daysInMonth / 7);
+    const weeklyByBucket = new Map<number, number>(
+      weekly.rows.map((w: any) => [Number(w.week_of_month), Number(w.cents)]),
+    );
+    const weeklySeries = Array.from({ length: weekCount }, (_, i) => ({
+      week: i + 1,
+      amount: toILS(weeklyByBucket.get(i + 1) ?? 0),
+    }));
+
+    // Month-over-month delta for the "+18% מהחודש שעבר" line. null when last
+    // month earned nothing — a percentage against zero is meaningless, and the
+    // UI should show nothing rather than a fabricated number.
+    const thisM = Number(row.this_month_cents ?? 0);
+    const lastM = Number(row.last_month_cents ?? 0);
+    const monthOverMonthPct = lastM > 0 ? Math.round(((thisM - lastM) / lastM) * 100) : null;
 
     res.json({
       success: true,
@@ -387,6 +422,8 @@ router.get('/earnings', async (req: Request, res: Response) => {
         thisWeekEarnings:  toILS(row.this_week_cents),
         thisMonthEarnings: toILS(row.this_month_cents),
         lastMonthEarnings: toILS(row.last_month_cents),
+        weeklySeries,
+        monthOverMonthPct,
         completedCount:    row.completed_count ?? 0,
         totalJobs:         row.completed_count ?? 0,
         recentPayouts: recents.rows.map(r => ({
