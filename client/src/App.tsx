@@ -4200,11 +4200,16 @@ console.log("Build: 1769350182889");
               <html> class/style logic (high-contrast, large-text, etc.) is fine; the
               crash is in the rendered widget subtree. */}
 
-          {/* GDPR-compliant cookie consent system */}
-          <CookieConsent
-            language={currentLanguage}
-            onOpenManager={() => setIsConsentManagerOpen(true)}
-          />
+          {/* GDPR-compliant cookie consent system — WEB ONLY. A browser cookie
+              banner inside the native apps is website furniture leaking into a
+              different product (CEO two-app spec); the apps collect their own
+              consents at signup/onboarding. Same gating as the promo popup. */}
+          {!isNativeApp && (
+            <CookieConsent
+              language={currentLanguage}
+              onOpenManager={() => setIsConsentManagerOpen(true)}
+            />
+          )}
           <ConsentManager 
             language={currentLanguage}
             isOpen={isConsentManagerOpen}

@@ -63,6 +63,7 @@ import { auth } from '@/lib/firebase';
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider,
   isNativePlatform, signInWithGoogleNative, signInWithAppleNative } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
+import { useAppFlavor } from '@/lib/appFlavor';
 import { type Language } from '@/lib/i18n';
 import { fieldSchemas, vmsg } from '@/lib/validation';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -190,29 +191,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
   // NATIVE APP FLAVOR (CEO 2026-07-21 "mobile separate apps"): the two native
   // apps ship this same bundle, but they are different products — the PROVIDER
-  // app pre-selects the provider path, and the CUSTOMER app never advertises
-  // "become a provider" (its provider tile is hidden below). Web is untouched:
-  // Capacitor.isNativePlatform() is false there, so nativeFlavor stays null and
-  // both tiles render exactly as before.
-  const [nativeFlavor, setNativeFlavor] = useState<'provider' | 'customer' | null>(null);
+  // app IS provider signup (flow locked, no intent picker, work-oriented copy,
+  // zero loyalty language), and the CUSTOMER app never advertises "become a
+  // provider". Web is untouched ('web' flavor → both tiles render as before).
+  //
+  // Uses the canonical useAppFlavor (build-time VITE_APP_FLAVOR in the real app
+  // builds, async bundle-id detection as fallback) instead of a private
+  // Capacitor probe — one source of truth with the header/footer/sandbox guards.
+  const appFlavor = useAppFlavor();
+  const nativeFlavor: 'provider' | 'customer' | null =
+    appFlavor === 'web' ? null : appFlavor;
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const { Capacitor } = await import('@capacitor/core');
-        if (!Capacitor.isNativePlatform()) return;
-        const { App: CapApp } = await import('@capacitor/app');
-        const info = await CapApp.getInfo();
-        const provider = typeof info?.id === 'string' && info.id.includes('.provider');
-        if (cancelled) return;
-        setNativeFlavor(provider ? 'provider' : 'customer');
-        if (provider) setFlow('provider');
-      } catch {
-        // Web or Capacitor unavailable — leave the default web behaviour.
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
+    if (nativeFlavor === 'provider') setFlow('provider');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [nativeFlavor]);
   // Toggle the provider intent. Routes through the CANONICAL signup-intent path
   // (localStorage signup_intent) that the post-login decider already consumes —
   // identical to arriving via ?flow=provider — so no routing logic is forked.
@@ -707,11 +699,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     secureSub: he ? 'הנתונים שלך מוגנים ומוצפנים.' : 'Your data is protected and encrypted.',
 
     /* One door for everyone (CEO 2026-07-02): returning members sign in HERE —
-       same phone/email code, Google, Apple or Face ID — no separate login page. */
-    create: he ? 'התחברות או יצירת חשבון PetWash' : 'Sign in or create your PetWash account',
-    helper: he
-      ? 'הצטרף ל־PetWash Prestige וקבל 5% תגמול על כל רחיצה זכאית במכונת K9000.'
-      : 'Join PetWash Prestige and earn 5% rewards on every eligible K9000 wash.',
+       same phone/email code, Google, Apple or Face ID — no separate login page.
+       PROVIDER APP EXCEPTION (CEO 2026-07-22 "provider is not loyalty"): inside
+       the provider app this screen is PROVIDER signup — work-oriented copy,
+       zero Prestige/rewards language. */
+    create: nativeFlavor === 'provider'
+      ? (he ? 'התחברות או יצירת חשבון ספק PetWash' : 'Sign in or create your PetWash provider account')
+      : (he ? 'התחברות או יצירת חשבון PetWash' : 'Sign in or create your PetWash account'),
+    helper: nativeFlavor === 'provider'
+      ? (he
+          ? 'עבודות, יומן, הכנסות ותאימות — אפליקציית העבודה שלך ב־PetWash.'
+          : 'Jobs, calendar, earnings and compliance — your PetWash work app.')
+      : (he
+          ? 'הצטרף ל־PetWash Prestige וקבל 5% תגמול על כל רחיצה זכאית במכונת K9000.'
+          : 'Join PetWash Prestige and earn 5% rewards on every eligible K9000 wash.'),
     cwGoogle: he ? 'המשך עם Google' : 'Continue with Google',
     cwApple: he ? 'המשך עם Apple' : 'Continue with Apple',
     cwFb: he ? 'המשך עם Facebook' : 'Continue with Facebook',
@@ -841,7 +842,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   showing it first only 400s and confuses. See the returning-user
                   block after the social options below. */}
 
-              {/* === Clear intent up front: member and/or provider (non-exclusive) === */}
+              {/* === Clear intent up front: member and/or provider (non-exclusive).
+                  Hidden entirely inside the PROVIDER app — that app IS provider
+                  signup (flow locked above), so a member/provider picker there is
+                  noise, and the member tile is loyalty language the provider app
+                  must not carry. === */}
+              {nativeFlavor !== 'provider' && (
               <div className="sl-intent">
                 <div className="sl-intentQ">{he ? 'איך תרצו להצטרף?' : 'How would you like to join?'}</div>
                 <div className="sl-intentGrid">
@@ -874,6 +880,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <div className="sl-intentHint">{he ? 'אפשר גם וגם — תמיד תהיו חברים, וגם ספקים אם תבחרו.' : 'Either or both — you’re always a member, and a provider too if you choose.'}</div>
                 )}
               </div>
+              )}
 
               {/* === REORDER (CEO 2026-07-21 "sign up still not right"): one-tap
                   methods now come FIRST. Measured on the live site: the Google/

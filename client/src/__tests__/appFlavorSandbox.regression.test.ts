@@ -81,3 +81,27 @@ describe('apps do not look like the website (CEO canonical designs)', () => {
     expect(guardIdx).toBeGreaterThan(lastEffectIdx);
   });
 });
+
+describe('leaks caught in the flavor demo (2026-07-22)', () => {
+  const appSrc = readFileSync(resolve(ROOT, 'client/src/App.tsx'), 'utf8');
+  const signup = readFileSync(resolve(ROOT, 'client/src/pages/SignUpLuxury.tsx'), 'utf8');
+
+  it('the web cookie banner never renders inside a native app', () => {
+    expect(appSrc).toMatch(/\{!isNativeApp && \(\s*<CookieConsent/);
+  });
+
+  it('the provider app signup carries no loyalty language', () => {
+    // Title + helper switch to work-oriented copy for the provider flavor.
+    expect(signup).toMatch(/nativeFlavor === 'provider'[\s\S]{0,200}provider account/);
+    expect(signup).toMatch(/your PetWash work app/);
+  });
+
+  it('the provider app hides the member\/provider intent picker entirely', () => {
+    expect(signup).toMatch(/nativeFlavor !== 'provider' && \(\s*<div className="sl-intent">/);
+  });
+
+  it('signup uses the canonical useAppFlavor, not a private Capacitor probe', () => {
+    expect(signup).toMatch(/useAppFlavor\(\)/);
+    expect(signup).not.toMatch(/Capacitor\.isNativePlatform/);
+  });
+});
