@@ -706,7 +706,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   const { user, loading } = useFirebaseAuth();
   const { role, isLoading: roleLoading } = useWhoami();
   const { trackLanguageChange } = useAnalytics();
-  const [, setLocation] = useLocation();
+  const [appPath, setLocation] = useLocation();
   // Seed from the BUILD-TIME flavor (VITE_APP_FLAVOR) so the app knows which of
   // the two it is at frame 0 — no async bundle-id lookup needed. The effect
   // below still runs as a runtime fallback for web/dev where the var is unset.
@@ -808,6 +808,37 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
       setLocation(user ? '/prestige/home' : '/signup');
     }
   }, [isProviderApp, isCustomerApp, user, loading, role, roleLoading, setLocation]);
+
+  // ── FLAVOR SANDBOX (CEO 2026-07-21: "each with his own operation and needs,
+  //    provider is not loyalty") ────────────────────────────────────────────────
+  // The two native apps ship one bundle, so EVERY route technically exists in
+  // both. Root routing alone isn't separation: a deep link, push tap or stray
+  // <Link> could drop the PROVIDER app into the member world (loyalty, shop,
+  // eGift, Prestige wallet) or the CUSTOMER app into provider ops. Per the
+  // canonical two-app spec (Prestige = Home/Book/Shop/Wallet/Account · Provider
+  // = Jobs/Calendar/Earnings/Compliance/Account), each app now stays inside its
+  // own product: an out-of-flavor path bounces to that app's home. Web browsers
+  // are completely untouched (both flavors false).
+  const PROVIDER_APP_BLOCKED = [
+    '/loyalty', '/prestige', '/shop', '/egift', '/my-wallet', '/rewards',
+    '/pet-passport', '/pets', '/bookings', '/my-bookings', '/locations',
+    '/story', '/media', '/careers', '/follow',
+  ];
+  const CUSTOMER_APP_BLOCKED = [
+    '/provider', '/provider-os', '/provider-compliance', '/provider-onboarding',
+    '/provider-signup',
+  ];
+  useEffect(() => {
+    if (loading) return;
+    const hits = (prefixes: string[]) =>
+      prefixes.some((p) => appPath === p || appPath.startsWith(p + '/'));
+    if (isProviderApp && hits(PROVIDER_APP_BLOCKED)) {
+      setLocation('/provider/home');
+    } else if (isCustomerApp && hits(CUSTOMER_APP_BLOCKED)) {
+      setLocation('/prestige/home');
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appPath, isProviderApp, isCustomerApp, loading, setLocation]);
 
   // Get personalized AI greeting on app launch 🎉
   usePersonalizedGreeting();

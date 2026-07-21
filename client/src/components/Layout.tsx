@@ -4,6 +4,7 @@ import { Footer } from './Footer';
 import { NetworkOfflineBanner } from './NetworkOfflineBanner';
 import { type Language } from '@/lib/i18n';
 import { useLanguage } from '@/lib/languageStore';
+import { useAppFlavor } from '@/lib/appFlavor';
 import { X } from 'lucide-react';
 
 interface LayoutProps {
@@ -38,6 +39,11 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
     fr: 'Notre site est en développement et en phase de test — certaines fonctionnalités ne sont pas encore actives et toutes les langues sont en cours de finition. Nos stations de lavage sont ouvertes au public ! 🐾',
     es: 'Nuestro sitio está en desarrollo y en fase de pruebas — algunas funciones aún no están activas y seguimos puliendo todos los idiomas. ¡Nuestras estaciones de lavado están abiertas al público! 🐾',
   };
+  // The dev notice is about THE WEBSITE ("the website is under development") —
+  // it must never render inside the native apps, which are their own products
+  // with their own state (CEO 2026-07-21: two separate apps, each its own
+  // operation). 'web' on browsers; resolves to provider/customer in the apps.
+  const appFlavor = useAppFlavor();
   const [devNoticeDismissed, setDevNoticeDismissed] = useState(() =>
     localStorage.getItem('petwash_dev_notice_dismissed_v1') === 'true'
   );
@@ -71,7 +77,7 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
           two. Shows on every route and every viewport (a testing notice is
           information, not promotion — the old /egift aesthetic exclusion doesn't
           apply). Dismissible per device. Remove at full launch. */}
-      {!devNoticeDismissed && (
+      {appFlavor === 'web' && !devNoticeDismissed && (
         <div
           dir={isRTL ? 'rtl' : 'ltr'}
           data-testid="dev-notice-banner"
