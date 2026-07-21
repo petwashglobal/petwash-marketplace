@@ -194,28 +194,33 @@ export default function MarketplaceBookingFlow() {
     { id: 4, title: 'Review & Pay', titleHe: 'סקירה ותשלום', completed: false },
   ];
 
-  // Calculate pricing - handle all provider types
-  const basePriceCents = (() => {
-    if (!provider) return 0;
-    
+  // Client-side pricing PREVIEW — the server quote is the only number that is
+  // ever charged (checkout requires a quoteId; the server prices from the
+  // provider's rate card and refuses to quote without one).
+  //
+  // null = "we have no honest client-side number for this provider kind".
+  // Drivers and groomers used to be hardcoded here at ₪150/₪200 ("placeholder
+  // until backend supports it") — but the backend DOES price them, from
+  // provider_rate_cards. The fabricated figures showed while the quote loaded
+  // and, worse, whenever the quote FAILED (the || fallback), quoting a customer
+  // an invented total. Truth rule: show a real number or no number.
+  const basePriceCents: number | null = (() => {
+    if (!provider) return null;
+
     switch (provider.kind) {
       case 'walker':
-        return (provider.hourlyRate || 0) * 100;
+        return provider.hourlyRate ? provider.hourlyRate * 100 : null;
       case 'sitter':
-        return provider.pricePerDayCents || 0;
-      case 'driver':
-        // TODO: Add driver pricing field when backend supports it
-        return 15000; // Placeholder: ₪150
-      case 'groomer':
-        // TODO: Add groomer pricing field when backend supports it
-        return 20000; // Placeholder: ₪200
+        return provider.pricePerDayCents || null;
       default:
-        return 0;
+        // driver / groomer / anything else: rate-card priced on the server only.
+        return null;
     }
   })();
-  
-  const platformFeeCents = Math.round(basePriceCents * 0.10); // 10% platform fee
-  const subtotalCents = basePriceCents + platformFeeCents + addonsTotalCents;
+
+  const hasClientEstimate = basePriceCents !== null;
+  const platformFeeCents = Math.round((basePriceCents ?? 0) * 0.10); // 10% platform fee
+  const subtotalCents = (basePriceCents ?? 0) + platformFeeCents + addonsTotalCents;
   const vatCents = Math.round(subtotalCents * 0.18); // 18% VAT (Israeli law updated Jan 2025)
   const totalCents = subtotalCents + vatCents;
 
@@ -811,11 +816,22 @@ export default function MarketplaceBookingFlow() {
                           {isHebrew ? 'מחשב מחיר...' : 'Calculating pricing...'}
                         </span>
                       </div>
+                    ) : !quoteData && !hasClientEstimate ? (
+                      /* No server quote yet and no honest client-side rate for this
+                         provider kind (driver/groomer are rate-card priced on the
+                         server). Previously this branch showed FABRICATED numbers
+                         (hardcoded ₪150/₪200 + fees + VAT). Truth rule: a real
+                         number or no number — never an invented total. */
+                      <div className="text-center py-4 text-gray-600 dark:text-gray-400" data-testid="price-pending">
+                        {isHebrew
+                          ? 'המחיר המדויק מחושב לפי תעריף הספק ויוצג לפני התשלום.'
+                          : "The exact price is calculated from the provider's rate card and will be shown before payment."}
+                      </div>
                     ) : (
                       <div className="space-y-2">
                         <div className="flex justify-between text-gray-700 dark:text-black">
                           <span>{isHebrew ? 'מחיר בסיס' : 'Base Price'}</span>
-                          <span data-testid="price-base">₪{((quoteData?.baseAmountCents || basePriceCents) / 100).toFixed(2)}</span>
+                          <span data-testid="price-base">₪{((quoteData?.baseAmountCents ?? basePriceCents ?? 0) / 100).toFixed(2)}</span>
                         </div>
                         
                         {/* Show discounts if any applied */}
