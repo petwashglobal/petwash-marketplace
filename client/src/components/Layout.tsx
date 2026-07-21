@@ -61,7 +61,10 @@ export function Layout({ children, language: propLanguage, onLanguageChange: pro
       {!paymentsEnabled && !bannerDismissed && !isEgiftRoute && (
         <div
           dir={isRTL ? 'rtl' : 'ltr'}
-          className="w-full bg-black text-white z-50 relative border-b border-amber-300/40"
+          // Hidden on phones (CEO 2026-07-21 homepage de-salad): on a 375px screen
+          // this strip was the FIRST thing shown, pushing the actual content down —
+          // promoting a shop that can't sell yet. Desktop keeps it (dismissible).
+          className="hidden md:block w-full bg-black text-white z-50 relative border-b border-amber-300/40"
         >
           <div className="flex items-center justify-center gap-3 py-2 px-4 text-xs sm:text-sm tracking-wide">
             <span className="text-amber-200">✦</span>

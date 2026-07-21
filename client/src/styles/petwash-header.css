@@ -1404,3 +1404,26 @@
 .pw-logout-btn:hover {
   background: rgba(204, 51, 51, 0.06) !important;
 }
+
+/* ===========================
+   MOBILE DE-SALAD (CEO 2026-07-21) — the phone header must be logo + controls,
+   nothing else. Before this, a 375px screen stacked: shop banner + 80px logo row
+   + 4 social icons + coin + burger + language + nav strip ≈ 200px of chrome
+   before any content (headline measured 355px down). Socials now live in the
+   site footer (Footer.tsx renders FollowUsBar) — hidden here on phones only;
+   desktop keeps its header icons. Appended last so it wins the cascade.
+   =========================== */
+@media (max-width: 767px) {
+  .pw-header-left .pw-social-link {
+    display: none !important;
+  }
+  .pw-header-logo-img {
+    height: 3.25rem !important;
+  }
+  .pw-header-row-logo {
+    padding-top: 0.125rem;
+  }
+  .pw-header-inner {
+    height: 3.5rem;
+  }
+}

@@ -3,6 +3,7 @@ import { Link } from 'wouter';
 import { FaWhatsapp } from 'react-icons/fa';
 import { Mail, Shield, Award, Leaf, CheckCircle2, Lock, Sparkles } from 'lucide-react';
 import { SUPPORT_WHATSAPP_URL } from '@/lib/support-contact';
+import { FollowUsBar } from './FollowUsBar';
 
 
 interface FooterProps {
@@ -13,6 +14,14 @@ export function Footer({ language }: FooterProps) {
   return (
     <footer className="footer bg-white border-t border-gray-200 py-12 px-4" role="contentinfo">
       <div className="max-w-6xl mx-auto">
+        {/* Social links — moved here from the mobile header (CEO 2026-07-21
+            homepage de-salad): the header row of 4 icons ate top-of-screen space
+            on phones; the footer is where visitors expect them. Desktop header
+            keeps its icons too — this bar serves every viewport. */}
+        <div className="flex justify-center mb-8">
+          <FollowUsBar />
+        </div>
+
         {/* Main Footer Content */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8 mb-8">
           

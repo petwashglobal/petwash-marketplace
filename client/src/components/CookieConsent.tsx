@@ -146,7 +146,13 @@ export function CookieConsent({ language, onOpenManager }: CookieConsentProps) {
           // Issue #166: cap the inner panel height to the viewport minus
           // safe-area inset and external padding so the Accept / Reject /
           // Manage buttons are always visible without zooming on iPhone.
-          maxHeight: 'calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px))',
+          //
+          // Tightened 2026-07-21 (CEO homepage de-salad): the old cap allowed the
+          // sheet to fill nearly the whole phone screen — visitors saw a "cookie
+          // wall" hiding the page they came for (long copy + 3 stacked buttons ≈
+          // a full 812px viewport). 62dvh keeps the top third of the page visible
+          // behind the sheet; the copy scrolls inside, buttons stay reachable.
+          maxHeight: 'min(62dvh, calc(100dvh - 4rem - env(safe-area-inset-bottom, 0px)))',
         }}
       >
         <div className="flex gap-4">
