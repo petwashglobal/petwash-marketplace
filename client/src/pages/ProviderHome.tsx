@@ -342,6 +342,28 @@ export default function ProviderHome() {
                 <span className={`text-xs font-medium ${monthChange >= 0 ? 'text-emerald-600' : 'text-red-500'}`}>{monthChange >= 0 ? '+' : ''}{monthChange}% {isHe ? 'מהחודש שעבר' : 'vs last month'}</span>
               )}
             </div>
+            {/* Weekly bars — the canonical mockup's month-review chart. Renders
+                only when the API provides the series (older cached responses
+                simply show no chart rather than an empty axis). Bars are the
+                provider green from the mockup; a zero-earning week still draws a
+                2px baseline so the week visibly exists. */}
+            {Array.isArray(earn?.weeklySeries) && earn.weeklySeries.length > 0 && (() => {
+              const series: { week: number; amount: number }[] = earn.weeklySeries;
+              const max = Math.max(...series.map((w) => w.amount), 1);
+              return (
+                <div className="flex items-end justify-between gap-2 mt-3 pt-3 border-t border-gray-100" style={{ height: 74 }} aria-hidden>
+                  {series.map((w) => (
+                    <div key={w.week} className="flex-1 flex flex-col items-center justify-end gap-1">
+                      <div
+                        className="w-3 rounded-t-md"
+                        style={{ height: `${Math.max(2, Math.round((w.amount / max) * 48))}px`, background: '#0e7a54' }}
+                      />
+                      <span className="text-[9px] text-gray-400">{isHe ? `שבוע ${w.week}` : `W${w.week}`}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })()}
             <div className="grid grid-cols-3 gap-2 mt-3 pt-3 border-t border-gray-100">
               <div><div className="text-[10px] text-gray-400">{isHe ? 'השבוע' : 'This week'}</div><div className="text-sm font-semibold text-gray-900">{nis(thisWeek)}</div></div>
               <div><div className="text-[10px] text-gray-400">{isHe ? 'ממתין' : 'Pending'}</div><div className="text-sm font-semibold text-gray-900">{nis(pending)}</div></div>
