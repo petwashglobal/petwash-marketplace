@@ -20,7 +20,12 @@ export type AppFlavor = 'provider' | 'customer' | 'web';
 // at frame 0 — no async bundle-id lookup, no web-experience flash, and the two
 // apps are hardcoded-distinct. Falls through to runtime detection on web/dev
 // where the var is unset.
-const BUILD_FLAVOR = ((import.meta as any)?.env?.VITE_APP_FLAVOR ?? '') as string;
+// MUST be the exact `import.meta.env` token: Vite's env injection (dev) and
+// static define replacement (build) only recognise that precise expression.
+// The previous optional-chained form (cast through `any`) was invisible to
+// both, so VITE_APP_FLAVOR was NEVER read — the "synchronous frame-0 flavor"
+// silently didn't exist and every build fell back to the async Capacitor probe.
+const BUILD_FLAVOR = (import.meta.env.VITE_APP_FLAVOR ?? '') as string;
 
 let cachedFlavor: AppFlavor | null =
   BUILD_FLAVOR === 'provider' ? 'provider' : BUILD_FLAVOR === 'customer' ? 'customer' : null;

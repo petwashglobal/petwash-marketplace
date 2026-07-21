@@ -710,7 +710,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   // Seed from the BUILD-TIME flavor (VITE_APP_FLAVOR) so the app knows which of
   // the two it is at frame 0 — no async bundle-id lookup needed. The effect
   // below still runs as a runtime fallback for web/dev where the var is unset.
-  const BUILD_FLAVOR = ((import.meta as any)?.env?.VITE_APP_FLAVOR ?? '') as string;
+  // Exact `import.meta.env` token — Vite's env injection/define only recognise
+  // this precise form; the old optional-chained version was invisible to both,
+  // so the build-time flavor seed silently never fired (see appFlavor.ts note).
+  const BUILD_FLAVOR = (import.meta.env.VITE_APP_FLAVOR ?? '') as string;
   const [isProviderApp, setIsProviderApp] = useState(BUILD_FLAVOR === 'provider');
   const [isCustomerApp, setIsCustomerApp] = useState(BUILD_FLAVOR === 'customer');
   const IS_DEV = import.meta.env.DEV === true;
