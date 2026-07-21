@@ -60,3 +60,24 @@ describe('marketing surfaces stay out of the native apps', () => {
     expect(layout).toMatch(/appFlavor === 'web' && !devNoticeDismissed/);
   });
 });
+
+describe('apps do not look like the website (CEO canonical designs)', () => {
+  const header = readFileSync(resolve(ROOT, 'client/src/components/PetWashHeader.tsx'), 'utf8');
+  const footer = readFileSync(resolve(ROOT, 'client/src/components/Footer.tsx'), 'utf8');
+
+  it('the website header never renders inside a native app', () => {
+    expect(header).toMatch(/if \(appFlavor !== 'web'\) return null;/);
+  });
+
+  it('the website footer never renders inside a native app', () => {
+    expect(footer).toMatch(/if \(appFlavor !== 'web'\) return null;/);
+  });
+
+  it('header guard sits AFTER the hooks (flavor flips web→native post-detection)', () => {
+    // The guard must not create a conditional hook order when useAppFlavor
+    // resolves asynchronously inside the apps.
+    const guardIdx = header.indexOf("if (appFlavor !== 'web') return null;");
+    const lastEffectIdx = header.lastIndexOf('useEffect(', guardIdx);
+    expect(guardIdx).toBeGreaterThan(lastEffectIdx);
+  });
+});
