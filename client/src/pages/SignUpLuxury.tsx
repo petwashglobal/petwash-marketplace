@@ -187,6 +187,32 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // the user arrived with (else 'prestige' member).
   const [flow, setFlow] = useState<Flow>(() => normalizeFlow(params.get('flow') || params.get('intent')));
   const wantsProvider = flow === 'provider';
+
+  // NATIVE APP FLAVOR (CEO 2026-07-21 "mobile separate apps"): the two native
+  // apps ship this same bundle, but they are different products — the PROVIDER
+  // app pre-selects the provider path, and the CUSTOMER app never advertises
+  // "become a provider" (its provider tile is hidden below). Web is untouched:
+  // Capacitor.isNativePlatform() is false there, so nativeFlavor stays null and
+  // both tiles render exactly as before.
+  const [nativeFlavor, setNativeFlavor] = useState<'provider' | 'customer' | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const { Capacitor } = await import('@capacitor/core');
+        if (!Capacitor.isNativePlatform()) return;
+        const { App: CapApp } = await import('@capacitor/app');
+        const info = await CapApp.getInfo();
+        const provider = typeof info?.id === 'string' && info.id.includes('.provider');
+        if (cancelled) return;
+        setNativeFlavor(provider ? 'provider' : 'customer');
+        if (provider) setFlow('provider');
+      } catch {
+        // Web or Capacitor unavailable — leave the default web behaviour.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   // Toggle the provider intent. Routes through the CANONICAL signup-intent path
   // (localStorage signup_intent) that the post-login decider already consumes —
   // identical to arriving via ?flow=provider — so no routing logic is forked.
@@ -827,20 +853,88 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     </div>
                     <span className="sl-intentTick" aria-hidden>✓</span>
                   </div>
-                  <button type="button"
-                    className={`sl-intentCard${wantsProvider ? ' sl-intentCard--on' : ''}`}
-                    aria-pressed={wantsProvider}
-                    onClick={toggleProviderIntent}>
-                    <FaPaw className="sl-intentIcon" aria-hidden />
-                    <div className="sl-intentText">
-                      <div className="sl-intentName">{he ? 'להפוך לספק/ית' : 'Become a provider'}</div>
-                      <div className="sl-intentSub">{he ? 'בכפוף לתנאים ואישור' : 'Conditions apply · approval required'}</div>
-                    </div>
-                    <span className={wantsProvider ? 'sl-intentTick' : 'sl-intentAdd'} aria-hidden>{wantsProvider ? '✓' : '+'}</span>
-                  </button>
+                  {/* The provider tile is hidden inside the CUSTOMER native app —
+                      that app is the member product; provider recruitment lives in
+                      the provider app and on the web. */}
+                  {nativeFlavor !== 'customer' && (
+                    <button type="button"
+                      className={`sl-intentCard${wantsProvider ? ' sl-intentCard--on' : ''}`}
+                      aria-pressed={wantsProvider}
+                      onClick={toggleProviderIntent}>
+                      <FaPaw className="sl-intentIcon" aria-hidden />
+                      <div className="sl-intentText">
+                        <div className="sl-intentName">{he ? 'להפוך לספק/ית' : 'Become a provider'}</div>
+                        <div className="sl-intentSub">{he ? 'בכפוף לתנאים ואישור' : 'Conditions apply · approval required'}</div>
+                      </div>
+                      <span className={wantsProvider ? 'sl-intentTick' : 'sl-intentAdd'} aria-hidden>{wantsProvider ? '✓' : '+'}</span>
+                    </button>
+                  )}
                 </div>
-                <div className="sl-intentHint">{he ? 'אפשר גם וגם — תמיד תהיו חברים, וגם ספקים אם תבחרו.' : 'Either or both — you’re always a member, and a provider too if you choose.'}</div>
+                {nativeFlavor !== 'customer' && (
+                  <div className="sl-intentHint">{he ? 'אפשר גם וגם — תמיד תהיו חברים, וגם ספקים אם תבחרו.' : 'Either or both — you’re always a member, and a provider too if you choose.'}</div>
+                )}
               </div>
+
+              {/* === REORDER (CEO 2026-07-21 "sign up still not right"): one-tap
+                  methods now come FIRST. Measured on the live site: the Google/
+                  Apple buttons sat at 1,666px on an 812px phone — two full screens
+                  below the fold, behind a DOB wheel and the manual form. The order
+                  is now: consents → social tiles → "or" → manual (DOB/phone/email).
+                  Consents sit directly above the tiles because social() requires
+                  consentOk before it may fire — tapping without them surfaces the
+                  "accept terms + 18+" message right next to the boxes. === */}
+              <div className="sl-consent" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 6px', fontSize: '13px', lineHeight: 1.6, textAlign: he ? 'right' : 'left' }}>
+                <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer' }}>
+                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0, accentColor: '#E6C766' }} />
+                  <span>
+                    {he ? 'אני מסכים/ה ל' : 'I agree to the '}
+                    <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
+                    {he ? ' ול' : ' and '}
+                    <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'מדיניות הפרטיות' : 'Privacy Policy'}</a>
+                  </span>
+                </label>
+                <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer', marginTop: '8px' }}>
+                  <input type="checkbox" checked={over18} onChange={(e) => setOver18(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0, accentColor: '#E6C766' }} />
+                  <span>{he ? 'אני מאשר/ת שאני בן/בת 18 ומעלה' : 'I confirm I am 18 years or older'}</span>
+                </label>
+              </div>
+
+              {/* All sign-up methods visible (CEO 2026-07-17): no "more options" fold.
+                  Buttons are NOT disabled on missing consent — a tap calls social()/
+                  socialExternal(), which surface the "accept terms + 18+" message.
+                  Disabling silently made them look dead ("Gmail gives nothing"). */}
+              <div className="sl-social4">
+                {signupFlags.googleSignin && (
+                  <button className="sl-soc" disabled={busy} onClick={() => social('google')}>
+                    <GoogleIcon /> <span className="sl-socLabel">{t.cwGoogle}</span>
+                  </button>
+                )}
+                {signupFlags.appleSignin && (
+                  <button className="sl-soc sl-soc--apple" disabled={busy} onClick={() => social('apple')}>
+                    <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
+                  </button>
+                )}
+                {signupFlags.facebookSignin && (
+                  <button className="sl-soc sl-soc--fb" disabled={busy} onClick={() => social('facebook')}>
+                    <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
+                    <span className="sl-socLabel">{t.cwFb}</span>
+                  </button>
+                )}
+                {signupFlags.instagramSignin && (
+                  <button className="sl-soc sl-soc--ig" disabled={busy} onClick={() => socialExternal('instagram')}>
+                    <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
+                    <span className="sl-socLabel">{t.cwIg}</span>
+                  </button>
+                )}
+                {signupFlags.tiktokSignin && (
+                  <button className="sl-soc sl-soc--tt" disabled={busy} onClick={() => socialExternal('tiktok')}>
+                    <span className="sl-ttIcon" aria-hidden><FaTiktok /></span>
+                    <span className="sl-socLabel">{t.cwTt}</span>
+                  </button>
+                )}
+              </div>
+
+              <div className="sl-div">{he ? 'או הרשמה עם נייד או אימייל' : 'or sign up with phone or email'}</div>
 
               {/* Date of birth — required, 18+. iOS finger-scroll wheel; only adult
                   years are offered, and age is re-verified on the server at creation. */}
@@ -913,21 +1007,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
           {!sent && (
             <>
-              <div className="sl-consent" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 6px', fontSize: '13px', lineHeight: 1.6, textAlign: he ? 'right' : 'left' }}>
-                <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0, accentColor: '#E6C766' }} />
-                  <span>
-                    {he ? 'אני מסכים/ה ל' : 'I agree to the '}
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
-                    {he ? ' ול' : ' and '}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'מדיניות הפרטיות' : 'Privacy Policy'}</a>
-                  </span>
-                </label>
-                <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer', marginTop: '8px' }}>
-                  <input type="checkbox" checked={over18} onChange={(e) => setOver18(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0, accentColor: '#E6C766' }} />
-                  <span>{he ? 'אני מאשר/ת שאני בן/בת 18 ומעלה' : 'I confirm I am 18 years or older'}</span>
-                </label>
-              </div>
+              {/* Consent checkboxes moved ABOVE the methods (top of the card) —
+                  see the reorder note there. CTA + its consent hint stay here. */}
               <button className="sl-cta" disabled={!readyForSubmit || !consentOk}
                 onClick={startSignup}>
                 <FaLock aria-hidden /> {ctaLabel}
@@ -955,43 +1036,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 </div>
               </div>
 
-              <div className="sl-div">{t.or}</div>
-
-              {/* === Social tiles — real auth alternatives, below phone-first signup. === */}
-              {/* All sign-up methods visible (CEO 2026-07-17): no "more options" fold.
-                  Buttons are NOT disabled on missing consent — a tap calls social()/
-                  socialExternal(), which surface the "accept terms + 18+" message.
-                  Disabling silently made them look dead ("Gmail gives nothing"). */}
-              <div className="sl-social4">
-                {signupFlags.googleSignin && (
-                  <button className="sl-soc" disabled={busy} onClick={() => social('google')}>
-                    <GoogleIcon /> <span className="sl-socLabel">{t.cwGoogle}</span>
-                  </button>
-                )}
-                {signupFlags.appleSignin && (
-                  <button className="sl-soc sl-soc--apple" disabled={busy} onClick={() => social('apple')}>
-                    <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
-                  </button>
-                )}
-                {signupFlags.facebookSignin && (
-                  <button className="sl-soc sl-soc--fb" disabled={busy} onClick={() => social('facebook')}>
-                    <span className="sl-fbIcon" aria-hidden><FaFacebookF /></span>
-                    <span className="sl-socLabel">{t.cwFb}</span>
-                  </button>
-                )}
-                {signupFlags.instagramSignin && (
-                  <button className="sl-soc sl-soc--ig" disabled={busy} onClick={() => socialExternal('instagram')}>
-                    <span className="sl-igIcon" aria-hidden><FaInstagram /></span>
-                    <span className="sl-socLabel">{t.cwIg}</span>
-                  </button>
-                )}
-                {signupFlags.tiktokSignin && (
-                  <button className="sl-soc sl-soc--tt" disabled={busy} onClick={() => socialExternal('tiktok')}>
-                    <span className="sl-ttIcon" aria-hidden><FaTiktok /></span>
-                    <span className="sl-socLabel">{t.cwTt}</span>
-                  </button>
-                )}
-              </div>
+              {/* Social tiles moved to the TOP of the card (one-tap first — see the
+                  reorder note there). Passkey stays here at the bottom. */}
 
               {/* Returning-user passkey/Face-ID — demoted to the bottom (see top note). */}
               {bioAvailable && (
@@ -1389,14 +1435,17 @@ function styles(he: boolean) {
     @media(max-width:767px){
       .sl-shell{ min-height:auto; padding-top:0 }
       .sl-frame{ gap:10px; padding:max(6px, env(safe-area-inset-top)) 12px calc(92px + env(safe-area-inset-bottom)) }
-      .sl-hero{ gap:6px; padding-top:0 }
-      .sl-logo{ width:min(86vw, 382px) }
-      .sl-eyebrow{ font-size:9px; letter-spacing:.20em; margin-top:0 }
-      .sl-h1{ font-size:clamp(23px,6vw,28px); line-height:1.04; max-width:352px }
-      .sl-sub{ font-size:clamp(13px,3.4vw,15px); line-height:1.32; max-width:344px }
+      /* MOBILE = the form, not the pitch (CEO 2026-07-21). The hero's headline,
+         subtitle and dog photo pushed the signup card ~480px down a phone screen
+         — marketing before the thing the visitor came to do. Keep a small logo
+         line, hide the rest; desktop keeps the full hero. */
+      .sl-hero{ gap:0; padding-top:0 }
+      .sl-logo{ width:min(46vw, 205px) }
+      .sl-eyebrow{ display:none }
+      .sl-h1{ display:none }
+      .sl-sub{ display:none }
       .sl-divPaw{ display:none }
-      .sl-dogWrap{ padding:0 }
-      .sl-dog{ width:min(42vw, 162px); border-radius:16px; box-shadow:0 14px 38px rgba(0,0,0,.42); object-position:center top }
+      .sl-dogWrap{ display:none }
       .sl-card,.sl-trustCard,.sl-secBadge{ display:none }
       .sl-panel{ padding:16px 14px; border-radius:22px; gap:11px; scroll-margin-top:8px }
       .sl-panelHead{ gap:8px }
