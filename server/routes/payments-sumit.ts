@@ -65,7 +65,21 @@ const beginSchema = z.object({
   topupIls: z.number().positive().max(10_000).optional(),
   orderId: z.string().max(120).optional(),
   metadata: z.record(z.unknown()).optional(),
+  // Optional coupon. Validated + priced SERVER-SIDE by CouponService; the client
+  // never supplies a discount amount. Kiosk wash SKUs only (never eGift/top-up —
+  // discounting stored value would be a cash-arbitrage hole).
+  couponCode: z.string().min(1).max(64).optional(),
 });
+
+// Which coupon orderType each kiosk SKU maps to. eGift + wallet top-up are
+// DELIBERATELY absent: a coupon there would sell ₪100 of stored value for less
+// than ₪100 (value arbitrage), which the discount policy forbids.
+const COUPON_ORDER_TYPE: Partial<Record<Phase1Sku, 'kiosk_wash' | 'package_purchase'>> = {
+  SINGLE_WASH: 'kiosk_wash',
+  WASH_PACKAGE_3: 'package_purchase',
+  WASH_PACKAGE_5: 'package_purchase',
+  WASH_PACKAGE_10: 'package_purchase',
+};
 
 /**
  * Resolve price, productType, surface and unit count SERVER-SIDE from the
@@ -92,6 +106,26 @@ function resolvePhase1Order(sku: Phase1Sku, topupIls?: number):
   };
 }
 
+// GET /api/payments/sumit/catalog — the server-owned price list, read-only.
+// The canonical /checkout page renders prices FROM THIS, never from client
+// constants, so what the customer sees is exactly what /begin will charge.
+router.get('/catalog', (_req: Request, res: Response) => {
+  const products = (Object.keys(PHASE1_PRODUCTS) as Phase1Sku[])
+    .filter((sku) => sku !== 'ACCOUNT_CREDIT')
+    .map((sku) => {
+      const def = PHASE1_PRODUCTS[sku] as any;
+      return {
+        sku,
+        amountCents: def.amountCents as number,
+        description: def.description as string,
+        surface: def.surface as string,
+        ...(def.washCount != null ? { washCount: def.washCount as number } : {}),
+        couponEligible: sku in COUPON_ORDER_TYPE,
+      };
+    });
+  res.json({ ok: true, currency: 'ILS', vatIncluded: true, products });
+});
+
 // POST /api/payments/sumit/begin
 router.post('/begin', validateFirebaseToken, async (req: Request, res: Response) => {
   const uid = req.firebaseUser?.uid;
@@ -99,7 +133,7 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
 
   const parsed = beginSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Invalid input', details: parsed.error.flatten() });
-  const { sku, topupIls, orderId, metadata } = parsed.data;
+  const { sku, topupIls, orderId, metadata, couponCode } = parsed.data;
 
   // SERVER-SIDE price/quantity. The client supplies only a SKU (+ a bounded
   // top-up value for wallet_topup); price, productType, surface and the unit
@@ -133,6 +167,60 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
       });
     }
   }
+  // ── Coupon (server-validated, server-priced). FAIL-CLOSED: an invalid or
+  //    ineligible coupon rejects the request with the reason — we never
+  //    silently charge full price after the customer saw a discount. The
+  //    redemption itself is recorded ONLY when the payment is verified
+  //    (PurchaseActivationService, after the paid-claim lock), so an abandoned
+  //    checkout never burns the coupon.
+  let coupon: {
+    code: string; couponId: number; issuanceId?: number;
+    amountBeforeCents: number; discountCents: number; orderType: string;
+  } | null = null;
+  if (couponCode) {
+    const couponOrderType = COUPON_ORDER_TYPE[sku];
+    if (!couponOrderType) {
+      return res.status(400).json({ error: 'coupon_not_applicable', errorCode: 'COUPON_NOT_APPLICABLE_TO_PRODUCT' });
+    }
+    const { couponService } = await import('../services/CouponService');
+    const ipAddress = req.headers['x-forwarded-for']?.toString().split(',')[0] ?? req.socket.remoteAddress;
+    const v = await couponService.validateCoupon({
+      code: couponCode,
+      userId: uid,
+      orderType: couponOrderType,
+      amountCents,
+      ipAddress,
+      // Tell the stacking engine which automatic member benefit is already on
+      // this order so its stackability rules (not us) decide the combination.
+      activeBenefits: washDiscount.percent > 0
+        ? { loyalty_5_pct: washDiscount.percent === 5, special_10_pct: washDiscount.percent > 5 }
+        : undefined,
+    });
+    if (!v.valid || !v.couponId || !(v.discountAmountCents! > 0) || !(v.amountAfterCents! > 0)) {
+      return res.status(400).json({
+        error: 'coupon_invalid',
+        errorCode: v.errorCode || 'COUPON_INVALID',
+        reason: v.error || 'Coupon not valid for this order',
+      });
+    }
+    // SUMIT cannot charge a zero/near-zero order; keep a ₪1 floor.
+    if (v.amountAfterCents! < 100) {
+      return res.status(400).json({ error: 'coupon_invalid', errorCode: 'COUPON_DISCOUNT_TOO_LARGE' });
+    }
+    coupon = {
+      code: couponCode,
+      couponId: v.couponId,
+      issuanceId: v.issuanceId,
+      amountBeforeCents: amountCents,
+      discountCents: v.discountAmountCents!,
+      orderType: couponOrderType,
+    };
+    amountCents = v.amountAfterCents!;
+    logger.info('[SumitPay] coupon applied at begin', {
+      uid, sku, couponId: v.couponId, discountCents: v.discountAmountCents, netCents: amountCents,
+    });
+  }
+
   const amountIls = amountCents / 100;
 
   const externalId = orderId || `pw-${uid}-${Date.now().toString(36)}`;
@@ -171,8 +259,14 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
           // Discount line-item facts (server-owned). grossCents is the catalog
           // price before discount; amountCents (above) is what we actually charge.
           ...(discountCents > 0
-            ? { washDiscount: { percent: washDiscount.percent, source: washDiscount.source, grossCents, discountCents, netCents: amountCents } }
+            // netCents here = after the member discount, BEFORE any coupon
+            // (coupon.amountBeforeCents equals it when a coupon applied after).
+            ? { washDiscount: { percent: washDiscount.percent, source: washDiscount.source, grossCents, discountCents, netCents: coupon ? coupon.amountBeforeCents : amountCents } }
             : {}),
+          // Server-validated coupon facts. PurchaseActivationService records the
+          // redemption from THIS block after the paid-claim lock — client
+          // metadata can never fabricate it (server keys spread last, above).
+          ...(coupon ? { coupon } : {}),
         },
       });
     }
@@ -204,7 +298,10 @@ router.post('/begin', validateFirebaseToken, async (req: Request, res: Response)
     externalId,
     // Surface the discount as a line item so the client can show the savings.
     ...(discountCents > 0
-      ? { discount: { percent: washDiscount.percent, source: washDiscount.source, grossCents, discountCents, netCents: amountCents } }
+      ? { discount: { percent: washDiscount.percent, source: washDiscount.source, grossCents, discountCents, netCents: coupon ? coupon.amountBeforeCents : amountCents } }
+      : {}),
+    ...(coupon
+      ? { coupon: { code: coupon.code, discountCents: coupon.discountCents, netCents: amountCents } }
       : {}),
   });
 });

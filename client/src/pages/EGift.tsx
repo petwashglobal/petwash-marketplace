@@ -8,7 +8,8 @@ import { Label } from '@/components/ui/label';
 import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe, Lock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
-import { getApiUrl } from '@/lib/apiConfig';
+import { startSkuCheckout } from '@/lib/sumitCheckout';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { CheckoutLegalNotice } from '@/components/legal/CheckoutLegalNotice';
 import { Layout } from '@/components/Layout';
@@ -746,6 +747,7 @@ function EgiftJourneyPanel({ lang }: { lang: string }) {
 export default function EGift() {
   useSEO(pageSEO.egift);
   const { toast } = useToast();
+  const { user } = useFirebaseAuth();
   const { language, dir } = useLanguage();
   const lang = language;
   const isRtl = dir === 'rtl';
@@ -868,80 +870,59 @@ export default function EGift() {
 
     if (!selectedOption || isProcessing) return;
 
-    const finalPrice = selectedOption.value;
-    setIsProcessing(true);
-
-    try {
-      const response = await fetch(getApiUrl('/api/multi-service-gift'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          value: finalPrice,
-          currency: 'ILS',
-          recipientName: formData.recipientName,
-          recipientEmail: formData.recipientEmail,
-          senderName: formData.senderName,
-          senderEmail: formData.senderEmail,
-          message: formData.message,
-          occasion: selectedOccasion?.id || 'justbecause',
-          messageLanguage: messageLang.code,
-          eligibleServices: selectedServices
-        })
-      });
-
-      const data = await response.json();
-
-      // Payment gateway offline — surface a clear bilingual message instead of a generic error
-      if (response.status === 503) {
-        toast({
-          title: lang === 'he' ? 'מערכת התשלום אינה זמינה כרגע' : 'Payment gateway temporarily unavailable',
-          description: lang === 'he'
-            ? 'אנא צרו קשר עם התמיכה לרכישת כרטיס מתנה.'
-            : 'Please contact support to purchase a gift card.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // The legacy /api/multi-service-gift rail is permanently sealed (HTTP 410 —
-      // the old free-mint hole, #1184). Until the canonical eGift purchase rail is
-      // switched on, give an HONEST "coming soon" next-step (point to the working
-      // Gift Cards page) instead of the generic "error creating gift card" dead-end
-      // this flagship page showed before (2026-07-09 root-caused).
-      if (response.status === 410) {
-        toast({
-          title: lang === 'he' ? 'רכישת שובר מתנה תיפתח בקרוב' : 'Gift purchases are coming soon',
-          description: lang === 'he'
-            ? 'בקרוב תוכלו לרכוש שובר מתנה כאן. בינתיים אפשר לרכוש כרטיס מתנה בעמוד כרטיסי המתנה או לפנות לתמיכה.'
-            : 'You’ll be able to buy a gift here soon. Meanwhile you can buy a gift card on our Gift Cards page, or contact support.',
-        });
-        return;
-      }
-
-      if (response.ok && data.success) {
-        setPurchasedGift({
-          giftCardId: data.giftCardId,
-          publicCode: data.publicCode,
-          recipientName: formData.recipientName,
-          amountILS: finalPrice,
-        });
-        setStep('shared');
-      } else {
-        toast({ 
-          title: tx('errorCreating', lang), 
-          description: data.message || data.error || tx('tryAgain', lang),
-          variant: "destructive" 
-        });
-      }
-    } catch (error) {
-      toast({ 
-        title: tx('errorProcessing', lang), 
-        description: tx('tryAgainLater', lang),
-        variant: "destructive" 
-      });
-    } finally {
-      setIsProcessing(false);
+    // The card rail needs a signed-in buyer (the purchase row + receipt hang
+    // off their account). Send guests through the single signup door and back.
+    if (!user) {
+      window.location.href = '/signup?next=' + encodeURIComponent('/egift');
+      return;
     }
+
+    const finalPrice = selectedOption.value;
+
+    // The LIVE rail is SKU-priced (server-owned catalog: ₪100/250/500/1000 —
+    // POST /api/payments/sumit/begin → SUMIT hosted page → verified webhook →
+    // GiftOrchestrationService fulfils the gift from the metadata below).
+    // Custom amounts have no SKU yet, so they stay an HONEST next-step: pick a
+    // fixed tier to pay now.
+    const skuByValue: Record<number, 'EGIFT_100' | 'EGIFT_250' | 'EGIFT_500' | 'EGIFT_1000'> = {
+      100: 'EGIFT_100', 250: 'EGIFT_250', 500: 'EGIFT_500', 1000: 'EGIFT_1000',
+    };
+    const sku = skuByValue[finalPrice];
+    if (!sku) {
+      toast({
+        title: lang === 'he' ? 'סכום מותאם אישית — בקרוב' : 'Custom amounts — coming soon',
+        description: lang === 'he'
+          ? 'לתשלום מיידי בחרו אחת מחבילות המתנה: ₪100, ₪250, ₪500 או ₪1,000.'
+          : 'To pay now, choose one of the fixed gift tiers: ₪100, ₪250, ₪500 or ₪1,000.',
+      });
+      return;
+    }
+
+    setIsProcessing(true);
+    // Hand off to SUMIT's hosted payment page. Gift details ride as purchase
+    // metadata and are fulfilled server-side ONLY after the payment is verified.
+    const result = await startSkuCheckout({
+      sku,
+      metadata: {
+        recipientName: formData.recipientName,
+        recipientEmail: formData.recipientEmail,
+        senderName: formData.senderName,
+        senderEmail: formData.senderEmail,
+        message: formData.message,
+        occasion: selectedOccasion?.id || 'justbecause',
+        messageLanguage: messageLang.code,
+        eligibleServices: selectedServices,
+      },
+    });
+    if (!result.ok) {
+      setIsProcessing(false);
+      toast({
+        title: lang === 'he' ? 'לא ניתן להתחיל את התשלום' : 'Could not start payment',
+        description: result.error || (lang === 'he' ? 'נסו שוב בעוד רגע או פנו לתמיכה.' : 'Please try again shortly or contact support.'),
+        variant: 'destructive',
+      });
+    }
+    // On success the browser navigates away; PaymentSuccess confirms on return.
   };
 
   const toggleService = (serviceId: string) => {

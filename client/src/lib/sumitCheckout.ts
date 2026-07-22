@@ -2,12 +2,12 @@
  * sumitCheckout.ts — the client connector for SUMIT hosted-page card payments.
  *
  * The server route POST /api/payments/sumit/begin (server/routes/payments-sumit.ts)
- * creates a SUMIT hosted payment and returns the payment-page URL. UNTIL NOW
- * nothing in the client called it. This helper is that missing link.
+ * creates a SUMIT hosted payment and returns the payment-page URL.
  *
  * Flow:
- *   startSumitCheckout({ amountIls, description, orderId })
- *     → POST /api/payments/sumit/begin   (Bearer auth via apiRequest; CSRF-exempt)
+ *   startSkuCheckout({ sku, couponCode?, metadata? })
+ *     → POST /api/payments/sumit/begin   (Bearer auth via apiRequest; CSRF-exempt;
+ *                                         price resolved SERVER-SIDE from the SKU)
  *     → { redirectUrl }                  (SUMIT hosted page; UPay clears underneath)
  *     → window.location.assign(redirectUrl)
  *   SUMIT then returns the customer to /api/payments/sumit/return, which
@@ -23,39 +23,53 @@
  */
 import { apiRequest } from '@/lib/queryClient';
 
-export interface SumitCheckoutInput {
-  /** Amount to charge, in ILS (shekels, not agorot). */
-  amountIls: number;
-  /** Human-readable line description shown on the SUMIT page + the fiscal doc. */
-  description: string;
-  /** Our order/reference id; echoed back on return so the order can be fulfilled. */
-  orderId?: string;
-}
+/** The server-owned Phase-1 catalog SKUs `/begin` accepts (besides ACCOUNT_CREDIT). */
+export type SumitSku =
+  | 'SINGLE_WASH'
+  | 'WASH_PACKAGE_3'
+  | 'WASH_PACKAGE_5'
+  | 'WASH_PACKAGE_10'
+  | 'EGIFT_100'
+  | 'EGIFT_250'
+  | 'EGIFT_500'
+  | 'EGIFT_1000';
 
 export interface SumitCheckoutResult {
   ok: boolean;
   /** When ok:false, a human-readable reason (already localized at call sites if needed). */
   error?: string;
+  /** Machine-readable error code from the server (e.g. COUPON_INVALID). */
+  errorCode?: string;
 }
 
 /**
- * Begin a SUMIT hosted-page payment and redirect the browser to it.
- * Returns { ok:false, error } if the session could not be created (so the
- * caller can show a toast); on success the browser navigates away.
+ * Begin a SUMIT hosted-page payment for a SERVER-OWNED catalog SKU — the
+ * canonical checkout entry. `/begin` resolves the price from the catalog (the
+ * client cannot supply an amount), applies any member discount + server-validated
+ * coupon, and returns the hosted-page URL. `metadata` rides on the purchase row
+ * (e.g. eGift recipient/sender details) and is fulfilled on the verified SUMIT
+ * webhook by PurchaseActivationService — never client-trusted for money facts.
  */
-export async function startSumitCheckout(input: SumitCheckoutInput): Promise<SumitCheckoutResult> {
-  if (!(input.amountIls > 0)) {
-    return { ok: false, error: 'Invalid amount' };
-  }
+export async function startSkuCheckout(input: {
+  sku: SumitSku;
+  orderId?: string;
+  couponCode?: string;
+  metadata?: Record<string, unknown>;
+}): Promise<SumitCheckoutResult> {
   try {
     const res = await apiRequest('POST', '/api/payments/sumit/begin', {
-      amountIls: input.amountIls,
-      description: input.description,
+      sku: input.sku,
       orderId: input.orderId,
+      ...(input.couponCode ? { couponCode: input.couponCode } : {}),
+      ...(input.metadata ? { metadata: input.metadata } : {}),
     });
     const data = await res.json().catch(() => ({} as any));
     if (!data?.redirectUrl) {
-      return { ok: false, error: data?.error || data?.reason || 'Payments are not available right now' };
+      return {
+        ok: false,
+        error: data?.reason || data?.error || 'Payments are not available right now',
+        errorCode: data?.errorCode,
+      };
     }
     // Hand off to SUMIT's hosted payment page.
     window.location.assign(data.redirectUrl as string);
@@ -74,7 +88,7 @@ export async function startSumitCheckout(input: SumitCheckoutInput): Promise<Sum
  * payment is verified server-side.
  *
  * `/sumit/begin` requires `{ sku, topupIls }` (it deliberately rejects a raw
- * client amount), so this is a distinct call from startSumitCheckout.
+ * client amount), so this is a distinct call from startSkuCheckout.
  *
  * Returns { ok:false, error } so the caller can toast; on success the browser
  * navigates away to the SUMIT hosted page.

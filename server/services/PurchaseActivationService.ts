@@ -348,6 +348,35 @@ export async function activateFromVerifiedPayment(
     amountCents: purchase.amountCents,
   });
 
+  // ── Coupon redemption record. The coupon facts in metadataJson were written
+  //    SERVER-SIDE by /begin (validated + priced by CouponService; client
+  //    metadata cannot override them — server keys spread last). The paid-claim
+  //    lock above guarantees this block runs once per purchase, and redeemAtomic
+  //    is itself idempotent on the key. FAIL-SOFT: the customer already paid the
+  //    discounted amount — a bookkeeping failure must never block activation.
+  {
+    const couponMeta = (purchase.metadataJson as any)?.coupon;
+    if (couponMeta && Number.isFinite(Number(couponMeta.couponId))) {
+      try {
+        const { couponService } = await import('./CouponService');
+        await couponService.redeemAtomic({
+          couponId: Number(couponMeta.couponId),
+          userId: purchase.buyerUserId,
+          orderType: couponMeta.orderType || 'kiosk_wash',
+          orderId: purchase.surfaceRefId ?? purchase.id,
+          issuanceId: couponMeta.issuanceId != null ? Number(couponMeta.issuanceId) : undefined,
+          amountBeforeCents: Number(couponMeta.amountBeforeCents) || purchase.amountCents,
+          discountAmountCents: Number(couponMeta.discountCents) || 0,
+          idempotencyKey: `sumit-coupon-${purchase.id}`,
+        });
+      } catch (err) {
+        logger.error('[PurchaseActivation] coupon redemption record failed (activation continues)', {
+          purchaseId: purchase.id, couponId: couponMeta.couponId, err: (err as Error)?.message,
+        });
+      }
+    }
+  }
+
   // ── (f) Activate the product. On success → 'activated'. If no safe handler
   //    yet → leave at 'paid', mark activation pending, alert. NEVER fake.
   let activated: boolean;
