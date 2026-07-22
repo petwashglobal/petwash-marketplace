@@ -4278,6 +4278,15 @@ self.addEventListener('notificationclick', (event) => {
         logger.error('SendGrid webhook: Missing signature or timestamp');
         return res.status(401).json({ error: 'Missing signature' });
       }
+
+      // The raw request bytes. With the index.ts json-parser exemption this is
+      // a Buffer from express.raw(); the fallbacks keep the handler alive even
+      // if some middleware change re-parses the body upstream again.
+      const rawBody: string = Buffer.isBuffer(req.body)
+        ? req.body.toString('utf8')
+        : typeof req.body === 'string'
+          ? req.body
+          : JSON.stringify(req.body ?? []);
       
       // Verify signature is not too old (prevent replay attacks)
       const timestampMs = parseInt(timestamp) * 1000;
@@ -4302,7 +4311,7 @@ self.addEventListener('notificationclick', (event) => {
           });
           sigOk = crypto
             .createVerify('sha256')
-            .update(timestamp + req.body.toString())
+            .update(timestamp + rawBody)
             .verify(publicKey, Buffer.from(signature, 'base64'));
         } catch (e: any) {
           logger.error('SendGrid webhook: signature verification error', { error: e?.message });
@@ -4319,8 +4328,9 @@ self.addEventListener('notificationclick', (event) => {
         logger.warn('SendGrid webhook: SENDGRID_WEBHOOK_VERIFICATION_KEY not set — processing UNVERIFIED (comms-log only)');
       }
       
-      // Parse webhook events
-      const events = JSON.parse(req.body.toString());
+      // Parse webhook events (SendGrid posts a JSON array)
+      const parsed = Array.isArray(req.body) ? req.body : JSON.parse(rawBody);
+      const events = Array.isArray(parsed) ? parsed : [parsed];
       logger.info(`Processing ${events.length} SendGrid events`);
       
       // Process each event and update communication logs
@@ -4331,8 +4341,12 @@ self.addEventListener('notificationclick', (event) => {
       res.status(200).json({ received: true });
       
     } catch (error) {
+      // Comms-log-only endpoint: a 5xx tells SendGrid to retry the SAME batch
+      // forever (observed as a 500-per-minute storm in prod, 2026-07-22). Log
+      // loudly, ack with 200 so the queue drains — nothing money-critical
+      // depends on these events.
       logger.error('SendGrid webhook error', error);
-      res.status(500).json({ error: 'Webhook processing failed' });
+      res.status(200).json({ received: false, error: 'processing_failed_logged' });
     }
   });
 

@@ -78,13 +78,13 @@ async function throwIfResNotOk(res: Response) {
       }
     }
 
-    if (typeof window !== 'undefined') {
-      console.error('[API Error]', {
-        url: res.url,
-        status: res.status,
-        traceId,
-        body,
-      });
+    // 401 = "not signed in" — an auth STATE, not a failure. Guests hit the
+    // session probes (/whoami, /user/profile) on every page load; logging each
+    // as a console error made a perfectly healthy site look broken. Real
+    // failures (4xx≠401, 5xx) still log, with status+URL in the message line
+    // so devtools shows the facts instead of "[object Object]".
+    if (typeof window !== 'undefined' && res.status !== 401) {
+      console.error(`[API Error] ${res.status} ${res.url}`, { traceId, body });
     }
 
     throw new ApiError(res.status, body, traceId);
