@@ -595,7 +595,16 @@ app.use((req: any, res: any, next: any) => {
   return next();
 });
 
-app.use(express.json({ limit: '10mb' })); // Increased limit for base64 image uploads
+// SendGrid's Event Webhook signature (ECDSA over timestamp + RAW BYTES) can only
+// be verified against the exact request body. The global JSON parser was eating
+// that body first, so the route-level express.raw() no-op'd and req.body arrived
+// as a parsed object — "[object Object]" → JSON.parse crash → 500 → SendGrid
+// retry storm (prod logs 2026-07-22). Skip ONLY that path here; every other
+// route (incl. the other /api/webhooks/*) keeps the parsed-JSON behavior.
+const globalJsonParser = express.json({ limit: '10mb' }); // Increased limit for base64 image uploads
+app.use((req, res, next) =>
+  req.path === '/api/webhooks/sendgrid' ? next() : globalJsonParser(req, res, next),
+);
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
 
