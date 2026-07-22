@@ -14,7 +14,7 @@ import {
   CreditCard,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { startSumitCheckout } from "@/lib/sumitCheckout";
+import { startWalletTopUpCheckout } from "@/lib/sumitCheckout";
 
 type Mode = "off" | "email" | "api" | "csv_export";
 
@@ -84,11 +84,11 @@ export default function AdminSumitControl() {
   const runCardTest = async () => {
     setTesting(true);
     setTestError(null);
-    const result = await startSumitCheckout({
-      amountIls: 1,
-      description: "PetWash card-rail connectivity test",
-      orderId: `sumit-test-${Date.now()}`,
-    });
+    // ACCOUNT_CREDIT is the one variable-amount product /begin accepts, so the
+    // ₪1 test rides the wallet-topup SKU (the old raw-amount body was rejected
+    // by the SKU-only schema — this test could never run). If a card IS entered
+    // on SUMIT's page, the admin simply gets ₪1 of wallet credit.
+    const result = await startWalletTopUpCheckout({ amountIls: 1 });
     if (!result.ok) {
       setTestError(result.error || "Unknown error");
       setTesting(false);
