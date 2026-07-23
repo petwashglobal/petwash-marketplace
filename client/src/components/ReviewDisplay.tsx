@@ -31,7 +31,7 @@ interface ReviewDisplayProps {
 
 export function ReviewDisplay({ contractorId, contractorName }: ReviewDisplayProps) {
   const { data, isLoading } = useQuery<{ reviews: Review[]; averageRating: number; totalReviews: number }>({
-    queryKey: ['/api/reviews', contractorId],
+    queryKey: [`/api/reviews/${contractorId}`],
   });
 
   const reviews = data?.reviews || [];

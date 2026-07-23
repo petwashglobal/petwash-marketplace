@@ -32,8 +32,10 @@ export default function ProviderDetail() {
 
   // Fetch trust stats once provider loads (lazy — only when userId available)
   const { data: trustStats } = useQuery<any>({
-    queryKey: ['/api/providers/stats', provider?.userId],
-    queryFn: () => fetch(`/api/providers/stats/${provider!.userId}`, { credentials: 'include' }).then(r => r.json()),
+    queryKey: ['/api/reviews/trust-score', provider?.userId],
+    // /api/providers/stats/* never existed; trust-score is the live stats rail
+    // (dead-endpoint sweep 2026-07-24).
+    queryFn: () => fetch(`/api/reviews/trust-score/${provider!.userId}`, { credentials: 'include' }).then(r => r.json()),
     staleTime: 300_000,
     enabled: !!provider?.userId,
   });

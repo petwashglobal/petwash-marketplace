@@ -36,7 +36,7 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
   });
 
   const { data: syntheticData, isLoading: syntheticLoading } = useQuery<any>({
-    queryKey: ['/api/synthetic/auth-check'],
+    queryKey: ['/api/synthetic/synthetic/auth-check'],
     refetchInterval: refreshInterval,
   });
 
@@ -279,7 +279,7 @@ export default function OpsDashboard({ language, onLanguageChange }: OpsDashboar
                   <a href="/api/auth/signing-health" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     🔥 Firebase Diagnostics
                   </a>
-                  <a href="/api/synthetic/e2e-login" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
+                  <a href="/api/synthetic/synthetic/e2e-login" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">
                     🧪 E2E Login Test
                   </a>
                   <a href="/healthz" target="_blank" className="px-4 py-2 bg-zinc-800 hover:bg-zinc-700 text-white rounded text-sm transition-colors">

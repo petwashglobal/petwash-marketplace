@@ -26,8 +26,8 @@ export default function AdminCompensation() {
   const [confirming, setConfirming] = useState<string | null>(null);
 
   const { data, isLoading, refetch, isFetching } = useQuery<any>({
-    queryKey: ["/api/octopus/v1/compensation/pending"],
-    queryFn: () => fetch("/api/octopus/v1/compensation/pending").then(r => r.json()),
+    queryKey: ["/api/octopus/compensation/pending"],
+    queryFn: () => fetch("/api/octopus/compensation/pending").then(r => r.json()),
     refetchInterval: 30_000,
   });
 
@@ -35,9 +35,9 @@ export default function AdminCompensation() {
 
   const compensate = useMutation({
     mutationFn: (sessionId: string) =>
-      apiRequest("POST", `/api/octopus/v1/compensation/${sessionId}`),
+      apiRequest("POST", `/api/octopus/compensation/${sessionId}`),
     onSuccess: (res: any, sessionId: string) => {
-      queryClient.invalidateQueries({ queryKey: ["/api/octopus/v1/compensation/pending"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/octopus/compensation/pending"] });
       setConfirming(null);
       const body = res as any;
       toast({

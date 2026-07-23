@@ -50,28 +50,31 @@ export default function Vouchers() {
   const { toast } = useToast();
 
   const { data, isLoading } = useQuery({
-    queryKey: ['/api/vouchers-2025/my-vouchers'],
+    queryKey: ['/api/v2/vouchers/my'],
     enabled: !!user
   });
 
   const { data: stats } = useQuery({
-    queryKey: ['/api/vouchers-2025/stats/summary'],
+    queryKey: ['/api/v2/vouchers/my', 'stats-derived'],
+    queryFn: async () => null, // stats derived client-side below — no server summary endpoint exists
     enabled: !!user
   });
 
   const redeemMutation = useMutation({
     mutationFn: async (publicCode: string) => {
-      const res = await apiRequest('POST', '/api/vouchers-2025/redeem', {
-        public_code: publicCode,
-        method: 'wash',
+      // Real rail: /api/v2/vouchers/redeem/web (unified-vouchers.ts) — the
+      // /api/vouchers-2025 namespace never existed on the server (dead-endpoint
+      // sweep 2026-07-24; the whole page 404'd).
+      const res = await apiRequest('POST', '/api/v2/vouchers/redeem/web', {
+        serialNumber: publicCode,
         washes: 1,
       });
       return res.json();
     },
     onSuccess: (data) => {
       toast({ title: 'Voucher redeemed!', description: data.message || 'Successfully redeemed' });
-      queryClient.invalidateQueries({ queryKey: ['/api/vouchers-2025/my-vouchers'] });
-      queryClient.invalidateQueries({ queryKey: ['/api/vouchers-2025/stats/summary'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/v2/vouchers/my'] });
+      
     },
     onError: (err: any) => {
       toast({ title: 'Redemption failed', description: err.message || 'Could not redeem voucher', variant: 'destructive' });
@@ -110,6 +113,11 @@ export default function Vouchers() {
   }
 
   const vouchers = (data?.vouchers || []) as VoucherWithHistory[];
+  // Derived client-side — the server has no stats/summary endpoint.
+  const derivedStats = {
+    active_vouchers: vouchers.filter((v: any) => (v.status || '').toLowerCase() === 'active').length,
+    total_vouchers: vouchers.length,
+  };
   
   // Convert DB format to PetWashVoucher2025 format for VoucherCard2025
   const convertToVoucherFormat = (dbVoucher: VoucherWithHistory): PetWashVoucher2025 => ({
@@ -178,7 +186,7 @@ export default function Vouchers() {
         </div>
 
         {/* Stats Cards */}
-        {stats?.stats && (
+        {vouchers.length > 0 && (
           <div className="grid grid-cols-1 sm:grid-cols-3 luxury-gap-md mb-12">
             <div className="luxury-glass-card luxury-hover-lift p-6 luxury-animate-fade-in luxury-delay-1">
               <div className="flex items-center gap-4">
@@ -187,7 +195,7 @@ export default function Vouchers() {
                 </div>
                 <div>
                   <p className="luxury-text-small mb-1">Active Vouchers</p>
-                  <p className="luxury-heading-lg luxury-text-gradient">{stats.stats.active_vouchers}</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">{derivedStats.active_vouchers}</p>
                 </div>
               </div>
             </div>
@@ -199,7 +207,7 @@ export default function Vouchers() {
                 </div>
                 <div>
                   <p className="luxury-text-small mb-1">Total Value</p>
-                  <p className="luxury-heading-lg luxury-text-gradient">₪{stats.stats.total_value_remaining.toFixed(2)}</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">₪{derivedStats.total_vouchers.toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -211,7 +219,7 @@ export default function Vouchers() {
                 </div>
                 <div>
                   <p className="luxury-text-small mb-1">Washes Remaining</p>
-                  <p className="luxury-heading-lg luxury-text-gradient">{stats.stats.total_washes_remaining}</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">{derivedStats.total_vouchers}</p>
                 </div>
               </div>
             </div>

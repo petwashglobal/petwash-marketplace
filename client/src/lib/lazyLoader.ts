@@ -93,7 +93,10 @@ export class LazyLoader {
   private watchForNewElements(): void {
     if (!this.observer) return;
 
-    const mutationObserver = new MutationObserver((mutations) => {
+    // Stored on the instance so destroy() can actually stop it — the local
+    // variable version was an unstoppable subtree observer on document.body
+    // (zombie-sweep 2026-07-24; latent — class currently has no importers).
+    this.mutationObserver = new MutationObserver((mutations) => {
       mutations.forEach((mutation) => {
         mutation.addedNodes.forEach((node) => {
           if (node.nodeType === 1) {
@@ -112,7 +115,7 @@ export class LazyLoader {
       });
     });
 
-    mutationObserver.observe(document.body, {
+    this.mutationObserver.observe(document.body, {
       childList: true,
       subtree: true,
     });

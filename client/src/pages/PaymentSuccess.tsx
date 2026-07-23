@@ -62,7 +62,9 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
 
   const fetchVoucherDetails = async (transactionId: string) => {
     try {
-      const response = await fetch(getApiUrl(`/api/payment-success/${transactionId}`));
+      // /api/payment-success/<id> never existed server-side; the real check is
+      // GET /api/payment-status?ref= (dead-endpoint sweep 2026-07-24).
+      const response = await fetch(getApiUrl(`/api/payment-status?ref=${encodeURIComponent(transactionId)}`));
       if (response.ok) {
         const data = await response.json();
         setVoucherDetails(data);

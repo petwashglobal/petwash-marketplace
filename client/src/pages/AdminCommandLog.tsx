@@ -37,8 +37,8 @@ export default function AdminCommandLog() {
   const stationId = params.stationId;
 
   const { data, isLoading, refetch, isFetching } = useQuery<any>({
-    queryKey: ["/api/octopus/v1/station", stationId, "command-log"],
-    queryFn: () => fetch(`/api/octopus/v1/station/${stationId}/command-log?limit=100`).then(r => r.json()),
+    queryKey: ["/api/octopus/station", stationId, "command-log"],
+    queryFn: () => fetch(`/api/octopus/station/${stationId}/command-log?limit=100`).then(r => r.json()),
     enabled: !!stationId,
     refetchInterval: 20_000,
   });

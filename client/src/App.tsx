@@ -1621,6 +1621,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
 
         {/* UNIFIED MARKETPLACE - Provider Detail Pages (All Platforms) */}
+        {/* MUST be before /marketplace/:platform/:id — that pattern was capturing
+            platform="review" and rendering ProviderDetail (shadow-route sweep 2026-07-24). */}
+        <Route path="/marketplace/review/:bookingId">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <MarketplaceReviewPage />
+              </Suspense>
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/marketplace/:platform/:id">
           {() => (
             <Suspense fallback={<PageLoader />}>
@@ -2144,14 +2155,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* Grooming Marketplace - Groomer Detail Profile */}
-        <Route path="/groomers/:id">
-          {() => (
-            <Suspense fallback={<PageLoader />}>
-              <GroomerDetail />
-            </Suspense>
-          )}
-        </Route>
-        
+        {/* MUST be before /groomers/:id — the parametric route was capturing
+            "hub" and rendering GroomerDetail (shadow-route sweep 2026-07-24). */}
         {/* Grooming Marketplace - Unified Hub (placeholder - routes to customer dashboard for now) */}
         <Route path="/groomers/hub">
           {() => (
@@ -2162,6 +2167,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RequireAuth>
           )}
         </Route>
+
+        <Route path="/groomers/:id">
+          {() => (
+            <Suspense fallback={<PageLoader />}>
+              <GroomerDetail />
+            </Suspense>
+          )}
+        </Route>
+        
         
         {/* K9000 Wash Stations - Specific routes BEFORE general routes */}
         {/* K9000 Wash Stations - Self-Service Bay Status + Wash Start (real-time, no booking) */}
@@ -3125,15 +3139,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </RoleProtectedRoute>
           )}
         </Route>
-        <Route path="/marketplace/review/:bookingId">
-          {() => (
-            <RequireAuth>
-              <Suspense fallback={<PageLoader />}>
-                <MarketplaceReviewPage />
-              </Suspense>
-            </RequireAuth>
-          )}
-        </Route>
+
         <Route path="/report-problem/:bookingId">
           {() => (
             <RequireAuth>
@@ -3678,7 +3684,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
-        <Route path="/admin/hr">
+        {/* Was a DUPLICATE of /admin/hr (unreachable — first registration wins,
+            and the reachable one is the management-gated HRAdminDashboard). The
+            enterprise ERP HR view lives on its own path now. */}
+        <Route path="/admin/hr-erp">
           {() => (
             <AdminRouteGuard>
               <HRDashboard />
