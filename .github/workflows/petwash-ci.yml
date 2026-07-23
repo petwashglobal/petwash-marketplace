@@ -1076,7 +1076,11 @@ jobs:
           # SHOP_CHECKOUT_ENABLED=true (cloudrun-service.yaml). Flip
           # VITE_SHOP_CHECKOUT_ENABLED to 'true' + the server var together
           # at commerce launch.
-          VITE_SHOP_LIVE_ENABLED: 'true'
+          # CEO 2026-07-23: shop CLOSED until the signed supplier's real items
+          # + prices load — no prices may show. 'false' renders the items-only
+          # preview page (real items auto-appear, EX-* seeds filtered, zero
+          # prices). At opening: flip this AND SHOP_CHECKOUT_ENABLED together.
+          VITE_SHOP_LIVE_ENABLED: 'false'
           VITE_SHOP_CHECKOUT_ENABLED: 'false'
 
           # ── Restored after Replit→Cloud-Run migration audit (2026-05-25)
@@ -2372,7 +2376,11 @@ jobs:
           # while the Cloud Run bundle had the live shop. Until the two
           # blocks are DRY'd into one, every VITE_* flag must be set in
           # BOTH places.
-          VITE_SHOP_LIVE_ENABLED: 'true'
+          # CEO 2026-07-23: shop CLOSED until the signed supplier's real items
+          # + prices load — no prices may show. 'false' renders the items-only
+          # preview page (real items auto-appear, EX-* seeds filtered, zero
+          # prices). At opening: flip this AND SHOP_CHECKOUT_ENABLED together.
+          VITE_SHOP_LIVE_ENABLED: 'false'
           VITE_SHOP_CHECKOUT_ENABLED: 'false'
 
       - name: Install Chrome for prerender
