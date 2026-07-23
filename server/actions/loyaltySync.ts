@@ -82,6 +82,7 @@ export async function updateLoyalty(
   let newPoints = 0;
   let newTier = '';
   let discount = 0;
+  let duplicateReplay = false;
   
   try {
     logger.info('[LoyaltySync] Updating loyalty points', {
@@ -92,6 +93,33 @@ export async function updateLoyalty(
     
     // STEP 1: Atomic PostgreSQL transaction (all DB changes in one transaction)
     await db.transaction(async (tx) => {
+      // REPLAY GUARD (board item H4-legacy: this raw counter had NO idempotency
+      // key — a retried booking-completion double-counted the legacy store).
+      // When the caller identifies the business event (bookingId), an existing
+      // activity-log row for the same (user, reason, bookingId) means this
+      // exact award already happened: skip the counter update entirely.
+      if (metadata?.bookingId != null) {
+        const dup = await tx.execute(sql`
+          SELECT 1 FROM loyalty_activity_log
+          WHERE user_id = ${userId}
+            AND reason = ${reason}
+            AND metadata->>'bookingId' = ${String(metadata.bookingId)}
+          LIMIT 1
+        `);
+        if (dup.rows && dup.rows.length > 0) {
+          duplicateReplay = true;
+          const cur = await tx.execute(sql`
+            SELECT loyalty_points AS points, loyalty_tier AS tier FROM users WHERE id = ${userId} LIMIT 1
+          `);
+          newPoints = Number((cur.rows?.[0] as any)?.points ?? 0);
+          newTier = String((cur.rows?.[0] as any)?.tier ?? calculateTier(newPoints));
+          discount = getTierDiscount(newTier);
+          logger.info('[LoyaltySync] Duplicate award skipped (replay guard)', {
+            userId, reason, bookingId: metadata.bookingId,
+          });
+          return;
+        }
+      }
       // Update loyalty points
       const result = await tx.execute(sql`
         UPDATE users 
@@ -166,6 +194,11 @@ export async function updateLoyalty(
       });
     });
     
+    if (duplicateReplay) {
+      // Nothing changed — no Firestore sync, no notifications.
+      return { success: true, points: newPoints, tier: newTier, discount, change: 0, duplicate: true };
+    }
+
     // STEP 2: Sync to Firestore (with merge to handle new users)
     const firestore = admin.firestore();
     await firestore.collection('users').doc(userId).set({

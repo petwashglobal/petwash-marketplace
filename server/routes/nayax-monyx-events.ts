@@ -209,7 +209,11 @@ async function reverseAwardedPoints(
 router.post('/nayax-events',
   express.raw({ type: 'application/json', limit: '1mb' }),
   async (req, res) => {
-    const rawBody = req.body as Buffer;
+    // TRUE raw bytes only when index.ts exempts this path from the global JSON
+    // parser (it does). If a future middleware change re-parses the body, the
+    // signature CANNOT be verified against re-stringified JSON — fail closed
+    // rather than accept a webhook whose bytes we never saw.
+    const rawBody: Buffer | null = Buffer.isBuffer(req.body) ? req.body : null;
 
     // 1. Validate signature
     const sigHeader = req.headers['x-nayax-signature'] as string | undefined;
@@ -220,6 +224,9 @@ router.post('/nayax-events',
         return res.status(503).json({ error: 'Webhook not configured' });
       }
       logger.warn('[NayaxEvents] NAYAX_WEBHOOK_SECRET unset — skipping signature check (DEV ONLY)');
+    } else if (!rawBody) {
+      logger.error('[NayaxEvents] Raw body unavailable (JSON parser consumed it — check index.ts RAW_BODY_WEBHOOK_PATHS)');
+      return res.status(500).json({ error: 'raw_body_unavailable' });
     } else if (!validateSignature(rawBody, sigHeader)) {
       logger.warn('[NayaxEvents] Invalid signature', { ip: req.ip });
       return res.status(401).json({ error: 'Invalid signature' });
@@ -227,7 +234,11 @@ router.post('/nayax-events',
 
     let payload: Record<string, unknown>;
     try {
-      payload = JSON.parse(rawBody.toString('utf8'));
+      payload = rawBody
+        ? JSON.parse(rawBody.toString('utf8'))
+        : (typeof req.body === 'object' && req.body !== null && !Buffer.isBuffer(req.body)
+            ? (req.body as Record<string, unknown>)   // dev-only path (no secret set)
+            : JSON.parse(String(req.body)));
     } catch {
       return res.status(400).json({ error: 'Invalid JSON body' });
     }
