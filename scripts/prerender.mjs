@@ -90,6 +90,21 @@ const browser = await puppeteer.launch({
 let ok = 0;
 const skipped = [];
 
+// ── TITANS CLASH FIX (2026-07-24) ────────────────────────────────────────────
+// We serialize the LIVE DOM, so every <script> the app injected at RUNTIME
+// (GTM/analytics/pixel loaders) got BAKED into the snapshot. Real visitors then
+// executed the baked copy AND the live app injected it again — every tracker
+// booted twice+, silently (the "×4 Interaction Tracker inits" / duplicate
+// /api/track POSTs). Only scripts present in the BUILT index.html (the static
+// boot set: SW-cleanup inlines, the module entry, HubSpot loader, static
+// JSON-LD) may survive serialization; everything else is runtime's job.
+const staticIndexHtml = await readFile(join(DIST, 'index.html'), 'utf8');
+const allowedScriptSrcs = [...staticIndexHtml.matchAll(/<script[^>]*\ssrc="([^"]+)"/g)].map((m) => m[1]);
+const allowedInlineHeads = [...staticIndexHtml.matchAll(/<script[^>]*>([\s\S]*?)<\/script>/g)]
+  .map((m) => m[1].trim())
+  .filter(Boolean)
+  .map((t) => t.slice(0, 60));
+
 for (const route of ROUTES) {
   const page = await browser.newPage();
   try {
@@ -106,7 +121,7 @@ for (const route of ROUTES) {
     // Give React a beat to settle post-idle (lazy chunks, useSEO effects).
     await new Promise((r) => setTimeout(r, 800));
 
-    const { html, textLen, title, sanitized } = await page.evaluate(() => {
+    const { html, textLen, title, sanitized } = await page.evaluate(({ allowedScriptSrcs, allowedInlineHeads }) => {
       // ── CRITICAL: never bake a transient UI lock into the static HTML ──
       //
       // We serialise the LIVE DOM, so any state a component happened to apply
@@ -142,13 +157,29 @@ for (const route of ROUTES) {
         }
       }
 
+      // ── Strip runtime-injected scripts (titans clash) ──
+      // Keep ONLY scripts that exist in the static index.html; the id'd
+      // structured-data node is also kept (runtime replaces it by id, no
+      // double-boot). Everything else re-injects itself after hydration.
+      for (const sc of Array.from(document.querySelectorAll('script'))) {
+        const src = sc.getAttribute('src') || '';
+        const isStaticSrc = src && allowedScriptSrcs.includes(src);
+        const inlineHead = !src ? (sc.textContent || '').trim().slice(0, 60) : '';
+        const isStaticInline = !src && inlineHead && allowedInlineHeads.includes(inlineHead);
+        const isJsonLd = sc.type === 'application/ld+json';
+        if (!isStaticSrc && !isStaticInline && !isJsonLd) {
+          sanitized.push(`removed runtime script ${src || 'inline:' + inlineHead.slice(0, 24)}`);
+          sc.remove();
+        }
+      }
+
       return {
         html: '<!DOCTYPE html>\n' + document.documentElement.outerHTML,
         textLen: (document.body.innerText || '').trim().length,
         title: document.title,
         sanitized,
       };
-    });
+    }, { allowedScriptSrcs, allowedInlineHeads });
 
     // Belt-and-braces: even if the DOM pass missed something, never let a
     // scroll lock reach the file on disk.
