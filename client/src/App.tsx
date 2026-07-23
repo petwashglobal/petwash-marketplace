@@ -1599,15 +1599,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
 
         {/* PETWASH HQ - Classic Octopus Panel (legacy) */}
-        <Route path="/hq/classic">
-          {() => (
-            <RoleProtectedRoute minRole="management">
-              <Suspense fallback={<PageLoader />}>
-                <OctopusControlPanel />
-              </Suspense>
-            </RoleProtectedRoute>
-          )}
-        </Route>
+        {/* RETIRED generation: the classic HQ module's KPI widgets called
+            /api/admin/metrics|bookings|talent|invoices — none exist. The live
+            overview is the canon Octopus panel. */}
+        <Route path="/hq/classic">{() => <Redirect to="/admin/octopus" />}</Route>
         
         {/* UNIFIED MARKETPLACE - Contact-first booking request (must precede :platform/:id) */}
         <Route path="/marketplace/contact/:platform/:id">
@@ -3625,13 +3620,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
-        <Route path="/admin/users">
-          {() => (
-            <AdminRouteGuard>
-              <AdminUsers />
-            </AdminRouteGuard>
-          )}
-        </Route>
+        {/* RETIRED generation: AdminUsers called /api/admin/users list/update/
+            delete — endpoints that never existed (its buttons could never
+            work). The live user-management surface is /admin/customers. */}
+        <Route path="/admin/users">{() => <Redirect to="/admin/customers" />}</Route>
         <Route path="/admin/team">
           {() => (
             <AdminRouteGuard>
