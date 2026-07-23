@@ -72,70 +72,7 @@
       ],
       "headers": [
         {
-          "source": "/",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-store, no-cache, must-revalidate, max-age=0"
-            }
-          ]
-        },
-        {
-          "source": "/signup",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-store, no-cache, must-revalidate, max-age=0"
-            }
-          ]
-        },
-        {
-          "source": "/signup-lux",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-store, no-cache, must-revalidate, max-age=0"
-            }
-          ]
-        },
-        {
-          "source": "/sign-up",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-store, no-cache, must-revalidate, max-age=0"
-            }
-          ]
-        },
-        {
-          "source": "/register",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-store, no-cache, must-revalidate, max-age=0"
-            }
-          ]
-        },
-        {
-          "source": "/signin",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-store, no-cache, must-revalidate, max-age=0"
-            }
-          ]
-        },
-        {
-          "source": "/wallet",
-          "headers": [
-            {
-              "key": "Cache-Control",
-              "value": "no-store, no-cache, must-revalidate, max-age=0"
-            }
-          ]
-        },
-        {
-          "source": "/prestige-pass",
+          "source": "**",
           "headers": [
             {
               "key": "Cache-Control",
@@ -193,6 +130,15 @@
             {
               "key": "Cache-Control",
               "value": "public, max-age=3600"
+            }
+          ]
+        },
+        {
+          "source": "/assets/**",
+          "headers": [
+            {
+              "key": "Cache-Control",
+              "value": "public, max-age=31536000, immutable"
             }
           ]
         },
