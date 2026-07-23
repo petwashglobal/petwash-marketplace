@@ -179,7 +179,9 @@ export default function AdminStations() {
     renewalAlerts: RenewalAlert[];
     summary: { totalAlerts: number; critical: number };
   }>({
-    queryKey: ['/api/admin/alerts/pending'],
+    // Alerts Center list route is GET /api/admin/alerts?status=open — a
+    // '/pending' sub-route never existed (dead-endpoint sweep 2026-07-24).
+    queryKey: ['/api/admin/alerts?status=open'],
     enabled: selectedTab === "alerts",
     refetchInterval: 60000, // Refresh every minute
   });
@@ -191,7 +193,9 @@ export default function AdminStations() {
     lowStockCount: number;
     healthy: number;
   }>({
-    queryKey: ['/api/admin/health/stations'],
+    // stations router is mounted at /api/admin/stations, so its
+    // /health/stations route lives under that prefix.
+    queryKey: ['/api/admin/stations/health/stations'],
     enabled: selectedTab === "health",
     refetchInterval: 30000,
   });

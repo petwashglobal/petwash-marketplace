@@ -30,7 +30,6 @@ export default function UnifiedEntityManagement() {
   const { data: suppliers } = useQuery({ queryKey: ['/api/enterprise/corporate/suppliers'] });
   const { data: stations } = useQuery({ queryKey: ['/api/enterprise/corporate/stations'] });
   const { data: employees } = useQuery({ queryKey: ['/api/enterprise/hr/employees'] });
-  const { data: departments } = useQuery({ queryKey: ['/api/enterprise/hr/departments'] });
   const { data: opportunities } = useQuery({ queryKey: ['/api/enterprise/sales/opportunities'] });
   const { data: tasks } = useQuery({ queryKey: ['/api/enterprise/operations/tasks'] });
   const { data: incidents } = useQuery({ queryKey: ['/api/enterprise/operations/incidents'] });
@@ -288,36 +287,7 @@ export default function UnifiedEntityManagement() {
             </Card>
 
             {/* Departments */}
-            <Card className="diamond-card border-metallic-platinum" data-testid="card-departments">
-              <CardHeader className="flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-metallic-platinum">Departments</CardTitle>
-                  <CardDescription>{Array.isArray(departments) ? departments.length : 0} total</CardDescription>
-                </div>
-                <Link href="/admin/hr">
-                  <Button size="sm" className="bg-metallic-platinum hover:bg-metallic-platinum/90 text-white" data-testid="button-manage-departments">
-                    <Plus className="w-4 h-4 mr-2" />
-                    Manage
-                  </Button>
-                </Link>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {Array.isArray(departments) && departments.slice(0, 3).map((dept: any) => (
-                    <div key={dept.id} className="flex items-center justify-between p-3 border rounded-lg hover:bg-white transition-colors" data-testid={`item-department-${dept.id}`}>
-                      <div>
-                        <p className="font-medium text-sm">{dept.departmentName}</p>
-                        <p className="text-xs text-muted-foreground">{dept.managerName || 'No manager assigned'}</p>
-                      </div>
-                      <Badge variant="outline">Active</Badge>
-                    </div>
-                  ))}
-                  {(!departments || departments.length === 0) && (
-                    <p className="text-sm text-muted-foreground text-center py-4">No departments found</p>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
+            {/* departments card removed — /api/enterprise/hr/departments has no backend (dead-endpoint sweep 2026-07-24) */}
           </div>
         </TabsContent>
 
