@@ -55,8 +55,8 @@ export default function AdminBayMap() {
   const stationId = params.stationId;
 
   const { data, isLoading, refetch, isFetching } = useQuery<any>({
-    queryKey: ["/api/octopus/v1/station", stationId, "bay-map"],
-    queryFn: () => fetch(`/api/octopus/v1/station/${stationId}/bay-map`).then(r => r.json()),
+    queryKey: ["/api/octopus/station", stationId, "bay-map"],
+    queryFn: () => fetch(`/api/octopus/station/${stationId}/bay-map`).then(r => r.json()),
     enabled: !!stationId,
     refetchInterval: 15_000,
   });

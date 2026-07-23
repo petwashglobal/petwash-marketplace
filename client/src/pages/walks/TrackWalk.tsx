@@ -10,7 +10,7 @@ export default function TrackWalk() {
   const isHebrew = language === 'he';
 
   const { data: walk, isLoading, refetch } = useQuery({
-    queryKey: ['/api/walk', walkId],
+    queryKey: [`/api/walk-session/${walkId}/active`],
     enabled: !!walkId,
     refetchInterval: 30000,
   });

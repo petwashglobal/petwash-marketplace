@@ -138,7 +138,9 @@ export function useSubmitReview() {
       comment: string;
       photos?: string[];
     }) => {
-      const response = await apiRequest('POST', '/api/reviews', reviewData);
+      // Server route is /api/reviews/submit — a bare POST /api/reviews has no handler
+      // (dead-endpoint sweep 2026-07-24).
+      const response = await apiRequest('POST', '/api/reviews/submit', reviewData);
       return response.json();
     },
     onSuccess: (_, variables) => {

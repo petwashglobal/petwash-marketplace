@@ -482,6 +482,11 @@ export default function BookingChat() {
   const mediaRecorderRef                  = useRef<MediaRecorder | null>(null);
   const audioChunksRef                    = useRef<Blob[]>([]);
   const recordingTimerRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Leaving the chat mid-recording left the 1s timer firing into an unmounted
+  // component (zombie-sweep 2026-07-24).
+  useEffect(() => () => {
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+  }, []);
   // T009: dismissed payment CTAs (local state, not persisted)
   const [dismissedCtaIds, setDismissedCtaIds] = useState<Set<string>>(new Set());
   // T010: in-chat translations (messageId → translated text)

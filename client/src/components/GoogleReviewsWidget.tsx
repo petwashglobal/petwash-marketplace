@@ -33,7 +33,7 @@ export function GoogleReviewsWidget({
   const [currentPage, setCurrentPage] = useState(0);
 
   const { data: placeData, isLoading } = useQuery({
-    queryKey: ['/api/google/places', placeId],
+    queryKey: [`/api/google/places/${placeId}`],
     enabled: !!placeId
   });
 

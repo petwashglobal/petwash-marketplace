@@ -98,7 +98,7 @@ export default function K9000Documents() {
   const handleView = async (doc: Document) => {
     setSelectedDocument(doc);
     try {
-      const response = await fetch(getApiUrl(`/api/documents/${doc.id}/view`), {
+      const response = await fetch(getApiUrl(`/api/documents/${doc.id}/download`), {
         credentials: 'include',
       });
 

@@ -199,9 +199,13 @@ class InteractionTracker {
       elementText: 'Page loaded',
     });
     
-    // Track route changes (for SPAs)
+    // Track route changes (for SPAs) — EVENT-DRIVEN, not polled. The old
+    // 500ms setInterval woke the CPU twice a second for the entire session
+    // just to diff location.pathname (zombie-sweep 2026-07-24). wouter drives
+    // history.pushState/replaceState, so patching those + popstate catches
+    // every navigation with zero idle cost.
     let lastPath = window.location.pathname;
-    setInterval(() => {
+    const onNav = () => {
       if (window.location.pathname !== lastPath) {
         lastPath = window.location.pathname;
         this.trackEvent('navigation', {
@@ -209,7 +213,16 @@ class InteractionTracker {
           elementText: `Navigated to ${lastPath}`,
         });
       }
-    }, 500);
+    };
+    window.addEventListener('popstate', onNav);
+    for (const m of ['pushState', 'replaceState'] as const) {
+      const orig = history[m].bind(history);
+      (history as any)[m] = (...args: any[]) => {
+        const r = orig(...(args as [any, string, string?]));
+        onNav();
+        return r;
+      };
+    }
   }
 
   private isSensitiveInput(element: HTMLElement): boolean {

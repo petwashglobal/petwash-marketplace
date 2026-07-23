@@ -62,7 +62,13 @@ export default function TrackMyPet() {
   const { data, isLoading, error } = useQuery<{ success: boolean; walks: ActiveWalk[] }>({
     queryKey: ['/api/walk-session/owner/active-walks'],
     enabled: !!user,
-    refetchInterval: 3000, // Refresh every 3 seconds for live tracking
+    // Live 3s tracking ONLY while a walk is actually active; idle sessions
+    // poll gently (30s) and a hidden tab doesn't poll at all (zombie-sweep
+    // 2026-07-24: this fired ~20 req/min forever for every signed-in user).
+    refetchInterval: (query) =>
+      document.visibilityState === 'hidden'
+        ? false
+        : (query.state.data?.walks?.length ? 3000 : 30000),
   });
 
   const activeWalks = data?.walks || [];
