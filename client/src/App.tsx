@@ -3658,7 +3658,10 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
-        <Route path="/admin/suppliers">
+        {/* Was a DUPLICATE of /admin/suppliers (unreachable — wouter matches the
+            first registration). The enterprise ERP suppliers view now has its
+            own path. */}
+        <Route path="/admin/suppliers-erp">
           {() => (
             <AdminRouteGuard>
               <SuppliersDashboard />

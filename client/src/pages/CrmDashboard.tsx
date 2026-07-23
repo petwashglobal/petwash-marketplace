@@ -39,36 +39,36 @@ export default function CrmDashboard() {
   const { toast } = useToast();
 
   const { data: communications, isLoading: communicationsLoading, isError: communicationsError } = useQuery({
-    queryKey: ["/api/enterprise/sales/crm/communications"],
+    queryKey: ["/api/enterprise/sales-crm/communications"],
   });
 
   const { data: tasks, isLoading: tasksLoading, isError: tasksError } = useQuery({
-    queryKey: ["/api/enterprise/sales/crm/tasks"],
+    queryKey: ["/api/enterprise/sales-crm/tasks"],
   });
 
   const { data: activities, isLoading: activitiesLoading, isError: activitiesError } = useQuery({
-    queryKey: ["/api/enterprise/sales/crm/activities"],
+    queryKey: ["/api/enterprise/sales-crm/activities"],
   });
 
   const { data: dealStages, isLoading: dealStagesLoading } = useQuery({
-    queryKey: ["/api/enterprise/sales/crm/deal-stages"],
+    queryKey: ["/api/enterprise/sales-crm/deal-stages"],
   });
 
   const { data: overdueTasks } = useQuery({
-    queryKey: ["/api/enterprise/sales/crm/tasks/overdue"],
+    queryKey: ["/api/enterprise/sales-crm/tasks/overdue"],
   });
 
   const { data: upcomingTasks } = useQuery({
-    queryKey: ["/api/enterprise/sales/crm/tasks/upcoming"],
+    queryKey: ["/api/enterprise/sales-crm/tasks/upcoming"],
   });
 
   const hasDataError = communicationsError || tasksError || activitiesError;
 
   const createCommunicationMutation = useMutation({
     mutationFn: async (data: any) =>
-      apiRequest(`/api/enterprise/sales/crm/communications`, { method: "POST", body: data }),
+      apiRequest(`/api/enterprise/sales-crm/communications`, { method: "POST", body: data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales/crm/communications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales-crm/communications"] });
       setShowCommunicationDialog(false);
       toast({ title: "Success", description: "Communication logged successfully" });
     },
@@ -78,11 +78,11 @@ export default function CrmDashboard() {
   });
 
   const createTaskMutation = useMutation({
-    mutationFn: async (data: any) => apiRequest(`/api/enterprise/sales/crm/tasks`, { method: "POST", body: data }),
+    mutationFn: async (data: any) => apiRequest(`/api/enterprise/sales-crm/tasks`, { method: "POST", body: data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales/crm/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales/crm/tasks/overdue"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales/crm/tasks/upcoming"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales-crm/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales-crm/tasks/overdue"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales-crm/tasks/upcoming"] });
       setShowTaskDialog(false);
       toast({ title: "Success", description: "Task created successfully" });
     },
@@ -93,9 +93,9 @@ export default function CrmDashboard() {
 
   const createActivityMutation = useMutation({
     mutationFn: async (data: any) =>
-      apiRequest(`/api/enterprise/sales/crm/activities`, { method: "POST", body: data }),
+      apiRequest(`/api/enterprise/sales-crm/activities`, { method: "POST", body: data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales/crm/activities"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales-crm/activities"] });
       setShowActivityDialog(false);
       toast({ title: "Success", description: "Activity logged successfully" });
     },
@@ -106,9 +106,9 @@ export default function CrmDashboard() {
 
   const createDealStageMutation = useMutation({
     mutationFn: async (data: any) =>
-      apiRequest(`/api/enterprise/sales/crm/deal-stages`, { method: "POST", body: data }),
+      apiRequest(`/api/enterprise/sales-crm/deal-stages`, { method: "POST", body: data }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales/crm/deal-stages"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales-crm/deal-stages"] });
       setShowDealStageDialog(false);
       toast({ title: "Success", description: "Deal stage created successfully" });
     },
@@ -119,10 +119,10 @@ export default function CrmDashboard() {
 
   const completeTaskMutation = useMutation({
     mutationFn: async ({ id, completedBy }: { id: number; completedBy: string }) =>
-      apiRequest(`/api/enterprise/sales/crm/tasks/${id}/complete`, { method: "POST", body: { completedBy } }),
+      apiRequest(`/api/enterprise/sales-crm/tasks/${id}/complete`, { method: "POST", body: { completedBy } }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales/crm/tasks"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales/crm/tasks/overdue"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales-crm/tasks"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/enterprise/sales-crm/tasks/overdue"] });
       toast({ title: "Success", description: "Task completed" });
     },
   });
