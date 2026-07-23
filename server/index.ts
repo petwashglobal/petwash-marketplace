@@ -710,6 +710,13 @@ const AUTH_CSRF_EXEMPT = new Set([
   '/api/auth/seed-intent',
   '/api/auth/client-event',
   '/api/auth/track-error',
+  // Client-side error reporter (routes.ts POST /api/errors/log). It fires
+  // EXACTLY when something breaks for an anonymous visitor — the moment a
+  // pw.csrf cookie is least likely to exist. Live proof 2026-07-23 22:59: a
+  // visitor's signup crashed, the app tried to report it, and the reporter
+  // itself was rejected 403 EBADCSRFTOKEN — leaving us blind to the original
+  // error. Telemetry-only endpoint (writes an error row; mutates nothing).
+  '/api/errors/log',
 ]);
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
