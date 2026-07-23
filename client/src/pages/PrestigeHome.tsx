@@ -112,17 +112,11 @@ export default function PrestigeHome() {
     staleTime: 60_000,
   });
 
-  const { data: sum } = useQuery({
-    queryKey: ['/api/prestige-pass/summary'],
-    queryFn: async () => {
-      try {
-        const r = await apiRequest('GET', '/api/prestige-pass/summary');
-        return r.ok ? await r.json() : {};
-      } catch { return {}; }
-    },
-    enabled: !!user,
-    staleTime: 60_000,
-  });
+  // /api/prestige-pass/summary NEVER existed server-side — this polled a
+  // silent 404 on every home load since the page shipped (cleanup flagged in
+  // the 07-22 audit, removed 2026-07-24). /me carries every balance the
+  // normalizer reads; `sum` stays as an always-null fallback slot.
+  const sum = null;
 
   const { data: petsData } = useQuery({
     queryKey: ['/api/pets'],

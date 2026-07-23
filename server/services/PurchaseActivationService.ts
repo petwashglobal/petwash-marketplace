@@ -140,16 +140,13 @@ async function reloadPurchase(id: string): Promise<Purchase | undefined> {
 }
 
 /**
- * ⚠️ CEO / MIGRATION TODO (do NOT auto-ship — schema change):
- *   credit_transactions needs a partial UNIQUE index to make the wallet-credit
- *   dedupe race-safe at the DB level (today addCredits dedupes via a non-atomic
- *   SELECT-then-INSERT):
- *     CREATE UNIQUE INDEX CONCURRENTLY credit_txn_source_uq
- *       ON credit_transactions (wallet_id, source_type, source_id)
- *       WHERE source_id IS NOT NULL;
- *   Until that lands, the purchase-level atomic conditional status flip in
- *   activateFromVerifiedPayment (step e) is the race-safe double-credit guard
- *   — addCredits is only reached after exactly one delivery wins the flip.
+ * ✅ SHIPPED (migration 0101, 2026-07-24 — after a live prod dup-check showed
+ * zero duplicates): credit_txn_source_uq partial UNIQUE index on
+ * credit_transactions (wallet_id, source_type, source_id) WHERE source_id IS
+ * NOT NULL — the DB-level backstop behind addCredits' in-tx dedupe. The
+ * purchase-level atomic status flip in activateFromVerifiedPayment (step e)
+ * remains the first guard; the index makes a concurrent double-credit
+ * impossible even if a future code path bypasses it.
  */
 
 /**
