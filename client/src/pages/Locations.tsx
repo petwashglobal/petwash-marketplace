@@ -14,6 +14,7 @@ import { MapPin, Navigation, Clock, Waves, Loader2, Accessibility, Car } from "l
 import { useSEO, pageSEO, injectStructuredData, generateBreadcrumbSchema } from '@/lib/seo';
 import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
+import waldStationPhoto from '@assets/wald_kfarsaba_station.jpg';
 
 // AEO/GEO — visible FAQ mirrored 1:1 into FAQPage JSON-LD so answer engines
 // (ChatGPT/Claude/Perplexity) can lift a factual sentence verbatim. Truthful,
@@ -88,7 +89,7 @@ export const STATION_STATUS_LABEL: Record<string, { en: string; he: string; cls:
 // car parks and landmarks, so we state those in words (CEO 2026-07-18: visitors
 // were getting lost inside Isaac Wald Park). Only ever fill this with verified
 // on-the-ground detail — never guess an entrance.
-const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string; open?: boolean; hoursHe?: string; hoursEn?: string; opens?: string; closes?: string; arrivalHe?: string; arrivalEn?: string }[] = [
+const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn: string; area: string; lat: number; lng: number; etaHe: string; etaEn: string; open?: boolean; hoursHe?: string; hoursEn?: string; opens?: string; closes?: string; arrivalHe?: string; arrivalEn?: string; photo?: string; photoAltHe?: string; photoAltEn?: string }[] = [
   {
     // LIVE: Isaac Wald Park is open — two K9000 bays operating (Nayax online).
     // Hours are CEO-stated (2026-07-15): daily 05:30–23:00, closed on holidays.
@@ -106,6 +107,10 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     opens: '05:30', closes: '23:00',
     arrivalHe: 'בתוך הפארק, ליד החניון הראשי — נכנסים מרחוב ויצמן (סמוך לוויצמן 185, מיקוד 4439654). חניה במקום בתשלום (כחול-לבן), ומשם הליכה קצרה אל העמדה.',
     arrivalEn: 'Inside the park, beside the main car park — enter from Weizmann Street (near Weizmann 185, postcode 4439654). On-site paid parking (blue-and-white), then a short walk to the bay.',
+    // Real on-site photo (CEO, 2026-07-23). Green Kfar Saba gets its photo next week.
+    photo: waldStationPhoto,
+    photoAltHe: 'תחנת PetWash בפארק יצחק ולד, כפר סבא — שני תאי שטיפה K9000',
+    photoAltEn: 'PetWash station at Isaac Wald Park, Kfar Saba — dual K9000 wash bays',
   },
   {
     // Station 2 — Green Kfar Saba. Exact install coordinates confirmed by CEO
@@ -167,7 +172,7 @@ export default function Locations() {
         '@id': `https://petwash.co.il/locations#${s.code}`,
         name: `PetWash™ — ${s.nameEn}`,
         url: 'https://petwash.co.il/locations',
-        image: 'https://petwash.co.il/brand/petwash-logo-official.png',
+        image: s.photo ? new URL(s.photo, 'https://petwash.co.il').href : 'https://petwash.co.il/brand/petwash-logo-official.png',
         priceRange: '₪₪',
         address: {
           '@type': 'PostalAddress',
@@ -299,7 +304,18 @@ export default function Locations() {
           <div className="max-w-4xl mx-auto space-y-4 mb-8">
             {announced.map((a) => (
               <div key={a.nameEn} className="relative rounded-2xl p-[1.5px] bg-gradient-to-br from-[#D4AF37] via-[#F4E4A6] to-[#D4AF37] luxury-shadow-lg">
-                <div className="rounded-2xl bg-white p-6 sm:p-8">
+                <div className="rounded-2xl bg-white overflow-hidden">
+                  {a.photo && (
+                    <img
+                      src={a.photo}
+                      alt={`${a.photoAltEn ?? a.nameEn} · ${a.photoAltHe ?? a.nameHe}`}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-52 sm:h-72 object-cover object-center"
+                      data-testid={`station-photo-${a.code}`}
+                    />
+                  )}
+                  <div className="p-6 sm:p-8">
                   <div className="flex items-start justify-between gap-3 flex-wrap">
                     <div>
                       {a.open ? (
@@ -352,6 +368,7 @@ export default function Locations() {
                       <p className="luxury-text-body text-sm mt-1" dir="rtl">{a.arrivalHe}</p>
                     </div>
                   )}
+                  </div>
                 </div>
               </div>
             ))}
