@@ -17,8 +17,10 @@
 
 import { useState } from 'react';
 import { useLocation } from 'wouter';
+import { useQuery } from '@tanstack/react-query';
 import { useSEO, pageSEO } from '@/lib/seo';
 import { apiRequest } from '@/lib/queryClient';
+import { getApiUrl } from '@/lib/apiConfig';
 import {
   Tag, Heart, Sparkles, ShoppingBag, Mail, ArrowRight, Gift,
   Award, CheckCircle2,
@@ -154,6 +156,25 @@ export default function Shop() {
     }
   };
 
+  // Real catalog preview — items only, NO prices (CEO 2026-07-23: supplier
+  // signed, shop stays closed; page must be READY). Seeded EX-* "example"
+  // products are filtered OUT so nothing fake ever shows. The moment real
+  // supplier items are loaded via the admin API they appear here
+  // automatically — no deploy needed on opening day.
+  const { data: catalogData } = useQuery({
+    queryKey: ['shop-products-preview'],
+    queryFn: async () => {
+      const res = await fetch(getApiUrl('/api/shop/products'));
+      if (!res.ok) return { products: [] };
+      return res.json();
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const allProducts: any[] = Array.isArray(catalogData) ? catalogData : (catalogData?.products ?? []);
+  const realItems = allProducts.filter(
+    (pr) => !String(pr.sku || '').startsWith('EX-') && !(pr.tags || []).includes('example'),
+  );
+
   return (
     <div className="sh-shell">
       <style>{styles()}</style>
@@ -177,6 +198,40 @@ export default function Shop() {
             category opens.
           </p>
         </header>
+
+        {/* ── The real collection — items only, no prices, not on sale ── */}
+        {realItems.length > 0 && (
+          <section className="sh-collection" data-testid="shop-collection-preview">
+            <h2 className="sh-h2">The collection · הקולקציה</h2>
+            <p className="sh-intro sh-intro--small">
+              Real items from our supplier — purchases open soon. Prices are
+              published only at opening. · פריטים אמיתיים מהספק — הרכישה תיפתח
+              בקרוב, מחירים יפורסמו בפתיחה.
+            </p>
+            <div className="sh-items">
+              {realItems.map((it) => (
+                <article key={it.id ?? it.sku} className="sh-item">
+                  {(it.images?.[0] || it.image_url || it.imageUrl) ? (
+                    <img
+                      className="sh-itemImg"
+                      src={it.images?.[0] || it.image_url || it.imageUrl}
+                      alt={it.name_he || it.name_en || it.name || ''}
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="sh-itemImg sh-itemImg--ph"><ShoppingBag size={26} /></div>
+                  )}
+                  <div className="sh-itemBody">
+                    <h3 className="sh-itemName" dir="rtl">{it.name_he || it.name}</h3>
+                    {it.name_en && <p className="sh-itemNameEn">{it.name_en}</p>}
+                    {it.category && <span className="sh-itemCat">{it.category}</span>}
+                    <span className="sh-itemSoon">Opening soon · בקרוב</span>
+                  </div>
+                </article>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Categories ──────────────────────────────────────────────── */}
         <section className="sh-categories">
@@ -277,6 +332,16 @@ function styles() {
     .sh-intro{ font-size:clamp(15px,1.3vw,17px); line-height:1.65; color:#475569; max-width:720px; margin:0 }
     .sh-intro--small{ font-size:14px; margin-bottom:18px }
 
+    .sh-collection{ margin:8px 0 40px }
+    .sh-items{ display:grid; grid-template-columns:repeat(auto-fill,minmax(190px,1fr)); gap:16px; margin-top:20px }
+    .sh-item{ background:#fff; border:1px solid #e7e5e0; border-radius:16px; overflow:hidden; display:flex; flex-direction:column }
+    .sh-itemImg{ width:100%; height:140px; object-fit:cover; display:flex; align-items:center; justify-content:center }
+    .sh-itemImg--ph{ background:linear-gradient(135deg,#fdf5dc,#f4e7c3); color:#9d6f23 }
+    .sh-itemBody{ padding:14px 16px 16px; display:flex; flex-direction:column; gap:6px }
+    .sh-itemName{ font-size:15.5px; font-weight:800; margin:0; color:#0b1220 }
+    .sh-itemNameEn{ font-size:12.5px; color:#64748b; margin:0 }
+    .sh-itemCat{ font-size:10.5px; font-weight:800; letter-spacing:.06em; text-transform:uppercase; color:#9d6f23 }
+    .sh-itemSoon{ align-self:flex-start; font-size:11px; font-weight:800; padding:4px 10px; border-radius:999px; background:#0b1220; color:#fff; margin-top:4px }
     .sh-categories{ display:grid; grid-template-columns:repeat(auto-fit,minmax(280px,1fr)); gap:20px; margin:32px 0 56px }
     .sh-card{ display:flex; flex-direction:column; gap:12px; padding:24px; background:#fff; border:1px solid #e7e5e0; border-radius:18px; transition:border-color .15s ease, transform .15s ease, box-shadow .15s ease }
     .sh-card:hover{ transform:translateY(-2px); box-shadow:0 14px 32px rgba(11,18,32,.06) }
