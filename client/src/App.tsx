@@ -150,6 +150,8 @@ const BrainDashboard = lazy(() => import("@/pages/admin/BrainDashboard"));
 const PetWashBridge = lazy(() => import("@/pages/admin/PetWashBridge"));
 const AdminLiveOps = lazy(() => import("@/pages/admin/AdminLiveOps"));
 const AdminNayaxEvents = lazy(() => import("@/pages/admin/AdminNayaxEvents"));
+const AdminOctopus = lazy(() => import("@/pages/AdminOctopus"));
+const AdminShopProducts = lazy(() => import("@/pages/AdminShopProducts"));
 const CEODashboard = lazy(() => import("@/pages/CEODashboard"));
 const AdminKYC = lazy(() => import("@/pages/AdminKYC"));
 const AdminSystemLogs = lazy(() => import("@/pages/AdminSystemLogs"));
@@ -2494,6 +2496,22 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminLiveOps />
+            </AdminRouteGuard>
+          )}
+        </Route>
+
+        {/* Octopus Control Panel — the ONE admin overview (real SQL, curated links). */}
+        <Route path="/admin/octopus">
+          {() => (
+            <AdminRouteGuard>
+              <AdminOctopus />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/shop-products">
+          {() => (
+            <AdminRouteGuard>
+              <AdminShopProducts />
             </AdminRouteGuard>
           )}
         </Route>
