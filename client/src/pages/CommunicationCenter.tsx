@@ -1070,14 +1070,14 @@ export default function CommunicationCenter() {
                                 size="sm"
                                 onClick={async () => {
                                   try {
-                                    await apiRequest(`/api/communication/reminders/${reminder.id}`, {
-                                      method: 'DELETE',
+                                    await apiRequest('PATCH', `/api/crm/communications/appointment-reminders/${reminder.id}`, {
+                                      status: 'cancelled',
                                     });
                                     toast({ 
                                       title: t('common.success', 'Success'),
                                       description: t('communication.reminders.cancelled', 'Reminder cancelled successfully')
                                     });
-                                    queryClient.invalidateQueries({ queryKey: ['/api/communication/reminders'] });
+                                    queryClient.invalidateQueries({ queryKey: ['/api/crm/communications/appointment-reminders'] });
                                   } catch (error) {
                                     toast({ 
                                       title: t('common.error', 'Error'),
