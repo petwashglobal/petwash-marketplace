@@ -4016,7 +4016,10 @@ function App() {
   const appFlavor = useAppFlavor();
   const isNativeApp = appFlavor !== 'web';
   const showPromoPopup = !isNativeApp && !isImmersive && !PROMO_OPERATIONAL_PATTERN.test(currentPath);
-  const showFloatingStack = !isImmersive;
+  // Floating WhatsApp/AI/accessibility FABs are WEBSITE chrome — inside the
+  // native apps they float over the CEO's canonical screens (seen live on the
+  // simulator 2026-07-23). Web only, same rule as header/footer/promo.
+  const showFloatingStack = !isImmersive && !isNativeApp;
   const showMobileNav = !isImmersive;
 
   // PR-IMMERSIVE-CSS: drive the [data-immersive] attribute on <html> so
