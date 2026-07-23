@@ -1,5 +1,23 @@
 import { LegalPage, LegalSection, LegalParagraph, LegalList } from "./LegalPage";
 
+const TERMS_TOC = [
+  { id: "t1", he: "כשירות וחשבון", en: "Eligibility & account" },
+  { id: "t2", he: "מהי PetWash", en: "What PetWash is" },
+  { id: "t3", he: "אחריות בעל חיית המחמד", en: "Pet-owner responsibility" },
+  { id: "t4", he: "שימוש בעמדה והזמנה", en: "Station use & booking" },
+  { id: "t5", he: "תשלומים ועמלות", en: "Fees & payment" },
+  { id: "t6", he: "ארנק ו-eGift", en: "Wallet & eGift" },
+  { id: "t7", he: "ביטול והחזר", en: "Cancellation & refunds" },
+  { id: "t8", he: "ביקורות ותוכן", en: "Reviews & content" },
+  { id: "t9", he: "כללי התנהגות", en: "Conduct" },
+  { id: "t10", he: "אין ביטוח אוטומטי", en: "No-insurance notice" },
+  { id: "t11", he: "דיווח על אירועים", en: "Incident reporting" },
+  { id: "t12", he: "הגבלת אחריות", en: "Limitation of liability" },
+  { id: "t13", he: "השעיה וסיום", en: "Suspension & termination" },
+  { id: "t14", he: "פרטיות", en: "Privacy" },
+  { id: "t15", he: "דין וסמכות שיפוט", en: "Governing law" },
+];
+
 export default function CustomerTerms() {
   return (
     <LegalPage
@@ -7,8 +25,10 @@ export default function CustomerTerms() {
       titleEn="Customer / Member Terms"
       subtitleHe="התנאים החלים על השימוש בפלטפורמת PetWash ובשירותיה."
       subtitleEn="The terms that govern your use of the PetWash platform and its services."
+      toc={TERMS_TOC}
+      acceptGate
     >
-      <LegalSection titleHe="1. כשירות וחשבון" titleEn="1. Eligibility & account">
+      <LegalSection id="t1" titleHe="1. כשירות וחשבון" titleEn="1. Eligibility & account">
         <LegalList
           items={[
             ["עליך להיות בן 18 לפחות כדי לפתוח חשבון ולהשתמש בשירותים.", "You must be at least 18 years old to open an account and use the services."],
@@ -18,14 +38,14 @@ export default function CustomerTerms() {
         />
       </LegalSection>
 
-      <LegalSection titleHe="2. מהי PetWash" titleEn="2. What PetWash is">
+      <LegalSection id="t2" titleHe="2. מהי PetWash" titleEn="2. What PetWash is">
         <LegalParagraph
           he="PetWash היא פלטפורמה המספקת כלים ושירותים: עמדות שטיפה עצמיות, ארנק דיגיטלי, כרטיסי מתנה אלקטרוניים (eGift), קודי QR, הזמנות שירות (בעתיד) ותמיכה. PetWash מספקת את הכלים והרישום הדיגיטלי; היא אינה מחליפה את אחריותך כבעל חיית מחמד."
           en="PetWash is a platform providing tools and services: self-service wash stations, a digital wallet, electronic gift cards (eGift), QR codes, service bookings (in the future), and support. PetWash provides the tools and the digital record; it does not replace your responsibility as a pet owner."
         />
       </LegalSection>
 
-      <LegalSection titleHe="3. אחריות בעל חיית המחמד" titleEn="3. Pet-owner responsibility">
+      <LegalSection id="t3" titleHe="3. אחריות בעל חיית המחמד" titleEn="3. Pet-owner responsibility">
         <LegalList
           items={[
             ["אתה האחראי הבלעדי לבריאות, להתנהגות ולבטיחות חיית המחמד שלך לפני, במהלך ואחרי השימוש.", "You are solely responsible for your pet's health, behaviour, and safety before, during, and after use."],
@@ -34,7 +54,7 @@ export default function CustomerTerms() {
         />
       </LegalSection>
 
-      <LegalSection titleHe="4. אחריות בשימוש בעמדה ובהזמנה" titleEn="4. Station-use & booking responsibility">
+      <LegalSection id="t4" titleHe="4. אחריות בשימוש בעמדה ובהזמנה" titleEn="4. Station-use & booking responsibility">
         <LegalList
           items={[
             ["יש לפעול לפי ההוראות בעמדה, להשגיח על חיית המחמד בכל עת, ולדווח מיד על תקלה או פציעה.", "Follow the on-station instructions, supervise your pet at all times, and report any fault or injury immediately."],
@@ -43,7 +63,7 @@ export default function CustomerTerms() {
         />
       </LegalSection>
 
-      <LegalSection titleHe="5. תשלומים ועמלות" titleEn="5. Fees & payment">
+      <LegalSection id="t5" titleHe="5. תשלומים ועמלות" titleEn="5. Fees & payment">
         <LegalList
           items={[
             ["התשלומים מתבצעים בשקלים חדשים (₪) באמצעות ספקי הסליקה של PetWash — בין היתר SUMIT, uPay, Nayax, או יתרת הארנק.", "Payments are made in New Israeli Shekels (₪) through PetWash's payment providers — including SUMIT, uPay, Nayax, or your wallet balance."],
@@ -53,7 +73,7 @@ export default function CustomerTerms() {
         />
       </LegalSection>
 
-      <LegalSection titleHe="6. ארנק ו-eGift" titleEn="6. Wallet & eGift">
+      <LegalSection id="t6" titleHe="6. ארנק ו-eGift" titleEn="6. Wallet & eGift">
         <LegalList
           items={[
             ["יתרת ארנק ו-eGift אינן כסף מזומן, אינן ניתנות לפדיון במזומן, וניתנות למימוש לשירותי PetWash בלבד.", "Wallet and eGift balances are not cash, are not redeemable for cash, and may be redeemed for PetWash services only."],
@@ -66,7 +86,7 @@ export default function CustomerTerms() {
         />
       </LegalSection>
 
-      <LegalSection titleHe="7. ביטול והחזר כספי" titleEn="7. Cancellation & refunds">
+      <LegalSection id="t7" titleHe="7. ביטול והחזר כספי" titleEn="7. Cancellation & refunds">
         <LegalList
           items={[
             ["בעסקת מכר מרחוק קיימת זכות ביטול בתוך 14 ימים, בהתאם לחוק הגנת הצרכן, התשמ\"א-1981.", "For a distance-sale transaction, a 14-day cancellation right applies under the Consumer Protection Law, 1981."],
@@ -81,56 +101,56 @@ export default function CustomerTerms() {
         />
       </LegalSection>
 
-      <LegalSection titleHe="8. ביקורות ותוכן משתמש" titleEn="8. Reviews & content">
+      <LegalSection id="t8" titleHe="8. ביקורות ותוכן משתמש" titleEn="8. Reviews & content">
         <LegalParagraph
           he="ביקורות ותוכן שתעלה חייבים להיות כנים, מבוססי חוויה אמיתית, ונקיים מהשמצה, פגיעה בפרטיות או תוכן בלתי חוקי."
           en="Reviews and content you post must be honest, based on a genuine experience, and free of defamation, privacy violations, or unlawful material."
         />
       </LegalSection>
 
-      <LegalSection titleHe="9. כללי התנהגות" titleEn="9. Conduct">
+      <LegalSection id="t9" titleHe="9. כללי התנהגות" titleEn="9. Conduct">
         <LegalParagraph
           he="אין לעשות שימוש לרעה בפלטפורמה, לרבות הונאה, פגיעה בעמדות, התחזות, או כל שימוש בלתי חוקי או הפוגע באחרים."
           en="You may not misuse the platform, including fraud, damaging stations, impersonation, or any unlawful or harmful use."
         />
       </LegalSection>
 
-      <LegalSection titleHe="10. הודעה: אין ביטוח אוטומטי" titleEn="10. No-insurance notice">
+      <LegalSection id="t10" titleHe="10. הודעה: אין ביטוח אוטומטי" titleEn="10. No-insurance notice">
         <LegalParagraph
           he="PetWash אינה מספקת באופן אוטומטי ביטוח לחיית המחמד, לבית, לרכוש או לפציעה, אלא אם נכתב במפורש אחרת. PetWash מספקת כלים בפלטפורמה, רישומי הזמנות, תמיכה ודיווח על אירועים. ביטוח או החזר אינם כלולים אוטומטית אלא אם נאמר זאת במפורש ובכתב עבור הזמנה כשירה."
           en="PetWash does not automatically provide pet, home, property, or injury insurance unless expressly stated in writing. PetWash provides platform tools, booking records, support, and incident reporting. Insurance or reimbursement is not automatically included unless expressly stated in writing for an eligible booking."
         />
       </LegalSection>
 
-      <LegalSection titleHe="11. דיווח על אירועים" titleEn="11. Incident reporting">
+      <LegalSection id="t11" titleHe="11. דיווח על אירועים" titleEn="11. Incident reporting">
         <LegalParagraph
           he="יש לדווח ל-PetWash על כל אירוע, תקלה או נזק בהקדם האפשרי ובאמצעי שתעמיד הפלטפורמה, כדי לאפשר טיפול ותיעוד."
           en="Report any incident, fault, or damage to PetWash as soon as possible, through the channel the platform provides, to enable handling and documentation."
         />
       </LegalSection>
 
-      <LegalSection titleHe="12. הגבלת אחריות" titleEn="12. Limitation of liability">
+      <LegalSection id="t12" titleHe="12. הגבלת אחריות" titleEn="12. Limitation of liability">
         <LegalParagraph
           he="במידה המרבית המותרת בדין, אחריות PetWash בקשר לשירות מוגבלת לסכום הגבוה מבין: התשלום ששולם עבור אותו שירות, או 5,000 ₪. אין באמור כדי לגרוע מהוראות דין כופות."
           en="To the maximum extent permitted by law, PetWash's liability in connection with the service is capped at the greater of the fee paid for that service or ₪5,000. Nothing here limits mandatory legal provisions."
         />
       </LegalSection>
 
-      <LegalSection titleHe="13. השעיה וסיום" titleEn="13. Suspension & termination">
+      <LegalSection id="t13" titleHe="13. השעיה וסיום" titleEn="13. Suspension & termination">
         <LegalParagraph
           he="PetWash רשאית להשעות או לסיים חשבון במקרה של הפרת תנאים, חשד להונאה, או הוראת דין, בכפוף לזכויותיך על-פי הדין."
           en="PetWash may suspend or terminate an account for breach of terms, suspected fraud, or as required by law, subject to your rights under the law."
         />
       </LegalSection>
 
-      <LegalSection titleHe="14. פרטיות" titleEn="14. Privacy">
+      <LegalSection id="t14" titleHe="14. פרטיות" titleEn="14. Privacy">
         <LegalParagraph
           he='עיבוד המידע האישי שלך כפוף לחוק הגנת הפרטיות, התשמ"א-1981, ולתיקון 13, ולמדיניות הפרטיות של PetWash.'
           en="Processing of your personal data is subject to the Protection of Privacy Law, 1981, Amendment 13, and PetWash's Privacy Policy."
         />
       </LegalSection>
 
-      <LegalSection titleHe="15. דין וסמכות שיפוט" titleEn="15. Governing law & jurisdiction">
+      <LegalSection id="t15" titleHe="15. דין וסמכות שיפוט" titleEn="15. Governing law & jurisdiction">
         <LegalParagraph
           he="על תנאים אלה חלים דיני מדינת ישראל. סמכות השיפוט הייחודית נתונה לבתי המשפט המוסמכים בתל אביב-יפו. הוראות צרכניות כופות בישראל חלות בכל מקרה."
           en="These terms are governed by the laws of the State of Israel. Exclusive jurisdiction is vested in the competent courts of Tel Aviv-Yafo. Mandatory Israeli consumer-protection law applies in any event."

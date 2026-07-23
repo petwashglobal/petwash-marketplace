@@ -58,6 +58,7 @@ import meGreetingRoutes from "./routes/me-greeting";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
+import legalConsentRoutes from "./routes/legal-consent";
 import googleServicesRoutes from "./routes/google-services";
 import geocodeRoutes from "./routes/geocode";
 import geoLanguageRoutes from "./routes/geo-language";
@@ -12150,6 +12151,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/prestige-pass', apiLimiter, optionalFirebaseToken, prestigePassRoutes);
   // SUMIT hosted-page payments (PCI-safe; UPay clears underneath). Sandbox until SUMIT_SANDBOX=false.
   app.use('/api/payments/sumit', apiLimiter, paymentsSumitRoutes);
+  app.use('/api/legal', apiLimiter, legalConsentRoutes);
   // Member self-read of their resolved K9000 wash discount (for the price note).
   app.use('/api/member', apiLimiter, memberDiscountRoutes);
   // Single status source-of-truth (MASTER BIBLE §3/§9): GET /api/me/status
