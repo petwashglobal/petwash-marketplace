@@ -65,19 +65,19 @@ export default function AdminOctopus() {
   const s = data?.sales;
 
   return (
-    <div dir="rtl" className="min-h-[100dvh] bg-[#0b1210] text-white" data-testid="admin-octopus">
+    <div dir="rtl" className="min-h-[100dvh] bg-gradient-to-br from-slate-50 via-white to-[#D4AF37]/10 text-black" data-testid="admin-octopus">
       <div className="mx-auto max-w-6xl px-4 py-8">
         <div className="mb-6 flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold" style={{ color: GOLD }}>🐙 Octopus Control</h1>
-            <p className="text-sm text-white/50">
+            <h1 className="text-2xl font-bold text-black">🐙 Octopus Control <span style={{ color: GOLD }}>·</span></h1>
+            <p className="text-sm text-gray-500">
               כל המספרים חיים מה־DB · עודכן {data ? new Date(data.generatedAt).toLocaleTimeString('he-IL') : '…'}
             </p>
           </div>
           <button
             type="button"
             onClick={() => refetch()}
-            className="flex items-center gap-2 rounded-xl border border-white/15 px-4 py-2 text-sm"
+            className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2 text-sm"
             data-testid="octopus-refresh"
           >
             <RefreshCw className={`h-4 w-4 ${isFetching ? 'animate-spin' : ''}`} /> רענון
@@ -85,19 +85,19 @@ export default function AdminOctopus() {
         </div>
 
         {/* ── Sales ── */}
-        <section className="mb-6 rounded-2xl border border-white/10 bg-white/5 p-5" data-testid="octopus-sales">
-          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-white/60">
+        <section className="mb-6 rounded-2xl border border-[#D4AF37]/40 bg-white p-5 luxury-shadow-lg" data-testid="octopus-sales">
+          <h2 className="mb-4 flex items-center gap-2 text-sm font-semibold text-gray-500">
             <Droplets className="h-4 w-4" style={{ color: GOLD }} /> מכירות — כל המקורות
           </h2>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             {([['היום', s?.today], ['7 ימים', s?.week], ['30 יום', s?.month]] as const).map(([label, p]) => (
-              <div key={label} className="rounded-xl bg-black/30 p-4">
-                <p className="text-xs text-white/50">{label}</p>
-                <p className="mt-1 text-2xl font-bold" style={{ color: GOLD }}>
+              <div key={label} className="rounded-xl bg-slate-50 border border-gray-100 p-4">
+                <p className="text-xs text-gray-500">{label}</p>
+                <p className="mt-1 text-2xl font-bold text-black">
                   {isLoading ? '…' : s ? ils(totalOf(p)) : '—'}
                 </p>
                 {p && (
-                  <div className="mt-2 space-y-0.5 text-[11px] text-white/60">
+                  <div className="mt-2 space-y-0.5 text-[11px] text-gray-600">
                     <p>עמדות (Nayax): {ils(p.kioskCents)} · {p.kioskCount} שטיפות</p>
                     <p>אונליין (SUMIT): {ils(p.sumitCents)}</p>
                     <p>חנות: {ils(p.shopCents)} · הזמנות שירות: {ils(p.bookingCents)}</p>
@@ -110,30 +110,30 @@ export default function AdminOctopus() {
 
         <div className="mb-6 grid grid-cols-1 gap-4 lg:grid-cols-3">
           {/* ── Live stations ── */}
-          <section className="rounded-2xl border border-white/10 bg-white/5 p-5 lg:col-span-2" data-testid="octopus-stations">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-white/60">
+          <section className="rounded-2xl border border-[#D4AF37]/40 bg-white p-5 luxury-shadow-lg lg:col-span-2" data-testid="octopus-stations">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-500">
               <Radio className="h-4 w-4" style={{ color: GOLD }} /> עמדות — פעילות חיה
             </h2>
             {data?.stations === null && (
-              <p className="text-sm text-white/40">אין נתוני עמדות זמינים</p>
+              <p className="text-sm text-gray-400">אין נתוני עמדות זמינים</p>
             )}
             {data?.stations && data.stations.length === 0 && (
-              <p className="text-sm text-white/40">
+              <p className="text-sm text-gray-400">
                 עדיין לא נקלטו אירועי עמדה — הזרם נפתח עם ה־webhook של Nayax או ייבוא CSV ידני
               </p>
             )}
             <div className="space-y-2">
               {(data?.stations ?? []).map((m) => (
-                <div key={m.machineId} className="flex items-center justify-between rounded-xl bg-black/30 px-4 py-3">
+                <div key={m.machineId} className="flex items-center justify-between rounded-xl bg-slate-50 border border-gray-100 px-4 py-3">
                   <div>
-                    <p className="text-sm font-semibold">{MACHINE_NAMES[m.machineId] || `מכונה ${m.machineId}`}</p>
-                    <p className="text-[11px] text-white/50">
+                    <p className="text-sm font-semibold text-black">{MACHINE_NAMES[m.machineId] || `מכונה ${m.machineId}`}</p>
+                    <p className="text-[11px] text-gray-500">
                       אירוע אחרון: {m.lastEventAt ? new Date(m.lastEventAt).toLocaleString('he-IL') : '—'}
                     </p>
                   </div>
                   <div className="text-left">
-                    <p className="text-sm font-bold" style={{ color: GOLD }}>₪{m.ilsToday.toLocaleString('he-IL')}</p>
-                    <p className="text-[11px] text-white/50">{m.washesToday} שטיפות היום</p>
+                    <p className="text-sm font-bold text-black">₪{m.ilsToday.toLocaleString('he-IL')}</p>
+                    <p className="text-[11px] text-gray-500">{m.washesToday} שטיפות היום</p>
                   </div>
                 </div>
               ))}
@@ -142,16 +142,16 @@ export default function AdminOctopus() {
 
           {/* ── Shop + Providers ── */}
           <div className="space-y-4">
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-5" data-testid="octopus-shop">
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/60">
+            <section className="rounded-2xl border border-[#D4AF37]/40 bg-white p-5 luxury-shadow-lg" data-testid="octopus-shop">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-500">
                 <ShoppingBag className="h-4 w-4" style={{ color: GOLD }} /> חנות
               </h2>
               {data?.shop ? (
-                <div className="text-sm text-white/80">
+                <div className="text-sm text-gray-800">
                   <p>{data.shop.realItems} מוצרים אמיתיים · {data.shop.activeProducts} פעילים סה״כ</p>
                   <p>{data.shop.openOrders} הזמנות פתוחות מתוך {data.shop.orders}</p>
                 </div>
-              ) : <p className="text-sm text-white/40">—</p>}
+              ) : <p className="text-sm text-gray-400">—</p>}
               <button
                 type="button"
                 onClick={() => nav('/admin/shop-products')}
@@ -163,20 +163,20 @@ export default function AdminOctopus() {
               </button>
             </section>
 
-            <section className="rounded-2xl border border-white/10 bg-white/5 p-5" data-testid="octopus-providers">
-              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-white/60">
+            <section className="rounded-2xl border border-[#D4AF37]/40 bg-white p-5 luxury-shadow-lg" data-testid="octopus-providers">
+              <h2 className="mb-2 flex items-center gap-2 text-sm font-semibold text-gray-500">
                 <Users className="h-4 w-4" style={{ color: GOLD }} /> ספקים
               </h2>
               {data?.providers ? (
-                <div className="text-sm text-white/80">
+                <div className="text-sm text-gray-800">
                   <p><span className="font-bold" style={{ color: GOLD }}>{data.providers.pending}</span> ממתינים לאישור</p>
                   <p>{data.providers.approved} מאושרים · {data.providers.total} סה״כ</p>
                 </div>
-              ) : <p className="text-sm text-white/40">—</p>}
+              ) : <p className="text-sm text-gray-400">—</p>}
               <button
                 type="button"
                 onClick={() => nav('/admin/live-ops')}
-                className="mt-3 flex items-center gap-1 rounded-lg border border-white/20 px-3 py-2 text-xs font-bold text-white"
+                className="mt-3 flex items-center gap-1 rounded-lg border border-gray-300 bg-white px-3 py-2 text-xs font-bold text-black"
               >
                 לאישורים <ArrowUpRight className="h-3.5 w-3.5" />
               </button>
@@ -185,15 +185,15 @@ export default function AdminOctopus() {
         </div>
 
         {/* ── Curated links (working panels only) ── */}
-        <section className="rounded-2xl border border-white/10 bg-white/5 p-5">
-          <h2 className="mb-3 text-sm font-semibold text-white/60">פאנלים פעילים</h2>
+        <section className="rounded-2xl border border-[#D4AF37]/40 bg-white p-5 luxury-shadow-lg">
+          <h2 className="mb-3 text-sm font-semibold text-gray-500">פאנלים פעילים</h2>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
             {links.map((l) => (
               <button
                 key={l.to}
                 type="button"
                 onClick={() => nav(l.to)}
-                className="flex items-center gap-2 rounded-xl border border-white/10 bg-black/20 px-3 py-3 text-right text-xs font-semibold text-white/80 hover:border-[#D4AF37]/60"
+                className="flex items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 text-right text-xs font-semibold text-gray-800 hover:border-[#D4AF37]/60"
               >
                 <l.icon className="h-4 w-4 shrink-0" style={{ color: GOLD }} />
                 {l.label}
