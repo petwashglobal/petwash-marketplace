@@ -14,6 +14,13 @@ const api = readFileSync(resolve(ROOT, 'server/routes/legal-consent.ts'), 'utf8'
 const routes = readFileSync(resolve(ROOT, 'server/routes.ts'), 'utf8');
 
 describe('terms canon', () => {
+  it('/legal/terms renders the CANONICAL CustomerTerms — the old Terms layer is gone', () => {
+    const appSrc = readFileSync(resolve(ROOT, 'client/src/App.tsx'), 'utf8');
+    const at = appSrc.indexOf('path="/legal/terms"');
+    expect(appSrc.slice(at, at + 120)).toMatch(/LegalCustomerTerms/);
+    expect(appSrc).not.toMatch(/pages\/legal\/Terms"/);
+  });
+
   it('server endpoints exist, mounted, auth-gated, idempotent on first acceptance', () => {
     expect(api).toMatch(/router\.get\('\/terms-acceptance', validateFirebaseToken/);
     expect(api).toMatch(/router\.post\('\/accept-terms', validateFirebaseToken/);

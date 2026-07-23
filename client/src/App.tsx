@@ -463,7 +463,6 @@ const SuppliersPartners = lazy(() => import("@/pages/partners/Suppliers"));
 const MunicipalPartners = lazy(() => import("@/pages/partners/Municipal"));
 
 // Legal Routes
-const LegalTerms = lazy(() => import("@/pages/legal/Terms"));
 const LegalPrivacyPolicy = lazy(() => import("@/pages/legal/PrivacyPolicy"));
 const EGiftPolicy = lazy(() => import("@/pages/legal/EGiftPolicy"));
 const LoyaltyTermsPage = lazy(() => import("@/pages/legal/LoyaltyTerms"));
@@ -1347,8 +1346,12 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* Legal Routes */}
+        {/* /legal/terms previously rendered an OLD generation Terms page (ipapi
+            language fetch, no accept gate) while the canonical CustomerTerms
+            (sidebar + I-Accept, CEO mockup #4) sat at /legal/customer-terms —
+            found live 2026-07-23. ONE terms page now. */}
         <Route path="/legal/terms">
-          {() => <LegalTerms />}
+          {() => <LegalCustomerTerms />}
         </Route>
         <Route path="/legal/privacy">
           {() => <Layout><LegalPrivacyPolicy /></Layout>}
