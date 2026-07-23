@@ -132,8 +132,16 @@ router.post('/join', async (req: Request, res: Response) => {
         }).catch((e: any) => logger.warn('[PrestigeJoin] Custom claims failed (non-fatal)', { error: e?.message }));
       }
     } catch (loyaltyErr: any) {
-      // Non-fatal: log but continue so the rest of enrollment completes
-      logger.error('[PrestigeJoin] Loyalty step failed', { error: loyaltyErr?.message, userId });
+      // For a NEW enrollment the loyalty profile IS the Prestige experience —
+      // points, tier, home-screen balances. Returning ok without it reports a
+      // join that materially didn't happen (board item: "/join ok-over-dropped-
+      // row"). Fail loud so the user retries. A returning member (profile
+      // already exists) keeps the old non-fatal behaviour.
+      if (!alreadyEnrolled) {
+        logger.error('[PrestigeJoin] Loyalty profile creation FAILED — join incomplete, failing loud', { error: loyaltyErr?.message, userId });
+        return res.status(500).json({ ok: false, error: 'Could not complete your membership — please try again', code: 'PRESTIGE_JOIN_LOYALTY_FAILED' });
+      }
+      logger.error('[PrestigeJoin] Loyalty step failed (existing member — continuing)', { error: loyaltyErr?.message, userId });
     }
 
     // ── Step 2: privilege_members ────────────────────────────────────────────

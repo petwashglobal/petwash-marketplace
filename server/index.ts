@@ -602,8 +602,19 @@ app.use((req: any, res: any, next: any) => {
 // retry storm (prod logs 2026-07-22). Skip ONLY that path here; every other
 // route (incl. the other /api/webhooks/*) keeps the parsed-JSON behavior.
 const globalJsonParser = express.json({ limit: '10mb' }); // Increased limit for base64 image uploads
+// Same class of bug found on THREE webhook families (SendGrid #1484, then the
+// Nayax raw-body audit): route-level express.raw() silently no-ops when this
+// global parser has already consumed the body, so signature checks either
+// verify the wrong bytes or fail-closed 400 every delivery. Every raw-bytes
+// webhook path must be listed here.
+const RAW_BODY_WEBHOOK_PATHS = new Set([
+  '/api/webhooks/sendgrid',      // SendGrid events — ECDSA over raw bytes
+  '/api/webhooks/nayax-events',  // Monyx/kiosk events — HMAC over raw bytes
+]);
 app.use((req, res, next) =>
-  req.path === '/api/webhooks/sendgrid' ? next() : globalJsonParser(req, res, next),
+  (RAW_BODY_WEBHOOK_PATHS.has(req.path) || req.path.startsWith('/api/webhooks/nayax/'))
+    ? next()
+    : globalJsonParser(req, res, next),
 );
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(cookieParser());
