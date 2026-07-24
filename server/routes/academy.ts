@@ -6,6 +6,7 @@
  */
 
 import { Router } from 'express';
+import { z } from 'zod';
 import { db } from '../db';
 import {
   trainers,
@@ -204,11 +205,46 @@ router.post('/bookings', requireAuth, async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
     
-    const validatedData = insertTrainerBookingSchema.parse({
-      ...req.body,
+    // REQUEST schema — only what the CUSTOMER may send. The old code parsed
+    // insertTrainerBookingSchema (the full ROW schema), which requires
+    // sessionDate, petName, trainerUserId, hourlyRate, totalAmount,
+    // platformFee and trainerPayout — money fields the server computes BELOW,
+    // after the parse. So every real booking threw a ZodError and returned
+    // 400: Pet Wash Academy could not take a single booking (found 2026-07-24).
+    // Parsing a request schema also means a client can never inject its own
+    // price — the server still owns every money field.
+    const bookingRequestSchema = z.object({
+      trainerId: z.coerce.number().int().positive(),
+      // The client historically sent `serviceDate`; accept either name.
+      sessionDate: z.coerce.date().optional(),
+      serviceDate: z.coerce.date().optional(),
+      sessionDuration: z.coerce.number().int().positive().max(600),
+      sessionType: z.string().trim().min(1).max(40).default('in_home'),
+      petName: z.string().trim().max(80).optional(),
+      petId: z.string().trim().max(64).optional(),
+      specialNotes: z.string().trim().max(2000).optional(),
+      walletCreditAppliedCents: z.coerce.number().int().min(0).optional(),
+    }).passthrough();
+
+    const parsedReq = bookingRequestSchema.parse(req.body);
+    const sessionDate = parsedReq.sessionDate ?? parsedReq.serviceDate;
+    if (!sessionDate) {
+      return res.status(400).json({ error: 'session_date_required' });
+    }
+
+    const validatedData = {
+      trainerId: parsedReq.trainerId,
+      sessionDate,
+      sessionDuration: parsedReq.sessionDuration,
+      sessionType: parsedReq.sessionType,
+      // petName is NOT NULL on the row; fall back to a neutral placeholder so a
+      // customer who hasn't added a pet yet can still book (they can edit later).
+      petName: parsedReq.petName?.trim() || 'חיית המחמד שלי',
+      petId: parsedReq.petId ?? null,
+      specialNotes: parsedReq.specialNotes ?? null,
       userId: req.user.uid,
       bookingId: `TRN-${new Date().getFullYear()}-${nanoid(8)}`,
-    });
+    } as any;
     
     // Get trainer details
     const [trainer] = await db
