@@ -198,7 +198,23 @@ router.post('/quote', async (req, res) => {
   }
 });
 
+/**
+ * SEALED 2026-07-24 (booking-engine consolidation, CEO "fix wtf" audit).
+ * This creation path had ZERO client callers and wrote the same `bookings`
+ * table as other engines with a DIFFERENT status vocabulary and provider-id
+ * semantics — one of the "hidden conflicts" that made booking behaviour
+ * unpredictable. The canonical rails are:
+ *   • provider services → POST /api/booking-requests
+ *   • marketplace checkout → POST /api/marketplace-bookings/:quoteId/checkout
+ * Reintroduce only by routing through those.
+ */
 router.post('/create', requireAuth, requireIdempotency, async (req, res) => {
+  return res.status(410).json({
+    error: 'This booking engine is sealed. Use POST /api/booking-requests (provider services) or the marketplace checkout rail.',
+    code: 'BOOKING_ENGINE_SEALED',
+  });
+  // eslint-disable-next-line no-unreachable
+
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
