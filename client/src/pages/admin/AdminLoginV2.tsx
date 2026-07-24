@@ -172,7 +172,7 @@ export default function AdminLoginV2() {
           await createServerSession(idToken);
           await assertAdminAccess();
           toast({ title: "Welcome back", description: "Successfully logged in with Google" });
-          setLocation("/admin/dashboard");
+          setLocation("/admin/octopus");
         } catch (err: any) {
           trackAuthError(err, 'admin_google_redirect').catch(() => {});
           toast({
@@ -215,7 +215,7 @@ export default function AdminLoginV2() {
         description: "Successfully logged in",
       });
 
-      setLocation("/admin/dashboard");
+      setLocation("/admin/octopus");
     } catch (error: any) {
       const isFirebaseCredError = error?.code === 'auth/wrong-password'
         || error?.code === 'auth/user-not-found'
@@ -345,7 +345,7 @@ export default function AdminLoginV2() {
         });
         
         setTimeout(() => {
-          setLocation("/admin/dashboard");
+          setLocation("/admin/octopus");
         }, 800);
       }
     } catch (error: any) {
@@ -396,7 +396,7 @@ export default function AdminLoginV2() {
       await assertAdminAccess();
 
       toast({ title: "Welcome back", description: "Successfully logged in with Google" });
-      setLocation("/admin/dashboard");
+      setLocation("/admin/octopus");
     } catch (error: any) {
       if (error?.code === "auth/popup-closed-by-user" || error?.code === "auth/cancelled-popup-request") {
         setIsGoogleLoading(false);
