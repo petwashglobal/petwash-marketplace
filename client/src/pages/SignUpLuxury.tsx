@@ -381,7 +381,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   async function finishAndRoute() {
     try { await fetch(getApiUrl('/api/session/whoami'), { credentials: 'include' }); }
     catch (e) { logger.error('[signup] whoami', e); }
-    navigate(dest);
+    // SMART ROUTING (2026-07-24): ask the server's post-login decider where to
+    // go rather than the client's intent guess (destForFlow). The decider knows
+    // if the profile still needs a name (→ /complete-profile), if a provider
+    // needs KYC (→ /provider-onboarding), or if a loyalty member is ready for
+    // home — so a new user is never dumped on a dashboard that bounces them.
+    // Intent (provider vs loyalty) is passed so the decider routes the right way.
+    const intent = explicitIntent || (flow === 'provider' ? 'provider' : 'loyalty');
+    try {
+      const { resolvePostLogin } = await import('@/lib/postLoginCoordinator');
+      const data: any = await resolvePostLogin({ body: { intent } });
+      navigate(data?.nextUrl || data?.redirectTo || dest);
+    } catch {
+      navigate(dest);
+    }
   }
 
   async function sendCode() {

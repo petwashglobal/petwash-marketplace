@@ -117,6 +117,9 @@ export default function CompleteProfile() {
           if (data.user.firstName) setFirstName(data.user.firstName);
           if (data.user.lastName) setLastName(data.user.lastName);
           if (data.user.phone) setPhone(data.user.phone);
+          // Prefill DOB too — the birthday the user gave at signup is now saved
+          // (2026-07-24), so never make them re-enter it here.
+          if (data.user.dateOfBirth) setDateOfBirth(String(data.user.dateOfBirth).slice(0, 10));
         }
       } catch {
         toast({ variant: "destructive", title: isHe ? "שגיאה בטעינת הפרופיל" : "Failed to load profile" });
