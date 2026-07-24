@@ -158,7 +158,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // social method is blocked until both are ticked. Terms/Privacy are clickable.
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [over18, setOver18] = useState(false);
-  const consentOk = agreedTerms && over18;
+  // consentOk is defined AFTER isAdult (below) so a valid 18+ DOB can satisfy
+  // the age requirement without the redundant checkbox.
 
 
   // Capture ?intent=provider|loyalty|staff_request from the URL into the signup
@@ -671,6 +672,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     return a;
   })();
   const isAdult = age >= 18;
+  // AGE GATE (2026-07-24 fix): the DOB wheel AND a separate 'I am 18+' checkbox
+  // was redundant and confusing — a customer who entered their birthday still
+  // had to tick a box saying they're 18+, and Google sign-in / the phone Send
+  // button silently stayed blocked until they did. A VALID 18+ date of birth
+  // now satisfies the age requirement on its own; the checkbox remains the
+  // path for anyone who hasn't entered a DOB (e.g. pure social signup).
+  const ageConfirmed = over18 || isAdult;
+  const consentOk = agreedTerms && ageConfirmed;
   // ONE contact is enough (CEO 2026-07-24 "sign up not easy"): startSignup()
   // already branches phone-first-else-email, and the design intent above is
   // "type whichever they like, we detect which". The old gate demanded phone
@@ -678,7 +687,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // no reason shown. Now: either contact + 18+ DOB unlocks it; the second
   // contact is collected/verified after, not up front.
   const hasContact = phoneValid || emailValid;
-  const readyForSubmit = !busy && hasContact && isAdult;
+  // The Send-code button needs age confirmation via EITHER the '18+' checkbox
+  // OR a valid 18+ DOB — not the DOB specifically. Before this (2026-07-24) a
+  // provider who ticked the boxes and entered their mobile saw the Send button
+  // stay dead because they hadn't ALSO spun the DOB wheel — "no send button
+  // exists" (CEO). ageConfirmed = over18 || isAdult.
+  const readyForSubmit = !busy && hasContact && ageConfirmed;
 
   const ctaLabel = busy ? '…' : (he ? 'המשך' : 'Continue');
 
@@ -741,7 +755,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     privLink: he ? 'מדיניות הפרטיות' : 'Privacy Policy',
 
     cta: he ? 'צור חשבון מאובטח' : 'Create Secure Account',
-    completeFields: he ? 'יש להזין נייד או אימייל ותאריך לידה (18+), ולאשר את התנאים.' : 'Enter your mobile or email, your date of birth (18+), and accept the terms.',
+    completeFields: he ? 'להמשך: הזינו נייד או אימייל, אשרו את התנאים וסמנו 18+ (או הזינו תאריך לידה).' : 'To continue: enter your mobile or email, accept the terms and confirm 18+ (or enter your date of birth).',
     bank: he ? 'מאובטח ומוצפן' : 'Secure & encrypted',
     enc: he ? 'הצפנת 256-bit' : '256-bit encryption',
     safe: he ? 'הנתונים שלך בטוחים' : 'Your data is safe',
