@@ -3386,7 +3386,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         
         {/* Admin routes - /admin redirects to /admin/login-v2 for unauthenticated users */}
-        <Route path="/admin">{() => <Redirect to="/admin/login-v2" />}</Route>
+        {/* Admin front door = the clean canon Octopus panel (real-SQL overview).
+            The AdminRouteGuard bounces signed-out users to the login. */}
+        <Route path="/admin">{() => <Redirect to="/admin/octopus" />}</Route>
         <Route path="/admin/login" component={AdminLoginV2} />
         <Route path="/admin/backend">
           {() => (

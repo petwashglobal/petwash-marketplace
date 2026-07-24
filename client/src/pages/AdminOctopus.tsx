@@ -60,6 +60,8 @@ export default function AdminOctopus() {
     { label: 'התראות מערכת', to: '/admin/alerts', icon: AlertTriangle },
     { label: 'כספים', to: '/admin/finance', icon: Landmark },
     { label: 'ארנקים', to: '/admin/wallet-dashboard', icon: Wallet },
+    { label: 'לוח אנליטיקה קלאסי', to: '/admin/dashboard', icon: Activity },
+    { label: 'עמדות — בריאות', to: '/admin/stations', icon: Radio },
   ];
 
   const s = data?.sales;
