@@ -116,7 +116,27 @@ router.get('/overview', requireSuperAdmin, async (_req: Request, res: Response) 
     }),
   ]);
 
-  res.json({ ok: true, generatedAt: new Date().toISOString(), sales, stations, shop, providers });
+  const [members, alerts] = await Promise.all([
+    block('members', async () => {
+      const [m] = (await db.execute(sql`
+        SELECT COUNT(*)::int AS total,
+               COUNT(*) FILTER (WHERE created_at >= NOW() - interval '1 day')::int AS today,
+               COUNT(*) FILTER (WHERE created_at >= NOW() - interval '7 days')::int AS week
+        FROM users
+      `)).rows as any[];
+      return { total: Number(m?.total ?? 0), today: Number(m?.today ?? 0), week: Number(m?.week ?? 0) };
+    }),
+    block('alerts', async () => {
+      const [a] = (await db.execute(sql`
+        SELECT COUNT(*) FILTER (WHERE status = 'open')::int AS open,
+               COUNT(*) FILTER (WHERE status = 'open' AND severity IN ('high','critical'))::int AS urgent
+        FROM admin_alerts
+      `)).rows as any[];
+      return { open: Number(a?.open ?? 0), urgent: Number(a?.urgent ?? 0) };
+    }),
+  ]);
+
+  res.json({ ok: true, generatedAt: new Date().toISOString(), sales, stations, shop, providers, members, alerts });
 });
 
 export default router;
