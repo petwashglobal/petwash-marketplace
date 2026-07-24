@@ -12,7 +12,7 @@ import { useLocation } from 'wouter';
 import {
   Droplets, Store, Users, Radio, Bell, Wallet, Ticket, CreditCard,
   Landmark, RefreshCw, ChevronLeft, TrendingUp, ShoppingBag, UserCheck,
-  Activity, ClipboardList,
+  Activity, ClipboardList, BookOpen,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
@@ -59,6 +59,7 @@ export default function AdminOctopus() {
   const st = data?.stations;
 
   const actions = [
+    { label: 'הנהלת חשבונות — עמדות', to: '/admin/bookkeeping', icon: BookOpen },
     { label: 'ניהול מוצרי חנות', to: '/admin/shop-products', icon: ShoppingBag },
     { label: 'אישור ספקים', to: '/admin/applications', icon: UserCheck },
     { label: 'אירועי Nayax', to: '/admin/nayax-events', icon: Radio },
