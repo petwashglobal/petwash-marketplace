@@ -442,7 +442,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const idToken = await cred.user.getIdToken(true);
         await fetch(getApiUrl('/api/auth/session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ idToken }),
+          // Send the DOB so the users row is CREATED with it — persistDob's
+          // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
+          body: JSON.stringify({ idToken, dateOfBirth: dob }),
         });
       }
       // Step 2 — NEW accounts only: phone verified + account live, now verify the
@@ -520,7 +522,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const idToken = await cred.user.getIdToken(true);
         await fetch(getApiUrl('/api/auth/session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ idToken }),
+          // Send the DOB so the users row is CREATED with it — persistDob's
+          // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
+          body: JSON.stringify({ idToken, dateOfBirth: dob }),
         });
         await finishAndRoute();
         return;

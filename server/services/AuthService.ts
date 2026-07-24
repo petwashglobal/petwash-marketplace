@@ -240,6 +240,11 @@ export class AuthService {
     profileImageUrl?: string;
     country?: string;
     language?: string;
+    // Persisted at ROW CREATION (2026-07-24 fix): the old persistDob UPDATE ran
+    // before this row existed → 0 rows → the birthday the user gave at signup
+    // was lost, so loyalty users (who require dateOfBirth) were re-asked for it
+    // at /complete-profile. Writing it here, when the row is born, keeps it.
+    dateOfBirth?: string;
   }): Promise<{ user: any; isNewUser: boolean } | null> {
     try {
       const existing = await this.getUserById(firebaseUid);
