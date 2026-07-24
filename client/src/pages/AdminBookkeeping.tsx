@@ -164,8 +164,11 @@ export default function AdminBookkeeping() {
             <h2 className="text-sm font-bold" style={{ color: INK }}>HR / צוות</h2>
           </div>
           <p className="mt-2 text-sm text-neutral-500">
-            {data?.staff?.note || 'מודול HR/צוות טרם נבנה — יתווסף עם רשומות עובדים אמיתיות.'}
+            {data?.staff?.note || 'ניהול הצוות זמין במסך «צוות ו־HR».'}
           </p>
+          <button type="button" onClick={() => go('/admin/staff')} className="mt-3 rounded-lg px-4 py-2 text-xs font-bold" style={{ background: GOLD, color: INK }}>
+            למסך הצוות
+          </button>
         </section>
       </div>
     </div>
