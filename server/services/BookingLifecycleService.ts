@@ -326,7 +326,14 @@ class BookingLifecycleService {
       bookingNumber,
       platformId: input.platformId.toUpperCase() as any,
       userId: input.customerId,
-      providerId: input.providerProfileId,
+      // 2026-07-24 FIX: this wrote the numeric provider-PROFILE id while every
+      // reader (provider-dashboard-v2 job inbox, marketplace-ranking, and this
+      // service's own getBookingsForUser) queries bookings.provider_id by the
+      // provider's FIREBASE UID — so every marketplace-checkout booking was
+      // invisible to the provider forever. providerId IS the uid here (see the
+      // self-booking guard above). The profile id is kept in metadata.
+      providerId: input.providerId,
+      platformData: { providerProfileId: input.providerProfileId ?? null } as any,
       startTime: input.startTime,
       endTime: input.endTime,
       serviceType: input.serviceType,

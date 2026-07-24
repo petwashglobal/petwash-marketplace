@@ -1032,6 +1032,12 @@ router.get('/marketplace-bookings', async (req: Request, res: Response) => {
        LEFT JOIN booking_items bi
          ON bi.booking_id = b.id AND bi.item_type = 'addon'
        WHERE b.provider_id = $1
+          -- Legacy rows (before 2026-07-24) stored the numeric provider-PROFILE
+          -- id here instead of the uid; match those too so bookings already
+          -- taken are not invisible forever.
+          OR b.provider_id IN (
+               SELECT p.id::text FROM providers p WHERE p.user_id = $1
+             )
        GROUP BY b.id
        ORDER BY b.created_at DESC
        LIMIT $2 OFFSET $3`,
