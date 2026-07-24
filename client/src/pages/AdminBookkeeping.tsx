@@ -9,7 +9,7 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { ArrowRight, MapPin, Navigation, Droplets, RefreshCw, Users } from 'lucide-react';
+import { ArrowRight, MapPin, Navigation, Droplets, RefreshCw, Users, Upload } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 
 const GOLD = '#D4AF37';
@@ -75,6 +75,29 @@ export default function AdminBookkeeping() {
             </button>
           ))}
         </div>
+
+        {/* No bay revenue at all yet → tell the CEO exactly how to fill it.
+            The bay ledger fills from the Nayax webhook (distributor-gated) OR
+            from a manual Nayax Core CSV export — which works TODAY. */}
+        {data && data.stations.every((s) => s.totals.grossCents === 0 && s.totals.washes === 0) && (
+          <section className="mb-4 rounded-3xl border p-5" style={{ borderColor: `${GOLD}66`, background: '#FFFDF5' }} data-testid="bk-import-cta">
+            <h2 className="text-sm font-bold" style={{ color: INK }}>עדיין אין נתוני עסקאות מהעמדות</h2>
+            <p className="mt-1 text-sm text-neutral-600">
+              המספרים כאן מתמלאים משתי דרכים: חיבור ה־webhook של Nayax (דורש הפעלה מול המפיץ),
+              או <strong>ייצוא דוח עסקאות מ־Nayax Core והעלאתו כאן</strong> — עובד כבר עכשיו.
+              הייבוא רק רושם: לא מזכה נקודות, לא נוגע בארנקים, והעלאה חוזרת של אותו דוח בטוחה.
+            </p>
+            <button
+              type="button"
+              onClick={() => go('/admin/nayax-events')}
+              className="mt-3 flex items-center gap-1 rounded-lg px-4 py-2 text-xs font-bold"
+              style={{ background: GOLD, color: INK }}
+              data-testid="bk-goto-import"
+            >
+              <Upload className="h-3.5 w-3.5" /> ייבוא דוח Nayax (CSV)
+            </button>
+          </section>
+        )}
 
         <div className="space-y-4">
           {(data?.stations ?? []).map((s) => (
