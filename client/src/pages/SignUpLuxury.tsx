@@ -298,6 +298,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }, []);
 
   const [method, setMethod] = useState<'mobile' | 'email'>('mobile');
+  // ROVER-STYLE method-first (CEO 2026-07-24 'no sense, make it clear'): the
+  // manual form is HIDDEN until the user chooses phone or email. Social is a
+  // one-tap path that never shows a phone/email field. 'choose' = show the two
+  // chooser buttons only.
+  const [contactMode, setContactMode] = useState<'choose' | 'phone' | 'email'>('choose');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -960,50 +965,81 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 )}
               </div>
 
-              <div className="sl-div">{he ? 'או הרשמה עם נייד או אימייל' : 'or sign up with phone or email'}</div>
+              <div className="sl-div">{he ? 'או המשך עם נייד או אימייל' : 'or continue with phone or email'}</div>
 
-              {/* Date of birth — required, 18+. iOS finger-scroll wheel; only adult
-                  years are offered, and age is re-verified on the server at creation. */}
-              <div className="sl-field">
-                <label className="sl-label">{he ? 'תאריך לידה · גיל 18 ומעלה' : 'Date of birth · 18+'}</label>
-                <AppleWheelDatePicker
-                  value={dob || `${new Date().getFullYear() - 25}-06-15`}
-                  onChange={setDob}
-                  minYear={new Date().getFullYear() - 100}
-                  maxYear={new Date().getFullYear() - 18}
-                  monthNames={he ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : undefined}
-                  dayLabel={he ? 'יום' : 'Day'}
-                  monthLabel={he ? 'חודש' : 'Month'}
-                  yearLabel={he ? 'שנה' : 'Year'}
-                />
-                {!dobValid && <div className="sl-hint">{he ? 'גללו לבחירת תאריך הלידה.' : 'Scroll to set your date of birth.'}</div>}
-                {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
-              </div>
-
-              {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
-                <p className="sl-inlineError" role="status">
-                  {he ? 'SMS אינו זמין כעת — אפשר להמשיך עם אימייל למטה.' : 'SMS is temporarily unavailable — continue with email below.'}
-                </p>
+              {/* METHOD-FIRST: nothing chosen yet → two clean chooser buttons.
+                  No phone/email field is shown until the user picks one, so the
+                  screen never asks for both. */}
+              {contactMode === 'choose' && (
+                <div className="sl-chooser">
+                  <button type="button" className="sl-soc" disabled={busy} onClick={() => { setMethod('mobile'); setContactMode('phone'); }}>
+                    <span className="sl-socLabel">{he ? 'המשך עם מספר נייד' : 'Continue with mobile number'}</span>
+                  </button>
+                  {signupFlags.emailPassword && (
+                    <button type="button" className="sl-soc" disabled={busy} onClick={() => { setMethod('email'); setContactMode('email'); }}>
+                      <span className="sl-socLabel">{he ? 'המשך עם אימייל' : 'Continue with email'}</span>
+                    </button>
+                  )}
+                </div>
               )}
 
-              <div className="sl-field">
-                <label className="sl-label">{t.phoneLabel}</label>
-                <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
-                <div className="sl-hint">{he ? 'נשלח קוד אימות חד-פעמי ב-SMS — בלי סיסמה. השם והעדפות נאספים אחרי ההצטרפות.' : 'We text you a one-time code — no password. Name & preferences are collected after you join.'}</div>
-              </div>
-
-              {signupFlags.emailPassword && (
+              {/* PHONE path — only the phone field + DOB + the send button. */}
+              {contactMode === 'phone' && (
                 <>
-                  <div className="sl-div">{he ? 'וגם' : 'and'}</div>
+                  <button type="button" className="sl-backLink" onClick={() => { setContactMode('choose'); setPhone(''); }}>
+                    {he ? '← דרך אחרת' : '← Other options'}
+                  </button>
+                  {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
+                    <p className="sl-inlineError" role="status">
+                      {he ? 'SMS אינו זמין כעת — אפשר להמשיך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'}
+                    </p>
+                  )}
+                  <div className="sl-field">
+                    <label className="sl-label">{t.phoneLabel}</label>
+                    <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
+                    <div className="sl-hint">{he ? 'נשלח קוד אימות חד-פעמי ב-SMS — בלי סיסמה.' : 'We text you a one-time code — no password.'}</div>
+                  </div>
+                  <div className="sl-field">
+                    <label className="sl-label">{he ? 'תאריך לידה · גיל 18 ומעלה' : 'Date of birth · 18+'}</label>
+                    <AppleWheelDatePicker
+                      value={dob || `${new Date().getFullYear() - 25}-06-15`}
+                      onChange={setDob}
+                      minYear={new Date().getFullYear() - 100}
+                      maxYear={new Date().getFullYear() - 18}
+                      monthNames={he ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : undefined}
+                      dayLabel={he ? 'יום' : 'Day'} monthLabel={he ? 'חודש' : 'Month'} yearLabel={he ? 'שנה' : 'Year'}
+                    />
+                    {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
+                  </div>
+                </>
+              )}
+
+              {/* EMAIL path — only the email field + DOB + the send button. */}
+              {contactMode === 'email' && signupFlags.emailPassword && (
+                <>
+                  <button type="button" className="sl-backLink" onClick={() => { setContactMode('choose'); setEmail(''); }}>
+                    {he ? '← דרך אחרת' : '← Other options'}
+                  </button>
                   <div className="sl-field">
                     <label className="sl-label">{t.emailLabel}</label>
                     <div className="sl-inputWrap">
                       <FaEnvelope className="sl-inputIcon" aria-hidden />
                       <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                        value={email} onChange={(e) => setEmail(e.target.value)}
-                        placeholder={t.emailPh} />
+                        value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
                     </div>
-                    <div className="sl-hint">{he ? 'Gmail, Hotmail, Yahoo או כל כתובת אימייל' : 'Gmail, Hotmail, Yahoo or any email works'}</div>
+                    <div className="sl-hint">{he ? 'נשלח קוד אימות חד-פעמי לאימייל — בלי סיסמה.' : 'We email you a one-time code — no password.'}</div>
+                  </div>
+                  <div className="sl-field">
+                    <label className="sl-label">{he ? 'תאריך לידה · גיל 18 ומעלה' : 'Date of birth · 18+'}</label>
+                    <AppleWheelDatePicker
+                      value={dob || `${new Date().getFullYear() - 25}-06-15`}
+                      onChange={setDob}
+                      minYear={new Date().getFullYear() - 100}
+                      maxYear={new Date().getFullYear() - 18}
+                      monthNames={he ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : undefined}
+                      dayLabel={he ? 'יום' : 'Day'} monthLabel={he ? 'חודש' : 'Month'} yearLabel={he ? 'שנה' : 'Year'}
+                    />
+                    {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
                   </div>
                 </>
               )}
@@ -1031,10 +1067,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </>
           )}
 
-          {!sent && (
+          {!sent && contactMode !== 'choose' && (
             <>
-              {/* Consent checkboxes moved ABOVE the methods (top of the card) —
-                  see the reorder note there. CTA + its consent hint stay here. */}
+              {/* Send-code CTA — only after a manual method (phone/email) is chosen. */}
               <button className="sl-cta" disabled={!readyForSubmit || !consentOk}
                 onClick={startSignup}>
                 <FaLock aria-hidden /> {ctaLabel}
@@ -1267,6 +1302,8 @@ function styles(he: boolean) {
 
     /* Social tiles 2x2 */
     .sl-social4{ display:grid; grid-template-columns:1fr 1fr; gap:10px }
+    .sl-chooser{ display:grid; gap:10px; margin-top:4px }
+    .sl-backLink{ background:none; border:0; color:#9a7b2e; font-weight:700; font-size:13px; padding:6px 0; cursor:pointer; text-align:inherit }
     .sl-soc{
       appearance:none; cursor:pointer; position:relative;
       min-height:60px; border-radius:14px;
