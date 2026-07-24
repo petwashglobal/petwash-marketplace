@@ -31,6 +31,7 @@ import {
   providers,
   providerOperationalSettings,
   bookings,
+  bookingRequests,
 } from "../../shared/schema";
 import { and, eq, or, inArray, gte, lte, ne } from "drizzle-orm";
 import { logger } from "../lib/logger";
@@ -48,6 +49,10 @@ import { eventBus } from "./EventBus";
 // population must come first; tracked in a future PR).
 
 const BOOKING_BLOCKING_STATUSES = [
+  // 'inquiry' is what BookingLifecycleService actually writes on checkout —
+  // its absence here was one reason the filter never matched anything.
+  "inquiry",
+  "accepted",
   "draft",
   "pending_payment",
   "pending_provider",
@@ -66,31 +71,70 @@ function parseRequestedRange(
   return { start, end };
 }
 
+// booking_requests statuses that mean the provider is genuinely committed.
+// (declined / cancelled / completed / reviewed do NOT block a new booking.)
+const REQUEST_BLOCKING_STATUSES = [
+  "pending",
+  "accepted",
+  "meet_greet_scheduled",
+  "meet_greet_completed",
+  "payment_pending",
+  "confirmed",
+  "in_progress",
+  "provider_marked_complete",
+] as const;
+
+/**
+ * Which of these providers are already busy in the requested window?
+ *
+ * 2026-07-24 REWIRE: the old version queried ONLY the `bookings` table, keyed
+ * by providers.id, filtered on a lowercase platformId and a status list the
+ * writer never used — three independent reasons it could never match, so
+ * `availableForRequestedDates` was permanently true and the date filter was
+ * decorative. Real commitments live in `booking_requests` (the canonical
+ * provider-facing table — the healthy chain AND the legacy bridge both write
+ * there), keyed by the provider's Firebase UID. We check that first, and still
+ * check `bookings` (marketplace checkout) by uid as a second source.
+ */
 async function getConflictedProviderIds(
   platformId: string,
-  providerIdsAsStrings: string[],
+  providerUids: string[],
   range: { start: Date; end: Date }
 ): Promise<Set<string>> {
-  if (providerIdsAsStrings.length === 0) return new Set();
+  const uids = providerUids.filter(Boolean);
+  if (uids.length === 0) return new Set();
+  const set = new Set<string>();
   try {
-    const rows = await db
+    // PRIMARY: booking_requests — where every real booking now lands.
+    const reqRows = await db
+      .select({ providerId: bookingRequests.providerId })
+      .from(bookingRequests)
+      .where(
+        and(
+          inArray(bookingRequests.providerId, uids),
+          inArray(bookingRequests.status, REQUEST_BLOCKING_STATUSES as unknown as string[]),
+          // Overlap: existing starts before requested end AND ends after requested start
+          lte(bookingRequests.startDate, range.end),
+          gte(bookingRequests.endDate, range.start)
+        )
+      );
+    for (const r of reqRows) if (r.providerId) set.add(r.providerId);
+
+    // SECONDARY: marketplace-checkout rows (bookings). platformId is stored
+    // uppercase by BookingLifecycleService, so compare case-insensitively.
+    const bookRows = await db
       .select({ providerId: bookings.providerId })
       .from(bookings)
       .where(
         and(
-          eq(bookings.platformId, platformId),
-          inArray(bookings.providerId, providerIdsAsStrings),
+          inArray(bookings.providerId, uids),
           inArray(bookings.status, BOOKING_BLOCKING_STATUSES as unknown as string[]),
-          // Overlap: existing booking starts before requested end
-          //          AND existing booking ends after requested start
           lte(bookings.startTime, range.end),
           gte(bookings.endTime, range.start)
         )
       );
-    const set = new Set<string>();
-    for (const r of rows) {
-      if (r.providerId) set.add(r.providerId);
-    }
+    for (const r of bookRows) if (r.providerId) set.add(r.providerId);
+
     return set;
   } catch (err: any) {
     logger.warn("[ProviderSearch] Conflict query failed; treating as no conflict", {
@@ -244,7 +288,7 @@ async function fetchDogWalkers(
   const conflictSet = range
     ? await getConflictedProviderIds(
         "walk_my_pet",
-        rows.map((r) => String(r.providerId)),
+        rows.map((r) => String(r.userId ?? "")),
         range
       )
     : new Set<string>();
@@ -264,6 +308,8 @@ async function fetchDogWalkers(
     if (rating >= 4.8) badges.push("מדורג גבוה");
 
     const providerIdStr = String(w.providerId);
+    // conflictSet is keyed by provider UID (availability rewire 2026-07-24)
+    const providerUid = String(w.userId ?? '');
     return {
       providerId: providerIdStr,
       userId: w.userId ?? undefined,
@@ -285,7 +331,7 @@ async function fetchDogWalkers(
       startingPrice: price,
       currency: w.currency ?? "ILS",
       priceLabel: price > 0 ? `מ-₪${price}` : "לפי פנייה",
-      availableForRequestedDates: !conflictSet.has(providerIdStr),
+      availableForRequestedDates: !conflictSet.has(providerUid),
       rankingScore: 0,
       badges,
     };
@@ -358,7 +404,7 @@ async function fetchSitters(
   const conflictSet = range
     ? await getConflictedProviderIds(
         "sitter_suite",
-        rows.map((r) => String(r.providerId)),
+        rows.map((r) => String(r.userId ?? "")),
         range
       )
     : new Set<string>();
@@ -390,6 +436,7 @@ async function fetchSitters(
     if (rating >= 4.8) badges.push("מדורג גבוה");
 
     const providerIdStr = String(s.providerId);
+    const providerUid = String(s.userId ?? '');
     results.push({
       providerId: providerIdStr,
       userId: s.userId ?? undefined,
@@ -411,7 +458,7 @@ async function fetchSitters(
       startingPrice: price,
       currency: "ILS",
       priceLabel: price > 0 ? `מ-₪${price}` : "לפי פנייה",
-      availableForRequestedDates: !conflictSet.has(providerIdStr),
+      availableForRequestedDates: !conflictSet.has(providerUid),
       rankingScore: 0,
       badges,
     });
@@ -458,7 +505,7 @@ async function fetchByPlatform(
   const conflictSet = range
     ? await getConflictedProviderIds(
         platformId,
-        rows.map((r) => String(r.providerId)),
+        rows.map((r) => String((r as any).userId ?? "")),
         range
       )
     : new Set<string>();
@@ -475,6 +522,7 @@ async function fetchByPlatform(
     if (rating >= 4.8) badges.push("מדורג גבוה");
 
     const providerIdStr = String(p.providerId);
+    const providerUid = String(p.userId ?? '');
     return {
       providerId: providerIdStr,
       providerSlug: slug(`${displayName}-il`),
@@ -491,7 +539,7 @@ async function fetchByPlatform(
       startingPrice: 0,
       currency: "ILS",
       priceLabel: "לפי פנייה",
-      availableForRequestedDates: !conflictSet.has(providerIdStr),
+      availableForRequestedDates: !conflictSet.has(providerUid),
       rankingScore: 0,
       badges,
     };
