@@ -91,8 +91,8 @@ router.get('/bookkeeping', requireSuperAdmin, async (req: Request, res: Response
     vatNote: 'סכומי מע״מ מחושבים כהפרש ברוטו−נטו לכל תא. הדיווח החודשי ל־SUMIT הוא מקור האמת הפיסקלי.',
     stations,
     orphanMachines: orphanMachines.map((m) => ({ machineId: m, ...byMachine[m] })),
-    // HR / staff module is not built yet — honest flag, never a fake roster.
-    staff: { built: false, note: 'מודול HR/צוות טרם נבנה — יתווסף עם רשומות עובדים אמיתיות.' },
+    // HR / staff module SHIPPED (migration 0102 + /api/admin/staff).
+    staff: { built: true, note: 'ניהול הצוות זמין במסך «צוות ו־HR».', href: '/admin/staff' },
   });
 });
 

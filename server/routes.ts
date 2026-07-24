@@ -61,6 +61,7 @@ import paymentsSumitRoutes from "./routes/payments-sumit";
 import legalConsentRoutes from "./routes/legal-consent";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
+import adminStaffRoutes from "./routes/admin-staff";
 import googleServicesRoutes from "./routes/google-services";
 import geocodeRoutes from "./routes/geocode";
 import geoLanguageRoutes from "./routes/geo-language";
@@ -12156,6 +12157,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/legal', apiLimiter, legalConsentRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
+  app.use('/api/admin/staff', apiLimiter, adminStaffRoutes);
   // Member self-read of their resolved K9000 wash discount (for the price note).
   app.use('/api/member', apiLimiter, memberDiscountRoutes);
   // Single status source-of-truth (MASTER BIBLE §3/§9): GET /api/me/status

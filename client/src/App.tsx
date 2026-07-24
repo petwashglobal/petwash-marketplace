@@ -153,6 +153,7 @@ const AdminNayaxEvents = lazy(() => import("@/pages/admin/AdminNayaxEvents"));
 const AdminOctopus = lazy(() => import("@/pages/AdminOctopus"));
 const AdminShopProducts = lazy(() => import("@/pages/AdminShopProducts"));
 const AdminBookkeeping = lazy(() => import("@/pages/AdminBookkeeping"));
+const AdminStaff = lazy(() => import("@/pages/AdminStaff"));
 const CEODashboard = lazy(() => import("@/pages/CEODashboard"));
 const AdminKYC = lazy(() => import("@/pages/AdminKYC"));
 const AdminSystemLogs = lazy(() => import("@/pages/AdminSystemLogs"));
@@ -2532,6 +2533,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <AdminRouteGuard>
               <AdminBookkeeping />
+            </AdminRouteGuard>
+          )}
+        </Route>
+        <Route path="/admin/staff">
+          {() => (
+            <AdminRouteGuard>
+              <AdminStaff />
             </AdminRouteGuard>
           )}
         </Route>

@@ -62,6 +62,7 @@ export default function AdminOctopus() {
     { label: 'הנהלת חשבונות — עמדות', to: '/admin/bookkeeping', icon: BookOpen },
     { label: 'ניהול מוצרי חנות', to: '/admin/shop-products', icon: ShoppingBag },
     { label: 'אישור ספקים', to: '/admin/applications', icon: UserCheck },
+    { label: 'צוות ו־HR', to: '/admin/staff', icon: Users },
     { label: 'אירועי Nayax', to: '/admin/nayax-events', icon: Radio },
     { label: 'תשלומים SUMIT', to: '/admin/sumit-control', icon: CreditCard },
     { label: 'קופונים', to: '/admin/coupons', icon: Ticket },

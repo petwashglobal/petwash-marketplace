@@ -37,8 +37,9 @@ describe('bookkeeping endpoint', () => {
     expect(api).toMatch(/orphanMachines/);
   });
 
-  it('flags HR/staff as not-built instead of faking a roster', () => {
-    expect(api).toMatch(/staff: \{ built: false/);
+  it('points at the real HR module (built 2026-07-24) — never a fake roster', () => {
+    expect(api).toMatch(/staff: \{ built: true/);
+    expect(api).toMatch(/href: '\/admin\/staff'/);
   });
 });
 
