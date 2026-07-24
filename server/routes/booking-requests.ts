@@ -442,11 +442,36 @@ router.post('/', async (req, res) => {
         cLng = custRow?.lng ?? null;
       }
 
-      const [provRow] = await db
+      // Provider coords: users.latitude/longitude is usually NULL — providers
+      // are geocoded in their PROFILE tables, which is exactly what search
+      // ranks on. Reading only `users` meant the geofence fail-opened
+      // (skipped:'no-coords') for practically every real provider — the guard
+      // silently never fired (audit finding, 2026-07-24). Fall back to the
+      // profile coordinates so the service-area check actually works.
+      let [provRow] = await db
         .select({ lat: users.latitude, lng: users.longitude })
         .from(users)
         .where(eq(users.id, data.providerId))
         .limit(1);
+
+      if (provRow?.lat == null || provRow?.lng == null) {
+        const svc = String(data.serviceType || '').toLowerCase();
+        if (svc.includes('walk')) {
+          const [wp] = await db
+            .select({ lat: walkerProfiles.currentLatitude, lng: walkerProfiles.currentLongitude })
+            .from(walkerProfiles)
+            .where(eq(walkerProfiles.userId, data.providerId))
+            .limit(1);
+          if (wp?.lat != null && wp?.lng != null) provRow = { lat: wp.lat as any, lng: wp.lng as any };
+        } else {
+          const [sp] = await db
+            .select({ lat: sitterProfiles.latitude, lng: sitterProfiles.longitude })
+            .from(sitterProfiles)
+            .where(eq(sitterProfiles.userId, data.providerId))
+            .limit(1);
+          if (sp?.lat != null && sp?.lng != null) provRow = { lat: sp.lat as any, lng: sp.lng as any };
+        }
+      }
 
       // Radius: walkers travel to the pet and declare a service radius — use it.
       // Other domains have no per-provider radius → generous env default.
