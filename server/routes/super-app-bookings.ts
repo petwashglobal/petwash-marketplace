@@ -82,13 +82,24 @@ const createPaymentIntentSchema = z.object({
   deviceType: z.enum(['WEB', 'IOS', 'ANDROID']).optional().default('WEB'),
 });
 
-// POST /api/platforms/:platformId/bookings - Create booking
+// POST /api/platforms/:platformId/bookings — SEALED 2026-07-24
+// (booking-engine consolidation, CEO "fix wtf" audit). Zero client callers,
+// and it wrote the shared `bookings` table with a different status vocabulary
+// + provider-id semantics than the live engines — a source of the unpredictable
+// booking behaviour. Canonical rails: POST /api/booking-requests (provider
+// services) and the marketplace checkout rail. GET on this router is untouched
+// (/:platformId/providers is live).
 router.post(
   '/:platformId/bookings',
   requireAuth,
   requirePlatformContext,
   apiLimiter,
   async (req: any, res: any) => {
+    return res.status(410).json({
+      error: 'This booking engine is sealed. Use POST /api/booking-requests or the marketplace checkout rail.',
+      code: 'BOOKING_ENGINE_SEALED',
+    });
+    // eslint-disable-next-line no-unreachable
     try {
       const userId = req.firebaseUser?.uid || req.user?.uid;
       if (!userId) {

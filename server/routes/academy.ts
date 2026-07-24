@@ -7,6 +7,7 @@
 
 import { Router } from 'express';
 import { z } from 'zod';
+import { haversineKm } from '../utils/providerSearch';
 import { db } from '../db';
 import {
   trainers,
@@ -52,7 +53,7 @@ router.get('/', (req, res) => {
  */
 router.get('/trainers', async (req, res) => {
   try {
-    const { city, specialty, minRating, serviceType, language } = req.query;
+    const { city, specialty, minRating, serviceType, language, lat, lng, radiusKm } = req.query;
     
     // Base query: only verified, active trainers
     let query = db
@@ -95,6 +96,56 @@ router.get('/trainers', async (req, res) => {
         parseFloat(t.averageRating || '0') >= minRatingNum
       );
     }
+
+    // ── CITY FILTER (2026-07-24) ──────────────────────────────────────────────
+    // `city` was destructured and then NEVER USED — a customer filtering by city
+    // got the same nationwide list every time. Trainers declare coverage via
+    // serviceCitySymbols[] (canonical) and the free-text serviceArea.
+    if (city) {
+      const needle = String(city).trim().toLowerCase();
+      if (needle) {
+        filteredTrainers = filteredTrainers.filter((t: any) => {
+          const symbols: string[] = Array.isArray(t.serviceCitySymbols) ? t.serviceCitySymbols : [];
+          if (symbols.some((sym) => String(sym).toLowerCase() === needle)) return true;
+          return String(t.serviceArea || '').toLowerCase().includes(needle);
+        });
+      }
+    }
+
+    // ── PROXIMITY (2026-07-24) ────────────────────────────────────────────────
+    // Academy had NO distance matching at all — results were rating-ordered
+    // nationwide, so a Kfar Saba customer could be shown an Eilat trainer first.
+    // With lat/lng we now compute a real haversine distance, drop anyone beyond
+    // the radius, and sort nearest-first (rating breaks ties).
+    const custLat = lat != null ? Number(lat) : NaN;
+    const custLng = lng != null ? Number(lng) : NaN;
+    const hasCustomerCoords = Number.isFinite(custLat) && Number.isFinite(custLng);
+    const maxKm = Number.isFinite(Number(radiusKm)) && Number(radiusKm) > 0 ? Number(radiusKm) : 40;
+
+    let withDistance = filteredTrainers.map((t: any) => {
+      const tLat = t.latitude != null ? parseFloat(t.latitude) : NaN;
+      const tLng = t.longitude != null ? parseFloat(t.longitude) : NaN;
+      const distanceKm = hasCustomerCoords && Number.isFinite(tLat) && Number.isFinite(tLng)
+        ? Math.round(haversineKm(custLat, custLng, tLat, tLng) * 10) / 10
+        : null;
+      return { trainer: t, distanceKm };
+    });
+
+    if (hasCustomerCoords) {
+      // Trainers WITHOUT coordinates are kept (fail-open — never hide a real
+      // trainer because their profile lacks a pin) but ranked after those in range.
+      withDistance = withDistance.filter((x) => x.distanceKm === null || x.distanceKm <= maxKm);
+      withDistance.sort((a, b) => {
+        if (a.distanceKm === null && b.distanceKm === null) return 0;
+        if (a.distanceKm === null) return 1;
+        if (b.distanceKm === null) return -1;
+        return a.distanceKm - b.distanceKm;
+      });
+      filteredTrainers = withDistance.map((x) => x.trainer);
+    }
+    const distanceByTrainerId = new Map<number, number | null>(
+      withDistance.map((x) => [x.trainer.id, x.distanceKm]),
+    );
     
     logger.info('[Academy] Trainers browsed', {
       count: filteredTrainers.length,
@@ -108,6 +159,9 @@ router.get('/trainers', async (req, res) => {
       fullName: `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Trainer',
       city: t.serviceArea || 'Israel',
       experienceYears: t.yearsOfExperience || 0,
+      // Real distance when the customer shared coordinates; null when unknown —
+      // never a fabricated number.
+      distanceKm: distanceByTrainerId.get(t.id) ?? null,
     }));
     
     res.json(transformedTrainers);
