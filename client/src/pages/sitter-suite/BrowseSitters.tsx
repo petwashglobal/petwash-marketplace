@@ -20,6 +20,8 @@ import { fetchProviderBrowseResults } from "@/api/providerSearchApi";
 
 interface Provider {
   id: string;
+  /** Provider's Firebase UID — the id the marketplace detail/contact pages use. */
+  userId?: string;
   platform: string;
   serviceType: string;
   displayName: string;
@@ -674,7 +676,12 @@ export default function BrowseSitters() {
                     instantBook={provider.instantBooking ?? true}
                     available={true}
                     specialties={provider.acceptedPetTypes?.slice(0, 2).map(pt => pt === 'dog' ? (isHebrew ? 'כלבים' : 'Dogs') : pt === 'cat' ? (isHebrew ? 'חתולים' : 'Cats') : pt) || []}
-                    onClick={() => setLocation(`/sitter-suite/sitters/${provider.id}`)}
+                    // ID-SPACE FIX (2026-07-24): provider.id here is providers.id, but
+                    // /sitter-suite/sitters/:id resolves against sitter_profiles.id —
+                    // different tables, different serials, so this opened the WRONG
+                    // sitter or 404'd. Route through the healthy marketplace detail
+                    // path, which is keyed by the provider's userId.
+                    onClick={() => setLocation(`/marketplace/sitter_suite/${provider.userId || provider.id}`)}
                   />
                 );
               })}
