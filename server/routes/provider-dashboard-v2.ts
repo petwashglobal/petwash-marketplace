@@ -750,7 +750,7 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
 
     // Fetch + ownership check in one query — include owner_id/request_id for downstream notifications
     const fetchResult = await pool.query(
-      `SELECT id, status, provider_id, owner_id, request_id, service_type
+      `SELECT id, status, provider_id, owner_id, request_id, service_type, quote_breakdown
        FROM booking_requests WHERE id = $1 AND provider_id = $2`,
       [bookingId, user.uid],
     );
@@ -899,6 +899,18 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
     }
 
     const updated = updateResult.rows[0];
+
+    // ── Legacy bridge sync (2026-07-24) ───────────────────────────────────────
+    // Sitter/Walk bookings created by the legacy flows are mirrored into
+    // booking_requests so the provider can see them. When the provider answers,
+    // write the decision BACK to the customer-side row, otherwise the customer
+    // keeps seeing "waiting for provider" forever. Fail-soft by design.
+    if (action === 'accept' || action === 'decline') {
+      try {
+        const { applyBridgeDecision } = await import('../services/legacyBookingBridge');
+        await applyBridgeDecision(booking.quote_breakdown, action);
+      } catch { /* canonical row already updated */ }
+    }
 
     // ── Customer notification on accept / decline ──────────────────────────────
     // The V1 /respond route does this; we mirror it here so the V2 fast-action
