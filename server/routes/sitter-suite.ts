@@ -890,6 +890,30 @@ router.post('/bookings', requireAuth, async (req, res) => {
       })
       .returning();
     
+    // BRIDGE (2026-07-24): mirror into booking_requests so the provider job
+    // inbox (/provider-os) can actually SEE and accept this. Without it the
+    // booking hung at pending_provider forever — the provider had no screen
+    // that reads sitter_bookings. Fail-soft: never blocks the customer.
+    try {
+      const { bridgeLegacyBooking } = await import('../services/legacyBookingBridge');
+      await bridgeLegacyBooking({
+        ownerId,
+        providerUserId: sitter.userId,
+        providerProfileId: sitter.id,
+        providerType: 'sitter',
+        serviceType: 'pet_sitting',
+        startDate: start,
+        endDate: end,
+        petCount: 1,
+        subtotalCents: Math.round(pricing.subtotal * 100),
+        serviceFeeCents: Math.round(pricing.platformFee * 100),
+        totalCents: Math.round(pricing.totalPrice * 100),
+        providerPayoutCents: Math.round(pricing.sitterPayout * 100),
+        ownerMessage: specialInstructions ?? null,
+        legacyRef: { table: 'sitter_bookings', id: bookingId },
+      });
+    } catch { /* bridge is best-effort */ }
+
     // Record in Octopus Brain ledger (financial audit trail)
     const octopusId = `OB-SITTER-${nanoid(8)}`;
     const priceCents = Math.round(pricing.totalPrice * 100);

@@ -432,6 +432,10 @@ router.post('/walks/book', requireAuth, async (req, res) => {
     const [walkerProfile] = await db
       .select({
         walkerId: walkerProfiles.walkerId,
+        // userId + id: needed to mirror the booking into booking_requests so the
+        // provider job inbox can see it (booking bridge, 2026-07-24).
+        userId: walkerProfiles.userId,
+        profileId: walkerProfiles.id,
         isActive: walkerProfiles.isActive,
         verificationStatus: walkerProfiles.verificationStatus,
         currentLatitude: walkerProfiles.currentLatitude,
@@ -583,6 +587,32 @@ router.post('/walks/book', requireAuth, async (req, res) => {
     };
 
     const [newBooking] = await db.insert(walkBookings).values(bookingData).returning();
+
+    // BRIDGE (2026-07-24): mirror into booking_requests so the provider job
+    // inbox (/provider-os) can SEE and accept this walk. Without it the booking
+    // hung at pending_provider forever — the only UI that reads walk_bookings
+    // (WalkerDashboard.tsx) was never routed. Fail-soft.
+    try {
+      const { bridgeLegacyBooking } = await import('../services/legacyBookingBridge');
+      const startAt = new Date(`${scheduledDateOnly}T${scheduledStartTime || '09:00'}:00`);
+      const endAt = new Date(startAt.getTime() + (Number(durationMinutes) || 30) * 60000);
+      await bridgeLegacyBooking({
+        ownerId,
+        providerUserId: walkerProfile.userId as string,
+        providerProfileId: walkerProfile.profileId as number,
+        providerType: 'walker',
+        serviceType: 'dog_walking',
+        startDate: isNaN(startAt.getTime()) ? new Date() : startAt,
+        endDate: isNaN(endAt.getTime()) ? new Date(Date.now() + 30 * 60000) : endAt,
+        petCount: 1,
+        subtotalCents: Math.round(pricing.baseRate * 100),
+        serviceFeeCents: Math.round(pricing.platformFee * 100),
+        totalCents: Math.round(pricing.totalPrice * 100),
+        providerPayoutCents: Math.round(pricing.providerPayout * 100),
+        ownerMessage: null,
+        legacyRef: { table: 'walk_bookings', id: bookingId },
+      });
+    } catch { /* bridge is best-effort */ }
 
     // Record in Octopus Brain ledger (financial audit trail)
     const octopusId = `OB-WALK-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
