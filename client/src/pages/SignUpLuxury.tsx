@@ -111,8 +111,8 @@ function destForFlow(flow: Flow): string {
     case 'provider': return '/provider-onboarding';
     case 'guest': return '/egift';
     case 'booking': return '/booking';
-    case 'prestige': return '/dashboard';
-    default: return '/dashboard';
+    case 'prestige': return '/prestige/home';
+    default: return '/prestige/home';
   }
 }
 
