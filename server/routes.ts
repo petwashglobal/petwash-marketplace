@@ -1125,7 +1125,7 @@ self.addEventListener('notificationclick', (event) => {
         traceId,
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
-      const { idToken, expiresInMs = 432000000, captchaToken, turnstileToken } = req.body;
+      const { idToken, expiresInMs = 432000000, captchaToken, turnstileToken, dateOfBirth: bodyDob } = req.body;
       
       if (!idToken) {
         logger.warn('[Session] Missing ID token in request - client error (400)', { traceId });
@@ -1321,6 +1321,9 @@ self.addEventListener('notificationclick', (event) => {
           profileImageUrl: decoded.picture || undefined,
           country,
           language: lang,
+          // DOB collected at signup — persisted at ROW CREATION so loyalty users
+          // (who require dateOfBirth) aren't re-asked at /complete-profile.
+          dateOfBirth: (typeof bodyDob === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(bodyDob)) ? bodyDob : undefined,
         });
         const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 3000));
         _syncResult = await Promise.race([syncRace, timeoutPromise]) as typeof _syncResult;
