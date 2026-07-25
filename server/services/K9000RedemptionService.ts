@@ -52,7 +52,7 @@ import {
   bayEvents,
   bayFaults,
 } from '@shared/schema';
-import { eq, and, gt, gte, ne, sql } from 'drizzle-orm';
+import { eq, and, gt, gte, ne, sql, notInArray } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import crypto from 'crypto';
@@ -86,6 +86,18 @@ const VELOCITY_WINDOW_SECONDS   = 3600; // 1-hour sliding window
 const VELOCITY_MAX_REDEMPTIONS  = 3;    // max redemptions per user per hour
 
 const SESSION_TIMEOUT_SECONDS   = 900;  // 15 min default — IoT must confirm start
+
+// A bay in any of these states cannot be claimed for a new session — same rule
+// assessBayReadiness uses. The atomic bay-claim in openBaySession relies on this.
+const CLAIM_BLOCKED_BAY_STATUSES = ['busy', 'cleanup', 'fault', 'maintenance', 'offline'];
+
+/** Thrown when a concurrent redemption already claimed the bay. Caller-recoverable. */
+export class BayAlreadyBusyError extends Error {
+  constructor(readonly bayId: string) {
+    super(`Bay ${bayId} was already claimed by a concurrent session`);
+    this.name = 'BayAlreadyBusyError';
+  }
+}
 
 // ── Public interface ─────────────────────────────────────────────────────────
 
@@ -357,8 +369,18 @@ export async function openBaySession(params: {
       correlationId: params.correlationId ?? null,
     });
 
-    // Mark bay as busy, record current session
-    await tx
+    // Mark bay as busy, record current session — ATOMICALLY (2026-07-25 fix).
+    // The old UPDATE matched only on bay id, with no status guard and no rowcount
+    // check. Two simultaneous redemptions on the same bay both inserted an
+    // 'active' session and both flipped the bay to busy — the second overwrote
+    // currentSessionId and ORPHANED the first session. The claim now succeeds
+    // only when the bay is not already blocked (same not-in-blocked-list rule as
+    // assessBayReadiness), and we assert exactly one row changed. If zero rows
+    // changed, another redemption won the bay first → throw so the whole
+    // transaction (including the session insert above) rolls back. The caller
+    // treats this as non-fatal (the physical Nayax machine is the real single-dog
+    // gate); we simply don't create a duplicate/orphan session.
+    const claimed = await tx
       .update(stationBays)
       .set({
         status: 'busy',
@@ -368,7 +390,15 @@ export async function openBaySession(params: {
         totalRevenueCents: sql`${stationBays.totalRevenueCents} + ${params.amountCents ?? 0}`,
         updatedAt: new Date(),
       })
-      .where(eq(stationBays.id, params.bay.id));
+      .where(and(
+        eq(stationBays.id, params.bay.id),
+        notInArray(stationBays.status, CLAIM_BLOCKED_BAY_STATUSES),
+      ))
+      .returning({ id: stationBays.id });
+
+    if (claimed.length !== 1) {
+      throw new BayAlreadyBusyError(params.bay.id);
+    }
   });
 
   return { sessionId };
@@ -1052,7 +1082,11 @@ async function debitAndLog(input: DebitInput): Promise<DebitResult> {
       correlationId,
     });
 
-    await tx
+    // Atomic bay claim (2026-07-25 fix) — same guard as openBaySession: only
+    // claim a not-blocked bay and assert exactly one row changed. If another
+    // redemption won the bay first, throw so the whole transaction — including
+    // the wallet debit above — rolls back (never charge for a bay we can't get).
+    const claimed = await tx
       .update(stationBays)
       .set({
         status: 'busy',
@@ -1062,7 +1096,19 @@ async function debitAndLog(input: DebitInput): Promise<DebitResult> {
         totalRevenueCents: sql`${stationBays.totalRevenueCents} + ${isMonetary ? WASH_PRICE_ILS_CENTS : 0}`,
         updatedAt: new Date(),
       })
-      .where(eq(stationBays.id, bay.id));
+      .where(and(
+        eq(stationBays.id, bay.id),
+        notInArray(stationBays.status, CLAIM_BLOCKED_BAY_STATUSES),
+      ))
+      .returning({ id: stationBays.id });
+
+    if (claimed.length !== 1) {
+      throw rejectWith(
+        'BAY_NOT_READY',
+        'עמדת השטיפה נתפסה זה עתה. נסה את הצד השני.',
+        503,
+      );
+    }
   });
 
   // ── Audit ledger (append-only hash-chain, outside main tx) ──────────────
