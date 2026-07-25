@@ -79,11 +79,16 @@ export default function ProviderOnboarding() {
         })()
       : {};
     const role: string | undefined = claims?.role;
-    // Roles that should NOT see the provider KYC form. Customer +
-    // already-approved provider stay (the latter is harmless: the
-    // form's apply call will return 409 already-applied).
+    // Roles that should NOT see the provider KYC form — INTERNAL/staff roles only.
+    // 2026-07-25 (#148 P1): 'loyalty' was in this list, so a logged-in loyalty
+    // member who opened provider onboarding saw the form mount and then get
+    // bounced to /prestige/home — "appears briefly then disappears". But a member
+    // becoming ALSO a provider is the intended additive both-roles flow (a
+    // customer was never blocked either). Only genuinely-incompatible internal
+    // roles are bounced; customer + loyalty + already-approved provider stay (the
+    // last is harmless — the apply call returns 409 already-applied).
     const blockedRoles = new Set([
-      'loyalty', 'staff', 'admin', 'super_admin', 'management', 'franchise_owner',
+      'staff', 'admin', 'super_admin', 'management', 'franchise_owner',
     ]);
     if (!role || !blockedRoles.has(role)) return;
 
