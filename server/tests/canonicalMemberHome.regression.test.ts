@@ -14,9 +14,8 @@ const signup = R('client/src/pages/SignUpLuxury.tsx');
 describe('canonical member home', () => {
   it('server decider routes members to /prestige/home, not /home', () => {
     expect(decider).toMatch(/return \{ nextUrl: '\/prestige\/home', reason: 'OK', profileStatus: 'complete', role, userStatus \};/);
-    // the loyalty + default customer completions must not fall back to /home
-    const loyaltyBranch = decider.slice(decider.indexOf("role === 'loyalty'"), decider.indexOf("role === 'loyalty'") + 260);
-    expect(loyaltyBranch).toContain("nextUrl: '/prestige/home'");
+    // no member-complete branch should fall back to /home
+    expect(decider).not.toMatch(/nextUrl: '\/home', reason: 'OK', profileStatus: 'complete'/);
   });
   it('client destForFlow member fallbacks point to /prestige/home', () => {
     expect(signup).toMatch(/case 'prestige': return '\/prestige\/home';/);
