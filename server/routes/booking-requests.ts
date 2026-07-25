@@ -14,6 +14,7 @@
 
 import { Router } from 'express';
 import { db } from '../db';
+import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import { 
   bookingRequests,
   bookingRequestPets,
@@ -2987,6 +2988,49 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         logger.warn('[BookingRequests] VAT ledger recording failed (non-blocking)', { error: vatErr.message, requestId });
       }
     }
+
+    // ── Customer receipt (P0-3 fix, 2026-07-25) ──────────────────────────────
+    // The escrow booking engine recorded only the P&L VAT row above and NEVER
+    // issued the customer a receipt — a provider booking through this engine
+    // produced no חשבונית/קבלה at all (unlike the sitter/walk/academy v1 routes).
+    // Issue the disclosed-agent receipt now, at the same completion/escrow-release
+    // event as the VAT obligation. VAT is commission-only per the CPA mapping
+    // (PROVIDER_BOOKING_COMMISSION → resolveReceiptVat). generateReceipt has its
+    // own exactly-once guard, so this is safe even if another path also fires.
+    // Fire-and-forget + fail-soft: a receipt problem must never roll back the
+    // confirmed booking or delay the response.
+    setImmediate(async () => {
+      try {
+        const [owner] = await db
+          .select({ email: users.email, first: users.firstName, last: users.lastName })
+          .from(users)
+          .where(eq(users.id, booking.ownerId))
+          .limit(1);
+        const commissionIls = (booking.serviceFeeCents || 0) / 100;
+        await IsraeliDigitalReceiptService.generateReceipt({
+          platform: 'booking-requests',
+          paymentClass: 'PROVIDER_BOOKING_COMMISSION',
+          bookingId: requestId,
+          customerEmail: owner?.email || '',
+          customerName: [owner?.first, owner?.last].filter(Boolean).join(' '),
+          providerId: booking.providerId,
+          providerType: booking.providerType,
+          serviceDescription: `PetWash booking — ${booking.serviceType}`,
+          serviceDescriptionHe: `הזמנת PetWash — ${booking.serviceType}`,
+          subtotalAmount: (booking.subtotalCents || 0) / 100,
+          platformFeeAmount: commissionIls,
+          totalAmount: (booking.totalCents || booking.subtotalCents || 0) / 100,
+          paymentMethod: 'Escrow (card)',
+          providerPayoutAmount:
+            (booking.providerPayoutCents ?? ((booking.subtotalCents || 0) - (booking.serviceFeeCents || 0))) / 100,
+          brokerCommissionAmount: commissionIls,
+        });
+      } catch (receiptErr) {
+        logger.warn('[BookingRequests] Customer receipt generation failed (non-blocking)', {
+          requestId, error: String(receiptErr),
+        });
+      }
+    });
 
     logBookingEvent('owner_confirmed', buildEventPayload({ ...booking, status: finalStatus }), {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
