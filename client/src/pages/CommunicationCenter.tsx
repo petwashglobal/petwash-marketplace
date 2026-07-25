@@ -669,14 +669,14 @@ export default function CommunicationCenter() {
                   <div>
                     <Label htmlFor="email-category">{t('common.category', 'Category')}</Label>
                     <Select 
-                      value={emailFilter.category} 
-                      onValueChange={(value) => setEmailFilter(prev => ({ ...prev, category: value }))}
+                      value={emailFilter.category || 'all'} 
+                      onValueChange={(value) => setEmailFilter(prev => ({ ...prev, category: value === 'all' ? '' : value }))}
                     >
                       <SelectTrigger data-testid="select-email-category">
                         <SelectValue placeholder={t('common.allCategories', 'All Categories')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Categories</SelectItem>
+                        <SelectItem value="all">All Categories</SelectItem>
                         <SelectItem value="welcome">Welcome</SelectItem>
                         <SelectItem value="appointment">Appointment</SelectItem>
                         <SelectItem value="promotion">Promotion</SelectItem>
@@ -687,14 +687,14 @@ export default function CommunicationCenter() {
                   <div>
                     <Label htmlFor="email-status">{t('common.status', 'Status')}</Label>
                     <Select 
-                      value={emailFilter.isActive} 
-                      onValueChange={(value) => setEmailFilter(prev => ({ ...prev, isActive: value }))}
+                      value={emailFilter.isActive || 'all'} 
+                      onValueChange={(value) => setEmailFilter(prev => ({ ...prev, isActive: value === 'all' ? '' : value }))}
                     >
                       <SelectTrigger data-testid="select-email-status">
                         <SelectValue placeholder={t('common.allStatuses', 'All Statuses')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Statuses</SelectItem>
+                        <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="true">Active</SelectItem>
                         <SelectItem value="false">Inactive</SelectItem>
                       </SelectContent>
@@ -816,14 +816,14 @@ export default function CommunicationCenter() {
                   <div>
                     <Label htmlFor="sms-category">{t('common.category', 'Category')}</Label>
                     <Select 
-                      value={smsFilter.category} 
-                      onValueChange={(value) => setSmsFilter(prev => ({ ...prev, category: value }))}
+                      value={smsFilter.category || 'all'} 
+                      onValueChange={(value) => setSmsFilter(prev => ({ ...prev, category: value === 'all' ? '' : value }))}
                     >
                       <SelectTrigger data-testid="select-sms-category">
                         <SelectValue placeholder={t('common.allCategories', 'All Categories')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Categories</SelectItem>
+                        <SelectItem value="all">All Categories</SelectItem>
                         <SelectItem value="reminder">Reminder</SelectItem>
                         <SelectItem value="appointment">Appointment</SelectItem>
                         <SelectItem value="promotion">Promotion</SelectItem>
@@ -834,14 +834,14 @@ export default function CommunicationCenter() {
                   <div>
                     <Label htmlFor="sms-status">{t('common.status', 'Status')}</Label>
                     <Select 
-                      value={smsFilter.isActive} 
-                      onValueChange={(value) => setSmsFilter(prev => ({ ...prev, isActive: value }))}
+                      value={smsFilter.isActive || 'all'} 
+                      onValueChange={(value) => setSmsFilter(prev => ({ ...prev, isActive: value === 'all' ? '' : value }))}
                     >
                       <SelectTrigger data-testid="select-sms-status">
                         <SelectValue placeholder={t('common.allStatuses', 'All Statuses')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Statuses</SelectItem>
+                        <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="true">Active</SelectItem>
                         <SelectItem value="false">Inactive</SelectItem>
                       </SelectContent>
@@ -974,14 +974,14 @@ export default function CommunicationCenter() {
                   <div>
                     <Label htmlFor="reminder-status">{t('common.status', 'Status')}</Label>
                     <Select 
-                      value={reminderFilter.status} 
-                      onValueChange={(value) => setReminderFilter(prev => ({ ...prev, status: value }))}
+                      value={reminderFilter.status || 'all'} 
+                      onValueChange={(value) => setReminderFilter(prev => ({ ...prev, status: value === 'all' ? '' : value }))}
                     >
                       <SelectTrigger data-testid="select-reminder-status">
                         <SelectValue placeholder={t('common.allStatuses', 'All Statuses')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Statuses</SelectItem>
+                        <SelectItem value="all">All Statuses</SelectItem>
                         <SelectItem value="scheduled">Scheduled</SelectItem>
                         <SelectItem value="sent">Sent</SelectItem>
                         <SelectItem value="delivered">Delivered</SelectItem>
@@ -993,14 +993,14 @@ export default function CommunicationCenter() {
                   <div>
                     <Label htmlFor="reminder-type">{t('communication.reminders.type', 'Type')}</Label>
                     <Select 
-                      value={reminderFilter.reminderType} 
-                      onValueChange={(value) => setReminderFilter(prev => ({ ...prev, reminderType: value }))}
+                      value={reminderFilter.reminderType || 'all'} 
+                      onValueChange={(value) => setReminderFilter(prev => ({ ...prev, reminderType: value === 'all' ? '' : value }))}
                     >
                       <SelectTrigger data-testid="select-reminder-type">
                         <SelectValue placeholder={t('communication.reminders.allTypes', 'All Types')} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All Types</SelectItem>
+                        <SelectItem value="all">All Types</SelectItem>
                         <SelectItem value="email">Email</SelectItem>
                         <SelectItem value="sms">SMS</SelectItem>
                         <SelectItem value="both">Both</SelectItem>

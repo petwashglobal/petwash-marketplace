@@ -871,12 +871,12 @@ export default function LeadManagement() {
 
                   <div className="space-y-2">
                     <Label htmlFor="status-filter">{t('leads.status.new', language)}</Label>
-                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                    <Select value={statusFilter || 'all'} onValueChange={(v) => setStatusFilter(v === 'all' ? '' : v)}>
                       <SelectTrigger data-testid="status-filter">
                         <SelectValue placeholder={t('leads.list.allStatuses', language)} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">{t('leads.list.allStatuses', language)}</SelectItem>
+                        <SelectItem value="all">{t('leads.list.allStatuses', language)}</SelectItem>
                         {leadStatuses.map((status) => (
                           <SelectItem key={status.value} value={status.value}>
                             {status.label}
@@ -888,12 +888,12 @@ export default function LeadManagement() {
 
                   <div className="space-y-2">
                     <Label htmlFor="source-filter">{t('leads.form.leadSource', language)}</Label>
-                    <Select value={sourceFilter} onValueChange={setSourceFilter}>
+                    <Select value={sourceFilter || 'all'} onValueChange={(v) => setSourceFilter(v === 'all' ? '' : v)}>
                       <SelectTrigger data-testid="source-filter">
                         <SelectValue placeholder={t('leads.list.allSources', language)} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">{t('leads.list.allSources', language)}</SelectItem>
+                        <SelectItem value="all">{t('leads.list.allSources', language)}</SelectItem>
                         {leadSources.map((source) => (
                           <SelectItem key={source.value} value={source.value}>
                             {source.label}

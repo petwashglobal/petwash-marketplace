@@ -3940,12 +3940,12 @@ export default function AdminWalletDashboard() {
                   </div>
                   <div className="flex flex-col gap-1">
                     <label className="text-xs text-gray-500">Division</label>
-                    <Select value={ahDivision} onValueChange={setAhDivision}>
+                    <Select value={ahDivision || 'all'} onValueChange={(v) => setAhDivision(v === 'all' ? '' : v)}>
                       <SelectTrigger className="text-xs h-8 w-36">
                         <SelectValue placeholder="All" />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="">All</SelectItem>
+                        <SelectItem value="all">All</SelectItem>
                         <SelectItem value="walkers">Walkers</SelectItem>
                         <SelectItem value="petsitter">Sitter Suite</SelectItem>
                         <SelectItem value="academy">Academy</SelectItem>
