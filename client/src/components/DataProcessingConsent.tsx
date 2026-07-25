@@ -265,7 +265,7 @@ export function DataProcessingConsent({
             <a href="/terms" target="_blank" className="text-black dark:text-black hover:underline">
               {t.viewTerms} →
             </a>
-            <a href="/account-settings#data-rights" className="text-[#B8932F] hover:underline">
+            <a href="/consent-center" className="text-[#B8932F] hover:underline">
               {language === 'he' ? 'זכויות הנתונים שלי' : 'My Data Rights'} →
             </a>
           </div>

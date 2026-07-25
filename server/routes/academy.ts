@@ -27,6 +27,7 @@ import { nanoid } from 'nanoid';
 import { requireLoyaltyMember } from '../middleware/loyalty';
 import { requireAuth } from '../customAuth';
 import { requireAdmin as requireAdminMiddleware } from '../adminAuth';
+import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walletService } from '../services/WalletService';
@@ -253,6 +254,9 @@ router.get('/specialties', async (req, res) => {
  * Authenticated endpoint - requires valid Firebase user
  */
 router.post('/bookings', requireAuth, async (req, res) => {
+  // Hoisted so the catch can release the slot lock (set to the bookingRef once
+  // the lock is acquired). See the DOUBLE-BOOKING GUARD block below.
+  let slotLockRef: string | null = null;
   try {
     // Check authentication (middleware should set req.user)
     if (!req.user) {
@@ -309,7 +313,38 @@ router.post('/bookings', requireAuth, async (req, res) => {
     if (!trainer || !trainer.isActive || !trainer.isAcceptingBookings) {
       return res.status(400).json({ error: 'Trainer not available for booking' });
     }
-    
+
+    // ── DOUBLE-BOOKING GUARD (P0-2 fix, 2026-07-25) ──────────────────────────
+    // Academy previously inserted with ZERO availability check — two customers
+    // (or one double-tap) could book the identical trainer + time. We now grab
+    // an atomic, DB-enforced slot lock BEFORE any wallet hold. The lock table
+    // (marketplace_booking_slot_locks, EXCLUDE gist on provider_id + timerange,
+    // migration 0028) rejects any overlapping insert at the DB level, so this
+    // cannot race. Keyed on the trainer's canonical userId, so it ALSO blocks a
+    // clash with the SAME provider's marketplace/sitter/walk bookings (they use
+    // the same lock table + Firebase-UID key space) — one calendar per person.
+    const slotStart = validatedData.sessionDate as Date;
+    const slotEnd = new Date(slotStart.getTime() + validatedData.sessionDuration * 60_000);
+    const slotProviderId = trainer.userId || `trainer:${trainer.id}`;
+    try {
+      await acquireSlotLock(db, {
+        providerId: slotProviderId,
+        startAt: slotStart,
+        endAt: slotEnd,
+        bookingRef: validatedData.bookingId,
+        serviceType: 'academy',
+      });
+      slotLockRef = validatedData.bookingId;
+    } catch (lockErr) {
+      if (lockErr instanceof BookingSlotConflictError) {
+        return res.status(409).json({
+          error: 'This trainer is already booked at the selected time. Please pick another slot.',
+          errorCode: 'SLOT_TAKEN',
+        });
+      }
+      throw lockErr;
+    }
+
     // Calculate pricing
     const durationHours = validatedData.sessionDuration / 60;
     const totalAmount = parseFloat(trainer.hourlyRate) * durationHours;
@@ -392,6 +427,14 @@ router.post('/bookings', requireAuth, async (req, res) => {
       navigation: navigationLinks,
     });
   } catch (error) {
+    // Release the slot lock if we grabbed it but the booking failed to
+    // materialise — otherwise a failed booking would leave the trainer's
+    // calendar blocked (P0-2 fix). Best-effort; never masks the real error.
+    if (slotLockRef) {
+      await releaseSlotLock(db, slotLockRef).catch((relErr) =>
+        logger.warn('[Academy] slot-lock release after failed booking skipped', { error: String(relErr) }),
+      );
+    }
     logger.error('[Academy] Error creating booking', error);
     res.status(400).json({ error: 'Failed to create booking' });
   }
@@ -542,7 +585,13 @@ router.post('/bookings/:id/cancel', async (req, res) => {
       })
       .where(eq(trainerBookings.bookingId, bookingId))
       .returning();
-    
+
+    // Free the trainer's calendar: release the slot lock this booking held
+    // (P0-2 fix). Without this a cancelled session would block the slot forever.
+    await releaseSlotLock(db, bookingId).catch((relErr) =>
+      logger.warn('[Academy] slot-lock release on cancel skipped', { bookingId, error: String(relErr) }),
+    );
+
     // Wallet release or refund based on finance_state
     let walletUpdates: Record<string, unknown> = {};
     if (booking.financeState === 'hold_active' && booking.walletHoldCents > 0) {
