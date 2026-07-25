@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import jwt from 'jsonwebtoken';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 import { twilioSMSService } from '../services/TwilioSMSService';
 import { EmailService } from '../emailService';
 import { logger } from '../lib/logger';
@@ -514,6 +514,27 @@ router.post('/verify-email-code', async (req: Request, res: Response, next) => {
 
     logger.info('[Verification] Email verified via code', { email: normalizedEmail.slice(0, 3) + '***' });
 
+    // ── PERSIST email_verified (2026-07-25 wiring fix) ──────────────────────
+    // The code path validated the OTP but never wrote emailVerified to the user
+    // record / activation state machine — only the LINK path did. Result: the UI
+    // showed "verified ✓" while users.emailVerified stayed false ("sort of
+    // working, didn't verify fully"). Mirror the link path so the code path
+    // actually completes verification. Non-fatal — never fail a valid code.
+    try {
+      const [dbUser] = await db.select({ id: users.id })
+        .from(users)
+        .where(eq(users.email, normalizedEmail))
+        .limit(1);
+      if (dbUser) {
+        await markEmailVerified(dbUser.id, { acceptTerms: true });
+        logger.info('[Verification] email_verified_at written via code', { userId: dbUser.id });
+      } else {
+        logger.warn('[Verification] verify-email-code: no user row for email yet — DB write skipped (token still returned)');
+      }
+    } catch (dbErr: any) {
+      logger.error('[Verification] verify-email-code DB write failed (non-fatal)', { error: dbErr?.message });
+    }
+
     return res.json({
       success: true,
       message: isHebrew ? 'אימייל אומת בהצלחה!' : 'Email verified successfully!',
@@ -593,6 +614,35 @@ router.post('/verify-sms-code', async (req: Request, res: Response, next) => {
     if (!result.success && result.lockedUntil) {
       return res.status(429).json(result);
     }
+
+    // ── PERSIST phone_verified (2026-07-25 wiring fix) ──────────────────────
+    // Twilio confirmed the code, but the endpoint never wrote phoneVerified to
+    // the user record / activation state machine — so the mobile "verified ✓" in
+    // the UI didn't stick and the account stayed unverified. Look the user up by
+    // phone and complete the verification. Non-fatal — never fail a valid code.
+    if (result.success) {
+      try {
+        // Match on the last 9 digits of the digits-only phone so a stored
+        // "+972501234567" still matches an incoming "0501234567" (and vice
+        // versa) — country-code / prefix differences must not break the write.
+        const last9 = String(phone).replace(/\D/g, '').slice(-9);
+        const rows = last9.length === 9
+          ? await db.select({ id: users.id }).from(users)
+              .where(sql`right(regexp_replace(${users.phone}, '[^0-9]', '', 'g'), 9) = ${last9}`)
+              .limit(1)
+          : await db.select({ id: users.id }).from(users).where(eq(users.phone, phone)).limit(1);
+        const dbUser = rows[0];
+        if (dbUser) {
+          await markMobileVerified(dbUser.id);
+          logger.info('[Verification] mobile_verified_at written via code', { userId: dbUser.id });
+        } else {
+          logger.warn('[Verification] verify-sms-code: no user row for phone yet — DB write skipped');
+        }
+      } catch (dbErr: any) {
+        logger.error('[Verification] verify-sms-code DB write failed (non-fatal)', { error: dbErr?.message });
+      }
+    }
+
     return res.json(result);
   } catch (error: any) {
     logger.error('[Verification] SMS verify error', { error: error.message });
