@@ -22,6 +22,7 @@ import { walkBookings, walkerProfiles, users } from '@shared/schema';
 import { eq, and, sql, gte, desc, isNotNull } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { calculateWalkFees, type WalkFeeCalculation } from '../utils/walkFeeCalculator';
+import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
 
 interface EmergencyWalkRequest {
   ownerId: string;
@@ -40,6 +41,7 @@ interface EmergencyWalkRequest {
 
 interface WalkerMatch {
   walkerId: string;
+  walkerUserId: string;   // walker's Firebase UID — the canonical slot-lock key
   walkerName: string;
   walkerEmail: string;
   walkerPhone: string;
@@ -79,6 +81,9 @@ export class EmergencyWalkService {
     eta?: Date;
     error?: string;
   }> {
+    // Hoisted so the outer catch can free the slot lock if a matched booking
+    // fails after the lock was grabbed (P1 fix).
+    let lockedBookingRef: string | null = null;
     try {
       logger.info('[Emergency Walk] New ASAP request received', {
         ownerId: request.ownerId,
@@ -121,29 +126,65 @@ export class EmergencyWalkService {
         };
       }
 
-      // Step 4: Auto-match with best walker (closest + highest rated)
-      const matchedWalker = this.selectBestWalker(availableWalkers);
+      // Step 4: Auto-match — try candidates best-first, grabbing an atomic slot
+      // lock for each so two concurrent ASAP requests can NEVER both match the
+      // same walker (P1 fix: emergency previously inserted a 'confirmed' walk with
+      // no lock). If the top pick was just booked, FAIL OVER to the next walker
+      // rather than erroring — the right behaviour for an emergency flow. The lock
+      // is keyed on the walker's canonical Firebase userId (same key space as the
+      // scheduled walk/sitter/marketplace arms), so it also blocks a cross-arm clash.
+      const ranked = this.rankWalkers(availableWalkers);
+      let matchedWalker: WalkerMatch | null = null;
+      let bookingId = '';
+      let estimatedStartTime = new Date();
+      let estimatedEndTime = new Date();
 
-      logger.info('[Emergency Walk] Walker matched', {
+      for (const candidate of ranked) {
+        const candBookingId = `EMERG-${Date.now()}-${crypto.randomBytes(5).toString('hex')}`;
+        const start = new Date();
+        start.setMinutes(start.getMinutes() + candidate.estimatedArrivalMinutes);
+        const end = new Date(start);
+        end.setMinutes(end.getMinutes() + request.walkDuration);
+        try {
+          await acquireSlotLock(db, {
+            providerId: candidate.walkerUserId || `walker:${candidate.walkerId}`,
+            startAt: start,
+            endAt: end,
+            bookingRef: candBookingId,
+            serviceType: 'dog_walking',
+          });
+        } catch (lockErr) {
+          if (lockErr instanceof BookingSlotConflictError) {
+            logger.info('[Emergency Walk] candidate just booked — failing over to next', {
+              walkerId: candidate.walkerId,
+            });
+            continue;
+          }
+          throw lockErr;
+        }
+        matchedWalker = candidate;
+        bookingId = candBookingId;
+        lockedBookingRef = candBookingId;
+        estimatedStartTime = start;
+        estimatedEndTime = end;
+        break;
+      }
+
+      if (!matchedWalker) {
+        return {
+          success: false,
+          error: 'All nearby walkers were just booked. Please try again in a moment.',
+        };
+      }
+
+      logger.info('[Emergency Walk] Walker matched + slot locked', {
         walkerId: matchedWalker.walkerId,
         walkerName: matchedWalker.walkerName,
         distanceKm: matchedWalker.distanceKm,
         eta: matchedWalker.estimatedArrivalMinutes,
       });
 
-      // Step 5: Create walk booking with "emergency" flag
-      const bookingId = `EMERG-${Date.now()}-${crypto.randomBytes(5).toString('hex')}`;
-      const estimatedStartTime = new Date();
-      estimatedStartTime.setMinutes(
-        estimatedStartTime.getMinutes() + matchedWalker.estimatedArrivalMinutes
-      );
-
-      const estimatedEndTime = new Date(estimatedStartTime);
-      estimatedEndTime.setMinutes(
-        estimatedEndTime.getMinutes() + request.walkDuration
-      );
-
-      // Insert emergency walk booking
+      // Step 5: Insert emergency walk booking under the held lock.
       await db.insert(walkBookings).values({
         bookingId,
         ownerId: request.ownerId,
@@ -213,6 +254,13 @@ export class EmergencyWalkService {
       };
 
     } catch (error) {
+      // Free the slot lock if we grabbed it but the emergency booking failed to
+      // materialise, so a failed attempt never blocks the walker's calendar.
+      if (lockedBookingRef) {
+        await releaseSlotLock(db, lockedBookingRef).catch((relErr) =>
+          logger.warn('[Emergency Walk] slot-lock release after failed booking skipped', { error: String(relErr) }),
+        );
+      }
       logger.error('[Emergency Walk] Request failed', error);
       return {
         success: false,
@@ -375,6 +423,7 @@ export class EmergencyWalkService {
 
         return {
           walkerId: walker.walkerId,
+          walkerUserId: walker.userId,
           walkerName: `${walker.firstName} ${walker.lastName}`,
           walkerEmail: '',  // Not exposed in emergency match for privacy
           walkerPhone: '',  // Fetched only after booking confirmed
@@ -405,36 +454,36 @@ export class EmergencyWalkService {
    * - ETA: 10% weight (faster is better)
    */
   private static selectBestWalker(walkers: WalkerMatch[]): WalkerMatch {
-    // Handle single walker case
-    if (walkers.length === 1) {
-      return walkers[0];
-    }
-    
-    const scored = walkers.map(walker => {
-      // Normalize scores (0-1 scale) with safe divide-by-zero checks
-      const maxDistance = Math.max(...walkers.map(w => w.distanceKm), 1);
-      const maxWalks = Math.max(...walkers.map(w => w.completedWalks), 1);
-      const maxEta = Math.max(...walkers.map(w => w.estimatedArrivalMinutes), 1);
+    return this.rankWalkers(walkers)[0];
+  }
 
+  /**
+   * Rank candidate walkers best-first by the same weighted score. Returned as an
+   * ordered list so the emergency flow can FAIL OVER to the next walker when the
+   * top pick was just booked (a concurrent ASAP request grabbed the slot lock).
+   */
+  private static rankWalkers(walkers: WalkerMatch[]): WalkerMatch[] {
+    if (walkers.length <= 1) return [...walkers];
+
+    const maxDistance = Math.max(...walkers.map(w => w.distanceKm), 1);
+    const maxWalks = Math.max(...walkers.map(w => w.completedWalks), 1);
+    const maxEta = Math.max(...walkers.map(w => w.estimatedArrivalMinutes), 1);
+
+    const scored = walkers.map(walker => {
       const distanceScore = 1 - (walker.distanceKm / maxDistance); // Closer = higher
       const ratingScore = walker.rating / 5.0; // 0-1 scale
       const experienceScore = walker.completedWalks / maxWalks; // 0-1 scale
       const etaScore = 1 - (walker.estimatedArrivalMinutes / maxEta); // Faster = higher
-
-      // Weighted total
       const totalScore =
         distanceScore * 0.4 +
         ratingScore * 0.3 +
         experienceScore * 0.2 +
         etaScore * 0.1;
-
       return { walker, score: totalScore };
     });
 
-    // Sort by score descending
     scored.sort((a, b) => b.score - a.score);
-
-    return scored[0].walker;
+    return scored.map(s => s.walker);
   }
 
   /**
