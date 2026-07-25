@@ -26,6 +26,7 @@ import { auth as firebaseAuth } from '../lib/firebase-admin';
 import { isSuperAdmin } from '../middleware/rbac';
 import {
   seedProviderServicesOnApproval,
+  resolveApplicationServiceTypes,
   setProviderServiceLevel,
   type ServiceLevel,
 } from '../services/providerServiceApproval';
@@ -1305,9 +1306,12 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
     let approvedServices: Array<{ serviceType: string; serviceStatus: string; bookingEnabled: boolean; payoutEnabled: boolean }> = [];
     if (application.userId) {
       try {
+        // #136-3: seed EVERY selected service. `serviceTypes` was never a column,
+        // so this used to seed nothing; resolveApplicationServiceTypes reads the
+        // full set from internalNotes JSON (falling back to the primary column).
         approvedServices = await seedProviderServicesOnApproval(
           application.userId,
-          application.serviceTypes as string[] | null,
+          resolveApplicationServiceTypes(application),
         );
         await writeProviderAudit({
           applicationId,

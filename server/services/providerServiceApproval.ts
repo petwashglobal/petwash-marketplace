@@ -72,6 +72,39 @@ export async function providerHasAnyServiceRows(providerId: string): Promise<boo
 }
 
 /**
+ * Resolve the FULL set of service types an applicant selected (#136-3 fix).
+ *
+ * Multi-service selection is captured in the onboarding UI and sent as the
+ * `providerTypes` array — but the provider_applications table has only the
+ * singular `provider_type` column, so the full array is persisted inside
+ * internalNotes JSON at apply time. Both approval paths used to read a
+ * non-existent `application.providerTypes` / `serviceTypes` column and therefore
+ * silently seeded only the primary service (or, on one path, none) — so a
+ * provider who applied as sitter + walker + trainer got approved for sitter only.
+ *
+ * This reads every real location, in priority order:
+ *   1. a real array column, if one is ever added (providerTypes / serviceTypes)
+ *   2. the `providerTypes` array persisted inside internalNotes JSON
+ *   3. the singular `provider_type` column (the primary — never returns empty
+ *      when the applicant has at least a primary service)
+ */
+export function resolveApplicationServiceTypes(application: any): string[] {
+  const direct = application?.providerTypes ?? application?.serviceTypes;
+  if (Array.isArray(direct) && direct.length > 0) return direct.map(String);
+
+  try {
+    const notes = application?.internalNotes;
+    if (notes) {
+      const parsed = typeof notes === 'string' ? JSON.parse(notes) : notes;
+      const fromNotes = parsed?.providerTypes;
+      if (Array.isArray(fromNotes) && fromNotes.length > 0) return fromNotes.map(String);
+    }
+  } catch { /* malformed internalNotes → fall through to the primary column */ }
+
+  return application?.providerType ? [String(application.providerType)] : [];
+}
+
+/**
  * Idempotently seed provider_services rows at the waitlist level for each of the
  * applicant's service types. Called from admin application approval. Existing
  * rows are left untouched (so a re-approval never downgrades an advanced
