@@ -33,6 +33,7 @@ import { bookingLimiter } from '../middleware/rateLimiter';
 import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
+import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import VATCalculatorService from '../services/VATCalculatorService';
@@ -383,6 +384,8 @@ router.post('/walkers/search', async (req, res) => {
 
 // Create walk booking - USING LUXURY ENGINE
 router.post('/walks/book', requireAuth, async (req, res) => {
+  // Hoisted so the outer catch can free the persistent slot lock on failure.
+  let slotLockRef: string | null = null;
   try {
     // Always derive ownerId from the verified Firebase token — never trust req.body.
     const ownerId = (req as any).user?.uid;
@@ -586,6 +589,38 @@ router.post('/walks/book', requireAuth, async (req, res) => {
       serviceSource: 'walk_my_pet',
     };
 
+    // ── PERSISTENT DOUBLE-BOOKING GUARD (P1, 2026-07-25) ─────────────────────
+    // The walkSlotHolds row above is a 5-minute TTL hold — it closes the instant
+    // create-race, but it EXPIRES while the booking sits pending_provider for
+    // much longer, and availability counts only 'confirmed'. So a second request
+    // for the same walker+slot could slip in after the hold lapsed and end up as
+    // a second pending walk; accepting both double-books. Add the same persistent,
+    // DB-enforced slot lock the sitter/academy arms use (marketplace_booking_slot_
+    // locks, EXCLUDE constraint) — it lives for the booking's whole life and is
+    // keyed on the walker's canonical Firebase userId, so it also blocks a clash
+    // with that person's sitter/marketplace bookings. Released on decline/cancel.
+    const walkLockProviderId = walkerProfile.userId || `walker:${walkerId}`;
+    try {
+      await acquireSlotLock(db, {
+        providerId: walkLockProviderId,
+        startAt: startDateTime,
+        endAt: endDateTime,
+        bookingRef: bookingId,
+        serviceType: 'dog_walking',
+      });
+      slotLockRef = bookingId;
+    } catch (lockErr) {
+      // Free the short-term hold we grabbed earlier so it doesn't linger.
+      await db.delete(walkSlotHolds).where(eq(walkSlotHolds.holdId, holdId)).catch(() => {});
+      if (lockErr instanceof BookingSlotConflictError) {
+        return res.status(409).json({
+          error: 'This walker is already booked for the selected time. Please choose another slot or walker.',
+          errorCode: 'SLOT_TAKEN',
+        });
+      }
+      throw lockErr;
+    }
+
     const [newBooking] = await db.insert(walkBookings).values(bookingData).returning();
 
     // BRIDGE (2026-07-24): mirror into booking_requests so the provider job
@@ -696,6 +731,13 @@ router.post('/walks/book', requireAuth, async (req, res) => {
       message: 'הבקשה נשלחה למטייל/ת. תקבל/י עדכון כשההזמנה תאושר.'
     });
   } catch (error: any) {
+    // Free the persistent slot lock if we grabbed it but the booking failed,
+    // so a failed attempt never leaves the walker's calendar blocked (P1 fix).
+    if (slotLockRef) {
+      await releaseSlotLock(db, slotLockRef).catch((relErr) =>
+        console.warn('[Walk My Pet] slot-lock release after failed booking skipped', relErr),
+      );
+    }
     console.error('[Walk My Pet] Booking error:', error);
     res.status(500).json({ error: 'Failed to create booking', details: error.message });
   }
@@ -892,7 +934,12 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           updatedAt: new Date(),
         })
         .where(eq(walkBookings.bookingId, bookingId));
-      
+
+      // Free the walker's calendar — the request is dead (P1 fix).
+      await releaseSlotLock(db, bookingId).catch((relErr) =>
+        logger.warn('[Walk My Pet] slot-lock release on decline skipped', { bookingId, error: String(relErr) }),
+      );
+
       await syncChatToBookingStatus(bookingId, 'cancelled', 'walk_my_pet');
 
       // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────

@@ -15,6 +15,7 @@ import { join } from 'node:path';
 const read = (p: string) => readFileSync(join(__dirname, '..', 'routes', p), 'utf8');
 const academy = read('academy.ts');
 const sitter = read('sitter-suite.ts');
+const walk = read('walk-my-pet.ts');
 
 describe('Academy double-booking guard (P0-2)', () => {
   it('acquires a slot lock before creating the trainer booking', () => {
@@ -52,5 +53,26 @@ describe('Pet Sitter double-booking guard (P0-1)', () => {
   });
   it('keys the lock on the sitter Firebase userId (cross-platform clash safety)', () => {
     expect(sitter).toMatch(/sitter\.userId\s*\|\|/);
+  });
+});
+
+describe('Walk My Pet persistent double-booking guard (P1)', () => {
+  it('acquires a persistent slot lock before creating the walk booking', () => {
+    expect(walk).toMatch(/acquireSlotLock\(db,\s*\{/);
+    const lockAt = walk.indexOf('acquireSlotLock(');
+    const insertAt = walk.indexOf('.insert(walkBookings)');
+    expect(lockAt).toBeGreaterThan(-1);
+    expect(insertAt).toBeGreaterThan(-1);
+    expect(lockAt).toBeLessThan(insertAt);
+  });
+  it('returns 409 SLOT_TAKEN on conflict', () => {
+    expect(walk).toMatch(/BookingSlotConflictError/);
+    expect(walk).toMatch(/SLOT_TAKEN/);
+  });
+  it('keys the lock on the walker Firebase userId, not the WALKER-UUID', () => {
+    expect(walk).toMatch(/walkerProfile\.userId\s*\|\|/);
+  });
+  it('releases the lock on decline', () => {
+    expect(walk).toMatch(/releaseSlotLock\(db,\s*bookingId\)/);
   });
 });
