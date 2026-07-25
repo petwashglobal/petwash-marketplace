@@ -350,8 +350,8 @@ export function ConsentManager({ language, isOpen, onClose, onSave }: ConsentMan
                 >
                   {t.privacyPolicy} →
                 </a>
-                <a 
-                  href="/account-settings#data-rights" 
+                <a
+                  href="/consent-center"
                   className="text-xs text-blue-600 hover:underline inline-flex items-center gap-1"
                   title={language === 'he' ? 'גישה, ייצוא או מחיקת נתונים' : 'Access, export or delete data'}
                 >

@@ -40,6 +40,7 @@ import { logAuditEvent } from '../middleware/auditLog';
 import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
+import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import { IsraeliContractorComplianceService } from '../services/IsraeliContractorCompliance';
 import VATCalculatorService from '../services/VATCalculatorService';
@@ -755,6 +756,9 @@ router.post('/pets', requireAuth, async (req: any, res) => {
  * POST /api/sitter-suite/bookings - Create new booking with AI triage - USING LUXURY ENGINE
  */
 router.post('/bookings', requireAuth, async (req, res) => {
+  // Hoisted so the outer catch can free the slot lock if a later step fails
+  // (set to the bookingRef once the lock is held). See DOUBLE-BOOKING GUARD.
+  let slotLockRef: string | null = null;
   try {
     const {
       sitterId,
@@ -858,7 +862,37 @@ router.post('/bookings', requireAuth, async (req, res) => {
     
     const bookingId = `SITTER_${nanoid(12)}`;
     const totalDays = Math.ceil((end.getTime() - start.getTime()) / (1000 * 60 * 60 * 24));
-    
+
+    // ── DOUBLE-BOOKING GUARD (P0-1 fix, 2026-07-25) ──────────────────────────
+    // The availability check above (checkAvailability) and the insert below were
+    // NOT atomic — two concurrent requests both read "available" then both
+    // inserted, double-booking the sitter. Grab an atomic, DB-enforced slot lock
+    // immediately before the insert. The lock table (marketplace_booking_slot_
+    // locks, EXCLUDE gist on provider_id + timerange, migration 0028) rejects any
+    // overlapping insert at the DB level, so the second request loses the race
+    // and gets 409. Keyed on the sitter's Firebase userId — the same key space as
+    // booking_requests — so a sitter cannot be double-booked ACROSS platforms
+    // (marketplace / walk / academy) for the same window either.
+    const sitterLockProviderId = sitter.userId || `sitter:${sitterId}`;
+    try {
+      await acquireSlotLock(db, {
+        providerId: sitterLockProviderId,
+        startAt: start,
+        endAt: end,
+        bookingRef: bookingId,
+        serviceType: 'pet_sitting',
+      });
+      slotLockRef = bookingId;
+    } catch (lockErr) {
+      if (lockErr instanceof BookingSlotConflictError) {
+        return res.status(409).json({
+          error: 'This sitter is already booked for the selected dates. Please choose another time or sitter.',
+          errorCode: 'SLOT_TAKEN',
+        });
+      }
+      throw lockErr;
+    }
+
     // ON-DEMAND: Create booking in pending_provider status (NOT confirmed yet)
     // Payment is NOT captured until provider accepts
     const [newBooking] = await db
@@ -991,6 +1025,13 @@ router.post('/bookings', requireAuth, async (req, res) => {
     });
     
   } catch (error) {
+    // Free the slot lock if we grabbed it but the booking failed to persist,
+    // so a failed attempt never leaves the sitter's calendar blocked (P0-1 fix).
+    if (slotLockRef) {
+      await releaseSlotLock(db, slotLockRef).catch((relErr) =>
+        logger.warn('[Sitter Suite] slot-lock release after failed booking skipped', { error: String(relErr) }),
+      );
+    }
     logger.error('[Sitter Suite] Error creating booking', error);
     res.status(500).json({ error: 'Failed to create booking' });
   }
@@ -1231,7 +1272,12 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           updatedAt: new Date(),
         })
         .where(eq(sitterBookings.bookingId, bookingId));
-      
+
+      // Free the sitter's calendar — the request is dead (P0-1 fix).
+      await releaseSlotLock(db, bookingId).catch((relErr) =>
+        logger.warn('[Sitter Suite] slot-lock release on decline skipped', { bookingId, error: String(relErr) }),
+      );
+
       await syncChatToBookingStatus(bookingId, 'cancelled', 'sitter_suite');
 
       // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
