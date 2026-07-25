@@ -729,8 +729,8 @@ export default function PlatformHub() {
 
             <p className="text-base font-light text-[#6B7280] mb-12 tracking-wide" style={{ fontFamily: sans }}>
               {isHebrew
-                ? 'הצטרף לאלפי בעלי חיות מחמד מרוצים בכל הארץ'
-                : 'Join thousands of happy pet owners across Israel'}
+                ? 'טיפול מהימן ומאומת לחיות מחמד בכל הארץ'
+                : 'Trusted, verified pet care across Israel'}
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
