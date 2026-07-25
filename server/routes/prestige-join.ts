@@ -29,7 +29,8 @@
 import { Router, type Request, type Response } from 'express';
 import crypto from 'crypto';
 import { db } from '../db';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
+import { users } from '@shared/schema';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { auth as fbAdminAuth, db as firestoreDb } from '../lib/firebase-admin';
@@ -38,6 +39,10 @@ import { EmailService } from '../emailService';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 
 const router = Router();
+
+// Welcome points granted on a fresh Prestige enrollment. Kept at module scope so
+// the loyalty_profiles insert and the canonical users-row sync stay in agreement.
+const WELCOME_POINTS = 100;
 
 // ── Input schema ─────────────────────────────────────────────────────────────
 const joinSchema = z.object({
@@ -86,7 +91,6 @@ router.post('/join', async (req: Request, res: Response) => {
         loyaltyProfile = existing;
         alreadyEnrolled = true;
       } else {
-        const WELCOME_POINTS = 100;
         const [profile] = await db
           .insert(loyaltyProfiles)
           .values({
@@ -239,6 +243,42 @@ router.post('/join', async (req: Request, res: Response) => {
       }
     } catch (emailErr: any) {
       logger.error('[PrestigeJoin] Email step failed (non-fatal)', { error: emailErr?.message, userId });
+    }
+
+    // ── Reflect the membership on the CANONICAL users row (2026-07-25) ────────
+    // Before this, a Prestige join wrote only loyalty_profiles + privilege_members
+    // + a Firebase claim. But the primary loyalty status (getLoyaltyStatus) and
+    // benefit gates read the USERS row — users.is_club_member stayed false and
+    // users.loyalty_points stayed 0, so the 100 welcome points were invisible and
+    // the member wasn't recognized as a club member (the "unreconciled stores"
+    // gap). Sync the users row so what the customer gave us is actually reflected:
+    //   • is_club_member = true
+    //   • loyalty_tier   = bronze only if not already set to a higher tier
+    //   • loyalty_points += welcome points, on a FRESH enrollment only
+    //   • role promoted to 'loyalty' ONLY from a plain customer/public — never
+    //     downgrade a provider/staff/admin/super_admin.
+    try {
+      const [current] = await db
+        .select({ role: users.role, tier: users.loyaltyTier })
+        .from(users)
+        .where(eq(users.id, userId))
+        .limit(1);
+      const promotableRoles = new Set(['customer', 'public', 'new', '', null as any, undefined as any]);
+      const rolePatch = promotableRoles.has(current?.role as any) ? { role: 'loyalty' } : {};
+      const tierPatch = (!current?.tier || current.tier === 'bronze') ? { loyaltyTier: 'bronze' } : {};
+      await db.update(users).set({
+        isClubMember: true,
+        ...tierPatch,
+        ...(alreadyEnrolled ? {} : { loyaltyPoints: sql`${users.loyaltyPoints} + ${WELCOME_POINTS}` }),
+        ...rolePatch,
+        updatedAt: new Date(),
+      }).where(eq(users.id, userId));
+    } catch (userSyncErr: any) {
+      // Non-fatal — the loyalty_profiles + privilege_members rows above are the
+      // membership of record; this only keeps the users row in agreement.
+      logger.warn('[PrestigeJoin] users-row loyalty sync failed (non-fatal)', {
+        userId, error: userSyncErr?.message,
+      });
     }
 
     return res.json({
