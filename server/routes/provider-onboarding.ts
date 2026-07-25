@@ -693,16 +693,19 @@ router.post('/apply', upload.fields([
       }
     }
 
-    // Check for existing application — block if any active/in-progress record exists.
-    // We check all non-terminal statuses so a draft created by the post-login flow does not
-    // produce a duplicate record when the user later fills and submits the full form.
+    // Existing-application guard. 2026-07-25 FIX: 'draft' is a PLACEHOLDER the
+    // post-login flow auto-creates the moment a user picks the provider intent
+    // (server/routes/post-login.ts). The old list INCLUDED 'draft', so every
+    // provider who signed up through the decider was 409'd on their OWN draft
+    // and could never submit — the exact opposite of the comment's intent. Only
+    // genuinely-SUBMITTED statuses block a re-apply; a draft is replaced below.
     const existingApp = await db
-      .select()
+      .select({ status: providerApplications.status })
       .from(providerApplications)
       .where(
         and(
           eq(providerApplications.userId, authenticatedUser.uid),
-          inArray(providerApplications.status, ['pending', 'draft', 'pending_review', 'under_review', 'processing', 'pending_resubmission'])
+          inArray(providerApplications.status, ['pending', 'pending_review', 'under_review', 'processing', 'pending_resubmission'])
         )
       )
       .limit(1);
@@ -713,6 +716,14 @@ router.post('/apply', upload.fields([
         errorCode: 'APPLICATION_EXISTS'
       });
     }
+
+    // Replace any auto-created draft with the real submission that follows.
+    await db.delete(providerApplications)
+      .where(and(
+        eq(providerApplications.userId, authenticatedUser.uid),
+        eq(providerApplications.status, 'draft'),
+      ))
+      .catch((e: any) => logger.warn('[Provider Onboarding] draft cleanup skipped (non-blocking)', { error: e?.message }));
 
     // Shared-email conflict guard: reject if this email is already associated with
     // a *different* Firebase UID in provider_applications. This catches family/shared

@@ -629,6 +629,17 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     } catch (e: any) {
       try { await pool.query(`UPDATE users SET email = $1 WHERE id = $2`, [email, uid]); } catch { /* ignore */ }
     }
+    // Also advance ACTIVATION (2026-07-24 audit fix): the raw UPDATE above set
+    // only the boolean, not emailVerifiedAt, so a phone-then-email dual-verified
+    // user never reached activationStatus='active' and stayed blocked from
+    // wallet/booking by requireActive. markEmailVerified sets the timestamp and,
+    // with the mobile timestamp from phone-session, flips the account to active.
+    try {
+      const { markEmailVerified } = await import('../services/ActivationService');
+      await markEmailVerified(uid, { acceptTerms: true });
+    } catch (vErr: any) {
+      logger.warn('[Signup] verify-signup-email activation advance failed (non-blocking)', { error: vErr?.message });
+    }
     return res.json({ ok: true });
   } catch (e: any) {
     logger.error('[Signup] verify-signup-email error', { error: e?.message });
@@ -772,6 +783,16 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
             signupIntent: 'customer',
           } as any);
           logger.info(`[PhoneAuth] users table row created uid=${user.uid}`);
+          // PERSIST VERIFIED (2026-07-24 audit fix): the SMS OTP was just proven,
+          // but nothing recorded the phone as verified — phoneVerified stayed
+          // false and mobileVerifiedAt null, so the account never advanced past
+          // 'draft' (blocking wallet/booking) and identity-merge distrusted it.
+          try {
+            const { markMobileVerified } = await import('../services/ActivationService');
+            await markMobileVerified(user.uid);
+          } catch (vErr: any) {
+            logger.warn('[PhoneAuth] mark-mobile-verified failed (non-blocking)', { error: vErr?.message });
+          }
         } catch (usersErr: any) {
           logger.warn('[PhoneAuth] users table upsert failed (non-blocking)', { error: usersErr.message });
         }
@@ -878,6 +899,17 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
             id: user.uid, email, phone: null, role: 'customer', authProvider: 'email',
             language: 'he', country: 'IL', userStatus: 'new', signupIntent: 'customer',
           } as any);
+          // PERSIST VERIFIED (2026-07-24 audit fix): the email OTP proved this
+          // address, but Postgres users.email_verified stayed false while
+          // authProvider='email' — so the post-login decider bounced the user to
+          // /verify-email on EVERY load, and /verify-email (Firebase magic-link)
+          // couldn't clear the Postgres flag → infinite 'sent back to signup'.
+          try {
+            const { markEmailVerified } = await import('../services/ActivationService');
+            await markEmailVerified(user.uid, { acceptTerms: true });
+          } catch (vErr: any) {
+            logger.warn('[EmailAuth] mark-email-verified failed (non-blocking)', { error: vErr?.message });
+          }
         } catch (usersErr: any) {
           logger.warn('[EmailAuth] users table upsert failed (non-blocking)', { error: usersErr.message });
         }

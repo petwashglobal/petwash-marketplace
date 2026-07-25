@@ -155,7 +155,10 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
   }
 
   if (role === 'loyalty') {
-    return { nextUrl: '/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
+    // Canonical member home is /prestige/home (the purpose-built member
+    // dashboard). /home renders the MARKETING page for signed-in web users —
+    // a member who logged in used to land on the marketing site (audit 2026-07-24).
+    return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
   }
 
   if (providerApp) {
@@ -179,7 +182,7 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
         return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
       }
       // Role mismatch — data inconsistency; route to home and let post-login re-sync on next call.
-      return { nextUrl: '/home', reason: 'ROLE_SYNC_PENDING', profileStatus: 'pending_review', role, userStatus };
+      return { nextUrl: '/prestige/home', reason: 'ROLE_SYNC_PENDING', profileStatus: 'pending_review', role, userStatus };
     }
   }
 
@@ -216,7 +219,8 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
     return { nextUrl: '/admin/dashboard', reason: 'OK', profileStatus: 'approved', role, userStatus };
   }
 
-  return { nextUrl: '/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
+  // Default member/customer → the canonical member dashboard (not marketing).
+  return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'complete', role, userStatus };
 }
 
 export async function postLoginDecider(req: Request, res: Response) {
