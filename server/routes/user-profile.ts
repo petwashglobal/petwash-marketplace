@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
+import { encryptField, blindIndex } from '../services/secretFieldCrypto';
 
 const notificationPreferencesSchema = z.object({
   pushEnabled: z.boolean().optional(),
@@ -225,7 +226,20 @@ router.patch('/profile', async (req, res) => {
     if (temporaryPostal !== undefined) updateData.temporaryPostal = temporaryPostal;
     // Extended profile fields
     if (gender !== undefined) updateData.gender = gender;
-    if (idNumber !== undefined) updateData.idNumber = idNumber;
+    if (idNumber !== undefined) {
+      // National ID (Teudat Zehut) is sensitive PII — never store plaintext
+      // (X-ray P1-6). Encrypt at rest + store a one-way blind index for the
+      // identity-dedup lookup (findUsersByIdAndDob). The legacy plaintext
+      // column is intentionally NOT written anymore.
+      const idStr = String(idNumber).trim();
+      if (idStr) {
+        updateData.idNumberEnc = encryptField(idStr);
+        updateData.idNumberHash = blindIndex(idStr);
+      } else {
+        updateData.idNumberEnc = null;
+        updateData.idNumberHash = null;
+      }
+    }
     if (carPlate !== undefined) updateData.carPlate = carPlate;
     if (carPlate2 !== undefined) updateData.carPlate2 = carPlate2;
     if (emergencyContactName !== undefined) updateData.emergencyContactName = emergencyContactName;

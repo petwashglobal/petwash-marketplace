@@ -60,7 +60,9 @@ export const users = pgTable("users", {
   temporaryLng: decimal("temporary_lng", { precision: 10, scale: 7 }),
   temporaryPostal: varchar("temporary_postal"),
   gender: varchar("gender"),
-  idNumber: varchar("id_number"),              // Government ID / Teudat Zehut
+  idNumber: varchar("id_number"),              // LEGACY plaintext — do NOT write (migrated to *_enc). Read path uses idNumberHash.
+  idNumberEnc: text("id_number_enc"),          // AES-256-GCM ciphertext of Teudat Zehut (X-ray P1-6, mig 0103)
+  idNumberHash: varchar("id_number_hash", { length: 64 }), // HMAC blind index for identity-dedup lookup (one-way)
   carPlate: varchar("car_plate"),              // Primary vehicle plate (providers)
   carPlate2: varchar("car_plate_2"),           // Secondary vehicle plate
   emergencyContactName: varchar("emergency_contact_name"),
