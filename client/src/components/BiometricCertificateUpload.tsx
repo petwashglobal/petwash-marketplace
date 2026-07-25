@@ -270,7 +270,7 @@ export function BiometricCertificateUpload() {
               </SelectTrigger>
               <SelectContent>
                 {loadingCountries ? (
-                  <SelectItem value="" disabled>
+                  <SelectItem value="__loading" disabled>
                     {t('biometric.loading')}
                   </SelectItem>
                 ) : (

@@ -3438,15 +3438,15 @@ export default function MyAccount() {
                     <Label className="text-gray-600 mb-2 block">
                       {isHebrew ? 'משך ההקפאה (אופציונלי)' : 'Freeze duration (optional)'}
                     </Label>
-                    <Select 
-                      value={freezeDuration?.toString() || ''} 
-                      onValueChange={(v) => setFreezeDuration(v ? parseInt(v) : undefined)}
+                    <Select
+                      value={freezeDuration?.toString() || 'indefinite'}
+                      onValueChange={(v) => setFreezeDuration(v && v !== 'indefinite' ? parseInt(v) : undefined)}
                     >
                       <SelectTrigger className="bg-white border-gray-200 text-gray-900">
                         <SelectValue placeholder={isHebrew ? 'ללא הגבלה' : 'Indefinite'} />
                       </SelectTrigger>
                       <SelectContent className="bg-white border-gray-200">
-                        <SelectItem value="">{isHebrew ? 'ללא הגבלה' : 'Indefinite'}</SelectItem>
+                        <SelectItem value="indefinite">{isHebrew ? 'ללא הגבלה' : 'Indefinite'}</SelectItem>
                         <SelectItem value="7">{isHebrew ? 'שבוע אחד' : '1 week'}</SelectItem>
                         <SelectItem value="30">{isHebrew ? 'חודש אחד' : '1 month'}</SelectItem>
                         <SelectItem value="90">{isHebrew ? '3 חודשים' : '3 months'}</SelectItem>

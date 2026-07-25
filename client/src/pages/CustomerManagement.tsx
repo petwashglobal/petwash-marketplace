@@ -400,12 +400,12 @@ export default function CustomerManagement() {
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-slate-700">Loyalty Tier</Label>
-                <Select value={filters.loyaltyTier} onValueChange={(value) => handleFilterChange('loyaltyTier', value)}>
+                <Select value={filters.loyaltyTier || 'all'} onValueChange={(value) => handleFilterChange('loyaltyTier', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-loyalty-tier">
                     <SelectValue placeholder={t('customers.filters.allTiers', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Tiers</SelectItem>
+                    <SelectItem value="all">All Tiers</SelectItem>
                     <SelectItem value="diamond">Diamond</SelectItem>
                     <SelectItem value="platinum">Platinum</SelectItem>
                     <SelectItem value="gold">Gold</SelectItem>
@@ -417,12 +417,12 @@ export default function CustomerManagement() {
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-slate-700">Customer Value</Label>
-                <Select value={filters.customerValue} onValueChange={(value) => handleFilterChange('customerValue', value)}>
+                <Select value={filters.customerValue || 'all'} onValueChange={(value) => handleFilterChange('customerValue', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-customer-value">
                     <SelectValue placeholder={t('customers.filters.allValues', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Values</SelectItem>
+                    <SelectItem value="all">All Values</SelectItem>
                     <SelectItem value="vip">VIP (₪5,000+)</SelectItem>
                     <SelectItem value="high">High Value (₪2,000+)</SelectItem>
                     <SelectItem value="regular">Regular (₪500+)</SelectItem>
@@ -433,12 +433,12 @@ export default function CustomerManagement() {
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-slate-700">Verification</Label>
-                <Select value={filters.verificationStatus} onValueChange={(value) => handleFilterChange('verificationStatus', value)}>
+                <Select value={filters.verificationStatus || 'all'} onValueChange={(value) => handleFilterChange('verificationStatus', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-verification">
                     <SelectValue placeholder={t('customers.filters.allStatus', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Status</SelectItem>
+                    <SelectItem value="all">All Status</SelectItem>
                     <SelectItem value="verified">Verified</SelectItem>
                     <SelectItem value="unverified">Unverified</SelectItem>
                   </SelectContent>
@@ -447,12 +447,12 @@ export default function CustomerManagement() {
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-slate-700">Location</Label>
-                <Select value={filters.location} onValueChange={(value) => handleFilterChange('location', value)}>
+                <Select value={filters.location || 'all'} onValueChange={(value) => handleFilterChange('location', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-location">
                     <SelectValue placeholder={t('customers.filters.allLocations', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Locations</SelectItem>
+                    <SelectItem value="all">All Locations</SelectItem>
                     <SelectItem value="israel">Israel</SelectItem>
                     <SelectItem value="us">United States</SelectItem>
                     <SelectItem value="uk">United Kingdom</SelectItem>
@@ -463,12 +463,12 @@ export default function CustomerManagement() {
 
               <div className="space-y-2">
                 <Label className="text-sm font-medium text-slate-700">Pet Type</Label>
-                <Select value={filters.petType} onValueChange={(value) => handleFilterChange('petType', value)}>
+                <Select value={filters.petType || 'all'} onValueChange={(value) => handleFilterChange('petType', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-pet-type">
                     <SelectValue placeholder={t('customers.filters.allPets', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All Pets</SelectItem>
+                    <SelectItem value="all">All Pets</SelectItem>
                     <SelectItem value="dog">Dog</SelectItem>
                     <SelectItem value="cat">Cat</SelectItem>
                     <SelectItem value="other">Other</SelectItem>

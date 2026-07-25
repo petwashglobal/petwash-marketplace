@@ -256,12 +256,12 @@ export default function NayaxMonitoring() {
               </div>
               <div>
                 <Label htmlFor="type" className="text-xs">Type</Label>
-                <Select value={filters.type} onValueChange={(value) => setFilters({ ...filters, type: value })}>
+                <Select value={filters.type || 'all'} onValueChange={(value) => setFilters({ ...filters, type: value === 'all' ? '' : value })}>
                   <SelectTrigger id="type" className="mt-1">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="payment">Payment</SelectItem>
                     <SelectItem value="redeem">Redeem</SelectItem>
                     <SelectItem value="webhook">Webhook</SelectItem>
@@ -270,12 +270,12 @@ export default function NayaxMonitoring() {
               </div>
               <div>
                 <Label htmlFor="status" className="text-xs">Status</Label>
-                <Select value={filters.status} onValueChange={(value) => setFilters({ ...filters, status: value })}>
+                <Select value={filters.status || 'all'} onValueChange={(value) => setFilters({ ...filters, status: value === 'all' ? '' : value })}>
                   <SelectTrigger id="status" className="mt-1">
                     <SelectValue placeholder="All" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">All</SelectItem>
+                    <SelectItem value="all">All</SelectItem>
                     <SelectItem value="pending">Pending</SelectItem>
                     <SelectItem value="processing">Processing</SelectItem>
                     <SelectItem value="completed">Completed</SelectItem>

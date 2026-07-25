@@ -209,10 +209,10 @@ function UpdateDialog({
           </div>
           <div>
             <Label>Decision recorded</Label>
-            <Select value={decision} onValueChange={setDecision}>
+            <Select value={decision || 'none'} onValueChange={(v) => setDecision(v === 'none' ? '' : v)}>
               <SelectTrigger><SelectValue placeholder="Select decision…" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="">— No decision yet —</SelectItem>
+                <SelectItem value="none">— No decision yet —</SelectItem>
                 {DECISION_OPTIONS.map(o => (
                   <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
                 ))}
