@@ -14,6 +14,7 @@
  * (/api/esign/webhook), which flips the signing_sessions row to `completed`.
  */
 import { Router } from 'express';
+import crypto from 'crypto';
 import { requireAuth } from '../customAuth';
 import { db } from '../db';
 import { eq } from 'drizzle-orm';
@@ -191,6 +192,116 @@ router.post('/:key/start', requireAuth, async (req, res) => {
   } catch (error: any) {
     logger.error('[ProviderDeclarations] start error', error);
     res.status(500).json({ success: false, error: error.message || 'Failed to start signing' });
+  }
+});
+
+/**
+ * FREE in-app acceptance of a self-attestation declaration (2026-07-25).
+ *
+ * The Provider Protection Book declarations are self-attestations ("I declare X
+ * is true"), not counter-signed contracts — they do not need a DocuSeal e-sign
+ * SaaS. This endpoint records the provider's active acceptance directly as a
+ * COMPLETED signing_sessions row in the exact format the gate reads
+ * (documentType = provider_declaration:<key>:<version>), so the whole
+ * declaration/payout gate works with NO external dependency and NO cost.
+ *
+ * Safety is preserved identically to /start:
+ *   • reviewedByCounsel === false → 409 PENDING_COUNSEL. We NEVER record a
+ *     binding acceptance of legal text still marked draft / pending counsel
+ *     sign-off. (Every declaration is draft today, so this is inert until the
+ *     document's own status is advanced to final — a deliberate act, per the
+ *     "not binding until approved" header on each doc.)
+ *   • The provider must actively affirm (accepted:true) and type their full name.
+ *   • We hash the EXACT accepted text (+version) into certificateUrl so a later
+ *     wording bump is provably distinct and re-signature is required.
+ *   • submissionId is deterministic per (key,version,provider) → idempotent.
+ */
+router.post('/:key/accept', requireAuth, async (req, res) => {
+  try {
+    const providerUid = req.user!.uid;
+    const key = req.params.key;
+    const doc = PROVIDER_DECLARATION_BY_KEY[key];
+    if (!doc) {
+      return res.status(404).json({ success: false, error: 'Unknown declaration key' });
+    }
+
+    // Same safety gate as /start — do not bind draft legal text.
+    if (!doc.reviewedByCounsel) {
+      return res.status(409).json({
+        success: false,
+        error: 'This declaration is pending legal (counsel) approval and cannot be signed yet.',
+        code: 'PENDING_COUNSEL',
+      });
+    }
+
+    const accepted = req.body?.accepted === true;
+    const signerName = typeof req.body?.signerName === 'string' ? req.body.signerName.trim() : '';
+    if (!accepted || signerName.length < 2) {
+      return res.status(400).json({
+        success: false,
+        error: 'You must read and confirm the declaration and enter your full legal name.',
+        code: 'AFFIRMATION_REQUIRED',
+      });
+    }
+    const signerEmail = req.user!.email;
+    if (!signerEmail) {
+      return res.status(400).json({ success: false, error: 'No verified email on account; cannot sign.' });
+    }
+
+    // Integrity: a hash of the exact text + version the provider accepted.
+    const contentHash = crypto
+      .createHash('sha256')
+      .update(`${doc.key}:${doc.version}:${doc.bodyEn}:${doc.bodyHe}`)
+      .digest('hex');
+    const submissionId = `inapp:${doc.key}:${doc.version}:${providerUid}`;
+    const now = new Date();
+    const language = (typeof req.body?.language === 'string' && req.body.language) || 'he';
+
+    await db
+      .insert(signingSessions)
+      .values({
+        userId: providerUid,
+        submissionId,
+        templateSlug: `inapp-provider-decl-${doc.key}`,
+        documentType: declarationDocType(doc.key, doc.version),
+        documentName: `PetWash™ ${doc.titleEn}`,
+        language,
+        status: 'completed',
+        signerEmail,
+        signerName,
+        signedAt: now,
+        completedAt: now,
+        certificateUrl: `inapp-attestation:sha256:${contentHash}`,
+        ipAddress: req.ip,
+        userAgent: req.headers['user-agent'],
+      })
+      .onConflictDoNothing({ target: signingSessions.submissionId });
+
+    await logAuditEvent({
+      actorUserId: providerUid,
+      actorRole: 'provider',
+      actionType: 'PROVIDER_DECLARATION_ACCEPTED_INAPP',
+      targetType: 'provider_declaration',
+      targetId: `${doc.key}:${doc.version}`,
+      ip: req.ip,
+      userAgent: req.headers['user-agent'],
+      metadata: { contentHash, signerName },
+    });
+
+    logger.info('[ProviderDeclarations] in-app acceptance recorded', {
+      providerUid, declarationKey: doc.key, declarationVersion: doc.version,
+    });
+
+    res.json({
+      success: true,
+      declarationKey: doc.key,
+      declarationVersion: doc.version,
+      signedAt: now.toISOString(),
+      method: 'in_app_attestation',
+    });
+  } catch (error: any) {
+    logger.error('[ProviderDeclarations] accept error', error);
+    res.status(500).json({ success: false, error: error.message || 'Failed to record acceptance' });
   }
 });
 
