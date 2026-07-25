@@ -239,6 +239,62 @@ export class IsraeliDigitalReceiptService {
   }
 
   /**
+   * VAT breakdown that HONOURS the CPA's per-payment-class vatMode
+   * (getSumitDocumentMapping) — fix P0-4, 2026-07-25.
+   *
+   * Before this, generateReceipt always booked 18% on the FULL amount, ignoring
+   * the vatMode the call sites already declare via `paymentClass`. That made
+   * every stored-value top-up (eGift/wallet) charge VAT it shouldn't, and every
+   * disclosed-agent booking book VAT on the whole gross instead of on PetWash's
+   * commission. The call sites were already correct; only the engine was wrong.
+   *
+   *   - FULL_VAT / VAT_AT_REDEMPTION → 18% extracted from the full total.
+   *   - NO_VAT_STORED_VALUE          → zero VAT now (tax event is at redemption).
+   *   - VAT_ON_COMMISSION_ONLY       → 18% extracted from PetWash's commission
+   *                                    only (disclosed-agent), matching
+   *                                    VATCalculatorService.calculateMarketplaceVAT.
+   *   - CREDIT / no class            → full VAT (safe default; credit notes use
+   *                                    the dedicated issueCreditNote path).
+   */
+  static resolveReceiptVat(params: ReceiptGenerationParams): {
+    subtotalBeforeVAT: number;
+    vatAmount: number;
+    totalAmount: number;
+    vatRatePct: number;
+  } {
+    const vatMode = params.paymentClass
+      ? getSumitDocumentMapping(params.paymentClass).vatMode
+      : 'FULL_VAT';
+    const total = params.totalAmount;
+    const fullRatePct = parseFloat((ISRAELI_VAT_RATE * 100).toFixed(2));
+
+    switch (vatMode) {
+      case 'NO_VAT_STORED_VALUE':
+        return { subtotalBeforeVAT: parseFloat(total.toFixed(2)), vatAmount: 0, totalAmount: total, vatRatePct: 0 };
+
+      case 'VAT_ON_COMMISSION_ONLY': {
+        // Commission is VAT-inclusive; extract the VAT portion of it only.
+        const commissionGross =
+          params.brokerCommissionAmount ?? params.platformFeeAmount ?? total * PLATFORM_COMMISSION_RATE;
+        const vatAmount = this.calculateVATBreakdown(commissionGross).vatAmount;
+        return {
+          subtotalBeforeVAT: parseFloat((total - vatAmount).toFixed(2)),
+          vatAmount,
+          totalAmount: total,
+          vatRatePct: fullRatePct,
+        };
+      }
+
+      case 'FULL_VAT':
+      case 'VAT_AT_REDEMPTION':
+      default: {
+        const b = this.calculateVATBreakdown(total);
+        return { ...b, vatRatePct: fullRatePct };
+      }
+    }
+  }
+
+  /**
    * Calculate provider settlement with Israeli law deductions
    * Implements marketplace broker subcontractor model:
    * 1. Gross payout = customer payment - platform commission
@@ -371,7 +427,9 @@ export class IsraeliDigitalReceiptService {
 
       const issuedAt = new Date();
 
-      const vatBreakdown = this.calculateVATBreakdown(params.totalAmount);
+      // VAT per the CPA's per-class rule (stored-value = 0, disclosed-agent =
+      // commission-only, principal = full) — see resolveReceiptVat (P0-4 fix).
+      const vatBreakdown = this.resolveReceiptVat(params);
 
       // SHAAM allocation number requirement (ITA Digital Invoice Law 2026)
       const shaamRequired = this.isShaamRequired(vatBreakdown.subtotalBeforeVAT, issuedAt);
@@ -400,7 +458,8 @@ export class IsraeliDigitalReceiptService {
         serviceDescription: params.serviceDescription,
         serviceDescriptionHe: params.serviceDescriptionHe,
         subtotalAmount: vatBreakdown.subtotalBeforeVAT.toFixed(2),
-        vatRate: (ISRAELI_VAT_RATE * 100).toFixed(2),
+        // Effective rate for THIS document: 0 for stored value, 18 otherwise.
+        vatRate: vatBreakdown.vatRatePct.toFixed(2),
         vatAmount: vatBreakdown.vatAmount.toFixed(2),
         platformFeeAmount: (params.platformFeeAmount || 0).toFixed(2),
         totalAmount: params.totalAmount.toFixed(2),
