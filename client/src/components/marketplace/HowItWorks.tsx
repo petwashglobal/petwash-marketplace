@@ -189,9 +189,9 @@ export function HowItWorks({ variant = "horizontal", showCTA = true, className }
                 {isRTL ? "מוכנים להתחיל?" : "Ready to Get Started?"}
               </h3>
               <p className="text-gray-500 mb-6">
-                {isRTL 
-                  ? "הצטרפו לאלפי בעלי חיות מחמד מרוצים שמצאו טיפול מושלם"
-                  : "Join thousands of happy pet owners who found perfect care"
+                {isRTL
+                  ? "מצאו מטפל מאומת לחיית המחמד שלכם"
+                  : "Find trusted, verified care for your pet"
                 }
               </p>
               <div className="space-y-3">
