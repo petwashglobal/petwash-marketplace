@@ -20,6 +20,7 @@ import { refundTransactions } from "@shared/schema";
 import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { createOrUpdateAlert } from "./AlertEngine";
+import { logAuditEvent } from "../middleware/auditLog";
 
 export type RefundInstrument = "wallet" | "egift" | "loyalty" | "promo" | "wash_pack" | "card";
 
@@ -144,6 +145,16 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
     logger.info("[RefundService] Refund recorded pending (non-wallet instrument)", {
       refundId, instrument, refundCents, sourceType, sourceId,
     });
+    // Central audit trail (invariants §4): a money-out obligation must be
+    // audited, not only recorded in refund_transactions + an alert.
+    logAuditEvent({
+      actorUserId: input.initiatedBy ?? userId,
+      actorRole: "system",
+      actionType: "REFUND_RECORDED_PENDING",
+      targetType: "refund",
+      targetId: refundId,
+      metadata: { userId, instrument, refundCents, sourceType, sourceId, currency: input.currency ?? "ILS" },
+    }).catch(() => { /* audit is fail-soft; never blocks a refund */ });
     return { refundId, status: "pending", executed: false, idempotent: false };
   }
 
@@ -172,6 +183,15 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
     logger.info("[RefundService] Wallet refund succeeded", {
       refundId, userId, refundCents, txnId: result.txnId,
     });
+    // Central audit trail (invariants §4): money actually moved back to the user.
+    logAuditEvent({
+      actorUserId: input.initiatedBy ?? userId,
+      actorRole: "system",
+      actionType: "REFUND_EXECUTED",
+      targetType: "refund",
+      targetId: refundId,
+      metadata: { userId, instrument, refundCents, sourceType, sourceId, railRef: result.txnId },
+    }).catch(() => { /* audit is fail-soft; never blocks a refund */ });
     return { refundId, status: "succeeded", executed: true, railRef: result.txnId, idempotent: false };
   } catch (err: any) {
     await db.update(refundTransactions)
@@ -197,6 +217,16 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
     logger.error("[RefundService] Wallet refund FAILED", {
       refundId, userId, refundCents, error: err?.message,
     });
+    // Central audit trail (invariants §4): a failed money-out is exactly the
+    // event an auditor most needs to see — record it, not just the alert.
+    logAuditEvent({
+      actorUserId: input.initiatedBy ?? userId,
+      actorRole: "system",
+      actionType: "REFUND_FAILED",
+      targetType: "refund",
+      targetId: refundId,
+      metadata: { userId, instrument, refundCents, sourceType, sourceId, error: err?.message ?? String(err) },
+    }).catch(() => { /* audit is fail-soft; never blocks a refund */ });
     return { refundId, status: "failed", executed: false, idempotent: false };
   }
 }
