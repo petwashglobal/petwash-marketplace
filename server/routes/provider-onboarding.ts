@@ -20,7 +20,7 @@ import multer from 'multer';
 import { sendLuxuryEmail } from '../email/luxury-email-service';
 import { generateProviderWelcomeEmail } from '../email/templates/welcome-provider-signup-2026';
 import { writeProviderAudit } from '../services/providerAudit';
-import { seedProviderServicesOnApproval } from '../services/providerServiceApproval';
+import { seedProviderServicesOnApproval, resolveApplicationServiceTypes } from '../services/providerServiceApproval';
 import { emitProviderEvent } from '../services/providerMonitoring';
 import { logProviderMessage } from '../services/providerMessageLog';
 import { upsertReviewQueue, completeQueueItem, logSystemMessage, queuePriorityFromDecision as _queuePriority } from '../services/providerQueue';
@@ -1835,8 +1835,10 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       // KYC-review approval path did not, so providers approved here had zero service
       // rows → declaration scopes (epic #49) couldn't resolve. Idempotent + fail-open.
       try {
-        const svcTypes = ((application as any).providerTypes as string[] | null | undefined)
-          ?? (application.providerType ? [application.providerType] : null);
+        // #136-3: seed EVERY service the applicant selected, not just the primary.
+        // The full set lives in internalNotes JSON — resolveApplicationServiceTypes
+        // reads it (falling back to the primary column).
+        const svcTypes = resolveApplicationServiceTypes(application);
         const seeded = await seedProviderServicesOnApproval(application.userId, svcTypes);
         writeProviderAudit({
           applicationId: (application as any).id,
