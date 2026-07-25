@@ -145,8 +145,14 @@ export function OtpCodeInput({
         </p>
       )}
 
-      {/* 6 input boxes — always LTR regardless of page language */}
-      <div className="flex gap-2 justify-center" dir="ltr">
+      {/* 6 input boxes — always LTR regardless of page language.
+          RESPONSIVE (2026-07-25): the boxes were a fixed w-11 (44px) each, so
+          6 boxes + gaps ≈ 304px that could not shrink — on a narrow phone (or
+          inside a padded modal) they overflowed the border. They are now flex
+          items that share the container's width (min-w-0 lets them shrink,
+          max-w caps them on desktop), with a tighter gap + smaller text on
+          mobile. The row can never exceed its container now. */}
+      <div className="flex w-full max-w-xs mx-auto gap-1.5 sm:gap-2 justify-center px-1" dir="ltr">
         {Array.from({ length }).map((_, i) => (
           <input
             key={i}
@@ -164,7 +170,7 @@ export function OtpCodeInput({
             disabled={loading}
             aria-label={`Digit ${i + 1} of ${length}`}
             className={cn(
-              'w-11 h-14 text-center text-2xl font-bold rounded-lg border-2 transition-all duration-150 bg-white dark:bg-white',
+              'flex-1 min-w-0 max-w-[3rem] h-14 text-center text-xl sm:text-2xl font-bold rounded-lg border-2 transition-all duration-150 bg-white dark:bg-white',
               'focus:outline-none focus:ring-0',
               digits[i]
                 ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-black'
