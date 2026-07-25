@@ -56,8 +56,12 @@ describe('marketing surfaces stay out of the native apps', () => {
     expect(app).toMatch(/showPromoPopup = !isNativeApp/);
   });
 
-  it('the website dev notice renders only on the web flavor', () => {
-    expect(layout).toMatch(/appFlavor === 'web' && !devNoticeDismissed/);
+  it('the "under development" beta notice is GONE — the site is live (CEO 2026-07-25)', () => {
+    // A live business must never label its whole site as unfinished. If a
+    // site-wide "under development / in testing" strip ever comes back, this
+    // fails on purpose — readiness is gated per-feature, not with a global label.
+    expect(layout).not.toMatch(/devNoticeDismissed/);
+    expect(layout).not.toMatch(/בפיתוח|under development/i);
   });
 });
 
