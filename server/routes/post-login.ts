@@ -4,7 +4,7 @@ import { logger } from "../lib/logger";
 import { ALLOWED_INTENTS, type UserStatus, type UserRole } from "@shared/schema";
 import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
-import { isSuperAdmin } from "../middleware/rbac";
+import { isSuperAdmin, isSuperAdminVerified } from "../middleware/rbac";
 import { isAdminRole } from "@shared/adminRoles";
 import { recordLoginEvent } from "../services/AuthEventService";
 import { getClientIP } from "../services/alerts";
@@ -34,6 +34,9 @@ const REQUIRED_FIELDS_BY_ROLE: Record<string, string[]> = {
   staff: ['firstName', 'lastName', 'termsAcceptedAt'],
   admin: ['firstName', 'lastName', 'termsAcceptedAt'],
   management: ['firstName', 'lastName', 'termsAcceptedAt'],
+  // super_admin is the platform owner (SUPER_ADMIN_EMAILS): never blocked by a
+  // profile-completeness gate — they must reach the backend unconditionally.
+  super_admin: [],
 };
 
 function getMissingFields(user: any, role: string): string[] {
@@ -119,6 +122,20 @@ async function computeUserStatus(user: any, userId: string, cachedProviderApp?: 
 function buildRoutingResponse(user: any, role: string, userStatus: string, missingFields: string[], providerApp?: any, staffReq?: any): PostLoginResponse {
   if (user.blocked) {
     return { nextUrl: '/blocked', reason: 'BLOCKED', profileStatus: 'blocked', role, userStatus };
+  }
+
+  // SUPER-ADMIN FAST PATH (fix #136-1, CEO 2026-07-25): the platform owner
+  // always lands on the backend, no matter what status the row carries or
+  // whether profile fields are filled. This is the guarantee behind "gmail
+  // won't let me in" — a super-admin email auto-created as a customer used to
+  // fall through to /home. We trust `role` here because the ONLY caller
+  // (postLoginDecider) promotes effectiveRole to 'super_admin' exclusively via
+  // isSuperAdminVerified (allowlist AND Firebase email_verified) — so the
+  // verification gate lives in exactly one place and can't be bypassed by an
+  // unverified impostor. Checked FIRST so nothing below (email-verify bounce,
+  // missing-fields, provider/staff routing) can trap it.
+  if (role === 'super_admin') {
+    return { nextUrl: '/admin/dashboard', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
   }
 
   const emailVerified = !!(user as any).emailVerified;
@@ -626,6 +643,25 @@ export async function postLoginDecider(req: Request, res: Response) {
     const refreshedUser = await storage.getUser(userId);
     const u = refreshedUser || user;
     let effectiveRole = (u as any).role || userRole || 'customer';
+
+    // ── SUPER-ADMIN PROMOTION (fix #136-1, CEO 2026-07-25) ─────────────────
+    // A super-admin allowlisted email (SUPER_ADMIN_EMAILS) that signed in via
+    // Google/OAuth is auto-created with role='customer' and was routed to /home
+    // — locked out of the backend ("gmail won't let me in"). Promote it to
+    // super_admin BEFORE any role-dependent logic (missingFields, provider/staff
+    // fetch, status, routing) so the decider treats it as admin end-to-end. The
+    // DB role + Firebase claims are synced below (updates.role) for durability;
+    // buildRoutingResponse trusts the promoted role below. SECURITY: gate on
+    // isSuperAdminVerified (allowlist AND Firebase email_verified) — the bare
+    // isSuperAdmin(email) primitive would promote an UNVERIFIED account that
+    // merely registered an allowlisted email. OAuth/Google logins are verified
+    // by definition, so the CEO's Gmail passes; an unverified email/password
+    // impostor does not.
+    const isSuperAdminEmail = isSuperAdminVerified(req);
+    if (isSuperAdminEmail && effectiveRole !== 'super_admin') {
+      effectiveRole = 'super_admin';
+    }
+
     const missingFields = getMissingFields(u, effectiveRole);
 
     // ── IDENTITY MERGE — SHADOW MODE (observational only) ──────────────────
@@ -796,6 +832,54 @@ export async function postLoginDecider(req: Request, res: Response) {
     // A user must have an explicit role assignment in the database (via admin approval)
     // before their role is set to 'staff'. Silent escalation based on userStatus alone
     // bypassed the approval workflow and is a security risk.
+
+    // SUPER-ADMIN DURABILITY (fix #136-1): persist role=super_admin and sync
+    // Firebase claims so the promotion sticks across sessions and the client's
+    // RBAC/admin guards see a consistent shape immediately — not just this one
+    // response. Unlike staff escalation above, this is NOT a silent privilege
+    // grant: the email is on the hard-coded SUPER_ADMIN_EMAILS allowlist, which
+    // IS the source of truth for super-admin. Best-effort + audited.
+    if (isSuperAdminEmail && (u as any).role !== 'super_admin') {
+      const previousRole = (u as any).role || 'customer';
+      updates.role = 'super_admin';
+      try {
+        const fbAdminModule = await import('../lib/firebase-admin');
+        const fbAuth = fbAdminModule.auth;
+        if (fbAuth) {
+          const userRec = await fbAuth.getUser(userId);
+          const existingClaims = (userRec.customClaims || {}) as Record<string, any>;
+          if (existingClaims.role !== 'super_admin' || existingClaims.accountType !== 'internal') {
+            await fbAuth.setCustomUserClaims(userId, {
+              ...existingClaims,
+              role: 'super_admin',
+              accountType: 'internal',
+            });
+            logger.info('[PostLogin] ✅ Firebase claims synced to role=super_admin', { userId, previousRole });
+          }
+        }
+      } catch (claimsErr) {
+        logger.warn('[PostLogin] Failed to sync super_admin Firebase claims (non-blocking)', {
+          userId, error: String(claimsErr),
+        });
+      }
+      try {
+        await logAuditEvent({
+          actorUserId: userId,
+          actorRole: 'super_admin',
+          actionType: 'POST_LOGIN_SUPER_ADMIN_SYNC',
+          targetType: 'user',
+          targetId: userId,
+          ip: getClientIP(req) || req.ip || '',
+          userAgent: req.headers['user-agent'] || '',
+          traceId: (req as any).traceId || '',
+          metadata: { from: previousRole, to: 'super_admin', reason: 'super_admin_allowlist' },
+        });
+      } catch (auditErr) {
+        logger.warn('[PostLogin] Failed to audit super_admin sync (non-blocking)', {
+          userId, error: String(auditErr),
+        });
+      }
+    }
 
     await storage.updateUser(userId, updates as any);
 
