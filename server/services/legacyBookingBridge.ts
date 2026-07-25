@@ -26,6 +26,7 @@ import { eq } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import { dispatchNotification } from '../lib/notificationDispatcher';
+import { createOrUpdateAlert } from './AlertEngine';
 
 export interface BridgeInput {
   ownerId: string;
@@ -117,6 +118,30 @@ export async function bridgeLegacyBooking(input: BridgeInput): Promise<{ request
     logger.error('[BookingBridge] mirror failed (booking itself unaffected)', {
       err: err?.message, legacyRef: input.legacyRef,
     });
+    // Reliability (invariants §6): a silent mirror failure = an INVISIBLE
+    // booking — the customer waits on a provider who has no screen to see it,
+    // exactly the "hung forever" bug the bridge exists to fix. Raise a critical,
+    // deduped alert keyed on the legacy row so ops can manually bridge/refund
+    // instead of the booking disappearing without a trace. Fail-soft.
+    createOrUpdateAlert({
+      dedupeKey: `bridge_failed:${input.legacyRef.table}:${input.legacyRef.id}`,
+      category: 'support',
+      severity: 'critical',
+      title: 'Booking bridge FAILED — provider cannot see this booking',
+      message: `Legacy ${input.legacyRef.table}#${input.legacyRef.id} was NOT mirrored into booking_requests: ${err?.message ?? String(err)}. The customer is waiting on a provider who has no screen to accept it. Manual bridge or refund needed.`,
+      linkedEntityType: 'booking',
+      linkedEntityId: String(input.legacyRef.id),
+      source: 'booking_bridge',
+      metadata: {
+        legacyRef: input.legacyRef,
+        ownerId: input.ownerId,
+        providerUserId: input.providerUserId,
+        serviceType: input.serviceType,
+        error: err?.message ?? String(err),
+      },
+    }).catch((alertErr: any) =>
+      logger.warn('[BookingBridge] failed to raise bridge-failure alert', { err: alertErr?.message }),
+    );
     return null;
   }
 }
