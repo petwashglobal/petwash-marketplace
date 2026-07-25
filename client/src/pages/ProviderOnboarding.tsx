@@ -262,6 +262,35 @@ export default function ProviderOnboarding() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user]);
 
+  // Prefill from the DB user record (2026-07-25 fix): name/phone/city were given
+  // at signup/complete-profile and live in `users`, but this form only read the
+  // Firebase object — which often has no displayName — so a provider was re-asked
+  // for what we already know. Fill any field still empty; never overwrite input.
+  useEffect(() => {
+    if (!user) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch(getApiUrl('/api/auth/whoami'), { credentials: 'include' });
+        if (!res.ok) return;
+        const data = await res.json();
+        const u = data?.user;
+        if (cancelled || !u) return;
+        setFirstName((v) => v || u.firstName || '');
+        setLastName((v) => v || u.lastName || '');
+        setCity((v) => v || u.city || '');
+        if (u.phone && !phoneVerified) {
+          const raw = String(u.phone);
+          const code = ['+972', '+1', '+44', '+61', '+49', '+33', '+7', '+91', '+55'].find((c) => raw.startsWith(c));
+          if (code) { setPhoneCountryCode(code); setPhoneNumber((v) => v || raw.slice(code.length)); }
+          else setPhoneNumber((v) => v || raw);
+        }
+      } catch { /* prefill is best-effort */ }
+    })();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user]);
+
   // ── Phone OTP Verification Handlers ──────────────────────────────────
   // PR Phase A: no flag emojis. ISO-2 code + dial code is the professional
   // pattern (matches Apple/Stripe/airline checkouts). Phase B replaces this
