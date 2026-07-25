@@ -209,6 +209,7 @@ import {
   type FranchiseRoyaltyPayment,
   type InsertFranchiseRoyaltyPayment,
 } from "@shared/schema-franchise";
+import { blindIndex } from "./services/secretFieldCrypto";
 import {
   chatConversations,
   chatMessages,
@@ -986,10 +987,14 @@ export class DatabaseStorage implements IStorage {
     if (!idNumber || !dateOfBirth) return [];
     const dob = new Date(dateOfBirth);
     if (isNaN(dob.getTime())) return [];
+    // X-ray P1-6: national ID is stored encrypted; match on the one-way blind
+    // index (HMAC), never the plaintext column, which is no longer written.
+    const hash = blindIndex(idNumber);
+    if (!hash) return [];
     const matches = await db
       .select()
       .from(users)
-      .where(and(eq(users.idNumber, idNumber), eq(users.dateOfBirth, dob)))
+      .where(and(eq(users.idNumberHash, hash), eq(users.dateOfBirth, dob)))
       .limit(5);
     return matches;
   }
