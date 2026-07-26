@@ -15,6 +15,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { NavigationButton } from '@/components/NavigationButton';
+import { ContactParty } from '@/components/ContactParty';
 import {
   CheckCircle2, XCircle, MessageSquare, Play, Square,
   AlertTriangle, Clock, Dog, Loader2, RefreshCw, CreditCard,
@@ -528,23 +529,13 @@ function JobCard({
               </div>
             )}
 
-            {/* Contact */}
-            {(booking.clientEmail || booking.clientPhone) && (
-              <div className="flex items-center gap-3">
-                {booking.clientEmail && (
-                  <a href={`mailto:${booking.clientEmail}`}
-                    className="flex items-center gap-1.5 text-xs text-[#B8932F] hover:text-[#B8932F] font-medium">
-                    <Mail className="w-3.5 h-3.5" /> Email client
-                  </a>
-                )}
-                {booking.clientPhone && (
-                  <a href={`tel:${booking.clientPhone}`}
-                    className="flex items-center gap-1.5 text-xs text-green-600 hover:text-green-700 font-medium">
-                    <Phone className="w-3.5 h-3.5" /> Call client
-                  </a>
-                )}
-              </div>
-            )}
+            {/* Contact the client — call / text / email, one consistent control */}
+            <ContactParty
+              phone={booking.clientPhone}
+              email={booking.clientEmail}
+              who="client"
+              smsBody={`Hi${booking.clientName ? ' ' + booking.clientName : ''}, regarding your PetWash booking`}
+            />
 
             {/* Notes / special requests */}
             {booking.specialRequests && (

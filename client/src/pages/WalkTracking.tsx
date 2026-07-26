@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react';
+import { ContactParty } from '@/components/ContactParty';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { useParams, useLocation } from 'wouter';
@@ -515,18 +516,14 @@ export default function WalkTracking() {
                     </div>
                   </div>
 
-                  {/* Quick Actions */}
-                  <div className="grid grid-cols-2 gap-3 mt-4">
-                    <a href={`tel:${walk.walker.phoneNumber}`}>
-                      <Button className="luxury-btn-primary w-full flex items-center justify-center gap-2">
-                        <Phone className="w-4 h-4" />
-                        {isHebrew ? 'התקשר' : 'Call'}
-                      </Button>
-                    </a>
-                    <Button className="luxury-btn-secondary w-full flex items-center justify-center gap-2">
-                      <MessageSquare className="w-4 h-4" />
-                      {isHebrew ? 'הודעה' : 'Message'}
-                    </Button>
+                  {/* Quick Actions — call / text the walker (the "Message" button
+                      used to be a dead no-op; now a real SMS via ContactParty). */}
+                  <div className="mt-4">
+                    <ContactParty
+                      phone={walk.walker.phoneNumber}
+                      who={isHebrew ? 'המטפל' : 'walker'}
+                      smsBody={isHebrew ? 'שלום, בנוגע לטיול של הכלב שלי' : 'Hi, regarding my dog walk'}
+                    />
                   </div>
 
                   {/* Navigation to pickup address */}
