@@ -32,10 +32,9 @@ export const STATION_REGISTRY: Station[] = [
     code: 'PWS-IL-KFS-001',
     nameHe: 'פארק יצחק ולד, כפר סבא',
     nameEn: 'Isaac Wald Park, Kfar Saba',
-    // Reverse-geocoded from the CEO-confirmed pin (32.179964, 34.925016): the
-    // "Weizmann 185 / 4439654" here was wrong (came from a bad listing). Park name
-    // + real postcode + the exact pin are the reliable identifiers.
-    address: 'פארק יצחק ולד, כפר סבא (מיקוד 4445810)',
+    // CEO-confirmed 2026-07-26: Wald's real address IS Weizmann 185, Kfar Saba.
+    // (Do NOT "correct" this from a reverse-geocode — the CEO is the authority.)
+    address: 'רחוב ויצמן 185, כפר סבא (מיקוד 4439654)',
     city: 'כפר סבא',
     lat: 32.179964, lng: 34.925016,
     hoursHe: 'כל יום 05:30–23:00',
@@ -53,7 +52,7 @@ export const STATION_REGISTRY: Station[] = [
     // street number. The "Weizmann 135" that briefly appeared here came from a
     // WRONG Waze listing and was removed 2026-07-26. The exact pin is the
     // CEO-confirmed coordinates below; street text pending the CEO's real address.
-    address: 'כפר סבא הירוקה, פארק 80, כפר סבא (מיקוד 4465238)',
+    address: 'כפר סבא הירוקה, פארק 80, כפר סבא',
     city: 'כפר סבא',
     lat: 32.1982242, lng: 34.892436,
     hoursHe: 'פתוחה 24/7',

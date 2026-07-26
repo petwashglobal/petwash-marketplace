@@ -105,8 +105,8 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     hoursHe: 'פתוחה כל יום 05:30–23:00 (למעט חגים)',
     hoursEn: 'Open daily 05:30–23:00 (except holidays)',
     opens: '05:30', closes: '23:00',
-    arrivalHe: 'פארק יצחק ולד, כפר סבא (מיקוד 4445810) — בתוך הפארק, ליד החניון הראשי; חניה במקום בתשלום (כחול-לבן), ומשם הליכה קצרה אל העמדה. (עמדה נפרדת לחלוטין מכפר סבא הירוקה / פארק 80.)',
-    arrivalEn: 'Isaac Wald Park, Kfar Saba (postcode 4445810) — inside the park, beside the main car park; on-site paid parking (blue-and-white), then a short walk to the bay. (A completely separate station from Green Kfar Saba / Park 80.)',
+    arrivalHe: 'פארק יצחק ולד — רחוב ויצמן 185, כפר סבא (מיקוד 4439654). בתוך הפארק, ליד החניון הראשי; חניה במקום בתשלום (כחול-לבן), ומשם הליכה קצרה אל העמדה. (עמדה נפרדת לחלוטין מכפר סבא הירוקה / פארק 80.)',
+    arrivalEn: 'Isaac Wald Park — Weizmann 185, Kfar Saba (postcode 4439654). Inside the park, beside the main car park; on-site paid parking (blue-and-white), then a short walk to the bay. (A completely separate station from Green Kfar Saba / Park 80.)',
     // Real on-site photo (CEO, 2026-07-23). Green Kfar Saba gets its photo next week.
     photo: waldStationPhoto,
     photoAltHe: 'תחנת PetWash בפארק יצחק ולד, כפר סבא — שני תאי שטיפה K9000',
