@@ -127,8 +127,8 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     hoursHe: 'פתוחה 24 שעות בכל יום',
     hoursEn: 'Open 24/7',
     opens: '00:00', closes: '23:59',
-    arrivalHe: 'ממש בכניסה לפארק, ליד דוכן הקפה — אין צורך ללכת פנימה, העמדה נראית מהכניסה.',
-    arrivalEn: 'Right at the park entrance, beside the coffee kiosk — no walk into the park, the bay is visible from the entrance.',
+    arrivalHe: 'רחוב ויצמן 135, כפר סבא הירוקה (פארק 80) — ממש בכניסה לפארק, ליד דוכן הקפה; העמדה נראית מהכניסה. (שימו לב: עמדה נפרדת מפארק יצחק ולד שברחוב ויצמן 185.)',
+    arrivalEn: 'Weizmann 135, Green Kfar Saba (Park 80) — right at the park entrance, beside the coffee kiosk; the bay is visible from the entrance. (Note: a separate station from Isaac Wald Park at Weizmann 185.)',
   },
 ];
 

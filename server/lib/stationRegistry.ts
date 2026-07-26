@@ -46,7 +46,11 @@ export const STATION_REGISTRY: Station[] = [
     code: 'PWS-IL-KFS-002',
     nameHe: 'כפר סבא הירוקה',
     nameEn: 'Green Kfar Saba',
-    address: 'כניסת הפארק, ליד דוכן הקפה, כפר סבא',
+    // Real street address (2026-07-26): Weizmann 135, Green Kfar Saba, Park 80.
+    // Was the vague "park entrance, coffee kiosk", which map apps could not pin
+    // — so Waze/Google snapped it onto the Wald station (Weizmann 185). Distinct
+    // street number is what stops the two Kfar Saba stations being merged.
+    address: 'רחוב ויצמן 135, כפר סבא הירוקה (פארק 80), כפר סבא',
     city: 'כפר סבא',
     lat: 32.1982242, lng: 34.892436,
     hoursHe: 'פתוחה 24/7',
