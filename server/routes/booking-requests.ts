@@ -1162,16 +1162,74 @@ router.get('/my-completed-count', async (req, res) => {
 /**
  * GET /api/booking-requests/:requestId - Get booking details
  */
-router.get('/:requestId', async (req, res) => {
+/**
+ * Provider contact for a customer's own ACTIVE booking (2026-07-26).
+ *
+ * Privacy-gated so the provider's phone/email is only ever released to the
+ * customer who owns the booking, and only while the two genuinely need to
+ * coordinate (accepted → completed). Never for pending/cancelled/declined
+ * bookings, and never to anyone but the owner. The client fetches this on demand
+ * (when the customer taps "Contact provider") rather than embedding the number
+ * in every booking list row — so a provider phone is never shipped to a browser
+ * that has no live reason to hold it.
+ */
+router.get('/:requestId/provider-contact', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
-    
+    if (!userId) return res.status(401).json({ error: 'AUTH_REQUIRED' });
+
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
-    
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+
+    // Owner-only — the customer contacting THEIR provider.
+    if (booking.ownerId !== userId) {
+      return res.status(403).json({ error: 'Not authorized' });
+    }
+
+    // Only while coordination is legitimate — never pending/cancelled/declined.
+    const CONTACTABLE = new Set([
+      'accepted', 'confirmed', 'in_progress', 'meet_greet_completed',
+      'provider_marked_complete', 'completed',
+    ]);
+    if (!CONTACTABLE.has(String(booking.status))) {
+      return res.status(409).json({ error: 'Contact is available once your booking is confirmed.', code: 'NOT_CONTACTABLE' });
+    }
+
+    if (!booking.providerId) {
+      return res.status(404).json({ error: 'No provider assigned yet' });
+    }
+    const [providerUser] = await db
+      .select({ firstName: users.firstName, lastName: users.lastName, phone: users.phone, email: users.email })
+      .from(users)
+      .where(eq(users.id, booking.providerId))
+      .limit(1);
+    if (!providerUser) return res.status(404).json({ error: 'Provider not found' });
+
+    return res.json({
+      providerName: [providerUser.firstName, providerUser.lastName].filter(Boolean).join(' ') || null,
+      phone: providerUser.phone || null,
+      email: providerUser.email || null,
+    });
+  } catch (error: any) {
+    logger.error('[BookingRequests] provider-contact failed', { error: error?.message });
+    return res.status(500).json({ error: 'Failed to load provider contact' });
+  }
+});
+
+router.get('/:requestId', async (req, res) => {
+  try {
+    const userId = req.user?.uid || req.firebaseUser?.uid;
+    const { requestId } = req.params;
+
+    const [booking] = await db.select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }

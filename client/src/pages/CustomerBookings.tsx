@@ -21,6 +21,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { NotificationBell } from '@/components/NotificationCenterPanel';
+import { ProviderContactButton } from '@/components/ProviderContactButton';
 
 const GOLD = '#D9B84C';
 
@@ -50,6 +51,13 @@ const STATUS_TO_TAB: Record<string, TabId> = {
 
 const CANCELLABLE_STATUSES = new Set([
   'pending', 'accepted', 'confirmed', 'meet_greet_scheduled', 'meet_greet_completed',
+]);
+
+// Statuses where the customer may reach their assigned provider. Mirrors the
+// server gate on /provider-contact — never pending/cancelled/declined.
+const PROVIDER_CONTACTABLE_STATUSES = new Set([
+  'accepted', 'confirmed', 'in_progress', 'meet_greet_completed',
+  'provider_marked_complete', 'completed',
 ]);
 
 const SERVICE_TYPES = [
@@ -758,6 +766,15 @@ function BookingCard({
         <div
           className={`px-4 py-2.5 border-t border-gray-50 bg-white/60 flex items-center gap-2 flex-wrap ${isRTL ? 'flex-row-reverse' : ''}`}
         >
+          {/* Contact the assigned provider — privacy-gated, fetched on tap */}
+          {booking.providerName && booking.requestId && PROVIDER_CONTACTABLE_STATUSES.has(booking.status) && (
+            <ProviderContactButton
+              requestId={booking.requestId}
+              providerName={booking.providerName}
+              language={isRTL ? 'he' : 'en'}
+            />
+          )}
+
           {/* Cancel */}
           {canCancel && (
             <button
