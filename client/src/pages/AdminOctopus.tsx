@@ -15,6 +15,13 @@ import {
   Activity, ClipboardList, BookOpen,
 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
+import { navForRole } from '@/components/dashboard/executive-nav';
+
+// Hebrew titles for the executive-nav groups (the octopus tower is Hebrew-first).
+const GROUP_TITLE_HE: Record<string, string> = {
+  Command: 'פיקוד', Money: 'כספים', People: 'אנשים',
+  Operations: 'תפעול', Governance: 'ממשל',
+};
 
 const GOLD = '#D4AF37';
 const INK = '#0a0a0a';
@@ -212,27 +219,50 @@ export default function AdminOctopus() {
           </div>
         </section>
 
-        {/* Actions grid */}
-        <section className="rounded-3xl border bg-white p-5" style={{ borderColor: '#EDE6D2' }}>
-          <h2 className="mb-3 text-sm font-bold" style={{ color: INK }}>פעולות מהירות</h2>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5">
-            {actions.map((a) => (
-              <button
-                key={a.to}
-                type="button"
-                onClick={() => go(a.to)}
-                className="group flex items-center gap-2 rounded-2xl border px-3 py-3 text-right transition hover:shadow-md"
-                style={{ borderColor: '#EFE8D6' }}
-              >
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: '#FBF6E6' }}>
-                  <a.icon className="h-4 w-4" style={{ color: GOLD }} />
-                </span>
-                <span className="text-xs font-semibold" style={{ color: INK }}>{a.label}</span>
-                <ChevronLeft className="mr-auto h-4 w-4 text-neutral-300 group-hover:text-neutral-500" />
-              </button>
-            ))}
-          </div>
-        </section>
+        {/* Control tower — every dashboard, organised into the canonical groups
+            (Command / Money / People / Operations / Governance) from the shared
+            executive-nav. Replaces the old flat 'quick actions' pile so the whole
+            backend is browsable from ONE organised home instead of a scramble. */}
+        {navForRole('ceo').map((grp) => (
+          <section
+            key={grp.group}
+            className="rounded-3xl border bg-white p-5"
+            style={{ borderColor: '#EDE6D2' }}
+            data-testid={`octopus-group-${grp.group.toLowerCase()}`}
+          >
+            <h2 className="mb-3 text-sm font-bold" style={{ color: INK }}>
+              {GROUP_TITLE_HE[grp.group] || grp.group}
+              <span className="mr-2 text-xs font-normal text-neutral-400">{grp.group}</span>
+            </h2>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4">
+              {grp.items.map((it) => (
+                <button
+                  key={it.path}
+                  type="button"
+                  onClick={() => go(it.path)}
+                  className="group flex items-start gap-2 rounded-2xl border px-3 py-3 text-right transition hover:shadow-md"
+                  style={{ borderColor: '#EFE8D6' }}
+                  data-testid={`octopus-nav-${it.path}`}
+                >
+                  <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl" style={{ background: '#FBF6E6' }}>
+                    <it.icon className="h-4 w-4" style={{ color: GOLD }} />
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-semibold" style={{ color: INK }}>
+                      {it.labelHe || it.label}
+                    </span>
+                    {(it.hintHe || it.hint) && (
+                      <span className="mt-0.5 block truncate text-[10px] text-neutral-400">
+                        {it.hintHe || it.hint}
+                      </span>
+                    )}
+                  </span>
+                  <ChevronLeft className="mt-1 h-4 w-4 shrink-0 text-neutral-300 group-hover:text-neutral-500" />
+                </button>
+              ))}
+            </div>
+          </section>
+        ))}
       </div>
     </div>
   );
