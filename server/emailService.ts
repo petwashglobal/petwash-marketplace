@@ -3216,6 +3216,58 @@ export class EmailService {
   }
 
   /**
+   * Admin transaction alert (CEO 2026-07-26: "send email me complete booking
+   * transaction, shop purchase, canceled booking"). Gives the founder live
+   * visibility of every real money event — a concise internal summary sent to
+   * the CEO. Fire-and-forget + fail-soft: never blocks or breaks the customer
+   * flow. Called from the transactional paths (booking confirm, purchase,
+   * cancellation). Recipient is overridable via ADMIN_TX_ALERT_EMAILS
+   * (comma-separated) so ops can be added without a deploy.
+   */
+  static async sendAdminTransactionAlert(params: {
+    event: 'booking_confirmed' | 'purchase' | 'booking_cancelled';
+    reference: string;
+    service?: string;
+    customer?: string;
+    amountIls?: number;
+    details?: Record<string, string | number | undefined | null>;
+  }): Promise<boolean> {
+    try {
+      const recipients = (process.env.ADMIN_TX_ALERT_EMAILS || 'nir.h@petwash.co.il')
+        .split(',').map((s) => s.trim()).filter(Boolean);
+      const labels: Record<string, string> = {
+        booking_confirmed: '✅ New booking confirmed',
+        purchase: '🛍️ New purchase',
+        booking_cancelled: '❌ Booking cancelled',
+      };
+      const title = labels[params.event] || 'Transaction';
+      const amount = typeof params.amountIls === 'number' ? `₪${params.amountIls.toFixed(2)}` : undefined;
+      const rows: Array<[string, string | number | undefined | null]> = [
+        ['Reference', params.reference],
+        ['Service', params.service],
+        ['Customer', params.customer],
+        ['Amount', amount],
+        ...Object.entries(params.details || {}),
+      ];
+      const body = rows
+        .filter(([, v]) => v !== undefined && v !== null && v !== '')
+        .map(([k, v]) => `<tr><td style="padding:4px 14px 4px 0;color:#666">${k}</td><td style="padding:4px 0"><strong>${v}</strong></td></tr>`)
+        .join('');
+      const html = `<div style="font-family:system-ui,-apple-system,Arial,sans-serif;max-width:520px">
+        <h2 style="margin:0 0 12px;font-size:18px">${title}</h2>
+        <table style="border-collapse:collapse;font-size:14px">${body}</table>
+        <p style="color:#999;font-size:12px;margin-top:18px">PetWash™ transaction monitor · ${new Date().toISOString()}</p>
+      </div>`;
+      const subject = `${title} — ${params.service || params.reference}${amount ? ` (${amount})` : ''}`;
+      const results = await Promise.all(recipients.map((to) => this.send({ to, subject, html })));
+      return results.some(Boolean);
+    } catch (err: any) {
+      logger.warn('[EmailService] admin transaction alert failed (non-blocking)', { error: err?.message });
+      return false;
+    }
+  }
+
+  /**
    * Send marketplace booking confirmation email with invoice number
    * Bilingual Hebrew/English luxury email for pet service bookings
    */
@@ -3535,6 +3587,16 @@ export class EmailService {
 
       await mailService.send(msg);
       logger.info(`[BookingConfirmation] Sent to ${email}`, { invoiceNumber, bookingId, hasPdf: !!pdfBuffer });
+      // CEO transaction visibility (2026-07-26): notify the founder of the
+      // confirmed booking. Fire-and-forget — never affects the customer send.
+      void this.sendAdminTransactionAlert({
+        event: 'booking_confirmed',
+        reference: bookingNumber || bookingId,
+        service: `${platformName} — ${serviceType}`,
+        customer: customerName,
+        amountIls: (totalAmountCents || 0) / 100,
+        details: { Provider: providerName, Invoice: invoiceNumber, Pet: petName },
+      });
       return true;
 
     } catch (error) {
