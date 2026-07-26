@@ -772,6 +772,20 @@ export class ShopService {
           });
 
           logger.info('[ShopService] Tax invoice generated via SUMIT', { orderId, orderNumber: order.order_number });
+
+          // CEO transaction visibility (2026-07-26): notify the founder of the
+          // shop purchase. Fire-and-forget — never affects order completion.
+          try {
+            const { EmailService } = await import('../emailService');
+            void EmailService.sendAdminTransactionAlert({
+              event: 'purchase',
+              reference: order.order_number ?? String(orderId),
+              service: 'Shop order',
+              customer: order.email || order.display_name || undefined,
+              amountIls: totalCents / 100,
+              details: { Payment: order.payment_method === 'wallet' ? 'Wallet' : 'Card' },
+            });
+          } catch { /* alert is best-effort */ }
         } catch (err: any) {
                 logger.error('[ShopService] generateTaxInvoice failed', { orderId, err: err.message });
                 // Non-fatal — invoice can be regenerated from admin

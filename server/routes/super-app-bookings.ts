@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import { bookingService } from '../services/booking-service';
+import { EmailService } from '../emailService';
 import { requireAuth } from '../customAuth';
 import { apiLimiter } from '../middleware/rateLimiter';
 import { z } from 'zod';
@@ -1208,6 +1209,22 @@ router.post(
             },
             renderedHtml: cancelHtml,
             idempotencyKey: `cancellation_notice:${bookingId}:${updatedBooking.userId}`,
+          });
+
+          // CEO transaction visibility (2026-07-26): notify the founder of the
+          // cancellation. Fire-and-forget — never affects the customer flow.
+          void EmailService.sendAdminTransactionAlert({
+            event: 'booking_cancelled',
+            reference: bookingRef,
+            service: serviceName,
+            customer: customer?.email || updatedBooking.userId,
+            amountIls: parseFloat(refundILS) || undefined,
+            details: {
+              'Cancelled by': isCustomer ? 'customer' : 'provider',
+              Reason: reason,
+              Refund: refundExecuted ? 'refunded' : (refundPending ? 'refund pending' : 'none'),
+              Platform: updatedBooking.platformId,
+            },
           });
 
           await dispatchNotifications({
