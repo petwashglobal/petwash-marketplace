@@ -387,7 +387,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }, []);
 
   const requireTerms = () => {
-    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return false; }
+    // Rover-style passive consent (CEO 2026-07-27): no terms checkbox. The manual
+    // flow still enforces the REAL 18+ gate via the DOB the user typed (stronger
+    // than a checkbox); terms acceptance is passive (disclosure line + submitting)
+    // and stamped on the session. Age via isAdult (DOB), not the removed box.
+    if (!isAdult) { fail(he ? 'יש להזין תאריך לידה — גיל 18 ומעלה' : 'Please enter your date of birth — you must be 18 or older.'); return false; }
     return true;
   };
 
@@ -470,7 +474,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           // Send the DOB so the users row is CREATED with it — persistDob's
           // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
-          body: JSON.stringify({ idToken, dateOfBirth: dob }),
+          body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true }),
         });
       }
       // Step 2 — NEW accounts only: phone verified + account live, now verify the
@@ -550,7 +554,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           // Send the DOB so the users row is CREATED with it — persistDob's
           // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
-          body: JSON.stringify({ idToken, dateOfBirth: dob }),
+          body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true }),
         });
         await finishAndRoute();
         return;
@@ -561,7 +565,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function social(which: 'google' | 'apple' | 'facebook') {
-    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); document.querySelector('.sl-consent')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    // Rover-style passive consent (CEO 2026-07-27): no blocking checkbox. The
+    // disclosure line under the tiles + this deliberate tap ARE the affirmative
+    // action (action-based, NOT a pre-ticked box). Terms are stamped server-side
+    // for social logins (routes.ts session handler).
     setInlineError(null);
     setBusy(true);
     try {
@@ -628,7 +635,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   /** Server-mediated OAuth (Instagram / TikTok / etc.). The backend builds the
    *  authorize URL with provider secrets and we redirect the browser there. */
   async function socialExternal(which: 'instagram' | 'tiktok') {
-    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); document.querySelector('.sl-consent')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
+    // Rover-style passive consent (CEO 2026-07-27): no blocking checkbox. The
+    // disclosure line under the tiles + this deliberate tap ARE the affirmative
+    // action (action-based, NOT a pre-ticked box). Terms are stamped server-side
+    // for social logins (routes.ts session handler).
     setInlineError(null);
     setBusy(true);
     try {
@@ -680,7 +690,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // Send the DOB the user just typed (the OTP paths already do — :467,:547).
         // Was omitted here, so email+password members were re-asked their birthday
         // at /complete-profile. (2026-07-27)
-        body: JSON.stringify({ idToken, dateOfBirth: dob }),
+        body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true }),
       });
       if (!sessionRes.ok) {
         // Surface the real failure instead of dropping the user into the app on a
@@ -717,7 +727,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // now satisfies the age requirement on its own; the checkbox remains the
   // path for anyone who hasn't entered a DOB (e.g. pure social signup).
   const ageConfirmed = over18 || isAdult;
-  const consentOk = agreedTerms && ageConfirmed;
+  // Rover-style passive consent (CEO 2026-07-27): terms are no longer a blocking
+  // checkbox — the disclosure line + the deliberate submit are the affirmative
+  // action, and terms are stamped on the session. The only hard gate that remains
+  // for the MANUAL flow is the real 18+ age check (from the DOB the user typed).
+  const consentOk = ageConfirmed;
   // ONE contact is enough (CEO 2026-07-24 "sign up not easy"): startSignup()
   // already branches phone-first-else-email, and the design intent above is
   // "type whichever they like, we detect which". The old gate demanded phone
@@ -793,7 +807,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     privLink: he ? 'מדיניות הפרטיות' : 'Privacy Policy',
 
     cta: he ? 'צור חשבון מאובטח' : 'Create Secure Account',
-    completeFields: he ? 'להמשך: הזינו נייד או אימייל, אשרו את התנאים וסמנו 18+ (או הזינו תאריך לידה).' : 'To continue: enter your mobile or email, accept the terms and confirm 18+ (or enter your date of birth).',
+    completeFields: he ? 'להמשך: הזינו נייד או אימייל ותאריך לידה (גיל 18 ומעלה).' : 'To continue: enter your mobile or email and your date of birth (18+).',
     bank: he ? 'מאובטח ומוצפן' : 'Secure & encrypted',
     enc: he ? 'הצפנת 256-bit' : '256-bit encryption',
     safe: he ? 'הנתונים שלך בטוחים' : 'Your data is safe',
@@ -942,29 +956,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               </div>
               )}
 
-              {/* === REORDER (CEO 2026-07-21 "sign up still not right"): one-tap
-                  methods now come FIRST. Measured on the live site: the Google/
-                  Apple buttons sat at 1,666px on an 812px phone — two full screens
-                  below the fold, behind a DOB wheel and the manual form. The order
-                  is now: consents → social tiles → "or" → manual (DOB/phone/email).
-                  Consents sit directly above the tiles because social() requires
-                  consentOk before it may fire — tapping without them surfaces the
-                  "accept terms + 18+" message right next to the boxes. === */}
-              <div className="sl-consent" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 6px', fontSize: '13px', lineHeight: 1.6, textAlign: he ? 'right' : 'left' }}>
-                <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer' }}>
-                  <input type="checkbox" checked={agreedTerms} onChange={(e) => setAgreedTerms(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0, accentColor: '#E6C766' }} />
-                  <span>
-                    {he ? 'אני מסכים/ה ל' : 'I agree to the '}
-                    <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
-                    {he ? ' ול' : ' and '}
-                    <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'מדיניות הפרטיות' : 'Privacy Policy'}</a>
-                  </span>
-                </label>
-                <label style={{ display: 'flex', gap: '8px', alignItems: 'flex-start', cursor: 'pointer', marginTop: '8px' }}>
-                  <input type="checkbox" checked={over18} onChange={(e) => setOver18(e.target.checked)} style={{ marginTop: '2px', width: '20px', height: '20px', flexShrink: 0, accentColor: '#E6C766' }} />
-                  <span>{he ? 'אני מאשר/ת שאני בן/בת 18 ומעלה' : 'I confirm I am 18 years or older'}</span>
-                </label>
-              </div>
+              {/* Rover-style passive consent (CEO 2026-07-27): the two blocking
+                  checkboxes (agree-to-terms + 18+) are gone. Social login is now ONE
+                  tap; the manual flow still enforces 18+ via the DOB the user types.
+                  This is action-based consent — the deliberate submit + this
+                  disclosure ARE the affirmative act — NOT a pre-ticked box (which is
+                  unlawful under Israeli privacy law). Terms are stamped on the
+                  session (social + manual). */}
+              <p className="sl-consent" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 8px', fontSize: '12.5px', lineHeight: 1.55, opacity: 0.75, textAlign: 'center' }}>
+                {he ? 'בהמשך אתם מאשרים שאתם בני 18 ומעלה ומסכימים ל' : 'By continuing, you confirm you are 18+ and agree to the '}
+                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
+                {he ? ' ול' : ' & '}
+                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'מדיניות הפרטיות' : 'Privacy Policy'}</a>.
+              </p>
 
               {/* Consent/blocked-tap error shown HERE, right between the boxes and the
                   social tiles — the top-of-form inlineError (~400px up) was off-screen
@@ -1114,12 +1118,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           {!sent && contactMode !== 'choose' && (
             <>
               {/* Send-code CTA — only after a manual method (phone/email) is chosen. */}
-              <button className="sl-cta" disabled={!readyForSubmit || !consentOk}
+              <button className="sl-cta" disabled={!readyForSubmit}
                 onClick={startSignup}>
                 <FaLock aria-hidden /> {ctaLabel}
               </button>
               {!readyForSubmit && <div className="sl-hint sl-submitHint">{t.completeFields}</div>}
-              {readyForSubmit && !consentOk && <div className="sl-hint sl-submitHint">{he ? 'יש לאשר את התנאים וגיל 18+' : 'Please accept the terms and confirm you are 18+'}</div>}
 
               <div className="sl-bank">
                 <FaShieldAlt aria-hidden /> <span>{t.bank}</span>
