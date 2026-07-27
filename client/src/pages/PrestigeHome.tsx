@@ -22,6 +22,7 @@ import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
+import { getTierDisplay } from '@/lib/loyalty';
 import {
   Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
   CalendarDays, ShoppingBag, Wallet as WalletIcon,
@@ -59,14 +60,20 @@ function normalizeSummary(me: any, sum: any): PrestigeSummary {
     }
     return undefined;
   };
+  // GET /api/prestige-pass/me nests balances under `me.balances.*` and the card
+  // under `me.cardId`/`me.cardDisplay` (prestige-pass.ts:1597-1611). The flat-key
+  // reads below are legacy fallbacks; without the nested reads the dashboard
+  // showed 0 / ₪0.00 and Member ID "—" for EVERY member (regression from #1499
+  // which removed the flat `/summary` source). (2026-07-27)
+  const bal = me?.balances;
   return {
     displayName: g([me, 'displayName'], [me, 'name'], [me, 'firstName']),
     tier: g([me, 'tier'], [me, 'loyaltyTier'], [sum, 'tier']) ?? 'Member',
-    memberId: g([me, 'memberId'], [me, 'passId'], [me, 'passNumber'], [sum, 'memberId']),
-    washCredits: Number(g([sum, 'washCredits'], [sum, 'washPackageCredits'], [me, 'washCredits']) ?? 0),
-    pointsBalance: Number(g([sum, 'pointsBalance'], [sum, 'loyaltyPointsBalance'], [me, 'points'], [me, 'pointsBalance']) ?? 0),
-    cashCents: Number(g([sum, 'cashCents'], [sum, 'cashWalletBalanceCents'], [sum, 'walletBalanceCents']) ?? 0),
-    giftCents: Number(g([sum, 'giftCents'], [sum, 'egiftBalanceCents'], [sum, 'giftBalanceCents']) ?? 0),
+    memberId: g([me, 'cardDisplay'], [me, 'cardId'], [me, 'memberId'], [me, 'passId'], [me, 'passNumber'], [sum, 'memberId']),
+    washCredits: Number(g([bal, 'washes'], [sum, 'washCredits'], [sum, 'washPackageCredits'], [me, 'washCredits']) ?? 0),
+    pointsBalance: Number(g([bal, 'loyaltyPoints'], [sum, 'pointsBalance'], [sum, 'loyaltyPointsBalance'], [me, 'points'], [me, 'pointsBalance']) ?? 0),
+    cashCents: Number(g([bal, 'wallet'], [sum, 'cashCents'], [sum, 'cashWalletBalanceCents'], [sum, 'walletBalanceCents']) ?? 0),
+    giftCents: Number(g([bal, 'gift'], [sum, 'giftCents'], [sum, 'egiftBalanceCents'], [sum, 'giftBalanceCents']) ?? 0),
     giftCount: Number(g([sum, 'giftCount'], [sum, 'giftCardCount']) ?? 0),
     rewardsCount: Number(g([sum, 'rewardsCount'], [sum, 'rewards']) ?? 0),
     nextBooking: g([sum, 'nextBooking'], [me, 'nextBooking']) ?? null,
@@ -261,7 +268,7 @@ export default function PrestigeHome() {
             className="mt-2 inline-flex items-center gap-2 rounded-full border border-[#ECDFB4] bg-[#FFFDF7] px-3 py-1.5"
           >
             <Crown className="w-4 h-4" style={{ color: GOLD }} />
-            <span className="text-sm font-medium text-[#9a7d2e]">{isHe ? `חבר ${s.tier}` : `Prestige ${s.tier} Member`}</span>
+            <span className="text-sm font-medium text-[#9a7d2e]">Prestige {getTierDisplay(String(s.tier) as any, isHe ? 'he' : 'en')}</span>
             <ChevronRight className="w-4 h-4 text-[#c9b88a]" />
           </button>
 

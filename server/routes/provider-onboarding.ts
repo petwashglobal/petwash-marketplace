@@ -1016,7 +1016,11 @@ router.post('/apply', upload.fields([
         .where(eq(providerInviteCodes.inviteCode, inviteCode));
     }
 
-    // Create providerApprovalQueue entry so the admin review panel can see this application.
+    // Create a providerApprovalQueue entry PER selected service so the admin
+    // review panel sees a multi-service applicant on ALL their platforms. Was
+    // only the primary type, so a walker+sitter+trainer applicant showed up as a
+    // single platform in the queue (service-gating via provider_services was
+    // always correct — this only fixes what the reviewer sees). (2026-07-27)
     const platformMap: Record<string, string> = {
       walker: 'walk_my_pet',
       sitter: 'sitter_suite',
@@ -1024,26 +1028,29 @@ router.post('/apply', upload.fields([
       trainer: 'academy',
       station_operator: 'k9000',
     };
-    const queuePlatform = platformMap[providerType] || providerType;
-    try {
-      const existing = await db.select({ id: providerApprovalQueue.id })
-        .from(providerApprovalQueue)
-        .where(and(
-          eq(providerApprovalQueue.providerId, authenticatedUser.uid),
-          eq(providerApprovalQueue.platform, queuePlatform)
-        ))
-        .limit(1);
-      if (!existing.length) {
-        await db.insert(providerApprovalQueue).values({
-          providerId: authenticatedUser.uid,
-          platform: queuePlatform,
-          status: 'pending',
-          priority: 'normal',
-        });
-        logger.info('[Provider Onboarding] Created providerApprovalQueue entry', { uid: authenticatedUser.uid, platform: queuePlatform });
+    const queueTypes = (providerTypesForDefaults && providerTypesForDefaults.length) ? providerTypesForDefaults : [providerType];
+    for (const t of queueTypes) {
+      const queuePlatform = platformMap[t] || t;
+      try {
+        const existing = await db.select({ id: providerApprovalQueue.id })
+          .from(providerApprovalQueue)
+          .where(and(
+            eq(providerApprovalQueue.providerId, authenticatedUser.uid),
+            eq(providerApprovalQueue.platform, queuePlatform)
+          ))
+          .limit(1);
+        if (!existing.length) {
+          await db.insert(providerApprovalQueue).values({
+            providerId: authenticatedUser.uid,
+            platform: queuePlatform,
+            status: 'pending',
+            priority: 'normal',
+          });
+          logger.info('[Provider Onboarding] Created providerApprovalQueue entry', { uid: authenticatedUser.uid, platform: queuePlatform });
+        }
+      } catch (queueErr: any) {
+        logger.warn('[Provider Onboarding] Could not create queue entry (non-fatal)', { error: queueErr?.message, platform: queuePlatform });
       }
-    } catch (queueErr: any) {
-      logger.warn('[Provider Onboarding] Could not create queue entry (non-fatal)', { error: queueErr?.message });
     }
 
     logger.info(`[Provider Onboarding] Application submitted (biometric pending): ${applicationId} by ${authenticatedUser.uid}`, { traceId });
