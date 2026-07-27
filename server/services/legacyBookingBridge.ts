@@ -32,8 +32,8 @@ export interface BridgeInput {
   ownerId: string;
   providerUserId: string;          // provider's Firebase UID (booking_requests.provider_id)
   providerProfileId?: number | null;
-  providerType: 'sitter' | 'walker';
-  serviceType: 'pet_sitting' | 'dog_walking';
+  providerType: 'sitter' | 'walker' | 'trainer';
+  serviceType: 'pet_sitting' | 'dog_walking' | 'training';
   startDate: Date;
   endDate: Date;
   petCount?: number;
