@@ -63,7 +63,6 @@ const GOLD = '#D9B84C';
 const GOLD_SOFT = 'rgba(217, 184, 76,0.08)';
 const GOLD_LINE = 'rgba(217, 184, 76,0.35)';
 const LOGO_SRC = '/brand/petwash-logo-official.png';
-const HERO_PRIMARY = '/brand/petwash-matching-process.png';
 const HERO_FALLBACK = '/brand/hero-dog-lux.jpg';
 
 // ── Copy (EN + HE) ───────────────────────────────────────────────────────────
@@ -454,9 +453,11 @@ const Hero = memo(function Hero({ alt }: { alt: string }) {
         backgroundColor: '#EFEAE0',
       }}
     >
-      {/* <picture> lets the canonical asset take over the moment it lands. */}
+      {/* The canonical /brand/petwash-matching-process.png is not shipped yet, and
+          a <picture> <source> that 404s does NOT fall back to <img> — it renders
+          broken. So render the working hero JPG directly; re-add a <source> only
+          once the PNG asset actually exists on disk. */}
       <picture>
-        <source srcSet={HERO_PRIMARY} type="image/png" />
         <img
           src={HERO_FALLBACK}
           alt={alt}

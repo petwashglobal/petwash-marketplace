@@ -91,8 +91,9 @@ export default function MarketplaceTerms() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-black via-zinc-900 to-black" dir={isRTL ? "rtl" : "ltr"}>
-      <div className="absolute inset-0 bg-[url('/assets/noise.png')] opacity-5 pointer-events-none" />
-      
+      {/* removed a decorative bg-[url('/assets/noise.png')] overlay — the file
+          doesn't exist, so it 404'd on every load for an invisible (opacity-5)
+          texture. */}
       <div className="relative container mx-auto px-4 py-12 max-w-6xl">
         <Link href="/services">
           <Button variant="ghost" className="mb-6 text-white/70 hover:text-white">

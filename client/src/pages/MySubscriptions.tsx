@@ -373,16 +373,10 @@ export default function MySubscriptions() {
                     Resume Subscription
                   </Button>
                 )}
-
-                <Button
-                  variant="outline"
-                  onClick={() => navigate(`/subscriptions/${subscription.id}/ai-recommendations`)}
-                  className="luxury-btn-secondary luxury-shadow-md"
-                  data-testid={`button-ai-recommendations-${subscription.id}`}
-                >
-                  <Sparkles className="w-4 h-4 mr-2" />
-                  View AI Recommendations
-                </Button>
+                {/* "View AI Recommendations" removed — it navigated to
+                    /subscriptions/:id/ai-recommendations, a route that doesn't
+                    exist (dead-ended on the 404 page). Re-add with a real route
+                    when that page ships. */}
               </CardFooter>
             </Card>
           ))}
