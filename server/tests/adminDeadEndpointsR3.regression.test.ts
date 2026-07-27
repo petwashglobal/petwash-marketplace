@@ -12,7 +12,10 @@ const R = (p: string) => readFileSync(resolve(__dirname, '..', '..', p), 'utf8')
 describe('admin dead endpoints closed', () => {
   it('AdminStations tabs hit real routes', () => {
     const s = R('client/src/pages/AdminStations.tsx');
-    expect(s).toContain("'/api/admin/alerts?status=open'");
+    // The Alerts tab reads summary.totalAlerts/lowStockAlerts/renewalAlerts —
+    // that shape is served by /api/admin/stations/alerts/pending, NOT the generic
+    // /api/admin/alerts (which returns {rows,total} and white-screened the page).
+    expect(s).toContain("'/api/admin/stations/alerts/pending'");
     expect(s).toContain("'/api/admin/stations/health/stations'");
   });
 

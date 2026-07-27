@@ -7592,57 +7592,13 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Admin: List all vouchers with search
-  app.get('/api/admin/vouchers', requireAdmin, async (req: any, res) => {
-    try {
-      const limit = safeLimit(req.query.limit, 50);
-      const cursor = req.query.cursor as string | undefined;
-      const status = req.query.status as string | undefined;
-      const search = req.query.search as string | undefined;
-      
-      const result = await storage.getAllGiftCards({ limit, cursor });
-      
-      let vouchers = result.giftCards;
-      
-      // Apply status filter
-      if (status) {
-        vouchers = vouchers.filter(v => v.status === status);
-      }
-      
-      // Apply search filter (code last 4, emails, or ID)
-      if (search) {
-        const searchLower = search.toLowerCase();
-        vouchers = vouchers.filter(v => 
-          v.codeLast4?.toLowerCase().includes(searchLower) ||
-          v.purchaserEmail?.toLowerCase().includes(searchLower) ||
-          v.recipientEmail?.toLowerCase().includes(searchLower) ||
-          v.id.toLowerCase().includes(searchLower)
-        );
-      }
-      
-      res.json({
-        vouchers: vouchers.map(v => ({
-          id: v.id,
-          codeLast4: v.codeLast4,
-          type: v.type,
-          currency: v.currency,
-          remainingAmount: v.remainingAmount,
-          initialAmount: v.initialAmount,
-          status: v.status,
-          purchaserEmail: v.purchaserEmail,
-          recipientEmail: v.recipientEmail,
-          ownerUid: v.ownerUid,
-          expiresAt: v.expiresAt,
-          createdAt: v.createdAt
-        })),
-        hasMore: result.hasMore,
-        nextCursor: result.nextCursor
-      });
-    } catch (error) {
-      logger.error('Admin: Error fetching vouchers', error);
-      res.status(500).json({ error: 'Failed to fetch vouchers' });
-    }
-  });
+  // NOTE (2026-07-27): the inline GET /api/admin/vouchers handler was REMOVED. It
+  // shadowed the purpose-built handler in server/routes/admin.ts (mounted later)
+  // that returns stats + recentRedemptions + a mapped status/`code`/`amount` shape
+  // the AdminVouchers page needs. Because Express matches the first-registered
+  // route, this inline one won — so the page showed 0 stats, empty redemptions,
+  // dead status filters, and crashed on the missing `code` field. Deleting it lets
+  // the correct admin.ts handler serve. (The /:id handler below stays.)
 
   // Admin: Get specific voucher
   app.get('/api/admin/vouchers/:id', requireAdmin, async (req: any, res) => {

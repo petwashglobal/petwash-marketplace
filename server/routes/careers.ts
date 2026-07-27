@@ -16,8 +16,18 @@ import { z } from 'zod';
 import multer from 'multer';
 import crypto from 'crypto';
 import { Storage } from '@google-cloud/storage';
+import { requireAdmin } from '../adminAuth';
 
 const router = Router();
+
+// SECURITY (2026-07-27): every /admin/* careers route (applications list/detail =
+// applicant PII, shortlist/status mutations, positions CRUD, stats) shipped with
+// NO auth middleware — the router was mounted with only apiLimiter, so any
+// unauthenticated caller could read applicant name/email/phone/fraud-score and
+// PATCH application status. One path-prefix guard locks all 11 /admin/* routes.
+// Public routes (job listing, /apply, etc.) do NOT use the /admin prefix and are
+// intentionally left open.
+router.use('/admin', requireAdmin);
 
 const storage = new Storage();
 const BUCKET_NAME = process.env.BIOMETRIC_BUCKET_NAME || 'signinpetwash.firebasestorage.app';
