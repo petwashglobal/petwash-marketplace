@@ -4,6 +4,7 @@ import { Share2, Users, Gift, Copy, Mail, MessageCircle, TrendingUp, Award, Arro
 import { useToast } from '@/hooks/use-toast';
 import { useQuery } from '@tanstack/react-query';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
+import { apiRequest } from '@/lib/queryClient';
 import { useSEO, pageSEO } from '@/lib/seo';
 
 interface SummaryData {
@@ -17,18 +18,30 @@ export default function LoyaltyRefer() {
   const { toast } = useToast();
   const { user } = useFirebaseAuth();
 
-  const { data: summary, isLoading: summaryLoading } = useQuery<SummaryData>({
-    queryKey: ['/api/loyalty-credits/summary'],
+  // Use GET /api/referral/link (authed) — it MINTS the member's own code via
+  // getOrCreateReferralCode. The old /api/loyalty-credits/summary only SELECTs an
+  // existing code (never mints) and, via the no-Bearer default fetcher, returned
+  // null for real members → the page shared the generic 'PETWASH' code that's
+  // attributable to nobody. (2026-07-27)
+  const { data: linkData, isLoading: summaryLoading } = useQuery<SummaryData>({
+    queryKey: ['/api/referral/link'],
+    queryFn: async () => {
+      try { const r = await apiRequest('GET', '/api/referral/link'); return r.ok ? await r.json() : { referralCode: null }; }
+      catch { return { referralCode: null }; }
+    },
     enabled:  !!user,
     staleTime: 60_000,
   });
 
-  const referralCode = summary?.referralCode ?? null;
-  const displayCode  = referralCode ?? (summaryLoading ? '…' : 'PETWASH');
+  const referralCode = linkData?.referralCode ?? null;
+  const displayCode  = referralCode ?? (summaryLoading ? '…' : '');
 
-  const shareText = isHebrew
-    ? `הצטרפו ל-PetWash™ — הטיפוח והשמירה הטובים ביותר לחיות מחמד! השתמשו בקוד ההזמנה שלי: ${displayCode}`
-    : `Join PetWash™ — the best pet care app! Use my referral code: ${displayCode}`;
+  // Only include a code in the share text when we actually have the member's real
+  // one — never share the generic non-attributable fallback.
+  const codeSuffix = referralCode ? (isHebrew ? ` השתמשו בקוד ההזמנה שלי: ${referralCode}` : ` Use my referral code: ${referralCode}`) : '';
+  const shareText = (isHebrew
+    ? `הצטרפו ל-PetWash™ — הטיפוח והשמירה הטובים ביותר לחיות מחמד!`
+    : `Join PetWash™ — the best pet care app!`) + codeSuffix;
   const siteUrl = 'https://petwash.co.il';
 
   const handleCopy = async () => {
