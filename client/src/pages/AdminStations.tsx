@@ -179,9 +179,12 @@ export default function AdminStations() {
     renewalAlerts: RenewalAlert[];
     summary: { totalAlerts: number; critical: number };
   }>({
-    // Alerts Center list route is GET /api/admin/alerts?status=open — a
-    // '/pending' sub-route never existed (dead-endpoint sweep 2026-07-24).
-    queryKey: ['/api/admin/alerts?status=open'],
+    // This tab reads summary.totalAlerts / lowStockAlerts / renewalAlerts — that
+    // shape is served by GET /api/admin/stations/alerts/pending (stations.ts:535),
+    // NOT the generic /api/admin/alerts (which returns {rows,total,counts} and made
+    // `.summary.totalAlerts` throw → white-screened the whole page). The old
+    // "sub-route never existed" comment was wrong. (2026-07-27)
+    queryKey: ['/api/admin/stations/alerts/pending'],
     enabled: selectedTab === "alerts",
     refetchInterval: 60000, // Refresh every minute
   });

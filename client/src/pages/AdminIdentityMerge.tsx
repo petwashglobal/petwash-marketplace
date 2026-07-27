@@ -24,13 +24,12 @@ interface CandidatesResponse {
 }
 
 export default function AdminIdentityMerge() {
-  const { data, isLoading, isFetching, refetch } = useQuery<CandidatesResponse>({
+  // Was a bare fetch() with NO Authorization/App-Check/credentials → the
+  // validateFirebaseToken route 401'd → the empty "no candidates ✅" card
+  // rendered = a FALSE all-clear on a compliance screen. Use the default authed
+  // fetcher (attaches Bearer + App-Check + credentials). (2026-07-27)
+  const { data, isLoading, isFetching, refetch, isError } = useQuery<CandidatesResponse>({
     queryKey: ["/api/admin/identity-merge-candidates"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/identity-merge-candidates");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
     refetchInterval: 120_000,
   });
 
@@ -78,6 +77,27 @@ export default function AdminIdentityMerge() {
             <Skeleton key={i} className="h-20 w-full rounded-lg" />
           ))}
         </div>
+      ) : isError ? (
+        // Never render the green "no candidates ✅" all-clear when the request
+        // failed — on a compliance screen a false all-clear is worse than an error.
+        <Card className="border-red-300">
+          <CardContent className="py-10 text-center text-sm text-red-700">
+            <AlertTriangle className="mx-auto mb-2 h-6 w-6 text-red-500" />
+            שגיאה בטעינת מועמדים לאיחוד
+            <div className="mt-1 text-xs text-red-500" dir="ltr">
+              Failed to load merge candidates — this is NOT an all-clear. Retry.
+            </div>
+            <Button
+              variant="outline"
+              size="sm"
+              className="mt-3"
+              onClick={() => refetch()}
+            >
+              <RefreshCw className="ml-2 h-4 w-4" />
+              נסה שוב
+            </Button>
+          </CardContent>
+        </Card>
       ) : groups.length === 0 ? (
         <Card>
           <CardContent className="py-10 text-center text-sm text-gray-500">

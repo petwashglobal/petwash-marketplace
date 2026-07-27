@@ -94,10 +94,12 @@ export default function PolicyManagementDashboard() {
     queryKey: ['/api/enterprise/policy/certifications'] 
   });
 
-  // Fetch expiring certifications
-  const { data: expiringCerts } = useQuery<ComplianceCertification[]>({ 
-    queryKey: ['/api/enterprise/policy/certifications/expiring'], 
-    queryFn: () => fetch(getApiUrl('/api/enterprise/policy/certifications/expiring?days=30')).then(r => r.json())
+  // Fetch expiring certifications. Was a bare fetch() with NO auth (no Bearer/
+  // App-Check/credentials) → the requireAdmin+MFA endpoint 401'd → "Expiring Soon"
+  // KPI was permanently 0 and the alert never fired. Use the default authed
+  // fetcher (query param carried in the queryKey URL). (2026-07-27)
+  const { data: expiringCerts } = useQuery<ComplianceCertification[]>({
+    queryKey: ['/api/enterprise/policy/certifications/expiring?days=30']
   });
 
   // Filter policies by category and search
