@@ -118,6 +118,10 @@ export default function AcademyBookingFlow() {
         },
         ...(appliedCredits ? {
           redemptionSessionId: appliedCredits.redemptionSessionId,
+          // Server reads walletCreditAppliedCents for the wallet hold (academy.ts);
+          // we only sent creditsAppliedCents, so the redeemed credit was ignored and
+          // the displayed discount was never applied. Send the key it reads. (2026-07-27)
+          walletCreditAppliedCents: appliedCredits.totalCreditsAppliedCents,
           creditsAppliedCents: appliedCredits.totalCreditsAppliedCents,
           cashDueCents: appliedCredits.cashDueCents,
         } : {})

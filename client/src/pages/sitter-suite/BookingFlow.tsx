@@ -272,11 +272,16 @@ export default function SitterBookingFlow() {
       const response = await apiRequest('POST', '/api/sitter-suite/bookings', payload);
       const booking = await response.json();
 
-      setBookingId(booking.booking?.id || booking.id || booking.bookingId || 'pending');
-      
-      // Open chat conversation
-      if (booking.booking?.id || booking.id) {
-        apiRequest('POST', `/api/booking-chat/${booking.booking?.id || booking.id}/open`).catch(err => {
+      // Use the STRING ref (SITTER_xxx), NOT the numeric PK. The status endpoint
+      // matches sitter_bookings.bookingId (varchar), so polling with the numeric
+      // id 404'd forever → the wizard hung on "pending_match" and never reached
+      // confirmation even after the sitter accepted. (2026-07-27)
+      const trackRef = booking.booking?.bookingId || booking.bookingId || booking.booking?.id || booking.id || 'pending';
+      setBookingId(trackRef);
+
+      // Open chat conversation (same string ref)
+      if (trackRef && trackRef !== 'pending') {
+        apiRequest('POST', `/api/booking-chat/${trackRef}/open`).catch(err => {
           console.error('Failed to open booking chat:', err);
         });
       }
