@@ -131,7 +131,8 @@ export default function AcademyBookingFlow() {
       const booking = await response.json();
 
       const bookingRecord = booking.booking || booking;
-      setBookingId(bookingRecord?.id || bookingRecord?.bookingNumber || 'pending');
+      // Show the human ref (TRN-YYYY-xxxx), not the numeric PK. (2026-07-27)
+      setBookingId(bookingRecord?.bookingId || bookingRecord?.bookingNumber || bookingRecord?.id || 'pending');
       setBookingFinanceState(bookingRecord?.financeState || 'none');
       setBookingWalletHoldCents(bookingRecord?.walletHoldCents || 0);
       setStep("confirmation");
