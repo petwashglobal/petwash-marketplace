@@ -402,7 +402,34 @@ router.post('/bookings', requireAuth, async (req, res) => {
         serviceSource: 'pet_training',
       })
       .returning();
-    
+
+    // Bridge into booking_requests so the trainer sees + accepts this from the
+    // canonical /provider-os inbox (provider-dashboard-v2 reads booking_requests
+    // ONLY). Academy's own /academy/trainer/bookings inbox works, but a trainer
+    // working from /provider-os was blind to these — they stranded pending
+    // forever. Mirrors the walk/sitter bridge; fail-soft. (2026-07-27)
+    try {
+      const { bridgeLegacyBooking } = await import('../services/legacyBookingBridge');
+      const startAt = (sessionDate instanceof Date && !isNaN(sessionDate.getTime())) ? sessionDate : new Date();
+      const endAt = new Date(startAt.getTime() + (validatedData.sessionDuration || 60) * 60000);
+      await bridgeLegacyBooking({
+        ownerId: req.user.uid,
+        providerUserId: trainer.userId as string,
+        providerProfileId: (trainer.id as number) ?? null,
+        providerType: 'trainer',
+        serviceType: 'training',
+        startDate: startAt,
+        endDate: endAt,
+        petCount: 1,
+        subtotalCents: Math.round(totalAmount * 100),
+        serviceFeeCents: Math.round(platformFee * 100),
+        totalCents: Math.round(totalAmount * 100),
+        providerPayoutCents: Math.round(trainerPayout * 100),
+        ownerMessage: validatedData.specialNotes ?? null,
+        legacyRef: { table: 'trainer_bookings', id: newBooking.bookingId },
+      });
+    } catch { /* bridge is best-effort — the academy inbox still has the row */ }
+
     logger.info('[Academy] Booking created', {
       bookingId: newBooking.bookingId,
       trainerId: trainer.id,

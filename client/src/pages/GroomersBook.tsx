@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -51,6 +51,14 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
   const isHebrew = (langProp || language) === 'he';
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  // This standalone wizard could never submit (no providerId; a serviceType the
+  // server enum rejects → guaranteed 400). Grooming must start from a CHOSEN
+  // groomer, which routes to the working /booking/new/grooming/:userId flow. Send
+  // anyone who lands here to pick a groomer first. (2026-07-27)
+  useEffect(() => {
+    const g = new URLSearchParams(window.location.search).get('groomer');
+    setLocation(g ? `/groomers/${g}` : '/groomers/explore');
+  }, [setLocation]);
   const [step, setStep] = useState(1);
   const totalSteps = 4;
 

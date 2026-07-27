@@ -72,7 +72,11 @@ export default function GroomerDetail() {
       navigate('/signin');
       return;
     }
-    navigate(`/groomers/book?groomer=${id}&mode=${serviceMode}&service=${serviceId}`);
+    // Route to the WORKING, server-quoted grooming flow. The old /groomers/book
+    // wizard 400'd on every submit (no providerId; serviceType 'bath_blow' isn't
+    // in the server enum). MultiPetBookingWizard sends providerId + serviceType
+    // 'grooming' + a server-computed finalQuote. (2026-07-27)
+    navigate(`/booking/new/grooming/${groomer.userId}?mode=${serviceMode}&service=${serviceId}`);
   };
 
   const handleMessage = () => {
