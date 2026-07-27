@@ -228,7 +228,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // Only the EXPLICIT ?flow=/?intent= the user actually arrived with (not the
   // 'prestige' default) — passed to the decider so a deliberate "become provider"
   // deep-link still routes to onboarding.
-  const explicitIntent = wantsProvider ? 'provider' : (params.get('flow') || params.get('intent') || undefined);
+  const rawIntent = wantsProvider ? 'provider' : (params.get('flow') || params.get('intent') || undefined);
+  // Normalize client flow aliases to the server's valid intents (ALLOWED_INTENTS:
+  // customer|loyalty|provider|staff_request). 'prestige' is the marketing name for
+  // the loyalty member — sending it raw made the server fail to match it and
+  // silently downgrade to 'customer', which dropped the DOB requirement so the two
+  // "join as member" doors behaved differently. (2026-07-27)
+  const explicitIntent = rawIntent === 'prestige' ? 'loyalty' : rawIntent;
   const { user } = useFirebaseAuth();
   // Already signed in on /signup → route by the user's ACTUAL role/status via the
   // server post-login decider: returning approved provider → /provider-os, member →
@@ -555,7 +561,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function social(which: 'google' | 'apple' | 'facebook') {
-    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return; }
+    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); document.querySelector('.sl-consent')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
     setInlineError(null);
     setBusy(true);
     try {
@@ -622,7 +628,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   /** Server-mediated OAuth (Instagram / TikTok / etc.). The backend builds the
    *  authorize URL with provider secrets and we redirect the browser there. */
   async function socialExternal(which: 'instagram' | 'tiktok') {
-    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); return; }
+    if (!consentOk) { fail(he ? 'יש לאשר את התנאים ומדיניות הפרטיות וגיל 18+' : 'Please accept the Terms and Privacy Policy and confirm you are 18+ to continue.'); document.querySelector('.sl-consent')?.scrollIntoView({ behavior: 'smooth', block: 'center' }); return; }
     setInlineError(null);
     setBusy(true);
     try {
@@ -671,7 +677,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       const idToken = await cred.user.getIdToken(true);
       const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ idToken }),
+        // Send the DOB the user just typed (the OTP paths already do — :467,:547).
+        // Was omitted here, so email+password members were re-asked their birthday
+        // at /complete-profile. (2026-07-27)
+        body: JSON.stringify({ idToken, dateOfBirth: dob }),
       });
       if (!sessionRes.ok) {
         // Surface the real failure instead of dropping the user into the app on a
@@ -957,10 +966,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 </label>
               </div>
 
+              {/* Consent/blocked-tap error shown HERE, right between the boxes and the
+                  social tiles — the top-of-form inlineError (~400px up) was off-screen
+                  when the user tapped Google, so it read as "Gmail gives nothing".
+                  (2026-07-27) */}
+              {inlineError && (
+                <p className="sl-inlineError" role="alert" data-testid="signup-consent-error" style={{ margin: '2px 0 8px', textAlign: he ? 'right' : 'left' }}>{inlineError}</p>
+              )}
+
               {/* All sign-up methods visible (CEO 2026-07-17): no "more options" fold.
                   Buttons are NOT disabled on missing consent — a tap calls social()/
-                  socialExternal(), which surface the "accept terms + 18+" message.
-                  Disabling silently made them look dead ("Gmail gives nothing"). */}
+                  socialExternal(), which surface the "accept terms + 18+" message
+                  right above these tiles + scroll it into view. */}
               <div className="sl-social4">
                 {signupFlags.googleSignin && (
                   <button className="sl-soc" disabled={busy} onClick={() => social('google')}>
