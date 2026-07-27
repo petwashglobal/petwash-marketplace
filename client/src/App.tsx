@@ -933,7 +933,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
         </Route>
         <Route path="/signup">
-          {() => <SignUpLuxury language={language} onLanguageChange={handleLanguageChange} />}
+          {() => <Layout language={language} onLanguageChange={handleLanguageChange}><SignUpLuxury language={language} onLanguageChange={handleLanguageChange} /></Layout>}
         </Route>
         {/* /signup is the single canonical door — every alias hard-redirects to it,
             preserving the query string (?flow=provider|prestige|guest|booking). */}
