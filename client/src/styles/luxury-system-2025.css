@@ -760,6 +760,36 @@ button[data-testid="button-gmail-signin-quick"]:hover {
 }
 
 /* ============================================
+   BIG-SCREEN BALANCE (≥1536px / ≥1920px)
+   The homepage capped the hero at 800px and sections at max-w-6xl
+   (1152px). On a 2560px Mac that left ~880px of empty white on EACH
+   side — content marooned in a void ("out of place on a big screen",
+   CEO 2026-07-27). These rules widen + scale the homepage ONLY on
+   large screens. Everything below 1536px (phones, laptops) is left
+   exactly as tuned. Scoped to .home-big-screen so no other page
+   inherits the wider max-w-6xl. (2026-07-27)
+   ============================================ */
+@media (min-width: 1536px) {
+  .luxury-services-hero { padding: 3rem 1.5rem 2rem; }
+  .luxury-services-hero-content { max-width: 1120px; }
+  .luxury-services-title { font-size: clamp(3.5rem, 4vw, 4.5rem); }
+  .luxury-services-subtitle { max-width: 760px; font-size: clamp(1.5rem, 2vw, 2rem); }
+  /* Site-wide: nudge the 1152px content cap up on large monitors so pages
+     (home, locations, signup, admin dashboards, footer) stop floating as a
+     narrow column in a white void. `body ` raises specificity so it wins over
+     Tailwind's .max-w-6xl utility regardless of source order. Verified safe:
+     no page narrows max-w-6xl responsively on big screens. Forms keep their
+     own inner max-w-md/lg/2xl caps, so fields don't stretch. (2026-07-27) */
+  body .max-w-6xl { max-width: 80rem; } /* 1152px → 1280px */
+}
+@media (min-width: 1920px) {
+  .luxury-services-hero-content { max-width: 1280px; }
+  .luxury-services-title { font-size: 5rem; }
+  .luxury-services-subtitle { max-width: 820px; }
+  body .max-w-6xl { max-width: 90rem; } /* → 1440px */
+}
+
+/* ============================================
    LUXURY DARK THEME SYSTEM 2026
    Ultra-premium dark UI for admin/settings pages
    Brand: #0A0A0F background, #D4AF37 gold accents
