@@ -702,6 +702,10 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
           toast({ variant: 'destructive', title: 'הגעת למגבלה היומית', description: 'ניתן לפרסם עד 5 פוסטים ביום.' });
         } else if (j.error === 'DUPLICATE_IMAGE') {
           toast({ variant: 'destructive', title: 'תמונה כפולה', description: `תמונה זו כבר בשימוש בפוסט ${j.existingPostKey}.` });
+        } else if (j.status === 'rejected' || /reject/i.test(String(j.error || ''))) {
+          // A safety-rejected post returns 422 (!r.ok), so it landed here instead of
+          // the success-branch 'rejected' case — show the real reason, not "failed".
+          toast({ variant: 'destructive', title: 'פוסט נדחה', description: j.message || j.reason || 'הפוסט לא עמד בקריטריוני הבטיחות.' });
         } else {
           toast({ variant: 'destructive', title: 'שגיאה', description: j.error || 'הפרסום נכשל.' });
         }
