@@ -15,6 +15,7 @@ import { useSEO, pageSEO, injectStructuredData, generateBreadcrumbSchema } from 
 import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
 import waldStationPhoto from '@assets/wald_kfarsaba_station.jpg';
+import greenKfarSabaStationPhoto from '@assets/green_kfarsaba_station.jpg';
 
 // AEO/GEO — visible FAQ mirrored 1:1 into FAQPage JSON-LD so answer engines
 // (ChatGPT/Claude/Perplexity) can lift a factual sentence verbatim. Truthful,
@@ -129,6 +130,10 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     opens: '00:00', closes: '23:59',
     arrivalHe: 'כפר סבא הירוקה, פארק 80 — ממש בכניסה לפארק, ליד דוכן הקפה; העמדה נראית מהכניסה. (עמדה נפרדת לחלוטין מפארק יצחק ולד.)',
     arrivalEn: 'Green Kfar Saba, Park 80 — right at the park entrance, beside the coffee kiosk; the bay is visible from the entrance. (A completely separate station from Isaac Wald Park.)',
+    // Real on-site photo (CEO, 2026-07-27) — the live green dual-bay station.
+    photo: greenKfarSabaStationPhoto,
+    photoAltHe: 'תחנת PetWash בכפר סבא הירוקה (פארק 80) — עמדת שטיפה עצמית K9000 דו-תאית, פתוחה 24/7',
+    photoAltEn: 'PetWash station at Green Kfar Saba (Park 80) — dual K9000 self-service wash bay, open 24/7',
   },
 ];
 
