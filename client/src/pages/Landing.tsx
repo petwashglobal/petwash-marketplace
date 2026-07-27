@@ -18,7 +18,12 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
-import k9000StationImg from '@assets/D49C7A93-BA54-43A7-A3F6-5FEC96439FE3_1770820255509.png';
+// K9000 station image: responsive webp variants (was a single 2.3MB PNG served
+// full-size to phones). 480w for phones, 1152w for desktop → srcset picks per
+// screen. 2.3MB → 37KB on a phone. (CEO 2026-07-27: "big files on small screens".)
+import k9000Station480 from '@assets/k9000_station_480.webp';
+import k9000Station768 from '@assets/k9000_station_768.webp';
+import k9000Station1152 from '@assets/k9000_station_1152.webp';
 
 interface LandingProps {
   language: Language;
@@ -250,12 +255,15 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
             </p>
             
             <div className="mt-6 sm:mt-8 max-w-3xl mx-auto">
-              <img 
-                src={k9000StationImg}
+              <img
+                src={k9000Station1152}
+                srcSet={`${k9000Station480} 480w, ${k9000Station768} 768w, ${k9000Station1152} 1152w`}
+                sizes="(min-width: 640px) 768px, 92vw"
                 alt="⁦PetWash™⁩ K9000 Dual Wash Station"
                 className="w-full rounded-sm"
                 style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
                 loading="lazy"
+                decoding="async"
               />
             </div>
           </div>

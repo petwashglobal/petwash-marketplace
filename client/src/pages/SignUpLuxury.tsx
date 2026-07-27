@@ -60,6 +60,7 @@ import {
   getRedirectResult,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { humanizeAuthError } from '@/auth/client';
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider,
   isNativePlatform, signInWithGoogleNative, signInWithAppleNative } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -288,7 +289,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         await finishAndRoute();
       } catch (e: any) {
         if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') return;
+        // Was silently swallowed (only logged) — on iPhone every social login uses
+        // signInWithRedirect, so a not-enabled provider (Apple/Facebook =
+        // auth/operation-not-allowed) or auth/unauthorized-domain dumped the user
+        // back on the form with NO message = "Gmail/Apple not working". Now tell them.
         logger.error('[signup] redirect result', e);
+        clearSignupRedirectMarker();
+        fail(humanizeAuthError(e?.code, he ? 'he' : 'en'));
       } finally {
         if (!cancelled) setBusy(false);
       }

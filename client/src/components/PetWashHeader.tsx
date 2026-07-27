@@ -333,6 +333,27 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
+  // Mobile drawer hygiene (2026-07-27): the drawer stays in the DOM and only
+  // slides off-screen, so when CLOSED its ~40 buttons were still tabbable, and
+  // when OPEN the page scrolled behind it and Escape did nothing. Lock body
+  // scroll + close on Escape while open; mark the drawer `inert` while closed so
+  // it's fully non-interactive to keyboard/screen-reader/phantom taps.
+  useEffect(() => {
+    const drawer = document.getElementById('pw-mobile-drawer');
+    if (isMobileOpen) {
+      drawer?.removeAttribute('inert');
+      const prevOverflow = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setIsMobileOpen(false); };
+      document.addEventListener('keydown', onKey);
+      return () => {
+        document.body.style.overflow = prevOverflow;
+        document.removeEventListener('keydown', onKey);
+      };
+    }
+    drawer?.setAttribute('inert', '');
+  }, [isMobileOpen]);
+
   // Unread message count for badge on Messages nav link
   const { data: inboxConversations } = useQuery<any[]>({
     queryKey: ["/api/booking-chat/inbox"],
@@ -745,6 +766,8 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                     <button
                       type="button"
                       key={item.id}
+                      disabled={item.frozen}
+                      aria-disabled={item.frozen || undefined}
                       className={
                         "pw-mobile-link" +
                         (item.frozen ? " pw-mega-link-frozen" : "")
