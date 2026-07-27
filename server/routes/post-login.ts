@@ -989,6 +989,11 @@ export async function getWhoami(req: Request, res: Response) {
         firstName: user.firstName,
         lastName: user.lastName,
         phone: user.phone,
+        // dateOfBirth + city are prefilled by /complete-profile and
+        // /provider-onboarding — omitting them forced users to re-enter the
+        // birthday/city they already gave at signup. (2026-07-27)
+        dateOfBirth: (user as any).dateOfBirth || null,
+        city: (user as any).city || null,
         role,
         userStatus,
         profilePictureUrl: (user as any).profileImageUrl || null,
@@ -997,6 +1002,11 @@ export async function getWhoami(req: Request, res: Response) {
       userStatus,
       role,
       missingFields,
+      // requiredFields is the name /complete-profile reads; it was reading
+      // undefined (missingFields was the only key) → rendered NO input fields →
+      // a name-less phone/email signup got hard-stuck after OTP. Alias them.
+      // (2026-07-27)
+      requiredFields: missingFields,
       isSuperAdmin: isSuperAdmin((user.email || '').toLowerCase()),
     });
   } catch (error: any) {
