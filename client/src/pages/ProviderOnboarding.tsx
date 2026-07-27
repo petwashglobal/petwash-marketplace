@@ -143,6 +143,9 @@ export default function ProviderOnboarding() {
   const [idDocumentType, setIdDocumentType] = useState('');
   const [idExpiry, setIdExpiry] = useState('');
   const [ageConfirmed18Plus, setAgeConfirmed18Plus] = useState(false);
+  // Birthday carried over from signup (prefilled from whoami) — proves 18+ without
+  // re-asking, and is sent to the server so the real-age path is used. (2026-07-27)
+  const [dob, setDob] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('IL');
 
@@ -284,6 +287,17 @@ export default function ProviderOnboarding() {
         setFirstName((v) => v || u.firstName || '');
         setLastName((v) => v || u.lastName || '');
         setCity((v) => v || u.city || '');
+        // Prefill the birthday given at signup + auto-satisfy the 18+ gate from it
+        // (was re-asked as a checkbox even though we already hold the DOB). (2026-07-27)
+        if (u.dateOfBirth) {
+          const d = String(u.dateOfBirth).slice(0, 10);
+          setDob((v) => v || d);
+          const age = Math.floor((Date.now() - new Date(d).getTime()) / 31557600000);
+          if (age >= 18) setAgeConfirmed18Plus(true);
+        }
+        // Trust a phone already verified at signup — don't force a re-OTP (which
+        // dead-ends when Twilio SMS is disabled). (2026-07-27)
+        if (u.phoneVerified) setPhoneVerified(true);
         if (u.phone && !phoneVerified) {
           const raw = String(u.phone);
           const code = ['+972', '+1', '+44', '+61', '+49', '+33', '+7', '+91', '+55'].find((c) => raw.startsWith(c));
@@ -334,8 +348,11 @@ export default function ProviderOnboarding() {
         // If the server is still starting up, show a friendlier message
         const rawMsg: string = data.message || '';
         const isStartingUp = res.status === 503 || rawMsg.toLowerCase().includes('starting up');
-        const errorMsg = isStartingUp
-          ? (isHebrew ? 'שירות האימות אינו זמין כרגע. אנא נסה שוב.' : 'Verification service is temporarily unavailable. Please try again.')
+        // SMS provider off (Twilio not configured, #362) returns a raw code — show a
+        // clear message instead of "SMS_PROVIDER_DISABLED". (2026-07-27)
+        const isSmsDown = /disabled|not configured|SMS_PROVIDER|provider_disabled/i.test(rawMsg);
+        const errorMsg = (isStartingUp || isSmsDown)
+          ? (isHebrew ? 'אימות הטלפון אינו זמין כרגע. אם כבר אימתת טלפון בהרשמה — תוכל להמשיך; אחרת נסה שוב מאוחר יותר.' : 'Phone verification is temporarily unavailable. If you already verified a phone at signup you can continue; otherwise please try again later.')
           : rawMsg || (isHebrew ? 'שליחת קוד נכשלה' : 'Failed to send code');
         setPhoneOtpError(errorMsg);
         return;
@@ -533,7 +550,13 @@ export default function ProviderOnboarding() {
       formData.append('phoneNumber', phoneNumber);
       formData.append('idNumber', idNumber);
       formData.append('kycDocumentType', idDocumentType);
+      // identityType tells the server to encrypt-at-rest an Israeli national ID
+      // instead of relying on a digit heuristic. (2026-07-27)
+      formData.append('identityType', idDocumentType === 'national_id' ? 'israeli_id' : idDocumentType);
       if (idExpiry) formData.append('kycDocumentExpiry', idExpiry);
+      // Send the birthday carried from signup so the server uses the real-age path
+      // (18+ proven by DOB, not just the checkbox). (2026-07-27)
+      if (dob) formData.append('dateOfBirth', dob);
       formData.append('ageConfirmed18Plus', ageConfirmed18Plus ? 'true' : 'false');
       formData.append('city', city);
       formData.append('country', country);

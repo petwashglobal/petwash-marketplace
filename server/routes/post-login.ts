@@ -994,6 +994,10 @@ export async function getWhoami(req: Request, res: Response) {
         // birthday/city they already gave at signup. (2026-07-27)
         dateOfBirth: (user as any).dateOfBirth || null,
         city: (user as any).city || null,
+        // phoneVerified lets /provider-onboarding trust a phone already verified at
+        // signup instead of forcing a re-OTP (which dead-ends when Twilio is off).
+        // (2026-07-27)
+        phoneVerified: !!((user as any).phoneVerified || (user as any).mobileVerifiedAt),
         role,
         userStatus,
         profilePictureUrl: (user as any).profileImageUrl || null,
