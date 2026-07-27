@@ -1207,7 +1207,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <GiftActivate />}
         </Route>
         <Route path="/checkout">
-          {() => <CheckoutCanon />}
+          {() => <Layout language={language} onLanguageChange={handleLanguageChange}><CheckoutCanon /></Layout>}
         </Route>
         <Route path="/egift">
           {() => <EGift />}
@@ -1253,7 +1253,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/shop">
           {() => import.meta.env.VITE_SHOP_LIVE_ENABLED === 'true'
             ? <ShopStore language={language} onLanguageChange={handleLanguageChange} />
-            : <Shop />}
+            : <Layout language={language} onLanguageChange={handleLanguageChange}><Shop /></Layout>}
         </Route>
         <Route path="/shop/orders">
           {() => import.meta.env.VITE_SHOP_LIVE_ENABLED === 'true'
