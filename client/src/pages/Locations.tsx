@@ -15,6 +15,7 @@ import { useSEO, pageSEO, injectStructuredData, generateBreadcrumbSchema } from 
 import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
 import waldStationPhoto from '@assets/wald_kfarsaba_station.jpg';
+import greenKfarSabaStationPhoto from '@assets/green_kfarsaba_station.jpg';
 
 // AEO/GEO — visible FAQ mirrored 1:1 into FAQPage JSON-LD so answer engines
 // (ChatGPT/Claude/Perplexity) can lift a factual sentence verbatim. Truthful,
@@ -105,8 +106,8 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     hoursHe: 'פתוחה כל יום 05:30–23:00 (למעט חגים)',
     hoursEn: 'Open daily 05:30–23:00 (except holidays)',
     opens: '05:30', closes: '23:00',
-    arrivalHe: 'בתוך הפארק, ליד החניון הראשי — נכנסים מרחוב ויצמן (סמוך לוויצמן 185, מיקוד 4439654). חניה במקום בתשלום (כחול-לבן), ומשם הליכה קצרה אל העמדה.',
-    arrivalEn: 'Inside the park, beside the main car park — enter from Weizmann Street (near Weizmann 185, postcode 4439654). On-site paid parking (blue-and-white), then a short walk to the bay.',
+    arrivalHe: 'פארק יצחק ולד — רחוב ויצמן 185, כפר סבא (מיקוד 4439654). בתוך הפארק, ליד החניון הראשי; חניה במקום בתשלום (כחול-לבן), ומשם הליכה קצרה אל העמדה. (עמדה נפרדת לחלוטין מכפר סבא הירוקה / פארק 80.)',
+    arrivalEn: 'Isaac Wald Park — Weizmann 185, Kfar Saba (postcode 4439654). Inside the park, beside the main car park; on-site paid parking (blue-and-white), then a short walk to the bay. (A completely separate station from Green Kfar Saba / Park 80.)',
     // Real on-site photo (CEO, 2026-07-23). Green Kfar Saba gets its photo next week.
     photo: waldStationPhoto,
     photoAltHe: 'תחנת PetWash בפארק יצחק ולד, כפר סבא — שני תאי שטיפה K9000',
@@ -127,8 +128,12 @@ const ANNOUNCED_LOCATIONS: { code: string; city: string; nameHe: string; nameEn:
     hoursHe: 'פתוחה 24 שעות בכל יום',
     hoursEn: 'Open 24/7',
     opens: '00:00', closes: '23:59',
-    arrivalHe: 'רחוב ויצמן 135, כפר סבא הירוקה (פארק 80) — ממש בכניסה לפארק, ליד דוכן הקפה; העמדה נראית מהכניסה. (שימו לב: עמדה נפרדת מפארק יצחק ולד שברחוב ויצמן 185.)',
-    arrivalEn: 'Weizmann 135, Green Kfar Saba (Park 80) — right at the park entrance, beside the coffee kiosk; the bay is visible from the entrance. (Note: a separate station from Isaac Wald Park at Weizmann 185.)',
+    arrivalHe: 'כפר סבא הירוקה, פארק 80 — ממש בכניסה לפארק, ליד דוכן הקפה; העמדה נראית מהכניסה. (עמדה נפרדת לחלוטין מפארק יצחק ולד.)',
+    arrivalEn: 'Green Kfar Saba, Park 80 — right at the park entrance, beside the coffee kiosk; the bay is visible from the entrance. (A completely separate station from Isaac Wald Park.)',
+    // Real on-site photo (CEO, 2026-07-27) — the live green dual-bay station.
+    photo: greenKfarSabaStationPhoto,
+    photoAltHe: 'תחנת PetWash בכפר סבא הירוקה (פארק 80) — עמדת שטיפה עצמית K9000 דו-תאית, פתוחה 24/7',
+    photoAltEn: 'PetWash station at Green Kfar Saba (Park 80) — dual K9000 self-service wash bay, open 24/7',
   },
 ];
 
