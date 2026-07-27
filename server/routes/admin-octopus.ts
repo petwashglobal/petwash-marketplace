@@ -49,9 +49,14 @@ router.get('/overview', requireSuperAdmin, async (_req: Request, res: Response) 
           WHERE status NOT IN ('cancelled','refunded','payment_required')
             AND created_at >= NOW() - ${interval}::interval
         `)).rows as any[];
+        // Read the unified Octopus ledger (one BOOKING_CREATED row per booking,
+        // ALL platforms: walk + sitter inline, academy + marketplace added
+        // 2026-07-27). The old query summed the generic `bookings` table — written
+        // ONLY by the partner-API engine, so real marketplace/sitter/walk/academy
+        // revenue was invisible in the control tower. (2026-07-27)
         const [book] = (await db.execute(sql`
-          SELECT COALESCE(SUM(total_cents),0)::bigint AS c FROM bookings
-          WHERE status = 'completed' AND created_at >= NOW() - ${interval}::interval
+          SELECT COALESCE(SUM(amount),0)::bigint AS c FROM octopus_ledger
+          WHERE type = 'BOOKING_CREATED' AND created_at >= NOW() - ${interval}::interval
         `)).rows as any[];
         return {
           sumitCents: Number(sumit?.c ?? 0),
