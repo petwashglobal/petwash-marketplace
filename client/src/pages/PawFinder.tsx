@@ -561,6 +561,9 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
 
   // Location state
   const [locLoading, setLocLoading] = useState(false);
+  // Captured GPS coords — were toasted but never stored/sent, so every post saved
+  // NULL coords → missing from the Leaflet map + lost the proximity match. (2026-07-27)
+  const [coords, setCoords] = useState<{ lat: number; lng: number } | null>(null);
 
   const set = (k: keyof typeof EMPTY_FORM) => (e: any) =>
     setForm(prev => ({ ...prev, [k]: e.target?.value ?? e }));
@@ -625,6 +628,7 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
     navigator.geolocation.getCurrentPosition(
       pos => {
         setLocLoading(false);
+        setCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
         toast({ title: '📍 מיקום נלכד', description: `${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)}` });
       },
       err => {
@@ -674,6 +678,9 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
         rewardAmount: form.rewardAmount ? Number(form.rewardAmount) : undefined,
         contactPreference: form.contactPreference,
         contactPhone: form.contactPhone || undefined,
+        // Include the captured GPS so the post shows on the map + scores proximity
+        // (server also accepts these optionally). (2026-07-27)
+        ...(coords ? { latitude: coords.lat, longitude: coords.lng } : {}),
         mediaFiles: [{ filePath: uploadedFilePath, mediaRole: 'primary' }],
       };
 
