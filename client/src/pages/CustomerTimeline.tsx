@@ -95,8 +95,9 @@ export default function CustomerTimeline() {
   const userId = user?.uid;
 
   const { data, isLoading, refetch, isFetching } = useQuery<any>({
-    queryKey: ["/api/octopus/v1/timeline/customer", userId],
-    queryFn: () => fetch(`/api/octopus/v1/timeline/customer/${userId}`).then(r => r.json()),
+    // Default authed fetcher (Bearer + App-Check); full URL in queryKey[0].
+    // Bare fetch() 401'd on this admin route. (2026-07-27)
+    queryKey: [`/api/octopus/v1/timeline/customer/${userId}`],
     enabled: !!userId,
   });
 

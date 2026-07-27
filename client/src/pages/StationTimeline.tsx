@@ -53,8 +53,9 @@ export default function StationTimeline() {
   const stationId = params.stationId;
 
   const { data, isLoading, refetch, isFetching } = useQuery<any>({
-    queryKey: ["/api/octopus/v1/timeline/station", stationId],
-    queryFn: () => fetch(`/api/octopus/v1/timeline/station/${stationId}`).then(r => r.json()),
+    // Default authed fetcher (Bearer + App-Check); full URL in queryKey[0].
+    // Bare fetch() 401'd on this admin route. (2026-07-27)
+    queryKey: [`/api/octopus/v1/timeline/station/${stationId}`],
     enabled: !!stationId,
     refetchInterval: 30_000,
   });

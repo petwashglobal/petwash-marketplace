@@ -46,8 +46,9 @@ export default function BayTimeline() {
   const bayId = params.bayId;
 
   const { data, isLoading, refetch, isFetching } = useQuery<any>({
-    queryKey: ["/api/octopus/v1/timeline/bay", bayId],
-    queryFn: () => fetch(`/api/octopus/v1/timeline/bay/${bayId}`).then(r => r.json()),
+    // Default authed fetcher (Bearer + App-Check); full URL in queryKey[0].
+    // Bare fetch() 401'd on this admin route. (2026-07-27)
+    queryKey: [`/api/octopus/v1/timeline/bay/${bayId}`],
     enabled: !!bayId,
     refetchInterval: 15_000,
   });

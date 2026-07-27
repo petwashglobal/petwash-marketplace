@@ -49,8 +49,9 @@ export default function ProviderTimeline() {
   const providerId = user?.uid;
 
   const { data, isLoading, refetch, isFetching } = useQuery<any>({
-    queryKey: ["/api/octopus/v1/timeline/provider", providerId],
-    queryFn: () => fetch(`/api/octopus/v1/timeline/provider/${providerId}`).then(r => r.json()),
+    // Default authed fetcher (Bearer + App-Check); full URL in queryKey[0] since
+    // the default fetcher only reads key[0]. Bare fetch() 401'd here. (2026-07-27)
+    queryKey: [`/api/octopus/v1/timeline/provider/${providerId}`],
     enabled: !!providerId,
   });
 

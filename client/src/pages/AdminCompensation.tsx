@@ -26,8 +26,9 @@ export default function AdminCompensation() {
   const [confirming, setConfirming] = useState<string | null>(null);
 
   const { data, isLoading, refetch, isFetching } = useQuery<any>({
+    // Default authed fetcher (Bearer + App-Check) — a bare fetch() 401'd on this
+    // admin-guarded route and the tower showed no pending compensation. (2026-07-27)
     queryKey: ["/api/octopus/compensation/pending"],
-    queryFn: () => fetch("/api/octopus/compensation/pending").then(r => r.json()),
     refetchInterval: 30_000,
   });
 
