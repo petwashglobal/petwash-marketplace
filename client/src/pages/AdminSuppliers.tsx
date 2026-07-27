@@ -64,18 +64,15 @@ export default function AdminSuppliers() {
   const [filter, setFilter] = useState<Osek | "all">("all");
   const [search, setSearch] = useState("");
 
-  const queryKey = ["/api/admin/suppliers", filter, search] as const;
+  const params = new URLSearchParams();
+  if (filter !== "all") params.set("osekClassification", filter);
+  if (search.trim()) params.set("q", search.trim());
+  const qs = params.toString();
+  // Default authed fetcher (Bearer + App-Check) via the full URL in queryKey[0].
+  // A bare fetch() 401'd on this admin route and the supplier list was empty. The
+  // query string is part of the key so filter/search still refetch. (2026-07-27)
   const { data, isLoading, isFetching, refetch } = useQuery<ListResponse>({
-    queryKey,
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (filter !== "all") params.set("osekClassification", filter);
-      if (search.trim()) params.set("q", search.trim());
-      const qs = params.toString();
-      const res = await fetch(`/api/admin/suppliers${qs ? `?${qs}` : ""}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
+    queryKey: [`/api/admin/suppliers${qs ? `?${qs}` : ""}`],
     refetchInterval: 60_000,
   });
 

@@ -87,12 +87,9 @@ export default function AdminSupplierDetail() {
   const [certUrl, setCertUrl] = useState<string>("");
 
   const { data, isLoading } = useQuery<Supplier>({
+    // Default authed fetcher (Bearer + App-Check) — bare fetch() 401'd on this
+    // admin route so the supplier detail never loaded. (2026-07-27)
     queryKey: [`/api/admin/suppliers/${id}`],
-    queryFn: async () => {
-      const res = await fetch(`/api/admin/suppliers/${id}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
     enabled: Number.isInteger(id) && id > 0,
   });
 

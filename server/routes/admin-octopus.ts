@@ -134,7 +134,7 @@ router.get('/overview', requireSuperAdmin, async (_req: Request, res: Response) 
     block('alerts', async () => {
       const [a] = (await db.execute(sql`
         SELECT COUNT(*) FILTER (WHERE status = 'open')::int AS open,
-               COUNT(*) FILTER (WHERE status = 'open' AND severity IN ('high','critical'))::int AS urgent
+               COUNT(*) FILTER (WHERE status = 'open' AND severity IN ('warning','critical'))::int AS urgent
         FROM admin_alerts
       `)).rows as any[];
       return { open: Number(a?.open ?? 0), urgent: Number(a?.urgent ?? 0) };
