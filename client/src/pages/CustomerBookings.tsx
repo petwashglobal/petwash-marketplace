@@ -1105,8 +1105,21 @@ export default function CustomerBookings() {
   const academyBookings = useMemo(() => academyRows.map(academyFromRow), [academyRows]);
 
   const allBookings = useMemo(() => {
-    // Tag legacy rows so the UI can distinguish them from the four other sources.
-    const tagged = legacyBookings.map((b) => ({ ...b, kind: b.kind ?? ('request' as const) }));
+    // Walk/sitter/academy bookings are ALSO mirrored into booking_requests by the
+    // legacy bridge (quoteBreakdown.legacyRef = { table, id }), so without dedup the
+    // same booking showed twice. Drop the bridged copy when the per-engine row is
+    // already listed. Safe: only removes a legacy row we can positively match by
+    // legacyRef.id; if legacyRef is absent it keeps everything. (2026-07-27)
+    const engineIds = new Set(
+      [...sitterBookings, ...walkerBookings, ...academyBookings]
+        .map((b: any) => String(b?.bookingId ?? b?.id ?? '')).filter(Boolean),
+    );
+    const tagged = legacyBookings
+      .filter((b: any) => {
+        const refId = b?.quoteBreakdown?.legacyRef?.id;
+        return !(refId != null && engineIds.has(String(refId)));
+      })
+      .map((b) => ({ ...b, kind: b.kind ?? ('request' as const) }));
     const combined = [
       ...tagged,
       ...marketplaceBookings,
