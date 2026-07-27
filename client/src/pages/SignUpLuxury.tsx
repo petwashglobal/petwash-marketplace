@@ -800,8 +800,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
         {/* ================= LEFT COLUMN (HERO) ================= */}
         <aside className="sl-hero">
+          {/* The hero logo is intentionally hidden: /signup now renders inside the
+              standard <Layout> header (logo + shop + social + language), so showing
+              the sl-logo here too would double the mark. (CEO 2026-07-27: full
+              standard header everywhere.) */}
           <header className="sl-heroHead">
-            <img src="/brand/petwash-logo-white-tight.png" alt="PetWash" className="sl-logo" width={365} height={123} decoding="async" />
             <div className="sl-eyebrow">{t.eyebrow}</div>
           </header>
 
