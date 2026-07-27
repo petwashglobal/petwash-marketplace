@@ -16402,8 +16402,15 @@ router.get('/admin/wallet/execution-review', async (req: Request, res: Response)
 // ════════════════════════════════════════════════════════════════════════════
 
 // ─── 4.4A — PRIORITY FEEDBACK LOOP ──────────────────────────────────────────
+// NOTE (2026-07-27, audit finding #7): the 17 routes in this Phase-4.4 block
+// (recommendations/*, policies/escalation-adjustments/*, reviewers/*,
+// execution-review/*, execution-trends, governance-alerts/*) were registered
+// WITHOUT the /admin/wallet prefix every sibling route uses. Since the router
+// mounts at /api/prestige-pass, they resolved to /api/prestige-pass/<path> while
+// the AdminWalletDashboard client calls /api/prestige-pass/admin/wallet/<path> →
+// 404 → those console panels rendered empty. Prefix added to all 17.
 
-router.post('/recommendations/apply-feedback-loop', async (req, res) => {
+router.post('/admin/wallet/recommendations/apply-feedback-loop', async (req, res) => {
   try {
     // Find outcomes recorded in the last 24h with effectiveness_score set
     const recent = await pool.query(`
@@ -16462,7 +16469,7 @@ router.post('/recommendations/apply-feedback-loop', async (req, res) => {
   }
 });
 
-router.get('/recommendations/priority-adjustments', async (req, res) => {
+router.get('/admin/wallet/recommendations/priority-adjustments', async (req, res) => {
   try {
     const limit = parseInt(req.query.limit as string) || 50;
     const result = await pool.query(`
@@ -16480,7 +16487,7 @@ router.get('/recommendations/priority-adjustments', async (req, res) => {
 
 // ─── 4.4B — ACTION SEQUENCING ENGINE ────────────────────────────────────────
 
-router.get('/recommendations/action-sequences', async (req, res) => {
+router.get('/admin/wallet/recommendations/action-sequences', async (req, res) => {
   try {
     const group = req.query.group as string;
     const where = group ? `WHERE recommendation_group = '${group.replace(/'/g, "''")}'` : '';
@@ -16493,7 +16500,7 @@ router.get('/recommendations/action-sequences', async (req, res) => {
   }
 });
 
-router.post('/recommendations/simulate-sequence', async (req, res) => {
+router.post('/admin/wallet/recommendations/simulate-sequence', async (req, res) => {
   try {
     const { recommendationGroup, actionIds } = req.body as { recommendationGroup?: string; actionIds?: number[] };
     if (!recommendationGroup || !actionIds?.length) {
@@ -16542,7 +16549,7 @@ router.post('/recommendations/simulate-sequence', async (req, res) => {
 
 // ─── 4.4C — ESCALATION POLICY TUNING ────────────────────────────────────────
 
-router.get('/policies/escalation-adjustments', async (req, res) => {
+router.get('/admin/wallet/policies/escalation-adjustments', async (req, res) => {
   try {
     const status = (req.query.status as string) || 'pending';
     const where = status !== 'all' ? `WHERE status = '${status}'` : '';
@@ -16571,7 +16578,7 @@ router.get('/policies/escalation-adjustments', async (req, res) => {
   }
 });
 
-router.post('/policies/escalation-adjustments/generate', async (req, res) => {
+router.post('/admin/wallet/policies/escalation-adjustments/generate', async (req, res) => {
   try {
     // For each policy, if overdue rate > 30%, suggest reducing threshold by 25%
     const policies = await pool.query(`
@@ -16606,7 +16613,7 @@ router.post('/policies/escalation-adjustments/generate', async (req, res) => {
   }
 });
 
-router.post('/policies/escalation-adjustments/:id/approve', async (req, res) => {
+router.post('/admin/wallet/policies/escalation-adjustments/:id/approve', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
@@ -16625,7 +16632,7 @@ router.post('/policies/escalation-adjustments/:id/approve', async (req, res) => 
   }
 });
 
-router.post('/policies/escalation-adjustments/:id/reject', async (req, res) => {
+router.post('/admin/wallet/policies/escalation-adjustments/:id/reject', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
@@ -16638,7 +16645,7 @@ router.post('/policies/escalation-adjustments/:id/reject', async (req, res) => {
 
 // ─── 4.4D — REVIEWER WORKLOAD OPTIMIZATION ───────────────────────────────────
 
-router.get('/reviewers/workload-suggestions', async (req, res) => {
+router.get('/admin/wallet/reviewers/workload-suggestions', async (req, res) => {
   try {
     const suggestions = await pool.query(`
       SELECT rws.*, rps.quality_band, rps.action_accept_rate
@@ -16662,7 +16669,7 @@ router.get('/reviewers/workload-suggestions', async (req, res) => {
   }
 });
 
-router.post('/reviewers/generate-workload-suggestions', async (req, res) => {
+router.post('/admin/wallet/reviewers/generate-workload-suggestions', async (req, res) => {
   try {
     const loads = await pool.query(`
       SELECT assigned_reviewer AS uid, COUNT(*) AS open_count
@@ -16695,7 +16702,7 @@ router.post('/reviewers/generate-workload-suggestions', async (req, res) => {
   }
 });
 
-router.post('/reviewers/apply-workload-adjustment', async (req, res) => {
+router.post('/admin/wallet/reviewers/apply-workload-adjustment', async (req, res) => {
   try {
     const { suggestionId, confirmedBy } = req.body as { suggestionId: number; confirmedBy?: string };
     if (!suggestionId) return res.status(400).json({ error: 'suggestionId required' });
@@ -16710,7 +16717,7 @@ router.post('/reviewers/apply-workload-adjustment', async (req, res) => {
 
 // ─── 4.4E — OPERATING REVIEW AUTO-DISTRIBUTION ───────────────────────────────
 
-router.post('/execution-review/send', async (req, res) => {
+router.post('/admin/wallet/execution-review/send', async (req, res) => {
   try {
     const { periodKey, recipients } = req.body as { periodKey?: string; recipients?: string[] };
     if (!periodKey || !recipients?.length) {
@@ -16737,7 +16744,7 @@ router.post('/execution-review/send', async (req, res) => {
   }
 });
 
-router.get('/execution-review/deliveries', async (req, res) => {
+router.get('/admin/wallet/execution-review/deliveries', async (req, res) => {
   try {
     const result = await pool.query(`
       SELECT * FROM operating_review_deliveries ORDER BY created_at DESC LIMIT 50
@@ -16750,7 +16757,7 @@ router.get('/execution-review/deliveries', async (req, res) => {
 
 // ─── 4.4F — CROSS-PERIOD EXECUTION TRENDS ────────────────────────────────────
 
-router.get('/execution-trends', async (req, res) => {
+router.get('/admin/wallet/execution-trends', async (req, res) => {
   try {
     const period = (req.query.period as string) === 'monthly' ? 'monthly' : 'weekly';
     const intervals = period === 'weekly' ? 8 : 6; // last 8 weeks or 6 months
@@ -16820,7 +16827,7 @@ router.get('/execution-trends', async (req, res) => {
 
 // ─── 4.4G — GOVERNANCE ALERT ENGINE ─────────────────────────────────────────
 
-router.get('/governance-alerts', async (req, res) => {
+router.get('/admin/wallet/governance-alerts', async (req, res) => {
   try {
     const unackOnly = req.query.unacked === 'true';
     const where = unackOnly ? 'WHERE acknowledged = false' : '';
@@ -16837,7 +16844,7 @@ router.get('/governance-alerts', async (req, res) => {
   }
 });
 
-router.post('/governance-alerts/:id/ack', async (req, res) => {
+router.post('/admin/wallet/governance-alerts/:id/ack', async (req, res) => {
   try {
     const id = parseInt(req.params.id, 10);
     if (isNaN(id)) return res.status(400).json({ error: 'Invalid ID' });
@@ -16848,7 +16855,7 @@ router.post('/governance-alerts/:id/ack', async (req, res) => {
   }
 });
 
-router.post('/governance-alerts/trigger', async (req, res) => {
+router.post('/admin/wallet/governance-alerts/trigger', async (req, res) => {
   try {
     // Check effectiveness drop
     const eff = await pool.query(`
