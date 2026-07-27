@@ -1334,9 +1334,14 @@ self.addEventListener('notificationclick', (event) => {
 
         // Social OAuth providers implicitly consent via OAuth screen — stamp terms
         // immediately so postLoginDecider does not redirect to /complete-profile.
+        // Rover-style passive consent (CEO 2026-07-27): the manual phone/email flow
+        // sends termsAccepted:true (the "by continuing you agree" disclosure is the
+        // affirmative act) — honour it here too so manual signups don't get
+        // re-prompted for terms.
         const socialOAuthProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
         const signInProviderForTerms = (decoded as any).firebase?.sign_in_provider || '';
-        if (socialOAuthProviders.includes(signInProviderForTerms) && _syncResult?.user && !(_syncResult.user as any).termsAcceptedAt) {
+        const passiveConsent = (req.body as any)?.termsAccepted === true;
+        if ((socialOAuthProviders.includes(signInProviderForTerms) || passiveConsent) && _syncResult?.user && !(_syncResult.user as any).termsAcceptedAt) {
           try {
             const consentNow = new Date();
             await authService.updateUser(decoded.uid, {
