@@ -17520,6 +17520,12 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // T06: Dual escrow drift monitor — Firestore vs PostgreSQL, every 30 min ──
   startEscrowDriftMonitor();
 
+  // Firestore↔Postgres user/pass reconciliation — detect-only, nightly 03:30.
+  // Surfaces users authed via Firebase but never synced to the Octopus brain
+  // (Postgres), and Firestore-only prestige passes. Never auto-heals. (2026-07-27)
+  const { startFirestorePgUserRecon } = await import('./jobs/firestore-postgres-user-recon');
+  startFirestorePgUserRecon();
+
   // ── Async Google secondary job worker — polls pw_async_jobs every 30s ─────
   // Handles: ARCHIVE_TAX_DOCUMENT_TO_DRIVE, EXPORT_RECONCILIATION_TO_SHEETS,
   //          CREATE_CALENDAR_EVENT, SEND_GMAIL_FALLBACK (never blocks payments)
