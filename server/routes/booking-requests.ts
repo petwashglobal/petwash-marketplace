@@ -34,6 +34,8 @@ import {
   type BookingRequest,
   hostStayDetails,
   bookingHandoverEvents,
+  octopusBookings,
+  octopusLedger,
 } from '@shared/schema';
 import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
@@ -41,7 +43,7 @@ import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { nanoid } from 'nanoid';
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
 
 // Enterprise service integrations
 import EscrowService from '../services/EscrowService';
@@ -654,6 +656,39 @@ router.post('/', async (req, res) => {
         message: 'Your booking could not be created. If you already submitted it, check your bookings.',
       });
     }
+
+    // ── Sync to the Octopus main brain (financial ledger) ──────────────────────
+    // The DIRECT marketplace booking_requests path wrote ZERO octopus rows (only
+    // walk+sitter did, inline), so marketplace + grooming revenue was invisible to
+    // /admin/octopus. Idempotent on requestId (unique idempotencyKey); non-blocking;
+    // fires only for a genuinely-new booking (past the dedup guard above). (2026-07-27)
+    try {
+      const obId = `OB-MKT-${randomBytes(4).toString('hex').toUpperCase()}`;
+      const priceCents = booking.totalCents ?? totalCents ?? 0;
+      const feeCents = booking.serviceFeeCents ?? serviceFeeCents ?? 0;
+      const octPlatform = booking.serviceType || booking.providerType || 'marketplace';
+      const [ob] = await db.insert(octopusBookings).values({
+        id: obId,
+        platform: octPlatform,
+        status: 'DRAFT',
+        userId: booking.ownerId || userId,
+        providerId: booking.providerId || data.providerId || null,
+        price: priceCents,
+        platformFee: feeCents,
+        providerShare: Math.max(0, priceCents - feeCents),
+        idempotencyKey: `br:${booking.requestId}`,
+      }).onConflictDoNothing({ target: octopusBookings.idempotencyKey }).returning();
+      if (ob) {
+        await db.insert(octopusLedger).values({
+          id: `OL-${randomBytes(4).toString('hex')}`,
+          type: 'BOOKING_CREATED',
+          bookingId: ob.id,
+          amount: priceCents,
+          platform: octPlatform,
+          metadata: { bookingRequestId: booking.requestId, ownerId: booking.ownerId || userId, providerType: booking.providerType },
+        });
+      }
+    } catch (octErr) { logger.warn('[Octopus Brain] marketplace record failed (non-blocking)', { err: String(octErr) }); }
 
     // ── Persist multi-pet rows ─────────────────────────────────────────────────
     // Map clientRef → DB row ID so we can attach per-pet addons

@@ -18,9 +18,12 @@ import {
   providerApprovalQueue,
   PETWASH_COMMISSION_RATE,
   users,
+  octopusBookings,
+  octopusLedger,
   type Trainer,
   type TrainerBooking,
 } from '@shared/schema';
+import crypto from 'crypto';
 import { eq, and, desc, sql, gte, lte, or, ilike } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
@@ -429,6 +432,36 @@ router.post('/bookings', requireAuth, async (req, res) => {
         legacyRef: { table: 'trainer_bookings', id: newBooking.bookingId },
       });
     } catch { /* bridge is best-effort — the academy inbox still has the row */ }
+
+    // Sync to the Octopus main brain (financial ledger). Academy wrote ZERO octopus
+    // rows, so training revenue was invisible to /admin/octopus. Mirrors the
+    // walk/sitter pattern; idempotent on the booking id (unique idempotencyKey);
+    // non-blocking. (2026-07-27)
+    try {
+      const obId = `OB-ACAD-${crypto.randomBytes(4).toString('hex').toUpperCase()}`;
+      const priceCents = Math.round(totalAmount * 100);
+      const [ob] = await db.insert(octopusBookings).values({
+        id: obId,
+        platform: 'academy',
+        status: 'DRAFT',
+        userId: req.user.uid,
+        providerId: trainer.userId,
+        price: priceCents,
+        platformFee: Math.round(platformFee * 100),
+        providerShare: Math.round(trainerPayout * 100),
+        idempotencyKey: String(newBooking.bookingId),
+      }).onConflictDoNothing({ target: octopusBookings.idempotencyKey }).returning();
+      if (ob) {
+        await db.insert(octopusLedger).values({
+          id: `OL-${crypto.randomBytes(4).toString('hex')}`,
+          type: 'BOOKING_CREATED',
+          bookingId: ob.id,
+          amount: priceCents,
+          platform: 'academy',
+          metadata: { trainerBookingId: newBooking.bookingId, ownerId: req.user.uid, trainerId: trainer.userId },
+        });
+      }
+    } catch (octErr) { logger.warn('[Octopus Brain] academy record failed (non-blocking)', { err: String(octErr) }); }
 
     logger.info('[Academy] Booking created', {
       bookingId: newBooking.bookingId,
