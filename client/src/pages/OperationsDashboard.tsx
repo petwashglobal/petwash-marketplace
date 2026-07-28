@@ -21,6 +21,15 @@ import {
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
+// Hebrew labels for DB codes (stored values stay English).
+const PRIORITY_HE: Record<string, string> = { low: "נמוכה", medium: "בינונית", high: "גבוהה", urgent: "דחוף" };
+const TASK_STATUS_HE: Record<string, string> = { pending: "ממתין", in_progress: "בביצוע", completed: "הושלם", cancelled: "בוטל" };
+const TASK_CAT_HE: Record<string, string> = { maintenance: "תחזוקה", customer_support: "שירות לקוחות", logistics: "לוגיסטיקה", admin: "אדמין" };
+const SEVERITY_HE: Record<string, string> = { low: "נמוכה", medium: "בינונית", high: "גבוהה", critical: "קריטית" };
+const INC_STATUS_HE: Record<string, string> = { open: "פתוחה", investigating: "בבדיקה", resolved: "טופלה", closed: "סגורה" };
+const INC_CAT_HE: Record<string, string> = { equipment_failure: "תקלת ציוד", customer_complaint: "תלונת לקוח", safety: "בטיחות", security: "אבטחה" };
+const he = (map: Record<string, string>, k: string) => map[k] ?? k;
+
 export default function OperationsDashboard() {
   const [showTaskDialog, setShowTaskDialog] = useState(false);
   const [showIncidentDialog, setShowIncidentDialog] = useState(false);
@@ -60,10 +69,10 @@ export default function OperationsDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/operations/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/operations/tasks/overdue"] });
       setShowTaskDialog(false);
-      toast({ title: "Success", description: "Task created successfully" });
+      toast({ title: "בוצע", description: "המשימה נפתחה" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create task", variant: "destructive" });
+      toast({ title: "אופס", description: "לא הצלחנו לפתוח את המשימה", variant: "destructive" });
     },
   });
 
@@ -74,10 +83,10 @@ export default function OperationsDashboard() {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/operations/incidents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/operations/sla/metrics"] });
       setShowIncidentDialog(false);
-      toast({ title: "Success", description: "Incident created successfully" });
+      toast({ title: "נשלח", description: "התקלה דווחה" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create incident", variant: "destructive" });
+      toast({ title: "אופס", description: "לא הצלחנו לשלוח את הדיווח", variant: "destructive" });
     },
   });
 
@@ -87,7 +96,7 @@ export default function OperationsDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/operations/tasks"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/operations/tasks/overdue"] });
-      toast({ title: "Success", description: "Task completed" });
+      toast({ title: "בוצע", description: "המשימה סומנה כהושלמה" });
     },
   });
 
@@ -97,7 +106,7 @@ export default function OperationsDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/operations/incidents"] });
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/operations/sla/metrics"] });
-      toast({ title: "Success", description: "Incident resolved" });
+      toast({ title: "בוצע", description: "התקלה נסגרה" });
     },
   });
 
@@ -157,25 +166,25 @@ export default function OperationsDashboard() {
   return (
     <LuxuryPageWrapper
       variant="dashboard"
-      title="Operations Management"
-      subtitle="Manage tasks, incidents, and SLA compliance"
+      title="מרכז התפעול"
+      subtitle="משימות, תקלות ועמידה ביעדי שירות — הכול במקום אחד"
     >
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6" dir="rtl">
       {hasDataError && (
         <div className="bg-red-50 border border-red-200 text-red-800 rounded-lg px-4 py-3 text-sm flex items-center gap-2">
           <AlertTriangle className="w-4 h-4 flex-shrink-0" />
-          One or more data sections failed to load. Displayed figures may be incomplete — please refresh.
+          חלק מהנתונים לא נטענו — ייתכן שהמספרים חלקיים. כדאי לרענן.
         </div>
       )}
       <div className="flex justify-end items-center">
         <div className="flex gap-2">
           <Button className="luxury-btn-primary" onClick={() => setShowTaskDialog(true)} data-testid="button-create-task">
-            <Plus className="w-4 h-4 mr-2" />
-            New Task
+            <Plus className="w-4 h-4 ml-2" />
+            משימה חדשה
           </Button>
           <Button onClick={() => setShowIncidentDialog(true)} variant="destructive" data-testid="button-create-incident">
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Report Incident
+            <AlertTriangle className="w-4 h-4 ml-2" />
+            דיווח על תקלה
           </Button>
         </div>
       </div>
@@ -184,7 +193,7 @@ export default function OperationsDashboard() {
       <div className="luxury-grid-4">
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-1">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Active Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium">משימות פעילות</CardTitle>
             <CheckCircle2 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -195,7 +204,7 @@ export default function OperationsDashboard() {
         </Card>
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-2">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Overdue Tasks</CardTitle>
+            <CardTitle className="text-sm font-medium">משימות באיחור</CardTitle>
             <Clock className="h-4 w-4 text-red-500" />
           </CardHeader>
           <CardContent>
@@ -204,7 +213,7 @@ export default function OperationsDashboard() {
         </Card>
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-3">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Open Incidents</CardTitle>
+            <CardTitle className="text-sm font-medium">תקלות פתוחות</CardTitle>
             <AlertTriangle className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -215,7 +224,7 @@ export default function OperationsDashboard() {
         </Card>
         <Card className="luxury-glass-card luxury-shadow-lg luxury-delay-4">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">SLA Breach Rate</CardTitle>
+            <CardTitle className="text-sm font-medium">חריגה מיעדי שירות</CardTitle>
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
@@ -229,16 +238,16 @@ export default function OperationsDashboard() {
       <Tabs defaultValue="tasks" className="w-full">
         <TabsList>
           <TabsTrigger value="tasks" data-testid="tab-tasks">
-            <CheckCircle2 className="w-4 h-4 mr-2" />
-            Tasks ({tasks?.length || 0})
+            <CheckCircle2 className="w-4 h-4 ml-2" />
+            משימות ({tasks?.length || 0})
           </TabsTrigger>
           <TabsTrigger value="incidents" data-testid="tab-incidents">
-            <AlertTriangle className="w-4 h-4 mr-2" />
-            Incidents ({incidents?.length || 0})
+            <AlertTriangle className="w-4 h-4 ml-2" />
+            תקלות ({incidents?.length || 0})
           </TabsTrigger>
           <TabsTrigger value="sla" data-testid="tab-sla">
-            <Activity className="w-4 h-4 mr-2" />
-            SLA Tracking ({slaBreaches?.length || 0} breaches)
+            <Activity className="w-4 h-4 ml-2" />
+            יעדי שירות ({slaBreaches?.length || 0} חריגות)
           </TabsTrigger>
         </TabsList>
 
@@ -254,11 +263,11 @@ export default function OperationsDashboard() {
               <CardContent className="pt-6">
                 <div className="text-center py-12">
                   <CheckCircle2 className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No tasks yet</h3>
-                  <p className="text-muted-foreground mb-4">Create tasks to manage operations</p>
+                  <h3 className="text-lg font-semibold mb-2">אין עדיין משימות</h3>
+                  <p className="text-muted-foreground mb-4">פותחים משימה ומתחילים לנהל את התפעול</p>
                   <Button onClick={() => setShowTaskDialog(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Create Task
+                    <Plus className="w-4 h-4 ml-2" />
+                    פתיחת משימה
                   </Button>
                 </div>
               </CardContent>
@@ -272,18 +281,18 @@ export default function OperationsDashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <h4 className="font-semibold">{task.title}</h4>
-                          <Badge className={getPriorityColor(task.priority)}>{task.priority}</Badge>
-                          <Badge variant="outline">{task.status}</Badge>
+                          <Badge className={getPriorityColor(task.priority)}>{he(PRIORITY_HE, task.priority)}</Badge>
+                          <Badge variant="outline">{he(TASK_STATUS_HE, task.status)}</Badge>
                         </div>
                         {task.description && <p className="text-sm text-muted-foreground mb-3">{task.description}</p>}
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>Category: {task.category}</span>
-                          {task.taskId && <span>ID: {task.taskId}</span>}
-                          {task.stationId && <span>Station: {task.stationId}</span>}
+                          <span>קטגוריה: {he(TASK_CAT_HE, task.category)}</span>
+                          {task.taskId && <span>מזהה: {task.taskId}</span>}
+                          {task.stationId && <span>עמדה: {task.stationId}</span>}
                           {task.dueDate && (
                             <span className="flex items-center gap-1">
                               <Clock className="w-3 h-3" />
-                              Due: {new Date(task.dueDate).toLocaleDateString()}
+                              יעד: {new Date(task.dueDate).toLocaleDateString("he-IL")}
                             </span>
                           )}
                         </div>
@@ -291,11 +300,11 @@ export default function OperationsDashboard() {
                       {task.status !== "completed" && task.status !== "cancelled" && (
                         <Button
                           size="sm"
-                          onClick={() => completeTaskMutation.mutate({ id: task.id, completedBy: 1, notes: "Completed via dashboard" })}
+                          onClick={() => completeTaskMutation.mutate({ id: task.id, completedBy: 1, notes: "הושלם דרך הדשבורד" })}
                           data-testid={`button-complete-task-${task.id}`}
                         >
-                          <CheckCircle2 className="w-4 h-4 mr-1" />
-                          Complete
+                          <CheckCircle2 className="w-4 h-4 ml-1" />
+                          סיום
                         </Button>
                       )}
                     </div>
@@ -318,11 +327,11 @@ export default function OperationsDashboard() {
               <CardContent className="pt-6">
                 <div className="text-center py-12">
                   <AlertTriangle className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No incidents reported</h3>
-                  <p className="text-muted-foreground mb-4">Report incidents to track and resolve issues</p>
+                  <h3 className="text-lg font-semibold mb-2">אין תקלות פתוחות</h3>
+                  <p className="text-muted-foreground mb-4">מדווחים על תקלה כדי לעקוב ולטפל בה עד הסוף</p>
                   <Button onClick={() => setShowIncidentDialog(true)} variant="destructive">
-                    <AlertTriangle className="w-4 h-4 mr-2" />
-                    Report Incident
+                    <AlertTriangle className="w-4 h-4 ml-2" />
+                    דיווח על תקלה
                   </Button>
                 </div>
               </CardContent>
@@ -336,26 +345,26 @@ export default function OperationsDashboard() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-2">
                           <h4 className="font-semibold">{incident.title}</h4>
-                          <Badge className={getSeverityColor(incident.severity)}>{incident.severity}</Badge>
-                          <Badge variant="outline">{incident.status}</Badge>
-                          {incident.slaBreach && <Badge variant="destructive">SLA Breach</Badge>}
+                          <Badge className={getSeverityColor(incident.severity)}>{he(SEVERITY_HE, incident.severity)}</Badge>
+                          <Badge variant="outline">{he(INC_STATUS_HE, incident.status)}</Badge>
+                          {incident.slaBreach && <Badge variant="destructive">חריגת SLA</Badge>}
                         </div>
                         <p className="text-sm text-muted-foreground mb-3">{incident.description}</p>
                         <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span>Category: {incident.category}</span>
-                          {incident.incidentId && <span>ID: {incident.incidentId}</span>}
-                          {incident.stationId && <span>Station: {incident.stationId}</span>}
-                          <span>Reported: {new Date(incident.reportedAt).toLocaleDateString()}</span>
+                          <span>קטגוריה: {he(INC_CAT_HE, incident.category)}</span>
+                          {incident.incidentId && <span>מזהה: {incident.incidentId}</span>}
+                          {incident.stationId && <span>עמדה: {incident.stationId}</span>}
+                          <span>דווח: {new Date(incident.reportedAt).toLocaleDateString("he-IL")}</span>
                         </div>
                       </div>
                       {(incident.status === "open" || incident.status === "investigating") && (
                         <Button
                           size="sm"
-                          onClick={() => resolveIncidentMutation.mutate({ id: incident.id, resolvedBy: 1, resolution: "Resolved via dashboard" })}
+                          onClick={() => resolveIncidentMutation.mutate({ id: incident.id, resolvedBy: 1, resolution: "נסגר דרך הדשבורד" })}
                           data-testid={`button-resolve-incident-${incident.id}`}
                         >
-                          <CheckCircle2 className="w-4 h-4 mr-1" />
-                          Resolve
+                          <CheckCircle2 className="w-4 h-4 ml-1" />
+                          סגירה
                         </Button>
                       )}
                     </div>
@@ -370,7 +379,7 @@ export default function OperationsDashboard() {
           <div className="grid gap-4 md:grid-cols-3">
             <Card>
               <CardHeader>
-                <CardTitle>Total SLAs</CardTitle>
+                <CardTitle>סה״כ יעדים</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold" data-testid="sla-total">{slaMetrics?.totalSlas || 0}</div>
@@ -378,7 +387,7 @@ export default function OperationsDashboard() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>SLA Breaches</CardTitle>
+                <CardTitle>חריגות</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-3xl font-bold text-red-600" data-testid="sla-breaches">{slaMetrics?.breachCount || 0}</div>
@@ -386,29 +395,29 @@ export default function OperationsDashboard() {
             </Card>
             <Card>
               <CardHeader>
-                <CardTitle>Avg Response Time</CardTitle>
+                <CardTitle>זמן תגובה ממוצע</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-3xl font-bold" data-testid="sla-avg-response">{slaMetrics?.avgResponseTime || 0}m</div>
+                <div className="text-3xl font-bold" data-testid="sla-avg-response">{slaMetrics?.avgResponseTime || 0} דק׳</div>
               </CardContent>
             </Card>
           </div>
           {slaBreaches && slaBreaches.length > 0 && (
             <div className="space-y-3">
-              <h3 className="text-lg font-semibold">SLA Breaches</h3>
+              <h3 className="text-lg font-semibold">חריגות מיעד</h3>
               {slaBreaches.map((breach: any) => (
                 <Card key={breach.id} data-testid={`sla-breach-card-${breach.id}`}>
                   <CardContent className="pt-4">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="font-medium">
-                          {breach.entityType} #{breach.entityId} - {breach.slaType}
+                          {breach.entityType} #{breach.entityId} · {breach.slaType}
                         </p>
                         <p className="text-sm text-muted-foreground">
-                          Breach: {breach.breachMinutes}m over target
+                          חריגה: {breach.breachMinutes} דק׳ מעבר ליעד
                         </p>
                       </div>
-                      <Badge variant="destructive">Breached</Badge>
+                      <Badge variant="destructive">חריגה</Badge>
                     </div>
                   </CardContent>
                 </Card>
@@ -420,58 +429,58 @@ export default function OperationsDashboard() {
 
       {/* Create Task Dialog */}
       <Dialog open={showTaskDialog} onOpenChange={setShowTaskDialog}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-create-task">
+        <DialogContent className="max-w-2xl" dir="rtl" data-testid="dialog-create-task">
           <DialogHeader>
-            <DialogTitle>Create Operations Task</DialogTitle>
+            <DialogTitle>פתיחת משימת תפעול</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateTask} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <Label htmlFor="taskId">Task ID *</Label>
+                <Label htmlFor="taskId">מזהה משימה *</Label>
                 <Input id="taskId" name="taskId" required placeholder="OPS-2025-0001" data-testid="input-task-id" />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="title">כותרת *</Label>
                 <Input id="title" name="title" required data-testid="input-task-title" />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="description">Description</Label>
+                <Label htmlFor="description">תיאור</Label>
                 <Textarea id="description" name="description" rows={3} data-testid="textarea-task-description" />
               </div>
               <div>
-                <Label>Priority</Label>
+                <Label>עדיפות</Label>
                 <Select value={taskPriority} onValueChange={setTaskPriority}>
                   <SelectTrigger data-testid="select-task-priority">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="urgent">Urgent</SelectItem>
+                    <SelectItem value="low">נמוכה</SelectItem>
+                    <SelectItem value="medium">בינונית</SelectItem>
+                    <SelectItem value="high">גבוהה</SelectItem>
+                    <SelectItem value="urgent">דחוף</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Category</Label>
+                <Label>קטגוריה</Label>
                 <Select value={taskCategory} onValueChange={setTaskCategory}>
                   <SelectTrigger data-testid="select-task-category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="maintenance">Maintenance</SelectItem>
-                    <SelectItem value="customer_support">Customer Support</SelectItem>
-                    <SelectItem value="logistics">Logistics</SelectItem>
-                    <SelectItem value="admin">Admin</SelectItem>
+                    <SelectItem value="maintenance">תחזוקה</SelectItem>
+                    <SelectItem value="customer_support">שירות לקוחות</SelectItem>
+                    <SelectItem value="logistics">לוגיסטיקה</SelectItem>
+                    <SelectItem value="admin">אדמין</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="stationId">Station ID</Label>
+                <Label htmlFor="stationId">מזהה עמדה</Label>
                 <Input id="stationId" name="stationId" data-testid="input-station-id" />
               </div>
               <div>
-                <Label htmlFor="dueDate">Due Date</Label>
+                <Label htmlFor="dueDate">תאריך יעד</Label>
                 <Input id="dueDate" name="dueDate" type="datetime-local" data-testid="input-due-date" />
               </div>
             </div>
@@ -482,10 +491,10 @@ export default function OperationsDashboard() {
                 onClick={() => setShowTaskDialog(false)}
                 data-testid="button-cancel-task"
               >
-                Cancel
+                ביטול
               </Button>
               <Button type="submit" disabled={createTaskMutation.isPending} data-testid="button-submit-task">
-                {createTaskMutation.isPending ? "Creating..." : "Create Task"}
+                {createTaskMutation.isPending ? "פותח..." : "פתיחת משימה"}
               </Button>
             </div>
           </form>
@@ -494,54 +503,54 @@ export default function OperationsDashboard() {
 
       {/* Create Incident Dialog */}
       <Dialog open={showIncidentDialog} onOpenChange={setShowIncidentDialog}>
-        <DialogContent className="max-w-2xl" data-testid="dialog-create-incident">
+        <DialogContent className="max-w-2xl" dir="rtl" data-testid="dialog-create-incident">
           <DialogHeader>
-            <DialogTitle>Report Incident</DialogTitle>
+            <DialogTitle>דיווח על תקלה</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateIncident} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="col-span-2">
-                <Label htmlFor="incidentId">Incident ID *</Label>
+                <Label htmlFor="incidentId">מזהה תקלה *</Label>
                 <Input id="incidentId" name="incidentId" required placeholder="INC-2025-0001" data-testid="input-incident-id" />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="title">Title *</Label>
+                <Label htmlFor="title">כותרת *</Label>
                 <Input id="title" name="title" required data-testid="input-incident-title" />
               </div>
               <div className="col-span-2">
-                <Label htmlFor="description">Description *</Label>
+                <Label htmlFor="description">תיאור *</Label>
                 <Textarea id="description" name="description" rows={3} required data-testid="textarea-incident-description" />
               </div>
               <div>
-                <Label>Severity</Label>
+                <Label>חומרה</Label>
                 <Select value={incidentSeverity} onValueChange={setIncidentSeverity}>
                   <SelectTrigger data-testid="select-incident-severity">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="low">Low</SelectItem>
-                    <SelectItem value="medium">Medium</SelectItem>
-                    <SelectItem value="high">High</SelectItem>
-                    <SelectItem value="critical">Critical</SelectItem>
+                    <SelectItem value="low">נמוכה</SelectItem>
+                    <SelectItem value="medium">בינונית</SelectItem>
+                    <SelectItem value="high">גבוהה</SelectItem>
+                    <SelectItem value="critical">קריטית</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label>Category</Label>
+                <Label>קטגוריה</Label>
                 <Select value={incidentCategory} onValueChange={setIncidentCategory}>
                   <SelectTrigger data-testid="select-incident-category">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="equipment_failure">Equipment Failure</SelectItem>
-                    <SelectItem value="customer_complaint">Customer Complaint</SelectItem>
-                    <SelectItem value="safety">Safety</SelectItem>
-                    <SelectItem value="security">Security</SelectItem>
+                    <SelectItem value="equipment_failure">תקלת ציוד</SelectItem>
+                    <SelectItem value="customer_complaint">תלונת לקוח</SelectItem>
+                    <SelectItem value="safety">בטיחות</SelectItem>
+                    <SelectItem value="security">אבטחה</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="stationId">Station ID</Label>
+                <Label htmlFor="stationId">מזהה עמדה</Label>
                 <Input id="stationId" name="stationId" data-testid="input-incident-station-id" />
               </div>
             </div>
@@ -552,10 +561,10 @@ export default function OperationsDashboard() {
                 onClick={() => setShowIncidentDialog(false)}
                 data-testid="button-cancel-incident"
               >
-                Cancel
+                ביטול
               </Button>
               <Button type="submit" disabled={createIncidentMutation.isPending} data-testid="button-submit-incident">
-                {createIncidentMutation.isPending ? "Reporting..." : "Report Incident"}
+                {createIncidentMutation.isPending ? "שולח..." : "שליחת דיווח"}
               </Button>
             </div>
           </form>
