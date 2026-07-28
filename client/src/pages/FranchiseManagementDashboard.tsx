@@ -9,11 +9,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
-import { 
-  Building2, 
-  Plus, 
-  DollarSign, 
-  AlertTriangle, 
+import {
+  Building2,
+  Plus,
+  DollarSign,
+  AlertTriangle,
   TrendingUp,
   Search,
   Filter,
@@ -63,6 +63,9 @@ interface RoyaltyPayment {
   paymentReference?: string;
 }
 
+// Hebrew labels for DB payment-status codes (stored values stay English).
+const PAY_STATUS_HE: Record<string, string> = { paid: "שולם", pending: "ממתין", overdue: "באיחור" };
+
 const EMPTY_FRANCHISEE_FORM = {
   franchiseeId: "",
   companyName: "",
@@ -82,25 +85,25 @@ export default function FranchiseManagementDashboard() {
   const { toast } = useToast();
 
   // Fetch franchisees
-  const { data: allFranchisees, isLoading: franchiseesLoading, isError: franchiseesError } = useQuery<Franchisee[]>({ 
-    queryKey: ['/api/enterprise/franchise/franchisees'] 
+  const { data: allFranchisees, isLoading: franchiseesLoading, isError: franchiseesError } = useQuery<Franchisee[]>({
+    queryKey: ['/api/enterprise/franchise/franchisees']
   });
 
   // Fetch royalty payments
-  const { data: royaltyPayments, isLoading: paymentsLoading, isError: paymentsError } = useQuery<RoyaltyPayment[]>({ 
-    queryKey: ['/api/enterprise/franchise/royalty-payments'] 
+  const { data: royaltyPayments, isLoading: paymentsLoading, isError: paymentsError } = useQuery<RoyaltyPayment[]>({
+    queryKey: ['/api/enterprise/franchise/royalty-payments']
   });
 
   // Fetch overdue payments
-  const { data: overduePayments } = useQuery<RoyaltyPayment[]>({ 
-    queryKey: ['/api/enterprise/franchise/royalty-payments/overdue'] 
+  const { data: overduePayments } = useQuery<RoyaltyPayment[]>({
+    queryKey: ['/api/enterprise/franchise/royalty-payments/overdue']
   });
 
   // Filter franchisees
   const filteredFranchisees = Array.isArray(allFranchisees)
     ? allFranchisees.filter(franchisee => {
         const matchesCountry = selectedCountry === 'all' || franchisee.country === selectedCountry;
-        const matchesSearch = !searchQuery || 
+        const matchesSearch = !searchQuery ||
           franchisee.companyName.toLowerCase().includes(searchQuery.toLowerCase()) ||
           franchisee.franchiseeId.toLowerCase().includes(searchQuery.toLowerCase()) ||
           franchisee.email.toLowerCase().includes(searchQuery.toLowerCase());
@@ -141,18 +144,18 @@ export default function FranchiseManagementDashboard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/enterprise/franchise/franchisees'] });
-      toast({ title: "Partner created", description: "The franchise partner was added." });
+      toast({ title: "השותף נוצר", description: "השותף נוסף בהצלחה." });
       setForm({ ...EMPTY_FRANCHISEE_FORM });
       setCreateOpen(false);
     },
     onError: (err: any) => {
-      toast({ title: "Could not create partner", description: err?.message || "Please check the fields and try again.", variant: "destructive" });
+      toast({ title: "לא הצלחנו ליצור שותף", description: err?.message || "בדקו את השדות ונסו שוב.", variant: "destructive" });
     },
   });
 
   const handleCreateFranchisee = () => {
     if (!form.franchiseeId.trim() || !form.companyName.trim() || !form.primaryContact.trim() || !form.email.trim() || !form.contractStartDate) {
-      toast({ title: "Missing required fields", description: "Partner ID, Company, Primary Contact, Email and Contract Start Date are required.", variant: "destructive" });
+      toast({ title: "חסרים שדות חובה", description: "מזהה שותף, חברה, איש קשר, אימייל ותחילת חוזה הם שדות חובה.", variant: "destructive" });
       return;
     }
     createFranchiseeMutation.mutate();
@@ -162,7 +165,7 @@ export default function FranchiseManagementDashboard() {
   const handleExport = () => {
     const rows = Array.isArray(allFranchisees) ? allFranchisees : [];
     if (rows.length === 0) {
-      toast({ title: "Nothing to export", description: "No partners are loaded.", variant: "destructive" });
+      toast({ title: "אין מה לייצא", description: "לא נטענו שותפים.", variant: "destructive" });
       return;
     }
     const headers = ["franchiseeId", "companyName", "country", "primaryContact", "email", "phone", "numberOfStations", "monthlyRevenue", "status"];
@@ -183,21 +186,21 @@ export default function FranchiseManagementDashboard() {
   return (
     <LuxuryPageWrapper
       variant="dashboard"
-      title="Partner & Site Controls"
-      subtitle="Approved partner, site, support, supply, and settlement controls"
+      title="ניהול שותפים ואתרים"
+      subtitle="שותפים מאושרים, אתרים, תמיכה, אספקה והתחשבנות — במקום אחד"
     >
-      <div className="min-h-screen luxury-bg-mesh p-8" data-testid="franchise-management-dashboard">
+      <div className="min-h-screen luxury-bg-mesh p-8" dir="rtl" data-testid="franchise-management-dashboard">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-end">
           <div className="flex gap-2">
             <Button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-export" onClick={handleExport}>
               <Download className="w-4 h-4" />
-              Export
+              ייצוא
             </Button>
             <Button className="luxury-btn-primary flex items-center gap-2" data-testid="button-create-franchisee" onClick={() => setCreateOpen(true)}>
               <Plus className="w-4 h-4" />
-              New Partner Review
+              שותף חדש
             </Button>
           </div>
         </div>
@@ -209,7 +212,7 @@ export default function FranchiseManagementDashboard() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37]"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <h3 className="luxury-heading-sm">Partners</h3>
+              <h3 className="luxury-heading-sm">שותפים</h3>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] p-2.5 shadow-lg">
                 <Building2 className="w-full h-full text-white" />
               </div>
@@ -218,7 +221,7 @@ export default function FranchiseManagementDashboard() {
               {Array.isArray(allFranchisees) ? allFranchisees.length : 0}
             </div>
             <p className="luxury-text-small mt-1">
-              {activeFranchisees} active / approved
+              {activeFranchisees} פעילים / מאושרים
             </p>
           </div>
         </div>
@@ -227,7 +230,7 @@ export default function FranchiseManagementDashboard() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37]"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <h3 className="luxury-heading-sm">Total Stations</h3>
+              <h3 className="luxury-heading-sm">סה״כ עמדות</h3>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] p-2.5 shadow-lg">
                 <MapPin className="w-full h-full text-white" />
               </div>
@@ -235,7 +238,7 @@ export default function FranchiseManagementDashboard() {
             <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-total-stations">
               {totalStations}
             </div>
-            <p className="luxury-text-small mt-1">Across all locations</p>
+            <p className="luxury-text-small mt-1">בכל האתרים</p>
           </div>
         </div>
 
@@ -243,7 +246,7 @@ export default function FranchiseManagementDashboard() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-green-400 to-emerald-500"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <h3 className="luxury-heading-sm">Monthly Reported Sales</h3>
+              <h3 className="luxury-heading-sm">מכירות מדווחות (חודשי)</h3>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 p-2.5 shadow-lg">
                 <TrendingUp className="w-full h-full text-white" />
               </div>
@@ -251,7 +254,7 @@ export default function FranchiseManagementDashboard() {
             <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-monthly-revenue">
               ₪{totalMonthlyRevenue.toLocaleString()}
             </div>
-            <p className="luxury-text-small mt-1">Requires finance review</p>
+            <p className="luxury-text-small mt-1">דורש אימות כספים</p>
           </div>
         </div>
 
@@ -259,7 +262,7 @@ export default function FranchiseManagementDashboard() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-amber-400 to-yellow-500"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <h3 className="luxury-heading-sm">Pending Payments</h3>
+              <h3 className="luxury-heading-sm">תשלומים ממתינים</h3>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-amber-400 to-yellow-500 p-2.5 shadow-lg">
                 <Clock className="w-full h-full text-white" />
               </div>
@@ -267,7 +270,7 @@ export default function FranchiseManagementDashboard() {
             <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-pending-payments">
               {pendingPayments}
             </div>
-            <p className="luxury-text-small mt-1">Awaiting settlement</p>
+            <p className="luxury-text-small mt-1">ממתינים להתחשבנות</p>
           </div>
         </div>
 
@@ -275,7 +278,7 @@ export default function FranchiseManagementDashboard() {
           <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-400 to-rose-500"></div>
           <div className="p-6">
             <div className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <h3 className="luxury-heading-sm">Overdue</h3>
+              <h3 className="luxury-heading-sm">באיחור</h3>
               <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-400 to-rose-500 p-2.5 shadow-lg">
                 <AlertTriangle className="w-full h-full text-white" />
               </div>
@@ -283,7 +286,7 @@ export default function FranchiseManagementDashboard() {
             <div className="luxury-heading-lg luxury-text-gradient mt-2" data-testid="text-overdue-count">
               {overdueCount}
             </div>
-            <p className="luxury-text-small mt-1">Requires action</p>
+            <p className="luxury-text-small mt-1">דורש טיפול</p>
           </div>
         </div>
       </div>
@@ -291,18 +294,18 @@ export default function FranchiseManagementDashboard() {
       {/* Search & Filter */}
       <div className="mb-6 flex gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+          <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
-            placeholder="Search partners by name, ID, or email..."
+            placeholder="חיפוש שותף לפי שם, מזהה או אימייל..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 luxury-glass-minimal border-none"
+            className="pr-10 luxury-glass-minimal border-none"
             data-testid="input-search-franchisees"
           />
         </div>
         <Button className="luxury-btn-secondary flex items-center gap-2" data-testid="button-advanced-filter">
           <Filter className="w-4 h-4" />
-          Filters
+          מסננים
         </Button>
       </div>
 
@@ -310,12 +313,12 @@ export default function FranchiseManagementDashboard() {
       <Tabs defaultValue="franchisees" className="space-y-6">
         <TabsList className="luxury-glass-panel">
           <TabsTrigger value="franchisees" data-testid="tab-franchisees">
-            <Building2 className="w-4 h-4 mr-2" />
-            Partners
+            <Building2 className="w-4 h-4 ml-2" />
+            שותפים
           </TabsTrigger>
           <TabsTrigger value="royalty" data-testid="tab-royalty">
-            <DollarSign className="w-4 h-4 mr-2" />
-            Partner Settlements
+            <DollarSign className="w-4 h-4 ml-2" />
+            התחשבנות שותפים
           </TabsTrigger>
         </TabsList>
 
@@ -325,7 +328,7 @@ export default function FranchiseManagementDashboard() {
             <Alert variant="destructive" data-testid="alert-franchisees-error">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Failed to load partners. Please try again.
+                טעינת השותפים נכשלה. נסו שוב.
               </AlertDescription>
             </Alert>
           )}
@@ -337,7 +340,7 @@ export default function FranchiseManagementDashboard() {
               onClick={() => setSelectedCountry('all')}
               data-testid="filter-country-all"
             >
-              All ({Array.isArray(allFranchisees) ? allFranchisees.length : 0})
+              הכול ({Array.isArray(allFranchisees) ? allFranchisees.length : 0})
             </Button>
             {Object.entries(countries).map(([country, count]) => (
               <Button
@@ -354,10 +357,10 @@ export default function FranchiseManagementDashboard() {
           {/* Partners Grid */}
           <div className="luxury-grid-3">
             {franchiseesLoading ? (
-              <p className="text-muted-foreground col-span-full text-center py-8">Loading partners...</p>
+              <p className="text-muted-foreground col-span-full text-center py-8">טוען שותפים...</p>
             ) : filteredFranchisees.length === 0 ? (
               <p className="text-muted-foreground col-span-full text-center py-8" data-testid="text-no-franchisees">
-                No partners found
+                לא נמצאו שותפים
               </p>
             ) : (
               filteredFranchisees.map((franchisee, idx) => (
@@ -368,15 +371,15 @@ export default function FranchiseManagementDashboard() {
                         <div className="flex items-center gap-2 mb-2">
                           <Badge variant="outline" className="text-xs">{franchisee.franchiseeId}</Badge>
                           {franchisee.status === 'active' ? (
-                            <span className="luxury-badge-success text-xs px-2 py-1 rounded-full">Active</span>
+                            <span className="luxury-badge-success text-xs px-2 py-1 rounded-full">פעיל</span>
                           ) : (
                             <Badge variant="outline">{franchisee.status}</Badge>
                           )}
                         </div>
                         <h3 className="luxury-heading-md luxury-text-gradient">{franchisee.companyName}</h3>
                         <p className="luxury-text-small mt-1">
-                          <MapPin className="w-3 h-3 inline mr-1" />
-                          {franchisee.country || 'Unknown'}
+                          <MapPin className="w-3 h-3 inline ml-1" />
+                          {franchisee.country || 'לא ידוע'}
                         </p>
                       </div>
                       <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center shadow-lg">
@@ -385,29 +388,29 @@ export default function FranchiseManagementDashboard() {
                     </div>
                     <div className="space-y-3">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Contact:</span>
+                        <span className="text-muted-foreground">איש קשר:</span>
                         <span className="font-medium">{franchisee.primaryContact}</span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Stations:</span>
+                        <span className="text-muted-foreground">עמדות:</span>
                         <Badge variant="secondary">{franchisee.numberOfStations || 0}</Badge>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Reported Sales:</span>
+                        <span className="text-muted-foreground">מכירות מדווחות:</span>
                         <span className="luxury-heading-sm luxury-text-gradient">
                           ₪{parseFloat(franchisee.monthlyRevenue || '0').toLocaleString()}
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-sm">
-                        <span className="text-muted-foreground">Settlement %:</span>
+                        <span className="text-muted-foreground">אחוז התחשבנות:</span>
                         <span className="font-medium">{franchisee.royaltyPercent || '0'}%</span>
                       </div>
                       <div className="flex gap-2 pt-2">
                         <Button className="luxury-btn-primary flex-1 text-sm px-4 py-2" data-testid={`button-view-franchisee-${franchisee.id}`}>
-                          View
+                          צפייה
                         </Button>
                         <Button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-edit-franchisee-${franchisee.id}`}>
-                          Edit
+                          עריכה
                         </Button>
                       </div>
                     </div>
@@ -424,7 +427,7 @@ export default function FranchiseManagementDashboard() {
             <Alert variant="destructive" data-testid="alert-payments-error">
               <AlertTriangle className="h-4 w-4" />
               <AlertDescription>
-                Failed to load partner settlements. Please try again.
+                טעינת ההתחשבנויות נכשלה. נסו שוב.
               </AlertDescription>
             </Alert>
           )}
@@ -434,7 +437,7 @@ export default function FranchiseManagementDashboard() {
             <Alert className="mb-6 border-red-300 bg-red-50" data-testid="alert-overdue">
               <AlertTriangle className="h-4 w-4 text-red-600" />
               <AlertDescription className="text-red-800">
-                <span className="font-semibold">{overdueCount} payment(s)</span> overdue. Review and collect immediately.
+                <span className="font-semibold">{overdueCount} תשלומים</span> באיחור. כדאי לבדוק ולגבות עכשיו.
               </AlertDescription>
             </Alert>
           )}
@@ -442,10 +445,10 @@ export default function FranchiseManagementDashboard() {
           {/* Payments List */}
           <div className="space-y-4">
             {paymentsLoading ? (
-              <p className="text-muted-foreground text-center py-8">Loading partner settlements...</p>
+              <p className="text-muted-foreground text-center py-8">טוען התחשבנויות...</p>
             ) : !Array.isArray(royaltyPayments) || royaltyPayments.length === 0 ? (
               <p className="text-muted-foreground text-center py-8" data-testid="text-no-payments">
-                No partner settlements found
+                לא נמצאו התחשבנויות
               </p>
             ) : (
               royaltyPayments.map((payment, idx) => (
@@ -462,35 +465,35 @@ export default function FranchiseManagementDashboard() {
                               {payment.currency || 'ILS'} {parseFloat(payment.royaltyAmount).toLocaleString()}
                             </h3>
                             <p className="text-sm text-muted-foreground">
-                              Partner ID: {payment.franchiseeId}
+                              מזהה שותף: {payment.franchiseeId}
                             </p>
                           </div>
                         </div>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                           <div>
-                            <span className="text-muted-foreground block mb-1">Period</span>
+                            <span className="text-muted-foreground block mb-1">תקופה</span>
                             <span className="font-medium">
-                              {new Date(payment.periodStart).toLocaleDateString()} - {new Date(payment.periodEnd).toLocaleDateString()}
+                              {new Date(payment.periodStart).toLocaleDateString("he-IL")} - {new Date(payment.periodEnd).toLocaleDateString("he-IL")}
                             </span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground block mb-1">Gross Revenue</span>
+                            <span className="text-muted-foreground block mb-1">הכנסה ברוטו</span>
                             <span className="font-medium">₪{parseFloat(payment.grossRevenue).toLocaleString()}</span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground block mb-1">Due Date</span>
+                            <span className="text-muted-foreground block mb-1">לתשלום עד</span>
                             <span className={`font-medium ${new Date(payment.dueDate) < new Date() && payment.paymentStatus === 'pending' ? 'text-red-600' : ''}`}>
-                              {new Date(payment.dueDate).toLocaleDateString()}
+                              {new Date(payment.dueDate).toLocaleDateString("he-IL")}
                             </span>
                           </div>
                           <div>
-                            <span className="text-muted-foreground block mb-1">Status</span>
+                            <span className="text-muted-foreground block mb-1">סטטוס</span>
                             <Badge className={
-                              payment.paymentStatus === 'paid' ? 'bg-green-50 text-green-700 border-green-200' : 
+                              payment.paymentStatus === 'paid' ? 'bg-green-50 text-green-700 border-green-200' :
                               payment.paymentStatus === 'pending' ? 'bg-white text-amber-700 border-amber-200' :
                               'bg-red-50 text-red-700 border-red-200'
                             }>
-                              {payment.paymentStatus || 'pending'}
+                              {PAY_STATUS_HE[payment.paymentStatus || 'pending'] ?? payment.paymentStatus}
                             </Badge>
                           </div>
                         </div>
@@ -499,11 +502,11 @@ export default function FranchiseManagementDashboard() {
                         {payment.paymentStatus === 'pending' && (
                           <Button className="luxury-btn-primary flex items-center gap-2 text-sm px-4 py-2" data-testid={`button-record-payment-${payment.id}`}>
                             <CreditCard className="w-4 h-4" />
-                            Record Payment
+                            רישום תשלום
                           </Button>
                         )}
                         <Button className="luxury-btn-secondary text-sm px-4 py-2" data-testid={`button-view-payment-${payment.id}`}>
-                          View
+                          צפייה
                         </Button>
                       </div>
                     </div>
@@ -517,49 +520,49 @@ export default function FranchiseManagementDashboard() {
 
       {/* Create partner dialog — wired to POST /api/enterprise/franchise/franchisees */}
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-franchisee">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl" data-testid="dialog-create-franchisee">
           <DialogHeader>
-            <DialogTitle>New Partner</DialogTitle>
-            <DialogDescription>Register a new franchise / joint-venture partner.</DialogDescription>
+            <DialogTitle>שותף חדש</DialogTitle>
+            <DialogDescription>רישום שותף זכיינות / מיזם משותף חדש.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 py-2">
             <div>
-              <Label htmlFor="fr-id">Partner ID *</Label>
+              <Label htmlFor="fr-id">מזהה שותף *</Label>
               <Input id="fr-id" placeholder="FR-IL-001" value={form.franchiseeId} onChange={(e) => setForm(f => ({ ...f, franchiseeId: e.target.value }))} data-testid="input-franchisee-id" />
             </div>
             <div>
-              <Label htmlFor="fr-country">Country</Label>
+              <Label htmlFor="fr-country">מדינה</Label>
               <Input id="fr-country" placeholder="IL" value={form.country} onChange={(e) => setForm(f => ({ ...f, country: e.target.value }))} data-testid="input-franchisee-country" />
             </div>
             <div>
-              <Label htmlFor="fr-company">Company Name *</Label>
+              <Label htmlFor="fr-company">שם החברה *</Label>
               <Input id="fr-company" value={form.companyName} onChange={(e) => setForm(f => ({ ...f, companyName: e.target.value }))} data-testid="input-franchisee-company" />
             </div>
             <div>
-              <Label htmlFor="fr-legal">Legal Name</Label>
+              <Label htmlFor="fr-legal">שם משפטי</Label>
               <Input id="fr-legal" value={form.legalName} onChange={(e) => setForm(f => ({ ...f, legalName: e.target.value }))} data-testid="input-franchisee-legal" />
             </div>
             <div>
-              <Label htmlFor="fr-contact">Primary Contact *</Label>
+              <Label htmlFor="fr-contact">איש קשר ראשי *</Label>
               <Input id="fr-contact" value={form.primaryContact} onChange={(e) => setForm(f => ({ ...f, primaryContact: e.target.value }))} data-testid="input-franchisee-contact" />
             </div>
             <div>
-              <Label htmlFor="fr-email">Email *</Label>
+              <Label htmlFor="fr-email">אימייל *</Label>
               <Input id="fr-email" type="email" value={form.email} onChange={(e) => setForm(f => ({ ...f, email: e.target.value }))} data-testid="input-franchisee-email" />
             </div>
             <div>
-              <Label htmlFor="fr-phone">Phone</Label>
+              <Label htmlFor="fr-phone">טלפון</Label>
               <Input id="fr-phone" value={form.phone} onChange={(e) => setForm(f => ({ ...f, phone: e.target.value }))} data-testid="input-franchisee-phone" />
             </div>
             <div>
-              <Label htmlFor="fr-start">Contract Start Date *</Label>
+              <Label htmlFor="fr-start">תחילת חוזה *</Label>
               <Input id="fr-start" type="date" value={form.contractStartDate} onChange={(e) => setForm(f => ({ ...f, contractStartDate: e.target.value }))} data-testid="input-franchisee-start" />
             </div>
           </div>
           <DialogFooter>
-            <Button className="luxury-btn-ghost" onClick={() => setCreateOpen(false)} data-testid="button-cancel-franchisee">Cancel</Button>
+            <Button className="luxury-btn-ghost" onClick={() => setCreateOpen(false)} data-testid="button-cancel-franchisee">ביטול</Button>
             <Button className="luxury-btn-primary" onClick={handleCreateFranchisee} disabled={createFranchiseeMutation.isPending} data-testid="button-submit-franchisee">
-              {createFranchiseeMutation.isPending ? "Creating…" : "Create Partner"}
+              {createFranchiseeMutation.isPending ? "יוצר…" : "יצירת שותף"}
             </Button>
           </DialogFooter>
         </DialogContent>
