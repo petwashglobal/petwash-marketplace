@@ -1,6 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { getApiUrl } from "@/lib/apiConfig";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -14,6 +13,14 @@ import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
+// Hebrew labels for the DB status codes (the stored value stays English).
+const STATUS_LABEL_HE: Record<string, string> = {
+  completed: "הושלם",
+  draft: "טיוטה",
+  acknowledged: "אושר",
+  archived: "בארכיון",
+};
+
 export default function PerformanceReviewsDashboard() {
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [employeeId, setEmployeeId] = useState<string>("");
@@ -22,22 +29,14 @@ export default function PerformanceReviewsDashboard() {
   const [overallRating, setOverallRating] = useState<string>("3.0");
   const { toast } = useToast();
 
+  // Default authed fetcher (Bearer + App-Check) — the old bare fetch() sent no
+  // Bearer and 401'd for the Bearer-only super-admin login. (2026-07-28)
   const { data: reviews, isLoading } = useQuery({
     queryKey: ["/api/enterprise/hr/performance-reviews"],
-    queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/enterprise/hr/performance-reviews"), { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch reviews");
-      return response.json();
-    },
   });
 
   const { data: employees } = useQuery({
     queryKey: ["/api/enterprise/hr/employees"],
-    queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/enterprise/hr/employees"), { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch employees");
-      return response.json();
-    },
   });
 
   const createReviewMutation = useMutation({
@@ -45,10 +44,10 @@ export default function PerformanceReviewsDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/hr/performance-reviews"] });
       setShowCreateDialog(false);
-      toast({ title: "Success", description: "Performance review created successfully" });
+      toast({ title: "הצלחה", description: "הערכת הביצועים נוצרה בהצלחה" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create review", variant: "destructive" });
+      toast({ title: "שגיאה", description: "יצירת ההערכה נכשלה", variant: "destructive" });
     },
   });
 
@@ -89,14 +88,14 @@ export default function PerformanceReviewsDashboard() {
   return (
     <LuxuryPageWrapper
       variant="dashboard"
-      title="Performance Reviews"
-      subtitle="Employee Performance & Career Development"
+      title="הערכות ביצועים"
+      subtitle="ביצועי עובדים ופיתוח קריירה"
     >
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6" dir="rtl">
       <div className="flex justify-end items-center">
         <Button className="luxury-btn-primary" onClick={() => setShowCreateDialog(true)} data-testid="button-create-review">
-          <Plus className="w-4 h-4 mr-2" />
-          New Review
+          <Plus className="w-4 h-4 ml-2" />
+          הערכה חדשה
         </Button>
       </div>
 
@@ -111,11 +110,11 @@ export default function PerformanceReviewsDashboard() {
           <CardContent className="pt-6">
             <div className="text-center py-12">
               <Star className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No performance reviews yet</h3>
-              <p className="text-muted-foreground mb-4">Create your first performance review</p>
+              <h3 className="text-lg font-semibold mb-2">אין עדיין הערכות ביצועים</h3>
+              <p className="text-muted-foreground mb-4">צור את הערכת הביצועים הראשונה</p>
               <Button onClick={() => setShowCreateDialog(true)}>
-                <Plus className="w-4 h-4 mr-2" />
-                New Review
+                <Plus className="w-4 h-4 ml-2" />
+                הערכה חדשה
               </Button>
             </div>
           </CardContent>
@@ -129,31 +128,31 @@ export default function PerformanceReviewsDashboard() {
                   <div>
                     <CardTitle className="text-lg">{review.reviewPeriod}</CardTitle>
                     <p className="text-sm text-muted-foreground mt-1">
-                      Employee ID: {review.employeeId}
+                      מס׳ עובד: {review.employeeId}
                     </p>
                   </div>
                   <Badge variant="outline" className="flex items-center gap-1">
                     {getStatusIcon(review.status)}
-                    {review.status}
+                    {STATUS_LABEL_HE[review.status] ?? review.status}
                   </Badge>
                 </div>
               </CardHeader>
               <CardContent>
                 <div className="space-y-3">
                   <div>
-                    <Label className="text-xs text-muted-foreground">Overall Rating</Label>
+                    <Label className="text-xs text-muted-foreground">דירוג כולל</Label>
                     <div className="flex gap-1 mt-1" data-testid={`rating-${review.id}`}>
                       {getRatingStars(review.overallRating)}
-                      <span className="text-sm ml-2">{review.overallRating}/5.0</span>
+                      <span className="text-sm mr-2">{review.overallRating}/5.0</span>
                     </div>
                   </div>
                   <div>
-                    <Label className="text-xs text-muted-foreground">Review Date</Label>
-                    <p className="text-sm">{new Date(review.reviewDate).toLocaleDateString()}</p>
+                    <Label className="text-xs text-muted-foreground">תאריך הערכה</Label>
+                    <p className="text-sm">{new Date(review.reviewDate).toLocaleDateString("he-IL")}</p>
                   </div>
                   {review.strengths && (
                     <div>
-                      <Label className="text-xs text-muted-foreground">Strengths</Label>
+                      <Label className="text-xs text-muted-foreground">חוזקות</Label>
                       <p className="text-sm line-clamp-2">{review.strengths}</p>
                     </div>
                   )}
@@ -165,17 +164,17 @@ export default function PerformanceReviewsDashboard() {
       )}
 
       <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-review">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl" data-testid="dialog-create-review">
           <DialogHeader>
-            <DialogTitle>Create Performance Review</DialogTitle>
+            <DialogTitle>יצירת הערכת ביצועים</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateReview} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="employeeId">Employee *</Label>
+                <Label htmlFor="employeeId">עובד *</Label>
                 <Select value={employeeId} onValueChange={setEmployeeId} required>
                   <SelectTrigger data-testid="select-employee">
-                    <SelectValue placeholder="Select employee" />
+                    <SelectValue placeholder="בחר עובד" />
                   </SelectTrigger>
                   <SelectContent>
                     {employees?.map((emp: any) => (
@@ -187,10 +186,10 @@ export default function PerformanceReviewsDashboard() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="reviewerId">Reviewer *</Label>
+                <Label htmlFor="reviewerId">מעריך *</Label>
                 <Select value={reviewerId} onValueChange={setReviewerId} required>
                   <SelectTrigger data-testid="select-reviewer">
-                    <SelectValue placeholder="Select reviewer" />
+                    <SelectValue placeholder="בחר מעריך" />
                   </SelectTrigger>
                   <SelectContent>
                     {employees?.map((emp: any) => (
@@ -202,58 +201,58 @@ export default function PerformanceReviewsDashboard() {
                 </Select>
               </div>
               <div>
-                <Label htmlFor="reviewPeriod">Review Period</Label>
+                <Label htmlFor="reviewPeriod">תקופת הערכה</Label>
                 <Select value={reviewPeriod} onValueChange={setReviewPeriod}>
                   <SelectTrigger data-testid="select-review-period">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="Q1 2025">Q1 2025</SelectItem>
-                    <SelectItem value="Q2 2025">Q2 2025</SelectItem>
-                    <SelectItem value="Q3 2025">Q3 2025</SelectItem>
-                    <SelectItem value="Q4 2025">Q4 2025</SelectItem>
-                    <SelectItem value="Annual 2025">Annual 2025</SelectItem>
+                    <SelectItem value="Q1 2025">רבעון 1 2025</SelectItem>
+                    <SelectItem value="Q2 2025">רבעון 2 2025</SelectItem>
+                    <SelectItem value="Q3 2025">רבעון 3 2025</SelectItem>
+                    <SelectItem value="Q4 2025">רבעון 4 2025</SelectItem>
+                    <SelectItem value="Annual 2025">שנתי 2025</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="reviewDate">Review Date *</Label>
+                <Label htmlFor="reviewDate">תאריך הערכה *</Label>
                 <Input id="reviewDate" name="reviewDate" type="date" required data-testid="input-review-date" />
               </div>
               <div>
-                <Label htmlFor="overallRating">Overall Rating (1-5)</Label>
+                <Label htmlFor="overallRating">דירוג כולל (1-5)</Label>
                 <Select value={overallRating} onValueChange={setOverallRating}>
                   <SelectTrigger data-testid="select-rating">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1.0">1.0 - Needs Improvement</SelectItem>
-                    <SelectItem value="2.0">2.0 - Below Expectations</SelectItem>
-                    <SelectItem value="3.0">3.0 - Meets Expectations</SelectItem>
-                    <SelectItem value="4.0">4.0 - Exceeds Expectations</SelectItem>
-                    <SelectItem value="5.0">5.0 - Outstanding</SelectItem>
+                    <SelectItem value="1.0">1.0 - טעון שיפור</SelectItem>
+                    <SelectItem value="2.0">2.0 - מתחת לציפיות</SelectItem>
+                    <SelectItem value="3.0">3.0 - עומד בציפיות</SelectItem>
+                    <SelectItem value="4.0">4.0 - מעל הציפיות</SelectItem>
+                    <SelectItem value="5.0">5.0 - מצטיין</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
-              <Label htmlFor="strengths">Strengths</Label>
+              <Label htmlFor="strengths">חוזקות</Label>
               <Textarea id="strengths" name="strengths" rows={3} data-testid="textarea-strengths" />
             </div>
             <div>
-              <Label htmlFor="areasForImprovement">Areas for Improvement</Label>
+              <Label htmlFor="areasForImprovement">תחומים לשיפור</Label>
               <Textarea id="areasForImprovement" name="areasForImprovement" rows={3} data-testid="textarea-improvements" />
             </div>
             <div>
-              <Label htmlFor="developmentPlan">Development Plan</Label>
+              <Label htmlFor="developmentPlan">תוכנית פיתוח</Label>
               <Textarea id="developmentPlan" name="developmentPlan" rows={3} data-testid="textarea-development-plan" />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowCreateDialog(false)} data-testid="button-cancel">
-                Cancel
+                ביטול
               </Button>
               <Button type="submit" disabled={createReviewMutation.isPending} data-testid="button-submit-review">
-                {createReviewMutation.isPending ? "Creating..." : "Create Review"}
+                {createReviewMutation.isPending ? "יוצר..." : "צור הערכה"}
               </Button>
             </div>
           </form>
