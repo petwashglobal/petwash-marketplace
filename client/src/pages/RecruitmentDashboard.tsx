@@ -14,6 +14,15 @@ import { LuxuryPageWrapper } from '@/components/LuxuryThemeWrapper';
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 
+// Hebrew labels for the DB status codes (the stored value stays English).
+const JOB_STATUS_HE: Record<string, string> = {
+  open: "פתוח", closed: "סגור", on_hold: "בהמתנה", filled: "אויש",
+};
+const APP_STATUS_HE: Record<string, string> = {
+  submitted: "הוגש", screening: "סינון", interview: "ראיון",
+  offer: "הצעה", hired: "התקבל", rejected: "נדחה",
+};
+
 export default function RecruitmentDashboard() {
   const [showCreateJobDialog, setShowCreateJobDialog] = useState(false);
   const [employmentType, setEmploymentType] = useState("full_time");
@@ -33,10 +42,10 @@ export default function RecruitmentDashboard() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/hr/job-openings"] });
       setShowCreateJobDialog(false);
-      toast({ title: "Success", description: "Job opening created successfully" });
+      toast({ title: "הצלחה", description: "המשרה נוצרה בהצלחה" });
     },
     onError: () => {
-      toast({ title: "Error", description: "Failed to create job opening", variant: "destructive" });
+      toast({ title: "שגיאה", description: "יצירת המשרה נכשלה", variant: "destructive" });
     },
   });
 
@@ -45,7 +54,7 @@ export default function RecruitmentDashboard() {
       apiRequest(`/api/enterprise/hr/applications/${id}/status`, { method: "PATCH", body: { status } }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/enterprise/hr/applications"] });
-      toast({ title: "Success", description: "Application status updated" });
+      toast({ title: "הצלחה", description: "סטטוס המועמדות עודכן" });
     },
   });
 
@@ -88,26 +97,26 @@ export default function RecruitmentDashboard() {
   return (
     <LuxuryPageWrapper
       variant="dashboard"
-      title="Recruitment & Onboarding"
-      subtitle="Manage job openings and applications"
+      title="גיוס וקליטה"
+      subtitle="ניהול משרות ומועמדויות"
     >
-      <div className="p-6 space-y-6">
+      <div className="p-6 space-y-6" dir="rtl">
       <div className="flex justify-end items-center">
         <Button className="luxury-btn-primary" onClick={() => setShowCreateJobDialog(true)} data-testid="button-create-job">
-          <Plus className="w-4 h-4 mr-2" />
-          Post Job
+          <Plus className="w-4 h-4 ml-2" />
+          פרסום משרה
         </Button>
       </div>
 
       <Tabs defaultValue="jobs" className="w-full">
         <TabsList>
           <TabsTrigger value="jobs" data-testid="tab-jobs">
-            <Briefcase className="w-4 h-4 mr-2" />
-            Job Openings ({jobs?.length || 0})
+            <Briefcase className="w-4 h-4 ml-2" />
+            משרות פתוחות ({jobs?.length || 0})
           </TabsTrigger>
           <TabsTrigger value="applications" data-testid="tab-applications">
-            <Users className="w-4 h-4 mr-2" />
-            Applications ({applications?.length || 0})
+            <Users className="w-4 h-4 ml-2" />
+            מועמדויות ({applications?.length || 0})
           </TabsTrigger>
         </TabsList>
 
@@ -123,11 +132,11 @@ export default function RecruitmentDashboard() {
               <CardContent className="pt-6">
                 <div className="text-center py-12">
                   <Briefcase className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No job openings yet</h3>
-                  <p className="text-muted-foreground mb-4">Create your first job posting</p>
+                  <h3 className="text-lg font-semibold mb-2">אין עדיין משרות פתוחות</h3>
+                  <p className="text-muted-foreground mb-4">צור את המשרה הראשונה</p>
                   <Button onClick={() => setShowCreateJobDialog(true)}>
-                    <Plus className="w-4 h-4 mr-2" />
-                    Post Job
+                    <Plus className="w-4 h-4 ml-2" />
+                    פרסום משרה
                   </Button>
                 </div>
               </CardContent>
@@ -142,30 +151,30 @@ export default function RecruitmentDashboard() {
                         <CardTitle className="text-lg">{job.jobTitle}</CardTitle>
                         <p className="text-sm text-muted-foreground mt-1">{job.department}</p>
                       </div>
-                      <Badge className={getStatusColor(job.status)}>{job.status}</Badge>
+                      <Badge className={getStatusColor(job.status)}>{JOB_STATUS_HE[job.status] ?? job.status}</Badge>
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-3">
                     <div className="flex items-center gap-2 text-sm">
                       <Calendar className="w-4 h-4 text-muted-foreground" />
-                      <span>Posted: {new Date(job.postedDate).toLocaleDateString()}</span>
+                      <span>פורסם: {new Date(job.postedDate).toLocaleDateString("he-IL")}</span>
                     </div>
                     <div className="flex items-center gap-2 text-sm">
                       <DollarSign className="w-4 h-4 text-muted-foreground" />
-                      <span>{job.salaryRange || "Not specified"}</span>
+                      <span>{job.salaryRange || "לא צוין"}</span>
                     </div>
                     <div className="grid grid-cols-3 gap-2 text-center text-xs">
                       <div className="bg-muted rounded p-2">
                         <div className="font-bold">{job.applicationCount || 0}</div>
-                        <div className="text-muted-foreground">Applications</div>
+                        <div className="text-muted-foreground">מועמדויות</div>
                       </div>
                       <div className="bg-muted rounded p-2">
                         <div className="font-bold">{job.interviewCount || 0}</div>
-                        <div className="text-muted-foreground">Interviews</div>
+                        <div className="text-muted-foreground">ראיונות</div>
                       </div>
                       <div className="bg-muted rounded p-2">
                         <div className="font-bold">{job.offersMade || 0}</div>
-                        <div className="text-muted-foreground">Offers</div>
+                        <div className="text-muted-foreground">הצעות</div>
                       </div>
                     </div>
                   </CardContent>
@@ -187,8 +196,8 @@ export default function RecruitmentDashboard() {
               <CardContent className="pt-6">
                 <div className="text-center py-12">
                   <Users className="w-12 h-12 mx-auto text-muted-foreground mb-4" />
-                  <h3 className="text-lg font-semibold mb-2">No applications yet</h3>
-                  <p className="text-muted-foreground">Applications will appear here when candidates apply</p>
+                  <h3 className="text-lg font-semibold mb-2">אין עדיין מועמדויות</h3>
+                  <p className="text-muted-foreground">מועמדויות יופיעו כאן כשמועמדים יגישו</p>
                 </div>
               </CardContent>
             </Card>
@@ -211,12 +220,12 @@ export default function RecruitmentDashboard() {
                             <SelectValue />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="submitted">Submitted</SelectItem>
-                            <SelectItem value="screening">Screening</SelectItem>
-                            <SelectItem value="interview">Interview</SelectItem>
-                            <SelectItem value="offer">Offer</SelectItem>
-                            <SelectItem value="hired">Hired</SelectItem>
-                            <SelectItem value="rejected">Rejected</SelectItem>
+                            <SelectItem value="submitted">הוגש</SelectItem>
+                            <SelectItem value="screening">סינון</SelectItem>
+                            <SelectItem value="interview">ראיון</SelectItem>
+                            <SelectItem value="offer">הצעה</SelectItem>
+                            <SelectItem value="hired">התקבל</SelectItem>
+                            <SelectItem value="rejected">נדחה</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -226,24 +235,24 @@ export default function RecruitmentDashboard() {
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
                       {app.yearsOfExperience && (
                         <div>
-                          <div className="text-muted-foreground">Experience</div>
-                          <div className="font-medium">{app.yearsOfExperience} years</div>
+                          <div className="text-muted-foreground">ניסיון</div>
+                          <div className="font-medium">{app.yearsOfExperience} שנים</div>
                         </div>
                       )}
                       {app.expectedSalary && (
                         <div>
-                          <div className="text-muted-foreground">Expected Salary</div>
-                          <div className="font-medium">${app.expectedSalary}</div>
+                          <div className="text-muted-foreground">שכר מבוקש</div>
+                          <div className="font-medium">₪{app.expectedSalary}</div>
                         </div>
                       )}
                       <div>
-                        <div className="text-muted-foreground">Applied</div>
-                        <div className="font-medium">{new Date(app.appliedAt).toLocaleDateString()}</div>
+                        <div className="text-muted-foreground">הוגש בתאריך</div>
+                        <div className="font-medium">{new Date(app.appliedAt).toLocaleDateString("he-IL")}</div>
                       </div>
                       {app.resumeUrl && (
                         <div>
                           <a href={app.resumeUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                            View Resume
+                            צפייה בקורות חיים
                           </a>
                         </div>
                       )}
@@ -257,85 +266,85 @@ export default function RecruitmentDashboard() {
       </Tabs>
 
       <Dialog open={showCreateJobDialog} onOpenChange={setShowCreateJobDialog}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" data-testid="dialog-create-job">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto" dir="rtl" data-testid="dialog-create-job">
           <DialogHeader>
-            <DialogTitle>Create Job Opening</DialogTitle>
+            <DialogTitle>יצירת משרה</DialogTitle>
           </DialogHeader>
           <form onSubmit={handleCreateJob} className="space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label htmlFor="jobTitle">Job Title *</Label>
+                <Label htmlFor="jobTitle">שם המשרה *</Label>
                 <Input id="jobTitle" name="jobTitle" required data-testid="input-job-title" />
               </div>
               <div>
-                <Label htmlFor="department">Department *</Label>
+                <Label htmlFor="department">מחלקה *</Label>
                 <Input id="department" name="department" required data-testid="input-department" />
               </div>
               <div>
-                <Label>Employment Type</Label>
+                <Label>סוג העסקה</Label>
                 <Select value={employmentType} onValueChange={setEmploymentType}>
                   <SelectTrigger data-testid="select-employment-type">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="full_time">Full Time</SelectItem>
-                    <SelectItem value="part_time">Part Time</SelectItem>
-                    <SelectItem value="contractor">Contractor</SelectItem>
+                    <SelectItem value="full_time">משרה מלאה</SelectItem>
+                    <SelectItem value="part_time">משרה חלקית</SelectItem>
+                    <SelectItem value="contractor">קבלן</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <div>
-                <Label htmlFor="location">Location *</Label>
+                <Label htmlFor="location">מיקום *</Label>
                 <Input id="location" name="location" required data-testid="input-location" />
               </div>
               <div>
-                <Label htmlFor="salaryRange">Salary Range</Label>
-                <Input id="salaryRange" name="salaryRange" placeholder="e.g., $50k-70k" data-testid="input-salary-range" />
+                <Label htmlFor="salaryRange">טווח שכר</Label>
+                <Input id="salaryRange" name="salaryRange" placeholder="לדוגמה: 12,000-18,000 ₪" data-testid="input-salary-range" />
               </div>
               <div>
-                <Label htmlFor="numberOfPositions">Number of Positions</Label>
+                <Label htmlFor="numberOfPositions">מספר משרות</Label>
                 <Input id="numberOfPositions" name="numberOfPositions" type="number" defaultValue="1" data-testid="input-positions" />
               </div>
               <div>
-                <Label htmlFor="postedDate">Posted Date *</Label>
+                <Label htmlFor="postedDate">תאריך פרסום *</Label>
                 <Input id="postedDate" name="postedDate" type="date" required data-testid="input-posted-date" />
               </div>
               <div>
-                <Label>Status</Label>
+                <Label>סטטוס</Label>
                 <Select value={jobStatus} onValueChange={setJobStatus}>
                   <SelectTrigger data-testid="select-job-status">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="open">Open</SelectItem>
-                    <SelectItem value="on_hold">On Hold</SelectItem>
-                    <SelectItem value="closed">Closed</SelectItem>
+                    <SelectItem value="open">פתוח</SelectItem>
+                    <SelectItem value="on_hold">בהמתנה</SelectItem>
+                    <SelectItem value="closed">סגור</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <div>
-              <Label htmlFor="jobDescription">Job Description *</Label>
+              <Label htmlFor="jobDescription">תיאור המשרה *</Label>
               <Textarea id="jobDescription" name="jobDescription" rows={3} required data-testid="textarea-description" />
             </div>
             <div>
-              <Label htmlFor="requirements">Requirements *</Label>
+              <Label htmlFor="requirements">דרישות *</Label>
               <Textarea id="requirements" name="requirements" rows={3} required data-testid="textarea-requirements" />
             </div>
             <div>
-              <Label htmlFor="responsibilities">Responsibilities *</Label>
+              <Label htmlFor="responsibilities">תחומי אחריות *</Label>
               <Textarea id="responsibilities" name="responsibilities" rows={3} required data-testid="textarea-responsibilities" />
             </div>
             <div>
-              <Label htmlFor="benefits">Benefits</Label>
+              <Label htmlFor="benefits">הטבות</Label>
               <Textarea id="benefits" name="benefits" rows={2} data-testid="textarea-benefits" />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" variant="outline" onClick={() => setShowCreateJobDialog(false)} data-testid="button-cancel">
-                Cancel
+                ביטול
               </Button>
               <Button type="submit" disabled={createJobMutation.isPending} data-testid="button-submit-job">
-                {createJobMutation.isPending ? "Creating..." : "Create Job"}
+                {createJobMutation.isPending ? "יוצר..." : "צור משרה"}
               </Button>
             </div>
           </form>
