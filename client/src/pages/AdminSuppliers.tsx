@@ -71,7 +71,7 @@ export default function AdminSuppliers() {
   // Default authed fetcher (Bearer + App-Check) via the full URL in queryKey[0].
   // A bare fetch() 401'd on this admin route and the supplier list was empty. The
   // query string is part of the key so filter/search still refetch. (2026-07-27)
-  const { data, isLoading, isFetching, refetch } = useQuery<ListResponse>({
+  const { data, isLoading, isFetching, isError, refetch } = useQuery<ListResponse>({
     queryKey: [`/api/admin/suppliers${qs ? `?${qs}` : ""}`],
     refetchInterval: 60_000,
   });
@@ -161,6 +161,24 @@ export default function AdminSuppliers() {
               <Skeleton key={i} className="h-20 rounded-lg" />
             ))}
           </div>
+        ) : isError ? (
+          // The supplier ERP is gated behind ff.supplier_invoice_control (default
+          // OFF) → the API 404s. Never render the green "no suppliers ✅" all-clear
+          // on a failed load — that reads as "clean" when the module is simply off.
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="pt-10 pb-10 text-center">
+              <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+              <p className="text-amber-900 font-medium">מודול הספקים אינו פעיל</p>
+              <p className="text-xs text-amber-700 mt-1" dir="ltr">
+                Supplier module is off (feature flag) or failed to load — this is
+                NOT an all-clear. Enable ff.supplier_invoice_control to use it.
+              </p>
+              <Button variant="outline" size="sm" className="mt-3 gap-1.5 text-xs" onClick={() => refetch()}>
+                <RefreshCw className="h-3 w-3" />
+                נסה שוב
+              </Button>
+            </CardContent>
+          </Card>
         ) : rows.length === 0 ? (
           <Card className="border-emerald-100">
             <CardContent className="pt-10 pb-10 text-center">
