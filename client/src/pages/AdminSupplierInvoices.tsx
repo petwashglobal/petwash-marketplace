@@ -25,6 +25,7 @@ import {
   ChevronLeft,
   ShieldAlert,
   ChevronDown,
+  AlertTriangle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -103,14 +104,9 @@ type FraudResponse = {
 function FraudFlagsSection({ isHe }: { isHe: boolean }) {
   const [open, setOpen] = useState(false);
   const { data } = useQuery<FraudResponse>({
+    // Default authed fetcher (Bearer + App-Check) — bare fetch() with
+    // credentials:"same-origin" sent no Bearer → 401 on this admin route. (2026-07-27)
     queryKey: ["/api/admin/supplier-fraud-flags"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/supplier-fraud-flags", {
-        credentials: "same-origin",
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
     refetchInterval: 60_000,
   });
 
@@ -236,18 +232,15 @@ export default function AdminSupplierInvoices() {
   const [uploading, setUploading] = useState(false);
   const [supplierIdInput, setSupplierIdInput] = useState("");
 
-  const queryKey = ["/api/supplier-invoices", riskFilter, statusFilter] as const;
-  const { data, isLoading, isFetching, refetch } = useQuery<ListResponse>({
-    queryKey,
-    queryFn: async () => {
-      const params = new URLSearchParams();
-      if (riskFilter !== "all") params.set("riskLevel", riskFilter);
-      if (statusFilter !== "all") params.set("status", statusFilter);
-      const qs = params.toString();
-      const res = await fetch(`/api/supplier-invoices${qs ? `?${qs}` : ""}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
+  const params = new URLSearchParams();
+  if (riskFilter !== "all") params.set("riskLevel", riskFilter);
+  if (statusFilter !== "all") params.set("status", statusFilter);
+  const qs = params.toString();
+  // Default authed fetcher (Bearer + App-Check) via full URL in queryKey[0]. A bare
+  // fetch() 401'd on this admin route; the module is also gated behind
+  // ff.supplier_invoice_control (default OFF) → 404. (2026-07-27)
+  const { data, isLoading, isFetching, isError, refetch } = useQuery<ListResponse>({
+    queryKey: [`/api/supplier-invoices${qs ? `?${qs}` : ""}`],
     refetchInterval: 60_000,
   });
 
@@ -268,7 +261,13 @@ export default function AdminSupplierInvoices() {
       return res.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/supplier-invoices"] });
+      // The list key is now a single full-URL string ("/api/supplier-invoices?…"),
+      // so array-prefix matching no longer works — match by URL prefix instead.
+      queryClient.invalidateQueries({
+        predicate: (q) =>
+          typeof q.queryKey[0] === "string" &&
+          (q.queryKey[0] as string).startsWith("/api/supplier-invoices"),
+      });
       setUploading(false);
       toast({ title: "החשבונית הועלתה", description: "תוצאת הסינון בטבלה" });
     },
@@ -427,6 +426,24 @@ export default function AdminSupplierInvoices() {
               <Skeleton key={i} className="h-24 rounded-lg" />
             ))}
           </div>
+        ) : isError ? (
+          // Gated behind ff.supplier_invoice_control (default OFF) → API 404s. Never
+          // show the green "no invoices ✅" all-clear on a failed load — it reads as
+          // "clean" when the module is simply off.
+          <Card className="border-amber-200 bg-amber-50">
+            <CardContent className="pt-10 pb-10 text-center">
+              <AlertTriangle className="h-10 w-10 text-amber-500 mx-auto mb-3" />
+              <p className="text-amber-900 font-medium">מודול חשבוניות הספקים אינו פעיל</p>
+              <p className="text-xs text-amber-700 mt-1" dir="ltr">
+                Supplier-invoice module is off (feature flag) or failed to load — NOT
+                an all-clear. Enable ff.supplier_invoice_control to use it.
+              </p>
+              <Button variant="outline" size="sm" className="mt-3 gap-1.5 text-xs" onClick={() => refetch()}>
+                <RefreshCw className="h-3 w-3" />
+                נסה שוב
+              </Button>
+            </CardContent>
+          </Card>
         ) : rows.length === 0 ? (
           <Card className="border-emerald-100">
             <CardContent className="pt-10 pb-10 text-center">

@@ -54,9 +54,24 @@ router.get('/overview', requireSuperAdmin, async (_req: Request, res: Response) 
         // 2026-07-27). The old query summed the generic `bookings` table — written
         // ONLY by the partner-API engine, so real marketplace/sitter/walk/academy
         // revenue was invisible in the control tower. (2026-07-27)
+        //
+        // NET OF CANCELLATIONS (2026-07-27, audit finding #2): the raw BOOKING_CREATED
+        // sum counted CANCELLED bookings as revenue. There is no single ledger event
+        // that means "paid" across all four platforms — sitter/walk emit
+        // PAYMENT_CAPTURED but academy/marketplace do not — so we cannot filter to
+        // "paid only" without HIDING academy+marketplace revenue (the regression
+        // #1558 fixed). Instead we drop bookings whose octopus_bookings.status is
+        // CANCELLED (a field reliably set on every cancel path). LEFT JOIN + COALESCE
+        // so a ledger row with no matching booking is still counted, never hidden.
+        // Residual gap (tracked): DRAFT-but-unpaid academy/marketplace bookings are
+        // still included until those flows emit a capture event.
         const [book] = (await db.execute(sql`
-          SELECT COALESCE(SUM(amount),0)::bigint AS c FROM octopus_ledger
-          WHERE type = 'BOOKING_CREATED' AND created_at >= NOW() - ${interval}::interval
+          SELECT COALESCE(SUM(ol.amount),0)::bigint AS c
+          FROM octopus_ledger ol
+          LEFT JOIN octopus_bookings ob ON ob.id = ol.booking_id
+          WHERE ol.type = 'BOOKING_CREATED'
+            AND ol.created_at >= NOW() - ${interval}::interval
+            AND COALESCE(ob.status, '') <> 'CANCELLED'
         `)).rows as any[];
         return {
           sumitCents: Number(sumit?.c ?? 0),
