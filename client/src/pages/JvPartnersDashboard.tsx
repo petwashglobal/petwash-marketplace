@@ -61,12 +61,21 @@ export default function JvPartnersDashboard() {
   const handleCreatePartner = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
+    // Field names MUST match the jv_partners schema (schema-corporate.ts) — the old
+    // payload used partnerName/partnerType/contactName/contactEmail and omitted the
+    // required legalName + partnerSince, so insertJvPartnerSchema.parse() always 400'd
+    // and no partner could ever be created. (2026-07-27)
+    const partnerName = String(formData.get("partnerName") || "").trim();
     const data = {
-      partnerName: formData.get("partnerName"),
-      partnerType: partnerType,
-      contactName: formData.get("contactName"),
-      contactEmail: formData.get("contactEmail"),
-      country: formData.get("country"),
+      companyName: partnerName,
+      legalName: String(formData.get("legalName") || "").trim() || partnerName,
+      partnershipType: partnerType,
+      primaryContact: String(formData.get("contactName") || "").trim(),
+      email: String(formData.get("contactEmail") || "").trim(),
+      country: String(formData.get("country") || "").trim(),
+      partnerSince:
+        String(formData.get("partnerSince") || "").trim() ||
+        new Date().toISOString().slice(0, 10),
       isActive: true,
     };
     createPartnerMutation.mutate(data);
@@ -131,7 +140,7 @@ export default function JvPartnersDashboard() {
               <div className="mb-4">
                 <div className="flex justify-between items-start mb-2">
                   <h3 className="luxury-heading-sm" data-testid={`text-partner-name-${partner.id}`}>
-                    {partner.partnerName}
+                    {partner.companyName}
                   </h3>
                   {partner.isActive ? (
                     <span className="luxury-badge-premium px-3 py-1" data-testid={`badge-status-${partner.id}`}>
@@ -146,7 +155,7 @@ export default function JvPartnersDashboard() {
                   )}
                 </div>
                 <p className="luxury-text-small text-[#B8932F]" data-testid={`text-partner-type-${partner.id}`}>
-                  {partner.partnerType}
+                  {partner.partnershipType}
                 </p>
               </div>
               <div className="space-y-2 text-sm mb-4">
@@ -159,14 +168,14 @@ export default function JvPartnersDashboard() {
                 <div className="flex justify-between">
                   <span className="luxury-text-small opacity-70">Contact:</span>
                   <span className="luxury-text-small font-medium" data-testid={`text-contact-${partner.id}`}>
-                    {partner.contactName || "N/A"}
+                    {partner.primaryContact || "N/A"}
                   </span>
                 </div>
-                {partner.contactEmail && (
+                {partner.email && (
                   <div className="flex justify-between">
                     <span className="luxury-text-small opacity-70">Email:</span>
                     <span className="luxury-text-small font-medium" data-testid={`text-email-${partner.id}`}>
-                      {partner.contactEmail}
+                      {partner.email}
                     </span>
                   </div>
                 )}
@@ -196,6 +205,10 @@ export default function JvPartnersDashboard() {
               <Input id="partnerName" name="partnerName" required className="luxury-glass-minimal" data-testid="input-partner-name" />
             </div>
             <div>
+              <Label htmlFor="legalName" className="luxury-text-small font-medium mb-1 block">Legal Name *</Label>
+              <Input id="legalName" name="legalName" required className="luxury-glass-minimal" placeholder="Registered legal entity name" data-testid="input-legal-name" />
+            </div>
+            <div>
               <Label htmlFor="partnerType" className="luxury-text-small font-medium mb-1 block">Partner Type</Label>
               <Select value={partnerType} onValueChange={setPartnerType}>
                 <SelectTrigger className="luxury-glass-minimal" data-testid="select-partner-type">
@@ -210,16 +223,20 @@ export default function JvPartnersDashboard() {
               </Select>
             </div>
             <div>
-              <Label htmlFor="contactName" className="luxury-text-small font-medium mb-1 block">Contact Name</Label>
-              <Input id="contactName" name="contactName" className="luxury-glass-minimal" data-testid="input-contact-name" />
+              <Label htmlFor="contactName" className="luxury-text-small font-medium mb-1 block">Contact Name *</Label>
+              <Input id="contactName" name="contactName" required className="luxury-glass-minimal" data-testid="input-contact-name" />
             </div>
             <div>
-              <Label htmlFor="contactEmail" className="luxury-text-small font-medium mb-1 block">Contact Email</Label>
-              <Input id="contactEmail" name="contactEmail" type="email" className="luxury-glass-minimal" data-testid="input-contact-email" />
+              <Label htmlFor="contactEmail" className="luxury-text-small font-medium mb-1 block">Contact Email *</Label>
+              <Input id="contactEmail" name="contactEmail" type="email" required className="luxury-glass-minimal" data-testid="input-contact-email" />
             </div>
             <div>
-              <Label htmlFor="country" className="luxury-text-small font-medium mb-1 block">Country</Label>
-              <Input id="country" name="country" className="luxury-glass-minimal" data-testid="input-country" />
+              <Label htmlFor="country" className="luxury-text-small font-medium mb-1 block">Country *</Label>
+              <Input id="country" name="country" required className="luxury-glass-minimal" data-testid="input-country" />
+            </div>
+            <div>
+              <Label htmlFor="partnerSince" className="luxury-text-small font-medium mb-1 block">Partner Since *</Label>
+              <Input id="partnerSince" name="partnerSince" type="date" required className="luxury-glass-minimal" data-testid="input-partner-since" />
             </div>
             <div className="flex justify-end gap-2">
               <Button type="button" className="luxury-btn-secondary px-6 py-2" onClick={() => setShowCreateDialog(false)} data-testid="button-cancel">
@@ -236,7 +253,7 @@ export default function JvPartnersDashboard() {
       <Dialog open={!!selectedPartner} onOpenChange={() => setSelectedPartner(null)}>
         <DialogContent data-testid="dialog-view-contracts">
           <DialogHeader>
-            <DialogTitle>{selectedPartner?.partnerName} - Contracts</DialogTitle>
+            <DialogTitle>{selectedPartner?.companyName} - Contracts</DialogTitle>
             <DialogDescription>Revenue sharing agreements and contracts</DialogDescription>
           </DialogHeader>
           {contractsLoading ? (
