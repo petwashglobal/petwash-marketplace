@@ -186,12 +186,17 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   // default address when the customer opens "add address", so they don't re-type
   // where they live. They still add name + phone for the courier before saving.
   const [pinnedAddr, setPinnedAddr] = useState<any>(null);
+  // ALL the customer's saved addresses (not just the default) so they can reuse any
+  // of them at shop checkout in one tap. (2026-07-29)
+  const [savedUserAddrs, setSavedUserAddrs] = useState<any[]>([]);
   useEffect(() => {
     if (!user?.uid) return;
     fetch(getApiUrl('/api/user/addresses'), { credentials: 'include' })
       .then(r => (r.ok ? r.json() : []))
       .then((rows: any) => {
-        const def = Array.isArray(rows) ? (rows.find((a: any) => a.isDefault) || rows[0]) : null;
+        const list = Array.isArray(rows) ? rows : [];
+        setSavedUserAddrs(list);
+        const def = list.find((a: any) => a.isDefault) || list[0];
         if (def) setPinnedAddr(def);
       })
       .catch(() => { /* pre-fill is best-effort */ });
@@ -568,6 +573,24 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
 
                   {addingAddress && (
                     <div className="space-y-2 mb-4 border border-gray-200 rounded-xl p-3">
+                      {savedUserAddrs.length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 pb-1">
+                          <span className="text-[11px] text-gray-400 w-full">{tr('Use a saved address', 'מלא מכתובת שמורה')}</span>
+                          {savedUserAddrs.slice(0, 5).map((a: any) => (
+                            <button key={a.id} type="button"
+                              onClick={() => setAddr(v => ({
+                                ...v,
+                                street: [a.street, a.streetNumber].filter(Boolean).join(' ') || a.address || v.street,
+                                city: a.city || v.city,
+                                zipCode: a.postalCode || v.zipCode,
+                                fullName: v.fullName || user?.displayName || '',
+                              }))}
+                              className="text-xs px-2.5 py-1 rounded-full border border-gray-200 hover:border-black transition-colors">
+                              {a.label === 'home' ? tr('Home', 'בית') : a.label === 'work' ? tr('Work', 'עבודה') : (a.city || tr('Saved', 'שמור'))}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                       <input type="text" dir="auto" maxLength={120} value={addr.fullName} autoComplete="name"
                         onChange={e => setAddr(v => ({ ...v, fullName: e.target.value }))}
                         placeholder={tr('Full name', 'שם מלא')} aria-label={tr('Full name', 'שם מלא')}
