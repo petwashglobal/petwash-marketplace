@@ -33,6 +33,7 @@ import { isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { bookingRequests, superAppNotifications, users } from '@shared/schema';
+import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
 import { buildBookingReminderEmail, type ReminderWindow } from '../email/templates/booking-reminder-2026';
 import { sendSmsTemplate } from '../services/smsTemplates';
 import { EmailService } from '../emailService';
@@ -191,6 +192,7 @@ export async function runBookingRemindersCron(): Promise<{ scanned: number; emai
               petName: petName(b, owner.lang),
               dateFormatted: date, timeFormatted: time,
               locationName: owner.lang === 'he' ? 'לפי פרטי ההזמנה' : 'As arranged in your booking',
+              locationAddress: formatUserAddress(bookingSnapshotToAddress(b), { lang: owner.lang }) || undefined,
               priceFormatted: `₪${(Number(b.totalCents || 0) / 100).toFixed(2)}`,
               dashboardUrl,
             });
@@ -225,6 +227,8 @@ export async function runBookingRemindersCron(): Promise<{ scanned: number; emai
                 petName: petName(b, prov.lang),
                 dateFormatted: pf.date, timeFormatted: pf.time,
                 locationName: prov.lang === 'he' ? 'לפי פרטי ההזמנה' : 'As arranged in the booking',
+                // Provider is travelling to the door → include access notes.
+                locationAddress: formatUserAddress(bookingSnapshotToAddress(b), { lang: prov.lang, includeNotes: true }) || undefined,
                 priceFormatted: `₪${(Number(b.totalCents || 0) / 100).toFixed(2)}`,
                 dashboardUrl: `https://petwash.co.il/provider/bookings/${b.requestId}`,
               });

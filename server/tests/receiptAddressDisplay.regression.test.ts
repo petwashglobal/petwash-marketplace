@@ -75,6 +75,14 @@ describe('receipt address is display-only (money-invariants preserved)', () => {
   });
 });
 
+describe('booking reminder email carries the real address (not just a placeholder)', () => {
+  const cron = R('server/routes/cron-booking-reminders.ts');
+  it('both customer and provider reminder emails pass locationAddress via the formatter', () => {
+    const matches = cron.match(/locationAddress:\s*formatUserAddress\(bookingSnapshotToAddress\(b\)/g) || [];
+    expect(matches.length).toBeGreaterThanOrEqual(2);
+  });
+});
+
 describe('all paid call sites pass the service address to the receipt', () => {
   for (const f of [
     'server/routes/booking-requests.ts',
