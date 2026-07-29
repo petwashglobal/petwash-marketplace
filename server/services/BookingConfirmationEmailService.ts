@@ -20,6 +20,7 @@ import {
 } from './PetWashNotificationEngine';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { formatUserAddress } from '@shared/formatAddress';
+import { WhatsAppService } from './WhatsAppService';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = 'PetWash™';
@@ -489,6 +490,24 @@ export class BookingConfirmationEmailService {
             documentRef: customerDocRef,
           },
         }).catch((e) => logger.error('[BookingConfirmation] Customer notifications failed silently', { error: e?.message }));
+      }
+
+      // ── WhatsApp confirmation (360° both-ends: the channel Israelis live on) ──
+      // Reuses the SAME formatted address + booking ref. Ships DARK and SAFE:
+      // WhatsAppService.sendMessage returns false (logs, no throw) until
+      // META_WHATSAPP_PHONE_NUMBER_ID + META_WHATSAPP_ACCESS_TOKEN are set.
+      // NOTE: free-form text delivers inside WhatsApp's 24h customer-service
+      // window; business-initiated delivery outside it needs Meta-APPROVED
+      // template messages — register those, then this lights up. (2026-07-29)
+      if (customer.phone && params.booking.startTime) {
+        WhatsAppService.sendBookingConfirmation({
+          customerPhone: customer.phone,
+          bookingId: params.booking.bookingNumber || params.booking.id,
+          serviceType: serviceInfo.he,
+          appointmentDate: new Date(params.booking.startTime),
+          location: address,
+          language: 'he',
+        }).catch((e) => logger.error('[BookingConfirmation] WhatsApp failed silently', { error: e?.message }));
       }
 
       // ════════════════════════════════════════════════════════════════════
