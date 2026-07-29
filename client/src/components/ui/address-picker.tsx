@@ -27,6 +27,7 @@ export interface AddressPickerProps {
   required?: boolean;
   error?: string;
   country?: string[];           // 2026-06-18: overridable (was hardcoded ['IL'])
+  autoSelectDefault?: boolean;  // auto-fill the pinned default address (off for e.g. a drop-off field)
 }
 
 export function AddressPicker({
@@ -42,6 +43,7 @@ export function AddressPicker({
   required,
   error,
   country = ["il"],
+  autoSelectDefault = true,
 }: AddressPickerProps) {
   const { user } = useFirebaseAuth();
   const queryClient = useQueryClient();
@@ -196,6 +198,7 @@ export function AddressPicker({
   // every AddressPicker consumer (bookings, shop) with no extra wiring.
   const autoSelectedRef = useRef(false);
   useEffect(() => {
+    if (!autoSelectDefault) return;
     if (autoSelectedRef.current) return;
     if (value) { autoSelectedRef.current = true; return; }
     if (!showSavedList || savedAddresses.length === 0) return;
@@ -215,7 +218,7 @@ export function AddressPicker({
     onChange(def.address, place);
     onPlaceSelected?.(place);
     setShowNew(false);
-  }, [savedAddresses, value, showSavedList, onChange, onPlaceSelected]);
+  }, [savedAddresses, value, showSavedList, onChange, onPlaceSelected, autoSelectDefault]);
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (

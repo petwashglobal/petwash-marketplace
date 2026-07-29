@@ -1,6 +1,7 @@
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { AddressPicker } from "@/components/ui/address-picker";
 import { DatePicker } from "@/components/ui/date-picker";
 import { TimePicker } from "@/components/ui/time-picker";
 import { 
@@ -387,11 +388,11 @@ export default function BookTrip() {
                           <MapPin className="h-4 w-4 text-green-600" />
                           {isHebrew ? 'נקודת איסוף' : 'Pickup Location'}
                         </label>
-                        <GooglePlacesAutocomplete
+                        <AddressPicker
                           value={pickupAddress}
                           onChange={handlePickupSelect}
                           placeholder={isHebrew ? 'מאיפה לאסוף?' : 'Where to pick up?'}
-                          country={['il', 'us', 'gb', 'au', 'ca']}
+                          isHebrew={isHebrew}
                           className="w-full"
                         />
                       </div>
@@ -407,11 +408,12 @@ export default function BookTrip() {
                           <Navigation className="h-4 w-4 text-red-500" />
                           {isHebrew ? 'יעד' : 'Drop-off Location'}
                         </label>
-                        <GooglePlacesAutocomplete
+                        <AddressPicker
                           value={dropoffAddress}
                           onChange={handleDropoffSelect}
                           placeholder={isHebrew ? 'לאן להגיע?' : 'Where to drop off?'}
-                          country={['il', 'us', 'gb', 'au', 'ca']}
+                          isHebrew={isHebrew}
+                          autoSelectDefault={false}
                           className="w-full"
                         />
                       </div>
