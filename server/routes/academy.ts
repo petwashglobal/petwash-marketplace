@@ -23,6 +23,7 @@ import {
   type Trainer,
   type TrainerBooking,
 } from '@shared/schema';
+import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
 import crypto from 'crypto';
 import { eq, and, desc, sql, gte, lte, or, ilike } from 'drizzle-orm';
 import { logger } from '../lib/logger';
@@ -781,6 +782,7 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
           bookingId,
           customerEmail: cust?.email || '',
           customerName: [cust?.first, cust?.last].filter(Boolean).join(' '),
+          serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
           providerName: [trn?.first, trn?.last].filter(Boolean).join(' ') || `Trainer ${booking.trainerId}`,
           providerId: String(booking.trainerId),
           providerType: 'trainer',

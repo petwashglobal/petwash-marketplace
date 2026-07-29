@@ -37,6 +37,7 @@ import {
   octopusBookings,
   octopusLedger,
 } from '@shared/schema';
+import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
 import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
@@ -3106,6 +3107,8 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           bookingId: requestId,
           customerEmail: owner?.email || '',
           customerName: [owner?.first, owner?.last].filter(Boolean).join(' '),
+          // Frozen customer-address snapshot on the booking row → receipt (display only).
+          serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
           providerId: booking.providerId,
           providerType: booking.providerType,
           serviceDescription: `PetWash booking — ${booking.serviceType}`,
