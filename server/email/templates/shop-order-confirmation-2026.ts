@@ -67,12 +67,19 @@ export interface ShopOrderConfirmationParams {
   vatCents: number;
   totalCents: number;
   paymentMethod: string;
+  /** Payment/transaction reference (wallet ledger txn or SUMIT external id) — shown under the payment method. */
+  paymentRef?: string;
   deliveryMethod: string;
   estimatedDelivery?: string;
   deliveryAddress?: {
-    fullName: string; street: string; city: string; zipCode?: string; phone?: string;
+    fullName?: string; street: string; city: string; zipCode?: string; phone?: string;
     // Optional structured fields — rendered through the canonical formatter when present.
     streetNumber?: string; apartment?: string; floor?: string; entrance?: string;
+    /** Customer's own delivery instructions — echoed back on their confirmation. */
+    notes?: string;
+    // Raw-row aliases: both call sites pass the shop_delivery_addresses row
+    // unmapped (snake_case), so read these as fallbacks or the name/ZIP vanish.
+    full_name?: string; zip_code?: string;
   } | null;
   couponCode?: string;
   language?: string;
@@ -106,13 +113,14 @@ export function shopOrderConfirmation(p: ShopOrderConfirmationParams): string {
     </tr>`;
   }).join('');
 
+  const addrName = p.deliveryAddress ? (p.deliveryAddress.fullName ?? p.deliveryAddress.full_name ?? '') : '';
   const addrBlock = p.deliveryAddress ? `
     <div style="margin-top:16px;padding:16px;background:${STRIPE_BG};border:1px solid ${DIVIDER};direction:rtl">
       <div style="font-size:12px;font-weight:700;color:${TEXT_DIM};text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">
         ${isHe ? 'כתובת למשלוח' : 'Delivery Address'}
       </div>
       <div style="font-size:14px;color:${TEXT_PRI};line-height:1.6">
-        ${p.deliveryAddress.fullName}<br/>
+        ${addrName ? `${addrName}<br/>` : ''}
         ${formatUserAddress({
           street: p.deliveryAddress.street,
           streetNumber: p.deliveryAddress.streetNumber,
@@ -120,8 +128,9 @@ export function shopOrderConfirmation(p: ShopOrderConfirmationParams): string {
           floor: p.deliveryAddress.floor,
           entrance: p.deliveryAddress.entrance,
           city: p.deliveryAddress.city,
-          postalCode: p.deliveryAddress.zipCode,
-        }, { lang: isHe ? 'he' : 'en', multiline: true }).replace(/\n/g, '<br/>')}
+          postalCode: p.deliveryAddress.zipCode ?? p.deliveryAddress.zip_code,
+          notes: p.deliveryAddress.notes,
+        }, { lang: isHe ? 'he' : 'en', multiline: true, includeNotes: true }).replace(/\n/g, '<br/>')}
         ${p.deliveryAddress.phone ? `<br/>${p.deliveryAddress.phone}` : ''}
       </div>
     </div>` : '';
@@ -247,6 +256,7 @@ export function shopOrderConfirmation(p: ShopOrderConfirmationParams): string {
           <td width="50%" style="padding:14px 16px;border-bottom:1px solid ${DIVIDER};border-left:1px solid ${DIVIDER};direction:rtl;vertical-align:top">
             <div style="font-size:11px;font-weight:700;color:${TEXT_DIM};letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">${isHe ? 'אמצעי תשלום' : 'Payment'}</div>
             <div style="font-size:13px;color:${TEXT_PRI}">${isHe ? paymentLabel.he : paymentLabel.en}</div>
+            ${p.paymentRef ? `<div style="font-size:11px;color:${TEXT_DIM};margin-top:4px;direction:ltr;text-align:right">${isHe ? 'אסמכתא' : 'Ref'}: ${p.paymentRef}</div>` : ''}
           </td>
           <td width="50%" style="padding:14px 16px;border-bottom:1px solid ${DIVIDER};direction:rtl;vertical-align:top">
             <div style="font-size:11px;font-weight:700;color:${TEXT_DIM};letter-spacing:1px;text-transform:uppercase;margin-bottom:6px">${isHe ? 'שיטת משלוח' : 'Delivery'}</div>

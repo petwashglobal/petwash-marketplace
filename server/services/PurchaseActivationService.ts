@@ -563,6 +563,7 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
           vatCents: Number((meta as any).vatCents ?? 0),
           totalCents: Number((meta as any).totalCents ?? purchase.amountCents),
           paymentMethod: 'credit_card',
+          paymentRef: purchase.transactionId || `sumit:${purchase.id}`,
           deliveryMethod: (meta as any).deliveryMethod,
           estimatedDelivery: (meta as any).estimatedDelivery ?? null,
           deliveryAddress: order.deliveryAddress,

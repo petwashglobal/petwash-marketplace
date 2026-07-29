@@ -48,6 +48,8 @@ export interface ProviderPayoutParams {
     date: string;
     serviceType: string;
     petName?: string;
+    /** Customer-facing booking reference — lets the provider match a payout line to a booking. */
+    bookingRef?: string;
     grossCents: number;
     commissionCents: number;
     netCents: number;
@@ -91,6 +93,7 @@ export function providerPayout(p: ProviderPayoutParams): string {
       </td>
       <td style="padding:9px 12px;font-size:12px;color:${TEXT_PRI};direction:rtl;border-bottom:1px solid #F0F0F0">
         ${b.serviceType}${b.petName ? ` — ${b.petName}` : ``}
+        ${b.bookingRef ? `<div style="font-size:10px;color:${TEXT_DIM};direction:ltr;text-align:right">${b.bookingRef}</div>` : ``}
       </td>
       <td style="padding:9px 8px;font-size:12px;color:${TEXT_PRI};white-space:nowrap;border-bottom:1px solid #F0F0F0">
         ${formatILS(b.grossCents)}

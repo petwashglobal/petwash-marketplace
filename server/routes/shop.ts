@@ -489,6 +489,7 @@ router.post('/checkout', paymentLimiter, requireAuth, async (req: Request, res: 
                         couponCode: body.couponCode,
                         language: body.language,
                         orderDate: new Date().toISOString(),
+                        paymentRef,
               });
               await sendLuxuryEmail({
                         to: user.email,
