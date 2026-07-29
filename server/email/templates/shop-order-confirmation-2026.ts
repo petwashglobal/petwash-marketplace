@@ -8,6 +8,7 @@
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
 import { SUPPORT_EMAIL, SUPPORT_PHONE as SUPPORT_PHONE_CONST, SUPPORT_WHATSAPP_URL } from '@shared/support-contact';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { formatUserAddress } from '@shared/formatAddress';
 
 const GOLD        = '#B8941F';
 const GOLD_HERO   = '#C6A35B';
@@ -68,7 +69,11 @@ export interface ShopOrderConfirmationParams {
   paymentMethod: string;
   deliveryMethod: string;
   estimatedDelivery?: string;
-  deliveryAddress?: { fullName: string; street: string; city: string; zipCode?: string; phone?: string } | null;
+  deliveryAddress?: {
+    fullName: string; street: string; city: string; zipCode?: string; phone?: string;
+    // Optional structured fields — rendered through the canonical formatter when present.
+    streetNumber?: string; apartment?: string; floor?: string; entrance?: string;
+  } | null;
   couponCode?: string;
   language?: string;
   orderDate: string;
@@ -108,8 +113,16 @@ export function shopOrderConfirmation(p: ShopOrderConfirmationParams): string {
       </div>
       <div style="font-size:14px;color:${TEXT_PRI};line-height:1.6">
         ${p.deliveryAddress.fullName}<br/>
-        ${p.deliveryAddress.street}<br/>
-        ${p.deliveryAddress.city}${p.deliveryAddress.zipCode ? ', ' + p.deliveryAddress.zipCode : ''}
+        ${formatUserAddress({
+          street: p.deliveryAddress.street,
+          streetNumber: p.deliveryAddress.streetNumber,
+          apartment: p.deliveryAddress.apartment,
+          floor: p.deliveryAddress.floor,
+          entrance: p.deliveryAddress.entrance,
+          city: p.deliveryAddress.city,
+          postalCode: p.deliveryAddress.zipCode,
+        }, { lang: isHe ? 'he' : 'en', multiline: true }).replace(/\n/g, '<br/>')}
+        ${p.deliveryAddress.phone ? `<br/>${p.deliveryAddress.phone}` : ''}
       </div>
     </div>` : '';
 
