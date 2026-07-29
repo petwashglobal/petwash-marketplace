@@ -50,9 +50,20 @@ describe('formatUserAddress — one canonical renderer', () => {
 describe('receipt address is display-only (money-invariants preserved)', () => {
   const receiptSrc = R('server/services/IsraeliDigitalReceiptService.ts');
 
-  it('serviceAddress is an optional param and is rendered in the customer block', () => {
+  it('serviceAddress is an optional param and is rendered from the receipt object', () => {
     expect(receiptSrc).toMatch(/serviceAddress\?:\s*string/);
-    expect(receiptSrc).toMatch(/params\.serviceAddress \?/);
+    // Must render receipt.serviceAddress (attached in generateReceipt), NOT
+    // params.serviceAddress — sendReceiptEmail has no `params` in scope, and the
+    // out-of-scope ref silently threw and skipped every receipt email.
+    expect(receiptSrc).toMatch(/receipt\.serviceAddress \?/);
+    expect(receiptSrc).toMatch(/\(receipt as any\)\.serviceAddress = params\.serviceAddress/);
+  });
+
+  it('sendReceiptEmail does NOT reference `params` (out-of-scope regression)', () => {
+    const body = receiptSrc.slice(receiptSrc.indexOf('static async sendReceiptEmail'));
+    const end = body.indexOf('\n  static async ', 1);
+    const fn = end > 0 ? body.slice(0, end) : body;
+    expect(fn).not.toMatch(/\bparams\./);
   });
 
   it('VAT still comes from the per-class vatMode resolver, not from the address', () => {
