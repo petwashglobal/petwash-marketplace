@@ -59,11 +59,15 @@ interface AutocompletePrediction {
   description: string;
   mainText?: string;
   secondaryText?: string;
-  // 2026-06-18: free OSM/Nominatim returns coordinates + parsed parts inline, so no
-  // second "place details" round-trip is needed.
+  // 2026-06-18: free OSM returns coordinates + parsed parts inline, so no second
+  // "place details" round-trip is needed. 2026-07-29: Photon adds structured
+  // street + house number so the form fills real street-level data.
   lat?: number;
   lng?: number;
+  street?: string;
+  streetNumber?: string;
   city?: string;
+  state?: string;
   postalCode?: string;
   countryCode?: string;
 }
@@ -287,11 +291,16 @@ export function GooglePlacesAutocomplete({
     setShowDropdown(false);
     setPredictions([]);
 
-    // 2026-06-18: Nominatim returns coordinates + parsed parts inline on the
-    // prediction, so we build the address directly — no second round-trip / no Google.
+    // Free OSM (Photon) returns coordinates + parsed parts inline on the
+    // prediction, so we build the address directly — no second round-trip / no
+    // Google. 2026-07-29: street + house number now flow through so the form is
+    // pre-filled with real street-level data (was city-only before).
     const details: PlaceDetails = {
       formattedAddress: prediction.description,
+      street: prediction.street,
+      streetNumber: prediction.streetNumber,
       city: prediction.city,
+      state: prediction.state,
       postalCode: prediction.postalCode,
       countryCode: prediction.countryCode,
       lat: prediction.lat,
@@ -300,6 +309,7 @@ export function GooglePlacesAutocomplete({
     };
 
     setSelectedPlace(details);
+    setBuildingNumber(prediction.streetNumber || '');
     setApartment('');
     setPostalCodeState(details.postalCode || '');
     onChange(details.formattedAddress, details);

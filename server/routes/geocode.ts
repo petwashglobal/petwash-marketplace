@@ -1,30 +1,152 @@
-// Free address autocomplete via OpenStreetMap Nominatim — replaces the broken
-// Google Places autocomplete (2026-06-18). Chosen to avoid Google billing (the
-// ~$1000 surprise-bill incident). Nominatim policy: a User-Agent is REQUIRED and
-// usage is ~1 req/sec — we add a tiny in-memory cache + a per-IP limiter, and the
-// client already debounces 300ms.
+// Free address autocomplete — NO Google billing (2026-06-18; upgraded 2026-07-29).
+//
+// The dropdown users actually see calls THIS route. It previously used Nominatim
+// /search, which is built for full-address geocoding, not type-ahead, so partial
+// street names barely surfaced and it returned no structured street/house-number.
+//
+// Now: Photon (photon.komoot.io, OSM, key-free, built for autocomplete) is the
+// primary — it returns real Hebrew Israeli STREETS with house numbers, biased to
+// the Israel bbox. Nominatim stays as a fallback, and our OWN baked-in
+// israel-cities dataset is the never-empty floor. Every prediction carries the
+// parsed street / streetNumber / city / postalCode / state / lat / lng inline, so
+// the client fills the structured form with no second round-trip and no key.
 import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { logger } from '../lib/logger';
+import { searchIsraelCities } from '@shared/data/israel-cities';
 
 const router = Router();
 
 const USER_AGENT = process.env.NOMINATIM_USER_AGENT || 'PetWash/1.0 (support@petwash.co.il)';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/search';
+const PHOTON_URL = 'https://photon.komoot.io/api/';
+const IL_BBOX = '34.2,29.4,35.95,33.4'; // minLon,minLat,maxLon,maxLat
 
-// Small TTL cache so repeated keystrokes / popular queries don't hammer Nominatim.
-const cache = new Map<string, { at: number; data: any[] }>();
+interface Prediction {
+  placeId: string;
+  description: string;
+  mainText: string;
+  secondaryText: string;
+  street?: string;
+  streetNumber?: string;
+  city?: string;
+  state?: string;
+  postalCode?: string;
+  countryCode: string;
+  lat?: number;
+  lng?: number;
+}
+
+// Small TTL cache so repeated keystrokes / popular queries don't hammer providers.
+const cache = new Map<string, { at: number; data: any }>();
 const CACHE_TTL_MS = 5 * 60 * 1000;
 const CACHE_MAX = 500;
 
 const suggestLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 60, // per IP/min — generous for typing, still polite to Nominatim
+  max: 60, // per IP/min — generous for typing, still polite to the providers
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-// GET /api/geocode/suggest?q=...&lang=he — address predictions with lat/lng inline.
+async function photonSuggest(q: string): Promise<Prediction[]> {
+  const url = `${PHOTON_URL}?q=${encodeURIComponent(q)}&limit=6&lang=default&bbox=${IL_BBOX}`;
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(url, { headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' }, signal: controller.signal });
+    if (!r.ok) throw new Error(`photon http ${r.status}`);
+    const data: any = await r.json();
+    const feats: any[] = Array.isArray(data?.features) ? data.features : [];
+    return feats
+      .filter((f) => (f?.properties?.countrycode || 'IL') === 'IL')
+      .map((f) => {
+        const p = f.properties || {};
+        const coords = f.geometry?.coordinates || [];
+        const street = p.street || p.name || '';
+        const streetNumber = p.housenumber ? String(p.housenumber) : '';
+        const city = p.city || p.district || p.county || '';
+        const state = p.state || '';
+        const mainText = [street, streetNumber].filter(Boolean).join(' ');
+        const secondaryText = [city, state].filter(Boolean).join(', ');
+        const description = [mainText, secondaryText].filter(Boolean).join(', ');
+        return {
+          placeId: `photon:${p.osm_type || 'X'}${p.osm_id || ''}`,
+          description,
+          mainText: mainText || description,
+          secondaryText,
+          street,
+          streetNumber,
+          city,
+          state,
+          postalCode: p.postcode || undefined,
+          countryCode: p.countrycode || 'IL',
+          lat: typeof coords[1] === 'number' ? coords[1] : undefined,
+          lng: typeof coords[0] === 'number' ? coords[0] : undefined,
+        } as Prediction;
+      })
+      .filter((p) => p.description);
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+async function nominatimSuggest(q: string, lang: string): Promise<Prediction[]> {
+  const params = new URLSearchParams({
+    q, format: 'jsonv2', addressdetails: '1', limit: '6', countrycodes: 'il', 'accept-language': lang,
+  });
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(`${NOMINATIM_URL}?${params.toString()}`, {
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
+      signal: controller.signal,
+    });
+    if (!r.ok) throw new Error(`nominatim http ${r.status}`);
+    const rows = await r.json();
+    return (Array.isArray(rows) ? rows : []).map((x: any) => {
+      const a = x.address || {};
+      const street = a.road || a.pedestrian || a.footway || '';
+      const streetNumber = a.house_number ? String(a.house_number) : '';
+      const city = a.city || a.town || a.village || a.municipality || '';
+      return {
+        placeId: String(x.place_id),
+        description: x.display_name,
+        mainText: [street, streetNumber].filter(Boolean).join(' ') || x.name || String(x.display_name || '').split(',')[0],
+        secondaryText: x.display_name,
+        street,
+        streetNumber,
+        city,
+        state: a.state || undefined,
+        postalCode: a.postcode || undefined,
+        countryCode: 'IL',
+        lat: Number(x.lat),
+        lng: Number(x.lon),
+      } as Prediction;
+    });
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+// Never-empty floor: city suggestions from our OWN baked-in dataset, zero network.
+function localCitySuggest(q: string): Prediction[] {
+  const isHebrew = /[֐-׿]/.test(q);
+  return searchIsraelCities(q, isHebrew ? 'he' : 'en', 6).map((c) => {
+    const name = isHebrew ? c.hebrewName || c.englishName : c.englishName || c.hebrewName;
+    return {
+      placeId: `ilcity:${c.citySymbol}`,
+      description: name,
+      mainText: name,
+      secondaryText: isHebrew ? 'ישראל' : 'Israel',
+      city: name,
+      state: c.district || undefined,
+      countryCode: 'IL',
+    } as Prediction;
+  });
+}
+
+// GET /api/geocode/suggest?q=...&lang=he — address predictions with parts + lat/lng inline.
 router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
   const q = String(req.query.q || '').trim();
   const lang = String(req.query.lang || 'he');
@@ -32,47 +154,30 @@ router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
 
   const cacheKey = `${lang}:${q.toLowerCase()}`;
   const hit = cache.get(cacheKey);
-  if (hit && (Date.now() - hit.at) < CACHE_TTL_MS) {
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
     return res.json({ predictions: hit.data });
   }
 
-  const params = new URLSearchParams({
-    q, format: 'jsonv2', addressdetails: '1', limit: '6',
-    countrycodes: 'il', 'accept-language': lang,
-  });
-
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 8000);
+  let predictions: Prediction[] = [];
   try {
-    const r = await fetch(`${NOMINATIM_URL}?${params.toString()}`, {
-      headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' },
-      signal: controller.signal,
-    });
-    if (!r.ok) {
-      logger.warn('[geocode/suggest] Nominatim non-OK', { status: r.status });
-      return res.json({ predictions: [] }); // soft-fail → client lets user type manually
-    }
-    const rows = await r.json();
-    const predictions = (Array.isArray(rows) ? rows : []).map((x: any) => ({
-      placeId: String(x.place_id),
-      description: x.display_name,
-      mainText: x.name || String(x.display_name || '').split(',')[0],
-      secondaryText: x.display_name,
-      lat: Number(x.lat),
-      lng: Number(x.lon),
-      city: x.address?.city || x.address?.town || x.address?.village || x.address?.municipality,
-      postalCode: x.address?.postcode,
-      countryCode: 'IL',
-    }));
-    if (cache.size >= CACHE_MAX) cache.clear();
-    cache.set(cacheKey, { at: Date.now(), data: predictions });
-    return res.json({ predictions });
+    predictions = await photonSuggest(q);
   } catch (err: any) {
-    logger.warn('[geocode/suggest] failed (soft)', { error: err?.message });
-    return res.json({ predictions: [] });
-  } finally {
-    clearTimeout(timeout);
+    logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
   }
+  if (predictions.length === 0) {
+    try {
+      predictions = await nominatimSuggest(q, lang);
+    } catch (err: any) {
+      logger.warn('[geocode/suggest] nominatim failed (soft)', { error: err?.message });
+    }
+  }
+  if (predictions.length === 0) {
+    predictions = localCitySuggest(q); // guaranteed offline floor
+  }
+
+  if (cache.size >= CACHE_MAX) cache.clear();
+  cache.set(cacheKey, { at: Date.now(), data: predictions });
+  return res.json({ predictions });
 });
 
 // GET /api/geocode/reverse?lat=..&lng=..&lang=he — coords -> address (free OSM).
@@ -86,8 +191,8 @@ router.get('/reverse', suggestLimiter, async (req: Request, res: Response) => {
   }
   const cacheKey = `rev:${lang}:${lat.toFixed(5)},${lng.toFixed(5)}`;
   const hit = cache.get(cacheKey);
-  if (hit && (Date.now() - hit.at) < CACHE_TTL_MS) {
-    return res.json((hit as any).rev);
+  if (hit && Date.now() - hit.at < CACHE_TTL_MS) {
+    return res.json((hit as any).data);
   }
   const params = new URLSearchParams({
     lat: String(lat), lon: String(lng), format: 'jsonv2', addressdetails: '1', 'accept-language': lang,
@@ -96,20 +201,23 @@ router.get('/reverse', suggestLimiter, async (req: Request, res: Response) => {
   const timeout = setTimeout(() => controller.abort(), 8000);
   try {
     const r = await fetch(`https://nominatim.openstreetmap.org/reverse?${params.toString()}`, {
-      headers: { 'User-Agent': USER_AGENT, 'Accept': 'application/json' },
+      headers: { 'User-Agent': USER_AGENT, Accept: 'application/json' },
       signal: controller.signal,
     });
     if (!r.ok) return res.json({ formattedAddress: '', lat, lng });
     const x: any = await r.json();
+    const a = x?.address || {};
     const out = {
       formattedAddress: x?.display_name || '',
-      city: x?.address?.city || x?.address?.town || x?.address?.village || x?.address?.municipality,
-      postalCode: x?.address?.postcode,
-      countryCode: (x?.address?.country_code || 'il').toUpperCase(),
+      street: a.road || a.pedestrian || undefined,
+      streetNumber: a.house_number || undefined,
+      city: a.city || a.town || a.village || a.municipality,
+      postalCode: a.postcode,
+      countryCode: (a.country_code || 'il').toUpperCase(),
       lat, lng,
     };
     if (cache.size >= CACHE_MAX) cache.clear();
-    cache.set(cacheKey, { at: Date.now(), data: [], rev: out } as any);
+    cache.set(cacheKey, { at: Date.now(), data: out });
     return res.json(out);
   } catch (err: any) {
     logger.warn('[geocode/reverse] failed (soft)', { error: err?.message });
