@@ -14,6 +14,7 @@ import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { logger } from '../lib/logger';
 import { searchIsraelCities } from '@shared/data/israel-cities';
+import { searchIsraelStreets } from '../lib/israelStreets';
 
 const router = Router();
 
@@ -129,6 +130,22 @@ async function nominatimSuggest(q: string, lang: string): Promise<Prediction[]> 
   }
 }
 
+// Offline street suggestions from our OWN baked-in Israeli dataset (63k streets,
+// zero network, Hebrew). Returns [] until the async startup load finishes (Photon
+// covers the gap). No coords/house-number — user types the number, coords filled
+// by geocode-on-save.
+function localStreetSuggest(q: string): Prediction[] {
+  return searchIsraelStreets(q, 6).map((r) => ({
+    placeId: `ilstreet:${r.street}|${r.city}`,
+    description: `${r.street}, ${r.city}`,
+    mainText: r.street,
+    secondaryText: r.city,
+    street: r.street,
+    city: r.city,
+    countryCode: 'IL',
+  }));
+}
+
 // Never-empty floor: city suggestions from our OWN baked-in dataset, zero network.
 function localCitySuggest(q: string): Prediction[] {
   const isHebrew = /[֐-׿]/.test(q);
@@ -158,16 +175,20 @@ router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
     return res.json({ predictions: hit.data });
   }
 
-  // PRIMARY: Photon — real Hebrew Israeli streets WITH house numbers + coordinates.
-  // (The offline 63k-street dataset was reverted from the hot path 2026-07-29: a
-  // synchronous 6.8MB parse on the request path OOM-hung the Cloud Run instance.
-  // It stays in the repo — server/data/israel-streets.json — for a memory-safe
-  // re-introduction, e.g. an async startup load.)
-  let predictions: Prediction[] = [];
-  try {
-    predictions = await photonSuggest(q);
-  } catch (err: any) {
-    logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
+  // PRIMARY: our OWN baked-in 63k Israeli streets — instant, offline, no fees, no
+  // external dependency. Loaded ASYNC at startup (returns [] until ready), so it
+  // never blocks the request path (see the 2026-07-29 sync-load outage note in
+  // israelStreets.ts). While it's loading, Photon covers.
+  let predictions: Prediction[] = localStreetSuggest(q);
+
+  // Photon adds house numbers + coordinates; used when the offline list is not yet
+  // loaded or has no match.
+  if (predictions.length === 0) {
+    try {
+      predictions = await photonSuggest(q);
+    } catch (err: any) {
+      logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
+    }
   }
   if (predictions.length === 0) {
     try {

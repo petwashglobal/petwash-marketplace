@@ -12,7 +12,15 @@ import { logger } from './logger';
 interface StreetRow { id: number; city_name: string; street_name: string; }
 interface IndexedRow { city: string; street: string; nCity: string; nStreet: string }
 
+// INDEX is null until the ASYNC background load finishes. Search returns [] while
+// null so callers (geocode/suggest) transparently fall back to Photon. This is the
+// fix for the 2026-07-29 outage: the previous version parsed the 6.8MB file
+// SYNCHRONOUSLY on the request path, blocking the event loop long enough that Cloud
+// Run health checks failed and the instance was killed mid-request (persistent
+// HTTP 000). Now the file is read + parsed ONCE in the background at startup — no
+// request ever triggers a blocking load.
 let INDEX: IndexedRow[] | null = null;
+let loadStarted = false;
 
 // Strip Hebrew/Latin punctuation (quotes, maqaf, parens, dots) + lowercase so
 // "מלון בקעת-הירדן" and "מלון בקעת הירדן" match the same needle.
@@ -24,16 +32,18 @@ export function normalizeStreet(s: string): string {
     .toLowerCase();
 }
 
-function load(): IndexedRow[] {
-  if (INDEX) return INDEX;
+async function loadAsync(): Promise<void> {
+  if (loadStarted) return;
+  loadStarted = true;
   const candidates = [
     path.resolve(process.cwd(), 'server/data/israel-streets.json'),
     path.resolve(__dirname, '../data/israel-streets.json'),
   ];
   for (const p of candidates) {
     try {
-      if (!fs.existsSync(p)) continue;
-      const raw = JSON.parse(fs.readFileSync(p, 'utf8'));
+      // Async file read — does NOT block the event loop.
+      const buf = await fs.promises.readFile(p, 'utf8');
+      const raw = JSON.parse(buf); // one-time parse at startup, off the request path
       const rows: StreetRow[] = Array.isArray(raw?.streets) ? raw.streets : [];
       INDEX = rows.map((r) => ({
         city: r.city_name,
@@ -41,16 +51,19 @@ function load(): IndexedRow[] {
         nCity: normalizeStreet(r.city_name),
         nStreet: normalizeStreet(r.street_name),
       }));
-      logger.info('[israelStreets] loaded', { count: INDEX.length, path: p });
-      return INDEX;
+      logger.info('[israelStreets] loaded (async, startup)', { count: INDEX.length, path: p });
+      return;
     } catch (e: any) {
       logger.warn('[israelStreets] load attempt failed', { path: p, error: e?.message });
     }
   }
-  logger.error('[israelStreets] could not load dataset — street fallback empty');
+  logger.error('[israelStreets] could not load dataset — street fallback stays empty (Photon covers)');
   INDEX = [];
-  return INDEX;
 }
+
+// Kick off the background load at module import (server startup). Never awaited on
+// the request path.
+void loadAsync();
 
 /**
  * Search the offline street list. Handles "street city" queries (e.g.
@@ -58,8 +71,10 @@ function load(): IndexedRow[] {
  * prefix/whole-match, deduped. No coordinates (geocoded later on save).
  */
 export function searchIsraelStreets(query: string, limit = 6): Array<{ street: string; city: string }> {
-  const idx = load();
-  if (idx.length === 0) return [];
+  // Not loaded yet (still parsing at startup) or empty → caller falls back to Photon.
+  if (!loadStarted) void loadAsync();
+  const idx = INDEX;
+  if (!idx || idx.length === 0) return [];
   const nq = normalizeStreet(query);
   if (nq.length < 2) return [];
   // Drop pure-number tokens — those are house numbers ("דיזנגוף 153 תל אביב"),
