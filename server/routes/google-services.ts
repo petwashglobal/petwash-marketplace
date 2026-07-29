@@ -43,6 +43,9 @@ import rateLimit from 'express-rate-limit';
 // existing GOOGLE_MAPS_API_KEY presence check still runs
 // after this gate.
 import { requireGooglePlacesEnabled } from '../lib/feature-flags/googlePlaces';
+// Our OWN baked-in Israeli city dataset (1,272 CBS cities, no runtime network
+// call) — the guaranteed offline layer for address suggestions. (2026-07-29)
+import { searchIsraelCities } from '@shared/data/israel-cities';
 
 const router = Router();
 
@@ -281,6 +284,125 @@ function isAllowedPlacesOrigin(req: any): boolean {
 // (registered before the startup guard so it answers during cold-start). A second
 // handler here would be shadowed by Express first-match ordering and never run.
 
+// ─────────────────────────────────────────────────────────────────────────────
+// FREE address fallback — Photon (OpenStreetMap), no API key (2026-07-29)
+// When the Google Places key is missing OR denied (API_KEY_DENIED), address
+// autocomplete would go dark and force manual typing. Photon (photon.komoot.io,
+// OSM data, key-free, built for type-ahead) returns Hebrew Israeli streets. We
+// normalise its results into the SAME {predictions:[{placeId,description,
+// mainText,secondaryText}]} shape the client already consumes, and encode the
+// fully-resolved address into the placeId ("photon:" + base64url(JSON)) so
+// /places-details resolves it with ZERO extra network calls. Israel-only:
+// results filtered to countrycode === 'IL'.
+// ─────────────────────────────────────────────────────────────────────────────
+const PHOTON_ENDPOINT = 'https://photon.komoot.io/api/';
+const IL_BBOX = '34.2,29.4,35.95,33.4'; // minLon,minLat,maxLon,maxLat
+
+function encodePhotonPlaceId(parsed: Record<string, unknown>): string {
+  return 'photon:' + Buffer.from(JSON.stringify(parsed), 'utf8').toString('base64url');
+}
+
+function decodePhotonPlaceId(placeId: string): any | null {
+  if (typeof placeId !== 'string' || !placeId.startsWith('photon:')) return null;
+  try {
+    return JSON.parse(Buffer.from(placeId.slice(7), 'base64url').toString('utf8'));
+  } catch {
+    return null;
+  }
+}
+
+async function photonAutocomplete(
+  input: string,
+  traceId: string,
+): Promise<Array<{ placeId: string; description: string; mainText: string; secondaryText: string }>> {
+  const url = `${PHOTON_ENDPOINT}?q=${encodeURIComponent(input)}&limit=6&lang=default&bbox=${IL_BBOX}`;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 8000);
+  try {
+    const r = await fetch(url, {
+      headers: { 'User-Agent': 'PetWash-AddressLookup/1.0 (petwash.co.il)' },
+      signal: controller.signal,
+    });
+    if (!r.ok) throw new Error(`photon http ${r.status}`);
+    const data: any = await r.json();
+    const feats: any[] = Array.isArray(data?.features) ? data.features : [];
+    const preds = feats
+      .filter((f) => (f?.properties?.countrycode || 'IL') === 'IL')
+      .map((f) => {
+        const p = f.properties || {};
+        const coords = f.geometry?.coordinates || [];
+        const houseNumber = p.housenumber ? String(p.housenumber) : '';
+        const street = p.name || p.street || '';
+        const mainText = [street, houseNumber].filter(Boolean).join(' ');
+        const city = p.city || p.district || p.county || '';
+        const secondaryText = [city, p.state].filter(Boolean).join(', ');
+        const description = [mainText, secondaryText].filter(Boolean).join(', ');
+        const parsed = {
+          formattedAddress: description,
+          streetNumber: houseNumber,
+          street,
+          city,
+          state: p.state || '',
+          postalCode: p.postcode || '',
+          country: p.country || 'ישראל',
+          countryCode: p.countrycode || 'IL',
+          lat: typeof coords[1] === 'number' ? coords[1] : null,
+          lng: typeof coords[0] === 'number' ? coords[0] : null,
+        };
+        return { placeId: encodePhotonPlaceId(parsed), description, mainText: mainText || description, secondaryText };
+      })
+      .filter((p) => p.description);
+    logger.info('[Places Proxy] Photon fallback OK', { traceId, inputLength: input.length, resultCount: preds.length });
+    return preds;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// City-level suggestions from our OWN baked-in dataset (shared/data/israel-cities).
+// Zero network, always available — the guaranteed floor so the dropdown is never
+// empty even if Photon is unreachable.
+function localCityAutocomplete(
+  input: string,
+): Array<{ placeId: string; description: string; mainText: string; secondaryText: string }> {
+  const isHebrew = /[֐-׿]/.test(input);
+  const cities = searchIsraelCities(input, isHebrew ? 'he' : 'en', 6);
+  return cities.map((c) => {
+    const name = isHebrew ? c.hebrewName || c.englishName : c.englishName || c.hebrewName;
+    const country = isHebrew ? 'ישראל' : 'Israel';
+    const parsed = {
+      formattedAddress: name,
+      streetNumber: '',
+      street: '',
+      city: name,
+      state: c.district || '',
+      postalCode: '',
+      country,
+      countryCode: 'IL',
+      lat: null,
+      lng: null,
+    };
+    return { placeId: encodePhotonPlaceId(parsed), description: name, mainText: name, secondaryText: country };
+  });
+}
+
+// Combined free address autocomplete: real street-level results from Photon,
+// falling back to our own Israeli city dataset so it is NEVER empty. Never throws.
+async function freeAddressAutocomplete(
+  input: string,
+  traceId: string,
+): Promise<Array<{ placeId: string; description: string; mainText: string; secondaryText: string }>> {
+  try {
+    const streets = await photonAutocomplete(input, traceId);
+    if (streets.length) return streets;
+  } catch (e: any) {
+    logger.warn('[Places Proxy] Photon unavailable — using baked-in city dataset', { traceId, message: e?.message });
+  }
+  const cities = localCityAutocomplete(input);
+  logger.info('[Places Proxy] Local city dataset used for suggestions', { traceId, resultCount: cities.length });
+  return cities;
+}
+
 /**
  * GET /api/google/places-autocomplete - Server-side Google Places API v1 Autocomplete proxy
  * API key stays server-side. No browser key needed.
@@ -322,13 +444,10 @@ router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocomplet
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
-      logger.error('[Places Proxy] GOOGLE_MAPS_API_KEY not configured', {
-        traceId,
-        reasonCode: 'MAPS_KEY_MISSING',
-        path: req.path,
-        userAgent: req.headers['user-agent']?.substring(0, 100),
-      });
-      return res.status(503).json({ error: 'Address search unavailable', reasonCode: 'MAPS_KEY_MISSING', traceId });
+      // No Google key — serve real suggestions from the free fallback (Photon +
+      // our baked-in city dataset) instead of forcing manual typing. (2026-07-29)
+      const predictions = await freeAddressAutocomplete(input as string, traceId);
+      return res.json({ predictions, provider: 'free' });
     }
 
     // Build Places API v1 request body.
@@ -419,7 +538,10 @@ router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocomplet
         reasonCode,
         traceId,
       });
-      return res.status(502).json({ error: 'Address search failed', reasonCode, traceId });
+      // Google failed (e.g. API_KEY_DENIED) — serve real suggestions from the
+      // free fallback (Photon + baked-in cities) instead of a dead dropdown. (2026-07-29)
+      const predictions = await freeAddressAutocomplete(input as string, traceId);
+      return res.json({ predictions, provider: 'free' });
     }
 
     const suggestions: any[] = data.suggestions || [];
@@ -449,7 +571,14 @@ router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocomplet
       message: error.message,
       path: req.path,
     });
-    res.status(500).json({ error: 'Address search failed', reasonCode: 'NETWORK_ERROR', traceId });
+    // Last resort — still try to serve suggestions from the free fallback.
+    try {
+      const q = (req.query.input as string) || '';
+      const predictions = q ? await freeAddressAutocomplete(q, traceId) : [];
+      return res.json({ predictions, provider: 'free' });
+    } catch {
+      return res.status(500).json({ error: 'Address search failed', reasonCode: 'NETWORK_ERROR', traceId });
+    }
   }
 });
 
@@ -480,6 +609,15 @@ router.get('/places-details', requireGooglePlacesEnabled, placesDetailsLimiter, 
 
     if (!placeId || typeof placeId !== 'string') {
       return res.status(400).json({ error: 'placeId required', traceId });
+    }
+
+    // Free fallback: our placeIds ("photon:…") encode the full resolved address
+    // (Photon street result or our baked-in city) — decode and return with ZERO
+    // extra network calls, works with no Google key. (2026-07-29)
+    const localParsed = decodePhotonPlaceId(placeId);
+    if (localParsed) {
+      logger.info('[Places Proxy] Details resolved from free-fallback placeId', { traceId });
+      return res.json(localParsed);
     }
 
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
