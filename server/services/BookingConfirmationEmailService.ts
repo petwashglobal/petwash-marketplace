@@ -19,6 +19,7 @@ import {
   buildBookingConfirmedSms,
 } from './PetWashNotificationEngine';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { formatUserAddress } from '@shared/formatAddress';
 
 const FROM_EMAIL = 'noreply@petwash.co.il';
 const FROM_NAME = 'PetWash™';
@@ -172,10 +173,22 @@ export class BookingConfirmationEmailService {
       }
 
       // ── Address / location ───────────────────────────────────────────────
-      const address: string = (params.booking.metadata?.address as string | undefined)
-        || (params.booking.metadata?.location as string | undefined)
-        || (params.booking.metadata?.stationName as string | undefined)
-        || 'לפי פרטי ההזמנה';
+      // Render the FULL structured address (street/number/floor/entrance/apt/
+      // city/zip) through the one canonical formatter so the confirmation shows
+      // exactly what the customer entered — not a truncated free-text line. Falls
+      // back to any legacy free-text address when structured fields are absent.
+      const md = (params.booking.metadata || {}) as Record<string, any>;
+      const address: string = formatUserAddress({
+        street: md.street ?? md.customerStreet,
+        streetNumber: md.streetNumber ?? md.customerStreetNumber ?? md.houseNumber,
+        apartment: md.apartment ?? md.customerApartment ?? md.apt,
+        floor: md.floor ?? md.customerFloor,
+        entrance: md.entrance ?? md.customerEntrance,
+        city: md.city ?? md.customerCity,
+        postalCode: md.postalCode ?? md.customerPostalCode ?? md.zipCode,
+        notes: md.addressNotes ?? md.accessNotes,
+        fallback: (md.address as string) || (md.location as string) || (md.stationName as string),
+      }, { lang: 'he', includeNotes: true }) || 'לפי פרטי ההזמנה';
 
       // ── Price maths ──────────────────────────────────────────────────────
       const gross = params.booking.priceSnapshot.gross;
