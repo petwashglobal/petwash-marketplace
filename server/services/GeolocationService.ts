@@ -12,6 +12,7 @@
  */
 
 import { COUNTRY_TO_LANGUAGE, type LanguageCode } from '../../shared/languages';
+import { haversineKm } from '../lib/geo';
 import { isPublicIP } from '../utils/ipValidation';
 import { safeIPFetch } from '../lib/safeOutboundUrl';
 
@@ -314,24 +315,8 @@ export class GeolocationService {
     lat2: number,
     lon2: number
   ): number {
-    const R = 6371; // Earth's radius in km
-    const dLat = this.toRadians(lat2 - lat1);
-    const dLon = this.toRadians(lon2 - lon1);
-    
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRadians(lat1)) *
-      Math.cos(this.toRadians(lat2)) *
-      Math.sin(dLon / 2) *
-      Math.sin(dLon / 2);
-    
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    
-    return Math.round(R * c);
-  }
-
-  private toRadians(degrees: number): number {
-    return (degrees * Math.PI) / 180;
+    // Delegates to the shared great-circle util; this caller rounds to whole km. (2026-07-29)
+    return Math.round(haversineKm(lat1, lon1, lat2, lon2));
   }
 
   /**

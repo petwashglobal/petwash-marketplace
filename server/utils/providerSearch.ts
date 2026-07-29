@@ -6,6 +6,7 @@
  * NOT for K9000.
  */
 
+import { haversineKm as sharedHaversineKm } from '../lib/geo';
 import type {
   ProviderSearchFilters,
   ProviderSearchItem,
@@ -45,22 +46,14 @@ export function normalizeProviderSearchFilters(query: any): ProviderSearchFilter
   };
 }
 
+// Re-exported for existing importers; delegates to the shared great-circle util. (2026-07-29)
 export function haversineKm(
   aLat: number,
   aLng: number,
   bLat: number,
   bLng: number
 ): number {
-  const toRad = (v: number) => (v * Math.PI) / 180;
-  const R = 6371;
-  const dLat = toRad(bLat - aLat);
-  const dLng = toRad(bLng - aLng);
-  const lat1 = toRad(aLat);
-  const lat2 = toRad(bLat);
-  const h =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLng / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(h));
+  return sharedHaversineKm(aLat, aLng, bLat, bLng);
 }
 
 export function applyProviderFilters(

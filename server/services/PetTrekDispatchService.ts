@@ -18,6 +18,7 @@
  */
 
 import { db } from '../db';
+import { haversineKm } from '../lib/geo';
 import { pettrekProviders, pettrekTrips, pettrekDispatchRecords } from '@shared/schema';
 import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
@@ -58,23 +59,8 @@ export class PetTrekDispatchService {
     lat2: number,
     lon2: number
   ): number {
-    const R = 6371; // Earth's radius in km
-    const dLat = this.toRad(lat2 - lat1);
-    const dLon = this.toRad(lon2 - lon1);
-
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.toRad(lat1)) *
-        Math.cos(this.toRad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
-  }
-
-  private toRad(degrees: number): number {
-    return degrees * (Math.PI / 180);
+    // Delegates to the shared great-circle util (identical math). (2026-07-29)
+    return haversineKm(lat1, lon1, lat2, lon2);
   }
 
   /**

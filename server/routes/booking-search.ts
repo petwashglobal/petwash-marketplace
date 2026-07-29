@@ -17,6 +17,7 @@
  */
 
 import { Router } from 'express';
+import { haversineKm as sharedHaversineKm } from '../lib/geo';
 import { db } from '../db';
 import {
   sitterProfiles,
@@ -64,15 +65,9 @@ const router = Router();
  * Haversine distance between two WGS-84 coordinates, in kilometres.
  * Accurate to ~0.3% — sufficient for provider matching.
  */
+// Delegates to the shared great-circle util (identical math). (2026-07-29)
 function haversineKm(lat1: number, lon1: number, lat2: number, lon2: number): number {
-  const R = 6371; // Earth mean radius km
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return sharedHaversineKm(lat1, lon1, lat2, lon2);
 }
 
 /**
