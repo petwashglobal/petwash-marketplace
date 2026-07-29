@@ -300,12 +300,12 @@ export default function CustomerManagement() {
 
   if (customersLoading) {
     return (
-      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center">
+      <div className="min-h-screen luxury-bg-mesh flex items-center justify-center" dir="rtl">
         <div className="text-center luxury-animate-fade-in">
           <div className="luxury-spinner mx-auto mb-6"></div>
           <div className="space-y-2">
-            <h3 className="luxury-heading-sm">Loading Customer Data</h3>
-            <p className="luxury-text-body">Fetching your customer database...</p>
+            <h3 className="luxury-heading-sm">טוען נתוני לקוחות</h3>
+            <p className="luxury-text-body">מושך את מאגר הלקוחות שלך...</p>
           </div>
         </div>
       </div>
@@ -313,7 +313,7 @@ export default function CustomerManagement() {
   }
 
   return (
-    <div className="min-h-screen luxury-bg-mesh">
+    <div className="min-h-screen luxury-bg-mesh" dir="rtl">
       {/* Luxury Header */}
       <header className="luxury-glass-card rounded-none border-b luxury-shadow-lg">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -324,9 +324,9 @@ export default function CustomerManagement() {
               </div>
               <div>
                 <h1 className="text-2xl font-bold bg-gradient-to-r from-[#B8932F] to-[#B8932F] bg-clip-text text-transparent">
-                  Customer Management
+                  ניהול לקוחות
                 </h1>
-                <p className="text-sm text-slate-600 font-medium">Comprehensive customer relationship management</p>
+                <p className="text-sm text-slate-600 font-medium">ניהול קשרי לקוחות מקצה לקצה</p>
               </div>
             </div>
             
@@ -338,19 +338,19 @@ export default function CustomerManagement() {
                 className="border-[#D4AF37] hover:bg-[#D4AF37]"
                 data-testid="refresh-customers"
               >
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Refresh
+                <RefreshCw className="w-4 h-4 ml-2" />
+                רענון
               </Button>
-              <Button 
+              <Button
                 className="luxury-btn-primary text-sm px-4 py-2"
                 data-testid="add-customer"
               >
-                <UserPlus className="w-4 h-4 mr-2 inline" />
-                Add Customer
+                <UserPlus className="w-4 h-4 ml-2 inline" />
+                לקוח חדש
               </Button>
               <div className="flex items-center space-x-2 bg-gradient-to-r from-green-50 to-emerald-50 px-4 py-2 rounded-lg border border-green-200">
                 <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                <span className="text-sm font-medium text-green-800">Live Data</span>
+                <span className="text-sm font-medium text-green-800">נתונים חיים</span>
               </div>
             </div>
           </div>
@@ -364,12 +364,12 @@ export default function CustomerManagement() {
           <CardHeader className="pb-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-lg font-semibold text-slate-800">Customer Database</CardTitle>
-                <CardDescription>Search, filter, and manage your customers</CardDescription>
+                <CardTitle className="text-lg font-semibold text-slate-800">מאגר לקוחות</CardTitle>
+                <CardDescription>חיפוש, סינון וניהול הלקוחות שלך</CardDescription>
               </div>
               <div className="flex items-center space-x-2 text-sm text-slate-600">
                 <Users className="w-4 h-4" />
-                <span className="font-medium">{totalCustomers.toLocaleString()} customers</span>
+                <span className="font-medium">{totalCustomers.toLocaleString()} לקוחות</span>
               </div>
             </div>
           </CardHeader>
@@ -377,12 +377,12 @@ export default function CustomerManagement() {
             {/* Search Bar */}
             <div className="flex items-center space-x-4">
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                <Search className="absolute right-3 top-3 h-4 w-4 text-slate-400" />
                 <Input
                   placeholder={t('customers.search.placeholder', language)}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-10"
+                  className="pr-10"
                   data-testid="search-customers"
                 />
               </div>
@@ -392,92 +392,92 @@ export default function CustomerManagement() {
                 className="whitespace-nowrap"
                 data-testid="clear-filters"
               >
-                Clear All
+                ניקוי הכול
               </Button>
             </div>
 
             {/* Advanced Filters */}
             <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Loyalty Tier</Label>
+                <Label className="text-sm font-medium text-slate-700">דרגת מועדון</Label>
                 <Select value={filters.loyaltyTier || 'all'} onValueChange={(value) => handleFilterChange('loyaltyTier', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-loyalty-tier">
                     <SelectValue placeholder={t('customers.filters.allTiers', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Tiers</SelectItem>
-                    <SelectItem value="diamond">Diamond</SelectItem>
-                    <SelectItem value="platinum">Platinum</SelectItem>
-                    <SelectItem value="gold">Gold</SelectItem>
-                    <SelectItem value="silver">Silver</SelectItem>
-                    <SelectItem value="new">New</SelectItem>
+                    <SelectItem value="all">כל הדרגות</SelectItem>
+                    <SelectItem value="diamond">יהלום</SelectItem>
+                    <SelectItem value="platinum">פלטינה</SelectItem>
+                    <SelectItem value="gold">זהב</SelectItem>
+                    <SelectItem value="silver">כסף</SelectItem>
+                    <SelectItem value="new">חדש</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Customer Value</Label>
+                <Label className="text-sm font-medium text-slate-700">ערך לקוח</Label>
                 <Select value={filters.customerValue || 'all'} onValueChange={(value) => handleFilterChange('customerValue', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-customer-value">
                     <SelectValue placeholder={t('customers.filters.allValues', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Values</SelectItem>
+                    <SelectItem value="all">כל הערכים</SelectItem>
                     <SelectItem value="vip">VIP (₪5,000+)</SelectItem>
-                    <SelectItem value="high">High Value (₪2,000+)</SelectItem>
-                    <SelectItem value="regular">Regular (₪500+)</SelectItem>
-                    <SelectItem value="new">New (&lt; ₪500)</SelectItem>
+                    <SelectItem value="high">ערך גבוה (₪2,000+)</SelectItem>
+                    <SelectItem value="regular">רגיל (₪500+)</SelectItem>
+                    <SelectItem value="new">חדש (&lt; ₪500)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Verification</Label>
+                <Label className="text-sm font-medium text-slate-700">אימות</Label>
                 <Select value={filters.verificationStatus || 'all'} onValueChange={(value) => handleFilterChange('verificationStatus', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-verification">
                     <SelectValue placeholder={t('customers.filters.allStatus', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Status</SelectItem>
-                    <SelectItem value="verified">Verified</SelectItem>
-                    <SelectItem value="unverified">Unverified</SelectItem>
+                    <SelectItem value="all">כל הסטטוסים</SelectItem>
+                    <SelectItem value="verified">מאומת</SelectItem>
+                    <SelectItem value="unverified">לא מאומת</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Location</Label>
+                <Label className="text-sm font-medium text-slate-700">מיקום</Label>
                 <Select value={filters.location || 'all'} onValueChange={(value) => handleFilterChange('location', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-location">
                     <SelectValue placeholder={t('customers.filters.allLocations', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Locations</SelectItem>
-                    <SelectItem value="israel">Israel</SelectItem>
-                    <SelectItem value="us">United States</SelectItem>
-                    <SelectItem value="uk">United Kingdom</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="all">כל המיקומים</SelectItem>
+                    <SelectItem value="israel">ישראל</SelectItem>
+                    <SelectItem value="us">ארצות הברית</SelectItem>
+                    <SelectItem value="uk">בריטניה</SelectItem>
+                    <SelectItem value="other">אחר</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Pet Type</Label>
+                <Label className="text-sm font-medium text-slate-700">סוג חיה</Label>
                 <Select value={filters.petType || 'all'} onValueChange={(value) => handleFilterChange('petType', value === 'all' ? '' : value)}>
                   <SelectTrigger data-testid="filter-pet-type">
                     <SelectValue placeholder={t('customers.filters.allPets', language)} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">All Pets</SelectItem>
-                    <SelectItem value="dog">Dog</SelectItem>
-                    <SelectItem value="cat">Cat</SelectItem>
-                    <SelectItem value="other">Other</SelectItem>
+                    <SelectItem value="all">כל החיות</SelectItem>
+                    <SelectItem value="dog">כלב</SelectItem>
+                    <SelectItem value="cat">חתול</SelectItem>
+                    <SelectItem value="other">אחר</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-2">
-                <Label className="text-sm font-medium text-slate-700">Page Size</Label>
+                <Label className="text-sm font-medium text-slate-700">שורות בעמוד</Label>
                 <Select value={pageSize.toString()} onValueChange={(value) => {
                   setPageSize(parseInt(value));
                   setCurrentPage(1);
@@ -486,10 +486,10 @@ export default function CustomerManagement() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="10">10 per page</SelectItem>
-                    <SelectItem value="25">25 per page</SelectItem>
-                    <SelectItem value="50">50 per page</SelectItem>
-                    <SelectItem value="100">100 per page</SelectItem>
+                    <SelectItem value="10">10 בעמוד</SelectItem>
+                    <SelectItem value="25">25 בעמוד</SelectItem>
+                    <SelectItem value="50">50 בעמוד</SelectItem>
+                    <SelectItem value="100">100 בעמוד</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -501,15 +501,15 @@ export default function CustomerManagement() {
         <Card className="luxury-glass-card luxury-shadow-lg luxury-animate-fade-in luxury-delay-2">
           <CardHeader>
             <div className="flex items-center justify-between">
-              <CardTitle className="text-lg font-semibold text-slate-800">Customers</CardTitle>
+              <CardTitle className="text-lg font-semibold text-slate-800">לקוחות</CardTitle>
               <div className="flex items-center space-x-2">
                 <Button variant="outline" size="sm" data-testid="export-customers">
-                  <Download className="w-4 h-4 mr-2" />
-                  Export
+                  <Download className="w-4 h-4 ml-2" />
+                  ייצוא
                 </Button>
                 <Button variant="outline" size="sm" data-testid="import-customers">
-                  <Upload className="w-4 h-4 mr-2" />
-                  Import
+                  <Upload className="w-4 h-4 ml-2" />
+                  ייבוא
                 </Button>
               </div>
             </div>
@@ -522,13 +522,13 @@ export default function CustomerManagement() {
                   <TableHeader>
                     <TableRow>
                       <TableHead className="w-12"></TableHead>
-                      <TableHead>Customer</TableHead>
-                      <TableHead>Contact</TableHead>
-                      <TableHead>Loyalty Tier</TableHead>
-                      <TableHead>Total Spent</TableHead>
-                      <TableHead>Wash Balance</TableHead>
-                      <TableHead>Last Activity</TableHead>
-                      <TableHead>Status</TableHead>
+                      <TableHead>לקוח</TableHead>
+                      <TableHead>פרטי קשר</TableHead>
+                      <TableHead>דרגת מועדון</TableHead>
+                      <TableHead>סה״כ הוצאה</TableHead>
+                      <TableHead>יתרת שטיפות</TableHead>
+                      <TableHead>פעילות אחרונה</TableHead>
+                      <TableHead>סטטוס</TableHead>
                       <TableHead className="w-12"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -715,24 +715,24 @@ export default function CustomerManagement() {
             <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-6">
               <TabsList className="grid w-full grid-cols-5">
                 <TabsTrigger value="overview" className="data-[state=active]:bg-[#D4AF37]">
-                  <User className="w-4 h-4 mr-2" />
-                  Overview
+                  <User className="w-4 h-4 ml-2" />
+                  סקירה
                 </TabsTrigger>
                 <TabsTrigger value="history" className="data-[state=active]:bg-green-50">
-                  <History className="w-4 h-4 mr-2" />
-                  Service History
+                  <History className="w-4 h-4 ml-2" />
+                  היסטוריית שירות
                 </TabsTrigger>
                 <TabsTrigger value="communications" className="data-[state=active]:bg-[#D4AF37]">
-                  <MessageSquare className="w-4 h-4 mr-2" />
-                  Communications
+                  <MessageSquare className="w-4 h-4 ml-2" />
+                  תקשורת
                 </TabsTrigger>
                 <TabsTrigger value="pets" className="data-[state=active]:bg-white">
-                  <PawPrint className="w-4 h-4 mr-2" />
-                  Pet Information
+                  <PawPrint className="w-4 h-4 ml-2" />
+                  פרטי חיה
                 </TabsTrigger>
                 <TabsTrigger value="analytics" className="data-[state=active]:bg-[#D4AF37]">
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  Analytics
+                  <TrendingUp className="w-4 h-4 ml-2" />
+                  אנליטיקה
                 </TabsTrigger>
               </TabsList>
 
@@ -742,7 +742,7 @@ export default function CustomerManagement() {
                   {/* Personal Information */}
                   <Card>
                     <CardHeader className="flex flex-row items-center justify-between">
-                      <CardTitle className="text-lg">Personal Information</CardTitle>
+                      <CardTitle className="text-lg">פרטים אישיים</CardTitle>
                       <Button
                         variant="outline"
                         size="sm"
@@ -756,7 +756,7 @@ export default function CustomerManagement() {
                     <CardContent className="space-y-4">
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label>First Name</Label>
+                          <Label>שם פרטי</Label>
                           {editMode ? (
                             <Input
                               value={selectedCustomer.firstName}
@@ -768,7 +768,7 @@ export default function CustomerManagement() {
                           )}
                         </div>
                         <div className="space-y-2">
-                          <Label>Last Name</Label>
+                          <Label>שם משפחה</Label>
                           {editMode ? (
                             <Input
                               value={selectedCustomer.lastName}
@@ -782,7 +782,7 @@ export default function CustomerManagement() {
                       </div>
                       
                       <div className="space-y-2">
-                        <Label>Email</Label>
+                        <Label>אימייל</Label>
                         <div className="flex items-center space-x-2">
                           <Mail className="w-4 h-4 text-slate-500" />
                           <span className="font-medium">{selectedCustomer.email}</span>
@@ -794,13 +794,13 @@ export default function CustomerManagement() {
 
                       {selectedCustomer.phone && (
                         <div className="space-y-2">
-                          <Label>Phone</Label>
+                          <Label>טלפון</Label>
                           <div className="flex items-center space-x-2">
                             <Phone className="w-4 h-4 text-slate-500" />
                             <span className="font-medium">{selectedCustomer.phone}</span>
                             <Button variant="outline" size="sm" data-testid="call-customer">
-                              <Phone className="w-3 h-3 mr-1" />
-                              Call
+                              <Phone className="w-3 h-3 ml-1" />
+                              התקשר
                             </Button>
                           </div>
                         </div>
@@ -808,13 +808,13 @@ export default function CustomerManagement() {
 
                       {selectedCustomer.dateOfBirth && (
                         <div className="space-y-2">
-                          <Label>Date of Birth</Label>
+                          <Label>תאריך לידה</Label>
                           <div className="font-medium">{new Date(selectedCustomer.dateOfBirth).toLocaleDateString()}</div>
                         </div>
                       )}
 
                       <div className="space-y-2">
-                        <Label>Country</Label>
+                        <Label>מדינה</Label>
                         <div className="flex items-center space-x-2">
                           <MapPin className="w-4 h-4 text-slate-500" />
                           <span className="font-medium">{selectedCustomer.country || t('customers.country.notSpecified', language)}</span>
@@ -846,11 +846,11 @@ export default function CustomerManagement() {
                   {/* Loyalty & Status */}
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-lg">Loyalty & Status</CardTitle>
+                      <CardTitle className="text-lg">מועדון וסטטוס</CardTitle>
                     </CardHeader>
                     <CardContent className="space-y-4">
                       <div className="space-y-2">
-                        <Label>Loyalty Tier</Label>
+                        <Label>דרגת מועדון</Label>
                         <Badge className={`${getLoyaltyTierColor(selectedCustomer.loyaltyTier)} border text-sm`}>
                           <Crown className="w-4 h-4 mr-2" />
                           {selectedCustomer.loyaltyTier.charAt(0).toUpperCase() + selectedCustomer.loyaltyTier.slice(1)}
@@ -858,7 +858,7 @@ export default function CustomerManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Total Spent</Label>
+                        <Label>סה״כ הוצאה</Label>
                         <div className="flex items-center space-x-2">
                           <DollarSign className="w-4 h-4 text-green-500" />
                           <span className="text-2xl font-bold text-green-600">
@@ -868,11 +868,11 @@ export default function CustomerManagement() {
                       </div>
 
                       <div className="space-y-2">
-                        <Label>Wash Balance</Label>
+                        <Label>יתרת שטיפות</Label>
                         <div className="flex items-center space-x-2">
                           <Gift className="w-4 h-4 text-[#D4AF37]" />
                           <span className="text-xl font-bold text-[#B8932F]">
-                            {selectedCustomer.washBalance} washes
+                            {selectedCustomer.washBalance} שטיפות
                           </span>
                         </div>
                       </div>
@@ -881,7 +881,7 @@ export default function CustomerManagement() {
 
                       <div className="space-y-3">
                         <div className="flex items-center justify-between">
-                          <Label>Loyalty Program</Label>
+                          <Label>תוכנית נאמנות</Label>
                           <Switch
                             checked={selectedCustomer.loyaltyProgram}
                             onCheckedChange={(checked) => {
@@ -895,7 +895,7 @@ export default function CustomerManagement() {
                         </div>
 
                         <div className="flex items-center justify-between">
-                          <Label>Email Verified</Label>
+                          <Label>אימייל מאומת</Label>
                           <div className="flex items-center space-x-2">
                             {selectedCustomer.isVerified ? (
                               <CheckCircle className="w-5 h-5 text-green-500" />
@@ -915,25 +915,25 @@ export default function CustomerManagement() {
                 {/* Quick Actions */}
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Quick Actions</CardTitle>
+                    <CardTitle className="text-lg">פעולות מהירות</CardTitle>
                   </CardHeader>
                   <CardContent>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                       <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="view-bay-status">
                         <Calendar className="w-6 h-6" />
-                        <span>Bay Status</span>
+                        <span>סטטוס עמדה</span>
                       </Button>
                       <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="send-email">
                         <Mail className="w-6 h-6" />
-                        <span>Send Email</span>
+                        <span>שליחת אימייל</span>
                       </Button>
                       <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="send-promotion">
                         <Gift className="w-6 h-6" />
-                        <span>Send Promotion</span>
+                        <span>שליחת מבצע</span>
                       </Button>
                       <Button variant="outline" className="h-20 flex-col space-y-2" data-testid="mark-vip">
                         <Star className="w-6 h-6" />
-                        <span>Mark as VIP</span>
+                        <span>סימון כ-VIP</span>
                       </Button>
                     </div>
                   </CardContent>
@@ -944,14 +944,14 @@ export default function CustomerManagement() {
               <TabsContent value="history" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Service History</CardTitle>
-                    <CardDescription>Complete wash package history and satisfaction ratings</CardDescription>
+                    <CardTitle className="text-lg">היסטוריית שירות</CardTitle>
+                    <CardDescription>היסטוריית חבילות שטיפה ודירוגי שביעות רצון</CardDescription>
                   </CardHeader>
                   <CardContent>
                     {historyLoading ? (
                       <div className="text-center py-8">
                         <div className="w-8 h-8 border-2 border-[#B8932F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-slate-600">Loading service history...</p>
+                        <p className="text-slate-600">טוען היסטוריית שירות...</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -961,14 +961,14 @@ export default function CustomerManagement() {
                               <div>
                                 <h4 className="font-medium">{wash.packageName}</h4>
                                 <p className="text-sm text-slate-600">
-                                  {new Date(wash.createdAt).toLocaleDateString()} • {wash.washCount} wash{wash.washCount > 1 ? 'es' : ''}
+                                  {new Date(wash.createdAt).toLocaleDateString("he-IL")} • {wash.washCount} שטיפות
                                 </p>
                               </div>
                               <div className="text-right">
                                 <div className="font-bold text-green-600">₪{parseFloat(wash.finalPrice).toLocaleString()}</div>
                                 {parseFloat(wash.discountApplied) > 0 && (
                                   <div className="text-sm text-[#B8932F]">
-                                    {parseFloat(wash.discountApplied).toFixed(1)}% discount
+                                    {parseFloat(wash.discountApplied).toFixed(1)}% הנחה
                                   </div>
                                 )}
                               </div>
@@ -978,13 +978,13 @@ export default function CustomerManagement() {
                                 {wash.status}
                               </Badge>
                               {wash.paymentMethod && (
-                                <span className="text-slate-600">Paid via {wash.paymentMethod}</span>
+                                <span className="text-slate-600">שולם ב-{wash.paymentMethod}</span>
                               )}
                             </div>
                           </div>
                         )) || (
                           <div className="text-center py-8 text-slate-600">
-                            No service history found
+                            לא נמצאה היסטוריית שירות
                           </div>
                         )}
                       </div>
@@ -997,16 +997,16 @@ export default function CustomerManagement() {
               <TabsContent value="communications" className="space-y-6 mt-6">
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Communication History</CardTitle>
-                    <CardDescription>Track all interactions and add new communications</CardDescription>
+                    <CardTitle className="text-lg">היסטוריית תקשורת</CardTitle>
+                    <CardDescription>מעקב אחר כל האינטראקציות והוספת תקשורת חדשה</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-6">
                     {/* Add New Communication */}
                     <div className="border rounded-lg p-4 bg-white">
-                      <h4 className="font-medium mb-4">Add New Communication</h4>
+                      <h4 className="font-medium mb-4">הוספת תקשורת</h4>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label>Type</Label>
+                          <Label>סוג</Label>
                           <Select
                             value={newCommunication.type}
                             onValueChange={(value) => setNewCommunication(prev => ({ ...prev, type: value }))}
@@ -1015,16 +1015,16 @@ export default function CustomerManagement() {
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="note">Note</SelectItem>
-                              <SelectItem value="email">Email</SelectItem>
-                              <SelectItem value="phone">Phone Call</SelectItem>
+                              <SelectItem value="note">הערה</SelectItem>
+                              <SelectItem value="email">אימייל</SelectItem>
+                              <SelectItem value="phone">שיחת טלפון</SelectItem>
                               <SelectItem value="sms">SMS</SelectItem>
-                              <SelectItem value="meeting">Meeting</SelectItem>
+                              <SelectItem value="meeting">פגישה</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label>Subject</Label>
+                          <Label>נושא</Label>
                           <Input
                             value={newCommunication.subject}
                             onChange={(e) => setNewCommunication(prev => ({ ...prev, subject: e.target.value }))}
@@ -1034,7 +1034,7 @@ export default function CustomerManagement() {
                         </div>
                       </div>
                       <div className="space-y-2 mt-4">
-                        <Label>Summary</Label>
+                        <Label>סיכום</Label>
                         <Textarea
                           value={newCommunication.summary}
                           onChange={(e) => setNewCommunication(prev => ({ ...prev, summary: e.target.value }))}
@@ -1044,7 +1044,7 @@ export default function CustomerManagement() {
                         />
                       </div>
                       <div className="space-y-2 mt-4">
-                        <Label>Outcome</Label>
+                        <Label>תוצאה</Label>
                         <Input
                           value={newCommunication.outcome}
                           onChange={(e) => setNewCommunication(prev => ({ ...prev, outcome: e.target.value }))}
@@ -1066,7 +1066,7 @@ export default function CustomerManagement() {
                         className="mt-4"
                         data-testid="add-communication"
                       >
-                        <Send className="w-4 h-4 mr-2" />
+                        <Send className="w-4 h-4 ml-2" />
                         {addCommunicationMutation.isPending ? t('customers.actions.adding', language) : t('customers.actions.addCommunication', language)}
                       </Button>
                     </div>
@@ -1075,7 +1075,7 @@ export default function CustomerManagement() {
                     {communicationsLoading ? (
                       <div className="text-center py-8">
                         <div className="w-8 h-8 border-2 border-[#B8932F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-slate-600">Loading communications...</p>
+                        <p className="text-slate-600">טוען תקשורות...</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -1090,10 +1090,10 @@ export default function CustomerManagement() {
                                   {comm.communicationType}
                                 </Badge>
                                 <span className="text-sm text-slate-600">
-                                  {new Date(comm.createdAt).toLocaleDateString()} at {new Date(comm.createdAt).toLocaleTimeString()}
+                                  {new Date(comm.createdAt).toLocaleDateString("he-IL")} בשעה {new Date(comm.createdAt).toLocaleTimeString("he-IL")}
                                 </span>
                               </div>
-                              <span className="text-sm text-slate-500">by {comm.createdBy}</span>
+                              <span className="text-sm text-slate-500">ע״י {comm.createdBy}</span>
                             </div>
                             {comm.subject && (
                               <h4 className="font-medium mb-2">{comm.subject}</h4>
@@ -1101,13 +1101,13 @@ export default function CustomerManagement() {
                             <p className="text-slate-700 mb-2">{comm.summary}</p>
                             {comm.outcome && (
                               <div className="text-sm text-slate-600 italic">
-                                Outcome: {comm.outcome}
+                                תוצאה: {comm.outcome}
                               </div>
                             )}
                           </div>
                         )) || (
                           <div className="text-center py-8 text-slate-600">
-                            No communications found
+                            לא נמצאו תקשורות
                           </div>
                         )}
                       </div>
@@ -1121,19 +1121,19 @@ export default function CustomerManagement() {
                 <Card>
                   <CardHeader className="flex flex-row items-center justify-between">
                     <div>
-                      <CardTitle className="text-lg">Pet Information</CardTitle>
-                      <CardDescription>Manage pet details, special requirements, and allergies</CardDescription>
+                      <CardTitle className="text-lg">פרטי חיה</CardTitle>
+                      <CardDescription>ניהול פרטי חיה, דרישות מיוחדות ואלרגיות</CardDescription>
                     </div>
                     <Button data-testid="add-pet">
-                      <Plus className="w-4 h-4 mr-2" />
-                      Add Pet
+                      <Plus className="w-4 h-4 ml-2" />
+                      הוספת חיה
                     </Button>
                   </CardHeader>
                   <CardContent>
                     {petsLoading ? (
                       <div className="text-center py-8">
                         <div className="w-8 h-8 border-2 border-[#B8932F] border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-                        <p className="text-slate-600">Loading pet information...</p>
+                        <p className="text-slate-600">טוען פרטי חיה...</p>
                       </div>
                     ) : (
                       <div className="space-y-4">
@@ -1148,33 +1148,33 @@ export default function CustomerManagement() {
                                 </div>
                               </div>
                               <Button variant="outline" size="sm" data-testid={`edit-pet-${pet.id}`}>
-                                <Edit className="w-3 h-3 mr-1" />
-                                Edit
+                                <Edit className="w-3 h-3 ml-1" />
+                                עריכה
                               </Button>
                             </div>
                             <div className="grid grid-cols-2 gap-4 text-sm">
                               {pet.age && (
                                 <div>
-                                  <span className="text-slate-500">Age:</span>
-                                  <span className="ml-2 font-medium">{pet.age} years</span>
+                                  <span className="text-slate-500">גיל:</span>
+                                  <span className="mr-2 font-medium">{pet.age} שנים</span>
                                 </div>
                               )}
                               {pet.weight && (
                                 <div>
-                                  <span className="text-slate-500">Weight:</span>
-                                  <span className="ml-2 font-medium">{pet.weight}</span>
+                                  <span className="text-slate-500">משקל:</span>
+                                  <span className="mr-2 font-medium">{pet.weight}</span>
                                 </div>
                               )}
                             </div>
                             {pet.specialRequirements && (
                               <div className="mt-3">
-                                <span className="text-sm text-slate-500">Special Requirements:</span>
+                                <span className="text-sm text-slate-500">דרישות מיוחדות:</span>
                                 <p className="text-sm text-slate-700 mt-1">{pet.specialRequirements}</p>
                               </div>
                             )}
                             {pet.allergies && (
                               <div className="mt-3">
-                                <span className="text-sm text-slate-500">Allergies:</span>
+                                <span className="text-sm text-slate-500">אלרגיות:</span>
                                 <div className="flex flex-wrap gap-2 mt-1">
                                   {pet.allergies.split(',').map((allergy, index) => (
                                     <Badge key={index} variant="destructive" className="text-xs">
@@ -1188,10 +1188,10 @@ export default function CustomerManagement() {
                         )) || (
                           <div className="text-center py-8 text-slate-600">
                             <PawPrint className="w-12 h-12 mx-auto mb-4 text-slate-400" />
-                            <p>No pet information found</p>
+                            <p>לא נמצאו פרטי חיה</p>
                             <Button className="mt-4" data-testid="add-first-pet">
-                              <Plus className="w-4 h-4 mr-2" />
-                              Add Pet Information
+                              <Plus className="w-4 h-4 ml-2" />
+                              הוספת פרטי חיה
                             </Button>
                           </div>
                         )}
@@ -1206,33 +1206,33 @@ export default function CustomerManagement() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium text-slate-600">Customer Lifetime Value</CardTitle>
+                      <CardTitle className="text-sm font-medium text-slate-600">ערך לקוח לאורך זמן</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold text-green-600">
                         ₪{parseFloat(selectedCustomer.totalSpent).toLocaleString()}
                       </div>
                       <p className="text-sm text-slate-600 mt-1">
-                        Since {new Date(selectedCustomer.createdAt).toLocaleDateString()}
+                        מאז {new Date(selectedCustomer.createdAt).toLocaleDateString("he-IL")}
                       </p>
                     </CardContent>
                   </Card>
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium text-slate-600">Visit Frequency</CardTitle>
+                      <CardTitle className="text-sm font-medium text-slate-600">תדירות ביקורים</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold text-[#B8932F]">
                         {((customerWashHistory as any) || []).length || 0}
                       </div>
-                      <p className="text-sm text-slate-600 mt-1">Total visits</p>
+                      <p className="text-sm text-slate-600 mt-1">סה״כ ביקורים</p>
                     </CardContent>
                   </Card>
 
                   <Card>
                     <CardHeader>
-                      <CardTitle className="text-sm font-medium text-slate-600">Average Order Value</CardTitle>
+                      <CardTitle className="text-sm font-medium text-slate-600">שווי הזמנה ממוצע</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="text-2xl font-bold text-[#B8932F]">
@@ -1241,24 +1241,24 @@ export default function CustomerManagement() {
                           '0'
                         }
                       </div>
-                      <p className="text-sm text-slate-600 mt-1">Per visit</p>
+                      <p className="text-sm text-slate-600 mt-1">לביקור</p>
                     </CardContent>
                   </Card>
                 </div>
 
                 <Card>
                   <CardHeader>
-                    <CardTitle className="text-lg">Customer Journey</CardTitle>
-                    <CardDescription>Timeline of customer interactions and milestones</CardDescription>
+                    <CardTitle className="text-lg">מסע הלקוח</CardTitle>
+                    <CardDescription>ציר זמן של אינטראקציות ואבני דרך</CardDescription>
                   </CardHeader>
                   <CardContent>
                     <div className="space-y-4">
                       <div className="flex items-center space-x-4 p-3 bg-[#D4AF37] rounded-lg">
                         <div className="w-3 h-3 bg-[#D4AF37] rounded-full"></div>
                         <div>
-                          <div className="font-medium">Customer Registration</div>
+                          <div className="font-medium">הרשמת לקוח</div>
                           <div className="text-sm text-slate-600">
-                            {new Date(selectedCustomer.createdAt).toLocaleDateString()}
+                            {new Date(selectedCustomer.createdAt).toLocaleDateString("he-IL")}
                           </div>
                         </div>
                       </div>
@@ -1267,8 +1267,8 @@ export default function CustomerManagement() {
                         <div className="flex items-center space-x-4 p-3 bg-green-50 rounded-lg">
                           <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                           <div>
-                            <div className="font-medium">Email Verified</div>
-                            <div className="text-sm text-slate-600">Account verification completed</div>
+                            <div className="font-medium">אימייל מאומת</div>
+                            <div className="text-sm text-slate-600">אימות החשבון הושלם</div>
                           </div>
                         </div>
                       )}
@@ -1277,9 +1277,9 @@ export default function CustomerManagement() {
                         <div className="flex items-center space-x-4 p-3 bg-[#D4AF37] rounded-lg">
                           <div className="w-3 h-3 bg-[#D4AF37] rounded-full"></div>
                           <div>
-                            <div className="font-medium">First Service</div>
+                            <div className="font-medium">שירות ראשון</div>
                             <div className="text-sm text-slate-600">
-                              {new Date(((customerWashHistory as any) || [])[((customerWashHistory as any) || []).length - 1]?.createdAt).toLocaleDateString()}
+                              {new Date(((customerWashHistory as any) || [])[((customerWashHistory as any) || []).length - 1]?.createdAt).toLocaleDateString("he-IL")}
                             </div>
                           </div>
                         </div>
@@ -1289,9 +1289,9 @@ export default function CustomerManagement() {
                         <div className="flex items-center space-x-4 p-3 bg-white rounded-lg">
                           <div className="w-3 h-3 bg-yellow-500 rounded-full"></div>
                           <div>
-                            <div className="font-medium">Loyalty Tier Upgraded</div>
+                            <div className="font-medium">עלייה בדרגת מועדון</div>
                             <div className="text-sm text-slate-600">
-                              Reached {selectedCustomer.loyaltyTier} status
+                              הגיע לדרגת {selectedCustomer.loyaltyTier}
                             </div>
                           </div>
                         </div>
