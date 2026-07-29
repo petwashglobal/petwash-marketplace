@@ -14,7 +14,6 @@ import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { logger } from '../lib/logger';
 import { searchIsraelCities } from '@shared/data/israel-cities';
-import { searchIsraelStreets } from '../lib/israelStreets';
 
 const router = Router();
 
@@ -130,21 +129,6 @@ async function nominatimSuggest(q: string, lang: string): Promise<Prediction[]> 
   }
 }
 
-// PRIMARY: street suggestions from our OWN baked-in Israeli streets dataset
-// (63k streets, zero network, in Hebrew). No coordinates/house-number — the user
-// types the number and coords are filled by geocode-on-save.
-function localStreetSuggest(q: string): Prediction[] {
-  return searchIsraelStreets(q, 6).map((r) => ({
-    placeId: `ilstreet:${r.street}|${r.city}`,
-    description: `${r.street}, ${r.city}`,
-    mainText: r.street,
-    secondaryText: r.city,
-    street: r.street,
-    city: r.city,
-    countryCode: 'IL',
-  }));
-}
-
 // Never-empty floor: city suggestions from our OWN baked-in dataset, zero network.
 function localCitySuggest(q: string): Prediction[] {
   const isHebrew = /[֐-׿]/.test(q);
@@ -174,19 +158,16 @@ router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
     return res.json({ predictions: hit.data });
   }
 
-  // PRIMARY: our own baked-in Israeli streets — instant, offline, no fees, no
-  // external dependency. Covers 63k streets in Hebrew.
-  let predictions: Prediction[] = localStreetSuggest(q);
-
-  // Enhance/fallback to Photon (adds house numbers + coordinates) only when the
-  // offline street list found nothing — keeps us off any per-keystroke network call
-  // for the common case.
-  if (predictions.length === 0) {
-    try {
-      predictions = await photonSuggest(q);
-    } catch (err: any) {
-      logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
-    }
+  // PRIMARY: Photon — real Hebrew Israeli streets WITH house numbers + coordinates.
+  // (The offline 63k-street dataset was reverted from the hot path 2026-07-29: a
+  // synchronous 6.8MB parse on the request path OOM-hung the Cloud Run instance.
+  // It stays in the repo — server/data/israel-streets.json — for a memory-safe
+  // re-introduction, e.g. an async startup load.)
+  let predictions: Prediction[] = [];
+  try {
+    predictions = await photonSuggest(q);
+  } catch (err: any) {
+    logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
   }
   if (predictions.length === 0) {
     try {
