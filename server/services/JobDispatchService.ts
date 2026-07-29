@@ -25,6 +25,7 @@ import admin from "../lib/firebase-admin";
 import { db } from "../db";
 import { jobOffers, operatorPresence, walkerProfiles, sitterProfiles } from "@shared/schema";
 import { eq, and, sql, ne, gt, isNull, or, inArray } from "drizzle-orm";
+import { haversineKm } from "../lib/geo";
 import NayaxJobDispatchPaymentService from "./NayaxJobDispatchPaymentService";
 import { FCMService } from "./FCMService";
 import { logger } from "../lib/logger";
@@ -853,20 +854,8 @@ export class JobDispatchService {
     lat2: number,
     lon2: number
   ): number {
-    const R = 6371;
-    const dLat = this.deg2rad(lat2 - lat1);
-    const dLon = this.deg2rad(lon2 - lon1);
-    const a =
-      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-      Math.cos(this.deg2rad(lat1)) *
-        Math.cos(this.deg2rad(lat2)) *
-        Math.sin(dLon / 2) *
-        Math.sin(dLon / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+    // Delegates to the shared great-circle util (identical math). (2026-07-29)
+    return haversineKm(lat1, lon1, lat2, lon2);
   }
 
-  private static deg2rad(deg: number): number {
-    return deg * (Math.PI / 180);
-  }
 }

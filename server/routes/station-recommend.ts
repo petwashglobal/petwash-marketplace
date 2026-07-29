@@ -17,6 +17,7 @@
  */
 
 import { Router } from 'express';
+import { haversineKm as sharedHaversineKm } from '../lib/geo';
 import { db } from '../db';
 import { sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
@@ -27,16 +28,9 @@ const router = Router();
 // Kept as a fallback default for stations where daily_capacity is NULL.
 const BUSY_THRESHOLD_DEFAULT = 20;
 
+// Delegates to the shared great-circle util (identical math). (2026-07-29)
 function haversineKm(lat1: number, lng1: number, lat2: number, lng2: number): number {
-  const R = 6371;
-  const dLat = ((lat2 - lat1) * Math.PI) / 180;
-  const dLng = ((lng2 - lng1) * Math.PI) / 180;
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos((lat1 * Math.PI) / 180) *
-      Math.cos((lat2 * Math.PI) / 180) *
-      Math.sin(dLng / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return sharedHaversineKm(lat1, lng1, lat2, lng2);
 }
 
 function normalize(value: number, min: number, max: number): number {

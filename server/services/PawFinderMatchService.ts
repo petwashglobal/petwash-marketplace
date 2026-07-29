@@ -8,6 +8,7 @@
  */
 
 import { logger } from '../lib/logger';
+import { haversineKm as sharedHaversineKm } from '../lib/geo';
 
 export interface MatchResult {
   similarityScore: number;
@@ -16,18 +17,14 @@ export interface MatchResult {
   dateGapDays: number;
 }
 
-function toRad(v: number) { return (v * Math.PI) / 180; }
-
+// Nullable wrapper over the shared great-circle util: PawFinder posts may lack
+// coords, and a null distance is meaningful here (unknown, not zero). (2026-07-29)
 function haversineKm(
   lat1?: number | null, lon1?: number | null,
   lat2?: number | null, lon2?: number | null,
 ): number | null {
   if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) return null;
-  const R = 6371;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return sharedHaversineKm(lat1, lon1, lat2, lon2);
 }
 
 function daysBetween(a: string, b: string) {
