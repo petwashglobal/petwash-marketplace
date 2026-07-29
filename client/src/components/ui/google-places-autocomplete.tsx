@@ -44,6 +44,9 @@ export interface PlaceDetails {
   street?: string;
   streetNumber?: string;
   apartment?: string;
+  floor?: string;
+  entrance?: string;
+  notes?: string;      // access notes for the provider/courier
   city?: string;
   state?: string;
   postalCode?: string;
@@ -119,6 +122,9 @@ export function GooglePlacesAutocomplete({
   const [selectedPlace, setSelectedPlace] = useState<PlaceDetails | null>(null);
   const [buildingNumber, setBuildingNumber] = useState('');
   const [apartment, setApartment] = useState('');
+  const [floor, setFloor] = useState('');
+  const [entrance, setEntrance] = useState('');
+  const [accessNotes, setAccessNotes] = useState('');
   const [postalCode, setPostalCodeState] = useState('');
   const [highlightIndex, setHighlightIndex] = useState(-1);
   const [showManualHint, setShowManualHint] = useState(false);
@@ -311,6 +317,9 @@ export function GooglePlacesAutocomplete({
     setSelectedPlace(details);
     setBuildingNumber(prediction.streetNumber || '');
     setApartment('');
+    setFloor('');
+    setEntrance('');
+    setAccessNotes('');
     setPostalCodeState(details.postalCode || '');
     onChange(details.formattedAddress, details);
     onPlaceSelected?.(details);
@@ -362,18 +371,25 @@ export function GooglePlacesAutocomplete({
     }
   }, [showDropdown, predictions, highlightIndex, selectPrediction]);
 
-  const emitUpdatedDetails = useCallback((base: PlaceDetails, bldg: string, apt: string, zip: string) => {
+  const emitUpdatedDetails = useCallback((
+    base: PlaceDetails, bldg: string, apt: string, zip: string, flr: string, ent: string, nts: string,
+  ) => {
     const updated: PlaceDetails = {
       ...base,
       streetNumber: bldg || base.streetNumber,
       apartment: apt || undefined,
+      floor: flr || undefined,
+      entrance: ent || undefined,
+      notes: nts || undefined,
       postalCode: zip || base.postalCode,
     };
-    // Rebuild formatted address incorporating building number + apartment + country
+    // Rebuild the formatted address from street + number + entrance/floor/apartment
+    // (access notes stay OUT of the formatted string — they're internal for the provider).
     let fullAddr = base.street
       ? `${base.street}${bldg ? ' ' + bldg : ''}${base.city ? ', ' + base.city : ''}${base.country ? ', ' + base.country : ''}`
       : base.formattedAddress;
-    if (apt) fullAddr = `${fullAddr}, ${apt}`;
+    const unit = [ent && `כניסה ${ent}`, flr && `קומה ${flr}`, apt && `דירה ${apt}`].filter(Boolean).join(', ');
+    if (unit) fullAddr = `${fullAddr} (${unit})`;
     updated.formattedAddress = fullAddr;
     onChange(fullAddr, updated);
     onPlaceSelected?.(updated);
@@ -382,20 +398,38 @@ export function GooglePlacesAutocomplete({
   const handleBuildingNumberChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setBuildingNumber(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, val, apartment, postalCode);
-  }, [selectedPlace, apartment, postalCode, emitUpdatedDetails]);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, val, apartment, postalCode, floor, entrance, accessNotes);
+  }, [selectedPlace, apartment, postalCode, floor, entrance, accessNotes, emitUpdatedDetails]);
 
   const handleApartmentChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setApartment(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, val, postalCode);
-  }, [selectedPlace, buildingNumber, postalCode, emitUpdatedDetails]);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, val, postalCode, floor, entrance, accessNotes);
+  }, [selectedPlace, buildingNumber, postalCode, floor, entrance, accessNotes, emitUpdatedDetails]);
+
+  const handleFloorChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setFloor(val);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, postalCode, val, entrance, accessNotes);
+  }, [selectedPlace, buildingNumber, apartment, postalCode, entrance, accessNotes, emitUpdatedDetails]);
+
+  const handleEntranceChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setEntrance(val);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, postalCode, floor, val, accessNotes);
+  }, [selectedPlace, buildingNumber, apartment, postalCode, floor, accessNotes, emitUpdatedDetails]);
+
+  const handleNotesChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const val = e.target.value;
+    setAccessNotes(val);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, postalCode, floor, entrance, val);
+  }, [selectedPlace, buildingNumber, apartment, postalCode, floor, entrance, emitUpdatedDetails]);
 
   const handlePostalCodeChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setPostalCodeState(val);
-    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, val);
-  }, [selectedPlace, buildingNumber, apartment, emitUpdatedDetails]);
+    if (selectedPlace) emitUpdatedDetails(selectedPlace, buildingNumber, apartment, val, floor, entrance, accessNotes);
+  }, [selectedPlace, buildingNumber, apartment, floor, entrance, accessNotes, emitUpdatedDetails]);
 
   // Dropdown rendered via portal so it escapes any overflow:hidden parent container.
   // Three states are visible to the user — never a silent "dropdown vanished":
@@ -610,7 +644,40 @@ export function GooglePlacesAutocomplete({
                 type="text"
                 value={apartment}
                 onChange={handleApartmentChange}
-                placeholder={apartmentPlaceholder || 'דירה 3, קומה 2'}
+                placeholder={apartmentPlaceholder || 'דירה 3'}
+                className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
+                style={{ fontSize: '16px' }}
+                autoComplete="off"
+                dir="rtl"
+              />
+            </div>
+          </div>
+          {/* Floor + entrance — so a sitter/courier reaches the right door */}
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
+                קומה
+              </Label>
+              <Input
+                type="text"
+                value={floor}
+                onChange={handleFloorChange}
+                placeholder="לדוג׳ 3 / קרקע"
+                className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
+                style={{ fontSize: '16px' }}
+                autoComplete="off"
+                dir="rtl"
+              />
+            </div>
+            <div>
+              <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
+                כניסה
+              </Label>
+              <Input
+                type="text"
+                value={entrance}
+                onChange={handleEntranceChange}
+                placeholder="לדוג׳ א׳ / B"
                 className="px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] min-h-[44px] touch-manipulation bg-white"
                 style={{ fontSize: '16px' }}
                 autoComplete="off"
@@ -632,6 +699,21 @@ export function GooglePlacesAutocomplete({
               style={{ fontSize: '16px' }}
               autoComplete="off"
               dir="ltr"
+            />
+          </div>
+          {/* Access notes — what the sitter/walker/courier needs to reach you */}
+          <div>
+            <Label className="text-xs font-semibold text-gray-500 mb-1 block uppercase tracking-wide">
+              הערות גישה (לנותן השירות)
+            </Label>
+            <textarea
+              value={accessNotes}
+              onChange={handleNotesChange}
+              rows={2}
+              placeholder="קוד שער, לצלצל בפעמון, כלב בחצר, להשאיר ליד הדלת..."
+              className="w-full px-3 py-2.5 text-sm rounded-lg border-2 border-gray-200 focus:border-[#D4AF37] focus:ring-2 focus:ring-[#D4AF37] touch-manipulation bg-white"
+              style={{ fontSize: '16px' }}
+              dir="rtl"
             />
           </div>
         </div>

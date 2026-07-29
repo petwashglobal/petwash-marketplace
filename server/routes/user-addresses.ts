@@ -48,6 +48,9 @@ router.post("/", requireAuth, async (req, res) => {
       street: z.string().optional(),
       streetNumber: z.string().optional(),
       apartment: z.string().optional(),
+      floor: z.string().max(30).optional(),
+      entrance: z.string().max(30).optional(),
+      notes: z.string().max(500).optional(),
       city: z.string().optional(),
       postalCode: z.string().optional(),
       lat: z.number().optional(),
@@ -97,7 +100,13 @@ router.post("/", requireAuth, async (req, res) => {
           lat: match.lat ?? (data.lat?.toString() ?? null),
           lng: match.lng ?? (data.lng?.toString() ?? null),
           postalCode: data.postalCode ?? match.postalCode,
+          // Access details — incoming wins (user just re-entered them)
+          apartment: data.apartment ?? match.apartment,
+          floor: data.floor ?? match.floor,
+          entrance: data.entrance ?? match.entrance,
+          notes: data.notes ?? match.notes,
           isDefault: data.isDefault ? true : match.isDefault,
+          updatedAt: new Date(),
         })
         .where(eq(userAddresses.id, match.id))
         .returning();
@@ -126,6 +135,9 @@ router.post("/", requireAuth, async (req, res) => {
         street: data.street,
         streetNumber: data.streetNumber,
         apartment: data.apartment,
+        floor: data.floor,
+        entrance: data.entrance,
+        notes: data.notes,
         city: data.city,
         postalCode: data.postalCode,
         lat: data.lat?.toString(),
@@ -141,7 +153,7 @@ router.post("/", requireAuth, async (req, res) => {
   }
 });
 
-// PATCH /api/user/addresses/:id — update label or set as default
+// PATCH /api/user/addresses/:id — edit any field, set default, or relabel
 router.patch("/:id", requireAuth, async (req, res) => {
   try {
     const userId = (req as any).user.uid;
@@ -150,10 +162,25 @@ router.patch("/:id", requireAuth, async (req, res) => {
     const schema = z.object({
       label: z.enum(["home", "work", "other", "custom"]).optional(),
       customLabel: z.string().max(80).optional(),
+      address: z.string().min(3).optional(),
+      street: z.string().optional(),
+      streetNumber: z.string().optional(),
+      apartment: z.string().optional(),
+      floor: z.string().max(30).optional(),
+      entrance: z.string().max(30).optional(),
+      notes: z.string().max(500).optional(),
+      city: z.string().optional(),
+      postalCode: z.string().optional(),
+      lat: z.number().optional(),
+      lng: z.number().optional(),
       isDefault: z.boolean().optional(),
     });
 
-    const data = schema.parse(req.body);
+    const raw = schema.parse(req.body);
+    // decimal columns take strings; convert lat/lng
+    const data: any = { ...raw, updatedAt: new Date() };
+    if (raw.lat !== undefined) data.lat = raw.lat.toString();
+    if (raw.lng !== undefined) data.lng = raw.lng.toString();
 
     if (data.isDefault) {
       await db.update(userAddresses).set({ isDefault: false }).where(eq(userAddresses.userId, userId));
@@ -161,7 +188,7 @@ router.patch("/:id", requireAuth, async (req, res) => {
 
     const [updated] = await db
       .update(userAddresses)
-      .set({ ...data })
+      .set(data)
       .where(and(eq(userAddresses.id, id), eq(userAddresses.userId, userId)))
       .returning();
 

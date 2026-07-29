@@ -172,6 +172,11 @@ export const userAddresses = pgTable("user_addresses", {
   street: varchar("street", { length: 200 }),
   streetNumber: varchar("street_number", { length: 30 }),
   apartment: varchar("apartment", { length: 50 }),
+  // Structured access details so a sitter/walker/courier can actually reach the
+  // door — free-text apartment alone was not enough to dispatch. (2026-07-29)
+  floor: varchar("floor", { length: 30 }),           // e.g. "3", "קרקע"
+  entrance: varchar("entrance", { length: 30 }),     // e.g. "א", "B", "left"
+  notes: text("notes"),                              // access notes: gate code, "ring bell", "dog in yard"
   city: varchar("city", { length: 100 }),
   postalCode: varchar("postal_code", { length: 20 }),
   lat: decimal("lat", { precision: 10, scale: 7 }),
@@ -180,6 +185,7 @@ export const userAddresses = pgTable("user_addresses", {
   usageCount: integer("usage_count").default(1).notNull(),
   lastUsedAt: timestamp("last_used_at").defaultNow(),
   createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
 }, (table) => [
   index("idx_user_addresses_user").on(table.userId),
 ]);
