@@ -9,7 +9,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { type PlaceDetails } from "@/components/ui/google-places-autocomplete";
+import { AddressPicker } from "@/components/ui/address-picker";
 import { NativeDateSelect } from '@/components/ui/native-date-select';
 import { useToast } from "@/hooks/use-toast";
 import { Loader2, Gift, MapPin, Mail, User, Calendar, DollarSign, Clock } from "lucide-react";
@@ -309,13 +310,13 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
               <CardContent className="space-y-4">
                 <div>
                   <Label>{t('giftCards.fullAddress', language)} *</Label>
-                  <GooglePlacesAutocomplete
+                  <AddressPicker
                     value={formData.address}
                     onChange={handleAddressChange}
                     onPlaceSelected={handlePlaceSelected}
                     placeholder={t('giftCards.addressPlaceholder', language)}
+                    isHebrew={language === 'he'}
                     className="w-full"
-                    country={['il', 'us', 'gb', 'au', 'ca']}
                     required
                   />
                   {formData.address && (
