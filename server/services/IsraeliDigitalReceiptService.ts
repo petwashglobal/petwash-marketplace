@@ -505,6 +505,13 @@ export class IsraeliDigitalReceiptService {
         shaamRequired,
       });
 
+      // Carry the (display-only) service address onto the receipt object so the
+      // email renderer can show it. sendReceiptEmail(receipt) has no access to
+      // `params`, and serviceAddress is intentionally NOT a DB column — so attach
+      // it in-memory here. (2026-07-29 hotfix: was `params.serviceAddress` inside
+      // sendReceiptEmail, an out-of-scope ref that threw and skipped the email.)
+      (receipt as any).serviceAddress = params.serviceAddress ?? null;
+
       let emailSent = false;
       try {
         emailSent = await this.sendReceiptEmail(receipt);
@@ -814,7 +821,7 @@ export class IsraeliDigitalReceiptService {
       <td style="padding:15px 40px;">
         <p style="margin:0;font-size:12px;color:#999;">לכבוד:</p>
         <p style="margin:4px 0;font-weight:bold;color:#000;">${receipt.customerName || receipt.customerEmail}</p>
-        ${params.serviceAddress ? `<p style="margin:2px 0 0;font-size:12px;color:#555;">${params.serviceAddress}</p>` : ''}
+        ${receipt.serviceAddress ? `<p style="margin:2px 0 0;font-size:12px;color:#555;">${receipt.serviceAddress}</p>` : ''}
       </td>
     </tr>
 
