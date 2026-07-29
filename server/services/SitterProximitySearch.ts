@@ -184,7 +184,14 @@ export class SitterProximitySearch {
         });
       }
 
-      sittersWithDistance.sort((a, b) => a.distanceKm - b.distanceKm);
+      // Rank by BOTH proximity and rating (was pure distance — a 1-star sitter next
+      // door beat a 5-star one a street away). Proximity stays primary (60%) but a
+      // better-rated sitter can outrank a marginally-closer one. Unrated sitters get
+      // a neutral 3.5/5 so new sitters aren't buried. (2026-07-29)
+      const rankScore = (s: { distanceKm: number; rating: number }) =>
+        0.6 * (1 - Math.min(s.distanceKm, radiusKm) / radiusKm) +
+        0.4 * ((s.rating > 0 ? s.rating : 3.5) / 5);
+      sittersWithDistance.sort((a, b) => rankScore(b) - rankScore(a) || a.distanceKm - b.distanceKm);
 
       logger.info('[Proximity Search] Found sitters', {
         count: sittersWithDistance.length,
