@@ -427,6 +427,8 @@ export interface ProviderTxReceiptParams {
   platformFeeRate: number;
   paymentLast4:    string;
   paymentBrand:    string;
+  /** Customer-facing booking reference — printed so receipt ↔ booking match without support lookups. */
+  bookingRef?:     string;
   durationLabel?:  string;
   language?:       'he' | 'en';
 }
@@ -480,6 +482,7 @@ export function buildProviderTxReceipt(p: ProviderTxReceiptParams): string {
     ${sectionLabel('פרטי עסקה', 'TRANSACTION DETAILS')}
     ${detailRow('מס׳ חשבונית', 'Invoice No.', `<strong>${p.invoiceNo}</strong>`, false)}
     ${detailRow('מס׳ עסקה', 'Transaction ID', p.txId, true)}
+    ${p.bookingRef ? detailRow('מספר הזמנה', 'Booking Ref', p.bookingRef, false) : ''}
     ${detailRow('תאריך הנפקה', 'Issued', fmtDate(p.date), false)}
     ${detailRow('תאריך שירות', 'Service Date', fmtDate(p.serviceDate), true)}
     ${detailRow('שירות', 'Service', p.serviceDescHe, false)}
