@@ -26,6 +26,7 @@ import {
   type SitterBooking,
   type SitterReview,
 } from '@shared/schema';
+import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
 import { eq, and, desc, sql, gte, lte } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
@@ -1193,6 +1194,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           nayaxTransactionId: paymentResult.nayaxTransactionId,
           customerEmail: owner?.email || '',
           customerName: [owner?.first, owner?.last].filter(Boolean).join(' '),
+          serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
           providerName: `${sitter.firstName} ${sitter.lastName}`,
           providerId: sitter.id.toString(),
           providerType: 'sitter',

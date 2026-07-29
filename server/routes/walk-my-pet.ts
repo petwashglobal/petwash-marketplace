@@ -22,6 +22,7 @@ import {
   type InsertWalkGpsTracking,
   type InsertWalkerReview
 } from '../../shared/schema';
+import { formatUserAddress, bookingSnapshotToAddress } from '../../shared/formatAddress';
 import { eq, and, gte, lte, lt, sql, desc, asc, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -869,6 +870,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           nayaxTransactionId: undefined,
           customerEmail: ownerEmail,
           customerName: ownerName,
+          serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
           providerName: walker.businessName || `Walker ${walker.walkerId}`,
           providerId: walker.walkerId,
           providerType: 'walker',

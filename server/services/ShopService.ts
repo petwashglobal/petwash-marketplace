@@ -11,6 +11,7 @@
 import { db } from '../db';
 import { logger } from '../lib/logger';
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
+import { formatUserAddress } from '@shared/formatAddress';
 import { IsraeliInvoiceGenerator } from './IsraeliInvoiceGenerator';
 import { getDeliveryOptions, getDeliveryLegalNote } from './shop/DeliveryRouter';
 import { customerCancellationRefundCents } from './IsraeliCancellationPolicy';
@@ -753,6 +754,19 @@ export class ShopService {
           // (that was a static provider-commission method with a different signature —
           // it silently failed, so paid shop orders got NO receipt). Direct PetWash sale
           // → no provider, no marketplace commission.
+          // Delivery address → receipt (display only). Pickup orders have no
+          // delivery_address_id, so the line is simply omitted for them.
+          let shopServiceAddress: string | undefined;
+          if (order.delivery_address_id) {
+            const da = await this._getAddress(order.delivery_address_id);
+            if (da) {
+              shopServiceAddress = formatUserAddress(
+                { street: (da as any).street, city: (da as any).city, postalCode: (da as any).zip_code },
+                { lang: 'he' },
+              ) || undefined;
+            }
+          }
+
           const { IsraeliDigitalReceiptService } = await import('./IsraeliDigitalReceiptService');
           await IsraeliDigitalReceiptService.generateReceipt({
             platform: 'shop',
@@ -760,6 +774,7 @@ export class ShopService {
             bookingId: `shop:${order.order_number ?? orderId}`,
             customerEmail: order.email || '',
             customerName: order.display_name || '',
+            serviceAddress: shopServiceAddress,
             serviceDescription: `⁦PetWash™⁩ Shop order ${order.order_number ?? orderId}`,
             serviceDescriptionHe: itemNamesHe || `הזמנת חנות ⁦PetWash™⁩ ${order.order_number ?? orderId}`,
             subtotalAmount: netCents / 100,

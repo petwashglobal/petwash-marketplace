@@ -76,6 +76,13 @@ export interface ReceiptGenerationParams {
   providerType?: string;
   serviceDescription: string;
   serviceDescriptionHe: string;
+  /**
+   * Pre-rendered service / delivery address (via shared/formatAddress). DISPLAY
+   * ONLY — shown on the receipt so the customer sees where the service/goods went.
+   * Never affects amount, VAT (vatMode/resolveReceiptVat), the tax sequence, or
+   * the bookingId dedup key. Omit for stored-value (wallet/eGift). (2026-07-29)
+   */
+  serviceAddress?: string;
   subtotalAmount: number;
   platformFeeAmount: number;
   totalAmount: number;
@@ -807,6 +814,7 @@ export class IsraeliDigitalReceiptService {
       <td style="padding:15px 40px;">
         <p style="margin:0;font-size:12px;color:#999;">לכבוד:</p>
         <p style="margin:4px 0;font-weight:bold;color:#000;">${receipt.customerName || receipt.customerEmail}</p>
+        ${params.serviceAddress ? `<p style="margin:2px 0 0;font-size:12px;color:#555;">${params.serviceAddress}</p>` : ''}
       </td>
     </tr>
 
@@ -855,6 +863,7 @@ export class IsraeliDigitalReceiptService {
     <tr>
       <td style="padding:15px 40px;">
         <p style="margin:0;font-size:12px;color:#999;">אמצעי תשלום: ${receipt.paymentMethod}</p>
+        ${receipt.bookingId ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר הזמנה: ${String(receipt.bookingId).replace(/^(shop:|sumit:)/, '')}</p>` : ''}
         ${receipt.nayaxTransactionId ? `<p style="margin:4px 0 0;font-size:12px;color:#999;">מספר עסקה: ${receipt.nayaxTransactionId}</p>` : ''}
       </td>
     </tr>
