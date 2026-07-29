@@ -23,8 +23,8 @@
 import crypto from 'crypto';
 import admin from "../lib/firebase-admin";
 import { db } from "../db";
-import { jobOffers, operatorPresence } from "@shared/schema";
-import { eq, and, sql, ne, gt, isNull, or } from "drizzle-orm";
+import { jobOffers, operatorPresence, walkerProfiles, sitterProfiles } from "@shared/schema";
+import { eq, and, sql, ne, gt, isNull, or, inArray } from "drizzle-orm";
 import NayaxJobDispatchPaymentService from "./NayaxJobDispatchPaymentService";
 import { FCMService } from "./FCMService";
 import { logger } from "../lib/logger";
@@ -435,6 +435,30 @@ export class JobDispatchService {
         )
         .limit(300);
 
+      // Real ratings: operator_presence.ratingAvg is NEVER written (always its
+      // default), so the rating weight in computeSmartScore was inert. Pull the
+      // real rating from the platform's profile table, keyed by Firebase UID.
+      // Unrated (0) → left to the neutral 5.0 fallback so new operators aren't
+      // buried. (2026-07-29)
+      const ratingByOperator = new Map<string, number>();
+      try {
+        const ids = operators.map((o) => o.operatorId).filter(Boolean) as string[];
+        if (ids.length) {
+          const plat = params.platform;
+          if (plat === 'walk-my-pet' || (plat as string) === 'walk_my_pet') {
+            const rows = await db.select({ uid: walkerProfiles.userId, r: walkerProfiles.averageRating })
+              .from(walkerProfiles).where(inArray(walkerProfiles.userId, ids));
+            for (const r of rows) if (r.uid && Number(r.r) > 0) ratingByOperator.set(r.uid, Number(r.r));
+          } else if (plat === 'sitter-suite') {
+            const rows = await db.select({ uid: sitterProfiles.userId, r: sitterProfiles.rating })
+              .from(sitterProfiles).where(inArray(sitterProfiles.userId, ids));
+            for (const r of rows) if (r.uid && Number(r.r) > 0) ratingByOperator.set(r.uid, Number(r.r));
+          }
+        }
+      } catch (e: any) {
+        logger.warn('[JobDispatch] real-rating enrichment failed (soft)', { error: e?.message });
+      }
+
       const now = Date.now();
       const candidates: RankedOperator[] = [];
 
@@ -461,7 +485,7 @@ export class JobDispatchService {
 
         if (distanceKm > params.radiusKm) continue;
 
-        const ratingAvg = Number(op.ratingAvg) || 5.0;
+        const ratingAvg = ratingByOperator.get(op.operatorId) ?? (Number(op.ratingAvg) || 5.0);
         const acceptanceRate = Number(op.acceptanceRate) || 100.0;
         const completedJobs30d = op.completedJobs30d || 0;
         const premium = !!(op.premiumBadge && op.subscriptionActive);
