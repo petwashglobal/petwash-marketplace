@@ -10,7 +10,7 @@
  * POST /checkout. Money (checkout) is the backend's domain (wallet/Sumit/escrow/VAT);
  * this UI only initiates it. Design per docs/design/2026-05-26-shop-module-physical-goods.md.
  */
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { type Language } from '@/lib/i18n';
@@ -36,6 +36,11 @@ interface Cart { id: string; items: CartItem[]; subtotalCents: number; vatCents:
 interface SavedAddress {
   id: number; full_name: string; phone: string; street: string;
   city: string; zip_code: string | null; is_default: boolean;
+}
+// A single street suggestion from /api/geocode/suggest (Photon/offline, no Google key).
+interface StreetPrediction {
+  description: string; mainText?: string; secondaryText?: string;
+  street?: string; streetNumber?: string; city?: string; postalCode?: string;
 }
 // Shape of GET /api/shop/delivery/estimate — server is the single source of truth
 // for the delivery fee; the UI never hardcodes ₪ amounts or thresholds.
@@ -75,6 +80,55 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   const [addressId, setAddressId] = useState<number | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
   const [addr, setAddr] = useState({ fullName: '', phone: '', street: '', city: '', zipCode: '' });
+  // Street autocomplete for the courier address — same Hebrew street engine the
+  // rest of the app uses (/api/geocode/suggest: Photon + offline 63k streets, no
+  // Google key). Picking a suggestion fills street + city + zip in one tap so the
+  // shipping label carries a real, deliverable address. (2026-07-29)
+  const [streetPreds, setStreetPreds] = useState<StreetPrediction[]>([]);
+  const [showStreetPreds, setShowStreetPreds] = useState(false);
+  const streetDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const streetAbortRef = useRef<AbortController | null>(null);
+
+  function onStreetChange(val: string) {
+    setAddr(v => ({ ...v, street: val }));
+    if (streetDebounceRef.current) clearTimeout(streetDebounceRef.current);
+    if (val.trim().length < 2) { setStreetPreds([]); setShowStreetPreds(false); return; }
+    streetDebounceRef.current = setTimeout(async () => {
+      try {
+        streetAbortRef.current?.abort();
+        streetAbortRef.current = new AbortController();
+        const lang = (document.documentElement.lang || (he ? 'he' : 'en')).slice(0, 2);
+        const params = new URLSearchParams({ q: val.trim(), lang });
+        const r = await fetch(getApiUrl(`/api/geocode/suggest?${params}`), {
+          signal: streetAbortRef.current.signal, credentials: 'include',
+        });
+        if (!r.ok) { setStreetPreds([]); setShowStreetPreds(false); return; }
+        const data = await r.json();
+        const raw: StreetPrediction[] = Array.isArray(data?.predictions) ? data.predictions : [];
+        // Dedup identical rows (the server can return the same street twice).
+        const seen = new Set<string>();
+        const preds = raw.filter(p => {
+          const key = `${p.street || ''}|${p.streetNumber || ''}|${p.city || ''}|${p.mainText || p.description || ''}`;
+          if (seen.has(key)) return false;
+          seen.add(key); return true;
+        }).slice(0, 6);
+        setStreetPreds(preds);
+        setShowStreetPreds(preds.length > 0);
+      } catch { /* aborted or offline — keep manual typing */ }
+    }, 250);
+  }
+
+  function pickStreet(p: StreetPrediction) {
+    const streetLine = [p.street, p.streetNumber].filter(Boolean).join(' ') || p.mainText || p.description;
+    setAddr(v => ({
+      ...v,
+      street: streetLine,
+      city: p.city || v.city,
+      zipCode: p.postalCode || v.zipCode,
+    }));
+    setStreetPreds([]);
+    setShowStreetPreds(false);
+  }
   const [estimate, setEstimate] = useState<DeliveryEstimate | null>(null);
   // Per-product bespoke engraving: pet name (HE/EN), owner, mobile, + foil font.
   type Engrave = { petName?: string; ownerName?: string; ownerMobile?: string; font?: 'serif' | 'sans' };
@@ -599,10 +653,27 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                         onChange={e => setAddr(v => ({ ...v, phone: e.target.value }))}
                         placeholder="+972 50 000 0000" aria-label={tr('Phone', 'טלפון')}
                         className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-black outline-none" />
-                      <input type="text" dir="auto" maxLength={200} value={addr.street} autoComplete="street-address"
-                        onChange={e => setAddr(v => ({ ...v, street: e.target.value }))}
-                        placeholder={tr('Street & number', 'רחוב ומספר')} aria-label={tr('Street & number', 'רחוב ומספר')}
-                        className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-black outline-none" />
+                      <div className="relative">
+                        <input type="text" dir="auto" maxLength={200} value={addr.street} autoComplete="off"
+                          onChange={e => onStreetChange(e.target.value)}
+                          onFocus={() => { if (streetPreds.length > 0) setShowStreetPreds(true); }}
+                          onBlur={() => setTimeout(() => setShowStreetPreds(false), 150)}
+                          placeholder={tr('Street & number', 'רחוב ומספר')} aria-label={tr('Street & number', 'רחוב ומספר')}
+                          className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-black outline-none" />
+                        {showStreetPreds && streetPreds.length > 0 && (
+                          <ul className="absolute z-30 left-0 right-0 mt-1 max-h-56 overflow-auto rounded-lg border border-gray-200 bg-white shadow-lg text-sm">
+                            {streetPreds.map((p, i) => (
+                              <li key={i}>
+                                <button type="button" onMouseDown={e => { e.preventDefault(); pickStreet(p); }}
+                                  className="w-full text-right px-3 py-2 hover:bg-gray-50 flex flex-col gap-0.5">
+                                  <span className="text-gray-900" dir="auto">{p.mainText || p.description}</span>
+                                  {p.secondaryText && <span className="text-gray-400 text-xs" dir="auto">{p.secondaryText}</span>}
+                                </button>
+                              </li>
+                            ))}
+                          </ul>
+                        )}
+                      </div>
                       <div className="flex gap-2">
                         <input type="text" dir="auto" maxLength={80} value={addr.city} autoComplete="address-level2"
                           onChange={e => setAddr(v => ({ ...v, city: e.target.value }))}
