@@ -175,20 +175,23 @@ router.get('/suggest', suggestLimiter, async (req: Request, res: Response) => {
     return res.json({ predictions: hit.data });
   }
 
-  // PRIMARY: our OWN baked-in 63k Israeli streets — instant, offline, no fees, no
-  // external dependency. Loaded ASYNC at startup (returns [] until ready), so it
-  // never blocks the request path (see the 2026-07-29 sync-load outage note in
-  // israelStreets.ts). While it's loading, Photon covers.
-  let predictions: Prediction[] = localStreetSuggest(q);
+  // PRIMARY: Photon — real Hebrew Israeli streets WITH house numbers AND
+  // coordinates. Coordinates matter: PetTrek fares and booker↔provider proximity
+  // matching need them, and the offline street list has none. Photon is free (no
+  // Google fee).
+  let predictions: Prediction[] = [];
+  try {
+    predictions = await photonSuggest(q);
+  } catch (err: any) {
+    logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
+  }
 
-  // Photon adds house numbers + coordinates; used when the offline list is not yet
-  // loaded or has no match.
+  // FALLBACK: our OWN baked-in 63k Israeli streets (server/data/israel-streets.json,
+  // loaded async at startup — never blocks the request path). Fills any street
+  // Photon's OSM map is missing and is the reliability backstop when Photon is
+  // down/slow. No coords → user types the house number, coords filled on save.
   if (predictions.length === 0) {
-    try {
-      predictions = await photonSuggest(q);
-    } catch (err: any) {
-      logger.warn('[geocode/suggest] photon failed (soft)', { error: err?.message });
-    }
+    predictions = localStreetSuggest(q);
   }
   if (predictions.length === 0) {
     try {
