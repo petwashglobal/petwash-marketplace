@@ -443,6 +443,7 @@ async function deliverChallengeCode(challenge: VerificationChallenge, code: stri
       to: challenge.destination,
       code,
       purpose: challenge.purpose,
+      language: (challenge.payload as any)?.language,
     });
     if (!sent) {
       await db.update(verificationChallenges).set({
