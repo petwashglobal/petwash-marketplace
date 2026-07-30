@@ -63,6 +63,7 @@ interface SearchFilters {
 
 interface Provider {
   id: number;
+  userId?: string;
   firstName: string;
   lastName: string;
   profilePictureUrl: string | null;
@@ -789,7 +790,7 @@ export default function BookingSearch() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {searchResults.map(provider => (
-                <ProviderCard key={provider.id} provider={provider} isHebrew={isHebrew} />
+                <ProviderCard key={provider.id} provider={provider} serviceType={filters.serviceType} isHebrew={isHebrew} />
               ))}
             </div>
           )}
@@ -799,13 +800,33 @@ export default function BookingSearch() {
   );
 }
 
-function ProviderCard({ provider, isHebrew }: { provider: Provider; isHebrew: boolean }) {
+// Map booking-search serviceType → the marketplace platform slug the
+// /marketplace/:platform/:id ProviderDetail resolver understands.
+// training maps to 'groomers' because both resolve the same trainers table.
+const PLATFORM_BY_SERVICE: Record<string, string> = {
+  pet_sitting: 'sitter_suite',
+  daycare: 'sitter_suite',
+  dog_walking: 'walk_my_pet',
+  grooming: 'groomers',
+  training: 'groomers',
+};
+
+function ProviderCard({ provider, serviceType, isHebrew }: { provider: Provider; serviceType: string; isHebrew: boolean }) {
   const [, setLocation] = useLocation();
+
+  // The old `/provider/:id` link was dead (no such route → NotFound).
+  // Deep-link by the provider's Firebase UID (unambiguous, non-numeric) via
+  // the marketplace detail route; K9000 stations have no marketplace profile,
+  // so they land on the K9000 platform page instead.
+  const platformSlug = PLATFORM_BY_SERVICE[serviceType];
+  const profileUrl = platformSlug
+    ? `/marketplace/${platformSlug}/${provider.userId || provider.id}`
+    : '/k9000';
 
   return (
     <Card
       className="overflow-hidden hover:shadow-xl transition-shadow cursor-pointer group"
-      onClick={() => setLocation(`/provider/${provider.id}`)}
+      onClick={() => setLocation(profileUrl)}
       data-testid={`provider-card-${provider.id}`}
     >
       <div className="relative">

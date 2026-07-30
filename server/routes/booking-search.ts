@@ -248,6 +248,26 @@ async function getBusyProviderIds(startDate: string, endDate: string, platformId
       if (b.providerId) busyIds.add(b.providerId);
     });
 
+    // booking_requests is the canonical provider-facing table — the healthy
+    // chain AND the legacy bridge both write there (keyed by the provider's
+    // Firebase UID). Without this query a provider with an accepted/confirmed
+    // request still showed as available for the same dates. No platform
+    // filter on purpose: a provider busy on one platform is busy everywhere.
+    const busyFromRequests = await db
+      .select({ providerId: bookingRequests.providerId })
+      .from(bookingRequests)
+      .where(
+        and(
+          sql`${bookingRequests.status} IN ('pending', 'accepted', 'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending', 'confirmed', 'in_progress')`,
+          sql`${bookingRequests.startDate} < ${end.toISOString()}`,
+          sql`${bookingRequests.endDate} > ${start.toISOString()}`,
+        )
+      );
+
+    busyFromRequests.forEach(r => {
+      if (r.providerId) busyIds.add(r.providerId);
+    });
+
     const unavailableConditions = [
       sql`${providerAvailability.date} >= ${start.toISOString().split('T')[0]}`,
       sql`${providerAvailability.date} <= ${end.toISOString().split('T')[0]}`,
@@ -931,8 +951,13 @@ async function searchGroomers(filters: BookingSearchFilters, searchId: string): 
     if (filters.startDate && filters.endDate) {
       const busyIds = await getBusyProviderIds(filters.startDate, filters.endDate, 'GROOMING');
       if (busyIds.length > 0) {
+        // Busy set carries both legacy trainerId keys (bookings) and Firebase
+        // UIDs (booking_requests) — exclude on both id spaces.
         conditions.push(
           sql`${trainers.trainerId} NOT IN (${sql.join(busyIds.map(id => sql`${id}`), sql`, `)})`,
+        );
+        conditions.push(
+          sql`${trainers.userId} NOT IN (${sql.join(busyIds.map(id => sql`${id}`), sql`, `)})`,
         );
       }
     }
@@ -954,6 +979,7 @@ async function searchGroomers(filters: BookingSearchFilters, searchId: string): 
 
     const providers = results.map(trainer => ({
       id: trainer.id,
+      userId: trainer.userId,
       odId: trainer.trainerId,
       firstName: trainer.firstName,
       lastName: trainer.lastName || '',
@@ -1075,8 +1101,13 @@ async function searchTrainers(filters: BookingSearchFilters, searchId: string): 
     if (filters.startDate && filters.endDate) {
       const busyIds = await getBusyProviderIds(filters.startDate, filters.endDate, 'TRAINING');
       if (busyIds.length > 0) {
+        // Busy set carries both legacy trainerId keys (bookings) and Firebase
+        // UIDs (booking_requests) — exclude on both id spaces.
         conditions.push(
           sql`${trainers.trainerId} NOT IN (${sql.join(busyIds.map(id => sql`${id}`), sql`, `)})`,
+        );
+        conditions.push(
+          sql`${trainers.userId} NOT IN (${sql.join(busyIds.map(id => sql`${id}`), sql`, `)})`,
         );
       }
     }
@@ -1098,6 +1129,7 @@ async function searchTrainers(filters: BookingSearchFilters, searchId: string): 
 
     const providers = results.map(trainer => ({
       id: trainer.id,
+      userId: trainer.userId,
       odId: trainer.trainerId,
       firstName: trainer.firstName,
       lastName: trainer.lastName || '',

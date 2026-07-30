@@ -152,8 +152,13 @@ describe('PR-E-AVAILABILITY-FLAG-TRUTH — per-platform conflict query', () => {
     expect(codeOnly).toMatch(/getConflictedProviderIds\s*\(\s*platformId\s*,/);
   });
 
-  it('14. conflict query filters by platformId, providerId list, status, and time overlap', () => {
-    expect(codeOnly).toMatch(/eq\(\s*bookings\.platformId\s*,\s*platformId\s*\)/);
+  it('14. conflict query filters by providerId list, status, and time overlap', () => {
+    // RE-POINTED (2026-07-30): the 2026-07-24 rewire deliberately DROPPED the
+    // platformId filter — the lowercase literal never matched the uppercase
+    // values BookingLifecycleService writes, so the filter silently voided the
+    // whole conflict query. realAvailabilityFilter.regression.test.ts now
+    // locks its absence; this pin previously asserted the broken shape.
+    expect(codeOnly).not.toMatch(/eq\(\s*bookings\.platformId\s*,\s*platformId\s*\)/);
     expect(codeOnly).toMatch(/inArray\(\s*bookings\.providerId\s*,/);
     expect(codeOnly).toMatch(/inArray\(\s*bookings\.status\s*,/);
     // Overlap predicate: existing start <= requested end AND existing end >= requested start.

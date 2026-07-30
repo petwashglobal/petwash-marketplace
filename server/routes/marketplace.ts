@@ -528,11 +528,12 @@ async function searchGroomers(filters: MarketplaceSearchFilters): Promise<{
       kind: 'groomer' as const,
       platform: 'groomers' as const,
       id: trainer.id,
+      userId: trainer.userId,
       odId: trainer.trainerId,
       firstName: trainer.firstName,
       lastName: trainer.lastName,
-      email: trainer.email,
-      phone: trainer.phone,
+      email: null, // PII not exposed in public marketplace responses — contact is in-platform via userId
+      phone: null, // PII not exposed publicly
       profilePictureUrl: trainer.profilePhotoUrl,
       rating: trainer.averageRating,
       totalBookings: trainer.totalSessions,
@@ -645,6 +646,47 @@ router.get('/provider/:platform/:id', async (req, res) => {
             petTypes: null,
             createdAt: sitter.createdAt,
           };
+        }
+        break;
+      }
+
+      case 'groomers': {
+        // Same table searchGroomers reads (trainers with grooming specialty).
+        // Accept the numeric trainers.id, the TR- trainerId, OR the provider's
+        // Firebase UID — the unified search returns userId (non-numeric), same
+        // parity the walker/sitter cases already have.
+        const numericId = parseInt(id);
+        const [trainer] = await db.select().from(trainers)
+          .where(
+            isNaN(numericId)
+              ? or(eq(trainers.trainerId, id), eq(trainers.userId, id))
+              : eq(trainers.id, numericId)
+          )
+          .limit(1);
+
+        if (trainer) {
+          provider = {
+            kind: 'groomer' as const,
+            platform: 'groomers' as const,
+            id: trainer.id,
+            userId: trainer.userId,
+            odId: trainer.trainerId,
+            firstName: trainer.firstName,
+            lastName: trainer.lastName,
+            email: null, // PII not exposed in public marketplace responses — contact is in-platform via userId
+            phone: null, // PII not exposed publicly
+            profilePictureUrl: trainer.profilePhotoUrl,
+            rating: trainer.averageRating,
+            totalBookings: trainer.totalSessions,
+            isActive: trainer.isActive,
+            isVerified: trainer.verificationStatus === 'verified',
+            priceDisplay: trainer.hourlyRate ? `₪${trainer.hourlyRate}/hr` : 'Contact for price',
+            city: trainer.serviceArea || '',
+            bio: trainer.bio,
+            specialties: trainer.specialties,
+            yearsOfExperience: trainer.yearsOfExperience,
+            createdAt: trainer.createdAt,
+          } as any;
         }
         break;
       }
