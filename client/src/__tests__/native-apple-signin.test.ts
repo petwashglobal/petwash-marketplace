@@ -33,9 +33,15 @@ describe('native Sign in with Apple', () => {
     expect(handler).toMatch(/signInWithCredential\(auth, credential\)/);
   });
 
-  it('the plugin import is bundler-ignored (web build never resolves it)', () => {
-    expect(handler).toMatch(/@vite-ignore/);
-    expect(handler).not.toMatch(/from '@capacitor-community\/apple-sign-in'/); // never a static import
+  it('the plugin import is a LITERAL dynamic import so Vite bundles it into a chunk', () => {
+    // Regression (2026-07-30): the old `/* @vite-ignore */ + variable specifier`
+    // left a BARE `import("@capacitor-firebase/authentication")` in the built
+    // bundle. WKWebView cannot resolve bare specifiers at runtime, so every
+    // native Apple/Google tap failed instantly. The import MUST be a literal
+    // string (bundled, code-split) and MUST NOT be vite-ignored.
+    expect(handler).not.toMatch(/@vite-ignore/);
+    expect(handler).toMatch(/await import\('@capacitor-firebase\/authentication'\)/);
+    expect(handler).not.toMatch(/from '@capacitor-community\/apple-sign-in'/); // never the Cap-7 plugin
   });
 
   it('the premium login only takes the native path for apple + native platform, else web OAuth', () => {

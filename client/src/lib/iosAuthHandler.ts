@@ -184,9 +184,12 @@ export async function signInWithAppleNative(auth: Auth): Promise<UserCredential>
   // to v7 and broke the iOS SPM graph against the Cap-8 plugins, blocking EVERY
   // iOS build. The plugin returns the Apple credential and the Firebase JS SDK
   // owns the session, so the post-auth flow stays identical to web + Google.
-  // Bundler-ignored + variable specifier so the web build never resolves it.
-  const pluginName = '@capacitor-firebase/authentication';
-  const mod: any = await import(/* @vite-ignore */ pluginName);
+  // LITERAL specifier so Vite bundles the plugin JS into a lazy chunk. The old
+  // vite-ignored variable-specifier form left a BARE specifier in the built
+  // bundle — WKWebView cannot resolve bare imports at runtime, so EVERY native
+  // Apple/Google tap threw instantly ("sign-in did not complete"). Web builds
+  // only fetch this chunk if the function is ever called (it is native-gated).
+  const mod: any = await import('@capacitor-firebase/authentication');
   const FirebaseAuthentication = mod.FirebaseAuthentication;
   if (!FirebaseAuthentication) {
     throw new Error('Apple sign-in plugin not available (native build only)');
@@ -261,8 +264,9 @@ export function isNativePlatform(): boolean {
  * scheme in Info.plist; Android: google-services.json) — operator/Xcode steps.
  */
 export async function signInWithGoogleNative(auth: Auth): Promise<UserCredential> {
-  const pluginName = '@capacitor-firebase/authentication';
-  const mod: any = await import(/* @vite-ignore */ pluginName);
+  // Literal specifier — see signInWithAppleNative: bare specifiers don't
+  // resolve in the WKWebView, Vite must bundle this into a chunk.
+  const mod: any = await import('@capacitor-firebase/authentication');
   const FirebaseAuthentication = mod.FirebaseAuthentication;
   if (!FirebaseAuthentication) {
     throw new Error('Google sign-in plugin not available (native build only)');
