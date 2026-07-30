@@ -21,6 +21,15 @@ const config: CapacitorConfig = {
     CapacitorHttp: {
       enabled: true,
     },
+    // Native Google/Apple sign-in. Without this `providers` list the plugin
+    // enables ZERO providers ("sign-in provider is not enabled") and every
+    // social button fails instantly in the app. skipNativeAuth: the plugin
+    // only returns the OAuth credential — the Firebase JS SDK exchanges it
+    // (signInWithCredential) so session/loyalty/consent flow matches web.
+    FirebaseAuthentication: {
+      skipNativeAuth: true,
+      providers: ["google.com", "apple.com"],
+    },
     SplashScreen: {
       launchShowDuration: 800,
       backgroundColor: "#ffffff",

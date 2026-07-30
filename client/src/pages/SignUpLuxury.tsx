@@ -576,6 +576,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // @capacitor-firebase/authentication. The web signInWithRedirect path
       // returns null inside the Capacitor webview, so Google/Apple sign-in only
       // works through the native handlers. Falls through to web for the browser.
+      // Facebook has no native handler yet (needs FB console keys + SDK config).
+      // Inside the app the web redirect dead-ends (returns to petwash.co.il,
+      // never back to the app) — fail honestly instead of stranding the user.
+      if (isNativePlatform() && which === 'facebook') {
+        fail(he
+          ? 'התחברות Facebook עדיין לא פעילה באפליקציה — נסה Google, Apple, נייד או אימייל'
+          : 'Facebook sign-in is not available in the app yet — please use Google, Apple, mobile or email.');
+        return;
+      }
       if (isNativePlatform() && (which === 'google' || which === 'apple')) {
         const cred = which === 'google'
           ? await signInWithGoogleNative(auth)
@@ -642,6 +651,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     setInlineError(null);
     setBusy(true);
     try {
+      // Same dead-end as Facebook inside the app: a top-level OAuth redirect
+      // can't return to the webview. Honest message until a native flow exists.
+      if (isNativePlatform()) {
+        const nativeLabel = which === 'instagram' ? 'Instagram' : 'TikTok';
+        fail(he
+          ? `התחברות ${nativeLabel} עדיין לא פעילה באפליקציה — נסה Google, Apple, נייד או אימייל`
+          : `${nativeLabel} sign-in is not available in the app yet — please use Google, Apple, mobile or email.`);
+        return;
+      }
       const r = await fetch(getApiUrl(`/api/auth/social/${which}/authorize`), { credentials: 'include' });
       const d = await r.json().catch(() => ({}));
       if (d?.authUrl) { window.location.href = d.authUrl; return; }
@@ -903,7 +921,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               buttons" on iPhone. Consent is now the single labeled block lower
               down (agreedTerms + over18 → consentOk). */}
 
-          {inlineError && (
+          {/* Single error banner policy (CEO 2026-07-30): the message renders ONCE,
+              next to the action the user just tapped (below, by the social tiles /
+              form CTA) — the old second copy up here doubled the box on screen. */}
+          {sent && inlineError && (
             <p className="sl-inlineError" role="alert">{inlineError}</p>
           )}
 
@@ -1444,15 +1465,28 @@ function styles(he: boolean) {
     .sl-input:focus{ border-color:rgba(212,175,55,.55); box-shadow:0 0 0 3px rgba(212,175,55,.18) }
     .sl-hint{ color:var(--muted); font-size:12.5px; line-height:1.4 }
     .sl-inlineError{
+      /* Light ivory notice card (CEO 2026-07-30: no brown/red boxes — lighter,
+         nicer). Warm white on the dark canvas + thin gold border = on-brand;
+         black text keeps it readable, the small dot signals attention. */
       margin:0;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,90,90,.4);
-      background:rgba(150,20,20,.22);
-      color:#ffd7d7;
+      padding:11px 14px;
+      border-radius:14px;
+      border:1px solid rgba(212,175,55,.5);
+      background:rgba(255,250,240,.96);
+      color:#1a1a1a;
       font-size:13px;
-      font-weight:700;
-      line-height:1.35;
+      font-weight:600;
+      line-height:1.4;
+      box-shadow:0 4px 16px rgba(0,0,0,.22);
+    }
+    .sl-inlineError::before{
+      content:'';
+      display:inline-block;
+      width:7px; height:7px;
+      border-radius:50%;
+      background:#D4AF37;
+      margin-inline-end:8px;
+      vertical-align:middle;
     }
     .sl-submitHint{ text-align:center; margin-top:-3px }
     .sl-field .intl-phone-wrapper{
