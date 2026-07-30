@@ -1464,7 +1464,10 @@ router.post(
               });
             }
 
-            if (provider?.email || provider?.phone) {
+            // No email/phone gate (2026-07-30): this sends PUSH only, which
+            // needs neither — the old guard silently skipped providers whose
+            // users row lacked contact fields.
+            {
               await dispatchNotifications({
                 userId: booking.providerId,
                 eventType: 'booking_confirmed',

@@ -49,7 +49,7 @@ async function getAuthenticatedUser(req: Request, res: Response) {
 // ── Status group → booking_requests enum values ───────────────────────────────
 // UI tab names → actual DB status values in new system
 const STATUS_GROUP_MAP: Record<string, string[]> = {
-  new_request:  ['pending', 'accepted', 'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending'],
+  new_request:  ['pending', 'meet_greet_requested', 'accepted', 'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending'],
   // 'provider_marked_complete' = provider said done, awaiting customer approval.
   // Keep it under the provider's ACTIVE tab (still open, NOT yet earned) so the
   // job stays visible and is NOT counted as completed/earned until it truly
@@ -695,8 +695,11 @@ router.get('/intelligence', async (req: Request, res: Response) => {
 // ── Status transition table ───────────────────────────────────────────────────
 // Defines EXACTLY which statuses each action is allowed to transition FROM.
 const ALLOWED_FROM: Record<string, string[]> = {
-  accept:   ['pending', 'accepted'],
-  decline:  ['pending', 'accepted'],
+  // meet_greet_* included 2026-07-30: a customer asking for a meet & greet
+  // previously locked the provider OUT of accepting on this (live) path —
+  // the V1 state machine always allowed it.
+  accept:   ['pending', 'accepted', 'meet_greet_requested', 'meet_greet_scheduled', 'meet_greet_completed'],
+  decline:  ['pending', 'accepted', 'meet_greet_requested', 'meet_greet_scheduled'],
   cancel:   ['accepted', 'confirmed', 'in_progress',
              'meet_greet_scheduled', 'meet_greet_completed', 'payment_pending'],
   start:    ['confirmed'],

@@ -190,6 +190,26 @@ async function autoApproveExpiredCompletions(): Promise<void> {
         });
       }
 
+      // Review-request email — auto-approved completions (the DEFAULT path:
+      // 24h customer inaction) never published booking.completed and never
+      // asked for a review (2026-07-30 audit). Direct sender, fail-soft.
+      try {
+        const { sendServiceCompletedReview } = await import('../email/sendServiceCompletedReview');
+        await sendServiceCompletedReview({
+          requestId: booking.requestId,
+          ownerId: booking.ownerId,
+          providerId: booking.providerId,
+          serviceType: booking.providerType,
+          totalCents: booking.totalCents,
+          petDetails: (booking as any).petDetails,
+          endDate: (booking as any).endDate,
+        });
+      } catch (reviewErr: any) {
+        logger.warn('[AutoApprove] review email failed (non-blocking)', {
+          error: reviewErr?.message, requestId: booking.requestId,
+        });
+      }
+
       await db
         .update(bookingRequests)
         .set({

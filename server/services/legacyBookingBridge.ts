@@ -21,8 +21,8 @@
  * today can break. Fail-soft — a bridge failure must never fail the booking.
  */
 import { db, pool } from '../db';
-import { bookingRequests, users } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { bookingRequests, users, userAddresses } from '@shared/schema';
+import { eq, desc } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
 import { logger } from '../lib/logger';
 import { dispatchNotification } from '../lib/notificationDispatcher';
@@ -58,7 +58,37 @@ export async function bridgeLegacyBooking(input: BridgeInput): Promise<{ request
 
     const requestId = `BR-${new Date().getFullYear()}-${nanoid(8)}`;
 
+    // Address snapshot for the mirror (2026-07-30): bridged rows carried NO
+    // customer address, so every reminder/receipt for a legacy-created booking
+    // fell back to "as arranged". Same source as the canonical rail: the
+    // customer's saved address book, default first. Fail-soft.
+    let addressSnapshot: Record<string, unknown> = {};
+    try {
+      const [saved] = await db.select().from(userAddresses)
+        .where(eq(userAddresses.userId, input.ownerId))
+        .orderBy(desc(userAddresses.isDefault), desc(userAddresses.lastUsedAt))
+        .limit(1);
+      if (saved) {
+        addressSnapshot = {
+          customerAddress: saved.address?.slice(0, 5000) ?? null,
+          customerStreet: saved.street?.slice(0, 200) ?? null,
+          customerStreetNumber: saved.streetNumber?.slice(0, 40) ?? null,
+          customerApartment: saved.apartment?.slice(0, 80) ?? null,
+          customerFloor: saved.floor?.slice(0, 30) ?? null,
+          customerEntrance: saved.entrance?.slice(0, 30) ?? null,
+          customerAddressNotes: saved.notes?.slice(0, 2000) ?? null,
+          customerCity: saved.city?.slice(0, 120) ?? null,
+          customerPostalCode: saved.postalCode?.slice(0, 16) ?? null,
+          customerLatitude: saved.lat != null ? String(saved.lat) : null,
+          customerLongitude: saved.lng != null ? String(saved.lng) : null,
+        };
+      }
+    } catch (addrErr: any) {
+      logger.warn('[BookingBridge] address enrichment failed (non-blocking)', { err: addrErr?.message });
+    }
+
     await db.insert(bookingRequests).values({
+      ...addressSnapshot,
       requestId,
       ownerId: input.ownerId,
       providerId: input.providerUserId,

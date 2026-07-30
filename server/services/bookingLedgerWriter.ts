@@ -77,13 +77,18 @@ export async function writeBookingLedgerEntries(booking: BookingForLedger): Prom
   const payoutId   = `PW-POUT-${year}-${nanoid(8).toUpperCase()}`;
 
   const grossCents        = booking.totalCents;
-  // VAT embedded in the gross (18/118 back-calc per Israeli law).
-  const vatCents          = Math.round(grossCents * (VAT_RATE / (1 + VAT_RATE)));
   const platformFeeCents  = booking.serviceFeeCents;
+  // DISCLOSED-AGENT model (CPA, 2026-07-30 alignment): PetWash's VAT
+  // obligation is embedded in the COMMISSION ONLY — the same rule the fiscal
+  // receipt (resolveReceiptVat, VAT_ON_COMMISSION_ONLY) and payoutLedger use.
+  // The old math here booked VAT on the full gross AND deducted VAT from the
+  // provider's share — both contradicted the receipt and double-counted the
+  // provider's own tax (providers invoice their own VAT as independents).
+  const vatCents          = Math.round(platformFeeCents * (VAT_RATE / (1 + VAT_RATE)));
   const providerGrossCents = booking.subtotalCents;
-  // Provider net = their gross minus the VAT embedded in their share.
-  const providerVatCents  = Math.round(providerGrossCents * (VAT_RATE / (1 + VAT_RATE)));
-  const providerPayoutCents = providerGrossCents - providerVatCents;
+  // Provider payout = their full service price; their own VAT is their own
+  // fiscal affair (disclosed agent — we never withhold it).
+  const providerPayoutCents = providerGrossCents;
   const netRevenueCents   = platformFeeCents; // PetWash revenue = commission
   const commissionCents   = platformFeeCents;
 
