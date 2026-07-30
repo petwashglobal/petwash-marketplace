@@ -60,26 +60,39 @@ export function isIPhone(): boolean {
 }
 
 /**
+ * True for ANY mobile browser (iOS AND Android AND touch-first small screens).
+ *
+ * Why this matters: mobile browsers (mobile Chrome on Android, mobile Safari)
+ * routinely BLOCK signInWithPopup — the popup silently fails with
+ * `auth/popup-blocked`, so the Google/Apple buttons appear to "do nothing".
+ * Previously only iOS was routed to redirect, so every ANDROID phone got popup
+ * → blocked → social signup broken on mobile. (CEO 2026-07-30) (2026-07-30)
+ */
+export function isMobileDevice(): boolean {
+  if (isIOS()) return true;
+  const ua = navigator.userAgent || '';
+  if (/Android|webOS|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(ua)) return true;
+  try {
+    // Touch-first device with no fine pointer (Android tablets, etc.)
+    if ((navigator.maxTouchPoints || 0) > 1 && window.matchMedia?.('(pointer: coarse)')?.matches) {
+      return true;
+    }
+  } catch { /* matchMedia unavailable — fall through */ }
+  return false;
+}
+
+/**
  * Single canonical auth strategy resolver.
  *
- * iOS/iPadOS, including Safari, Chrome iOS and installed iOS web-app shells:
- *   redirect
- *
- * Everything else:
- *   popup
- *
- * Why redirect for all iOS:
- *   - iOS browsers are WebKit-based.
- *   - popup windows are commonly blocked, tiny, or lose Firebase state.
- *   - OAuth provider redirects are more stable for Google/Gmail signup and
- *     for post-login session creation on iPhone/iPad.
+ * ALL mobile (iOS + Android + touch): redirect — popups are blocked on mobile.
+ * Desktop: popup.
  *
  * IMPORTANT: The caller must call signInWithPopup() or signInWithRedirect()
  * as the very next statement after receiving the strategy. Avoid awaits in
  * between, or Safari may treat it as no longer user-initiated.
  */
 export function getAuthStrategy(): 'popup' | 'redirect' {
-  return isIOS() ? 'redirect' : 'popup';
+  return isMobileDevice() ? 'redirect' : 'popup';
 }
 
 /**
