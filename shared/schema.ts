@@ -10868,6 +10868,7 @@ export type BookingSearchFilters = z.infer<typeof bookingSearchFiltersSchema>;
 
 export const bookingRequestStatusEnum = pgEnum('booking_request_status', [
   'pending',                  // Initial request sent to provider
+  'meet_greet_requested',     // Customer asked for a meet & greet before committing (mig 0108)
   'accepted',                 // Provider accepted, awaiting meet & greet
   'declined',                 // Provider declined the request
   'meet_greet_scheduled',     // Meet & Greet date set
@@ -11017,6 +11018,9 @@ export const bookingRequests = pgTable("booking_requests", {
   customerStreet:        varchar("customer_street", { length: 200 }),
   customerStreetNumber:  varchar("customer_street_number", { length: 40 }),
   customerApartment:     varchar("customer_apartment", { length: 80 }),
+  customerFloor:         varchar("customer_floor", { length: 30 }),        // mig 0108
+  customerEntrance:      varchar("customer_entrance", { length: 30 }),     // mig 0108
+  customerAddressNotes:  text("customer_address_notes"),                    // mig 0108 — gate code / access notes (provider view only)
   customerCity:          varchar("customer_city", { length: 120 }),
   customerCityKey:       varchar("customer_city_key", { length: 60 }),
   customerCountry:       varchar("customer_country", { length: 2 }),

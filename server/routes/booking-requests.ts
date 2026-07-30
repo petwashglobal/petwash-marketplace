@@ -36,6 +36,7 @@ import {
   bookingHandoverEvents,
   octopusBookings,
   octopusLedger,
+  userAddresses,
 } from '@shared/schema';
 import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
 import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
@@ -428,7 +429,35 @@ router.post('/', async (req, res) => {
     // row has a permanent record of WHERE the service was requested,
     // independent of the customer's mutable profile address. All fields
     // optional — legacy callers without the autocomplete keep working.
-    const addrSrc = (data as any).customerAddress ?? null;
+    let addrSrc = (data as any).customerAddress ?? null;
+    // No address in the body (the live clients never send one — 2026-07-30
+    // audit: every snapshot column was NULL, so reminders/receipts showed a
+    // placeholder) → enrich server-side from the customer's saved address
+    // book (user_addresses, default first). Fail-soft: no address, no block.
+    let savedAccessFields: { floor?: string | null; entrance?: string | null; notes?: string | null } = {};
+    if (!addrSrc) {
+      try {
+        const [saved] = await db.select().from(userAddresses)
+          .where(eq(userAddresses.userId, userId))
+          .orderBy(desc(userAddresses.isDefault), desc(userAddresses.lastUsedAt))
+          .limit(1);
+        if (saved) {
+          addrSrc = {
+            formattedAddress: saved.address,
+            street: saved.street,
+            streetNumber: saved.streetNumber,
+            apartment: saved.apartment,
+            city: saved.city,
+            postalCode: saved.postalCode,
+            latitude: saved.lat != null ? Number(saved.lat) : undefined,
+            longitude: saved.lng != null ? Number(saved.lng) : undefined,
+          };
+          savedAccessFields = { floor: saved.floor, entrance: saved.entrance, notes: saved.notes };
+        }
+      } catch (addrErr: any) {
+        logger.warn('[BookingRequest] saved-address enrichment failed (non-blocking)', { error: addrErr?.message });
+      }
+    }
     const addressSnapshot = addrSrc ? {
       customerAddress:      addrSrc.formattedAddress?.slice(0, 5000) ?? null,
       customerStreet:       addrSrc.street ? stripHebrewStreetPrefix(addrSrc.street).slice(0, 200) : null,
@@ -443,6 +472,10 @@ router.post('/', async (req, res) => {
       customerLongitude:    typeof addrSrc.longitude === 'number' && Number.isFinite(addrSrc.longitude)
                               ? String(addrSrc.longitude) : null,
       customerPlaceId:      addrSrc.placeId?.toString().slice(0, 200) ?? null,
+      // Access fields (mig 0108) — body value wins, saved address fills gaps.
+      customerFloor:        (addrSrc.floor ?? savedAccessFields.floor)?.toString().slice(0, 30) ?? null,
+      customerEntrance:     (addrSrc.entrance ?? savedAccessFields.entrance)?.toString().slice(0, 30) ?? null,
+      customerAddressNotes: (addrSrc.notes ?? savedAccessFields.notes)?.toString().slice(0, 2000) ?? null,
     } : {};
 
     // ── Proximity guard at booking creation (FAIL OPEN) ───────────────────────
@@ -2875,6 +2908,23 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
       { source: 'booking-requests/confirm', aggregateType: 'booking', aggregateId: requestId, userId: booking.ownerId },
     ).catch((e: any) => logger.error('[BookingRequests] BOOKING_COMPLETED event publish failed', { error: e?.message, requestId }));
 
+    // Review-request email — the DIRECT sender (2026-07-30): the event-driven
+    // path depends on DB templates that were never seeded, so no customer was
+    // ever asked for a review. Fail-soft, fire-and-forget.
+    setImmediate(() => {
+      import('../email/sendServiceCompletedReview')
+        .then(({ sendServiceCompletedReview }) => sendServiceCompletedReview({
+          requestId,
+          ownerId: booking.ownerId,
+          providerId: booking.providerId,
+          serviceType: booking.serviceType,
+          totalCents: booking.totalCents,
+          petDetails: booking.petDetails,
+          endDate: booking.endDate,
+        }))
+        .catch(() => {});
+    });
+
     // Send inbox + email + SMS notifications via dispatchNotification
     const amountIls = (booking.subtotalCents / 100).toFixed(2);
     try {
@@ -2916,7 +2966,21 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     if (booking.ownerId !== callerUserId) {
       logger.warn('[BookingRequests] Caller is not the booking owner — skipping confirmation SMS', { requestId, callerUserId, ownerId: booking.ownerId });
     }
-    const { ownerPhone, ownerEmail } = req.body;
+    // Fallback to the users row (2026-07-30): these were read from req.body
+    // ONLY, so a /confirm without them sent no SMS and (token-less flows) no
+    // receipt email — the account's own contact details were never used.
+    let { ownerPhone, ownerEmail } = req.body;
+    if (!ownerPhone || !ownerEmail) {
+      try {
+        const [ownerRow] = await db
+          .select({ email: users.email, phone: users.phone })
+          .from(users)
+          .where(or(eq(users.id, booking.ownerId), eq(users.firebaseUid, booking.ownerId)))
+          .limit(1);
+        ownerPhone = ownerPhone || ownerRow?.phone || undefined;
+        ownerEmail = ownerEmail || ownerRow?.email || undefined;
+      } catch { /* non-blocking — validation below handles absence */ }
+    }
     const phoneRegex = /^\+?[1-9]\d{6,14}$/;
     const emailRegex = /^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/;
     const validPhone = ownerPhone && phoneRegex.test(ownerPhone.replace(/[\s-]/g, ''));

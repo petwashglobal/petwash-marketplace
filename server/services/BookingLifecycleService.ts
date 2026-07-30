@@ -321,6 +321,20 @@ class BookingLifecycleService {
       input.selectedAddons
     );
 
+    // Cross-rail slot lock (2026-07-30): this engine used availabilitySlots
+    // only, a namespace no other rail sees — a marketplace-checkout booking
+    // and a booking_requests booking could hold the SAME provider hour. Join
+    // the shared EXCLUDE-constraint lock (same provider-UID key space as
+    // every other creator). 409-equivalent behavior: conflict throws.
+    const { acquireSlotLock } = await import('../lib/marketplaceSlotLock');
+    await acquireSlotLock(db, {
+      providerId: input.providerId,
+      startAt: input.startTime,
+      endAt: input.endTime,
+      bookingRef: bookingId,
+      serviceType: input.serviceType,
+    });
+
     await dbOrTx.insert(bookings).values({
       id: bookingId,
       bookingNumber,
