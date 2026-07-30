@@ -362,8 +362,12 @@ class EscrowService {
     await NotificationService.sendNotification({
       userId: escrow.customerId,
       type: "payment",
-      title: "Refund Processed 💳",
-      message: `₪${escrow.amount.toFixed(2)} has been refunded to your account.`,
+      // Honest wording (2026-07-30 audit): this method flips the escrow record
+      // to 'refunded' — it does NOT move card money (no automated card-refund
+      // rail exists yet). Telling the customer the money "has been refunded"
+      // was a false statement; say it is being processed instead.
+      title: "Refund In Process 💳",
+      message: `Your refund of ₪${escrow.amount.toFixed(2)} is being processed. Card refunds can take a few business days to appear.`,
       priority: "high",
       channel: "all",
       data: { escrowId, bookingId: escrow.bookingId, reason },

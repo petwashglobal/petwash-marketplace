@@ -31,6 +31,7 @@ import {
   bookingRequestAddons,
   quoteEngineLogs,
   users,
+  PETWASH_COMMISSION_RATE,
 } from "@shared/schema";
 
 export const QUOTE_ENGINE_VERSION = "v1.0.0";
@@ -178,6 +179,8 @@ export interface QuoteResponse {
   totals: {
     subtotalCents: number;
     discountCents: number;
+    /** PetWash 15% platform fee — part of the DISPLAYED price (§17a total upfront). */
+    serviceFeeCents: number;
     giftCardAppliedCents: number;
     walletCreditAppliedCents: number;
     loyaltyRedeemedCents: number;   // agorot deducted by loyalty credits (0 if not applied)
@@ -443,6 +446,16 @@ export async function calculateQuote(
 
   let remaining = clampAboveZero(subtotal - discountCents);
 
+  // 6b. Platform service fee — the 15% PetWash commission, charged ON TOP of
+  // the discounted service price and INSIDE the displayed total (§17a: the
+  // customer sees the fee-inclusive price before committing). Before this,
+  // the engine returned provider-rate totals only, so every wizard booking
+  // collected 0% commission and its receipt declared ₪0 VAT (2026-07-30
+  // audit). Payment instruments below reduce the fee-inclusive amount due —
+  // the commission is earned regardless of tender.
+  const serviceFeeCents = Math.round(remaining * PETWASH_COMMISSION_RATE);
+  remaining = remaining + serviceFeeCents;
+
   // 7. Gift card (egift balance from wallet)
   let giftCardAppliedCents = 0;
   if (req.giftCardCode && remaining > 0 && req.userId) {
@@ -527,6 +540,7 @@ export async function calculateQuote(
     totals: {
       subtotalCents: subtotal,
       discountCents,
+      serviceFeeCents,
       giftCardAppliedCents,
       walletCreditAppliedCents,
       loyaltyRedeemedCents,

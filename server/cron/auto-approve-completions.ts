@@ -24,7 +24,9 @@
 
 import cron from 'node-cron';
 import { db } from '../db';
-import { bookingRequests, superAppNotifications, contractorEarnings, bookingDisputes } from '@shared/schema';
+import { bookingRequests, superAppNotifications, contractorEarnings, bookingDisputes, users } from '@shared/schema';
+import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
+import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
 import { and, eq, lt, sql, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { createEarningRecord } from '../services/payoutLedger';
@@ -148,6 +150,43 @@ async function autoApproveExpiredCompletions(): Promise<void> {
       } catch (ledgerErr: any) {
         logger.warn('[AutoApprove] Ledger write failed (non-blocking)', {
           error: ledgerErr.message, requestId: booking.requestId,
+        });
+      }
+
+      // ── Fiscal receipt at the SAME escrow-release event (2026-07-30 audit):
+      // this cron completed bookings + released money with NO receipt — the
+      // manual /confirm path issues one, so 24h-inaction customers silently got
+      // no tax document. Mirrors handleConfirmCompletion; generateReceipt has
+      // its own exactly-once guard so double-fire is safe (money-invariants §2).
+      try {
+        const [owner] = await db
+          .select({ email: users.email, first: users.firstName, last: users.lastName })
+          .from(users)
+          .where(eq(users.id, booking.ownerId))
+          .limit(1);
+        const commissionIls = (booking.serviceFeeCents || 0) / 100;
+        await IsraeliDigitalReceiptService.generateReceipt({
+          platform: 'booking-requests',
+          paymentClass: 'PROVIDER_BOOKING_COMMISSION',
+          bookingId: booking.requestId,
+          customerEmail: owner?.email || '',
+          customerName: [owner?.first, owner?.last].filter(Boolean).join(' '),
+          serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
+          providerId: booking.providerId,
+          providerType: booking.providerType,
+          serviceDescription: `PetWash booking — ${booking.serviceType}`,
+          serviceDescriptionHe: `הזמנת PetWash — ${booking.serviceType}`,
+          subtotalAmount: (booking.subtotalCents || 0) / 100,
+          platformFeeAmount: commissionIls,
+          totalAmount: (booking.totalCents || booking.subtotalCents || 0) / 100,
+          paymentMethod: 'Escrow (card)',
+          providerPayoutAmount:
+            ((booking.subtotalCents || 0) - (booking.serviceFeeCents || 0)) / 100,
+          brokerCommissionAmount: commissionIls,
+        });
+      } catch (receiptErr: any) {
+        logger.warn('[AutoApprove] Receipt generation failed (non-blocking)', {
+          error: receiptErr?.message, requestId: booking.requestId,
         });
       }
 

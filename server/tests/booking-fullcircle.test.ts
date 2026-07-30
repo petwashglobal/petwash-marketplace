@@ -86,14 +86,17 @@ describe('KNOWN GAPS — pinned until fixed (flip the assertion when wired)', ()
     expect(src('server/routes/academy.ts')).toMatch(/generateReceipt/);
   });
 
-  it('Walk receipt hardcodes nayaxTransactionId: undefined (no txn linkage)', () => {
-    expect(src('server/routes/walk-my-pet.ts')).toMatch(/nayaxTransactionId:\s*undefined/);
+  it('Walk accept issues NO receipt at all — its path has no payment rail (2026-07-30)', () => {
+    // The old pin tracked the undefined-txn receipt; the whole receipt call was
+    // removed because NO money is collected on walk accept (moveToEscrow only
+    // writes a Firestore doc) — a tax document there was a false ITA filing.
+    // Restore a receipt pin only when a verified payment rail lands here.
+    expect(src('server/routes/walk-my-pet.ts')).not.toMatch(/generateReceipt\(/);
   });
 
-  it('Walk + sitter receipts NOW resolve the real customer email (gap fixed)', () => {
+  it('Sitter receipt resolves the real customer email (gap fixed)', () => {
     // The empty-string default that silently dropped the receipt email is gone;
-    // both routes look up the owner's email from the users table.
-    expect(src('server/routes/walk-my-pet.ts')).toMatch(/customerEmail:\s*ownerEmail/);
+    // the route looks up the owner's email from the users table.
     expect(src('server/routes/sitter-suite.ts')).toMatch(/customerEmail:\s*owner\?\.email/);
   });
 });

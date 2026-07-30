@@ -3,6 +3,7 @@ import { contractorEarnings, sitterBookings, walkBookings, pettrekTrips } from '
 import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
+import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
 import { feeConfigService } from './FeeConfigurationService';
 import { isProviderInsuranceCleared } from '../routes/provider-insurance';
 import { checkPayoutGates } from './payoutGate';
@@ -97,11 +98,13 @@ export async function createEarningRecord(params: CreateEarningParams) {
     // Calculate platform fee
     const platformFee = (baseAmount * platformFeePercent) / 100;
 
-    // VAT back-calculation (18/118) — platform fee is VAT-inclusive.
+    // VAT back-calculation — platform fee is VAT-inclusive.
     // vatAmount is the VAT component embedded within platformFee.
     // PetWash remits this VAT from its own commission share.
     // It must NOT be deducted from the provider payout — that would double-count it.
-    const vatAmount = platformFee * (18 / 118);
+    // Rate from the single source (was a hardcoded 18/118 — an env/law rate
+    // change would have silently diverged this ledger from every receipt).
+    const vatAmount = platformFee * (ISRAEL_VAT_RATE / (1 + ISRAEL_VAT_RATE));
 
     // Provider net: base minus the full commission (VAT is inside platformFee, not extra)
     const netEarnings = baseAmount + bonusAmount - platformFee;
