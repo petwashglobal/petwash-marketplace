@@ -337,7 +337,7 @@ export default function ProviderTaskInbox() {
                     size="sm"
                     variant="ghost"
                     className="px-2"
-                    onClick={() => navigate(`/booking-chat/${b.id}`)}
+                    onClick={() => navigate(`/booking-chat/${b.bookingNumber || b.id}`)}
                     aria-label="Message customer"
                   >
                     <MessageSquare className="w-4 h-4 text-[#D4AF37]" />

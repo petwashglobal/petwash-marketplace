@@ -1,9 +1,10 @@
 import { Router } from 'express';
 import multer from 'multer';
 import { db } from '../db';
-import { 
-  bookingConversations, 
-  bookingMessages, 
+import {
+  bookingConversations,
+  bookingMessages,
+  bookingRequests,
   bookings,
   walkBookings,
   sitterBookings,
@@ -367,8 +368,26 @@ router.post('/:bookingId/open', async (req, res) => {
     let bookingStatus: string | null = null;
     let platform = 'walk_my_pet';
 
-    const [genericBooking] = await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
-    if (genericBooking) {
+    // Canonical booking_requests FIRST (2026-07-30): this resolver never knew
+    // the canonical table, so chat 404'd for every BR-… booking — the customer
+    // confirmation page links chat by requestId and always hit "Booking not
+    // found". providerId here is already the Firebase UID.
+    const [requestRow] = await db.select({
+      ownerId: bookingRequests.ownerId,
+      providerId: bookingRequests.providerId,
+      status: bookingRequests.status,
+      serviceType: bookingRequests.serviceType,
+    }).from(bookingRequests).where(eq(bookingRequests.requestId, bookingId)).limit(1);
+
+    const [genericBooking] = requestRow
+      ? [undefined]
+      : await db.select().from(bookings).where(eq(bookings.id, bookingId)).limit(1);
+    if (requestRow) {
+      customerId = requestRow.ownerId;
+      providerId = requestRow.providerId;
+      bookingStatus = requestRow.status;
+      platform = String(requestRow.serviceType || '').includes('walk') ? 'walk_my_pet' : 'sitter_suite';
+    } else if (genericBooking) {
       customerId = genericBooking.userId;
       providerId = genericBooking.providerId;
       bookingStatus = genericBooking.status;

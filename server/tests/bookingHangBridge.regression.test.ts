@@ -37,9 +37,15 @@ describe('the bridge itself', () => {
     expect(bridge).toMatch(/return null;/);
   });
 
-  it('the write-back only touches the two known legacy tables (no SQL injection surface)', () => {
-    expect(bridge).toMatch(/const TABLE_STATUS: Record<string/);
-    expect(bridge).toMatch(/if \(!cfg\) return;/);
+  it('the write-back only touches the fixed legacy-table allowlist (no SQL injection surface)', () => {
+    // 2026-07-30: allowlist moved into updateLegacyStatus and gained
+    // trainer_bookings (academy accepts silently no-op’d before). Accept
+    // writes 'accepted' — 'confirmed' comes only from the payment webhook via
+    // applyBridgePaymentConfirmed (no money, no confirmed).
+    expect(bridge).toMatch(/function updateLegacyStatus/);
+    expect(bridge).toMatch(/UPDATE trainer_bookings SET booking_status/);
+    expect(bridge).toMatch(/action === 'accept' \? 'accepted' : 'declined'/);
+    expect(bridge).toMatch(/export async function applyBridgePaymentConfirmed/);
     // table name is never interpolated from input
     expect(bridge).not.toMatch(/UPDATE \$\{/);
   });
@@ -61,7 +67,9 @@ describe('both hanging creators are bridged', () => {
 
 describe('provider decision reaches the customer', () => {
   it('v2 accept/decline syncs the legacy row via the back-link', () => {
-    expect(v2).toMatch(/quote_breakdown\n\s+FROM booking_requests/);
+    // SELECT list grew (start/end dates + wallet fields for the 2026-07-30
+    // race/wallet guards) — pin the column presence, not the line break.
+    expect(v2).toMatch(/quote_breakdown,\n\s+start_date, end_date, finance_state, wallet_hold_cents\n\s+FROM booking_requests/);
     expect(v2).toMatch(/applyBridgeDecision\(booking\.quote_breakdown, action\)/);
   });
 });

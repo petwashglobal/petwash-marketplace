@@ -160,22 +160,58 @@ export async function applyBridgeDecision(
     const ref = quoteBreakdown?.legacyRef;
     if (!ref?.table || ref?.id == null) return;
 
-    // Only the two known legacy tables — never interpolate an arbitrary name.
-    const TABLE_STATUS: Record<string, { accept: string; decline: string; idCol: string }> = {
-      sitter_bookings: { accept: 'confirmed', decline: 'declined', idCol: 'booking_id' },
-      walk_bookings:   { accept: 'confirmed', decline: 'declined', idCol: 'booking_id' },
-    };
-    const cfg = TABLE_STATUS[ref.table];
-    if (!cfg) return;
-
-    const newStatus = action === 'accept' ? cfg.accept : cfg.decline;
-    const sqlText = ref.table === 'sitter_bookings'
-      ? `UPDATE sitter_bookings SET status = $1, updated_at = NOW() WHERE ${cfg.idCol} = $2`
-      : `UPDATE walk_bookings   SET status = $1, updated_at = NOW() WHERE ${cfg.idCol} = $2`;
-
-    await pool.query(sqlText, [newStatus, String(ref.id)]);
-    logger.info('[BookingBridge] legacy row synced with provider decision', { ref, action, newStatus });
+    // Fixed allowlist — never interpolate an arbitrary name. 2026-07-30:
+    // (a) trainer_bookings added — it was missing, so an academy trainer's
+    //     accept/decline from /provider-os NEVER reached the customer (the
+    //     exact "waiting forever" hang this bridge exists to prevent);
+    // (b) accept now writes 'accepted', NOT 'confirmed': this status flip
+    //     moves no money (no capture, no escrow, no receipt), so writing
+    //     'confirmed' recorded a paid-looking booking with zero payment.
+    //     'confirmed' is written ONLY by applyBridgePaymentConfirmed below,
+    //     after the canonical /pay webhook verifies real money.
+    const newStatus = action === 'accept' ? 'accepted' : 'declined';
+    const synced = await updateLegacyStatus(ref, newStatus);
+    if (synced) {
+      logger.info('[BookingBridge] legacy row synced with provider decision', { ref, action, newStatus });
+    }
   } catch (err: any) {
     logger.warn('[BookingBridge] legacy sync failed (canonical row already updated)', { err: err?.message });
   }
+}
+
+/**
+ * Write 'confirmed' to the legacy customer-side row AFTER verified payment —
+ * called from the Nayax payment webhook once the canonical booking_requests
+ * row reaches 'confirmed'. This is the ONLY path that may mark a bridged
+ * legacy booking confirmed (money-invariants §2/§6).
+ */
+export async function applyBridgePaymentConfirmed(quoteBreakdown: any): Promise<void> {
+  try {
+    const ref = quoteBreakdown?.legacyRef;
+    if (!ref?.table || ref?.id == null) return;
+    const synced = await updateLegacyStatus(ref, 'confirmed');
+    if (synced) {
+      logger.info('[BookingBridge] legacy row confirmed after verified payment', { ref });
+    }
+  } catch (err: any) {
+    logger.warn('[BookingBridge] legacy payment-confirm sync failed', { err: err?.message });
+  }
+}
+
+/** Shared fixed-allowlist status writer. Returns false for unknown tables. */
+async function updateLegacyStatus(
+  ref: { table: string; id: unknown },
+  newStatus: string,
+): Promise<boolean> {
+  const sqlText =
+    ref.table === 'sitter_bookings'
+      ? `UPDATE sitter_bookings  SET status = $1, updated_at = NOW() WHERE booking_id = $2`
+      : ref.table === 'walk_bookings'
+        ? `UPDATE walk_bookings    SET status = $1, updated_at = NOW() WHERE booking_id = $2`
+        : ref.table === 'trainer_bookings'
+          ? `UPDATE trainer_bookings SET booking_status = $1, updated_at = NOW() WHERE booking_id = $2`
+          : null;
+  if (!sqlText) return false;
+  await pool.query(sqlText, [newStatus, String(ref.id)]);
+  return true;
 }

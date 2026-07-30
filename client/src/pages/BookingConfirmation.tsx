@@ -474,6 +474,22 @@ export default function BookingConfirmation() {
   });
 
   /* cancel mutation */
+  const payMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/pay`, { paymentMethod: 'card' });
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      // Server returns the hosted Nayax payment page — money is verified by
+      // the payment webhook, which is the only writer of 'confirmed'.
+      if (data?.paymentUrl) { window.location.href = data.paymentUrl; return; }
+      toast({ title: t.paymentStartFailed ?? 'Could not start payment', variant: 'destructive' });
+    },
+    onError: () => {
+      toast({ title: t.paymentStartFailed ?? 'Could not start payment', variant: 'destructive' });
+    },
+  });
+
   const cancelMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { cancelledBy: 'customer' });
@@ -563,6 +579,9 @@ export default function BookingConfirmation() {
   const isOwner        = booking.ownerId === user?.uid;
   const canConfirm     = isOwner && booking.status === 'completed' && !confirmed;
   const showChatNow    = isOwner && booking.status === 'confirmed' && !!booking.requestId;
+  // Provider said yes → the customer must PAY to confirm. Until 2026-07-30 no
+  // client surface ever called /pay, so 'accepted' bookings dead-ended.
+  const canPayNow      = isOwner && ['accepted', 'meet_greet_completed'].includes(booking.status) && !!booking.requestId;
   const showRebook     = isOwner && (confirmed || booking.status === 'reviewed') && booking.providerId;
   const showAlertPanel = isOwner && ['declined', 'cancelled'].includes(booking.status);
   const canModify      = isOwner && ['pending', 'confirmed'].includes(booking.status);
@@ -852,6 +871,33 @@ export default function BookingConfirmation() {
               <div className="bg-gradient-to-r from-emerald-500 to-green-600 p-8 text-center text-white">
                 <CheckCircle2 className="w-16 h-16 mx-auto mb-4" />
                 <h2 className="text-2xl font-bold mb-2">{t.bothConfirmed}</h2>
+              </div>
+            </div>
+          )}
+
+          {/* ── Pay-to-confirm panel: provider accepted, payment completes the booking ── */}
+          {canPayNow && (
+            <div className="mb-4 rounded-3xl overflow-hidden" style={{ border: '1px solid #D4AF37' }}>
+              <div className="bg-gradient-to-r from-[#0a0a0a] to-[#1a1a1a] p-6 text-center">
+                <p className="text-[#D4AF37] text-xs font-bold tracking-widest uppercase mb-2">
+                  {isRTL ? 'הספק אישר את הבקשה' : 'Provider accepted your request'}
+                </p>
+                <p className="text-white text-sm mb-4">
+                  {isRTL
+                    ? `להשלמת ההזמנה נותר לשלם ₪${((booking.totalCents ?? 0) / 100).toFixed(2)} — התשלום מאובטח ומוחזק בנאמנות עד לביצוע השירות.`
+                    : `Complete your booking by paying ₪${((booking.totalCents ?? 0) / 100).toFixed(2)} — held securely in escrow until the service is done.`}
+                </p>
+                <button
+                  onClick={() => payMutation.mutate()}
+                  disabled={payMutation.isPending}
+                  className="w-full py-3 rounded-xl font-bold text-black"
+                  style={{ background: '#D4AF37' }}
+                  data-testid="booking-pay-now"
+                >
+                  {payMutation.isPending
+                    ? (isRTL ? 'מעביר לתשלום…' : 'Opening payment…')
+                    : (isRTL ? 'לתשלום ואישור סופי' : 'Pay & confirm booking')}
+                </button>
               </div>
             </div>
           )}
