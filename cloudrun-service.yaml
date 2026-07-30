@@ -212,6 +212,14 @@ spec:
         # is dead (verified live). The login flag also routes SMS OTP through
         # the unified rail (Postgres challenge store + Twilio) instead of the
         # legacy Redis store. Other purposes (egift/2fa/payout) stay OFF.
+        # ── Nayax Lynx issuing operator (2026-07-30) ─────────────────────────
+        # The REAL operator ActorID for פט וואש בע"מ, read from Nayax Core
+        # (Operator screen — NOT the '27594' Lynx actor id used earlier).
+        # Pinning it kills the auto-discovery fallback in LynxCardService,
+        # which would pick the HIERARCHY ROOT (= Nayax Israel/Dually, the
+        # distributor) and mint our member cards under the wrong operator.
+        - name: LYNX_OPERATOR_ID
+          value: '2002942146'
         - name: UNIFIED_VERIFICATION_ENABLED
           value: 'true'
         - name: UNIFIED_VERIFICATION_SIGNUP_ENABLED
