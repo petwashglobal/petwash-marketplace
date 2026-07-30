@@ -632,7 +632,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       }
       await finishAndRoute();
     } catch (e: any) {
-      if (e?.code === 'auth/popup-closed-by-user') return;
+      // A user closing/canceling the provider sheet is NOT an error — showing a
+      // red "did not complete" banner for a deliberate cancel feels broken
+      // (CEO 2026-07-30). Covers the web popup code AND the native plugin's
+      // cancel rejections (ASWebAuthenticationSession / Apple sheet dismiss).
+      const cancelSignal = `${e?.code ?? ''} ${e?.message ?? ''}`.toLowerCase();
+      if (cancelSignal.includes('popup-closed-by-user') || cancelSignal.includes('cancel')) return;
       logger.error('[signup] social', e);
       const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
       fail(he
