@@ -35,9 +35,13 @@ export function normalizeStreet(s: string): string {
 async function loadAsync(): Promise<void> {
   if (loadStarted) return;
   loadStarted = true;
+  // NOTE: no __dirname — this ships in an ESM bundle where __dirname is undefined,
+  // and referencing it threw a ReferenceError BEFORE the try below, so the offline
+  // streets never loaded. process.cwd() is /app in the container; the Docker image
+  // copies server/data/, so this path resolves. (2026-07-30)
   const candidates = [
     path.resolve(process.cwd(), 'server/data/israel-streets.json'),
-    path.resolve(__dirname, '../data/israel-streets.json'),
+    path.resolve(process.cwd(), 'dist/server/data/israel-streets.json'),
   ];
   for (const p of candidates) {
     try {
