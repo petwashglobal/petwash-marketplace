@@ -19,6 +19,7 @@ import { fetchProviderBrowseResults } from "@/api/providerSearchApi";
 
 interface Walker {
   id: number;
+  userId?: string;
   businessName: string;
   displayName: string;
   serviceArea: string;
@@ -216,6 +217,7 @@ export default function BrowseWalkers() {
   const displayWalkers = apiWalkers.length > 0
     ? apiWalkers.map((p: any) => ({
         id: p.id || Math.random(),
+        userId: p.userId,
         businessName: p.displayName || '',
         displayName: p.displayName || 'Walker',
         serviceArea: p.location || '',
@@ -507,7 +509,12 @@ export default function BrowseWalkers() {
                     isHebrew ? `${walker.yearsExperience} שנות ניסיון` : `${walker.yearsExperience} years exp.`,
                     isHebrew ? 'GPS בזמן אמת' : 'Live GPS'
                   ]}
-                  onClick={() => setLocation(`/walk-my-pet/walkers/${walker.id}`)}
+                  // ID-SPACE FIX (2026-07-30): walker.id here is providers.id, but
+                  // /walk-my-pet/walkers/:id resolves against walker_profiles.id —
+                  // different tables, different serials, so this opened the WRONG
+                  // walker or 404'd. Route through the healthy marketplace detail
+                  // path, which is keyed by the provider's userId (mirrors BrowseSitters).
+                  onClick={() => setLocation(`/marketplace/walk_my_pet/${walker.userId || walker.id}`)}
                 />
                 );
               })}

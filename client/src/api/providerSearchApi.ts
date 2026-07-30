@@ -38,6 +38,8 @@ export type LegacyBrowseService = "dog_walking" | "pet_sitting" | "grooming";
 
 export interface LegacyBrowseProvider {
   id: string;
+  /** Provider's Firebase UID — the id the /marketplace/:platform/:id detail resolver accepts. */
+  userId?: string;
   platform: "walk_my_pet" | "sitter_suite" | "groomers";
   serviceType: MarketplaceServiceType;
   displayName: string;
@@ -102,6 +104,10 @@ function toLegacyBrowseProvider(
 
   return {
     id: item.providerId,
+    // item.providerId is providers.id (numeric serial) — the WRONG id space
+    // for the marketplace detail route. userId is the Firebase UID the
+    // /marketplace/:platform/:id resolver accepts; browse pages must prefer it.
+    userId: item.userId,
     platform,
     serviceType,
     displayName: item.displayName,

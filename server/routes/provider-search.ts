@@ -15,7 +15,12 @@ const router = Router();
 router.get("/search", async (req, res) => {
   try {
     const filters = normalizeProviderSearchFilters(req.query);
-    const result = await runProviderSearch(filters);
+    // Route is mounted behind optionalFirebaseToken — when the caller is
+    // signed in, pass their uid so runProviderSearch's self-exclusion
+    // actually fires (a provider must never be matched to themselves).
+    const callerUserId =
+      (req as any).user?.uid || (req as any).firebaseUser?.uid || undefined;
+    const result = await runProviderSearch(filters, callerUserId);
 
     res.json({
       ok: true,
