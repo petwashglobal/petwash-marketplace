@@ -19,7 +19,8 @@ describe('sendVerificationEmailCode — signup / login (email-code OTP)', () => 
     expect(ok).toBe(true);
     expect(sent).toHaveLength(1);
     expect(sent[0].to).toBe('a@b.com');
-    expect(sent[0].subject).toBe('Your PetWash verification code');
+    // Hebrew-first subject since #1596 (Israeli market default).
+    expect(sent[0].subject).toContain('קוד האימות');
     expect(sent[0].html).toContain('123456');
     expect(sent[0].html).toMatch(/join the PetWash family/i);
   });

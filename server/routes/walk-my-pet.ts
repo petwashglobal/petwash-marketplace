@@ -835,57 +835,28 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           await db.update(octopusBookings)
             .set({ status: 'CONFIRMED', updatedAt: new Date() })
             .where(eq(octopusBookings.id, octopusRecord.id));
-          await db.insert(octopusLedger).values({
-            id: `OL-${crypto.randomBytes(4).toString('hex')}`,
-            type: 'PAYMENT_CAPTURED',
-            bookingId: octopusRecord.id,
-            amount: octopusRecord.price,
-            platform: 'walk_my_pet',
-            metadata: { walkBookingId: booking.bookingId, escrowHoldHours: 72 },
-          });
-          logger.info('[Octopus Brain] Walk booking confirmed + payment captured', { octopusId: octopusRecord.id });
+          // NO PAYMENT_CAPTURED row here (2026-07-30 audit): confirmBooking →
+          // moveToEscrow only writes a Firestore escrow DOC — no card charge, no
+          // wallet debit, no payment rail is invoked anywhere on this path. A
+          // capture ledger entry for money that never moved is a false book
+          // entry. Restore it ONLY when a verified payment rail lands here.
+          logger.info('[Octopus Brain] Walk booking confirmed (no payment captured on this rail)', { octopusId: octopusRecord.id });
         }
       } catch (octopusErr) {
         logger.warn('[Octopus Brain] Failed to update walk booking status (non-blocking)', octopusErr);
       }
 
-      // Generate Israeli digital receipt (non-blocking)
-      try {
-        const totalAmount = parseFloat(booking.totalCost || '0');
-        const platformFeeAmount = parseFloat(booking.platformFeeOwner || '0') + parseFloat(booking.platformFeeSitter || '0');
-        const walkerPayoutAmount = parseFloat(booking.walkerPayout || '0');
-        // Resolve the real customer so the receipt actually reaches them (was '',
-        // so the receipt email silently went nowhere). ownerId is the Firebase uid.
-        const [owner] = await db
-          .select({ email: users.email, first: users.firstName, last: users.lastName })
-          .from(users)
-          .where(eq(users.firebaseUid, booking.ownerId))
-          .limit(1);
-        const ownerEmail = owner?.email || '';
-        const ownerName = [owner?.first, owner?.last].filter(Boolean).join(' ');
-        await IsraeliDigitalReceiptService.generateReceipt({
-          platform: 'walk-my-pet',
-          paymentClass: 'PROVIDER_BOOKING_COMMISSION',
-          bookingId: booking.bookingId,
-          nayaxTransactionId: undefined,
-          customerEmail: ownerEmail,
-          customerName: ownerName,
-          serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
-          providerName: walker.businessName || `Walker ${walker.walkerId}`,
-          providerId: walker.walkerId,
-          providerType: 'walker',
-          serviceDescription: `Dog walk - ${booking.durationMinutes} minutes`,
-          serviceDescriptionHe: `טיול כלבים - ${booking.durationMinutes} דקות`,
-          subtotalAmount: parseFloat(booking.walkerRate || '0'),
-          platformFeeAmount,
-          totalAmount,
-          paymentMethod: 'Nayax Card Payment',
-          providerPayoutAmount: walkerPayoutAmount,
-          brokerCommissionAmount: platformFeeAmount,
-        });
-      } catch (receiptErr) {
-        logger.warn('[Walk My Pet] Receipt generation after accept failed (non-blocking)', receiptErr);
-      }
+      // NO fiscal receipt here (2026-07-30 audit): this accept path invokes NO
+      // payment rail — confirmBooking/moveToEscrow only writes a Firestore
+      // escrow doc, and the old call stamped 'Nayax Card Payment' on a real
+      // SUMIT/ITA חשבונית מס-קבלה for money that was never collected. A tax
+      // document may only be issued at a verified fiscal event (money-invariants
+      // §2). When a real payment rail lands on this path, restore the receipt
+      // AT THE CAPTURE EVENT with the actual transaction id.
+      logger.error('[Walk My Pet] Booking accepted WITHOUT a payment rail — no money collected, no receipt issued. Wire this path to a verified payment before launch.', {
+        bookingId: booking.bookingId,
+        totalCost: booking.totalCost,
+      });
 
       // Add calendar event (non-blocking)
       calendarIntegrationService.createBookingEvent({

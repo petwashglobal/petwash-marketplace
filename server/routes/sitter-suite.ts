@@ -1178,8 +1178,17 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         providerName: `${sitter.firstName} ${sitter.lastName}`,
       }).catch(() => {});
 
-      // Generate Israeli digital receipt (non-blocking)
-      try {
+      // Generate Israeli digital receipt (non-blocking).
+      // SIMULATED payments never get a fiscal document (2026-07-30 audit): in
+      // non-production NODE_ENV the Nayax client returns Status:'SUCCESS' with a
+      // 'SIM_…' transaction id without charging anyone — issuing a real SUMIT/ITA
+      // חשבונית for that is a false tax document (money-invariants §2: receipts
+      // only at a VERIFIED fiscal event).
+      if (paymentResult.nayaxTransactionId?.startsWith('SIM_')) {
+        logger.warn('[Sitter Suite] Simulated payment (SIM_) — booking confirmed for testing, NO fiscal receipt issued', {
+          bookingId: booking.bookingId, txId: paymentResult.nayaxTransactionId,
+        });
+      } else try {
         // Resolve the real customer so the receipt actually reaches them (was '',
         // so the receipt email silently went nowhere). ownerId is the Firebase uid.
         const [owner] = await db

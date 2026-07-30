@@ -25,7 +25,9 @@ describe('generateReceipt wires payment class → SUMIT document type (2026-07-0
 
   it('every generateReceipt caller declares its payment class', () => {
     expect(read('routes/sitter-suite.ts')).toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
-    expect(read('routes/walk-my-pet.ts')).toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
+    // walk-my-pet no longer calls generateReceipt at all (2026-07-30): its
+    // accept path collects no money, so it may not issue a fiscal document.
+    expect(read('routes/walk-my-pet.ts')).not.toMatch(/generateReceipt\(/);
     expect(read('routes/academy.ts')).toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
     expect(read('services/unified-booking/UnifiedBookingEngine.ts')).toMatch(/paymentClass: 'PROVIDER_BOOKING_COMMISSION'/);
     expect(read('services/ShopService.ts')).toMatch(/paymentClass: 'SHOP_ITEM'/);

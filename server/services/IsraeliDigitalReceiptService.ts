@@ -281,8 +281,13 @@ export class IsraeliDigitalReceiptService {
 
       case 'VAT_ON_COMMISSION_ONLY': {
         // Commission is VAT-inclusive; extract the VAT portion of it only.
+        // `|| ` not `??`: a ZERO commission on a paid provider booking means the
+        // caller failed to compute the fee, not that PetWash worked for free —
+        // `0 ?? x` kept the 0 and issued receipts declaring ₪0 VAT for every
+        // quote-engine booking (2026-07-30 audit). Fall back to the canonical
+        // 15% of the total so the tax document is never understated.
         const commissionGross =
-          params.brokerCommissionAmount ?? params.platformFeeAmount ?? total * PLATFORM_COMMISSION_RATE;
+          params.brokerCommissionAmount || params.platformFeeAmount || total * PLATFORM_COMMISSION_RATE;
         const vatAmount = this.calculateVATBreakdown(commissionGross).vatAmount;
         return {
           subtotalBeforeVAT: parseFloat((total - vatAmount).toFixed(2)),

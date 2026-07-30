@@ -363,9 +363,14 @@ router.post('/', async (req, res) => {
           freshQuote,
         });
       }
-      // Authoritative SERVER totals — never the client's.
+      // Authoritative SERVER totals — never the client's. The engine now
+      // includes the 15% platform fee INSIDE totalCents (quoteEngine 6b) and
+      // reports it separately — the old `serviceFeeCents = 0 // already
+      // included` comment was false (the engine added NO fee), so every
+      // wizard booking collected 0% commission and its receipt declared
+      // ₪0 VAT (2026-07-30 audit).
       subtotalCents = freshQuote.totals.subtotalCents;
-      serviceFeeCents = 0; // already included in engine totals
+      serviceFeeCents = freshQuote.totals.serviceFeeCents ?? 0;
       totalCents = freshQuote.totals.totalCents;
     } else {
       // Legacy fallback: fetch provider rate and calculate
@@ -3373,7 +3378,9 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
         cancellationPenaltyCents: penaltyCents,
         emergencyCancelReason: rawReason,
         refundCents,
-        refundProcessedAt: refundCents > 0 ? now : null,
+        // Amount OWED, not moved — only the executing wallet refund below may
+        // stamp refundProcessedAt (card refunds have no automated rail yet).
+        refundProcessedAt: null,
         statusHistory,
         updatedAt: now,
       } as any)
@@ -3433,7 +3440,7 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
             reason: 'provider_emergency_cancel', ipAddress: null,
           });
           await db.update(bookingRequests)
-            .set({ walletRefundedCents: debitedCents, walletRefundKey: r.txnId, financeState: 'refunded', updatedAt: new Date() })
+            .set({ walletRefundedCents: debitedCents, walletRefundKey: r.txnId, financeState: 'refunded', refundProcessedAt: new Date(), updatedAt: new Date() })
             .where(eq(bookingRequests.requestId, requestId));
         } catch (e: any) {
           logger.error('[BookingRequests] Wallet refund failed on emergency cancel', { requestId, error: e.message });
@@ -3601,7 +3608,12 @@ router.post('/:requestId/cancel', async (req, res) => {
         cancellationTier,
         cancellationPenaltyCents,
         refundCents,
-        refundProcessedAt: refundCents > 0 ? new Date() : null,
+        // NOT stamped here (2026-07-30 audit): refundCents is the amount OWED,
+        // not moved. Only the rail that actually executes a refund may stamp
+        // refundProcessedAt (the wallet blocks below do; the card path has NO
+        // automated refund rail yet — stamping it forged a reconciliation
+        // record for money still sitting with us).
+        refundProcessedAt: null,
         statusHistory,
         updatedAt: new Date(),
       } as any)
@@ -3738,7 +3750,7 @@ router.post('/:requestId/cancel', async (req, res) => {
             reason: `booking_cancelled_by_${cancelledBy}`, ipAddress: req.ip ?? null,
           });
           await db.update(bookingRequests)
-            .set({ walletRefundedCents: debitedCents, walletRefundKey: refundResult.txnId, financeState: 'refunded', updatedAt: new Date() })
+            .set({ walletRefundedCents: debitedCents, walletRefundKey: refundResult.txnId, financeState: 'refunded', refundProcessedAt: new Date(), updatedAt: new Date() })
             .where(eq(bookingRequests.requestId, requestId));
           logger.info('[BookingRequests] Wallet refunded on cancel', { requestId, debitedCents, txnId: refundResult.txnId });
         } catch (e: any) {

@@ -84,10 +84,14 @@ describe('booking reminder email carries the real address (not just a placeholde
 });
 
 describe('all paid call sites pass the service address to the receipt', () => {
+  // walk-my-pet was removed from this list on 2026-07-30: its accept path has
+  // NO payment rail (confirmBooking/moveToEscrow moves no money), so it issues
+  // NO receipt at all — a receipt for uncollected money is a false tax
+  // document. The pin below guards that it STAYS receipt-free until a real
+  // payment rail lands there.
   for (const f of [
     'server/routes/booking-requests.ts',
     'server/routes/sitter-suite.ts',
-    'server/routes/walk-my-pet.ts',
     'server/routes/academy.ts',
     'server/services/ShopService.ts',
   ]) {
@@ -95,4 +99,10 @@ describe('all paid call sites pass the service address to the receipt', () => {
       expect(R(f)).toMatch(/serviceAddress:/);
     });
   }
+
+  it('walk-my-pet accept issues NO fiscal receipt (no payment rail on that path)', () => {
+    const src = R('server/routes/walk-my-pet.ts');
+    expect(src).not.toMatch(/generateReceipt\(/);
+    expect(src).toMatch(/no receipt issued|NO fiscal receipt/i);
+  });
 });
