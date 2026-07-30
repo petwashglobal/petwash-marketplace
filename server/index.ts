@@ -20,6 +20,12 @@
 // Logs Explorer queries.
 // ─────────────────────────────────────────────────────────────────────────────
 process.stdout.write('🟢 [BOOT] server/index.ts module loading t=' + Date.now() + '\n');
+// Flipped true once the HTTP server is listening. BEFORE that, an uncaught
+// exception is a real boot failure → fast-fail so Cloud Run's probe doesn't hang.
+// AFTER that, a recoverable runtime error (e.g. @neondatabase/serverless throwing
+// "Cannot set property message of ErrorEvent" on a Neon connection blip) must NOT
+// exit — doing so caused a prod restart loop every ~90s that broke signup. (2026-07-30)
+let __petwashBootComplete = false;
 process.on('uncaughtException', (err: any) => {
   const block = [
     '',
@@ -38,6 +44,14 @@ process.on('uncaughtException', (err: any) => {
   ].join('\n');
   process.stdout.write(block);
   process.stderr.write(block);
+  // Only fast-fail during BOOT. Once the server is listening, a recoverable
+  // uncaught error must not kill the process (the keep-alive net at the bottom
+  // of this file logs + lets it recover) — otherwise a single Neon connection
+  // blip restart-loops production and breaks signup. (2026-07-30)
+  if (__petwashBootComplete) {
+    process.stderr.write('[boot-guard] uncaught exception AFTER boot — staying alive, letting it recover\n');
+    return;
+  }
   // Give the runtime a beat to flush before exiting, then exit 1 so
   // Cloud Run gets a clean signal and doesn't wait 240 s on the probe.
   setTimeout(() => process.exit(1), 250).unref();
@@ -1454,6 +1468,7 @@ if (isProduction) {
       console.log('🔧 [Dev Mode] Initializing Vite dev server with HMR...');
       const { setupVite } = await import('./vite');
       const server = app.listen(PORT, '0.0.0.0', () => {
+        __petwashBootComplete = true; // boot done — recoverable errors now recover, not crash
         console.log(`--------------------------------------------------`);
         console.log(`✅ [Server] listening on port ${PORT} in development mode`);
         console.log(`📁 [Server] Using Vite dev server (source files with HMR)`);
@@ -1753,6 +1768,7 @@ if (isProduction) {
     // that can answer health checks while real API routes are still unavailable.
     if (isProduction && !(app as any)._server) {
       const server = app.listen(PORT, '0.0.0.0', () => {
+        __petwashBootComplete = true; // boot done — recoverable errors now recover, not crash
         console.log('--------------------------------------------------');
         console.log(`✅ [Server] listening on port ${PORT} in production mode`);
         console.log('✅ [Server] Routes/static/catchall are registered before traffic');
