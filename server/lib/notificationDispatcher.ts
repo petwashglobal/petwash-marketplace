@@ -152,8 +152,6 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
 }> {
   const {
     uid,
-    email,
-    phone,
     locale = 'he',
     type,
     title,
@@ -171,6 +169,32 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
   let emailSent = false;
   let smsSent = false;
   let pushSent = false;
+
+  // ── 0. Resolve missing contact details from the users row ─────────────────
+  // Several money-critical callers (the 24h "confirm or your payment releases"
+  // warning, the accept-timeout notice) pass only a uid and assume this
+  // function looks the user up — it never did, so their email/SMS channels
+  // silently dropped (2026-07-30 audit F1). Resolve here, once, for everyone.
+  let email = opts.email;
+  let phone = opts.phone;
+  if (uid && ((channels.includes('email') && !email) || (channels.includes('sms') && !phone))) {
+    try {
+      const { db } = await import('../db');
+      const { users } = await import('@shared/schema');
+      const { eq, or } = await import('drizzle-orm');
+      const [u] = await db
+        .select({ email: users.email, phone: users.phone })
+        .from(users)
+        .where(or(eq(users.id, uid), eq(users.firebaseUid, uid)))
+        .limit(1);
+      if (u) {
+        email = email || u.email || undefined;
+        phone = phone || u.phone || undefined;
+      }
+    } catch (lookupErr: any) {
+      errors.push(`contact-lookup: ${lookupErr?.message}`);
+    }
+  }
 
   // ── 1. Write to Firestore inbox (primary, always attempted) ──────────────
   if (channels.includes('inbox')) {

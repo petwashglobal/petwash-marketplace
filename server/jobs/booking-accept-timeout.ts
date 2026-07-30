@@ -147,9 +147,27 @@ export async function processStaleAcceptRequests(): Promise<{
 
       // Free the provider's EXCLUDE slot-lock so the auto-declined slot is
       // re-bookable (otherwise the lock poisons the calendar forever).
-      // Idempotent, best-effort.
+      // Idempotent, best-effort. Bridged bookings created their lock under the
+      // LEGACY booking ref (sitter-suite/walk/academy pass their own id), so
+      // release BOTH keys — the requestId-only release left every bridged
+      // slot poisoned (2026-07-30 audit).
       await releaseSlotLock(db, booking.requestId)
         .catch((e: any) => logger.warn('[AcceptTimeout] slot-lock release failed', { requestId: booking.requestId, error: e?.message }));
+      const legacyRefId = (booking.quoteBreakdown as any)?.legacyRef?.id;
+      if (legacyRefId != null) {
+        await releaseSlotLock(db, String(legacyRefId))
+          .catch((e: any) => logger.warn('[AcceptTimeout] legacy slot-lock release failed', { legacyRefId, error: e?.message }));
+      }
+
+      // Sync the decline back to the legacy customer-side row — without this,
+      // sitter_bookings/walk_bookings/trainer_bookings stayed 'pending_provider'
+      // forever after an auto-decline (2026-07-30 audit).
+      try {
+        const { applyBridgeDecision } = await import('../services/legacyBookingBridge');
+        await applyBridgeDecision(booking.quoteBreakdown, 'decline');
+      } catch (bridgeErr: any) {
+        logger.warn('[AcceptTimeout] legacy decline write-back failed (non-blocking)', { error: bridgeErr?.message });
+      }
 
       // Release wallet hold if one was placed when the request was created.
       if (booking.financeState === 'hold_active' && Number(booking.walletHoldCents) > 0) {
@@ -190,15 +208,20 @@ export async function processStaleAcceptRequests(): Promise<{
       // Notify the owner — non-blocking.
       try {
         const { dispatchNotification } = await import('../lib/notificationDispatcher');
+        // Field names fixed 2026-07-30: this call passed userId:/body: — the
+        // dispatcher expects uid:/bodyHtml:, so uid was undefined and the
+        // customer whose provider ghosted them was told NOTHING on any
+        // channel. The dispatcher now resolves email/phone from the uid.
         await dispatchNotification({
-          userId:    booking.ownerId,
+          uid:       booking.ownerId,
           type:      'booking_request' as any,
-          title:     'Provider did not respond',
-          body:      `The provider did not respond to your booking request in time. We have refunded your hold so you can try a different provider.`,
-          channels:  ['email', 'sms'],
-          entityId:  booking.requestId,
-          idempotencyKey: `accept-timeout-${booking.requestId}`,
-        } as any);
+          title:     'הספק לא הגיב — ההזמנה בוטלה',
+          bodyHtml:  `<p>הספק לא הגיב לבקשת ההזמנה שלך בזמן, וההזמנה בוטלה אוטומטית. אם שולם — הכסף שוחרר חזרה.</p><p><a href="https://petwash.co.il/marketplace">חיפוש ספק זמין אחר</a></p>`,
+          bodyText:  `PetWash: הספק לא הגיב בזמן וההזמנה בוטלה. חפשו ספק אחר: https://petwash.co.il/marketplace`,
+          channels:  ['inbox', 'email', 'sms'],
+          priority:  5,
+          meta:      { bookingId: booking.requestId, reason: 'accept_timeout' },
+        });
       } catch (notifErr: any) {
         logger.warn('[AcceptTimeout] Owner notification failed', {
           requestId: booking.requestId, error: notifErr?.message,

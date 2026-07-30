@@ -1370,6 +1370,16 @@ router.post(
           amountCents: payload.amountCents,
         });
 
+        // ── Legacy mirror write-back (2026-07-30): bridged sitter/walk/academy
+        // rows flip to 'confirmed' ONLY here — after verified payment. The
+        // provider's accept writes 'accepted'; this is the money truth point.
+        try {
+          const { applyBridgePaymentConfirmed } = await import('../services/legacyBookingBridge');
+          await applyBridgePaymentConfirmed((booking as any).quoteBreakdown);
+        } catch (bridgeErr: any) {
+          logger.warn('[BookingReqWebhook] legacy confirm write-back failed (non-blocking)', { error: bridgeErr?.message });
+        }
+
         // ── Customer + provider confirmation notification (2026-07-01) ────────
         // This webhook is the ONLY place a booking-requests.ts booking flips
         // payment_pending -> confirmed, and until now nothing here told the

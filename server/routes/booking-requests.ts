@@ -373,27 +373,46 @@ router.post('/', async (req, res) => {
       serviceFeeCents = freshQuote.totals.serviceFeeCents ?? 0;
       totalCents = freshQuote.totals.totalCents;
     } else {
-      // Legacy fallback: fetch provider rate and calculate
-      if (data.providerType === 'sitter' && data.providerProfileId) {
+      // Legacy fallback (2026-07-30 rewrite): the profile is resolved by the
+      // TARGET provider's uid, never by a client-supplied profile id alone.
+      // Before: (a) BookingContact sends no providerProfileId, so every
+      // contact-path request skipped the lookups and priced at a fictional
+      // hardcoded ₪150/day; (b) providerProfileId was trusted unchecked — a
+      // caller could book an expensive sitter at any cheaper sitter's rate.
+      if (data.providerType === 'sitter') {
         const [sitter] = await db.select().from(sitterProfiles)
-          .where(eq(sitterProfiles.id, data.providerProfileId)).limit(1);
-        if (sitter) dailyRateCents = sitter.pricePerDayCents || 15000;
-      } else if (data.providerType === 'walker' && data.providerProfileId) {
+          .where(eq(sitterProfiles.userId, data.providerId)).limit(1);
+        if (sitter) dailyRateCents = sitter.pricePerDayCents || 0;
+        if (data.providerProfileId && sitter && sitter.id !== data.providerProfileId) {
+          return res.status(400).json({ error: 'Provider profile mismatch.', code: 'PROVIDER_PROFILE_MISMATCH' });
+        }
+      } else if (data.providerType === 'walker') {
         const [walker] = await db.select().from(walkerProfiles)
-          .where(eq(walkerProfiles.id, data.providerProfileId)).limit(1);
-        if (walker) hourlyRateCents = parseInt(walker.hourlyRate || '5000');
-      } else if (data.providerType === 'trainer' && data.providerProfileId) {
+          .where(eq(walkerProfiles.userId, data.providerId)).limit(1);
+        if (walker) hourlyRateCents = parseInt(walker.hourlyRate || '0');
+        if (data.providerProfileId && walker && walker.id !== data.providerProfileId) {
+          return res.status(400).json({ error: 'Provider profile mismatch.', code: 'PROVIDER_PROFILE_MISMATCH' });
+        }
+      } else if (data.providerType === 'trainer') {
         const [trainer] = await db.select().from(trainers)
-          .where(eq(trainers.id, data.providerProfileId)).limit(1);
-        if (trainer) hourlyRateCents = parseFloat(trainer.hourlyRate || '8000') * 100;
+          .where(eq(trainers.userId, data.providerId)).limit(1);
+        if (trainer) hourlyRateCents = parseFloat(trainer.hourlyRate || '0') * 100;
+        if (data.providerProfileId && trainer && trainer.id !== data.providerProfileId) {
+          return res.status(400).json({ error: 'Provider profile mismatch.', code: 'PROVIDER_PROFILE_MISMATCH' });
+        }
       }
-      
+
       if (dailyRateCents > 0) {
         subtotalCents = dailyRateCents * totalDays * data.petCount;
       } else if (hourlyRateCents > 0) {
         subtotalCents = hourlyRateCents * data.petCount;
       } else {
-        subtotalCents = 15000 * totalDays * data.petCount;
+        // No published rate — refuse to invent a price (§17a: the number the
+        // customer commits to must be the provider's real one).
+        return res.status(422).json({
+          error: 'This provider has not published a rate yet. Please contact them via chat first.',
+          code: 'PROVIDER_RATE_MISSING',
+        });
       }
       serviceFeeCents = Math.round(subtotalCents * serviceFeePercent / 100);
       totalCents = subtotalCents + serviceFeeCents;

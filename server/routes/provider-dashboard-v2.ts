@@ -20,6 +20,10 @@ import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { pool } from '../db';
 import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
+import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
+import { releaseSlotLock } from '../lib/marketplaceSlotLock';
+import { dispatchNotification } from '../lib/notificationDispatcher';
+import { walletService } from '../services/WalletService';
 
 const router = Router();
 
@@ -702,7 +706,11 @@ const ALLOWED_FROM: Record<string, string[]> = {
 
 // Target status for each action
 const TO_STATUS: Record<string, string> = {
-  accept:   'confirmed',
+  // 2026-07-30: accept lands in 'accepted', NOT 'confirmed'. 'confirmed' means
+  // "payment verified" — jumping straight there dead-ended the canonical /pay
+  // rail (its guard requires 'accepted') and marked bookings paid with zero
+  // money moved. The Nayax payment webhook is the only writer of 'confirmed'.
+  accept:   'accepted',
   decline:  'declined',
   cancel:   'cancelled',
   start:    'in_progress',
@@ -750,7 +758,8 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
 
     // Fetch + ownership check in one query — include owner_id/request_id for downstream notifications
     const fetchResult = await pool.query(
-      `SELECT id, status, provider_id, owner_id, request_id, service_type, quote_breakdown
+      `SELECT id, status, provider_id, owner_id, request_id, service_type, quote_breakdown,
+              start_date, end_date, finance_state, wallet_hold_cents
        FROM booking_requests WHERE id = $1 AND provider_id = $2`,
       [bookingId, user.uid],
     );
@@ -830,6 +839,26 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
     const now = new Date();
     const { reason } = req.body;
 
+    // ── Double-booking guard on accept (2026-07-30): V1's overlap check was
+    // never ported to this live path — a provider could accept two overlapping
+    // requests. Same BLOCKING_STATUSES source as V1 (booking-requests.ts).
+    if (action === 'accept' && booking.start_date && booking.end_date) {
+      const overlap = await pool.query(
+        `SELECT id FROM booking_requests
+         WHERE provider_id = $1 AND id != $2
+           AND status = ANY($3::booking_request_status[])
+           AND start_date <= $4 AND end_date >= $5
+         LIMIT 1`,
+        [user.uid, bookingId, BLOCKING_STATUSES, booking.end_date, booking.start_date],
+      );
+      if (overlap.rows.length > 0) {
+        return res.status(409).json({
+          error: 'You already have a booking that overlaps these dates.',
+          code: 'PROVIDER_DOUBLE_BOOKING',
+        });
+      }
+    }
+
     // Build status_history entry
     const historyEntry = {
       status:     newStatus,
@@ -880,22 +909,30 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
       params.push(now);
     }
 
-    // WHERE: id + provider_id double-check prevents any TOCTOU race
-    params.push(bookingId); // $p
-    params.push(user.uid);  // $p+1
+    // WHERE re-checks id + provider_id + STATUS atomically. The status
+    // predicate is the actual TOCTOU close (2026-07-30): the pre-fetched
+    // status was checked outside any lock, so two concurrent taps could both
+    // pass the ALLOWED_FROM check — the row-level status match makes exactly
+    // one of them win.
+    params.push(bookingId);   // $p
+    params.push(user.uid);    // $p+1
+    params.push(allowed);     // $p+2
 
     const updateResult = await pool.query(
       `UPDATE booking_requests
        SET ${setClauses.join(', ')}
-       WHERE id = $${p} AND provider_id = $${p + 1}
+       WHERE id = $${p} AND provider_id = $${p + 1} AND status = ANY($${p + 2}::booking_request_status[])
        RETURNING id, status, cancellation_reason, service_started_at,
                  service_completed_at, cancelled_at, updated_at`,
       params,
     );
 
     if (updateResult.rows.length === 0) {
-      // Should not happen — the fetch proved the row exists — but guard anyway
-      return res.status(500).json({ error: 'Update did not modify any row' });
+      // The row's status changed between fetch and update (concurrent action).
+      return res.status(409).json({
+        error: 'This booking was just updated by another action. Refresh and try again.',
+        code: 'RACE_CONDITION',
+      });
     }
 
     const updated = updateResult.rows[0];
@@ -910,6 +947,69 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
         const { applyBridgeDecision } = await import('../services/legacyBookingBridge');
         await applyBridgeDecision(booking.quote_breakdown, action);
       } catch { /* canonical row already updated */ }
+    }
+
+    // ── Wallet lifecycle parity with V1 (2026-07-30): V2 never touched
+    // finance_state, so a customer's wallet hold was neither debited on accept
+    // nor released on decline — money frozen forever. Mirrors V1
+    // (booking-requests.ts /respond): accept → debit from hold, decline →
+    // release hold. Fail-visible via *_failed states, same as V1.
+    const requestIdStr: string | undefined = booking.request_id;
+    const holdCents = Number(booking.wallet_hold_cents) || 0;
+    if ((action === 'accept' || action === 'decline') && booking.finance_state === 'hold_active' && holdCents > 0 && requestIdStr) {
+      const svcType = String(booking.service_type || '');
+      const divisionCode =
+        svcType.includes('sit') ? 'petsitter' :
+        svcType.includes('walk') ? 'walkers' :
+        svcType.includes('train') ? 'academy' : 'general';
+      setImmediate(async () => {
+        try {
+          if (action === 'accept') {
+            const debitResult = await walletService.debitBookingFromHold({
+              userId: booking.owner_id, amountCents: holdCents, bookingId: requestIdStr,
+              divisionCode: divisionCode as any, ipAddress: req.ip ?? null,
+            });
+            await db.update(bookingRequests)
+              .set({ walletDebitedCents: holdCents, walletDebitKey: debitResult.txnId, financeState: 'debited', updatedAt: new Date() })
+              .where(eq(bookingRequests.requestId, requestIdStr));
+          } else {
+            const releaseResult = await walletService.releaseBookingHold({
+              userId: booking.owner_id, amountCents: holdCents, bookingId: requestIdStr,
+              divisionCode: divisionCode as any, ipAddress: req.ip ?? null,
+            });
+            await db.update(bookingRequests)
+              .set({ walletReleaseKey: releaseResult.txnId, financeState: 'released', updatedAt: new Date() })
+              .where(eq(bookingRequests.requestId, requestIdStr));
+          }
+        } catch (walletErr: any) {
+          logger.error('[ProviderDashboardV2] Wallet lifecycle error on provider response', {
+            requestId: requestIdStr, action, error: walletErr.message,
+          });
+          const failedState = action === 'accept' ? 'debit_failed' : 'release_failed';
+          await db.update(bookingRequests)
+            .set({ financeState: failedState, updatedAt: new Date() })
+            .where(eq(bookingRequests.requestId, requestIdStr))
+            .catch(() => {});
+        }
+      });
+    }
+
+    // ── Slot-lock release on decline/cancel (2026-07-30): V2 never released
+    // the EXCLUDE slot lock, so every decline poisoned that provider's
+    // calendar window forever. Bridged bookings created their lock under the
+    // LEGACY booking ref (SITTER_… / WALK_… / trainer bookingId), so release
+    // both keys. Idempotent, best-effort — over-blocking is safer than
+    // double-booking, but a declined slot must free up.
+    if (action === 'decline' || action === 'cancel') {
+      if (requestIdStr) {
+        await releaseSlotLock(db, requestIdStr)
+          .catch((e: any) => logger.warn('[ProviderDashboardV2] slot-lock release failed', { requestId: requestIdStr, error: e?.message }));
+      }
+      const legacyId = booking.quote_breakdown?.legacyRef?.id;
+      if (legacyId != null) {
+        await releaseSlotLock(db, String(legacyId))
+          .catch((e: any) => logger.warn('[ProviderDashboardV2] legacy slot-lock release failed', { legacyId, error: e?.message }));
+      }
     }
 
     // ── Customer notification on accept / decline ──────────────────────────────
@@ -948,6 +1048,32 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
             error: notifErr.message, bookingId,
           });
         }
+
+        // Off-app channels (2026-07-30): the in-app row above only reaches a
+        // customer who opens the app — V1 also sends email+SMS, and this is
+        // the LIVE provider path, so mirror it. The dispatcher resolves the
+        // customer's email/phone from their uid. Accept now lands in
+        // 'accepted' (payment still required), so the accept message says
+        // PAY-TO-CONFIRM — not "confirmed".
+        const confirmUrl = `https://petwash.co.il/booking/confirmation/${requestId ?? bookingId}`;
+        dispatchNotification({
+          uid: ownerId,
+          type: isAccept ? 'booking_accepted' : 'booking_declined',
+          title: isAccept ? '✅ הספק אישר — נותר רק לשלם' : 'הספק אינו זמין בתאריכים אלה',
+          bodyHtml: isAccept
+            ? `<p>הספק אישר את הבקשה שלך! כדי לסגור את ההזמנה סופית, השלימו את התשלום עכשיו.</p><p><a href="${confirmUrl}">להשלמת התשלום ואישור ההזמנה</a></p>`
+            : `<p>הספק אינו זמין בתאריכים המבוקשים. אל דאגה — יש לנו ספקים נוספים שישמחו לעזור.</p><p><a href="https://petwash.co.il/marketplace">חיפוש ספק זמין</a></p>`,
+          bodyText: isAccept
+            ? `PetWash: הספק אישר את הבקשה! השלימו תשלום לאישור סופי: ${confirmUrl}`
+            : `PetWash: הספק אינו זמין בתאריכים אלה. חפשו ספק זמין: https://petwash.co.il/marketplace`,
+          ctaText: isAccept ? 'להשלמת התשלום' : 'חיפוש ספק',
+          ctaUrl: confirmUrl,
+          channels: ['email', 'sms'],
+          priority: 5,
+          meta: { bookingId: requestId ?? String(bookingId), action },
+        }).catch((e: any) =>
+          logger.warn('[ProviderDashboardV2] off-app customer notification failed', { error: e?.message, bookingId }),
+        );
 
         // For decline: schedule 1-hour recovery nudge (same as V1)
         if (!isAccept) {
