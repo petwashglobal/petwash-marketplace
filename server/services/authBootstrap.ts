@@ -89,6 +89,11 @@ export async function ensureUserProvisioned(uid: string, opts: ProvisionOptions)
     } else if (opts.channel === 'email') {
       const { markEmailVerified } = await import('./ActivationService');
       await markEmailVerified(uid, { acceptTerms: true });
+    } else if (opts.channel === 'social' && opts.email) {
+      // Google/Apple/Facebook verify the email on their side (Apple relay too) —
+      // so a social login is a verified email → it activates the account.
+      const { markEmailVerified } = await import('./ActivationService');
+      await markEmailVerified(uid, { acceptTerms: true });
     }
   } catch (e: any) {
     logger.warn('[authBootstrap] verified-flag ensure failed (non-blocking)', { uid, error: e?.message });
