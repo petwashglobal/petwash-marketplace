@@ -13,6 +13,7 @@ import { QRCodeService } from "./qrCode";
 import { SmartReceiptService } from "./smartReceiptService";
 import { EmailService } from "./emailService";
 import { GoogleMessagingService } from "./services/GoogleMessagingService";
+import { ensureUserProvisioned } from "./services/authBootstrap";
 import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
@@ -1354,6 +1355,18 @@ self.addEventListener('notificationclick', (event) => {
           } catch (termsErr) {
             logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
           }
+        }
+
+        // Social users (Google/Apple/…) get their users row from the sync above,
+        // but the social path never created a wallet or loyalty profile — so wallet
+        // queries crash for them. Provision idempotently + mark the (provider-
+        // verified) email so the account activates. Orphan-safe, never overwrites
+        // the existing row. (2026-07-31)
+        if (socialOAuthProviders.includes(signInProviderForTerms)) {
+          await ensureUserProvisioned(decoded.uid, {
+            channel: 'social',
+            email: decoded.email || undefined,
+          }).catch((e: any) => logger.warn('[Session] social provision failed (non-blocking)', { error: e?.message }));
         }
       } catch (syncErr) {
         logger.warn('[Session] Critical PostgreSQL sync failed (non-blocking) — post-login recovery will retry', syncErr);
