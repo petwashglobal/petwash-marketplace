@@ -326,7 +326,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [inlineError, setInlineError] = useState<string | null>(null);
   const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
   // Date of birth — required, 18+. Server re-enforces at account creation.
-  const [dob, setDob] = useState('');
+  // DOB defaults to the SAME date the wheel visually shows (year = now-25, an
+  // adult). Before this, dob started '' while the picker rendered `dob || now-25`
+  // — so the wheel SHOWED "2001 / June / 15" but the form state stayed empty, the
+  // 18+ gate read empty, and Continue stayed dead with no clear reason. Every year
+  // the wheel can offer is ≥18 (maxYear = now-18), so seeding the shown value is
+  // safe and honest: display === state === payload. The user spins to set their
+  // real birthday; not touching it now means "the date I see", not "nothing". (2026-07-31)
+  const [dob, setDob] = useState(`${new Date().getFullYear() - 25}-06-15`);
   // Step 2 of dual-verify: after the phone code + account, we verify the email too.
   const [emailStep, setEmailStep] = useState(false);
   // Passkey / Face ID (returning users): device-bound, the 2026 way to skip codes.
