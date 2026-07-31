@@ -174,6 +174,11 @@ class TwilioSMSService {
   private client: twilio.Twilio | null = null;
   private fromPhone: string | null = null;
   private messagingServiceSid: string | null = null;
+  // Per-region sender numbers (CEO 2026-07-31): Israel → the Israeli number bought from
+  // Twilio; everyone outside Israel → the US number. Guarantees an Israeli user never
+  // sees a foreign sender, and keeps the two markets on their own numbers.
+  private ilPhone: string | null = null;
+  private usPhone: string | null = null;
   private isConfigured = false;
 
   constructor() {
@@ -185,6 +190,10 @@ class TwilioSMSService {
     const authToken = process.env.TWILIO_AUTH_TOKEN;
     const fromPhone = process.env.TWILIO_PHONE_NUMBER;
     const messagingServiceSid = process.env.TWILIO_MESSAGING_SERVICE_SID;
+    // Per-region sender numbers: IL for +972 recipients, US for everyone else. Optional —
+    // when unset the code falls back to the Messaging Service / fromPhone below.
+    const ilPhone = process.env.TWILIO_PHONE_NUMBER_IL;
+    const usPhone = process.env.TWILIO_PHONE_NUMBER_US;
 
     // GUARD: a real Twilio Account SID always starts with "AC". A malformed SID
     // (paste error / wrong secret) once 503'd ALL SMS silently. Catch it here and
@@ -196,13 +205,19 @@ class TwilioSMSService {
       return;
     }
 
-    if (accountSid && authToken && (fromPhone || messagingServiceSid)) {
+    if (accountSid && authToken && (fromPhone || messagingServiceSid || ilPhone || usPhone)) {
       try {
         this.client = twilio(accountSid, authToken);
         this.fromPhone = fromPhone || null;
         this.messagingServiceSid = messagingServiceSid || null;
+        this.ilPhone = ilPhone || null;
+        this.usPhone = usPhone || null;
         this.isConfigured = true;
-        if (this.messagingServiceSid) {
+        if (this.ilPhone || this.usPhone) {
+          logger.info('[TwilioSMS] ✅ Initialized with per-region sender numbers', {
+            hasIsraelNumber: !!this.ilPhone, hasUsNumber: !!this.usPhone,
+          });
+        } else if (this.messagingServiceSid) {
           logger.info('[TwilioSMS] ✅ Initialized with Messaging Service (branded sender)');
         } else {
           logger.info('[TwilioSMS] ✅ Initialized with phone number');
@@ -219,6 +234,20 @@ class TwilioSMSService {
 
   private getSendParams(toPhone: string, body: string): { body: string; to: string; from?: string; messagingServiceSid?: string } {
     const cleaned = toPhone.replace(/[^0-9]/g, '');
+
+    // EXPLICIT per-region sender (CEO 2026-07-31): Israeli recipients get the Israeli
+    // number we bought from Twilio; everyone OUTSIDE Israel gets the US number. This is
+    // the deterministic rule that guarantees an Israeli user never sees a foreign (+855)
+    // sender. If a region's number isn't configured yet, we fall through to the
+    // alpha/Messaging-Service logic below (for Israel that path is alpha-blocked → the
+    // Messaging Service / fromPhone), so this is safe to ship before both numbers exist.
+    const isIsrael = cleaned.startsWith('972');
+    if (isIsrael && this.ilPhone) {
+      return { body, to: toPhone, from: this.ilPhone };
+    }
+    if (!isIsrael && this.usPhone) {
+      return { body, to: toPhone, from: this.usPhone };
+    }
 
     // Check if this country prefix is blocked from using alphanumeric sender.
     // Blocked = either carrier doesn't support it, or the Twilio account hasn't registered
