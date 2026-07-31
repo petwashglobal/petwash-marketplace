@@ -263,7 +263,9 @@ export async function checkPayoutGates(input: PayoutGateInput): Promise<PayoutGa
     {
       const decl = await checkProviderDeclarationsSigned(providerUid);
       if (!decl.ok) {
-        const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'off').toLowerCase() === 'on';
+        // ENFORCE by default (CEO 2026-07-31 "make it live"): no payout until the
+        // provider has signed the declarations. Set the env var to 'off' to revert to shadow.
+        const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'on').toLowerCase() === 'on';
         logger.warn(
           `[PayoutGate] declarations ${enforce ? 'HOLD' : 'WOULD HOLD (shadow)'} for ${providerUid} — ${decl.reason}${decl.missing.length ? ` (missing: ${decl.missing.join(',')})` : ''}`,
         );

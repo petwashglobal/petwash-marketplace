@@ -755,8 +755,15 @@ export default function ProviderOnboarding() {
                 </p>
               </div>
 
+              {/* PRIMARY next step (CEO 2026-07-31): sign the declarations to go
+                  live — the funnel now pushes providers straight into signing. */}
+              <Link href="/provider-declarations">
+                <Button className="luxury-btn-primary luxury-shadow-xl w-full py-4 mb-3" data-testid="button-sign-declarations">
+                  {isHebrew ? 'חתמו על הצהרות הספק כדי להפעיל את החשבון ←' : 'Sign your provider declarations to activate →'}
+                </Button>
+              </Link>
               <Link href="/">
-                <Button className="luxury-btn-primary luxury-shadow-xl w-full py-4" data-testid="button-back-home">
+                <Button variant="outline" className="w-full py-3" data-testid="button-back-home">
                   {isHebrew ? 'חזרה לדף הבית' : 'Back to Home'}
                 </Button>
               </Link>

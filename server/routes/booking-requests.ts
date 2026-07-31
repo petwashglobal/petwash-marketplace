@@ -1524,7 +1524,7 @@ router.post('/:requestId/respond', async (req, res) => {
       try {
         const decl = await checkProviderDeclarationsSigned(userId!);
         if (!decl.ok) {
-          const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'off').toLowerCase() === 'on';
+          const enforce = (process.env.PROVIDER_DECLARATIONS_ENFORCE || 'on').toLowerCase() === 'on';
           logger.warn(`[BookingRequests] declarations ${enforce ? 'BLOCK' : 'WOULD BLOCK (shadow)'} accept`, {
             providerId: userId, reason: decl.reason, missing: decl.missing,
           });
