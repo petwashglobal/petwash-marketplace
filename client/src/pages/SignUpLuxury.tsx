@@ -934,45 +934,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   showing it first only 400s and confuses. See the returning-user
                   block after the social options below. */}
 
-              {/* === Clear intent up front: member and/or provider (non-exclusive).
-                  Hidden entirely inside the PROVIDER app — that app IS provider
-                  signup (flow locked above), so a member/provider picker there is
-                  noise, and the member tile is loyalty language the provider app
-                  must not carry. === */}
-              {nativeFlavor !== 'provider' && (
-              <div className="sl-intent">
-                <div className="sl-intentQ">{he ? 'איך תרצו להצטרף?' : 'How would you like to join?'}</div>
-                <div className="sl-intentGrid">
-                  <div className="sl-intentCard sl-intentCard--on">
-                    <FaGift className="sl-intentIcon" aria-hidden />
-                    <div className="sl-intentText">
-                      <div className="sl-intentName">{he ? 'חבר/ת PetWash Prestige' : 'PetWash Prestige member'}</div>
-                      <div className="sl-intentSub">{he ? 'תגמולי VIP · 5% על כל רחיצת K9000' : 'VIP rewards · 5% on every K9000 wash'}</div>
-                    </div>
-                    <span className="sl-intentTick" aria-hidden>✓</span>
-                  </div>
-                  {/* The provider tile is hidden inside the CUSTOMER native app —
-                      that app is the member product; provider recruitment lives in
-                      the provider app and on the web. */}
-                  {nativeFlavor !== 'customer' && (
-                    <button type="button"
-                      className={`sl-intentCard${wantsProvider ? ' sl-intentCard--on' : ''}`}
-                      aria-pressed={wantsProvider}
-                      onClick={toggleProviderIntent}>
-                      <FaPaw className="sl-intentIcon" aria-hidden />
-                      <div className="sl-intentText">
-                        <div className="sl-intentName">{he ? 'להפוך לספק/ית' : 'Become a provider'}</div>
-                        <div className="sl-intentSub">{he ? 'בכפוף לתנאים ואישור' : 'Conditions apply · approval required'}</div>
-                      </div>
-                      <span className={wantsProvider ? 'sl-intentTick' : 'sl-intentAdd'} aria-hidden>{wantsProvider ? '✓' : '+'}</span>
-                    </button>
-                  )}
-                </div>
-                {nativeFlavor !== 'customer' && (
-                  <div className="sl-intentHint">{he ? 'אפשר גם וגם — תמיד תהיו חברים, וגם ספקים אם תבחרו.' : 'Either or both — you’re always a member, and a provider too if you choose.'}</div>
-                )}
-              </div>
-              )}
+              {/* Member/provider CHOICE removed from signup (CEO 2026-07-31, council
+                  "defer" pick): everyone signs up once as a member — the fastest,
+                  modern path — and "Become a provider" is a separate later CTA.
+                  Provider signup still works via a deep link (/signup?flow=provider),
+                  which sets `flow` above without an on-screen picker; the native
+                  provider app locks flow='provider' by flavor. This also removes the
+                  static "member" card that looked like a dead toggle. */}
 
               {/* Rover-style passive consent (CEO 2026-07-27): the two blocking
                   checkboxes (agree-to-terms + 18+) are gone. Social login is now ONE
