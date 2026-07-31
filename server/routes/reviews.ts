@@ -13,7 +13,8 @@ import {
   insertContractorReviewSchema,
   sitterBookings,
   walkBookings,
-  pettrekTrips
+  pettrekTrips,
+  trainerBookings
 } from '@shared/schema';
 import { bookings, providers } from '@shared/super-app-schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
@@ -199,8 +200,47 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
         return res.status(400).json({ error: 'Invalid review type. Must be: owner_to_contractor or contractor_to_owner' });
       }
 
+    } else if (bookingType === 'trainer' || bookingType === 'academy') {
+      // PetWash Academy reviews (2026-07-31 fix): the review route rejected every
+      // academy booking, so trainers could never be reviewed. trainer_bookings keys:
+      // userId = owner, trainerUserId = trainer's uid, bookingStatus.
+      const [trainerBooking] = await db
+        .select()
+        .from(trainerBookings)
+        .where(eq(trainerBookings.bookingId, bookingId))
+        .limit(1);
+
+      if (!trainerBooking) {
+        return res.status(404).json({ error: 'Academy booking not found' });
+      }
+      if (trainerBooking.bookingStatus !== 'completed') {
+        return res.status(403).json({ error: 'Can only review completed academy bookings' });
+      }
+
+      booking = trainerBooking;
+      isOwner = trainerBooking.userId === userId;
+      isContractor = (trainerBooking.trainerUserId ?? '') === userId;
+
+      if (reviewType === 'owner_to_contractor') {
+        if (!isOwner) {
+          return res.status(403).json({ error: 'You are not the owner of this academy booking' });
+        }
+        subjectId = trainerBooking.trainerUserId ?? String(trainerBooking.trainerId);
+        subjectName = `Trainer ${trainerBooking.trainerId}`;
+        subjectType = 'trainer';
+      } else if (reviewType === 'contractor_to_owner') {
+        if (!isContractor) {
+          return res.status(403).json({ error: 'You are not the trainer for this booking' });
+        }
+        subjectId = trainerBooking.userId;
+        subjectName = `Owner ${trainerBooking.userId}`;
+        subjectType = 'owner';
+      } else {
+        return res.status(400).json({ error: 'Invalid review type. Must be: owner_to_contractor or contractor_to_owner' });
+      }
+
     } else {
-      return res.status(400).json({ error: 'Invalid booking type. Must be: sitter, walker, or pettrek' });
+      return res.status(400).json({ error: 'Invalid booking type. Must be: sitter, walker, pettrek, or trainer' });
     }
 
     // Check if review already exists for this booking
