@@ -50,15 +50,18 @@ export const signupFlags = {
    *  Button shown; graceful "not switched on yet" until Firebase Apple provider +
    *  Apple Service ID are configured. Set env var to "false" to force-hide. */
   appleSignin: on('VITE_AUTH_SIGNUP_APPLE_SIGNIN_ENABLED'),
-  /** ff.auth.signup.facebook_signin.enabled — ON (CEO 2026-06-28). Needs a
-   *  configured Meta app + OAuth redirect to complete; graceful message until then. */
-  facebookSignin: on('VITE_AUTH_SIGNUP_FACEBOOK_SIGNIN_ENABLED'),
-  /** ff.auth.signup.instagram_signin.enabled — ON (CEO 2026-06-28). Server OAuth
-   *  503s until INSTAGRAM_CLIENT_ID/SECRET are set; graceful message until then. */
-  instagramSignin: on('VITE_AUTH_SIGNUP_INSTAGRAM_SIGNIN_ENABLED'),
-  /** ff.auth.signup.tiktok_signin.enabled — ON (CEO 2026-06-28). Server OAuth
-   *  503s until TIKTOK_CLIENT_KEY/SECRET are set; graceful message until then. */
-  tiktokSignin: on('VITE_AUTH_SIGNUP_TIKTOK_SIGNIN_ENABLED'),
+  /** ff.auth.signup.facebook_signin.enabled — DEFAULT OFF (CEO 2026-07-31): these
+   *  were dead taps (needs a Meta app + business verification + Meta review — days
+   *  of your-side setup). Hidden until the keys exist; set the env var to "true"
+   *  the moment the Meta app is approved. NOTE: this is the LOGIN button only — the
+   *  PetWash social-media page links (header/footer) are separate and untouched. */
+  facebookSignin: off('VITE_AUTH_SIGNUP_FACEBOOK_SIGNIN_ENABLED'),
+  /** ff.auth.signup.instagram_signin.enabled — DEFAULT OFF (CEO 2026-07-31). Server
+   *  OAuth 503s until INSTAGRAM_CLIENT_ID/SECRET are set; flip env "true" when ready. */
+  instagramSignin: off('VITE_AUTH_SIGNUP_INSTAGRAM_SIGNIN_ENABLED'),
+  /** ff.auth.signup.tiktok_signin.enabled — DEFAULT OFF (CEO 2026-07-31). Needs
+   *  TIKTOK_CLIENT_KEY/SECRET + TikTok Login-Kit review; flip env "true" when ready. */
+  tiktokSignin: off('VITE_AUTH_SIGNUP_TIKTOK_SIGNIN_ENABLED'),
   /** ff.auth.signup.email_password.enabled */
   emailPassword: on('VITE_AUTH_SIGNUP_EMAIL_PASSWORD_ENABLED'),
   /** ff.auth.signup.2fa.enabled — KEPT OFF: the SMS-2FA step is not built; turning
