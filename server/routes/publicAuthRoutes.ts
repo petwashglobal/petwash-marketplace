@@ -15,6 +15,7 @@ import { sql, eq } from 'drizzle-orm';
 import { pool, db } from '../db';
 import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared/schema';
 import { storage } from '../storage';
+import { ensureUserProvisioned } from '../services/authBootstrap';
 import { validateEmailVerifiedToken } from '../lib/emailVerifiedToken';
 
 // Rate limiter: max 3 SMS send attempts per IP per 10 minutes.
@@ -801,6 +802,9 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
       }
     }
 
+    // Heal/provision for ALL phone sessions (new AND existing) — orphan-safe.
+    await ensureUserProvisioned(user.uid, { channel: 'phone', phone: formattedPhone, email: null });
+
     const customToken = await adminAuth.createCustomToken(user.uid, {
       phone: formattedPhone,
       authMethod: 'phone'
@@ -917,6 +921,9 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
         throw error;
       }
     }
+
+    // Heal/provision for ALL email sessions (new AND existing) — orphan-safe.
+    await ensureUserProvisioned(user.uid, { channel: 'email', email, phone: null });
 
     const customToken = await adminAuth.createCustomToken(user.uid, { email, authMethod: 'email' });
     logger.info('[EmailAuth] Custom token created', { uid: user.uid });
