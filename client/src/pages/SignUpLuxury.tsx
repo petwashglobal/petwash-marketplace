@@ -310,6 +310,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // AUTH MODE (CEO 2026-07-31 "both mobile AND email AND a password"): the JOIN
+  // form collects both contacts + a password up front (real account, not a
+  // passwordless demo); the LOGIN form is email + password. One screen, two
+  // modes, switchable. Default: /signup → join, /signin|/login → login.
+  const isLoginPath = /\/(signin|sign-in|login)/.test(window.location.pathname);
+  const [authMode, setAuthMode] = useState<'join' | 'login'>(isLoginPath ? 'login' : 'join');
+  const [showPwd, setShowPwd] = useState(false);
   const [method, setMethod] = useState<'mobile' | 'email'>('mobile');
   // ROVER-STYLE method-first (CEO 2026-07-24 'no sense, make it clear'): the
   // manual form is HIDDEN until the user chooses phone or email. Social is a
@@ -542,7 +549,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const idToken = await auth.currentUser?.getIdToken(true);
         const a = await fetch(getApiUrl('/api/auth/verify-signup-email'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ idToken, sessionToken: vd.sessionToken }),
+          // BOTH contacts now verified → set the password the user chose at join so
+          // they can log in with email + password (CEO 2026-07-31). Only sent when
+          // a valid password was collected (join flow); OTP-only paths omit it and
+          // the server leaves the credential untouched.
+          body: JSON.stringify({ idToken, sessionToken: vd.sessionToken, password: passwordValid ? password : undefined }),
         });
         const ad = await a.json();
         if (!ad.ok) { fail(ad.error || (he ? 'אימות האימייל נכשל' : 'Email verification failed')); return; }
@@ -776,11 +787,66 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // exists" (CEO). ageConfirmed = over18 || isAdult.
   const readyForSubmit = !busy && hasContact && ageConfirmed;
 
+  // ── CEO 2026-07-31 contract: JOIN needs BOTH contacts + a password ──────────
+  // A real account, not the passwordless one-contact demo. Password ≥8; confirm
+  // must match. See [[signup-contract-both-plus-password-2026-07-31]].
+  const passwordValid = password.length >= 8;
+  const confirmValid = confirm.length >= 8 && confirm === password;
+  const bothContacts = phoneValid && emailValid;
+  const joinReady = !busy && bothContacts && passwordValid && confirmValid && isAdult;
+  // LOGIN is email + password (returning member). Phone-OTP login still exists via
+  // the "use a one-time code" link; social + passkey remain on both modes.
+  const loginReady = !busy && emailValid && password.length >= 1;
+
   const ctaLabel = busy ? '…' : (he ? 'המשך' : 'Continue');
 
   function startSignup() {
     if (phoneValid) { setMethod('mobile'); void sendCode(); }
     else if (emailValid) { setMethod('email'); void sendEmailCode(); }
+  }
+
+  // JOIN (CEO 2026-07-31): both contacts + password validated → start phone-first
+  // dual verification (SMS code → then email code). The chosen password rides in
+  // component state and is set on the Firebase account server-side once BOTH
+  // contacts are verified (verifyEmailCode → verify-signup-email). Name + address
+  // are collected right after, in the profile step (complete-profile).
+  function startJoin() {
+    if (!bothContacts) { fail(he ? 'צריך גם מספר נייד וגם אימייל' : 'A mobile number AND an email are both required'); return; }
+    if (!passwordValid) { fail(he ? 'הסיסמה חייבת להיות באורך 8 תווים לפחות' : 'Password must be at least 8 characters'); return; }
+    if (!confirmValid) { fail(he ? 'הסיסמאות אינן תואמות' : 'The passwords do not match'); return; }
+    if (!isAdult) { fail(he ? 'יש להיות בגיל 18 ומעלה' : 'You must be 18 or older'); return; }
+    setInlineError(null);
+    setMethod('mobile');
+    void sendCode();
+  }
+
+  // LOGIN (CEO 2026-07-31): returning member signs in with email + password (the
+  // Firebase email/password credential set at join). Clear message on bad creds,
+  // and a nudge to the code path / join for accounts without a password yet.
+  async function loginWithPassword() {
+    if (!emailValid) { fail(he ? 'הזן כתובת אימייל תקינה' : 'Enter a valid email'); return; }
+    if (!password) { fail(he ? 'הזן סיסמה' : 'Enter your password'); return; }
+    setInlineError(null);
+    setBusy(true);
+    try {
+      const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
+      const idToken = await cred.user.getIdToken(true);
+      const r = await fetch(getApiUrl('/api/auth/session'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ idToken }),
+      });
+      if (!r.ok) { fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
+      await finishAndRoute();
+    } catch (e: any) {
+      const code = e?.code || '';
+      if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
+        fail(he ? 'אימייל או סיסמה שגויים. אין עדיין חשבון? הצטרפו, או התחברו עם קוד חד-פעמי.' : 'Wrong email or password. No account yet? Create one, or use a one-time code.');
+      } else if (code === 'auth/too-many-requests') {
+        fail(he ? 'יותר מדי ניסיונות — נסו שוב בעוד רגע' : 'Too many attempts — please try again shortly');
+      } else {
+        fail(humanizeAuthError(code, he ? 'he' : 'en'));
+      }
+    } finally { setBusy(false); }
   }
 
   const t = {
@@ -1006,40 +1072,57 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 )}
               </div>
 
-              <div className="sl-div">{he ? 'או המשך עם נייד או אימייל' : 'or continue with phone or email'}</div>
+              <div className="sl-div">{authMode === 'login'
+                ? (he ? 'או התחבר עם אימייל וסיסמה' : 'or sign in with email & password')
+                : (he ? 'או הצטרף עם נייד, אימייל וסיסמה' : 'or join with mobile, email & a password')}</div>
 
-              {/* METHOD-FIRST: nothing chosen yet → two clean chooser buttons.
-                  No phone/email field is shown until the user picks one, so the
-                  screen never asks for both. */}
-              {contactMode === 'choose' && (
-                <div className="sl-chooser">
-                  <button type="button" className="sl-soc" disabled={busy} onClick={() => { setMethod('mobile'); setContactMode('phone'); }}>
-                    <span className="sl-socLabel">{he ? 'המשך עם מספר נייד' : 'Continue with mobile number'}</span>
-                  </button>
-                  {signupFlags.emailPassword && (
-                    <button type="button" className="sl-soc" disabled={busy} onClick={() => { setMethod('email'); setContactMode('email'); }}>
-                      <span className="sl-socLabel">{he ? 'המשך עם אימייל' : 'Continue with email'}</span>
-                    </button>
-                  )}
-                </div>
-              )}
-
-              {/* PHONE path — only the phone field + DOB + the send button. */}
-              {contactMode === 'phone' && (
+              {/* ===================== JOIN (new account) =====================
+                  CEO 2026-07-31: a real account needs BOTH contacts + a password.
+                  Mobile + email + password + confirm + 18+ DOB, all required. The
+                  phone is verified first (SMS code), then the email (email code),
+                  then the password is set — name + address come right after, in the
+                  profile step. No more "pick one and skip the rest" demo. */}
+              {authMode === 'join' && (
                 <>
-                  <button type="button" className="sl-backLink" onClick={() => { setContactMode('choose'); setPhone(''); }}>
-                    {he ? '← דרך אחרת' : '← Other options'}
-                  </button>
                   {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
                     <p className="sl-inlineError" role="status">
-                      {he ? 'SMS אינו זמין כעת — אפשר להמשיך עם אימייל.' : 'SMS is temporarily unavailable — continue with email.'}
+                      {he ? 'SMS אינו זמין כעת — נסו שוב עוד רגע, או המשיכו עם Google / Apple.' : 'SMS is temporarily unavailable — try again shortly, or continue with Google / Apple.'}
                     </p>
                   )}
                   <div className="sl-field">
                     <label className="sl-label">{t.phoneLabel}</label>
                     <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
-                    <div className="sl-hint">{he ? 'נשלח קוד אימות חד-פעמי ב-SMS — בלי סיסמה.' : 'We text you a one-time code — no password.'}</div>
                   </div>
+                  <div className="sl-field">
+                    <label className="sl-label">{t.emailLabel}</label>
+                    <div className="sl-inputWrap">
+                      <FaEnvelope className="sl-inputIcon" aria-hidden />
+                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                        value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+                    </div>
+                  </div>
+                  <div className="sl-field">
+                    <label className="sl-label">{t.pwd}</label>
+                    <div className="sl-inputWrap">
+                      <FaLock className="sl-inputIcon" aria-hidden />
+                      <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="new-password"
+                        value={password} onChange={(e) => setPassword(e.target.value)} placeholder={he ? 'לפחות 8 תווים' : 'At least 8 characters'} />
+                    </div>
+                    {password.length > 0 && !passwordValid && <div className="sl-hint sl-submitHint">{he ? 'הסיסמה חייבת להיות באורך 8 תווים לפחות.' : 'Password must be at least 8 characters.'}</div>}
+                  </div>
+                  <div className="sl-field">
+                    <label className="sl-label">{he ? 'אישור סיסמה' : 'Confirm password'}</label>
+                    <div className="sl-inputWrap">
+                      <FaLock className="sl-inputIcon" aria-hidden />
+                      <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="new-password"
+                        value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={he ? 'הקלד שוב את הסיסמה' : 'Re-enter the password'} />
+                    </div>
+                    {confirm.length > 0 && confirm !== password && <div className="sl-hint sl-submitHint">{he ? 'הסיסמאות אינן תואמות.' : 'The passwords do not match.'}</div>}
+                  </div>
+                  <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
+                    {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
+                  </button>
                   <div className="sl-field">
                     <label className="sl-label">{he ? 'תאריך לידה · גיל 18 ומעלה' : 'Date of birth · 18+'}</label>
                     <AppleWheelDatePicker
@@ -1053,15 +1136,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     />
                     {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
                   </div>
+                  <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setInlineError(null); setConfirm(''); }}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                    {he ? 'כבר יש לך חשבון? התחבר/י' : 'Already have an account? Sign in'}
+                  </button>
                 </>
               )}
 
-              {/* EMAIL path — only the email field + DOB + the send button. */}
-              {contactMode === 'email' && signupFlags.emailPassword && (
+              {/* ===================== LOGIN (returning member) =====================
+                  Email + password (the credential set at join). A returning member
+                  with no password yet (old account / social) uses the one-time-code
+                  link or the social buttons above. */}
+              {authMode === 'login' && (
                 <>
-                  <button type="button" className="sl-backLink" onClick={() => { setContactMode('choose'); setEmail(''); }}>
-                    {he ? '← דרך אחרת' : '← Other options'}
-                  </button>
                   <div className="sl-field">
                     <label className="sl-label">{t.emailLabel}</label>
                     <div className="sl-inputWrap">
@@ -1069,9 +1156,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                         value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
                     </div>
-                    <div className="sl-hint">{he ? 'נשלח קוד אימות חד-פעמי לאימייל — בלי סיסמה.' : 'We email you a one-time code — no password.'}</div>
                   </div>
                   <div className="sl-field">
+<<<<<<< Updated upstream
                     <label className="sl-label">{he ? 'תאריך לידה · גיל 18 ומעלה' : 'Date of birth · 18+'}</label>
                     <AppleWheelDatePicker
                       value={dob || `${new Date().getFullYear() - 25}-06-15`}
@@ -1083,7 +1170,29 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       variant="dark"
                     />
                     {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
+=======
+                    <label className="sl-label">{t.pwd}</label>
+                    <div className="sl-inputWrap">
+                      <FaLock className="sl-inputIcon" aria-hidden />
+                      <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="current-password"
+                        value={password} onChange={(e) => setPassword(e.target.value)} placeholder={he ? 'הסיסמה שלך' : 'Your password'}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && loginReady) { void loginWithPassword(); } }} />
+                    </div>
+>>>>>>> Stashed changes
                   </div>
+                  <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
+                    {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
+                  </button>
+                  <button type="button" className="sl-switchLink" disabled={busy}
+                    onClick={() => { if (!emailValid) { fail(he ? 'הזן אימייל כדי לקבל קוד' : 'Enter your email to get a code'); return; } setMethod('email'); void sendEmailCode(); }}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                    {he ? 'התחבר/י עם קוד חד-פעמי במקום' : 'Sign in with a one-time code instead'}
+                  </button>
+                  <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('join'); setInlineError(null); }}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                    {he ? 'חדש כאן? צור/צרי חשבון' : 'New here? Create an account'}
+                  </button>
                 </>
               )}
             </>
@@ -1110,14 +1219,21 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </>
           )}
 
-          {!sent && contactMode !== 'choose' && (
+          {!sent && (
             <>
-              {/* Send-code CTA — only after a manual method (phone/email) is chosen. */}
-              <button className="sl-cta" disabled={!readyForSubmit}
-                onClick={startSignup}>
-                <FaLock aria-hidden /> {ctaLabel}
-              </button>
-              {!readyForSubmit && <div className="sl-hint sl-submitHint">{t.completeFields}</div>}
+              {/* Primary CTA — JOIN (both contacts + password) or LOGIN (email + password). */}
+              {authMode === 'join' ? (
+                <>
+                  <button className="sl-cta" disabled={!joinReady} onClick={startJoin}>
+                    <FaLock aria-hidden /> {busy ? '…' : t.cta}
+                  </button>
+                  {!joinReady && <div className="sl-hint sl-submitHint">{he ? 'להצטרפות: נייד + אימייל + סיסמה (8 תווים) + תאריך לידה (18+).' : 'To join: mobile + email + a password (8+ chars) + date of birth (18+).'}</div>}
+                </>
+              ) : (
+                <button className="sl-cta" disabled={!loginReady} onClick={() => { void loginWithPassword(); }}>
+                  <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
+                </button>
+              )}
 
               <div className="sl-bank">
                 <FaShieldAlt aria-hidden /> <span>{t.bank}</span>
