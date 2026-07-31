@@ -104,6 +104,13 @@ const ALPHA_SENDER_BLOCKED_COUNTRIES = new Set([
   '61',  // Australia — alpha sender not enabled on this account; attempting it causes a duplicate
          // deliver (carrier accepts before Twilio returns 21612) then fallback also sends.
          // Re-enable '61' only after Twilio alphanumeric sender for AU is registered.
+  '972', // ISRAEL — 2026-07-31 incident: the 'PetWash' alphanumeric sender is NOT registered
+         // for Israel, so Twilio routed the OTP through a random FOREIGN long-code (a +855
+         // Cambodia number reached the CEO) AND the fallback delivered a SECOND SMS ("SMS keeps
+         // coming"). Skipping the alpha attempt makes Israeli OTPs send deterministically from
+         // the Messaging Service / Israeli fromPhone — one message, no foreign number.
+         // Re-enable '972' ONLY after the 'PetWash' alpha sender ID is registered for Israel in
+         // the Twilio console (and the sender must be an Israeli number — see ops note).
 ]);
 
 export type SmsSendFailureCode =
