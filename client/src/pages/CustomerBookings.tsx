@@ -36,6 +36,10 @@ type TabId = typeof TABS[number]['id'];
 
 const STATUS_TO_TAB: Record<string, TabId> = {
   pending:     'pending',
+  // Legacy per-service create sets 'pending_provider' — without this key the row
+  // matched NO tab and a just-booked sitter/walk booking was INVISIBLE in My
+  // Bookings until the provider accepted. (2026-07-31 lifecycle-sweep fix)
+  pending_provider: 'pending',
   accepted:    'upcoming',
   confirmed:   'upcoming',
   in_progress: 'upcoming',
