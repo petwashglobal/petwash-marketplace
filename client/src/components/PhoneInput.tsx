@@ -102,9 +102,15 @@ export function PhoneInput({
           flag/code jumped right. dir="ltr" pins flag → country code → national
           number left-to-right in EVERY language, like every serious platform. */}
       <div dir="ltr" className="intl-phone-wrapper rounded-xl border border-black/10 bg-white px-3 py-2" style={{ textAlign: 'left' }}>
+        {/* NATIONAL mode, NOT `international` (2026-07-31 fix): in international
+            mode react-phone-number-input AUTO-SWITCHES the country from the digits
+            you type — so an Israeli typing their mobile could be silently
+            re-assigned to Australia (+61) and the OTP went to a wrong number
+            ("numbers come up bad"). In national mode the country changes ONLY via
+            the flag dropdown; typed digits are always interpreted for the selected
+            country (Israel by default), so `054…` → +972 reliably. The dropdown
+            still lets the rare foreign user pick their country. */}
         <PhoneInputLib
-          international
-          withCountryCallingCode
           countrySelectProps={{
             "aria-label": "Country",
           }}
@@ -114,10 +120,11 @@ export function PhoneInput({
              user's device locale (e.g. the CEO testing from Australia). Other
              countries remain selectable. 2026-06-18. */
           countryOptionsOrder={["IL", "|", ...allowed.filter((c: string) => c !== "IL")] as any}
+          countryCallingCodeEditable={false}
           value={value || undefined}
           onChange={(v: string | undefined) => onChange(v || "")}
           onBlur={onBlur}
-          placeholder={language === 'he' ? 'הזן מספר נייד' : 'Enter mobile number'}
+          placeholder={language === 'he' ? 'לדוגמה: 054-123-4567' : 'e.g. 054-123-4567'}
           disabled={disabled}
         />
       </div>
