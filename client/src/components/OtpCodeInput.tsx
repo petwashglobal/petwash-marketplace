@@ -152,7 +152,11 @@ export function OtpCodeInput({
           items that share the container's width (min-w-0 lets them shrink,
           max-w caps them on desktop), with a tighter gap + smaller text on
           mobile. The row can never exceed its container now. */}
-      <div className="flex w-full max-w-xs mx-auto gap-1.5 sm:gap-2 justify-center px-1" dir="ltr">
+      {/* Square, evenly-sized boxes (2026-07-31): the digit sits DEAD CENTER of a
+          clean square. Previously h-14 with a wide max made tall, loose boxes where
+          the single digit looked "outside" the box on iPhone. aspect-square keeps
+          each box a perfect square that shrinks together so 6 always fit one row. */}
+      <div className="flex w-full max-w-[19rem] mx-auto gap-2 justify-center px-1" dir="ltr">
         {Array.from({ length }).map((_, i) => (
           <input
             key={i}
@@ -170,12 +174,12 @@ export function OtpCodeInput({
             disabled={loading}
             aria-label={`Digit ${i + 1} of ${length}`}
             className={cn(
-              'flex-1 min-w-0 max-w-[3rem] h-14 text-center text-xl sm:text-2xl font-bold rounded-lg border-2 transition-all duration-150 bg-white dark:bg-white',
-              'focus:outline-none focus:ring-0',
+              'flex-1 min-w-0 aspect-square max-w-[3.25rem] p-0 text-center leading-none text-2xl font-bold rounded-xl border-2 transition-all duration-150 bg-white dark:bg-white',
+              'focus:outline-none focus:ring-2 focus:ring-[#D4AF37]/40',
               digits[i]
-                ? 'border-neutral-900 text-neutral-900 dark:border-white dark:text-black'
-                : 'border-neutral-300 text-neutral-400 dark:border-neutral-600',
-              error ? 'border-red-400 dark:border-red-500 animate-shake' : 'focus:border-neutral-900 dark:focus:border-white',
+                ? 'border-neutral-900 text-neutral-900 dark:border-neutral-900 dark:text-neutral-900'
+                : 'border-neutral-300 text-neutral-900 dark:border-neutral-300',
+              error ? 'border-red-500 animate-shake' : 'focus:border-[#D4AF37]',
               loading ? 'opacity-50 cursor-not-allowed' : 'cursor-text'
             )}
           />
