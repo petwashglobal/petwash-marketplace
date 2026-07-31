@@ -99,6 +99,17 @@ function checkGlobalDailyCap(): boolean {
 
 const ALPHA_SENDER_ID = 'PetWash';
 
+// A usable Twilio sender number must be real E.164: a leading '+', a non-zero country
+// code, then 6–14 more digits. This rejects unset values AND placeholder junk like
+// '+972XXXXXXXXX' / '+1XXXXXXXXXX' — a real 2026-07-31 incident where the region-number
+// secrets were created with the literal X placeholders. Returning null on a bad value
+// makes the sender FALL BACK to the safe number instead of failing every SMS with an
+// "invalid From" (Twilio 21212).
+function validSenderNumber(n: string | undefined | null): string | null {
+  const v = (n || '').trim();
+  return /^\+[1-9]\d{6,14}$/.test(v) ? v : null;
+}
+
 const ALPHA_SENDER_BLOCKED_COUNTRIES = new Set([
   '1',   // US/Canada — alpha sender not supported
   '61',  // Australia — alpha sender not enabled on this account; attempting it causes a duplicate
@@ -205,13 +216,15 @@ class TwilioSMSService {
       return;
     }
 
-    if (accountSid && authToken && (fromPhone || messagingServiceSid || ilPhone || usPhone)) {
+    if (accountSid && authToken && (fromPhone || messagingServiceSid || validSenderNumber(ilPhone) || validSenderNumber(usPhone))) {
       try {
         this.client = twilio(accountSid, authToken);
         this.fromPhone = fromPhone || null;
         this.messagingServiceSid = messagingServiceSid || null;
-        this.ilPhone = ilPhone || null;
-        this.usPhone = usPhone || null;
+        this.ilPhone = validSenderNumber(ilPhone);
+        this.usPhone = validSenderNumber(usPhone);
+        if (ilPhone && !this.ilPhone) logger.warn('[TwilioSMS] TWILIO_PHONE_NUMBER_IL is set but is NOT a valid E.164 number (e.g. a "+972XXXXXXXXX" placeholder) — ignoring it and falling back to the safe sender.');
+        if (usPhone && !this.usPhone) logger.warn('[TwilioSMS] TWILIO_PHONE_NUMBER_US is set but is NOT a valid E.164 number — ignoring it and falling back to the safe sender.');
         this.isConfigured = true;
         if (this.ilPhone || this.usPhone) {
           logger.info('[TwilioSMS] ✅ Initialized with per-region sender numbers', {
