@@ -1158,19 +1158,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     </div>
                   </div>
                   <div className="sl-field">
-<<<<<<< Updated upstream
-                    <label className="sl-label">{he ? 'תאריך לידה · גיל 18 ומעלה' : 'Date of birth · 18+'}</label>
-                    <AppleWheelDatePicker
-                      value={dob || `${new Date().getFullYear() - 25}-06-15`}
-                      onChange={setDob}
-                      minYear={new Date().getFullYear() - 100}
-                      maxYear={new Date().getFullYear() - 18}
-                      monthNames={he ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : undefined}
-                      dayLabel={he ? 'יום' : 'Day'} monthLabel={he ? 'חודש' : 'Month'} yearLabel={he ? 'שנה' : 'Year'}
-                      variant="dark"
-                    />
-                    {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
-=======
                     <label className="sl-label">{t.pwd}</label>
                     <div className="sl-inputWrap">
                       <FaLock className="sl-inputIcon" aria-hidden />
@@ -1178,7 +1165,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         value={password} onChange={(e) => setPassword(e.target.value)} placeholder={he ? 'הסיסמה שלך' : 'Your password'}
                         onKeyDown={(e) => { if (e.key === 'Enter' && loginReady) { void loginWithPassword(); } }} />
                     </div>
->>>>>>> Stashed changes
                   </div>
                   <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
