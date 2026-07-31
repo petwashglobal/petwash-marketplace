@@ -236,13 +236,20 @@ export async function applyBridgePaymentConfirmed(quoteBreakdown: any): Promise<
  * 'completed') never opened. Fail-soft: canonical row already updated by caller.
  * (2026-07-31 lifecycle-sweep fix)
  */
-export async function applyBridgeCompletion(quoteBreakdown: any): Promise<void> {
+export async function applyBridgeCompletion(quoteBreakdown: any, status: string = 'completed'): Promise<void> {
   try {
     const ref = quoteBreakdown?.legacyRef;
     if (!ref?.table || ref?.id == null) return;
-    const synced = await updateLegacyStatus(ref, 'completed');
+    // CORRECTION (2026-07-31): the provider's 'complete' action lands the canonical
+    // booking in 'provider_marked_complete' (awaiting CUSTOMER approval), NOT
+    // 'completed'. Writing 'completed' to the legacy row there was PREMATURE — it
+    // skipped the customer's dual-approval and opened the review gate too early.
+    // The status is now passed through: provider-complete → provider_marked_complete,
+    // and only the customer's confirm-completion writes 'completed'.
+    const safe = status === 'completed' || status === 'reviewed' ? status : 'provider_marked_complete';
+    const synced = await updateLegacyStatus(ref, safe);
     if (synced) {
-      logger.info('[BookingBridge] legacy row completed after provider completion', { ref });
+      logger.info('[BookingBridge] legacy row synced to completion status', { ref, status: safe });
     }
   } catch (err: any) {
     logger.warn('[BookingBridge] legacy completion sync failed (canonical row already updated)', { err: err?.message });

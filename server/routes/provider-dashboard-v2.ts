@@ -957,7 +957,11 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
     if (action === 'complete') {
       try {
         const { applyBridgeCompletion } = await import('../services/legacyBookingBridge');
-        await applyBridgeCompletion(booking.quote_breakdown);
+        // Pass the canonical newStatus ('provider_marked_complete') — NOT a hardcoded
+        // 'completed'. The legacy row now honestly mirrors "provider marked done,
+        // awaiting your confirmation"; the customer's approve-completion writes the
+        // real 'completed' that opens the review gate.
+        await applyBridgeCompletion(booking.quote_breakdown, newStatus);
       } catch { /* canonical row already updated */ }
     }
 
