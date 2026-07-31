@@ -1041,6 +1041,38 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
 });
 
 /**
+ * POST /api/sitter-suite/bookings/:bookingId/cancel — CUSTOMER cancel.
+ * MONEY-SAFE: only BEFORE a provider accepts (status pending_provider), when no
+ * money has moved. Cancels BOTH the customer row and the bridged provider-inbox row
+ * so a cancelled request can't still be accepted. A confirmed/paid booking needs the
+ * (manual) refund rail → directed to support rather than risk a wrong refund. Fills
+ * the gap: sitter had no customer-cancel route at all. (2026-07-31)
+ */
+router.post('/bookings/:bookingId/cancel', requireAuth, requireLoyaltyMember, async (req, res) => {
+  try {
+    const ownerId = (req as any).user?.uid;
+    const { bookingId } = req.params;
+    const [booking] = await db.select().from(sitterBookings).where(eq(sitterBookings.bookingId, bookingId)).limit(1);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.ownerId !== ownerId) return res.status(403).json({ error: 'Access denied' });
+    if (String(booking.status) !== 'pending_provider') {
+      return res.status(400).json({ error: 'CONFIRMED_BOOKING', message: 'This booking is already accepted. Please contact PetWash support to cancel it.' });
+    }
+    await db.update(sitterBookings).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(sitterBookings.bookingId, bookingId));
+    await releaseSlotLock(db, bookingId).catch(() => {});
+    try {
+      await db.execute(sql`UPDATE booking_requests SET status = 'cancelled', updated_at = NOW()
+        WHERE quote_breakdown->'legacyRef'->>'id' = ${bookingId} AND status = 'pending'`);
+    } catch (e: any) { logger.warn('[Sitter Suite] cancel bridge-sync failed', { error: e?.message }); }
+    logger.info('[Sitter Suite] customer cancelled pending booking', { bookingId, ownerId });
+    return res.json({ success: true, status: 'cancelled' });
+  } catch (e: any) {
+    logger.error('[Sitter Suite] customer cancel error', e);
+    return res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
+/**
  * PATCH /api/sitter-suite/bookings/:bookingId/provider-respond
  * on-demand: Provider accepts or declines a booking request
  * Both parties must confirm for the booking to proceed
