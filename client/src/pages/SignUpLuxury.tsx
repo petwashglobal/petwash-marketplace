@@ -52,7 +52,7 @@
  * create/verify the account. Wallet passes, biometrics, remember-me, and
  * device password preferences belong after the account is verified.
  */
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useLocation } from 'wouter';
 import {
   signInWithPopup, signInWithRedirect, signInWithCustomToken,
@@ -243,6 +243,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // SignIn.tsx. ?redirect= still wins; falls back to dest on any error.
   useEffect(() => {
     if (!user) return;
+    // A password login (esp. a 2-step challenge) routes itself once its OWN server
+    // session is minted — the session cookie is deliberately withheld until then,
+    // so auto-navigating here would drop the user on an unauthenticated page and
+    // abandon the SMS-code step. Let loginWithPassword/verifyLoginMfa navigate.
+    if (mfaLoginInFlight.current) return;
     if (safeRedirect) { navigate(safeRedirect); return; }
     let cancelled = false;
     (async () => {
@@ -323,6 +328,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // phone hint) so the code screen can render.
   const [twoFactor, setTwoFactor] = useState(false);
   const [mfaChallenge, setMfaChallenge] = useState<{ idToken: string; phoneHint: string } | null>(null);
+  // True for the whole duration of a password login (incl. a pending 2-step SMS
+  // challenge) so the auth-state auto-navigate effect does NOT yank the user off
+  // this screen before loginWithPassword has minted the server session itself.
+  // Set BEFORE signInWithEmailAndPassword (which fires onAuthStateChanged).
+  const mfaLoginInFlight = useRef(false);
   const [method, setMethod] = useState<'mobile' | 'email'>('mobile');
   // ROVER-STYLE method-first (CEO 2026-07-24 'no sense, make it clear'): the
   // manual form is HIDDEN until the user chooses phone or email. Social is a
@@ -834,6 +844,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     if (!password) { fail(he ? 'הזן סיסמה' : 'Enter your password'); return; }
     setInlineError(null);
     setBusy(true);
+    // Block the auth-state auto-navigate for the whole login (Firebase sign-in
+    // fires onAuthStateChanged immediately; we route ourselves once the session is minted).
+    mfaLoginInFlight.current = true;
     try {
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       const idToken = await cred.user.getIdToken(true);
@@ -854,12 +867,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           toast({ title: he ? 'קוד נשלח לנייד 📲' : 'Code sent to your phone 📲' });
           return;
         }
+        mfaLoginInFlight.current = false;
         fail(he ? 'לא ניתן להתחיל אימות דו-שלבי — נסו שוב' : 'Could not start two-step verification — please try again');
         return;
       }
-      if (!r.ok) { fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
+      if (!r.ok) { mfaLoginInFlight.current = false; fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
+      mfaLoginInFlight.current = false;
       await finishAndRoute();
     } catch (e: any) {
+      mfaLoginInFlight.current = false;
       const code = e?.code || '';
       if (code === 'auth/invalid-credential' || code === 'auth/wrong-password' || code === 'auth/user-not-found') {
         fail(he ? 'אימייל או סיסמה שגויים. אין עדיין חשבון? הצטרפו, או התחברו עם קוד חד-פעמי.' : 'Wrong email or password. No account yet? Create one, or use a one-time code.');
@@ -889,6 +905,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         body: JSON.stringify({ idToken: mfaChallenge.idToken, mfaToken: vd.mfaToken }),
       });
       if (!r.ok) { fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
+      mfaLoginInFlight.current = false;
       setMfaChallenge(null);
       await finishAndRoute();
     } catch (e) { logger.error('[signup] verifyLoginMfa', e); fail(he ? 'האימות נכשל' : 'Verification failed'); }
@@ -1269,7 +1286,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 : `Enter the code sent to ${mfaChallenge.phoneHint || 'your phone'}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verifyLoginMfa(c); }} loading={busy} language={he ? 'he' : 'en'} />
               {inlineError && <p className="sl-inlineError" role="alert" style={{ textAlign: 'center', marginTop: 8 }}>{inlineError}</p>}
-              <button className="sl-btn" disabled={busy} onClick={() => { setMfaChallenge(null); setPassword(''); setInlineError(null); }}>{he ? 'ביטול' : 'Cancel'}</button>
+              <button className="sl-btn" disabled={busy} onClick={() => { mfaLoginInFlight.current = false; setMfaChallenge(null); setPassword(''); setInlineError(null); }}>{he ? 'ביטול' : 'Cancel'}</button>
             </>
           )}
 
