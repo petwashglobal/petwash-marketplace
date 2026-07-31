@@ -196,21 +196,26 @@ export class NayaxSitterMarketplaceService {
    */
   private static async callNayaxPaymentAPI(request: NayaxPaymentRequest): Promise<NayaxPaymentResponse> {
     try {
-      // In development, simulate successful payment
-      if (process.env.NODE_ENV === 'development') {
-        logger.info('[Sitter Suite - DEV MODE] Simulating Nayax payment', {
+      // Gate on the MASTER Nayax switch (2026-07-31 fix): this used to key on
+      // NODE_ENV — so prod did a REAL capture even when NAYAX_ENABLED was off
+      // (bypassing the platform flag), and dev returned a FAKE 'SUCCESS' (SIM_) that
+      // could confirm a booking on money that never moved. Now: flag OFF → fail-closed
+      // (no charge, no fake success); flag ON → the real Nayax Spark capture below.
+      // Flip NAYAX_ENABLED=true (and verify the Spark endpoint/token contract) to go live.
+      const { isNayaxEnabled } = await import('../lib/payment-provider-mode');
+      if (!isNayaxEnabled()) {
+        logger.warn('[Sitter Suite] Nayax capture skipped — NAYAX_ENABLED is off (fail-closed, no charge)', {
           amount: request.Amount,
           currency: request.Currency,
         });
-        
         return {
-          Status: 'SUCCESS',
-          TransactionId: `SIM_${nanoid(16)}`,
-          Message: 'Payment successful (development mode)',
+          Status: 'FAILED',
+          DeclineReason: 'PAYMENTS_DISABLED',
+          Message: 'Card payments are not enabled yet.',
         };
       }
-      
-      // Production: Call actual Nayax API
+
+      // Nayax is enabled — call the actual Nayax Spark API
       if (!this.NAYAX_API_KEY) {
         throw new Error('NAYAX_API_KEY not configured');
       }

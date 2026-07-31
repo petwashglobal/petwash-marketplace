@@ -16,12 +16,18 @@
 import { db } from '../db';
 import { nayaxTransactions, users } from '@shared/schema';
 import { petWashStations } from '@shared/schema-enterprise';
-import { sql, and, gte, lte, eq, ne } from 'drizzle-orm';
+import { sql, and, gte, lte, eq, ne, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 // A settled Nayax sale = real revenue. The Postgres status flow is
 // initiated→authorized→vend_pending→vend_success→settled|voided|failed.
-const REVENUE_STATUS = 'settled';
+// Statuses that mean money was actually CAPTURED (2026-07-31 fix): the Nayax webhook
+// writes 'approved' on a completed sale and nothing promotes it to 'settled', so
+// counting only 'settled' made revenue read ₪0 even with real sales. Count every
+// captured-money status. 'authorized' (held, not captured), pending/failed/refunded
+// are deliberately excluded.
+const REVENUE_STATUSES = ['settled', 'approved', 'vend_success', 'captured'];
+const REVENUE_STATUS = 'settled'; // kept for any single-value callers
 
 /**
  * Analytics overview structure - FLATTENED for frontend compatibility
@@ -122,7 +128,7 @@ async function getRevenueForRange(
 ): Promise<number> {
   try {
     const conds = [
-      eq(nayaxTransactions.status, REVENUE_STATUS),
+      inArray(nayaxTransactions.status, REVENUE_STATUSES),
       gte(nayaxTransactions.createdAt, startDate),
       lte(nayaxTransactions.createdAt, endDate),
     ];
@@ -145,7 +151,7 @@ async function getRevenueForRange(
 async function getTransactionCountForRange(
   startDate: Date,
   endDate: Date,
-  status?: string,
+  status?: string | string[],
   stationId?: string
 ): Promise<number> {
   try {
@@ -153,7 +159,7 @@ async function getTransactionCountForRange(
       gte(nayaxTransactions.createdAt, startDate),
       lte(nayaxTransactions.createdAt, endDate),
     ];
-    if (status) conds.push(eq(nayaxTransactions.status, status));
+    if (status) conds.push(Array.isArray(status) ? inArray(nayaxTransactions.status, status) : eq(nayaxTransactions.status, status));
     if (stationId) conds.push(eq(nayaxTransactions.stationId, stationId));
     const [row] = await db
       .select({ c: sql<number>`count(*)` })
@@ -175,7 +181,7 @@ async function getActiveCustomersForRange(startDate: Date, endDate: Date): Promi
       .select({ c: sql<number>`COUNT(DISTINCT ${nayaxTransactions.customerUid})` })
       .from(nayaxTransactions)
       .where(and(
-        eq(nayaxTransactions.status, REVENUE_STATUS),
+        inArray(nayaxTransactions.status, REVENUE_STATUSES),
         gte(nayaxTransactions.createdAt, startDate),
         lte(nayaxTransactions.createdAt, endDate),
       ));
@@ -239,7 +245,7 @@ export async function getAnalyticsOverview(): Promise<AnalyticsOverview> {
       // transactions bucketed by status (all-time)
       db.select({
         total: sql<number>`count(*)`,
-        completed: sql<number>`count(*) filter (where ${nayaxTransactions.status} = ${REVENUE_STATUS})`,
+        completed: sql<number>`count(*) filter (where ${nayaxTransactions.status} IN ('settled', 'approved', 'vend_success', 'captured'))`,
         pending: sql<number>`count(*) filter (where ${nayaxTransactions.status} in ('initiated','authorized','vend_pending','pending'))`,
         failed: sql<number>`count(*) filter (where ${nayaxTransactions.status} in ('failed','voided'))`,
       }).from(nayaxTransactions).then((r) => r[0]),
@@ -350,7 +356,7 @@ export async function getRevenueTimeSeries(days: number = 30): Promise<RevenueTi
       
       const [revenue, transactions] = await Promise.all([
         getRevenueForRange(date, nextDate),
-        getTransactionCountForRange(date, nextDate, REVENUE_STATUS),
+        getTransactionCountForRange(date, nextDate, REVENUE_STATUSES),
       ]);
 
       result.push({
@@ -391,7 +397,7 @@ export async function getStationPerformanceAnalytics(): Promise<StationPerforman
 
         const [revenue, transactions] = await Promise.all([
           getRevenueForRange(dates.thisMonthStart, dates.now, stationId),
-          getTransactionCountForRange(dates.thisMonthStart, dates.now, REVENUE_STATUS, stationId),
+          getTransactionCountForRange(dates.thisMonthStart, dates.now, REVENUE_STATUSES, stationId),
         ]);
 
         const averageTransaction = transactions > 0 ? revenue / transactions : 0;
