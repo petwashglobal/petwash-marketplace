@@ -39,11 +39,16 @@ router.get('/metrics', async (req, res) => {
     const revenueData = revenueResult.rows[0] as any;
     
     // STEP 2: Get K9000 station metrics
+    // iot_status is a JSONB column — comparing it to the text 'online'/'error'
+    // threw "invalid input syntax for type json" and 500'd the WHOLE /metrics feed
+    // (the main Octopus panel then rendered hardcoded fallbacks = "looks fake").
+    // Cast to text (never throws) and match loosely so a jsonb string ("online")
+    // or object ({"status":"online"}) both count. (2026-07-31 fix)
     const stationsResult = await db.execute(sql`
-      SELECT 
-        COUNT(*) FILTER (WHERE is_active = true AND iot_status = 'online') AS active_count,
+      SELECT
+        COUNT(*) FILTER (WHERE is_active = true AND iot_status::text ILIKE '%online%') AS active_count,
         COUNT(*) FILTER (WHERE is_active = true) AS total_count,
-        COUNT(*) FILTER (WHERE iot_status = 'error') AS error_count,
+        COUNT(*) FILTER (WHERE iot_status::text ILIKE '%error%') AS error_count,
         COALESCE(SUM(total_washes), 0) AS total_washes
       FROM stations
     `);
@@ -330,12 +335,12 @@ router.get('/bookings', async (req, res) => {
         'walk_my_pet'                          AS platform_id,
         u.first_name || ' ' || u.last_name     AS guest_name,
         wb.pet_name,
-        COALESCE(wb.service_type, 'Walk')      AS service_type,
+        'Walk'                                 AS service_type,
         wb.scheduled_date                      AS check_in,
         wb.scheduled_date                      AS check_out,
         wb.status,
-        COALESCE(wb.total_amount, 0)           AS amount_nis,
-        COALESCE(wb.city, '')                  AS city
+        COALESCE(wb.total_cost, 0)             AS amount_nis,
+        ''                                     AS city
       FROM walk_bookings wb
       LEFT JOIN users u ON u.id = wb.owner_id
       ORDER BY wb.created_at DESC
