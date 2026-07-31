@@ -242,6 +242,42 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
+  gate-money-tests:
+    # THE CORRECTNESS GATE (added 2026-07-31, payments-live day). The deploy
+    # pipeline proves the server BOOTS and is HEALTHY, but nothing proved it was
+    # financially CORRECT — a change that computes the wrong VAT, double-releases
+    # an escrow payout, or issues a wrong SUMIT receipt would boot cleanly, return
+    # 200, and reach 100% of customers. This job runs the deterministic money/
+    # fiscal invariant suite (22 files / 121 tests, ~3s, no DB) and BLOCKS the
+    # deploy on any red test (it is in deploy-backend `needs`). Keep the file list
+    # in the `test:money` npm script; add new money tests there so they gate too.
+    name: Gate — money & fiscal invariants (blocks deploy)
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Setup Node
+        uses: actions/setup-node@v5
+        with:
+          node-version: '24'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Run money & fiscal invariant suite
+        env:
+          NODE_ENV: test
+          # Payments OFF in the gate — these are pure logic/invariant tests; they
+          # must never touch a real rail. Dummies keep any import-time guard happy.
+          NAYAX_ENABLED: 'false'
+          SUMIT_ENABLED: 'false'
+          PAYMENT_PROVIDER_MODE: mock
+        run: npm run test:money
+
   gate-audit-env-vars:
     # 2026-style fix v2: pure-advisory, never-blocking, never-pushing.
     #
@@ -436,7 +472,7 @@ jobs:
     # workflow_dispatch-only — on a normal push it never runs, so listing
     # it in needs[] would skip deploy-backend forever. The two pre-deploy
     # gates (routes-load smoke + env-var audit) remain required.
-    needs: [gate-smoke-test-startup, gate-audit-env-vars, gate-workflow-self-lint]
+    needs: [gate-smoke-test-startup, gate-money-tests, gate-audit-env-vars, gate-workflow-self-lint]
     permissions:
       contents: read
       id-token: write
