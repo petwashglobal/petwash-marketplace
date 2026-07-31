@@ -14,6 +14,10 @@ interface AppleWheelPickerProps {
   visibleItems?: number;
   label?: string;
   className?: string;
+  /** 'dark' themes the wheel for dark surfaces (e.g. the black signup page) so it
+   *  isn't a pasted-in white rectangle. Defaults to 'light' — existing callers
+   *  (booking calendar, pet intake) are unaffected. */
+  variant?: 'light' | 'dark';
 }
 
 /**
@@ -35,7 +39,9 @@ export function AppleWheelPicker({
   visibleItems = 5,
   label,
   className,
+  variant = 'light',
 }: AppleWheelPickerProps) {
+  const dark = variant === 'dark';
   const scrollRef = useRef<HTMLDivElement>(null);
   const programmatic = useRef(false);
   const settleTimer = useRef<number>(0);
@@ -93,14 +99,14 @@ export function AppleWheelPicker({
   return (
     <div className={cn('flex flex-col items-center', className)}>
       {label && (
-        <span className="text-xs font-medium text-gray-500 mb-1 uppercase tracking-wider">{label}</span>
+        <span className={cn('text-xs font-medium mb-1 uppercase tracking-wider', dark ? 'text-white/60' : 'text-gray-500')}>{label}</span>
       )}
       <div className="relative rounded-xl overflow-hidden" style={{ height: containerHeight, width: '100%' }}>
         {/* Static chrome: soft top/bottom fade + centre selection band. */}
         <div className="absolute inset-0 pointer-events-none z-10">
-          <div className="absolute top-0 left-0 right-0" style={{ height: padHeight, background: 'linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.55))' }} />
-          <div className="absolute left-0 right-0" style={{ top: padHeight, height: itemHeight, borderTop: '1.5px solid rgba(0,0,0,0.08)', borderBottom: '1.5px solid rgba(0,0,0,0.08)', background: 'rgba(245,245,247,0.5)' }} />
-          <div className="absolute bottom-0 left-0 right-0" style={{ height: padHeight, background: 'linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0.55))' }} />
+          <div className="absolute top-0 left-0 right-0" style={{ height: padHeight, background: dark ? 'linear-gradient(to bottom, rgba(15,15,17,0.98), rgba(15,15,17,0.35))' : 'linear-gradient(to bottom, rgba(255,255,255,0.95), rgba(255,255,255,0.55))' }} />
+          <div className="absolute left-0 right-0" style={{ top: padHeight, height: itemHeight, borderTop: dark ? '1.5px solid rgba(255,255,255,0.14)' : '1.5px solid rgba(0,0,0,0.08)', borderBottom: dark ? '1.5px solid rgba(255,255,255,0.14)' : '1.5px solid rgba(0,0,0,0.08)', background: dark ? 'rgba(255,255,255,0.06)' : 'rgba(245,245,247,0.5)' }} />
+          <div className="absolute bottom-0 left-0 right-0" style={{ height: padHeight, background: dark ? 'linear-gradient(to top, rgba(15,15,17,0.98), rgba(15,15,17,0.35))' : 'linear-gradient(to top, rgba(255,255,255,0.95), rgba(255,255,255,0.55))' }} />
         </div>
 
         {/* Native scroller — real iOS momentum + snap; overscroll-contain keeps
@@ -119,7 +125,7 @@ export function AppleWheelPicker({
               className="flex items-center justify-center cursor-pointer"
               style={{ height: itemHeight, scrollSnapAlign: 'center' }}
             >
-              <span className="text-lg font-semibold text-gray-900 whitespace-nowrap px-2 text-center">
+              <span className={cn('text-lg font-semibold whitespace-nowrap px-2 text-center', dark ? 'text-white' : 'text-gray-900')}>
                 {item.label}
               </span>
             </div>
@@ -143,6 +149,7 @@ interface AppleWheelDatePickerProps {
   dayLabel?: string;
   monthLabel?: string;
   yearLabel?: string;
+  variant?: 'light' | 'dark';
 }
 
 const MONTHS_EN = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
@@ -159,7 +166,9 @@ export function AppleWheelDatePicker({
   dayLabel = 'Day',
   monthLabel = 'Month',
   yearLabel = 'Year',
+  variant = 'light',
 }: AppleWheelDatePickerProps) {
+  const dark = variant === 'dark';
   const parts = (value || '').split('-');
   const [selectedYear, setSelectedYear] = useState(parts[0] || String(maxYear - 25));
   const [selectedMonth, setSelectedMonth] = useState(parts[1] || '06');
@@ -199,9 +208,9 @@ export function AppleWheelDatePicker({
   return (
     <div className={cn('space-y-2', className)}>
       {label && (
-        <label className="block text-sm font-medium text-gray-700">{label}</label>
+        <label className={cn('block text-sm font-medium', dark ? 'text-white/70' : 'text-gray-700')}>{label}</label>
       )}
-      <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden p-3">
+      <div className={cn('rounded-2xl overflow-hidden p-3', dark ? 'bg-white/[0.04] border border-white/10' : 'bg-white border border-gray-200 shadow-sm')}>
         <div className="grid grid-cols-3 gap-1">
           <AppleWheelPicker
             items={dayItems}
@@ -211,6 +220,7 @@ export function AppleWheelDatePicker({
               emitChange(selectedYear, selectedMonth, v);
             }}
             label={dayLabel}
+            variant={variant}
           />
           <AppleWheelPicker
             items={monthItems}
@@ -220,6 +230,7 @@ export function AppleWheelDatePicker({
               emitChange(selectedYear, v, selectedDay);
             }}
             label={monthLabel}
+            variant={variant}
           />
           <AppleWheelPicker
             items={yearItems}
@@ -229,6 +240,7 @@ export function AppleWheelDatePicker({
               emitChange(v, selectedMonth, selectedDay);
             }}
             label={yearLabel}
+            variant={variant}
           />
         </div>
       </div>

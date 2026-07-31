@@ -1042,6 +1042,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       maxYear={new Date().getFullYear() - 18}
                       monthNames={he ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : undefined}
                       dayLabel={he ? 'יום' : 'Day'} monthLabel={he ? 'חודש' : 'Month'} yearLabel={he ? 'שנה' : 'Year'}
+                      variant="dark"
                     />
                     {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
                   </div>
@@ -1072,6 +1073,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       maxYear={new Date().getFullYear() - 18}
                       monthNames={he ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : undefined}
                       dayLabel={he ? 'יום' : 'Day'} monthLabel={he ? 'חודש' : 'Month'} yearLabel={he ? 'שנה' : 'Year'}
+                      variant="dark"
                     />
                     {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
                   </div>
@@ -1569,7 +1571,7 @@ function styles(he: boolean) {
       .sl-tab{ min-height:46px; border-radius:14px; padding:8px 8px; font-size:13px; line-height:1.15 }
       .sl-label{ font-size:13px }
       .sl-input{ min-height:50px; border-radius:14px; font-size:16px }
-      .sl-inputWrap .sl-inputIcon{ left:14px }
+      .sl-inputWrap .sl-inputIcon{ ${he ? 'right:14px' : 'left:14px'} }
       .sl-field .intl-phone-wrapper{
         min-height:50px;
         border-radius:14px !important;
