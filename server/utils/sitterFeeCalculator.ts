@@ -1,26 +1,31 @@
 /**
  * THE SITTER SUITE™ - Financial Fee Calculator
  * Israeli Tax Law 2026 Compliant
- * 
- * FLAT 15% COMMISSION MODEL (all platforms unified):
- * - Owner pays: Base Price + 15% Platform Fee + 18% VAT on platform fee (via Nayax)
- * - Sitter receives: 85% of Base Price (after 15% platform commission)
- * - ⁦PetWash™⁩ keeps: 15% of Base Price (platform commission)
- * - VAT (18%) applied on platform fee per Israeli law
- * - Withholding tax (ניכוי מס במקור) deducted from sitter payout at settlement
- * 
+ *
+ * FLAT 15% COMMISSION (disclosed-agent model, unified across ALL PetWash™ paid
+ * services — identical to Walk My Pet + Academy; CEO-confirmed 2026-07-31):
+ * - Owner pays: the sitter's rate (base price). NOTHING added on top.
+ * - Sitter receives: 85% of the base price.
+ * - PetWash™ keeps: 15% commission, taken OUT of the base (not added on top).
+ * - VAT (18%) is on PetWash's COMMISSION only, EXTRACTED from it (the commission is
+ *   VAT-inclusive); the customer's total IS the base price.
+ *
+ * HISTORY (the money leak this file used to be): the previous version charged the
+ * owner base + 15% + VAT AND deducted 15% from the sitter = a ~30% real platform take
+ * while the header claimed "15%". Worse, the capture path (NayaxSitterMarketplaceService)
+ * feeds the booking's stored total back in as a per-day rate, so the on-top model
+ * charged fees a SECOND time. Corrected 2026-07-31 to a single 15% disclosed-agent
+ * commission (customer pays the rate; VAT extracted 18/118), matching walkFeeCalculator.
+ *
  * Payment Flow (PetWash™ escrow model):
- * 1. Owner pays base + 15% platform fee + VAT to PetWash via Nayax
- * 2. Platform holds funds in 72-hour escrow
- * 3. Upon job completion:
- *    - Platform deducts 15% commission
- *    - Platform deducts withholding tax (20% default, or per provider certificate)
- *    - Sitter receives net payout after deductions
- * 4. Digital receipt (קבלה דיגיטלית) emailed to customer
- * 5. Transaction recorded in internal accounting system
- * 
- * Israeli VAT Rate: 18% (as of 2025-2026)
- * Withholding Tax Default: 20% (ניכוי מס במקור)
+ * 1. Owner pays the sitter's rate (base) to PetWash via Nayax.
+ * 2. Platform holds funds in 72-hour escrow.
+ * 3. Upon job completion: platform keeps 15% commission; withholding tax
+ *    (ניכוי מס במקור) deducted from the sitter payout at settlement per certificate.
+ * 4. Digital receipt (קבלה דיגיטלית) emailed to customer.
+ * 5. Transaction recorded in internal accounting system.
+ *
+ * Israeli VAT Rate: 18% (as of 2025-2026), extracted from the commission.
  */
 
 import { ISRAEL_VAT_RATE } from '@shared/israel-compliance-config';
@@ -30,7 +35,7 @@ const ISRAELI_VAT_RATE = ISRAEL_VAT_RATE; // PR-W13: shared/israel-compliance-co
 export interface TransparentFeeCalculation {
   pricePerDayCents: number;
   totalDays: number;
-  
+
   basePriceCents: number;
   platformServiceFeeCents: number;
   subtotalBeforeVatCents: number;
@@ -39,7 +44,7 @@ export interface TransparentFeeCalculation {
   brokerCutCents: number;
   sitterPayoutCents: number;
   totalChargeCents: number;
-  
+
   basePrice: string;
   platformServiceFee: string;
   subtotalBeforeVat: string;
@@ -50,42 +55,44 @@ export interface TransparentFeeCalculation {
 }
 
 /**
- * Calculate transparent fees for ⁦The Sitter Suite™⁩ booking
- * Israeli law 2026 compliant - VAT included in customer total
- * FLAT 15% commission (industry standard)
- * 
+ * Calculate transparent fees for ⁦The Sitter Suite™⁩ booking.
+ * FLAT 15% commission, disclosed-agent (unified across all ⁦PetWash™⁩ platforms):
+ * the owner pays the sitter's rate; PetWash keeps 15% out of it; the sitter gets 85%;
+ * VAT is extracted from the commission (18/118), so the customer's total = the rate.
+ *
  * @param pricePerDayCents - Sitter's daily rate in agorot (cents)
  * @param totalDays - Number of days for booking
- * @returns Complete fee breakdown with all amounts including VAT
- * 
+ * @returns Complete fee breakdown
+ *
  * @example
  * const fees = calculateTransparentFees(15000, 3); // ₪150/day × 3 days
- * // Base: ₪450
- * // Platform fee (15%): ₪67.50
- * // Subtotal before VAT: ₪517.50
- * // VAT (18% on platform fee): ₪12.15
- * // Total charge to owner: ₪529.65
- * // Platform commission (15% of base): ₪67.50
- * // Sitter payout (before withholding): ₪382.50
+ * // Base / owner pays: ₪450 (the sitter's rate — nothing added)
+ * // Sitter payout: ₪382.50 (₪450 − 15% commission)
+ * // PetWash commission: ₪67.50, of which ₪10.30 is VAT remitted (18/118) → ₪57.20 net
  */
 export function calculateTransparentFees(
   pricePerDayCents: number,
   totalDays: number
 ): TransparentFeeCalculation {
   const basePriceCents = pricePerDayCents * totalDays;
-  
+
+  // SINGLE 15% commission, taken OUT of the base (disclosed-agent), NOT added on top.
   const platformServiceFeeCents = Math.round(basePriceCents * 0.15);
-  
-  const subtotalBeforeVatCents = basePriceCents + platformServiceFeeCents;
-  
-  const vatCents = Math.round(platformServiceFeeCents * ISRAELI_VAT_RATE);
-  
-  const totalChargeCents = basePriceCents + platformServiceFeeCents + vatCents;
-  
+
   const brokerCutCents = platformServiceFeeCents;
-  
+
+  // Sitter nets 85% — the 15% comes out of the rate.
   const sitterPayoutCents = basePriceCents - brokerCutCents;
-  
+
+  // The owner pays exactly the rate — no surcharge, no VAT on top.
+  const subtotalBeforeVatCents = basePriceCents;
+
+  // VAT (18%) is on the commission only, EXTRACTED (the commission is VAT-inclusive).
+  const vatCents = Math.round(platformServiceFeeCents * (ISRAELI_VAT_RATE / (1 + ISRAELI_VAT_RATE)));
+
+  // Customer's total IS the base — VAT lives inside the commission, not on top.
+  const totalChargeCents = basePriceCents;
+
   const basePrice = (basePriceCents / 100).toFixed(2);
   const platformServiceFee = (platformServiceFeeCents / 100).toFixed(2);
   const subtotalBeforeVat = (subtotalBeforeVatCents / 100).toFixed(2);
@@ -93,7 +100,7 @@ export function calculateTransparentFees(
   const brokerCut = (brokerCutCents / 100).toFixed(2);
   const sitterPayout = (sitterPayoutCents / 100).toFixed(2);
   const totalCharge = (totalChargeCents / 100).toFixed(2);
-  
+
   return {
     pricePerDayCents,
     totalDays,
@@ -116,12 +123,12 @@ export function calculateTransparentFees(
 }
 
 /**
- * Validate fee calculation integrity
- * 
- * Ensures that:
- * 1. Sitter payout + broker cut = base price (85% + 15% = 100%)
- * 2. Base price + platform fee = subtotal before VAT
- * 3. Base + platform fee + VAT on platform fee = total charge
+ * Validate fee calculation integrity (disclosed-agent, single 15%).
+ *
+ * Ensures:
+ * 1. Sitter payout + commission = base price (85% + 15% = 100%)
+ * 2. The owner's total = base price (no surcharge; VAT is inside the commission)
+ * 3. VAT ≤ commission (it is extracted from the commission, never added on top)
  * 4. All amounts are positive
  */
 export function validateFeeCalculation(fees: TransparentFeeCalculation): boolean {
@@ -135,30 +142,30 @@ export function validateFeeCalculation(fees: TransparentFeeCalculation): boolean
     });
     return false;
   }
-  
-  const basePlusPlatform = fees.basePriceCents + fees.platformServiceFeeCents;
-  if (basePlusPlatform !== fees.subtotalBeforeVatCents) {
-    console.error('[Fee Validation] Base + Platform ≠ Subtotal', {
-      base: fees.basePriceCents,
-      platform: fees.platformServiceFeeCents,
-      sum: basePlusPlatform,
+
+  // Disclosed-agent: the owner pays exactly the base — no surcharge, VAT extracted.
+  if (fees.totalChargeCents !== fees.basePriceCents) {
+    console.error('[Fee Validation] Owner total ≠ Base (no surcharge allowed; VAT is inside the commission)', {
+      total: fees.totalChargeCents,
+      basePrice: fees.basePriceCents,
+    });
+    return false;
+  }
+  if (fees.subtotalBeforeVatCents !== fees.basePriceCents) {
+    console.error('[Fee Validation] Subtotal ≠ Base', {
       subtotal: fees.subtotalBeforeVatCents,
+      basePrice: fees.basePriceCents,
+    });
+    return false;
+  }
+  if (fees.vatCents > fees.platformServiceFeeCents) {
+    console.error('[Fee Validation] VAT exceeds commission (must be extracted from it)', {
+      vat: fees.vatCents,
+      commission: fees.platformServiceFeeCents,
     });
     return false;
   }
 
-  const basePlusPlatformPlusVat = fees.basePriceCents + fees.platformServiceFeeCents + fees.vatCents;
-  if (basePlusPlatformPlusVat !== fees.totalChargeCents) {
-    console.error('[Fee Validation] Base + Platform + VAT ≠ Total', {
-      base: fees.basePriceCents,
-      platform: fees.platformServiceFeeCents,
-      vat: fees.vatCents,
-      sum: basePlusPlatformPlusVat,
-      total: fees.totalChargeCents,
-    });
-    return false;
-  }
-  
   if (
     fees.basePriceCents <= 0 ||
     fees.platformServiceFeeCents <= 0 ||
@@ -170,6 +177,6 @@ export function validateFeeCalculation(fees: TransparentFeeCalculation): boolean
     console.error('[Fee Validation] Negative or zero amount detected', fees);
     return false;
   }
-  
+
   return true;
 }
