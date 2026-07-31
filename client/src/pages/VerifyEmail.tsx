@@ -33,8 +33,18 @@ export default function VerifyEmail() {
       const user = auth.currentUser;
       if (!user) { setLocation("/signin"); return; }
       await user.reload();
-      await user.getIdToken(true);
+      const idToken = await user.getIdToken(true);
       if (user.emailVerified) {
+        // Persist the verification into Postgres BEFORE navigating — otherwise the
+        // post-login gate sees users.emailVerified=false and bounces right back
+        // here (the old infinite loop). (2026-07-31)
+        try {
+          await fetch("/api/auth/email/mark-verified", {
+            method: "POST",
+            headers: { Authorization: `Bearer ${idToken}` },
+            credentials: "include",
+          });
+        } catch { /* non-blocking — session-cookie path also persists on next login */ }
         setLocation("/");
       } else {
         setError(he
@@ -76,7 +86,7 @@ export default function VerifyEmail() {
       <Card className="max-w-md w-full mx-auto bg-white">
         <CardHeader className="text-center pb-2">
           <div className="mx-auto mb-4 w-16 h-16 rounded-full bg-[#D4AF37] flex items-center justify-center">
-            <MailCheck className="w-8 h-8 text-[#D4AF37]" />
+            <MailCheck className="w-8 h-8 text-black" />
           </div>
           <CardTitle className="text-xl">
             {he ? "אמת את כתובת האימייל שלך" : "Verify Your Email"}
