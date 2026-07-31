@@ -317,6 +317,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const isLoginPath = /\/(signin|sign-in|login)/.test(window.location.pathname);
   const [authMode, setAuthMode] = useState<'join' | 'login'>(isLoginPath ? 'login' : 'join');
   const [showPwd, setShowPwd] = useState(false);
+  // 2-STEP LOGIN (CEO 2026-07-31 "one-way or two-way verification"): opt-in at
+  // join; when on, login asks for an SMS code AFTER the password. mfaChallenge
+  // holds the in-flight login-time challenge (the idToken to prove + a masked
+  // phone hint) so the code screen can render.
+  const [twoFactor, setTwoFactor] = useState(false);
+  const [mfaChallenge, setMfaChallenge] = useState<{ idToken: string; phoneHint: string } | null>(null);
   const [method, setMethod] = useState<'mobile' | 'email'>('mobile');
   // ROVER-STYLE method-first (CEO 2026-07-24 'no sense, make it clear'): the
   // manual form is HIDDEN until the user chooses phone or email. Social is a
@@ -553,7 +559,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           // they can log in with email + password (CEO 2026-07-31). Only sent when
           // a valid password was collected (join flow); OTP-only paths omit it and
           // the server leaves the credential untouched.
-          body: JSON.stringify({ idToken, sessionToken: vd.sessionToken, password: passwordValid ? password : undefined }),
+          body: JSON.stringify({ idToken, sessionToken: vd.sessionToken, password: passwordValid ? password : undefined, twoFactorEnabled: twoFactor }),
         });
         const ad = await a.json();
         if (!ad.ok) { fail(ad.error || (he ? 'אימות האימייל נכשל' : 'Email verification failed')); return; }
@@ -835,6 +841,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
       });
+      if (r.status === 428) {
+        // 2-step login is ON for this account — send the SMS code and switch to the
+        // code screen. The same idToken proves identity through the challenge.
+        const s = await fetch(getApiUrl('/api/auth/login/2fa/start'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ idToken, language }),
+        });
+        const sd = await s.json().catch(() => ({} as any));
+        if (sd?.needed) {
+          setMfaChallenge({ idToken, phoneHint: sd.phoneHint || '' });
+          toast({ title: he ? 'קוד נשלח לנייד 📲' : 'Code sent to your phone 📲' });
+          return;
+        }
+        fail(he ? 'לא ניתן להתחיל אימות דו-שלבי — נסו שוב' : 'Could not start two-step verification — please try again');
+        return;
+      }
       if (!r.ok) { fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
       await finishAndRoute();
     } catch (e: any) {
@@ -847,6 +869,30 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         fail(humanizeAuthError(code, he ? 'he' : 'en'));
       }
     } finally { setBusy(false); }
+  }
+
+  // Verify the login-time SMS code for a 2-step account, then finish the session.
+  // On success the server mints a proof (mfaToken) that /api/auth/session accepts.
+  async function verifyLoginMfa(code: string) {
+    if (!mfaChallenge) return;
+    setInlineError(null);
+    setBusy(true);
+    try {
+      const v = await fetch(getApiUrl('/api/auth/login/2fa/verify'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ idToken: mfaChallenge.idToken, code, language }),
+      });
+      const vd = await v.json().catch(() => ({} as any));
+      if (!vd.ok || !vd.mfaToken) { fail(vd.error || (he ? 'קוד שגוי' : 'Invalid code')); return; }
+      const r = await fetch(getApiUrl('/api/auth/session'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ idToken: mfaChallenge.idToken, mfaToken: vd.mfaToken }),
+      });
+      if (!r.ok) { fail(he ? 'ההתחברות נכשלה — נסה שוב' : 'Sign-in failed — please try again'); return; }
+      setMfaChallenge(null);
+      await finishAndRoute();
+    } catch (e) { logger.error('[signup] verifyLoginMfa', e); fail(he ? 'האימות נכשל' : 'Verification failed'); }
+    finally { setBusy(false); }
   }
 
   const t = {
@@ -1000,7 +1046,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
           {/* === OPEN inputs — no tabs. Phone AND email are both visible; the user
               just types whichever they like and presses Continue (we detect which). === */}
-          {!sent && (
+          {!sent && !mfaChallenge && (
             <>
               {/* Passkey/Face-ID is a RETURNING-user shortcut and lives at the BOTTOM
                   now (CEO 2026-07-17): a brand-new joiner has no passkey yet, so
@@ -1136,6 +1182,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     />
                     {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
                   </div>
+                  {/* 1-way / 2-way choice (CEO 2026-07-31): off = password only;
+                      on = we also text a code on every login. Optional, the user's call. */}
+                  <button type="button" onClick={() => setTwoFactor((v) => !v)} aria-pressed={twoFactor}
+                    style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', background: twoFactor ? 'rgba(212,175,55,0.10)' : 'rgba(255,255,255,0.03)', border: `1px solid ${twoFactor ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`, borderRadius: '12px', padding: '12px 14px', cursor: 'pointer', flexDirection: he ? 'row-reverse' : 'row', textAlign: he ? 'right' : 'left' }}>
+                    <span aria-hidden style={{ width: '20px', height: '20px', borderRadius: '6px', border: `2px solid ${twoFactor ? '#D4AF37' : 'rgba(255,255,255,0.35)'}`, background: twoFactor ? '#D4AF37' : 'transparent', color: '#0f0f11', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flex: '0 0 auto', fontWeight: 700 }}>{twoFactor ? '✓' : ''}</span>
+                    <span style={{ flex: 1 }}>
+                      <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 600 }}>{he ? 'אימות דו-שלבי בהתחברות' : 'Two-step verification at login'}</span>
+                      <span style={{ display: 'block', fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>{he ? 'נבקש גם קוד ב-SMS בכל כניסה — אבטחה נוספת (לבחירתך).' : 'We’ll also text a code on each login — extra security (your choice).'}</span>
+                    </span>
+                  </button>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setInlineError(null); setConfirm(''); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
                     {he ? 'כבר יש לך חשבון? התחבר/י' : 'Already have an account? Sign in'}
@@ -1205,7 +1261,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </>
           )}
 
-          {!sent && (
+          {/* === 2-step LOGIN code — returning member who turned on 2-step === */}
+          {mfaChallenge && (
+            <>
+              <p className="sl-helper sl-center">{he
+                ? `הזן את הקוד שנשלח ל-${mfaChallenge.phoneHint || 'הנייד שלך'}`
+                : `Enter the code sent to ${mfaChallenge.phoneHint || 'your phone'}`}</p>
+              <OtpCodeInput length={6} onComplete={(c) => { void verifyLoginMfa(c); }} loading={busy} language={he ? 'he' : 'en'} />
+              {inlineError && <p className="sl-inlineError" role="alert" style={{ textAlign: 'center', marginTop: 8 }}>{inlineError}</p>}
+              <button className="sl-btn" disabled={busy} onClick={() => { setMfaChallenge(null); setPassword(''); setInlineError(null); }}>{he ? 'ביטול' : 'Cancel'}</button>
+            </>
+          )}
+
+          {!sent && !mfaChallenge && (
             <>
               {/* Primary CTA — JOIN (both contacts + password) or LOGIN (email + password). */}
               {authMode === 'join' ? (
