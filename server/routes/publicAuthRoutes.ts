@@ -792,7 +792,11 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
           phoneNumber: formattedPhone,
           displayName: `User ${formattedPhone.slice(-4)}`,
         });
-        await persistDob(user.uid, ageCheck.iso!);
+        // NOTE: DOB is persisted AFTER the users row is created below — the old
+        // persistDob() here ran an UPDATE before any users row existed (0 rows
+        // touched) and upsertUser didn't carry dateOfBirth, so the birthday the
+        // member typed was silently dropped and they were re-asked at
+        // /complete-profile. (2026-07-31 audit fix)
         // Collect the email provided at signup (step 1). It is NOT yet verified —
         // a follow-up step verifies it by code; we store it as contact-on-file.
         await persistSignupEmail(user.uid, req.body?.email);
@@ -872,6 +876,8 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
             signupIntent: 'customer',
           } as any);
           logger.info(`[PhoneAuth] users table row created uid=${user.uid}`);
+          // Persist DOB NOW that the row exists (see note at createUser above).
+          await persistDob(user.uid, ageCheck.iso!);
           // PERSIST VERIFIED (2026-07-24 audit fix): the SMS OTP was just proven,
           // but nothing recorded the phone as verified — phoneVerified stayed
           // false and mobileVerifiedAt null, so the account never advanced past
@@ -947,7 +953,8 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
         }
         // Email is proven (matched code) → safe to create as a verified account.
         user = await adminAuth.createUser({ email, emailVerified: true });
-        await persistDob(user.uid, ageCheck.iso!);
+        // DOB persisted AFTER the users row is created below (the UPDATE-before-INSERT
+        // ordering silently dropped it — same fix as phone-session). (2026-07-31)
         logger.info('[EmailAuth] Created new user for email', { email: email.replace(/(.{2}).*(@.*)/, '$1•••$2') });
 
         try {
@@ -991,6 +998,8 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
             id: user.uid, email, phone: null, role: 'customer', authProvider: 'email',
             language: 'he', country: 'IL', userStatus: 'new', signupIntent: 'customer',
           } as any);
+          // Persist DOB NOW that the row exists (see note at createUser above).
+          await persistDob(user.uid, ageCheck.iso!);
           // PERSIST VERIFIED (2026-07-24 audit fix): the email OTP proved this
           // address, but Postgres users.email_verified stayed false while
           // authProvider='email' — so the post-login decider bounced the user to
