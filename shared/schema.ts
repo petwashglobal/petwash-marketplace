@@ -11790,6 +11790,33 @@ export const walletAccounts = pgTable("wallet_accounts", {
   index("idx_wallet_tier").on(table.loyaltyTier),
 ]);
 
+// ── Card-on-file token vault (CTO P0-2, 2026-07-31) ─────────────────────────────
+// Stores ONLY the payment processor's saved-card TOKEN + customer reference — NEVER
+// the PAN (full card number) and NEVER the CVV. PCI scope stays minimal because we
+// keep surrogate tokens, not card data (PCI/tokenization: replace PAN with a token).
+// Lets Sitter/Academy/Walk/Shop charge a returning customer's card at provider-accept
+// with no re-entry. First payment saves the token (SUMIT beginRedirect →
+// paymentmethods/setforcustomer); later captures use chargeRecurring on the token.
+export const paymentTokens = pgTable("payment_tokens", {
+  id: serial("id").primaryKey(),
+  userId: varchar("user_id", { length: 128 }).notNull(),                       // owner Firebase UID
+  provider: varchar("provider", { length: 32 }).notNull().default("sumit"),    // sumit | nayax | ...
+  processorCustomerId: varchar("processor_customer_id", { length: 128 }),       // e.g. SUMIT CustomerID
+  processorTokenId: varchar("processor_token_id", { length: 256 }).notNull(),   // saved-card token — the ONLY card reference we keep
+  cardBrand: varchar("card_brand", { length: 32 }),                            // visa | mastercard | ... (display)
+  cardLast4: varchar("card_last4", { length: 4 }),                             // display only — NOT the PAN
+  expMonth: integer("exp_month"),
+  expYear: integer("exp_year"),
+  billingName: varchar("billing_name", { length: 128 }),
+  status: varchar("status", { length: 16 }).notNull().default("active"),        // active | expired | revoked | failed
+  consentVersion: varchar("consent_version", { length: 32 }),                  // which save-card consent the user agreed to
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  revokedAt: timestamp("revoked_at"),
+}, (table) => [
+  index("idx_payment_tokens_user_status").on(table.userId, table.status),
+  index("idx_payment_tokens_processor").on(table.provider, table.processorTokenId),
+]);
+
 // Credit Transactions - immutable ledger of all credit movements
 export const creditTransactions = pgTable("credit_transactions", {
   id: serial("id").primaryKey(),
