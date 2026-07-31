@@ -146,6 +146,7 @@ export default function ProviderDeclarations() {
   const pickTitle = (d: { titleEn: string; titleHe: string }) => (isRtl ? d.titleHe : d.titleEn);
 
   const [openKey, setOpenKey] = useState<string | null>(null);
+  const [signerName, setSignerName] = useState('');
 
   const { data, isLoading, error, refetch, isFetching } = useQuery<StatusResponse>({
     queryKey: ['/api/provider-declarations/status'],
@@ -160,18 +161,19 @@ export default function ProviderDeclarations() {
   });
 
   const signMutation = useMutation({
-    mutationFn: (key: string) =>
-      authedJson(`/api/provider-declarations/${key}/start`, {
+    // FREE in-app attestation path (2026-07-31): records a completed, hash-sealed
+    // signature server-side with NO DocuSeal template / API cost. Replaces the
+    // /start (DocuSeal) path which needed templates that don't exist yet.
+    mutationFn: (vars: { key: string; signerName: string }) =>
+      authedJson(`/api/provider-declarations/${vars.key}/accept`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ language }),
+        body: JSON.stringify({ accepted: true, signerName: vars.signerName, language }),
       }),
-    onSuccess: (res: any) => {
+    onSuccess: () => {
       setOpenKey(null);
-      if (res?.signingUrl) {
-        window.open(res.signingUrl, '_blank', 'noopener');
-        toast({ title: t.opened });
-      }
+      setSignerName('');
+      toast({ title: language === 'he' ? 'נחתם בהצלחה ✓' : 'Signed ✓' });
       queryClient.invalidateQueries({ queryKey: ['/api/provider-declarations/status'] });
     },
     onError: (err: any) => {
@@ -336,7 +338,11 @@ export default function ProviderDeclarations() {
                 <DialogTitle className="text-start">{pickTitle(detailDoc)}</DialogTitle>
               </DialogHeader>
               <p className="text-sm leading-relaxed text-slate-700 whitespace-pre-line text-start">
-                {isRtl ? detailDoc.bodyHe : detailDoc.bodyEn}
+                {/* Hebrew shows the REAL English legal text when the Hebrew body is
+                    still the translation placeholder — never a "pending" stub. */}
+                {isRtl && detailDoc.bodyHe && !detailDoc.bodyHe.includes('ממתין') && !detailDoc.bodyHe.includes('טרם הושלם')
+                  ? detailDoc.bodyHe
+                  : detailDoc.bodyEn}
               </p>
               {SOURCE_PDF[detailDoc.key] && (
                 <a
@@ -355,12 +361,29 @@ export default function ProviderDeclarations() {
                   <span>{t.draftNotice}</span>
                 </div>
               )}
+              {detailDoc.reviewedByCounsel && (
+                <div className="pt-3">
+                  <label className="text-xs font-medium text-slate-600">{isRtl ? 'שם מלא לחתימה' : 'Full legal name to sign'}</label>
+                  <input
+                    value={signerName}
+                    onChange={(e) => setSignerName(e.target.value)}
+                    placeholder={isRtl ? 'הקלד/י את שמך המלא' : 'Type your full legal name'}
+                    dir={isRtl ? 'rtl' : 'ltr'}
+                    className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-[#D4AF37]"
+                  />
+                  <p className="text-[11px] text-slate-500 mt-1">
+                    {isRtl
+                      ? 'בהקלדת שמך ולחיצה על "חתום", את/ה מאשר/ת שקראת והסכמת להצהרה זו.'
+                      : 'By typing your name and clicking Sign, you confirm you have read and agree to this declaration.'}
+                  </p>
+                </div>
+              )}
               <div className="flex items-center justify-end gap-2 pt-2">
                 <Button variant="ghost" onClick={() => setOpenKey(null)}>{t.close}</Button>
                 <Button
                   className="bg-[#D4AF37] hover:bg-[#B8932F] text-white"
-                  disabled={!detailSignable || signMutation.isPending}
-                  onClick={() => signMutation.mutate(detailDoc.key)}
+                  disabled={!detailSignable || signMutation.isPending || signerName.trim().length < 2}
+                  onClick={() => signMutation.mutate({ key: detailDoc.key, signerName: signerName.trim() })}
                 >
                   {signMutation.isPending && <Loader2 className="h-4 w-4 me-2 animate-spin" />}
                   {t.signNow}
