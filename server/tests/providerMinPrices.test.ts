@@ -2,8 +2,10 @@ import { describe, it, expect } from 'vitest';
 import {
   validateProviderRates,
   getProviderMinPriceCents,
+  getProviderMaxPriceCents,
   PROVIDER_MIN_PRICE_CENTS,
   DEFAULT_MIN_PRICE_CENTS,
+  DEFAULT_MAX_PRICE_CENTS,
 } from '../../shared/providerMinPrices';
 
 describe('provider minimum-price floor', () => {
@@ -41,5 +43,45 @@ describe('provider minimum-price floor', () => {
     expect(PROVIDER_MIN_PRICE_CENTS.walk_my_pet).toBe(4900);
     expect(PROVIDER_MIN_PRICE_CENTS.sitter_suite).toBe(9900);
     expect(PROVIDER_MIN_PRICE_CENTS.academy).toBe(14900);
+  });
+});
+
+describe('provider maximum-price ceiling', () => {
+  it('rejects the "typo / gouging" cases above the ceiling', () => {
+    // walk ceiling = ₪500. A ₪5,000 (typo of ₪500) walk must be rejected.
+    const r = validateProviderRates('walk_my_pet', [500000]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) {
+      expect(r.reason).toBe('too_high');
+      expect(r.maxPriceCents).toBe(50000);
+      expect(r.message).toContain('₪500');
+    }
+  });
+
+  it('accepts a premium rate at or below the ceiling', () => {
+    expect(validateProviderRates('sitter_suite', [200000]).ok).toBe(true); // exactly ₪2,000/day
+    expect(validateProviderRates('academy', [140000]).ok).toBe(true);      // ₪1,400 ≤ ₪1,500
+  });
+
+  it('rejects when the HIGHEST of several rates is above the ceiling', () => {
+    // one sane rate, one absurd → reject (no ₪9,999 sneaking in on a second field)
+    const r = validateProviderRates('sitter_suite', [15000, 999900]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe('too_high');
+  });
+
+  it('reports too_low reason when below the floor', () => {
+    const r = validateProviderRates('walk_my_pet', [2]);
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.reason).toBe('too_low');
+  });
+
+  it('accepts a rate inside [floor, ceiling]', () => {
+    expect(validateProviderRates('walk_my_pet', [6000]).ok).toBe(true); // ₪60 in [₪49, ₪500]
+  });
+
+  it('unknown platform falls back to the default ceiling (₪2,000)', () => {
+    expect(getProviderMaxPriceCents('something_new')).toBe(DEFAULT_MAX_PRICE_CENTS);
+    expect(validateProviderRates('something_new', [300000]).ok).toBe(false); // ₪3,000 > ₪2,000
   });
 });

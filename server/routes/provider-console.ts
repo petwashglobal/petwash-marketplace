@@ -313,16 +313,18 @@ router.put('/pricing/:platform', async (req, res) => {
       minBookingAmountCents,
     } = req.body;
 
-    // PLATFORM PRICE FLOOR: providers set their own rate, but cannot undercut the
-    // sensible minimum for the service (no ₪0.02 / ₪10 jobs). Reject below-floor.
+    // PLATFORM PRICE GUARDRAILS: providers set their own rate, but cannot undercut the
+    // sensible minimum (no ₪0.02 / ₪10 jobs) or exceed the sensible maximum (no ₪9,999
+    // typo / gouging). Reject anything outside [floor, ceiling].
     const priceCheck = validateProviderRates(platform, [
       baseRatePerHourCents, baseRatePerVisitCents, baseRatePerNightCents, minBookingAmountCents,
     ]);
     if (!priceCheck.ok) {
       return res.status(400).json({
-        error: 'PRICE_TOO_LOW',
+        error: priceCheck.reason === 'too_high' ? 'PRICE_TOO_HIGH' : 'PRICE_TOO_LOW',
         message: priceCheck.message,
         minPriceCents: priceCheck.minPriceCents,
+        maxPriceCents: priceCheck.maxPriceCents,
       });
     }
 
