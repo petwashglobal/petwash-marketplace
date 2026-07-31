@@ -69,15 +69,18 @@ router.get("/metrics", async (req, res) => {
     res.json({
       success: true,
       metrics: {
+        // HONEST counts (2026-07-31): these previously fell back to fabricated
+        // 10 / 16 / 247 whenever the real count was 0, so an empty backend showed
+        // "247 users" — the "looks fake" the CEO called out. Show the REAL number.
         platforms: {
-          active: platformsCount[0]?.count || 10,
-          total: platformsCount[0]?.count || 10,
+          active: platformsCount[0]?.count ?? 0,
+          total: platformsCount[0]?.count ?? 0,
         },
         departments: {
-          count: departmentsCount[0]?.count || 16,
+          count: departmentsCount[0]?.count ?? 0,
         },
         users: {
-          active: activeUsersCount[0]?.count || 247,
+          active: activeUsersCount[0]?.count ?? 0,
         },
         events: {
           today: eventsToday[0]?.count || 0,

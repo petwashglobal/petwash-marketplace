@@ -240,9 +240,12 @@ export class ManagementAnalyticsService {
     // Current period
     const current = await db
       .select({
-        totalRevenue: sql<number>`COALESCE(SUM(CAST(${sitterBookings.totalPrice} AS NUMERIC)), 0)`,
-        platformCommission: sql<number>`COALESCE(SUM(CAST(${sitterBookings.platformFee} AS NUMERIC)), 0)`,
-        providerPayouts: sql<number>`COALESCE(SUM(CAST(${sitterBookings.sitterPayout} AS NUMERIC)), 0)`,
+        // Real columns are *_cents integers (2026-07-31 fix): the old totalPrice/
+        // platformFee/sitterPayout don't exist → undefined interpolated into sql →
+        // threw and 500'd the whole CEO/CFO management dashboard. /100 → NIS.
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${sitterBookings.totalChargeCents} AS NUMERIC)) / 100.0, 0)`,
+        platformCommission: sql<number>`COALESCE(SUM(CAST(${sitterBookings.platformServiceFeeCents} AS NUMERIC)) / 100.0, 0)`,
+        providerPayouts: sql<number>`COALESCE(SUM(CAST(${sitterBookings.sitterPayoutCents} AS NUMERIC)) / 100.0, 0)`,
         totalTransactions: sql<number>`COUNT(*)`,
       })
       .from(sitterBookings)
@@ -257,7 +260,7 @@ export class ManagementAnalyticsService {
     // Previous period
     const previous = await db
       .select({
-        totalRevenue: sql<number>`COALESCE(SUM(CAST(${sitterBookings.totalPrice} AS NUMERIC)), 0)`,
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${sitterBookings.totalChargeCents} AS NUMERIC)) / 100.0, 0)`,
       })
       .from(sitterBookings)
       .where(
@@ -304,8 +307,8 @@ export class ManagementAnalyticsService {
     // Current period
     const current = await db
       .select({
-        totalRevenue: sql<number>`COALESCE(SUM(CAST(${walkBookings.totalPrice} AS NUMERIC)), 0)`,
-        platformCommission: sql<number>`COALESCE(SUM(CAST(${walkBookings.platformCommission} AS NUMERIC)), 0)`,
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${walkBookings.totalCost} AS NUMERIC)), 0)`,
+        platformCommission: sql<number>`COALESCE(SUM(CAST(${walkBookings.platformFeeOwner} AS NUMERIC) + CAST(${walkBookings.platformFeeSitter} AS NUMERIC)), 0)`,
         providerPayouts: sql<number>`COALESCE(SUM(CAST(${walkBookings.walkerPayout} AS NUMERIC)), 0)`,
         totalTransactions: sql<number>`COUNT(*)`,
       })
@@ -321,7 +324,7 @@ export class ManagementAnalyticsService {
     // Previous period
     const previous = await db
       .select({
-        totalRevenue: sql<number>`COALESCE(SUM(CAST(${walkBookings.totalPrice} AS NUMERIC)), 0)`,
+        totalRevenue: sql<number>`COALESCE(SUM(CAST(${walkBookings.totalCost} AS NUMERIC)), 0)`,
       })
       .from(walkBookings)
       .where(
