@@ -1318,10 +1318,29 @@ router.get('/:requestId', async (req, res) => {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     const { requestId } = req.params;
 
-    const [booking] = await db.select()
+    let [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
+
+    // LEGACY-ID FALLBACK (2026-07-31): My Bookings routes Pay/Review to the LEGACY
+    // id (SITTER_/WALK-/TRN-), but bridged rows are keyed by BR-…, so the hub 404'd
+    // for every sitter/walk/academy booking. Resolve the legacy id to its bridged
+    // canonical row via quote_breakdown->legacyRef->id, then re-select in the same
+    // shape the rest of this handler expects.
+    if (!booking) {
+      try {
+        const legacyMatch: any = await db.execute(sql`
+          SELECT request_id FROM booking_requests
+          WHERE quote_breakdown->'legacyRef'->>'id' = ${requestId}
+          LIMIT 1`);
+        const rid = legacyMatch?.rows?.[0]?.request_id ?? (Array.isArray(legacyMatch) ? legacyMatch[0]?.request_id : undefined);
+        if (rid) {
+          [booking] = await db.select().from(bookingRequests)
+            .where(eq(bookingRequests.requestId, rid)).limit(1);
+        }
+      } catch { /* fall through to 404 */ }
+    }
 
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });

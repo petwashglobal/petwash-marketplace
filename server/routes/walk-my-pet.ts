@@ -895,6 +895,32 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         }
       })();
       
+      // NOTIFY THE CUSTOMER (2026-07-31 fix): the response claimed the customer was
+      // notified, but this path sent NOTHING — the owner never learned their walk was
+      // accepted and was never prompted to continue. Dispatch inbox+SMS+push. Fail-soft.
+      try {
+        const { dispatchNotification } = await import('../lib/notificationDispatcher');
+        const { rows: ownerRows } = await pool.query('SELECT email, phone FROM users WHERE id = $1', [booking.ownerId]);
+        const owner = ownerRows[0] || {};
+        const base = process.env.APP_URL || 'https://petwash.co.il';
+        await dispatchNotification({
+          uid: booking.ownerId,
+          email: owner.email ?? undefined,
+          phone: owner.phone ?? undefined,
+          type: 'booking_accepted',
+          title: '✅ הטיול אושר!',
+          bodyHtml: `<p>המטייל/ת אישר/ה את הטיול שלך ב-⁦Walk My Pet™⁩. אפשר לצפות בפרטים באזור ההזמנות שלך.</p>`,
+          bodyText: 'הטיול שלך ב-Walk My Pet אושר! היכנס/י לאזור ההזמנות לפרטים.',
+          ctaText: 'צפייה בהזמנות',
+          ctaUrl: `${base}/my-bookings`,
+          channels: ['inbox', 'sms', 'push'],
+          priority: 8,
+          meta: { bookingId: booking.bookingId },
+        });
+      } catch (notifErr: any) {
+        logger.warn('[Walk My Pet] accept customer-notification failed (non-blocking)', { error: notifErr?.message });
+      }
+
       res.json({
         success: true,
         status: 'confirmed',
