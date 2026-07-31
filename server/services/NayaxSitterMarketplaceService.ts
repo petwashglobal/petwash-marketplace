@@ -160,18 +160,22 @@ export class NayaxSitterMarketplaceService {
         payoutCents: params.sitterPayoutCents,
       });
       
-      // TODO: Integrate with Nayax payout/transfer API
-      // For now, log the payout request for manual processing
-      logger.info('[Sitter Suite] Sitter payout queued (manual processing)', {
+      // NO automated sitter payout rail yet (real Nayax/bank transfer = TODO). This
+      // returns success:true meaning "accepted for MANUAL processing" — the caller
+      // (sitter-suite complete) then sets payoutStatus:'pending' (owed, NOT paid),
+      // so no fake "paid" state is ever written. Do NOT flip this to success:false:
+      // the caller 500s on failure and would skip service-completion + the VAT
+      // record. Payout honesty lives in the caller's payoutStatus, not here. (2026-07-31)
+      logger.info('[Sitter Suite] Sitter payout queued (manual processing — no automated rail)', {
         bookingId: params.bookingId,
         sitterId: params.sitterId,
         amountILS: (params.sitterPayoutCents / 100).toFixed(2),
         bankAccountLast4: params.sitterBankAccount ? '****' + String(params.sitterBankAccount).slice(-4) : null,
       });
-      
+
       return {
         success: true,
-        payoutReference: `PAYOUT_${params.bookingId}_${nanoid(10)}`,
+        payoutReference: `MANUAL_${params.bookingId}_${nanoid(10)}`,
       };
       
     } catch (error) {
