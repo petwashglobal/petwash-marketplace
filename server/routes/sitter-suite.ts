@@ -756,7 +756,9 @@ router.post('/pets', requireAuth, async (req: any, res) => {
 /**
  * POST /api/sitter-suite/bookings - Create new booking with AI triage - USING LUXURY ENGINE
  */
-router.post('/bookings', requireAuth, async (req, res) => {
+// LAW & ORDER (CEO 2026-07-31): booking is members-only — requireLoyaltyMember
+// was imported but never applied. Now wired (requireAuth sets req.user first).
+router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => {
   // Hoisted so the outer catch can free the slot lock if a later step fails
   // (set to the bookingRef once the lock is held). See DOUBLE-BOOKING GUARD.
   let slotLockRef: string | null = null;

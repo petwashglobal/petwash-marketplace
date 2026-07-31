@@ -409,7 +409,10 @@ router.post('/posts', requireAuth, requireVerifiedClubMember, async (req, res) =
  *   - Same requester + same post: max 1 pending request at a time
  *   - Same requester: max 10 requests across all posts in 24h
  */
-router.post('/posts/:id/contact', requireAuth, async (req, res) => {
+// VERIFIED MEMBERS ONLY (CEO 2026-07-31): contacting a poster was open to any
+// logged-in user; now gated like posting (requireVerifiedClubMember = loyalty
+// member + club + phone-verified) so PetFinder really is members-only end-to-end.
+router.post('/posts/:id/contact', requireAuth, requireVerifiedClubMember, async (req, res) => {
   try {
     const userId = uid(req);
     if (!userId) return res.status(401).json({ error: 'not_authenticated' });
