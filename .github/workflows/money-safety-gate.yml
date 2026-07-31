@@ -1,0 +1,107 @@
+# Money & Auth Safety Gate — runs on EVERY pull request into main (pre-merge) so
+# GitHub branch protection can require these checks before a merge is allowed.
+# CEO CTO directive 2026-07-31 (P0-1): "No PR can merge if money tests fail."
+#
+# This is the PR-time gate. The Production Deploy workflow ALSO runs the money
+# suite post-merge (gate-money-tests, in deploy-backend `needs`) as a second net.
+#
+# Node 22 to MATCH production (Dockerfile node:22-slim) — the tests must validate
+# the runtime prod actually runs, not a different one.
+name: Money & Auth Safety Gate
+
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  money-tests:
+    name: money-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Money / VAT / commission / payout / escrow invariants
+        env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
+        run: npm run test:money
+
+  wallet-ledger-tests:
+    name: wallet-ledger-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Wallet + eGift + ledger integrity
+        env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
+        run: >
+          npx vitest run
+          server/tests/wallet-e2e-money-flow.test.ts
+          server/tests/walletTopupVerify.regression.test.ts
+          server/tests/diagnose-wallet-config.test.ts
+          server/tests/walletPassAutoProvision.regression.test.ts
+          server/tests/credit-wallet-confirm-idor.test.ts
+          server/tests/purchaseActivation.test.ts
+
+  booking-payment-tests:
+    name: booking-payment-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: Booking payment + escrow + double-payout guards
+        env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
+        run: >
+          npx vitest run
+          server/tests/booking-money-guard.test.ts
+          server/tests/escrow-fail-closed.test.ts
+          server/tests/escrow-idempotency.test.ts
+          server/tests/escrowSettlement.test.ts
+          server/tests/escrowBookingReceipt.regression.test.ts
+          server/tests/walkEscrowFailClosed.regression.test.ts
+          server/tests/bookingDoubleBookGuard.regression.test.ts
+          server/tests/double-payout-unique-guards.test.ts
+          server/tests/payoutAtomicClaim.regression.test.ts
+          server/tests/cron-double-payout-lock-2026-07-08.test.ts
+          server/tests/cron-money-safety-2026-07-08.test.ts
+          server/tests/insurance-payout-gate.test.ts
+          server/tests/admin-escrow-guard.test.ts
+          server/tests/v2-complete-and-escrow-gate.test.ts
+          server/tests/sitterFeeSingle15.test.ts
+
+  sumit-tax-doc-tests:
+    name: sumit-tax-doc-tests
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-node@v5
+        with:
+          node-version: '22'
+          cache: 'npm'
+      - run: npm ci
+      - name: SUMIT fiscal document mapping + receipts + credit notes
+        env: { NODE_ENV: test, NAYAX_ENABLED: 'false', SUMIT_ENABLED: 'false', PAYMENT_PROVIDER_MODE: mock }
+        run: >
+          npx vitest run
+          server/tests/sumit-document-mapping.test.ts
+          server/tests/sumitReceiptService.test.ts
+          server/tests/sumit-customer-receipt.test.ts
+          server/tests/sumit-issues-every-sale.test.ts
+          server/tests/sumitSendService.test.ts
+          server/tests/nayax-sumit-bridge.test.ts
+          server/tests/refund-credit-note.test.ts
