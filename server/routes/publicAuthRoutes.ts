@@ -940,6 +940,46 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
 });
 
 /**
+ * POST /api/auth/email/mark-verified
+ * Persist Firebase email-verification into Postgres so the post-login gate stops
+ * bouncing the user. The /verify-email page (Firebase magic-link path) used to
+ * only reload the Firebase user and navigate to '/', never writing Postgres
+ * users.emailVerified — so authProvider='email' rows with emailVerified=false
+ * re-bounced to /verify-email on EVERY load (the infinite loop). This closes it.
+ * (2026-07-31)
+ */
+publicAuthRouter.post('/api/auth/email/mark-verified', apiLimiter, async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const sessionCookie = (req as any).cookies?.pw_session;
+    if (!authHeader?.startsWith('Bearer ') && !sessionCookie) {
+      return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+    const { auth: fbAdmin } = await import('../lib/firebase-admin');
+    let decoded: any;
+    if (authHeader?.startsWith('Bearer ')) {
+      decoded = await fbAdmin.verifyIdToken(authHeader.substring(7), true);
+    } else {
+      decoded = await fbAdmin.verifySessionCookie(sessionCookie, true);
+    }
+    if (!decoded?.uid) return res.status(401).json({ ok: false, error: 'Not authenticated' });
+
+    // Only persist if Firebase actually considers the email verified (link clicked).
+    const userRecord = await fbAdmin.getUser(decoded.uid);
+    if (!userRecord.emailVerified) {
+      return res.status(409).json({ ok: false, error: 'Email not verified yet' });
+    }
+    const { markEmailVerified } = await import('../services/ActivationService');
+    await markEmailVerified(decoded.uid, { acceptTerms: true });
+    logger.info('[EmailAuth] Postgres email-verified persisted via /verify-email', { uid: decoded.uid });
+    return res.json({ ok: true });
+  } catch (e: any) {
+    logger.error('[EmailAuth] mark-verified failed', { error: e?.message });
+    return res.status(500).json({ ok: false, error: 'Server error' });
+  }
+});
+
+/**
  * Record user consent (Terms, Privacy, etc.) with full audit trail
  * POST /api/consents
  */
