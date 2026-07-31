@@ -46,6 +46,9 @@ const STATUS_TO_TAB: Record<string, TabId> = {
   meet_greet_scheduled: 'upcoming',
   meet_greet_completed: 'upcoming',
   payment_pending: 'upcoming',
+  // Provider marked the job done — customer's approval is the next step; keep it in
+  // Upcoming (active) until it reaches true 'completed'. (2026-07-31)
+  provider_marked_complete: 'upcoming',
   completed:   'past',
   reviewed:    'past',
   declined:    'archived',

@@ -2941,6 +2941,16 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
     } catch (notifErr: any) {
       logger.warn('[BookingRequests] Provider inbox notification failed', { error: notifErr.message });
     }
+    // LEGACY BRIDGE (2026-07-31): the customer just approved completion, so the
+    // canonical booking is now truly 'completed'/'reviewed'. Sync that back to the
+    // legacy sitter/walk/trainer row — this is what finally moves the customer's My
+    // Bookings row to Past and OPENS the review gate (status === 'completed'). Before
+    // this, a bridged booking's legacy row was stranded at 'accepted' forever.
+    try {
+      const { applyBridgeCompletion } = await import('../services/legacyBookingBridge');
+      await applyBridgeCompletion((booking as any).quoteBreakdown, rating ? 'reviewed' : 'completed');
+    } catch { /* canonical row already updated */ }
+
     try {
       // Notify owner — booking completed
       const ownerTitle = '✅ ההזמנה הושלמה!';
