@@ -152,8 +152,22 @@ export class SitterAdvancedBookingEngine {
       throw new Error('Sitter not found');
     }
 
-    const baseRate = sitter.hourlyRateIls;
-    
+    // Read the sitter's OWN set rate (Rover/Mad-Paws model). The engine works in
+    // SHEKELS (the sitter-suite route multiplies subtotal×100 to store agorot), but the
+    // profile stores AGOROT, so convert ÷100. Match the rate to the duration unit below:
+    // Boarding / House Sitting bill per CALENDAR DAY (pricePerDayCents); drop-in / hourly
+    // bill per HOUR (pricePerHourCents). Fallback day↔hour so a half-configured profile
+    // still prices. FIX 2026-07-31: this used to read `sitter.hourlyRateIls`, a field that
+    // does NOT exist on sitterProfiles → baseRate was `undefined` → every sitter quote was
+    // NaN and the sitter's real rate never reached the price.
+    const isOvernight =
+      serviceType === 'Boarding' || serviceType === 'boarding' || serviceType === 'House Sitting';
+    const dayRateIls = (sitter.pricePerDayCents ?? 0) / 100;
+    const hourRateIls = (sitter.pricePerHourCents ?? 0) / 100;
+    const baseRate = isOvernight
+      ? (dayRateIls || hourRateIls * 24)
+      : (hourRateIls || dayRateIls / 24);
+
     // Get local settings for currency and tax
     const localSettings = globalConfig.getLocalSettings(ipAddress);
     const currency = localSettings.currency;
@@ -183,17 +197,24 @@ export class SitterAdvancedBookingEngine {
     // Kept as 0 so the return shape (loyaltyDiscount field) is unchanged.
     const loyaltyDiscount = 0;
 
-    // Platform commission (rate from SitterGlobalConfig — transparent to customer)
+    // SINGLE 15% commission — disclosed-agent, unified with Walk My Pet
+    // (walkFeeCalculator) + the CEO's 2026-07-31 decision. The customer pays the
+    // sitter's rate (subtotal); PetWash keeps 15% OUT of it; the sitter nets 85%.
+    // NOT added on top. HISTORY: this used to add 15% + VAT ON TOP (customer paid
+    // more) while the sitter kept 100% — a different model from Walk and from the
+    // capture calculator, and it double-charged at capture.
     const platformFee = subtotal * globalConfig.getCommissionRate();
 
-    // Tax (country-specific VAT/GST)
-    const tax = subtotal * taxRate;
+    // VAT (18%) is on the COMMISSION only, EXTRACTED from it (the commission is
+    // VAT-inclusive) per the settled Israeli disclosed-agent rule — NOT added on top,
+    // so the customer's total = the sitter's rate.
+    const tax = platformFee * (taxRate / (1 + taxRate));
 
-    // Total price to customer
-    const totalPrice = subtotal + platformFee + tax;
+    // The customer pays exactly the rate (subtotal). No owner surcharge, no VAT on top.
+    const totalPrice = subtotal;
 
-    // Sitter payout (gets full subtotal — no loyalty discount carved out of it)
-    const sitterPayout = subtotal;
+    // Sitter nets 85% — the 15% comes out of the rate, not added to the customer.
+    const sitterPayout = subtotal - platformFee;
 
     return {
       baseRate,
