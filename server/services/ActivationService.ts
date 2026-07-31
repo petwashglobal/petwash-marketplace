@@ -55,9 +55,12 @@ function computeStatus(
   if (currentStatus === 'suspended' || currentStatus === 'deleted') {
     return currentStatus as ActivationStatus;
   }
-  if (mobileVerifiedAt && emailVerifiedAt) return 'active';
-  if (mobileVerifiedAt && !emailVerifiedAt) return 'mobile_verified';
-  if (!mobileVerifiedAt && emailVerifiedAt) return 'email_verified';
+  // ONE verified contact is enough to activate. This matches the CEO "one contact
+  // is enough" signup rule (SignUpLuxury contactMode is phone-OR-email). Requiring
+  // BOTH permanently locked out every normal signup — a phone-only user sat at
+  // 'mobile_verified' forever with no way to reach the product. The unverified
+  // second channel is now an optional post-signup nudge, not a gate. (2026-07-31)
+  if (mobileVerifiedAt || emailVerifiedAt) return 'active';
   return 'draft';
 }
 
@@ -159,7 +162,13 @@ export async function getActivationState(userId: string): Promise<ActivationStat
 
   const mobileVerifiedAt = user.mobileVerifiedAt ?? null;
   const emailVerifiedAt = user.emailVerifiedAt ?? null;
-  const isFullyActive = user.activationStatus === 'active';
+  // Usable = at least ONE verified contact, and not suspended/deleted. Derived
+  // from the actual verified timestamps (not the stored status string) so it
+  // AUTO-HEALS the users who were frozen at 'mobile_verified'/'email_verified'
+  // by the old both-required rule — no backfill migration needed. Matches the
+  // "one contact is enough" rule now in computeStatus. (2026-07-31)
+  const suspended = user.activationStatus === 'suspended' || user.activationStatus === 'deleted';
+  const isFullyActive = !suspended && (mobileVerifiedAt != null || emailVerifiedAt != null);
 
   const missingSteps: ('mobile' | 'email')[] = [];
   if (!mobileVerifiedAt) missingSteps.push('mobile');

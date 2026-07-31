@@ -88,10 +88,9 @@ export function PhoneInput({
         : `Example: +${code}...`;
     }
     if (isValid) {
-      const pn = parsePhoneNumber(value);
-      const cc = pn?.country || safeDefault;
-      const code = pn?.countryCallingCode || getCountryCallingCode(safeDefault as any);
-      return `E.164: ${value} (${cc} +${code})`;
+      // No developer-facing "E.164: …" string for real users — the page already
+      // shows the branded "we text you a code" hint. A valid number needs no helper. (2026-07-31)
+      return '';
     }
     return language === 'he' ? 'אנא הזן מספר תקין' : 'Please enter a valid number';
   }, [value, isValid, safeDefault, language]);

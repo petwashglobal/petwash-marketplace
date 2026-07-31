@@ -908,16 +908,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               <h2 className="sl-title">{t.create}</h2>
               <p className="sl-helper">{t.helper}</p>
             </div>
-            {onLanguageChange && (
-              <button
-                type="button"
-                className="sl-lang"
-                onClick={() => onLanguageChange(he ? 'en' : 'he')}
-                aria-label="Switch language"
-              >
-                🌐 {he ? 'עברית' : 'English'} ▾
-              </button>
-            )}
+            {/* Language switch removed here — the standard <Layout> header already
+                owns it; a second in-form switcher was duplicate/confusing. (2026-07-31) */}
           </header>
 
           {/* Duplicate top consent removed (2026-06-24): it required a SEPARATE
