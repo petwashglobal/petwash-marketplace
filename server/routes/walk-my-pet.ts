@@ -746,6 +746,39 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
 });
 
 /**
+ * POST /api/walk-my-pet/bookings/:bookingId/cancel — CUSTOMER cancel.
+ * MONEY-SAFE: only BEFORE a walker accepts (status pending_provider). Cancels BOTH
+ * the customer row and the bridged provider-inbox row. Walk had no customer-cancel
+ * route at all. A confirmed booking → contact support. (2026-07-31)
+ */
+router.post('/bookings/:bookingId/cancel', requireAuth, requireLoyaltyMember, async (req, res) => {
+  try {
+    const ownerId = (req as any).user?.uid;
+    const { bookingId } = req.params;
+    const [booking] = await db.select().from(walkBookings).where(eq(walkBookings.bookingId, bookingId)).limit(1);
+    if (!booking) return res.status(404).json({ error: 'Booking not found' });
+    if (booking.ownerId !== ownerId) return res.status(403).json({ error: 'Access denied' });
+    if (String(booking.status) !== 'pending_provider') {
+      return res.status(400).json({ error: 'CONFIRMED_BOOKING', message: 'This walk is already accepted. Please contact PetWash support to cancel it.' });
+    }
+    await db.update(walkBookings).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(walkBookings.bookingId, bookingId));
+    await releaseSlotLock(db, bookingId).catch(() => {});
+    try {
+      await pool.query(
+        `UPDATE booking_requests SET status = 'cancelled', updated_at = NOW()
+         WHERE quote_breakdown->'legacyRef'->>'id' = $1 AND status = 'pending'`,
+        [bookingId],
+      );
+    } catch (e: any) { logger.warn('[Walk My Pet] cancel bridge-sync failed', { error: e?.message }); }
+    logger.info('[Walk My Pet] customer cancelled pending walk', { bookingId, ownerId });
+    return res.json({ success: true, status: 'cancelled' });
+  } catch (e: any) {
+    logger.error('[Walk My Pet] customer cancel error', e);
+    return res.status(500).json({ error: 'Failed to cancel booking' });
+  }
+});
+
+/**
  * PATCH /api/walk-my-pet/bookings/:bookingId/provider-respond
  * on-demand: Walker accepts or declines a walk request
  */

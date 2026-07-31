@@ -57,7 +57,10 @@ const STATUS_TO_TAB: Record<string, TabId> = {
 };
 
 const CANCELLABLE_STATUSES = new Set([
-  'pending', 'accepted', 'confirmed', 'meet_greet_scheduled', 'meet_greet_completed',
+  // 'pending_provider' (2026-07-31): legacy sitter/walk create status — the customer
+  // can cancel their own request before a provider accepts (routes to the service's
+  // money-safe cancel). Without this the cancel button never showed for them.
+  'pending', 'pending_provider', 'accepted', 'confirmed', 'meet_greet_scheduled', 'meet_greet_completed',
 ]);
 
 // Statuses where the customer may reach their assigned provider. Mirrors the
@@ -1062,8 +1065,20 @@ export default function CustomerBookings() {
   });
 
   const cancelMutation = useMutation({
-    mutationFn: async ({ requestId, reason }: { requestId: string; reason: string }) =>
-      apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { reason }),
+    // Route to the OWNING service for bridged sitter/walk/academy bookings — the
+    // canonical /booking-requests cancel only knows BR- ids, so it 404'd for these.
+    // Each service route cancels the customer row (+ the bridged provider-inbox row,
+    // and academy also releases/refunds the wallet). (2026-07-31)
+    mutationFn: async ({ requestId, reason, kind }: { requestId: string; reason: string; kind?: string }) => {
+      const url = kind === 'sitter'
+        ? `/api/sitter-suite/bookings/${requestId}/cancel`
+        : kind === 'walker'
+          ? `/api/walk-my-pet/bookings/${requestId}/cancel`
+          : kind === 'academy'
+            ? `/api/academy/bookings/${requestId}/cancel`
+            : `/api/booking-requests/${requestId}/cancel`;
+      return apiRequest('POST', url, { reason });
+    },
     onSuccess: () => {
       setCancelTarget(null);
       setCancelReason('');
@@ -1329,7 +1344,7 @@ export default function CustomerBookings() {
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               onClick={() => {
-                if (cancelTarget) cancelMutation.mutate({ requestId: cancelTarget.requestId, reason: cancelReason });
+                if (cancelTarget) cancelMutation.mutate({ requestId: cancelTarget.requestId, reason: cancelReason, kind: (cancelTarget as any).kind });
               }}
               disabled={cancelMutation.isPending}
             >
