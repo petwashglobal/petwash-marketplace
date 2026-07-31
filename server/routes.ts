@@ -7983,7 +7983,10 @@ self.addEventListener('notificationclick', (event) => {
         .where(
           and(
             gte(nayaxTransactions.completedAt, startOfMonth),
-            eq(nayaxTransactions.status, 'settled'),
+            // Count every captured-money status, not just 'settled' — the Nayax
+            // webhook writes 'approved' and nothing promotes it to 'settled', so the
+            // old check read ₪0 even with real sales. (2026-07-31)
+            sql`${nayaxTransactions.status} IN ('settled', 'approved', 'vend_success', 'captured')`,
             sql`CAST(${nayaxTransactions.amount} AS DECIMAL) > 0` // Positive amounts only
           )
         );
