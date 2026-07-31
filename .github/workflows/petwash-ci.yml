@@ -1386,6 +1386,11 @@ jobs:
             "TWILIO_ACCOUNT_SID=TWILIO_ACCOUNT_SID:latest"
             "TWILIO_AUTH_TOKEN=TWILIO_AUTH_TOKEN:latest"
             "TWILIO_PHONE_NUMBER=TWILIO_PHONE_NUMBER:latest"
+            # Per-region sender numbers (2026-07-31): Israel → the Israeli number, everyone
+            # else → the US number. Optional like the other Twilio secrets — a missing one is
+            # skipped, and TwilioSMSService falls back to the Messaging Service / fromPhone.
+            "TWILIO_PHONE_NUMBER_IL=TWILIO_PHONE_NUMBER_IL:latest"
+            "TWILIO_PHONE_NUMBER_US=TWILIO_PHONE_NUMBER_US:latest"
             "TWILIO_VOICE_PUBLIC_URL=TWILIO_VOICE_PUBLIC_URL:latest"
             "TWILIO_MESSAGING_SERVICE_SID=TWILIO_MESSAGING_SERVICE_SID:latest"
             # ANTHROPIC_API_KEY — optional; only used by Maya Voice runtime,
