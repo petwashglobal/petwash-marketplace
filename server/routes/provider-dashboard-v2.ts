@@ -951,6 +951,15 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
         await applyBridgeDecision(booking.quote_breakdown, action);
       } catch { /* canonical row already updated */ }
     }
+    // COMPLETION sync (2026-07-31): when the provider marks the job complete,
+    // write 'completed' back to the legacy customer-side row too — otherwise the
+    // customer's My Bookings stayed 'accepted' forever and could never review.
+    if (action === 'complete') {
+      try {
+        const { applyBridgeCompletion } = await import('../services/legacyBookingBridge');
+        await applyBridgeCompletion(booking.quote_breakdown);
+      } catch { /* canonical row already updated */ }
+    }
 
     // ── Wallet lifecycle parity with V1 (2026-07-30): V2 never touched
     // finance_state, so a customer's wallet hold was neither debited on accept
