@@ -1209,8 +1209,33 @@ self.addEventListener('notificationclick', (event) => {
             });
           }
         }
+
+        // 3. 2-STEP LOGIN gate (CEO 2026-07-31 "one-way or two-way verification"):
+        // a member who OPTED IN (users.two_factor_enabled) must prove a fresh SMS
+        // code — an mfaToken from POST /api/auth/login/2fa/verify — on a PASSWORD
+        // sign-in before a session is minted. Default is OFF, so this is a NO-OP for
+        // every other member and for social / OTP / passkey logins (those have
+        // signInProvider !== 'password'). FAIL-SAFE: any error reading the flag falls
+        // through to a normal login rather than locking anyone out.
+        if (signInProvider === 'password' && !isPreSuperAdmin && !isPrivileged) {
+          try {
+            const tfaRes: any = await db.execute(sql`SELECT two_factor_enabled FROM users WHERE id = ${preDecoded.uid} LIMIT 1`);
+            const tfaRow = tfaRes?.rows?.[0] ?? (Array.isArray(tfaRes) ? tfaRes[0] : undefined);
+            if (tfaRow && tfaRow.two_factor_enabled === true) {
+              const mfaToken = req.body?.mfaToken || '';
+              const { validateMfaLoginToken } = await import('./lib/mfaLoginToken');
+              const proof = validateMfaLoginToken(mfaToken, preDecoded.uid);
+              if (!proof.valid) {
+                logger.info('[Session] 2-step verification required', { uid: preDecoded.uid, reason: proof.reason, traceId });
+                return res.status(428).json({ error: 'Two-step verification required.', errorCode: 'MFA_REQUIRED', needs2fa: true });
+              }
+            }
+          } catch (mfaErr: any) {
+            logger.warn('[Session] 2-step check errored — allowing (fail-safe)', { error: mfaErr?.message, traceId });
+          }
+        }
       } catch (preValidErr: any) {
-        logger.warn('[Session] Token pre-validation failed', { 
+        logger.warn('[Session] Token pre-validation failed', {
           error: preValidErr?.message, 
           code: preValidErr?.code,
           errorInfo: preValidErr?.errorInfo,

@@ -17,6 +17,7 @@ import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared
 import { storage } from '../storage';
 import { ensureUserProvisioned } from '../services/authBootstrap';
 import { validateEmailVerifiedToken } from '../lib/emailVerifiedToken';
+import { mintMfaLoginToken } from '../lib/mfaLoginToken';
 
 // Rate limiter: max 3 SMS send attempts per IP per 10 minutes.
 // Tight window prevents bulk enumeration or accidental spam from a single device.
@@ -599,7 +600,7 @@ async function persistSignupEmail(uid: string, email: unknown): Promise<void> {
  */
 publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, res) => {
   try {
-    const { idToken, sessionToken, password } = req.body || {};
+    const { idToken, sessionToken, password, twoFactorEnabled } = req.body || {};
     if (!idToken || !sessionToken) {
       return res.status(400).json({ ok: false, error: 'idToken and sessionToken are required' });
     }
@@ -636,6 +637,16 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
         logger.warn('[Signup] verify-signup-email set-password failed (non-blocking)', { error: e?.message });
       }
     }
+    // Persist the member's 2-step-login CHOICE (CEO 2026-07-31 "one-way or two-way
+    // verification"). Only when explicitly provided; the column defaults false, so
+    // opting out — or an older client that doesn't send it — is a safe no-op.
+    if (typeof twoFactorEnabled === 'boolean') {
+      try {
+        await pool.query(`UPDATE users SET two_factor_enabled = $1 WHERE id = $2`, [twoFactorEnabled, uid]);
+      } catch (e: any) {
+        logger.warn('[Signup] verify-signup-email set-2fa-pref failed (non-blocking)', { error: e?.message });
+      }
+    }
     // Best-effort DB flag (email_verified column may not exist → harmless skip).
     try {
       await pool.query(`UPDATE users SET email = $1, email_verified = true WHERE id = $2`, [email, uid]);
@@ -657,6 +668,71 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
   } catch (e: any) {
     logger.error('[Signup] verify-signup-email error', { error: e?.message });
     return res.status(500).json({ ok: false, error: 'Email verification failed.' });
+  }
+});
+
+// ── 2-STEP LOGIN (CEO 2026-07-31 "one-way or two-way verification") ───────────
+// A member who opted into 2-step login (users.two_factor_enabled = true) must,
+// after a correct email+password, also enter a one-time SMS code before a session
+// is granted. Default is OFF, so these endpoints and the session gate are a NO-OP
+// for everyone who didn't opt in — zero effect on existing logins.
+function maskPhoneForHint(p: string): string {
+  const d = String(p || '').replace(/\D/g, '');
+  if (d.length < 4) return '•••';
+  return '••• ••• ' + d.slice(-4);
+}
+
+/**
+ * POST /api/auth/login/2fa/start — send a login OTP to the authed user's phone.
+ * Called AFTER a password sign-in. Auth = the just-issued password idToken; the
+ * phone is read from the account (the client never sees or sends it). Returns
+ * { needed:false } when the account did NOT opt in (client proceeds straight to
+ * /api/auth/session) — fail-open so a non-2FA user is never blocked.
+ */
+publicAuthRouter.post("/api/auth/login/2fa/start", apiLimiter, async (req, res) => {
+  try {
+    const { idToken, language } = req.body || {};
+    if (!idToken) return res.status(400).json({ ok: false, error: 'idToken is required' });
+    let uid: string;
+    try { uid = (await fbAdminAuth.verifyIdToken(idToken, true)).uid; }
+    catch { return res.status(401).json({ ok: false, error: 'Invalid session — please sign in again.' }); }
+    const { rows } = await pool.query('SELECT phone, two_factor_enabled FROM users WHERE id = $1', [uid]);
+    const row = rows[0];
+    if (!row || row.two_factor_enabled !== true) return res.json({ ok: true, needed: false });
+    const phone: string | null = row.phone;
+    // Opted in but no phone on file → cannot challenge; fail open to password-only
+    // rather than lock them out (they can add/verify a phone later).
+    if (!phone) return res.json({ ok: true, needed: false, reason: 'no_phone' });
+    const send = await twilioSMSService.sendVerificationCode(phone, language || 'he', req.ip);
+    if (!send?.success) return res.status(502).json({ ok: false, error: send?.message || 'Could not send the code — try again.' });
+    return res.json({ ok: true, needed: true, phoneHint: maskPhoneForHint(phone) });
+  } catch (e: any) {
+    logger.error('[Login2FA] start error', { error: e?.message });
+    return res.status(500).json({ ok: false, error: 'Could not start verification.' });
+  }
+});
+
+/**
+ * POST /api/auth/login/2fa/verify — verify the login OTP, mint a short-lived MFA
+ * proof token bound to the uid. /api/auth/session then accepts that proof to mint
+ * the session for a 2-step-login account. Auth = the password idToken.
+ */
+publicAuthRouter.post("/api/auth/login/2fa/verify", apiLimiter, async (req, res) => {
+  try {
+    const { idToken, code, language } = req.body || {};
+    if (!idToken || !code) return res.status(400).json({ ok: false, error: 'idToken and code are required' });
+    let uid: string;
+    try { uid = (await fbAdminAuth.verifyIdToken(idToken, true)).uid; }
+    catch { return res.status(401).json({ ok: false, error: 'Invalid session — please sign in again.' }); }
+    const { rows } = await pool.query('SELECT phone FROM users WHERE id = $1', [uid]);
+    const phone: string | null = rows[0]?.phone;
+    if (!phone) return res.status(400).json({ ok: false, error: 'No phone on file for verification.' });
+    const chk = await twilioSMSService.verifyCode(phone, String(code), language || 'he');
+    if (!chk?.success) return res.status(401).json({ ok: false, error: chk?.message || 'Invalid code' });
+    return res.json({ ok: true, mfaToken: mintMfaLoginToken(uid) });
+  } catch (e: any) {
+    logger.error('[Login2FA] verify error', { error: e?.message });
+    return res.status(500).json({ ok: false, error: 'Verification failed.' });
   }
 });
 
