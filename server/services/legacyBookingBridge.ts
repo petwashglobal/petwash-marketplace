@@ -228,6 +228,27 @@ export async function applyBridgePaymentConfirmed(quoteBreakdown: any): Promise<
   }
 }
 
+/**
+ * Write 'completed' to the legacy customer-side row when the provider marks the
+ * job complete from /provider-os. Before this, completion stamped only
+ * booking_requests — the legacy row (what My Bookings reads) stayed 'accepted'
+ * FOREVER, so the customer never saw it done and the review gate (status ===
+ * 'completed') never opened. Fail-soft: canonical row already updated by caller.
+ * (2026-07-31 lifecycle-sweep fix)
+ */
+export async function applyBridgeCompletion(quoteBreakdown: any): Promise<void> {
+  try {
+    const ref = quoteBreakdown?.legacyRef;
+    if (!ref?.table || ref?.id == null) return;
+    const synced = await updateLegacyStatus(ref, 'completed');
+    if (synced) {
+      logger.info('[BookingBridge] legacy row completed after provider completion', { ref });
+    }
+  } catch (err: any) {
+    logger.warn('[BookingBridge] legacy completion sync failed (canonical row already updated)', { err: err?.message });
+  }
+}
+
 /** Shared fixed-allowlist status writer. Returns false for unknown tables. */
 async function updateLegacyStatus(
   ref: { table: string; id: unknown },
