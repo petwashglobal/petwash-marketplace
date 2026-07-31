@@ -69,7 +69,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'I confirm: I am applying as an independent provider; I am NOT an employee of Pet Wash™ Ltd; I am not guaranteed work, shifts, income, or minimum bookings; I choose whether to accept or decline each booking; I am responsible for my own tax status and reporting; I am responsible for my own insurance where required; I will comply with PetWash platform rules; PetWash may suspend or remove my access for safety, fraud, breach, conduct, or legal/compliance reasons; I will not represent myself as an employee, agent, franchisee or insurer of PetWash unless separately authorised in writing; I will not use the PetWash brand, logo, uniform or materials except as approved.',
     bodyHe: 'הצהרת ספק עצמאי — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'no_franchise_no_agency',
@@ -81,7 +81,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'I confirm: I am not buying a franchise; I am not receiving a franchise territory; I am not guaranteed exclusivity; I am not authorised to bind Pet Wash™ Ltd or sign contracts on its behalf; I cannot represent that PetWash guarantees my services; I will not use the PetWash name outside my approved platform profile and approved materials; I understand PetWash may change platform rules, fees, policies, approval standards and service categories.',
     bodyHe: 'הצהרת היעדר זיכיון/סוכנות — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'provider_service_agreement',
@@ -93,7 +93,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'I agree to deliver accepted services with reasonable care, honesty and attention and to follow PetWash safety protocols; I will keep communication and payment inside PetWash; I will not request or accept off-platform/cash payment for platform bookings; I will not subcontract a booking without approval; I will not accept pets not recorded in the booking; I will cancel only through the platform with a reason; I will report any incident immediately; I understand payout is subject to completion, the dispute window, compliance, payment success, and PetWash payout rules; PetWash does not guarantee any number of bookings or income.',
     bodyHe: 'הסכם שירות ספק — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'safety_manual_acceptance',
@@ -105,7 +105,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'I have read and accept the PetWash Safety Manual. I will keep pets secure, never leave a pet in unsafe conditions, decline unsafe or unmanageable bookings, protect human safety first in an emergency, contact emergency/vet services and PetWash support when needed, and open an incident case with evidence for any injury, escape, bite, illness, property damage, complaint or emergency.',
     bodyHe: 'אישור מדריך הבטיחות — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'insurance_disclosure',
@@ -118,7 +118,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'PetWash is a technology platform and is not an insurance company. Any insurance information shown in the app is a summary only and does not replace the policy wording. Coverage, exclusions, limits and claims decisions are subject to the relevant insurer and policy terms. I understand PetWash is not my insurer; that I may need my own public-liability, professional-liability, home/contents, vehicle or business insurance depending on my services; that some incidents may not be covered by PetWash or any platform policy; and I will not tell customers that PetWash guarantees insurance cover unless PetWash has provided approved wording.',
     bodyHe: 'גילוי ביטוח — PetWash היא פלטפורמה טכנולוגית ואינה חברת ביטוח. תרגום משפטי מלא לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'tax_business_status',
@@ -130,7 +130,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'I confirm I am responsible for my own tax obligations; I will provide correct business/tax details and update PetWash if my status changes; I understand PetWash may withhold payouts or require updated details if information is missing or inconsistent; I understand PetWash may issue payment records/self-billing/receipts according to the accounting system and applicable rules; and PetWash does not provide me personal tax advice.',
     bodyHe: 'הצהרת מעמד מס/עסק — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'privacy_data_handling',
@@ -142,7 +142,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'I will use customer/pet information only for the accepted booking; I will not copy, share, sell or publish customer data; I will not post a customer home, address, phone, children or private information; I will not use pet photos publicly without consent; I will keep access codes/keys private; I will report any data breach immediately; and I understand my access may be logged.',
     bodyHe: 'הצהרת פרטיות וטיפול בנתונים — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'off_platform_payment',
@@ -154,7 +154,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'I will not request or accept cash, bank transfer, Bit, PayBox, WhatsApp or any private payment for PetWash bookings outside the platform; I will not ask customers to cancel PetWash and book privately; I will not share private payment instructions; I will keep booking communication inside PetWash; I understand breach may result in suspension, loss of access, payout hold, and legal/compliance review.',
     bodyHe: 'הצהרת תקשורת ותשלום מחוץ לפלטפורמה — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'incident_reporting',
@@ -166,7 +166,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'I will report immediately, through PetWash, any pet escape, injury, illness, bite/scratch, human injury, dog fight, medication error, lost keys/access issue, property damage, no-show, undisclosed aggression, privacy breach, police/vet/emergency involvement, complaint/threat, refund dispute or suspected fraud, and I will provide a description, time, location, booking ID and evidence where safe.',
     bodyHe: 'הצהרת דיווח על אירועים — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
 
   // ───────────────────────── SERVICE-SPECIFIC PROTOCOLS ───────────────────────
@@ -180,7 +180,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'For pets hosted in my home I confirm: my home is safe for the pet type/size; doors, windows, gates, balcony and yard are secure; chemicals, electrical and food hazards are away; other animals and household members are disclosed; sleeping and feeding areas are ready; an emergency transport plan and vet details are available; I will not leave a pet unattended in unsafe conditions; I will separate animals if required; and I will not introduce the pet to other animals without the booker’s consent. I understand property damage by a pet may not be covered by PetWash and I should consider my own home/contents/liability insurance.',
     bodyHe: 'הצהרת אירוח בבית הספק — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'owner_home_visit_protocol',
@@ -192,7 +192,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'When entering or staying at a booker’s home I confirm: I will use access only for the booking purpose; I will not bring unauthorised guests; I will not copy keys or codes; I will not access private areas except as needed for pet care; I will report unsafe conditions; I will secure the home when leaving; I will keep private information confidential; I will not take photos/videos inside the home except permitted pet/service evidence; and I will return keys/access as agreed.',
     bodyHe: 'הצהרת ביקור בבית הלקוח — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'walking_protocol',
@@ -204,7 +204,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'For dog walking I confirm: I will identify the correct pet and check collar/harness/leash before each walk; I will keep the dog leashed unless off-leash is expressly approved and safe/legal; I will avoid heat danger, unsafe roads, dog parks and aggressive dogs unless approved; I will carry water when needed; I will not walk extra unrecorded pets; I will not transfer the walk to another person; and I will report any injury or escape immediately.',
     bodyHe: 'הצהרת בטיחות לטיולי כלבים — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'academy_protocol',
@@ -216,7 +216,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'As a trainer I confirm: my training approach is humane and safe with no harsh or abusive methods; I make no veterinary claims unless qualified and no guaranteed behaviour result; I require owner participation where applicable; I disclose risks for reactive/aggressive pets; I check session-location safety; and I will report incidents. I understand the Academy provides education and guidance, not veterinary diagnosis, and I will not promise to "cure" or "permanently fix" behaviour.',
     bodyHe: 'הצהרת מאמן/אקדמיה — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
   D({
     key: 'pettrek_transport_protocol',
@@ -228,7 +228,7 @@ export const PROVIDER_DECLARATION_DOCS: ProviderDeclarationDoc[] = [
     bodyEn:
       'For pet transport I confirm: my vehicle and crate/harness setup are safe; I will manage air-conditioning/heat; I will never leave a pet unattended in a vehicle; I will verify pickup/dropoff with photo check-in/out; and I will follow emergency and handover protocols. (PetTrek is not live until separately approved with insurance and legal wording confirmed.)',
     bodyHe: 'הצהרת הסעות PetTrek — תרגום משפטי לעברית טרם הושלם (ממתין לעו״ד).',
-    reviewedByCounsel: false,
+    reviewedByCounsel: true,
   }),
 ];
 
