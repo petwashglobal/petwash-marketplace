@@ -325,6 +325,37 @@ export async function performPostgresBackup(): Promise<{
     const fileHash = calculateFileHash(localPath);
     logger.info(`[GCS] pg_dump complete: ${sizeMB} MB, sha256 ${fileHash.slice(0, 12)}…`);
 
+    // ── CONTENT INTEGRITY CHECK (2026-07-31 audit) ───────────────────────────
+    // A size-only log let an EMPTY or WRONG-database dump (e.g. pointed at a fresh
+    // Neon branch) pass as "success" — the classic backup-that-lies. Refuse to
+    // treat a suspiciously small dump as valid, and confirm the critical account
+    // tables are actually present via pg_restore --list. A bad dump is a FAILURE
+    // (alert + no false success), never a silent green check.
+    const MIN_DUMP_BYTES = 20 * 1024; // a real prod dump is far larger; empty/wrong-DB dumps are tiny
+    if (stats.size < MIN_DUMP_BYTES) {
+      await recordFailure(`Postgres dump suspiciously small (${stats.size} bytes) — refusing to treat as a valid backup`);
+      try { fs.unlinkSync(localPath); } catch { /* ignore */ }
+      return { success: false, error: 'dump too small — likely empty or wrong database' };
+    }
+    try {
+      const pgRestoreBin = pgDumpBin.replace(/pg_dump(\.exe)?$/i, 'pg_restore$1');
+      const { stdout: toc } = await execFileAsync(pgRestoreBin, ['--list', localPath], {
+        maxBuffer: 1024 * 1024 * 50, env: { ...process.env },
+      });
+      const REQUIRED_TABLES = ['users', 'wallet_accounts', 'loyalty_profiles'];
+      const missing = REQUIRED_TABLES.filter((t) => !new RegExp(`\\b${t}\\b`).test(toc));
+      if (missing.length) {
+        await recordFailure(`Postgres dump missing critical tables: ${missing.join(', ')} — not a valid account backup`);
+        try { fs.unlinkSync(localPath); } catch { /* ignore */ }
+        return { success: false, error: `dump missing critical tables: ${missing.join(', ')}` };
+      }
+      logger.info('[GCS] dump content verified — users/wallet_accounts/loyalty_profiles present');
+    } catch (verErr: any) {
+      // pg_restore unavailable → cannot content-verify; the size gate above still
+      // applies. Log (do not fail a good dump just because the verifier is missing).
+      logger.warn('[GCS] pg_restore --list verification skipped (verifier unavailable)', { error: verErr?.message });
+    }
+
     const storageClient = getStorageClient();
     await ensurePostgresBucket(storageClient); // self-heal: create the bucket if it was never provisioned
     const destination = `daily/${date}/${backupFile}`;

@@ -327,6 +327,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // holds the in-flight login-time challenge (the idToken to prove + a masked
   // phone hint) so the code screen can render.
   const [twoFactor, setTwoFactor] = useState(false);
+  // 2-step login is HIDDEN until the bearer-ID-token auth path is gated (a security
+  // audit found the server enforces 2FA only at the session-cookie mint, so a
+  // password-only attacker could bypass it with an `Authorization: Bearer <idToken>`
+  // request — i.e. fake security for its own threat model). Do NOT expose the toggle
+  // until that path is closed AND tested; flip to true then. (2026-07-31)
+  const TWO_STEP_LOGIN_READY = false;
   const [mfaChallenge, setMfaChallenge] = useState<{ idToken: string; phoneHint: string } | null>(null);
   // True for the whole duration of a password login (incl. a pending 2-step SMS
   // challenge) so the auth-state auto-navigate effect does NOT yank the user off
@@ -1200,7 +1206,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
                   </div>
                   {/* 1-way / 2-way choice (CEO 2026-07-31): off = password only;
-                      on = we also text a code on every login. Optional, the user's call. */}
+                      on = we also text a code on every login. HIDDEN until the
+                      bearer-token auth path enforces it (see TWO_STEP_LOGIN_READY). */}
+                  {TWO_STEP_LOGIN_READY && (
                   <button type="button" onClick={() => setTwoFactor((v) => !v)} aria-pressed={twoFactor}
                     style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', background: twoFactor ? 'rgba(212,175,55,0.10)' : 'rgba(255,255,255,0.03)', border: `1px solid ${twoFactor ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`, borderRadius: '12px', padding: '12px 14px', cursor: 'pointer', flexDirection: he ? 'row-reverse' : 'row', textAlign: he ? 'right' : 'left' }}>
                     <span aria-hidden style={{ width: '20px', height: '20px', borderRadius: '6px', border: `2px solid ${twoFactor ? '#D4AF37' : 'rgba(255,255,255,0.35)'}`, background: twoFactor ? '#D4AF37' : 'transparent', color: '#0f0f11', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flex: '0 0 auto', fontWeight: 700 }}>{twoFactor ? '✓' : ''}</span>
@@ -1209,6 +1217,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       <span style={{ display: 'block', fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>{he ? 'נבקש גם קוד ב-SMS בכל כניסה — אבטחה נוספת (לבחירתך).' : 'We’ll also text a code on each login — extra security (your choice).'}</span>
                     </span>
                   </button>
+                  )}
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setInlineError(null); setConfirm(''); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
                     {he ? 'כבר יש לך חשבון? התחבר/י' : 'Already have an account? Sign in'}

@@ -619,6 +619,17 @@ export class BackgroundJobProcessor {
       timezone: 'Asia/Jerusalem'
     });
 
+    // Backup DEADMAN WATCHDOG (2026-07-31 audit): the nightly dumps run on
+    // in-process node-cron (unreliable on Cloud Run: CPU throttled with no traffic)
+    // and an external Cloud Scheduler not defined in this repo. If that stops, the
+    // backup silently dies with NO alert — exactly what happened Nov 2025→mid-2026.
+    // This runs 4×/day and pages if no SUCCESSFUL Postgres backup landed in ~26h.
+    cron.schedule('30 */6 * * *', async () => {
+      await this.checkBackupStaleness();
+    }, {
+      timezone: 'Asia/Jerusalem'
+    });
+
     // Legal Compliance: Check for overdue reviews daily at 8 AM Israel time
     cron.schedule('0 8 * * *', async () => {
       await this.checkLegalCompliance();
@@ -2057,6 +2068,40 @@ export class BackgroundJobProcessor {
       }
     } catch (error) {
       logger.error('[GCS] Error in PostgreSQL backup:', error);
+    }
+  }
+
+  /**
+   * Deadman watchdog: alert if no SUCCESSFUL Postgres backup landed recently.
+   * Reads the most recent backup_logs entries (single-field timestamp order, so no
+   * composite index is needed) and pages via sendSecurityAlert when the newest
+   * postgres success is missing or older than ~26h. This is the safety net the
+   * system lacked: without it a dead scheduler produced silent data-loss risk.
+   */
+  private static async checkBackupStaleness(): Promise<void> {
+    try {
+      const STALE_MS = 26 * 60 * 60 * 1000; // daily cadence (24h) + margin
+      const snap = await db.collection('backup_logs').orderBy('timestamp', 'desc').limit(50).get();
+      const latest = snap.docs
+        .map((d) => d.data() as any)
+        .find((x) => x?.type === 'postgres' && x?.status === 'success');
+      const latestMs = latest?.timestamp ? new Date(latest.timestamp).getTime() : 0;
+      if (!latest || Date.now() - latestMs > STALE_MS) {
+        const ageH = latestMs ? Math.round((Date.now() - latestMs) / 3600000) : null;
+        await sendSecurityAlert(
+          '🛑 PetWash Postgres backup STALE',
+          latest
+            ? `<p>No successful <b>Postgres</b> backup in ~${ageH}h (last success: ${latest.timestamp}).</p>`
+              + `<p>The nightly dump may have silently stopped. Verify the Cloud Scheduler job hitting <code>/api/cron/backup/postgres</code>, <code>CRON_SECRET</code>, and the GCS bucket.</p>`
+            : `<p><b>No successful Postgres backup found at all.</b> The nightly dump is not running.</p>`
+              + `<p>Verify Cloud Scheduler, <code>CRON_SECRET</code>, and <code>GCS_POSTGRES_BUCKET</code>.</p>`,
+        );
+        logger.error('[BackupWatchdog] Postgres backup stale/missing — alert sent', { ageH });
+      } else {
+        logger.info(`[BackupWatchdog] Postgres backup fresh (last success ${latest.timestamp})`);
+      }
+    } catch (e: any) {
+      logger.warn('[BackupWatchdog] staleness check failed (non-fatal)', { error: e?.message });
     }
   }
 
