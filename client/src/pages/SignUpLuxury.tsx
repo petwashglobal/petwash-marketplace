@@ -729,7 +729,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       } catch (e: any) {
         const newUser = e?.code === 'auth/user-not-found' || e?.code === 'auth/invalid-credential';
         if (newUser) {
-          if (password !== confirm) { fail(he ? 'אשר את הסיסמה כדי ליצור חשבון חדש' : 'Confirm your password to create a new account.'); return; }
           try {
             cred = await createUserWithEmailAndPassword(auth, email, password);
             try { await sendEmailVerification(cred.user); } catch { /* non-blocking */ }
@@ -813,9 +812,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // A real account, not the passwordless one-contact demo. Password ≥8; confirm
   // must match. See [[signup-contract-both-plus-password-2026-07-31]].
   const passwordValid = password.length >= 8;
-  const confirmValid = confirm.length >= 8 && confirm === password;
   const bothContacts = phoneValid && emailValid;
-  const joinReady = !busy && bothContacts && passwordValid && confirmValid && isAdult;
+  // CEO 2026-07-31 (round 2, "it's too hard"): dropped the separate confirm-password
+  // field — the show/hide password toggle already lets the user verify what they typed,
+  // so a second box was pure friction. Member join = mobile + email + one password.
+  const joinReady = !busy && bothContacts && passwordValid && isAdult;
   // LOGIN is email + password (returning member). Phone-OTP login still exists via
   // the "use a one-time code" link; social + passkey remain on both modes.
   const loginReady = !busy && emailValid && password.length >= 1;
@@ -835,7 +836,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   function startJoin() {
     if (!bothContacts) { fail(he ? 'צריך גם מספר נייד וגם אימייל' : 'A mobile number AND an email are both required'); return; }
     if (!passwordValid) { fail(he ? 'הסיסמה חייבת להיות באורך 8 תווים לפחות' : 'Password must be at least 8 characters'); return; }
-    if (!confirmValid) { fail(he ? 'הסיסמאות אינן תואמות' : 'The passwords do not match'); return; }
     if (!isAdult) { fail(he ? 'יש להיות בגיל 18 ומעלה' : 'You must be 18 or older'); return; }
     setInlineError(null);
     setMethod('mobile');
@@ -1179,15 +1179,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     </div>
                     {password.length > 0 && !passwordValid && <div className="sl-hint sl-submitHint">{he ? 'הסיסמה חייבת להיות באורך 8 תווים לפחות.' : 'Password must be at least 8 characters.'}</div>}
                   </div>
-                  <div className="sl-field">
-                    <label className="sl-label">{he ? 'אישור סיסמה' : 'Confirm password'}</label>
-                    <div className="sl-inputWrap">
-                      <FaLock className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="new-password"
-                        value={confirm} onChange={(e) => setConfirm(e.target.value)} placeholder={he ? 'הקלד שוב את הסיסמה' : 'Re-enter the password'} />
-                    </div>
-                    {confirm.length > 0 && confirm !== password && <div className="sl-hint sl-submitHint">{he ? 'הסיסמאות אינן תואמות.' : 'The passwords do not match.'}</div>}
-                  </div>
                   <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
                     {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
@@ -1304,13 +1295,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               {/* Primary CTA — JOIN (both contacts + password) or LOGIN (email + password). */}
               {authMode === 'join' ? (
                 <>
-                  <button className="sl-cta" disabled={!joinReady} onClick={startJoin}>
+                  <button className="sl-cta" disabled={busy} onClick={startJoin}>
                     <FaLock aria-hidden /> {busy ? '…' : t.cta}
                   </button>
-                  {!joinReady && <div className="sl-hint sl-submitHint">{he ? 'להצטרפות: נייד + אימייל + סיסמה (8 תווים) + תאריך לידה (18+).' : 'To join: mobile + email + a password (8+ chars) + date of birth (18+).'}</div>}
+                  {!joinReady && <div className="sl-hint sl-submitHint">{he ? 'להצטרפות: נייד + אימייל + סיסמה (8 תווים).' : 'To join: mobile + email + a password (8+ chars).'}</div>}
                 </>
               ) : (
-                <button className="sl-cta" disabled={!loginReady} onClick={() => { void loginWithPassword(); }}>
+                <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
                   <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
                 </button>
               )}
@@ -1708,6 +1699,11 @@ function styles(he: boolean) {
       box-shadow:0 18px 50px rgba(212,175,55,.28);
       transition:transform .15s ease, box-shadow .15s ease, filter .15s ease;
       -webkit-tap-highlight-color:transparent;
+      /* Keep the primary action reachable: on a phone the fields can push the
+       * button below the fold, which read as "there is no submit button". Sticky
+       * bottom pins it to the viewport while scrolling the form. The gold gradient
+       * is fully opaque so nothing bleeds through. */
+      position:sticky; bottom:10px; z-index:6;
     }
     .sl-cta:hover:not(:disabled){ transform:translateY(-1px); filter:brightness(1.06); box-shadow:0 22px 64px rgba(212,175,55,.5) }
     .sl-cta:disabled{ opacity:.5; cursor:not-allowed }
