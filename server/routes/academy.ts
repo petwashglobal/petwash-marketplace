@@ -257,7 +257,8 @@ router.get('/specialties', async (req, res) => {
  * POST /api/academy/bookings - Create trainer booking
  * Authenticated endpoint - requires valid Firebase user
  */
-router.post('/bookings', requireAuth, async (req, res) => {
+// LAW & ORDER (CEO 2026-07-31): members-only — requireLoyaltyMember was a dead import.
+router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => {
   // Hoisted so the catch can release the slot lock (set to the bookingRef once
   // the lock is acquired). See the DOUBLE-BOOKING GUARD block below.
   let slotLockRef: string | null = null;

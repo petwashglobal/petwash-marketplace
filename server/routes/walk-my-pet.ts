@@ -384,7 +384,8 @@ router.post('/walkers/search', async (req, res) => {
 // =================== WALK BOOKING ===================
 
 // Create walk booking - USING LUXURY ENGINE
-router.post('/walks/book', requireAuth, async (req, res) => {
+// LAW & ORDER (CEO 2026-07-31): members-only — requireLoyaltyMember was a dead import.
+router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) => {
   // Hoisted so the outer catch can free the persistent slot lock on failure.
   let slotLockRef: string | null = null;
   try {
