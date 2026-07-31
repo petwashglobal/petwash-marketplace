@@ -599,7 +599,7 @@ async function persistSignupEmail(uid: string, email: unknown): Promise<void> {
  */
 publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, res) => {
   try {
-    const { idToken, sessionToken } = req.body || {};
+    const { idToken, sessionToken, password } = req.body || {};
     if (!idToken || !sessionToken) {
       return res.status(400).json({ ok: false, error: 'idToken and sessionToken are required' });
     }
@@ -623,6 +623,18 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
       }
       logger.warn('[Signup] verify-signup-email updateUser failed', { error: e?.message });
       return res.status(500).json({ ok: false, error: 'Could not verify email — please try again.' });
+    }
+    // Set the password the member chose at join (CEO 2026-07-31) so they can log in
+    // with email + password. Kept SEPARATE from the email-link update so a weak/bad
+    // password never blocks email verification (the critical step). Firebase's floor
+    // is 6 chars; we require the same 8 the client enforces. Plaintext is handed
+    // straight to Firebase Admin and never stored in our DB.
+    if (typeof password === 'string' && password.length >= 8) {
+      try {
+        await fbAdminAuth.updateUser(uid, { password });
+      } catch (e: any) {
+        logger.warn('[Signup] verify-signup-email set-password failed (non-blocking)', { error: e?.message });
+      }
     }
     // Best-effort DB flag (email_verified column may not exist → harmless skip).
     try {
