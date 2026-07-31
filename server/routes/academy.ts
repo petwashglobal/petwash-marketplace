@@ -732,16 +732,21 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       return res.status(400).json({ error: `Cannot confirm booking in status: ${booking.bookingStatus}` });
     }
 
+    // HONEST payment state (2026-07-31 money audit): only mark a booking
+    // 'completed'/'held' when money was ACTUALLY captured. A booking with no wallet
+    // coverage collects ₪0 online (no card rail wired yet) — it must NOT be labelled
+    // paid. It's confirmed, but payment is still DUE (pay at service / add wallet).
+    const walletFunded = booking.financeState === 'hold_active' && booking.walletHoldCents > 0;
     const walletUpdates: Record<string, unknown> = {
       bookingStatus: 'confirmed',
       confirmedAt: new Date(),
-      paymentStatus: 'completed',
-      escrowStatus: 'held',
-      escrowHeldAt: new Date(),
+      paymentStatus: walletFunded ? 'completed' : 'pending',
+      escrowStatus: walletFunded ? 'held' : 'none',
+      ...(walletFunded ? { escrowHeldAt: new Date() } : {}),
       updatedAt: new Date(),
     };
 
-    if (booking.financeState === 'hold_active' && booking.walletHoldCents > 0) {
+    if (walletFunded) {
       const debitResult = await walletService.debitBookingFromHold({
         userId: booking.userId,
         amountCents: booking.walletHoldCents,
@@ -753,6 +758,8 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       walletUpdates.walletDebitKey = debitResult.txnId;
       walletUpdates.walletDebitedCents = booking.walletHoldCents;
       logger.info('[Academy] Wallet debited on confirm', { bookingId, debitedCents: booking.walletHoldCents, txnId: debitResult.txnId });
+    } else {
+      logger.warn('[Academy] Booking confirmed with NO wallet capture — payment pending (no card rail)', { bookingId });
     }
 
     const [confirmed] = await db
