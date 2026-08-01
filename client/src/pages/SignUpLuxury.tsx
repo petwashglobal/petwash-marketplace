@@ -1488,7 +1488,10 @@ function styles(he: boolean) {
 
     /* Dog can be large and emotional, but it supports the brand identity. */
     .sl-dogWrap{ display:flex; justify-content:center; padding:4px 0 }
-    .sl-dog{ width:min(58%, 340px); height:auto; aspect-ratio:1/1.05; object-fit:cover; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
+    /* object-position:top keeps the DOG'S HEAD in frame — object-fit:cover with a
+       1/1.05 box was cropping the top of the head off (CEO 2026-08-01). Anchor the
+       crop to the top so ears/head are always visible. */
+    .sl-dog{ width:min(58%, 340px); height:auto; aspect-ratio:1/1.05; object-fit:cover; object-position:center top; border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.55); border:1px solid rgba(255,255,255,.06) }
 
     .sl-card{
       border:1px solid var(--line);

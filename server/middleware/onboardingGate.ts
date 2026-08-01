@@ -23,23 +23,37 @@ interface OnboardingRequirements {
   reason: string;
 }
 
+// Canonical member profile: name + BOTH a mobile and a date-of-birth (18+) + terms.
+// CEO contract 2026-07-31/08-01: every member needs a verified mobile AND is age-
+// gated (18+), whichever way they signed in. Google/Apple supply name + email
+// automatically, so a social user is asked only for what's genuinely missing —
+// mobile + DOB + terms (the gate returns only the MISSING subset below). Email is
+// NOT listed: social users already have it, and the manual flow collects it up
+// front. Keep this in lock-step with REQUIRED_FIELDS_BY_ROLE in
+// server/routes/post-login.ts (same contract, two enforcement points).
+const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'dateOfBirth', 'termsAcceptedAt'];
+
 const ROLE_REQUIREMENTS: Record<string, OnboardingRequirements> = {
   customer: {
-    requiredFields: ['firstName', 'lastName', 'termsAcceptedAt'],
+    requiredFields: MEMBER_REQUIRED_FIELDS,
     redirectTo: '/complete-profile',
     reason: 'CUSTOMER_PROFILE_INCOMPLETE',
   },
   loyalty: {
-    requiredFields: ['firstName', 'lastName', 'dateOfBirth', 'termsAcceptedAt'],
+    requiredFields: MEMBER_REQUIRED_FIELDS,
     redirectTo: '/complete-profile',
     reason: 'LOYALTY_PROFILE_INCOMPLETE',
   },
   provider: {
-    requiredFields: ['firstName', 'lastName', 'phone', 'termsAcceptedAt'],
+    // A provider is also a member (contact + 18+ + terms). The heavy KYC —
+    // national ID, address, docs, bank, contract, human approval — is a SEPARATE
+    // flow (ProviderOnboarding / provider application), not this base gate.
+    requiredFields: MEMBER_REQUIRED_FIELDS,
     redirectTo: '/complete-profile',
     reason: 'PROVIDER_PROFILE_INCOMPLETE',
   },
   staff: {
+    // Internal role — kept light so staff/admins aren't consumer-gated.
     requiredFields: ['firstName', 'lastName', 'termsAcceptedAt'],
     redirectTo: '/complete-profile',
     reason: 'STAFF_PROFILE_INCOMPLETE',
