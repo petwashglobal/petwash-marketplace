@@ -21,6 +21,7 @@ import { sumitClient } from '../services/SumitClient';
 import { issueVoucher } from '../services/unifiedVoucherService';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { paymentLimiter } from '../middleware/rateLimiter';
+import { EGIFT_EXEMPTION_CAP_ILS } from '../lib/egift-denominations';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -31,8 +32,12 @@ function isEgiftPurchaseEnabled(): boolean {
 }
 
 // Server-owned bounds — the guest picks the gift value, but only within safe limits.
+// The MAX is the Israeli Payment-Services exemption cap (₪1,500): a closed-loop,
+// paid-in-full voucher above it would require a payment LICENCE. Pulled from the
+// single locked source (egift-denominations.ts) so this can never silently drift
+// past the legal ceiling.
 const MIN_EGIFT_ILS = 20;
-const MAX_EGIFT_ILS = 2000;
+const MAX_EGIFT_ILS = EGIFT_EXEMPTION_CAP_ILS;
 
 const guestStartSchema = z.object({
   senderEmail: z.string().email(),

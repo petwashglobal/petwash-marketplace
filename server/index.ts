@@ -841,6 +841,15 @@ const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
     // 403 in production — the public lead-capture pipeline was silently dead.
     if (/^\/api\/global-forms\//.test(req.path)) return true;
     if (req.path === '/api/franchise/inquiry') return true;
+    // PUBLIC guest eGift checkout (server/routes/egift-guest.ts → POST
+    // /api/egift/guest/start). A stranger buys a gift WITHOUT signing up, so
+    // there is no Firebase Bearer and — on a first visit — no pw.csrf cookie to
+    // round-trip. Same safety profile as the other public POSTs above and then
+    // some: Turnstile bot-check + payment rate limiter, a SERVER-OWNED price
+    // (the client cannot dictate the amount), and PAY-THEN-ISSUE (nothing of
+    // value is created until SUMIT verifies the charge). Without this the guest
+    // buy 403s EBADCSRFTOKEN — the [[csrf-public-post-regression-class]] failure.
+    if (req.path === '/api/egift/guest/start') return true;
     return false;
   },
 });

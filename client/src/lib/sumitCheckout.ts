@@ -113,3 +113,52 @@ export async function startWalletTopUpCheckout(input: { amountIls: number }): Pr
     return { ok: false, error: err instanceof Error ? err.message : 'Could not start payment' };
   }
 }
+
+/**
+ * PUBLIC guest eGift checkout — buy a gift card WITHOUT signing up.
+ *
+ * Hits the anonymous route POST /api/egift/guest/start (server/routes/egift-guest.ts),
+ * which is Turnstile bot-checked, payment-rate-limited, server-price-bounded
+ * (₪20..₪1,500 exemption cap), and PAY-THEN-ISSUE (the voucher is created only
+ * after SUMIT verifies the charge). No card data touches us — SUMIT hosts the form.
+ *
+ * The amount here is the buyer's chosen gift value; the SERVER clamps it to the
+ * legal range and is the source of truth. On success the browser navigates to
+ * SUMIT and returns to /egift?status=success|failed|issue_failed.
+ */
+export async function startGuestEgiftCheckout(input: {
+  amountIls: number;
+  senderEmail: string;
+  senderName?: string;
+  recipientEmail: string;
+  recipientName: string;
+  recipientPhone?: string;
+  message?: string;
+  turnstileToken?: string;
+}): Promise<SumitCheckoutResult> {
+  if (!(input.amountIls > 0)) return { ok: false, error: 'Invalid amount' };
+  try {
+    const res = await apiRequest('POST', '/api/egift/guest/start', {
+      amountIls: input.amountIls,
+      senderEmail: input.senderEmail,
+      senderName: input.senderName,
+      recipientEmail: input.recipientEmail,
+      recipientName: input.recipientName,
+      recipientPhone: input.recipientPhone,
+      message: input.message,
+      ...(input.turnstileToken ? { turnstileToken: input.turnstileToken } : {}),
+    });
+    const data = await res.json().catch(() => ({} as any));
+    if (!data?.redirectUrl) {
+      return {
+        ok: false,
+        error: data?.error || data?.reason || 'Payments are not available right now',
+        errorCode: data?.errorCode,
+      };
+    }
+    window.location.assign(data.redirectUrl as string); // SUMIT hosted page
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : 'Could not start payment' };
+  }
+}
