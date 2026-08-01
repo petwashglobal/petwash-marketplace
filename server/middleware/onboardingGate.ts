@@ -38,30 +38,44 @@ const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'termsAccepted
 // set — collected + human-reviewed in the SEPARATE ProviderOnboarding flow (NEVER
 // asked of a plain member). This is the single source of truth for "what a provider
 // must supply"; ProviderOnboarding's form + the payout gate enforce it.
+// The KYC set uses the REAL provider_applications columns (shared/schema.ts) — not
+// invented names — so a check actually works. Bank payout details live in a SEPARATE
+// table (contractor_bank_details / providers.bankAccount, bank_account_verified) and
+// are verified before payout, not on the application row, so they're intentionally
+// NOT in this list. The authority for "provider is complete + approved" is the
+// application's own `onboardingComplete` flag + `status` (set by ProviderOnboarding +
+// AdminProviderReviewService); this list is what that flow collects.
 export const PROVIDER_KYC_FIELDS = [
-  'emailVerifiedAt',   // a provider MUST have a verified email (payouts/tax/contract)
-  'dateOfBirth',
-  'age18Confirm',      // explicit 18+ confirmation
-  'fullAddress',
-  'providerType',      // pet_sitter | dog_walker | academy | ...
-  'idDocument',        // national ID / passport / licence + document image
-  'selfieLiveness',    // selfie / liveness check
-  'taxStatus',         // osek patur / murshe / company
-  'bankDetails',       // payout target (encrypted at rest)
-  'providerAgreement', // signed provider contract (DocuSeal)
-  'safetyTraining',    // completed safety training
+  'providerType',          // walker | sitter | driver | groomer | trainer | ...
+  'governmentIdUrl',       // ID / passport / licence document image
+  'selfiePhotoUrl',        // selfie for liveness/biometric match
+  'biometricStatus',       // liveness/biometric result (must be verified)
+  'residentialHistory',    // address history
+  'taxStatus',             // osek patur / murshe / company
+  'selfDeclarationAt',     // signed self-declaration (incl. 18+ / no convictions)
+  'backgroundCheckStatus', // must pass
+  'petFirstAidCertUrl',    // safety / first-aid training certificate
+  'insuranceCertUrl',      // insurance certificate (where the service requires it)
 ] as const;
 
 /**
- * getRoleRequiredFields — canonical "what is this user still missing" engine.
- * MEMBER needs only the base profile; PROVIDER additionally needs the KYC set.
- * Returns the MISSING fields only (a field is missing when its column is falsy),
- * so we never re-ask for anything already supplied. `role` is normalised upstream.
+ * getRoleRequiredFields — what a user still needs. MEMBER = the base profile only
+ * (checked against the USER record). PROVIDER additionally needs a COMPLETE provider
+ * application: the authority is the application's `onboardingComplete` flag (set by
+ * the ProviderOnboarding flow + AdminProviderReviewService), so pass the application
+ * to check it. Without an application we conservatively report the whole KYC set as
+ * outstanding. Returns only the MISSING items — nothing already supplied is re-asked.
  */
-export function getRoleRequiredFields(user: Record<string, any>, role: string): string[] {
+export function getRoleRequiredFields(
+  user: Record<string, any>,
+  role: string,
+  providerApp?: Record<string, any> | null,
+): string[] {
   const base = MEMBER_REQUIRED_FIELDS.filter((f) => !user?.[f]);
   if (role !== 'provider') return base;
-  const kyc = PROVIDER_KYC_FIELDS.filter((f) => !user?.[f]);
+  // A reviewed, complete application means the KYC is satisfied.
+  if (providerApp?.onboardingComplete) return base;
+  const kyc = PROVIDER_KYC_FIELDS.filter((f) => !providerApp?.[f]);
   return [...base, ...kyc];
 }
 
