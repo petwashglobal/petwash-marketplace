@@ -13,11 +13,13 @@
  */
 
 import { auth, app } from '@/lib/firebase';
-import { 
+import {
   signInWithPopup,
   signInWithRedirect,
   GoogleAuthProvider,
+  OAuthProvider,
 } from 'firebase/auth';
+import type { AuthProvider as FirebaseAuthProvider } from 'firebase/auth';
 import { getAuthStrategy } from '@/lib/iosAuthHandler';
 import { logger } from '@/lib/logger';
 import { getApiUrl } from '@/lib/apiConfig';
@@ -160,6 +162,11 @@ function friendlyAuthError(codeOrMsg: string): string {
     'auth/invalid-credential': 'Your session expired. Please sign in again.',
     'auth/unauthorized-domain': 'Domain is not authorized for sign-in. Ask support to add this domain.',
     'auth/internal-error': 'We had a hiccup. Please try again in a moment.',
+    // This provider is coded but not yet switched on in the Firebase console.
+    'auth/operation-not-allowed': 'This sign-in method is not available yet. Please use another option for now.',
+    // The email is already registered with a different provider (e.g. Google) —
+    // guide the user to their original method instead of a confusing failure.
+    'auth/account-exists-with-different-credential': 'This email is already registered with a different sign-in method. Please use the option you signed up with.',
   };
   
   // Guard against undefined/null codeOrMsg
@@ -205,6 +212,72 @@ export async function signInWithGoogle(): Promise<void> {
     logger.error('[Auth Guardian] Google sign-in failed', error);
     throw error;
   }
+}
+
+/**
+ * Generic OAuth sign-in runner — same popup/redirect strategy, beacons and
+ * error banner as signInWithGoogle, for the additional federated providers
+ * (Yahoo, Microsoft). Google keeps its own function above so its long-standing
+ * behaviour is untouched.
+ *
+ * NOTE: Yahoo and Microsoft must ALSO be enabled in the Firebase console with a
+ * registered OAuth app (client id + secret), exactly like Facebook/Apple. Until
+ * the console side is configured, Firebase returns auth/operation-not-allowed —
+ * we surface that as a friendly banner rather than a silent failure.
+ */
+async function runOAuthProviderSignIn(
+  provider: FirebaseAuthProvider,
+  label: 'yahoo' | 'microsoft',
+): Promise<void> {
+  preserveProviderIntentForCurrentPath();
+
+  const strategy = getAuthStrategy();
+  if (strategy === 'redirect') {
+    logger.info(`[Auth Guardian] OAuth strategy=redirect — ${label} via signInWithRedirect`);
+    beacon(`auth.signin_${label}_redirect_start`, { strategy });
+    await signInWithRedirect(auth, provider);
+    return; // Page navigates away.
+  }
+
+  try {
+    const result = await signInWithPopup(auth, provider);
+    await refreshClaims();
+    beacon(`auth.signin_${label}_popup_ok`, { uid: result.user.uid, strategy });
+    logger.info(`[Auth Guardian] ${label} sign-in successful (popup)`, { uid: result.user.uid });
+  } catch (error: any) {
+    const errorMsg = friendlyAuthError(String(error?.code || error?.message || error));
+    banner.show(errorMsg);
+    beacon(`auth.signin_${label}_error`, { error: String(error?.code || error?.message || error), strategy });
+    logger.error(`[Auth Guardian] ${label} sign-in failed`, error);
+    throw error;
+  }
+}
+
+/**
+ * Yahoo sign-in (Firebase generic OAuth provider 'yahoo.com').
+ * Requests the user's email + name so signup can auto-fill them.
+ */
+export async function signInWithYahoo(): Promise<void> {
+  const provider = new OAuthProvider('yahoo.com');
+  // Yahoo returns profile (name) + email in the OIDC id-token by default; ask
+  // explicitly so the name lands in user.displayName for signup auto-fill.
+  provider.addScope('profile');
+  provider.addScope('email');
+  provider.setCustomParameters({ prompt: 'login' });
+  return runOAuthProviderSignIn(provider, 'yahoo');
+}
+
+/**
+ * Microsoft sign-in (Firebase generic OAuth provider 'microsoft.com' — Azure AD,
+ * covers Outlook/Hotmail/Live personal accounts + work/school accounts).
+ */
+export async function signInWithMicrosoft(): Promise<void> {
+  const provider = new OAuthProvider('microsoft.com');
+  provider.addScope('User.Read');
+  provider.addScope('email');
+  // 'common' tenant = accept both personal (MSA) and org (Azure AD) accounts.
+  provider.setCustomParameters({ prompt: 'select_account', tenant: 'common' });
+  return runOAuthProviderSignIn(provider, 'microsoft');
 }
 
 /**
@@ -325,6 +398,8 @@ init();
 if (typeof window !== 'undefined') {
   (window as any).PW_Auth = {
     signInWithGoogle,
+    signInWithYahoo,
+    signInWithMicrosoft,
     routeGuard,
     refreshClaims,
   };
