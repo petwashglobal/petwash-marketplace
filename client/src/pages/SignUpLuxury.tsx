@@ -89,7 +89,7 @@ import {
   signInWithPasskeyConditional,
 } from '@/auth/passkey';
 import {
-  FaApple, FaFacebookF, FaInstagram, FaTiktok, FaLock,
+  FaApple, FaFacebookF, FaInstagram, FaTiktok, FaLock, FaMobileAlt,
   FaShieldAlt,
   FaCog, FaGift, FaCalendarAlt, FaHeartbeat,
   FaEnvelope, FaPhoneAlt, FaPaw, FaFingerprint,
@@ -321,6 +321,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // modes, switchable. Default: /signup → join, /signin|/login → login.
   const isLoginPath = /\/(signin|sign-in|login)/.test(window.location.pathname);
   const [authMode, setAuthMode] = useState<'join' | 'login'>(isLoginPath ? 'login' : 'join');
+  // JOIN step 1 is a CHOICE, not a form: Apple / Google / "continue with mobile".
+  // The manual mobile+email+password+DOB form stays HIDDEN until the user explicitly
+  // picks "continue with mobile" (CEO 2026-08-01) — so social sign-in users are never
+  // shown a long form they don't need.
+  const [manualMode, setManualMode] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
   // 2-STEP LOGIN (CEO 2026-07-31 "one-way or two-way verification"): opt-in at
   // join; when on, login asks for an SMS code AFTER the password. mfaChallenge
@@ -1132,9 +1137,25 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 )}
               </div>
 
-              <div className="sl-div">{authMode === 'login'
-                ? (he ? 'או התחבר עם אימייל וסיסמה' : 'or sign in with email & password')
-                : (he ? 'או הצטרף עם נייד, אימייל וסיסמה' : 'or join with mobile, email & a password')}</div>
+              <div className="sl-div">{he ? 'או' : 'or'}</div>
+
+              {/* JOIN step 1 = a CHOICE, not a form. Show a single "continue with
+                  mobile" button + a sign-in link; the manual form stays hidden until
+                  the user picks mobile (CEO 2026-08-01). Google/Apple above go
+                  straight to the short completion (mobile + DOB + terms). */}
+              {authMode === 'join' && !manualMode && (
+                <>
+                  <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
+                    onClick={() => { setManualMode(true); setMethod('mobile'); setInlineError(null); }}
+                    data-testid="button-continue-mobile">
+                    <FaMobileAlt aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם מספר נייד' : 'Continue with mobile number'}</span>
+                  </button>
+                  <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setManualMode(false); setInlineError(null); }}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13.5px', cursor: 'pointer', padding: '12px 0 4px', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                    {he ? 'כבר יש לך חשבון? התחברות' : 'Already have an account? Sign in'}
+                  </button>
+                </>
+              )}
 
               {/* ===================== JOIN (new account) =====================
                   CEO 2026-07-31: a real account needs BOTH contacts + a password.
@@ -1142,8 +1163,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   phone is verified first (SMS code), then the email (email code),
                   then the password is set — name + address come right after, in the
                   profile step. No more "pick one and skip the rest" demo. */}
-              {authMode === 'join' && (
+              {authMode === 'join' && manualMode && (
                 <>
+                  {/* Back to the method choice (Apple / Google / mobile). */}
+                  <button type="button" className="sl-switchLink" onClick={() => { setManualMode(false); setInlineError(null); }}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.75, fontSize: '13px', cursor: 'pointer', padding: '2px 0 6px', width: '100%', textAlign: he ? 'right' : 'left' }}>
+                    {he ? '‹ חזרה לאפשרויות ההתחברות' : '‹ Back to sign-in options'}
+                  </button>
                   {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
                     <p className="sl-inlineError" role="status">
                       {he ? 'SMS אינו זמין כעת — נסו שוב עוד רגע, או המשיכו עם Google / Apple.' : 'SMS is temporarily unavailable — try again shortly, or continue with Google / Apple.'}
@@ -1285,37 +1311,48 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               {/* Primary CTA — JOIN (both contacts + password) or LOGIN (email + password). */}
               {authMode === 'join' ? (
+                // Only show the create-account CTA once the manual form is open —
+                // on the method-choice screen the buttons above ARE the actions.
+                manualMode && (
                 <>
                   <button className="sl-cta" disabled={busy} onClick={startJoin}>
-                    <FaLock aria-hidden /> {busy ? '…' : t.cta}
+                    <FaLock aria-hidden /> {busy ? '…' : (he ? 'יצירת חשבון' : 'Create account')}
                   </button>
                   {!joinReady && <div className="sl-hint sl-submitHint">{he ? 'להצטרפות: נייד + אימייל + סיסמה (8 תווים).' : 'To join: mobile + email + a password (8+ chars).'}</div>}
                 </>
+                )
               ) : (
                 <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
                   <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
                 </button>
               )}
 
-              <div className="sl-bank">
-                <FaShieldAlt aria-hidden /> <span>{t.bank}</span>
-                <span aria-hidden> · </span>
-                <span>{t.enc}</span>
-                <span aria-hidden> · </span>
-                <span>{t.safe}</span>
-              </div>
+              {/* Trust signals + security explanations are kept OFF the simple
+                  method-choice screen (CEO 2026-08-01) — they appear once the user
+                  is in the manual form or the login screen, not before. */}
+              {!(authMode === 'join' && !manualMode) && (
+                <>
+                  <div className="sl-bank">
+                    <FaShieldAlt aria-hidden /> <span>{t.bank}</span>
+                    <span aria-hidden> · </span>
+                    <span>{t.enc}</span>
+                    <span aria-hidden> · </span>
+                    <span>{t.safe}</span>
+                  </div>
 
-              {/* 2026 Advanced Security — trust signals describing REAL protections
-                  already in place (passkey/WebAuthn, invisible bot check, SMS/email
-                  OTP). Display-only and honest — not fake controls. */}
-              <div className="sl-secRow" aria-label={he ? 'אבטחה מתקדמת 2026' : '2026 advanced security'}>
-                <div className="sl-secTitle">{he ? 'אבטחה מתקדמת 2026' : '2026 ADVANCED SECURITY'}</div>
-                <div className="sl-secItems">
-                  <span className="sl-secItem"><FaShieldAlt aria-hidden /> {he ? 'מוכן ל-Passkey' : 'Passkey ready'}</span>
-                  <span className="sl-secItem"><FaShieldAlt aria-hidden /> {he ? 'הגנת בוטים' : 'Bot protection'}</span>
-                  <span className="sl-secItem"><FaLock aria-hidden /> {he ? 'אימות OTP' : 'OTP verification'}</span>
-                </div>
-              </div>
+                  {/* 2026 Advanced Security — trust signals describing REAL protections
+                      already in place (passkey/WebAuthn, invisible bot check, SMS/email
+                      OTP). Display-only and honest — not fake controls. */}
+                  <div className="sl-secRow" aria-label={he ? 'אבטחה מתקדמת 2026' : '2026 advanced security'}>
+                    <div className="sl-secTitle">{he ? 'אבטחה מתקדמת 2026' : '2026 ADVANCED SECURITY'}</div>
+                    <div className="sl-secItems">
+                      <span className="sl-secItem"><FaShieldAlt aria-hidden /> {he ? 'מוכן ל-Passkey' : 'Passkey ready'}</span>
+                      <span className="sl-secItem"><FaShieldAlt aria-hidden /> {he ? 'הגנת בוטים' : 'Bot protection'}</span>
+                      <span className="sl-secItem"><FaLock aria-hidden /> {he ? 'אימות OTP' : 'OTP verification'}</span>
+                    </div>
+                  </div>
+                </>
+              )}
 
               {/* Social tiles moved to the TOP of the card (one-tap first — see the
                   reorder note there). Passkey stays here at the bottom. */}
