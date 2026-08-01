@@ -1139,16 +1139,23 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
               <div className="sl-div">{he ? 'או' : 'or'}</div>
 
-              {/* JOIN step 1 = a CHOICE, not a form. Show a single "continue with
-                  mobile" button + a sign-in link; the manual form stays hidden until
-                  the user picks mobile (CEO 2026-08-01). Google/Apple above go
-                  straight to the short completion (mobile + DOB + terms). */}
+              {/* JOIN step 1 = a CHOICE of FOUR first-class methods (CEO 2026-08-01:
+                  "email must be first-class — do not assume Gmail or Apple"). Apple +
+                  Google are in the grid above; mobile + email are here. Each reveals a
+                  LEAN single-field entry (no long form, no password, no DOB) — the rest
+                  is asked afterwards, only if missing. Any email works (Yahoo/Outlook/
+                  Walla/business/Gmail) via a one-time code. */}
               {authMode === 'join' && !manualMode && (
                 <>
                   <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
-                    onClick={() => { setManualMode(true); setMethod('mobile'); setInlineError(null); }}
+                    onClick={() => { setManualMode(true); setMethod('mobile'); setSent(false); setInlineError(null); }}
                     data-testid="button-continue-mobile">
                     <FaMobileAlt aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם מספר נייד' : 'Continue with mobile number'}</span>
+                  </button>
+                  <button type="button" className="sl-soc" style={{ width: '100%' }} disabled={busy}
+                    onClick={() => { setManualMode(true); setMethod('email'); setSent(false); setInlineError(null); }}
+                    data-testid="button-continue-email">
+                    <FaEnvelope aria-hidden /> <span className="sl-socLabel">{he ? 'המשך עם אימייל' : 'Continue with email'}</span>
                   </button>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setManualMode(false); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13.5px', cursor: 'pointer', padding: '12px 0 4px', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
@@ -1170,63 +1177,37 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.75, fontSize: '13px', cursor: 'pointer', padding: '2px 0 6px', width: '100%', textAlign: he ? 'right' : 'left' }}>
                     {he ? '‹ חזרה לאפשרויות ההתחברות' : '‹ Back to sign-in options'}
                   </button>
-                  {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
-                    <p className="sl-inlineError" role="status">
-                      {he ? 'SMS אינו זמין כעת — נסו שוב עוד רגע, או המשיכו עם Google / Apple.' : 'SMS is temporarily unavailable — try again shortly, or continue with Google / Apple.'}
-                    </p>
+                  {/* MOBILE method — a single phone field. A one-time SMS code verifies
+                      it; name + terms are asked afterwards (only if missing). No password. */}
+                  {method === 'mobile' && (
+                    <>
+                      {signupFlags.smsFallbackAndRealErrors && !smsProviderHealthy && (
+                        <p className="sl-inlineError" role="status">
+                          {he ? 'SMS אינו זמין כעת — נסו שוב עוד רגע, או המשיכו עם אימייל / Google / Apple.' : 'SMS is temporarily unavailable — try again shortly, or continue with email / Google / Apple.'}
+                        </p>
+                      )}
+                      <div className="sl-field">
+                        <label className="sl-label">{t.phoneLabel}</label>
+                        <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
+                      </div>
+                    </>
                   )}
-                  <div className="sl-field">
-                    <label className="sl-label">{t.phoneLabel}</label>
-                    <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
-                  </div>
-                  <div className="sl-field">
-                    <label className="sl-label">{t.emailLabel}</label>
-                    <div className="sl-inputWrap">
-                      <FaEnvelope className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                        value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+
+                  {/* EMAIL method — ANY email (Gmail/Outlook/Yahoo/Walla/business). A
+                      one-time code verifies it; mobile + name + terms are asked
+                      afterwards (only if missing). No password. */}
+                  {method === 'email' && (
+                    <div className="sl-field">
+                      <label className="sl-label">{t.emailLabel}</label>
+                      <div className="sl-inputWrap">
+                        <FaEnvelope className="sl-inputIcon" aria-hidden />
+                        <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                          value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+                      </div>
+                      <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
                     </div>
-                  </div>
-                  <div className="sl-field">
-                    <label className="sl-label">{t.pwd}</label>
-                    <div className="sl-inputWrap">
-                      <FaLock className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="new-password"
-                        value={password} onChange={(e) => setPassword(e.target.value)} placeholder={he ? 'לפחות 8 תווים' : 'At least 8 characters'} />
-                    </div>
-                    {password.length > 0 && !passwordValid && <div className="sl-hint sl-submitHint">{he ? 'הסיסמה חייבת להיות באורך 8 תווים לפחות.' : 'Password must be at least 8 characters.'}</div>}
-                  </div>
-                  <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
-                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
-                    {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
-                  </button>
-                  <div className="sl-field">
-                    <label className="sl-label">{he ? 'תאריך לידה · גיל 18 ומעלה' : 'Date of birth · 18+'}</label>
-                    <AppleWheelDatePicker
-                      value={dob || `${new Date().getFullYear() - 25}-06-15`}
-                      onChange={setDob}
-                      minYear={new Date().getFullYear() - 100}
-                      maxYear={new Date().getFullYear() - 18}
-                      monthNames={he ? ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני', 'יולי', 'אוגוסט', 'ספטמבר', 'אוקטובר', 'נובמבר', 'דצמבר'] : undefined}
-                      dayLabel={he ? 'יום' : 'Day'} monthLabel={he ? 'חודש' : 'Month'} yearLabel={he ? 'שנה' : 'Year'}
-                      variant="dark"
-                    />
-                    {dobValid && !isAdult && <div className="sl-hint sl-submitHint">{he ? 'יש להיות בגיל 18 ומעלה.' : 'You must be 18 or older.'}</div>}
-                  </div>
-                  {/* 1-way / 2-way choice (CEO 2026-07-31): off = password only;
-                      on = we also text a code on every login. HIDDEN until the
-                      bearer-token auth path enforces it (see TWO_STEP_LOGIN_READY). */}
-                  {TWO_STEP_LOGIN_READY && (
-                  <button type="button" onClick={() => setTwoFactor((v) => !v)} aria-pressed={twoFactor}
-                    style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%', background: twoFactor ? 'rgba(212,175,55,0.10)' : 'rgba(255,255,255,0.03)', border: `1px solid ${twoFactor ? 'rgba(212,175,55,0.5)' : 'rgba(255,255,255,0.12)'}`, borderRadius: '12px', padding: '12px 14px', cursor: 'pointer', flexDirection: he ? 'row-reverse' : 'row', textAlign: he ? 'right' : 'left' }}>
-                    <span aria-hidden style={{ width: '20px', height: '20px', borderRadius: '6px', border: `2px solid ${twoFactor ? '#D4AF37' : 'rgba(255,255,255,0.35)'}`, background: twoFactor ? '#D4AF37' : 'transparent', color: '#0f0f11', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '13px', flex: '0 0 auto', fontWeight: 700 }}>{twoFactor ? '✓' : ''}</span>
-                    <span style={{ flex: 1 }}>
-                      <span style={{ display: 'block', fontSize: '13.5px', fontWeight: 600 }}>{he ? 'אימות דו-שלבי בהתחברות' : 'Two-step verification at login'}</span>
-                      <span style={{ display: 'block', fontSize: '12px', opacity: 0.7, marginTop: '2px' }}>{he ? 'נבקש גם קוד ב-SMS בכל כניסה — אבטחה נוספת (לבחירתך).' : 'We’ll also text a code on each login — extra security (your choice).'}</span>
-                    </span>
-                  </button>
                   )}
-                  <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setInlineError(null); setConfirm(''); }}
+                  <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setManualMode(false); setSent(false); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
                     {he ? 'כבר יש לך חשבון? התחבר/י' : 'Already have an account? Sign in'}
                   </button>
@@ -1315,10 +1296,21 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                 // on the method-choice screen the buttons above ARE the actions.
                 manualMode && (
                 <>
-                  <button className="sl-cta" disabled={busy} onClick={startJoin}>
-                    <FaLock aria-hidden /> {busy ? '…' : (he ? 'יצירת חשבון' : 'Create account')}
+                  {/* Send the one-time code for the chosen method (mobile→SMS,
+                      email→email code). The name + any missing base fields are asked
+                      after the code is verified — no password anywhere. */}
+                  <button className="sl-cta"
+                    disabled={busy || (method === 'email' ? !emailValid : !phoneValid)}
+                    onClick={() => { if (method === 'email') { void sendEmailCode(); } else { void sendCode(); } }}>
+                    <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שליחת קוד אימות' : 'Send verification code')}
                   </button>
-                  {!joinReady && <div className="sl-hint sl-submitHint">{he ? 'להצטרפות: נייד + אימייל + סיסמה (8 תווים).' : 'To join: mobile + email + a password (8+ chars).'}</div>}
+                  {(method === 'email' ? !emailValid : !phoneValid) && (
+                    <div className="sl-hint sl-submitHint">
+                      {method === 'email'
+                        ? (he ? 'הזינו כתובת אימייל תקינה כדי לקבל קוד.' : 'Enter a valid email to get a code.')
+                        : (he ? 'הזינו מספר נייד תקין כדי לקבל קוד.' : 'Enter a valid mobile number to get a code.')}
+                    </div>
+                  )}
                 </>
                 )
               ) : (
