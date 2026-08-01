@@ -60,6 +60,7 @@ import meGreetingRoutes from "./routes/me-greeting";
 import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
+import saveCardRoutes from "./routes/save-card";
 import legalConsentRoutes from "./routes/legal-consent";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
@@ -12163,6 +12164,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/prestige-pass', apiLimiter, optionalFirebaseToken, prestigePassRoutes);
   // SUMIT hosted-page payments (PCI-safe; UPay clears underneath). Sandbox until SUMIT_SANDBOX=false.
   app.use('/api/payments/sumit', apiLimiter, paymentsSumitRoutes);
+  // P0-2 vault go-live: save-a-card flow (flag-gated CARD_VAULT_ENABLED, fail-closed).
+  app.use('/api/payments', apiLimiter, saveCardRoutes);
   app.use('/api/legal', apiLimiter, legalConsentRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
