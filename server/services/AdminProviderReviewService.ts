@@ -542,6 +542,18 @@ class AdminProviderReviewService {
           });
           logger.info('[AdminReview] Firebase claims set for approved provider', { firebaseUid, platform });
 
+          // Insert the now-APPROVED provider into SUMIT with their full fiscal details.
+          // Non-blocking + fail-safe (enqueue failure cannot fail the approval) and gated
+          // by sumit.mode (dark until flipped). CEO rule: ONLY approved providers reach SUMIT.
+          try {
+            const { sumitSyncService } = await import('./SumitSyncService');
+            await sumitSyncService.syncProvider({ userId: firebaseUid, platform });
+          } catch (sumitErr: any) {
+            logger.warn('[AdminReview] SUMIT provider sync enqueue failed (non-blocking)', {
+              firebaseUid, platform, err: sumitErr?.message,
+            });
+          }
+
           // ── Financial document + multi-channel notification (fire-and-forget) ──
           (async () => {
             try {
