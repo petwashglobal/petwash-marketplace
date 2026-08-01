@@ -117,6 +117,47 @@ function isWired(): boolean {
   return e.enabled && Boolean(e.apiKey) && Boolean(e.companyId) && Boolean(e.webhookSecret);
 }
 
+/**
+ * A short, safe preview of a SUMIT response for diagnostics — so the FIRST live
+ * call reveals the real field shape (the request/response keys are UNVERIFIED
+ * against SUMIT's authenticated spec). Never logs raw card data: a defensive
+ * scrub drops any obvious PAN-like key, and the whole thing is length-capped.
+ */
+function safePreview(obj: unknown): string {
+  try {
+    const json = JSON.stringify(obj, (k, v) =>
+      /pan|cardnumber|card_number|cvv|cvc|track/i.test(k) ? '[redacted]' : v,
+    );
+    if (!json) return String(obj);
+    return json.length > 1500 ? json.slice(0, 1500) + '…(truncated)' : json;
+  } catch {
+    return '[unserializable]';
+  }
+}
+
+/**
+ * Last-resort extraction of a hosted-payment-page URL from an unknown SUMIT
+ * response shape: recursively find the first https URL string. Only used after
+ * every known field name misses, so an unexpected key still routes the customer
+ * to SUMIT instead of a silent 502.
+ */
+function deepFindUrl(obj: unknown, depth = 0): string | undefined {
+  if (obj == null || depth > 6) return undefined;
+  if (typeof obj === 'string') {
+    return /^https:\/\/\S+/i.test(obj.trim()) ? obj.trim() : undefined;
+  }
+  if (Array.isArray(obj)) {
+    for (const v of obj) { const u = deepFindUrl(v, depth + 1); if (u) return u; }
+    return undefined;
+  }
+  if (typeof obj === 'object') {
+    for (const v of Object.values(obj as Record<string, unknown>)) {
+      const u = deepFindUrl(v, depth + 1); if (u) return u;
+    }
+  }
+  return undefined;
+}
+
 export interface SumitHealth {
   wired: boolean;
   reason: string;
@@ -754,10 +795,28 @@ export class SumitClient {
       });
       let parsed: any = null;
       try { parsed = await res.json(); } catch { /* non-JSON */ }
-      if (!res.ok) return { wired: true, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
-      // Response URL field name unverified — try common variants.
-      const url = parsed?.RedirectURL || parsed?.PaymentURL || parsed?.URL || parsed?.Data?.RedirectURL || parsed?.Data?.URL;
-      if (!url) return { wired: true, reason: 'no redirect URL in SUMIT response', rawResponse: parsed };
+      if (!res.ok) {
+        // Log the raw error body so the FIRST live/sandbox call reveals exactly what
+        // SUMIT rejected (missing field, bad casing) instead of a blind 502.
+        logger.error('[SumitClient] beginRedirect non-2xx', { externalId: input.externalId, status: res.status, raw: safePreview(parsed) });
+        return { wired: true, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      }
+      // Response URL field name is UNVERIFIED against SUMIT's authenticated spec.
+      // Try every plausible key, then fall back to a deep scan for the first
+      // https URL anywhere in the payload — so an unexpected field name still
+      // works on the first real call rather than silently 502-ing the customer.
+      const url =
+        parsed?.RedirectURL || parsed?.PaymentURL || parsed?.URL || parsed?.PaymentPageURL || parsed?.PaymentPageUrl ||
+        parsed?.RedirectUrl || parsed?.Url ||
+        parsed?.Data?.RedirectURL || parsed?.Data?.URL || parsed?.Data?.PaymentURL || parsed?.Data?.PaymentPageURL ||
+        parsed?.Payment?.RedirectURL || parsed?.Payment?.URL ||
+        deepFindUrl(parsed);
+      if (!url) {
+        // Diagnostic gold: dump the actual shape so we learn the real field name
+        // from ONE live test instead of guessing again.
+        logger.error('[SumitClient] beginRedirect: no redirect URL found in response — raw shape follows', { externalId: input.externalId, raw: safePreview(parsed) });
+        return { wired: true, reason: 'no redirect URL in SUMIT response', rawResponse: parsed };
+      }
       return { wired: true, redirectUrl: String(url), rawResponse: parsed };
     } catch (err: any) {
       logger.error('[SumitClient] beginRedirect network error', { externalId: input.externalId, err: err?.message });
@@ -789,8 +848,14 @@ export class SumitClient {
       });
       let parsed: any = null;
       try { parsed = await res.json(); } catch { /* non-JSON */ }
-      if (!res.ok) return { wired: true, valid: false, reason: `SUMIT returned ${res.status}`, raw: parsed };
-      // Valid/approved field name unverified — accept common shapes.
+      if (!res.ok) {
+        logger.error('[SumitClient] getTransaction non-2xx', { transactionId, status: res.status, raw: safePreview(parsed) });
+        return { wired: true, valid: false, reason: `SUMIT returned ${res.status}`, raw: parsed };
+      }
+      // Valid/approved field name unverified — accept common shapes. Log the raw
+      // shape so the first live verify confirms the real Valid/Amount field names
+      // (turns a silent verify-fail into an immediate, fixable answer).
+      logger.info('[SumitClient] getTransaction ok — raw shape for field confirmation', { transactionId, raw: safePreview(parsed) });
       const valid = parsed?.Valid === true || parsed?.Valid === 1 || parsed?.Data?.Valid === true ||
         String(parsed?.Status || parsed?.Data?.Status || '').toLowerCase() === 'approved';
       // Charged amount (gross, ILS) — field name UNVERIFIED, accept common shapes.
