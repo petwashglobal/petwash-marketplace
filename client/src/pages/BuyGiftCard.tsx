@@ -105,7 +105,9 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.recipientName || !formData.recipientEmail || !formData.amount || !formData.postcode) {
+    // A gift needs the buyer's email (for the receipt), the recipient, and an amount.
+    // No postcode — a digital gift has no delivery address.
+    if (!formData.senderEmail || !formData.recipientName || !formData.recipientEmail || !formData.amount) {
       toast({
         title: t('common.error', language),
         description: t('common.fillRequired', language),
@@ -116,22 +118,31 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
 
     setLoading(true);
     try {
-      const response = await fetch(getApiUrl('/api/gift-cards/purchase'), {
+      // PUBLIC guest checkout on SUMIT — no signup required. Server owns the price;
+      // the gift is issued only after SUMIT verifies the payment (pay-then-issue).
+      const response = await fetch(getApiUrl('/api/egift/guest/start'), {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          senderEmail: formData.senderEmail,
+          senderName: (formData as any).senderName || undefined,
+          recipientEmail: formData.recipientEmail,
+          recipientName: formData.recipientName,
+          recipientPhone: (formData as any).recipientPhone || undefined,
+          message: (formData as any).message || undefined,
+          amountIls: parseFloat(formData.amount),
+        }),
       });
 
+      const data = await response.json();
       if (!response.ok) {
-        throw new Error('Failed to purchase gift card');
+        throw new Error(data?.error || 'Failed to start payment');
       }
 
-      const data = await response.json();
-      
-      if (data.paymentUrl) {
-        // Redirect to Nayax payment page (external)
-        window.location.href = data.paymentUrl;
+      const url = data.redirectUrl || data.paymentUrl;
+      if (url) {
+        window.location.href = url; // SUMIT hosted payment page
       } else {
         throw new Error('Payment URL not provided');
       }

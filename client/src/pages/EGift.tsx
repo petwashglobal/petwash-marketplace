@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { ChevronLeft, ChevronRight, ArrowRight, ArrowLeft, Gift, Check, ShieldCheck, Heart, Star, PartyPopper, Sparkles, Globe, Lock, Loader2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import PaymentMethods from '@/components/PaymentMethods';
-import { startSkuCheckout } from '@/lib/sumitCheckout';
+import { startSkuCheckout, startGuestEgiftCheckout } from '@/lib/sumitCheckout';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { CheckoutLegalNotice } from '@/components/legal/CheckoutLegalNotice';
@@ -812,6 +812,40 @@ export default function EGift() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [isProcessing, setIsProcessing] = useState(false);
 
+  // Guest checkout returns here as /egift?status=success|failed|issue_failed
+  // (server/routes/egift-guest.ts). Surface the outcome once, then clean the URL.
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const status = params.get('status');
+    if (!status) return;
+    if (status === 'success') {
+      toast({
+        title: lang === 'he' ? '🎁 המתנה נשלחה!' : '🎁 Gift sent!',
+        description: lang === 'he'
+          ? 'שלחנו את המתנה לנמען במייל. תודה!'
+          : 'We emailed the gift to your recipient. Thank you!',
+      });
+    } else if (status === 'issue_failed') {
+      toast({
+        title: lang === 'he' ? 'התשלום התקבל — המתנה בטיפול' : 'Payment received — gift being processed',
+        description: lang === 'he'
+          ? 'קיבלנו את התשלום. אם המתנה לא הגיעה תוך דקות, צוות התמיכה כבר על זה.'
+          : 'Your payment went through. If the gift is not delivered within minutes, our team is already on it.',
+      });
+    } else if (status === 'failed') {
+      toast({
+        title: lang === 'he' ? 'התשלום לא הושלם' : 'Payment not completed',
+        description: lang === 'he' ? 'לא בוצע חיוב. אפשר לנסות שוב.' : 'You were not charged. You can try again.',
+        variant: 'destructive',
+      });
+    }
+    // Strip ?status so a refresh doesn't re-toast.
+    const url = new URL(window.location.href);
+    url.searchParams.delete('status');
+    url.searchParams.delete('ref');
+    window.history.replaceState({}, '', url.pathname + url.search);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
     
@@ -870,14 +904,33 @@ export default function EGift() {
 
     if (!selectedOption || isProcessing) return;
 
-    // The card rail needs a signed-in buyer (the purchase row + receipt hang
-    // off their account). Send guests through the single signup door and back.
+    const finalPrice = selectedOption.value;
+
+    // GUEST (no account) → public express checkout. A stranger can buy a gift
+    // with just an email — no signup. The server owns the price, bot-checks, and
+    // issues the voucher ONLY after SUMIT verifies the charge (pay-then-issue).
     if (!user) {
-      window.location.href = '/signup?next=' + encodeURIComponent('/egift');
+      setIsProcessing(true);
+      const guest = await startGuestEgiftCheckout({
+        amountIls: finalPrice,
+        senderEmail: formData.senderEmail,
+        senderName: formData.senderName,
+        recipientEmail: formData.recipientEmail,
+        recipientName: formData.recipientName,
+        recipientPhone: (formData as any).recipientPhone || undefined,
+        message: formData.message,
+      });
+      if (!guest.ok) {
+        setIsProcessing(false);
+        toast({
+          title: lang === 'he' ? 'לא ניתן להתחיל את התשלום' : 'Could not start payment',
+          description: guest.error || (lang === 'he' ? 'נסו שוב בעוד רגע.' : 'Please try again shortly.'),
+          variant: 'destructive',
+        });
+      }
+      // On success the browser navigates to SUMIT; it returns to /egift?status=...
       return;
     }
-
-    const finalPrice = selectedOption.value;
 
     // The LIVE rail is SKU-priced (server-owned catalog: ₪100/250/500/1000 —
     // POST /api/payments/sumit/begin → SUMIT hosted page → verified webhook →

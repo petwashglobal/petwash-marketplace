@@ -61,6 +61,7 @@ import passUniversalRoutes from "./routes/pass-universal";
 import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
 import saveCardRoutes from "./routes/save-card";
+import egiftGuestRoutes from "./routes/egift-guest";
 import legalConsentRoutes from "./routes/legal-consent";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
@@ -12166,6 +12167,8 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/payments/sumit', apiLimiter, paymentsSumitRoutes);
   // P0-2 vault go-live: save-a-card flow (flag-gated CARD_VAULT_ENABLED, fail-closed).
   app.use('/api/payments', apiLimiter, saveCardRoutes);
+  // Guest eGift checkout — PUBLIC (no signup). Gated by PETWASH_EGIFT_PURCHASE_ENABLED (off), pay-then-issue.
+  app.use('/api/egift', egiftGuestRoutes);
   app.use('/api/legal', apiLimiter, legalConsentRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
