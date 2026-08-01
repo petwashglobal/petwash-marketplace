@@ -122,16 +122,18 @@ export class GoogleWalletService {
           }
         ],
 
-        // Locations (Tel Aviv & Jerusalem stations)
+        // REAL K9000 stations ONLY — both in Kfar Saba (Isaac Wald Park + Green Kfar
+        // Saba/Park 80). The old Tel Aviv & Jerusalem points were FAKE (no station
+        // there) and must not fire proximity alerts. Source: stationRegistry.ts.
         locations: [
           {
-            latitude: 32.0853,
-            longitude: 34.7818,
+            latitude: 32.179964,
+            longitude: 34.925016,
             kind: 'walletobjects#latLongPoint'
           },
           {
-            latitude: 31.7683,
-            longitude: 35.2137,
+            latitude: 32.1982242,
+            longitude: 34.892436,
             kind: 'walletobjects#latLongPoint'
           }
         ],
