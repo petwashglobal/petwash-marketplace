@@ -153,6 +153,10 @@ export function humanizeAuthError(code?: string, language: 'en' | 'he' = 'en'): 
       en: 'This sign-in method is not enabled.',
       he: 'שיטת התחברות זו לא מופעלת.'
     },
+    'auth/unauthorized-domain': {
+      en: 'This site is not authorized for sign-in yet. Please use email or mobile.',
+      he: 'האתר עדיין לא מאושר להתחברות זו. השתמשו באימייל או בנייד.'
+    },
     'auth/account-exists-with-different-credential': {
       en: 'An account already exists with this email.',
       he: 'חשבון עם אימייל זה כבר קיים.'

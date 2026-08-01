@@ -62,15 +62,6 @@ export const signupFlags = {
   /** ff.auth.signup.tiktok_signin.enabled — DEFAULT OFF (CEO 2026-07-31). Needs
    *  TIKTOK_CLIENT_KEY/SECRET + TikTok Login-Kit review; flip env "true" when ready. */
   tiktokSignin: off('VITE_AUTH_SIGNUP_TIKTOK_SIGNIN_ENABLED'),
-  /** ff.auth.signup.yahoo_signin.enabled — DEFAULT OFF (CEO 2026-08-01). Button is
-   *  coded; needs a Yahoo OAuth app enabled in the Firebase console (yahoo.com
-   *  provider + client id/secret). Graceful "not switched on yet" until then; flip
-   *  env "true" when the console side is configured. Web-only (no native sheet). */
-  yahooSignin: off('VITE_AUTH_SIGNUP_YAHOO_SIGNIN_ENABLED'),
-  /** ff.auth.signup.microsoft_signin.enabled — DEFAULT OFF (CEO 2026-08-01). Needs
-   *  a Microsoft/Azure app enabled in the Firebase console (microsoft.com provider).
-   *  Covers Outlook/Hotmail/Live + work accounts. Flip env "true" when ready. */
-  microsoftSignin: off('VITE_AUTH_SIGNUP_MICROSOFT_SIGNIN_ENABLED'),
   /** ff.auth.signup.email_password.enabled */
   emailPassword: on('VITE_AUTH_SIGNUP_EMAIL_PASSWORD_ENABLED'),
   /** ff.auth.signup.2fa.enabled — KEPT OFF: the SMS-2FA step is not built; turning
