@@ -23,15 +23,16 @@ interface OnboardingRequirements {
   reason: string;
 }
 
-// Canonical member profile: name + BOTH a mobile and a date-of-birth (18+) + terms.
-// CEO contract 2026-07-31/08-01: every member needs a verified mobile AND is age-
-// gated (18+), whichever way they signed in. Google/Apple supply name + email
-// automatically, so a social user is asked only for what's genuinely missing —
-// mobile + DOB + terms (the gate returns only the MISSING subset below). Email is
-// NOT listed: social users already have it, and the manual flow collects it up
-// front. Keep this in lock-step with REQUIRED_FIELDS_BY_ROLE in
-// server/routes/post-login.ts (same contract, two enforcement points).
-const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'dateOfBirth', 'termsAcceptedAt'];
+// Canonical BASE profile (CEO 2026-08-01 "email must be first-class"): name +
+// a verified mobile + terms + privacy. That's ALL a member needs — NO DOB, gender,
+// address or pet is required for a Prestige/customer account (those are optional).
+// Whatever way the user signed in (mobile / email / Google / Apple), the gate
+// returns only the MISSING subset, so we never re-ask what a provider already gave
+// us (Google/Apple supply name+email; mobile/email OTP verify one contact). Mobile
+// is required because Israel support/payment/security lean on it. DOB + the 18+
+// gate + the heavy KYC belong to the PROVIDER role only (separate ProviderOnboarding).
+// Keep in lock-step with REQUIRED_FIELDS_BY_ROLE in server/routes/post-login.ts.
+const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'termsAcceptedAt', 'privacyAcceptedAt'];
 
 const ROLE_REQUIREMENTS: Record<string, OnboardingRequirements> = {
   customer: {

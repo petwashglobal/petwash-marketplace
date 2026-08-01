@@ -27,12 +27,13 @@ type PostLoginResponse = {
   requiredActions?: string[];
 };
 
-// Canonical member profile: name + mobile + DOB (18+) + terms — same contract as
-// MEMBER_REQUIRED_FIELDS in server/middleware/onboardingGate.ts (keep in sync).
-// Google/Apple supply name + email, so a social user is asked only for the MISSING
-// subset (getMissingFields) — mobile + DOB + terms. Email is not gated here: social
-// users have it, the manual flow collects it up front.
-const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'dateOfBirth', 'termsAcceptedAt'];
+// Canonical BASE profile (CEO 2026-08-01): name + verified mobile + terms + privacy.
+// NO DOB / gender / address / pet for a member — those are optional. Same contract as
+// MEMBER_REQUIRED_FIELDS in server/middleware/onboardingGate.ts (keep in sync). The
+// gate returns only the MISSING subset, so social users (name+email from Google/Apple)
+// and email/mobile-OTP users are each asked only for what they haven't supplied.
+// DOB + 18+ + KYC belong to the PROVIDER role only (separate ProviderOnboarding flow).
+const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'termsAcceptedAt', 'privacyAcceptedAt'];
 const REQUIRED_FIELDS_BY_ROLE: Record<string, string[]> = {
   customer: MEMBER_REQUIRED_FIELDS,
   loyalty: MEMBER_REQUIRED_FIELDS,
