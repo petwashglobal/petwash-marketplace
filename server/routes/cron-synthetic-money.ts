@@ -16,7 +16,7 @@ import { Router, type Request, type Response } from 'express';
 import { isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { SyntheticMoneyPathMonitor } from '../services/SyntheticMoneyPathMonitor';
-import { sendSecurityAlert } from '../services/alerts';
+import { sendCriticalAlert } from '../services/alerts';
 
 const router = Router();
 
@@ -43,11 +43,12 @@ async function handler(req: Request, res: Response) {
     const failed = report.checks.filter((c) => !c.ok);
     logger.error('[CronSyntheticMoney] MONEY-PATH INVARIANT FAILED IN PROD', { failed });
     try {
-      await sendSecurityAlert(
-        '🚨 PetWash money-path invariant FAILED in production',
+      await sendCriticalAlert(
+        'money-path invariant FAILED in production',
         `<p>The synthetic money-path monitor found <b>${failed.length}</b> failing invariant(s) — production money math may be WRONG. Investigate before more transactions clear:</p><ul>${failed
           .map((c) => `<li><b>${c.name}</b>: ${c.detail}</li>`)
           .join('')}</ul>`,
+        `${failed.length} money invariant(s) FAILED: ${failed.map((c) => c.name).join(', ')}`,
       );
     } catch (e: any) {
       logger.error('[CronSyntheticMoney] alert send failed', { err: e?.message });
