@@ -144,8 +144,11 @@ function generateVoucherId(): string {
 }
 
 function generateSerial(): string {
-  const seg = () => crypto.randomBytes(2).toString("hex").toUpperCase();
-  return `PWV-2026-${seg()}${seg()}`;
+  // 80-bit CSPRNG (10 bytes → 20 hex). "PWV-2026-" + 20 = 29 chars (col varchar(32)).
+  // Was 32-bit (`randomBytes(2)`×2): birthday-collision ~29% at 50k vouchers AND low
+  // enough to brute-force, since the serial doubles as the guest-voucher bearer value.
+  // Raised to match the 80-bit member gift-card code. See collision-retry in issueVoucher.
+  return `PWV-2026-${crypto.randomBytes(10).toString("hex").toUpperCase()}`;
 }
 
 // ─────────────────────────────────────────────
@@ -378,55 +381,71 @@ export async function issueVoucher(params: IssueVoucherParams): Promise<UnifiedV
     throw new Error("WASH_PACKAGE voucher requires washCount");
   }
 
-  const id = generateVoucherId();
-  const serialNumber = generateSerial();
   const currency = params.currency ?? "ILS";
   const valueOriginal =
     params.voucherType === "PLATFORM_CREDIT" ? params.valueIls!.toFixed(2) : null;
   const washesOriginal = params.voucherType === "WASH_PACKAGE" ? params.washCount! : null;
 
-  const immutableHash = computeImmutableHash({
-    id,
-    serialNumber,
-    voucherType: params.voucherType,
-    valueOriginal,
-    washesOriginal,
-    currency,
-    purchasedByUserId: params.purchasedByUserId ?? null,
-  });
-
-  const signedJws = await signJws({ vid: id, sn: serialNumber, hash: immutableHash });
-
-  const [voucher] = await db
-    .insert(unifiedVouchers)
-    .values({
+  // Insert with a small retry on a UNIQUE collision of id/serial. At 80-bit entropy a
+  // collision is astronomically unlikely, but a duplicate-key throw on a PAID guest
+  // order would otherwise strand it as "paid-but-not-issued". Regenerate id+serial (and
+  // their signature) and retry, so a genuine buyer always gets their voucher.
+  let voucher: any;
+  for (let attempt = 0; ; attempt++) {
+    const id = generateVoucherId();
+    const serialNumber = generateSerial();
+    const immutableHash = computeImmutableHash({
       id,
       serialNumber,
       voucherType: params.voucherType,
-      designTheme: params.designTheme ?? "pink",
-      status: "ISSUED",
-      currency,
       valueOriginal,
-      valueRemaining: valueOriginal,
       washesOriginal,
-      washesRemaining: washesOriginal,
-      recipientDisplayName: params.recipientDisplayName,
-      recipientLocale: params.recipientLocale ?? "he",
-      recipientEmail: params.recipientEmail ?? null,
-      recipientPhone: params.recipientPhone ?? null,
-      personalMessage: params.personalMessage ?? null,
+      currency,
       purchasedByUserId: params.purchasedByUserId ?? null,
-      purchasedByEmail: params.purchasedByEmail ?? null,
-      ownerUserId: params.ownerUserId ?? null,
-      purchaseOrderId: params.purchaseOrderId ?? null,
-      nayaxTxId: params.nayaxTxId ?? null,
-      svgTemplateKey: params.svgTemplateKey ?? null,
-      expiresAt: params.expiresAt ?? null,
-      metadata: params.metadata ?? null,
-      immutableHash,
-      signedJws,
-    })
-    .returning();
+    });
+    const signedJws = await signJws({ vid: id, sn: serialNumber, hash: immutableHash });
+    try {
+      [voucher] = await db
+        .insert(unifiedVouchers)
+        .values({
+          id,
+          serialNumber,
+          voucherType: params.voucherType,
+          designTheme: params.designTheme ?? "pink",
+          status: "ISSUED",
+          currency,
+          valueOriginal,
+          valueRemaining: valueOriginal,
+          washesOriginal,
+          washesRemaining: washesOriginal,
+          recipientDisplayName: params.recipientDisplayName,
+          recipientLocale: params.recipientLocale ?? "he",
+          recipientEmail: params.recipientEmail ?? null,
+          recipientPhone: params.recipientPhone ?? null,
+          personalMessage: params.personalMessage ?? null,
+          purchasedByUserId: params.purchasedByUserId ?? null,
+          purchasedByEmail: params.purchasedByEmail ?? null,
+          ownerUserId: params.ownerUserId ?? null,
+          purchaseOrderId: params.purchaseOrderId ?? null,
+          nayaxTxId: params.nayaxTxId ?? null,
+          svgTemplateKey: params.svgTemplateKey ?? null,
+          expiresAt: params.expiresAt ?? null,
+          metadata: params.metadata ?? null,
+          immutableHash,
+          signedJws,
+        })
+        .returning();
+      break;
+    } catch (e: any) {
+      const isUniqueViolation =
+        e?.code === "23505" || /duplicate key|unique constraint/i.test(String(e?.message || ""));
+      if (isUniqueViolation && attempt < 3) {
+        logger.warn("[UnifiedVoucher] serial/id collision — regenerating", { attempt });
+        continue;
+      }
+      throw e;
+    }
+  }
 
   // Genesis ledger entry (seqNo = 0)
   await appendLedgerEntry({
@@ -444,7 +463,7 @@ export async function issueVoucher(params: IssueVoucherParams): Promise<UnifiedV
 
   logger.info("[UnifiedVoucher] Issued", {
     id: voucher.id,
-    serial: serialNumber,
+    serial: voucher.serialNumber,
     type: params.voucherType,
     value: valueOriginal,
     washes: washesOriginal,
