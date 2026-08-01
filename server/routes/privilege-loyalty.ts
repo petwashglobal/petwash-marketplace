@@ -27,56 +27,11 @@ const upload = multer({
 });
 
 // ── One-time table initialisation (runs at module load, not per-request) ───────
-const _tableReady: Promise<void> = (async () => {
-  try {
-    // Backward compat: rename legacy table name if it exists
-    await db.execute(sql`
-      DO $$
-      BEGIN
-        IF EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'vito_loyalty_members')
-           AND NOT EXISTS (SELECT FROM information_schema.tables WHERE table_name = 'privilege_members') THEN
-          ALTER TABLE vito_loyalty_members RENAME TO privilege_members;
-        END IF;
-      END $$
-    `);
-    await db.execute(sql`
-      CREATE TABLE IF NOT EXISTS privilege_members (
-        id SERIAL PRIMARY KEY,
-        member_id VARCHAR(50) UNIQUE NOT NULL,
-        first_name VARCHAR(100) NOT NULL,
-        last_name VARCHAR(100) NOT NULL,
-        email VARCHAR(255) UNIQUE NOT NULL,
-        phone VARCHAR(50) NOT NULL,
-        dob DATE,
-        gender VARCHAR(30),
-        country VARCHAR(100),
-        city VARCHAR(100),
-        address TEXT,
-        pets JSONB DEFAULT '[]',
-        id_type VARCHAR(50),
-        id_number VARCHAR(100),
-        id_document_url TEXT,
-        id_verified BOOLEAN DEFAULT FALSE,
-        referral_source VARCHAR(100),
-        referral_code VARCHAR(100),
-        marketing_consent BOOLEAN DEFAULT TRUE,
-        sms_consent BOOLEAN DEFAULT TRUE,
-        terms_consent BOOLEAN DEFAULT TRUE,
-        terms_consent_at TIMESTAMPTZ DEFAULT NOW(),
-        language VARCHAR(10) DEFAULT 'en',
-        tier VARCHAR(20) DEFAULT 'bronze',
-        points INTEGER DEFAULT 0,
-        status VARCHAR(30) DEFAULT 'active',
-        firebase_uid VARCHAR(255),
-        created_at TIMESTAMPTZ DEFAULT NOW(),
-        updated_at TIMESTAMPTZ DEFAULT NOW()
-      )
-    `);
-    logger.info('[Privilege] privilege_members table ready');
-  } catch (err) {
-    logger.error('[Privilege] Table init failed', err);
-  }
-})();
+// Table creation moved to migration 0112 (CTO P1-8 — no phantom tables). privilege_members
+// is now declared in shared/schema.ts + migrations/0112_privilege_members.sql and applied by
+// the migration runner, NOT created at request time. Kept as a resolved promise so the
+// existing `await _tableReady` call sites stay valid (harmless no-op).
+const _tableReady: Promise<void> = Promise.resolve();
 
 router.post('/register', upload.single('idDocument'), async (req: Request, res: Response) => {
   try {
