@@ -36,6 +36,9 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
   // celebrate "you got it" when the item is still being finalized/reconciled.
   const [fulfilPending, setFulfilPending] = useState(false);
   const [paymentRef, setPaymentRef] = useState<string | null>(null);
+  // Non-voucher purchase summary (wallet top-up, wash package, shop) so the page
+  // shows WHAT was bought + how much, not just a generic "success".
+  const [purchaseSummary, setPurchaseSummary] = useState<{ amountIls: number; currency?: string; productType?: string; surface?: string; status?: string } | null>(null);
   const isRTL = language === 'he';
 
   useEffect(() => {
@@ -73,26 +76,39 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
 
   const fetchVoucherDetails = async (transactionId: string) => {
     try {
-      // /api/payment-success/<id> never existed server-side; the real check is
-      // GET /api/payment-status?ref= (dead-endpoint sweep 2026-07-24).
+      // GET /api/payment-status?ref= returns EITHER a legacy voucher shape
+      // (voucherCode/qrCode → the full voucher card) OR a purchase summary
+      // (kind:'summary' → what was bought + fulfilment state). Handle both.
       const response = await fetch(getApiUrl(`/api/payment-status?ref=${encodeURIComponent(transactionId)}`));
       if (response.ok) {
         const data = await response.json();
-        setVoucherDetails(data);
-        
-        // Track successful purchase for GA4 analytics
-        trackPaymentSuccess(
-          user?.uid || 'guest',
-          data.amount,
-          data.packageName,
-          transactionId
-        );
+        if (data && (data.voucherCode || data.qrCode)) {
+          setVoucherDetails(data);
+          trackPaymentSuccess(user?.uid || 'guest', data.amount, data.packageName, transactionId);
+        } else if (data && data.found && data.kind === 'summary') {
+          setPurchaseSummary(data);
+          // A 'pending' server status is authoritative — reflect it even if the
+          // URL didn't carry ?fulfil=pending.
+          if (data.status === 'pending') setFulfilPending(true);
+          trackPaymentSuccess(user?.uid || 'guest', data.amountIls, data.productType, transactionId);
+        }
       }
     } catch (error) {
-      logger.error('Error fetching voucher details', error);
+      logger.error('Error fetching purchase status', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Friendly, bilingual label for a purchase productType/surface.
+  const productLabel = (s: { productType?: string; surface?: string }): string => {
+    const key = `${s.productType || ''} ${s.surface || ''}`.toLowerCase();
+    if (/account_credit|wallet_topup|topup/.test(key)) return isRTL ? 'טעינת ארנק' : 'Wallet top-up';
+    if (/wash_package|package/.test(key)) return isRTL ? 'חבילת שטיפות' : 'Wash package';
+    if (/single_wash/.test(key)) return isRTL ? 'שטיפה בודדת' : 'Single wash';
+    if (/egift|gift/.test(key)) return isRTL ? 'שובר מתנה' : 'Gift card';
+    if (/shop/.test(key)) return isRTL ? 'הזמנה מהחנות' : 'Shop order';
+    return isRTL ? 'רכישה' : 'Purchase';
   };
 
   const downloadQRCode = () => {
@@ -122,21 +138,43 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
     );
   }
 
-  // Confirmed success but no itemised voucher details (the detail endpoint isn't
-  // built yet) — show a clean SUCCESS confirmation, NOT the failed screen.
+  // Confirmed payment with no downloadable voucher (wallet top-up, wash package,
+  // shop) — the common card path. Show WHAT was bought + the amount, and tell the
+  // TRUTH about fulfilment (green "done" only when delivered; amber "finalizing"
+  // when still pending) instead of a blanket green "voucher ready".
   if (!voucherDetails && paymentConfirmed) {
+    const amountStr = purchaseSummary
+      ? `${purchaseSummary.currency === 'ILS' || !purchaseSummary.currency ? '₪' : purchaseSummary.currency + ' '}${purchaseSummary.amountIls}`
+      : null;
     return (
       <div className="min-h-screen luxury-bg-mesh flex items-center justify-center px-4">
         <div className="text-center max-w-md mx-auto p-8 luxury-glass-card luxury-shadow-lg luxury-animate-scale-in">
-          <div className="w-20 h-20 bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl">
+          <div className={`w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-6 shadow-xl ${fulfilPending ? 'bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500' : 'bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500'}`}>
             <CheckCircle className="w-12 h-12 text-white" strokeWidth={2.5} />
           </div>
           <h1 className="luxury-heading-lg mb-3">
-            {t('payment.successTitle', language)}
+            {fulfilPending
+              ? (isRTL ? 'התשלום התקבל ✓' : 'Payment received ✓')
+              : t('payment.successTitle', language)}
           </h1>
+          {/* What they bought + how much */}
+          {(amountStr || purchaseSummary) && (
+            <p className="luxury-text-body mb-2 font-medium">
+              {purchaseSummary ? productLabel(purchaseSummary) : ''}{amountStr ? ` · ${amountStr}` : ''}
+            </p>
+          )}
           <p className="luxury-text-body mb-6">
-            {t('payment.voucherReady', language)}
+            {fulfilPending
+              ? (isRTL
+                  ? 'קיבלנו את התשלום. אנחנו מסיימים להפעיל את הרכישה — היא תופיע בחשבון תוך דקות. אם לא, הצוות שלנו כבר על זה.'
+                  : 'We’ve received your payment. We’re finalizing your purchase — it will appear in your account within minutes. If it doesn’t, our team is already on it.')
+              : t('payment.voucherReady', language)}
           </p>
+          {fulfilPending && paymentRef && (
+            <p className="luxury-text-small mb-6 opacity-70">
+              {isRTL ? 'מספר אסמכתא: ' : 'Reference: '}{paymentRef}
+            </p>
+          )}
           <button
             onClick={() => setLocation('/dashboard')}
             className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-black text-white font-medium hover:opacity-90 transition-opacity"
