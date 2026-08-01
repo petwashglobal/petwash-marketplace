@@ -847,6 +847,45 @@ export async function registerRoutes(app: Express): Promise<void> {
     });
   });
 
+  // GET /api/payment-status?ref=<externalId> — itemised status of ONE purchase for
+  // the post-payment success page (client/src/pages/PaymentSuccess.tsx). Distinct
+  // from the gateway-status stub at /payment-status above. Public: `ref` is the
+  // customer's own unguessable order id (surfaceRefId, already in their URL) — we
+  // return only a NON-SENSITIVE summary (amount + product + fulfilment state), no
+  // PII, no card data, no other user's data. Lets the success page show what was
+  // bought + whether it's delivered yet, instead of a generic "success".
+  app.get('/api/payment-status', async (req, res) => {
+    const ref = String((req.query as any).ref || '').trim();
+    if (!ref) return res.status(400).json({ found: false, error: 'missing ref' });
+    try {
+      const { db } = await import('./db');
+      const { purchases } = await import('@shared/schema');
+      const { eq } = await import('drizzle-orm');
+      const [p] = await db.select().from(purchases).where(eq(purchases.surfaceRefId, ref)).limit(1);
+      res.set('Cache-Control', 'no-store');
+      if (!p) return res.json({ found: false, kind: 'summary', status: 'unknown' });
+      const status =
+        p.status === 'activated' ? 'fulfilled'
+        : p.status === 'failed' ? 'failed'
+        : ['payment_pending', 'paid', 'quoted'].includes(p.status) ? 'pending'
+        : 'unknown';
+      return res.json({
+        found: true,
+        kind: 'summary',
+        status,
+        amountIls: p.amountCents / 100,
+        currency: p.currency || 'ILS',
+        productType: p.productType,
+        surface: p.surface,
+        transactionId: p.transactionId || null,
+        receiptNumber: p.receiptNumber || null,
+      });
+    } catch (e: any) {
+      logger.error('[payment-status] lookup failed', { ref, err: e?.message });
+      return res.status(500).json({ found: false, error: 'lookup_failed' });
+    }
+  });
+
   // NOTE: /api/health is owned by the rich handler in server/index.ts:853
   // (registered before the startup guard, does real DB + startup-phase checks).
   // This stub was shadowed by Express first-match and never ran. Removed.
