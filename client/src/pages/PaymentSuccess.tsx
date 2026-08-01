@@ -31,6 +31,11 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
   // details can't be fetched (no detail endpoint yet). Drives a SUCCESS view
   // instead of the failed view when details are absent.
   const [paymentConfirmed, setPaymentConfirmed] = useState(false);
+  // The money cleared but fulfilment (credits/voucher) didn't complete on the
+  // return — the server flags this with ?fulfil=pending so we DON'T falsely
+  // celebrate "you got it" when the item is still being finalized/reconciled.
+  const [fulfilPending, setFulfilPending] = useState(false);
+  const [paymentRef, setPaymentRef] = useState<string | null>(null);
   const isRTL = language === 'he';
 
   useEffect(() => {
@@ -44,12 +49,18 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
     const transactionId = ref || urlParams.get('transaction_id');
     const status = urlParams.get('status');
     const isSuccess = status === 'success' || (!!ref && status !== 'failed');
+    const pending = urlParams.get('fulfil') === 'pending';
+    setFulfilPending(pending);
+    setPaymentRef(ref || transactionId || null);
 
     if (isSuccess) {
-      // Show the confirmation immediately (confetti). Detail fetch is best-effort.
+      // The payment cleared. Only fire the celebration when fulfilment ALSO
+      // completed — a pending fulfilment gets an honest "being finalized" view.
       setPaymentConfirmed(true);
-      setShowConfetti(true);
-      setTimeout(() => setShowConfetti(false), 3000);
+      if (!pending) {
+        setShowConfetti(true);
+        setTimeout(() => setShowConfetti(false), 3000);
+      }
       if (transactionId) {
         fetchVoucherDetails(transactionId);
       } else {
@@ -186,21 +197,42 @@ export default function PaymentSuccess({ language }: PaymentSuccessProps) {
       )}
 
       <div className="max-w-3xl mx-auto px-4 py-12 relative z-10">
-        {/* Success Header */}
+        {/* Success Header. When fulfilment is still pending we tell the truth —
+            the PAYMENT cleared, but the item is being finalized — instead of a
+            green "your voucher is ready" that would be a lie. */}
         <div className="text-center mb-10 luxury-animate-scale-in">
           <div className="relative w-32 h-32 mx-auto mb-8">
-            {/* Gradient circle background */}
-            <div className="absolute inset-0 bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100 rounded-full blur-xl opacity-60 animate-pulse" />
-            <div className="relative w-32 h-32 bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500 rounded-full flex items-center justify-center shadow-2xl">
+            <div className={`absolute inset-0 rounded-full blur-xl opacity-60 animate-pulse ${fulfilPending ? 'bg-gradient-to-br from-amber-100 via-yellow-100 to-orange-100' : 'bg-gradient-to-br from-green-100 via-emerald-100 to-teal-100'}`} />
+            <div className={`relative w-32 h-32 rounded-full flex items-center justify-center shadow-2xl ${fulfilPending ? 'bg-gradient-to-br from-amber-400 via-yellow-500 to-orange-500' : 'bg-gradient-to-br from-green-400 via-emerald-500 to-teal-500'}`}>
               <CheckCircle className="w-20 h-20 text-white" strokeWidth={2.5} />
             </div>
           </div>
-          <h1 className="luxury-heading-xl luxury-text-gradient mb-4">
-            {t('payment.successTitle', language)}
-          </h1>
-          <p className="luxury-text-body text-xl">
-            {t('payment.voucherReady', language)}
-          </p>
+          {fulfilPending ? (
+            <>
+              <h1 className="luxury-heading-xl luxury-text-gradient mb-4">
+                {isRTL ? 'התשלום התקבל ✓' : 'Payment received ✓'}
+              </h1>
+              <p className="luxury-text-body text-xl">
+                {isRTL
+                  ? 'קיבלנו את התשלום. אנחנו מסיימים להפעיל את הרכישה — היא תופיע בחשבון תוך דקות. אם לא, הצוות שלנו כבר על זה.'
+                  : 'We’ve received your payment. We’re finalizing your purchase — it will appear in your account within minutes. If it doesn’t, our team is already on it.'}
+              </p>
+              {paymentRef && (
+                <p className="luxury-text-small mt-3 opacity-70">
+                  {isRTL ? 'מספר אסמכתא: ' : 'Reference: '}{paymentRef}
+                </p>
+              )}
+            </>
+          ) : (
+            <>
+              <h1 className="luxury-heading-xl luxury-text-gradient mb-4">
+                {t('payment.successTitle', language)}
+              </h1>
+              <p className="luxury-text-body text-xl">
+                {t('payment.voucherReady', language)}
+              </p>
+            </>
+          )}
         </div>
 
         {/* Voucher Card */}
