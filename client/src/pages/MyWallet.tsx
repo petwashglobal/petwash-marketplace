@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -130,6 +130,23 @@ export default function MyWallet() {
   const [nayaxTxId, setNayaxTxId] = useState('');
   const [topUpAmountIls, setTopUpAmountIls] = useState('');
   const [payByCardLoading, setPayByCardLoading] = useState(false);
+  const [saveCardLoading, setSaveCardLoading] = useState(false);
+  // Card-on-file (vault) is behind a switch — show the "Save a card" button ONLY when it's on.
+  const { data: cardVaultStatus } = useQuery<{ enabled: boolean }>({
+    queryKey: ['/api/payments/save-card/status'],
+    staleTime: 5 * 60 * 1000,
+  });
+  const cardVaultEnabled = !!cardVaultStatus?.enabled;
+
+  // Feedback after returning from the SUMIT save-card page (?card=saved|unsaved|failed).
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search).get('card');
+    if (!p) return;
+    if (p === 'saved') toast({ title: isHebrew ? 'הכרטיס נשמר ✓' : 'Card saved ✓' });
+    else if (p === 'unsaved') toast({ variant: 'destructive', title: isHebrew ? 'הכרטיס לא נשמר' : 'Card was not saved', description: isHebrew ? 'נסה שוב' : 'Please try again' });
+    else if (p === 'failed') toast({ variant: 'destructive', title: isHebrew ? 'שמירת הכרטיס נכשלה' : 'Card save failed' });
+    window.history.replaceState({}, '', window.location.pathname);
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const { data: walletData, isLoading } = useQuery<{ success: boolean; wallet: WalletSummary }>({
     queryKey: ['/api/credit-wallet/summary'],
@@ -220,6 +237,28 @@ export default function MyWallet() {
       });
     }
     // On success the browser navigates to the SUMIT hosted page.
+  };
+
+  // Save a card on file (vault). Starts a SUMIT hosted page (₪1 refundable verify) that
+  // saves the card; returns to /my-wallet?card=saved. No card data touches us.
+  const handleSaveCard = async () => {
+    setSaveCardLoading(true);
+    try {
+      const res = await apiRequest('POST', '/api/payments/save-card/start', {});
+      const data = await res.json();
+      if (data?.ok && data?.redirectUrl) {
+        window.location.href = data.redirectUrl;
+        return; // browser navigates to SUMIT
+      }
+      throw new Error(data?.error || 'start_failed');
+    } catch {
+      setSaveCardLoading(false);
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew ? 'שמירת כרטיס אינה זמינה כעת' : 'Saving a card is not available right now',
+      });
+    }
   };
 
   if (isLoading) return <WalletSkeleton />;
@@ -653,6 +692,20 @@ export default function MyWallet() {
               )}
               {isHebrew ? 'שלם בכרטיס אשראי' : 'Pay by Card'}
             </Button>
+
+            {/* Card-on-file: save a card for faster checkout / auto-charge on bookings.
+                Only shown once the vault switch (CARD_VAULT_ENABLED) is on. */}
+            {cardVaultEnabled && (
+              <Button
+                onClick={handleSaveCard}
+                disabled={saveCardLoading}
+                variant="outline"
+                className="w-full h-11 rounded-xl gap-2 border-gray-300"
+              >
+                {saveCardLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <CreditCard className="w-4 h-4" />}
+                {isHebrew ? 'שמור כרטיס לתשלומים מהירים' : 'Save a card for faster checkout'}
+              </Button>
+            )}
 
             {/* Secondary path: confirm a top-up already paid at a K9000 station.
                 The server verifies the Nayax confirmation code before crediting. */}
