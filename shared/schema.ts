@@ -11817,6 +11817,43 @@ export const paymentTokens = pgTable("payment_tokens", {
   index("idx_payment_tokens_processor").on(table.provider, table.processorTokenId),
 ]);
 
+// ── Privilege / Prestige loyalty members (CTO P1-8, 2026-08-01) ─────────────────
+// Was a PHANTOM table created at request time in privilege-loyalty.ts (invisible to
+// migrations, schema-based backups, and types). Declared here + in migration 0112 so it
+// is a first-class table. NOTE: the routes query it via raw SQL (db.execute) — this
+// declaration is the type model / backup / CI visibility, not necessarily the query path.
+export const privilegeMembers = pgTable("privilege_members", {
+  id: serial("id").primaryKey(),
+  memberId: varchar("member_id", { length: 50 }).unique().notNull(),
+  firstName: varchar("first_name", { length: 100 }).notNull(),
+  lastName: varchar("last_name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).unique().notNull(),
+  phone: varchar("phone", { length: 50 }).notNull(),
+  dob: date("dob"),
+  gender: varchar("gender", { length: 30 }),
+  country: varchar("country", { length: 100 }),
+  city: varchar("city", { length: 100 }),
+  address: text("address"),
+  pets: jsonb("pets").default([]),
+  idType: varchar("id_type", { length: 50 }),
+  idNumber: varchar("id_number", { length: 100 }),
+  idDocumentUrl: text("id_document_url"),
+  idVerified: boolean("id_verified").default(false),
+  referralSource: varchar("referral_source", { length: 100 }),
+  referralCode: varchar("referral_code", { length: 100 }),
+  marketingConsent: boolean("marketing_consent").default(true),
+  smsConsent: boolean("sms_consent").default(true),
+  termsConsent: boolean("terms_consent").default(true),
+  termsConsentAt: timestamp("terms_consent_at", { withTimezone: true }).defaultNow(),
+  language: varchar("language", { length: 10 }).default("en"),
+  tier: varchar("tier", { length: 20 }).default("bronze"),
+  points: integer("points").default(0),
+  status: varchar("status", { length: 30 }).default("active"),
+  firebaseUid: varchar("firebase_uid", { length: 255 }),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+});
+
 // Credit Transactions - immutable ledger of all credit movements
 export const creditTransactions = pgTable("credit_transactions", {
   id: serial("id").primaryKey(),
