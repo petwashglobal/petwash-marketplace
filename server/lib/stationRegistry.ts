@@ -25,6 +25,8 @@ export interface Station {
   hoursHe: string;
   open: boolean;
   bays: StationBay[];     // dual-bay = 2 entries
+  accessHe?: string;      // CEO-confirmed on-site directions (parking, landmark)
+  accessEn?: string;
 }
 
 export const STATION_REGISTRY: Station[] = [
@@ -38,6 +40,9 @@ export const STATION_REGISTRY: Station[] = [
     city: 'כפר סבא',
     lat: 32.179964, lng: 34.925016,
     hoursHe: 'כל יום 05:30–23:00',
+    // CEO-confirmed 2026-08-01 on-site directions.
+    accessHe: 'בתוך הפארק, ליד החניון הראשי; חניה במקום בתשלום (כחול-לבן), ומשם הליכה קצרה אל העמדה.',
+    accessEn: 'Inside the park, next to the main parking lot; paid on-site parking (blue-and-white), then a short walk to the bay.',
     open: true,
     bays: [
       { machineId: '182443', terminalId: '369617593', label: 'תא ימין' },
@@ -56,6 +61,9 @@ export const STATION_REGISTRY: Station[] = [
     city: 'כפר סבא',
     lat: 32.1982242, lng: 34.892436,
     hoursHe: 'פתוחה 24/7',
+    // CEO-confirmed 2026-08-01 on-site directions.
+    accessHe: 'ממש בכניסה לפארק, ליד קיוסק הקפה; העמדה נראית מהכניסה.',
+    accessEn: 'Right at the park entrance, beside the coffee kiosk; the bay is visible from the entrance.',
     open: true,
     // Dual-bay; the two Nayax machine ids for this site are not yet confirmed
     // in our records — bay bookkeeping fills in automatically once the first

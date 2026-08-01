@@ -98,18 +98,21 @@ export class AppleWalletService {
   /**
    * Pet Wash station locations for location-based notifications
    */
+  // REAL K9000 stations ONLY (both in Kfar Saba). The previous Tel Aviv/Jerusalem
+  // entries were FAKE — PetWash has no station there — and must never be advertised
+  // (fake proximity alerts = misleading/illegal). Source of truth: stationRegistry.ts.
   private static readonly STATION_LOCATIONS: StationLocation[] = [
     {
-      latitude: 32.0853,
-      longitude: 34.7818,
-      name: 'Tel Aviv Central',
-      relevantText: '🐾 Pet Wash station nearby! Show your VIP card for discount.'
+      latitude: 32.179964,
+      longitude: 34.925016,
+      name: 'Isaac Wald Park, Kfar Saba',
+      relevantText: '🐾 תחנת PetWash פארק יצחק ולד, כפר סבא — הציגו את הפאס.'
     },
     {
-      latitude: 31.7683,
-      longitude: 35.2137,
-      name: 'Jerusalem',
-      relevantText: '🐾 Welcome to Pet Wash Jerusalem! Scan your card.'
+      latitude: 32.1982242,
+      longitude: 34.892436,
+      name: 'Green Kfar Saba (Park 80)',
+      relevantText: '🐾 תחנת PetWash כפר סבא הירוקה, פארק 80 — הציגו את הפאס.'
     },
   ];
 
@@ -208,12 +211,12 @@ export class AppleWalletService {
    * K9000 station locations for proximity notifications.
    * Capped at 10 by Apple. White-on-black QR works in Dark Mode.
    */
+  // REAL K9000 stations ONLY (both Kfar Saba). The old Tel Aviv / Jerusalem / Haifa /
+  // Tel Aviv South / Petah Tikva entries were FAKE (no station exists there) and were
+  // firing bogus "PetWash nearby" alerts across the country. Source: stationRegistry.ts.
   private static readonly STATION_LOCATIONS = [
-    { latitude: 32.0853, longitude: 34.7818, relevantText: '🐾 תחנת PetWash בקרבת מקום — הציג את הפאס שלך.' },
-    { latitude: 31.7683, longitude: 35.2137, relevantText: '🐾 ברוכים הבאים לתחנת PetWash ירושלים!' },
-    { latitude: 32.7940, longitude: 34.9896, relevantText: '🐾 תחנת PetWash חיפה בסביבה — היכנס!' },
-    { latitude: 32.0668, longitude: 34.7647, relevantText: '🐾 תחנת PetWash תל אביב דרום — כביסה לחיות!' },
-    { latitude: 32.1620, longitude: 34.8440, relevantText: '🐾 תחנת PetWash פתח תקווה — כרטיס VIP בתוקף.' },
+    { latitude: 32.179964, longitude: 34.925016, relevantText: '🐾 תחנת PetWash פארק יצחק ולד, כפר סבא — הציגו את הפאס.' },
+    { latitude: 32.1982242, longitude: 34.892436, relevantText: '🐾 תחנת PetWash כפר סבא הירוקה, פארק 80 — הציגו את הפאס.' },
   ];
 
   private static getEVoucherTemplate(data: EVoucherData, secureQr: string) {

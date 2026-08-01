@@ -1147,7 +1147,7 @@ export class EmailService {
           </tr>
           <tr>
             <td>כתובת / Address:</td>
-            <td>Tel Aviv, Israel</td>
+            <td>רחוב עוזי חיטמן 8, ראש העין 4806859, ישראל</td>
           </tr>
           <tr>
             <td>תקופת דיווח / Reporting Period:</td>
