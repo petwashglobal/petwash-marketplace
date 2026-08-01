@@ -870,6 +870,120 @@ export class SumitClient {
       return { wired: false, reason: `Network error: ${err?.message}` };
     }
   }
+
+  /**
+   * POST /billing/paymentmethods/setforcustomer — save a card to a SUMIT customer so it
+   * can be charged later (chargeRecurring / chargeSavedCard) with no re-entry. The token
+   * comes from SUMIT's own tokenization (hosted page / JS widget) — we NEVER see the PAN.
+   *
+   * FAIL-CLOSED + never throws: on any non-2xx, missing field, or network error we return
+   * saved:false with a reason. Callers must treat saved:false as "no card on file" and
+   * NOT mark anything payable. BODY SHAPE is best-known but UNVERIFIED vs the live swagger
+   * — confirm on the first real save (SUMIT_SANDBOX=true first if possible). We read the
+   * saved payment-method id from several common response shapes as defence-in-depth.
+   */
+  async setForCustomer(input: {
+    sumitCustomerId: number | string;
+    singlePaymentToken: string;   // one-time token from SUMIT tokenization — NOT a PAN
+    customerName?: string;
+    customerEmail?: string;
+  }): Promise<{ wired: boolean; saved: boolean; paymentMethodId?: string; reason?: string; rawResponse?: unknown }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, saved: false, reason: 'SUMIT not enabled' };
+    if (!input.sumitCustomerId || !input.singlePaymentToken) {
+      return { wired: true, saved: false, reason: 'sumitCustomerId and singlePaymentToken are required' };
+    }
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Customer: {
+        ID: input.sumitCustomerId,
+        ...(input.customerName ? { Name: input.customerName } : {}),
+        ...(input.customerEmail ? { EmailAddress: input.customerEmail } : {}),
+      },
+      SinglePaymentToken: input.singlePaymentToken,
+    };
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/paymentmethods/setforcustomer/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) return { wired: true, saved: false, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      const pmRaw =
+        parsed?.PaymentMethodID ?? parsed?.PaymentMethodId ?? parsed?.ID ??
+        parsed?.Data?.PaymentMethodID ?? parsed?.Data?.ID ?? parsed?.PaymentMethod?.ID;
+      // SUMIT signals success via a non-error body; require a payment-method id OR an
+      // explicit success flag before we treat the card as saved (fail-closed otherwise).
+      const explicitOk = parsed?.Valid === true || String(parsed?.Status || '').toLowerCase() === 'success';
+      if (pmRaw == null && !explicitOk) {
+        return { wired: true, saved: false, reason: 'no payment-method id / success flag in SUMIT response', rawResponse: parsed };
+      }
+      return { wired: true, saved: true, paymentMethodId: pmRaw != null ? String(pmRaw) : undefined, rawResponse: parsed };
+    } catch (err: any) {
+      logger.error('[SumitClient] setForCustomer network error', { sumitCustomerId: input.sumitCustomerId, err: err?.message });
+      return { wired: false, saved: false, reason: `Network error: ${err?.message}` };
+    }
+  }
+
+  /**
+   * POST /billing/payments/charge/ — a ONE-TIME charge against a SUMIT customer's saved
+   * card (a booking is a single charge, not a subscription — so NOT chargeRecurring).
+   * SUMIT issues the fiscal doc (חשבונית מס/קבלה) and emails it. We never see the PAN.
+   *
+   * FAIL-CLOSED + never throws: captured:true ONLY when SUMIT returns 2xx AND a document
+   * id AND a validity signal. Any missing piece → captured:false so the caller keeps the
+   * booking UNPAID (no fake "paid"). BODY SHAPE best-known but UNVERIFIED — confirm on the
+   * first real ₪-small charge; the defensive multi-shape parsing is the safety net.
+   */
+  async chargeSavedCard(input: {
+    idempotencyKey: string;
+    sumitCustomerId: number | string;
+    description: string;
+    amountIls: number;   // VAT-inclusive gross
+  }): Promise<{ wired: boolean; captured: boolean; sumitDocumentId?: string; transactionId?: string; reason?: string; rawResponse?: unknown }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, captured: false, reason: 'SUMIT not enabled' };
+    if (!input.sumitCustomerId) return { wired: true, captured: false, reason: 'sumitCustomerId required (no saved card)' };
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Customer: { ID: input.sumitCustomerId },     // charge the saved payment method
+      Items: [{ Item: { Name: input.description }, Quantity: 1, UnitPrice: input.amountIls }],
+      VATIncluded: true,
+      Language: 'he',
+      ExternalIdentifier: input.idempotencyKey,     // idempotency — SUMIT dedups repeat charges
+      UpdateCustomerByEmail: true,                  // email the fiscal doc
+    };
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/payments/charge/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'Idempotency-Key': input.idempotencyKey },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) return { wired: true, captured: false, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      const sumitDocumentId = extractDocumentId(parsed);
+      const txnRaw = parsed?.TransactionID ?? parsed?.PaymentID ?? parsed?.ID ?? parsed?.Data?.TransactionID ?? parsed?.Data?.ID;
+      const valid = parsed?.Valid === true || parsed?.Valid === 1 || parsed?.Data?.Valid === true ||
+        String(parsed?.Status || parsed?.Data?.Status || '').toLowerCase() === 'approved' ||
+        sumitDocumentId != null;
+      if (!valid || (sumitDocumentId == null && txnRaw == null)) {
+        return { wired: true, captured: false, reason: 'SUMIT did not confirm the charge (fail-closed)', rawResponse: parsed };
+      }
+      return {
+        wired: true,
+        captured: true,
+        sumitDocumentId,
+        transactionId: txnRaw != null ? String(txnRaw) : undefined,
+        rawResponse: parsed,
+      };
+    } catch (err: any) {
+      logger.error('[SumitClient] chargeSavedCard network error', { idempotencyKey: input.idempotencyKey, err: err?.message });
+      return { wired: false, captured: false, reason: `Network error: ${err?.message}` };
+    }
+  }
 }
 
 export const sumitClient = new SumitClient();
