@@ -259,12 +259,14 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
     const voucherId = req.body.voucherId;
     const serialNumber = req.body.serialNumber;
     let ownerId: string | null = null;
+    let recipientEmail: string | null = null;
     let serverDerivedAmountIls: number | undefined;
 
     if (voucherId) {
       const [v] = await db.select().from(unifiedVouchers).where(eq(unifiedVouchers.id, voucherId)).limit(1);
       if (v) {
         ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+        recipientEmail = v.recipientEmail ?? null;
         // SECURITY: derive amount from server-side remaining balance, not client input
         if (v.valueRemaining != null) {
           serverDerivedAmountIls = parseFloat(v.valueRemaining as string);
@@ -274,6 +276,7 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
       const [v] = await db.select().from(unifiedVouchers).where(eq(unifiedVouchers.serialNumber, serialNumber)).limit(1);
       if (v) {
         ownerId = v.ownerUserId ?? v.purchasedByUserId ?? null;
+        recipientEmail = v.recipientEmail ?? null;
         if (v.valueRemaining != null) {
           serverDerivedAmountIls = parseFloat(v.valueRemaining as string);
         }
@@ -282,6 +285,21 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
 
     if (ownerId && ownerId !== req.user?.uid && !isAdmin(req)) {
       return res.status(403).json({ success: false, error: "Not authorized", traceId: tid });
+    }
+
+    // Owner-less voucher (a GUEST eGift is issued with ownerUserId + purchasedByUserId
+    // both null). The check above is skipped for these, which would let ANY signed-in
+    // user redeem an unclaimed guest voucher by serial. Bind redemption to the intended
+    // recipient: the caller's verified email must equal the voucher's recipientEmail
+    // (admins exempt). No recipient email to match → fail closed for non-admins. A
+    // recipient signed in with a different email should CLAIM the voucher first (which
+    // sets ownerUserId), after which the owner check above governs.
+    if (!ownerId && !isAdmin(req)) {
+      const callerEmail = String(req.user?.email || "").trim().toLowerCase();
+      const intendedEmail = String(recipientEmail || "").trim().toLowerCase();
+      if (!intendedEmail || !callerEmail || callerEmail !== intendedEmail) {
+        return res.status(403).json({ success: false, error: "Not authorized", traceId: tid });
+      }
     }
 
     if (serverDerivedAmountIls !== undefined && serverDerivedAmountIls <= 0) {
