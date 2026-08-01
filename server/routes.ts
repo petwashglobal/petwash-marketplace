@@ -26,6 +26,7 @@ import cronNayaxSumitRoutes from "./routes/cron-nayax-sumit";
 import cronSocialRoutes from "./routes/cron-social";
 import cronBookingRemindersRoutes from "./routes/cron-booking-reminders";
 import cronAuditVerifyRoutes from "./routes/cron-audit-verify";
+import cronSyntheticMoneyRoutes from "./routes/cron-synthetic-money";
 import supplierFraudFlagsRoutes from "./routes/supplier-fraud-flags";
 import providerInsuranceRoutes from "./routes/provider-insurance";
 import adminUpayRoutes from "./routes/admin-upay";
@@ -11199,6 +11200,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/cron', cronBookingRemindersRoutes);
   // Nightly audit-chain integrity verify (money-integrity). x-cron-secret; read-only.
   app.use('/api/cron', cronAuditVerifyRoutes);
+  // P0-7: synthetic money-path check — Cloud Scheduler pings this; alerts + 500 on a
+  // failing VAT/commission invariant so a "healthy but financially wrong" prod is caught.
+  app.use('/api/cron', cronSyntheticMoneyRoutes);
   // Supplier Fraud Control (spec §20) — READ-ONLY detector. Same flag gate as
   // supplier-invoices (404 when ff.supplier_invoice_control.enabled is OFF).
   app.use('/api/admin', supplierFraudFlagsRoutes);
