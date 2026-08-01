@@ -11854,6 +11854,30 @@ export const privilegeMembers = pgTable("privilege_members", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
 });
 
+// ── Guest eGift orders (public checkout, 2026-08-01) ────────────────────────────
+// Holds a PENDING guest gift-card order between "start" (buyer picks amount) and the
+// SUMIT return (payment verified → voucher issued). The amount is stored server-side so a
+// guest can't tamper the price. Row created before payment; the voucher is issued ONLY
+// after SUMIT confirms (pay-then-issue). No card data here — SUMIT hosts the payment.
+export const egiftGuestOrders = pgTable("egift_guest_orders", {
+  id: serial("id").primaryKey(),
+  externalId: varchar("external_id", { length: 128 }).unique().notNull(),
+  senderEmail: varchar("sender_email", { length: 255 }).notNull(),
+  senderName: varchar("sender_name", { length: 128 }),
+  recipientEmail: varchar("recipient_email", { length: 255 }).notNull(),
+  recipientName: varchar("recipient_name", { length: 128 }).notNull(),
+  recipientPhone: varchar("recipient_phone", { length: 32 }),
+  message: text("message"),
+  amountIlsCents: integer("amount_ils_cents").notNull(), // server-owned price
+  status: varchar("status", { length: 16 }).notNull().default("pending"), // pending | issued | failed
+  voucherId: varchar("voucher_id", { length: 64 }),
+  sumitTransactionId: varchar("sumit_transaction_id", { length: 128 }),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  issuedAt: timestamp("issued_at"),
+}, (t) => [
+  index("idx_egift_guest_external").on(t.externalId),
+]);
+
 // Credit Transactions - immutable ledger of all credit movements
 export const creditTransactions = pgTable("credit_transactions", {
   id: serial("id").primaryKey(),
