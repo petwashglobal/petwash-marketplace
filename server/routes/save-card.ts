@@ -43,13 +43,13 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
   const txnId = String(req.query.ID || req.query.id || '');
   const uid = String(req.query.uid || '');
   const base = baseUrl();
-  if (!txnId || !uid) return res.redirect(`${base}/wallet?card=failed`);
+  if (!txnId || !uid) return res.redirect(`${base}/my-wallet?card=failed`);
 
   // Authoritative server-side re-verify — never trust the querystring.
   const verify = await sumitClient.getTransaction(txnId);
   if (!verify.wired || !verify.valid) {
     logger.warn('[SaveCard] return not verified', { txnId, uid, reason: verify.reason });
-    return res.redirect(`${base}/wallet?card=failed`);
+    return res.redirect(`${base}/my-wallet?card=failed`);
   }
 
   // Pull the SUMIT customer + saved payment method from the verified transaction
@@ -61,7 +61,7 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
     raw?.PaymentMethodID ?? raw?.SinglePaymentToken ?? raw?.Data?.PaymentMethodID ?? raw?.PaymentMethod?.ID;
   if (!sumitCustomerId) {
     logger.warn('[SaveCard] no SUMIT customer id in verified txn — not saving (fail-closed)', { txnId, uid });
-    return res.redirect(`${base}/wallet?card=unsaved`);
+    return res.redirect(`${base}/my-wallet?card=unsaved`);
   }
 
   const saved = await SumitCardVault.saveCard({
@@ -73,7 +73,14 @@ router.get('/save-card/return', async (req: Request, res: Response) => {
     consentVersion: 'save-card-v1',
   });
   logger.info('[SaveCard] result', { uid, saved: saved.saved, reason: saved.reason });
-  return res.redirect(`${base}/wallet?card=${saved.saved ? 'saved' : 'unsaved'}`);
+  return res.redirect(`${base}/my-wallet?card=${saved.saved ? 'saved' : 'unsaved'}`);
+});
+
+// GET /api/payments/save-card/status — public: is card-on-file live yet? Lets the wallet
+// UI show the "Save a card" button ONLY once CARD_VAULT_ENABLED is flipped on (so no dead
+// button appears in prod before go-live).
+router.get('/save-card/status', (_req: Request, res: Response) => {
+  res.json({ enabled: isCardVaultEnabled() });
 });
 
 export default router;
