@@ -227,6 +227,31 @@ class SumitSyncService {
   }
 
   /**
+   * Enqueue a PROVIDER sync — insert an APPROVED provider into SUMIT with their full
+   * fiscal details (the worker reads the provider's latest name / email / osek number /
+   * osek classification / business name from the DB when it runs, so this only needs the
+   * userId). Fired ONLY from the provider-approval flow, so ONLY approved providers ever
+   * reach SUMIT (the CEO's rule). Same safety as syncCustomer: never throws, no-op until
+   * sumit.mode='api', and enqueue failure CANNOT fail an approval.
+   */
+  async syncProvider(input: { userId: string; platform?: string; name?: string; email?: string }): Promise<EnqueueResult> {
+    const idempotencyKey = makeIdempotencyKey('provider-sync', input.userId, input.platform || 'all');
+    if (!input.userId) {
+      logger.warn('[SumitSync] provider sync skipped — missing userId', { platform: input.platform });
+      return { enqueued: false, idempotencyKey, skipReason: 'missing-required-field' };
+    }
+    return await enqueueSumitJob('SUMIT_CUSTOMER_SYNC', 'provider', input.userId, {
+      userId: input.userId,
+      name: input.name,
+      email: input.email,
+      platform: input.platform,
+      source: 'provider_approved', // ONLY approved providers reach this path
+      isProvider: true,            // worker: create as a SUMIT customer with the provider's osek classification
+      idempotencyKey,
+    });
+  }
+
+  /**
    * Enqueue a booking-completion document (חשבון/קבלה or חשבונית מס,
    * depending on provider osek type).
    *
