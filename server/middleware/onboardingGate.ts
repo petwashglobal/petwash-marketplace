@@ -34,6 +34,37 @@ interface OnboardingRequirements {
 // Keep in lock-step with REQUIRED_FIELDS_BY_ROLE in server/routes/post-login.ts.
 const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'termsAcceptedAt', 'privacyAcceptedAt'];
 
+// PROVIDER KYC ENGINE (CEO 2026-08-01). A provider is a member PLUS this stricter
+// set — collected + human-reviewed in the SEPARATE ProviderOnboarding flow (NEVER
+// asked of a plain member). This is the single source of truth for "what a provider
+// must supply"; ProviderOnboarding's form + the payout gate enforce it.
+export const PROVIDER_KYC_FIELDS = [
+  'emailVerifiedAt',   // a provider MUST have a verified email (payouts/tax/contract)
+  'dateOfBirth',
+  'age18Confirm',      // explicit 18+ confirmation
+  'fullAddress',
+  'providerType',      // pet_sitter | dog_walker | academy | ...
+  'idDocument',        // national ID / passport / licence + document image
+  'selfieLiveness',    // selfie / liveness check
+  'taxStatus',         // osek patur / murshe / company
+  'bankDetails',       // payout target (encrypted at rest)
+  'providerAgreement', // signed provider contract (DocuSeal)
+  'safetyTraining',    // completed safety training
+] as const;
+
+/**
+ * getRoleRequiredFields — canonical "what is this user still missing" engine.
+ * MEMBER needs only the base profile; PROVIDER additionally needs the KYC set.
+ * Returns the MISSING fields only (a field is missing when its column is falsy),
+ * so we never re-ask for anything already supplied. `role` is normalised upstream.
+ */
+export function getRoleRequiredFields(user: Record<string, any>, role: string): string[] {
+  const base = MEMBER_REQUIRED_FIELDS.filter((f) => !user?.[f]);
+  if (role !== 'provider') return base;
+  const kyc = PROVIDER_KYC_FIELDS.filter((f) => !user?.[f]);
+  return [...base, ...kyc];
+}
+
 const ROLE_REQUIREMENTS: Record<string, OnboardingRequirements> = {
   customer: {
     requiredFields: MEMBER_REQUIRED_FIELDS,
