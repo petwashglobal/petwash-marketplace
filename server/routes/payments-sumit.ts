@@ -21,6 +21,7 @@ import { purchases } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { resolveWashDiscount, applyWashDiscountCents, type WashDiscount } from '../services/memberDiscount';
+import { activateFromVerifiedPayment } from '../services/PurchaseActivationService';
 
 const router = Router();
 
@@ -320,9 +321,42 @@ router.get('/return', async (req: Request, res: Response) => {
     return res.redirect(`${base}/payment-failed?ref=${encodeURIComponent(ext || txnId)}`);
   }
   logger.info('[SumitPay] payment verified', { txnId, ext });
-  // SUMIT already issued the fiscal doc on the hosted page. Fulfilment per orderId
-  // (credit wallet / mark booking) is handled by the order's own flow keyed on ext.
-  return res.redirect(`${base}/payment-success?ref=${encodeURIComponent(ext || txnId)}`);
+
+  // FULFIL NOW, from the verified return — do NOT depend on a SUMIT webhook.
+  // beginRedirect registers NO notification URL with SUMIT, and the webhook
+  // lifecycle flag (ff.commerce.unified_purchase_lifecycle) is OFF in prod, so the
+  // ONLY other fulfilment path never runs. Without this, a paid wash-package / wallet
+  // top-up sits 'payment_pending' forever: the customer is charged and receives
+  // NOTHING (verified P0, 2026-08-01). This mirrors the proven guest-eGift /return
+  // pattern (fulfil inline after an authoritative re-verify).
+  //
+  // activateFromVerifiedPayment is fully idempotent — provider-ref lock + a
+  // purchase-level conditional flip (payment_pending → activated) + addCredits'
+  // (sourceType,sourceId) dedupe — so if the webhook is ever enabled and ALSO
+  // fires, or the customer refreshes this page, it CANNOT double-credit. It also
+  // re-verifies the transaction itself, so this is belt-and-suspenders.
+  let fulfilOk = true;
+  try {
+    const activation = await activateFromVerifiedPayment({
+      providerReference: `sumit_return:${txnId}`,
+      transactionId: txnId,
+      externalRef: ext || undefined,
+    });
+    fulfilOk = activation.outcome === 'activated' || activation.outcome === 'already_processed';
+    if (!fulfilOk) {
+      logger.error('[SumitPay] FULFILMENT INCOMPLETE after verified payment — paid, not delivered; needs reconcile', { txnId, ext, outcome: activation.outcome, reason: activation.reason });
+    } else {
+      logger.info('[SumitPay] fulfilment ok', { txnId, ext, outcome: activation.outcome });
+    }
+  } catch (e: any) {
+    fulfilOk = false;
+    logger.error('[SumitPay] fulfilment THREW after verified payment — paid, not delivered; needs reconcile', { txnId, ext, err: e?.message });
+  }
+
+  // Always land on success (the money DID clear); when fulfilment didn't complete,
+  // flag it so the success page tells the truth ("being processed") + carries a ref.
+  const suffix = fulfilOk ? '' : '&fulfil=pending';
+  return res.redirect(`${base}/payment-success?ref=${encodeURIComponent(ext || txnId)}${suffix}`);
 });
 
 export default router;

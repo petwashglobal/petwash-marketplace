@@ -284,11 +284,16 @@ class EscrowService {
       paymentSourceDetails = ` (₪${creditAmt} credits + ₪${cashAmt} cash)`;
     }
 
+    // HONESTY (2026-08-01): releasing escrow flips the hold to "released" and APPROVES
+    // the amount for payout — it does NOT itself move money to the provider's bank
+    // (the bank-disbursement rail is separate/queued). Saying "transferred to your
+    // account" was a lie: the funds have not reached the provider yet. Word it as
+    // approved-and-queued so we never claim a payment that hasn't been sent.
     await NotificationService.sendNotification({
       userId: escrow.providerId,
       type: "payment",
-      title: "Payment Released 💰",
-      message: `₪${providerPayout} has been released from escrow and transferred to your account.`,
+      title: "Earnings Approved ✅",
+      message: `₪${providerPayout} from this booking${paymentSourceDetails} has been approved and is queued for payout to your account. You'll be notified once the transfer is sent.`,
       priority: "high",
       channel: "all",
       data: { 
