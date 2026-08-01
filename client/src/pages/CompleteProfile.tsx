@@ -204,7 +204,11 @@ export default function CompleteProfile() {
         // Server nextUrl takes priority only if it is not /complete-profile itself (avoid loops).
         const serverNext = postLoginData.nextUrl || postLoginData.redirectTo;
         const isLoop = serverNext && serverNext.startsWith('/complete-profile');
-        navigate(fromParam || (!isLoop ? serverNext : null) || "/home");
+        // A brand-new member with no interrupted context (no ?from=, no server-directed
+        // next) lands on the light role choice (Pet owner / Provider / Both) — CEO
+        // 2026-08-01: "after base account is complete, then ask role". Booking-context
+        // users and server-routed roles (provider→/provider-os etc.) are unaffected.
+        navigate(fromParam || (!isLoop ? serverNext : null) || "/choose-path");
       } else if (data.error === "UNDER_18") {
         toast({
           variant: "destructive",

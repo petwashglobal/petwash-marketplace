@@ -69,6 +69,7 @@ const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 
 // LAZY LOAD: All other routes (code split for performance)
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
+const ChoosePath = lazy(() => import("@/pages/ChoosePath"));
 const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
 const ProviderRejected = lazy(() => import("@/pages/ProviderRejected"));
 const StaffPending = lazy(() => import("@/pages/StaffPending"));
@@ -969,6 +970,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <CompleteProfile />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/choose-path">
+          {() => (
+            <RequireAuth>
+              <ChoosePath language={language} />
             </RequireAuth>
           )}
         </Route>
