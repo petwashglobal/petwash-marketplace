@@ -62,6 +62,7 @@ import {
 import { auth } from '@/lib/firebase';
 import { humanizeAuthError } from '@/auth/client';
 import { getAuthStrategy, createGoogleProvider, createAppleProvider, createFacebookProvider,
+  createYahooProvider, createMicrosoftProvider,
   isNativePlatform, signInWithGoogleNative, signInWithAppleNative } from '@/lib/iosAuthHandler';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useAppFlavor } from '@/lib/appFlavor';
@@ -89,7 +90,7 @@ import {
   signInWithPasskeyConditional,
 } from '@/auth/passkey';
 import {
-  FaApple, FaFacebookF, FaInstagram, FaTiktok, FaLock,
+  FaApple, FaFacebookF, FaInstagram, FaTiktok, FaLock, FaYahoo, FaMicrosoft,
   FaShieldAlt,
   FaCog, FaGift, FaCalendarAlt, FaHeartbeat,
   FaEnvelope, FaPhoneAlt, FaPaw, FaFingerprint,
@@ -604,7 +605,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     finally { setBusy(false); }
   }
 
-  async function social(which: 'google' | 'apple' | 'facebook') {
+  async function social(which: 'google' | 'apple' | 'facebook' | 'yahoo' | 'microsoft') {
     // Rover-style passive consent (CEO 2026-07-27): no blocking checkbox. The
     // disclosure line under the tiles + this deliberate tap ARE the affirmative
     // action (action-based, NOT a pre-ticked box). Terms are stamped server-side
@@ -623,6 +624,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         fail(he
           ? 'התחברות Facebook עדיין לא פעילה באפליקציה — נסה Google, Apple, נייד או אימייל'
           : 'Facebook sign-in is not available in the app yet — please use Google, Apple, mobile or email.');
+        return;
+      }
+      // Yahoo / Microsoft have no native sheet either — the web redirect dead-ends
+      // inside the Capacitor webview (returns to petwash.co.il, never back to the
+      // app). Fail honestly in-app rather than stranding the user; they work on web.
+      if (isNativePlatform() && (which === 'yahoo' || which === 'microsoft')) {
+        const label = which === 'yahoo' ? 'Yahoo' : 'Microsoft';
+        fail(he
+          ? `התחברות ${label} עדיין לא פעילה באפליקציה — נסה Google, Apple, נייד או אימייל`
+          : `${label} sign-in is not available in the app yet — please use Google, Apple, mobile or email.`);
         return;
       }
       if (isNativePlatform() && (which === 'google' || which === 'apple')) {
@@ -644,9 +655,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       }
 
       const provider =
-        which === 'google' ? createGoogleProvider() :
-        which === 'apple'  ? createAppleProvider()  :
-                             createFacebookProvider();
+        which === 'google'    ? createGoogleProvider()    :
+        which === 'apple'     ? createAppleProvider()     :
+        which === 'yahoo'     ? createYahooProvider()     :
+        which === 'microsoft' ? createMicrosoftProvider() :
+                                createFacebookProvider();
       if (getAuthStrategy() === 'redirect') {
         // Mark which provider we're redirecting to so the on-mount handler can
         // recover the result when Safari returns the user to /signup.
@@ -666,7 +679,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       });
       if (!sessionRes.ok) {
         // Don't route into the app on a hollow session (guards would 401-bounce).
-        const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
+        const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple'
+          : which === 'yahoo' ? 'Yahoo' : which === 'microsoft' ? 'Microsoft' : 'Facebook';
         fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
         return;
       }
@@ -954,6 +968,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     cwFb: he ? 'המשך עם Facebook' : 'Continue with Facebook',
     cwIg: he ? 'המשך עם Instagram' : 'Continue with Instagram',
     cwTt: he ? 'המשך עם TikTok' : 'Continue with TikTok',
+    cwYahoo: he ? 'המשך עם Yahoo' : 'Continue with Yahoo',
+    cwMicrosoft: he ? 'המשך עם Microsoft' : 'Continue with Microsoft',
     soon: he ? 'בקרוב' : 'SOON',
     or: he ? 'או הירשם עם' : 'or sign up with',
     tabMobile: he ? 'נייד' : 'Mobile',
@@ -1137,6 +1153,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <button className="sl-soc sl-soc--tt" disabled={busy} onClick={() => socialExternal('tiktok')}>
                     <span className="sl-ttIcon" aria-hidden><FaTiktok /></span>
                     <span className="sl-socLabel">{t.cwTt}</span>
+                  </button>
+                )}
+                {signupFlags.yahooSignin && (
+                  <button className="sl-soc sl-soc--yahoo" disabled={busy} onClick={() => social('yahoo')}>
+                    <FaYahoo aria-hidden /> <span className="sl-socLabel">{t.cwYahoo}</span>
+                  </button>
+                )}
+                {signupFlags.microsoftSignin && (
+                  <button className="sl-soc sl-soc--ms" disabled={busy} onClick={() => social('microsoft')}>
+                    <FaMicrosoft aria-hidden /> <span className="sl-socLabel">{t.cwMicrosoft}</span>
                   </button>
                 )}
               </div>

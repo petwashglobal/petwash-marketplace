@@ -299,14 +299,40 @@ export async function signInWithGoogleNative(auth: Auth): Promise<UserCredential
  */
 export function createFacebookProvider(): FacebookAuthProvider {
   const provider = new FacebookAuthProvider();
-  
+
   provider.addScope('email');
   provider.addScope('public_profile');
-  
+
   provider.setCustomParameters({
     display: 'popup',
   });
-  
+
+  return provider;
+}
+
+/**
+ * Yahoo (Firebase generic OIDC provider 'yahoo.com'). Requests profile+email so
+ * signup can auto-fill the user's name. Requires a Yahoo OAuth app registered in
+ * the Firebase console (like Facebook/Apple) before it will authenticate.
+ */
+export function createYahooProvider(): OAuthProvider {
+  const provider = new OAuthProvider('yahoo.com');
+  provider.addScope('profile');
+  provider.addScope('email');
+  provider.setCustomParameters({ prompt: 'login' });
+  return provider;
+}
+
+/**
+ * Microsoft (Firebase generic OIDC provider 'microsoft.com' — Azure AD; covers
+ * Outlook/Hotmail/Live personal accounts and work/school accounts). tenant:
+ * 'common' accepts both. Requires a Microsoft/Azure app in the Firebase console.
+ */
+export function createMicrosoftProvider(): OAuthProvider {
+  const provider = new OAuthProvider('microsoft.com');
+  provider.addScope('User.Read');
+  provider.addScope('email');
+  provider.setCustomParameters({ prompt: 'select_account', tenant: 'common' });
   return provider;
 }
 
