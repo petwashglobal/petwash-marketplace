@@ -49,6 +49,60 @@ export async function sendSecurityAlert(subject: string, html: string): Promise<
 }
 
 /**
+ * CRITICAL alert — fans out to MULTIPLE INDEPENDENT channels (CTO P1-10, 2026-08-01).
+ *
+ * The old path was email-only (SendGrid). If SendGrid is the thing that's down, the alert
+ * is lost — the exact single-point-of-failure the review flagged. This fires:
+ *   1. Email  (SendGrid)                         — existing
+ *   2. Webhook (Slack/Discord/Telegram incoming) — SLACK_WEBHOOK_URL / ALERTS_SLACK_WEBHOOK / ALERT_WEBHOOK_URL
+ *   3. SMS    (Twilio → SUPER_ADMIN_ALERT_PHONE) — a DIFFERENT vendor from SendGrid
+ * Each channel is best-effort and isolated in its own try/catch, so a money/security
+ * failure reaches an admin even when one channel is broken. Use this for money-path and
+ * other must-not-be-missed alerts; keep sendSecurityAlert (email) for routine ones.
+ */
+export async function sendCriticalAlert(
+  subject: string,
+  html: string,
+  plainText?: string,
+): Promise<{ email: boolean; webhook: boolean; sms: boolean }> {
+  const result = { email: false, webhook: false, sms: false };
+  const text = (plainText || subject).slice(0, 900);
+
+  // 1. Email (SendGrid).
+  try { await sendSecurityAlert(subject, html); result.email = !!process.env.SENDGRID_API_KEY; }
+  catch (e) { logger.warn('[Alerts] critical email failed', { err: (e as any)?.message }); }
+
+  // 2. Independent incoming webhook (Slack/Discord/Telegram) — admin-configured URL.
+  const webhook = process.env.SLACK_WEBHOOK_URL || process.env.ALERTS_SLACK_WEBHOOK || process.env.ALERT_WEBHOOK_URL;
+  if (webhook) {
+    try {
+      const r = await fetch(webhook, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: `🚨 *PetWash* ${subject}\n${text}` }),
+      });
+      result.webhook = r.ok;
+    } catch (e) { logger.warn('[Alerts] critical webhook failed', { err: (e as any)?.message }); }
+  }
+
+  // 3. SMS via Twilio (independent vendor) to the super-admin phone.
+  const phone = process.env.SUPER_ADMIN_ALERT_PHONE;
+  if (phone) {
+    try {
+      const { twilioSMSService } = await import('./TwilioSMSService');
+      const r = await twilioSMSService.sendSMS(phone, `PetWash ALERT: ${subject}`.slice(0, 300));
+      result.sms = !!r?.success;
+    } catch (e) { logger.warn('[Alerts] critical SMS failed', { err: (e as any)?.message }); }
+  }
+
+  logger.info('[Alerts] critical alert fan-out', { subject, ...result });
+  if (!result.email && !result.webhook && !result.sms) {
+    logger.error('[Alerts] 🚨 CRITICAL ALERT REACHED NO CHANNEL — configure SLACK_WEBHOOK_URL and/or SUPER_ADMIN_ALERT_PHONE', { subject });
+  }
+  return result;
+}
+
+/**
  * Alert A: Check for burst of failed login attempts
  * Triggers on 5+ failures in 10 minutes
  */

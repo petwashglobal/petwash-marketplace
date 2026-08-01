@@ -11,7 +11,7 @@
 # ─────────────────────────────────────────────────────────────────────────────
 
 # Stage 1: Install all dependencies (dev+prod) for potential build tooling
-FROM node:22-slim AS builder
+FROM node:24-slim AS builder
 WORKDIR /app
 
 # ── 2026-05-24 npm network-resilience hardening ───────────────────────────────
@@ -40,7 +40,7 @@ RUN --mount=type=cache,target=/root/.npm,sharing=locked \
 COPY . .
 
 # Stage 2: Production runtime (minimal, hardened)
-FROM node:22-slim AS runner
+FROM node:24-slim AS runner
 WORKDIR /app
 
 # Same npm network-resilience env as the builder stage. Both stages run
