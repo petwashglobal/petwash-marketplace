@@ -12,6 +12,7 @@
 
 import { Client, GeocodeResult, PlaceAutocompleteResult } from '@googlemaps/google-maps-services-js';
 import { logger } from '../../lib/logger';
+import { freeGeocode, preferFreeGeocode } from '../../lib/freeGeocode';
 import memoizee from 'memoizee';
 
 const googleMapsClient = new Client({});
@@ -34,11 +35,17 @@ async function _geocodeAddressUncached(
   language: string = 'he'
 ): Promise<GeocodedLocation | null> {
   try {
+    // FREE-first (CEO 2026-08-01: "maps no need, free Israel"): use OSM/Nominatim
+    // unless GOOGLE_PLACES_LIVE is explicitly on. No paid Google Geocoding bill.
+    if (preferFreeGeocode()) {
+      const f = await freeGeocode(address, language);
+      return f ? { lat: f.lat, lng: f.lng, formattedAddress: f.formattedAddress, city: f.city, country: f.country } : null;
+    }
     if (!GOOGLE_MAPS_API_KEY) {
       logger.warn('[MapsService] Google Maps API key not configured');
       return null;
     }
-    
+
     const response = await googleMapsClient.geocode({
       params: {
         address,
@@ -108,11 +115,12 @@ async function _reverseGeocodeUncached(
   language: string = 'he'
 ): Promise<GeocodedLocation | null> {
   try {
-    if (!GOOGLE_MAPS_API_KEY) {
-      logger.warn('[MapsService] Google Maps API key not configured');
+    // FREE-first: skip paid Google reverse-geocode unless GOOGLE_PLACES_LIVE is on.
+    // Callers already handle null (graceful degrade); no paid Maps bill.
+    if (preferFreeGeocode() || !GOOGLE_MAPS_API_KEY) {
       return null;
     }
-    
+
     const response = await googleMapsClient.reverseGeocode({
       params: {
         latlng: { lat, lng },
