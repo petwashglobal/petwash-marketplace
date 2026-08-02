@@ -109,24 +109,26 @@ export function AddressPicker({
           // Use the route that actually accepts lat/lng. The old code called
           // /api/google/places-details?latlng=... but that route requires a
           // placeId, so current-location address lookup failed by design.
+          // FREE reverse-geocode (OSM/Nominatim via /api/geocode/reverse) — NOT the
+          // paid Google endpoint (CEO 2026-08-01 cost cut: the free tier covers all of
+          // Israel, Google Places must never bill for this).
           const params = new URLSearchParams({
             lat: String(latitude),
             lng: String(longitude),
-            language: isHebrew ? "iw" : "en",
+            lang: isHebrew ? "he" : "en",
           });
           const res = await fetch(
-            `/api/google/reverse-geocode?${params}`,
+            `/api/geocode/reverse?${params}`,
             { credentials: "include" }
           );
           const data = await res.json().catch(() => ({}));
           const formatted =
             data?.formattedAddress ||
-            data?.name ||
             `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
 
           const place: PlaceDetails = {
             formattedAddress: formatted,
-            city: data?.name,
+            city: data?.city,
             lat: latitude,
             lng: longitude,
           };
@@ -138,7 +140,7 @@ export function AddressPicker({
           if (autoSave && user?.uid) {
             saveMutation.mutate({
               address: formatted,
-              city: data?.name,
+              city: data?.city,
               lat: latitude as any,
               lng: longitude as any,
               label: "other",
