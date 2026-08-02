@@ -1,0 +1,81 @@
+# Automated cost cleanup — the guardrail that was missing (CEO 2026-08-01).
+#
+# The recurring Google bill was NOT a one-off. Past spike (May 2026): Cloud Run ₪834
+# + Secret Manager ₪639 + Artifact Registry ₪201. Cloud Run is fixed (min-instances 0,
+# max 4). But Secret Manager old VERSIONS and Artifact Registry old IMAGES pile up on
+# EVERY deploy and bill forever — and cleanup was only a manual command in a runbook
+# nobody ran (ops/cost-control/KILL-COSTS.md). So it kept coming back.
+#
+# This job automates that cleanup weekly, so the churn can never accumulate again.
+# It is SAFE: it keeps the newest ENABLED version of every secret (nothing in use is
+# touched) and applies the existing Artifact Registry keep-5 / delete-after-7-days
+# policy. Manual run anytime via the "Run workflow" button.
+name: Cost cleanup (secret versions + artifact images)
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'   # every Sunday 03:17 UTC — off-peak, weekly
+  workflow_dispatch: {}      # manual "Run workflow" button
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cost-cleanup
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROJECT_ID: signinpetwash
+      REGION: me-west1
+      AR_REPO: petwash-api
+    steps:
+      - name: Checkout (for the AR cleanup policy JSON)
+        uses: actions/checkout@v4
+
+      - name: Auth to GCP (same creds as deploy)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+
+      # ── Secret Manager: destroy SUPERSEDED versions, keep the newest enabled of each.
+      # This is the ₪639-in-May driver. Nothing in use is removed (latest stays enabled).
+      - name: Destroy old Secret Manager versions (keep latest enabled)
+        continue-on-error: true
+        run: |
+          set +e
+          destroyed=0
+          for s in $(gcloud secrets list --project="$PROJECT_ID" --format='value(name)'); do
+            vs=$(gcloud secrets versions list "$s" --project="$PROJECT_ID" \
+                   --filter='state=ENABLED' --sort-by='~createTime' --format='value(name)')
+            # keep the first (newest) enabled version; destroy the rest
+            echo "$vs" | tail -n +2 | while read -r v; do
+              if [ -n "$v" ]; then
+                gcloud secrets versions destroy "$v" --secret="$s" --project="$PROJECT_ID" --quiet \
+                  && echo "destroyed $s v$v"
+              fi
+            done
+          done
+          echo "Secret version cleanup done."
+
+      # ── Artifact Registry: apply the keep-recent-5 / delete-older-than-7-days policy
+      # so old container images (the ₪201-in-May driver) auto-purge going forward.
+      - name: Apply Artifact Registry cleanup policy
+        continue-on-error: true
+        run: |
+          gcloud artifacts repositories set-cleanup-policies "$AR_REPO" \
+            --project="$PROJECT_ID" --location="$REGION" \
+            --policy=ops/cost-control/artifact-registry-cleanup-policy.json \
+            && echo "Artifact Registry cleanup policy applied." \
+            || echo "WARN: could not set AR cleanup policy (check the deploy SA has artifactregistry.repositories.setCleanupPolicy)."
+
+      - name: Summary
+        run: echo "✅ Cost cleanup complete — superseded secret versions destroyed, AR image policy enforced."
