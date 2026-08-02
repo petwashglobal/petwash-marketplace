@@ -395,13 +395,15 @@ function GooglePlacesLocationInput({
           const { latitude, longitude } = position.coords;
           onCoordsChange?.(latitude, longitude);
 
-          // Reverse geocode to get real suburb/neighborhood name
+          // Reverse geocode to get real suburb/neighborhood name — FREE OSM
+          // (/api/geocode/reverse), NOT the paid Google endpoint (CEO 2026-08-01
+          // cost cut: free tier covers Israel; Google Places must not bill).
           try {
-            const params = new URLSearchParams({ lat: latitude.toString(), lng: longitude.toString(), language: mapsLang });
-            const res = await fetch(`/api/google/reverse-geocode?${params}`, { credentials: 'include' });
+            const params = new URLSearchParams({ lat: latitude.toString(), lng: longitude.toString(), lang: mapsLang });
+            const res = await fetch(`/api/geocode/reverse?${params}`, { credentials: 'include' });
             if (res.ok) {
               const data = await res.json();
-              const label = data.name || data.formattedAddress;
+              const label = data.city || data.formattedAddress;
               if (label) {
                 onChange(label);
                 return;

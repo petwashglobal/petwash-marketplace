@@ -53,7 +53,7 @@ const router = Router();
  * GET /api/google/places/:placeId - Get Google Maps place details with reviews
  * Returns place information including up to 5 most recent reviews and photos
  */
-router.get('/places/:placeId', async (req, res) => {
+router.get('/places/:placeId', requireGooglePlacesEnabled, async (req, res) => {
   try {
     const { placeId } = req.params;
     const language = req.query.language as string || 'iw';
@@ -78,7 +78,7 @@ router.get('/places/:placeId', async (req, res) => {
  * GET /api/google/places/photo - Get Google Maps photo URL
  * Proxy endpoint to fetch photos with proper attribution
  */
-router.get('/places/photo', async (req, res) => {
+router.get('/places/photo', requireGooglePlacesEnabled, async (req, res) => {
   try {
     const { reference, maxWidth } = req.query;
 
