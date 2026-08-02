@@ -1,0 +1,14 @@
+{
+  "name": "petwash-billing-killswitch",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Disables Google Cloud billing when the PetWash budget cap is exceeded (Pub/Sub-triggered).",
+  "main": "index.js",
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@google-cloud/functions-framework": "^3.4.0",
+    "@google-cloud/billing": "^4.2.0"
+  }
+}
