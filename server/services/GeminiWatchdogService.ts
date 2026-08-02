@@ -108,6 +108,14 @@ class GeminiWatchdogService {
    * Start the Gemini Watchdog service
    */
   async start() {
+    // COST KILL-SWITCH (CEO 2026-08-01): this service runs 4 recurring PAID Gemini
+    // loops. It must honour the same AI_CRONS_ENABLED gate as every other scheduled
+    // Gemini caller — otherwise an admin clicking "start" runs continuous paid AI
+    // outside the cost switch. Off by default; no paid AI can start accidentally.
+    if (process.env.AI_CRONS_ENABLED !== 'true') {
+      logger.warn('[Gemini Watchdog] NOT started — AI_CRONS_ENABLED is off (paid Gemini kill-switch). Set AI_CRONS_ENABLED=true to enable.');
+      return;
+    }
     if (!this.genAI) {
       logger.warn('[Gemini Watchdog] Cannot start - Gemini API key not configured');
       return;

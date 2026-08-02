@@ -12554,8 +12554,15 @@ self.addEventListener('notificationclick', (event) => {
   // Meetings with Attendee Notifications (WhatsApp + Email)
   app.use('/api/meetings', adminLimiter, meetingsRoutes);
 
-  // reCAPTCHA Enterprise probe — owner diagnostics (no auth, no SMS; rate-limited by apiLimiter)
-  app.use('/api/captcha-probe', apiLimiter, captchaProbeRoutes);
+  // reCAPTCHA Enterprise probe — owner diagnostics. Each hit spends a PAID reCAPTCHA
+  // Enterprise assessment, and it had NO auth — a public paid-API proxy is exactly the
+  // scraper-magnet that caused the ₪8,227 Maps spike. Gated OFF by default (CEO cost
+  // 2026-08-01): returns 404 unless CAPTCHA_PROBE_ENABLED=true is set for a diagnostic
+  // session. Still rate-limited when enabled.
+  app.use('/api/captcha-probe', (req, res, next) => {
+    if (process.env.CAPTCHA_PROBE_ENABLED === 'true') return next();
+    return res.status(404).json({ error: 'Not found' });
+  }, apiLimiter, captchaProbeRoutes);
   
   // Management Dashboard (CEO/CFO only - comprehensive business analytics)
   app.use('/api/management', adminLimiter, managementDashboardRoutes);

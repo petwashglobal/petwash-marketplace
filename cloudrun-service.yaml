@@ -8,8 +8,13 @@ spec:
       annotations:
         run.googleapis.com/cpu-boost: "true"
         run.googleapis.com/execution-environment: gen2
-        autoscaling.knative.dev/minScale: "1"
-        autoscaling.knative.dev/maxScale: "10"
+        # minScale 0 (NOT 1) so this file can never re-introduce a 24/7 warm
+        # instance if someone `gcloud run services replace`s it — the real deploy
+        # (petwash-ci.yml) already uses min0/max4 pre-launch (CEO cost cut 2026-08-01).
+        # maxScale 4 matches the deploy's blast-radius cap. Restore min1 at launch in
+        # BOTH places together, never here alone.
+        autoscaling.knative.dev/minScale: "0"
+        autoscaling.knative.dev/maxScale: "4"
     spec:
       containerConcurrency: 80
       timeoutSeconds: 300
