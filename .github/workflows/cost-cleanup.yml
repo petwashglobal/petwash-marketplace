@@ -27,7 +27,7 @@ concurrency:
 jobs:
   cleanup:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    timeout-minutes: 55
     env:
       PROJECT_ID: signinpetwash
       REGION: me-west1
@@ -52,19 +52,26 @@ jobs:
         continue-on-error: true
         run: |
           set +e
-          destroyed=0
+          # Build the full (secret,version) destroy list first, then destroy in
+          # parallel. The backlog can be thousands of versions (first real run
+          # destroyed 1,359 before the old 20-min timeout cancelled it), and serial
+          # gcloud calls are the bottleneck — xargs -P drains it in one pass.
+          worklist="$(mktemp)"
           for s in $(gcloud secrets list --project="$PROJECT_ID" --format='value(name)'); do
             vs=$(gcloud secrets versions list "$s" --project="$PROJECT_ID" \
                    --filter='state=ENABLED' --sort-by='~createTime' --format='value(name)')
-            # keep the first (newest) enabled version; destroy the rest
+            # keep the first (newest) enabled version; queue the rest for destroy
             echo "$vs" | tail -n +2 | while read -r v; do
-              if [ -n "$v" ]; then
-                gcloud secrets versions destroy "$v" --secret="$s" --project="$PROJECT_ID" --quiet \
-                  && echo "destroyed $s v$v"
-              fi
+              [ -n "$v" ] && echo "$s $v" >> "$worklist"
             done
           done
-          echo "Secret version cleanup done."
+          total=$(wc -l < "$worklist" | tr -d ' ')
+          echo "Superseded secret versions to destroy: $total"
+          # 8-way parallel; each keeps the newest enabled version untouched.
+          xargs -a "$worklist" -P 8 -L 1 sh -c \
+            'gcloud secrets versions destroy "$2" --secret="$1" --project="'"$PROJECT_ID"'" --quiet \
+               && echo "destroyed $1 v$2"' _
+          echo "Secret version cleanup done ($total queued)."
 
       # ── Artifact Registry: apply the keep-recent-5 / delete-older-than-7-days policy
       # so old container images (the ₪201-in-May driver) auto-purge going forward.
