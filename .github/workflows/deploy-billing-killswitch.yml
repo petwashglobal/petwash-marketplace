@@ -1,0 +1,99 @@
+# Deploy the billing kill-switch (CEO 2026-08-02).
+#
+# Builds & deploys ops/cost-control/billing-killswitch as a gen2 Cloud Function
+# triggered by the "billing-killswitch" Pub/Sub topic. The Cloud Billing budget
+# ("PetWash cap") publishes to that topic; the function disables billing when the
+# cap is exceeded. Deploys in DRY-RUN by default (watch + alert only). Re-run with
+# mode=armed once the pipeline is verified.
+#
+# TWO one-time steps only Nir can do (billing-account admin) — see the function's
+# README.md: (1) grant the function's service account roles/billing.projectManager,
+# (2) connect the budget to the "billing-killswitch" Pub/Sub topic.
+name: Deploy billing kill-switch
+
+on:
+  workflow_dispatch:
+    inputs:
+      mode:
+        description: 'dry-run = watch + alert only; armed = actually disable billing when cap exceeded'
+        type: choice
+        options: [dry-run, armed]
+        default: dry-run
+  push:
+    branches: [main]
+    paths:
+      - 'ops/cost-control/billing-killswitch/**'
+      - '.github/workflows/deploy-billing-killswitch.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-billing-killswitch
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PROJECT_ID: signinpetwash
+      REGION: me-west1
+      TOPIC: billing-killswitch
+      FUNCTION: billing-killswitch
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Auth to GCP (same creds as deploy)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+
+      - name: Enable required APIs
+        run: |
+          gcloud services enable \
+            cloudbilling.googleapis.com \
+            cloudfunctions.googleapis.com \
+            run.googleapis.com \
+            pubsub.googleapis.com \
+            cloudbuild.googleapis.com \
+            eventarc.googleapis.com \
+            --project="$PROJECT_ID"
+
+      - name: Create Pub/Sub topic (idempotent)
+        run: gcloud pubsub topics create "$TOPIC" --project="$PROJECT_ID" || echo "topic already exists"
+
+      - name: Deploy function
+        run: |
+          MODE="${{ github.event.inputs.mode }}"
+          MODE="${MODE:-dry-run}"
+          echo "Deploying $FUNCTION in mode: $MODE"
+          gcloud functions deploy "$FUNCTION" \
+            --gen2 \
+            --region="$REGION" \
+            --project="$PROJECT_ID" \
+            --runtime=nodejs22 \
+            --source=ops/cost-control/billing-killswitch \
+            --entry-point=stopBilling \
+            --trigger-topic="$TOPIC" \
+            --set-env-vars="KILLSWITCH_MODE=${MODE}" \
+            --memory=256Mi \
+            --timeout=60s \
+            --max-instances=2
+
+      - name: Report the function's service account (needs the billing role)
+        run: |
+          SA=$(gcloud functions describe "$FUNCTION" --gen2 --region="$REGION" \
+                 --project="$PROJECT_ID" --format='value(serviceConfig.serviceAccountEmail)')
+          echo "──────────────────────────────────────────────────────────────"
+          echo "Function service account: $SA"
+          echo "Nir must grant it billing control ONCE (billing-account admin):"
+          echo "  gcloud billing accounts add-iam-policy-binding <BILLING_ACCOUNT_ID> \\"
+          echo "    --member=serviceAccount:$SA --role=roles/billing.projectManager"
+          echo "Then connect the 'PetWash cap' budget to the '$TOPIC' Pub/Sub topic."
+          echo "──────────────────────────────────────────────────────────────"
