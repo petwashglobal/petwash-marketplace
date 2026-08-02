@@ -167,6 +167,13 @@ function parseDec(v: string | number | null | undefined): number {
 async function geocodeQuery(
   query: string
 ): Promise<{ lat: number; lng: number } | null> {
+  // FREE-first (CEO 2026-08-01): OSM/Nominatim unless GOOGLE_PLACES_LIVE is on — no
+  // paid Google Geocoding for provider search.
+  const { freeGeocode, preferFreeGeocode } = await import('../lib/freeGeocode');
+  if (preferFreeGeocode()) {
+    const f = await freeGeocode(query, 'he');
+    return f ? { lat: f.lat, lng: f.lng } : null;
+  }
   const apiKey = process.env.GOOGLE_MAPS_API_KEY;
   if (!apiKey) {
     logger.warn("[ProviderSearch] GOOGLE_MAPS_API_KEY not set — skipping geocode");

@@ -49,6 +49,14 @@ const GOOGLE_WEATHER_API_KEY = process.env.GOOGLE_WEATHER_API_KEY;
  * Converts city name or address to GPS coordinates
  */
 export async function geocodeLocation(locationQuery: string): Promise<LocationCoordinates | null> {
+  // FREE-first (CEO 2026-08-01: "maps no need, free Israel"): OSM/Nominatim unless
+  // GOOGLE_PLACES_LIVE is explicitly on. No paid Google Geocoding bill.
+  const { freeGeocode, preferFreeGeocode } = await import('./../lib/freeGeocode');
+  if (preferFreeGeocode()) {
+    const f = await freeGeocode(locationQuery);
+    if (f) return { lat: f.lat, lng: f.lng, city: f.city, country: f.country } as LocationCoordinates;
+    return await geocodeLocationFallback(locationQuery);
+  }
   if (!GOOGLE_MAPS_API_KEY) {
     logger.warn('[UnifiedLocation] Google Maps API key not configured - using fallback');
     return await geocodeLocationFallback(locationQuery);
