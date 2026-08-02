@@ -485,8 +485,12 @@ export default function BookingConfirmation() {
       if (data?.paymentUrl) { window.location.href = data.paymentUrl; return; }
       toast({ title: t.paymentStartFailed ?? 'Could not start payment', variant: 'destructive' });
     },
-    onError: () => {
-      toast({ title: t.paymentStartFailed ?? 'Could not start payment', variant: 'destructive' });
+    onError: (err: any) => {
+      // Surface the server's honest reason (e.g. online card rail not live yet)
+      // instead of a generic failure — the booking is saved, nothing was charged.
+      // apiRequest throws ApiError with the parsed JSON on `.body`.
+      const msg = err?.body?.error || (t.paymentStartFailed ?? 'Could not start payment');
+      toast({ title: msg, variant: 'destructive' });
     },
   });
 

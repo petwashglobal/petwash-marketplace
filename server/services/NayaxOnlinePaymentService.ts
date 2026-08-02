@@ -110,7 +110,21 @@ export class NayaxOnlinePaymentService {
     params: NayaxPaymentSessionParams
   ): Promise<NayaxPaymentSessionResult> {
     if (DEMO_MODE) {
-      return this.createDemoSession(params);
+      // The online card rail is NOT live (no NAYAX_API_KEY / NAYAX_MERCHANT_ID).
+      // HONEST behaviour: return not-available so the caller short-circuits BEFORE
+      // creating an escrow record or moving the booking to payment_pending. The old
+      // "demo session" returned a /payment/demo/:id URL that (a) has no client route
+      // (hard 404) and (b) pretended the booking was paid. Both were dishonest and
+      // left bookings stuck. Callers must surface this as "online payment isn't live yet".
+      logger.warn('[NayaxOnline] Payment requested but online card rail is not live (DEMO_MODE)', {
+        bookingId: params.bookingId,
+      });
+      return {
+        success: false,
+        paymentUrl: '',
+        demoMode: true,
+        error: 'ONLINE_CARD_NOT_LIVE',
+      };
     }
 
     try {
@@ -212,28 +226,6 @@ export class NayaxOnlinePaymentService {
         error: error.message,
       };
     }
-  }
-
-  /**
-   * Demo session — returns a local URL that shows a demo payment page.
-   * Booking is treated as paid immediately in demo flows.
-   */
-  private static createDemoSession(
-    params: NayaxPaymentSessionParams
-  ): NayaxPaymentSessionResult {
-    const demoUrl = `${APP_URL}/payment/demo/${params.bookingId}?amount=${params.amountCents}&ref=${params.bookingNumber}`;
-
-    logger.info('[NayaxOnline] Demo payment session created', {
-      bookingId: params.bookingId,
-      amountCents: params.amountCents,
-    });
-
-    return {
-      success: true,
-      sessionId: `demo_${params.bookingId}`,
-      paymentUrl: demoUrl,
-      demoMode: true,
-    };
   }
 
   /**

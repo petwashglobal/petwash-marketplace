@@ -2251,6 +2251,15 @@ router.post('/:requestId/pay', async (req, res) => {
     });
 
     if (!sessionResult.success) {
+      // Online card rail not live yet — be honest, do NOT create escrow or move the
+      // booking to payment_pending (this guard runs before both).
+      if (sessionResult.error === 'ONLINE_CARD_NOT_LIVE') {
+        logger.warn('[BookingRequests] Online card payment not live — booking left unchanged', { requestId });
+        return res.status(503).json({
+          error: 'Online card payment isn’t available yet. Your booking is saved — you can pay once card payments go live, or contact us to arrange payment.',
+          errorCode: 'ONLINE_CARD_NOT_LIVE',
+        });
+      }
       logger.error('[BookingRequests] Nayax payment session creation failed', {
         requestId, error: sessionResult.error,
       });
