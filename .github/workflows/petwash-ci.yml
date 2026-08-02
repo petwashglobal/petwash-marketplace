@@ -1623,16 +1623,21 @@ jobs:
           region: ${{ env.REGION }}
           image: ${{ env.IMAGE }}:${{ github.sha }}
           secrets_update_strategy: overwrite
-          # --min-instances=1 (restored 2026-07-07): keeps one warm instance so real
-          # users — and the every-15-min uptime health-check — never hit a cold start
-          # (/api/health was timing out at 15s on cold boot and false-paging).
-          # The old min=0 was a stopgap for a me-west1 "total allowable CPU" quota that
-          # has since been raised massively: verified effectiveLimit=200000 for
-          # run.googleapis.com/cpu_allocation in me-west1 (2026-07-07), vs our peak of
-          # max-instances(4) × 2 vCPU = 8 vCPU. The brief 2-revision deploy overlap
-          # (~4 vCPU) is trivially within quota, so canary min=1 no longer trips it.
-          # Cost of one always-on 2 vCPU / 2Gi instance is bounded and predictable;
-          # max-instances=4 still hard-caps the runaway blast radius.
+          # --min-instances=0 (CEO 2026-08-01 COST CUT, pre-launch): with ~no users,
+          # a min=1 warm 2 vCPU / 2Gi instance runs 24/7 and bills ~₪200+/month for
+          # doing nothing — the single biggest idle Google cost pre-launch. min=0 means
+          # we pay ONLY when a request actually arrives (near-zero pre-launch); the app
+          # scales back to zero when idle. Trade-off: the first request after idle (and
+          # the 15-min uptime health-check) eats a cold start — acceptable before launch;
+          # if the uptime monitor false-pages, widen its timeout rather than paying for a
+          # warm box. **RESTORE --min-instances=1 the day real traffic starts** (see the
+          # 2026-07-07 note below for why it was 1). No quota concern at min=0 (uses less
+          # than min=1). See memory: google-cost-incident-2026-06.
+          #
+          # (2026-07-07 rationale for min=1, kept for the launch flip: warm instance so
+          # real users + the uptime check never cold-start; the me-west1 CPU quota that
+          # once forced min=0 was raised to effectiveLimit=200000, so min=1 is safe.
+          # max-instances=4 hard-caps the runaway blast radius either way.)
           #
           # --max-instances=4 (was 20): COST BLAST-RADIUS CAP. 2026-06-30 a flood of
           # requests (via an unrestricted Maps API key, since deleted) auto-scaled this
@@ -1657,7 +1662,7 @@ jobs:
           flags: |
             --cpu=2
             --memory=2Gi
-            --min-instances=1
+            --min-instances=0
             --max-instances=4
             --timeout=600
             --port=8080
