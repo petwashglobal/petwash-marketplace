@@ -103,13 +103,29 @@ export const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getA
 const SOCIAL_AUTH_FIXES_ENABLED = import.meta.env.VITE_FEATURE_SOCIAL_AUTH_FIXES !== 'false';
 const FIREBASE_PERFORMANCE_ENABLED = import.meta.env.VITE_FIREBASE_PERFORMANCE_ENABLED === 'true';
 
-// App Check: uses VITE_RECAPTCHA_SITE_KEY (reCAPTCHA v3 site key)
-// FAIL-CLOSED: In production, if the key is missing the app logs a critical error.
-// App Check tokens are sent with every Firebase request once initialized.
+// App Check (reCAPTCHA v3) is a NATIVE-app concern here. The only endpoints that
+// REQUIRE a valid App Check token are the native biometric routes
+// (/api/mobile/biometric/*, /api/biometric-certificates/*). NO web signup / auth /
+// profile / provider / loyalty endpoint enforces it (verified 2026-08-03 audit).
+//
+// On the plain web the reCAPTCHA-v3 provider throws `appCheck/recaptcha-error` on
+// petwash.co.il (the key isn't registered for App Check on this domain). Because
+// Firebase Auth auto-attaches the App Check token, that error BLOCKED every
+// Google/Apple sign-in — while protecting nothing the website relies on. So we only
+// initialize App Check inside the native (Capacitor) app; on the web it's skipped.
+// Force it back on for web with VITE_APP_CHECK_WEB=true once the reCAPTCHA key is
+// properly registered for App Check on the domain. (CEO 2026-08-03: unblock signup.)
+// NOTE: init is fail-OPEN — getAppCheckToken() returns null on error and never blocks.
 const APP_CHECK_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
+const IS_NATIVE_APP =
+  typeof window !== "undefined" &&
+  typeof (window as any).Capacitor?.isNativePlatform === "function" &&
+  (window as any).Capacitor.isNativePlatform();
+const FORCE_APP_CHECK_ON_WEB = import.meta.env.VITE_APP_CHECK_WEB === "true";
+const SHOULD_INIT_APP_CHECK = IS_NATIVE_APP || FORCE_APP_CHECK_ON_WEB;
 let appCheckInstance: AppCheck | null = null;
 
-if (typeof window !== "undefined" && APP_CHECK_SITE_KEY) {
+if (typeof window !== "undefined" && APP_CHECK_SITE_KEY && SHOULD_INIT_APP_CHECK) {
   try {
     appCheckInstance = initializeAppCheck(app, {
       provider: new ReCaptchaV3Provider(APP_CHECK_SITE_KEY),
@@ -119,11 +135,7 @@ if (typeof window !== "undefined" && APP_CHECK_SITE_KEY) {
     console.error('[App Check] Initialization failed:', error);
   }
 } else if (typeof window !== "undefined") {
-  if (import.meta.env.PROD) {
-    console.error('[App Check] Missing VITE_RECAPTCHA_SITE_KEY in production. App Check NOT initialized.');
-  } else {
-    console.warn('[App Check] Missing VITE_RECAPTCHA_SITE_KEY. Skipping App Check in development.');
-  }
+  logger.info('[App Check] Skipped on web (native-only). Set VITE_APP_CHECK_WEB=true to force-enable on web.');
 }
 
 // Initialize Auth with iOS/Safari-safe persistence

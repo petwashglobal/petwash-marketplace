@@ -853,8 +853,15 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
   
   useScrollToTop();
 
-  // Show Google One Tap only when user is not logged in
-  const showOneTap = !user && !loading;
+  // Show Google One Tap only when signed out — but NOT on the dedicated auth pages.
+  // One-Tap auto-prompting on /signup, /signin, /login etc. fires a SECOND Google
+  // sign-in initiator in parallel with the button the user just clicked → race
+  // conditions + duplicate accounts (2026-08-03 audit). Suppress it there; the user
+  // already has explicit Google/Apple buttons on those screens.
+  const AUTH_ROUTES = /^\/(sign-?up|sign-?in|login|signin-advanced|choose-role|choose-path|privilege|loyalty\/join|vito|admin\/login)/i;
+  const onAuthRoute =
+    typeof window !== "undefined" && AUTH_ROUTES.test(window.location.pathname);
+  const showOneTap = !user && !loading && !onAuthRoute;
 
   const handleLanguageChange = (newLanguage: Language) => {
     if (newLanguage !== language) {
