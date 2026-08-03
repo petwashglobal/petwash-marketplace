@@ -107,10 +107,10 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
             <div className="max-w-5xl mx-auto">
               <div className="text-center mb-8">
                 <h2 className="luxury-heading-lg mb-4">
-                  {language === 'he' ? 'צפו בסרטון שלנו' : language === 'ar' ? 'شاهد الفيديو الخاص بنا' : language === 'ru' ? 'Посмотрите наше видео' : language === 'fr' ? 'Regardez notre vidéo' : language === 'es' ? 'Mira nuestro video' : 'Watch Our Video'}
+                  {language === 'he' ? 'איך משתמשים בעמדת PetWash™' : language === 'ar' ? 'كيفية استخدام محطة PetWash™' : language === 'ru' ? 'Как пользоваться станцией PetWash™' : language === 'fr' ? 'Comment utiliser une borne PetWash™' : language === 'es' ? 'Cómo usar una estación PetWash™' : 'How to Use a PetWash™ Station'}
                 </h2>
                 <p className="luxury-text-body">
-                  {language === 'he' ? 'גלה את חווית הכביסה הטבעית הפרימיום שלנו לחיות מחמד' : language === 'ar' ? 'اكتشف تجربة الغسيل الطبيعية الفاخرة لحيواناتك الأليفة' : language === 'ru' ? 'Откройте для себя наш премиум натуральный опыт мытья домашних животных' : language === 'fr' ? 'Découvrez notre expérience de lavage naturel premium pour animaux' : language === 'es' ? 'Descubre nuestra experiencia premium de lavado natural para mascotas' : 'Discover our premium natural pet wash experience'}
+                  {language === 'he' ? 'מדריך קצר לעמדת הרחיצה העצמית החכמה שלנו — צעד אחר צעד' : language === 'ar' ? 'دليل سريع لمحطة الغسيل الذاتي الذكية لدينا — خطوة بخطوة' : language === 'ru' ? 'Краткое пошаговое руководство по нашей умной станции самообслуживания' : language === 'fr' ? 'Un guide rapide, étape par étape, de notre borne intelligente en libre-service' : language === 'es' ? 'Una guía rápida paso a paso de nuestra estación inteligente de autoservicio' : 'A quick, step-by-step guide to your smart self-service dog-wash hub'}
                 </p>
               </div>
               
@@ -118,10 +118,11 @@ export default function Gallery({ language, onLanguageChange }: GalleryProps) {
                 <div className="relative rounded-3xl overflow-hidden bg-black" style={{ paddingBottom: '56.25%' }}>
                   <iframe
                     className="absolute inset-0 w-full h-full"
-                    src="https://www.youtube.com/embed/Om-iwY_vt5M?si=vGYJEwYMFyYRSoow"
-                    title="⁦PetWash™⁩ - Premium Natural Pet Care Experience"
+                    src="https://www.youtube-nocookie.com/embed/UHqb_8gCOag?rel=0"
+                    title="PetWash™ — How to use the smart self-service station"
                     allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
                     allowFullScreen
+                    loading="lazy"
                     data-testid="youtube-video"
                   />
                 </div>
