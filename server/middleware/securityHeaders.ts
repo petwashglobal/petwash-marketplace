@@ -161,6 +161,9 @@ const CSP_DIRECTIVES = [
     "https://appleid.apple.com",
     "https://*.firebaseapp.com",
     "https://open.spotify.com",
+    // YouTube how-to video embed in the Gallery (privacy-friendly nocookie host).
+    // Without this the gallery <iframe> is silently blocked by CSP → blank frame.
+    "https://www.youtube-nocookie.com",
     replitHosts,
   ].filter(Boolean).join(" "),
 
