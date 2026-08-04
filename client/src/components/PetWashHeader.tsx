@@ -123,8 +123,6 @@ const T: Record<string, Record<string, string>> = {
   "academy.desc": { en: "Full pet training with professional trainers — from puppy basics to advanced obedience and behaviour.", he: "אילוף מלא לחיות מחמד עם מאמנים מקצועיים — מיסודות לגורים ועד ציות והתנהגות מתקדמים.", ru: "Полное обучение питомцев с профессиональными тренерами — от азов для щенков до продвинутого послушания.", fr: "Éducation complète avec des dresseurs professionnels — des bases du chiot à l'obéissance et au comportement avancés.", es: "Adiestramiento completo con entrenadores profesionales — desde lo básico del cachorro hasta obediencia avanzada.", ar: "تدريب كامل للحيوانات مع مدرّبين محترفين — من أساسيات الجراء إلى الطاعة والسلوك المتقدّم." },
   "shop.label": { en: "PetWash Shop", he: "חנות ⁦PetWash™⁩", ru: "Магазин ⁦PetWash™⁩", fr: "Boutique ⁦PetWash™⁩", es: "Tienda ⁦PetWash™⁩", ar: "متجر ⁦PetWash™⁩" },
   "shop.desc": { en: "Personalised accessories and pet care — open to browse", he: "אביזרים בהזמנה אישית ומוצרי טיפוח — פתוח לעיון", ru: "Персонализированные аксессуары и уход — открыто для просмотра", fr: "Accessoires personnalisés et soins — ouvert à la découverte", es: "Accesorios personalizados y cuidado — abierto para explorar", ar: "إكسسوارات مخصصة ومنتجات عناية — متاح للتصفح" },
-  "avatar.label": { en: "Avatar Studio", he: "סטודיו אווטאר", ru: "Студия аватаров", fr: "Studio Avatar", es: "Estudio Avatar", ar: "استوديو أفاتار" },
-  "avatar.desc": { en: "AI pet avatar builder (coming soon)", he: "יוצר אווטאר בינה מלאכותית לחיות מחמד (בקרוב)", ru: "Создание аватаров питомцев с ИИ (скоро)", fr: "Créateur d'avatars IA pour animaux (bientôt)", es: "Creador de avatares IA para mascotas (próximamente)", ar: "صانع صور رمزية بالذكاء الاصطناعي (قريبًا)" },
   "frozen": { en: "Coming Soon", he: "בקרוב", ru: "Скоро", fr: "Bientôt", es: "Próximamente", ar: "قريبًا" },
   "section.loyalty": { en: "LOYALTY, BOOKING AND CLUB", he: "נאמנות, הזמנות ומועדון", ru: "ЛОЯЛЬНОСТЬ, БРОНИРОВАНИЕ И КЛУБ", fr: "FIDÉLITÉ, RÉSERVATION ET CLUB", es: "FIDELIDAD, RESERVAS Y CLUB", ar: "الولاء والحجز والنادي" },
   "booking.label": { en: "Smart booking", he: "הזמנה חכמה", ru: "Умное бронирование", fr: "Réservation intelligente", es: "Reserva inteligente", ar: "حجز ذكي" },
@@ -151,7 +149,7 @@ const T: Record<string, Record<string, string>> = {
   "trust-safety.label": { en: "Trust & Safety", he: "אמון ובטיחות", ru: "Доверие и безопасность", fr: "Confiance et sécurité", es: "Confianza y seguridad", ar: "الثقة والأمان" },
   "privacy.label": { en: "Privacy & data protection", he: "פרטיות והגנת מידע", ru: "Конфиденциальность и защита данных", fr: "Confidentialité et protection des données", es: "Privacidad y protección de datos", ar: "الخصوصية وحماية البيانات" },
   "egift-policy.label": { en: "eGift and refund policy", he: "מדיניות תווי שי והחזרים", ru: "Политика ваучеров и возвратов", fr: "Politique des bons et remboursement", es: "Política de vales y reembolso", ar: "سياسة القسائم والاسترداد" },
-  "loyalty-terms.label": { en: "PetWash Prestige terms", he: "תנאי PetWash Prestige", ru: "Условия PetWash Prestige", fr: "Conditions PetWash Prestige", es: "Términos PetWash Prestige", ar: "شروط PetWash Prestige" },
+  "loyalty-terms.label": { en: "PetWash Prestige terms", he: "תנאי ⁦PetWash Prestige⁩", ru: "Условия PetWash Prestige", fr: "Conditions PetWash Prestige", es: "Términos PetWash Prestige", ar: "شروط ⁦PetWash Prestige⁩" },
   "cookies.label": { en: "Cookies & tracking", he: "עוגיות ומעקב", ru: "Файлы cookie и отслеживание", fr: "Cookies et suivi", es: "Cookies y seguimiento", ar: "ملفات تعريف الارتباط والتتبع" },
   "accessibility.label": { en: "Accessibility statement", he: "הצהרת נגישות", ru: "Заявление о доступности", fr: "Déclaration d'accessibilité", es: "Declaración de accesibilidad", ar: "بيان إمكانية الوصول" },
   "section.support": { en: "SUPPORT", he: "תמיכה", ru: "ПОДДЕРЖКА", fr: "ASSISTANCE", es: "SOPORTE", ar: "الدعم" },
@@ -472,7 +470,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
             className="pw-logo-link"
             style={{ touchAction: 'manipulation', cursor: 'pointer' }}
             onClick={() => handleNavigate("/")}
-            aria-label="Pet Wash home"
+            aria-label="PetWash home"
           >
             <img 
               src="/brand/petwash-logo-official.png" 
@@ -485,16 +483,16 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
         {/* ROW 2: Social left | Nav center | Profile + Burger + Lang right */}
         <div className="pw-header-row-controls">
           <div className="pw-header-left">
-            <a className="pw-social-link pw-social-spotify" href="https://open.spotify.com/user/31ff52czgq4ezgui5ufyplo5mrbq" target="_blank" rel="noreferrer" aria-label="Pet Wash Spotify" data-testid="link-social-spotify">
+            <a className="pw-social-link pw-social-spotify" href="https://open.spotify.com/user/31ff52czgq4ezgui5ufyplo5mrbq" target="_blank" rel="noreferrer" aria-label="PetWash Spotify" data-testid="link-social-spotify">
               <SiSpotify size={18} />
             </a>
-            <a className="pw-social-link pw-social-tiktok" href="https://www.tiktok.com/@petwashltd" target="_blank" rel="noreferrer" aria-label="Pet Wash TikTok" data-testid="link-social-tiktok">
+            <a className="pw-social-link pw-social-tiktok" href="https://www.tiktok.com/@petwashltd" target="_blank" rel="noreferrer" aria-label="PetWash TikTok" data-testid="link-social-tiktok">
               <SiTiktok size={18} />
             </a>
-            <a className="pw-social-link pw-social-facebook" href="https://www.facebook.com/petwashltd" target="_blank" rel="noreferrer" aria-label="Pet Wash Facebook" data-testid="link-social-facebook">
+            <a className="pw-social-link pw-social-facebook" href="https://www.facebook.com/petwashltd" target="_blank" rel="noreferrer" aria-label="PetWash Facebook" data-testid="link-social-facebook">
               <SiFacebook size={18} />
             </a>
-            <a className="pw-social-link pw-social-instagram" href="https://www.instagram.com/petwashltd" target="_blank" rel="noreferrer" aria-label="Pet Wash Instagram" data-testid="link-social-instagram">
+            <a className="pw-social-link pw-social-instagram" href="https://www.instagram.com/petwashltd" target="_blank" rel="noreferrer" aria-label="PetWash Instagram" data-testid="link-social-instagram">
               <SiInstagram size={18} />
             </a>
           </div>
@@ -714,7 +712,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
               handleNavigate("/");
               setIsMobileOpen(false);
             }}
-            aria-label="Pet Wash home"
+            aria-label="PetWash home"
           >
             <img 
               src="/brand/petwash-logo-official.png" 
