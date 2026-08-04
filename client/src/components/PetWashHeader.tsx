@@ -218,7 +218,9 @@ const COMPANY_MENU_ITEMS = [
   { id: "about", labelKey: "about.label", href: "/about" },
   { id: "story", labelKey: "story.label", href: "/story" },
   { id: "media", labelKey: "media.label", href: "/media" },
-  { id: "gallery", labelKey: "gallery.label", href: "/gallery" },
+  // "Gallery" trimmed 2026-08-04 — the Media page (/media) is the umbrella
+  // ("Media, Photos and Videos") and surfaces the photo gallery via its own
+  // "Photo Gallery" card, so a separate menu item was redundant. Page unchanged.
   { id: "careers", labelKey: "careers.label", href: "/careers" },
 ];
 
