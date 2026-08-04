@@ -199,9 +199,9 @@ const PLATFORM_GROUPS = [
 const USER_MENU_ITEMS = [
   { id: "booking", labelKey: "booking.label", href: "/booking" },
   { id: "loyalty-club", labelKey: "loyalty-club.label", href: "/loyalty" },
-  { id: "loyalty-tiers", labelKey: "loyalty-tiers.label", href: "/loyalty/tiers" },
-  { id: "loyalty-benefits", labelKey: "loyalty-benefits.label", href: "/loyalty/benefits" },
-  { id: "loyalty-birthday", labelKey: "loyalty-birthday.label", href: "/loyalty/birthday" },
+  // Tiers / Benefits / Birthday moved onto the Prestige page (/loyalty) as an
+  // "Explore your membership" links row — trimmed from the menu to de-clutter it
+  // without orphaning the pages. (CEO 2026-08-04)
   { id: "refer", labelKey: "refer.label", href: "/loyalty/refer" },
   { id: "egift", labelKey: "egift.label", href: "/egift" },
   { id: "map", labelKey: "map.label", href: "/map" },
