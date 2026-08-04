@@ -1183,6 +1183,31 @@ export default function Loyalty() {
           </div>
         </section>
 
+        {/* Explore your membership — deep links to the Prestige sub-pages. Moved here
+            from the hamburger menu (CEO 2026-08-04 menu de-clutter) so Tiers/Benefits/
+            Birthday stay reachable after they're trimmed from the menu. */}
+        <section className="bg-white py-6">
+          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {[
+                { href: '/loyalty/tiers', he: 'דרגות החברות', en: 'Membership Tiers', ar: 'مستويات العضوية', ru: 'Уровни', fr: 'Niveaux', es: 'Niveles' },
+                { href: '/loyalty/benefits', he: 'הטבות ויתרונות', en: 'Benefits & Perks', ar: 'المزايا والفوائد', ru: 'Преимущества', fr: 'Avantages', es: 'Beneficios' },
+                { href: '/loyalty/birthday', he: 'הטבות יום הולדת', en: 'Birthday Perks', ar: 'مزايا عيد الميلاد', ru: 'Ко дню рождения', fr: 'Anniversaire', es: 'Cumpleaños' },
+              ].map((l) => (
+                <Link key={l.href} href={l.href}>
+                  <div
+                    className="flex items-center justify-between rounded-lg border border-gray-200 px-4 py-3 text-sm font-medium text-gray-700 hover:border-[#D9B84C] transition-colors cursor-pointer"
+                    data-testid={`link-prestige-${l.href.split('/').pop()}`}
+                  >
+                    <span>{language === 'he' ? l.he : language === 'ar' ? l.ar : language === 'ru' ? l.ru : language === 'fr' ? l.fr : language === 'es' ? l.es : l.en}</span>
+                    <ChevronRight className="w-4 h-4 opacity-60" />
+                  </div>
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+
         {/* FOOTER NOTE */}
         <section className="bg-white border-t border-gray-100 py-8">
           <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
