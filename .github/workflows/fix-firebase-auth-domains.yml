@@ -1,0 +1,80 @@
+# One-shot: ensure petwash.co.il is in Firebase Authentication "Authorized domains".
+#
+# Google/Apple sign-in on a CUSTOM auth domain (petwash.co.il) only works if that
+# domain is in Firebase Auth's authorizedDomains list. If it's missing, the OAuth
+# handshake fails and the user is bounced back to the login page — exactly the
+# months-long "Gmail returns to login" bug. This can't be fixed in app code.
+#
+# The deploy service account already runs against this project; if it has the
+# Firebase Auth admin permission (firebaseauth.configs.get/update), this job reads
+# the current authorized domains and ADDS petwash.co.il + www.petwash.co.il without
+# removing anything. If the SA lacks the permission it fails with a clear 403 (then
+# the role must be granted once). Run from Actions → "Run workflow".
+name: Fix Firebase auth domains (one-shot)
+
+on:
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_ID: signinpetwash
+    steps:
+      - name: Auth to GCP (same creds as deploy)
+        uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+
+      - name: Ensure petwash.co.il in Firebase authorized domains
+        run: |
+          set -e
+          TOKEN="$(gcloud auth print-access-token)"
+          BASE="https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}/config"
+
+          echo "── Reading current Firebase Auth config…"
+          CFG="$(curl -fsS -H "Authorization: Bearer $TOKEN" "$BASE")" || {
+            echo "READ FAILED — the deploy service account likely lacks firebaseauth.configs.get."
+            echo "Grant it 'Firebase Authentication Admin' (roles/firebaseauth.admin) once, then re-run."
+            exit 1
+          }
+
+          echo "── Current authorizedDomains:"
+          echo "$CFG" | python3 -c 'import sys,json; d=json.load(sys.stdin); print("\n".join(d.get("authorizedDomains",[])))'
+
+          # Merge in our domains (idempotent; preserves existing).
+          MERGED="$(echo "$CFG" | python3 -c '
+import sys, json
+d = json.load(sys.stdin)
+cur = d.get("authorizedDomains", [])
+for want in ["petwash.co.il", "www.petwash.co.il"]:
+    if want not in cur:
+        cur.append(want)
+print(json.dumps({"authorizedDomains": cur}))
+')"
+
+          echo "── Patching authorizedDomains to:"
+          echo "$MERGED" | python3 -c 'import sys,json; print("\n".join(json.load(sys.stdin)["authorizedDomains"]))'
+
+          RESP="$(curl -fsS -X PATCH \
+            -H "Authorization: Bearer $TOKEN" \
+            -H "Content-Type: application/json" \
+            "${BASE}?updateMask=authorizedDomains" \
+            -d "$MERGED")" || {
+            echo "PATCH FAILED — the deploy service account likely lacks firebaseauth.configs.update."
+            echo "Grant it 'Firebase Authentication Admin' (roles/firebaseauth.admin) once, then re-run."
+            exit 1
+          }
+
+          echo "── ✅ Done. authorizedDomains now:"
+          echo "$RESP" | python3 -c 'import sys,json; print("\n".join(json.load(sys.stdin).get("authorizedDomains",[])))'
+          echo "Google/Apple sign-in should work on petwash.co.il within a minute."
