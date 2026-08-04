@@ -8,12 +8,6 @@
           { "/": "/dashboard/*" },
           { "/": "/jobs/*" }
         ]
-      },
-      {
-        "appIDs": ["U22NC3Q5Z4.com.petwash.il"],
-        "components": [
-          { "/": "/*" }
-        ]
       }
     ]
   },
