@@ -3,7 +3,7 @@ import { useParams, useLocation, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { 
   Calendar as CalendarIcon, Clock, MapPin, DollarSign, Star, Shield, 
-  Award, CheckCircle2, GraduationCap, MessageCircle, Heart, 
+  Award, CheckCircle2, GraduationCap, Heart,
   ArrowLeft, BookOpen, Target, Users, TrendingUp
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -395,14 +395,10 @@ export default function TrainerProfile() {
                         {t('Book Training Session')}
                       </Button>
 
-                      <Button
-                        variant="outline"
-                        className="w-full mb-3 gap-2"
-                        data-testid="button-message-trainer"
-                      >
-                        <MessageCircle className="h-4 w-4" />
-                        {t('Message Trainer')}
-                      </Button>
+                      {/* "Message Trainer" button removed 2026-08-04 — it had no onClick
+                          (dead button). Pre-booking messaging needs a chat rail that doesn't
+                          exist yet; the Book flow already carries a note to the trainer.
+                          Better no button than a broken one. */}
 
                       {/* Unified Navigation (Waze + Google Maps + Apple Maps) */}
                       {trainer.location ? (
