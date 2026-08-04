@@ -119,7 +119,7 @@ const T: Record<string, Record<string, string>> = {
   "pawfinder.desc": { en: "AI-powered community lost & found for pets", he: "מציאת חיות מחמד אבודות בקהילה בעזרת בינה מלאכותית", ru: "Поиск потерянных питомцев с помощью ИИ", fr: "Animaux perdus et trouvés par la communauté, propulsé par IA", es: "Comunidad de mascotas perdidas y encontradas con IA", ar: "مجتمع إيجاد الحيوانات الضائعة بالذكاء الاصطناعي" },
   "adoption.label": { en: "Adoption", he: "אימוץ", ru: "Усыновление", fr: "Adoption", es: "Adopción", ar: "التبني" },
   "adoption.desc": { en: "Pets looking for a forever home — free, every listing checked", he: "חיות הממתינות לבית קבוע — ללא עלות, כל פוסט נבדק", ru: "Питомцы в поиске дома — бесплатно, всё проверено", fr: "Des animaux en quête d'un foyer — gratuit, vérifié", es: "Mascotas que buscan hogar — gratis, verificado", ar: "حيوانات تبحث عن بيت — مجاناً، مع فحص" },
-  "academy.label": { en: "Pet Wash Academy", he: "אקדמיית ⁦Pet Wash™⁩", ru: "Академия ⁦Pet Wash™⁩", fr: "Académie ⁦Pet Wash™⁩", es: "Academia ⁦Pet Wash™⁩", ar: "أكاديمية ⁦Pet Wash™⁩" },
+  "academy.label": { en: "PetWash™ Academy", he: "אקדמיית ⁦PetWash™⁩", ru: "Академия ⁦PetWash™⁩", fr: "Académie ⁦PetWash™⁩", es: "Academia ⁦PetWash™⁩", ar: "أكاديمية ⁦PetWash™⁩" },
   "academy.desc": { en: "Full pet training with professional trainers — from puppy basics to advanced obedience and behaviour.", he: "אילוף מלא לחיות מחמד עם מאמנים מקצועיים — מיסודות לגורים ועד ציות והתנהגות מתקדמים.", ru: "Полное обучение питомцев с профессиональными тренерами — от азов для щенков до продвинутого послушания.", fr: "Éducation complète avec des dresseurs professionnels — des bases du chiot à l'obéissance et au comportement avancés.", es: "Adiestramiento completo con entrenadores profesionales — desde lo básico del cachorro hasta obediencia avanzada.", ar: "تدريب كامل للحيوانات مع مدرّبين محترفين — من أساسيات الجراء إلى الطاعة والسلوك المتقدّم." },
   "shop.label": { en: "PetWash Shop", he: "חנות ⁦PetWash™⁩", ru: "Магазин ⁦PetWash™⁩", fr: "Boutique ⁦PetWash™⁩", es: "Tienda ⁦PetWash™⁩", ar: "متجر ⁦PetWash™⁩" },
   "shop.desc": { en: "Personalised accessories and pet care — open to browse", he: "אביזרים בהזמנה אישית ומוצרי טיפוח — פתוח לעיון", ru: "Персонализированные аксессуары и уход — открыто для просмотра", fr: "Accessoires personnalisés et soins — ouvert à la découverte", es: "Accesorios personalizados y cuidado — abierto para explorar", ar: "إكسسوارات مخصصة ومنتجات عناية — متاح للتصفح" },
@@ -190,7 +190,7 @@ const PLATFORM_ITEMS = [
 const PARTNER_ITEMS = [
   { id: "academy", labelKey: "academy.label", descKey: "academy.desc", href: "/academy", frozen: false, iconKey: "trust_pet_safe" },
   { id: "shop", labelKey: "shop.label", descKey: "shop.desc", href: "/shop", frozen: false, iconKey: "product_gift_box" },
-  { id: "avatar", labelKey: "avatar.label", descKey: "avatar.desc", href: "#", frozen: true, iconKey: "brand_sparkle" },
+  // "avatar" (Avatar Studio) removed 2026-08-04 — it was a dead href:"#" frozen item.
 ];
 
 const PLATFORM_GROUPS = [
