@@ -125,6 +125,20 @@ export class AppErrorBoundary extends Component<Props, State> {
     const isChunk = this.state.isChunkError ?? isChunkLoadError(error);
     const errorKind = isChunk ? "chunk-load" : "render";
 
+    // Auto-recover from a stale-chunk crash (CEO 2026-08-04): a first-time chunk-load
+    // error is almost always a tab holding the OLD index.html after a deploy — the
+    // requested chunk 404s and Hosting returns index.html (text/html), so the import
+    // throws. Reload ONCE to pull the fresh chunks so the user never sees an error
+    // card. `repeatedChunkFailure` (persisted across reloads) breaks any loop → we
+    // then fall through to render the manual "new version available" card.
+    if (isChunk && !(this.state.repeatedChunkFailure ?? false)) {
+      try {
+        trackBoundaryCrash(error, { referenceId, errorKind, componentStack: errorInfo.componentStack, url: context.url, userId: context.userId, userRole: context.userRole });
+      } catch { /* never throw in the boundary */ }
+      window.location.reload();
+      return;
+    }
+
     // Tag the crash in Sentry with the user-facing referenceId so a quoted
     // "Reference: abc123" is directly findable (no-op without a DSN).
     try {
