@@ -401,7 +401,12 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
     });
 
     if (!optionsResponse.ok) {
-      console.error('Conditional UI: Failed to get options');
+      // Expected fallback, NOT an error: the conditional-UI probe runs on every page
+      // load for signed-out visitors, and a non-OK here (no passkey, rate-limited, or
+      // the options endpoint busy) just means "fall back to the normal sign-in flow".
+      // Logged as console.error it spammed red errors on every page and made a healthy
+      // site look broken in devtools. (2026-08-04)
+      console.debug('Conditional UI: options unavailable — using standard sign-in flow');
       return false;
     }
 
