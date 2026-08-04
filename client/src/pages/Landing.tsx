@@ -227,6 +227,35 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
           <PetWashDivisions language={language} />
         )}
 
+        {/* How-to video (CEO 2026-08-04): sits right below the platforms / "World of
+            PetWash" section. youtube-nocookie for privacy; ™ isolated for RTL. */}
+        <section className="py-10 px-4 sm:px-6 lg:px-8 bg-white">
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-6">
+              <h2 className="font-serif text-2xl sm:text-3xl font-light text-[#111] mb-2 tracking-tight">
+                {language === 'he' ? 'איך משתמשים בעמדת ⁦PetWash™⁩'
+                  : language === 'ar' ? 'كيفية استخدام محطة ⁦PetWash™⁩'
+                  : language === 'ru' ? 'Как пользоваться станцией PetWash™'
+                  : language === 'fr' ? 'Comment utiliser une borne PetWash™'
+                  : language === 'es' ? 'Cómo usar una estación PetWash™'
+                  : 'How to Use a PetWash™ Station'}
+              </h2>
+              <div className="w-12 h-px bg-gradient-to-r from-transparent via-[#c6a664] to-transparent mx-auto mb-3" />
+            </div>
+            <div className="relative rounded-3xl overflow-hidden bg-black shadow-xl border border-[#c6a664]/20" style={{ paddingBottom: '56.25%' }}>
+              <iframe
+                className="absolute inset-0 w-full h-full"
+                src="https://www.youtube-nocookie.com/embed/UHqb_8gCOag?rel=0"
+                title="PetWash — How to use the smart self-service station"
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                loading="lazy"
+                data-testid="home-howto-video"
+              />
+            </div>
+          </div>
+        </section>
+
         {/* Luxury Gold Divider */}
         <div className="relative h-3 bg-white overflow-hidden">
           <div className="absolute inset-0 flex items-center justify-center">

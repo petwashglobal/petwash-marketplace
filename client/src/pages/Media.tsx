@@ -11,7 +11,7 @@ const COPY: Record<Lang, Record<string, string>> = {
   he: {
     title: 'מדיה, תמונות וסרטונים',
     subtitle: 'נכסי מותג, חומרים לעיתונות ומשאבי מדיה',
-    videoTitle: 'איך משתמשים בעמדת PetWash™',
+    videoTitle: 'איך משתמשים בעמדת ⁦PetWash™⁩',
     videoSubtitle: 'מדריך קצר, צעד אחר צעד, לעמדת הרחיצה העצמית החכמה שלנו',
     clickToPlay: 'לחצו להפעלה',
     galleryTitle: 'גלריית תמונות',
@@ -49,7 +49,7 @@ const COPY: Record<Lang, Record<string, string>> = {
   ar: {
     title: 'الوسائط والصور والفيديو',
     subtitle: 'أصول العلامة التجارية والمواد الصحفية وموارد الوسائط',
-    videoTitle: 'كيفية استخدام محطة PetWash™',
+    videoTitle: 'كيفية استخدام محطة ⁦PetWash™⁩',
     videoSubtitle: 'دليل سريع خطوة بخطوة لمحطة الغسيل الذاتي الذكية لدينا',
     clickToPlay: 'اضغط للتشغيل',
     galleryTitle: 'معرض الصور',
