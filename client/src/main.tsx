@@ -4,6 +4,34 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import "./lib/i18next-init";
 
+// ── Stale-chunk auto-recovery (CEO 2026-08-04) ───────────────────────────────
+// After a deploy, code-split chunk filenames change (content hashes). A visitor
+// whose tab still holds the OLD index.html then navigates → the browser requests
+// an old chunk that no longer exists. Firebase Hosting's SPA rewrite answers that
+// missing /assets/*.js with index.html (HTTP 200, text/html), so the dynamic
+// import throws "'text/html' is not a valid JavaScript MIME type" and the whole
+// page crashes into the error boundary — the exact monitoring alert on /sitter-suite.
+//
+// Standard fix: on a dynamic-import / preload failure, reload ONCE to pull the
+// fresh index.html + current chunks. A 12s time-guard prevents an infinite loop
+// if a reload doesn't help (then the real error boundary shows).
+(() => {
+  const RELOAD_KEY = 'pw_chunk_reload_at';
+  const CHUNK_ERR = /valid JavaScript MIME type|dynamically imported module|module script failed|Loading (chunk|CSS chunk)|error loading dynamically imported/i;
+  const recover = () => {
+    try {
+      const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
+      if (Date.now() - last > 12000) {
+        sessionStorage.setItem(RELOAD_KEY, String(Date.now()));
+        window.location.reload();
+      }
+    } catch { window.location.reload(); }
+  };
+  window.addEventListener('vite:preloadError', (e: any) => { e?.preventDefault?.(); recover(); });
+  window.addEventListener('error', (e: any) => { if (CHUNK_ERR.test(String(e?.message || ''))) recover(); });
+  window.addEventListener('unhandledrejection', (e: any) => { if (CHUNK_ERR.test(String(e?.reason?.message || e?.reason || ''))) recover(); });
+})();
+
 // ── REMOVED: the #1110 Node.prototype removeChild/insertBefore monkeypatch ────
 // It was meant to make React tolerant of foreign DOM mutation (facebook/react
 // #11538). In OUR app it BACKFIRED catastrophically: the guards silently no-op
