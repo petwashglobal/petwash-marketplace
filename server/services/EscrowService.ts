@@ -144,25 +144,40 @@ class EscrowService {
     // First-create-only: fire notifications. Notifications are external
     // side effects and must NOT live inside the transaction (they would
     // re-fire on every tx retry under contention).
-    await NotificationService.sendNotification({
-      userId: customerId,
-      type: "payment",
-      title: "Payment Secured 🔒",
-      message: `₪${amount.toFixed(2)} held in escrow. Will be released upon service completion.`,
-      priority: "normal",
-      channel: "push",
-      data: { escrowId: result.escrow.id, bookingId },
-    });
+    //
+    // HONESTY GUARD (CEO 2026-08-04): only tell the customer/provider that money is
+    // "Secured 🔒 / held in escrow" when money was ACTUALLY captured. Callers that
+    // create the escrow record BEFORE (or without) a real charge — e.g. booking-requests
+    // /pay (hold created before the Nayax redirect) — pass metadata.moneyCaptured=false
+    // so we don't lie about held funds. The real confirmation then fires from the
+    // payment webhook when money truly moves. Default (undefined) preserves the
+    // capture-first flows that were honest already.
+    const moneyCaptured = (metadata?.moneyCaptured !== false);
+    if (moneyCaptured) {
+      await NotificationService.sendNotification({
+        userId: customerId,
+        type: "payment",
+        title: "Payment Secured 🔒",
+        message: `₪${amount.toFixed(2)} held in escrow. Will be released upon service completion.`,
+        priority: "normal",
+        channel: "push",
+        data: { escrowId: result.escrow.id, bookingId },
+      });
 
-    await NotificationService.sendNotification({
-      userId: providerId,
-      type: "payment",
-      title: "Booking Confirmed 🎉",
-      message: `Payment secured in escrow. Complete service to receive ₪${amount.toFixed(2)}.`,
-      priority: "normal",
-      channel: "push",
-      data: { escrowId: result.escrow.id, bookingId },
-    });
+      await NotificationService.sendNotification({
+        userId: providerId,
+        type: "payment",
+        title: "Booking Confirmed 🎉",
+        message: `Payment secured in escrow. Complete service to receive ₪${amount.toFixed(2)}.`,
+        priority: "normal",
+        channel: "push",
+        data: { escrowId: result.escrow.id, bookingId },
+      });
+    } else {
+      console.log(
+        `[Escrow] moneyCaptured=false for booking ${bookingId} — suppressing premature "Payment Secured" notifications (webhook will confirm on real capture).`
+      );
+    }
 
     console.log(
       `[Escrow] Payment held: ₪${amount.toFixed(2)} for booking ${bookingId}`

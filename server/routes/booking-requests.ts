@@ -2288,6 +2288,10 @@ router.post('/:requestId/pay', async (req, res) => {
           providerType: booking.providerType,
           startDate: booking.startDate,
           endDate: booking.endDate,
+          // Money is NOT captured yet here — this hold is created BEFORE the Nayax
+          // redirect. Suppress the premature "Payment Secured 🔒" push; the webhook
+          // fires the real confirmation when the customer actually pays. (CEO 2026-08-04)
+          moneyCaptured: false,
         }
       );
       logger.info('[BookingRequests] Escrow record created (pending payment confirmation)', {
