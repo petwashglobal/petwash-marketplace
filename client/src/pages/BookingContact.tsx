@@ -28,7 +28,7 @@ import { PhoneInput, isValidE164 } from '@/components/PhoneInput';
 import { apiRequest } from '@/lib/queryClient';
 import {
   ArrowLeft, X, Star, MapPin, Home, House, Sun, DoorOpen, Dog,
-  CalendarDays, Check, ShieldCheck, PlusCircle, Lock,
+  CalendarDays, Clock, Check, ShieldCheck, PlusCircle, Lock,
 } from 'lucide-react';
 import type { MarketplacePlatformId } from '@shared/schema';
 
@@ -91,6 +91,10 @@ export default function BookingContact() {
 
   const [startDate, setStartDate] = useState(qpStart || todayISO());
   const [endDate, setEndDate] = useState(qpEnd || qpStart || todayISO());
+  // Preferred time of day. Was hard-coded 09:00–10:00 for every booking; customers
+  // can now pick a real time. (CEO 2026-08-04) Single-day modes book a 1-hour window
+  // starting at this time; ranged modes apply it as the daily start time.
+  const [startTime, setStartTime] = useState('09:00');
   const [selectedPetIds, setSelectedPetIds] = useState<string[]>([]);
   const [message, setMessage] = useState('');
   const [phone, setPhone] = useState('');
@@ -145,10 +149,10 @@ export default function BookingContact() {
 
       // 2) Build start/end. Ranged modes use the date range; single modes book a
       //    1-hour window on the chosen day (the engine requires end > start).
-      const startISO = new Date(`${startDate}T09:00:00`).toISOString();
+      const startISO = new Date(`${startDate}T${startTime}:00`).toISOString();
       const endISO = mode.ranged
-        ? new Date(`${endDate}T09:00:00`).toISOString()
-        : new Date(`${startDate}T10:00:00`).toISOString();
+        ? new Date(`${endDate}T${startTime}:00`).toISOString()
+        : new Date(new Date(`${startDate}T${startTime}:00`).getTime() + 60 * 60 * 1000).toISOString();
 
       const providerType = platform === 'walk_my_pet' ? 'walker' : 'sitter';
       const modeLabel = isHebrew ? `${mode.labelHe} — ${mode.subHe}` : `${mode.labelEn} — ${mode.subEn}`;
@@ -306,6 +310,11 @@ export default function BookingContact() {
             </div>
           </Section>
 
+          {/* preferred time */}
+          <Section label={isHebrew ? 'שעה מועדפת' : 'Preferred time'}>
+            <TimeField value={startTime} onChange={setStartTime} />
+          </Section>
+
           {/* pets */}
           <Section label={isHebrew ? 'בחר/י חיית מחמד' : 'Select your pet'}>
             {pets.length === 0 ? (
@@ -416,6 +425,20 @@ function DateField({ value, min, onChange }: { value: string; min?: string; onCh
         type="date"
         value={value}
         min={min}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full bg-transparent text-[16px] outline-none"
+      />
+    </div>
+  );
+}
+
+function TimeField({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <div className="flex items-center gap-2 rounded-xl border border-black/15 px-3 py-2.5 focus-within:border-black/40">
+      <Clock className="h-5 w-5 shrink-0 text-black/50" />
+      <input
+        type="time"
+        value={value}
         onChange={(e) => onChange(e.target.value)}
         className="w-full bg-transparent text-[16px] outline-none"
       />
