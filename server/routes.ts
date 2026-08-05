@@ -17141,25 +17141,30 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // Restricted to HR, Finance, Directors, and Super Admins only
   const requireAdminPanelAccess = requireAuthenticatedRole(['super_admin', 'admin', 'hr', 'finance', 'director']);
   app.get('/api/admin-panel/stats', requireAdminPanelAccess, async (req: Request, res: Response) => {
-    try {
-      const usersResult = await db.execute(sql`SELECT COUNT(*) as count FROM users`);
-      const providersResult = await db.execute(sql`SELECT COUNT(*) as count FROM providers`);
-      const applicantsResult = await db.execute(sql`SELECT COUNT(*) as count FROM provider_applicants`);
-      const staffResult = await db.execute(sql`SELECT COUNT(*) as count FROM staff_applications`);
-      const pendingApplicantsResult = await db.execute(sql`SELECT COUNT(*) as count FROM provider_applicants WHERE status = 'pending'`);
-      const pendingStaffResult = await db.execute(sql`SELECT COUNT(*) as count FROM staff_applications WHERE status = 'pending'`);
-      res.json({
-        members: Number(usersResult.rows?.[0]?.count ?? usersResult[0]?.count ?? 0),
-        providers: Number(providersResult.rows?.[0]?.count ?? providersResult[0]?.count ?? 0),
-        applicants: Number(applicantsResult.rows?.[0]?.count ?? applicantsResult[0]?.count ?? 0),
-        staff: Number(staffResult.rows?.[0]?.count ?? staffResult[0]?.count ?? 0),
-        pendingApplicants: Number(pendingApplicantsResult.rows?.[0]?.count ?? pendingApplicantsResult[0]?.count ?? 0),
-        pendingStaff: Number(pendingStaffResult.rows?.[0]?.count ?? pendingStaffResult[0]?.count ?? 0),
-      });
-    } catch (error: any) {
-      logger.error('[AdminPanel] Stats error:', error);
-      res.status(500).json({ error: 'Failed to load stats' });
-    }
+    // Each count is fetched independently and fails soft to 0. Previously all six
+    // ran in one try block, so a single missing/unmigrated table (staff_applications
+    // is defined only in the Drizzle schema and may not exist in prod) 500'd the
+    // WHOLE overview — blanking members/providers/applicants too. That is the
+    // "back end shows nothing / cannot see any true facts" symptom. Now every real
+    // table renders its true count and only the missing one degrades to 0.
+    const countOf = async (query: any): Promise<number> => {
+      try {
+        const r = await db.execute(query);
+        return Number(r.rows?.[0]?.count ?? (r as any)[0]?.count ?? 0);
+      } catch (error: any) {
+        logger.warn(`[AdminPanel] stats count failed (soft 0): ${error?.message}`);
+        return 0;
+      }
+    };
+    const [members, providers, applicants, staff, pendingApplicants, pendingStaff] = await Promise.all([
+      countOf(sql`SELECT COUNT(*) as count FROM users`),
+      countOf(sql`SELECT COUNT(*) as count FROM providers`),
+      countOf(sql`SELECT COUNT(*) as count FROM provider_applicants`),
+      countOf(sql`SELECT COUNT(*) as count FROM staff_applications`),
+      countOf(sql`SELECT COUNT(*) as count FROM provider_applicants WHERE status = 'pending'`),
+      countOf(sql`SELECT COUNT(*) as count FROM staff_applications WHERE status = 'pending'`),
+    ]);
+    res.json({ members, providers, applicants, staff, pendingApplicants, pendingStaff });
   });
 
   app.get('/api/admin-panel/members', requireAdminPanelAccess, async (req: Request, res: Response) => {
@@ -17258,6 +17263,14 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const totalCount = Number(totalResult.rows?.[0]?.count ?? totalResult[0]?.count ?? 0);
       res.json({ staff, total: totalCount, page, limit });
     } catch (error: any) {
+      // staff_applications is a Drizzle-schema-only table that may not be migrated
+      // in prod. If it's missing, degrade to an empty list (the honest state — no
+      // staff applications) instead of 500ing the whole Staff tab of the backend panel.
+      const missingTable = /relation .*staff_applications.* does not exist|no such table/i.test(error?.message || '');
+      if (missingTable) {
+        logger.warn('[AdminPanel] staff_applications table missing — returning empty list');
+        return res.json({ staff: [], total: 0, page: 1, limit: 20, tableMissing: true });
+      }
       logger.error('[AdminPanel] Staff error:', error);
       res.status(500).json({ error: 'Failed to load staff' });
     }

@@ -136,13 +136,15 @@ export default function AdminInbox() {
 
   const broadcastMutation = useMutation({
     mutationFn: async (data: any) => {
-      // Server route is /admin/broadcast-users (inbox.ts). The old '/broadcast/users'
-      // spelling 404'd every send. Franchise broadcast has NO backend route —
-      // fail with the truth instead of a silent 404.
+      // Server route is POST /admin/broadcast-users inside inbox.ts, and that router
+      // is mounted at /api/inbox (routes.ts) — so the real path is
+      // /api/inbox/admin/broadcast-users. The old '/api/admin/broadcast-users'
+      // spelling had NO handler and 404'd every send. Franchise broadcast has NO
+      // backend route — fail with the truth instead of a silent 404.
       if (targetType !== 'users') {
         throw new Error('Franchise broadcast is not wired yet — use user broadcast');
       }
-      return apiRequest('POST', '/api/admin/broadcast-users', data);
+      return apiRequest('POST', '/api/inbox/admin/broadcast-users', data);
     },
     onSuccess: (response: any) => {
       toast({
