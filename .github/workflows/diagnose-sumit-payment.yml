@@ -1,0 +1,90 @@
+name: Diagnose SUMIT payment rail (beginRedirect field-name verify)
+on:
+  workflow_dispatch:
+    inputs:
+      amount_ils:
+        description: "Test amount (ILS). Creates a payment PAGE only — no money moves unless someone pays it."
+        required: false
+        default: "20"
+permissions:
+  contents: read
+# WHAT THIS DOES / DOES NOT DO
+#   DOES:  read the SUMIT merchant creds from THIS project's Secret Manager (never
+#          printed), POST one /billing/payments/beginredirect/ request, and dump the
+#          RESPONSE so we learn (a) does the request format work and (b) the real
+#          redirect-URL field name — the exact items SumitClient marks "UNVERIFIED".
+#   DOES NOT: move any money. beginredirect only creates a hosted payment page; a
+#          card is only charged if a human opens that page and pays. No card data
+#          touches this job. The API key is loaded into env but never echoed.
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      SERVICE: petwash-api
+      REGION: me-west1
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+      - name: Resolve SUMIT creds from the deployed service (names only)
+        id: creds
+        run: |
+          set -uo pipefail
+          echo "== SUMIT-related env on Cloud Run $SERVICE (names + secretRef targets, NO values) =="
+          gcloud run services describe "$SERVICE" --region "$REGION" --format=json 2>/dev/null \
+            | jq -r '(.spec.template.spec.containers[0].env // [])[]
+                     | select(.name|test("SUMIT"))
+                     | "\(.name) => \(.value // ("secret:" + (.valueFrom.secretKeyRef.name // "?")))"'
+          # discover the secret names backing the two creds we need
+          ENVJSON="$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json 2>/dev/null | jq -c '(.spec.template.spec.containers[0].env // [])')"
+          KEY_SECRET="$(echo "$ENVJSON" | jq -r '.[] | select(.name=="SUMIT_API_KEY")    | .valueFrom.secretKeyRef.name // empty')"
+          CO_SECRET="$(echo "$ENVJSON"  | jq -r '.[] | select(.name=="SUMIT_COMPANY_ID") | .valueFrom.secretKeyRef.name // empty')"
+          CO_PLAIN="$(echo "$ENVJSON"   | jq -r '.[] | select(.name=="SUMIT_COMPANY_ID") | .value // empty')"
+          ENABLED="$(echo "$ENVJSON"    | jq -r '.[] | select(.name=="SUMIT_ENABLED")    | (.value // ("secret:" + (.valueFrom.secretKeyRef.name // "?")))')"
+          echo "SUMIT_ENABLED=$ENABLED"
+          echo "key_secret=$KEY_SECRET"   >> "$GITHUB_OUTPUT"
+          echo "co_secret=$CO_SECRET"     >> "$GITHUB_OUTPUT"
+          echo "co_plain=$CO_PLAIN"       >> "$GITHUB_OUTPUT"
+      - name: Call beginRedirect once (no money moves) and dump the response shape
+        env:
+          KEY_SECRET: ${{ steps.creds.outputs.key_secret }}
+          CO_SECRET:  ${{ steps.creds.outputs.co_secret }}
+          CO_PLAIN:   ${{ steps.creds.outputs.co_plain }}
+          AMOUNT:     ${{ github.event.inputs.amount_ils }}
+        run: |
+          set -uo pipefail
+          if [ -z "${KEY_SECRET:-}" ]; then echo "SUMIT_API_KEY is not a secretRef on the service — cannot run the test. Check the env wiring."; exit 0; fi
+          APIKEY="$(gcloud secrets versions access latest --secret="$KEY_SECRET" 2>/dev/null)"
+          if [ -n "${CO_SECRET:-}" ]; then COMPANY="$(gcloud secrets versions access latest --secret="$CO_SECRET" 2>/dev/null)"; else COMPANY="$CO_PLAIN"; fi
+          if [ -z "${APIKEY:-}" ] || [ -z "${COMPANY:-}" ]; then echo "Could not resolve SUMIT creds (key/company). Aborting — nothing sent."; exit 0; fi
+          EXT="sumit_verify_$(echo $RANDOM$RANDOM)"
+          echo "== POST https://api.sumit.co.il/billing/payments/beginredirect/  (ExternalIdentifier=$EXT, amount=₪$AMOUNT) =="
+          # Body mirrors SumitClient.beginRedirect exactly. Key is in a var, never echoed.
+          BODY=$(jq -n --arg co "$COMPANY" --arg k "$APIKEY" --arg ext "$EXT" --argjson amt "${AMOUNT:-20}" '{
+            Credentials: { CompanyID: ($co|tonumber? // $co), APIKey: $k },
+            RedirectURL: "https://petwash.co.il/api/egift/guest/return?ext=\($ext)",
+            ExternalIdentifier: $ext,
+            Customer: { Name: "SUMIT Rail Verify", EmailAddress: "nir.h@petwash.co.il" },
+            Items: [ { Item: { Name: "PetWash rail verification" }, Quantity: 1, UnitPrice: $amt } ],
+            VATIncluded: true,
+            Language: "Hebrew"
+          }')
+          RESP="$(curl -sS -w '\n__HTTP__%{http_code}' --max-time 30 \
+            -H 'Content-Type: application/json' -H 'Accept: application/json' -H "Idempotency-Key: $EXT" \
+            -d "$BODY" https://api.sumit.co.il/billing/payments/beginredirect/ 2>&1)"
+          CODE="$(echo "$RESP" | sed -n 's/.*__HTTP__//p')"
+          JSON="$(echo "$RESP" | sed 's/__HTTP__[0-9]*$//')"
+          echo "HTTP $CODE"
+          echo "$JSON" | jq '.' 2>/dev/null || echo "$JSON"
+          echo "== VERDICT =="
+          URL="$(echo "$JSON" | jq -r '(.. | strings | select(startswith("http")) ) // empty' 2>/dev/null | head -1)"
+          if [ -n "$URL" ]; then
+            echo "✅ SUMIT beginRedirect WORKS — hosted payment URL returned. Field path present above."
+            echo "   The card rail request format is CONFIRMED. Remaining: one real payment to confirm getTransaction() verify fields."
+          else
+            echo "⚠️ No hosted URL in response. Read the raw shape above — it reveals exactly what SUMIT wants (missing field / bad casing / auth)."
+          fi
