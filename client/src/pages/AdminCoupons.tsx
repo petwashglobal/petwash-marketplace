@@ -266,7 +266,15 @@ export default function AdminCoupons() {
   });
 
   const { data: statsData, isLoading: statsLoading } = useQuery<any>({
+    // The default queryFn fetches only queryKey[0], so a 3-part key silently
+    // re-requested the coupon LIST (/api/admin/coupons) and ignored statsId — the
+    // stats panel bound to fields that never arrived ("cannot see the facts").
+    // Give it an explicit queryFn that hits the real endpoint: GET /:id/stats.
     queryKey: ['/api/admin/coupons', statsId, 'stats'],
+    queryFn: async () => {
+      const res = await apiRequest('GET', `/api/admin/coupons/${statsId}/stats`);
+      return res.json();
+    },
     enabled: statsId !== null,
   });
 
