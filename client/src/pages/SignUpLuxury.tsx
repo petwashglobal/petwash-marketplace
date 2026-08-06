@@ -253,7 +253,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     (async () => {
       try {
         const { resolvePostLogin } = await import('@/lib/postLoginCoordinator');
-        const data: any = await resolvePostLogin({ body: explicitIntent ? { intent: explicitIntent } : undefined });
+        const b = explicitIntent ? { intent: explicitIntent } : undefined;
+        // Bearer-carry + retry (2026-08-06 trace Finding #1): post-login must not
+        // 401 on cookie-timing and silently route a super-admin to the member home.
+        const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
+        let data: any = await resolvePostLogin({ body: b, idToken });
+        if ((!data?.ok || !data?.nextUrl) && auth.currentUser) {
+          const fresh = await auth.currentUser.getIdToken(true).catch(() => undefined);
+          if (fresh) { const r: any = await resolvePostLogin({ body: b, idToken: fresh }); if (r?.nextUrl) data = r; }
+        }
         if (!cancelled) navigate(data?.nextUrl || data?.redirectTo || dest);
       } catch {
         if (!cancelled) navigate(dest);
@@ -463,7 +471,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     const intent = explicitIntent || (flow === 'provider' ? 'provider' : 'loyalty');
     try {
       const { resolvePostLogin } = await import('@/lib/postLoginCoordinator');
-      const data: any = await resolvePostLogin({ body: { intent } });
+      // Carry the Firebase ID token so /api/auth/post-login authenticates via Bearer
+      // even if the __session cookie hasn't landed yet (cold start / slow mint). Root
+      // cause of "logged in but no dashboard" (2026-08-06 trace, Finding #1): a
+      // cookie-timing 401 was silently rewritten to `dest` (/prestige/home), dumping
+      // a super-admin on the member home instead of /admin/dashboard.
+      const idToken = await auth.currentUser?.getIdToken().catch(() => undefined);
+      let data: any = await resolvePostLogin({ body: { intent }, idToken });
+      // Still no destination? Retry ONCE with a force-refreshed token rather than
+      // fall through to the wrong (member-home) dest.
+      if ((!data?.ok || !data?.nextUrl) && auth.currentUser) {
+        const fresh = await auth.currentUser.getIdToken(true).catch(() => undefined);
+        if (fresh) { const r: any = await resolvePostLogin({ body: { intent }, idToken: fresh }); if (r?.nextUrl) data = r; }
+      }
       navigate(data?.nextUrl || data?.redirectTo || dest);
     } catch {
       navigate(dest);
