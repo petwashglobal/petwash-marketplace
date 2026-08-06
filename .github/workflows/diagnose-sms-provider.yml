@@ -1,0 +1,50 @@
+name: Diagnose SMS provider + signup gates (is mobile OTP wired in prod)
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+# Reads the deployed service's env NAMES only (values never printed) to confirm
+# whether mobile-OTP signup can actually send SMS in prod, and which path is active.
+jobs:
+  diag:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    env:
+      SERVICE: petwash-api
+      REGION: me-west1
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+      - name: SMS + signup-gate env presence (names/secretRef only)
+        run: |
+          set -uo pipefail
+          ENVJSON="$(gcloud run services describe "$SERVICE" --region "$REGION" --format=json 2>/dev/null | jq -c '(.spec.template.spec.containers[0].env // [])')"
+          present() {
+            local name="$1"
+            local hit="$(echo "$ENVJSON" | jq -r --arg n "$name" '.[] | select(.name==$n) | (if .value then "SET(value)" elif .valueFrom.secretKeyRef then "SET(secret:" + .valueFrom.secretKeyRef.name + ")" else "SET(empty)" end)')"
+            if [ -z "$hit" ]; then echo "  $name = ❌ NOT SET"; else echo "  $name = ✅ $hit"; fi
+          }
+          echo "===== Twilio SMS credentials (mobile OTP needs SID + TOKEN + a sender) ====="
+          present TWILIO_ACCOUNT_SID
+          present TWILIO_AUTH_TOKEN
+          present TWILIO_PHONE_NUMBER
+          present TWILIO_MESSAGING_SERVICE_SID
+          present TWILIO_PHONE_NUMBER_IL
+          present TWILIO_PHONE_NUMBER_US
+          echo "===== which verification path is active ====="
+          present UNIFIED_VERIFICATION_LOGIN_ENABLED
+          present FF_UNIFIED_VERIFICATION
+          echo "===== Apple sign-in service id (client-side) ====="
+          present VITE_APPLE_SERVICE_ID
+          present APPLE_SERVICE_ID
+          echo "===== SMS abuse caps ====="
+          present SMS_PER_PHONE_DAILY_CAP
+          present SMS_INSTANCE_DAILY_CAP
+          echo ""
+          echo "READ: TWILIO_ACCOUNT_SID + TWILIO_AUTH_TOKEN + at least ONE valid sender"
+          echo "      (TWILIO_PHONE_NUMBER / _IL / _US / MESSAGING_SERVICE_SID) must be SET,"
+          echo "      or mobile-OTP signup returns SMS_PROVIDER_ERROR (honest, but blocked)."
