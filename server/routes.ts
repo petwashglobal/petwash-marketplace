@@ -11523,6 +11523,9 @@ self.addEventListener('notificationclick', (event) => {
 
   // Observances routes (Pet holidays & events)
   const observancesRoutes = await import('./routes/observances');
+  // Admin-gate the reseed (2026-08-06 sweep) — was an unauthenticated Firestore
+  // overwrite. Reads stay public; only POST /populate now requires admin.
+  app.use('/api/observances/populate', validateFirebaseToken, requireAdmin);
   app.use('/api/observances', apiLimiter, observancesRoutes.default);
 
   // Pet Profiles routes
@@ -11639,7 +11642,11 @@ self.addEventListener('notificationclick', (event) => {
 
   // Phase 12.25 — Autonomous Optimization (Controlled)
   const optimizerRoutes = await import('./routes/optimizer');
-  app.use('/api/expansion/optimizer', apiLimiter, optimizerRoutes.default);
+  // Admin-gated EXPLICITLY (2026-08-06 security sweep): these proposal-mutation
+  // routes are already behind the parent `/api/expansion` requireAdmin mount above
+  // (prefix match runs first), but a static audit flagged them as open — make the
+  // guard explicit here so the protection can't be lost if mount order ever changes.
+  app.use('/api/expansion/optimizer', validateFirebaseToken, requireAdmin, apiLimiter, optimizerRoutes.default);
 
   // Phase 12.7 — Booking Trace & Dispute Resolution Layer
   // Own auth middleware (requireTraceViewer): franchise_owner, station_operator, admin.
@@ -12286,7 +12293,12 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/environment', apiLimiter, environmentRoutes);
   
   // Gemini AI Translation API - Perfect translations with monitoring (NOT Google Translate!)
-  app.use('/api/translate', apiLimiter, translationRoutes);
+  // AUTH REQUIRED (2026-08-06 security sweep): /api/translate calls paid Gemini.
+  // Left unauthenticated, any anonymous caller could drive AI spend (the exact
+  // "surprise Google bill" class from prior incidents), and /batch amplifies it.
+  // validateFirebaseToken 401s anonymous callers; logged-in users are unaffected
+  // (no public component uses the translate hook).
+  app.use('/api/translate', validateFirebaseToken, apiLimiter, translationRoutes);
   
   // Global Special Days Promotions (Black Friday, Cyber Monday, Valentine's, Mother's/Father's Day)
   app.use('/api/promotions', apiLimiter, promotionsRoutes);
@@ -12324,6 +12336,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/israeli-compliance', apiLimiter, israeliContractorComplianceRoutes);
   
   // Performance Monitoring - Database, API, and system metrics
+  // Admin-gate the metrics reset (2026-08-06 sweep) — was unauthenticated
+  // observability tampering. Health/read endpoints stay public; only /reset is gated.
+  app.use('/api/monitoring/reset', validateFirebaseToken, requireAdmin);
   app.use('/api/monitoring', apiLimiter, monitoringRoutes);
   
   // Gemini AI Watchdog - Real-time monitoring, user struggle detection, auto-fix engine
