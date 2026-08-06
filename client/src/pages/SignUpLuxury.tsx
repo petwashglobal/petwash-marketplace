@@ -683,6 +683,35 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // cancel rejections (ASWebAuthenticationSession / Apple sheet dismiss).
       const cancelSignal = `${e?.code ?? ''} ${e?.message ?? ''}`.toLowerCase();
       if (cancelSignal.includes('popup-closed-by-user') || cancelSignal.includes('cancel')) return;
+      // POPUP BLOCKED → fall back to full-page redirect instead of dead-ending.
+      // This is the #1 "Google/Apple does nothing and bounces back to the login
+      // page" cause: on desktop + non-iOS browsers the popup strategy is chosen,
+      // and popup blockers / strict browsers / embedded webviews silently block
+      // signInWithPopup (auth/popup-blocked). Rather than show an error and strand
+      // the user, seamlessly retry via signInWithRedirect, which always works.
+      // (popup-closed-by-user is a deliberate cancel — already returned above.)
+      const popupFailed =
+        cancelSignal.includes('popup-blocked') ||
+        cancelSignal.includes('cancelled-popup-request') ||
+        cancelSignal.includes('operation-not-supported-in-this-environment');
+      if (popupFailed && (which === 'google' || which === 'apple' || which === 'facebook')) {
+        try {
+          logger.warn('[signup] social popup blocked — falling back to redirect', { which });
+          try { (window as any).PW_track?.('auth.social_popup_fallback_redirect', { provider: which }); } catch { /* noop */ }
+          // `provider` above is scoped to the try block — recreate it here.
+          const redirectProvider =
+            which === 'google' ? createGoogleProvider() :
+            which === 'apple'  ? createAppleProvider()  :
+                                 createFacebookProvider();
+          setSignupRedirectMarker(which);
+          await seedSignupIntentCookie();
+          await signInWithRedirect(auth, redirectProvider);
+          return; // page navigates away; getRedirectResult() finishes on return
+        } catch (redirectErr) {
+          logger.error('[signup] social redirect fallback failed', redirectErr);
+          // fall through to the normal error banner below
+        }
+      }
       logger.error('[signup] social', e);
       const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
       // Show the SPECIFIC reason (provider not enabled, unauthorized domain, network,
