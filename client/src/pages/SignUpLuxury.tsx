@@ -327,6 +327,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // shown a long form they don't need.
   const [manualMode, setManualMode] = useState(false);
   const [showPwd, setShowPwd] = useState(false);
+  // Returning-member login is CODE-FIRST (email → one-time code): easiest + no
+  // password to remember/leak (CEO 2026-08-06). Password is a secondary path behind
+  // a "use a password instead" link. Default false = one-time-code primary.
+  const [usePassword, setUsePassword] = useState(false);
   // 2-STEP LOGIN (CEO 2026-07-31 "one-way or two-way verification"): opt-in at
   // join; when on, login asks for an SMS code AFTER the password. mfaChallenge
   // holds the in-flight login-time challenge (the idToken to prove + a masked
@@ -1280,23 +1284,33 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
                     </div>
                   </div>
-                  <div className="sl-field">
-                    <label className="sl-label">{t.pwd}</label>
-                    <div className="sl-inputWrap">
-                      <FaLock className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="current-password"
-                        value={password} onChange={(e) => setPassword(e.target.value)} placeholder={he ? 'הסיסמה שלך' : 'Your password'}
-                        onKeyDown={(e) => { if (e.key === 'Enter' && loginReady) { void loginWithPassword(); } }} />
-                    </div>
-                  </div>
-                  <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
-                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
-                    {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
-                  </button>
+                  {/* Password is now the SECONDARY path (behind the toggle below).
+                      Code-first: the primary CTA sends a one-time code to the email. */}
+                  {usePassword && (
+                    <>
+                      <div className="sl-field">
+                        <label className="sl-label">{t.pwd}</label>
+                        <div className="sl-inputWrap">
+                          <FaLock className="sl-inputIcon" aria-hidden />
+                          <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="current-password"
+                            value={password} onChange={(e) => setPassword(e.target.value)} placeholder={he ? 'הסיסמה שלך' : 'Your password'}
+                            onKeyDown={(e) => { if (e.key === 'Enter' && loginReady) { void loginWithPassword(); } }} />
+                        </div>
+                      </div>
+                      <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
+                        style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
+                        {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
+                      </button>
+                    </>
+                  )}
+                  {/* Toggle ONLY switches between code-first and password — it does not
+                      send a code (the primary CTA does that). */}
                   <button type="button" className="sl-switchLink" disabled={busy}
-                    onClick={() => { if (!emailValid) { fail(he ? 'הזן אימייל כדי לקבל קוד' : 'Enter your email to get a code'); return; } setMethod('email'); void sendEmailCode(); }}
+                    onClick={() => setUsePassword((p) => !p)}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
-                    {he ? 'התחבר/י עם קוד חד-פעמי במקום' : 'Sign in with a one-time code instead'}
+                    {usePassword
+                      ? (he ? 'התחבר/י עם קוד חד-פעמי במקום' : 'Sign in with a one-time code instead')
+                      : (he ? 'התחבר/י עם סיסמה במקום' : 'Sign in with a password instead')}
                   </button>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('join'); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
@@ -1365,9 +1379,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   )}
                 </>
                 )
-              ) : (
+              ) : usePassword ? (
                 <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
                   <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
+                </button>
+              ) : (
+                // CODE-FIRST primary CTA (returning login): email → one-time code.
+                <button className="sl-cta" disabled={busy || !emailValid}
+                  onClick={() => { setMethod('email'); void sendEmailCode(); }}>
+                  <FaEnvelope aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד חד-פעמי' : 'Email me a one-time code')}
                 </button>
               )}
 
