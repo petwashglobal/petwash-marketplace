@@ -2396,7 +2396,13 @@ self.addEventListener('notificationclick', (event) => {
       let sessionAge = 0;
       try {
         if (token) {
-          decoded = await fbAdminAuth.verifySessionCookie(token, true);
+          // checkRevoked=false on this HIGH-FREQUENCY read path (whoami runs on every
+          // focus + a 5-min interval). checkRevoked=true forced an Identity-Toolkit
+          // network round-trip on every call — a transient blip/rate-limit then 401'd
+          // a logged-in user and bounced them ("logged out for no reason", admin can't
+          // get in). Revocation is still enforced where it matters: at cookie mint and
+          // on /api/admin + /api/kyc via requireAuth. Members' whoami doesn't need it.
+          decoded = await fbAdminAuth.verifySessionCookie(token, false);
         } else if (bearerToken) {
           decoded = await fbAdminAuth.verifyIdToken(bearerToken, true);
         }
@@ -2406,7 +2412,17 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ authenticated: false, error: 'invalid-session' });
       }
 
-      const userRecord = await fbAdminAuth.getUser(decoded.uid);
+      // Guard getUser: a transient Identity-Toolkit failure must NOT 500 the hot
+      // whoami path and bounce a valid user. Degrade to the verified token's claims —
+      // session cookies carry the custom claims (role/accountType), so role + routing
+      // still resolve correctly without the extra network read.
+      let userRecord: any;
+      try {
+        userRecord = await fbAdminAuth.getUser(decoded.uid);
+      } catch (guErr: any) {
+        logger.warn('[whoami] getUser failed — degrading to token claims', { uid: decoded?.uid, err: guErr?.message });
+        userRecord = { uid: decoded.uid, email: decoded.email, customClaims: decoded };
+      }
       const claims = (userRecord.customClaims || {}) as Record<string, any>;
 
       // Issue #153 Mission-3 PR-1: surface phoneVerified + language from Postgres

@@ -171,6 +171,17 @@ export function getBrowserName(): string {
  * Register a new passkey for the current user
  * PRODUCTION: Platform authenticator preferred (Face ID/Touch ID), with fallback
  */
+/**
+ * Remember that THIS device now has a registered PetWash passkey. The login screen
+ * gates the one-tap "Sign in with Face ID" button on this flag (petwash_passkey_email)
+ * so the button only appears when a credential actually exists — and prefills the
+ * email for conditional autofill. Set on successful registration AND passkey login.
+ * Best-effort; storage being unavailable never breaks auth.
+ */
+function rememberPasskeyEmail(email?: string | null): void {
+  try { if (email) localStorage.setItem('petwash_passkey_email', email); } catch { /* storage disabled */ }
+}
+
 export async function registerPasskey(
   firebaseToken: string,
   deviceName?: string
@@ -234,6 +245,8 @@ export async function registerPasskey(
       return { success: false, error: error.error || 'Registration verification failed' };
     }
 
+    // This device now has a passkey → let the login screen show the one-tap button.
+    rememberPasskeyEmail(auth.currentUser?.email);
     return { success: true };
   } catch (error: any) {
     console.error('Passkey registration error:', error);
@@ -323,6 +336,9 @@ export async function signInWithPasskey(
 
     await signInWithCustomToken(auth, customToken);
 
+    // Confirm the one-tap signal for next time (covers users who registered before
+    // this flag existed, or on a fresh device that just used a synced passkey).
+    rememberPasskeyEmail(userData?.email || auth.currentUser?.email);
     return { success: true, uid: userData.uid };
   } catch (error: any) {
     console.error('Passkey sign-in error:', error);

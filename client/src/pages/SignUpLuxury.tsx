@@ -385,8 +385,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       try {
         const avail = await isPlatformAuthenticatorAvailable();
         if (cancelled) return;
-        setBioAvailable(avail);
-        if (avail) setBioName(getBiometricMethodName());
+        // Only show the explicit "Sign in with Face ID" button when this user has
+        // actually REGISTERED a passkey on this device (petwash_passkey_email is set
+        // at registration/first passkey login). Gating on device biometric capability
+        // ALONE made the button appear on every modern phone/Mac and then FAIL on tap
+        // (NotAllowedError — no matching credential) for anyone without a passkey →
+        // "Face ID is broken." Conditional autofill (below) still arms regardless: it's
+        // silent, discoverable-credential based, and surfaces the passkey in the email
+        // field when one exists — the true one-tap return path.
+        const hasRegisteredPasskey = (() => {
+          try { return !!localStorage.getItem('petwash_passkey_email'); } catch { return false; }
+        })();
+        setBioAvailable(avail && hasRegisteredPasskey);
+        if (avail && hasRegisteredPasskey) setBioName(getBiometricMethodName());
         signInWithPasskeyConditional().catch(() => {});
       } catch { /* passkeys unsupported — silent, normal flow continues */ }
     })();
@@ -508,15 +519,27 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         body: JSON.stringify({ verificationToken: vd.verificationToken, dateOfBirth: dob, email }),
       });
       const sd = await s.json();
-      if (sd.customToken) {
-        const cred = await signInWithCustomToken(auth, sd.customToken);
-        const idToken = await cred.user.getIdToken(true);
-        await fetch(getApiUrl('/api/auth/session'), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          // Send the DOB so the users row is CREATED with it — persistDob's
-          // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
-          body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true }),
-        });
+      if (!sd.customToken) {
+        // No session token came back (phone-session error / unexpected shape). Do
+        // NOT fall through to finishAndRoute() session-less — RequireAuth would then
+        // bounce the user to /signin: "I entered my code and it kicked me out."
+        // Mirror verifyEmailCode()'s honest-fail guard instead.
+        fail(sd.message || (he ? 'האימות נכשל — נסה שוב' : 'Verification could not be completed. Please try again.'));
+        return;
+      }
+      const cred = await signInWithCustomToken(auth, sd.customToken);
+      const idToken = await cred.user.getIdToken(true);
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        // Send the DOB so the users row is CREATED with it — persistDob's
+        // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
+        body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true }),
+      });
+      if (!sessionRes.ok) {
+        // Hollow server session → app guards would 401-bounce to /signin. Fail
+        // honestly rather than route into a session-less app.
+        fail(he ? 'ההתחברות לא הושלמה — נסה שוב' : 'Sign-in could not be completed. Please try again.');
+        return;
       }
       // Step 2 — NEW accounts only: phone verified + account live, now verify the
       // EMAIL with its own code before we route (both contacts confirmed). Returning
