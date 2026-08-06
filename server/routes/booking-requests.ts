@@ -2224,31 +2224,50 @@ router.post('/:requestId/pay', async (req, res) => {
       });
     }
     
-    // Initiate a real Nayax hosted payment session.
-    // Booking transitions to 'payment_pending' here.
-    // It becomes 'confirmed' ONLY when Nayax calls POST /api/webhooks/nayax/booking-request-payment
-    // with event = 'payment.success'.  No fake transaction IDs are generated.
-    const { NayaxOnlinePaymentService } = await import('../services/NayaxOnlinePaymentService');
+    // Initiate a real hosted payment session.
+    // Booking transitions to 'payment_pending' here and becomes 'confirmed' ONLY
+    // after the gateway confirms the charge — never with a fake transaction ID.
+    //   • Nayax rail  → confirmed by POST /api/webhooks/nayax/booking-request-payment.
+    //   • SUMIT rail  → confirmed by GET /api/booking-requests/:id/sumit-return (verify).
+    // Rail is chosen by BOOKING_CARD_RAIL (default 'nayax'). SUMIT is live + verified
+    // (beginRedirect returns a real pay.sumit.co.il page); flip the flag once the
+    // getTransaction return fields are pinned by the first real payment.
     const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+    const cardRail = (process.env.BOOKING_CARD_RAIL || 'nayax').trim().toLowerCase();
 
-    // Fetch owner email for the payment session (optional — enriches Nayax receipt).
+    // Fetch owner email for the payment session (optional — enriches the receipt).
     const [ownerUser] = await db
       .select({ email: users.email, firstName: users.firstName })
       .from(users)
       .where(eq(users.id, booking.ownerId))
       .limit(1);
 
-    const sessionResult = await NayaxOnlinePaymentService.createPaymentSession({
-      bookingId: requestId,
-      bookingNumber: requestId,
-      amountCents: booking.totalCents,
-      customerEmail: ownerUser?.email || undefined,
-      customerName: ownerUser?.firstName || undefined,
-      description: `PetWash™ ${booking.serviceType} — ${booking.petCount ?? 1} pet(s)`,
-      returnUrl: `${appUrl}/booking/confirmation/${requestId}?payment=success`,
-      cancelUrl: `${appUrl}/booking/confirmation/${requestId}?payment=cancelled`,
-      webhookUrl: `${appUrl}/api/webhooks/nayax/booking-request-payment`,
-    });
+    let sessionResult: { success: boolean; sessionId?: string; paymentUrl?: string; demoMode?: boolean; error?: string };
+    if (cardRail === 'sumit') {
+      const { createSumitBookingSession } = await import('../services/SumitBookingPayment');
+      sessionResult = await createSumitBookingSession({
+        requestId,
+        amountCents: booking.totalCents,
+        customerEmail: ownerUser?.email || undefined,
+        customerName: ownerUser?.firstName || undefined,
+        description: `PetWash™ ${booking.serviceType} — ${booking.petCount ?? 1} pet(s)`,
+        // SUMIT returns the customer here; the verify handler confirms the booking.
+        returnUrl: `${appUrl}/api/booking-requests/${requestId}/sumit-return`,
+      });
+    } else {
+      const { NayaxOnlinePaymentService } = await import('../services/NayaxOnlinePaymentService');
+      sessionResult = await NayaxOnlinePaymentService.createPaymentSession({
+        bookingId: requestId,
+        bookingNumber: requestId,
+        amountCents: booking.totalCents,
+        customerEmail: ownerUser?.email || undefined,
+        customerName: ownerUser?.firstName || undefined,
+        description: `PetWash™ ${booking.serviceType} — ${booking.petCount ?? 1} pet(s)`,
+        returnUrl: `${appUrl}/booking/confirmation/${requestId}?payment=success`,
+        cancelUrl: `${appUrl}/booking/confirmation/${requestId}?payment=cancelled`,
+        webhookUrl: `${appUrl}/api/webhooks/nayax/booking-request-payment`,
+      });
+    }
 
     if (!sessionResult.success) {
       // Online card rail not live yet — be honest, do NOT create escrow or move the
@@ -2370,6 +2389,128 @@ router.post('/:requestId/pay', async (req, res) => {
   } catch (error: any) {
     logger.error('[BookingRequests] Payment error', { error: error.message });
     res.status(500).json({ error: 'Failed to process payment' });
+  }
+});
+
+/**
+ * GET /api/booking-requests/:requestId/sumit-return — SUMIT hosted-page return.
+ *
+ * SUMIT redirects the customer here after they pay. The querystring is spoofable, so
+ * this NEVER trusts it — it re-verifies the charge server-side (getTransaction) and
+ * re-checks the amount against the booking before confirming. This is the SUMIT
+ * equivalent of POST /api/webhooks/nayax/booking-request-payment and mirrors its exact
+ * confirm steps (idempotency → status gate → amount match → Deal Gate → escrow held →
+ * status=confirmed → legacy bridge). The customer-receipt is issued later at the
+ * release event (owner-confirm), same as every rail — NOT here.
+ *
+ * No auth gate on purpose: the customer arrives via a top-level redirect from SUMIT;
+ * security is the server-side verify + amount match + Deal Gate, not the session. On
+ * ANY failure the booking is left in payment_pending (no fake confirm) and the user is
+ * sent to the confirmation page with payment=failed.
+ *
+ * NOTE (mirrors nayax-webhooks.ts confirm — unify into a shared confirmBookingRequestPaid()
+ * in a follow-up once the SUMIT rail is proven live).
+ */
+router.get('/:requestId/sumit-return', async (req, res) => {
+  const appUrl = process.env.APP_URL || 'https://petwash.co.il';
+  const { requestId } = req.params;
+  const ok = () => res.redirect(302, `${appUrl}/booking/confirmation/${requestId}?payment=success`);
+  const fail = (reason: string) => {
+    logger.warn('[BookingRequests] SUMIT return not confirmed', { requestId, reason });
+    return res.redirect(302, `${appUrl}/booking/confirmation/${requestId}?payment=failed`);
+  };
+  try {
+    // SUMIT return field name is not yet pinned — accept the plausible shapes.
+    const q = req.query as Record<string, string | undefined>;
+    const txnId = q.ID || q.TransactionID || q.PaymentID || q.OGToken || q.Result || q.paymentId || '';
+
+    const [booking] = await db.select().from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId)).limit(1);
+    if (!booking) return fail('booking_not_found');
+
+    // Idempotent: already past payment → just show success.
+    if (booking.status === 'confirmed' || booking.status === 'in_progress' || booking.status === 'completed') {
+      return ok();
+    }
+    // Status gate: only a booking awaiting payment may be confirmed here.
+    if (booking.status !== 'payment_pending') return fail(`status_gate:${booking.status}`);
+
+    // Authoritative server-side re-verify with SUMIT.
+    const { verifySumitBookingPayment } = await import('../services/SumitBookingPayment');
+    const verify = await verifySumitBookingPayment(String(txnId));
+    if (!verify.valid) return fail(verify.reason || 'sumit_not_valid');
+
+    // Amount match (1-agora tolerance) — defence against price tampering (§4).
+    if (typeof verify.amountCents === 'number' && Math.abs(verify.amountCents - booking.totalCents) > 1) {
+      logger.error('[BookingRequests] SUMIT amount mismatch — POTENTIAL FRAUD', {
+        requestId, expected: booking.totalCents, received: verify.amountCents,
+      });
+      return fail('amount_mismatch');
+    }
+
+    // Deal Gate: never fake a confirmation. If accept-side evidence is missing, hold the
+    // (already-escrowed) money and raise an alert for a human — do NOT flip to confirmed.
+    const { canConfirmBooking } = await import('../services/DealGateService');
+    const dealGate = await canConfirmBooking(requestId);
+    if (!dealGate.can_confirm) {
+      try {
+        const { createOrUpdateAlert } = await import('../services/AlertEngine');
+        await createOrUpdateAlert({
+          dedupeKey: `deal_gate_payment_blocked:${requestId}`,
+          category: 'payment',
+          severity: 'critical',
+          title: 'SUMIT payment received but Deal Gate blocked confirmation',
+          message: `Booking ${requestId}: SUMIT payment ${txnId} verified but canConfirmBooking() reports missing: ${dealGate.missing_requirements.join(', ')}. Money held, booking NOT auto-confirmed. Needs manual review.`,
+          linkedEntityType: 'booking',
+          linkedEntityId: requestId,
+          source: 'sumit_booking_return',
+        });
+      } catch { /* alert best-effort */ }
+      return fail('deal_gate_blocked');
+    }
+
+    // Mark the Firestore escrow doc held + stamp the real SUMIT transaction id.
+    try {
+      const escrows = await EscrowService.getEscrowsByBooking(requestId);
+      const { db: adminDb } = await import('../lib/firebase-admin');
+      for (const escrow of escrows) {
+        await adminDb.collection('escrow_payments').doc(escrow.id).update({
+          sumitTransactionId: String(txnId), status: 'held', updatedAt: new Date(),
+        });
+      }
+    } catch (escrowErr: any) {
+      logger.warn('[BookingRequests] SUMIT escrow held-update failed (non-blocking)', { requestId, error: escrowErr?.message });
+    }
+
+    // Atomic flip to confirmed with the real transaction id.
+    const statusHistory = ((booking.statusHistory as any[]) ?? []);
+    statusHistory.push({
+      status: 'confirmed',
+      timestamp: new Date().toISOString(),
+      note: `Payment of ₪${(booking.totalCents / 100).toFixed(2)} confirmed by SUMIT. Held in escrow. txId: ${txnId}`,
+    });
+    await db.update(bookingRequests).set({
+      status: 'confirmed',
+      paymentTransactionId: String(txnId),
+      paymentHeldAt: new Date(),
+      statusHistory,
+      updatedAt: new Date(),
+    } as any).where(eq(bookingRequests.requestId, requestId));
+
+    logger.info('[BookingRequests] ✅ Booking confirmed via real SUMIT payment', { requestId, txnId });
+
+    // Flip bridged sitter/walk/academy legacy rows to confirmed — the money truth point.
+    try {
+      const { applyBridgePaymentConfirmed } = await import('../services/legacyBookingBridge');
+      await applyBridgePaymentConfirmed((booking as any).quoteBreakdown);
+    } catch (bridgeErr: any) {
+      logger.warn('[BookingRequests] SUMIT legacy confirm write-back failed (non-blocking)', { requestId, error: bridgeErr?.message });
+    }
+
+    return ok();
+  } catch (err: any) {
+    logger.error('[BookingRequests] SUMIT return handler error', { requestId, error: err?.message });
+    return fail('handler_error');
   }
 });
 
