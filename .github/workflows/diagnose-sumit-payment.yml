@@ -66,7 +66,7 @@ jobs:
           # Body mirrors SumitClient.beginRedirect exactly. Key is in a var, never echoed.
           BODY=$(jq -n --arg co "$COMPANY" --arg k "$APIKEY" --arg ext "$EXT" --argjson amt "${AMOUNT:-20}" '{
             Credentials: { CompanyID: ($co|tonumber? // $co), APIKey: $k },
-            RedirectURL: "https://petwash.co.il/api/egift/guest/return?ext=\($ext)",
+            RedirectURL: "https://petwash.co.il/?sumit_verify=\($ext)",
             ExternalIdentifier: $ext,
             Customer: { Name: "SUMIT Rail Verify", EmailAddress: "nir.h@petwash.co.il" },
             Items: [ { Item: { Name: "PetWash rail verification" }, Quantity: 1, UnitPrice: $amt } ],
