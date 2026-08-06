@@ -26,4 +26,4 @@ jobs:
           echo "== google.com config (enabled? clientId present?) =="
           curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/google.com" | jq '{name, enabled, clientId, hasSecret: (.clientSecret!=null and .clientSecret!="")}'
           echo "== apple.com config =="
-          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" | jq '{name, enabled, clientId}'
+          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" | jq '{name, enabled, clientId, appleSignInConfig, hasCodeFlow: (.appleSignInConfig!=null)}'
