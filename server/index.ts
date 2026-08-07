@@ -84,6 +84,7 @@ if (process.env.GOOGLE_API_KEY && process.env.GEMINI_API_KEY) {
 // reads. Must run before any wallet module is imported (the modern Apple Wallet
 // service reads its env at module load). Non-destructive, never logs values.
 import { applyWalletEnvCompat } from './lib/wallet-env-compat';
+import { logger } from './lib/logger'; // F3: poller-startup failures now log (→ Sentry via F1) instead of a silent catch(){}
 {
   const _walletEnvFilled = applyWalletEnvCompat();
   if (_walletEnvFilled > 0) {
@@ -1502,8 +1503,8 @@ if (isProduction) {
       healthState.app.routesReady = true;
       connectDbNonBlocking().catch(() => {});
       
-      import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch(() => {});
-      import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch(() => {});
+      import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch((e) => logger.error('[GoogleSheets] startup retries failed to init (non-fatal)', e));
+      import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch((e) => logger.error('[JobDispatch] dispatch poller FAILED to start — jobs will NOT dispatch', e));
 
       // Notification event handlers
       try {
@@ -1604,12 +1605,18 @@ if (isProduction) {
       console.error('[Cron] Failed to initialize cron jobs (non-fatal):', error);
     }
     
-    import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch(() => {});
-    import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch(() => {});
-    import('./services/JobExpiryNotificationService').then(m => m.jobExpiryNotificationService.start()).catch(() => {});
-    import('./jobs/booking-expiry').then(m => m.startBookingExpiryPoller()).catch(() => {});
-    import('./jobs/booking-accept-timeout').then(m => m.startAcceptTimeoutPoller()).catch(() => {});
-    import('./jobs/rebook-scheduler').then(m => m.startRebookScheduler()).catch(() => {});
+    // F3 (2026-08-06 hidden-failure hunt): these six were started with a SILENT
+    // catch(()=>{}) — unlike the logged ones just below. If any failed to boot (bad
+    // import, top-level init throw), the poller never ran with ZERO trace: escrow
+    // never auto-releases (customer money stuck on hold), expired bookings never
+    // clean up, and jobs never dispatch to operators (charged-not-delivered). Now
+    // each logs on startup failure so a dead poller is visible (and via logger→Sentry).
+    import('./services/googleSheetsIntegration').then(m => m.processStartupRetries()).catch((e) => logger.error('[GoogleSheets] startup retries failed to init (non-fatal)', e));
+    import('./services/JobDispatchService').then(m => m.JobDispatchService.startDispatchPoller()).catch((e) => logger.error('[JobDispatch] dispatch poller FAILED to start — jobs will NOT dispatch', e));
+    import('./services/JobExpiryNotificationService').then(m => m.jobExpiryNotificationService.start()).catch((e) => logger.error('[JobExpiry] notification service failed to start', e));
+    import('./jobs/booking-expiry').then(m => m.startBookingExpiryPoller()).catch((e) => logger.error('[BookingExpiry] poller FAILED to start — escrow auto-release/slot cleanup will NOT run', e));
+    import('./jobs/booking-accept-timeout').then(m => m.startAcceptTimeoutPoller()).catch((e) => logger.error('[AcceptTimeout] poller failed to start', e));
+    import('./jobs/rebook-scheduler').then(m => m.startRebookScheduler()).catch((e) => logger.error('[Rebook] scheduler failed to start', e));
     import('./services/providerMonitoring').then(m => m.startProviderMonitoringWatchdog()).catch((e) => console.error('[ProviderWatchdog] Failed to initialize:', e));
     import('./jobs/exception-email').then(m => m.startExceptionEmailJob()).catch((e) => console.error('[ExceptionEmail] Failed to initialize:', e));
     import('./jobs/daily-close-reminder').then(m => m.startDailyCloseReminder()).catch((e) => console.error('[DailyCloseReminder] Failed to initialize:', e));

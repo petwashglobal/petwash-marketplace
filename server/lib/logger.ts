@@ -2,6 +2,7 @@
  * Production-safe structured logger for server-side code
  * Uses LOG_LEVEL from environment
  */
+import * as Sentry from '@sentry/node';
 
 type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 
@@ -80,6 +81,15 @@ class ServerLogger {
       }
       const errorContext = { ...context, ...errorFields };
       console.error(this.formatLog('error', message, errorContext));
+      // F1 (2026-08-06 hidden-failure hunt): logger.error was stdout-ONLY. ~4,000
+      // call sites — none reached Sentry — so money/fiscal failures ("logged loudly
+      // for reconciliation") were invisible unless someone tailed Cloud Run. Forward
+      // every error-level log to Sentry so it actually surfaces + can page. No-op when
+      // Sentry has no DSN; wrapped so telemetry can NEVER break logging itself.
+      try {
+        const err = error instanceof Error ? error : new Error(message);
+        Sentry.captureException(err, { level: 'error', extra: errorContext, tags: { source: 'logger.error' } });
+      } catch { /* telemetry must never throw into the logger */ }
     }
   }
 }
