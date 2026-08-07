@@ -57,7 +57,9 @@ import { useLocation } from 'wouter';
 import {
   signInWithPopup, signInWithRedirect, signInWithCustomToken,
   signInWithEmailAndPassword, createUserWithEmailAndPassword, sendEmailVerification,
-  getRedirectResult,
+  getRedirectResult, fetchSignInMethodsForEmail, linkWithCredential,
+  GoogleAuthProvider, OAuthProvider, FacebookAuthProvider,
+  type AuthCredential,
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
 import { humanizeAuthError } from '@/auth/client';
@@ -398,6 +400,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [platformAuthCapable, setPlatformAuthCapable] = useState(false);
   const [showFaceIDOffer, setShowFaceIDOffer] = useState(false);
   const [faceIDEmail, setFaceIDEmail] = useState('');
+  // Provider-LINKING state. Set ONLY when a social sign-in hits
+  // 'account-exists-with-different-credential' (that email already has a PetWash
+  // account via another method). We then let the user sign in with their EXISTING
+  // method and linkWithCredential() attaches the new provider → one account, both
+  // methods work. Null the rest of the time; nothing else is affected.
+  const [linkState, setLinkState] = useState<{
+    email: string;
+    pendingCred: AuthCredential;
+    methods: string[];
+    newLabel: string;
+  } | null>(null);
+  const [linkPassword, setLinkPassword] = useState('');
 
   const fail = (msg: string) => setInlineError(msg);
 
@@ -826,12 +840,72 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // gap indistinguishable from a real failure. humanizeAuthError maps the common
       // Firebase + native codes; the code is logged/beaconed above for diagnosis.
       const code = String(e?.code || e?.message || '').trim();
+      // PROVIDER LINKING: this email already has a PetWash account via another
+      // method. Instead of the dead-end "use your original method", capture the
+      // pending new-provider credential + the existing methods and open the link
+      // flow. FAIL-SAFE: if extraction throws or yields nothing, fall through to
+      // the normal helpful error below — never worse than today.
+      if (code === 'auth/account-exists-with-different-credential') {
+        try {
+          const collidedEmail = String(e?.customData?.email || e?.email || '').trim();
+          const pendingCred =
+            which === 'google' ? GoogleAuthProvider.credentialFromError(e) :
+            which === 'apple'  ? OAuthProvider.credentialFromError(e)  :
+                                 FacebookAuthProvider.credentialFromError(e);
+          if (collidedEmail && pendingCred) {
+            const methods = await fetchSignInMethodsForEmail(auth, collidedEmail);
+            setLinkState({ email: collidedEmail, pendingCred, methods, newLabel: which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook' });
+            return;
+          }
+        } catch (linkErr) {
+          logger.warn('[signup] link-detect failed — showing generic guidance', { err: (linkErr as any)?.message });
+        }
+      }
       const reason = humanizeAuthError(code, he ? 'he' : 'en');
       try { (window as any).PW_track?.('auth.social_error', { provider: which, code }); } catch { /* noop */ }
       fail(he
         ? `התחברות ${label}: ${reason}`
         : `${label} sign-in: ${reason}`);
     } finally { setBusy(false); }
+  }
+
+  // Finish provider-linking: re-authenticate with the EXISTING method, then
+  // linkWithCredential() attaches the pending new provider so BOTH work next time
+  // — one account, no duplicate. Then mint the session + route as normal.
+  async function completeLink(reauth: () => Promise<void>) {
+    if (!linkState) return;
+    setInlineError(null);
+    setBusy(true);
+    try {
+      await reauth();                                   // sign in with the existing method
+      if (!auth.currentUser) throw new Error('no-user-after-reauth');
+      await linkWithCredential(auth.currentUser, linkState.pendingCred);  // attach new provider
+      const idToken = await auth.currentUser.getIdToken(true);
+      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+        body: JSON.stringify({ idToken }),
+      });
+      if (!sessionRes.ok) { fail(he ? 'החיבור נכשל — נסו שוב' : 'Linking failed — please try again.'); return; }
+      setLinkState(null); setLinkPassword('');
+      await finishAndRoute();
+    } catch (err: any) {
+      const c = String(err?.code || err?.message || '').toLowerCase();
+      if (c.includes('wrong-password') || c.includes('invalid-credential')) fail(he ? 'סיסמה שגויה' : 'Incorrect password.');
+      else if (c.includes('popup-closed') || c.includes('cancel')) { /* user cancelled the re-auth */ }
+      else { logger.error('[signup] link', err); fail(he ? 'החיבור נכשל — נסו שוב' : 'Linking failed — please try again.'); }
+    } finally { setBusy(false); }
+  }
+  function linkViaPassword() {
+    return completeLink(async () => { await signInWithEmailAndPassword(auth, linkState!.email, linkPassword); });
+  }
+  function linkViaProvider() {
+    return completeLink(async () => {
+      const m = linkState!.methods;
+      const prov = m.includes('google.com') ? createGoogleProvider()
+                 : m.includes('apple.com') ? createAppleProvider()
+                 : createFacebookProvider();
+      await signInWithPopup(auth, prov);
+    });
   }
 
   /** Server-mediated OAuth (Instagram / TikTok / etc.). The backend builds the
@@ -1457,6 +1531,48 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
               <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
             </>
+          )}
+
+          {/* === Provider LINKING — this email already has an account via another
+                 method. Sign in with it once → the new provider is attached. One
+                 account, both methods. Cancel returns to the normal options. === */}
+          {linkState && (
+            <div className="sl-faceIdOffer">
+              <p className="sl-helper sl-center">
+                {he
+                  ? `לאימייל ${linkState.email} כבר יש חשבון ב-PetWash. היכנסו כדי לחבר את ${linkState.newLabel} לחשבון.`
+                  : `${linkState.email} already has a PetWash account. Sign in to connect ${linkState.newLabel} to it.`}
+              </p>
+              {linkState.methods.includes('password') ? (
+                <>
+                  <div className="sl-field">
+                    <label className="sl-label">{he ? 'הסיסמה שלך' : 'Your password'}</label>
+                    <div className="sl-inputWrap">
+                      <FaLock className="sl-inputIcon" aria-hidden />
+                      <input className="sl-input sl-input--icon" type="password" autoComplete="current-password"
+                        value={linkPassword} onChange={(e) => setLinkPassword(e.target.value)}
+                        onKeyDown={(e) => { if (e.key === 'Enter' && !busy && linkPassword) void linkViaPassword(); }} />
+                    </div>
+                  </div>
+                  <button className="sl-cta" disabled={busy || !linkPassword} onClick={() => void linkViaPassword()}>
+                    {busy ? '…' : (he ? `התחברות וחיבור ${linkState.newLabel}` : `Sign in & connect ${linkState.newLabel}`)}
+                  </button>
+                </>
+              ) : (
+                <button className="sl-cta" disabled={busy} onClick={() => void linkViaProvider()}>
+                  {busy ? '…' : (() => {
+                    const m = linkState.methods;
+                    const existing = m.includes('google.com') ? 'Google' : m.includes('apple.com') ? 'Apple' : 'Facebook';
+                    return he ? `היכנסו עם ${existing} וחברו את ${linkState.newLabel}` : `Sign in with ${existing} & connect ${linkState.newLabel}`;
+                  })()}
+                </button>
+              )}
+              <button type="button" className="sl-switchLink" disabled={busy}
+                onClick={() => { setLinkState(null); setLinkPassword(''); }}
+                style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', width: '100%', textAlign: 'center' }}>
+                {he ? 'ביטול' : 'Cancel'}
+              </button>
+            </div>
           )}
 
           {/* === Post-signup Face ID / passkey offer (once, capable device, no
