@@ -92,7 +92,17 @@ export function isMobileDevice(): boolean {
  * between, or Safari may treat it as no longer user-initiated.
  */
 export function getAuthStrategy(): 'popup' | 'redirect' {
-  return isMobileDevice() ? 'redirect' : 'popup';
+  // POPUP on ALL platforms (2026-08-07 root-cause fix for "Gmail/Apple never
+  // works on mobile"). signInWithRedirect with a CUSTOM authDomain
+  // (petwash.co.il) is broken by mobile-browser storage partitioning (Safari ITP
+  // / Chrome third-party-storage): the pending-redirect state is lost on the
+  // cross-origin round-trip, getRedirectResult returns null, and the user is
+  // silently dumped back on the login form. A popup is opened by the TAP (a user
+  // gesture mobile browsers allow) and returns via same-origin postMessage to the
+  // opener, so partitioning cannot break it. If a popup is genuinely blocked
+  // (rare — in-app webviews), social() catches auth/popup-blocked and falls back
+  // to signInWithRedirect. Native apps never reach here (Capacitor native sheet).
+  return 'popup';
 }
 
 /**
