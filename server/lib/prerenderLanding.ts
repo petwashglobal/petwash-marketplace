@@ -94,6 +94,111 @@ export const LANDING_PAGES: Record<string, LandingContent> = {
       { href: '/apply-provider', he: 'להצטרף כמאלף', en: 'Become a trainer' },
     ],
   },
+  'k9000': {
+    slug: 'k9000',
+    titleHe: 'K9000 — שטיפת כלבים בשירות עצמי | PetWash™',
+    titleEn: 'K9000 Self-Service Dog Wash | PetWash™',
+    descHe: 'שטפו את הכלב בעמדת K9000 של PetWash — מים חמים, שמפו ומרכך מותאמים לחיות, וייבוש, בכמה דקות. מצאו תחנה בקרבתכם.',
+    descEn: 'Wash your dog at a PetWash K9000 station — warm water, pet-formulated shampoo & conditioner, and blow-dry, in minutes. Find a station near you.',
+    h1He: 'K9000 — שטיפת כלבים בשירות עצמי',
+    h1En: 'K9000 — self-service dog wash',
+    serviceType: 'PetWash',
+    sections: [
+      { hHe: 'איך זה עובד?', hEn: 'How it works', pHe: 'מגיעים לעמדת K9000, בוחרים תוכנית, ושוטפים את הכלב עם מים חמים, שמפו, מרכך וייבוש — הכל במקום אחד.', pEn: 'Arrive at a K9000 station, choose a program, and wash your dog with warm water, shampoo, conditioner and blow-dry — all in one place.' },
+      { hHe: 'לחברי Prestige', hEn: 'For Prestige members', pHe: 'חברי PetWash Prestige נהנים מהטבת חבר על שטיפה. ההצטרפות חינם.', pEn: 'PetWash Prestige members enjoy a member benefit on washes. Joining is free.' },
+    ],
+    ctas: [
+      { href: '/stations', he: 'מצאו תחנה', en: 'Find a station' },
+      { href: '/prestige-pass', he: 'הצטרפו ל-Prestige', en: 'Join Prestige' },
+    ],
+  },
+  'stations': {
+    slug: 'stations',
+    titleHe: 'מצאו תחנת K9000 בישראל | PetWash™',
+    titleEn: 'Find a K9000 Dog-Wash Station in Israel | PetWash™',
+    descHe: 'איתור עמדות שטיפת כלבים K9000 של PetWash בישראל — פרטי תחנה ושעות פעילות.',
+    descEn: 'Locate PetWash K9000 self-service dog-wash stations across Israel — station details and opening hours.',
+    h1He: 'מצאו תחנת K9000 בקרבתכם',
+    h1En: 'Find a K9000 station near you',
+    serviceType: 'PetWash',
+    sections: [
+      { hHe: 'תחנות PetWash', hEn: 'PetWash stations', pHe: 'עמדות K9000 לשטיפה עצמית של הכלב. בכל עמוד תחנה מוצגים הפרטים ושעות הפעילות.', pEn: 'K9000 self-service dog-wash stations. Each station page shows its details and opening hours.' },
+    ],
+    ctas: [
+      { href: '/stations', he: 'לרשימת התחנות', en: 'Browse stations' },
+      { href: '/k9000', he: 'איך K9000 עובד', en: 'How K9000 works' },
+    ],
+  },
+  'egift': {
+    slug: 'egift',
+    titleHe: 'eGift — כרטיס מתנה דיגיטלי לחיות מחמד | PetWash™',
+    titleEn: 'eGift — Digital Pet-Care Gift Card | PetWash™',
+    descHe: 'קנו כרטיס מתנה דיגיטלי של PetWash. הנמען מפעיל אותו והיתרה מופיעה בארנק PetWash לשימוש בשירותים. אפשר לקנות גם בלי הרשמה.',
+    descEn: 'Buy a PetWash digital gift card. The recipient activates it and the balance appears in their PetWash wallet, usable across services. Guest checkout available.',
+    h1He: 'eGift — מתנה לאוהבי חיות',
+    h1En: 'eGift — a gift for pet lovers',
+    serviceType: 'GiftCard',
+    sections: [
+      { hHe: 'איך זה עובד?', hEn: 'How it works', pHe: 'בוחרים סכום, משלמים, והנמען מקבל קישור. לאחר הפעלה, היתרה נשמרת בארנק PetWash שלו.', pEn: 'Choose an amount, pay, and the recipient gets a link. After activation, the balance is stored in their PetWash wallet.' },
+    ],
+    ctas: [
+      { href: '/egift', he: 'קנו eGift', en: 'Buy an eGift' },
+      { href: '/prestige-pass', he: 'על הארנק ו-Prestige', en: 'About the wallet & Prestige' },
+    ],
+  },
+  'prestige-pass': {
+    slug: 'prestige-pass',
+    titleHe: 'PetWash Prestige — מועדון נאמנות חינם | PetWash™',
+    titleEn: 'PetWash Prestige — Free Loyalty Membership | PetWash™',
+    descHe: 'הצטרפו ל-PetWash Prestige בחינם — נקודות ותגמולים, הטבת חבר בעמדות K9000, הפתעת יום הולדת וכרטיס ארנק דיגיטלי.',
+    descEn: 'Join PetWash Prestige free — points and rewards, a member benefit at K9000 stations, a birthday perk, and a digital wallet pass.',
+    h1He: 'PetWash Prestige — נאמנות חינם',
+    h1En: 'PetWash Prestige — free loyalty',
+    serviceType: 'LoyaltyProgram',
+    sections: [
+      { hHe: 'מה מקבלים?', hEn: 'What you get', pHe: 'חברות חינם עם נקודות ותגמולים, הטבת חבר על שטיפה ב-K9000, הפתעת יום הולדת וכרטיס ארנק דיגיטלי.', pEn: 'Free membership with points and rewards, a member benefit on K9000 washes, a birthday perk, and a digital wallet pass.' },
+    ],
+    ctas: [
+      { href: '/prestige-pass', he: 'הצטרפו בחינם', en: 'Join free' },
+      { href: '/k9000', he: 'איך K9000 עובד', en: 'How K9000 works' },
+    ],
+  },
+  'groomers': {
+    slug: 'groomers',
+    titleHe: 'גרומינג לכלבים — הזמנת מספרה ניידת/מטפח | PetWash™',
+    titleEn: 'Dog Grooming — Book a Professional Groomer | PetWash™',
+    descHe: 'הזמינו גרומר מקצועי ב-PetWash. נותני שירות מאומתים, המחיר מוצג לפני ההזמנה, ומדיניות ביטול חלה.',
+    descEn: 'Book a professional groomer on PetWash. Verified providers, price shown before booking, cancellation policy applies.',
+    h1He: 'גרומינג לכלבים — טיפוח מקצועי',
+    h1En: 'Dog grooming — professional care',
+    serviceType: 'PetGrooming',
+    sections: [
+      { hHe: 'איך מזמינים?', hEn: 'How booking works', pHe: 'בוחרים מטפח ומועד, מוסיפים את פרטי החיה, והמחיר מוצג לפני האישור.', pEn: 'Pick a groomer and time, add your pet\'s details, and the price is shown before you confirm.' },
+      { hHe: 'אמון ובטיחות', hEn: 'Trust & safety', pHe: 'נותני השירות עוברים אימות וסקירה. חלה מדיניות ביטול.', pEn: 'Providers are verified and reviewed. A cancellation policy applies.' },
+    ],
+    ctas: [
+      { href: '/groomers', he: 'הזמנת גרומר', en: 'Book a groomer' },
+      { href: '/apply-provider', he: 'להצטרף כגרומר', en: 'Become a groomer' },
+    ],
+  },
+  'pettrek': {
+    slug: 'pettrek',
+    titleHe: 'PetTrek — מונית לחיות מחמד / הסעת חיות | PetWash™',
+    titleEn: 'PetTrek — Pet Taxi & Transport | PetWash™',
+    descHe: 'הזמינו הסעה לחיה עם PetTrek של PetWash. נהגים מאומתים, המחיר מוצג לפני ההזמנה.',
+    descEn: 'Book pet transport with PetWash PetTrek. Verified drivers, price shown before booking.',
+    h1He: 'PetTrek — הסעת חיות מחמד',
+    h1En: 'PetTrek — pet transport',
+    serviceType: 'Taxi',
+    sections: [
+      { hHe: 'איך מזמינים?', hEn: 'How booking works', pHe: 'בוחרים מוצא ויעד ומועד, והמחיר מוצג לפני האישור.', pEn: 'Choose pickup, destination and time; the price is shown before you confirm.' },
+      { hHe: 'אמון ובטיחות', hEn: 'Trust & safety', pHe: 'הנהגים עוברים אימות וסקירה. חלה מדיניות ביטול.', pEn: 'Drivers are verified and reviewed. A cancellation policy applies.' },
+    ],
+    ctas: [
+      { href: '/pettrek', he: 'הזמנת הסעה', en: 'Book transport' },
+      { href: '/apply-provider', he: 'להצטרף כנהג', en: 'Become a driver' },
+    ],
+  },
 };
 
 const BASE_URL = (process.env.BASE_URL || 'https://petwash.co.il').replace(/\/$/, '');
