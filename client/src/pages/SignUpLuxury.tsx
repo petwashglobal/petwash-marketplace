@@ -250,7 +250,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // session is minted — the session cookie is deliberately withheld until then,
     // so auto-navigating here would drop the user on an unauthenticated page and
     // abandon the SMS-code step. Let loginWithPassword/verifyLoginMfa navigate.
-    if (mfaLoginInFlight.current) return;
+    // Don't auto-navigate while the page is MID a multi-step flow — otherwise the
+    // global AuthProvider setting `user` (e.g. right after a phone-code sign-in)
+    // yanks the user off an in-progress step before it finishes. Each step below
+    // owns its own routing when it completes; this effect only routes when NO step
+    // is in flight. Guarding just mfaLoginInFlight (the old code) left these
+    // unprotected → the phone→email verification step 2 and the Face ID offer were
+    // silently abandoned = half-verified accounts. (verification-drift fix 2026-08-07)
+    //   sent           = an OTP code screen is showing (phone or email)
+    //   emailStep      = phone verified, now collecting/verifying the email (step 2)
+    //   showFaceIDOffer= the post-signup "Enable Face ID" card
+    //   mfaChallenge   = a 2-step login code
+    if (mfaLoginInFlight.current || sent || emailStep || showFaceIDOffer || mfaChallenge) return;
     if (safeRedirect) { navigate(safeRedirect); return; }
     let cancelled = false;
     (async () => {
@@ -271,6 +282,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       }
     })();
     return () => { cancelled = true; };
+    // NOTE: sent/emailStep/showFaceIDOffer/mfaChallenge are intentionally NOT in
+    // this dep array — they're declared later in the component (TDZ if referenced
+    // here). The effect re-runs on `user` change (the trigger that matters), and
+    // the guard above reads their CURRENT values from that render's closure, which
+    // is exactly what we want: only block when a step is in flight at auth time.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, safeRedirect, explicitIntent, dest, navigate]);
 
   // BUGFIX 2026-06-18: handle the Google/Apple/Facebook REDIRECT return on /signup
