@@ -391,18 +391,21 @@ router.post('/purchase', paymentLimiter, async (req, res) => {
     // Validate input
     const data = purchaseGiftCardSchema.parse(req.body);
     
-    // TEMPORARY: Nayax disabled until API keys are provided
-    // TODO: Remove this check once NAYAX_API_KEY is added to secrets
-    const nayaxEnabled = process.env.NAYAX_API_KEY && process.env.NAYAX_MERCHANT_ID;
-    
-    if (!nayaxEnabled) {
-      logger.warn('[E-Gift] Nayax payment disabled - API keys not configured');
-      return res.status(503).json({
-        success: false,
-        error: 'Payment gateway temporarily unavailable. Please contact support.',
-        developerNote: 'NAYAX_API_KEY and NAYAX_MERCHANT_ID required in environment variables',
-      });
-    }
+    // RETIRED RAIL — this route used NayaxPaymentService.initiatePayment, whose
+    // buildNayaxPaymentUrl() is a MOCK pointing at a non-existent
+    // sandbox.nayax.co.il/hosted-payment page (see nayaxService.ts:362). If the
+    // NAYAX_* keys were present it would send a real buyer to a dead page while
+    // replying "Payment initiated successfully" — a charged-nothing trap.
+    // The CANONICAL e-gift rail is SUMIT: POST /api/payments/sumit/begin (EGIFT_*
+    // SKUs) → signed sumit-webhook → PurchaseActivationService (server/routes/
+    // egift-guest.ts). Hard-fail here regardless of env so the mock can never run.
+    logger.warn('[E-Gift] /purchase (Nayax rail) is retired — routing to SUMIT rail', { correlationId });
+    return res.status(503).json({
+      success: false,
+      error: 'This purchase path is no longer available. Please use the e-gift checkout.',
+      errorCode: 'EGIFT_NAYAX_RAIL_RETIRED',
+      developerNote: 'Canonical rail: POST /api/payments/sumit/begin (EGIFT_* SKUs) → sumit-webhook → egift-guest.ts. The Nayax buildNayaxPaymentUrl() is a mock and must never be used for real buyers.',
+    });
     
     // Import Nayax service dynamically
     const { NayaxPaymentService } = await import('../nayaxService');

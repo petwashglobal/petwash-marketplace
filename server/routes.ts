@@ -10353,9 +10353,17 @@ self.addEventListener('notificationclick', (event) => {
         userAgent: req.get("User-Agent"),
       });
 
-      // For now, we'll just return success
-      // In a real implementation, you'd soft-delete the customer
-      res.json({ success: true, message: "Customer marked as inactive" });
+      // HONEST: this endpoint never actually deactivated the customer — it wrote
+      // an audit-log row and returned "marked as inactive", a fake success. No
+      // soft-delete column is updated anywhere on this path. Report the truth so
+      // an admin doesn't believe a customer was removed. TODO: wire a real
+      // soft-delete (set status/is_active on the users row) then return success.
+      logger.warn('[Admin] delete_customer requested but soft-delete is NOT wired — no change made', { customerId, adminId: adminUser.id });
+      res.status(501).json({
+        success: false,
+        error: 'Customer deactivation is not implemented yet — no change was made.',
+        errorCode: 'CUSTOMER_SOFT_DELETE_NOT_WIRED',
+      });
     } catch (error) {
       logger.error('Error deleting customer:', error);
       res.status(500).json({ message: "Failed to delete customer" });
@@ -16795,10 +16803,13 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const weatherResponse = await fetch(weatherUrl);
       const weatherData = await weatherResponse.json();
 
-      // === STEP 2: Mock Pollen/Allergen Data (Production: Use BreezoMeter or AirVisual API) ===
-      // In production, integrate with pollen API here
-      const pollenLevel = Math.floor(Math.random() * 10) + 1; // 1-10 scale (mock)
-      const pollenRisk = pollenLevel >= 7 ? 'high' : pollenLevel >= 4 ? 'medium' : 'low';
+      // === STEP 2: Pollen/Allergen Data — NOT WIRED ===
+      // There is no pollen API integrated. This previously used Math.random(),
+      // feeding FABRICATED allergen levels into the user-facing advice. Report it
+      // honestly as unavailable rather than invent a number. Wire a real pollen
+      // source (e.g. Open-Meteo Air-Quality API, which is free) to populate this.
+      const pollenLevel = 0;
+      const pollenRisk = 'unknown';
 
       // Find forecast for the target date
       const targetDateIndex = weatherData.daily.time.findIndex((d: string) => d === date);
@@ -16925,17 +16936,23 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
         };
       }
 
-      // Create wash schedule (mock - will save to database in production)
+      // HONEST: this endpoint is a weather-based wash ADVISORY, not a booking.
+      // It does NOT persist anything (there is no schedule table wired here), so
+      // it must not tell the user their wash was "scheduled". saved:false makes
+      // that explicit; the client should present this as a recommendation. To
+      // make it a real booking, persist via the canonical booking rail.
       const newSchedule = {
         id: Date.now(),
         petId,
-        petName: 'Pet', // Will fetch from database in production
+        petName: 'Pet', // advisory only — pet name not fetched
         scheduledDate: date,
-        status: 'pending',
+        status: 'advisory',
+        saved: false,
+        note: 'Weather-based wash recommendation — not saved as a booking.',
         weather: weatherForecast,
       };
 
-      logger.info('[PetCare] Wash scheduled successfully with AI analysis', { 
+      logger.info('[PetCare] Wash weather advisory generated (not persisted)', {
         petId, 
         date, 
         city, 

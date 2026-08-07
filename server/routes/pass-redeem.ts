@@ -194,7 +194,10 @@ router.post('/redeem', redeemLimiter, async (req: Request, res: Response) => {
     const { scannedToken, kioskId, bayId, amountIls } = parsed.data;
 
     // ── 0. Validate amountIls against known wash program prices ──────────────
-    const VALID_WASH_PRICES_ILS = [45, 65, 80, 120, 150, 180, 200];
+    // Includes the CURRENT live bay prices: ₪48 (Kfar Saba) and ₪55 (VAT-incl,
+    // next). These were missing → a member redeeming at the real price got
+    // INVALID_WASH_AMOUNT. See memory live-bay-wash-prices-2026-06-30.
+    const VALID_WASH_PRICES_ILS = [45, 48, 55, 65, 80, 120, 150, 180, 200];
     if (!VALID_WASH_PRICES_ILS.includes(amountIls)) {
       logger.warn('[PassRedeem] Invalid wash amount rejected', { amountIls, kioskId });
       return res.status(400).json({ ok: false, error: 'INVALID_WASH_AMOUNT', valid: VALID_WASH_PRICES_ILS });
