@@ -66,6 +66,69 @@
           }
         },
         {
+          "source": "/sitter-suite",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/walk-my-pet",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/academy",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/k9000",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/stations",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/egift",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/prestige-pass",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/groomers",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/pettrek",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }
