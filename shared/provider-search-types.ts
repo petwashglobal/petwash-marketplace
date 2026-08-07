@@ -89,6 +89,12 @@ export interface ProviderSearchItem {
   matchLabel?: 'best_match' | 'great_option' | 'budget_option';
   matchLabelHe?: string;
   matchScore?: number;
+
+  // Hyper-local proximity tier — a strong signal that this provider is right next
+  // to the customer (same building / street / walking distance). Drives both a
+  // ranking boost and a customer-facing badge. Undefined = not notably close.
+  proximityBadge?: 'same_building' | 'on_your_street' | 'walking_distance';
+  proximityBadgeHe?: string;
 }
 
 export interface ProviderSearchResponse {
