@@ -73,7 +73,11 @@ export async function markMobileVerified(userId: string): Promise<ActivationStat
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user) throw new Error(`[Activation] User not found: ${userId}`);
 
-  if (user.mobileVerifiedAt) {
+  // Short-circuit only when BOTH halves are already recorded. Checking the
+  // timestamp alone let a drifted row (timestamp set, phone_verified boolean
+  // false — from any bare write) stay unhealed forever: the login bounce reads
+  // the boolean, the activation gate reads the timestamp, and they disagreed.
+  if (user.mobileVerifiedAt && user.phoneVerified) {
     logger.info('[Activation] Mobile already verified — idempotent', { userId });
     return getActivationState(userId);
   }
@@ -115,7 +119,10 @@ export async function markEmailVerified(
   const [user] = await db.select().from(users).where(eq(users.id, userId)).limit(1);
   if (!user) throw new Error(`[Activation] User not found: ${userId}`);
 
-  if (user.emailVerifiedAt) {
+  // Short-circuit only when BOTH halves are recorded (timestamp AND boolean) —
+  // see markMobileVerified: a timestamp-only row must be allowed to heal its
+  // email_verified boolean so the login bounce and the activation gate agree.
+  if (user.emailVerifiedAt && user.emailVerified) {
     logger.info('[Activation] Email already verified — idempotent', { userId });
     return getActivationState(userId);
   }

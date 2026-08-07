@@ -1519,10 +1519,24 @@ publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, asyn
             } as any);
             logger.info('[PublicAuth] New mobile user row created', { uid: firebaseUser.uid, phone: metadata.phoneE164?.slice(0, 6) + '****' });
           } else {
-            // Existing user — stamp phone_verified and phone_e164 if not already set
-            const updates: any = { phoneVerified: true };
-            if (metadata.phoneE164 !== 'N/A') updates.phoneE164 = metadata.phoneE164;
-            await db.update(users).set(updates).where(eq(users.id, firebaseUser.uid));
+            // Existing user — stamp phone_e164 if changed (phone_verified is set by
+            // markMobileVerified below, which also sets the timestamp + status).
+            if (metadata.phoneE164 !== 'N/A') {
+              await db.update(users).set({ phoneE164: metadata.phoneE164 }).where(eq(users.id, firebaseUser.uid));
+            }
+          }
+          // CRITICAL FIX (verification-drift): record the verification in the columns
+          // the ACTIVATION gate reads — mobile_verified_at + activation_status — not
+          // just the phone_verified boolean. Writing the boolean alone left
+          // mobile_verified_at null → getActivationState().isFullyActive=false → 403
+          // ACCOUNT_NOT_ACTIVATED on wallet/K9000/bookings, even though the user just
+          // verified their phone. markMobileVerified sets boolean+timestamp+status
+          // together (idempotent) and triggers full activation (wallet + loyalty).
+          try {
+            const { markMobileVerified } = await import('../services/ActivationService');
+            await markMobileVerified(firebaseUser.uid);
+          } catch (actErr) {
+            logger.error('[PublicAuth] markMobileVerified failed on OTP verify (non-blocking)', actErr);
           }
         } catch (upsertErr) {
           logger.error('[PublicAuth] User upsert on OTP verify failed (non-blocking)', upsertErr);
