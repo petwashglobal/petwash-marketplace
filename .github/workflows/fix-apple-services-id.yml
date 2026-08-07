@@ -1,0 +1,56 @@
+name: Fix Apple Services ID (one-shot)
+on:
+  workflow_dispatch: {}
+permissions:
+  contents: read
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_ID: signinpetwash
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+      - name: Find Apple Services ID in Secret Manager, set Firebase apple.com clientId
+        run: |
+          set -uo pipefail
+          TOKEN="$(gcloud auth print-access-token)"
+          BASE="https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}"
+
+          echo "== candidate secrets (name contains apple/service/client) =="
+          NAMES="$(gcloud secrets list --project="$PROJECT_ID" --format='value(name)' | grep -iE 'apple|service|client' || true)"
+          echo "$NAMES"
+
+          SERVICES_ID=""; PICKED=""
+          while IFS= read -r n; do
+            [ -z "$n" ] && continue
+            v="$(gcloud secrets versions access latest --secret="$n" --project="$PROJECT_ID" 2>/dev/null || true)"
+            v="$(printf '%s' "$v" | tr -d '[:space:]')"
+            if printf '%s' "$v" | grep -qiE 'BEGIN|PRIVATE'; then
+              echo "  - $n : PEM/key (skip)"
+            elif printf '%s' "$v" | grep -qE '^[A-Za-z0-9._-]+$' && printf '%s' "$v" | grep -q '\.' && [ "${#v}" -lt 80 ]; then
+              echo "  - $n : Services-ID shape -> $v"
+              SERVICES_ID="$v"; PICKED="$n"
+            else
+              echo "  - $n : not a Services-ID shape (len ${#v}) (skip)"
+            fi
+          done <<< "$NAMES"
+
+          if [ -z "$SERVICES_ID" ]; then
+            echo "RESULT: no Services-ID-shaped secret found — NOT patching. Names listed above."
+            exit 0
+          fi
+
+          echo "== patching apple.com clientId = $SERVICES_ID (source secret: $PICKED) =="
+          curl -fsS -X PATCH \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            "$BASE/defaultSupportedIdpConfigs/apple.com?updateMask=clientId" \
+            -d "{\"clientId\":\"$SERVICES_ID\"}" | jq '{name, enabled, clientId}'
+
+          echo "== confirm final state =="
+          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" | jq '{enabled, clientId, hasCodeFlow: (.appleSignInConfig!=null)}'
