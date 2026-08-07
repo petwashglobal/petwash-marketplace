@@ -498,6 +498,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
   async function sendCode() {
     if (!phone) { fail(he ? 'הזן מספר טלפון' : 'Enter your mobile number'); return; }
+    // Real 18+ birthday required for signup (login never needs DOB).
+    if (authMode !== 'login' && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
     if (!requireTerms()) return;
     setInlineError(null);
     setBusy(true);
@@ -596,6 +598,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   async function sendEmailCode() {
     if (!email) { fail(he ? 'הזן כתובת אימייל' : 'Enter your email'); return; }
     if (!fieldSchemas(language).email.safeParse(email.trim()).success) { fail(vmsg('validation.email.invalid', language)); return; }
+    // Real 18+ birthday required for signup (login never needs DOB).
+    if (authMode !== 'login' && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
     if (!requireTerms()) return;
     setInlineError(null);
     setBusy(true);
@@ -1300,6 +1304,23 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
                     </div>
                   )}
+                  {/* DATE OF BIRTH (18+). Rendered so we collect a REAL birthday
+                      rather than the old hidden default. maxYear = now-18 means the
+                      wheel only offers adult years, so any value is a valid 18+ date.
+                      Server re-enforces at account creation. */}
+                  <div className="sl-field">
+                    <AppleWheelDatePicker
+                      value={dob}
+                      onChange={setDob}
+                      maxYear={new Date().getFullYear() - 18}
+                      label={he ? 'תאריך לידה (18+)' : 'Date of birth (18+)'}
+                      monthNames={he ? ['ינואר','פברואר','מרץ','אפריל','מאי','יוני','יולי','אוגוסט','ספטמבר','אוקטובר','נובמבר','דצמבר'] : undefined}
+                      dayLabel={he ? 'יום' : 'Day'}
+                      monthLabel={he ? 'חודש' : 'Month'}
+                      yearLabel={he ? 'שנה' : 'Year'}
+                    />
+                    <div className="sl-hint">{he ? 'גללו לתאריך הלידה שלכם.' : 'Spin the wheels to your date of birth.'}</div>
+                  </div>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setManualMode(false); setSent(false); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
                     {he ? 'כבר יש לך חשבון? התחבר/י' : 'Already have an account? Sign in'}
