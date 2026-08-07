@@ -281,10 +281,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const result = await getRedirectResult(auth);
         if (cancelled) return;
         if (!result) {
-          // AuthProvider may have consumed the result first. If a redirect was in
-          // flight and we ARE signed in, the user-effect above will navigate.
+          // AuthProvider may have consumed the result first (both call
+          // getRedirectResult; Firebase delivers it to exactly ONE). If a redirect
+          // was in flight and we ARE signed in, the user-effect above will navigate.
           const expected = getSignupRedirectMarker();
           if (expected) {
+            // auth.currentUser can lag a beat behind AuthProvider's consume →
+            // re-check after a short wait so we don't flash a FALSE "sign-in did not
+            // complete" on a login that actually succeeded (2026-08-06 trace #3).
+            if (!auth.currentUser) { await new Promise((r) => setTimeout(r, 800)); }
+            if (cancelled) return;
             clearSignupRedirectMarker();
             if (!auth.currentUser) {
               // Genuinely lost (Safari ITP cleared cross-origin state) — tell the user
@@ -594,9 +600,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     setInlineError(null);
     setBusy(true);
     try {
+      // Returning-login code-first (2026-08-06): a login must use purpose 'login',
+      // not 'signup' — otherwise the returning user's code is scoped wrong and the
+      // flow attaches a synthetic signup DOB. Start + verify MUST agree on purpose.
+      const emailPurpose = authMode === 'login' ? 'login' : 'signup';
       const r = await fetch(getApiUrl('/api/auth/email/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ email, purpose: 'signup', language }),
+        body: JSON.stringify({ email, purpose: emailPurpose, language }),
       });
       const d = await r.json();
       if (!d.ok) { fail(d.message || (he ? 'לא ניתן לשלוח קוד כעת' : 'Could not send the code right now')); return; }
@@ -610,9 +620,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     setInlineError(null);
     setBusy(true);
     try {
+      // Must match the purpose sent at /email/start (login vs signup).
+      const emailPurpose = authMode === 'login' ? 'login' : 'signup';
       const v = await fetch(getApiUrl('/api/auth/email/verify'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ email, code: c, purpose: 'signup' }),
+        body: JSON.stringify({ email, code: c, purpose: emailPurpose }),
       });
       const vd = await v.json();
       if (!vd.ok || !vd.sessionToken) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
@@ -634,9 +646,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         await finishAndRoute();
         return;
       }
+      // On a returning LOGIN, do NOT send the synthetic default DOB (now-25) — it
+      // could stamp a bogus birthday over the user's real one. Only the JOIN flow
+      // (new-user row creation) carries the DOB.
+      const dobForContext = authMode === 'login' ? undefined : dob;
       const s = await fetch(getApiUrl('/api/auth/email-session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ sessionToken: vd.sessionToken, dateOfBirth: dob }),
+        body: JSON.stringify({ sessionToken: vd.sessionToken, dateOfBirth: dobForContext }),
       });
       const sd = await s.json();
       if (sd.customToken) {
@@ -646,7 +662,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           // Send the DOB so the users row is CREATED with it — persistDob's
           // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
-          body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true }),
+          // (undefined on a returning login → server leaves the real DOB untouched.)
+          body: JSON.stringify({ idToken, dateOfBirth: dobForContext, termsAccepted: true }),
         });
         await finishAndRoute();
         return;
