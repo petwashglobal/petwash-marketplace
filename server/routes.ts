@@ -16803,13 +16803,32 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       const weatherResponse = await fetch(weatherUrl);
       const weatherData = await weatherResponse.json();
 
-      // === STEP 2: Pollen/Allergen Data — NOT WIRED ===
-      // There is no pollen API integrated. This previously used Math.random(),
-      // feeding FABRICATED allergen levels into the user-facing advice. Report it
-      // honestly as unavailable rather than invent a number. Wire a real pollen
-      // source (e.g. Open-Meteo Air-Quality API, which is free) to populate this.
-      const pollenLevel = 0;
-      const pollenRisk = 'unknown';
+      // === STEP 2: Pollen/Allergen Data — FREE Open-Meteo Air-Quality API ===
+      // Real pollen (grains/m³, CAMS model) via Open-Meteo — free, no API key.
+      // Replaces the old Math.random() mock. Coverage is strongest over Europe; if
+      // Israel returns no data we honestly report 'unknown' instead of inventing.
+      let pollenLevel = 0;
+      let pollenRisk: 'low' | 'medium' | 'high' | 'unknown' = 'unknown';
+      try {
+        const aqUrl = `https://air-quality-api.open-meteo.com/v1/air-quality?latitude=${latitude}&longitude=${longitude}&hourly=alder_pollen,birch_pollen,grass_pollen,mugwort_pollen,olive_pollen,ragweed_pollen&timezone=auto&forecast_days=1`;
+        const aqRes = await fetch(aqUrl);
+        if (aqRes.ok) {
+          const aq: any = await aqRes.json();
+          const h = aq?.hourly || {};
+          let maxGrains = -1;
+          for (const s of ['alder_pollen', 'birch_pollen', 'grass_pollen', 'mugwort_pollen', 'olive_pollen', 'ragweed_pollen']) {
+            const arr = Array.isArray(h[s]) ? h[s] : [];
+            for (const v of arr) { if (typeof v === 'number' && v > maxGrains) maxGrains = v; }
+          }
+          if (maxGrains >= 0) {
+            // grains/m³ → risk band (CAMS-style): >50 high, >20 medium, else low.
+            pollenRisk = maxGrains > 50 ? 'high' : maxGrains > 20 ? 'medium' : 'low';
+            pollenLevel = Math.min(10, Math.round(maxGrains / 10)); // 0–10 indicator
+          }
+        }
+      } catch (e: any) {
+        logger.warn('[PetCare] Open-Meteo pollen fetch failed — reporting unknown', { error: e?.message });
+      }
 
       // Find forecast for the target date
       const targetDateIndex = weatherData.daily.time.findIndex((d: string) => d === date);
