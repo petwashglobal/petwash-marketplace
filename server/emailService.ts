@@ -9,13 +9,33 @@ import crypto from 'crypto';
 import { logger } from './lib/logger';
 import { replaceTemplates, validateTemplate, type TemplateContext } from './lib/template-engine';
 import { createMailService, isSendGridConfigured } from './lib/sendgrid';
+import { sendViaResend, isResendConfigured } from './lib/resend';
 import { emailSpendGuard } from './services/EmailSpendGuard';
 import { logAuditEvent } from './middleware/auditLog';
 import { wrapEmailShell, buildLegalFooter, SENDERS, DESIGN, COMPANY_TAX_ID, LEGAL_NAME_HE, LEGAL_NAME_EN } from './email/brand-identity';
 import { generateBookingConfirmationPDF } from './email/pdf/booking-confirmation-pdf';
 import { PETWASH_LOGO_BASE64 } from './email/templates/logo-base64';
 
-const mailService = createMailService();
+const sendgridMail = createMailService();
+// Provider-aware transport (FLAG-OFF): default = SendGrid, unchanged. Set
+// EMAIL_PROVIDER=resend + RESEND_API_KEY to route sends through Resend (free
+// 3k/mo) instead. Resend handles the common {to,from,subject,html}; richer
+// messages (attachments/templates) fall back to SendGrid, and a Resend failure
+// also falls back — so this swap never drops mail.
+const mailService = {
+  async send(msg: any) {
+    const simple = !!msg && !msg.attachments && !msg.templateId && !msg.dynamicTemplateData;
+    if (isResendConfigured() && simple) {
+      const ok = await sendViaResend({
+        to: msg.to, from: msg.from, subject: msg.subject, html: msg.html,
+        cc: msg.cc, bcc: msg.bcc, replyTo: msg.replyTo || msg.reply_to,
+      });
+      if (ok) return;
+      logger.warn('[EmailService] Resend send failed — falling back to SendGrid');
+    }
+    return sendgridMail.send(msg);
+  },
+};
 
 export class EmailService {
   private static readonly FROM_EMAIL = 'noreply@petwash.co.il';
@@ -46,7 +66,7 @@ export class EmailService {
     html: string;
     from?: string;
   }): Promise<boolean> {
-    if (!isSendGridConfigured()) {
+    if (!isSendGridConfigured() && !isResendConfigured()) {
       // In production a missing key is a real outage, not a dev convenience.
       // Report it loudly (once) and return FALSE — a dropped email is a failure,
       // never a silent "success". In dev, keep the no-op convenience.

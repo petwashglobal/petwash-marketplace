@@ -144,14 +144,16 @@ export async function getWeatherForecast(
   longitude: number,
   targetDate?: string
 ): Promise<WeatherData | null> {
-  // Try Google Weather API first (if API key available)
-  if (GOOGLE_WEATHER_API_KEY) {
+  // COST: Open-Meteo (free) is the DEFAULT. The paid Google Weather API only
+  // runs if explicitly opted in with GOOGLE_WEATHER_ENABLED=true — otherwise a
+  // set GOOGLE_WEATHER_API_KEY would silently bill per call. Free covers Israel.
+  if (GOOGLE_WEATHER_API_KEY && process.env.GOOGLE_WEATHER_ENABLED === 'true') {
     const googleWeather = await getGoogleWeather(latitude, longitude, targetDate);
     if (googleWeather) return googleWeather;
   }
 
-  // Fallback to Open-Meteo (free, reliable)
-  logger.info('[UnifiedWeather] Using Open-Meteo fallback');
+  // Open-Meteo (free, reliable) — the default weather source.
+  logger.info('[UnifiedWeather] Using Open-Meteo (free)');
   return await getOpenMeteoWeather(latitude, longitude, targetDate);
 }
 
