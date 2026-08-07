@@ -50,24 +50,20 @@ export function getFranchiseCommandCenter(franchiseeId?: string): {
   topPerformers: Array<{ stationId: string; revenue: number }>;
   needsAttention: Array<{ stationId: string; issue: string }>;
 } {
-  // In production, fetch from database with real-time data
+  // HONEST DEFAULT (was fabricated: 127 stations / ₪45,230 / fake TLV-HFA-JLM
+  // performers). PetWash currently operates 2 company-owned Kfar Saba stations
+  // and has NO franchise network yet, so there is no real franchise feed to
+  // report. Returning invented numbers here misled the admin panel. When a real
+  // franchise ledger exists, wire it in; until then report the truth.
   return {
-    totalStations: 127, // Total ⁦PetWash™⁩ stations
-    activeStations: 124,
-    totalRevenueToday: 45230.50,
-    totalCustomersToday: 1847,
-    averageComplianceScore: 94.7,
-    criticalAlerts: 3,
-    topPerformers: [
-      { stationId: 'TLV-001', revenue: 8945.00 },
-      { stationId: 'HFA-003', revenue: 7612.00 },
-      { stationId: 'JLM-002', revenue: 6891.00 },
-    ],
-    needsAttention: [
-      { stationId: 'BER-005', issue: 'Low soap inventory (< 10%)' },
-      { stationId: 'ASH-002', issue: 'Compliance score dropped to 78%' },
-      { stationId: 'PTH-001', issue: 'Average wait time > 15 minutes' },
-    ],
+    totalStations: 0,
+    activeStations: 0,
+    totalRevenueToday: 0,
+    totalCustomersToday: 0,
+    averageComplianceScore: 0,
+    criticalAlerts: 0,
+    topPerformers: [],
+    needsAttention: [],
   };
 }
 
@@ -135,12 +131,16 @@ export function deployMandatoryUpdate(update: MandatoryUpdate): {
 } {
   const deploymentId = `DEPLOY-${update.updateId}-${Date.now()}`;
 
+  // HONEST: there is NO remote station-deployment rail wired. Previously this
+  // returned status:'scheduled' — an admin pressing "push security patch" got a
+  // reassuring receipt while nothing happened. Report failure so no one believes
+  // an update shipped. Wire a real rail before flipping this to 'scheduled'.
   return {
     deploymentId,
-    status: 'scheduled',
+    status: 'failed',
     successfulDeployments: 0,
-    failedDeployments: 0,
-    estimatedCompletionTime: '2 hours',
+    failedDeployments: (update.affectedStations || []).length,
+    estimatedCompletionTime: 'n/a — remote station deployment is not available yet',
   };
 }
 
@@ -171,24 +171,27 @@ export interface FranchiseeSupport {
 }
 
 export function getFranchiseeSupport(franchiseeId: string): FranchiseeSupport {
+  // HONEST: no franchisee support org exists yet (was fabricated "David Levi"
+  // + fake course/cert counts + 12 fake vendors). Real support is the company
+  // inbox; everything else is empty until a real program is stood up.
   return {
     helpDeskAvailable: true,
-    helpDeskHours: '24/7 (Priority tier)',
+    helpDeskHours: 'support@petwash.co.il',
     trainingPortal: {
-      totalCourses: 24,
-      completedCourses: 18,
-      certificationsEarned: ['K9000 Certified Technician', 'Customer Service Excellence', 'Health & Safety Level 2'],
-      nextCourse: 'Advanced Troubleshooting (Available Dec 1)',
+      totalCourses: 0,
+      completedCourses: 0,
+      certificationsEarned: [],
+      nextCourse: '',
     },
     supplierNetwork: {
-      approvedVendors: 12,
-      bulkDiscountAvailable: true,
+      approvedVendors: APPROVED_SUPPLIERS.length,
+      bulkDiscountAvailable: false,
       nextOrderDeadline: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
     },
     regionalManager: {
-      name: 'David Levi',
-      email: 'david.levi@petwash.co.il',
-      phone: '+972-50-123-4567',
+      name: 'PetWash Support',
+      email: 'support@petwash.co.il',
+      phone: '',
       nextCheckIn: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
     },
   };
@@ -209,21 +212,7 @@ export interface ApprovedSupplier {
   qualityCertified: boolean;
 }
 
-export const APPROVED_SUPPLIERS: ApprovedSupplier[] = [
-  {
-    supplierId: 'SUP-001',
-    name: 'EcoClean Israel Ltd',
-    category: 'chemicals',
-    bulkPricing: { minOrder: 50, discountRate: 15 },
-    deliveryTime: '2-3 business days',
-    qualityCertified: true,
-  },
-  {
-    supplierId: 'SUP-002',
-    name: 'K9000 Equipment Supply',
-    category: 'equipment',
-    bulkPricing: { minOrder: 10, discountRate: 20 },
-    deliveryTime: '5-7 business days',
-    qualityCertified: true,
-  },
-];
+// HONEST: no approved-supplier network exists yet (was two fabricated vendors,
+// "EcoClean Israel Ltd" / "K9000 Equipment Supply"). Populate when real supplier
+// agreements are signed.
+export const APPROVED_SUPPLIERS: ApprovedSupplier[] = [];
