@@ -88,6 +88,7 @@ import {
   signInWithPasskey,
   signInWithPasskeyConditional,
 } from '@/auth/passkey';
+import EnableFaceIDCard from '@/components/EnableFaceIDCard';
 import {
   FaApple, FaFacebookF, FaInstagram, FaTiktok, FaLock, FaMobileAlt,
   FaShieldAlt,
@@ -391,6 +392,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // Passkey / Face ID (returning users): device-bound, the 2026 way to skip codes.
   const [bioAvailable, setBioAvailable] = useState(false);
   const [bioName, setBioName] = useState('Face ID');
+  // Post-signup Face ID offer: device can do Face ID (raw capability), plus the
+  // one-time offer overlay state. Kept separate from bioAvailable (which is gated
+  // on ALREADY having a passkey — the opposite case from "offer to enrol one").
+  const [platformAuthCapable, setPlatformAuthCapable] = useState(false);
+  const [showFaceIDOffer, setShowFaceIDOffer] = useState(false);
+  const [faceIDEmail, setFaceIDEmail] = useState('');
 
   const fail = (msg: string) => setInlineError(msg);
 
@@ -414,6 +421,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const hasRegisteredPasskey = (() => {
           try { return !!localStorage.getItem('petwash_passkey_email'); } catch { return false; }
         })();
+        setPlatformAuthCapable(avail);
         setBioAvailable(avail && hasRegisteredPasskey);
         if (avail && hasRegisteredPasskey) setBioName(getBiometricMethodName());
         signInWithPasskeyConditional().catch(() => {});
@@ -465,7 +473,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     return true;
   };
 
-  async function finishAndRoute() {
+  // Offer Face ID / passkey enrolment ONCE, right after a SIGNUP, to users whose
+  // device supports it and who don't have a passkey yet — this is what makes the
+  // "let device decide" return-login real (nothing to autofill until someone has a
+  // passkey). FAIL-SAFE: only signup (never nags returning logins), remembers a
+  // dismissal, and ANY uncertainty returns false so routing proceeds normally.
+  function shouldOfferFaceIDNow(): boolean {
+    try {
+      if (authMode === 'login') return false;                                   // signup only
+      if (!platformAuthCapable) return false;                                    // device can't
+      if (localStorage.getItem('petwash_passkey_email')) return false;           // already enrolled
+      if (localStorage.getItem('petwash_faceid_offer_dismissed')) return false;  // said no before
+      return true;
+    } catch { return false; }
+  }
+
+  // The actual routing (server post-login decider → nextUrl). Called directly, or
+  // deferred by finishAndRoute until the Face ID offer is answered.
+  async function routeNow() {
     try { await fetch(getApiUrl('/api/session/whoami'), { credentials: 'include' }); }
     catch (e) { logger.error('[signup] whoami', e); }
     // SMART ROUTING (2026-07-24): ask the server's post-login decider where to
@@ -494,6 +519,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     } catch {
       navigate(dest);
     }
+  }
+
+  // Single funnel every signup/login success calls. Offers Face ID once (signup
+  // only, capable device, no passkey yet) then routes; otherwise routes straight
+  // through. Never blocks: the offer's Enable and "Not now" both call routeNow().
+  async function finishAndRoute() {
+    try {
+      if (shouldOfferFaceIDNow()) {
+        setFaceIDEmail(auth.currentUser?.email || email || '');
+        setShowFaceIDOffer(true);
+        return; // routeNow() runs from the card's onEnabled / "Not now" handlers
+      }
+    } catch { /* any doubt → route normally */ }
+    await routeNow();
   }
 
   async function sendCode() {
@@ -1418,6 +1457,23 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
               <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
             </>
+          )}
+
+          {/* === Post-signup Face ID / passkey offer (once, capable device, no
+                 passkey yet). Both Enable and "Not now" call routeNow() so the
+                 user always continues — the funnel can never dead-end here. === */}
+          {showFaceIDOffer && (
+            <div className="sl-faceIdOffer">
+              <EnableFaceIDCard
+                userEmail={faceIDEmail}
+                onEnabled={() => { setShowFaceIDOffer(false); void routeNow(); }}
+              />
+              <button type="button" className="sl-switchLink" disabled={busy}
+                onClick={() => { try { localStorage.setItem('petwash_faceid_offer_dismissed', '1'); } catch {} setShowFaceIDOffer(false); void routeNow(); }}
+                style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '10px 0', width: '100%', textAlign: 'center' }}>
+                {he ? 'לא עכשיו — המשך' : 'Not now — continue'}
+              </button>
+            </div>
           )}
 
           {/* === 2-step LOGIN code — returning member who turned on 2-step === */}
