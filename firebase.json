@@ -66,6 +66,27 @@
           }
         },
         {
+          "source": "/sitter-suite",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/walk-my-pet",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
+          "source": "/academy",
+          "run": {
+            "serviceId": "petwash-api",
+            "region": "me-west1"
+          }
+        },
+        {
           "source": "**",
           "destination": "/index.html"
         }

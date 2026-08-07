@@ -3,6 +3,7 @@ import { db } from '../db';
 import { petWashStations } from '@shared/schema-enterprise';
 import { ne } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { LANDING_PAGES, renderLandingHtml } from '../lib/prerenderLanding';
 
 const router = Router();
 
@@ -280,5 +281,32 @@ Hiring: ${baseUrl}/careers
   
   logger.info('security.txt served', { userAgent: req.headers['user-agent'] });
 });
+
+/**
+ * Prerendered public SERVICE LANDING pages (crawler + AI-answer-engine visible).
+ * These exact paths are sent to Cloud Run by a Firebase Hosting rewrite (same as
+ * sitemap.xml/robots.txt). We inject real content into the built index.html so
+ * non-JS crawlers read the page; a human's React app mounts and takes over.
+ * Falls through to the SPA (next()) if content can't be produced — never breaks
+ * the route. Only the EXACT landing path is handled here; sub-routes
+ * (e.g. /sitter-suite/browse) stay pure SPA.
+ */
+for (const slug of Object.keys(LANDING_PAGES)) {
+  router.get(`/${slug}`, (req, res, next) => {
+    try {
+      const html = renderLandingHtml(slug);
+      if (!html) return next();
+      res.set({
+        'Content-Type': 'text/html; charset=utf-8',
+        'Cache-Control': 'public, max-age=600, stale-while-revalidate=86400',
+      });
+      logger.info('[SEO] prerendered landing served', { slug, userAgent: req.headers['user-agent'] });
+      return res.send(html);
+    } catch (err: any) {
+      logger.warn('[SEO] landing render failed — falling through to SPA', { slug, error: err?.message });
+      return next();
+    }
+  });
+}
 
 export default router;
