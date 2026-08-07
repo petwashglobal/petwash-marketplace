@@ -187,6 +187,28 @@ export function scoreProvider(
   if (provider.verified) score += 0.015;
   if (provider.insured) score += 0.01;
 
+  // ── HYPER-LOCAL BOOST ("your neighbour is a sitter") ────────────────────────
+  // Reward providers who are RIGHT THERE: same building (or same 7-digit Israeli
+  // postcode, which IS per-building), same street, or walking distance. A very-
+  // close provider floats up and earns a badge. Sized so proximity is decisive
+  // WITHOUT letting a poor provider beat a clearly better one only slightly further.
+  const samePostcode =
+    !!provider.postcode && !!filters.postcode &&
+    provider.postcode.replace(/\s/g, '') === filters.postcode.replace(/\s/g, '');
+  if (samePostcode || (distanceKm != null && distanceKm <= 0.05)) {
+    score += 0.2;
+    provider.proximityBadge = 'same_building';
+    provider.proximityBadgeHe = 'בבניין שלך 🏠';
+  } else if (distanceKm != null && distanceKm <= 0.3) {
+    score += 0.12;
+    provider.proximityBadge = 'on_your_street';
+    provider.proximityBadgeHe = 'ברחוב שלך';
+  } else if (distanceKm != null && distanceKm <= 1.0) {
+    score += 0.05;
+    provider.proximityBadge = 'walking_distance';
+    provider.proximityBadgeHe = 'מרחק הליכה';
+  }
+
   provider.rankingScore = score;
   return provider;
 }

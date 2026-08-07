@@ -828,6 +828,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   async function emailSubmit() {
     if (!email || !password) { fail(he ? 'הזן אימייל וסיסמה' : 'Enter your email and password'); return; }
     if (!fieldSchemas(language).email.safeParse(email.trim()).success) { fail(vmsg('validation.email.invalid', language)); return; }
+    // Real 18+ birthday required for signup (login never needs DOB).
+    if (authMode !== 'login' && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
     if (!requireTerms()) return;
     setInlineError(null);
     setBusy(true);
@@ -1290,19 +1292,37 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     </>
                   )}
 
-                  {/* EMAIL method — ANY email (Gmail/Outlook/Yahoo/Walla/business). A
-                      one-time code verifies it; mobile + name + terms are asked
-                      afterwards (only if missing). No password. */}
+                  {/* EMAIL method — ANY email. PRIMARY path is email + a PetWash
+                      password the user SETS here (autoComplete="new-password" so
+                      iCloud/Google offers to save it → one-tap return, ₪0 per login).
+                      Leaving the password blank falls back to a one-time email code,
+                      so nobody is ever locked out. */}
                   {method === 'email' && (
-                    <div className="sl-field">
-                      <label className="sl-label">{t.emailLabel}</label>
-                      <div className="sl-inputWrap">
-                        <FaEnvelope className="sl-inputIcon" aria-hidden />
-                        <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                          value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+                    <>
+                      <div className="sl-field">
+                        <label className="sl-label">{t.emailLabel}</label>
+                        <div className="sl-inputWrap">
+                          <FaEnvelope className="sl-inputIcon" aria-hidden />
+                          <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                            value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+                        </div>
+                        <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
                       </div>
-                      <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
-                    </div>
+                      <div className="sl-field">
+                        <label className="sl-label">{he ? 'סיסמה' : 'Password'}</label>
+                        <div className="sl-inputWrap">
+                          <FaLock className="sl-inputIcon" aria-hidden />
+                          <input className="sl-input sl-input--icon" type={showPwd ? 'text' : 'password'} autoComplete="new-password"
+                            value={password} onChange={(e) => setPassword(e.target.value)}
+                            placeholder={he ? 'בחרו סיסמה (6 תווים לפחות)' : 'Choose a password (min 6 chars)'} />
+                        </div>
+                        <button type="button" className="sl-pwToggle" onClick={() => setShowPwd((s) => !s)}
+                          style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
+                          {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
+                        </button>
+                        <div className="sl-hint">{he ? 'שמרו אותה ב-iCloud/Google לכניסה מהירה בפעם הבאה. או השאירו ריק וקבלו קוד חד-פעמי.' : 'Save it to iCloud/Google for one-tap return next time — or leave blank to get a one-time code.'}</div>
+                      </div>
+                    </>
                   )}
                   {/* DATE OF BIRTH (18+). Rendered so we collect a REAL birthday
                       rather than the old hidden default. maxYear = now-18 means the
@@ -1425,8 +1445,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       after the code is verified — no password anywhere. */}
                   <button className="sl-cta"
                     disabled={busy || (method === 'email' ? !emailValid : !phoneValid)}
-                    onClick={() => { if (method === 'email') { void sendEmailCode(); } else { void sendCode(); } }}>
-                    <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שליחת קוד אימות' : 'Send verification code')}
+                    onClick={() => {
+                      if (method === 'email') {
+                        // Password set → create the account with it (saveable). Blank
+                        // → fall back to a one-time email code. Never locked out.
+                        if (password) { void emailSubmit(); } else { void sendEmailCode(); }
+                      } else { void sendCode(); }
+                    }}>
+                    <FaMobileAlt aria-hidden /> {busy ? '…' : (method === 'email' && password ? (he ? 'יצירת חשבון' : 'Create account') : (he ? 'שליחת קוד אימות' : 'Send verification code'))}
                   </button>
                   {(method === 'email' ? !emailValid : !phoneValid) && (
                     <div className="sl-hint sl-submitHint">
