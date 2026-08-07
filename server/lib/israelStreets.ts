@@ -1,15 +1,18 @@
-// Offline Israeli STREETS dataset — 63,563 streets across 1,304 cities, baked into
-// the app (server/data/israel-streets.json, from GabMic's community conversion of
-// the official Israeli CBS / data.gov.il registry, snapshot 05/2026). This is the
-// primary source for street autocomplete: instant, in-Hebrew, zero runtime network
-// call, no Google/OSM dependency, no fees. It has street + city names only (no
-// coordinates / house numbers) — coordinates are filled by geocode-on-save for the
-// one address the user actually picks. (2026-07-29)
+// Offline Israeli STREETS dataset — 63,571 streets across 1,310 cities, baked into
+// the app (server/data/israel-streets.json). Refreshed 2026-08-07 straight from the
+// OFFICIAL data.gov.il registry (רשות האוכלוסין וההגירה — רשימת רחובות בישראל,
+// resource 9ad3862c-8391-4b2f-84a4-2d4c68625f4b, updated weekly; snapshot 02/08/2026).
+// Now also stores the official settlement + street CODES (city_code / street_code) —
+// the Israel-Post key for any future postcode enrichment. This is the primary source
+// for street autocomplete: instant, in-Hebrew, zero runtime network call, no Google
+// dependency, no fees. It has street + city (+ codes) only — NO postcode field exists
+// in the government data; the exact 7-digit מיקוד + coordinates are filled per address
+// by free OSM geocode-on-select for the one address the user actually picks.
 import fs from 'fs';
 import path from 'path';
 import { logger } from './logger';
 
-interface StreetRow { id: number; city_name: string; street_name: string; }
+interface StreetRow { id: number; city_name: string; street_name: string; city_code?: number | null; street_code?: number | null; }
 interface IndexedRow { city: string; street: string; nCity: string; nStreet: string }
 
 // INDEX is null until the ASYNC background load finishes. Search returns [] while
