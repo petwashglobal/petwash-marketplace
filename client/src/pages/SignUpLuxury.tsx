@@ -290,63 +290,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, safeRedirect, explicitIntent, dest, navigate]);
 
-  // BUGFIX 2026-06-18: handle the Google/Apple/Facebook REDIRECT return on /signup
-  // (iOS uses signInWithRedirect). Without this, the user completed sign-in on
-  // Google but landed back on the signup form. Mirrors SignIn.tsx and coexists with
-  // AuthProvider (Firebase clears getRedirectResult after the first read).
+  // SOLE-OWNER FIX (2026-08-07): AuthProvider is now the ONLY consumer of
+  // getRedirectResult — the same fix already applied to AdminLoginV2 +
+  // PrivilegeSignup, finally applied to the MAIN login door. The page-level
+  // getRedirectResult here fought AuthProvider (Firebase delivers the redirect
+  // result to exactly ONE caller): the loser saw `null` and flashed a FALSE
+  // "sign-in did not complete", and both raced to mint the session and route.
+  // Now, on a social REDIRECT return (the rare popup-blocked fallback path):
+  // AuthProvider consumes the result → onAuthStateChanged → ensureServerSession
+  // mints the __session cookie → sets `user` → the guarded user-effect above
+  // routes. This effect only clears a stale redirect marker so nothing lingers.
   useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const result = await getRedirectResult(auth);
-        if (cancelled) return;
-        if (!result) {
-          // AuthProvider may have consumed the result first (both call
-          // getRedirectResult; Firebase delivers it to exactly ONE). If a redirect
-          // was in flight and we ARE signed in, the user-effect above will navigate.
-          const expected = getSignupRedirectMarker();
-          if (expected) {
-            // auth.currentUser can lag a beat behind AuthProvider's consume →
-            // re-check after a short wait so we don't flash a FALSE "sign-in did not
-            // complete" on a login that actually succeeded (2026-08-06 trace #3).
-            if (!auth.currentUser) { await new Promise((r) => setTimeout(r, 800)); }
-            if (cancelled) return;
-            clearSignupRedirectMarker();
-            if (!auth.currentUser) {
-              // Genuinely lost (Safari ITP cleared cross-origin state) — tell the user
-              // instead of silently leaving them on the signup form.
-              fail(he ? 'ההרשמה לא הושלמה — נסה שוב' : 'Sign-in did not complete. Please try again.');
-            }
-          }
-          return;
-        }
-        clearSignupRedirectMarker();
-        setBusy(true);
-        const idToken = await result.user.getIdToken();
-        const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ idToken }),
-        });
-        if (!sessionRes.ok) {
-          fail(he ? 'יצירת ההתחברות נכשלה — נסה שוב' : 'Could not establish your session. Please try again.');
-          return;
-        }
-        await finishAndRoute();
-      } catch (e: any) {
-        if (e?.code === 'auth/popup-closed-by-user' || e?.code === 'auth/cancelled-popup-request') return;
-        // Was silently swallowed (only logged) — on iPhone every social login uses
-        // signInWithRedirect, so a not-enabled provider (Apple/Facebook =
-        // auth/operation-not-allowed) or auth/unauthorized-domain dumped the user
-        // back on the form with NO message = "Gmail/Apple not working". Now tell them.
-        logger.error('[signup] redirect result', e);
-        clearSignupRedirectMarker();
-        fail(humanizeAuthError(e?.code, he ? 'he' : 'en'));
-      } finally {
-        if (!cancelled) setBusy(false);
-      }
-    })();
-    return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    try { clearSignupRedirectMarker(); } catch { /* noop */ }
   }, []);
 
   // AUTH MODE (CEO 2026-07-31 "both mobile AND email AND a password"): the JOIN
