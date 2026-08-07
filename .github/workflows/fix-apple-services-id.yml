@@ -9,6 +9,7 @@ jobs:
     timeout-minutes: 10
     env:
       PROJECT_ID: signinpetwash
+      SERVICES_ID: il.co.petwash.web
     steps:
       - uses: google-github-actions/auth@v2
         with:
@@ -16,23 +17,22 @@ jobs:
       - uses: google-github-actions/setup-gcloud@v2
         with:
           project_id: signinpetwash
-      - name: Revert wrong Apple clientId + audit all secrets
+      - name: Set apple.com clientId (surgical — updateMask=clientId only)
         run: |
           set -uo pipefail
           TOKEN="$(gcloud auth print-access-token)"
           BASE="https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}"
 
-          echo "== BEFORE: current apple.com clientId =="
-          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" | jq '{enabled, clientId}'
+          echo "== BEFORE =="
+          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" \
+            | jq '{enabled, clientId, hasCodeFlow: (.appleSignInConfig!=null)}'
 
-          echo "== REVERT: clear clientId (undo the wrong APPLE_WALLET_PASS_TYPE_ID value) =="
+          echo "== SET clientId = ${SERVICES_ID} (updateMask=clientId ONLY — code flow untouched) =="
           curl -fsS -X PATCH \
             -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
             "$BASE/defaultSupportedIdpConfigs/apple.com?updateMask=clientId" \
-            -d '{"clientId":""}' | jq '{enabled, clientId}'
+            -d "{\"clientId\":\"${SERVICES_ID}\"}" >/dev/null
 
-          echo "== ALL secret names (confirm whether ANY Sign-in-with-Apple Services ID exists) =="
-          gcloud secrets list --project="$PROJECT_ID" --format='value(name)'
-
-          echo "== AFTER: final apple.com state =="
-          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" | jq '{enabled, clientId, hasCodeFlow: (.appleSignInConfig!=null)}'
+          echo "== AFTER (must show clientId set AND hasCodeFlow still true) =="
+          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" \
+            | jq '{enabled, clientId, hasCodeFlow: (.appleSignInConfig!=null)}'
