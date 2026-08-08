@@ -1089,6 +1089,29 @@ router.post('/apply', upload.fields([
       }).catch(err => logger.error('[Provider Onboarding] Welcome email failed', err));
     }
 
+    // Notify the OPS TEAM that a NEW provider application is pending review (CEO
+    // 2026-08-08). Previously only the applicant got an email + a Google Sheets row
+    // was logged — nobody at support@petwash.co.il was told an application landed, so
+    // pending applications could sit unseen. support@ is our own Workspace inbox, so
+    // deliverability is not a concern here. Fire-and-forget; never blocks the submit.
+    sendLuxuryEmail({
+      to: SUPPORT_EMAIL,
+      subject: `🆕 New provider application — ${firstName} ${lastName} (${providerType}) — PENDING`,
+      html: `<div style="font-family:Arial,sans-serif;font-size:14px;color:#111;line-height:1.5">
+        <h2 style="margin:0 0 10px">New provider application — pending review</h2>
+        <table style="border-collapse:collapse">
+          <tr><td style="padding:4px 12px;color:#555">Application</td><td style="padding:4px 12px"><b>${applicationId}</b></td></tr>
+          <tr><td style="padding:4px 12px;color:#555">Name</td><td style="padding:4px 12px">${firstName} ${lastName}</td></tr>
+          <tr><td style="padding:4px 12px;color:#555">Email</td><td style="padding:4px 12px">${authenticatedUser.email || '—'}</td></tr>
+          <tr><td style="padding:4px 12px;color:#555">Mobile</td><td style="padding:4px 12px">${phoneNumber || '—'}</td></tr>
+          <tr><td style="padding:4px 12px;color:#555">Type</td><td style="padding:4px 12px">${providerType}</td></tr>
+          <tr><td style="padding:4px 12px;color:#555">Location</td><td style="padding:4px 12px">${city || '—'}, ${country || 'IL'}</td></tr>
+          <tr><td style="padding:4px 12px;color:#555">Status</td><td style="padding:4px 12px"><b>pending</b> — biometric / KYC running</td></tr>
+        </table>
+        <p style="margin-top:14px">Review it in the admin panel → <b>Provider Applications</b>.</p>
+      </div>`,
+    }).catch(err => logger.error('[Provider Onboarding] support@ new-application notice failed', err));
+
     // Send response immediately — biometric check runs in background
     res.json({
       success: true,

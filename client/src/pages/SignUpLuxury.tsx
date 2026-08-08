@@ -2090,7 +2090,10 @@ function styles(he: boolean) {
       .sl-h1{ display:none }
       .sl-sub{ display:none }
       .sl-divPaw{ display:none }
-      .sl-dogWrap{ display:none }
+      /* Bring the brand dog back on phones (CEO 2026-08-08) but COMPACT — a small
+         photo under the logo, not the old 480px hero that buried the form. */
+      .sl-dogWrap{ display:flex; justify-content:center; padding:2px 0 4px }
+      .sl-dog{ width:min(30vw, 118px); aspect-ratio:1/1.05; border-radius:14px }
       .sl-card,.sl-trustCard,.sl-secBadge{ display:none }
       .sl-panel{ padding:16px 14px; border-radius:22px; gap:11px; scroll-margin-top:8px }
       .sl-panelHead{ gap:8px }
@@ -2141,7 +2144,8 @@ function styles(he: boolean) {
     }
 
     @media(max-width:380px){
-      .sl-dogWrap{ display:none }
+      /* keep the dog visible on the smallest phones, just smaller (CEO 2026-08-08) */
+      .sl-dog{ width:min(26vw, 96px) }
     }
 
     /* 768-1023 (tablet portrait, iPad mini portrait) — two columns so iPad
