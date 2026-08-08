@@ -1722,7 +1722,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       email→email code). The name + any missing base fields are asked
                       after the code is verified — no password anywhere. */}
                   <button className="sl-cta"
-                    disabled={busy || (method === 'email' ? !emailValid : (!phoneValid || !emailValid))}
+                    disabled={busy || (method === 'email' ? !emailValid : !phoneValid)}
                     onClick={() => {
                       if (method === 'email') {
                         // Password set → create the account with it (saveable). Blank
@@ -1732,13 +1732,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     }}>
                     <FaMobileAlt aria-hidden /> {busy ? '…' : (method === 'email' && password ? (he ? 'יצירת חשבון' : 'Create account') : (he ? 'שליחת קוד אימות' : 'Send verification code'))}
                   </button>
-                  {(method === 'email' ? !emailValid : (!phoneValid || !emailValid)) && (
+                  {(method === 'email' ? !emailValid : !phoneValid) && (
                     <div className="sl-hint sl-submitHint">
                       {method === 'email'
                         ? (he ? 'הזינו כתובת אימייל תקינה כדי לקבל קוד.' : 'Enter a valid email to get a code.')
-                        : (!phoneValid
-                            ? (he ? 'הזינו מספר נייד תקין.' : 'Enter a valid mobile number.')
-                            : (he ? 'הזינו גם אימייל — חשבון חדש מאמת נייד + אימייל.' : 'Add your email too — a new account verifies mobile + email.'))}
+                        : (he ? 'הזינו מספר נייד תקין כדי לקבל קוד.' : 'Enter a valid mobile number to get a code.')}
                     </div>
                   )}
                 </>
