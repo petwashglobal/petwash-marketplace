@@ -123,5 +123,10 @@ export async function sendVerificationEmailCode(input: VerificationEmailCodeInpu
     to: input.to,
     subject,
     html,
+    // A login/verification code that lands in nobody's inbox is a broken product.
+    // Force the DMARC-authenticated SendGrid sender so the code reaches Outlook/Yahoo
+    // and every non-Gmail provider (Resend is not authenticated for petwash.co.il under
+    // DMARC p=reject). (2026-08-08)
+    criticalDeliverability: true,
   });
 }

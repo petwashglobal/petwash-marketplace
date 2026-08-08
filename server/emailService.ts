@@ -23,9 +23,21 @@ const sendgridMail = createMailService();
 // messages (attachments/templates) fall back to SendGrid, and a Resend failure
 // also falls back — so this swap never drops mail.
 const mailService = {
-  async send(msg: any) {
+  async send(msg: any, opts?: { forceSendGrid?: boolean }) {
+    // DELIVERABILITY 2026-08-08: Resend is NOT DNS-authenticated for petwash.co.il
+    // (verified live: no SPF include, no DKIM selector) and the domain publishes
+    // DMARC p=reject — so mail sent via Resend from @petwash.co.il is REJECTED
+    // outright by strict receivers (Outlook/Microsoft, Yahoo), while Gmail (the
+    // domain's own Workspace MX) is lenient. That is exactly why login one-time codes
+    // "don't work" for non-Gmail users. Deliverability-critical mail (auth codes) must
+    // therefore use the AUTHENTICATED SendGrid sender (SPF include:sendgrid.net + s1/s2
+    // DKIM are live → passes DMARC). forceSendGrid skips the Resend swap for those.
     const simple = !!msg && !msg.attachments && !msg.templateId && !msg.dynamicTemplateData;
-    if (isResendConfigured() && simple) {
+    // Only DIVERT away from Resend when SendGrid is actually available to take the
+    // send — if SendGrid isn't configured, a best-effort Resend send still beats a
+    // guaranteed blackout.
+    const divertToSendGrid = opts?.forceSendGrid === true && isSendGridConfigured();
+    if (!divertToSendGrid && isResendConfigured() && simple) {
       const ok = await sendViaResend({
         to: msg.to, from: msg.from, subject: msg.subject, html: msg.html,
         cc: msg.cc, bcc: msg.bcc, replyTo: msg.replyTo || msg.reply_to,
@@ -65,6 +77,9 @@ export class EmailService {
     subject: string;
     html: string;
     from?: string;
+    // Force the DMARC-authenticated SendGrid sender (skip the Resend swap). Use for
+    // deliverability-critical mail like login one-time codes so it reaches Outlook/Yahoo.
+    criticalDeliverability?: boolean;
   }): Promise<boolean> {
     if (!isSendGridConfigured() && !isResendConfigured()) {
       // In production a missing key is a real outage, not a dev convenience.
@@ -101,7 +116,7 @@ export class EmailService {
         logger.error(`[EmailService] 🔴 Send BLOCKED by EmailSpendGuard`, { reason: guard.reason, to: params.to });
         return false;
       }
-      await mailService.send(msg);
+      await mailService.send(msg, { forceSendGrid: params.criticalDeliverability === true });
       await emailSpendGuard.record('EmailService', params.to, params.subject);
       logger.info(`System email sent to ${params.to}: ${params.subject}`);
       return true;
