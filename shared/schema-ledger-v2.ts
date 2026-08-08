@@ -22,7 +22,7 @@ import {
 } from "drizzle-orm/pg-core";
 
 // ── 7c. ledger_transactions — balance-enforcing envelope + idempotency anchor ──
-export const ledgerTransactions = pgTable("ledger_transactions", {
+export const ledgerTransactions = pgTable("ledger_v2_transactions", {
   transactionId:  varchar("transaction_id",  { length: 80 }).primaryKey(),
   idempotencyKey: varchar("idempotency_key",  { length: 160 }).notNull().unique(),
   eventType:      varchar("event_type",       { length: 60 }).notNull(),
@@ -33,7 +33,7 @@ export const ledgerTransactions = pgTable("ledger_transactions", {
 });
 
 // ── 7a. ledger_accounts — chart of accounts ──
-export const ledgerAccounts = pgTable("ledger_accounts", {
+export const ledgerAccounts = pgTable("ledger_v2_accounts", {
   id:          serial("id").primaryKey(),
   accountId:   varchar("account_id",   { length: 160 }).notNull().unique(),
   accountType: varchar("account_type", { length: 20 }).notNull(),
@@ -47,7 +47,7 @@ export const ledgerAccounts = pgTable("ledger_accounts", {
 });
 
 // ── 7d. ledger_pending_transfers — holds / J5 / escrow (resolve ONCE) ──
-export const ledgerPendingTransfers = pgTable("ledger_pending_transfers", {
+export const ledgerPendingTransfers = pgTable("ledger_v2_pending_transfers", {
   id:              serial("id").primaryKey(),
   pendingId:       varchar("pending_id",        { length: 80 }).notNull().unique(),
   kind:            varchar("kind",              { length: 30 }).notNull(),
@@ -66,7 +66,7 @@ export const ledgerPendingTransfers = pgTable("ledger_pending_transfers", {
 });
 
 // ── 7b. ledger_entries — append-only, double-entry ──
-export const ledgerEntries = pgTable("ledger_entries", {
+export const ledgerEntries = pgTable("ledger_v2_entries", {
   id:             bigserial("id", { mode: "number" }).primaryKey(),
   entryId:        varchar("entry_id",        { length: 80 }).notNull().unique(),
   transactionId:  varchar("transaction_id",  { length: 80 }).notNull(),
@@ -90,18 +90,18 @@ export const ledgerEntries = pgTable("ledger_entries", {
   entryHash:      varchar("entry_hash",      { length: 64 }).notNull(),
   createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 }, (table) => [
-  index("ledger_entries_txn_idx").on(table.transactionId),
-  index("ledger_entries_acct_id_idx").on(table.accountId, table.id),
-  index("ledger_entries_booking_idx").on(table.bookingId),
-  index("ledger_entries_idem_idx").on(table.idempotencyKey),
-  index("ledger_entries_payment_idx").on(table.paymentRef),
-  index("ledger_entries_event_idx").on(table.eventType),
-  index("ledger_entries_created_idx").on(table.createdAt),
-  index("ledger_entries_division_idx").on(table.divisionCode),
+  index("ledger_v2_entries_txn_idx").on(table.transactionId),
+  index("ledger_v2_entries_acct_id_idx").on(table.accountId, table.id),
+  index("ledger_v2_entries_booking_idx").on(table.bookingId),
+  index("ledger_v2_entries_idem_idx").on(table.idempotencyKey),
+  index("ledger_v2_entries_payment_idx").on(table.paymentRef),
+  index("ledger_v2_entries_event_idx").on(table.eventType),
+  index("ledger_v2_entries_created_idx").on(table.createdAt),
+  index("ledger_v2_entries_division_idx").on(table.divisionCode),
 ]);
 
 // ── 7e. ledger_balance_cache — DERIVED, non-authoritative ──
-export const ledgerBalanceCache = pgTable("ledger_balance_cache", {
+export const ledgerBalanceCache = pgTable("ledger_v2_balance_cache", {
   accountId:      varchar("account_id",   { length: 160 }).primaryKey(),
   availableCents: integer("available_cents").default(0).notNull(),
   pendingCents:   integer("pending_cents").default(0).notNull(),
