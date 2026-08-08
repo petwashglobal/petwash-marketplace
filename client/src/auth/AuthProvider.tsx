@@ -255,7 +255,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               ensureServerSession(firebaseUser).then(() => { sessionDone = true; }),
               new Promise<void>((resolve) => setTimeout(resolve, 6000)),
             ]);
-            if (sessionDone) sessionCreatedForUid.current = firebaseUser.uid;
+            if (sessionDone) {
+              sessionCreatedForUid.current = firebaseUser.uid;
+            } else {
+              // Session didn't confirm within 6s. We still reveal the user below
+              // (never trap them on an infinite loader), but the __session cookie
+              // may not have landed yet — so a cookie-authed API call in the gap
+              // could 401 and bounce the user to /signin ("logged in but kicked
+              // out"). Keep re-minting in the BACKGROUND (fire-and-forget, bounded)
+              // so the cookie lands ASAP and the window shrinks. ensureServerSession
+              // is idempotent. (verification-drift follow-up 2026-08-07)
+              const uidAtStart = firebaseUser.uid;
+              void (async () => {
+                for (let i = 0; i < 4 && sessionCreatedForUid.current !== uidAtStart; i++) {
+                  await new Promise((r) => setTimeout(r, 1500));
+                  if (auth.currentUser?.uid !== uidAtStart) return; // user changed — abort
+                  try {
+                    await ensureServerSession(firebaseUser);
+                    sessionCreatedForUid.current = uidAtStart;
+                  } catch { /* keep retrying up to the bound */ }
+                }
+              })();
+            }
           }
 
           try {
