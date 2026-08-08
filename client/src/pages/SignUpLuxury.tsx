@@ -716,13 +716,21 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       if (sd.customToken) {
         const cred = await signInWithCustomToken(auth, sd.customToken);
         const idToken = await cred.user.getIdToken(true);
-        await fetch(getApiUrl('/api/auth/session'), {
+        const sessRes = await fetch(getApiUrl('/api/auth/session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           // Send the DOB so the users row is CREATED with it — persistDob's
           // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
           // (undefined on a returning login → server leaves the real DOB untouched.)
           body: JSON.stringify({ idToken, dateOfBirth: dobForContext, termsAccepted: true }),
         });
+        // NEW email signup → also collect + verify the mobile so the account confirms
+        // BOTH contacts (CEO 2026-08-08). Returning users route straight in.
+        const sessData = await sessRes.json().catch(() => ({} as any));
+        if (authMode === 'join' && sessData?.isNewUser) {
+          setPhone(''); setSent(false); setMethod('mobile'); setMobileStep(true);
+          toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
+          return;
+        }
         await finishAndRoute();
         return;
       }
@@ -995,6 +1003,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // Surface the real failure instead of dropping the user into the app on a
         // session that will immediately 401-bounce them back here.
         fail(he ? 'יצירת ההתחברות נכשלה — נסה שוב' : 'Could not establish your session. Please try again.');
+        return;
+      }
+      // NEW email+password signup → also collect + verify the mobile so the account
+      // confirms BOTH contacts (CEO 2026-08-08). Returning login routes straight in.
+      const sd2 = await sessionRes.json().catch(() => ({} as any));
+      if (authMode === 'join' && sd2?.isNewUser) {
+        setPhone(''); setSent(false); setMethod('mobile'); setMobileStep(true);
+        toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
         return;
       }
       await finishAndRoute();
