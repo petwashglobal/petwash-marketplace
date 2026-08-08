@@ -34,6 +34,57 @@ interface Pet {
   handlingInstructions?: string;
 }
 
+// Hoisted to MODULE scope (2026-08-08). Previously these were declared INSIDE the
+// component, so every keystroke → set() → re-render created new component identities →
+// React unmounted/remounted the <input>/<textarea> → focus dropped after one character,
+// making the whole care-profile form unfillable. They are pure (props only), so hoisting
+// is safe and fixes the focus loss with no behavioural change.
+const Field = ({ label, value, onChange, placeholder, textarea }: {
+  label: string; value?: string; onChange: (v: string) => void; placeholder?: string; textarea?: boolean;
+}) => (
+  <div>
+    <label className="block text-xs uppercase tracking-wider text-amber-300/70 mb-1.5">{label}</label>
+    {textarea ? (
+      <textarea
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        dir="auto"
+        rows={3}
+        className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none resize-none"
+      />
+    ) : (
+      <input
+        value={value || ''}
+        onChange={(e) => onChange(e.target.value)}
+        placeholder={placeholder}
+        dir="auto"
+        className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none"
+      />
+    )}
+  </div>
+);
+
+const Toggle = ({ label, hint, value, onChange, danger }: {
+  label: string; hint?: string; value?: boolean; onChange: (v: boolean) => void; danger?: boolean;
+}) => (
+  <button
+    type="button"
+    onClick={() => onChange(!value)}
+    className={`w-full flex items-center justify-between rounded-xl border px-3 py-3 text-start transition-colors ${
+      value ? (danger ? 'bg-red-500/10 border-red-400/40' : 'bg-amber-300/10 border-amber-300/40') : 'bg-white/[0.03] border-white/10'
+    }`}
+  >
+    <span>
+      <span className="block text-sm text-white">{label}</span>
+      {hint && <span className="block text-[11px] text-gray-400 mt-0.5">{hint}</span>}
+    </span>
+    <span className={`relative w-11 h-6 rounded-full shrink-0 transition-colors ${value ? (danger ? 'bg-red-500' : 'bg-amber-400') : 'bg-gray-600'}`}>
+      <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${value ? 'start-[22px]' : 'start-0.5'}`} />
+    </span>
+  </button>
+);
+
 export default function PetCareProfile() {
   const { petId } = useParams<{ petId: string }>();
   const { language } = useLanguage();
@@ -106,52 +157,6 @@ export default function PetCareProfile() {
       </Layout>
     );
   }
-
-  const Field = ({ label, value, onChange, placeholder, textarea }: {
-    label: string; value?: string; onChange: (v: string) => void; placeholder?: string; textarea?: boolean;
-  }) => (
-    <div>
-      <label className="block text-xs uppercase tracking-wider text-amber-300/70 mb-1.5">{label}</label>
-      {textarea ? (
-        <textarea
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          dir="auto"
-          rows={3}
-          className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none resize-none"
-        />
-      ) : (
-        <input
-          value={value || ''}
-          onChange={(e) => onChange(e.target.value)}
-          placeholder={placeholder}
-          dir="auto"
-          className="w-full rounded-xl bg-white/[0.04] border border-amber-300/15 px-3 py-2.5 text-sm text-white placeholder:text-gray-500 focus:border-amber-300/50 focus:outline-none"
-        />
-      )}
-    </div>
-  );
-
-  const Toggle = ({ label, hint, value, onChange, danger }: {
-    label: string; hint?: string; value?: boolean; onChange: (v: boolean) => void; danger?: boolean;
-  }) => (
-    <button
-      type="button"
-      onClick={() => onChange(!value)}
-      className={`w-full flex items-center justify-between rounded-xl border px-3 py-3 text-start transition-colors ${
-        value ? (danger ? 'bg-red-500/10 border-red-400/40' : 'bg-amber-300/10 border-amber-300/40') : 'bg-white/[0.03] border-white/10'
-      }`}
-    >
-      <span>
-        <span className="block text-sm text-white">{label}</span>
-        {hint && <span className="block text-[11px] text-gray-400 mt-0.5">{hint}</span>}
-      </span>
-      <span className={`relative w-11 h-6 rounded-full shrink-0 transition-colors ${value ? (danger ? 'bg-red-500' : 'bg-amber-400') : 'bg-gray-600'}`}>
-        <span className={`absolute top-0.5 w-5 h-5 rounded-full bg-white transition-all ${value ? 'start-[22px]' : 'start-0.5'}`} />
-      </span>
-    </button>
-  );
 
   return (
     <Layout>

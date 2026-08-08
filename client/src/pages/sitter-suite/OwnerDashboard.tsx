@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card } from '@/components/ui/card';
-import { Link } from 'wouter';
+import { Link, useLocation } from 'wouter';
 import { 
   Calendar, 
   CreditCard, 
@@ -69,8 +69,12 @@ interface PaymentHistory {
 export default function OwnerDashboard() {
   const { language } = useLanguage();
   const t = (key: string) => ti18n(key, language);
+  const [, setLocation] = useLocation();
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedConversation, setSelectedConversation] = useState<string>();
+  // The string ref (SITTER_xxx) is what /booking-chat resolves — sitterBookings.select()
+  // returns it even though the Booking TS interface only declares `id`. (2026-08-08)
+  const chatRefOf = (b: Booking) => (b as any).bookingId || b.id;
   const [reviewDialogOpen, setReviewDialogOpen] = useState(false);
   const [selectedBookingForReview, setSelectedBookingForReview] = useState<Booking | null>(null);
 
@@ -338,11 +342,11 @@ export default function OwnerDashboard() {
                             </div>
 
                             <div className="flex gap-3 pt-2">
-                              <Button variant="outline" size="sm" className="flex-1 rounded-xl border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:text-black hover:border-[#D4AF37]/40 font-semibold transition-all" data-testid={`button-message-${booking.id}`}>
+                              <Button onClick={() => setLocation(`/booking-chat/${chatRefOf(booking)}`)} variant="outline" size="sm" className="flex-1 rounded-xl border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:text-black hover:border-[#D4AF37]/40 font-semibold transition-all" data-testid={`button-message-${booking.id}`}>
                                 <MessageCircle className="w-4 h-4 mr-2" />
                                 {t('sitterHub.message')}
                               </Button>
-                              <Button variant="outline" size="sm" className="flex-1 rounded-xl border-gray-200 text-gray-600 hover:bg-white font-semibold" data-testid={`button-view-${booking.id}`}>
+                              <Button onClick={() => setLocation(`/booking-chat/${chatRefOf(booking)}`)} variant="outline" size="sm" className="flex-1 rounded-xl border-gray-200 text-gray-600 hover:bg-white font-semibold" data-testid={`button-view-${booking.id}`}>
                                 {t('sitterHub.viewDetails')}
                                 <ChevronRight className="w-4 h-4 ml-1" />
                               </Button>
@@ -443,7 +447,7 @@ export default function OwnerDashboard() {
                     <p className="text-xs text-gray-400">{t('sitterHub.managePets')}</p>
                   </div>
                 </div>
-                <Button className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white rounded-xl font-bold shadow-lg shadow-[#D4AF37]/20 px-5" data-testid="button-add-pet">
+                <Button onClick={() => setLocation('/onboarding/pet')} className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white rounded-xl font-bold shadow-lg shadow-[#D4AF37]/20 px-5" data-testid="button-add-pet">
                   <Plus className="w-4 h-4 mr-2" />
                   {t('sitterHub.addPet')}
                 </Button>
@@ -467,7 +471,7 @@ export default function OwnerDashboard() {
                         <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-full">{pet.petType}</span>
                         <span className="px-2.5 py-1 bg-white border border-gray-200 rounded-full">{pet.age} {t('sitterHub.years')}</span>
                       </div>
-                      <Button variant="outline" size="sm" className="mt-5 w-full rounded-xl border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:text-black font-semibold" data-testid={`button-edit-pet-${pet.id}`}>
+                      <Button onClick={() => setLocation('/pets')} variant="outline" size="sm" className="mt-5 w-full rounded-xl border-[#D4AF37]/20 text-[#D4AF37] hover:bg-[#D4AF37]/10 hover:text-black font-semibold" data-testid={`button-edit-pet-${pet.id}`}>
                         {t('sitterHub.editProfile')}
                       </Button>
                     </div>
@@ -482,7 +486,7 @@ export default function OwnerDashboard() {
                       </div>
                       <h3 className="text-lg font-bold text-gray-900 mb-2">{t('sitterHub.noPets')}</h3>
                       <p className="text-gray-400 text-sm mb-6">{t('sitterHub.addFurryFriends')}</p>
-                      <Button className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white rounded-2xl px-8 py-3 font-bold shadow-xl shadow-[#D4AF37]/20" data-testid="button-add-first-pet">
+                      <Button onClick={() => setLocation('/onboarding/pet')} className="bg-gradient-to-r from-[#D4AF37] to-[#B8932F] hover:from-[#D4AF37] hover:to-[#B8932F] text-white rounded-2xl px-8 py-3 font-bold shadow-xl shadow-[#D4AF37]/20" data-testid="button-add-first-pet">
                         <Plus className="w-4 h-4 mr-2" />
                         {t('sitterHub.addFirstPet')}
                       </Button>
