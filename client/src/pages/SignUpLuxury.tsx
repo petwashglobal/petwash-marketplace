@@ -1381,6 +1381,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         <label className="sl-label">{t.phoneLabel}</label>
                         <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
                       </div>
+                      {/* A NEW account verifies BOTH contacts (CEO 2026-08-08: "one thing
+                          not enough for new users"). Collect the email here so the already-
+                          wired step-2 (verify mobile → then verify email) fires. Returning
+                          users still log in with one method — this is signup only. */}
+                      <div className="sl-field">
+                        <label className="sl-label">{t.emailLabel}</label>
+                        <div className="sl-inputWrap">
+                          <FaEnvelope className="sl-inputIcon" aria-hidden />
+                          <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                            value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+                        </div>
+                        <div className="sl-hint">{he ? 'נאמת גם את האימייל — חשבון חדש מאמת נייד + אימייל.' : "We'll verify your email too — a new account confirms mobile + email."}</div>
+                      </div>
                     </>
                   )}
 
@@ -1622,7 +1635,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       email→email code). The name + any missing base fields are asked
                       after the code is verified — no password anywhere. */}
                   <button className="sl-cta"
-                    disabled={busy || (method === 'email' ? !emailValid : !phoneValid)}
+                    disabled={busy || (method === 'email' ? !emailValid : (!phoneValid || !emailValid))}
                     onClick={() => {
                       if (method === 'email') {
                         // Password set → create the account with it (saveable). Blank
@@ -1632,11 +1645,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     }}>
                     <FaMobileAlt aria-hidden /> {busy ? '…' : (method === 'email' && password ? (he ? 'יצירת חשבון' : 'Create account') : (he ? 'שליחת קוד אימות' : 'Send verification code'))}
                   </button>
-                  {(method === 'email' ? !emailValid : !phoneValid) && (
+                  {(method === 'email' ? !emailValid : (!phoneValid || !emailValid)) && (
                     <div className="sl-hint sl-submitHint">
                       {method === 'email'
                         ? (he ? 'הזינו כתובת אימייל תקינה כדי לקבל קוד.' : 'Enter a valid email to get a code.')
-                        : (he ? 'הזינו מספר נייד תקין כדי לקבל קוד.' : 'Enter a valid mobile number to get a code.')}
+                        : (!phoneValid
+                            ? (he ? 'הזינו מספר נייד תקין.' : 'Enter a valid mobile number.')
+                            : (he ? 'הזינו גם אימייל — חשבון חדש מאמת נייד + אימייל.' : 'Add your email too — a new account verifies mobile + email.'))}
                     </div>
                   )}
                 </>
