@@ -191,6 +191,7 @@ export async function activateFromVerifiedPayment(
       providerReference,
       err: (err as Error)?.message,
     });
+    await alertTransientActivationError('lookup_error', { providerReference, transactionId, externalRef });
     return { outcome: 'failed', reason: 'lookup_error' };
   }
 
@@ -228,6 +229,7 @@ export async function activateFromVerifiedPayment(
         providerReference,
         err: (err as Error)?.message,
       });
+      await alertTransientActivationError('lock_insert_error', { providerReference, transactionId, externalRef, purchaseId: purchase?.id });
       return { outcome: 'failed', reason: 'lock_insert_error' };
     }
   }
@@ -320,6 +322,7 @@ export async function activateFromVerifiedPayment(
       .returning({ id: purchases.id })) as { id: string }[];
   } catch (err) {
     logger.error('[PurchaseActivation] failed to mark paid', { purchaseId: purchase.id, err: (err as Error)?.message });
+    await alertTransientActivationError('paid_update_error', { providerReference, transactionId, externalRef, purchaseId: purchase.id });
     return { outcome: 'failed', purchaseId: purchase.id, reason: 'paid_update_error' };
   }
 
@@ -707,6 +710,31 @@ async function markFailed(purchase: Purchase, reason: string, detail?: string): 
     });
   } catch {
     /* never block */
+  }
+}
+
+/**
+ * Transient INFRASTRUCTURE failure during activation (DB lookup/insert/update threw).
+ * The SUMIT payment itself is fine — the purchase stays `payment_pending` so a
+ * reconciliation sweep can re-drive it — but the webhook always 200s (so SUMIT
+ * never retries) and there is no browser `/return` for the unattended case, so
+ * without this alert the paid customer would be stranded SILENTLY. Fire a critical
+ * alert so ops can re-drive it. Never throws (webhook must still 200).
+ * SECURITY/RELIABILITY 2026-08-08 (fail-soft audit).
+ */
+async function alertTransientActivationError(
+  reason: string,
+  ctx: { providerReference?: string; transactionId?: string | null; externalRef?: string | null; purchaseId?: string },
+): Promise<void> {
+  try {
+    await sendAlert({
+      type: 'data_integrity',
+      severity: 'critical',
+      message: `PetWash SUMIT activation hit a transient error (${reason}) — verified payment may be stranded payment_pending`,
+      details: `reason=${reason} purchaseId=${ctx.purchaseId ?? 'unknown'} providerRef=${ctx.providerReference ?? ''} txn=${ctx.transactionId ?? ''} externalRef=${ctx.externalRef ?? ''}`,
+    });
+  } catch {
+    /* alert failure must never block the webhook 200 */
   }
 }
 

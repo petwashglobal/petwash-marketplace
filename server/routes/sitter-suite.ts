@@ -50,6 +50,7 @@ import { backupFinancialDocument } from '../services/gcsBackupService';
 import multer from 'multer';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
+import { sendAlert } from '../monitoring';
 import { storage, auth } from '../lib/firebase-admin';
 
 const router = Router();
@@ -1619,6 +1620,21 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
         bookingId: booking.bookingId,
         error: settlementResult.error,
       });
+      // RELIABILITY 2026-08-08 (fail-soft audit): the settlement record (withholding
+      // tax + broker commission) was lost silently and the flow fell back to a GROSS
+      // payout figure + booked VAT WITHOUT the withholding metadata. The service IS
+      // delivered (completion is a real fact, so we don't hard-block it), but this must
+      // not stay silent — fire a critical alert so an accountant re-drives the settlement
+      // + fiscal record before any real payout rail keys off the (currently stubbed) net
+      // figure and over-pays the provider / under-remits withholding.
+      try {
+        await sendAlert({
+          type: 'data_integrity',
+          severity: 'critical',
+          message: `Sitter booking ${booking.bookingId} completed but provider settlement FAILED — withholding/commission record lost, payout fell back to gross`,
+          details: `bookingId=${booking.bookingId} sitterId=${booking.sitterId} grossPayoutILS=${grossPayoutILS} error=${settlementResult.error ?? 'unknown'} — reconcile fiscal record before paying out`,
+        });
+      } catch { /* alert must never block completion */ }
     }
 
     // STEP 2: Process sitter payout (net after withholding tax)
