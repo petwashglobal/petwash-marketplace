@@ -318,8 +318,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [showPwd, setShowPwd] = useState(false);
   // Returning-member login is CODE-FIRST (email → one-time code): easiest + no
   // password to remember/leak (CEO 2026-08-06). Password is a secondary path behind
-  // a "use a password instead" link. Default false = one-time-code primary.
-  const [usePassword, setUsePassword] = useState(false);
+  // a "use a password instead" link on SIGNUP. But for EXISTING users on the LOGIN
+  // screen, the CEO (2026-08-08) wants the email + password fields shown together by
+  // default (Google/Apple still available above). So default usePassword TRUE on the
+  // login path; a "use a one-time code instead" link is still offered for accounts
+  // with no password. Signup stays code-first (false).
+  const [usePassword, setUsePassword] = useState(isLoginPath);
   // 2-STEP LOGIN (CEO 2026-07-31 "one-way or two-way verification"): opt-in at
   // join; when on, login asks for an SMS code AFTER the password. mfaChallenge
   // holds the in-flight login-time challenge (the idToken to prove + a masked
@@ -337,7 +341,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // this screen before loginWithPassword has minted the server session itself.
   // Set BEFORE signInWithEmailAndPassword (which fires onAuthStateChanged).
   const mfaLoginInFlight = useRef(false);
-  const [method, setMethod] = useState<'mobile' | 'email'>('mobile');
+  // LOGIN (existing users) defaults to the EMAIL + password view (CEO 2026-08-08);
+  // "Sign in with your mobile number instead" switches to the phone field. Signup
+  // keeps the mobile-first method choice.
+  const [method, setMethod] = useState<'mobile' | 'email'>(isLoginPath ? 'email' : 'mobile');
   // ROVER-STYLE method-first (CEO 2026-07-24 'no sense, make it clear'): the
   // manual form is HIDDEN until the user chooses phone or email. Social is a
   // one-tap path that never shows a phone/email field. 'choose' = show the two
