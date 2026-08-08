@@ -68,7 +68,9 @@ class LuxuryDocumentEmailService {
           operationCode: 'TSS-CARE-004'
         }
       ],
-      notesHe: 'תודה שבחרתם ב-⁦PetWash™⁩ - המובילה בישראל בשירותי טיפול פרמיום לחיות מחמד. כל השירותים שלנו כוללים ביטוח מלא ומעקב GPS בזמן אמת.'
+      // Legal (marketing guardrail): do NOT claim "full insurance" — coverage is not
+      // in force. Softened to a truthful service line. (backlog sweep 2026-08-08)
+      notesHe: 'תודה שבחרתם ב-⁦PetWash™⁩ - המובילה בישראל בשירותי טיפול פרמיום לחיות מחמד. אנו מחויבים לשירות ברמה הגבוהה ביותר עבורכם ועבור חיית המחמד שלכם.'
     };
 
     const invoice = LuxuryInvoiceService.generateInvoice(sampleInvoiceData);
