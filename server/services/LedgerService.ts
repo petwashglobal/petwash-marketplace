@@ -15,7 +15,11 @@
  *   • computeLedgerEntryHash → per-account hash chain                             (tampering)
  */
 
-import { createHash } from 'crypto';
+import { createHash, randomBytes } from 'crypto';
+import { sql } from 'drizzle-orm';
+import { db } from '../db';
+import { ledgerAccounts, ledgerEntries, ledgerTransactions } from '@shared/schema-ledger-v2';
+import { logger } from '../lib/logger';
 
 /** One leg of a double-entry movement. Amount is always POSITIVE; the sign is the direction. */
 export interface LedgerLeg {
@@ -145,6 +149,108 @@ export function computeLedgerEntryHash(input: {
   return createHash('sha256').update(canonical).digest('hex');
 }
 
+export interface AccountShape {
+  accountType: 'asset' | 'liability' | 'equity' | 'revenue' | 'expense' | 'contra';
+  ownerType: 'customer' | 'provider' | 'platform' | 'system';
+  ownerId: string | null;
+  bucket: string;
+  normalSide: 'debit' | 'credit';
+}
+
+/**
+ * Resolve an account slug to its shape (chart of accounts, SDD §7f). Per-user
+ * accounts embed the uid: `cust:{uid}:cash`, `prov:{uid}:payable`. Singletons are
+ * fixed slugs. Throws on an unknown slug — a typo must never silently create a
+ * mis-typed money account.
+ */
+export function describeAccount(accountId: string): AccountShape {
+  const custMatch = accountId.match(/^cust:([^:]+):(cash|egift|promo|wash_package|loyalty)$/);
+  if (custMatch) {
+    const bucketMap: Record<string, string> = {
+      cash: 'cash_wallet', egift: 'egift', promo: 'promo', wash_package: 'wash_package', loyalty: 'loyalty',
+    };
+    return { accountType: 'liability', ownerType: 'customer', ownerId: custMatch[1], bucket: bucketMap[custMatch[2]], normalSide: 'credit' };
+  }
+  const provMatch = accountId.match(/^prov:([^:]+):payable$/);
+  if (provMatch) {
+    return { accountType: 'liability', ownerType: 'provider', ownerId: provMatch[1], bucket: 'provider_payable', normalSide: 'credit' };
+  }
+  const clearingMatch = accountId.match(/^payment_clearing:(sumit|nayax)$/);
+  if (clearingMatch) {
+    return { accountType: 'asset', ownerType: 'system', ownerId: null, bucket: `payment_clearing_${clearingMatch[1]}`, normalSide: 'debit' };
+  }
+  const singletons: Record<string, AccountShape> = {
+    escrow_holding:               { accountType: 'liability', ownerType: 'platform', ownerId: null, bucket: 'escrow',        normalSide: 'credit' },
+    j5_authorization:             { accountType: 'contra',    ownerType: 'platform', ownerId: null, bucket: 'j5_auth',       normalSide: 'credit' },
+    platform_commission_revenue:  { accountType: 'revenue',   ownerType: 'platform', ownerId: null, bucket: 'commission',    normalSide: 'credit' },
+    service_revenue:              { accountType: 'revenue',   ownerType: 'platform', ownerId: null, bucket: 'service',       normalSide: 'credit' },
+    vat_payable:                  { accountType: 'liability', ownerType: 'platform', ownerId: null, bucket: 'vat',           normalSide: 'credit' },
+    expiry_breakage_revenue:      { accountType: 'revenue',   ownerType: 'platform', ownerId: null, bucket: 'breakage',      normalSide: 'credit' },
+    suspense:                     { accountType: 'asset',     ownerType: 'system',   ownerId: null, bucket: 'suspense',      normalSide: 'debit' },
+  };
+  const s = singletons[accountId];
+  if (!s) throw new Error(`Unknown ledger account slug: '${accountId}' (not in the chart of accounts)`);
+  return s;
+}
+
+export interface PlannedEntry {
+  entryId: string;
+  accountId: string;
+  direction: 'debit' | 'credit';
+  amountCents: number;
+  previousHash: string;
+  entryHash: string;
+}
+
+export interface PlannedMovement {
+  transactionId: string;
+  idempotencyKey: string;
+  eventType: string;
+  totalDebits: number;
+  totalCredits: number;
+  entries: PlannedEntry[];
+}
+
+/**
+ * PURE: turn a balanced set of legs into the exact rows to persist, computing the
+ * per-account hash chain from the supplied last-hash map. No DB access — this is the
+ * fully-tested heart of postMovement, so the risky computation (balance, chaining,
+ * ids) is verified even though CI has no Postgres to exercise the INSERTs.
+ */
+export function planMovement(input: {
+  eventType: string;
+  idempotencyKey: string;
+  legs: LedgerLeg[];
+  transactionId: string;
+  lastHashByAccount: Record<string, string>;
+  entryIdSeed: (i: number) => string;
+}): PlannedMovement {
+  const totals = assertBalanced(input.legs);
+  const chainHead: Record<string, string> = { ...input.lastHashByAccount };
+  const entries: PlannedEntry[] = input.legs.map((leg, i) => {
+    const previousHash = chainHead[leg.accountId] ?? 'genesis';
+    const entryHash = computeLedgerEntryHash({
+      previousHash,
+      accountId: leg.accountId,
+      direction: leg.direction,
+      amountCents: leg.amountCents,
+      currency: 'ILS',
+      idempotencyKey: input.idempotencyKey,
+      createdAtIso: input.transactionId, // deterministic salt tied to this movement
+    });
+    chainHead[leg.accountId] = entryHash; // a second leg on the same account chains forward
+    return { entryId: input.entryIdSeed(i), accountId: leg.accountId, direction: leg.direction, amountCents: leg.amountCents, previousHash, entryHash };
+  });
+  return {
+    transactionId: input.transactionId,
+    idempotencyKey: input.idempotencyKey,
+    eventType: input.eventType,
+    totalDebits: totals.totalDebits,
+    totalCredits: totals.totalCredits,
+    entries,
+  };
+}
+
 // ───────────────────────── DARK DB SKELETON (flag-gated, no callers yet) ─────────────────────────
 // Every method below is intentionally unwired. They document the surface the staged
 // rollout (SDD §11) will fill: postMovement / openPending / postPending / voidPending /
@@ -157,6 +263,162 @@ function ensureEnabled(method: string): void {
   }
 }
 
+export interface PostMovementResult {
+  transactionId: string;
+  idempotent: boolean;
+  totalCents: number;
+}
+
+/**
+ * Persist a balanced movement as ONE transaction + its entries, atomically and
+ * idempotently. Runs only when LEDGER_V2_ENABLED or LEDGER_V2_DUAL_WRITE is on
+ * (callers are already flag-gated). Mirrors the proven WalletLedger.topUpWithLedger
+ * pattern: raw-SQL row locks + last-hash reads, then row inserts, all in one tx.
+ * The ledger_v2_transactions.idempotency_key UNIQUE constraint is the anti-double-
+ * post lock — a duplicate returns the existing transaction instead of a second one.
+ */
+async function realPostMovement(input: {
+  eventType: string;
+  idempotencyKey: string;
+  legs: LedgerLeg[];
+  bookingId?: string | null;
+  paymentRef?: string | null;
+  divisionCode?: string | null;
+  createdBy?: string | null;
+  metadata?: Record<string, unknown>;
+}): Promise<PostMovementResult> {
+  if (!LEDGER_V2_ENABLED && !LEDGER_V2_DUAL_WRITE) {
+    throw new Error('LedgerService.postMovement: both LEDGER_V2_ENABLED and LEDGER_V2_DUAL_WRITE are OFF');
+  }
+  const totals = assertBalanced(input.legs);
+
+  // Fast-path idempotency: has this movement already been recorded?
+  const pre: any = await (db as any).execute(
+    sql`SELECT transaction_id FROM ledger_v2_transactions WHERE idempotency_key = ${input.idempotencyKey} LIMIT 1`,
+  );
+  const preRows: any[] = pre?.rows ?? pre ?? [];
+  if (preRows.length > 0) {
+    return { transactionId: String(preRows[0].transaction_id), idempotent: true, totalCents: totals.totalDebits };
+  }
+
+  const transactionId = `LT-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+  const uniqueAccounts = Array.from(new Set(input.legs.map((l) => l.accountId))).sort();
+
+  try {
+    await (db as any).transaction(async (tx: typeof db) => {
+      // Ensure + lock each involved account (sorted order → no deadlock) and read its chain head.
+      const lastHashByAccount: Record<string, string> = {};
+      for (const accountId of uniqueAccounts) {
+        const shape = describeAccount(accountId);
+        await (tx as any).execute(sql`
+          INSERT INTO ledger_v2_accounts (account_id, account_type, owner_type, owner_id, bucket, currency, normal_side)
+          VALUES (${accountId}, ${shape.accountType}, ${shape.ownerType}, ${shape.ownerId}, ${shape.bucket}, 'ILS', ${shape.normalSide})
+          ON CONFLICT (account_id) DO NOTHING
+        `);
+        await (tx as any).execute(sql`SELECT id FROM ledger_v2_accounts WHERE account_id = ${accountId} FOR UPDATE`);
+        const lastRes: any = await (tx as any).execute(
+          sql`SELECT entry_hash FROM ledger_v2_entries WHERE account_id = ${accountId} ORDER BY id DESC LIMIT 1`,
+        );
+        const lastRow: any = (lastRes?.rows ?? lastRes ?? [])[0];
+        lastHashByAccount[accountId] = lastRow?.entry_hash ?? 'genesis';
+      }
+
+      const plan = planMovement({
+        eventType: input.eventType,
+        idempotencyKey: input.idempotencyKey,
+        legs: input.legs,
+        transactionId,
+        lastHashByAccount,
+        entryIdSeed: (i) => `LE-${transactionId.slice(3)}-${i}`,
+      });
+
+      // The balanced transaction envelope. UNIQUE(idempotency_key) is the double-post kill.
+      await (tx as any).insert(ledgerTransactions).values({
+        transactionId: plan.transactionId,
+        idempotencyKey: plan.idempotencyKey,
+        eventType: plan.eventType,
+        totalDebits: plan.totalDebits,
+        totalCredits: plan.totalCredits,
+        responseJson: { transactionId: plan.transactionId } as any,
+      });
+
+      await (tx as any).insert(ledgerEntries).values(
+        plan.entries.map((e) => ({
+          entryId: e.entryId,
+          transactionId: plan.transactionId,
+          accountId: e.accountId,
+          direction: e.direction,
+          amountCents: e.amountCents,
+          currency: 'ILS',
+          eventType: input.eventType,
+          divisionCode: input.divisionCode ?? null,
+          idempotencyKey: input.idempotencyKey,
+          bookingId: input.bookingId ?? null,
+          paymentRef: input.paymentRef ?? null,
+          createdBy: input.createdBy ?? 'system',
+          metadata: (input.metadata ?? {}) as any,
+          previousHash: e.previousHash,
+          entryHash: e.entryHash,
+        })),
+      );
+    });
+  } catch (err: any) {
+    // A concurrent delivery may have inserted the same idempotency_key first → unique
+    // violation. Re-read and report the winning transaction as an idempotent replay.
+    const post: any = await (db as any).execute(
+      sql`SELECT transaction_id FROM ledger_v2_transactions WHERE idempotency_key = ${input.idempotencyKey} LIMIT 1`,
+    );
+    const postRows: any[] = post?.rows ?? post ?? [];
+    if (postRows.length > 0) {
+      return { transactionId: String(postRows[0].transaction_id), idempotent: true, totalCents: totals.totalDebits };
+    }
+    throw err;
+  }
+
+  return { transactionId, idempotent: false, totalCents: totals.totalDebits };
+}
+
+/**
+ * SHADOW mirror of a completed wallet top-up into ledger v2. Called AFTER the real
+ * credit already succeeded, gated by LEDGER_V2_DUAL_WRITE, and fully wrapped so it can
+ * NEVER throw into or alter the production credit path — a shadow write is observe-only.
+ * The movement is: debit payment_clearing:{provider}  →  credit cust:{uid}:cash.
+ */
+export async function shadowMirrorWalletTopup(input: {
+  userId: string;
+  amountCents: number;
+  purchaseId: string;
+  paymentRef?: string | null;
+  provider?: 'sumit' | 'nayax';
+}): Promise<void> {
+  if (!LEDGER_V2_DUAL_WRITE) return;
+  try {
+    const provider = input.provider ?? 'sumit';
+    const legs: LedgerLeg[] = [
+      { accountId: `payment_clearing:${provider}`, direction: 'debit', amountCents: input.amountCents },
+      { accountId: `cust:${input.userId}:cash`, direction: 'credit', amountCents: input.amountCents },
+    ];
+    const res = await realPostMovement({
+      eventType: 'wallet_topup',
+      idempotencyKey: deriveIdempotencyKey('wallet_topup', input.purchaseId),
+      legs,
+      bookingId: null,
+      paymentRef: input.paymentRef ?? null,
+      divisionCode: 'gift_card',
+      createdBy: 'shadow',
+      metadata: { shadow: true, purchaseId: input.purchaseId },
+    });
+    logger.info('[LedgerV2][shadow] wallet top-up mirrored', {
+      purchaseId: input.purchaseId, transactionId: res.transactionId, idempotent: res.idempotent, amountCents: input.amountCents,
+    });
+  } catch (err: any) {
+    // Shadow failures are diagnostics only — they must never affect the real credit.
+    logger.warn('[LedgerV2][shadow] wallet top-up mirror failed (ignored)', {
+      purchaseId: input.purchaseId, error: err?.message,
+    });
+  }
+}
+
 export const LedgerService = {
   summarizeTransaction,
   assertBalanced,
@@ -164,13 +426,12 @@ export const LedgerService = {
   deriveAccountBalance,
   deriveIdempotencyKey,
   computeLedgerEntryHash,
+  describeAccount,
+  planMovement,
+  shadowMirrorWalletTopup,
 
-  /** Post a balanced set of legs as ONE transaction. DARK — see SDD §6a/§9. */
-  async postMovement(_input: { eventType: string; idempotencyKey: string; legs: LedgerLeg[] }): Promise<never> {
-    assertBalanced(_input.legs); // validate even in dark mode so tests of the core still pass
-    ensureEnabled('postMovement');
-    throw new Error('unreachable');
-  },
+  /** Post a balanced set of legs as ONE transaction, atomically + idempotently. */
+  postMovement: realPostMovement,
 
   /** Open a hold (wallet_hold | j5_authorization | escrow_hold). DARK. */
   async openPending(_input: unknown): Promise<never> {
