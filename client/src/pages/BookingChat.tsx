@@ -482,6 +482,9 @@ export default function BookingChat() {
   const mediaRecorderRef                  = useRef<MediaRecorder | null>(null);
   const audioChunksRef                    = useRef<Blob[]>([]);
   const recordingTimerRef                 = useRef<ReturnType<typeof setInterval> | null>(null);
+  // Captured elapsed seconds that survives stopRecording()'s state reset, so the
+  // onstop→uploadAudioBlob handler stores the REAL duration (was always 0). (2026-08-08)
+  const recordedDurationRef               = useRef(0);
   // Leaving the chat mid-recording left the 1s timer firing into an unmounted
   // component (zombie-sweep 2026-07-24).
   useEffect(() => () => {
@@ -676,10 +679,13 @@ export default function BookingChat() {
       mediaRecorderRef.current = mr;
       setIsRecording(true);
       setRecordingSecs(0);
+      recordedDurationRef.current = 0;
       recordingTimerRef.current = setInterval(() => {
         setRecordingSecs(s => {
-          if (s >= 59) { stopRecording(); return 59; }
-          return s + 1;
+          const next = s >= 59 ? 59 : s + 1;
+          recordedDurationRef.current = next;
+          if (s >= 59) stopRecording();
+          return next;
         });
       }, 1000);
     } catch {
@@ -712,7 +718,7 @@ export default function BookingChat() {
       sendMutation.mutate({
         content: transcript || "",
         messageType: "voice_message",
-        metadata: { audioUrl, transcript, durationSeconds: recordingSecs },
+        metadata: { audioUrl, transcript, durationSeconds: recordedDurationRef.current },
       });
     } catch {
       toast({ title: "Voice message failed", description: "Please try again.", variant: "destructive" });

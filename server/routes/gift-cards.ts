@@ -465,23 +465,22 @@ router.get('/:voucherId/status', async (req, res) => {
   try {
     const { voucherId } = req.params;
     
+    // SECURITY 2026-08-08: this route is UNAUTHENTICATED. Aligned with the hardened
+    // /:voucherId/info (audit 2026-06-24 #16) — do NOT leak monetary value (remainingAmount,
+    // initialAmount) or codeLast4 to an anonymous caller. Only validity/expiry is public.
     const [voucher] = await db
       .select({
         id: eVouchers.id,
-        codeLast4: eVouchers.codeLast4,
-        initialAmount: eVouchers.initialAmount,
-        remainingAmount: eVouchers.remainingAmount,
         status: eVouchers.status,
         expiresAt: eVouchers.expiresAt,
-        createdAt: eVouchers.createdAt,
       })
       .from(eVouchers)
       .where(eq(eVouchers.id, voucherId));
-    
+
     if (!voucher) {
       return res.status(404).json({ error: 'Gift card not found' });
     }
-    
+
     res.json(voucher);
   } catch (error: any) {
     logger.error('[E-Gift] Status check error', { error: error.message });

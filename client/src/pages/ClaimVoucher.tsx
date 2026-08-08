@@ -153,8 +153,8 @@ export default function ClaimVoucher() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
-                <Button 
-                  onClick={() => setLocation('/dashboard')}
+                <Button
+                  onClick={() => setLocation('/my-wallet')}
                   className="luxury-btn-primary luxury-shadow-xl"
                   data-testid="button-view-wallet"
                 >
