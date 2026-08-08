@@ -2,10 +2,18 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { contractGenerationService } from '../services/ContractGenerationService';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { requireAdmin } from '../adminAuth';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import { logger } from '../lib/logger';
 
 const router = Router();
+
+// SECURITY 2026-08-08 (IDOR fix): these are HR/legal documents — offer letters and
+// contractor agreements (names, IDs, rates, KYC embedded in the body). Previously each
+// route only ran validateFirebaseToken, so ANY signed-in user could increment the
+// sequential :contractId and read/send every contractor's agreement. This router is an
+// admin/HR tool (no client calls it), so gate the entire surface admin-only.
+router.use(requireAdmin);
 
 const generateOfferLetterSchema = z.object({
   entityId: z.number().optional(),

@@ -407,7 +407,11 @@ router.get("/v1/wallet/:userId", async (req: Request, res: Response) => {
 
 // =================== COMPLETE BOOKING (Race-safe) ===================
 // [DEPRECATED V1] Use PATCH /api/booking-requests/:id/complete instead
-router.post("/v1/bookings/:id/complete", async (req: Request, res: Response) => {
+// SECURITY 2026-08-08: was unauthenticated — an anonymous POST could force-complete
+// any booking AND release its escrow (line ~480). Gated requireAdmin: this deprecated
+// route is dead to the client (only /v1/timeline/* is used), so admin-only closes the
+// public money-moving hole with zero client impact. Real flow = /api/booking-requests.
+router.post("/v1/bookings/:id/complete", requireAdmin, async (req: Request, res: Response) => {
   logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings/:id/complete called — migrate to PATCH /api/booking-requests/:id/complete');
   try {
     const { id } = req.params;
@@ -528,7 +532,8 @@ router.post("/v1/bookings/:id/complete", async (req: Request, res: Response) => 
 
 // =================== CANCEL BOOKING (Race-safe) ===================
 // [DEPRECATED V1] Use POST /api/booking-requests/:id/cancel instead
-router.post("/v1/bookings/:id/cancel", async (req: Request, res: Response) => {
+// SECURITY 2026-08-08: was unauthenticated — anyone could cancel any booking by id. Gated requireAdmin (route dead to client).
+router.post("/v1/bookings/:id/cancel", requireAdmin, async (req: Request, res: Response) => {
   logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings/:id/cancel called — migrate to POST /api/booking-requests/:id/cancel');
   try {
     const { id } = req.params;
@@ -565,7 +570,8 @@ router.post("/v1/bookings/:id/cancel", async (req: Request, res: Response) => {
 
 // =================== GET BOOKING (with ledger + invoice) ===================
 // [DEPRECATED V1] Use GET /api/booking-requests/:id instead
-router.get("/v1/bookings/:id", async (req: Request, res: Response) => {
+// SECURITY 2026-08-08: was unauthenticated — leaked booking + full ledger (price/providerShare/platformFee) + invoice by id. Gated requireAdmin (route dead to client).
+router.get("/v1/bookings/:id", requireAdmin, async (req: Request, res: Response) => {
   logger.warn('[DEPRECATED V1] GET /api/octopus/v1/bookings/:id called — migrate to GET /api/booking-requests/:id');
   try {
     const { id } = req.params;
@@ -600,7 +606,8 @@ router.get("/v1/bookings/:id", async (req: Request, res: Response) => {
 
 // =================== LIST BOOKINGS ===================
 // [DEPRECATED V1] Use GET /api/booking-requests instead
-router.get("/v1/bookings", async (req: Request, res: Response) => {
+// SECURITY 2026-08-08: was unauthenticated — client-supplied ?userId let anyone dump any user's bookings (or the whole table). Gated requireAdmin (route dead to client).
+router.get("/v1/bookings", requireAdmin, async (req: Request, res: Response) => {
   logger.warn('[DEPRECATED V1] GET /api/octopus/v1/bookings called — migrate to GET /api/booking-requests');
   try {
     const { userId, platform } = req.query;
