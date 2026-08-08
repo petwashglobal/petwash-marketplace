@@ -1745,6 +1745,10 @@ function styles(he: boolean) {
       --line2:rgba(230,199,102,.50); --ink:#0a0a0a;
       position:relative; min-height:100dvh; background:#000 !important;
       background-color:#000 !important;
+      /* flex column so .sl-frame's auto margins can vertically center the content
+         on tall/large screens (fixes the "stranded at the top with a huge empty
+         void below" look on 27"/4K monitors). (big-screen fix 2026-08-07) */
+      display:flex; flex-direction:column;
       color:var(--white);
       font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif;
       /* iOS notch + bottom home indicator. Top inset is added once at the
@@ -1757,9 +1761,17 @@ function styles(he: boolean) {
 
     /* Frame caps the layout at 1440px and centers it on big screens. */
     .sl-frame{
-      max-width:1440px; margin:0 auto;
+      width:100%;
+      max-width:1560px;
+      /* margin:auto centers the content BOTH horizontally and — because .sl-shell
+         is now a flex column — vertically on tall/large screens, so the layout sits
+         in the MIDDLE of a 27"/4K screen instead of stranded up top with an empty
+         void below. On short screens the auto margins collapse to 0 and the content
+         flows/scrolls from the top normally (mobile unaffected). Bottom padding added
+         (was 0) so the content never sits flush against the edge. (big-screen fix) */
+      margin:auto;
       display:flex; flex-direction:column;
-      padding:clamp(20px,4vw,40px) clamp(16px,3vw,40px) 0;
+      padding:clamp(20px,4vw,44px) clamp(16px,3vw,40px);
       gap:clamp(20px,3vw,32px);
     }
 
