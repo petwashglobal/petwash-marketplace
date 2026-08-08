@@ -1437,7 +1437,28 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   Email + password (the credential set at join). A returning member
                   with no password yet (old account / social) uses the one-time-code
                   link or the social buttons above. */}
-              {authMode === 'login' && (
+              {authMode === 'login' && method === 'mobile' && (
+                <>
+                  {/* MOBILE LOGIN (2026-08-08): phone-only members had NO way to sign in —
+                      the login screen showed only email/password, locking them out even
+                      though the backend fully supports login-by-mobile. sendCode() skips
+                      the DOB gate in login mode and verify() routes an existing user. */}
+                  <div className="sl-field">
+                    <label className="sl-label">{t.phoneLabel}</label>
+                    <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
+                  </div>
+                  <button type="button" className="sl-switchLink" disabled={busy}
+                    onClick={() => { setMethod('email'); setSent(false); setInlineError(null); }}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                    {he ? 'התחבר/י עם אימייל במקום' : 'Sign in with email instead'}
+                  </button>
+                  <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('join'); setInlineError(null); }}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                    {he ? 'חדש כאן? צור/צרי חשבון' : 'New here? Create an account'}
+                  </button>
+                </>
+              )}
+              {authMode === 'login' && method !== 'mobile' && (
                 <>
                   <div className="sl-field">
                     <label className="sl-label">{t.emailLabel}</label>
@@ -1474,6 +1495,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     {usePassword
                       ? (he ? 'התחבר/י עם קוד חד-פעמי במקום' : 'Sign in with a one-time code instead')
                       : (he ? 'התחבר/י עם סיסמה במקום' : 'Sign in with a password instead')}
+                  </button>
+                  {/* Let a phone-only member sign in with their number (2026-08-08). */}
+                  <button type="button" className="sl-switchLink" disabled={busy}
+                    onClick={() => { setMethod('mobile'); setUsePassword(false); setSent(false); setInlineError(null); }}
+                    style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.85, fontSize: '13px', cursor: 'pointer', padding: '6px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
+                    {he ? 'התחבר/י עם מספר נייד במקום' : 'Sign in with your mobile number instead'}
                   </button>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('join'); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
@@ -1607,6 +1634,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   )}
                 </>
                 )
+              ) : method === 'mobile' ? (
+                // MOBILE login (2026-08-08): send an SMS code to the member's number.
+                // sendCode() skips the DOB gate in login mode; verify() routes the
+                // existing user through phone-session (isNewUser=false).
+                <button className="sl-cta" disabled={busy || !phoneValid}
+                  onClick={() => { void sendCode(); }}>
+                  <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
+                </button>
               ) : usePassword ? (
                 <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
                   <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
