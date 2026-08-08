@@ -321,8 +321,8 @@ export default function Shop() {
 
 function styles() {
   return `
-    .sh-shell{ min-height:100vh; background:#fafaf9; color:#0b1220; font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding-bottom:80px }
-    .sh-frame{ max-width:1200px; margin:0 auto; padding:32px clamp(20px,4vw,40px) }
+    .sh-shell{ min-height:100dvh; display:flex; flex-direction:column; background:#fafaf9; color:#0b1220; font-family:Inter,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif; padding-bottom:80px }
+    .sh-frame{ width:100%; max-width:1200px; margin:auto; padding:32px clamp(20px,4vw,40px) }
     .sh-back{ background:none; border:0; color:#64748b; font-weight:600; padding:8px 0; cursor:pointer; margin-bottom:24px }
 
     .sh-hero{ padding:24px 0 48px }

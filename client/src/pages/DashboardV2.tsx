@@ -95,7 +95,7 @@ export default function DashboardV2() {
     fontFamily: 'Inter, system-ui, -apple-system, "Segoe UI", Roboto, Arial, sans-serif',
     direction: rtl ? 'rtl' : 'ltr', paddingBottom: 'calc(28px + env(safe-area-inset-bottom))',
   };
-  const shell: React.CSSProperties = { maxWidth: 480, margin: '0 auto', padding: '14px 18px 0' };
+  const shell: React.CSSProperties = { width: '100%', maxWidth: 760, margin: '0 auto', padding: '14px 18px 0' };
   const card: React.CSSProperties = { background: C.surface, border: `1px solid ${C.line}`, borderRadius: 16, padding: 16, boxShadow: C.shadow };
   const eyebrow: React.CSSProperties = { fontSize: 11, letterSpacing: '.14em', textTransform: 'uppercase', color: C.faint, fontWeight: 600 };
   const pill = (filled: boolean): React.CSSProperties => ({
