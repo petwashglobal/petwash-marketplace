@@ -6,6 +6,9 @@ import {
   deriveAccountBalance,
   deriveIdempotencyKey,
   computeLedgerEntryHash,
+  describeAccount,
+  planMovement,
+  shadowMirrorWalletTopup,
   LedgerImbalanceError,
   type LedgerLeg,
 } from '../services/LedgerService';
@@ -127,5 +130,81 @@ describe('ledger v2 — double-entry invariant', () => {
     expect(h1).toBe(computeLedgerEntryHash(base)); // deterministic
     expect(computeLedgerEntryHash({ ...base, amountCents: 5001 })).not.toBe(h1); // tamper detected
     expect(computeLedgerEntryHash({ ...base, previousHash: h1 })).not.toBe(h1);  // chained
+  });
+});
+
+describe('ledger v2 — chart of accounts resolver', () => {
+  it('resolves per-user and singleton account slugs to the right shape', () => {
+    expect(describeAccount('cust:u1:cash')).toMatchObject({ accountType: 'liability', ownerType: 'customer', ownerId: 'u1', normalSide: 'credit' });
+    expect(describeAccount('cust:u1:egift')).toMatchObject({ bucket: 'egift', normalSide: 'credit' });
+    expect(describeAccount('prov:p9:payable')).toMatchObject({ accountType: 'liability', ownerType: 'provider', ownerId: 'p9' });
+    expect(describeAccount('payment_clearing:sumit')).toMatchObject({ accountType: 'asset', ownerType: 'system', ownerId: null, normalSide: 'debit' });
+    expect(describeAccount('vat_payable')).toMatchObject({ accountType: 'liability', normalSide: 'credit' });
+    expect(describeAccount('platform_commission_revenue')).toMatchObject({ accountType: 'revenue', normalSide: 'credit' });
+  });
+
+  it('throws on an unknown slug (a typo must never mint a mistyped money account)', () => {
+    expect(() => describeAccount('cust:u1:banana')).toThrow();
+    expect(() => describeAccount('random_account')).toThrow();
+  });
+});
+
+describe('ledger v2 — planMovement (pure persistence plan)', () => {
+  const topupLegs: LedgerLeg[] = [
+    { accountId: 'payment_clearing:sumit', direction: 'debit', amountCents: 5000 },
+    { accountId: 'cust:u1:cash', direction: 'credit', amountCents: 5000 },
+  ];
+
+  it('produces a balanced plan with one entry per leg and per-account hash chaining', () => {
+    const plan = planMovement({
+      eventType: 'wallet_topup',
+      idempotencyKey: 'wallet_topup:BOOK-1',
+      legs: topupLegs,
+      transactionId: 'LT-TEST-1',
+      lastHashByAccount: {},
+      entryIdSeed: (i) => `LE-TEST-${i}`,
+    });
+    expect(plan.totalDebits).toBe(plan.totalCredits);
+    expect(plan.entries).toHaveLength(2);
+    // each leg chains off genesis for its own (distinct) account
+    expect(plan.entries[0].previousHash).toBe('genesis');
+    expect(plan.entries[1].previousHash).toBe('genesis');
+    expect(plan.entries[0].entryHash).not.toBe(plan.entries[1].entryHash);
+  });
+
+  it('continues an existing per-account chain from the supplied last hash', () => {
+    const plan = planMovement({
+      eventType: 'wallet_topup',
+      idempotencyKey: 'wallet_topup:BOOK-2',
+      legs: topupLegs,
+      transactionId: 'LT-TEST-2',
+      lastHashByAccount: { 'cust:u1:cash': 'deadbeef' },
+      entryIdSeed: (i) => `LE-TEST2-${i}`,
+    });
+    const cashEntry = plan.entries.find((e) => e.accountId === 'cust:u1:cash')!;
+    expect(cashEntry.previousHash).toBe('deadbeef'); // chained off the prior balance, not genesis
+  });
+
+  it('refuses to plan an unbalanced movement', () => {
+    expect(() => planMovement({
+      eventType: 'wallet_topup',
+      idempotencyKey: 'x',
+      legs: [
+        { accountId: 'payment_clearing:sumit', direction: 'debit', amountCents: 5000 },
+        { accountId: 'cust:u1:cash', direction: 'credit', amountCents: 4000 },
+      ],
+      transactionId: 'LT-TEST-3',
+      lastHashByAccount: {},
+      entryIdSeed: (i) => `LE-${i}`,
+    })).toThrow(LedgerImbalanceError);
+  });
+});
+
+describe('ledger v2 — shadow mirror is inert while the flag is OFF', () => {
+  it('returns without touching the DB or throwing when LEDGER_V2_DUAL_WRITE is off', async () => {
+    // Default test env has the flag OFF → this must be a no-op (never queries the DB).
+    await expect(
+      shadowMirrorWalletTopup({ userId: 'u1', amountCents: 5000, purchaseId: 'PUR-1', paymentRef: 'TX-1' }),
+    ).resolves.toBeUndefined();
   });
 });

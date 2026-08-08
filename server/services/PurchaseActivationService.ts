@@ -32,6 +32,7 @@ import { db } from '../db';
 import { purchases, purchaseEvents, users, type Purchase } from '@shared/schema';
 import { eq, and, inArray } from 'drizzle-orm';
 import { walletService } from './WalletService';
+import { shadowMirrorWalletTopup } from './LedgerService';
 import { GiftOrchestrationService } from './giftOrchestrationService';
 import { sumitClient } from './SumitClient';
 import { recordAuditEvent } from '../utils/auditSignature';
@@ -448,6 +449,16 @@ export async function activateProduct(purchase: Purchase): Promise<boolean> {
     // Real money loaded → issue the חשבונית מס/קבלה (fiscal audit 2026-07-05:
     // wallet top-ups previously granted credit with NO receipt).
     await issueDirectSaleReceipt(purchase, 'PW_WALLET_TOPUP');
+    // LEDGER v2 dual-write SHADOW (2026-08-08): mirror this top-up into the unified
+    // ledger for parity proving. Gated by LEDGER_V2_DUAL_WRITE (default OFF) and fully
+    // self-wrapped — observe-only, can never affect the credit already granted above.
+    await shadowMirrorWalletTopup({
+      userId: purchase.buyerUserId,
+      amountCents: purchase.amountCents,
+      purchaseId: purchase.id,
+      paymentRef: purchase.transactionId ?? null,
+      provider: 'sumit',
+    });
     return true;
   }
 

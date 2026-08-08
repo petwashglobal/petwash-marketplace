@@ -18,8 +18,10 @@ import {
   timestamp,
   jsonb,
   index,
-  sql,
 } from "drizzle-orm/pg-core";
+// NOTE: no `import { sql }` here on purpose. The DB columns carry DEFAULT '{}'::jsonb
+// (migration 0115), so we don't need a Drizzle-level sql default — and avoiding the
+// module-load sql`` call keeps this schema importable under tests that mock drizzle-orm.
 
 // ── 7c. ledger_transactions — balance-enforcing envelope + idempotency anchor ──
 export const ledgerTransactions = pgTable("ledger_v2_transactions", {
@@ -28,7 +30,7 @@ export const ledgerTransactions = pgTable("ledger_v2_transactions", {
   eventType:      varchar("event_type",       { length: 60 }).notNull(),
   totalDebits:    integer("total_debits").notNull(),
   totalCredits:   integer("total_credits").notNull(),
-  responseJson:   jsonb("response_json").default(sql`'{}'::jsonb`),
+  responseJson:   jsonb("response_json"),
   createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
 });
 
@@ -85,7 +87,7 @@ export const ledgerEntries = pgTable("ledger_v2_entries", {
   vatMode:        varchar("vat_mode",        { length: 24 }),
   createdBy:      varchar("created_by",      { length: 128 }).notNull(),
   ipAddress:      varchar("ip_address",      { length: 45 }),
-  metadata:       jsonb("metadata").default(sql`'{}'::jsonb`),
+  metadata:       jsonb("metadata"),
   previousHash:   varchar("previous_hash",   { length: 64 }).notNull(),
   entryHash:      varchar("entry_hash",      { length: 64 }).notNull(),
   createdAt:      timestamp("created_at", { withTimezone: true }).defaultNow().notNull(),
