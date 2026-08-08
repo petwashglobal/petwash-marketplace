@@ -845,6 +845,26 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
     } catch (error: any) {
       if (error.code === 'auth/user-not-found') {
         isNewUser = true;
+        // DUPLICATE GUARD (CEO 2026-08-08): mobile signup now collects an email. If that
+        // email ALREADY belongs to an account (email/Google/Apple), creating a new phone
+        // account here would SPLIT the person in two — their wallet/history live on the
+        // other account. Refuse and route them to sign in, then attach the phone via
+        // /api/auth/verify-signup-mobile. (Was Finding 2 of the mobile-auth audit.)
+        const providedEmail = typeof req.body?.email === 'string' ? req.body.email.trim().toLowerCase() : '';
+        if (providedEmail) {
+          try {
+            const existing = await adminAuth.getUserByEmail(providedEmail);
+            if (existing) {
+              return res.status(409).json({
+                ok: false,
+                code: 'EMAIL_HAS_ACCOUNT',
+                error: 'This email already has a PetWash account. Please sign in, then add your mobile number.',
+              });
+            }
+          } catch {
+            // auth/user-not-found → the email is free; fall through and create the account.
+          }
+        }
         // 18+ gate — new accounts only.
         const ageCheck = checkSignupAge(req.body?.dateOfBirth);
         if (!ageCheck.ok) {
