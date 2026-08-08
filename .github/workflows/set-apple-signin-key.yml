@@ -1,0 +1,70 @@
+name: Set Apple Sign-in code-flow key (one-shot)
+# Wires the "Sign in with Apple" OAuth code-flow key into Firebase so web Apple
+# sign-in stops returning auth/operation-not-allowed. Diagnostic (2026-08-08) showed
+# apple.com is enabled with clientId il.co.petwash.web but teamId/keyId/privateKey are
+# ALL null — that empty code-flow config is the whole reason Apple fails.
+#
+# REQUIRES (add BEFORE running):
+#   • repo secret APPLE_SIGNIN_PRIVATE_KEY  = the FULL .p8 file contents
+#     (Settings → Secrets and variables → Actions → New repository secret)
+#   • run this workflow with input key_id = the Key ID shown when you made the .p8
+# team_id defaults to the PetWash Apple Team ID; override only if it changed.
+on:
+  workflow_dispatch:
+    inputs:
+      key_id:
+        description: "Apple Sign-in Key ID (10 chars, shown when you created the .p8)"
+        required: true
+      team_id:
+        description: "Apple Team ID"
+        required: false
+        default: "U22NC3Q5Z4"
+permissions:
+  contents: read
+jobs:
+  set:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      PROJECT_ID: signinpetwash
+      KEY_ID: ${{ inputs.key_id }}
+      TEAM_ID: ${{ inputs.team_id }}
+      PRIVATE_KEY: ${{ secrets.APPLE_SIGNIN_PRIVATE_KEY }}
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          credentials_json: ${{ secrets.GOOGLE_APPLICATION_CREDENTIALS_JSON }}
+      - uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: signinpetwash
+      - name: Wire Apple code-flow (teamId/keyId/privateKey) into Firebase
+        run: |
+          set -uo pipefail
+          if [ -z "${PRIVATE_KEY:-}" ]; then
+            echo "::error::Secret APPLE_SIGNIN_PRIVATE_KEY is empty — add the .p8 contents as that repo secret first, then re-run."
+            exit 1
+          fi
+          if [ -z "${KEY_ID:-}" ]; then
+            echo "::error::key_id input is empty — pass the 10-char Key ID from the .p8 you created."
+            exit 1
+          fi
+          TOKEN="$(gcloud auth print-access-token)"
+          BASE="https://identitytoolkit.googleapis.com/admin/v2/projects/${PROJECT_ID}"
+
+          echo "== BEFORE (teamId/keyId should be null) =="
+          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" \
+            | jq '{enabled, clientId, teamId: .appleSignInConfig.codeFlowConfig.teamId, keyId: .appleSignInConfig.codeFlowConfig.keyId, hasPrivateKey: (.appleSignInConfig.codeFlowConfig.privateKey != null and .appleSignInConfig.codeFlowConfig.privateKey != "")}'
+
+          # jq builds the JSON so the multi-line .p8 is escaped correctly.
+          BODY="$(jq -n --arg t "$TEAM_ID" --arg k "$KEY_ID" --arg p "$PRIVATE_KEY" \
+            '{appleSignInConfig:{codeFlowConfig:{teamId:$t,keyId:$k,privateKey:$p}}}')"
+
+          echo "== PATCH appleSignInConfig (updateMask=appleSignInConfig, clientId + enabled untouched) =="
+          curl -fsS -X PATCH \
+            -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+            "$BASE/defaultSupportedIdpConfigs/apple.com?updateMask=appleSignInConfig" \
+            -d "$BODY" >/dev/null
+
+          echo "== AFTER (teamId + keyId set, hasPrivateKey true → Apple sign-in ready) =="
+          curl -sS -H "Authorization: Bearer $TOKEN" "$BASE/defaultSupportedIdpConfigs/apple.com" \
+            | jq '{enabled, clientId, teamId: .appleSignInConfig.codeFlowConfig.teamId, keyId: .appleSignInConfig.codeFlowConfig.keyId, hasPrivateKey: (.appleSignInConfig.codeFlowConfig.privateKey != null and .appleSignInConfig.codeFlowConfig.privateKey != "")}'
