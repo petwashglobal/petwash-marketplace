@@ -213,7 +213,7 @@ export default function PrestigeHome() {
 
   return (
     <div className="min-h-[100dvh] bg-white" dir={isHe ? 'rtl' : 'ltr'} style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
-      <div className="max-w-md mx-auto pb-28">
+      <div className="max-w-2xl mx-auto pb-28">
 
         {/* Header: real logo crown */}
         <header className="px-4 pt-3 pb-2">
