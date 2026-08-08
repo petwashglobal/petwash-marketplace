@@ -261,7 +261,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     //   emailStep      = phone verified, now collecting/verifying the email (step 2)
     //   showFaceIDOffer= the post-signup "Enable Face ID" card
     //   mfaChallenge   = a 2-step login code
-    if (mfaLoginInFlight.current || sent || emailStep || showFaceIDOffer || mfaChallenge) return;
+    if (mfaLoginInFlight.current || sent || emailStep || mobileStep || showFaceIDOffer || mfaChallenge) return;
     if (safeRedirect) { navigate(safeRedirect); return; }
     let cancelled = false;
     (async () => {
@@ -370,6 +370,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [dob, setDob] = useState(`${new Date().getFullYear() - 25}-06-15`);
   // Step 2 of dual-verify: after the phone code + account, we verify the email too.
   const [emailStep, setEmailStep] = useState(false);
+  // The MIRROR of emailStep: a NEW user who started with email / Google / Apple (which
+  // give us the email but no phone) is asked to add + verify their mobile so the account
+  // confirms BOTH contacts (CEO 2026-08-08). verify() attaches the phone to the already-
+  // signed-in account via /api/auth/verify-signup-mobile instead of minting a new one.
+  const [mobileStep, setMobileStep] = useState(false);
   // Passkey / Face ID (returning users): device-bound, the 2026 way to skip codes.
   const [bioAvailable, setBioAvailable] = useState(false);
   const [bioName, setBioName] = useState('Face ID');
@@ -530,9 +535,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
   async function sendCode() {
     if (!phone) { fail(he ? 'הזן מספר טלפון' : 'Enter your mobile number'); return; }
-    // Real 18+ birthday required for signup (login never needs DOB).
-    if (authMode !== 'login' && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
-    if (!requireTerms()) return;
+    // Real 18+ birthday required for signup (login never needs DOB). The mobileStep
+    // (adding a phone onto an already-verified social/email account) skips the DOB +
+    // terms gates — both were satisfied at the first step.
+    if (authMode !== 'login' && !mobileStep && !isAdult) { fail(he ? 'בחרו תאריך לידה — גיל 18 ומעלה' : 'Please set your date of birth — you must be 18 or older.'); return; }
+    if (!mobileStep && !requireTerms()) return;
     setInlineError(null);
     setBusy(true);
     try {
@@ -578,6 +585,21 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       });
       const vd = await v.json();
       if (!vd.ok) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
+      // MOBILE STEP-2: the user is ALREADY signed in (Google / Apple / email). ATTACH +
+      // verify this phone onto their existing account — do NOT call phone-session (which
+      // would mint a separate phone-first account). (CEO 2026-08-08 both-contacts)
+      if (mobileStep) {
+        const idToken = await auth.currentUser?.getIdToken(true);
+        const a = await fetch(getApiUrl('/api/auth/verify-signup-mobile'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ idToken, verificationToken: vd.verificationToken }),
+        });
+        const ad = await a.json();
+        if (!ad.ok) { fail(ad.error || (he ? 'אימות הנייד נכשל' : 'Mobile verification failed')); return; }
+        setMobileStep(false);
+        await finishAndRoute();
+        return;
+      }
       const s = await fetch(getApiUrl('/api/auth/phone-session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ verificationToken: vd.verificationToken, dateOfBirth: dob, email }),
@@ -773,6 +795,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // Don't route into the app on a hollow session (guards would 401-bounce).
         const label = which === 'google' ? 'Google' : which === 'apple' ? 'Apple' : 'Facebook';
         fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
+        return;
+      }
+      // NEW social user: Google/Apple gave us a verified email but no phone. Ask them to
+      // add + verify their mobile so the account confirms BOTH contacts (CEO 2026-08-08).
+      // Returning users route straight in. (isNewUser comes from /api/auth/session.)
+      const ssd = await sessionRes.json().catch(() => ({} as any));
+      if (ssd?.isNewUser) {
+        setPhone('');
+        setSent(false);
+        setMethod('mobile');
+        setMobileStep(true);
+        toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
         return;
       }
       await finishAndRoute();
@@ -1270,9 +1304,26 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <p className="sl-inlineError" role="alert">{inlineError}</p>
           )}
 
+          {/* === MOBILE STEP-2 — a NEW email/Google/Apple user adds + verifies their
+              phone so the account confirms BOTH contacts (CEO 2026-08-08). === */}
+          {mobileStep && !sent && (
+            <>
+              <p className="sl-helper sl-center">
+                {he ? 'כמעט סיימנו — אמתו את מספר הנייד. חשבון חדש מאמת אימייל + נייד.' : 'Almost there — verify your mobile. A new account confirms email + mobile.'}
+              </p>
+              <div className="sl-field">
+                <label className="sl-label">{t.phoneLabel}</label>
+                <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
+              </div>
+              <button className="sl-cta" disabled={busy || !phoneValid} onClick={() => { void sendCode(); }}>
+                <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
+              </button>
+            </>
+          )}
+
           {/* === OPEN inputs — no tabs. Phone AND email are both visible; the user
               just types whichever they like and presses Continue (we detect which). === */}
-          {!sent && !mfaChallenge && (
+          {!sent && !mfaChallenge && !mobileStep && (
             <>
               {/* Passkey/Face-ID is a RETURNING-user shortcut and lives at the BOTTOM
                   now (CEO 2026-07-17): a brand-new joiner has no passkey yet, so
@@ -1623,7 +1674,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             </>
           )}
 
-          {!sent && !mfaChallenge && (
+          {!sent && !mfaChallenge && !mobileStep && (
             <>
               {/* Primary CTA — JOIN (both contacts + password) or LOGIN (email + password). */}
               {authMode === 'join' ? (

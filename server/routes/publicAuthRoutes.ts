@@ -671,6 +671,68 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
   }
 });
 
+/**
+ * POST /api/auth/verify-signup-mobile — step 2 of dual-verify for signups that START
+ * with email / Google / Apple (which give us the email but NOT a phone). The user is
+ * already signed in; this proves they also own the phone (6-digit SMS code) and
+ * ATTACHES it to THEIR account — it never creates a second account. Mirror of
+ * verify-signup-email. (CEO 2026-08-08: a new account confirms BOTH contacts.)
+ */
+publicAuthRouter.post("/api/auth/verify-signup-mobile", apiLimiter, async (req, res) => {
+  try {
+    const { idToken, verificationToken } = req.body || {};
+    if (!idToken || !verificationToken) {
+      return res.status(400).json({ ok: false, error: 'idToken and verificationToken are required' });
+    }
+    let uid: string;
+    try {
+      const decoded = await fbAdminAuth.verifyIdToken(idToken, true);
+      uid = decoded.uid;
+    } catch {
+      return res.status(401).json({ ok: false, error: 'Invalid session — please sign in again.' });
+    }
+    // Prove phone ownership from the SMS-verified token, then consume it single-use
+    // (same guards as phone-session) so it cannot be replayed.
+    const tokenValidation = twilioSMSService.validateVerificationToken(verificationToken);
+    if (!tokenValidation.valid || !tokenValidation.phone) {
+      return res.status(401).json({ ok: false, error: 'Mobile verification expired — request a new code.' });
+    }
+    if (!twilioSMSService.consumeVerificationNonce(tokenValidation.nonce || '')) {
+      return res.status(401).json({ ok: false, error: 'This verification was already used — request a new code.' });
+    }
+    const verifiedPhone = tokenValidation.phone;
+    // Attach the phone to THIS Firebase account (no second account is created).
+    try {
+      await fbAdminAuth.updateUser(uid, { phoneNumber: verifiedPhone });
+    } catch (e: any) {
+      if (e?.code === 'auth/phone-number-already-exists') {
+        return res.status(409).json({ ok: false, error: 'This mobile number is already linked to another account.', code: 'PHONE_IN_USE' });
+      }
+      logger.warn('[Signup] verify-signup-mobile updateUser failed', { error: e?.message });
+      return res.status(500).json({ ok: false, error: 'Could not verify mobile — please try again.' });
+    }
+    // Best-effort DB flag (phone is UNIQUE → a collision falls back harmlessly).
+    try {
+      await pool.query(`UPDATE users SET phone = $1, phone_verified = true WHERE id = $2`, [verifiedPhone, uid]);
+    } catch {
+      try { await pool.query(`UPDATE users SET phone_verified = true WHERE id = $1`, [uid]); } catch { /* ignore */ }
+    }
+    // Advance ACTIVATION: markMobileVerified sets mobileVerifiedAt + phoneVerified +
+    // activationStatus together (verification-drift fix) so a social-then-mobile
+    // dual-verified user reaches 'active'.
+    try {
+      const { markMobileVerified } = await import('../services/ActivationService');
+      await markMobileVerified(uid);
+    } catch (vErr: any) {
+      logger.warn('[Signup] verify-signup-mobile activation advance failed (non-blocking)', { error: vErr?.message });
+    }
+    return res.json({ ok: true });
+  } catch (e: any) {
+    logger.error('[Signup] verify-signup-mobile error', { error: e?.message });
+    return res.status(500).json({ ok: false, error: 'Mobile verification failed.' });
+  }
+});
+
 // ── 2-STEP LOGIN (CEO 2026-07-31 "one-way or two-way verification") ───────────
 // A member who opted into 2-step login (users.two_factor_enabled = true) must,
 // after a correct email+password, also enter a one-time SMS code before a session
