@@ -783,6 +783,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           fail(he ? `התחברות ${label} לא הושלמה — נסה שוב` : `${label} sign-in could not be completed. Please try again.`);
           return;
         }
+        // NEW native social user → collect + verify mobile so the account confirms BOTH
+        // contacts (CEO 2026-08-08), same as the web path. Returning users route straight.
+        const nsd = await sessionRes.json().catch(() => ({} as any));
+        if (nsd?.isNewUser) {
+          setPhone('');
+          setSent(false);
+          setMethod('mobile');
+          setMobileStep(true);
+          toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
+          return;
+        }
         await finishAndRoute();
         return;
       }
