@@ -1303,7 +1303,7 @@ export default function PrestigePassWallet() {
         {he ? 'הצג כרטיס — K9000' : 'Show Pass — K9000'}
       </button>
 
-      <div style={{ background:'#FFFFFF', minHeight:'100vh', paddingBottom:'calc(180px + env(safe-area-inset-bottom, 0px))' }}>
+      <div style={{ background:'#FFFFFF', minHeight:'100dvh', maxWidth:680, margin:'0 auto', paddingBottom:'calc(180px + env(safe-area-inset-bottom, 0px))' }}>
 
         {/* ── Add to Wallet — TOP of page, always visible (CEO: must be obvious) ── */}
         <div style={{ padding:'16px 16px 0' }}>
