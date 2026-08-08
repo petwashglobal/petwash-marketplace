@@ -98,6 +98,13 @@ import {
   FaEnvelope, FaPhoneAlt, FaPaw, FaFingerprint,
 } from 'react-icons/fa';
 
+// Apple sign-in is HIDDEN until the Firebase Apple provider's OAuth code-flow key
+// (Team ID + Key ID + .p8) is filled — it's empty today, so tapping Apple returns
+// auth/operation-not-allowed ("this method is not enabled"). Hiding the button keeps
+// users off a dead option. Flip to true the moment the .p8 key is wired into Firebase
+// (workflow set-apple-signin-key.yml). Google/mobile/email are unaffected. (2026-08-08)
+const APPLE_SIGNIN_READY = false;
+
 interface Props {
   language?: Language;
   onLanguageChange?: (lang: Language) => void;
@@ -1408,7 +1415,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     <GoogleIcon /> <span className="sl-socLabel">{t.cwGoogle}</span>
                   </button>
                 )}
-                {signupFlags.appleSignin && (
+                {signupFlags.appleSignin && APPLE_SIGNIN_READY && (
                   <button className="sl-soc sl-soc--apple" disabled={busy} onClick={() => social('apple')}>
                     <FaApple aria-hidden /> <span className="sl-socLabel">{t.cwApple}</span>
                   </button>
