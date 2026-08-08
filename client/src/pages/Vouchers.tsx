@@ -117,6 +117,10 @@ export default function Vouchers() {
   const derivedStats = {
     active_vouchers: vouchers.filter((v: any) => (v.status || '').toLowerCase() === 'active').length,
     total_vouchers: vouchers.length,
+    // Sum the REAL per-voucher fields — the cards below previously showed the voucher
+    // COUNT dressed as ₪ and washes (3 vouchers → "₪3.00" / "3 washes"). (2026-08-08)
+    total_value: vouchers.reduce((sum, v) => sum + (v.valueRemaining ? Number(v.valueRemaining) : 0), 0),
+    washes_remaining: vouchers.reduce((sum, v) => sum + (v.washesRemaining || 0), 0),
   };
   
   // Convert DB format to PetWashVoucher2025 format for VoucherCard2025
@@ -207,7 +211,7 @@ export default function Vouchers() {
                 </div>
                 <div>
                   <p className="luxury-text-small mb-1">Total Value</p>
-                  <p className="luxury-heading-lg luxury-text-gradient">₪{derivedStats.total_vouchers.toFixed(2)}</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">₪{derivedStats.total_value.toFixed(2)}</p>
                 </div>
               </div>
             </div>
@@ -219,7 +223,7 @@ export default function Vouchers() {
                 </div>
                 <div>
                   <p className="luxury-text-small mb-1">Washes Remaining</p>
-                  <p className="luxury-heading-lg luxury-text-gradient">{derivedStats.total_vouchers}</p>
+                  <p className="luxury-heading-lg luxury-text-gradient">{derivedStats.washes_remaining}</p>
                 </div>
               </div>
             </div>

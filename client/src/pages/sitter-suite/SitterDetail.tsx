@@ -84,7 +84,10 @@ export default function SitterDetail() {
     if (!startDate || !endDate) return 0;
     const days = Math.max(1, differenceInDays(endDate, startDate));
     const basePrice = (sitter?.pricePerDayCents || 0) / 100;
-    const platformFee = basePrice * days * 0.1; // 10% platform fee
+    // 15% is the canonical sitter commission (SitterAdvancedBookingEngine — the server
+    // recomputes authoritatively and charges 15%). Display was showing 10% while the
+    // booking was charged at 15% → the total understated the real amount. (2026-08-08)
+    const platformFee = basePrice * days * 0.15;
     return basePrice * days + platformFee;
   };
 
@@ -528,8 +531,8 @@ export default function SitterDetail() {
                       <span className="font-bold">₪{days > 0 ? ((sitter.pricePerDayCents / 100) * days).toFixed(0) : '0'}</span>
                     </div>
                     <div className="flex justify-between luxury-text-body">
-                      <span className="font-medium">{isHebrew ? 'עמלת שירות' : 'Service Fee'} (10%)</span>
-                      <span className="font-bold">₪{days > 0 ? (((sitter.pricePerDayCents / 100) * days * 0.1).toFixed(0)) : '0'}</span>
+                      <span className="font-medium">{isHebrew ? 'עמלת שירות' : 'Service Fee'} (15%)</span>
+                      <span className="font-bold">₪{days > 0 ? (((sitter.pricePerDayCents / 100) * days * 0.15).toFixed(0)) : '0'}</span>
                     </div>
                     <div className="luxury-divider"></div>
                     <div className="luxury-glass-minimal p-4">
