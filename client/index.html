@@ -3,6 +3,25 @@
   <head>
     <meta name="data-test-build" content="BUILD_2026_MAR08_PERF_OPT">
     <meta charset="UTF-8">
+
+    <!-- CANONICAL HOST GUARD (2026-08-08) — runs before any module/Firebase loads.
+         Firebase authDomain is the apex `petwash.co.il`. If the app is opened on
+         `www.petwash.co.il`, the OAuth popup/redirect handler runs on a DIFFERENT
+         origin (apex) than the app (www) → iOS/Safari partitions the auth storage →
+         Firebase throws "missing initial state" → Google/Apple sign-in silently
+         fails on iPhone (Chrome + Safari both use WebKit). Forcing www→apex makes
+         the app origin match authDomain so the credential handoff stays first-party.
+         Native (Capacitor) never has this hostname, so it is never affected. -->
+    <script>
+      (function () {
+        try {
+          if (location.hostname === 'www.petwash.co.il') {
+            location.replace('https://petwash.co.il' + location.pathname + location.search + location.hash);
+          }
+        } catch (e) {}
+      })();
+    </script>
+
     <!-- PetWash ships its own i18n (he/en/ar/ru/fr). Browser auto-translate
          mutates the DOM out from under React and crashes the app
          (removeChild NotFoundError), so we opt out of machine translation. -->
