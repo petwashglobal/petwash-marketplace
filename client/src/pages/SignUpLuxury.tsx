@@ -605,6 +605,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         body: JSON.stringify({ verificationToken: vd.verificationToken, dateOfBirth: dob, email }),
       });
       const sd = await s.json();
+      // DUPLICATE GUARD: this email already has an account — don't create a second one.
+      // Send them to sign in (email), then they can add the phone. (CEO 2026-08-08)
+      if (sd.code === 'EMAIL_HAS_ACCOUNT') {
+        setAuthMode('login');
+        setMethod('email');
+        setSent(false);
+        fail(sd.error || (he ? 'לאימייל הזה כבר יש חשבון — התחברו כדי להוסיף את מספר הנייד.' : 'This email already has an account — sign in to add your mobile number.'));
+        return;
+      }
       if (!sd.customToken) {
         // No session token came back (phone-session error / unexpected shape). Do
         // NOT fall through to finishAndRoute() session-less — RequireAuth would then
