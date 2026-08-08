@@ -7,8 +7,16 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { apiRequest } from '@/lib/queryClient';
 import { useSEO, pageSEO } from '@/lib/seo';
 
+interface ReferralStats {
+  totalInvites: number;
+  successfulInvites: number;
+  pendingInvites: number;
+  totalCreditsGrantedILS: number;
+}
+
 interface SummaryData {
   referralCode: string | null;
+  stats?: ReferralStats;
 }
 
 export default function LoyaltyRefer() {
@@ -87,21 +95,23 @@ export default function LoyaltyRefer() {
     },
   ];
 
+  // Real figures from /api/referral/link → stats (no more hardcoded "0"). (2026-08-08)
+  const rs = linkData?.stats;
   const stats = [
     {
       icon: Users,
       label: isHebrew ? 'חברים שהופנו' : 'Friends Referred',
-      value: '0',
+      value: String(rs?.successfulInvites ?? 0),
     },
     {
       icon: Gift,
       label: isHebrew ? 'תגמולים שנצברו' : 'Rewards Earned',
-      value: '0',
+      value: `₪${(rs?.totalCreditsGrantedILS ?? 0).toFixed(0)}`,
     },
     {
       icon: Award,
-      label: isHebrew ? 'נקודות בונוס' : 'Bonus Points',
-      value: '0',
+      label: isHebrew ? 'הזמנות ממתינות' : 'Pending Invites',
+      value: String(rs?.pendingInvites ?? 0),
     },
   ];
 

@@ -465,7 +465,15 @@ export default function LoyaltyDashboard() {
                             <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
                               {isHebrew ? 'התקדמות לדרגה הבאה' : 'Progress to next tier'}
                             </div>
-                            <Progress value={45} className="h-2" />
+                            <Progress value={(() => {
+                              // Real progress from points vs tier thresholds (was hardcoded 45). (2026-08-08)
+                              const next = TIER_CONFIGS[index + 1];
+                              if (!next) return 100;
+                              const span = next.threshold - tierConfig.threshold;
+                              return span > 0
+                                ? Math.min(100, Math.max(0, ((currentPoints - tierConfig.threshold) / span) * 100))
+                                : 100;
+                            })()} className="h-2" />
                           </div>
                         )}
                     </div>
@@ -623,16 +631,27 @@ export default function LoyaltyDashboard() {
               <SparklineChart data={mockPointsHistory} color="#3B82F6" height={120} />
             </div>
             
-            <div className="mt-6 text-center">
-              <div className="inline-flex items-center gap-2 bg-gradient-to-r from-green-500/10 to-emerald-500/10 border border-green-400/30 rounded-full px-6 py-3">
-                <Sparkles className="w-4 h-4 text-green-500" />
-                <span className="text-sm font-semibold text-gray-700 dark:text-black">
-                  {isHebrew 
-                    ? 'המגמה שלך: עולה! המשך כך 🚀' 
-                    : 'Your trend: Rising! Keep it up 🚀'}
-                </span>
-              </div>
-            </div>
+            {(() => {
+              // Derive the trend from the real points history — was always "Rising". (2026-08-08)
+              const ph = mockPointsHistory;
+              const rising = ph.length >= 2 && ph[ph.length - 1] > ph[0];
+              return (
+                <div className="mt-6 text-center">
+                  <div className={`inline-flex items-center gap-2 rounded-full px-6 py-3 border ${
+                    rising
+                      ? 'bg-gradient-to-r from-green-500/10 to-emerald-500/10 border-green-400/30'
+                      : 'bg-gray-500/10 border-gray-400/30'
+                  }`}>
+                    <Sparkles className={`w-4 h-4 ${rising ? 'text-green-500' : 'text-gray-400'}`} />
+                    <span className="text-sm font-semibold text-gray-700 dark:text-black">
+                      {rising
+                        ? (isHebrew ? 'המגמה שלך: עולה! המשך כך 🚀' : 'Your trend: Rising! Keep it up 🚀')
+                        : (isHebrew ? 'המגמה שלך: יציבה' : 'Your trend: Steady')}
+                    </span>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* Footer */}

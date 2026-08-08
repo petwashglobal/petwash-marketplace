@@ -189,10 +189,13 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
           notes: `Foil font: ${e.font || 'serif'}`,
         };
       }
-      await fetch(getApiUrl('/api/shop/cart/items'), {
+      // raw fetch does NOT throw on 4xx/5xx — check r.ok so a rejected add (401,
+      // out-of-stock, validation) does not silently open a cart missing the item. (2026-08-08)
+      const res = await fetch(getApiUrl('/api/shop/cart/items'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify(body),
       });
+      if (!res.ok) throw new Error(`add-to-cart failed (${res.status})`);
       if (petName) setEngraving(prev => ({ ...prev, [p.id]: {} }));
       setPersonaliseFor(null);
       await refreshCart(); setStep('cart'); setCartOpen(true);
@@ -203,10 +206,12 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   async function updateQty(item: CartItem, q: number) {
     setBusy(true);
     try {
-      if (q <= 0) await fetch(getApiUrl(`/api/shop/cart/items/${item.id}`), { method: 'DELETE', credentials: 'include' });
-      else await fetch(getApiUrl(`/api/shop/cart/items/${item.id}`), {
-        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ quantity: q }),
-      });
+      const res = q <= 0
+        ? await fetch(getApiUrl(`/api/shop/cart/items/${item.id}`), { method: 'DELETE', credentials: 'include' })
+        : await fetch(getApiUrl(`/api/shop/cart/items/${item.id}`), {
+            method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify({ quantity: q }),
+          });
+      if (!res.ok) throw new Error(`cart qty update failed (${res.status})`);
       await refreshCart();
     } catch (e) { logger.error('[ShopStore] qty', e); }
     setBusy(false);
