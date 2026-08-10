@@ -6,6 +6,7 @@ import { logAuditEvent } from "../middleware/auditLog";
 import { EmailService } from "../emailService";
 import { isSuperAdmin, isSuperAdminVerified } from "../middleware/rbac";
 import { isAdminRole } from "@shared/adminRoles";
+import { MEMBER_REQUIRED_FIELDS } from "@shared/memberRequiredFields";
 import { recordLoginEvent } from "../services/AuthEventService";
 import { getClientIP } from "../services/alerts";
 
@@ -33,7 +34,8 @@ type PostLoginResponse = {
 // gate returns only the MISSING subset, so social users (name+email from Google/Apple)
 // and email/mobile-OTP users are each asked only for what they haven't supplied.
 // DOB + 18+ + KYC belong to the PROVIDER role only (separate ProviderOnboarding flow).
-const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'termsAcceptedAt', 'privacyAcceptedAt'];
+// MEMBER_REQUIRED_FIELDS now imported from @shared/memberRequiredFields (single source
+// of truth shared with onboardingGate.ts, so the two gates cannot drift).
 const REQUIRED_FIELDS_BY_ROLE: Record<string, string[]> = {
   customer: MEMBER_REQUIRED_FIELDS,
   loyalty: MEMBER_REQUIRED_FIELDS,

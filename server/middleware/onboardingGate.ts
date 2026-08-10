@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { logger } from '../lib/logger';
+import { MEMBER_REQUIRED_FIELDS } from '@shared/memberRequiredFields';
 
 const ONBOARDING_BYPASS_PATHS = [
   '/api/auth',
@@ -31,8 +32,8 @@ interface OnboardingRequirements {
 // us (Google/Apple supply name+email; mobile/email OTP verify one contact). Mobile
 // is required because Israel support/payment/security lean on it. DOB + the 18+
 // gate + the heavy KYC belong to the PROVIDER role only (separate ProviderOnboarding).
-// Keep in lock-step with REQUIRED_FIELDS_BY_ROLE in server/routes/post-login.ts.
-const MEMBER_REQUIRED_FIELDS = ['firstName', 'lastName', 'phone', 'termsAcceptedAt', 'privacyAcceptedAt'];
+// MEMBER_REQUIRED_FIELDS now imported from @shared/memberRequiredFields — the SINGLE
+// source of truth shared with post-login.ts, so the two gates can never drift.
 
 // PROVIDER KYC ENGINE (CEO 2026-08-01). A provider is a member PLUS this stricter
 // set — collected + human-reviewed in the SEPARATE ProviderOnboarding flow (NEVER
