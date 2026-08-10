@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { db } from '../db';
-import { users } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { users, purchases } from '@shared/schema';
+import { eq, desc } from 'drizzle-orm';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
@@ -122,6 +122,13 @@ router.get('/profile', async (req, res) => {
         birthdate: '',
         photoURL: firebaseUser.photoURL || '',
         preferredLanguage: 'he',
+        gender: '',
+        carPlate: '',
+        carPlate2: '',
+        emergencyContactName: '',
+        emergencyContactPhone: '',
+        marketingConsent: false,
+        twoFactorEnabled: false,
         notificationPreferences: mergedNotificationPrefs,
       });
     }
@@ -151,6 +158,19 @@ router.get('/profile', async (req, res) => {
       birthdate: user.dateOfBirth || '',
       photoURL: user.profileImageUrl || '',
       preferredLanguage: user.language || 'he',
+      // Extended profile fields — these are written by PATCH /profile but were
+      // previously NOT returned here, so the edit form (hydrated from this GET)
+      // rendered them blank after a reload and the user thought their save was
+      // lost. They persisted fine; the read-back just omitted them. (2026-08-10)
+      // NOTE: idNumber is deliberately still omitted — it is encrypted PII and is
+      // never sent back to the client (see §5 money/PII invariants).
+      gender: user.gender || '',
+      carPlate: user.carPlate || '',
+      carPlate2: user.carPlate2 || '',
+      emergencyContactName: user.emergencyContactName || '',
+      emergencyContactPhone: user.emergencyContactPhone || '',
+      marketingConsent: user.marketingConsent ?? false,
+      twoFactorEnabled: user.twoFactorEnabled ?? false,
       notificationPreferences: mergedNotificationPrefs,
     });
   } catch (error: any) {
@@ -337,6 +357,60 @@ router.get('/transactions', async (req, res) => {
   } catch (err: any) {
     logger.error('[UserProfile] Transactions fetch error', err.message);
     return res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
+});
+
+// GET /api/user/purchases — the buyer's own purchase history (wallet top-ups,
+// eGift cards, wash packages, shop orders). Reads the CANONICAL `purchases`
+// table — the real system-of-record — which until now had NO user-facing list
+// (the only order screen pointed at a non-existent `shop_orders` table). This is
+// a read-only, buyer-scoped browse: it never mutates money, and it deliberately
+// returns only display-safe columns (no raw feeSnapshotJson / metadataJson,
+// which can hold internal routing/PII). (2026-08-10)
+router.get('/purchases', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    let uid = req.firebaseUser?.uid;
+
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const token = authHeader.split('Bearer ')[1];
+        const decodedToken = await admin.auth().verifyIdToken(token, true);
+        uid = decodedToken.uid;
+      } catch (tokenError) {
+        if (!uid) return res.status(401).json({ error: 'Authentication required' });
+      }
+    }
+
+    if (!uid) return res.status(401).json({ error: 'Authentication required' });
+
+    const rows = await db
+      .select()
+      .from(purchases)
+      .where(eq(purchases.buyerUserId, uid))
+      .orderBy(desc(purchases.createdAt))
+      .limit(100);
+
+    // Whitelist the fields we expose — never spread the raw row.
+    const items = rows.map((p) => ({
+      id: p.id,
+      surface: p.surface,
+      productType: p.productType,
+      amountCents: p.amountCents,
+      vatCents: p.vatCents,
+      currency: p.currency,
+      status: p.status,
+      paymentMethod: p.paymentMethod,
+      receiptNumber: p.receiptNumber || null,
+      transactionId: p.transactionId || null,
+      isGift: !!p.receiverUserId && p.receiverUserId !== uid,
+      createdAt: p.createdAt,
+    }));
+
+    return res.json({ purchases: items });
+  } catch (error: any) {
+    logger.error('[UserProfile] Purchases fetch error:', error?.message || error);
+    return res.status(500).json({ error: 'Failed to fetch purchases' });
   }
 });
 
