@@ -20,6 +20,10 @@ import { logAuditEvent } from "../middleware/auditLog";
 // mode (logs what it WOULD hold) and can be flipped on once verified — no
 // finance behavior change by default.
 import { checkPayoutGates } from "./payoutGate";
+// LEDGER v2 dual-write SHADOW (flag OFF): mirror escrow hold/release into the unified
+// ledger for parity proving. Both helpers self-guard on LEDGER_V2_DUAL_WRITE and swallow
+// all errors — they can never affect the real escrow.
+import { shadowMirrorEscrowHold, shadowMirrorEscrowRelease } from "./LedgerService";
 
 export interface CreditPaymentBreakdown {
   egiftCents: number;
@@ -182,6 +186,19 @@ class EscrowService {
     console.log(
       `[Escrow] Payment held: ₪${amount.toFixed(2)} for booking ${bookingId}`
     );
+
+    // LEDGER v2 dual-write SHADOW (flag OFF, 2026-08-10): mirror this hold into the
+    // unified ledger as a resolve-once pending transfer. Only when money was ACTUALLY
+    // captured — never record held funds that don't exist. Self-guarded + self-wrapped:
+    // observe-only, can never affect the real escrow above.
+    if (moneyCaptured) {
+      await shadowMirrorEscrowHold({
+        bookingId,
+        amountCents,
+        provider: nayaxTransactionId ? 'nayax' : 'sumit',
+        paymentRef: nayaxTransactionId ?? null,
+      });
+    }
     return result.escrow;
   }
 
@@ -266,6 +283,19 @@ class EscrowService {
       });
       return e;
     });
+
+    // LEDGER v2 dual-write SHADOW (flag OFF, 2026-08-10): mirror this release into the
+    // unified ledger (escrow → provider payable + commission + VAT). The resolve-once
+    // guard means a double-release maps to a no-op here. Self-wrapped; only fires when
+    // the split cents are on the escrow record. Can never affect the real release above.
+    if (typeof escrow.providerPayoutCents === "number" && typeof escrow.platformCommissionCents === "number") {
+      await shadowMirrorEscrowRelease({
+        bookingId: escrow.bookingId,
+        providerUid: escrow.providerId,
+        providerPayoutCents: escrow.providerPayoutCents,
+        commissionCents: escrow.platformCommissionCents,
+      });
+    }
 
     // Issue #153 PR-TAX-3 — forensic audit row, AFTER the tx commits and
     // BEFORE notifications. logAuditEvent is fail-soft so this never
