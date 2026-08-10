@@ -9,6 +9,9 @@ import {
   describeAccount,
   planMovement,
   shadowMirrorWalletTopup,
+  escrowHoldLegs,
+  escrowReleaseLegs,
+  escrowRefundLegs,
   LedgerImbalanceError,
   type LedgerLeg,
 } from '../services/LedgerService';
@@ -197,6 +200,43 @@ describe('ledger v2 — planMovement (pure persistence plan)', () => {
       lastHashByAccount: {},
       entryIdSeed: (i) => `LE-${i}`,
     })).toThrow(LedgerImbalanceError);
+  });
+});
+
+describe('ledger v2 — escrow leg planners (hold / release / refund)', () => {
+  it('HOLD balances: source debit == escrow credit', () => {
+    const legs = escrowHoldLegs({ sourceAccountId: 'payment_clearing:sumit', amountCents: 30000 });
+    expect(isBalanced(legs)).toBe(true);
+    expect(deriveAccountBalance(legs, 'escrow_holding', 'credit')).toBe(30000);
+  });
+
+  it('RELEASE splits escrow into provider payout + commission(ex-VAT) + VAT, and balances', () => {
+    // ₪300 escrow, 15% commission = ₪45, VAT extracted 18/118 of 45 = 686 agorot.
+    const amount = 30000, payout = 25500, commission = 4500;
+    const vat = Math.round(commission * 18 / 118); // 686
+    const legs = escrowReleaseLegs({
+      providerAccountId: 'prov:p9:payable', amountCents: amount,
+      providerPayoutCents: payout, commissionCents: commission, vatCents: vat,
+    });
+    expect(isBalanced(legs)).toBe(true); // debit escrow 30000 == credits (25500 + (4500-686) + 686)
+    expect(deriveAccountBalance(legs, 'prov:p9:payable', 'credit')).toBe(payout);
+    expect(deriveAccountBalance(legs, 'vat_payable', 'credit')).toBe(vat);
+    expect(deriveAccountBalance(legs, 'platform_commission_revenue', 'credit')).toBe(commission - vat);
+    expect(deriveAccountBalance(legs, 'escrow_holding', 'credit')).toBe(-amount); // liability drained
+  });
+
+  it('RELEASE with amount != payout + commission is caught by the balance invariant', () => {
+    const bad = escrowReleaseLegs({
+      providerAccountId: 'prov:p9:payable', amountCents: 30000,
+      providerPayoutCents: 25500, commissionCents: 4000, vatCents: 610, // 25500+4000 = 29500 != 30000
+    });
+    expect(() => assertBalanced(bad)).toThrow(LedgerImbalanceError);
+  });
+
+  it('REFUND balances: escrow debit == customer credit (wallet rail)', () => {
+    const legs = escrowRefundLegs({ customerAccountId: 'cust:u1:cash', amountCents: 30000 });
+    expect(isBalanced(legs)).toBe(true);
+    expect(deriveAccountBalance(legs, 'cust:u1:cash', 'credit')).toBe(30000);
   });
 });
 
