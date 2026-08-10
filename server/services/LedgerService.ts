@@ -547,6 +547,80 @@ async function resolvePending(pendingId: string, newStatus: 'posted' | 'voided' 
   return { alreadyResolved: false, transactionId: mv.transactionId };
 }
 
+/**
+ * SHADOW mirror of an escrow HOLD into ledger v2. Called AFTER the real Firestore
+ * escrow row was created, gated by LEDGER_V2_DUAL_WRITE, and fully wrapped so it can
+ * NEVER throw into or alter the real escrow path. Opens a resolve-once pending transfer
+ * keyed by the booking id (idempotent — a retry maps to the same hold).
+ */
+export async function shadowMirrorEscrowHold(input: {
+  bookingId: string;
+  amountCents: number;
+  provider?: 'sumit' | 'nayax';
+  paymentRef?: string | null;
+}): Promise<void> {
+  if (!LEDGER_V2_DUAL_WRITE) return;
+  try {
+    const source = `payment_clearing:${input.provider ?? 'sumit'}`;
+    const res = await realOpenPending({
+      kind: 'escrow_hold',
+      legs: escrowHoldLegs({ sourceAccountId: source, amountCents: input.amountCents }),
+      fromAccountId: source,
+      toAccountId: 'escrow_holding',
+      amountCents: input.amountCents,
+      bookingId: input.bookingId,
+      paymentRef: input.paymentRef ?? null,
+      idempotencyKey: deriveIdempotencyKey('escrow_hold', input.bookingId),
+    });
+    logger.info('[LedgerV2][shadow] escrow hold mirrored', {
+      bookingId: input.bookingId, pendingId: res.pendingId, idempotent: res.idempotent, amountCents: input.amountCents,
+    });
+  } catch (err: any) {
+    logger.warn('[LedgerV2][shadow] escrow hold mirror failed (ignored)', { bookingId: input.bookingId, error: err?.message });
+  }
+}
+
+/**
+ * SHADOW mirror of an escrow RELEASE into ledger v2. Called AFTER the real release
+ * committed, gated by LEDGER_V2_DUAL_WRITE, fully wrapped. Finds the mirrored hold by
+ * the booking id and posts it ONCE (escrow → provider payable + commission + VAT). The
+ * resolve-once guard means a double-release on the real side maps to a no-op here.
+ */
+export async function shadowMirrorEscrowRelease(input: {
+  bookingId: string;
+  providerUid: string;
+  providerPayoutCents: number;
+  commissionCents: number;
+}): Promise<void> {
+  if (!LEDGER_V2_DUAL_WRITE) return;
+  try {
+    const holdKey = deriveIdempotencyKey('escrow_hold', input.bookingId);
+    const row: any = await (db as any).execute(
+      sql`SELECT pending_id, status FROM ledger_v2_pending_transfers WHERE idempotency_key = ${holdKey} LIMIT 1`,
+    );
+    const rows: any[] = row?.rows ?? row ?? [];
+    if (rows.length === 0) {
+      logger.warn('[LedgerV2][shadow] escrow release: no mirrored hold found — skipping', { bookingId: input.bookingId });
+      return;
+    }
+    const pendingId = String(rows[0].pending_id);
+    const amountCents = input.providerPayoutCents + input.commissionCents;
+    const vatCents = Math.round((input.commissionCents * 18) / 118); // VAT extracted 18/118 from the commission
+    const res = await resolvePending(pendingId, 'posted', escrowReleaseLegs({
+      providerAccountId: `prov:${input.providerUid}:payable`,
+      amountCents,
+      providerPayoutCents: input.providerPayoutCents,
+      commissionCents: input.commissionCents,
+      vatCents,
+    }), 'escrow_release');
+    logger.info('[LedgerV2][shadow] escrow release mirrored', {
+      bookingId: input.bookingId, pendingId, alreadyResolved: res.alreadyResolved,
+    });
+  } catch (err: any) {
+    logger.warn('[LedgerV2][shadow] escrow release mirror failed (ignored)', { bookingId: input.bookingId, error: err?.message });
+  }
+}
+
 export const LedgerService = {
   summarizeTransaction,
   assertBalanced,
