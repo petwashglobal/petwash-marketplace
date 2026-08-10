@@ -68,6 +68,7 @@ import {
   Timer,
   FileText,
   Send,
+  Receipt,
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import {
@@ -1685,6 +1686,7 @@ export default function MyAccount() {
               { icon: Gift,         label: isHebrew ? 'כרטיס מתנה' : 'Gift Card',      href: '/buy-gift-card',    emoji: '🎁' },
               { icon: Crown,        label: isHebrew ? 'Prestige' : 'Prestige',          href: '/prestige-club',    emoji: '👑' },
               { icon: CalendarCheck,label: isHebrew ? 'הזמנות' : 'Bookings',           href: '/bookings',         emoji: '📅' },
+              { icon: Receipt,      label: isHebrew ? 'הרכישות שלי' : 'My Purchases', href: '/my-purchases',     emoji: '🧾' },
             ].map((item, idx) => (
               <a key={idx} href={item.href} className="pw-action-btn" style={{ textDecoration: 'none' }}>
                 <div className="pw-action-btn-icon-ring">

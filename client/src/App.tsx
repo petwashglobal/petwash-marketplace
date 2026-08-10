@@ -111,6 +111,7 @@ const LoyaltyBenefits = lazy(() => import("@/pages/LoyaltyBenefits"));
 const LoyaltyBirthday = lazy(() => import("@/pages/LoyaltyBirthday"));
 const LoyaltyRefer = lazy(() => import("@/pages/LoyaltyRefer"));
 const LoyaltyCreditsHistory = lazy(() => import("@/pages/LoyaltyCreditsHistory"));
+const MyPurchases = lazy(() => import("@/pages/MyPurchases"));
 const ReferralPage = lazy(() => import("@/pages/ReferralPage"));
 const EGift = lazy(() => import("@/pages/EGift"));
 const CheckoutCanon = lazy(() => import("@/pages/CheckoutCanon"));
@@ -2964,6 +2965,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <UserCoupons />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/my-purchases">
+          {() => (
+            <RequireAuth>
+              <MyPurchases />
             </RequireAuth>
           )}
         </Route>
