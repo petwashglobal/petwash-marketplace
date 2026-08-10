@@ -419,6 +419,134 @@ export async function shadowMirrorWalletTopup(input: {
   }
 }
 
+// ───────────────────────── ESCROW LEG PLANNERS (PURE — fully unit-tested) ─────────────────────────
+// The double-entry legs for the three escrow lifecycle events. Balance is asserted by
+// the caller (assertBalanced); these just express the intent so the money mapping is
+// testable in isolation before any DB write.
+
+export type EscrowKind = 'wallet_hold' | 'j5_authorization' | 'escrow_hold';
+
+/** HOLD: money captured and held pending completion. debit source (asset in) / credit escrow (liability held). */
+export function escrowHoldLegs(input: { sourceAccountId: string; amountCents: number }): LedgerLeg[] {
+  return [
+    { accountId: input.sourceAccountId, direction: 'debit', amountCents: input.amountCents },
+    { accountId: 'escrow_holding', direction: 'credit', amountCents: input.amountCents },
+  ];
+}
+
+/**
+ * RELEASE: escrow → provider payable + platform commission (ex-VAT) + VAT payable.
+ * VAT is EXTRACTED from the commission (Israel 18/118), never added on top. Requires
+ * amountCents === providerPayoutCents + commissionCents (assertBalanced enforces it).
+ */
+export function escrowReleaseLegs(input: {
+  providerAccountId: string;
+  amountCents: number;
+  providerPayoutCents: number;
+  commissionCents: number;
+  vatCents: number;
+}): LedgerLeg[] {
+  const commissionExVat = input.commissionCents - input.vatCents;
+  const legs: LedgerLeg[] = [
+    { accountId: 'escrow_holding', direction: 'debit', amountCents: input.amountCents },
+    { accountId: input.providerAccountId, direction: 'credit', amountCents: input.providerPayoutCents },
+  ];
+  if (commissionExVat > 0) legs.push({ accountId: 'platform_commission_revenue', direction: 'credit', amountCents: commissionExVat });
+  if (input.vatCents > 0) legs.push({ accountId: 'vat_payable', direction: 'credit', amountCents: input.vatCents });
+  return legs;
+}
+
+/** REFUND / VOID: escrow → back to the customer (wallet credit is the default rail). */
+export function escrowRefundLegs(input: { customerAccountId: string; amountCents: number }): LedgerLeg[] {
+  return [
+    { accountId: 'escrow_holding', direction: 'debit', amountCents: input.amountCents },
+    { accountId: input.customerAccountId, direction: 'credit', amountCents: input.amountCents },
+  ];
+}
+
+// ───────────────────────── PENDING TRANSFERS (holds → post / void, resolve-ONCE) ─────────────────────────
+
+export interface OpenPendingResult { pendingId: string; transactionId: string; idempotent: boolean; }
+export interface ResolvePendingResult { alreadyResolved: boolean; transactionId?: string; }
+
+/**
+ * Open a hold: post the opening balanced movement AND record a pending-transfer row
+ * that later resolves ONCE (post → provider / void → refund). Idempotent on
+ * idempotencyKey. Runs only when a flag is on (callers are flag-gated).
+ */
+async function realOpenPending(input: {
+  kind: EscrowKind;
+  legs: LedgerLeg[];
+  fromAccountId: string;
+  toAccountId: string;
+  amountCents: number;
+  bookingId?: string | null;
+  paymentRef?: string | null;
+  idempotencyKey: string;
+}): Promise<OpenPendingResult> {
+  if (!LEDGER_V2_ENABLED && !LEDGER_V2_DUAL_WRITE) throw new Error('openPending: LEDGER_V2 flags are OFF');
+  assertBalanced(input.legs);
+  const pre: any = await (db as any).execute(
+    sql`SELECT pending_id, open_entry_txn FROM ledger_v2_pending_transfers WHERE idempotency_key = ${input.idempotencyKey} LIMIT 1`,
+  );
+  const preRows: any[] = pre?.rows ?? pre ?? [];
+  if (preRows.length > 0) {
+    return { pendingId: String(preRows[0].pending_id), transactionId: String(preRows[0].open_entry_txn ?? ''), idempotent: true };
+  }
+  const pendingId = `LP-${Date.now().toString(36).toUpperCase()}-${randomBytes(4).toString('hex').toUpperCase()}`;
+  const mv = await realPostMovement({
+    eventType: `${input.kind}_open`,
+    idempotencyKey: input.idempotencyKey,
+    legs: input.legs,
+    bookingId: input.bookingId ?? null,
+    paymentRef: input.paymentRef ?? null,
+    metadata: { pendingId },
+  });
+  try {
+    await (db as any).insert(ledgerPendingTransfers).values({
+      pendingId, kind: input.kind, fromAccountId: input.fromAccountId, toAccountId: input.toAccountId,
+      amountCents: input.amountCents, status: 'open', bookingId: input.bookingId ?? null,
+      paymentRef: input.paymentRef ?? null, idempotencyKey: input.idempotencyKey, openEntryTxn: mv.transactionId,
+    });
+  } catch {
+    // Concurrent open won the UNIQUE(idempotency_key) → return the existing pending.
+    const post: any = await (db as any).execute(
+      sql`SELECT pending_id, open_entry_txn FROM ledger_v2_pending_transfers WHERE idempotency_key = ${input.idempotencyKey} LIMIT 1`,
+    );
+    const postRows: any[] = post?.rows ?? post ?? [];
+    if (postRows.length > 0) return { pendingId: String(postRows[0].pending_id), transactionId: String(postRows[0].open_entry_txn ?? ''), idempotent: true };
+    throw new Error('openPending: pending row insert failed and no existing row found');
+  }
+  return { pendingId, transactionId: mv.transactionId, idempotent: mv.idempotent };
+}
+
+/**
+ * Resolve an open hold exactly ONCE. The `UPDATE ... WHERE status='open'` is the
+ * double-release kill: only the first caller flips it; a second gets 0 rows and is told
+ * it's already resolved — so an escrow/J5 hold can NEVER post or void twice. Then posts
+ * the resolving movement. (Mid-failure between flip and post leaves a resolved row with
+ * no resolve_entry_txn — the reconciliation sweep re-drives those; it never double-pays.)
+ */
+async function resolvePending(pendingId: string, newStatus: 'posted' | 'voided' | 'expired', resolveLegs: LedgerLeg[], eventType: string): Promise<ResolvePendingResult> {
+  if (!LEDGER_V2_ENABLED && !LEDGER_V2_DUAL_WRITE) throw new Error('resolvePending: LEDGER_V2 flags are OFF');
+  assertBalanced(resolveLegs);
+  const upd: any = await (db as any).execute(
+    sql`UPDATE ledger_v2_pending_transfers SET status = ${newStatus}, resolved_at = now() WHERE pending_id = ${pendingId} AND status = 'open' RETURNING pending_id`,
+  );
+  const rows: any[] = upd?.rows ?? upd ?? [];
+  if (rows.length === 0) return { alreadyResolved: true }; // already posted/voided/expired — resolve-once wins.
+  const mv = await realPostMovement({
+    eventType,
+    idempotencyKey: deriveIdempotencyKey(eventType, pendingId),
+    legs: resolveLegs,
+    metadata: { pendingId, resolution: newStatus },
+  });
+  await (db as any).execute(
+    sql`UPDATE ledger_v2_pending_transfers SET resolve_entry_txn = ${mv.transactionId} WHERE pending_id = ${pendingId}`,
+  );
+  return { alreadyResolved: false, transactionId: mv.transactionId };
+}
+
 export const LedgerService = {
   summarizeTransaction,
   assertBalanced,
@@ -429,26 +557,24 @@ export const LedgerService = {
   describeAccount,
   planMovement,
   shadowMirrorWalletTopup,
+  escrowHoldLegs,
+  escrowReleaseLegs,
+  escrowRefundLegs,
 
   /** Post a balanced set of legs as ONE transaction, atomically + idempotently. */
   postMovement: realPostMovement,
 
-  /** Open a hold (wallet_hold | j5_authorization | escrow_hold). DARK. */
-  async openPending(_input: unknown): Promise<never> {
-    ensureEnabled('openPending');
-    throw new Error('unreachable');
+  /** Open a hold (wallet_hold | j5_authorization | escrow_hold) + its pending row. */
+  openPending: realOpenPending,
+
+  /** Resolve-once: post an open hold to its destination (escrow → provider). */
+  postPending(pendingId: string, resolveLegs: LedgerLeg[], eventType = 'escrow_release'): Promise<ResolvePendingResult> {
+    return resolvePending(pendingId, 'posted', resolveLegs, eventType);
   },
 
-  /** Resolve-once: post an open hold to its destination. DARK. */
-  async postPending(_pendingId: string): Promise<never> {
-    ensureEnabled('postPending');
-    throw new Error('unreachable');
-  },
-
-  /** Resolve-once: void an open hold. DARK. */
-  async voidPending(_pendingId: string): Promise<never> {
-    ensureEnabled('voidPending');
-    throw new Error('unreachable');
+  /** Resolve-once: void an open hold (escrow → refund to customer). */
+  voidPending(pendingId: string, refundLegs: LedgerLeg[], eventType = 'escrow_void'): Promise<ResolvePendingResult> {
+    return resolvePending(pendingId, 'voided', refundLegs, eventType);
   },
 
   /** Reverse a prior transaction with new reversing entries (never UPDATE/DELETE). DARK. */
