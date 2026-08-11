@@ -134,7 +134,7 @@ const VAT_RATE = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE)); //
 
 // K9000 Configuration
 const PAYMENTS_PROVIDER = process.env.PAYMENTS_PROVIDER || 'NAYAX';
-const K9000_WASH_PRICE = parseFloat(process.env.K9000_WASH_PRICE || '50'); // Default wash price in ILS
+const K9000_WASH_PRICE = parseFloat(process.env.K9000_WASH_PRICE || '55'); // Default wash price in ILS (canonical ₪55 = WASH_PRICE_ILS_CENTS; was ₪50 → ₪5 undercharge on this legacy voucher rail)
 
 // K9000 Station Authentication map (JSON config).
 //

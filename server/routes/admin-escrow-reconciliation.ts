@@ -21,6 +21,7 @@
 import { Router, Request, Response } from 'express';
 import { db } from '../db';
 import { escrowHoldings, PETWASH_COMMISSION_RATE } from '@shared/schema';
+import { vatFromInclusive } from '@shared/money';
 import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { desc, eq, gte, lte, and, or } from 'drizzle-orm';
@@ -377,7 +378,12 @@ router.post('/reconciliation/sync/:escrowId', requireAuth, async (req: Request, 
       // quote math if the rate ever changes.
       const amountCents = Math.round((fs.amount ?? 0) * 100);
       const platformFeeCents = Math.round(amountCents * PETWASH_COMMISSION_RATE);
-      const vatCents = Math.round(platformFeeCents * 0.18);
+      // The commission is VAT-INCLUSIVE (disclosed-agent model), so VAT is the
+      // 18/118 portion EXTRACTED from it — not 18% added on top. The old
+      // `* 0.18` overstated VAT ~18% and wrote that wrong figure into the
+      // escrow_holdings ledger on every backfill. Use the canonical helper the
+      // live escrow-write path already uses (marketplace-bookings). (2026-08-11)
+      const vatCents = vatFromInclusive(platformFeeCents);
       const netProviderCents = amountCents - platformFeeCents;
 
       await db.insert(escrowHoldings).values({
