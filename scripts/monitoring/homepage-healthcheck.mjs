@@ -43,11 +43,20 @@ async function checkHomepageRenders() {
   const browser = await chromium.launch({ args: ["--no-sandbox"] });
   try {
     const page = await browser.newPage({ locale: "he-IL" });
-    const resp = await page.goto(`${BASE}/`, { waitUntil: "networkidle", timeout: 35000 });
+    // domcontentloaded — NOT networkidle. A live SPA holds open websockets /
+    // polling / analytics beacons, so "networkidle" often NEVER fires and the old
+    // wait burned the full 35s timeout every attempt. Stacked with 3 retries + the
+    // Chromium install step, that blew past the workflow's job cap → a scary
+    // "health check FAILED" email while the site was actually up and fast.
+    // (2026-08-11) We load fast, then explicitly wait — bounded — for React to mount.
+    const resp = await page.goto(`${BASE}/`, { waitUntil: "domcontentloaded", timeout: 30000 });
     if (!resp || !resp.ok()) return { ok: false, msg: `homepage HTTP ${resp ? resp.status() : "no-response"}` };
 
-    // Give React a beat to render / crash.
-    await page.waitForTimeout(2500);
+    // Wait for React to actually mount content into #root. Bounded so it fails
+    // fast on a genuine white-screen instead of hanging the whole job.
+    await page
+      .waitForFunction(() => (document.getElementById("root")?.childElementCount ?? 0) > 0, { timeout: 15000 })
+      .catch(() => {});
 
     const body = (await page.innerText("body").catch(() => "")) || "";
     if (/Something went wrong|encountered an unexpected error|אירעה שגיאה/i.test(body)) {

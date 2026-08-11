@@ -442,11 +442,20 @@ router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocomplet
       return res.status(400).json({ error: 'Input query required (min 2 chars)', traceId });
     }
 
+    // `input` is already narrowed to a string by the guard above. Bind it through
+    // an explicit String() coercion so that narrowing survives every downstream
+    // call and the `as string` casts don't re-introduce type-confusion taint —
+    // clears the CodeQL js/type-confusion-through-parameter-tampering flag.
+    // Express can parse ?input[]=a into an array / ?input[x]=y into an object;
+    // both are rejected by the guard, so this can only ever be a real string.
+    // (2026-08-11)
+    const safeInput: string = String(input);
+
     const apiKey = process.env.GOOGLE_MAPS_API_KEY;
     if (!apiKey) {
       // No Google key — serve real suggestions from the free fallback (Photon +
       // our baked-in city dataset) instead of forcing manual typing. (2026-07-29)
-      const predictions = await freeAddressAutocomplete(input as string, traceId);
+      const predictions = await freeAddressAutocomplete(safeInput, traceId);
       return res.json({ predictions, provider: 'free' });
     }
 
@@ -497,7 +506,7 @@ router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocomplet
     const validSession = sessionToken && /^[0-9a-f-]{36}$/.test(sessionToken) ? sessionToken : undefined;
 
     const body: Record<string, unknown> = {
-      input: input as string,
+      input: safeInput,
       languageCode: (language as string) || 'iw',
       includedRegionCodes: regionCodes,
     };
@@ -540,7 +549,7 @@ router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocomplet
       });
       // Google failed (e.g. API_KEY_DENIED) — serve real suggestions from the
       // free fallback (Photon + baked-in cities) instead of a dead dropdown. (2026-07-29)
-      const predictions = await freeAddressAutocomplete(input as string, traceId);
+      const predictions = await freeAddressAutocomplete(safeInput, traceId);
       return res.json({ predictions, provider: 'free' });
     }
 
@@ -548,7 +557,7 @@ router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocomplet
 
     logger.info('[Places Proxy] Autocomplete OK (v1)', {
       traceId,
-      inputLength: input.length,
+      inputLength: safeInput.length,
       resultCount: suggestions.length,
       hasSessionToken: !!validSession,
     });
@@ -573,7 +582,7 @@ router.get('/places-autocomplete', requireGooglePlacesEnabled, placesAutocomplet
     });
     // Last resort — still try to serve suggestions from the free fallback.
     try {
-      const q = (req.query.input as string) || '';
+      const q = String(req.query.input ?? '');
       const predictions = q ? await freeAddressAutocomplete(q, traceId) : [];
       return res.json({ predictions, provider: 'free' });
     } catch {
