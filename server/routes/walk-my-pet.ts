@@ -1870,17 +1870,21 @@ router.get('/walks/mine', requireAuth, async (req: any, res) => {
     }
     const { status } = req.query;
 
-    let query = db
+    // SECURITY: build ONE combined WHERE. A second `.where()` on a Drizzle query
+    // OVERWRITES the first (it sets config.where, not AND) — so the previous
+    // `.where(ownerId).where(status)` DROPPED the ownership scope whenever
+    // ?status= was present, returning every user's walks (cross-tenant IDOR).
+    // (2026-08-11)
+    const scope = status
+      ? and(eq(walkBookings.ownerId, userId), eq(walkBookings.status, status as string))
+      : eq(walkBookings.ownerId, userId);
+
+    const bookings = await db
       .select()
       .from(walkBookings)
-      .where(eq(walkBookings.ownerId, userId))
+      .where(scope)
       .orderBy(desc(walkBookings.createdAt));
 
-    if (status) {
-      query = query.where(eq(walkBookings.status, status as string)) as any;
-    }
-
-    const bookings = await query;
     res.json({ success: true, bookings });
   } catch (error: any) {
     console.error('[Walk My Pet] Get owner walks (mine) error:', error);
@@ -1912,17 +1916,18 @@ router.get('/users/:userId/walks', requireAuth, async (req: any, res) => {
     }
     const { status } = req.query;
 
-    let query = db
+    // SECURITY: one combined WHERE — a second `.where()` overwrites the first in
+    // Drizzle, which previously dropped the ownerId scope when ?status= was set
+    // (cross-tenant IDOR). (2026-08-11)
+    const scope = status
+      ? and(eq(walkBookings.ownerId, userId), eq(walkBookings.status, status as string))
+      : eq(walkBookings.ownerId, userId);
+
+    const bookings = await db
       .select()
       .from(walkBookings)
-      .where(eq(walkBookings.ownerId, userId))
+      .where(scope)
       .orderBy(desc(walkBookings.createdAt));
-
-    if (status) {
-      query = query.where(eq(walkBookings.status, status as string)) as any;
-    }
-
-    const bookings = await query;
 
     res.json({ success: true, bookings });
   } catch (error: any) {
@@ -1950,17 +1955,18 @@ router.get('/walkers/:walkerId/walks', requireAuth, async (req: any, res) => {
       return res.status(403).json({ error: 'Not authorized to view these bookings' });
     }
 
-    let query = db
+    // SECURITY: one combined WHERE — a second `.where()` overwrites the first in
+    // Drizzle, which previously dropped the walkerId scope when ?status= was set
+    // (cross-tenant IDOR). (2026-08-11)
+    const scope = status
+      ? and(eq(walkBookings.walkerId, walkerId), eq(walkBookings.status, status as string))
+      : eq(walkBookings.walkerId, walkerId);
+
+    const bookings = await db
       .select()
       .from(walkBookings)
-      .where(eq(walkBookings.walkerId, walkerId))
+      .where(scope)
       .orderBy(desc(walkBookings.createdAt));
-
-    if (status) {
-      query = query.where(eq(walkBookings.status, status as string)) as any;
-    }
-
-    const bookings = await query;
 
     res.json({ success: true, bookings });
   } catch (error: any) {
