@@ -736,6 +736,17 @@ const AUTH_CSRF_EXEMPT = new Set([
 
 const { doubleCsrfProtection, generateCsrfToken } = doubleCsrf({
   getSecret: () => csrfSecret,
+  // REQUIRED in csrf-csrf v4 (no default). Without it, the library calls
+  // `getSessionIdentifier(req)` → `undefined(req)` → THROWS "getSessionIdentifier
+  // is not a function", so `generateCsrfToken` 500s (GET /api/csrf-token) and
+  // token validation errors — meaning NO csrf cookie is ever issued and EVERY
+  // protected POST returns 403 EBADCSRFTOKEN. That silently broke marketplace
+  // search, booking creation, and new-user / loyalty / provider onboarding.
+  // We use stateless double-submit (token in the pw.csrf cookie must equal the
+  // X-CSRF-Token header), so a constant identifier is correct — CSRF-validated
+  // requests here are the anonymous/cookie ones (Bearer-authed calls skip CSRF).
+  // (2026-08-11)
+  getSessionIdentifier: () => '',
   cookieName: 'pw.csrf',
   cookieOptions: {
     sameSite: isProduction ? ('strict' as const) : ('lax' as const),
