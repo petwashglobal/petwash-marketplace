@@ -68,14 +68,18 @@ describe('admin-escrow — Issue #148/#153 P5 regression pin', () => {
     expect(matches?.length).toBeGreaterThanOrEqual(2);
   });
 
-  it('does NOT modify the existing escrow money math (commission/VAT formulas preserved)', () => {
-    // Spot-check: the money formulas must remain. Commission moved from a local
-    // `const commissionPct = 0.15` to the canonical PETWASH_COMMISSION_RATE
-    // (= 0.15 in shared/schema.ts, single source of truth) — still 15%, just no
-    // longer a duplicated literal. VAT on the fee is unchanged at 18%.
+  it('keeps commission canonical and extracts VAT (18/118) from the inclusive fee', () => {
+    // Commission uses the canonical PETWASH_COMMISSION_RATE (= 0.15, single source
+    // of truth) — 15%, not a duplicated literal.
     expect(ESCROW_SRC).toMatch(/PETWASH_COMMISSION_RATE/);
     expect(ESCROW_SRC).toMatch(/Math\.round\(amountCents \* PETWASH_COMMISSION_RATE\)/);
-    expect(ESCROW_SRC).toMatch(/Math\.round\(platformFeeCents \* 0\.18\)/);
+    // VAT: this pin ORIGINALLY froze `Math.round(platformFeeCents * 0.18)`, but that
+    // formula was WRONG — the commission is VAT-INCLUSIVE, so VAT is the 18/118
+    // portion EXTRACTED from it, not 18% added on top (it overstated VAT ~18% and
+    // wrote that into the escrow_holdings ledger). Corrected 2026-08-11 to the
+    // canonical shared/money `vatFromInclusive` the live escrow-write path uses.
+    expect(ESCROW_SRC).toMatch(/vatCents\s*=\s*vatFromInclusive\(platformFeeCents\)/);
+    expect(ESCROW_SRC).not.toMatch(/Math\.round\(platformFeeCents \* 0\.18\)/);
   });
 
   it('does NOT change the downgrade-protected status guard', () => {

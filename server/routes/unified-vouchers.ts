@@ -206,7 +206,10 @@ router.post("/redeem/station", requireAuth, validate(stationRedeemSchema), async
     // SECURITY (T02): Validate client-supplied amountIls against server-side whitelist.
     // Without this, any authenticated caller could send amountIls=0.01 to redeem a 45 ILS
     // wash for a fraction of its value. Whitelist matches valid PetWash wash prices.
-    const VALID_WASH_PRICES_ILS = [45, 65, 80, 120, 150, 180, 200];
+    // Includes the CURRENT live bay prices ₪48 (Kfar Saba) and ₪55 — they were
+    // missing here (but present in pass-redeem), so a member redeeming at the real
+    // price was rejected with INVALID amount on this endpoint only. (2026-08-11)
+    const VALID_WASH_PRICES_ILS = [45, 48, 55, 65, 80, 120, 150, 180, 200];
     const clientAmountIls = req.body.amountIls;
     if (clientAmountIls !== undefined && !VALID_WASH_PRICES_ILS.includes(Number(clientAmountIls))) {
       logger.warn("[UV] Station redeem rejected — invalid amountIls", {

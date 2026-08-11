@@ -2,6 +2,7 @@ import { Router, Request, Response } from 'express';
 import crypto from 'crypto';
 import { db } from '../db';
 import { washMachines, activationSessions, activationAuditLog } from '@shared/schema';
+import { MEMBER_DISCOUNT_MAX_PERCENT } from '@shared/schema-member-discount';
 import { eq, and, inArray } from 'drizzle-orm';
 import { requireAuth } from '../customAuth';
 import { redis } from '../services/redis';
@@ -173,8 +174,13 @@ async function setIdempotencyResult(key: string, result: any): Promise<void> {
 }
 
 // ── Price calculator ──────────────────────────────────────────────────────────
+// The wash discount is capped platform-wide at MEMBER_DISCOUNT_MAX_PERCENT (10%)
+// and enforced on every other path (e.g. loyaltySync). This ladder previously gave
+// platinum 15% — 5 points over the cap — undercharging the bay. Clamp to the
+// canonical cap so no tier can exceed it. (2026-08-11)
 function calculatePriceCents(machine: { priceCents: number }, loyaltyTier?: string): number {
-  const discount = loyaltyTier === 'gold' ? 0.10 : loyaltyTier === 'platinum' ? 0.15 : 0;
+  const raw = loyaltyTier === 'gold' ? 0.10 : loyaltyTier === 'platinum' ? 0.15 : 0;
+  const discount = Math.min(raw, MEMBER_DISCOUNT_MAX_PERCENT / 100);
   return Math.round(machine.priceCents * (1 - discount));
 }
 
