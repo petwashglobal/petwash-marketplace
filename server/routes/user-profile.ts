@@ -6,6 +6,7 @@ import admin from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { encryptField, blindIndex } from '../services/secretFieldCrypto';
+import { syncProfileAddressToBook } from '../lib/syncProfileAddressToBook';
 
 const notificationPreferencesSchema = z.object({
   pushEnabled: z.boolean().optional(),
@@ -298,6 +299,28 @@ router.patch('/profile', async (req, res) => {
           longitude: longitude ? String(longitude) : null,
         });
       }
+    }
+
+    // Keep the saved-address book in sync so the profile address and the address
+    // book can't silently disagree (board item #4). Only fires when this PATCH
+    // actually carried an address (never on an unrelated save like a 2FA toggle),
+    // and is fully fail-soft — it can never break the profile save above.
+    if (address !== undefined || street !== undefined || city !== undefined) {
+      const composed =
+        address ||
+        [[street, streetNumber].filter(Boolean).join(' '), city, postalCode]
+          .filter(Boolean)
+          .join(', ');
+      await syncProfileAddressToBook(uid, {
+        address: composed,
+        street,
+        streetNumber,
+        apartment,
+        city,
+        postalCode,
+        lat: latitude ?? undefined,
+        lng: longitude ?? undefined,
+      });
     }
 
     if (notificationPreferences) {
