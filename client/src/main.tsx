@@ -17,7 +17,18 @@ import "./lib/i18next-init";
 // if a reload doesn't help (then the real error boundary shows).
 (() => {
   const RELOAD_KEY = 'pw_chunk_reload_at';
-  const CHUNK_ERR = /valid JavaScript MIME type|dynamically imported module|module script failed|Loading (chunk|CSS chunk)|error loading dynamically imported/i;
+  // Patterns that mean "a code-split chunk the running bundle expects is gone —
+  // a newer deploy replaced it". Firebase's SPA rewrite answers the missing
+  // /assets/*.js with index.html (text/html), so the failure surfaces as EITHER
+  // a MIME/dynamic-import error OR — when React.lazy receives that HTML-as-module
+  // whose `.default` is undefined — "Cannot read properties of undefined
+  // (reading 'default')". The latter was NOT matched before, so a returning user
+  // on an old tab white-screened + fired a critical boot alert instead of quietly
+  // reloading to the fresh bundle. Adding it makes that case self-heal. The 12s
+  // throttle below bounds this to ~one reload, so a genuine (non-chunk) error
+  // that happens to read '.default' can't loop — it reloads once then falls
+  // through to the visible error boundary. (2026-08-11)
+  const CHUNK_ERR = /valid JavaScript MIME type|dynamically imported module|module script failed|Loading (chunk|CSS chunk)|error loading dynamically imported|Importing a module script failed|reading ['"]default['"]/i;
   const recover = () => {
     try {
       const last = Number(sessionStorage.getItem(RELOAD_KEY) || 0);
