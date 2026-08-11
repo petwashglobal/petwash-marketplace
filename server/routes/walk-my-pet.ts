@@ -699,7 +699,7 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       try {
         const [walker] = await db.select().from(walkerProfiles).where(eq(walkerProfiles.id, parseInt(walkerId)));
         if (walker?.userId) {
-          const [walkerUser] = await db.select().from(users).where(eq(users.firebaseUid, walker.userId));
+          const [walkerUser] = await db.select().from(users).where(eq(users.id, walker.userId));
           const walkerPhone = walkerUser?.phone || walkerUser?.phoneNumber;
           if (walkerPhone) {
             const { TwilioSMSService } = await import('../services/TwilioSMSService');

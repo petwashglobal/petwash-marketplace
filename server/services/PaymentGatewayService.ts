@@ -570,7 +570,7 @@ export class PaymentGatewayService {
           const [customer] = await db
             .select({ phone: users.phone, phoneE164: users.phoneE164 })
             .from(users)
-            .where(eq(users.firebaseUid, booking.userId))
+            .where(eq(users.id, booking.userId))
             .limit(1);
 
           const customerPhone = customer?.phoneE164 ?? customer?.phone;
