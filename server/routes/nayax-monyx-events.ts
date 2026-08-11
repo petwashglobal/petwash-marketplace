@@ -142,7 +142,7 @@ async function awardLoyaltyPoints(userId: string, points: number, sourceId: stri
   // Denormalized user field (dashboard display).
   await db.update(users)
     .set({ loyaltyPoints: sql`loyalty_points + ${points}` })
-    .where(eq(users.firebaseUid, userId));
+    .where(eq(users.id, userId));
 
   // Canonical Prestige store — moves the tier ladder. DARK until Phase 16
   // (see KIOSK_PRESTIGE_SYNC_ENABLED): at launch the bay runs Nayax's Monyx 5+1
@@ -180,7 +180,7 @@ async function reverseAwardedPoints(
 
   await db.update(users)
     .set({ loyaltyPoints: sql`GREATEST(0, loyalty_points - ${pointsToReverse})` })
-    .where(eq(users.firebaseUid, userId));
+    .where(eq(users.id, userId));
 
   // Symmetric reversal from the canonical Prestige store — only when the mirror
   // is enabled (else there is no canonical credit to unwind). Idempotent per

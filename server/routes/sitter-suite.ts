@@ -1229,7 +1229,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         const [owner] = await db
           .select({ email: users.email, first: users.firstName, last: users.lastName })
           .from(users)
-          .where(eq(users.firebaseUid, booking.ownerId))
+          .where(eq(users.id, booking.ownerId))
           .limit(1);
         await IsraeliDigitalReceiptService.generateReceipt({
           platform: 'sitter-suite',
