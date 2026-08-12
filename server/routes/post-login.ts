@@ -1235,7 +1235,23 @@ export async function completeProfile(req: Request, res: Response) {
       marketingConsent,
     } = req.body || {};
 
-    if (!firstName || !lastName) {
+    // Fall back to the name already on the user row when the client doesn't
+    // resend it. Google/Apple signups already HAVE a name (from displayName), so
+    // it is NOT in `requiredFields` and the client (CompleteProfile.tsx) omits it —
+    // the old hard check then 400'd NAME_REQUIRED and dead-ended EVERY social
+    // signup at Complete-Profile (only `phone` was actually missing for them).
+    // Reject only when neither the request nor the existing DB row has a name.
+    // (2026-08-11)
+    const existingUserRow = await storage.getUser(userId);
+    const effectiveFirstName =
+      (typeof firstName === "string" && firstName.trim()) ||
+      (existingUserRow as any)?.firstName ||
+      "";
+    const effectiveLastName =
+      (typeof lastName === "string" && lastName.trim()) ||
+      (existingUserRow as any)?.lastName ||
+      "";
+    if (!effectiveFirstName || !effectiveLastName) {
       return res.status(400).json({ error: "NAME_REQUIRED" });
     }
 
@@ -1249,7 +1265,7 @@ export async function completeProfile(req: Request, res: Response) {
       }
     }
 
-    const user = await storage.getUser(userId);
+    const user = existingUserRow;
     const role = (user as any)?.role || 'customer';
 
     if (role === 'provider' && !phone) {
@@ -1261,8 +1277,8 @@ export async function completeProfile(req: Request, res: Response) {
 
     const now = new Date();
     const updates: Record<string, any> = {
-      firstName,
-      lastName,
+      firstName: effectiveFirstName,
+      lastName: effectiveLastName,
       address: address || null,
       city: city || null,
       postalCode: postalCode || null,
