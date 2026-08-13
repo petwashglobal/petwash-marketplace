@@ -632,7 +632,19 @@ export default function AdminLoginV2() {
               try {
                 const { sendPasswordResetEmail } = await import('firebase/auth');
                 const { auth: fbAuth } = await import('@/lib/firebase');
-                await sendPasswordResetEmail(fbAuth, email);
+                // Branded PetWash reset landing: Firebase inserts the oobCode
+                // and delivers the user to /auth/action on our own domain
+                // (handled by AuthAction.tsx). Without actionCodeSettings the
+                // reset link routes to Firebase's console default URL, which
+                // reads as off-domain / broken. Domain resolves to the current
+                // origin so preview and staging builds work automatically.
+                const publicBase = window.location.hostname.includes('petwash.co.il')
+                  ? `https://${window.location.hostname}`
+                  : window.location.origin;
+                await sendPasswordResetEmail(fbAuth, email, {
+                  url: `${publicBase}/auth/action`,
+                  handleCodeInApp: false,
+                });
                 toast({
                   title: 'Password reset sent',
                   description: `If an account exists for ${email}, a reset email is on its way.`,
