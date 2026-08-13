@@ -15,6 +15,58 @@ import { signInWithCustomToken } from 'firebase/auth';
 import { getApiUrl } from '@/lib/apiConfig';
 
 /**
+ * PR-AUTH-FIX-PASSKEY-RACE-2 (2026-05-11) —
+ * Mint the server session cookie after a passkey sign-in.
+ *
+ * The server route /api/webauthn/login/verify intentionally does NOT
+ * mint the session cookie (server-side createSessionCookie requires an
+ * ID token, not a custom token — see server/routes.ts:3168-3182). It
+ * returns a customToken and the client is required to:
+ *
+ *   signInWithCustomToken(auth, customToken)
+ *     → cred.user.getIdToken(true)
+ *       → POST /api/auth/session { idToken }   ← THIS FUNCTION
+ *
+ * Historical bug (surfaced by the forensic auth audit, 2026-05-10):
+ * signInWithPasskey / signInWithPasskeyConditional / signInWithPasskeyAuto
+ * all called signInWithCustomToken but NONE called the session-mint step.
+ * Firebase auth succeeded → onAuthStateChanged fired → user landed on
+ * an app page → RequireAuth guard saw no pw_session cookie → 401 →
+ * bounced back to /signin. User experience: "Face ID sign-in didn't do
+ * anything / doesn't know what to do." AdminLoginV2.tsx was the only
+ * caller that did the mint correctly, inline.
+ *
+ * Centralising the mint here means every current + future passkey caller
+ * inherits the correct behaviour — the "single Face ID owner" of the
+ * post-sign-in cookie handshake.
+ *
+ * Non-fatal on failure: resolvePostLogin has a Bearer-carry fallback
+ * (2026-08-06 trace Finding #1) so a cookie-timing miss doesn't dead-end
+ * the immediate route. Subsequent app pages still need the cookie, so we
+ * warn loudly for observability.
+ */
+async function mintServerSession(): Promise<void> {
+  try {
+    const idToken = await auth.currentUser?.getIdToken(true);
+    if (!idToken) {
+      console.warn('[passkey] mintServerSession: no currentUser after signInWithCustomToken');
+      return;
+    }
+    const res = await fetch(getApiUrl('/api/auth/session'), {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ idToken }),
+    });
+    if (!res.ok) {
+      console.warn('[passkey] mintServerSession: session endpoint returned', res.status);
+    }
+  } catch (err) {
+    console.warn('[passkey] mintServerSession failed (non-fatal):', err);
+  }
+}
+
+/**
  * Log biometric authentication failure to immutable audit ledger (Protocol 3 compliance)
  * @param error - The WebAuthn error object
  * @param authMethod - The authentication method used
@@ -336,6 +388,10 @@ export async function signInWithPasskey(
 
     await signInWithCustomToken(auth, customToken);
 
+    // PR-AUTH-FIX-PASSKEY-RACE-2: mint the pw_session cookie so
+    // subsequent app pages authenticate. See mintServerSession() doc.
+    await mintServerSession();
+
     // Confirm the one-tap signal for next time (covers users who registered before
     // this flag existed, or on a fresh device that just used a synced passkey).
     rememberPasskeyEmail(userData?.email || auth.currentUser?.email);
@@ -459,8 +515,14 @@ export async function signInWithPasskeyConditional(): Promise<boolean> {
 
     // Sign in to Firebase with custom token
     const userCredential = await signInWithCustomToken(auth, customToken);
-    
-    // Session cookie is already set by the server
+
+    // PR-AUTH-FIX-PASSKEY-RACE-2: mint the pw_session cookie. The
+    // previously-inlined assumption that the server had already set the
+    // cookie here was factually wrong — /api/webauthn/login/verify
+    // intentionally does NOT set the cookie (see server/routes.ts:3168-
+    // 3182). Client must POST /api/auth/session { idToken }.
+    await mintServerSession();
+
     console.log('Conditional UI: Face ID login successful');
     return true;
 
@@ -546,8 +608,14 @@ export async function signInWithPasskeyAuto(
 
     // Sign in to Firebase with custom token
     await signInWithCustomToken(auth, customToken);
-    
-    // Session cookie is already set by the server
+
+    // PR-AUTH-FIX-PASSKEY-RACE-2: mint the pw_session cookie. The
+    // previously-inlined assumption that the server had already set the
+    // cookie here was factually wrong — /api/webauthn/login/verify
+    // intentionally does NOT set the cookie (see server/routes.ts:3168-
+    // 3182). Client must POST /api/auth/session { idToken }.
+    await mintServerSession();
+
     console.log('Auto Face ID: Authentication successful');
 
     return { success: true, uid: userData.uid };
