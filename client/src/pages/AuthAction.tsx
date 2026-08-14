@@ -1,7 +1,13 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { auth } from '@/lib/firebase';
-import { applyActionCode, confirmPasswordReset, verifyPasswordResetCode } from 'firebase/auth';
+import {
+  applyActionCode,
+  confirmPasswordReset,
+  verifyPasswordResetCode,
+  signInWithEmailLink,
+  isSignInWithEmailLink,
+} from 'firebase/auth';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +15,7 @@ import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react';
 import { applyIntentFromUrl } from '@/lib/intentParam';
+import { getApiUrl } from '@/lib/apiConfig';
 
 export default function AuthAction() {
   const [, setLocation] = useLocation();
@@ -60,12 +67,26 @@ export default function AuthAction() {
         case 'verifyEmail':
           await handleEmailVerification(code);
           break;
+        case 'signIn':
+          // PR-AUTH-FIX-AUTHACTION-4: Firebase email-link sign-in.
+          // Missing pre-fix — clicking a magic-link email landed on
+          // the generic default-case error below and dead-ended users.
+          await handleEmailLinkSignIn();
+          break;
         case 'recoverEmail':
           setError('Email recovery is not yet configured.');
           setLoading(false);
           break;
         default:
-          setError('Invalid action requested.');
+          // PR-AUTH-FIX-AUTHACTION-4: honest error — surface the actual
+          // mode value + a hint about what to do. The pre-fix message
+          // dead-ended users with no clue whether the link was tampered
+          // with, expired, or a mode we don't yet handle.
+          setError(
+            mode
+              ? `The link's action ("${mode}") is not handled by this page. Open the link on the device that requested it, or request a fresh one from PetWash.`
+              : 'Missing action mode. Please open the link from your email exactly as it was received.'
+          );
           setLoading(false);
           break;
       }
@@ -92,13 +113,99 @@ export default function AuthAction() {
       await applyActionCode(auth, code);
       setSuccess('Your email has been verified successfully! You can now sign in.');
       setLoading(false);
-      
+
       // Redirect to login after 3 seconds
       setTimeout(() => {
         setLocation('/login');
       }, 3000);
     } catch (err: any) {
       setError('Email verification failed. The link may be expired.');
+      setLoading(false);
+    }
+  };
+
+  /**
+   * PR-AUTH-FIX-AUTHACTION-4 — handle Firebase email-link sign-in
+   * (mode=signIn). Previously missing; the switch above defaulted
+   * every magic-link click to a generic dead-end error message.
+   * This handler:
+   *   1. Verifies the current URL is a real Firebase email-link.
+   *   2. Recovers the email the link was originally sent to (Firebase
+   *      requires it for the sign-in call; localStorage is checked
+   *      under both the PetWash sender key (@/auth/client.ts) and the
+   *      Firebase default (`emailForSignIn`) to cover any sender).
+   *   3. Calls signInWithEmailLink → mints Firebase auth state.
+   *   4. Mints the pw_session cookie via POST /api/auth/session
+   *      (SAME contract as PR-AUTH-FIX-PASSKEY-RACE-2 — Firebase custom
+   *      credentials never set the cookie themselves; the client owns
+   *      the mint).
+   *   5. Routes to /home. The user effect in SignUpLuxury also handles
+   *      routing on auth-state change, so a double-navigate is safe.
+   */
+  const handleEmailLinkSignIn = async () => {
+    try {
+      if (!isSignInWithEmailLink(auth, window.location.href)) {
+        setError('This link is not a valid email sign-in link. Please request a fresh one.');
+        setLoading(false);
+        return;
+      }
+
+      // Recover the email the link was sent to. Check both the PetWash
+      // sender key and the Firebase default so any sender works.
+      let storedEmail: string | null = null;
+      try {
+        storedEmail =
+          window.localStorage.getItem('pw_admin_pending_email') ||
+          window.localStorage.getItem('emailForSignIn');
+      } catch {
+        /* private mode / storage disabled → storedEmail stays null */
+      }
+
+      if (!storedEmail) {
+        setError(
+          'Please open this link on the device you requested it from — we need to confirm your email to complete sign-in.'
+        );
+        setLoading(false);
+        return;
+      }
+
+      const cred = await signInWithEmailLink(auth, storedEmail, window.location.href);
+
+      // Mint pw_session cookie (SAME contract as PR-AUTH-FIX-PASSKEY-RACE-2:
+      // the server does not set the cookie for custom-token / email-link
+      // sign-ins — the client must POST /api/auth/session { idToken }
+      // so subsequent RequireAuth guards do not 401-bounce the user
+      // back to /signin).
+      try {
+        const idToken = await cred.user.getIdToken(true);
+        await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        });
+      } catch (sessErr) {
+        // Non-fatal — resolvePostLogin has a Bearer-carry fallback.
+        console.warn('[AuthAction] session mint failed (non-fatal):', sessErr);
+      }
+
+      // Clear the stored email — it is single-use.
+      try {
+        window.localStorage.removeItem('pw_admin_pending_email');
+        window.localStorage.removeItem('emailForSignIn');
+      } catch { /* ignore */ }
+
+      setSuccess('You are signed in. Redirecting…');
+      setLoading(false);
+      setTimeout(() => {
+        setLocation('/home');
+      }, 1500);
+    } catch (err: any) {
+      setError(
+        err?.code === 'auth/invalid-action-code'
+          ? 'This sign-in link is invalid or has already been used. Please request a fresh one.'
+          : err?.message || 'Sign-in failed. Please request a fresh email link.'
+      );
       setLoading(false);
     }
   };
@@ -151,8 +258,14 @@ export default function AuthAction() {
           <p className="text-gray-600">
             {mode === 'resetPassword' && 'Reset Your Password'}
             {mode === 'verifyEmail' && 'Email Verification'}
+            {mode === 'signIn' && 'Sign In'}
             {mode === 'recoverEmail' && 'Email Recovery'}
-            {!mode && 'Account Action'}
+            {(!mode ||
+              (mode !== 'resetPassword' &&
+                mode !== 'verifyEmail' &&
+                mode !== 'signIn' &&
+                mode !== 'recoverEmail')) &&
+              'Account Action'}
           </p>
         </div>
         
