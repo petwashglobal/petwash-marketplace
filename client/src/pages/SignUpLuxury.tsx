@@ -1630,10 +1630,15 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${phone}` : `Enter the code sent to ${phone}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verify(c); }} loading={busy} language={he ? 'he' : 'en'} />
-              {/* Resend only needs the network idle — NOT consent again. The code
-                  was already sent (consent was given at first send); re-gating on
-                  consent created a dead button if the user later toggled a box. */}
-              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+              {/* PR-AUTH-FIX-DEADEND-SCREENS (2026-05-11) — Agent A HIGH #7.
+                  Pre-fix the resend handler just cleared the sent flag
+                  and dropped the user back to the phone entry form
+                  silently — the button read as broken. Fix: call
+                  sendCode() directly and keep the OTP screen visible so
+                  the code lands on the correct target number without a
+                  second consent step. The busy flag disables the button
+                  during the round-trip, providing implicit cooldown. */}
+              <button className="sl-btn" disabled={busy} onClick={() => { void sendCode(); }}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
             </>
           )}
 
@@ -1642,7 +1647,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${email}` : `Enter the code sent to ${email}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
-              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+              {/* PR-AUTH-FIX-DEADEND-SCREENS: same bug, email variant.
+                  Was setSent(false), now actually resends. */}
+              <button className="sl-btn" disabled={busy} onClick={() => { void sendEmailCode(); }}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
             </>
           )}
 

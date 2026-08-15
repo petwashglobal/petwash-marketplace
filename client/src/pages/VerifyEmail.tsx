@@ -31,7 +31,12 @@ export default function VerifyEmail() {
     setError("");
     try {
       const user = auth.currentUser;
-      if (!user) { setLocation("/signin"); return; }
+      // PR-AUTH-FIX-DEADEND-SCREENS: carry the return URL so the user
+      // lands back on /verify-email after signing in, instead of on
+      // /home where the verify-email gate would bounce them straight
+      // back — the same infinite-loop trap the 2026-06-18 bugfix
+      // partially addressed.
+      if (!user) { setLocation("/signin?redirect=/verify-email"); return; }
       await user.reload();
       const idToken = await user.getIdToken(true);
       if (user.emailVerified) {
@@ -68,7 +73,14 @@ export default function VerifyEmail() {
         await sendEmailVerification(user);
         setSent(true);
       } else {
-        setError(he ? "לא נמצא משתמש מחובר" : "No signed-in user found");
+        // PR-AUTH-FIX-DEADEND-SCREENS (2026-05-11) — Agent A HIGH #8.
+        // Pre-fix set a "No signed-in user found" error and left the
+        // user stuck. A stale link / expired session lands here without
+        // auth.currentUser and there was NO path forward from that
+        // state. Redirect to sign-in with a return URL so the user can
+        // sign in and land back on /verify-email to resend.
+        setLocation("/signin?redirect=/verify-email");
+        return;
       }
     } catch (err: any) {
       setError(
