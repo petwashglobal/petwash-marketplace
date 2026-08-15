@@ -765,26 +765,81 @@ router.post('/credits/add', async (req, res) => {
   }
 });
 
+// PR-MONEY-FIX-NAYAX-STATION-KEY (2026-08-15) — Agent C HIGH-1.
+// Pre-fix these two burn endpoints only checked that the x-station-key
+// HEADER WAS PRESENT — any non-empty string bypassed the gate. That is
+// D12 territory: /nayax/validate-code returns the customer's real
+// wallet credit that will be burned, and /nayax/acknowledge is the
+// confirm step that FINALIZES that burn against the ledger. A spoofed
+// header therefore let an unauthenticated caller enumerate live
+// redemption codes and finalize burns on real customer credit.
+//
+// The proven validator (used by /api/nayax/redeem in routes.ts:4875)
+// is validateStationKey() in nayaxFirestoreService: a Firestore lookup
+// on nayax_terminals WHERE apiKey==key AND isActive==true, returning
+// the terminal record or null → caller must 403 on null. We reuse it
+// verbatim (no forked logic) so the burn rails match the redeem rails.
+//
+// Additionally, we now bind the caller's terminal to the stationId in
+// the body: a valid Station-A key must NOT be usable to validate or
+// acknowledge sessions that belong to Station-B. This is the same
+// isolation the K9000 heartbeat / session-start / session-end paths
+// already enforce upstream via `terminal.stationId` matching.
+async function authorizeStationCaller(
+  req: any,
+  res: any,
+  requiredStationId?: string,
+): Promise<{ ok: true; terminalStationId: string } | { ok: false }> {
+  const stationApiKey = req.headers['x-station-key'] as string;
+  if (!stationApiKey) {
+    res.status(401).json({ success: false, error: 'Station API key required' });
+    return { ok: false };
+  }
+  const { validateStationKey } = await import('../nayaxFirestoreService');
+  const terminal = await validateStationKey(stationApiKey);
+  if (!terminal) {
+    // Fail-closed: never surface which key/keys are valid. Same 403
+    // shape as /api/nayax/redeem so probing is uniform.
+    logger.warn('[Credit Wallet] station key rejected', {
+      route: req.path,
+      ip: req.ip,
+      requiredStationId: requiredStationId ?? null,
+    });
+    res.status(403).json({ success: false, error: 'Invalid station API key' });
+    return { ok: false };
+  }
+  const terminalStationId = String((terminal as any).stationId ?? '');
+  if (requiredStationId && terminalStationId && terminalStationId !== requiredStationId) {
+    // Cross-station burn attempt — a valid A key MUST NOT act on B.
+    logger.warn('[Credit Wallet] station key does not own body stationId', {
+      route: req.path,
+      ip: req.ip,
+      terminalStationId,
+      requiredStationId,
+    });
+    res.status(403).json({ success: false, error: 'Station key does not authorize this station' });
+    return { ok: false };
+  }
+  return { ok: true, terminalStationId };
+}
+
 router.post('/nayax/validate-code', nayaxValidationRateLimiter, async (req, res) => {
   try {
-    const stationApiKey = req.headers['x-station-key'] as string;
-    if (!stationApiKey) {
-      return res.status(401).json({ success: false, error: 'Station API key required' });
-    }
-
     const { code, stationId } = req.body;
     if (!code || !stationId) {
       return res.status(400).json({ success: false, error: 'Code and stationId required' });
     }
+    const auth = await authorizeStationCaller(req, res, String(stationId));
+    if (!auth.ok) return; // response already sent
 
     const session = await walletService.validateRedemptionCode(code, stationId);
-    
+
     if (!session) {
       return res.status(404).json({ success: false, error: 'Invalid or expired code' });
     }
 
-    res.json({ 
-      success: true, 
+    res.json({
+      success: true,
       session: {
         sessionId: session.sessionId,
         platform: session.platform,
@@ -801,18 +856,19 @@ router.post('/nayax/validate-code', nayaxValidationRateLimiter, async (req, res)
 
 router.post('/nayax/acknowledge', async (req, res) => {
   try {
-    const stationApiKey = req.headers['x-station-key'] as string;
-    if (!stationApiKey) {
-      return res.status(401).json({ success: false, error: 'Station API key required' });
-    }
-
     const { sessionId } = req.body;
     if (!sessionId) {
       return res.status(400).json({ success: false, error: 'Session ID required' });
     }
+    // /acknowledge doesn't carry stationId in the body — the session
+    // itself is bound to the station that created it. Validate the
+    // key against the terminal registry first (fail-closed on any
+    // unknown/inactive key), then trust the session's own binding.
+    const auth = await authorizeStationCaller(req, res);
+    if (!auth.ok) return; // response already sent
 
     const success = await walletService.acknowledgeHardwareRedemption(sessionId);
-    
+
     if (!success) {
       return res.status(400).json({ success: false, error: 'Cannot acknowledge session' });
     }
