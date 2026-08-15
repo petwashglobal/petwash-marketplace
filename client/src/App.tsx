@@ -708,6 +708,29 @@ function LegacyProviderRouteRedirect() {
   return <Redirect to={`/provider-onboarding${search}`} />;
 }
 
+/**
+ * PR-MOBILE-NAV-BODY-PADDING (2026-08-15) — fire-order item 9.
+ *
+ * Toggle `data-pw-mobile-nav="on"` on <html> whenever the MobileBottomNav
+ * is mounted. The paired CSS rule in client/src/index.css keys off this
+ * attribute to add body padding (56px + safe-area) on mobile so the fixed
+ * nav does not overlay page CTAs on routes that don't wrap in <Layout>
+ * (Layout adds its own pb-16). Cleaned up on unmount / disable so
+ * immersive routes (auth, KYC, onboarding) never carry the padding.
+ */
+function MobileNavBodyPaddingToggle({ enabled }: { enabled: boolean }) {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (enabled) {
+      root.setAttribute("data-pw-mobile-nav", "on");
+      return () => root.removeAttribute("data-pw-mobile-nav");
+    }
+    root.removeAttribute("data-pw-mobile-nav");
+  }, [enabled]);
+  return null;
+}
+
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
   const { user, loading } = useFirebaseAuth();
   const { role, isLoading: roleLoading } = useWhoami();
@@ -4259,6 +4282,15 @@ console.log("Build: 1769350182889");
                   bleeding behind the iOS keyboard, capturing taps meant
                   for form fields. */}
               {showMobileNav && <MobileBottomNav />}
+              {/* PR-MOBILE-NAV-BODY-PADDING (2026-08-15) — fire-order item 9.
+                  The nav is `position: fixed` and overlays the bottom of the
+                  viewport. Pages that don't wrap in <Layout> (e.g. /egift,
+                  /booking) had NO reserved bottom space and their primary CTA
+                  was covered by the nav on mobile. Toggle a root data attr
+                  that a CSS rule in index.css keys off to add body padding
+                  ONLY on mobile ONLY when the nav is present. Desktop and
+                  immersive routes are unaffected. */}
+              <MobileNavBodyPaddingToggle enabled={showMobileNav} />
           </AuthProvider>
           
           {/* PWA "add to home screen" prompt REMOVED (CEO 2026-06-27): PetWash is a real
