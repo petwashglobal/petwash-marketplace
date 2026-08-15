@@ -247,7 +247,6 @@ throw new Error('[WalletService] WALLET_LINK_SECRET env var is required');
 | server/lib/verifyCaptcha.ts | 238 | FUNCTION_BODY | `if (process.env.NODE_ENV !== 'production' &&` |
 | server/lib/verifyCaptcha.ts | 311 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') {` |
 | server/middleware/auth.ts | 57 | FUNCTION_BODY | `const TEST_SECRET = process.env.NODE_ENV === "production"` |
-| server/middleware/csrfProtection.ts | 23 | FUNCTION_BODY | `secure: process.env.NODE_ENV === 'production',` |
 | server/middleware/firebase-auth.ts | 30 | FUNCTION_BODY | `if (process.env.NODE_ENV === 'production') return null;` |
 | server/middleware/gates.ts | 15 | MODULE_LOAD | `: process.env.NODE_ENV === 'production'` |
 | server/middleware/gates.ts | 25 | MODULE_LOAD | `if (process.env.NODE_ENV === 'production' && !_rawSuperAdminEmails) {` |
