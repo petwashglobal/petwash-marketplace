@@ -217,12 +217,22 @@ const translations: Record<string, Record<string, string>> = {
     es: 'Sin cuenta necesaria',
   },
   valid12Months: {
-    en: 'Valid 24 Months',
-    he: 'בתוקף 24 חודשים',
-    ar: 'صالحة لمدة 24 شهراً',
-    ru: 'Действует 24 месяца',
-    fr: 'Valable 24 mois',
-    es: 'Válido 24 meses',
+    // PR-EGIFT-EXPIRY-TRUTH (2026-08-15) — fire-order item 20. Public copy
+    // said "24 months" but the backend expiry actually stamped when no
+    // explicit override is passed is 365 days (see server/routes/wallet.ts:259,
+    // server/routes/google-wallet.ts:148, server/routes/gift-cards.ts:644 and
+    // :769 — all default to `Date.now() + 365 * 24 * 60 * 60 * 1000`). Aligned
+    // public display to the enforced 12-month default so the customer is not
+    // promised a validity window the backend will not honor. If the CEO wants
+    // the actual expiry economics widened to 24 months, that is a separate
+    // decision: update the four backend defaults simultaneously and revert
+    // this copy — DO NOT change one side without the other.
+    en: 'Valid 12 Months',
+    he: 'בתוקף 12 חודשים',
+    ar: 'صالحة لمدة 12 شهراً',
+    ru: 'Действует 12 месяцев',
+    fr: 'Valable 12 mois',
+    es: 'Válido 12 meses',
   },
   allServices: {
     en: 'All Services',
@@ -1422,7 +1432,8 @@ export default function EGift() {
                     </p>
                     <div className="mt-3 flex items-center justify-between text-[9px] md:text-[10px] tracking-wide text-ink-400">
                       <span>SN: {previewSerial}</span>
-                      <span>{lang === 'he' ? 'תוקף: 24 חודשים' : 'Valid: 24 months'}</span>
+                      {/* PR-EGIFT-EXPIRY-TRUTH: aligned to enforced 12-month default. */}
+                      <span>{lang === 'he' ? 'תוקף: 12 חודשים' : 'Valid: 12 months'}</span>
                     </div>
                   </div>
                 </div>
