@@ -52,8 +52,8 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
       status: 'production',
       backend: true,
       frontend: true,
-      notes: '5 tiers (Founder 50% off), Apple Wallet integration, points system',
-      notesHe: '5 רמות (מייסד 50% הנחה), אפל וולט, מערכת נקודות',
+      notes: '7 tiers (Member → Black Reserve), Apple Wallet integration, points system',
+      notesHe: '7 רמות (חבר → Black Reserve), אפל וולט, מערכת נקודות',
     },
     {
       name: 'Firebase Authentication',
