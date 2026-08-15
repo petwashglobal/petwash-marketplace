@@ -38,6 +38,14 @@ interface ActivitySummary {
     createdAt: string;
   }>;
   stampCount: number;
+  // PR-FAKEDATA-DASHBOARD-LIES (2026-08-15) — real counts served by
+  // /api/user/activity/summary. The Dashboard tiles used to display
+  // hardcoded 0s (Saved Carers / Saved Cards) and an invented
+  // loyaltyPoints*10 formula (Lifetime Value). These fields carry the
+  // truth (best-effort — server falls back to 0 on any table error).
+  savedProvidersCount?: number;
+  savedCardsCount?: number;
+  totalSpentCents?: number;
 }
 
 interface WalletSummary {
@@ -587,6 +595,14 @@ export default function Dashboard() {
   const loyaltyPoints = wallet?.loyaltyPointsBalance || 0;
   const totalBalance = wallet ? formatCurrency(wallet.totalCreditsValueCents) : '0';
   const giftBalance = wallet ? formatCurrency(wallet.egiftBalanceCents) : '0';
+  // PR-FAKEDATA-DASHBOARD-LIES (2026-08-15) — the three tile counters
+  // are now sourced from the summary endpoint (saved_providers rows /
+  // active payment_tokens rows / users.total_spent). Fall back to 0
+  // only when the summary hasn't loaded yet — that's the same shape
+  // the tiles used to render at all times, so it's not a regression.
+  const savedCarersCount = activityData?.savedProvidersCount ?? 0;
+  const savedCardsCount = activityData?.savedCardsCount ?? 0;
+  const lifetimeValueCents = activityData?.totalSpentCents ?? 0;
 
   if (loading) {
     return (
@@ -769,8 +785,9 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
                   {tx('savedCarers', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  0
+                {/* PR-FAKEDATA-DASHBOARD-LIES: real saved_providers count. */}
+                <p className="text-xl sm:text-2xl font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }} data-testid="tile-saved-carers">
+                  {savedCarersCount}
                 </p>
               </div>
             </LuxuryCard>
@@ -780,8 +797,13 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
                   {tx('lifetimeValue', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  <span className="text-sm" style={goldText}>&#8362;</span>{formatCurrency(loyaltyPoints * 10)}
+                {/* PR-FAKEDATA-DASHBOARD-LIES: real users.total_spent (ILS
+                    converted server-side to agorot so the shared
+                    formatCurrency helper works). Replaces an invented
+                    formula that had NOTHING to do with what the customer
+                    actually spent. */}
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }} data-testid="tile-lifetime-value">
+                  <span className="text-sm" style={goldText}>&#8362;</span>{formatCurrency(lifetimeValueCents)}
                 </p>
                 <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('totalSpending', language)}</p>
               </div>
@@ -794,8 +816,9 @@ export default function Dashboard() {
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
                   {tx('savedCards', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  0
+                {/* PR-FAKEDATA-DASHBOARD-LIES: real active payment_tokens count. */}
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }} data-testid="tile-saved-cards">
+                  {savedCardsCount}
                 </p>
                 <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('paymentMethods', language)}</p>
               </div>

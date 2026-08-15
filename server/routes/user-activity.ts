@@ -16,6 +16,9 @@ import {
   sitterBookings,
   walkBookings,
   creditTransactions,
+  savedProviders,
+  paymentTokens,
+  users,
 } from '@shared/schema';
 import { legalStamps } from '@shared/schema-finance';
 import { eq, desc, and, gte, sql } from 'drizzle-orm';
@@ -128,6 +131,44 @@ router.get('/summary', async (req: any, res) => {
       stampCount = row?.count ?? 0;
     } catch { stampCount = 0; }
 
+    // PR-FAKEDATA-DASHBOARD-LIES (2026-08-15) — Agent D "FAKEDATA"
+    // finding. The customer Dashboard tiles for Saved Carers, Saved
+    // Cards, and Lifetime Value were displaying HARDCODED literals /
+    // an invented formula (loyaltyPoints * 10) — the CEO called them
+    // out as lies. Ship the REAL counts here so the client can show
+    // truth. All three are best-effort (fail to 0 on any error) so a
+    // single table hiccup doesn't blank the whole summary card.
+    let savedProvidersCount = 0;
+    try {
+      const [row] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(savedProviders)
+        .where(eq(savedProviders.userId, uid));
+      savedProvidersCount = row?.count ?? 0;
+    } catch { savedProvidersCount = 0; }
+
+    let savedCardsCount = 0;
+    try {
+      const [row] = await db
+        .select({ count: sql<number>`count(*)::int` })
+        .from(paymentTokens)
+        .where(and(eq(paymentTokens.userId, uid), eq(paymentTokens.status, 'active')));
+      savedCardsCount = row?.count ?? 0;
+    } catch { savedCardsCount = 0; }
+
+    // users.total_spent is DECIMAL in ILS (whole shekels + fractional).
+    // Convert to agorot for the client so the display code can share
+    // its existing formatCurrency(cents) helper without special-casing.
+    let totalSpentCents = 0;
+    try {
+      const [row] = await db
+        .select({ totalSpent: users.totalSpent })
+        .from(users)
+        .where(eq(users.id, uid));
+      const ils = Number(row?.totalSpent ?? 0);
+      totalSpentCents = Number.isFinite(ils) ? Math.round(ils * 100) : 0;
+    } catch { totalSpentCents = 0; }
+
     const upcomingBookings = [...sitterUpcoming, ...walkUpcoming].sort((a: any, b: any) =>
       new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
     );
@@ -139,6 +180,9 @@ router.get('/summary', async (req: any, res) => {
       upcomingBookings,
       recentTransactions,
       stampCount,
+      savedProvidersCount,
+      savedCardsCount,
+      totalSpentCents,
     });
   } catch (err) {
     logger.error('[UserActivity] GET /summary error', err);
