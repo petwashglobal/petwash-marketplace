@@ -152,13 +152,16 @@ const messageLanguages = [
 ];
 
 const translations: Record<string, Record<string, string>> = {
+  // PR-EGIFT-ALL-SERVICES-HONEST (2026-08-15) — was "Platform-Wide Credit"
+  // implying every current+future PetWash surface. Aligned with the honest
+  // "All available services" phrasing used in the trust markers below.
   platformCredit: {
-    en: 'Platform-Wide Credit',
-    he: 'קרדיט לכל הפלטפורמות',
-    ar: 'رصيد لجميع المنصات',
-    ru: 'Кредит для всех платформ',
-    fr: 'Crédit multi-plateforme',
-    es: 'Crédito para todas las plataformas',
+    en: 'Credit for available services',
+    he: 'קרדיט לשירותים הזמינים',
+    ar: 'رصيد للخدمات المتاحة',
+    ru: 'Кредит для доступных услуг',
+    fr: 'Crédit pour les services disponibles',
+    es: 'Crédito para servicios disponibles',
   },
   title: {
     en: 'Gift Card Credit',
@@ -224,13 +227,21 @@ const translations: Record<string, Record<string, string>> = {
     fr: 'Valable 24 mois',
     es: 'Válido 24 meses',
   },
+  // PR-EGIFT-ALL-SERVICES-HONEST (2026-08-15) — fire-order item 18.
+  // "All Services" was too broad: PetTrek is coming-soon (item 5), and
+  // "All services" implies every current AND future service accepts the
+  // voucher — an unbounded promise. Change to "All available services"
+  // in every locale — bounded, honest, and stable as new services come
+  // online (each new live service is automatically "available"; each
+  // coming-soon one is explicitly excluded via the platformServices
+  // comingSoon flag surfaced elsewhere on the page).
   allServices: {
-    en: 'All Services',
-    he: 'כל השירותים',
-    ar: 'جميع الخدمات',
-    ru: 'Все услуги',
-    fr: 'Tous les services',
-    es: 'Todos los servicios',
+    en: 'All available services',
+    he: 'כל השירותים הזמינים',
+    ar: 'جميع الخدمات المتاحة',
+    ru: 'Все доступные услуги',
+    fr: 'Tous les services disponibles',
+    es: 'Todos los servicios disponibles',
   },
   selectCard: {
     en: 'Please select a gift card value',
