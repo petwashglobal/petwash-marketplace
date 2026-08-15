@@ -26,7 +26,7 @@ import {
   insertStaffLogbookSchema,
   insertFranchiseOrderSchema,
 } from '../../shared/schema';
-import { eq, and, desc, or } from 'drizzle-orm';
+import { eq, and, desc, or, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { staffOnboardingService } from '../services/StaffOnboardingService';
 import { receiptFraudDetection } from '../services/ReceiptFraudDetection';
@@ -138,19 +138,53 @@ export function registerStaffOnboardingRoutes(app: Express) {
   app.get('/api/staff/applications/mine', requireAuth, async (req, res) => {
     try {
       const userId = getAuthenticatedUserId(req);
-      const email = (req as any).user?.email || (req as any).firebaseUser?.email || null;
       if (!userId) {
         return res.status(401).json({ success: false, error: 'Authentication required' });
       }
-      // Match by userId OR by email — see comment above for why. Cast userId
-      // to string to satisfy the varchar column; both fields are indexed.
-      const rows = await db.select()
+      // BLOCKER 1 (PR-AUTH-FIX-STAFFPENDING-DEADEND security patch, 2026-08-15):
+      // Email fallback is only safe when Firebase has VERIFIED the email.
+      // An unverified email is caller-controllable — anyone can sign up
+      // with any address without confirming it — so trusting it here
+      // would let a squatting sign-up read a real person's pre-signup
+      // application. Gate strictly on req.firebaseUser.email_verified === true.
+      // Never accept caller identity from req.query / req.params / req.body.
+      const fbUser = (req as any).firebaseUser;
+      const emailVerified = fbUser?.email_verified === true;
+      const verifiedEmail =
+        emailVerified && typeof fbUser?.email === 'string' && fbUser.email.length > 0
+          ? fbUser.email
+          : null;
+
+      // Case-insensitive EXACT email equality via lower(col) = lower(val).
+      // Do NOT use ILIKE here — `_` and `%` are wildcards in LIKE, and
+      // treating stored email as a pattern (or the verified caller email
+      // as a pattern) would match unintended rows.
+      const whereClause = verifiedEmail
+        ? or(
+            eq(staffApplications.userId, String(userId)),
+            sql`lower(${staffApplications.email}) = lower(${verifiedEmail})`,
+          )
+        : eq(staffApplications.userId, String(userId));
+
+      // BLOCKER 2 (same patch): EXPLICIT projection. The pre-patch
+      // db.select() returned the whole row, exposing internal / sensitive
+      // fields that the StaffPending page does not need and MUST NOT see:
+      // dateOfBirth, address, taxId, bank* (routing / account name / number),
+      // notes, reviewer notes, fraud/shortlist scores, criminal record,
+      // references, formData, etc. Only surface what the client actually
+      // consumes.
+      const rows = await db
+        .select({
+          id: staffApplications.id,
+          applicationType: staffApplications.applicationType,
+          status: staffApplications.status,
+          rejectionReason: staffApplications.rejectionReason,
+          submittedAt: staffApplications.submittedAt,
+          reviewedAt: staffApplications.reviewedAt,
+          approvedAt: staffApplications.approvedAt,
+        })
         .from(staffApplications)
-        .where(
-          email
-            ? or(eq(staffApplications.userId, String(userId)), eq(staffApplications.email, String(email)))
-            : eq(staffApplications.userId, String(userId))
-        )
+        .where(whereClause)
         .orderBy(desc(staffApplications.createdAt))
         .limit(1);
       const application = rows[0] ?? null;

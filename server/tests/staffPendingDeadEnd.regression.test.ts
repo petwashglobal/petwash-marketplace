@@ -14,8 +14,9 @@
  *   server/routes/staff-onboarding.ts — new GET /api/staff/applications/mine
  *     endpoint (declared BEFORE the /:id route so Express doesn't parse
  *     "mine" as an integer id). requireAuth-gated, matches on userId OR
- *     email, returns the caller's most recent staff_applications row or
- *     { application: null } if none exists. Mirrors GET /api/provider-applications/my.
+ *     verified email, returns an EXPLICITLY-PROJECTED subset of the caller's
+ *     most recent staff_applications row (or { application: null }) —
+ *     mirrors GET /api/provider-applications/my.
  *   client/src/pages/StaffPending.tsx — rewritten as a state-aware page
  *     that fetches /api/staff/applications/mine and renders SEVEN branches
  *     (pending / documents_required / under_review / background_check /
@@ -26,11 +27,29 @@
  *     button/link carries a data-testid so this test can pin it and no
  *     future refactor can silently strip a CTA.
  *
+ * SECURITY PATCH (same PR, 2026-08-15) — two blockers found on review:
+ *   BLOCKER 1: email fallback must require Firebase email_verified === true
+ *     (an unverified email is caller-controllable — anyone can sign up
+ *     with any address without confirming — so trusting it here would
+ *     let a squatting sign-up read a real person's pre-signup application);
+ *     case-insensitive EXACT equality via lower(col) = lower(val), NOT
+ *     ILIKE (whose `_` and `%` are wildcards that would match unintended
+ *     rows); never accept caller identity from req.query / req.params /
+ *     req.body.
+ *   BLOCKER 2: replace db.select() (whole row) with an EXPLICIT projection
+ *     — do NOT expose dateOfBirth / address / taxId / bank* / notes /
+ *     reviewer / fraud / criminal / references / formData / any other
+ *     internal review field via /mine. Only surface { id, applicationType,
+ *     status, rejectionReason, submittedAt, reviewedAt, approvedAt }.
+ *
  * Sections:
  *   A. Server — /mine endpoint present + declared BEFORE /:id + ownership shape
  *   B. Client — no fetch, no CTAs pre-fix is impossible now
  *   C. Client — every terminal branch has back-home + support CTAs
  *   D. Client — distinct fetch-error branch (with Retry) is present
+ *   E. Server — SECURITY: email fallback gated on email_verified, exact
+ *      case-insensitive comparison, no caller-identity leak channels
+ *   F. Server — SECURITY: explicit projection blocks internal / sensitive fields
  */
 
 import { describe, it, expect } from 'vitest';
@@ -79,17 +98,25 @@ describe('PR-AUTH-FIX-STAFFPENDING-DEADEND — A. server /mine endpoint', () => 
   it('A4. matches on userId OR email (email fallback preserves connection when app was submitted before signup)', () => {
     // The endpoint must not narrow to userId only — staffApplications.userId
     // is nullable and an application may exist under the email alone.
-    expect(/or\(\s*eq\(\s*staffApplications\.userId\s*,[\s\S]{0,80}?eq\(\s*staffApplications\.email/.test(code)).toBe(true);
+    // Note: the email comparison itself now uses sql`lower(...)=lower(...)`
+    // (see section E) — the OR structure with eq(userId) as the first arm
+    // remains, which is what this pin captures.
+    expect(/or\(\s*eq\(\s*staffApplications\.userId\s*,[\s\S]{0,200}?staffApplications\.email/.test(code)).toBe(true);
   });
 
-  it('A5. imports the or() operator (dedicated fix — the file previously imported only eq/and/desc)', () => {
+  it('A5. imports the or() AND sql operators (or for the disjunction, sql for lower(...)=lower(...) exact-match)', () => {
     expect(/import\s*\{[^}]*\bor\b[^}]*\}\s*from\s*['"]drizzle-orm['"]/.test(code)).toBe(true);
+    expect(/import\s*\{[^}]*\bsql\b[^}]*\}\s*from\s*['"]drizzle-orm['"]/.test(code)).toBe(true);
   });
 
   it('A6. returns { application } (single row via limit(1) + desc(createdAt), OR null when none)', () => {
     expect(/\.limit\(\s*1\s*\)/.test(code)).toBe(true);
     expect(/desc\(\s*staffApplications\.createdAt\s*\)/.test(code)).toBe(true);
     expect(/const\s+application\s*=\s*rows\[0\]\s*\?\?\s*null/.test(code)).toBe(true);
+    // Contract stays { success: true, application: <row-or-null> } — the
+    // client's fetch-error branch depends on the response shape being
+    // stable (a change here would silently mask errors as "no application").
+    expect(/return\s+res\.json\(\s*\{\s*success:\s*true\s*,\s*application\s*\}\s*\)/.test(code)).toBe(true);
   });
 
   it('A7. requires authentication — never returns another user\'s application', () => {
@@ -195,5 +222,192 @@ describe('PR-AUTH-FIX-STAFFPENDING-DEADEND — D. distinct fetch-error branch', 
 
   it('D3. fetch-error branch has an explicit Retry CTA', () => {
     expect(src).toContain('data-testid="button-retry"');
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// E. SECURITY — email fallback requires verified email, exact case-
+//    insensitive equality, no caller-identity leak channels
+// ─────────────────────────────────────────────────────────────────────────
+describe('PR-AUTH-FIX-STAFFPENDING-DEADEND — E. security: email fallback + identity source', () => {
+  const src = read(SERVER);
+  const code = codeOnly(src);
+
+  // Extract the /mine handler body so the pins can't be satisfied by
+  // some unrelated block elsewhere in the (long) file.
+  const mineBlock =
+    code.match(/app\.get\(\s*['"]\/api\/staff\/applications\/mine['"][\s\S]*?^\s*\}\s*\);/m)?.[0] || '';
+
+  it('E1. /mine handler was located (source pins that follow are meaningful)', () => {
+    expect(mineBlock.length).toBeGreaterThan(0);
+  });
+
+  it('E2. requires Firebase email_verified === true before using email fallback', () => {
+    // The whole point of BLOCKER 1: an unverified Firebase email is
+    // caller-controllable — anyone can sign up with any address. Reading
+    // rows by an unverified email would let a squatting sign-up see a
+    // real person's pre-signup application.
+    expect(/email_verified\s*===\s*true/.test(mineBlock)).toBe(true);
+    // The variable must actually GATE the email fallback (not just be
+    // computed and ignored). Pin that `verifiedEmail` is the source the
+    // WHERE clause branches on.
+    expect(/const\s+verifiedEmail\s*=/.test(mineBlock)).toBe(true);
+    expect(/verifiedEmail\s*\?/.test(mineBlock)).toBe(true);
+  });
+
+  it('E3. email comparison uses case-insensitive EXACT equality (lower=lower), NOT ILIKE', () => {
+    // ILIKE treats `_` and `%` as wildcards — using it here (with the
+    // stored email or a caller-controlled email on either side) would
+    // match unintended rows. Pin the exact lower(...)=lower(...) shape,
+    // and pin the ABSENCE of ILIKE in the /mine handler.
+    expect(/sql`lower\(\s*\$\{\s*staffApplications\.email\s*\}\s*\)\s*=\s*lower\(\s*\$\{\s*verifiedEmail\s*\}\s*\)`/.test(mineBlock)).toBe(true);
+    expect(/\bilike\b/i.test(mineBlock)).toBe(false);
+  });
+
+  it('E4. handler NEVER reads caller identity from req.query / req.params / req.body', () => {
+    // Any of these would let the caller declare which user they are,
+    // bypassing the authenticated uid. Pin the ABSENCE.
+    expect(mineBlock.includes('req.query')).toBe(false);
+    expect(mineBlock.includes('req.params')).toBe(false);
+    expect(mineBlock.includes('req.body')).toBe(false);
+  });
+
+  it('E5. caller uid comes ONLY from getAuthenticatedUserId(req)', () => {
+    // The authoritative source. Pin that this is the ONLY thing feeding
+    // the userId used in the WHERE clause.
+    expect(/const\s+userId\s*=\s*getAuthenticatedUserId\(\s*req\s*\)/.test(mineBlock)).toBe(true);
+    expect(/eq\(\s*staffApplications\.userId\s*,\s*String\(\s*userId\s*\)\s*\)/.test(mineBlock)).toBe(true);
+    // Fail-closed 401 when no authenticated uid — never silently fall
+    // through to some other identity source.
+    expect(/return\s+res\.status\(\s*401\s*\)/.test(mineBlock)).toBe(true);
+  });
+
+  it('E6. UID-only path is used when the email is not verified (fallback is opt-IN on verification, not opt-OUT)', () => {
+    // The ternary branch: `verifiedEmail ? or(...) : eq(userId)`. Pin
+    // the eq(userId)-only ELSE arm exists — an unverified email caller
+    // gets ONLY the uid lookup, never the email lookup.
+    expect(/verifiedEmail\s*\?\s*or\([\s\S]*?\)\s*:\s*eq\(\s*staffApplications\.userId\s*,\s*String\(\s*userId\s*\)\s*\)/.test(mineBlock)).toBe(true);
+  });
+
+  it('E7. requires the caller to be authenticated (requireAuth middleware still present)', () => {
+    // Sanity — the whole endpoint definition must still be gated.
+    // If someone drops requireAuth here in a future refactor, this test
+    // catches it BEFORE the endpoint becomes anonymous-readable.
+    expect(/app\.get\(\s*['"]\/api\/staff\/applications\/mine['"]\s*,\s*requireAuth\s*,/.test(code)).toBe(true);
+  });
+});
+
+// ─────────────────────────────────────────────────────────────────────────
+// F. SECURITY — explicit projection blocks internal / sensitive fields
+// ─────────────────────────────────────────────────────────────────────────
+describe('PR-AUTH-FIX-STAFFPENDING-DEADEND — F. security: explicit projection', () => {
+  const src = read(SERVER);
+  const code = codeOnly(src);
+
+  const mineBlock =
+    code.match(/app\.get\(\s*['"]\/api\/staff\/applications\/mine['"][\s\S]*?^\s*\}\s*\);/m)?.[0] || '';
+
+  // The ONLY fields the StaffPending client consumes — anything else
+  // that a hypothetical review process might add to the row must NOT
+  // leak through /mine.
+  const ALLOWED_FIELDS = [
+    'id',
+    'applicationType',
+    'status',
+    'rejectionReason',
+    'submittedAt',
+    'reviewedAt',
+    'approvedAt',
+  ];
+
+  // Fields present on staff_applications (or plausibly added later)
+  // that MUST NOT leak — matches the reviewer's list verbatim.
+  const FORBIDDEN_FIELDS = [
+    'dateOfBirth',
+    'address',
+    'taxId',
+    'bankAccountName',
+    'bankAccountNumber',
+    'bankRoutingNumber',
+    'notes',
+    'reviewerNotes',
+    'fraudRiskScore',
+    'shortlistScore',
+    'shortlistRecommendation',
+    'shortlistFlags',
+    'criminalRecord',
+    'references',
+    'formData',
+    // Also block a few more that exist on the current schema and would
+    // similarly be inappropriate for /mine: identity + banking chain.
+    'firstName',
+    'lastName',
+    'phone',
+    'businessName',
+    'businessLicense',
+    'reviewedBy',
+  ];
+
+  it('F1. handler was located (source pins that follow are meaningful)', () => {
+    expect(mineBlock.length).toBeGreaterThan(0);
+  });
+
+  it('F2. does NOT use unprojected db.select() (the pre-patch bug)', () => {
+    // Pre-patch: `db.select().from(staffApplications)` — returns whole
+    // row. Post-patch: `db.select({ ... }).from(staffApplications)` —
+    // shape argument. Pin absence of the bare-select pattern.
+    expect(/db\s*\.\s*select\(\s*\)\s*\.from\(\s*staffApplications\s*\)/.test(mineBlock)).toBe(false);
+    // And pin PRESENCE of a shape argument.
+    expect(/db\s*\n?\s*\.\s*select\(\s*\{[\s\S]*?\}\s*\)\s*\.from\(\s*staffApplications\s*\)/.test(mineBlock)).toBe(true);
+  });
+
+  it('F3. projection contains ONLY the seven allowed fields (allow-list, not deny-list)', () => {
+    // Extract the shape object literal inside the .select({...}) call.
+    const shape =
+      mineBlock.match(/\.select\(\s*(\{[\s\S]*?\})\s*\)\s*\.from\(\s*staffApplications\s*\)/)?.[1] || '';
+    expect(shape.length).toBeGreaterThan(0);
+    const declaredKeys = Array.from(shape.matchAll(/^\s*(\w+)\s*:\s*staffApplications\./gm)).map(m => m[1]);
+    // Every declared key must be in the allow-list.
+    for (const k of declaredKeys) {
+      expect(ALLOWED_FIELDS).toContain(k);
+    }
+    // And every allow-listed key must be declared.
+    for (const k of ALLOWED_FIELDS) {
+      expect(declaredKeys).toContain(k);
+    }
+  });
+
+  it('F4. no forbidden internal / sensitive field name appears inside the /mine handler', () => {
+    // Grep the handler body for each forbidden identifier. Even
+    // referencing one (e.g. via staffApplications.taxId) should not
+    // happen in this handler — the shape must not accidentally include
+    // it, no filter must accidentally read it into a variable, no log
+    // line must accidentally echo it.
+    for (const f of FORBIDDEN_FIELDS) {
+      const re = new RegExp(`\\b${f}\\b`);
+      if (re.test(mineBlock)) {
+        throw new Error(`Forbidden field "${f}" appears inside GET /api/staff/applications/mine handler`);
+      }
+    }
+    // Reach for a positive assertion so the counter increments.
+    expect(true).toBe(true);
+  });
+
+  it('F5. client interface documents ONLY the projected fields (contract stays in sync)', () => {
+    // If the server projection is tightened but the client interface
+    // still lists a removed field, TypeScript would happily read
+    // undefined and render blanks. Pin that the StaffApplication
+    // interface in StaffPending.tsx matches the projection exactly.
+    const clientSrc = read(CLIENT);
+    const iface =
+      clientSrc.match(/interface\s+StaffApplication\s*\{([\s\S]*?)\}/)?.[1] || '';
+    expect(iface.length).toBeGreaterThan(0);
+    const declared = Array.from(iface.matchAll(/^\s*(\w+)\s*:/gm)).map(m => m[1]);
+    for (const k of declared) {
+      expect(ALLOWED_FIELDS).toContain(k);
+    }
+    for (const k of ALLOWED_FIELDS) {
+      expect(declared).toContain(k);
+    }
   });
 });
