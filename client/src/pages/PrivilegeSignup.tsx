@@ -69,11 +69,14 @@ const TIER_DATA = [
   { id: 'royal',    label: 'Black Reserve', points: '50,000', color: '#1a1a1a', bg: 'from-gray-800/10 to-gray-700/5' },
 ];
 
-const PLATFORMS = [
+// PR-PETTREK-COMING-SOON-CONSISTENCY (2026-08-15) — fire-order item 31.
+// PetTrek is coming-soon on the homepage and gated in the /egift picker.
+// Tag it here too so Prestige signup doesn't advertise redemption on it.
+const PLATFORMS: Array<{ name: string; icon: string; comingSoon?: boolean }> = [
   { name: '⁦K9000™⁩', icon: '🚿' },
   { name: '⁦Sitter Suite™⁩', icon: '🏠' },
   { name: '⁦Walk My Pet™⁩', icon: '🚶' },
-  { name: '⁦PetTrek™⁩', icon: '🚗' },
+  { name: '⁦PetTrek™⁩', icon: '🚗', comingSoon: true },
   { name: 'Academy™', icon: '🎓' },
   { name: '⁦The Plush Lab™⁩', icon: '🧸' },
   { name: '⁦Wash Hub™⁩', icon: '💎' },
@@ -558,6 +561,14 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
                 >
                   <span className="text-lg">{platform.icon}</span>
                   <span className="text-gray-600 font-medium">{platform.name}</span>
+                  {/* PR-PETTREK-COMING-SOON-CONSISTENCY: show "Coming Soon"
+                      tag inline so members don't expect Prestige redemption
+                      on a service that isn't live yet. */}
+                  {platform.comingSoon && (
+                    <span className="ml-1.5 text-[9px] uppercase tracking-[0.12em] px-1.5 py-0.5 border border-amber-200 text-amber-700 rounded-sm">
+                      {language === 'he' ? 'בקרוב' : 'Coming Soon'}
+                    </span>
+                  )}
                 </motion.div>
               ))}
             </div>
