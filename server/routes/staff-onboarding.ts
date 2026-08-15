@@ -115,15 +115,30 @@ export function registerStaffOnboardingRoutes(app: Express) {
   /**
    * GET /api/staff/applications/mine
    * Return the caller's most recent staff application, or { application: null }
-   * if none exists. Mirrors GET /api/provider-applications/my — same shape, same
-   * fail-soft ownership model:
-   *   - requireAuth ensures we have an authed uid + email
-   *   - match on userId (Firebase UID) OR on email (staff_applications.userId is
-   *     nullable — an application may have been submitted BEFORE the user
-   *     registered their account, then the person signs up later with the same
-   *     email; matching by email preserves the connection)
-   *   - never leaks another user's application — the WHERE clause is scoped
-   *     to (userId = me OR email = me), never to a numeric id from the query
+   * if none exists. Mirrors GET /api/provider-applications/my.
+   *
+   * Ownership model (post-security-patch, matches the implementation exactly):
+   *   - requireAuth validates the Firebase session/token. It does NOT by
+   *     itself require Firebase to have verified the email.
+   *   - UID ownership lookup (staffApplications.userId = caller uid) is
+   *     ALWAYS allowed for the authenticated caller.
+   *   - EMAIL FALLBACK IS VERIFIED-EMAIL ONLY. Because staffApplications.userId
+   *     is nullable (an application may have been submitted BEFORE the user
+   *     registered their Firebase account), we optionally allow a match on
+   *     email — but ONLY when req.firebaseUser.email_verified === true. An
+   *     unverified email is caller-controllable (anyone can sign up with any
+   *     address without confirming it), so trusting it would let a squatting
+   *     sign-up read a real person's pre-signup application.
+   *   - Email comparison uses case-insensitive EXACT equality via
+   *     sql`lower(col) = lower(val)`. Deliberately NOT ILIKE, whose `_` and
+   *     `%` are wildcards.
+   *   - Caller identity NEVER comes from req.query / req.params / req.body.
+   *     The authenticated uid comes from getAuthenticatedUserId(req); the
+   *     verified email comes from req.firebaseUser.
+   *
+   * Response projection is an explicit allow-list — see BLOCKER 2 comment on
+   * the db.select({...}) call below. Do NOT expand it to expose internal
+   * reviewer / fraud / banking / tax / KYC fields.
    *
    * PR-AUTH-FIX-STAFFPENDING-DEADEND (2026-08-15) — Agent A HIGH #5. The client
    * StaffPending page was a static dead-end with no state fetch, so a user who
