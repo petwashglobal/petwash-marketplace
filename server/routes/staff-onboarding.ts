@@ -26,7 +26,7 @@ import {
   insertStaffLogbookSchema,
   insertFranchiseOrderSchema,
 } from '../../shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, or } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { staffOnboardingService } from '../services/StaffOnboardingService';
 import { receiptFraudDetection } from '../services/ReceiptFraudDetection';
@@ -109,6 +109,55 @@ export function registerStaffOnboardingRoutes(app: Express) {
         success: false,
         error: error.message || 'Failed to submit application',
       });
+    }
+  });
+
+  /**
+   * GET /api/staff/applications/mine
+   * Return the caller's most recent staff application, or { application: null }
+   * if none exists. Mirrors GET /api/provider-applications/my — same shape, same
+   * fail-soft ownership model:
+   *   - requireAuth ensures we have an authed uid + email
+   *   - match on userId (Firebase UID) OR on email (staff_applications.userId is
+   *     nullable — an application may have been submitted BEFORE the user
+   *     registered their account, then the person signs up later with the same
+   *     email; matching by email preserves the connection)
+   *   - never leaks another user's application — the WHERE clause is scoped
+   *     to (userId = me OR email = me), never to a numeric id from the query
+   *
+   * PR-AUTH-FIX-STAFFPENDING-DEADEND (2026-08-15) — Agent A HIGH #5. The client
+   * StaffPending page was a static dead-end with no state fetch, so a user who
+   * had been REJECTED still saw "your request is being reviewed" forever with
+   * no path forward. This endpoint is the state source the rewritten
+   * StaffPending page uses to render pending / documents_required /
+   * under_review / background_check / approved / rejected branches.
+   *
+   * MUST be declared BEFORE the '/:id' route below — Express would otherwise
+   * try to parse "mine" as an integer id.
+   */
+  app.get('/api/staff/applications/mine', requireAuth, async (req, res) => {
+    try {
+      const userId = getAuthenticatedUserId(req);
+      const email = (req as any).user?.email || (req as any).firebaseUser?.email || null;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      // Match by userId OR by email — see comment above for why. Cast userId
+      // to string to satisfy the varchar column; both fields are indexed.
+      const rows = await db.select()
+        .from(staffApplications)
+        .where(
+          email
+            ? or(eq(staffApplications.userId, String(userId)), eq(staffApplications.email, String(email)))
+            : eq(staffApplications.userId, String(userId))
+        )
+        .orderBy(desc(staffApplications.createdAt))
+        .limit(1);
+      const application = rows[0] ?? null;
+      return res.json({ success: true, application });
+    } catch (error: any) {
+      logger.error('[API] Failed to load caller staff application', error);
+      return res.status(500).json({ success: false, error: 'Failed to load application' });
     }
   });
 
