@@ -250,7 +250,11 @@ export default function LoyaltyTiers() {
                 <Star className="w-7 h-7 text-[#0a0a0a]" />
               </div>
               <h3 className="font-semibold text-[#1A1A1A] mb-1">{isHebrew ? 'כל רחיצה' : 'Every Wash'}</h3>
-              <p className="text-[#8A8078] text-sm">{isHebrew ? '10 נקודות לכל ₪1' : '10 points per ₪1 spent'}</p>
+              {/* PR-LOYALTY-COPY-TRUTH (2026-08-15) — fire-order items 38+39.
+                  Backend rate is POINTS_PER_SHEKEL = 1 in
+                  server/services/loyaltyEarn.ts:22. UI said "10" which
+                  is 10x the actual accrual. Aligned to the real rate. */}
+              <p className="text-[#8A8078] text-sm">{isHebrew ? 'נקודה אחת לכל ₪1' : '1 point per ₪1 spent'}</p>
             </div>
             <div className="text-center group">
               <div className="w-14 h-14 rounded-xl bg-[rgba(217, 184, 76,0.1)] flex items-center justify-center mx-auto mb-3 transition-all duration-300 group-hover:bg-[rgba(217, 184, 76,0.2)] group-hover:scale-110">
