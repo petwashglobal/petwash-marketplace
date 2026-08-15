@@ -11,7 +11,13 @@
 
 import { Router, type Request, type Response, type NextFunction } from 'express';
 import { authMiddleware as requireAuth } from '../middleware/auth';
-import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
+// PR-AUTH-DEDUP-REQUIRE-ADMIN: these two routes (/:bookingId/refund and
+// /admin/free-wash) currently enforce SUPER-ADMIN-ONLY via the rbac
+// middleware — the previous export was misleadingly named `requireAdmin`.
+// Rename preserves that behavior exactly. A separate ticket should
+// decide whether refund + free-wash should widen to accept a general
+// admin/finance role via adminAuth.requireAdmin instead; not this PR.
+import { requireSuperAdmin, isSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { db } from '../db';
 import { bookings } from '@shared/schema';
@@ -513,7 +519,7 @@ router.post('/:bookingId/cancel', requireAuth, async (req: Request, res: Respons
  * POST /api/unified-booking/:bookingId/refund
  * Process refund (admin only)
  */
-router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.post('/:bookingId/refund', requireAuth, requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { bookingId } = req.params;
     const { refundAmount, reason, isPartial } = req.body;
@@ -564,7 +570,7 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
  * POST /api/unified-booking/admin/free-wash
  * Admin grants free wash (K9000)
  */
-router.post('/admin/free-wash', requireAuth, requireAdmin, async (req: Request, res: Response) => {
+router.post('/admin/free-wash', requireAuth, requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { machineId, bay, startTime, minutes, reason } = req.body;
     const adminId = req.firebaseUser?.uid || req.user?.uid || '';

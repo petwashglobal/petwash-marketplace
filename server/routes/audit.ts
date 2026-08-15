@@ -7,7 +7,15 @@
 import { Router, type Request, type Response } from 'express';
 import { AuditLedgerService } from '../services/AuditLedgerService';
 import type { AuthenticatedRequest } from '../middleware/rbac';
-import { requireAdmin, isSuperAdmin } from '../middleware/rbac';
+// PR-AUTH-DEDUP-REQUIRE-ADMIN: this file's admin routes
+// (/verify-chain, /create-snapshot, /fraud-dashboard) have always been
+// enforced as SUPER-ADMIN-ONLY (see the comment at line ~59 pointing
+// at SUPER_ADMIN_EMAILS as the "authoritative source"). Import the
+// renamed super-admin gate to match — no behavior change; the same
+// function was previously exported as `requireAdmin` from this module,
+// which was easy to conflate with the general-admin gate in
+// server/adminAuth.ts.
+import { requireSuperAdmin, isSuperAdmin } from '../middleware/rbac';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
@@ -56,7 +64,7 @@ router.get('/entity/:type/:id', async (req: AuthenticatedRequest, res: Response)
     // Filter to only show records for authenticated user (unless admin).
     // NOTE: firebaseUser.role is never populated by Firebase Auth (it's a custom
     // claim that we don't set). Use isSuperAdmin() which checks SUPER_ADMIN_EMAILS
-    // env var — the same authoritative source used by requireAdmin() in rbac.ts.
+    // env var — the same authoritative source used by requireSuperAdmin() in rbac.ts.
     const userId = req.firebaseUser!.uid;
     const isAdmin = isSuperAdmin((req.firebaseUser!.email || '').toLowerCase());
     
@@ -82,7 +90,7 @@ router.get('/entity/:type/:id', async (req: AuthenticatedRequest, res: Response)
  * Verify integrity of the hash chain
  * 🔒 Admin only
  */
-router.get('/verify-chain', requireAdmin, async (req: Request, res: Response) => {
+router.get('/verify-chain', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const startBlock = req.query.startBlock ? parseInt(req.query.startBlock as string) : undefined;
     const endBlock = req.query.endBlock ? parseInt(req.query.endBlock as string) : undefined;
@@ -109,7 +117,7 @@ router.get('/verify-chain', requireAdmin, async (req: Request, res: Response) =>
  * Create daily Merkle snapshot
  * 🔒 Admin only (typically called by cron job)
  */
-router.post('/create-snapshot', requireAdmin, async (req: Request, res: Response) => {
+router.post('/create-snapshot', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const schema = z.object({
       date: z.string().optional(),
@@ -144,7 +152,7 @@ router.post('/create-snapshot', requireAdmin, async (req: Request, res: Response
  * Get fraud monitoring statistics
  * 🔒 Admin only
  */
-router.get('/fraud-dashboard', requireAdmin, async (req: Request, res: Response) => {
+router.get('/fraud-dashboard', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const timeframe = req.query.timeframe as 'today' | 'week' | 'month' || 'today';
     

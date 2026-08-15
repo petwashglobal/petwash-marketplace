@@ -7,7 +7,7 @@
 
 import express, { Request, Response } from 'express';
 import IsraeliCPIService from '../services/IsraeliCPIService';
-import { requireAdmin } from '../middleware/rbac';
+import { requireSuperAdmin } from '../middleware/rbac';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
 
@@ -221,7 +221,7 @@ router.post('/calculate-rent', requireAuth, async (req: Request, res: Response) 
  * הוספת מדד חדש
  * Admin only
  */
-router.post('/add', requireAdmin, async (req: Request, res: Response) => {
+router.post('/add', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { month, indexValue, yearOverYearChange, source } = req.body;
 
@@ -279,7 +279,7 @@ router.post('/add', requireAdmin, async (req: Request, res: Response) => {
  * בדיקה האם המדד מעודכן
  * Admin only
  */
-router.get('/status', requireAdmin, async (req: Request, res: Response) => {
+router.get('/status', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const latest = await IsraeliCPIService.getLatestCPI();
     const isCurrent = await IsraeliCPIService.isCPIDataCurrent();
@@ -308,7 +308,7 @@ router.get('/status', requireAdmin, async (req: Request, res: Response) => {
  * נתונים ראשוניים של המדד
  * Admin only - One-time setup
  */
-router.post('/seed', requireAdmin, async (req: Request, res: Response) => {
+router.post('/seed', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     await IsraeliCPIService.seedInitialData();
 

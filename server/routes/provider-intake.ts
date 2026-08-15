@@ -2,7 +2,7 @@ import { Router, Request } from 'express';
 import { petWashOrchestrator } from '../services/PetWashOperationsOrchestrator';
 import { providerIntakeService } from '../services/ProviderIntakeService';
 import { requireAuth } from '../customAuth';
-import { requireAdmin } from '../middleware/rbac';
+import { requireSuperAdmin } from '../middleware/rbac';
 import { db } from '../db';
 import { providerIntakeQueue, biometricCertificateVerifications } from '@shared/schema';
 import { eq, desc } from 'drizzle-orm';
@@ -52,7 +52,7 @@ function encryptBase64Doc(plaintext: string): string {
  * GET /api/provider-intake
  * Get all intake queue records (admin only)
  */
-router.get('/', requireAuth, requireAdmin, async (req, res) => {
+router.get('/', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const status = req.query.status as string | undefined;
     
@@ -90,7 +90,7 @@ router.get('/', requireAuth, requireAdmin, async (req, res) => {
  * GET /api/provider-intake/stats
  * Get intake queue statistics for management dashboard (admin only)
  */
-router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
+router.get('/stats', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const allRecords = await db
       .select()
@@ -126,7 +126,7 @@ router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
  * GET /api/provider-intake/:intakeId
  * Get single intake record details
  */
-router.get('/:intakeId', requireAuth, requireAdmin, async (req, res) => {
+router.get('/:intakeId', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { intakeId } = req.params;
     
@@ -156,7 +156,7 @@ const syncSchema = z.object({
   sheetName: z.string().optional().default('Form Responses 1')
 });
 
-router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
+router.post('/sync', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { sheetId, sheetName } = syncSchema.parse(req.body);
     
@@ -187,7 +187,7 @@ const approveSchema = z.object({
   notes: z.string().optional()
 });
 
-router.post('/:intakeId/approve', requireAuth, requireAdmin, async (req, res) => {
+router.post('/:intakeId/approve', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { intakeId } = req.params;
     const adminId = req.user!.uid;
@@ -245,7 +245,7 @@ const rejectSchema = z.object({
   reason: z.string().min(1, 'Rejection reason is required')
 });
 
-router.post('/:intakeId/reject', requireAuth, requireAdmin, async (req, res) => {
+router.post('/:intakeId/reject', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { intakeId } = req.params;
     const adminId = req.user!.uid;
@@ -275,7 +275,7 @@ const updateSchema = z.object({
   reviewNotes: z.string().optional()
 });
 
-router.patch('/:intakeId', requireAuth, requireAdmin, async (req, res) => {
+router.patch('/:intakeId', requireAuth, requireSuperAdmin, async (req, res) => {
   try {
     const { intakeId } = req.params;
     const adminId = req.user!.uid;

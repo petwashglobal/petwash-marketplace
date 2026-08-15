@@ -8,14 +8,14 @@ import {
   type MandatoryUpdate 
 } from '../utils/franchiseControls';
 import type { AuthenticatedRequest } from '../middleware/rbac';
-import { requireAdmin } from '../middleware/rbac';
+import { requireSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
 
 /**
  * GET /api/franchise/command-center - Get real-time franchise dashboard
  */
-router.get('/command-center', requireAdmin, (req: Request, res: Response) => {
+router.get('/command-center', requireSuperAdmin, (req: Request, res: Response) => {
   const data = getFranchiseCommandCenter();
   res.json(data);
 });
@@ -23,7 +23,7 @@ router.get('/command-center', requireAdmin, (req: Request, res: Response) => {
 /**
  * POST /api/franchise/quality-audit - Create quality audit
  */
-router.post('/quality-audit', requireAdmin, (req: Request, res: Response) => {
+router.post('/quality-audit', requireSuperAdmin, (req: Request, res: Response) => {
   const { stationId } = req.body;
   const audit = createQualityAudit(stationId);
   res.json(audit);
@@ -32,7 +32,7 @@ router.post('/quality-audit', requireAdmin, (req: Request, res: Response) => {
 /**
  * POST /api/franchise/deploy-update - Deploy mandatory update
  */
-router.post('/deploy-update', requireAdmin, (req: Request, res: Response) => {
+router.post('/deploy-update', requireSuperAdmin, (req: Request, res: Response) => {
   const update: MandatoryUpdate = req.body;
   const deployment = deployMandatoryUpdate(update);
   res.json(deployment);

@@ -12,7 +12,10 @@ import {
   type UserDevice,
 } from '../../shared/schema';
 import type { AuthenticatedRequest } from '../middleware/rbac';
-import { requireAdmin } from '../middleware/rbac';
+// PR-AUTH-DEDUP-REQUIRE-ADMIN: rbac's middleware was renamed to reflect
+// its true SUPER_ADMIN_EMAILS-only semantics (distinct from the
+// general-admin gate in server/adminAuth.ts). Behavior unchanged.
+import { requireSuperAdmin } from '../middleware/rbac';
 import { logger } from '../lib/logger';
 import { UserDeviceService, type DeviceTelemetry } from '../services/UserDeviceService';
 import { z } from 'zod';
@@ -338,7 +341,7 @@ router.get('/:id/events', async (req: AuthenticatedRequest, res: Response) => {
 /**
  * GET /api/devices/admin/suspicious - Get all suspicious devices (ADMIN ONLY)
  */
-router.get('/admin/suspicious', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/suspicious', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const devices = await UserDeviceService.getSuspiciousDevices();
     
@@ -352,7 +355,7 @@ router.get('/admin/suspicious', requireAdmin, async (req: Request, res: Response
 /**
  * GET /api/devices/admin/user/:userId - Get all devices for a user (ADMIN ONLY)
  */
-router.get('/admin/user/:userId', requireAdmin, async (req: Request, res: Response) => {
+router.get('/admin/user/:userId', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const { userId } = req.params;
     
@@ -372,7 +375,7 @@ router.get('/admin/user/:userId', requireAdmin, async (req: Request, res: Respon
 /**
  * POST /api/devices/admin/:id/revoke - Admin revoke device (ADMIN ONLY)
  */
-router.post('/admin/:id/revoke', requireAdmin, async (req: Request, res: Response) => {
+router.post('/admin/:id/revoke', requireSuperAdmin, async (req: Request, res: Response) => {
   try {
     const deviceId = req.params.id;
     const { reason = 'suspicious_activity' } = req.body;

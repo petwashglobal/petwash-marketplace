@@ -392,17 +392,40 @@ export function checkFranchiseeOwnership(franchiseeIdParam: string = 'id') {
 }
 
 /**
- * Simple admin-only middleware for routes that require admin access
- * Can be used without loadUserRole middleware for lightweight checks
+ * SUPER-ADMIN-ONLY gate.
+ *
+ * PR-AUTH-DEDUP-REQUIRE-ADMIN (2026-08-15): this used to be exported as
+ * `requireAdmin` — a misleading name because it does NOT accept the
+ * general admin roles that `adminAuth.ts::requireAdmin` accepts (staff /
+ * ops / finance / regional admin / etc.). It has always been a strict
+ * SUPER_ADMIN_EMAILS allowlist gate. Renamed to match the existing
+ * primitive naming convention in this file (`isSuperAdmin` /
+ * `isSuperAdminVerified`) so callers cannot conflate the two gates by
+ * accident. Behavior is unchanged — same 401 on missing firebaseUser,
+ * same 403 on non-super-admin, same next() on super-admin.
+ *
+ * When to use which:
+ *   requireSuperAdmin (this)  — CEO-tier ops only: audit-chain verify,
+ *                               fraud dashboards, forensic snapshots.
+ *   adminAuth.requireAdmin    — anything a regional/staff/ops admin
+ *                               should be able to do (customer support,
+ *                               provider ops, station control panels).
+ *
+ * SECURITY NOTE (PR-A P0-2, tracked): this uses the legacy `isSuperAdmin`
+ * primitive which does NOT check Firebase's email_verified flag. New
+ * gates should prefer `isSuperAdminVerified`. Migrating this middleware
+ * to `isSuperAdminVerified` is a deliberate auth-behavior change (locks
+ * out any super-admin whose email has not been verified) and is
+ * therefore left to a separate hardening ticket, not this rename.
  */
-export function requireAdmin(
+export function requireSuperAdmin(
   req: AuthenticatedRequest,
   res: Response,
   next: NextFunction
 ) {
   try {
     if (!req.firebaseUser?.email) {
-      return res.status(401).json({ 
+      return res.status(401).json({
         error: 'Authentication required',
         message: 'User email not found in session'
       });
@@ -417,13 +440,13 @@ export function requireAdmin(
 
     // For non-super-admins, we need to check the database
     // This provides a lightweight alternative to loadUserRole
-    logger.warn(`Admin access denied for ${userEmail}`);
-    return res.status(403).json({ 
+    logger.warn(`Super-admin access denied for ${userEmail}`);
+    return res.status(403).json({
       error: 'Admin access required',
       message: 'This operation requires administrator privileges'
     });
   } catch (error) {
-    logger.error('Error in requireAdmin middleware:', error);
+    logger.error('Error in requireSuperAdmin middleware:', error);
     res.status(500).json({ error: 'Failed to verify admin access' });
   }
 }
@@ -719,7 +742,7 @@ export default {
   k9000SupplierAccess,
   franchiseAccess,
   checkFranchiseeOwnership,
-  requireAdmin,
+  requireSuperAdmin,
   requireInternalAccount,
   requireCustomerAccount,
   requirePublicUser,

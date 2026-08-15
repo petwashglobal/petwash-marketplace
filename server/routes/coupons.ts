@@ -34,7 +34,7 @@ import { notificationPreferences } from '../../shared/schema-unified-platform';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import type { AuthenticatedRequest } from '../middleware/rbac';
-import { requireAdmin } from '../middleware/rbac';
+import { requireSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
 
@@ -176,7 +176,7 @@ router.post('/redeem', async (req: AuthenticatedRequest, res: Response) => {
 // cancellation-driven restores go through UnifiedPricingService.restoreRedemption
 // (server-side, after the order is actually cancelled), and admins have this route +
 // /api/admin/coupons/restore. The client never called this endpoint.
-router.post('/restore/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/restore/:id', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   const redemptionId = parseInt(req.params.id, 10);
   if (isNaN(redemptionId)) return res.status(400).json({ error: 'מזהה לא תקין' });
 

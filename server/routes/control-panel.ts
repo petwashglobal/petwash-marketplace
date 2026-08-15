@@ -19,13 +19,13 @@ import {
 import { eq, desc, gte, count, sql, and, lte } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { validateFirebaseToken } from "../middleware/firebase-auth";
-import { requireAdmin } from "../middleware/rbac";
+import { requireSuperAdmin } from "../middleware/rbac";
 
 const router = Router();
 
 // Super-admin only. validateFirebaseToken verifies the Firebase token;
-// requireAdmin gates on SUPER_ADMIN_EMAILS env var (no hardcoded emails).
-router.use(validateFirebaseToken, requireAdmin);
+// requireSuperAdmin gates on SUPER_ADMIN_EMAILS env var (no hardcoded emails).
+router.use(validateFirebaseToken, requireSuperAdmin);
 
 /**
  * GET /api/control-panel/metrics

@@ -35,7 +35,7 @@ import {
 } from '../../shared/schema-loyalty';
 import { users, loyaltyCampaigns } from '../../shared/schema';
 import type { AuthenticatedRequest } from '../middleware/rbac';
-import { requireAdmin } from '../middleware/rbac';
+import { requireSuperAdmin } from '../middleware/rbac';
 import { logAuditEvent } from '../middleware/auditLog';
 import { fulfillRedemption, cancelRedemptionWithRefund, redemptionEffectiveStatus } from '../services/rewardFulfillment';
 import { validateGift, giftNoteLine, buildGiftEmail, type GiftRequest } from '../services/giftAMoment';
@@ -398,7 +398,7 @@ router.get('/points/history', async (req: AuthenticatedRequest, res: Response) =
  * NOTE: This is an admin-only endpoint. Customer-facing point awards should happen through
  * other business logic (washes, challenges, etc.)
  */
-router.post('/points/add', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/points/add', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { userId, amount, source, sourceId, description } = req.body;
 
@@ -553,7 +553,7 @@ router.get('/badges/unlocked', async (req: AuthenticatedRequest, res: Response) 
  * Security: This endpoint can award points/XP, so it must be restricted to trusted actors.
  * Customers should earn badges automatically via backend business logic, not by calling this API.
  */
-router.post('/badges/unlock', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/badges/unlock', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     // Admin can award badges to any user
     const { userId, badgeId } = req.body;
@@ -807,7 +807,7 @@ const REWARD_TYPES = ['discount', 'free_wash', 'voucher', 'partner_product', 'vi
 const REWARD_CATEGORIES = ['wash', 'merchandise', 'partner', 'experience'];
 
 // GET /api/loyalty/admin/rewards — list ALL rewards (incl. inactive/expired).
-router.get('/admin/rewards', requireAdmin, async (_req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/rewards', requireSuperAdmin, async (_req: AuthenticatedRequest, res: Response) => {
   try {
     const all = await db.select().from(rewardsMarketplace).orderBy(rewardsMarketplace.displayOrder);
     res.json(all);
@@ -818,7 +818,7 @@ router.get('/admin/rewards', requireAdmin, async (_req: AuthenticatedRequest, re
 });
 
 // POST /api/loyalty/admin/rewards — create a reward.
-router.post('/admin/rewards', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/rewards', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const b = req.body || {};
     const code = String(b.code || '').trim();
@@ -863,7 +863,7 @@ router.post('/admin/rewards', requireAdmin, async (req: AuthenticatedRequest, re
 });
 
 // PATCH /api/loyalty/admin/rewards/:id — partial update.
-router.patch('/admin/rewards/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.patch('/admin/rewards/:id', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
@@ -891,7 +891,7 @@ router.patch('/admin/rewards/:id', requireAdmin, async (req: AuthenticatedReques
 });
 
 // DELETE /api/loyalty/admin/rewards/:id — soft-delete (deactivate).
-router.delete('/admin/rewards/:id', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.delete('/admin/rewards/:id', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
@@ -914,7 +914,7 @@ router.delete('/admin/rewards/:id', requireAdmin, async (req: AuthenticatedReque
 // or cancel it and refund the points. Every mutation is audit-logged.
 
 // GET /api/loyalty/admin/redemptions?status=pending — fulfillment queue.
-router.get('/admin/redemptions', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/redemptions', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const statusFilter = typeof req.query.status === 'string' ? req.query.status : undefined;
     const rows = await db
@@ -944,7 +944,7 @@ router.get('/admin/redemptions', requireAdmin, async (req: AuthenticatedRequest,
 });
 
 // GET /api/loyalty/admin/redemptions/lookup/:code — validate a presented voucher.
-router.get('/admin/redemptions/lookup/:code', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.get('/admin/redemptions/lookup/:code', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const code = String(req.params.code || '').trim();
     if (!code) return res.status(400).json({ error: 'Missing code' });
@@ -972,7 +972,7 @@ router.get('/admin/redemptions/lookup/:code', requireAdmin, async (req: Authenti
 });
 
 // POST /api/loyalty/admin/redemptions/:id/fulfill — pending → fulfilled.
-router.post('/admin/redemptions/:id/fulfill', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/redemptions/:id/fulfill', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
@@ -1009,7 +1009,7 @@ router.post('/admin/redemptions/:id/fulfill', requireAdmin, async (req: Authenti
 });
 
 // POST /api/loyalty/admin/redemptions/:id/cancel — pending → cancelled + points refund.
-router.post('/admin/redemptions/:id/cancel', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/admin/redemptions/:id/cancel', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id)) return res.status(400).json({ error: 'Invalid id' });
@@ -1454,7 +1454,7 @@ router.post('/ai-rewards-message', async (req: Request, res: Response) => {
  * Manually renew a Prestige membership for one year.
  * Admin use or triggered from a payment webhook.
  */
-router.post('/membership/renew', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/membership/renew', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { targetUserId } = req.body;
     if (!targetUserId) {
@@ -1558,7 +1558,7 @@ router.post('/membership/renew', requireAdmin, async (req: AuthenticatedRequest,
  * Cancel a Prestige membership. Benefits remain active until end of current period.
  * Admin use or triggered from a cancellation webhook.
  */
-router.post('/membership/cancel', requireAdmin, async (req: AuthenticatedRequest, res: Response) => {
+router.post('/membership/cancel', requireSuperAdmin, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { targetUserId, effectiveDateIso } = req.body;
     if (!targetUserId) {
