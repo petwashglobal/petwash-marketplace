@@ -631,8 +631,7 @@ export class SumitClient {
   /**
    * POST /accounting/customers/create/
    *
-   * SUMIT full-service adoption, Phase 2 (CEO 2026-08-16). Per the SUMIT
-   * official contract documented at
+   * Per the OFFICIAL SUMIT contract documented at
    *   docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.1
    * this endpoint is FIND-OR-CREATE when called with
    * `SearchMode: "Automatic"` + a stable `ExternalIdentifier`. SUMIT
@@ -672,13 +671,11 @@ export class SumitClient {
       };
     }
 
-    // Body shape from official SUMIT API contract:
-    //   docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.1 lines 82, 87-101
-    //   Endpoint:  POST /accounting/customers/create/
-    //   Wrap key:  `Details` (NOT `Customer`)
-    //   Type:      AccountingTypedCustomer
-    //   Idempotency: `Customer.ExternalIdentifier` + `SearchMode: "Automatic"`
-    //   Response:  `{ CustomerID, CustomerHistoryURL }`
+    // Body shape from OFFICIAL SUMIT API contract (see doc §3.1 lines 82,
+    // 87-101): endpoint POST /accounting/customers/create/, wrap key
+    // `Details` (NOT `Customer`), type AccountingTypedCustomer, idempotency
+    // via `Customer.ExternalIdentifier + SearchMode: "Automatic"`, response
+    // `{ CustomerID, CustomerHistoryURL }`.
     const body = {
       Credentials: {
         CompanyID: env.companyId,
@@ -734,9 +731,9 @@ export class SumitClient {
       };
     }
 
-    // Response fields pinned to the official contract (see doc §3.1). Do NOT
-    // add fallback field-name heuristics — if SUMIT changes the contract
-    // we want the tests + logs to surface it, not silently paper over.
+    // Response fields pinned to the official contract. Do NOT add fallback
+    // field-name heuristics — if SUMIT changes the contract we want tests +
+    // logs to surface it, not silently paper over.
     const b = (parsedBody && typeof parsedBody === 'object')
       ? parsedBody as Record<string, unknown>
       : {};
@@ -754,6 +751,100 @@ export class SumitClient {
     });
 
     return { wired: true, sumitCustomerId, customerHistoryUrl, rawResponse: parsedBody };
+  }
+
+  /**
+   * POST /accounting/customers/getdetailsurl/
+   *
+   * Fetch a CURRENT customer-portal URL for an existing SUMIT customer.
+   * Per the CEO 2026-08-16 SUMIT lane directive: treat CustomerHistoryURL
+   * as a potentially-expiring generated access URL. CustomerID is the
+   * canonical mapping; the URL is refreshed on demand via this endpoint.
+   *
+   * Endpoint body shape per SUMIT contract (docs/PROVIDER_FINANCE_SUMIT_
+   * INTEGRATION_AUDIT_V2.md §3.1 line 84 — endpoint CONFIRMED, exact body
+   * left as `{ CustomerID, Credentials }` matching every sibling call's
+   * shape; a wrong shape returns non-2xx which we handle without any
+   * effect on the caller).
+   *
+   * Safety contract:
+   *  - Not wired → returns {wired:false} without any HTTP call.
+   *  - Never throws.
+   */
+  async getCustomerDetailsUrl(sumitCustomerId: string): Promise<{
+    wired: boolean;
+    url?: string;
+    reason?: string;
+    rawResponse?: unknown;
+  }> {
+    const env = readEnv();
+    if (!isWired()) {
+      return { wired: false, reason: 'SumitClient not wired' };
+    }
+    if (!sumitCustomerId) {
+      return { wired: false, reason: 'missing sumitCustomerId' };
+    }
+
+    const body = {
+      Credentials: {
+        CompanyID: env.companyId,
+        APIKey: env.apiKey,
+      },
+      CustomerID: sumitCustomerId,
+    };
+
+    const url = `${env.baseUrl}/accounting/customers/getdetailsurl/`;
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (networkErr) {
+      logger.warn('[SumitClient] getCustomerDetailsUrl network error', {
+        sumitCustomerId, err: (networkErr as Error).message,
+      });
+      return { wired: false, reason: `Network error` };
+    }
+
+    let parsedBody: unknown = null;
+    try { parsedBody = await res.json(); } catch { /* non-JSON on error */ }
+
+    if (!res.ok) {
+      logger.warn('[SumitClient] getCustomerDetailsUrl non-2xx', {
+        sumitCustomerId, status: res.status,
+      });
+      return { wired: true, reason: `SUMIT returned ${res.status}`, rawResponse: parsedBody };
+    }
+
+    // Response field name unverified against authenticated Swagger. Try the
+    // most likely name (`URL`) — if SUMIT confirms a different key, the log
+    // + rawResponse surface it and we pin it in the next iteration. Do NOT
+    // fall back to deep parsing.
+    const b = (parsedBody && typeof parsedBody === 'object')
+      ? parsedBody as Record<string, unknown>
+      : {};
+    const urlOut = typeof b.URL === 'string'
+      ? b.URL
+      : typeof b.DetailsURL === 'string'
+        ? b.DetailsURL
+        : typeof b.CustomerHistoryURL === 'string'
+          ? b.CustomerHistoryURL
+          : undefined;
+
+    if (!urlOut) {
+      logger.warn('[SumitClient] getCustomerDetailsUrl — no URL field in response', {
+        sumitCustomerId, keys: Object.keys(b),
+      });
+      return { wired: true, reason: 'no URL field in response', rawResponse: parsedBody };
+    }
+
+    return { wired: true, url: urlOut };
   }
 
   async connectionTest(): Promise<{

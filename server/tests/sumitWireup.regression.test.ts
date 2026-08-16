@@ -78,8 +78,6 @@ describe('SUMIT wire-up — backfill safety', () => {
 
   it('defaults commit to false (DRY RUN)', () => {
     expect(SCRIPT).toContain('commit: false');
-    // Must NOT default to commit:true; the CEO's explicit instruction
-    // is "First DRY RUN".
     expect(SCRIPT).not.toContain('commit: true,');
   });
 
@@ -88,9 +86,79 @@ describe('SUMIT wire-up — backfill safety', () => {
   });
 
   it('uses the syncForUser service (which uses SearchMode:"Automatic" server-side)', () => {
-    // Backfill MUST reuse the same service the runtime path uses.
-    // That service passes SearchMode:"Automatic" — dedup on SUMIT side.
     expect(SCRIPT).toContain("syncForUser");
     expect(SCRIPT).toContain("'backfill'");
+  });
+
+  it('never prints raw uid / name / email / phone (CEO 2026-08-16 PII rule)', () => {
+    // MUST use the mask helpers, NOT interpolate raw values into logs.
+    expect(SCRIPT).toContain('maskUid');
+    expect(SCRIPT).toContain('maskName');
+    expect(SCRIPT).toContain('maskEmail');
+    expect(SCRIPT).toContain('maskPhone');
+    // No template that dumps the raw uid, email, or phone verbatim.
+    expect(SCRIPT).not.toMatch(/\$\{u\.email\s*\?\?\s*['"]/);
+    expect(SCRIPT).not.toMatch(/\$\{u\.phone\s*\?\?\s*['"]/);
+    expect(SCRIPT).not.toMatch(/name="\$\{displayName\}"/);
+    expect(SCRIPT).not.toMatch(/uid=\$\{u\.id\}/);
+  });
+});
+
+describe('PII mask helpers', () => {
+  it('maskUid / maskName / maskEmail / maskPhone exist and never return the raw value', async () => {
+    const { maskUid, maskName, maskEmail, maskPhone } = await import('../lib/piiMask');
+    const uid = 'abcdef123456xyz';
+    const name = 'Alice Middle Cohen';
+    const email = 'alice.cohen@petwash.co.il';
+    const phone = '+972501234567';
+    const maskedUid = maskUid(uid);
+    const maskedName = maskName(name);
+    const maskedEmail = maskEmail(email);
+    const maskedPhone = maskPhone(phone);
+    expect(maskedUid).not.toBe(uid);
+    expect(maskedUid).not.toContain('bcdef');
+    expect(maskedName).not.toContain('Cohen');
+    expect(maskedEmail).not.toContain('alice');
+    expect(maskedEmail).not.toContain('petwash');
+    expect(maskedPhone).not.toContain('50123');
+  });
+});
+
+describe('SUMIT wire-up — CustomerHistoryURL is refreshed via getdetailsurl', () => {
+  const SVC = readSrc('../services/SumitCustomerService.ts');
+  const CLIENT = readSrc('../services/SumitClient.ts');
+
+  it('SumitClient exposes getCustomerDetailsUrl', () => {
+    expect(CLIENT).toContain('async getCustomerDetailsUrl(');
+    expect(CLIENT).toContain('/accounting/customers/getdetailsurl/');
+  });
+
+  it('getCustomerHistoryUrl refreshes via getCustomerDetailsUrl (CustomerID is canonical)', () => {
+    const start = SVC.indexOf('export async function getCustomerHistoryUrl');
+    expect(start).toBeGreaterThan(-1);
+    const block = SVC.slice(start, start + 3000);
+    expect(block).toContain('client.getCustomerDetailsUrl');
+    // Falls back to cache when the refresh call fails (SUMIT down, etc.).
+    expect(block).toContain('cachedUrl');
+  });
+
+  it('getSumitCustomerId helper exists (canonical mapping identity)', () => {
+    expect(SVC).toContain('export async function getSumitCustomerId');
+  });
+});
+
+describe('SUMIT wire-up — MyInvoicesLink is mounted in the real Account UI', () => {
+  const MYACC = readSrc('../../client/src/pages/MyAccount.tsx');
+
+  it('imports MyInvoicesLink', () => {
+    expect(MYACC).toContain("import MyInvoicesLink from '@/components/account/MyInvoicesLink'");
+  });
+
+  it('renders MyInvoicesLink inside the documents tab', () => {
+    const docsIdx = MYACC.indexOf('<TabsContent value="documents"');
+    const nextTabIdx = MYACC.indexOf('<TabsContent value=', docsIdx + 1);
+    expect(docsIdx).toBeGreaterThan(-1);
+    const block = MYACC.slice(docsIdx, nextTabIdx > 0 ? nextTabIdx : docsIdx + 20000);
+    expect(block).toContain('<MyInvoicesLink');
   });
 });

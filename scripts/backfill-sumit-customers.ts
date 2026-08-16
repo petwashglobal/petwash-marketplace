@@ -23,18 +23,21 @@ import { users, sumitCustomers } from '../shared/schema';
 import { eq, isNotNull, notInArray, sql } from 'drizzle-orm';
 import { logger } from '../server/lib/logger';
 import { syncForUser } from '../server/services/SumitCustomerService';
+import { maskUid, maskName, maskEmail, maskPhone } from '../server/lib/piiMask';
 
 interface Args {
   commit: boolean;
   limit: number;
   uid?: string;
   delayMs: number;
+  verbose: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { commit: false, limit: 500, delayMs: 250 };
+  const args: Args = { commit: false, limit: 500, delayMs: 250, verbose: false };
   for (const a of argv.slice(2)) {
     if (a === '--commit') args.commit = true;
+    else if (a === '--verbose') args.verbose = true;      // per-row output (still masked)
     else if (a.startsWith('--limit=')) args.limit = Math.max(1, parseInt(a.split('=')[1] || '500', 10));
     else if (a.startsWith('--uid=')) args.uid = a.split('=')[1];
     else if (a.startsWith('--delay=')) args.delayMs = Math.max(0, parseInt(a.split('=')[1] || '250', 10));
@@ -91,8 +94,16 @@ async function main() {
 
   for (const u of targets) {
     const displayName = [u.firstName, u.lastName].filter(Boolean).join(' ').trim() || 'PetWash Member';
+    // PII MASKING (CEO 2026-08-16 SUMIT lane): never dump full uid/name/
+    // email/phone into routine Cloud Run logs. --verbose still masks — it
+    // just shows per-row lines vs. summary-only.
+    const safeUid = maskUid(u.id);
     if (!args.commit) {
-      console.log(`  [DRY] would sync uid=${u.id}  name="${displayName}"  email=${u.email ?? '—'}  phone=${u.phone ?? '—'}`);
+      if (args.verbose) {
+        console.log(
+          `  [DRY] uid=${safeUid} name=${maskName(displayName)} email=${maskEmail(u.email)} phone=${maskPhone(u.phone)}`,
+        );
+      }
       continue;
     }
     try {
@@ -103,28 +114,29 @@ async function main() {
       );
       switch (res.status) {
         case 'created':
-          console.log(`  ✅ created  uid=${u.id}  → SUMIT CustomerID=${res.sumitCustomerId}${res.customerHistoryUrl ? '  (portal URL)' : ''}`);
+          if (args.verbose) console.log(`  ✅ created  uid=${safeUid}`);
           ok++;
           break;
         case 'existing':
-          console.log(`  ↺ existing  uid=${u.id}  → SUMIT CustomerID=${res.sumitCustomerId}`);
+          if (args.verbose) console.log(`  ↺ existing  uid=${safeUid}`);
           existing++;
           break;
         case 'not_wired':
-          console.log(`  ⏸ not_wired uid=${u.id}  (SUMIT_ENABLED off or creds missing)`);
+          if (args.verbose) console.log(`  ⏸ not_wired uid=${safeUid}  (SUMIT_ENABLED off or creds missing)`);
           notWired++;
           break;
         case 'flag_off':
-          console.log(`  ⏸ flag_off  uid=${u.id}  (SUMIT_CUSTOMER_SYNC_ENABLED not set to 'true')`);
+          if (args.verbose) console.log(`  ⏸ flag_off  uid=${safeUid}  (SUMIT_CUSTOMER_SYNC_ENABLED not 'true')`);
           flagOff++;
           break;
         case 'error':
-          console.log(`  ❌ error     uid=${u.id}  reason=${res.reason}`);
+          // Always print errors (masked) — they're the actionable rows.
+          console.log(`  ❌ error     uid=${safeUid}  reason=${res.reason}`);
           errored++;
           break;
       }
     } catch (err: any) {
-      console.log(`  ❌ threw     uid=${u.id}  err=${err?.message}`);
+      console.log(`  ❌ threw     uid=${safeUid}  err=${err?.message}`);
       errored++;
     }
     if (args.delayMs > 0) await new Promise((r) => setTimeout(r, args.delayMs));

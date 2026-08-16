@@ -10,6 +10,7 @@ import { useToast } from '@/hooks/use-toast';
 import { FaApple } from 'react-icons/fa';
 import { Layout } from '@/components/Layout';
 import { ExperienceSwitcher } from '@/components/ExperienceSwitcher';
+import MyInvoicesLink from '@/components/account/MyInvoicesLink';
 import { useWhoami } from '@/auth/useWhoami';
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { PetWashIcon } from '@/components/PetWashIcon';
@@ -4595,6 +4596,13 @@ export default function MyAccount() {
 
             {/* ── DOCUMENTS TAB ── */}
             <TabsContent value="documents" className="mt-6 space-y-5">
+
+              {/* ── SUMIT customer portal deep-link (CEO 2026-08-16 SUMIT lane).
+                  Server-resolved: the URL is fetched from
+                  GET /api/me/invoices/portal-url which reads the authenticated
+                  uid from the session, never from the browser. Silent when the
+                  SUMIT customer hasn't been synced yet — no error surface. ── */}
+              <MyInvoicesLink language={isHebrew ? 'he' : 'en'} />
 
               {/* ── Tax Invoices (חשבוניות מס) ── */}
               <div className="pw-section-card">
