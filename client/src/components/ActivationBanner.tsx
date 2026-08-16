@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { AlertTriangle, ArrowRight } from "lucide-react";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
+import { apiRequest } from "@/lib/queryClient";
 
 interface ActivationState {
   activationStatus: string;
@@ -16,11 +17,11 @@ export function ActivationBanner() {
   const { data: activation } = useQuery<ActivationState>({
     queryKey: ["/api/onboarding-verification/activation-status", user?.uid],
     queryFn: async () => {
-      if (!user?.uid) throw new Error("Not authenticated");
-      const res = await fetch(
-        `/api/onboarding-verification/activation-status?userId=${user.uid}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch");
+      // Server derives the uid from the Bearer / pw_session cookie via
+      // apiRequest — the old `?userId=<uid>` variant let any caller read any
+      // user's activation state (enumeration). uid is kept in the queryKey
+      // ONLY so the cache invalidates on account switch, never sent on the wire.
+      const res = await apiRequest("GET", "/api/onboarding-verification/activation-status");
       return res.json();
     },
     enabled: !!user?.uid,
@@ -34,12 +35,16 @@ export function ActivationBanner() {
   const missingCount = activation.missingSteps?.length ?? 0;
   if (missingCount === 0) return null;
 
+  const missingMobile = activation.missingSteps.includes("mobile");
+  const missingEmail = activation.missingSteps.includes("email");
   const label =
     missingCount === 2
       ? "Verify your mobile and email to activate your account"
-      : activation.missingSteps.includes("mobile")
+      : missingMobile
       ? "Verify your mobile number to complete activation"
-      : "Activate your email to complete activation";
+      : missingEmail
+      ? "Verify your email to complete activation"
+      : "Complete your account activation";
 
   return (
     <div className="w-full bg-[#1a1a1a] text-white px-4 py-2.5 flex items-center justify-between text-xs font-light tracking-wide">

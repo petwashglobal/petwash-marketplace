@@ -110,14 +110,13 @@ export default function AccountActivation() {
   const userId = user?.uid;
 
   // ── Fetch activation state ──────────────────────────────────────────────
+  // uid is scoped in the queryKey only for cache-invalidation-on-account-switch;
+  // the wire request is auth-derived (Bearer / pw_session cookie via apiRequest).
+  // The previous `?userId=<uid>` variant let any caller read any user's state.
   const { data: activation, isLoading } = useQuery<ActivationState>({
     queryKey: ["/api/onboarding-verification/activation-status", userId],
     queryFn: async () => {
-      if (!userId) throw new Error("Not authenticated");
-      const res = await fetch(
-        `/api/onboarding-verification/activation-status?userId=${userId}`
-      );
-      if (!res.ok) throw new Error("Failed to fetch status");
+      const res = await apiRequest("GET", "/api/onboarding-verification/activation-status");
       return res.json();
     },
     enabled: !!userId,
@@ -136,19 +135,14 @@ export default function AccountActivation() {
   }, [activation?.isFullyActive, setLocation, toast]);
 
   // ── Compute step statuses ───────────────────────────────────────────────
+  // Mobile and email are INDEPENDENT — either can be verified first. The
+  // page reads back missingSteps from the server on every render so a fresh
+  // load, cross-device continuation, or resume-after-close all pick up at
+  // exactly the right pair of remaining steps. There is no client-side
+  // ordering: whichever the user completes first, the other stays available.
   const mobileComplete = !!activation?.mobileVerifiedAt;
   const emailComplete = !!activation?.emailVerifiedAt;
   const allComplete = activation?.isFullyActive ?? false;
-
-  const currentStep = allComplete
-    ? 4
-    : mobileComplete && !emailComplete
-    ? 3
-    : !mobileComplete && emailComplete
-    ? 2
-    : !mobileComplete
-    ? 2
-    : 4;
 
   // ── Send OTP ────────────────────────────────────────────────────────────
   const sendOtpMutation = useMutation({
@@ -278,11 +272,16 @@ export default function AccountActivation() {
           <div className="w-12 h-0.5 bg-[#1a1a1a] mb-6" />
           <p className="text-sm text-[#666] leading-relaxed font-light">
             Your wallet, rewards, and Prestige membership activate once
-            both steps below are complete.
+            both your mobile and email are verified. You can complete them
+            in either order.
           </p>
         </div>
 
-        {/* Step progress */}
+        {/* Step progress — mobile + email in PARALLEL. Both are "active" while
+            pending, so neither reads as gated on the other. Order in the tree
+            is fixed for visual stability, but the buttons below let the user
+            complete them in whichever order suits them (or the order they
+            resumed from). */}
         <div className="my-10 bg-white border border-[#f0f0f0] rounded-sm p-6">
           <StepItem
             number={1}
@@ -295,11 +294,11 @@ export default function AccountActivation() {
             label="Verify mobile number"
             status={mobileComplete ? "complete" : "active"}
           />
-          <StepConnector complete={mobileComplete} />
+          <StepConnector complete={mobileComplete && emailComplete} />
           <StepItem
             number={3}
-            label="Activate email"
-            status={emailComplete ? "complete" : mobileComplete ? "active" : "pending"}
+            label="Verify email"
+            status={emailComplete ? "complete" : "active"}
           />
           <StepConnector complete={allComplete} />
           <StepItem
@@ -309,11 +308,12 @@ export default function AccountActivation() {
           />
         </div>
 
-        {/* STEP 2 — Mobile verification */}
+        {/* Mobile verification — always available while pending, regardless
+            of email state (order-independent). */}
         {!mobileComplete && (
-          <div className="mb-8 border border-[#e8e8e8] rounded-sm p-6">
+          <div className="mb-8 border border-[#e8e8e8] rounded-sm p-6" data-testid="section-verify-mobile">
             <p className="text-xs tracking-[2px] uppercase text-[#0a0a0a] font-semibold mb-3">
-              Step 2 — Verify mobile
+              Verify mobile
             </p>
             <p className="text-sm text-[#555] font-light mb-4 leading-relaxed">
               We will send a 6-digit code to{" "}
@@ -373,11 +373,15 @@ export default function AccountActivation() {
           </div>
         )}
 
-        {/* STEP 3 — Email activation */}
+        {/* Email verification — order-independent. Previously gated on
+            mobileComplete, which forced a rigid mobile-first flow and
+            stranded users whose email arrived first (e.g. Google/Apple
+            signup already provided a verified email, or the SMS provider
+            had a transient outage). */}
         {!emailComplete && (
-          <div className={`mb-8 border rounded-sm p-6 ${mobileComplete ? "border-[#e8e8e8]" : "border-[#f0f0f0] opacity-60"}`}>
+          <div className="mb-8 border border-[#e8e8e8] rounded-sm p-6" data-testid="section-verify-email">
             <p className="text-xs tracking-[2px] uppercase text-[#0a0a0a] font-semibold mb-3">
-              Step 3 — Activate email
+              Verify email
             </p>
             <p className="text-sm text-[#555] font-light mb-4 leading-relaxed">
               A premium activation email will be sent to{" "}
@@ -395,7 +399,7 @@ export default function AccountActivation() {
             ) : (
               <Button
                 onClick={() => { setEmailCooldown(90); sendEmailMutation.mutate(); }}
-                disabled={sendEmailMutation.isPending || !mobileComplete || emailCooldown > 0}
+                disabled={sendEmailMutation.isPending || emailCooldown > 0}
                 data-testid="button-send-activation-email"
                 className="w-full bg-[#1a1a1a] hover:bg-[#333] text-white text-xs tracking-[2px] uppercase rounded-sm h-11 disabled:bg-[#ddd] disabled:text-[#aaa]"
               >
@@ -411,9 +415,14 @@ export default function AccountActivation() {
           </div>
         )}
 
-        {/* Missing step banners */}
+        {/* Resume banners — derived from server-side activation state, so a
+            page reload / device switch / cross-tab return picks up at the
+            correct remaining step without any client-side session storage.
+            missingSteps drives both branches; the pair is intentionally
+            exclusive (both-missing shows neither banner — the section cards
+            above cover that case). */}
         {mobileComplete && !emailComplete && (
-          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-sm mb-6">
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-sm mb-6" data-testid="banner-resume-email">
             <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-amber-700 leading-relaxed font-light">
               Mobile verified. Please activate your email to complete your account.
@@ -422,7 +431,7 @@ export default function AccountActivation() {
         )}
 
         {!mobileComplete && emailComplete && (
-          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-sm mb-6">
+          <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-100 rounded-sm mb-6" data-testid="banner-resume-mobile">
             <AlertCircle className="w-4 h-4 text-amber-500 mt-0.5 flex-shrink-0" />
             <p className="text-xs text-amber-700 leading-relaxed font-light">
               Email activated. Please verify your mobile to complete your account.
