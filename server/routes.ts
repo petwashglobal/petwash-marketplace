@@ -10103,12 +10103,22 @@ self.addEventListener('notificationclick', (event) => {
       const customerId = req.params.id;
       const updates = req.body;
 
-      // SECURITY FIX: Create strict allowlist of updatable fields
+      // Strict allowlist of updatable fields.
+      // PR-DANGER-3: `loyaltyTier`, `totalSpent`, `washBalance` REMOVED from
+      // the allowlist. Those three are money-side balances / tier levels
+      // that determine what discounts, wash credits, and payouts the
+      // customer receives. A direct admin PATCH bypasses the audited
+      // wallet-adjustment path (which records who, when, why, and produces
+      // a matching ledger row), so a compromised admin token could grant
+      // any customer any tier / any wash-credit balance / any spend total
+      // (which cascades into loyalty-tier auto-upgrade logic). Balance
+      // and tier changes MUST go through /api/admin/wallet-adjust with
+      // its ledger insert + auditLog entry — never a generic PATCH.
       const allowedFields = [
-        'firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'country', 
-        'gender', 'petType', 'profilePictureUrl', 'loyaltyProgram', 'reminders', 
-        'marketing', 'termsAccepted', 'isVerified', 'loyaltyTier', 'totalSpent', 
-        'washBalance', 'lastLogin', 'authProvider', 'authProviderId'
+        'firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'country',
+        'gender', 'petType', 'profilePictureUrl', 'loyaltyProgram', 'reminders',
+        'marketing', 'termsAccepted', 'isVerified',
+        'lastLogin', 'authProvider', 'authProviderId'
       ];
       
       // Filter updates to only include allowed fields
