@@ -120,8 +120,11 @@ export async function loadUserRole(
 
     const userEmail = req.firebaseUser.email.toLowerCase();
 
-    // Super admins have unrestricted access
-    if (isSuperAdmin(userEmail)) {
+    // Super admins have unrestricted access — but ONLY if Firebase has
+    // verified the email (audit item 199, 2026-08-16). Previously the
+    // string match alone was enough, so an unverified account whose email
+    // matched SUPER_ADMIN_EMAILS could clear this gate.
+    if (isSuperAdmin(userEmail) && req.firebaseUser.email_verified === true) {
       req.userRole = {
         role: {
           id: 0,
