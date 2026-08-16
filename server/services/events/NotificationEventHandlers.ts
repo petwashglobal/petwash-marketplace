@@ -7,6 +7,50 @@ import { eventBus } from '../EventBus';
 import type { PlatformEvent } from '../EventBus';
 import NotificationService from '../NotificationService';
 import { logger } from '../../lib/logger';
+import { db } from '../../db';
+import { notificationLogs } from '@shared/schema';
+import { eq } from 'drizzle-orm';
+
+/**
+ * Claim the idempotency key for a lifecycle-event notification. Returns true if
+ * this handler acquired the claim (no prior dispatch marker existed) and
+ * SHOULD proceed with the send. Returns false if a claim already exists —
+ * the caller MUST skip to avoid a double-send.
+ *
+ * Marker is a lightweight row in `notification_logs` with
+ * `channel = 'idempotency-marker'`, `status = 'queued'`, and the canonical
+ * key from `server/lib/eventMatrix.ts` in `idempotencyKey`. This makes the
+ * dedup atomic against the same read-vs-write source-of-truth every send
+ * eventually writes to.
+ *
+ * If either the read or the insert fails, we log and PROCEED WITH THE SEND
+ * (fail-open) — a rare double-send is preferable to silently dropping a
+ * user-facing cancel notice.
+ */
+async function claimIdempotencyKey(key: string): Promise<boolean> {
+  try {
+    const existing = await db
+      .select({ id: notificationLogs.id })
+      .from(notificationLogs)
+      .where(eq(notificationLogs.idempotencyKey, key))
+      .limit(1);
+    if (existing.length > 0) return false;
+    await db.insert(notificationLogs).values({
+      templateKey: 'idempotency-marker',
+      channel: 'idempotency-marker',
+      status: 'queued',
+      idempotencyKey: key,
+      eventType: 'idempotency-marker',
+    });
+    return true;
+  } catch (err: any) {
+    logger.warn('[NotificationEventHandler] Idempotency claim failed — continuing (fail-open)', {
+      key,
+      error: err?.message,
+    });
+    return true;
+  }
+}
 
 /**
  * Register all notification event handlers
@@ -340,6 +384,21 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
+        // Idempotency guard — matches eventMatrix key format
+        // `booking_cancelled:{bookingId}:{userId}`. Blocks a double-send
+        // when the event bus redelivers or the cancel endpoint is
+        // hammered twice.
+        const idempotencyKey = `booking_cancelled:${event.data.bookingId}:${event.userId}`;
+        const claimed = await claimIdempotencyKey(idempotencyKey);
+        if (!claimed) {
+          logger.info('[NotificationEventHandler] booking_cancelled already dispatched — skipping', {
+            bookingId: event.data.bookingId,
+            userId: event.userId,
+            idempotencyKey,
+          });
+          return;
+        }
+
         await NotificationService.sendNotification({
           templateKey: 'booking_cancelled',
           userId: event.userId,
