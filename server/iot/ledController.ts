@@ -539,7 +539,12 @@ export function createLedRouter(deps: LedRouterDeps): Router {
 
       res.json(status);
     } catch (err: any) {
-      logger.error('POST /stations/:stationId/led/manual error', { error: err, params: req.params, body: req.body });
+      logger.error('POST /stations/:stationId/led/manual error', {
+        error: err?.message,
+        stationId: req.params?.stationId,
+        stateProvided: !!req.body?.state,
+        hasOverride: typeof req.body?.overrideMinutes === 'number',
+      });
       res.status(500).json({ error: 'Internal server error' });
     }
   });

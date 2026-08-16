@@ -210,7 +210,7 @@ router.post('/conversations', async (req: Request, res: Response) => {
       .doc(conversationId)
       .set(conversationData);
 
-    logger.info(`[Messaging] Conversation created: ${conversationId} by ${employeeProfile.fullName}`);
+    logger.info('[Messaging] Conversation created', { conversationId, byEmployeeUid: employeeProfile.uid });
 
     res.json({ ...conversationData, id: conversationId });
   } catch (error) {
@@ -425,7 +425,7 @@ router.post('/conversations/:id/messages', upload.array('attachments', 10), asyn
       unreadCount,
     });
 
-    logger.info(`[Messaging] Message sent in conversation ${conversationId} by ${employeeProfile.fullName}`);
+    logger.info('[Messaging] Message sent', { conversationId, byEmployeeUid: employeeProfile.uid });
 
     // Broadcast message via WebSocket to online participants
     try {
