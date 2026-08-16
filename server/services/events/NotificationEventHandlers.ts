@@ -7,50 +7,7 @@ import { eventBus } from '../EventBus';
 import type { PlatformEvent } from '../EventBus';
 import NotificationService from '../NotificationService';
 import { logger } from '../../lib/logger';
-import { db } from '../../db';
-import { notificationLogs } from '@shared/schema';
-import { eq } from 'drizzle-orm';
-
-/**
- * Claim the idempotency key for a lifecycle-event notification. Returns true if
- * this handler acquired the claim (no prior dispatch marker existed) and
- * SHOULD proceed with the send. Returns false if a claim already exists —
- * the caller MUST skip to avoid a double-send.
- *
- * Marker is a lightweight row in `notification_logs` with
- * `channel = 'idempotency-marker'`, `status = 'queued'`, and the canonical
- * key from `server/lib/eventMatrix.ts` in `idempotencyKey`. This makes the
- * dedup atomic against the same read-vs-write source-of-truth every send
- * eventually writes to.
- *
- * If either the read or the insert fails, we log and PROCEED WITH THE SEND
- * (fail-open) — a rare double-send is preferable to silently dropping a
- * user-facing cancel notice.
- */
-async function claimIdempotencyKey(key: string): Promise<boolean> {
-  try {
-    const existing = await db
-      .select({ id: notificationLogs.id })
-      .from(notificationLogs)
-      .where(eq(notificationLogs.idempotencyKey, key))
-      .limit(1);
-    if (existing.length > 0) return false;
-    await db.insert(notificationLogs).values({
-      templateKey: 'idempotency-marker',
-      channel: 'idempotency-marker',
-      status: 'queued',
-      idempotencyKey: key,
-      eventType: 'idempotency-marker',
-    });
-    return true;
-  } catch (err: any) {
-    logger.warn('[NotificationEventHandler] Idempotency claim failed — continuing (fail-open)', {
-      key,
-      error: err?.message,
-    });
-    return true;
-  }
-}
+import { dispatchOnce } from '../../lib/eventNotificationIdempotency';
 
 /**
  * Register all notification event handlers
@@ -312,38 +269,43 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
-        // Idempotency guard — key format from server/lib/eventMatrix.ts
-        // `booking_receipt:{bookingId}:{userId}` (the confirmed event
-        // co-fires the booking-receipt document).
-        const idempotencyKey = `booking_confirmed:${event.data.bookingId}:${event.userId}`;
-        const claimed = await claimIdempotencyKey(idempotencyKey);
-        if (!claimed) {
-          logger.info('[NotificationEventHandler] booking_confirmed already dispatched — skipping', {
+        // Canonical event-notification idempotency: atomic claim, retry
+        // on failure, permanent skip on success. See
+        // server/lib/eventNotificationIdempotency.ts.
+        const key = `notif:booking_confirmed:${event.data.bookingId}:${event.userId}`;
+        const result = await dispatchOnce(key, async () => {
+          return NotificationService.sendNotification({
+            templateKey: 'booking_confirmed',
+            userId: event.userId,
+            channelsOverride: ['email', 'push', 'in_app'],
+            variables: {
+              booking: {
+                id: event.data.bookingId,
+                serviceType: event.data.serviceType,
+                date: event.data.date,
+                time: event.data.time,
+                location: event.data.location,
+                providerName: event.data.providerName,
+              },
+              customer: {
+                name: event.data.customerName,
+              },
+              timestamp: new Date().toLocaleString('he-IL'),
+            },
+          });
+        });
+        if (!result.dispatched) {
+          logger.info('[NotificationEventHandler] booking_confirmed skipped by idempotency', {
             bookingId: event.data.bookingId,
             userId: event.userId,
-            idempotencyKey,
+            outcome: result.outcome,
           });
-          return;
+        } else if (result.sendOk === false) {
+          logger.warn('[NotificationEventHandler] booking_confirmed send failed — claim released for retry', {
+            bookingId: event.data.bookingId,
+            userId: event.userId,
+          });
         }
-        await NotificationService.sendNotification({
-          templateKey: 'booking_confirmed',
-          userId: event.userId,
-          channelsOverride: ['email', 'push', 'in_app'],
-          variables: {
-            booking: {
-              id: event.data.bookingId,
-              serviceType: event.data.serviceType,
-              date: event.data.date,
-              time: event.data.time,
-              location: event.data.location,
-              providerName: event.data.providerName,
-            },
-            customer: {
-              name: event.data.customerName,
-            },
-            timestamp: new Date().toLocaleString('he-IL'),
-          },
-        });
       }
     } catch (error: any) {
       logger.error('[NotificationEventHandler] Failed to send booking confirmation notification', {
@@ -362,38 +324,40 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
-        // Idempotency guard — same shape as booking_confirmed /
-        // booking_cancelled. Blocks a second completion notice when the
-        // event bus redelivers or the /complete endpoint is hammered.
-        const idempotencyKey = `booking_completed:${event.data.bookingId}:${event.userId}`;
-        const claimed = await claimIdempotencyKey(idempotencyKey);
-        if (!claimed) {
-          logger.info('[NotificationEventHandler] booking_completed already dispatched — skipping', {
+        const key = `notif:booking_completed:${event.data.bookingId}:${event.userId}`;
+        const result = await dispatchOnce(key, async () => {
+          return NotificationService.sendNotification({
+            templateKey: 'booking_completed',
+            userId: event.userId,
+            channelsOverride: ['email', 'push', 'in_app'],
+            variables: {
+              booking: {
+                id: event.data.bookingId,
+                serviceType: event.data.serviceType,
+                providerName: event.data.providerName,
+                amount: event.data.amount,
+                currency: 'ILS',
+              },
+              customer: {
+                name: event.data.customerName,
+              },
+              reviewUrl: `https://petwash.co.il/review/${event.data.bookingId}`,
+              timestamp: new Date().toLocaleString('he-IL'),
+            },
+          });
+        });
+        if (!result.dispatched) {
+          logger.info('[NotificationEventHandler] booking_completed skipped by idempotency', {
             bookingId: event.data.bookingId,
             userId: event.userId,
-            idempotencyKey,
+            outcome: result.outcome,
           });
-          return;
+        } else if (result.sendOk === false) {
+          logger.warn('[NotificationEventHandler] booking_completed send failed — claim released for retry', {
+            bookingId: event.data.bookingId,
+            userId: event.userId,
+          });
         }
-        await NotificationService.sendNotification({
-          templateKey: 'booking_completed',
-          userId: event.userId,
-          channelsOverride: ['email', 'push', 'in_app'],
-          variables: {
-            booking: {
-              id: event.data.bookingId,
-              serviceType: event.data.serviceType,
-              providerName: event.data.providerName,
-              amount: event.data.amount,
-              currency: 'ILS',
-            },
-            customer: {
-              name: event.data.customerName,
-            },
-            reviewUrl: `https://petwash.co.il/review/${event.data.bookingId}`,
-            timestamp: new Date().toLocaleString('he-IL'),
-          },
-        });
       }
     } catch (error: any) {
       logger.error('[NotificationEventHandler] Failed to send booking completion notification', {
@@ -410,40 +374,40 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
-        // Idempotency guard — matches eventMatrix key format
-        // `booking_cancelled:{bookingId}:{userId}`. Blocks a double-send
-        // when the event bus redelivers or the cancel endpoint is
-        // hammered twice.
-        const idempotencyKey = `booking_cancelled:${event.data.bookingId}:${event.userId}`;
-        const claimed = await claimIdempotencyKey(idempotencyKey);
-        if (!claimed) {
-          logger.info('[NotificationEventHandler] booking_cancelled already dispatched — skipping', {
+        const key = `notif:booking_cancelled:${event.data.bookingId}:${event.userId}`;
+        const result = await dispatchOnce(key, async () => {
+          return NotificationService.sendNotification({
+            templateKey: 'booking_cancelled',
+            userId: event.userId,
+            channelsOverride: ['email', 'push', 'in_app'],
+            variables: {
+              booking: {
+                id: event.data.bookingId,
+                serviceType: event.data.serviceType,
+                date: event.data.date,
+                time: event.data.time,
+                cancelledBy: event.data.cancelledBy || 'system',
+                reason: event.data.reason || 'לא צוין',
+              },
+              customer: {
+                name: event.data.customerName,
+              },
+              timestamp: new Date().toLocaleString('he-IL'),
+            },
+          });
+        });
+        if (!result.dispatched) {
+          logger.info('[NotificationEventHandler] booking_cancelled skipped by idempotency', {
             bookingId: event.data.bookingId,
             userId: event.userId,
-            idempotencyKey,
+            outcome: result.outcome,
           });
-          return;
+        } else if (result.sendOk === false) {
+          logger.warn('[NotificationEventHandler] booking_cancelled send failed — claim released for retry', {
+            bookingId: event.data.bookingId,
+            userId: event.userId,
+          });
         }
-
-        await NotificationService.sendNotification({
-          templateKey: 'booking_cancelled',
-          userId: event.userId,
-          channelsOverride: ['email', 'push', 'in_app'],
-          variables: {
-            booking: {
-              id: event.data.bookingId,
-              serviceType: event.data.serviceType,
-              date: event.data.date,
-              time: event.data.time,
-              cancelledBy: event.data.cancelledBy || 'system',
-              reason: event.data.reason || 'לא צוין',
-            },
-            customer: {
-              name: event.data.customerName,
-            },
-            timestamp: new Date().toLocaleString('he-IL'),
-          },
-        });
       }
     } catch (error: any) {
       logger.error('[NotificationEventHandler] Failed to send booking cancellation notification', {
@@ -496,29 +460,34 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
-        const idempotencyKey = `provider_approved:${event.data.providerId}:${event.userId}`;
-        const claimed = await claimIdempotencyKey(idempotencyKey);
-        if (!claimed) {
-          logger.info('[NotificationEventHandler] provider_approved already dispatched — skipping', {
+        const key = `notif:provider_approved:${event.data.providerId}:${event.userId}`;
+        const result = await dispatchOnce(key, async () => {
+          return NotificationService.sendNotification({
+            templateKey: 'provider_approved',
+            userId: event.userId,
+            channelsOverride: ['email', 'push'],
+            variables: {
+              provider: {
+                id: event.data.providerId,
+                name: event.data.providerName,
+                serviceType: event.data.serviceType,
+              },
+              timestamp: new Date().toLocaleString('he-IL'),
+            },
+          });
+        });
+        if (!result.dispatched) {
+          logger.info('[NotificationEventHandler] provider_approved skipped by idempotency', {
             providerId: event.data.providerId,
             userId: event.userId,
-            idempotencyKey,
+            outcome: result.outcome,
           });
-          return;
+        } else if (result.sendOk === false) {
+          logger.warn('[NotificationEventHandler] provider_approved send failed — claim released for retry', {
+            providerId: event.data.providerId,
+            userId: event.userId,
+          });
         }
-        await NotificationService.sendNotification({
-          templateKey: 'provider_approved',
-          userId: event.userId,
-          channelsOverride: ['email', 'push'],
-          variables: {
-            provider: {
-              id: event.data.providerId,
-              name: event.data.providerName,
-              serviceType: event.data.serviceType,
-            },
-            timestamp: new Date().toLocaleString('he-IL'),
-          },
-        });
       }
     } catch (error: any) {
       logger.error('[NotificationEventHandler] Failed to send provider approval notification', {
@@ -535,30 +504,35 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
-        const idempotencyKey = `provider_rejected:${event.data.providerId}:${event.userId}`;
-        const claimed = await claimIdempotencyKey(idempotencyKey);
-        if (!claimed) {
-          logger.info('[NotificationEventHandler] provider_rejected already dispatched — skipping', {
+        const key = `notif:provider_rejected:${event.data.providerId}:${event.userId}`;
+        const result = await dispatchOnce(key, async () => {
+          return NotificationService.sendNotification({
+            templateKey: 'provider_rejected',
+            userId: event.userId,
+            channelsOverride: ['email', 'push'],
+            variables: {
+              provider: {
+                id: event.data.providerId,
+                name: event.data.providerName,
+                serviceType: event.data.serviceType,
+              },
+              reason: event.data.reason || 'לא צוין',
+              timestamp: new Date().toLocaleString('he-IL'),
+            },
+          });
+        });
+        if (!result.dispatched) {
+          logger.info('[NotificationEventHandler] provider_rejected skipped by idempotency', {
             providerId: event.data.providerId,
             userId: event.userId,
-            idempotencyKey,
+            outcome: result.outcome,
           });
-          return;
+        } else if (result.sendOk === false) {
+          logger.warn('[NotificationEventHandler] provider_rejected send failed — claim released for retry', {
+            providerId: event.data.providerId,
+            userId: event.userId,
+          });
         }
-        await NotificationService.sendNotification({
-          templateKey: 'provider_rejected',
-          userId: event.userId,
-          channelsOverride: ['email', 'push'],
-          variables: {
-            provider: {
-              id: event.data.providerId,
-              name: event.data.providerName,
-              serviceType: event.data.serviceType,
-            },
-            reason: event.data.reason || 'לא צוין',
-            timestamp: new Date().toLocaleString('he-IL'),
-          },
-        });
       }
     } catch (error: any) {
       logger.error('[NotificationEventHandler] Failed to send provider rejection notification', {
