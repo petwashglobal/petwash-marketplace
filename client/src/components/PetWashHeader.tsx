@@ -485,16 +485,16 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
         {/* ROW 2: Social left | Nav center | Profile + Burger + Lang right */}
         <div className="pw-header-row-controls">
           <div className="pw-header-left">
-            <a className="pw-social-link pw-social-spotify" href="https://open.spotify.com/user/31ff52czgq4ezgui5ufyplo5mrbq" target="_blank" rel="noreferrer" aria-label="PetWash Spotify" data-testid="link-social-spotify">
+            <a className="pw-social-link pw-social-spotify" href="https://open.spotify.com/user/31ff52czgq4ezgui5ufyplo5mrbq" target="_blank" rel="noopener noreferrer" aria-label="PetWash Spotify" data-testid="link-social-spotify">
               <SiSpotify size={18} />
             </a>
-            <a className="pw-social-link pw-social-tiktok" href="https://www.tiktok.com/@petwashltd" target="_blank" rel="noreferrer" aria-label="PetWash TikTok" data-testid="link-social-tiktok">
+            <a className="pw-social-link pw-social-tiktok" href="https://www.tiktok.com/@petwashltd" target="_blank" rel="noopener noreferrer" aria-label="PetWash TikTok" data-testid="link-social-tiktok">
               <SiTiktok size={18} />
             </a>
-            <a className="pw-social-link pw-social-facebook" href="https://www.facebook.com/petwashltd" target="_blank" rel="noreferrer" aria-label="PetWash Facebook" data-testid="link-social-facebook">
+            <a className="pw-social-link pw-social-facebook" href="https://www.facebook.com/petwashltd" target="_blank" rel="noopener noreferrer" aria-label="PetWash Facebook" data-testid="link-social-facebook">
               <SiFacebook size={18} />
             </a>
-            <a className="pw-social-link pw-social-instagram" href="https://www.instagram.com/petwashltd" target="_blank" rel="noreferrer" aria-label="PetWash Instagram" data-testid="link-social-instagram">
+            <a className="pw-social-link pw-social-instagram" href="https://www.instagram.com/petwashltd" target="_blank" rel="noopener noreferrer" aria-label="PetWash Instagram" data-testid="link-social-instagram">
               <SiInstagram size={18} />
             </a>
           </div>

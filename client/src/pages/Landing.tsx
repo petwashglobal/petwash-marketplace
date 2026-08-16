@@ -506,7 +506,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
 
             <div className="mt-12 text-center">
               <Button
-                onClick={() => user ? handleAuthNavigate() : setLocation('/signup')}
+                onClick={() => setLocation('/loyalty/join')}
                 className="h-14 px-12 rounded-none text-[#0a0a0a] text-sm font-semibold tracking-widest uppercase"
                 style={{
                   background: 'linear-gradient(135deg,#C6A664 0%,#D9B84C 50%,#C6A664 100%)',
