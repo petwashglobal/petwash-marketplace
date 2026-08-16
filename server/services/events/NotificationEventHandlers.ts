@@ -309,9 +309,22 @@ export function registerNotificationEventHandlers() {
       bookingId: event.data.bookingId,
       userId: event.userId,
     });
-    
+
     try {
       if (event.userId) {
+        // Idempotency guard — key format from server/lib/eventMatrix.ts
+        // `booking_receipt:{bookingId}:{userId}` (the confirmed event
+        // co-fires the booking-receipt document).
+        const idempotencyKey = `booking_confirmed:${event.data.bookingId}:${event.userId}`;
+        const claimed = await claimIdempotencyKey(idempotencyKey);
+        if (!claimed) {
+          logger.info('[NotificationEventHandler] booking_confirmed already dispatched — skipping', {
+            bookingId: event.data.bookingId,
+            userId: event.userId,
+            idempotencyKey,
+          });
+          return;
+        }
         await NotificationService.sendNotification({
           templateKey: 'booking_confirmed',
           userId: event.userId,
@@ -349,6 +362,19 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
+        // Idempotency guard — same shape as booking_confirmed /
+        // booking_cancelled. Blocks a second completion notice when the
+        // event bus redelivers or the /complete endpoint is hammered.
+        const idempotencyKey = `booking_completed:${event.data.bookingId}:${event.userId}`;
+        const claimed = await claimIdempotencyKey(idempotencyKey);
+        if (!claimed) {
+          logger.info('[NotificationEventHandler] booking_completed already dispatched — skipping', {
+            bookingId: event.data.bookingId,
+            userId: event.userId,
+            idempotencyKey,
+          });
+          return;
+        }
         await NotificationService.sendNotification({
           templateKey: 'booking_completed',
           userId: event.userId,
