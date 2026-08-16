@@ -62,33 +62,65 @@ describe('SumitCustomerService — flag semantics', () => {
   });
 });
 
-describe('SumitClient.createCustomer — safety pins', () => {
+describe('SumitClient.createCustomer — official SUMIT contract pins', () => {
   const CLIENT_PATH = resolve(__dirname, '../services/SumitClient.ts');
   const CLIENT = readFileSync(CLIENT_PATH, 'utf8');
 
-  it('returns {wired:false} without calling fetch when not wired', () => {
-    // The wired-gate MUST come before any fetch call in the createCustomer
-    // block. Search for the block bounds and confirm the ordering.
-    const start = CLIENT.indexOf('async createCustomer(input:');
+  // Body from docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.1:
+  //   { Details: AccountingTypedCustomer, Credentials }
+  //   AccountingTypedCustomer: { Name, EmailAddress, Phone, ExternalIdentifier,
+  //                              SearchMode: "Automatic"|"None", NoVAT, ... }
+  //   Response: { CustomerID, CustomerHistoryURL }
+
+  const start = CLIENT.indexOf('async createCustomer(input:');
+  const block = CLIENT.slice(start, start + 5000);
+
+  it('createCustomer method exists', () => {
     expect(start).toBeGreaterThan(-1);
-    const block = CLIENT.slice(start, start + 4000);
+  });
+
+  it('returns {wired:false} without calling fetch when not wired', () => {
     const wiredIdx = block.indexOf('if (!isWired())');
     const fetchIdx = block.indexOf('await fetch(url');
     expect(wiredIdx).toBeGreaterThan(-1);
     expect(fetchIdx).toBeGreaterThan(wiredIdx);
   });
 
+  it('wraps the body in Details: (per official contract, NOT Customer:)', () => {
+    expect(block).toMatch(/Details:\s*{/);
+    // Must NOT use the wrong wrap key Customer: at the body top level.
+    // (Details.Customer is a DIFFERENT thing used in /documents/create/ — this
+    // is /customers/create/ where the wrap key is Details itself.)
+    const bodyIdx = block.indexOf('const body = {');
+    const bodyBlock = block.slice(bodyIdx, bodyIdx + 800);
+    expect(bodyBlock).not.toMatch(/^\s*Customer:\s*{/m);
+  });
+
+  it('sends SearchMode:"Automatic" for find-or-create dedup', () => {
+    expect(block).toContain("SearchMode: 'Automatic'");
+  });
+
+  it('sends the official Phone field (not PhoneNumber)', () => {
+    expect(block).toContain('Phone: input.phone || undefined');
+    expect(block).not.toContain('PhoneNumber:');
+  });
+
   it('uses ExternalIdentifier as the SUMIT-side idempotency handle', () => {
-    const start = CLIENT.indexOf('async createCustomer(input:');
-    const block = CLIENT.slice(start, start + 4000);
     expect(block).toContain('ExternalIdentifier: input.externalIdentifier');
     expect(block).toContain("'Idempotency-Key': `customer:${input.externalIdentifier}`");
   });
 
+  it('parses response with the official field names — no heuristic fallback list', () => {
+    // CustomerID and CustomerHistoryURL are the documented fields. Do NOT
+    // add heuristic parsing (e.g. b.customerId ?? b.Data?.CustomerID ?? …).
+    expect(block).toContain('b.CustomerID');
+    expect(block).toContain('b.CustomerHistoryURL');
+    // No fallback to lowercase or nested Data/Customer wrappers.
+    expect(block).not.toContain('b.customerId');
+    expect(block).not.toContain('(b.Data as');
+  });
+
   it("never sends national-id / bank details in the customer body (money invariants §5)", () => {
-    const start = CLIENT.indexOf('async createCustomer(input:');
-    const block = CLIENT.slice(start, start + 4000);
-    // Body must NOT contain any of these fields.
     for (const forbidden of ['idNumber', 'nationalId', 'teudatZehut', 'bankAccount', 'iban', 'taxId', 'ssn']) {
       expect(block).not.toContain(forbidden);
     }
