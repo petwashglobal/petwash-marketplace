@@ -40,7 +40,7 @@ router.post('/send-samples', async (req, res) => {
     logger.error('[Luxury Documents API] Failed to send samples', { error: error.message });
     res.status(500).json({
       success: false,
-      error: error.message
+      error: 'Failed to fetch luxury documents', code: 'LUX_DOC_LIST_500',
     });
   }
 });
@@ -72,7 +72,7 @@ router.post('/send-status-report', async (req, res) => {
     logger.error('[System Status Report API] Failed to send report', { error: error.message });
     res.status(500).json({
       success: false,
-      error: error.message
+      error: 'Failed to fetch luxury document', code: 'LUX_DOC_GET_500',
     });
   }
 });
@@ -100,7 +100,7 @@ router.get('/backup-report', async (req, res) => {
       // telling an admin backups were fine when they weren't — dangerous false
       // assurance about disaster recovery. Surface the real "unknown" state instead.
       logger.error('[Backup Report] Cannot read backup status (GCS not configured / unreachable)', {
-        error: error instanceof Error ? error.message : String(error),
+        error: 'Failed to upload luxury document', code: 'LUX_DOC_UPLOAD_500',
       });
       res.status(503).json({
         success: false,
@@ -164,7 +164,7 @@ router.get('/backup-report', async (req, res) => {
     logger.error('[Backup Report] Failed to generate report', { error: error.message });
     res.status(500).json({
       success: false,
-      error: error.message
+      error: 'Failed to delete luxury document', code: 'LUX_DOC_DELETE_500',
     });
   }
 });

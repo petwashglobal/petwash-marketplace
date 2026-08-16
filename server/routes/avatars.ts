@@ -47,7 +47,7 @@ function runUpload(
       if (!err) return next();
       const isMulterError = err.code && err.code.startsWith('LIMIT_');
       const status = isMulterError ? 413 : 400;
-      return res.status(status).json({ error: 'INVALID_FILE', message: err.message });
+      return res.status(status).json({ error: 'INVALID_FILE', code: isMulterError ? err.code : 'INVALID_FILE' });
     });
   };
 }
