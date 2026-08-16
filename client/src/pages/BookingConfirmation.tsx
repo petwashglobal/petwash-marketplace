@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -451,18 +451,32 @@ export default function BookingConfirmation() {
     }
   }, [booking]);
 
+  /* Idempotency keys per money-adjacent action (2026-08-16 audit CRIT).
+   * Server (booking-requests.ts:107, 227) trusts a caller-supplied
+   * Idempotency-Key. Without one, a slow network + double-tap could create
+   * two payment intents or fire the confirm→payout branch twice. We hold a
+   * fresh UUID per user-initiated action in a ref; RETRIES of the same
+   * action (network drop, transient 5xx) reuse it so the server dedupes;
+   * a SUCCESSFUL round-trip clears it so the next user-initiated action
+   * gets a new key. */
+  const confirmKeyRef = useRef<string | null>(null);
+  const payKeyRef = useRef<string | null>(null);
+  const cancelKeyRef = useRef<string | null>(null);
+  const meetGreetKeyRef = useRef<string | null>(null);
+
   /* confirm / review mutation */
   const confirmMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/confirm`, {
-        rating,
-        review: reviewText || undefined,
-        ownerPhone: phone || undefined,
-        ownerEmail: email || undefined,
+      if (!confirmKeyRef.current) confirmKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${requestId}/confirm`, {
+        method: 'POST',
+        body: { rating, review: reviewText || undefined, ownerPhone: phone || undefined, ownerEmail: email || undefined },
+        headers: { 'Idempotency-Key': confirmKeyRef.current },
       });
       return res.json();
     },
     onSuccess: (data: any) => {
+      confirmKeyRef.current = null;
       setConfirmed(true);
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
       toast({
@@ -473,13 +487,19 @@ export default function BookingConfirmation() {
     onError: () => toast({ title: 'Error', description: 'Failed to confirm booking', variant: 'destructive' }),
   });
 
-  /* cancel mutation */
+  /* pay mutation */
   const payMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/pay`, { paymentMethod: 'card' });
+      if (!payKeyRef.current) payKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${requestId}/pay`, {
+        method: 'POST',
+        body: { paymentMethod: 'card' },
+        headers: { 'Idempotency-Key': payKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: (data: any) => {
+      payKeyRef.current = null;
       // Server returns the hosted Nayax payment page — money is verified by
       // the payment webhook, which is the only writer of 'confirmed'.
       if (data?.paymentUrl) { window.location.href = data.paymentUrl; return; }
@@ -489,6 +509,7 @@ export default function BookingConfirmation() {
       // Surface the server's honest reason (e.g. online card rail not live yet)
       // instead of a generic failure — the booking is saved, nothing was charged.
       // apiRequest throws ApiError with the parsed JSON on `.body`.
+      // Key preserved in the ref so a retry of the SAME payment attempt reuses it.
       const msg = err?.body?.error || (t.paymentStartFailed ?? 'Could not start payment');
       toast({ title: msg, variant: 'destructive' });
     },
@@ -496,10 +517,16 @@ export default function BookingConfirmation() {
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { cancelledBy: 'customer' });
+      if (!cancelKeyRef.current) cancelKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${requestId}/cancel`, {
+        method: 'POST',
+        body: { cancelledBy: 'customer' },
+        headers: { 'Idempotency-Key': cancelKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: () => {
+      cancelKeyRef.current = null;
       setShowCancelConfirm(false);
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
       toast({ title: t.cancelSuccess });
@@ -511,10 +538,16 @@ export default function BookingConfirmation() {
   const [mgType, setMgType] = useState<'video' | 'phone' | 'public'>('video');
   const meetGreetMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/meet-greet`, { action: 'request', type: mgType });
+      if (!meetGreetKeyRef.current) meetGreetKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${requestId}/meet-greet`, {
+        method: 'POST',
+        body: { action: 'request', type: mgType },
+        headers: { 'Idempotency-Key': meetGreetKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: () => {
+      meetGreetKeyRef.current = null;
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
       toast({
         title: isRTL ? 'בקשת פגישת היכרות נשלחה' : 'Meet & Greet requested',
