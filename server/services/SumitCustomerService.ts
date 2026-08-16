@@ -41,8 +41,8 @@ import { SumitClient } from './SumitClient';
 export type SumitCustomerSyncSource = 'signup' | 'backfill' | 'manual';
 
 export type SumitCustomerSyncResult =
-  | { status: 'existing'; sumitCustomerId: string; customerHistoryUrl?: string }
-  | { status: 'created'; sumitCustomerId: string; customerHistoryUrl?: string }
+  | { status: 'existing'; sumitCustomerId: string }
+  | { status: 'created'; sumitCustomerId: string }
   | { status: 'not_wired' }
   | { status: 'flag_off' }
   | { status: 'error'; reason: string };
@@ -79,30 +79,25 @@ export async function syncForUser(
 
   // Pre-check: if we already have a mapping row, we're done. This is the
   // caller-side idempotency layer; SUMIT-side has its own via
-  // ExternalIdentifier=uid + SearchMode="Automatic".
+  // ExternalIdentifier=uid.
   try {
     const [existing] = await db.select()
       .from(sumitCustomers)
       .where(eq(sumitCustomers.userId, uid))
       .limit(1);
     if (existing?.sumitCustomerId) {
-      return {
-        status: 'existing',
-        sumitCustomerId: existing.sumitCustomerId,
-        customerHistoryUrl: existing.customerHistoryUrl ?? undefined,
-      };
+      return { status: 'existing', sumitCustomerId: existing.sumitCustomerId };
     }
   } catch (dbErr: any) {
     logger.warn('[SumitCustomerService] pre-check read failed — continuing', {
       uid, error: dbErr?.message,
     });
     // Continue to try the SUMIT call anyway; SUMIT-side dedup on
-    // ExternalIdentifier + SearchMode="Automatic" prevents a duplicate
-    // customer even if the pre-check was blind.
+    // ExternalIdentifier prevents a duplicate customer even if the pre-check
+    // was blind.
   }
 
-  // Call SUMIT. `SearchMode:"Automatic"` (set inside SumitClient) makes this
-  // find-or-create — a retry returns the existing customer's ID.
+  // Call SUMIT.
   const cust = await client.createCustomer({
     externalIdentifier: uid,
     name: profile.name || 'PetWash Member',
@@ -118,31 +113,27 @@ export async function syncForUser(
   }
 
   if (!cust.sumitCustomerId) {
-    // SUMIT responded but no CustomerID in the official response field.
-    // Persist an error row so the ops dashboard sees it; retry on next call.
+    // SUMIT responded but we couldn't parse a CustomerID. Persist an error
+    // row so the ops dashboard sees it; retry on next call.
     const reason = cust.reason || 'no CustomerID in response';
     logger.warn('[SumitCustomerService] SUMIT returned no CustomerID', { uid, reason });
     return { status: 'error', reason };
   }
 
-  // Success — persist the mapping including the CustomerHistoryURL for the
-  // "My Invoices" surface. UNIQUE(sumit_customer_id) + PRIMARY KEY(user_id)
-  // both guard against a concurrent duplicate insert; if we lose that race
-  // we return the winning row.
+  // Success — persist the mapping. UNIQUE(sumit_customer_id) + PRIMARY KEY
+  // on user_id both guard against a concurrent duplicate insert; if we lose
+  // that race we treat it as 'existing' rather than an error.
   try {
     await db.insert(sumitCustomers).values({
       userId: uid,
       sumitCustomerId: cust.sumitCustomerId,
-      customerHistoryUrl: cust.customerHistoryUrl ?? null,
       source,
       externalReference: uid,
     });
-    return {
-      status: 'created',
-      sumitCustomerId: cust.sumitCustomerId,
-      customerHistoryUrl: cust.customerHistoryUrl,
-    };
+    return { status: 'created', sumitCustomerId: cust.sumitCustomerId };
   } catch (insertErr: any) {
+    // Concurrent insert or unique-constraint hit → someone else won the race.
+    // Re-read and return the winning row.
     logger.info('[SumitCustomerService] insert lost race — re-reading', { uid });
     try {
       const [row] = await db.select()
@@ -150,36 +141,10 @@ export async function syncForUser(
         .where(eq(sumitCustomers.userId, uid))
         .limit(1);
       if (row?.sumitCustomerId) {
-        return {
-          status: 'existing',
-          sumitCustomerId: row.sumitCustomerId,
-          customerHistoryUrl: row.customerHistoryUrl ?? undefined,
-        };
+        return { status: 'existing', sumitCustomerId: row.sumitCustomerId };
       }
     } catch { /* fall through */ }
     return { status: 'error', reason: insertErr?.message || 'insert failed' };
-  }
-}
-
-/**
- * Read-only helper for the "My Invoices" surface. Returns the stored
- * `CustomerHistoryURL` for a uid (server-resolved — the caller must pass the
- * authenticated uid; do NOT accept it from the browser). null if the user
- * has no SUMIT customer synced yet.
- */
-export async function getCustomerHistoryUrl(uid: string): Promise<string | null> {
-  if (!uid) return null;
-  try {
-    const [row] = await db.select({ url: sumitCustomers.customerHistoryUrl })
-      .from(sumitCustomers)
-      .where(eq(sumitCustomers.userId, uid))
-      .limit(1);
-    return row?.url ?? null;
-  } catch (err: any) {
-    logger.warn('[SumitCustomerService] getCustomerHistoryUrl failed', {
-      uid, error: err?.message,
-    });
-    return null;
   }
 }
 
