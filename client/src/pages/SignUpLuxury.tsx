@@ -164,16 +164,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const { toast } = useToast();
   const he = language === 'he';
 
-  // Consent — Terms/Privacy is MANDATORY and UNCHECKED by default (active
-  // opt-in is a legal requirement; pre-ticked consent is unlawful under Israeli
-  // privacy law). Marketing opt-in is SEPARATE and optional (GDPR Art.7(2) +
-  // Israeli Communications Law s.30A require it to be granular, not bundled).
-  // Every submit + every social method is blocked until agreedTerms is ticked
-  // AND a valid 18+ DOB is set. (2026-08-16 MASTER AUTH rebuild)
+  // Consent state — three independent axes so the audit trail is unambiguous:
+  //   ageConfirmed18Plus  — explicit "I am 18+" checkbox (mandatory).
+  //   agreedTerms          — Terms + Privacy Notice checkbox (mandatory).
+  //   acceptedMarketing    — marketing preference (optional; NEVER blocks submit).
+  // All three default to false so nothing is pre-ticked. The DOB the user
+  // types is the age evidence; this checkbox is the explicit confirmation
+  // paired with it — the server enforces BOTH (age >= 18 AND ageConfirmed).
+  const [ageConfirmed18Plus, setAgeConfirmed18Plus] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
   const [acceptedMarketing, setAcceptedMarketing] = useState(false);
-  // Legacy over18 checkbox kept for the returning-user login flow only; on
-  // signup the DOB itself is now the hard gate (see requireTerms + consentOk).
+  // Legacy `over18` state retained ONLY for the returning-user LOGIN paths
+  // that never re-collect DOB (kept out of the signup gate below).
   const [over18, setOver18] = useState(false);
 
 
@@ -474,17 +476,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }, []);
 
   const requireTerms = () => {
-    // MASTER AUTH rebuild (2026-08-16): both gates are HARD requirements again.
-    // Passive consent was reversed — a deliberate tick on Terms & Privacy is the
-    // affirmative act required by Israeli privacy law + GDPR Art.7, and the DOB
-    // is what the server 18+ gate reads. Marketing is a SEPARATE optional
-    // checkbox and is NOT checked here (never a signup blocker).
+    // Signup gate — three MANDATORY checks. Marketing is intentionally absent
+    // (optional, never a blocker). All three are also re-enforced server-side
+    // on the /session handler; the server independently calculates age from
+    // the DOB and never trusts the ageConfirmed checkbox on its own.
     if (!dobValid || !isAdult) {
       fail(he ? 'יש להזין תאריך לידה — גיל 18 ומעלה' : 'Please enter your date of birth — you must be 18 or older.');
       return false;
     }
+    if (!ageConfirmed18Plus) {
+      fail(he ? 'יש לאשר שאתם בני 18 ומעלה' : 'Please confirm that you are 18 years of age or older.');
+      return false;
+    }
     if (!agreedTerms) {
-      fail(he ? 'יש לאשר את תנאי השימוש ומדיניות הפרטיות' : 'Please accept the Terms of Service and Privacy Policy.');
+      fail(he ? 'יש לאשר את תנאי השימוש והפרטיות' : 'Please accept the Terms of Service and Privacy Notice.');
       return false;
     }
     return true;
@@ -648,7 +653,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         // Send the DOB so the users row is CREATED with it — persistDob's
         // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
         // Marketing consent is granular per MASTER AUTH rebuild (2026-08-16).
-        body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true, acceptedMarketing }),
+        body: JSON.stringify({ idToken, dateOfBirth: dob, ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
       });
       if (!sessionRes.ok) {
         // Hollow server session → app guards would 401-bounce to /signin. Fail
@@ -747,16 +752,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const idToken = await cred.user.getIdToken(true);
         const sessRes = await fetch(getApiUrl('/api/auth/session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          // Send the DOB so the users row is CREATED with it — persistDob's
-          // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
-          // (undefined on a returning login → server leaves the real DOB untouched.)
-          // Marketing consent is granular per MASTER AUTH rebuild (2026-08-16);
-          // omit on returning login so we never overwrite an existing preference.
+          // On signup the users row is CREATED with the DOB the user typed
+          // (persistDob's UPDATE ran before the row existed, dropping it —
+          // 2026-07-24 fix). ageConfirmed + termsAccepted ride alongside so
+          // the server /session handler can enforce them; marketing is
+          // separate and only sent on signup. Returning-login requests omit
+          // all four so a returning user's stored values are never overwritten.
           body: JSON.stringify({
             idToken,
             dateOfBirth: dobForContext,
-            termsAccepted: true,
-            ...(authMode === 'login' ? {} : { acceptedMarketing }),
+            ...(authMode === 'login'
+              ? {}
+              : { ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
           }),
         });
         // NEW email signup → also collect + verify the mobile so the account confirms
@@ -776,12 +783,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function social(which: 'google' | 'apple' | 'facebook') {
-    // MASTER AUTH rebuild (2026-08-16): social signup must clear the SAME
-    // consent + DOB gate as the manual paths — Google/Apple hand us a verified
-    // email, not a birthday, and passively-submitted social taps stopped
-    // counting as consent. LOGIN skips the gate (returning users consented at
-    // join). Failing here surfaces the inline error above the social tiles.
-    if (authMode !== 'login' && !requireTerms()) return;
+    // Google/Apple is the easy button — the user taps ONE thing and the
+    // provider authenticates them. Do NOT gate the tap on DOB / 18+ /
+    // Terms checkboxes; we don't know who they are yet. After OAuth
+    // returns and the server determines they're a NEW / incomplete user,
+    // the AccountActivation surface (already served for missingSteps)
+    // collects the mandatory data they still owe (mobile / DOB / 18+ /
+    // Terms) before the account is marked ACTIVE. Returning fully-
+    // compliant users route straight through the post-login decider.
     setInlineError(null);
     setBusy(true);
     try {
@@ -803,15 +812,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           ? await signInWithGoogleNative(auth)
           : await signInWithAppleNative(auth);
         const idToken = await cred.user.getIdToken(true);
-        // MASTER AUTH rebuild (2026-08-16): social signup now carries the same
-        // DOB + termsAccepted + acceptedMarketing payload as manual signup — the
-        // consent gate above (requireTerms) has already validated dob + Terms.
-        const sessionBody = authMode === 'login'
-          ? { idToken }
-          : { idToken, dateOfBirth: dob, termsAccepted: true, acceptedMarketing };
+        // Social sessions are authenticated but NOT yet consented — the DOB /
+        // 18+ / Terms checkboxes are collected AFTER OAuth on the completion
+        // surface (AccountActivation for new users). Sending termsAccepted
+        // here would fabricate consent the user never ticked.
         const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify(sessionBody),
+          body: JSON.stringify({ idToken }),
         });
         if (!sessionRes.ok) {
           const label = which === 'google' ? 'Google' : 'Apple';
@@ -850,15 +857,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       }
       const cred = await signInWithPopup(auth, provider);
       const idToken = await cred.user.getIdToken(true);
-      // MASTER AUTH rebuild (2026-08-16): mirror the native-social path — DOB +
-      // Terms + Marketing ride into /session so the row is created with the
-      // real birthday and the correct marketing preference from tap one.
-      const sessionBody = authMode === 'login'
-        ? { idToken }
-        : { idToken, dateOfBirth: dob, termsAccepted: true, acceptedMarketing };
+      // Mirror the native-social path — the browser has not yet collected
+      // DOB / 18+ / Terms, so send only the id token. The AccountActivation
+      // surface finishes the account with the missing mandatory data.
       const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify(sessionBody),
+        body: JSON.stringify({ idToken }),
       });
       if (!sessionRes.ok) {
         // Don't route into the app on a hollow session (guards would 401-bounce).
@@ -1055,15 +1059,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       const idToken = await cred.user.getIdToken(true);
       const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        // Send the DOB the user just typed (the OTP paths already do — :467,:547).
-        // Was omitted here, so email+password members were re-asked their birthday
-        // at /complete-profile. (2026-07-27). Marketing consent is granular per
-        // MASTER AUTH rebuild (2026-08-16); omit on login so we never overwrite.
+        // On signup send DOB + ageConfirmed + termsAccepted + acceptedMarketing
+        // so the server /session handler can validate age + record consent in
+        // one call — email+password members were previously re-asked their
+        // birthday at /complete-profile because DOB was dropped here
+        // (2026-07-27). Returning-login requests omit all consent fields so a
+        // stored preference is never overwritten.
         body: JSON.stringify({
           idToken,
           dateOfBirth: dob,
-          termsAccepted: true,
-          ...(authMode === 'login' ? {} : { acceptedMarketing }),
+          ...(authMode === 'login'
+            ? {}
+            : { ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
         }),
       });
       if (!sessionRes.ok) {
@@ -1102,17 +1109,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     return a;
   })();
   const isAdult = age >= 18;
-  // AGE GATE (MASTER AUTH rebuild 2026-08-16): a signed DOB the user actually
-  // entered is the required signal for signup — no more legacy "or over18
-  // checkbox" shortcut, which let a user proceed without ever supplying a
-  // birthday. The over18 flag survives only for the returning-user LOGIN paths
-  // that never re-collect DOB.
-  const ageConfirmed = isAdult;
-  // MASTER AUTH rebuild (2026-08-16): consent is BOTH a hard 18+ DOB gate
-  // AND an active Terms/Privacy tick — passive submission is no longer treated
-  // as consent. Marketing is separate and never blocks. Terms accepted are
-  // stamped on the session server-side; marketing preference rides alongside.
-  const consentOk = ageConfirmed && agreedTerms;
+  // Signup consent gate — three independent signals:
+  //   dobValid + isAdult        — a real 18+ birthday the user typed.
+  //   ageConfirmed18Plus         — explicit "I am 18+" checkbox (mandatory).
+  //   agreedTerms                — Terms + Privacy Notice checkbox (mandatory).
+  // Marketing is intentionally absent — optional signals must never gate
+  // account creation. Server /session re-enforces every one of these AND
+  // independently calculates age from DOB before creating an active row.
+  const consentOk = dobValid && isAdult && ageConfirmed18Plus && agreedTerms;
   // ONE contact is enough (CEO 2026-07-24 "sign up not easy"): startSignup()
   // already branches phone-first-else-email, and the design intent above is
   // "type whichever they like, we detect which". The old gate demanded phone
@@ -1418,16 +1422,34 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   provider app locks flow='provider' by flavor. This also removes the
                   static "member" card that looked like a dead toggle. */}
 
-              {/* MASTER AUTH rebuild (2026-08-16): active opt-in restored.
-                  Terms + Privacy is a MANDATORY unchecked box (Israeli privacy law
-                  + GDPR Art.7 require an affirmative act, not passive submission).
-                  Marketing is a SEPARATE optional box (granular consent per GDPR
-                  Art.7(2) + Communications Law s.30A — bundling with Terms is a
-                  known dark pattern and is unlawful). Both hidden on returning-user
-                  LOGIN (they consented at join). Blocking a social tap without
-                  consent surfaces the "accept terms + 18+" message below. */}
+              {/* Signup consent — three independent axes, none pre-ticked:
+                  1) 18+ confirmation (mandatory) — paired with the DOB the
+                     user typed; server independently calculates age from DOB
+                     and requires BOTH to be true.
+                  2) Terms + Privacy Notice acceptance (mandatory) — one
+                     acceptance event, recorded together server-side.
+                  3) Marketing preference (optional) — separate opt-in, never
+                     blocks submit and never touches the terms/privacy audit
+                     timestamps.
+                  Hidden on returning-user LOGIN (consented at join). */}
               {authMode !== 'login' && (
                 <div className="sl-consentBox" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 10px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: '13px', lineHeight: 1.45 }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={ageConfirmed18Plus}
+                      onChange={(e) => setAgeConfirmed18Plus(e.target.checked)}
+                      required
+                      aria-required="true"
+                      data-testid="checkbox-ageConfirmed18Plus"
+                      style={{ marginTop: 3, flexShrink: 0 }}
+                    />
+                    <span>
+                      {he
+                        ? 'אני מאשר/ת שאני בן/בת 18 ומעלה (חובה).'
+                        : 'I confirm that I am 18 years of age or older (required).'}
+                    </span>
+                  </label>
                   <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
                     <input
                       type="checkbox"
@@ -1442,7 +1464,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       {he ? 'קראתי ואני מסכים/ה ל' : 'I have read and agree to the '}
                       <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
                       {he ? ' ול' : ' and '}
-                      <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'מדיניות הפרטיות' : 'Privacy Policy'}</a>
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'הודעת הפרטיות' : 'Privacy Notice'}</a>
                       {he ? ' (חובה).' : ' (required).'}
                     </span>
                   </label>
@@ -1456,8 +1478,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     />
                     <span style={{ opacity: 0.85 }}>
                       {he
-                        ? 'אני רוצה לקבל עדכונים ומבצעים בדוא"ל / SMS (אופציונלי — ניתן לבטל בכל עת).'
-                        : 'Send me PetWash updates and offers by email/SMS (optional — you can unsubscribe anytime).'}
+                        ? 'שלחו לי חדשות ומבצעים של PetWash בדוא"ל / SMS (אופציונלי — ניתן לבטל בכל עת).'
+                        : 'Send me PetWash news and offers by email/SMS (optional — you can unsubscribe anytime).'}
                     </span>
                   </label>
                 </div>
