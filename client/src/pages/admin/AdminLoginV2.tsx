@@ -46,6 +46,11 @@ export default function AdminLoginV2() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [supportsWebAuthn, setSupportsWebAuthn] = useState(false);
+  // Task 20 — password-reset in-flight guard. Blocks a rapid double-click
+  // from firing two Firebase sendPasswordResetEmail requests (each of
+  // which invalidates the prior OOB code the user might already be
+  // trying to redeem).
+  const [isSendingReset, setIsSendingReset] = useState(false);
   
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
 
@@ -619,8 +624,14 @@ export default function AdminLoginV2() {
           <Button
             type="button"
             variant="ghost"
+            disabled={isSendingReset}
             className="text-sm text-gray-600 hover:text-[#B8932F] transition-colors"
             onClick={async () => {
+              // Task 20 — first-click-wins guard. A double-click would
+              // otherwise fire two Firebase reset requests; the second
+              // OOB code silently invalidates the first, which the user
+              // may already be trying to redeem.
+              if (isSendingReset) return;
               if (!email) {
                 toast({
                   title: 'Email required',
@@ -629,6 +640,7 @@ export default function AdminLoginV2() {
                 });
                 return;
               }
+              setIsSendingReset(true);
               try {
                 const { sendPasswordResetEmail } = await import('firebase/auth');
                 const { auth: fbAuth } = await import('@/lib/firebase');
@@ -645,10 +657,12 @@ export default function AdminLoginV2() {
                   variant: 'destructive',
                   duration: 10000,
                 });
+              } finally {
+                setIsSendingReset(false);
               }
             }}
           >
-            Forgot password?
+            {isSendingReset ? 'Sending…' : 'Forgot password?'}
           </Button>
         </div>
 
