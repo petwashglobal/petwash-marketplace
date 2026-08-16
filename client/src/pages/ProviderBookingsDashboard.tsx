@@ -10,7 +10,7 @@
  * - Mark services as complete
  */
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
@@ -321,15 +321,28 @@ function PendingBookingCard({
   const [meetGreetLocation, setMeetGreetLocation] = useState('');
   const [responseMessage, setResponseMessage] = useState('');
 
+  /* Idempotency key for the accept/decline action (audit CRIT #2 provider side).
+   * Server booking-requests handler supports caller-supplied Idempotency-Key;
+   * without it, provider double-tap could fire two accept/decline writes and
+   * trigger downstream side-effects twice. Regenerated on success; preserved
+   * on error so a retry of the SAME action dedupes. */
+  const respondKeyRef = useRef<string | null>(null);
+
   const respondMutation = useMutation({
     mutationFn: async ({ action, data }: { action: 'accept' | 'decline'; data?: any }) => {
-      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/respond`, { action, ...data });
+      if (!respondKeyRef.current) respondKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${booking.requestId}/respond`, {
+        method: 'POST',
+        body: { action, ...data },
+        headers: { 'Idempotency-Key': respondKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: (_, { action }) => {
+      respondKeyRef.current = null;
       toast({
-        title: action === 'accept' 
-          ? (isHebrew ? 'הבקשה אושרה!' : 'Request accepted!') 
+        title: action === 'accept'
+          ? (isHebrew ? 'הבקשה אושרה!' : 'Request accepted!')
           : (isHebrew ? 'הבקשה נדחתה' : 'Request declined'),
       });
       setShowAcceptModal(false);
@@ -519,12 +532,26 @@ function UpcomingBookingCard({
   const statusConfig = STATUS_CONFIG[booking.status];
   const serviceLabel = SERVICE_LABELS[booking.serviceType] || { en: booking.serviceType, he: booking.serviceType };
 
+  /* Idempotency keys per state-transition action (audit CRIT #2 provider side).
+   * Server supports caller-supplied Idempotency-Key. Preserves on error so a
+   * retry dedupes; regenerates on success so next user action gets a new key. */
+  const completeMgKeyRef = useRef<string | null>(null);
+  const startKeyRef = useRef<string | null>(null);
+  const arrivingKeyRef = useRef<string | null>(null);
+  const completeSvcKeyRef = useRef<string | null>(null);
+
   const completeMeetGreetMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/meet-greet`, { action: 'complete' });
+      if (!completeMgKeyRef.current) completeMgKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${booking.requestId}/meet-greet`, {
+        method: 'POST',
+        body: { action: 'complete' },
+        headers: { 'Idempotency-Key': completeMgKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: () => {
+      completeMgKeyRef.current = null;
       toast({ title: isHebrew ? 'פגישת היכרות הושלמה!' : 'Meet & Greet completed!' });
       onRefresh();
     },
@@ -535,10 +562,15 @@ function UpcomingBookingCard({
 
   const startServiceMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/start`);
+      if (!startKeyRef.current) startKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${booking.requestId}/start`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': startKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: () => {
+      startKeyRef.current = null;
       toast({ title: isHebrew ? 'השירות התחיל!' : 'Service started!' });
       onRefresh();
     },
@@ -552,10 +584,16 @@ function UpcomingBookingCard({
 
   const arrivingMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/arriving`, { eta: etaMinutes ? `${etaMinutes} דקות` : null });
+      if (!arrivingKeyRef.current) arrivingKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${booking.requestId}/arriving`, {
+        method: 'POST',
+        body: { eta: etaMinutes ? `${etaMinutes} דקות` : null },
+        headers: { 'Idempotency-Key': arrivingKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: () => {
+      arrivingKeyRef.current = null;
       toast({
         title: isHebrew ? '🚗 הלקוח קיבל התראה!' : '🚗 Customer notified!',
         description: etaMinutes
@@ -702,12 +740,22 @@ function ActiveBookingCard({
   const statusConfig = STATUS_CONFIG[booking.status];
   const serviceLabel = SERVICE_LABELS[booking.serviceType] || { en: booking.serviceType, he: booking.serviceType };
 
+  /* Idempotency key for the complete-service action (audit CRIT #2 provider side).
+   * Complete is the transition that opens the 72h escrow window and gates
+   * payout — most sensitive to double-fire of all the provider actions. */
+  const completeSvcKeyRef = useRef<string | null>(null);
+
   const completeServiceMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${booking.requestId}/complete`);
+      if (!completeSvcKeyRef.current) completeSvcKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${booking.requestId}/complete`, {
+        method: 'POST',
+        headers: { 'Idempotency-Key': completeSvcKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: () => {
+      completeSvcKeyRef.current = null;
       toast({ title: isHebrew ? 'השירות הסתיים!' : 'Service completed!' });
       onRefresh();
     },
