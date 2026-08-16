@@ -112,7 +112,13 @@ export const EVENT_MATRIX: EventMatrixEntry[] = [
   },
   {
     event: 'egift_redeemed',
-    triggerPoint: 'POST /v1/brain/redeem (octopus-engine.ts)',
+    // PR-DANGER-1 (2026): the previous octopus-engine.ts brain-redeem handler
+    // was retired (it took client-controlled amountCents with no ownership /
+    // face-value check). Canonical redemption now lives at
+    // POST /api/v2/vouchers/redeem (Bearer + Idempotency-Key + server-known
+    // face-value). The event matrix pointer must name that rail — the old
+    // /v1/brain/redeem path returns 410 Gone.
+    triggerPoint: 'POST /api/v2/vouchers/redeem (canonical voucher redemption)',
     documentType: 'egift_redemption_receipt',
     documentPrefix: 'PW-EGR',
     channels: ['sms', 'push'],
