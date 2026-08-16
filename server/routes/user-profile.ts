@@ -78,7 +78,50 @@ router.get('/profile', async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+    // PR-DANGER-8: explicit projection instead of SELECT *. The hand-typed
+    // DTO literal at res.json below already filters to safe fields — but
+    // SELECT * loaded EVERY column on `users` into server memory first
+    // (including encrypted PII like idNumberEnc, national ID hash, bank-
+    // related fields, and every future column added to the users table).
+    // Any future refactor that spreads `user` into the response, or a
+    // logger.debug that stringifies it, would auto-leak whatever the
+    // schema has grown since. Projecting up-front means only the fields
+    // this handler actually reads leave the database — a new PII column
+    // never reaches this code path.
+    const [user] = await db
+      .select({
+        firstName:             users.firstName,
+        lastName:              users.lastName,
+        email:                 users.email,
+        phone:                 users.phone,
+        address:               users.address,
+        street:                users.street,
+        streetNumber:          users.streetNumber,
+        apartment:             users.apartment,
+        city:                  users.city,
+        postalCode:            users.postalCode,
+        country:               users.country,
+        latitude:              users.latitude,
+        longitude:             users.longitude,
+        addressIsTemporary:    users.addressIsTemporary,
+        temporaryAddress:      users.temporaryAddress,
+        temporaryLat:          users.temporaryLat,
+        temporaryLng:          users.temporaryLng,
+        temporaryPostal:       users.temporaryPostal,
+        dateOfBirth:           users.dateOfBirth,
+        profileImageUrl:       users.profileImageUrl,
+        language:              users.language,
+        gender:                users.gender,
+        carPlate:              users.carPlate,
+        carPlate2:             users.carPlate2,
+        emergencyContactName:  users.emergencyContactName,
+        emergencyContactPhone: users.emergencyContactPhone,
+        marketingConsent:      users.marketingConsent,
+        twoFactorEnabled:      users.twoFactorEnabled,
+      })
+      .from(users)
+      .where(eq(users.id, uid))
+      .limit(1);
 
     const defaultNotificationPrefs = {
       pushEnabled: true,
@@ -217,7 +260,12 @@ router.patch('/profile', async (req, res) => {
       emergencyContactName, emergencyContactPhone, marketingConsent, twoFactorEnabled,
     } = parseResult.data;
 
-    const [existingUser] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+    // PR-DANGER-8: this row is only used for a truthy check at line ~315
+    // (insert-if-missing branch). No fields are read — projecting to just
+    // { id } means SELECT * cannot load PII columns into memory just to
+    // decide whether the row exists.
+    const [existingUser] = await db.select({ id: users.id })
+      .from(users).where(eq(users.id, uid)).limit(1);
 
     const updateData: Record<string, any> = {};
     
