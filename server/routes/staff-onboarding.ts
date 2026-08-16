@@ -107,7 +107,8 @@ export function registerStaffOnboardingRoutes(app: Express) {
       logger.error('[API] Failed to create application', error);
       res.status(400).json({
         success: false,
-        error: error.message || 'Failed to submit application',
+        error: 'Failed to submit application',
+        code: 'STAFF_APP_400',
       });
     }
   });
@@ -525,7 +526,8 @@ export function registerStaffOnboardingRoutes(app: Express) {
       logger.error('[API] Failed to submit expense', error);
       res.status(400).json({
         success: false,
-        error: error.message || 'Failed to submit expense',
+        error: 'Failed to submit expense',
+        code: 'STAFF_EXPENSE_400',
       });
     }
   });
@@ -674,7 +676,8 @@ export function registerStaffOnboardingRoutes(app: Express) {
       logger.error('[API] Failed to submit logbook entry', error);
       res.status(400).json({
         success: false,
-        error: error.message || 'Failed to submit logbook entry',
+        error: 'Failed to submit logbook entry',
+        code: 'STAFF_LOGBOOK_400',
       });
     }
   });
@@ -745,7 +748,8 @@ export function registerStaffOnboardingRoutes(app: Express) {
       logger.error('[API] Failed to create franchise order', error);
       res.status(400).json({
         success: false,
-        error: error.message || 'Failed to create order',
+        error: 'Failed to create order',
+        code: 'STAFF_ORDER_400',
       });
     }
   });
