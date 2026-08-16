@@ -135,6 +135,24 @@ router.all('/v1/wallet*', (_req: Request, res: Response) => {
   });
 });
 
+// PR-DANGER-1: brain-redeem sentinel. The specific POST /v1/brain/redeem
+// handler below took { egiftId, userId, amountCents, idempotencyKey } from
+// the body — while auth-gated, the amountCents was client-controlled and no
+// server-side check tied the caller to the egift owner, so an authenticated
+// user could forge redemption receipts against any eGift at any value. Zero
+// client callers (grep). The canonical rail is POST /api/v2/vouchers/redeem
+// (Bearer + Idempotency-Key + server-known face-value).
+router.all('/v1/brain*', (_req: Request, res: Response) => {
+  return res.status(410).json({
+    error: 'Gone',
+    code: 'V1_DEPRECATED',
+    message: 'Octopus V1 brain routes have been permanently removed. Migrate to the canonical redemption API.',
+    migration: {
+      redeem: 'POST /api/v2/vouchers/redeem  (Bearer token + Idempotency-Key required)',
+    },
+  });
+});
+
 router.all('/v1/ledger*', (_req: Request, res: Response) => {
   return res.status(410).json({
     error: 'Gone',
@@ -238,143 +256,20 @@ router.post("/v1/bookings", async (req: Request, res: Response) => {
   }
 });
 
-// =================== WALLET REDEEM (Atomic with row-level safety) ===================
-const walletRedeemSchema = z.object({
-  userId: z.string().min(1),
-  platform: z.enum(VALID_PLATFORMS),
-  amount: z.number().int().positive(),
-  idempotencyKey: z.string().optional(),
-});
-
-router.post("/v1/wallet/redeem", async (req: Request, res: Response) => {
-  try {
-    const body = walletRedeemSchema.parse(req.body);
-
-    if (body.idempotencyKey) {
-      const [existingLedger] = await db
-        .select()
-        .from(octopusLedger)
-        .where(and(
-          eq(octopusLedger.type, "WALLET_DEBIT"),
-          sql`${octopusLedger.metadata}->>'idempotencyKey' = ${body.idempotencyKey}`
-        ))
-        .limit(1);
-
-      if (existingLedger) {
-        return res.json({ success: true, deducted: existingLedger.amount, idempotent: true });
-      }
-    }
-
-    const result = await db.transaction(async (tx) => {
-      const updated = await tx
-        .update(octopusWallets)
-        .set({
-          balance: sql`${octopusWallets.balance} - ${body.amount}`,
-          updatedAt: new Date(),
-        })
-        .where(and(
-          eq(octopusWallets.userId, body.userId),
-          sql`${octopusWallets.balance} >= ${body.amount}`
-        ))
-        .returning();
-
-      if (updated.length === 0) {
-        const [wallet] = await tx
-          .select()
-          .from(octopusWallets)
-          .where(eq(octopusWallets.userId, body.userId))
-          .limit(1);
-
-        if (!wallet) {
-          throw { status: 404, message: "Wallet not found" };
-        }
-        throw { status: 400, message: "Insufficient balance", available: wallet.balance, requested: body.amount };
-      }
-
-      const walletAfter = updated[0];
-
-      await tx.insert(octopusLedger).values({
-        id: generateId("OL"),
-        type: "WALLET_DEBIT",
-        walletId: walletAfter.id,
-        amount: body.amount,
-        platform: body.platform,
-        metadata: body.idempotencyKey ? { idempotencyKey: body.idempotencyKey } : {},
-      });
-
-      return { success: true, deducted: body.amount, remainingBalance: walletAfter.balance };
-    });
-
-    logger.info("[Wallet] Redeemed", { userId: body.userId, amount: body.amount, platform: body.platform });
-    return res.json(result);
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation failed", details: err.errors });
-    }
-    if (err.status) {
-      // Avoid spreading err to prevent leaking stack traces or internal fields to clients
-      return res.status(err.status).json({ error: err.message });
-    }
-    logger.error("[Wallet] Redeem failed", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// =================== WALLET CREDIT ===================
-const walletCreditSchema = z.object({
-  userId: z.string().min(1),
-  platform: z.enum(VALID_PLATFORMS),
-  amount: z.number().int().positive(),
-});
-
-router.post("/v1/wallet/credit", async (req: Request, res: Response) => {
-  try {
-    const body = walletCreditSchema.parse(req.body);
-
-    const result = await db.transaction(async (tx) => {
-      let [wallet] = await tx
-        .select()
-        .from(octopusWallets)
-        .where(eq(octopusWallets.userId, body.userId))
-        .limit(1);
-
-      if (!wallet) {
-        [wallet] = await tx.insert(octopusWallets).values({
-          id: generateId("OW"),
-          userId: body.userId,
-          balance: 0,
-        }).returning();
-      }
-
-      await tx
-        .update(octopusWallets)
-        .set({
-          balance: sql`${octopusWallets.balance} + ${body.amount}`,
-          updatedAt: new Date(),
-        })
-        .where(eq(octopusWallets.userId, body.userId));
-
-      await tx.insert(octopusLedger).values({
-        id: generateId("OL"),
-        type: "WALLET_CREDIT",
-        walletId: wallet.id,
-        amount: body.amount,
-        platform: body.platform,
-      });
-
-      return { success: true, credited: body.amount, newBalance: wallet.balance + body.amount };
-    });
-
-    logger.info("[Wallet] Credited", { userId: body.userId, amount: body.amount, platform: body.platform });
-    return res.json(result);
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation failed", details: err.errors });
-    }
-    logger.error("[Wallet] Credit failed", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
+// PR-DANGER-1: `POST /v1/wallet/redeem` + `POST /v1/wallet/credit` handlers
+// DELETED. Both accepted `{ userId, platform, amount }` from the request
+// body with NO auth check and directly mutated octopus_wallets.balance —
+// self-serve unlimited platform credit mint. They were "safe" only because
+// the `router.all('/v1/wallet*', …)` sentinel above (line 124) registered
+// first and short-circuited with 410. That's a mount-order guarantee: one
+// merge that reordered the mounts or removed the sentinel converts the
+// public API into a mint door with no audit trail explaining what happened.
+//
+// Zero client callers (verified: `grep -R "/v1/wallet/redeem"` and
+// `.../wallet/credit"` in `client/` return nothing). Canonical wallet
+// operations live behind Bearer auth at /api/wallet, /api/credit-wallet,
+// and /api/v2/vouchers/redeem — see the sentinel's migration table for
+// the exact endpoints.
 
 // =================== WALLET BALANCE ===================
 router.get("/v1/wallet/:userId", async (req: Request, res: Response) => {
@@ -781,162 +676,18 @@ router.get("/v1/ledger", async (req: Request, res: Response) => {
   }
 });
 
-// =================== BRAIN REDEEM (Single atomic e-gift redeem) ===================
-const brainRedeemSchema = z.object({
-  platform: z.string().min(1),
-  product: z.string().min(1),
-  stationId: z.string().optional(),
-  baySide: z.string().optional(),
-  egiftId: z.string().min(1),
-  userId: z.string().min(1),
-  amountCents: z.number().int().positive(),
-  idempotencyKey: z.string().min(1),
-});
-
-router.post("/v1/brain/redeem", requireAuth, async (req: Request, res: Response) => {
-  try {
-    const body = brainRedeemSchema.parse(req.body);
-    const ipAddress = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket.remoteAddress || '';
-
-    const result = await egiftFinancialService.brainRedeem({
-      ...body,
-      ipAddress,
-    });
-
-    logger.info("[Brain] E-gift redeemed", {
-      egiftId: body.egiftId,
-      bookingId: result.bookingId,
-      platform: body.platform,
-      product: body.product,
-      stationId: body.stationId,
-      amountCents: body.amountCents,
-      idempotent: result.idempotent,
-    });
-
-    // ── eGift redemption document + notifications (fire-and-forget) ──
-    if (!result.idempotent) {
-      (async () => {
-        try {
-          const [redeemer] = await db.select({ email: users.email, phone: users.phone })
-            .from(users).where(eq(users.id, body.userId)).limit(1);
-
-          const redemptionRef = result.bookingId || `RDM-${Date.now()}`;
-          const amountILS = (body.amountCents / 100).toFixed(2);
-          const issuedAt = new Date().toLocaleDateString('he-IL', { timeZone: 'Asia/Jerusalem' });
-
-          const redemptionHtml = `<!DOCTYPE html><html><body style="font-family:Arial;direction:rtl;text-align:right;padding:24px;">
-<h2>PetWash™ — אישור מימוש כרטיס מתנה</h2>
-<table style="border-collapse:collapse;width:100%;max-width:480px;">
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ מימוש</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${redemptionRef}</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">מס׳ כרטיס מתנה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.egiftId}</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">סכום מומש</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#1a7a1a;">₪${amountILS}</td></tr>
-  <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">פלטפורמה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.platform}</td></tr>
-  ${body.stationId ? `<tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">עמדה</td><td style="padding:8px;border-bottom:1px solid #eee;">${body.stationId}</td></tr>` : ''}
-  <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
-</table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
-</body></html>`;
-
-          const docRef = await FinancialDocumentService.create({
-            userId: body.userId,
-            bookingId: result.bookingId,
-            transactionId: body.idempotencyKey,
-            documentType: 'egift_redemption_receipt',
-            issuedByEntity: 'PetWash',
-            documentPayloadJson: {
-              egiftId: body.egiftId,
-              redemptionRef,
-              amountCents: body.amountCents,
-              amountILS,
-              currency: 'ILS',
-              platform: body.platform,
-              product: body.product,
-              stationId: body.stationId,
-              baySide: body.baySide,
-            },
-            renderedHtml: redemptionHtml,
-            idempotencyKey: `egift_redemption_receipt:${body.egiftId}:${body.userId}`,
-          });
-
-          // ── K9000 usage event (transaction_source: petwash) ──────────────
-          // ARCHITECTURE: eGift redemptions are a PetWash transaction.
-          // This row is the canonical K9000 analytics record for this wash.
-          // Nayax direct payments are logged separately via the Nayax usage
-          // webhook (transaction_source: nayax) and NEVER issue financial docs.
-          await db.insert(k9000WashEvents).values({
-            transactionSource: 'petwash',
-            redemptionSource: 'egift',
-            egiftId: body.egiftId,
-            userId: body.userId,
-            documentReference: docRef,
-            stationId: body.stationId,
-            baySide: body.baySide,
-            platform: body.platform,
-            product: body.product,
-            amountCents: body.amountCents,
-            currency: 'ILS',
-            status: 'completed',
-            idempotencyKey: `k9000_wash:egift:${body.egiftId}:${body.userId}`,
-          }).onConflictDoNothing();
-
-          await dispatchNotifications({
-            userId: body.userId,
-            eventType: 'egift_redeemed',
-            templateKey: 'customer_egift_redeemed',
-            transactionId: body.idempotencyKey,
-            channels: ['sms', 'push'],
-            sms: redeemer?.phone ? {
-              to: redeemer.phone,
-              text: buildEgiftRedeemedSms({
-                redemptionRef,
-                amountILS,
-                stationId: body.stationId,
-              }),
-            } : undefined,
-            push: {
-              userId: body.userId,
-              title: `כרטיס מתנה מומש – PetWash™ ✅`,
-              body: `₪${amountILS} מומשו בהצלחה! מס׳ ${redemptionRef}`,
-              data: { egiftId: body.egiftId, documentRef: docRef, type: 'egift_redeemed' },
-            },
-            debugPayload: {
-              egiftId: body.egiftId,
-              redemptionRef,
-              amountILS,
-              smsText: buildEgiftRedeemedSms({ redemptionRef, amountILS, stationId: body.stationId }),
-              pushTitle: `כרטיס מתנה מומש – PetWash™ ✅`,
-              pushBody: `₪${amountILS} מומשו בהצלחה`,
-              documentRef: docRef,
-            },
-          });
-        } catch (notifErr: any) {
-          logger.error('[Brain] Post-redeem notification failed silently', { error: notifErr?.message });
-        }
-      })();
-    }
-
-    return res.json({
-      success: true,
-      data: result,
-    });
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation failed", details: err.errors });
-    }
-    if (err.message?.includes('Rate limit')) {
-      return res.status(429).json({ error: err.message });
-    }
-    if (err.message?.includes('Insufficient')) {
-      return res.status(400).json({ error: err.message });
-    }
-    if (err.message?.includes('not found')) {
-      return res.status(404).json({ error: err.message });
-    }
-    logger.error("[Brain] Redeem failed", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
+// PR-DANGER-1: `POST /v1/brain/redeem` handler DELETED. Although the
+// handler required a Firebase auth token, its body carried
+// `{ egiftId, userId, amountCents, idempotencyKey }` where amountCents was
+// client-controlled and no server-side check verified the authenticated
+// caller owned the egift OR that amountCents matched the egift's server-
+// known face value. An authenticated user could therefore forge redemption
+// receipts against any eGift ID at any value they chose, then send that
+// document to /station-manager or /finance as apparent proof of payment.
+// The `router.all('/v1/brain*', …)` sentinel added above (~line 145)
+// short-circuits the route with 410. Zero client callers (grep). Canonical
+// redemption lives at POST /api/v2/vouchers/redeem, which resolves the
+// face-value server-side from the voucher record and enforces ownership.
 // =================== EGIFT PURCHASE (Idempotent) ===================
 const egiftPurchaseSchema = z.object({
   userId: z.string().min(1),
