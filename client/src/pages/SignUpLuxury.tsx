@@ -178,6 +178,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // routing sends the user to the right place. (Ported from SignIn.tsx.)
   useEffect(() => { applyIntentFromUrl(); }, []);
 
+  // Tick the resend cooldown down once per second. Cleared when hitting 0 or
+  // when the component unmounts so no dangling interval.
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const t = setInterval(() => setResendCountdown((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCountdown]);
+
   useEffect(() => {
     const root = document.getElementById('root');
     document.documentElement.setAttribute('data-pw-page', 'signup');
@@ -365,6 +373,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  // Resend cooldown (2026-08-16). "Resend code" used to silently drop the user
+  // back to the entry form without actually resending. Now it calls the real
+  // send function; the countdown throttles it so users can't spam-tap the
+  // server (server-side rate-limit remains the hard gate — this is UX).
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
   // Date of birth — required, 18+. Server re-enforces at account creation.
   // DOB defaults to the SAME date the wheel visually shows (year = now-25, an
@@ -1630,10 +1643,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${phone}` : `Enter the code sent to ${phone}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verify(c); }} loading={busy} language={he ? 'he' : 'en'} />
-              {/* Resend only needs the network idle — NOT consent again. The code
-                  was already sent (consent was given at first send); re-gating on
-                  consent created a dead button if the user later toggled a box. */}
-              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+              {/* Resend actually resends. Old handler was setSent(false) — it
+                  bounced the user back to the entry form and made them tap the
+                  primary Send button again. Now it calls the real network
+                  send; the countdown (server rate-limit is the hard gate) keeps
+                  users from spam-tapping into 429s. */}
+              <button className="sl-btn" disabled={busy || resendCountdown > 0}
+                onClick={() => { setResendCountdown(60); void sendCode(); }}
+                data-testid="button-resend-code-mobile">
+                {resendCountdown > 0
+                  ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
+                  : (he ? 'שלח קוד חדש' : 'Resend code')}
+              </button>
             </>
           )}
 
@@ -1642,7 +1663,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${email}` : `Enter the code sent to ${email}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
-              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+              <button className="sl-btn" disabled={busy || resendCountdown > 0}
+                onClick={() => { setResendCountdown(60); void sendEmailCode(); }}
+                data-testid="button-resend-code-email">
+                {resendCountdown > 0
+                  ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
+                  : (he ? 'שלח קוד חדש' : 'Resend code')}
+              </button>
             </>
           )}
 
