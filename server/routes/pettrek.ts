@@ -70,7 +70,7 @@ router.post('/fare-estimate', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Fare estimate error:', error);
     res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to calculate fare',
+      error: 'Failed to calculate fare', code: 'PETTREK_FAILED_TO_CALCULATE_FARE_500',
     });
   }
 });
@@ -245,7 +245,7 @@ router.post('/request-trip', requireAuth, requireLoyaltyMember, async (req, res)
   } catch (error) {
     console.error('[PETTREK] Request trip error:', error);
     res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to request trip',
+      error: 'Failed to request trip', code: 'PETTREK_FAILED_TO_REQUEST_TRIP_500',
     });
   }
 });
@@ -270,7 +270,7 @@ router.get('/trips/active', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Get active trips error:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch trips',
+      error: 'Failed to fetch trips', code: 'PETTREK_FAILED_TO_FETCH_TRIPS_500',
     });
   }
 });
@@ -325,7 +325,7 @@ router.get('/trips/:tripId/details', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Get trip details error:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch trip details',
+      error: 'Failed to fetch trip details', code: 'PETTREK_FAILED_TO_FETCH_TRIP_DETAILS_500',
     });
   }
 });
@@ -368,7 +368,7 @@ router.get('/trips/:tripId/live-location', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Get live location error:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch live location',
+      error: 'Failed to fetch live location', code: 'PETTREK_FAILED_TO_FETCH_LIVE_LOCATION_500',
     });
   }
 });
@@ -412,7 +412,7 @@ router.get('/provider/jobs', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Get provider jobs error:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch jobs',
+      error: 'Failed to fetch jobs', code: 'PETTREK_FAILED_TO_FETCH_JOBS_500',
     });
   }
 });
@@ -451,7 +451,7 @@ router.post('/provider/accept-trip', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Accept trip error:', error);
     res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to accept trip',
+      error: 'Failed to accept trip', code: 'PETTREK_FAILED_TO_ACCEPT_TRIP_500',
     });
   }
 });
@@ -481,7 +481,7 @@ router.post('/provider/decline-trip', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Decline trip error:', error);
     res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to decline trip',
+      error: 'Failed to decline trip', code: 'PETTREK_FAILED_TO_DECLINE_TRIP_500',
     });
   }
 });
@@ -529,7 +529,7 @@ router.post('/provider/start-trip', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Start trip error:', error);
     res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to start trip',
+      error: 'Failed to start trip', code: 'PETTREK_FAILED_TO_START_TRIP_500',
     });
   }
 });
@@ -579,7 +579,7 @@ router.post('/provider/gps-update', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] GPS update error:', error);
     res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to update GPS',
+      error: 'Failed to update GPS', code: 'PETTREK_FAILED_TO_UPDATE_GPS_500',
     });
   }
 });
@@ -650,7 +650,7 @@ router.post('/provider/complete-trip', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Complete trip error:', error);
     res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to complete trip',
+      error: 'Failed to complete trip', code: 'PETTREK_FAILED_TO_COMPLETE_TRIP_500',
     });
   }
 });
@@ -689,7 +689,7 @@ router.post('/provider/toggle-online', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Toggle online error:', error);
     res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to update online status',
+      error: 'Failed to update online status', code: 'PETTREK_FAILED_TO_UPDATE_ONLINE_STATUS_500',
     });
   }
 });
@@ -725,7 +725,7 @@ router.get('/provider/stats', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Get provider stats error:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch stats',
+      error: 'Failed to fetch stats', code: 'PETTREK_FAILED_TO_FETCH_STATS_500',
     });
   }
 });
@@ -760,7 +760,7 @@ router.get('/provider/active-trips', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Get active trips error:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch active trips',
+      error: 'Failed to fetch active trips', code: 'PETTREK_FAILED_TO_FETCH_ACTIVE_TRIPS_500',
     });
   }
 });
@@ -796,7 +796,7 @@ router.get('/provider/trip-history', requireAuth, async (req, res) => {
   } catch (error) {
     console.error('[PETTREK] Get trip history error:', error);
     res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to fetch trip history',
+      error: 'Failed to fetch trip history', code: 'PETTREK_FAILED_TO_FETCH_TRIP_HISTORY_500',
     });
   }
 });
