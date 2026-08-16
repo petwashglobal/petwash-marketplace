@@ -11824,6 +11824,10 @@ export const paymentTokens = pgTable("payment_tokens", {
 export const sumitCustomers = pgTable("sumit_customers", {
   userId: varchar("user_id", { length: 128 }).primaryKey(),           // Firebase UID
   sumitCustomerId: varchar("sumit_customer_id", { length: 128 }).notNull().unique(),
+  // SUMIT `CustomerHistoryURL` — the official customer-portal dashboard link
+  // returned by /accounting/customers/create/ (docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.1).
+  // This is what powers the "My Invoices / החשבוניות שלי" surface.
+  customerHistoryUrl: text("customer_history_url"),
   syncedAt: timestamp("synced_at").defaultNow().notNull(),
   source: varchar("source", { length: 32 }).notNull(),                // 'signup' | 'backfill' | 'manual'
   externalReference: varchar("external_reference", { length: 128 }).notNull(),

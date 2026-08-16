@@ -631,29 +631,36 @@ export class SumitClient {
   /**
    * POST /accounting/customers/create/
    *
-   * SUMIT full-service adoption, Phase 2 (CEO 2026-08-16). Creates a
-   * SUMIT-side customer record so the member has a hosted customer-portal
-   * login and so downstream chargeRecurring / chargeSavedCard /
-   * setForCustomer have a real CustomerID to pass. Idempotent via
-   * ExternalIdentifier (SUMIT-side) + our own pre-check against the
-   * sumit_customers table (caller-side).
+   * SUMIT full-service adoption, Phase 2 (CEO 2026-08-16). Per the SUMIT
+   * official contract documented at
+   *   docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.1
+   * this endpoint is FIND-OR-CREATE when called with
+   * `SearchMode: "Automatic"` + a stable `ExternalIdentifier`. SUMIT
+   * dedupes on their side and returns the existing CustomerID + a
+   * `CustomerHistoryURL` (the customer-portal dashboard link).
    *
-   * BODY SHAPE WARNING: same unverified-against-authenticated-swagger
-   * caveat as createDocument. Confirmed against public OfficeGuy customer
-   * shape but MUST be exercised against SUMIT_SANDBOX=true before any
-   * production flip. Companion design doc:
-   *   docs/design/2026-08-16-sumit-full-service-adoption.md
+   * Body: `{ Details: AccountingTypedCustomer, Credentials }`.
+   * Response: `{ CustomerID, CustomerHistoryURL }` — official field names,
+   * no heuristic parsing.
    *
    * Safety contract:
    *  - Not wired → returns {wired:false} without any HTTP call.
    *  - Never throws — a customer-sync failure must never roll back signup.
+   *  - `SearchMode: "Automatic"` means a retry with the same
+   *    ExternalIdentifier does NOT duplicate the customer.
    */
   async createCustomer(input: {
     externalIdentifier: string;
     name: string;
     email?: string;
     phone?: string;
-  }): Promise<{ wired: boolean; sumitCustomerId?: string; reason?: string; rawResponse?: unknown }> {
+  }): Promise<{
+    wired: boolean;
+    sumitCustomerId?: string;
+    customerHistoryUrl?: string;
+    reason?: string;
+    rawResponse?: unknown;
+  }> {
     const env = readEnv();
     if (!isWired()) {
       logger.info('[SumitClient] createCustomer called while not wired (no-op)', {
@@ -665,17 +672,25 @@ export class SumitClient {
       };
     }
 
+    // Body shape from official SUMIT API contract:
+    //   docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.1 lines 82, 87-101
+    //   Endpoint:  POST /accounting/customers/create/
+    //   Wrap key:  `Details` (NOT `Customer`)
+    //   Type:      AccountingTypedCustomer
+    //   Idempotency: `Customer.ExternalIdentifier` + `SearchMode: "Automatic"`
+    //   Response:  `{ CustomerID, CustomerHistoryURL }`
     const body = {
       Credentials: {
         CompanyID: env.companyId,
         APIKey: env.apiKey,
       },
-      Customer: {
+      Details: {
         Name: input.name,
         EmailAddress: input.email || undefined,
-        PhoneNumber: input.phone || undefined,
+        Phone: input.phone || undefined,     // official field: Phone (not PhoneNumber)
         ExternalIdentifier: input.externalIdentifier,
-        Language: 'Hebrew',
+        SearchMode: 'Automatic',              // find-or-create by ExternalIdentifier
+        NoVAT: false,
       },
     };
 
@@ -719,28 +734,26 @@ export class SumitClient {
       };
     }
 
-    // Field name unverified — try common variants.
+    // Response fields pinned to the official contract (see doc §3.1). Do NOT
+    // add fallback field-name heuristics — if SUMIT changes the contract
+    // we want the tests + logs to surface it, not silently paper over.
     const b = (parsedBody && typeof parsedBody === 'object')
       ? parsedBody as Record<string, unknown>
       : {};
-    const sumitCustomerId = String(
-      b.CustomerID ??
-      b.customerId ??
-      (b.Data as Record<string, unknown> | undefined)?.CustomerID ??
-      (b.Customer as Record<string, unknown> | undefined)?.CustomerID ??
-      b.ID ??
-      b.id ??
-      '',
-    ) || undefined;
+    const sumitCustomerId = b.CustomerID != null ? String(b.CustomerID) : undefined;
+    const customerHistoryUrl = typeof b.CustomerHistoryURL === 'string'
+      ? b.CustomerHistoryURL
+      : undefined;
 
-    logger.info('[SumitClient] customer created', {
+    logger.info('[SumitClient] customer create response', {
       externalIdentifier: input.externalIdentifier,
       sumitCustomerId,
+      hasCustomerHistoryUrl: Boolean(customerHistoryUrl),
       sandbox: env.sandbox,
       elapsedMs: Date.now() - startMs,
     });
 
-    return { wired: true, sumitCustomerId, rawResponse: parsedBody };
+    return { wired: true, sumitCustomerId, customerHistoryUrl, rawResponse: parsedBody };
   }
 
   async connectionTest(): Promise<{
