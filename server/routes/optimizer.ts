@@ -25,7 +25,7 @@ router.get('/proposals', async (_req: Request, res: Response) => {
     `);
     return res.json({ proposals: result.rows });
   } catch (err: any) {
-    return res.status(500).json({ error: 'OPTIMIZER_LIST_FAILED', message: err.message });
+    return res.status(500).json({ error: 'OPTIMIZER_LIST_FAILED', code: 'OPTIMIZER_LIST_500' });
   }
 });
 
@@ -96,7 +96,7 @@ router.post('/proposals/generate', async (_req: Request, res: Response) => {
     });
   } catch (err: any) {
     console.error('[Optimizer] generate failed', err);
-    return res.status(500).json({ error: 'OPTIMIZER_GENERATE_FAILED', message: err.message });
+    return res.status(500).json({ error: 'OPTIMIZER_GENERATE_FAILED', code: 'OPTIMIZER_GENERATE_500' });
   }
 });
 
@@ -118,7 +118,7 @@ router.post('/proposals/:id/accept', async (req: Request, res: Response) => {
     if (!result.rows[0]) return res.status(404).json({ error: 'OPTIMIZER_PROPOSAL_NOT_FOUND' });
     return res.json({ proposal: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'OPTIMIZER_ACCEPT_FAILED', message: err.message });
+    return res.status(500).json({ error: 'OPTIMIZER_ACCEPT_FAILED', code: 'OPTIMIZER_ACCEPT_500' });
   }
 });
 
@@ -145,7 +145,7 @@ router.post('/proposals/:id/reject', async (req: Request, res: Response) => {
 
     return res.json({ proposal: result.rows[0] });
   } catch (err: any) {
-    return res.status(500).json({ error: 'OPTIMIZER_REJECT_FAILED', message: err.message });
+    return res.status(500).json({ error: 'OPTIMIZER_REJECT_FAILED', code: 'OPTIMIZER_REJECT_500' });
   }
 });
 
@@ -202,7 +202,7 @@ router.post('/proposals/:id/promote-to-draft', async (req: Request, res: Respons
     });
   } catch (err: any) {
     console.error('[Optimizer] promote failed', err);
-    return res.status(500).json({ error: 'OPTIMIZER_PROMOTE_FAILED', message: err.message });
+    return res.status(500).json({ error: 'OPTIMIZER_PROMOTE_FAILED', code: 'OPTIMIZER_PROMOTE_500' });
   }
 });
 
