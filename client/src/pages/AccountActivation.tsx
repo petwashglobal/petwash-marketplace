@@ -91,6 +91,21 @@ export default function AccountActivation() {
   const [otpCode, setOtpCode] = useState("");
   const [otpSent, setOtpSent] = useState(false);
   const [emailPollInterval, setEmailPollInterval] = useState<number | null>(null);
+  // Resend cooldown (2026-08-16 audit D5). Server rate-limits already exist;
+  // this is the UX surface so users can see the wait instead of spam-tapping
+  // into silent 429s. 60s for phone code, 90s for activation email.
+  const [otpCooldown, setOtpCooldown] = useState(0);
+  const [emailCooldown, setEmailCooldown] = useState(0);
+  useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const t = setInterval(() => setOtpCooldown((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(t);
+  }, [otpCooldown]);
+  useEffect(() => {
+    if (emailCooldown <= 0) return;
+    const t = setInterval(() => setEmailCooldown((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(t);
+  }, [emailCooldown]);
 
   const userId = user?.uid;
 
@@ -301,12 +316,15 @@ export default function AccountActivation() {
             </p>
             {!otpSent ? (
               <Button
-                onClick={() => sendOtpMutation.mutate()}
-                disabled={sendOtpMutation.isPending}
+                onClick={() => { setOtpCooldown(60); sendOtpMutation.mutate(); }}
+                disabled={sendOtpMutation.isPending || otpCooldown > 0}
+                data-testid="button-send-otp"
                 className="w-full bg-[#1a1a1a] hover:bg-[#333] text-white text-xs tracking-[2px] uppercase rounded-sm h-11"
               >
                 {sendOtpMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
+                ) : otpCooldown > 0 ? (
+                  `Resend in ${otpCooldown}s`
                 ) : (
                   "Send verification code"
                 )}
@@ -334,11 +352,13 @@ export default function AccountActivation() {
                   )}
                 </Button>
                 <button
-                  onClick={() => sendOtpMutation.mutate()}
-                  className="text-xs text-[#999] hover:text-[#666] flex items-center gap-1 mx-auto"
-                  disabled={sendOtpMutation.isPending}
+                  onClick={() => { setOtpCooldown(60); sendOtpMutation.mutate(); }}
+                  className="text-xs text-[#999] hover:text-[#666] flex items-center gap-1 mx-auto disabled:opacity-50"
+                  disabled={sendOtpMutation.isPending || otpCooldown > 0}
+                  data-testid="button-resend-otp"
                 >
-                  <RefreshCw className="w-3 h-3" /> Resend code
+                  <RefreshCw className="w-3 h-3" />
+                  {otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Resend code'}
                 </button>
               </div>
             )}
@@ -366,12 +386,15 @@ export default function AccountActivation() {
               </div>
             ) : (
               <Button
-                onClick={() => sendEmailMutation.mutate()}
-                disabled={sendEmailMutation.isPending || !mobileComplete}
+                onClick={() => { setEmailCooldown(90); sendEmailMutation.mutate(); }}
+                disabled={sendEmailMutation.isPending || !mobileComplete || emailCooldown > 0}
+                data-testid="button-send-activation-email"
                 className="w-full bg-[#1a1a1a] hover:bg-[#333] text-white text-xs tracking-[2px] uppercase rounded-sm h-11 disabled:bg-[#ddd] disabled:text-[#aaa]"
               >
                 {sendEmailMutation.isPending ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
+                ) : emailCooldown > 0 ? (
+                  `Resend in ${emailCooldown}s`
                 ) : (
                   "Send activation email"
                 )}
