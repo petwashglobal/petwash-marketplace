@@ -137,8 +137,17 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
 
     const now = new Date();
     try {
+      // Additive capabilities (PR-AUTH-MULTIROLE-5): approving a staff
+      // request adds a staff capability to the account — it does NOT
+      // replace the base customer / loyalty / provider identity. The staff
+      // capability is derived by server/lib/userCapabilities.ts from
+      // staff_access_requests.status='approved' (written above at line 132),
+      // so writing users.role='staff' here would clobber the account's
+      // other capabilities without adding anything the aggregator can't
+      // already see. Left in place: accessLevel + approvedBy + approvedAt +
+      // userStatus + staffApprovedAt + mfaRequired, which are staff-side
+      // audit / MFA settings that are additive by shape.
       await storage.updateUser(updated.userId, {
-        role: 'staff',
         accessLevel: 4,
         approvedBy: email!,
         approvedAt: now,
@@ -147,7 +156,7 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
         mfaRequired: true,
       } as any);
     } catch (userErr) {
-      logger.error('[Access Requests] Failed to update user role after approval', { userErr, userId: updated.userId });
+      logger.error('[Access Requests] Failed to update user record after staff approval', { userErr, userId: updated.userId });
     }
 
     // PR-3 P0-2: Sync Firebase customClaims so the user's ID token reflects
