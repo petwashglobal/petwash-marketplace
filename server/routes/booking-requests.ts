@@ -39,13 +39,13 @@ import {
   userAddresses,
 } from '@shared/schema';
 import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
-import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
+import { eq, and, desc, sql, or, inArray, ne, isNull } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { nanoid } from 'nanoid';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 
 // Enterprise service integrations
 import EscrowService from '../services/EscrowService';
@@ -2193,14 +2193,15 @@ router.post('/:requestId/meet-greet', async (req, res) => {
 router.post('/:requestId/pay', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
     const { paymentMethod, transactionId } = req.body;
-    
+
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
@@ -2213,16 +2214,76 @@ router.post('/:requestId/pay', async (req, res) => {
         message: 'PetTrek™ payments are not available — service pending licensing in Israel.',
       });
     }
-    
+
     if (booking.ownerId !== userId) {
       return res.status(403).json({ error: 'Only the owner can make payment' });
     }
-    
+
     if (!['meet_greet_completed', 'accepted'].includes(booking.status)) {
-      return res.status(400).json({ 
-        error: `Cannot pay for booking with status: ${booking.status}. Meet & Greet must be completed first.` 
+      return res.status(400).json({
+        error: `Cannot pay for booking with status: ${booking.status}. Meet & Greet must be completed first.`
       });
     }
+
+    // ATOMIC PAYMENT SLOT CLAIM (2026-08-16 audit item 162, money-safety).
+    // Two concurrent /pay taps could both pass the checks above, both call
+    // Nayax createPaymentSession, both call EscrowService.createEscrowPayment,
+    // and both UPDATE the DB — leaving one row referencing session B while
+    // session A silently orphans (and the escrow layer has two docs for one
+    // booking).
+    //
+    // Claim the payment slot atomically by writing a placeholder into
+    // paymentTransactionId (which must be NULL for a booking that hasn't
+    // started paying). Postgres row-lock during UPDATE ensures exactly one
+    // caller wins the claim. Loser gets 409 immediately with the winner's
+    // txn hint — they can retry after the winner completes / times out.
+    //
+    // If the downstream Nayax/Escrow calls fail below, we ROLLBACK the claim
+    // so a legitimate retry succeeds; nothing is charged either way.
+    const claimToken = `CLAIM-${Date.now()}-${randomUUID()}`;
+    const claim = await db.update(bookingRequests)
+      .set({
+        paymentTransactionId: claimToken,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        isNull(bookingRequests.paymentTransactionId),
+        inArray(bookingRequests.status, ['accepted', 'meet_greet_completed']),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (claim.length === 0) {
+      const [current] = await db.select({
+        status: bookingRequests.status,
+        paymentTransactionId: bookingRequests.paymentTransactionId,
+      }).from(bookingRequests).where(eq(bookingRequests.requestId, requestId)).limit(1);
+      logger.warn('[BookingRequests] /pay claim lost (concurrent request or booking not in payable state)', {
+        requestId, currentStatus: current?.status, hasTxn: !!current?.paymentTransactionId,
+      });
+      return res.status(409).json({
+        error: 'Payment already in progress or booking not in a payable state. Please refresh.',
+        currentStatus: current?.status ?? null,
+      });
+    }
+
+    // Helper to reset the claim if Nayax/Escrow fail below. Rollback is safe
+    // because the WHERE narrows to our exact claim token — we can't clobber
+    // a webhook-set real txId.
+    const rollbackClaim = async () => {
+      try {
+        await db.update(bookingRequests)
+          .set({ paymentTransactionId: null, updatedAt: new Date() })
+          .where(and(
+            eq(bookingRequests.requestId, requestId),
+            eq(bookingRequests.paymentTransactionId, claimToken),
+          ));
+      } catch (rollbackErr: any) {
+        logger.error('[BookingRequests] /pay claim rollback failed', {
+          requestId, claimToken, error: rollbackErr?.message,
+        });
+      }
+    };
     
     // Initiate a real hosted payment session.
     // Booking transitions to 'payment_pending' here and becomes 'confirmed' ONLY
@@ -2270,6 +2331,8 @@ router.post('/:requestId/pay', async (req, res) => {
     }
 
     if (!sessionResult.success) {
+      // Nayax failed — release the claim so a legitimate retry can proceed.
+      await rollbackClaim();
       // Online card rail not live yet — be honest, do NOT create escrow or move the
       // booking to payment_pending (this guard runs before both).
       if (sessionResult.error === 'ONLINE_CARD_NOT_LIVE') {
@@ -2317,6 +2380,8 @@ router.post('/:requestId/pay', async (req, res) => {
         requestId, escrowId: escrow.id, amount: booking.totalCents / 100,
       });
     } catch (escrowError: any) {
+      // Escrow failed — release the payment-slot claim so a retry succeeds.
+      await rollbackClaim();
       logger.error('[BookingRequests] Escrow creation FAILED — aborting payment initiation', {
         error: escrowError.message, requestId,
       });
@@ -2327,6 +2392,10 @@ router.post('/:requestId/pay', async (req, res) => {
     }
 
     // Transition booking to payment_pending — NOT confirmed until webhook fires.
+    // We ATOMICALLY promote our claim token to the real session ID. Guarding on
+    // paymentTransactionId=claimToken means only OUR row (the one we claimed
+    // above) is updated — a webhook that raced ahead and wrote the real txId
+    // cannot be clobbered.
     const statusHistory = (booking.statusHistory as any[]) || [];
     statusHistory.push({
       status: 'payment_pending',
@@ -2342,7 +2411,10 @@ router.post('/:requestId/pay', async (req, res) => {
         statusHistory,
         updatedAt: new Date(),
       })
-      .where(eq(bookingRequests.requestId, requestId));
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        eq(bookingRequests.paymentTransactionId, claimToken),
+      ));
 
     logger.info('[BookingRequests] Payment session initiated — awaiting Nayax confirmation', {
       requestId, sessionId: sessionResult.sessionId, demoMode: sessionResult.demoMode,
