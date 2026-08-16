@@ -170,7 +170,7 @@ router.post('/complete-module', requireAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     logger.error('[Provider Training] Error completing module', error);
-    res.status(500).json({ error: error.message || 'שגיאה בסימון המודול' });
+    res.status(500).json({ error: 'שגיאה בסימון המודול' });
   }
 });
 
@@ -205,7 +205,7 @@ router.post('/submit-quiz', requireAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     logger.error('[Provider Training] Error submitting quiz', error);
-    res.status(500).json({ error: error.message || 'שגיאה בהגשת המבחן' });
+    res.status(500).json({ error: 'שגיאה בהגשת המבחן' });
   }
 });
 
@@ -241,7 +241,7 @@ router.post('/generate-certificate', requireAuth, async (req: any, res) => {
     });
   } catch (error: any) {
     logger.error('[Provider Training] Error generating certificate', error);
-    res.status(500).json({ error: error.message || 'שגיאה בהפקת התעודה' });
+    res.status(500).json({ error: 'שגיאה בהפקת התעודה' });
   }
 });
 

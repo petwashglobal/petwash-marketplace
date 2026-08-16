@@ -191,7 +191,7 @@ router.post('/:key/start', requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ProviderDeclarations] start error', error);
-    res.status(500).json({ success: false, error: error.message || 'Failed to start signing' });
+    res.status(500).json({ success: false, error: 'Failed to start signing' });
   }
 });
 
@@ -301,7 +301,7 @@ router.post('/:key/accept', requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ProviderDeclarations] accept error', error);
-    res.status(500).json({ success: false, error: error.message || 'Failed to record acceptance' });
+    res.status(500).json({ success: false, error: 'Failed to record acceptance' });
   }
 });
 
