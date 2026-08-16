@@ -2564,6 +2564,43 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // GET /api/me/role - Get current user's role level for RBAC and passkey enforcement
+  // GET /api/me/invoices/portal-url — server-resolved SUMIT customer portal link
+  // (My Invoices / החשבוניות שלי). Per CEO 2026-08-16 SUMIT full-service
+  // adoption Phase 2, the URL is returned by SUMIT's /accounting/customers/
+  // create/ response (CustomerHistoryURL) and persisted in sumit_customers.
+  // We MUST resolve the uid from the authenticated session — never from a
+  // query/body field. User A can never obtain User B's link.
+  app.get('/api/me/invoices/portal-url', async (req, res) => {
+    try {
+      const token = req.cookies?.pw_session;
+      const authHeader = req.headers.authorization;
+      let uid: string | undefined;
+      if (token) {
+        try {
+          const decoded = await firebaseAdmin.auth().verifySessionCookie(token, false);
+          uid = decoded.uid;
+        } catch { /* fall through to Bearer */ }
+      }
+      if (!uid && authHeader?.startsWith('Bearer ')) {
+        try {
+          const decoded = await firebaseAdmin.auth().verifyIdToken(authHeader.substring(7), true);
+          uid = decoded.uid;
+        } catch { /* fall through */ }
+      }
+      if (!uid) return res.status(401).json({ error: 'Authentication required' });
+
+      const { getCustomerHistoryUrl } = await import('./services/SumitCustomerService');
+      const url = await getCustomerHistoryUrl(uid);
+      if (!url) {
+        return res.status(200).json({ available: false, reason: 'not_synced' });
+      }
+      return res.status(200).json({ available: true, url });
+    } catch (err: any) {
+      logger.error('[MeInvoicesPortalUrl] lookup failed', { error: err?.message });
+      return res.status(500).json({ error: 'Portal lookup failed' });
+    }
+  });
+
   app.get('/api/me/role', async (req, res) => {
     try {
       const token = req.cookies?.pw_session;
