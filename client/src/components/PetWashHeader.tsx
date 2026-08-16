@@ -81,25 +81,14 @@ function detectInitialLanguage(): string {
   return "en"; // English default for rest of world
 }
 
-// Async geo-detection to set country code
-async function detectCountry(): Promise<string> {
-  try {
-    const response = await fetch("https://ipapi.co/country_code/", { 
-      method: "GET",
-      signal: AbortSignal.timeout(3000) 
-    });
-    if (response.ok) {
-      const countryCode = await response.text();
-      if (typeof window !== "undefined") {
-        window.localStorage.setItem("pw_country", countryCode.trim());
-      }
-      return countryCode.trim();
-    }
-  } catch (e) {
-    // Fallback silently
-  }
-  return "";
-}
+// Geo-detect removed (Agent A audit 2026-08-16). Prior implementation hit
+// ipapi.co on every fresh load — a third-party service blocked by many
+// corporate proxies and adblockers, rate-limited to 1 000/day per unshared
+// IP. The `navigator.language` fallback already covers the 99 % case. If
+// server-side geo becomes worth it, the correct place is a request-side
+// header (Cloudflare's CF-IPCountry / GCP's X-Forwarded-For lookup), NOT
+// a browser fetch. See `detectInitialLanguage` below — it now returns
+// English for non-IL browsers instead of a spurious IL default.
 
 const T: Record<string, Record<string, string>> = {
   "section.platforms": { en: "PLATFORMS", he: "פלטפורמות", ru: "ПЛАТФОРМЫ", fr: "PLATEFORMES", es: "PLATAFORMAS", ar: "المنصات" },
@@ -169,6 +158,7 @@ const T: Record<string, Record<string, string>> = {
   "myaccount": { en: "My account", he: "החשבון שלי", ru: "Мой аккаунт", fr: "Mon compte", es: "Mi cuenta", ar: "حسابي" },
   "mypass": { en: "My Pass", he: "הכרטיס שלי", ru: "Мой пропуск", fr: "Mon Pass", es: "Mi Pase", ar: "بطاقتي" },
   "logout": { en: "Log out", he: "התנתק", ru: "Выйти", fr: "Déconnexion", es: "Cerrar sesión", ar: "تسجيل الخروج" },
+  "notifications.aria": { en: "Notifications", he: "התראות", ru: "Уведомления", fr: "Notifications", es: "Notificaciones", ar: "الإشعارات" },
 };
 
 function t(key: string, lang: string): string {
@@ -332,6 +322,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   const [internalLanguage, setInternalLanguage] = useState<string>(detectInitialLanguage);
   const [isPlatformsOpen, setIsPlatformsOpen] = useState(false);
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  // Agent A audit item 10 — debounce for the drawer logout button so a
+  // jittery double-tap can't fire logout() twice (the second call runs
+  // after Firebase already cleared the session and can throw).
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   // Mobile drawer hygiene (2026-07-27): the drawer stays in the DOM and only
   // slides off-screen, so when CLOSED its ~40 buttons were still tabbable, and
@@ -354,16 +348,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     drawer?.setAttribute('inert', '');
   }, [isMobileOpen]);
 
-  // Unread message count for badge on Messages nav link
-  const { data: inboxConversations } = useQuery<any[]>({
-    queryKey: ["/api/booking-chat/inbox"],
-    refetchInterval: 30000,
-    enabled: !!user,
-  });
-  const totalUnreadMessages = inboxConversations?.reduce((sum: number, c: any) => {
-    const myUnread = user?.uid === c.customerId ? (c.customerUnread ?? 0) : (c.providerUnread ?? 0);
-    return sum + myUnread;
-  }, 0) ?? 0;
+  // Dead inbox poll removed (Agent A audit 2026-08-16). The badge this
+  // powered was never rendered — every logged-in user was polling
+  // /api/booking-chat/inbox every 30 s for zero UI benefit. Reintroduce
+  // via a Messages icon in a follow-up PR if that surface returns.
 
   // Unread in-app notification count for bell badge
   const { data: unreadCountData } = useQuery<{ count: number }>({
@@ -412,20 +400,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
   // Geo-detection for language default (Hebrew for Israel, English outside)
   useEffect(() => {
     if (controlledLanguage !== undefined) return; // Skip if controlled
-    if (typeof window === "undefined") return;
-    
-    // Only run geo-detection if no saved preference and no country yet
-    const saved = window.localStorage.getItem("pw_lang");
-    const country = window.localStorage.getItem("pw_country");
-    
-    if (!saved && !country) {
-      detectCountry().then((countryCode) => {
-        if (countryCode === "IL") {
-          setInternalLanguage("he");
-        }
-        // For other countries, keep the default (English)
-      });
-    }
+    // Geo-detect was removed (Agent A audit). detectInitialLanguage
+    // already runs at mount and covers the fallback chain: saved
+    // preference → stored country → navigator.language → English.
+    // No third-party fetch on every load.
   }, [controlledLanguage]);
 
   const handleNavigate = (href: string) => {
@@ -436,6 +414,22 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
     }
     window.location.assign(href);
     setIsMobileOpen(false);
+  };
+
+  // Attach `?from=<current path>` to a signin/signup URL so a guest who signs
+  // in from the drawer lands back on the page they came from. `?from=` matches
+  // RequireAuth.tsx's redirect convention AND the param SignUpLuxury actually
+  // reads (`params.get('redirect') || params.get('from')`) — an earlier draft
+  // used `?returnTo=` which both silently dropped, and the guest landed on
+  // /home instead. Skips if already on /signin or /signup so we don't loop.
+  const withReturnTo = (target: string): string => {
+    if (typeof window === "undefined") return target;
+    const currentPath = window.location.pathname + window.location.search;
+    if (!currentPath || currentPath === "/" || currentPath.startsWith("/signin") || currentPath.startsWith("/signup")) {
+      return target;
+    }
+    const sep = target.includes("?") ? "&" : "?";
+    return `${target}${sep}from=${encodeURIComponent(currentPath)}`;
   };
 
   const handleLanguageChange = (code: string) => {
@@ -576,7 +570,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 title={t('mypass', currentLanguage)}
                 data-testid="button-header-my-pass"
               >
-                <IdCard size={22} style={{ color: 'var(--pw-icon-color, #fff)' }} />
+                <IdCard size={22} style={{ color: 'var(--pw-icon-color, #0a0a0a)' }} />
               </button>
             )}
             {/* Notification bell — visible when user is logged in */}
@@ -586,10 +580,10 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                 className="pw-header-icon-btn"
                 style={{ position: 'relative', touchAction: 'manipulation', cursor: 'pointer', background: 'none', border: 'none', padding: '6px', borderRadius: '50%' }}
                 onClick={() => handleNavigate('/notifications')}
-                aria-label="Notifications"
+                aria-label={t('notifications.aria', currentLanguage)}
                 data-testid="button-notifications-bell"
               >
-                <Bell size={22} style={{ color: 'var(--pw-icon-color, #fff)' }} />
+                <Bell size={22} style={{ color: 'var(--pw-icon-color, #0a0a0a)' }} />
                 {unreadNotificationCount > 0 && (
                   <span
                     style={{
@@ -920,10 +914,22 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   className="pw-mobile-link pw-logout-btn"
                   style={{ touchAction: 'manipulation', cursor: 'pointer' }}
                   onClick={async () => {
-                    await logout();
-                    setIsMobileOpen(false);
-                    window.location.assign("/");
+                    // Debounce guard (Agent A audit item 10). A jittery double-tap
+                    // used to call logout() twice; the second call ran after
+                    // Firebase had already cleared the session and could throw.
+                    if (isLoggingOut) return;
+                    setIsLoggingOut(true);
+                    try {
+                      await logout();
+                      setIsMobileOpen(false);
+                      window.location.assign("/");
+                    } finally {
+                      // window.location.assign navigates away, but this
+                      // covers the error path where the assign never fires.
+                      setIsLoggingOut(false);
+                    }
                   }}
+                  disabled={isLoggingOut}
                 >
                   {t("logout", currentLanguage)}
                 </button>
@@ -934,7 +940,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   type="button"
                   className="pw-mobile-link"
                   style={{ touchAction: 'manipulation', cursor: 'pointer' }}
-                  onClick={() => handleNavigate("/signin")}
+                  onClick={() => handleNavigate(withReturnTo("/signin"))}
                 >
                   {t("signin", currentLanguage)}
                 </button>
@@ -942,7 +948,7 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
                   type="button"
                   className="pw-mobile-link"
                   style={{ touchAction: 'manipulation', cursor: 'pointer' }}
-                  onClick={() => handleNavigate("/signup")}
+                  onClick={() => handleNavigate(withReturnTo("/signup"))}
                 >
                   {t("signup", currentLanguage)}
                 </button>
