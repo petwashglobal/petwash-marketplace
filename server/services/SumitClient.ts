@@ -1156,6 +1156,122 @@ export class SumitClient {
   }
 
   /**
+   * POST /billing/recurring/cancel/
+   *
+   * Cancel a SUMIT recurring standing order (item 5 / CEO 2026-08-16 SUMIT
+   * lane). The PetWash-side "cancel Prestige" action must call this AND wait
+   * for the confirmed response before flipping local membership state —
+   * never mark-cancelled-locally-and-hope.
+   *
+   * Body shape per audit doc §3.4 line 135 — endpoint CONFIRMED, exact body
+   * left as `{ Credentials, Customer:{ID}, RecurringCustomerItemID }`
+   * matching the shape of sibling recurring/update. Verify in
+   * SUMIT_SANDBOX before flipping SUMIT_SANDBOX=false in prod.
+   *
+   * Safety contract:
+   *  - Not wired → returns {wired:false} without any HTTP call.
+   *  - Never throws.
+   */
+  async cancelRecurring(input: {
+    sumitCustomerId: number | string;
+    recurringId: string;
+  }): Promise<{ wired: boolean; cancelled?: boolean; reason?: string; rawResponse?: unknown }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, reason: 'SUMIT not enabled' };
+    if (!input.recurringId) return { wired: false, reason: 'missing recurringId' };
+
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Customer: { ID: input.sumitCustomerId },
+      RecurringCustomerItemID: input.recurringId,
+    };
+
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/recurring/cancel/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) {
+        return { wired: true, cancelled: false, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      }
+      return { wired: true, cancelled: true, rawResponse: parsed };
+    } catch (err: any) {
+      logger.error('[SumitClient] cancelRecurring network error', {
+        sumitCustomerId: input.sumitCustomerId, err: err?.message,
+      });
+      return { wired: false, reason: `Network error: ${err?.message}` };
+    }
+  }
+
+  /**
+   * POST /billing/recurring/listforcustomer/
+   *
+   * List a SUMIT customer's active recurring items — used to surface
+   * "Prestige — Active — Next charge date — Payment method — Manage"
+   * on the account page (CEO 2026-08-16 item 5).
+   *
+   * Body shape per audit doc §3.4 line 135 — endpoint CONFIRMED, exact body
+   * left as `{ Credentials, Customer:{ID} }` matching sibling recurring
+   * calls. Verify in SUMIT_SANDBOX before prod.
+   *
+   * Safety contract:
+   *  - Not wired → returns {wired:false, items:[]} without any HTTP call.
+   *  - Never throws.
+   */
+  async listRecurringForCustomer(sumitCustomerId: number | string): Promise<{
+    wired: boolean;
+    items: unknown[];
+    reason?: string;
+    rawResponse?: unknown;
+  }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, items: [], reason: 'SUMIT not enabled' };
+
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Customer: { ID: sumitCustomerId },
+    };
+
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/recurring/listforcustomer/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) {
+        return { wired: true, items: [], reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      }
+      // Response field name unverified — try common variants once (list APIs
+      // typically return `Items` or `Data`). If neither matches, empty list
+      // + rawResponse for the caller to inspect.
+      const items = Array.isArray(parsed?.Items)
+        ? parsed.Items
+        : Array.isArray(parsed?.Data)
+          ? parsed.Data
+          : [];
+      return { wired: true, items, rawResponse: parsed };
+    } catch (err: any) {
+      logger.error('[SumitClient] listRecurringForCustomer network error', {
+        sumitCustomerId, err: err?.message,
+      });
+      return { wired: false, items: [], reason: `Network error: ${err?.message}` };
+    }
+  }
+
+  /**
    * POST /billing/paymentmethods/setforcustomer — save a card to a SUMIT customer so it
    * can be charged later (chargeRecurring / chargeSavedCard) with no re-entry. The token
    * comes from SUMIT's own tokenization (hosted page / JS widget) — we NEVER see the PAN.
