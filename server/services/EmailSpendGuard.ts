@@ -35,11 +35,15 @@ const HOURLY_BLOCK = parseInt(process.env.EMAIL_GUARD_HOURLY_BLOCK || '80');
 const DAILY_WARN   = parseInt(process.env.EMAIL_GUARD_DAILY_WARN   || '200');
 const DAILY_BLOCK  = parseInt(process.env.EMAIL_GUARD_DAILY_BLOCK  || '500');
 
-// Task 19 — per-recipient rate limit. Bounds the "one user spammed" case
-// (repeated password-reset / verification / notification retries) that
-// the global counter does not catch on its own.
+// Task 19 — PER-INSTANCE DEFENSIVE per-recipient limiter. Bounds the
+// "one user spammed" case (repeated password-reset / verification /
+// notification retries) that the global counter does not catch on its
+// own. IMPORTANT: this state lives in process memory. Cloud Run runs
+// N instances; each has its own map, so a coordinated N-way spam
+// across instances would still get through. A future distributed
+// version (Redis, similar to SmsAbuseDetector) is tracked separately.
 const PER_RECIPIENT_WINDOW_MS = parseInt(process.env.EMAIL_GUARD_PER_RECIPIENT_WINDOW_MS || '300000');   // 5 min
-const PER_RECIPIENT_LIMIT     = parseInt(process.env.EMAIL_GUARD_PER_RECIPIENT_LIMIT     || '5');       // 5 in that window
+const PER_RECIPIENT_LIMIT     = parseInt(process.env.EMAIL_GUARD_PER_RECIPIENT_LIMIT     || '5');       // 5 per window PER INSTANCE
 const PER_RECIPIENT_MAX_MAP   = parseInt(process.env.EMAIL_GUARD_PER_RECIPIENT_MAX_MAP   || '5000');    // memory cap
 
 function maskEmail(email: string): string {
@@ -54,8 +58,9 @@ class EmailSpendGuard {
   private recentSends: EmailSendRecord[] = [];
   private readonly MAX_LOG = 1000;
 
-  // Task 19 — per-recipient window (email → array of send timestamps).
-  // Timestamps outside the window are lazily pruned on each check.
+  // Task 19 — PER-INSTANCE per-recipient window (email → array of send
+  // timestamps). Process-local memory only; see file-top comment for
+  // the distributed-limit caveat.
   private perRecipient: Map<string, number[]> = new Map();
 
   private alarmCallback: ((subject: string, html: string) => Promise<void>) | null = null;
