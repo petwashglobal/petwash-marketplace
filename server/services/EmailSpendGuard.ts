@@ -35,6 +35,13 @@ const HOURLY_BLOCK = parseInt(process.env.EMAIL_GUARD_HOURLY_BLOCK || '80');
 const DAILY_WARN   = parseInt(process.env.EMAIL_GUARD_DAILY_WARN   || '200');
 const DAILY_BLOCK  = parseInt(process.env.EMAIL_GUARD_DAILY_BLOCK  || '500');
 
+// Task 19 — per-recipient rate limit. Bounds the "one user spammed" case
+// (repeated password-reset / verification / notification retries) that
+// the global counter does not catch on its own.
+const PER_RECIPIENT_WINDOW_MS = parseInt(process.env.EMAIL_GUARD_PER_RECIPIENT_WINDOW_MS || '300000');   // 5 min
+const PER_RECIPIENT_LIMIT     = parseInt(process.env.EMAIL_GUARD_PER_RECIPIENT_LIMIT     || '5');       // 5 in that window
+const PER_RECIPIENT_MAX_MAP   = parseInt(process.env.EMAIL_GUARD_PER_RECIPIENT_MAX_MAP   || '5000');    // memory cap
+
 function maskEmail(email: string): string {
   const [local, domain] = email.split('@');
   if (!local || !domain) return '***@***';
@@ -46,6 +53,10 @@ class EmailSpendGuard {
   private daily: Window  = { count: 0, resetAt: Date.now() + 86_400_000, alarmFired: false };
   private recentSends: EmailSendRecord[] = [];
   private readonly MAX_LOG = 1000;
+
+  // Task 19 — per-recipient window (email → array of send timestamps).
+  // Timestamps outside the window are lazily pruned on each check.
+  private perRecipient: Map<string, number[]> = new Map();
 
   private alarmCallback: ((subject: string, html: string) => Promise<void>) | null = null;
 
@@ -92,6 +103,23 @@ class EmailSpendGuard {
       logger.error(`[EmailSpendGuard] 🔴 CIRCUIT OPEN — daily block (${this.daily.count}/${DAILY_BLOCK}). Send rejected from [${service}]`);
       return { allowed: false, reason: `Daily email budget exceeded (${this.daily.count}/${DAILY_BLOCK})` };
     }
+
+    // Task 19 — per-recipient rate limit. Blocks the "one user spammed"
+    // case (e.g. repeated verify-email / password-reset abuse) that
+    // never trips the global counter until much later.
+    const recip = (recipient || '').toLowerCase().trim();
+    if (recip) {
+      const now = Date.now();
+      const windowStart = now - PER_RECIPIENT_WINDOW_MS;
+      const timestamps = (this.perRecipient.get(recip) || []).filter(t => t >= windowStart);
+      if (timestamps.length >= PER_RECIPIENT_LIMIT) {
+        logger.warn(`[EmailSpendGuard] ⏱️ PER-RECIPIENT LIMIT — ${maskEmail(recip)} hit ${timestamps.length}/${PER_RECIPIENT_LIMIT} in the last ${PER_RECIPIENT_WINDOW_MS}ms. Send rejected from [${service}]`);
+        return {
+          allowed: false,
+          reason: `Per-recipient rate limit (${timestamps.length}/${PER_RECIPIENT_LIMIT} in ${PER_RECIPIENT_WINDOW_MS}ms)`,
+        };
+      }
+    }
     return { allowed: true };
   }
 
@@ -103,6 +131,27 @@ class EmailSpendGuard {
 
     this.hourly.count++;
     this.daily.count++;
+
+    // Task 19 — record the send in the per-recipient window and prune stale entries.
+    const recip = (recipient || '').toLowerCase().trim();
+    if (recip) {
+      const now = Date.now();
+      const windowStart = now - PER_RECIPIENT_WINDOW_MS;
+      const timestamps = (this.perRecipient.get(recip) || []).filter(t => t >= windowStart);
+      timestamps.push(now);
+      this.perRecipient.set(recip, timestamps);
+      // Coarse memory cap: if the map is too big, evict the recipient with the
+      // oldest most-recent send (least-recently-active). Prevents unbounded growth.
+      if (this.perRecipient.size > PER_RECIPIENT_MAX_MAP) {
+        let oldestKey = '';
+        let oldestTs = Number.POSITIVE_INFINITY;
+        for (const [k, ts] of this.perRecipient) {
+          const last = ts[ts.length - 1] ?? 0;
+          if (last < oldestTs) { oldestTs = last; oldestKey = k; }
+        }
+        if (oldestKey) this.perRecipient.delete(oldestKey);
+      }
+    }
 
     const rec: EmailSendRecord = {
       ts: Date.now(),
