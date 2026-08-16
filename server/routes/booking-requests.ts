@@ -2798,22 +2798,23 @@ router.post('/:requestId/arriving', async (req, res) => {
 async function handleConfirmCompletion(req: any, res: any): Promise<void> {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
     const { rating, review } = req.body;
-    
+
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
+
     if (booking.ownerId !== userId) {
       return res.status(403).json({ error: 'Only owner can confirm completion' });
     }
-    
+
     if (booking.status !== 'provider_marked_complete') {
       return res.status(400).json({ error: `Cannot confirm booking with status: ${booking.status}. Provider must mark the service as complete first.` });
     }
@@ -2832,6 +2833,58 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         message: 'This booking has no held payment, so no payout can be released. Please contact PetWash support.',
       });
     }
+
+    // ATOMIC CONFIRMATION CLAIM (2026-08-16 audit item 168-relation, biggest
+    // money side-effect chain). Two concurrent /confirm taps could both pass
+    // the checks above, both call createEarningRecord + generateReceipt +
+    // releaseEscrowPayment + writeBookingLedgerEntries + recordTransactionFromGross
+    // + all loyalty awards. Some downstream helpers dedupe (generateReceipt does),
+    // others do not. Race is money-critical.
+    //
+    // Use ownerConfirmedAt (currently NULL because status is provider_marked_complete)
+    // as the atomic claim marker — it is written naturally later at the final
+    // UPDATE; we just do it FIRST so concurrent callers see it and bail out.
+    // Guarded by ownerConfirmedAt IS NULL AND status='provider_marked_complete'.
+    // Rollback ownerConfirmedAt = NULL if the money helpers fail-closed below,
+    // so a legitimate retry succeeds (preserves the CEO-approved 2026-07-03
+    // fail-closed semantic).
+    const confirmClaim = await db.update(bookingRequests)
+      .set({ ownerConfirmedAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        isNull(bookingRequests.ownerConfirmedAt),
+        eq(bookingRequests.status, 'provider_marked_complete'),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (confirmClaim.length === 0) {
+      const [current] = await db.select({
+        status: bookingRequests.status,
+        ownerConfirmedAt: bookingRequests.ownerConfirmedAt,
+      }).from(bookingRequests).where(eq(bookingRequests.requestId, requestId)).limit(1);
+      if (current?.ownerConfirmedAt && (current?.status === 'completed' || current?.status === 'reviewed')) {
+        // Race lost but same-intent already succeeded — idempotent 200.
+        return res.json({ ok: true, status: current.status, alreadyConfirmed: true });
+      }
+      logger.warn('[BookingRequests] /confirm claim lost', { requestId, currentStatus: current?.status, alreadyConfirmedAt: current?.ownerConfirmedAt });
+      return res.status(409).json({
+        error: 'Confirmation already in progress or booking status changed. Please refresh.',
+        currentStatus: current?.status ?? null,
+      });
+    }
+
+    const rollbackConfirmClaim = async () => {
+      try {
+        await db.update(bookingRequests)
+          .set({ ownerConfirmedAt: null, updatedAt: new Date() })
+          .where(and(
+            eq(bookingRequests.requestId, requestId),
+            eq(bookingRequests.status, 'provider_marked_complete'),
+          ));
+      } catch (rollbackErr: any) {
+        logger.error('[BookingRequests] /confirm claim rollback failed', { requestId, error: rollbackErr?.message });
+      }
+    };
 
     // ENTERPRISE: Create earning record via payoutLedger
     const platformFeePercent = 15; // 15% platform fee
@@ -2894,6 +2947,10 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           reportedBy: 'system:earning-fail-closed',
         });
       } catch { /* incident best-effort */ }
+      // Release our confirm-claim so the customer can retry after the
+      // earning failure is repaired — otherwise the ownerConfirmedAt marker
+      // would jam subsequent /confirm attempts on 409.
+      await rollbackConfirmClaim();
       return res.status(500).json({
         error: 'EARNING_RECORD_FAILED',
         message: 'We could not finalize the provider payout for this booking, so it has NOT been completed. Please try again shortly or contact PetWash support.',
