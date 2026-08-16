@@ -357,4 +357,79 @@ router.post('/connection-test', ...requireSuperAdminNoFlag, async (req: Request,
   }
 });
 
+/**
+ * GET /api/admin/sumit/customer-sync
+ *
+ * Admin diagnostics for the SUMIT customer sync surface (Phase 2 lane,
+ * CEO 2026-08-16). Returns operational counts only — never secrets,
+ * never full PII. Populates the "Accounting Health" card.
+ *
+ * Response shape:
+ *   {
+ *     flag: { enabled: boolean, envName: string, currentValue: string },
+ *     wired: boolean,
+ *     counts: {
+ *       synced: number,          // rows in sumit_customers
+ *       withPortalUrl: number,   // rows with a cached customer_history_url
+ *       withLastError: number,   // rows carrying an error string
+ *       bySource: {              // signup | backfill | manual
+ *         signup: number,
+ *         backfill: number,
+ *         manual: number,
+ *       },
+ *       oldestSyncAt: string | null,
+ *       newestSyncAt: string | null,
+ *     },
+ *   }
+ */
+router.get(
+  '/customer-sync',
+  validateFirebaseToken,
+  loadUserRole,
+  checkAccessLevel(8),
+  requireSuperAdminGate,
+  async (_req: Request, res: Response) => {
+    try {
+      const { sumitCustomers } = await import('../../shared/schema');
+      const rows = await db.select({
+        source: sumitCustomers.source,
+        hasUrl: sql<boolean>`${sumitCustomers.customerHistoryUrl} IS NOT NULL`,
+        hasErr: sql<boolean>`${sumitCustomers.lastError} IS NOT NULL`,
+        syncedAt: sumitCustomers.syncedAt,
+      }).from(sumitCustomers);
+
+      const counts = {
+        synced: rows.length,
+        withPortalUrl: rows.filter((r) => r.hasUrl).length,
+        withLastError: rows.filter((r) => r.hasErr).length,
+        bySource: {
+          signup:   rows.filter((r) => r.source === 'signup').length,
+          backfill: rows.filter((r) => r.source === 'backfill').length,
+          manual:   rows.filter((r) => r.source === 'manual').length,
+        },
+        oldestSyncAt: rows.length ? rows.map((r) => r.syncedAt).sort()[0]?.toISOString() ?? null : null,
+        newestSyncAt: rows.length ? rows.map((r) => r.syncedAt).sort().reverse()[0]?.toISOString() ?? null : null,
+      };
+
+      const raw = process.env.SUMIT_CUSTOMER_SYNC_ENABLED;
+      // Never leak the API key or webhook secret — only booleans for wiring state.
+      const { SumitClient } = await import('../services/SumitClient');
+      const wired = new SumitClient().health().wired;
+
+      return res.json({
+        flag: {
+          enabled: raw === 'true',
+          envName: 'SUMIT_CUSTOMER_SYNC_ENABLED',
+          currentValue: raw ?? '(unset)',
+        },
+        wired,
+        counts,
+      });
+    } catch (err: any) {
+      logger.error('[AdminSumit] customer-sync diagnostics failed', { error: err?.message });
+      return res.status(500).json({ error: 'diagnostics_failed' });
+    }
+  },
+);
+
 export default router;
