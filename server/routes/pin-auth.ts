@@ -87,6 +87,49 @@ async function logPinEvent(params: {
   }
 }
 
+/**
+ * Require an authenticated Firebase caller AND that the request body's
+ * `email` matches the token's email (audit items 194/195, 2026-08-16).
+ *
+ * The pre-2026-08-16 /setup, /change, /remove, /status routes accepted
+ * `email` in the request body with NO Firebase Bearer at all — so any
+ * unauthenticated caller who knew (or guessed) a member's email could:
+ *   - create/overwrite that member's PIN (/setup)
+ *   - change it (/change — knowledge of currentPin only)
+ *   - remove it (/remove — knowledge of pin only)
+ *   - probe whether the member exists (/status — user enumeration)
+ *
+ * Now: identical shape to /verify's guard. Bearer required, decoded, and
+ * body.email must case-fold-match decoded.email. Returns the decoded token
+ * on success; writes the 4xx response and returns null on failure.
+ */
+async function requireFirebaseCallerMatchingEmail(
+  req: Request,
+  res: Response,
+  bodyEmail: string | undefined,
+): Promise<{ uid: string; email: string } | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({ success: false, error: 'Authentication required', code: 'AUTH_REQUIRED' });
+    return null;
+  }
+  const idToken = authHeader.substring(7);
+  let decoded: any;
+  try {
+    decoded = await firebaseAdminAuth.verifyIdToken(idToken, true);
+  } catch {
+    res.status(401).json({ success: false, error: 'Invalid authentication token', code: 'INVALID_TOKEN' });
+    return null;
+  }
+  const tokenEmail = (decoded.email || '').toLowerCase();
+  const requested = (bodyEmail || '').toLowerCase();
+  if (!requested || requested !== tokenEmail) {
+    res.status(403).json({ success: false, error: 'Email does not match authenticated user', code: 'EMAIL_MISMATCH' });
+    return null;
+  }
+  return { uid: decoded.uid, email: tokenEmail };
+}
+
 // Helper: Find user by email (check both tables)
 async function findUserByEmail(email: string): Promise<{ id: string; type: 'user' | 'customer' } | null> {
   // Check customers table first
@@ -112,15 +155,20 @@ router.post('/setup', async (req: Request, res: Response) => {
   try {
     const validation = setupPinSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'Invalid PIN format. PIN must be 4-6 digits.',
-        details: validation.error.errors 
+        details: validation.error.errors
       });
     }
 
     const { pin, email, deviceId, deviceName, deviceType } = validation.data;
-    
+
+    // AUTH REQUIRED (audit item 194/195): only the account owner can create
+    // or overwrite their own PIN.
+    const caller = await requireFirebaseCallerMatchingEmail(req, res, email);
+    if (!caller) return; // response already written
+
     // Find user
     const userInfo = await findUserByEmail(email);
     if (!userInfo) {
@@ -422,20 +470,25 @@ router.post('/change', async (req: Request, res: Response) => {
   try {
     const validation = changePinSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid PIN format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid PIN format'
       });
     }
 
     const { currentPin, newPin, email } = validation.data;
 
     if (currentPin === newPin) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'New PIN must be different from current PIN' 
+      return res.status(400).json({
+        success: false,
+        error: 'New PIN must be different from current PIN'
       });
     }
+
+    // AUTH REQUIRED (audit item 194): knowledge of currentPin is not by
+    // itself sufficient authorization to rotate a PIN.
+    const caller = await requireFirebaseCallerMatchingEmail(req, res, email);
+    if (!caller) return;
 
     // Find user
     const userInfo = await findUserByEmail(email);
@@ -515,11 +568,17 @@ router.delete('/remove', async (req: Request, res: Response) => {
     const { email, pin } = req.body;
 
     if (!email || !pin) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Email and PIN are required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Email and PIN are required'
       });
     }
+
+    // AUTH REQUIRED (audit item 194): knowledge of the PIN alone is not
+    // sufficient authorization to remove it — an attacker with a shoulder-
+    // surfed PIN would otherwise be able to disable this second factor.
+    const caller = await requireFirebaseCallerMatchingEmail(req, res, email);
+    if (!caller) return;
 
     // Find user
     const userInfo = await findUserByEmail(email);
@@ -592,11 +651,18 @@ router.get('/status', async (req: Request, res: Response) => {
     const email = req.query.email as string;
 
     if (!email) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Email is required' 
+      return res.status(400).json({
+        success: false,
+        error: 'Email is required'
       });
     }
+
+    // AUTH REQUIRED (audit item 194): pre-fix this GET was a user-
+    // enumeration surface — an unauthenticated caller could probe any email
+    // and observe hasPin true/false. Now: only the authenticated owner can
+    // check their own PIN status.
+    const caller = await requireFirebaseCallerMatchingEmail(req, res, email);
+    if (!caller) return;
 
     // Find user
     const userInfo = await findUserByEmail(email);
