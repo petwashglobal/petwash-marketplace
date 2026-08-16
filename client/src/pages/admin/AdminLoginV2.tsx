@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
-import { Fingerprint, Mail, Lock, Sparkles, CheckCircle2, XCircle, Loader2 } from "lucide-react";
+import { Fingerprint, Mail, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { apiRequest } from "@/lib/queryClient";
 import { motion } from "framer-motion";
 import { trackAuthError } from "@/lib/authErrorTracker";
@@ -41,16 +41,14 @@ export default function AdminLoginV2() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
+  // Email is kept ONLY as an optional lookup for the passkey/Touch-ID path
+  // below. Admin sign-in is Google-only per the MASTER AUTH contract; the
+  // former email+password form was retired to close the "any Firebase
+  // account with an allowlisted email can sign in" surface. See
+  // handleGoogleLogin below for the primary path.
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [supportsWebAuthn, setSupportsWebAuthn] = useState(false);
-  // Task 20 — password-reset in-flight guard. Blocks a rapid double-click
-  // from firing two Firebase sendPasswordResetEmail requests (each of
-  // which invalidates the prior OOB code the user might already be
-  // trying to redeem).
-  const [isSendingReset, setIsSendingReset] = useState(false);
   
   const [biometricStatus, setBiometricStatus] = useState<"idle" | "scanning" | "success" | "error">("idle");
 
@@ -125,7 +123,12 @@ export default function AdminLoginV2() {
     // also doubles as a resend route since Firebase's password-reset
     // email re-verifies the address on click.
     if (tag === 'SESSION_CREATION_FAILED' && code === 'EMAIL_NOT_VERIFIED') {
-      return `Email not verified for this admin account. Open your inbox and click the Firebase verification link, then sign in again. (Tap "Forgot password?" below to resend the link.)`;
+      // Google SSO returns a verified email — this branch is now the rare
+      // case where the provider handed us an unverified address (custom
+      // Firebase config), which admin sign-in refuses. The reset-email
+      // helper is gone with the retired email+password form; the operator
+      // needs to verify through Google's own account tooling and retry.
+      return `Email not verified for this admin account. Verify your Google account email and try Continue with Google again.`;
     }
     if (tag === 'SESSION_CREATION_FAILED' && code === 'STALE_TOKEN') {
       // Finding 5.3 — explain the >24h iat gate so the operator knows
@@ -201,42 +204,12 @@ export default function AdminLoginV2() {
     }
   };
 
-  const handleStandardLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsLoading(true);
-    triggerHaptic();
-
-    try {
-      const { signInWithEmailAndPassword } = await import("firebase/auth");
-      const { auth } = await import("@/lib/firebase");
-
-      const credential = await signInWithEmailAndPassword(auth, email, password);
-      const idToken = await credential.user.getIdToken();
-      await createServerSession(idToken);
-      await assertAdminAccess();
-
-      toast({
-        title: "Welcome back",
-        description: "Successfully logged in",
-      });
-
-      setLocation("/admin/octopus");
-    } catch (error: any) {
-      const isFirebaseCredError = error?.code === 'auth/wrong-password'
-        || error?.code === 'auth/user-not-found'
-        || error?.code === 'auth/invalid-credential';
-      const msg = isFirebaseCredError ? 'Invalid email or password' : explainError(error);
-      trackAuthError(error, 'admin_email_password').catch(() => {});
-      toast({
-        title: "Login Failed",
-        description: msg,
-        variant: "destructive",
-        duration: 10000,
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  // handleStandardLogin (the retired email+password submit) is gone.
+  // Admin sign-in is Google-only per the MASTER AUTH contract, and the
+  // SUPER_ADMIN_EMAILS + email_verified gate on the /api/auth/session
+  // handler is the sole authorization boundary. Google SSO shifts the
+  // password trust to the provider — an operator's leaked or re-used
+  // password can no longer walk into an admin session.
 
   const base64urlToBase64 = (base64url: string): string => {
     let base64 = base64url.replace(/-/g, '+').replace(/_/g, '/');
@@ -546,20 +519,19 @@ export default function AdminLoginV2() {
           </motion.div>
         </div>
 
-        {/* Divider */}
-        <div className="relative my-6">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-[#D4AF37]"></div>
-          </div>
-          <div className="relative flex justify-center text-xs">
-            <span className="px-2 bg-white text-gray-500">or use email</span>
-          </div>
-        </div>
-
-        {/* Standard Login Form */}
-        <form onSubmit={handleStandardLogin} className="space-y-4">
-          <div>
-            <Label htmlFor="email" className="text-gray-700 font-medium text-sm">Email</Label>
+        {/* Email input — kept ONLY as a lookup hint for the Touch-ID / Face-ID
+            passkey path above (server webauthn/login/options accepts an
+            optional email for allowCredentials narrowing). The former
+            email+password form was retired: admin sign-in is Google-only and
+            the SUPER_ADMIN_EMAILS + email_verified gate on /api/auth/session
+            is the sole authorization boundary. This input is intentionally
+            NOT required — Google SSO does not need it. Hidden when the
+            browser has no platform authenticator (nothing to look up). */}
+        {supportsWebAuthn && (
+          <div className="mt-6">
+            <Label htmlFor="email" className="text-gray-700 font-medium text-sm">
+              Admin email (for Touch ID / Face ID)
+            </Label>
             <div className="relative mt-1">
               <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
               <Input
@@ -574,97 +546,14 @@ export default function AdminLoginV2() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="admin@petwash.co.il"
                 className="luxury-glass-minimal pl-10 h-12 sm:h-11 border-[#D4AF37] focus:border-[#D4AF37] text-base sm:text-sm"
-                required
                 data-testid="input-email"
               />
             </div>
+            <p className="mt-2 text-xs text-gray-500">
+              Not required — Continue with Google above works without an email.
+            </p>
           </div>
-
-          <div>
-            <Label htmlFor="password" className="text-gray-700 font-medium text-sm">Password</Label>
-            <div className="relative mt-1">
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
-              <Input
-                id="password"
-                type="password"
-                autoComplete="current-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
-                className="luxury-glass-minimal pl-10 h-12 sm:h-11 border-[#D4AF37] focus:border-[#D4AF37] text-base sm:text-sm"
-                required
-                data-testid="input-password"
-              />
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isLoading || !email || !password}
-            title={!email || !password ? 'Type your email and password to enable Sign In' : undefined}
-            className="luxury-btn-primary w-full min-h-[48px] sm:h-11 text-sm sm:text-base"
-            data-testid="button-login"
-          >
-            {isLoading ? (
-              <>
-                <Sparkles className="h-4 w-4 mr-2 animate-spin" />
-                Signing in...
-              </>
-            ) : (
-              "Sign In"
-            )}
-          </Button>
-        </form>
-
-        {/* Footer — Forgot password.
-            Wired to Firebase sendPasswordResetEmail. The previous build
-            shipped a button with no onClick; an operator clicking it saw
-            nothing happen, which read as "buttons broken". */}
-        <div className="mt-6 text-center">
-          <Button
-            type="button"
-            variant="ghost"
-            disabled={isSendingReset}
-            className="text-sm text-gray-600 hover:text-[#B8932F] transition-colors"
-            onClick={async () => {
-              // Task 20 — first-click-wins guard. A double-click would
-              // otherwise fire two Firebase reset requests; the second
-              // OOB code silently invalidates the first, which the user
-              // may already be trying to redeem.
-              if (isSendingReset) return;
-              if (!email) {
-                toast({
-                  title: 'Email required',
-                  description: 'Enter your admin email above, then tap Forgot password.',
-                  variant: 'destructive',
-                });
-                return;
-              }
-              setIsSendingReset(true);
-              try {
-                const { sendPasswordResetEmail } = await import('firebase/auth');
-                const { auth: fbAuth } = await import('@/lib/firebase');
-                await sendPasswordResetEmail(fbAuth, email);
-                toast({
-                  title: 'Password reset sent',
-                  description: `If an account exists for ${email}, a reset email is on its way.`,
-                });
-              } catch (err: any) {
-                trackAuthError(err, 'admin_password_reset').catch(() => {});
-                toast({
-                  title: 'Could not send reset email',
-                  description: explainError(err),
-                  variant: 'destructive',
-                  duration: 10000,
-                });
-              } finally {
-                setIsSendingReset(false);
-              }
-            }}
-          >
-            {isSendingReset ? 'Sending…' : 'Forgot password?'}
-          </Button>
-        </div>
+        )}
 
         {/* Operator diagnostics — quick visibility into backend health from
             the login screen so when sign-in fails the operator can see

@@ -1338,13 +1338,29 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
-      // Synchronously set role custom claim for super_admin users so that
-      // getIdTokenResult(true) on the client picks up the correct role immediately.
+      // Super-admin custom claim — VERIFIED path only.
+      // Before this fix the claim was written on a plain SUPER_ADMIN_EMAILS
+      // hit with no email_verified gate, so an attacker who registered any
+      // Firebase account with an allowlisted email (without opening the
+      // verification link) would receive the super_admin claim on the next
+      // sign-in. The fix routes through the canonical isSuperAdminVerified
+      // helper (allowlist AND decoded.email_verified === true from the just-
+      // decoded ID token) so an unverified allowlist match cannot elevate.
+      // postLoginDecider also writes users.role='super_admin' on the same
+      // verified path — this claim write mirrors it so the client's next
+      // getIdTokenResult(true) picks the role up immediately.
       try {
-        const { isSuperAdmin: checkSuperAdmin } = await import('./middleware/rbac');
         const decodedForClaims = await fbAdminAuth.verifyIdToken(idToken, true);
         const emailForClaims = (decodedForClaims.email || '').toLowerCase();
-        if (checkSuperAdmin(emailForClaims)) {
+        const emailVerifiedForClaims = decodedForClaims.email_verified === true;
+        const { isSuperAdmin: checkSuperAdmin } = await import('./middleware/rbac');
+        const allowlisted = checkSuperAdmin(emailForClaims);
+        if (allowlisted && !emailVerifiedForClaims) {
+          logger.warn('[Session] Super-admin allowlist match REJECTED — email not verified', {
+            emailPrefix: emailForClaims.slice(0, 3) + '***',
+          });
+        }
+        if (allowlisted && emailVerifiedForClaims) {
           const userRecForClaims = await fbAdminAuth.getUser(decodedForClaims.uid);
           const existClaims = (userRecForClaims.customClaims || {}) as Record<string, any>;
           if (existClaims.role !== 'super_admin') {
@@ -1352,7 +1368,7 @@ self.addEventListener('notificationclick', (event) => {
               ...existClaims,
               role: 'super_admin',
             });
-            logger.info(`[Session] 👑 Super admin role claim written for ${emailForClaims}`);
+            logger.info(`[Session] 👑 Super admin role claim written (verified) for ${emailForClaims}`);
           }
         }
       } catch (claimsErr) {
@@ -8041,28 +8057,17 @@ self.addEventListener('notificationclick', (event) => {
   //   /api/nayax-webhook — that pattern, not this broken duplicate,
   //   is the right way to handle aliases.
 
-  // Admin authentication routes - SECURITY: Firebase Auth ONLY
-  // REMOVED hardcoded credentials - all admin login must use Firebase Authentication
-  app.post('/api/admin/login', async (req, res) => {
-    try {
-      // SECURITY FIX 2025: Removed hardcoded password backdoor
-      // All admin authentication now goes through Firebase Auth
-      // Admins must sign in with their Google account via Firebase
-      
-      return res.status(400).json({
-        error: 'Direct password login disabled',
-        message: 'Please use Firebase Authentication (Google Sign-In) for admin access',
-        code: 'USE_FIREBASE_AUTH'
-      });
-      
-      // OLD INSECURE CODE REMOVED:
-      // - Hardcoded CEO password exposed in plain text
-      // - Generic 'admin' password for all @petwash.co.il emails
-      // This was a CRITICAL security vulnerability
-    } catch (error) {
-      logger.error('Admin login error:', error);
-      res.status(500).json({ message: "Login failed" });
-    }
+  // /api/admin/login is retired. Admin authentication is Firebase Google SSO
+  // only (validated on /api/auth/session with the SUPER_ADMIN_EMAILS +
+  // email_verified gate). A stub that returned 400 lived here for months and
+  // read as an "endpoint" a caller could still hit — 410 Gone makes the
+  // retirement explicit and matches the pattern used for other deprecated
+  // auth surfaces (e.g. /api/messages/lookup-user).
+  app.post('/api/admin/login', async (_req, res) => {
+    return res.status(410).json({
+      error: 'ENDPOINT_RETIRED',
+      message: 'Admin sign-in is Google-only. Visit /admin/login and use Continue with Google.',
+    });
   });
 
   app.post('/api/admin/logout', async (req, res) => {
