@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { MapPin, Building, ShoppingCart, Fuel, Coffee } from "lucide-react";
 import { useSEO, pageSEO } from '@/lib/seo';
+import { PartnershipEnquiryDialog } from "@/components/PartnershipEnquiryDialog";
 
 export default function LocationPartners() {
   useSEO(pageSEO.partnersLocations);
   const { language } = useLanguage();
   const isHe = language === 'he';
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
 
   const locationTypes = [
     {
@@ -70,11 +73,31 @@ export default function LocationPartners() {
               ? 'הוסיפו ערך לנכס שלכם עם פתרון טיפוח חיות מחמד פרימיום.'
               : 'Add value to your property with premium pet care amenities'}
           </p>
-          <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-submit-enquiry">
+          <Button
+            className="luxury-btn-primary luxury-shadow-xl px-8 py-4"
+            onClick={() => setEnquiryOpen(true)}
+            data-testid="button-submit-enquiry"
+          >
             {isHe ? 'שלחו בקשת שותפות' : 'Submit Partnership Enquiry'}
           </Button>
         </div>
       </div>
+
+      <PartnershipEnquiryDialog
+        open={enquiryOpen}
+        onOpenChange={setEnquiryOpen}
+        subjectPrefix="Location / Landlord Partnership Enquiry"
+        language={language}
+        orgFieldLabel={{ en: "Property / Company", he: "נכס / חברה" }}
+        title={{
+          en: "Host a K9000 Station",
+          he: "לארח תחנת ⁦K9000™⁩",
+        }}
+        description={{
+          en: "Tell us about your property and we'll follow up with hosting terms.",
+          he: "ספרו לנו על הנכס שלכם ונחזור אליכם עם תנאי אירוח.",
+        }}
+      />
     </div>
   );
 }

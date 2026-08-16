@@ -1,12 +1,15 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { useLanguage } from "@/lib/languageStore";
 import { Building2, Users, TreePine, Shield } from "lucide-react";
 import { useSEO, pageSEO } from '@/lib/seo';
+import { PartnershipEnquiryDialog } from "@/components/PartnershipEnquiryDialog";
 
 export default function MunicipalPartners() {
   useSEO(pageSEO.partnersMunicipal);
   const { language } = useLanguage();
   const isHe = language === 'he';
+  const [enquiryOpen, setEnquiryOpen] = useState(false);
 
   return (
     <div className="min-h-screen luxury-bg-mesh py-12">
@@ -84,11 +87,31 @@ export default function MunicipalPartners() {
               ? 'גלו הזדמנויות שותפות ציבורי-פרטי עבור הרשות שלכם.'
               : 'Explore public-private partnership opportunities for your municipality'}
           </p>
-          <Button className="luxury-btn-primary luxury-shadow-xl px-8 py-4" data-testid="button-council-enquiry">
+          <Button
+            className="luxury-btn-primary luxury-shadow-xl px-8 py-4"
+            onClick={() => setEnquiryOpen(true)}
+            data-testid="button-council-enquiry"
+          >
             {isHe ? 'שלחו בקשה מטעם הרשות' : 'Submit Council Enquiry'}
           </Button>
         </div>
       </div>
+
+      <PartnershipEnquiryDialog
+        open={enquiryOpen}
+        onOpenChange={setEnquiryOpen}
+        subjectPrefix="Municipal / Council Enquiry"
+        language={language}
+        orgFieldLabel={{ en: "Municipality / Council", he: "רשות / מועצה" }}
+        title={{
+          en: "Submit Council Enquiry",
+          he: "שלחו בקשה מטעם הרשות",
+        }}
+        description={{
+          en: "Share your city or council's needs. Our public-partnerships team will follow up.",
+          he: "ספרו לנו על הצרכים של העיר או המועצה שלכם. צוות השותפויות הציבוריות שלנו יחזור אליכם.",
+        }}
+      />
     </div>
   );
 }
