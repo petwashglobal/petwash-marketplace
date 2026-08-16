@@ -3864,8 +3864,19 @@ router.post('/:requestId/cancel', async (req, res) => {
       actorId: userId,
       note: `Cancelled by ${cancelledBy}. Tier: ${cancellationTier}. Hours until service: ${hoursUntilService.toFixed(1)}. Refund: ₪${(refundCents / 100).toFixed(2)}${cancellationPenaltyCents > 0 ? `. Provider penalty: ₪${(cancellationPenaltyCents / 100).toFixed(2)}` : ''}. Reason: ${reason || 'No reason provided'}`,
     });
-    
-    await db.update(bookingRequests)
+
+    // ATOMIC TRANSITION (2026-08-16 audit item 166). Blind UPDATE meant two
+    // concurrent cancels could both pass applyTransition() and both fire
+    // recordRefund + releaseSlotLock + calendar delete + wallet release/refund
+    // + FCM push + rebook trigger. Money-adjacent: releaseBookingHold /
+    // refundBookingWallet can double-refund a wallet unless the wallet
+    // idempotency helpers dedupe (they do — see §4 of the money invariants
+    // skill — but state atomicity is the defence in depth). Guarding on the
+    // status we READ (`booking.status`) inside the WHERE means Postgres row
+    // lock ensures exactly one caller flips the row from that observed value
+    // to 'cancelled'. Loser bails out BEFORE touching refund / wallet /
+    // calendar side effects.
+    const updated = await db.update(bookingRequests)
       .set({
         status: 'cancelled',
         cancelledAt: new Date(),
@@ -3883,7 +3894,27 @@ router.post('/:requestId/cancel', async (req, res) => {
         statusHistory,
         updatedAt: new Date(),
       } as any)
-      .where(eq(bookingRequests.requestId, requestId));
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        eq(bookingRequests.status, booking.status),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (updated.length === 0) {
+      const [current] = await db.select({ status: bookingRequests.status })
+        .from(bookingRequests)
+        .where(eq(bookingRequests.requestId, requestId))
+        .limit(1);
+      if (current?.status === 'cancelled') {
+        // Someone else already cancelled it — same-intent race. Return 200 without
+        // re-firing refund / wallet / calendar / notification side effects.
+        return res.json({ ok: true, status: 'cancelled', alreadyCancelled: true });
+      }
+      return res.status(409).json({
+        error: `Booking status changed during cancel; current: ${current?.status ?? 'unknown'}`,
+        currentStatus: current?.status ?? null,
+      });
+    }
 
     // ── Deal Gate (§L/§16): audit the cancellation + record the refund/fee split ──
     // recordRefund writes shadow_only while AUTO_REFUNDS_ENABLED=false (no live money
