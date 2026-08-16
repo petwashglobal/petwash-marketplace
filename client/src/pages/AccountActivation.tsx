@@ -95,12 +95,16 @@ export default function AccountActivation() {
   const userId = user?.uid;
 
   // ── Fetch activation state ──────────────────────────────────────────────
+  // Uses apiRequest so the Bearer token + session cookie are attached — the
+  // server route is auth-guarded and the raw fetch() this replaced was 401'ing
+  // for real users, leaving the panel stuck on the loading spinner.
   const { data: activation, isLoading } = useQuery<ActivationState>({
     queryKey: ["/api/onboarding-verification/activation-status", userId],
     queryFn: async () => {
       if (!userId) throw new Error("Not authenticated");
-      const res = await fetch(
-        `/api/onboarding-verification/activation-status?userId=${userId}`
+      const res = await apiRequest(
+        "GET",
+        `/api/onboarding-verification/activation-status?userId=${encodeURIComponent(userId)}`
       );
       if (!res.ok) throw new Error("Failed to fetch status");
       return res.json();
@@ -138,7 +142,12 @@ export default function AccountActivation() {
   // ── Send OTP ────────────────────────────────────────────────────────────
   const sendOtpMutation = useMutation({
     mutationFn: async () => {
-      if (!user?.phoneNumber && !user?.email) throw new Error("No phone number on account");
+      // The old guard used `!user?.phoneNumber && !user?.email` — an AND that
+      // only failed when BOTH were missing. For a Google-signed-in user with an
+      // email but no phone, the guard passed, then we posted a body with
+      // `phone: undefined`. Now: this mutation is a mobile-code sender, so it
+      // requires a phone specifically.
+      if (!user?.phoneNumber) throw new Error("No phone number on account");
       const res = await apiRequest("POST", "/api/auth/phone/send-code", {
         phone: user.phoneNumber,
       });

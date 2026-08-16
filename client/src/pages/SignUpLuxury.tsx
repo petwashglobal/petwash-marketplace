@@ -470,10 +470,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }, []);
 
   const requireTerms = () => {
-    // Rover-style passive consent (CEO 2026-07-27): no terms checkbox. The manual
-    // flow still enforces the REAL 18+ gate via the DOB the user typed (stronger
-    // than a checkbox); terms acceptance is passive (disclosure line + submitting)
-    // and stamped on the session. Age via isAdult (DOB), not the removed box.
+    // Manual signup gate (CEO PATCH-1823): BOTH the real 18+ DOB AND the
+    // explicit "I am 18+" checkbox. Server /api/auth/session re-derives age
+    // from DOB and re-checks the flag, so this is the client half of a
+    // two-gate check, not the sole check.
+    if (!over18) { fail(he ? 'נא לסמן: אני בן/בת 18 ומעלה' : 'Please tick the "I am 18 or older" box.'); return false; }
     if (!isAdult) { fail(he ? 'יש להזין תאריך לידה — גיל 18 ומעלה' : 'Please enter your date of birth — you must be 18 or older.'); return false; }
     return true;
   };
@@ -1062,13 +1063,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     return a;
   })();
   const isAdult = age >= 18;
-  // AGE GATE (2026-07-24 fix): the DOB wheel AND a separate 'I am 18+' checkbox
-  // was redundant and confusing — a customer who entered their birthday still
-  // had to tick a box saying they're 18+, and Google sign-in / the phone Send
-  // button silently stayed blocked until they did. A VALID 18+ date of birth
-  // now satisfies the age requirement on its own; the checkbox remains the
-  // path for anyone who hasn't entered a DOB (e.g. pure social signup).
-  const ageConfirmed = over18 || isAdult;
+  // AGE GATE (CEO PATCH-1823, restored 2026-08-16 after audit found the checkbox
+  // was silently dropped and `dob` defaulted to an adult year — a fresh visitor
+  // passed the gate with zero interaction). Manual signup requires BOTH:
+  //   (a) the explicit "I am 18+" checkbox (unchecked by default), AND
+  //   (b) a DOB the user typed that computes to ≥18.
+  // Server /api/auth/session re-derives age from DOB and re-checks the flag,
+  // so the client is one of two gates, not the only one.
+  const ageConfirmed = over18 && isAdult;
   // Rover-style passive consent (CEO 2026-07-27): terms are no longer a blocking
   // checkbox — the disclosure line + the deliberate submit are the affirmative
   // action, and terms are stamped on the session. The only hard gate that remains
@@ -1096,7 +1098,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // CEO 2026-07-31 (round 2, "it's too hard"): dropped the separate confirm-password
   // field — the show/hide password toggle already lets the user verify what they typed,
   // so a second box was pure friction. Member join = mobile + email + one password.
-  const joinReady = !busy && bothContacts && passwordValid && isAdult;
+  const joinReady = !busy && bothContacts && passwordValid && ageConfirmed;
   // LOGIN is email + password (returning member). Phone-OTP login still exists via
   // the "use a one-time code" link; social + passkey remain on both modes.
   const loginReady = !busy && emailValid && password.length >= 1;
@@ -1539,6 +1541,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       yearLabel={he ? 'שנה' : 'Year'}
                     />
                     <div className="sl-hint">{he ? 'גללו לתאריך הלידה שלכם.' : 'Spin the wheels to your date of birth.'}</div>
+                  </div>
+                  {/* 18+ CHECKBOX (CEO PATCH-1823, re-rendered 2026-08-16). Unchecked
+                      by default. Signup gates on BOTH this AND the DOB — the DOB
+                      alone is not enough because the wheel defaults to an adult
+                      year on mount, so leaving the wheel untouched used to pass. */}
+                  <div className="sl-field">
+                    <label style={{ display: 'flex', alignItems: 'flex-start', gap: 10, fontSize: 14, cursor: 'pointer', padding: '4px 0' }}>
+                      <input
+                        type="checkbox"
+                        checked={over18}
+                        onChange={(e) => setOver18(e.target.checked)}
+                        data-testid="checkbox-over18"
+                        style={{ marginTop: 3, flexShrink: 0 }}
+                      />
+                      <span>{he ? 'אני מאשר/ת שאני בן/בת 18 ומעלה' : 'I confirm I am 18 years of age or older'}</span>
+                    </label>
                   </div>
                   <button type="button" className="sl-switchLink" onClick={() => { setAuthMode('login'); setManualMode(false); setSent(false); setInlineError(null); }}
                     style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.8, fontSize: '13px', cursor: 'pointer', padding: '8px 0', textDecoration: 'underline', width: '100%', textAlign: 'center' }}>
