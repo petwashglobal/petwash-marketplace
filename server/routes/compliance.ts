@@ -122,11 +122,32 @@ router.post("/authority-documents", async (req: Request, res: Response) => {
 router.put("/authority-documents/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const updates = req.body;
+
+    // STRICT ALLOWLIST (audit item 251). Blocks mass-assign of the
+    // reviewer-only verification fields (isVerified /* not in schema */,
+    // verifiedBy, verifiedAt) which have their own dedicated endpoint below,
+    // and blocks tampering with the audit trail (uploadedBy, lastReminderSent)
+    // and system fields (id, createdAt, updatedAt). Any key not on this list
+    // is silently dropped.
+    const AUTHORITY_DOC_METADATA_FIELDS = new Set([
+      'documentType', 'authorityName', 'authorityNameHe', 'authorityType', 'country',
+      'documentNumber', 'title', 'titleHe', 'description', 'descriptionHe',
+      'issuedDate', 'expiryDate', 'status',
+      'documentUrl', 'verificationUrl', 'qrCode',
+      'coverageAmount', 'coverageCurrency', 'applicableServices', 'applicableLocations',
+      'complianceLevel', 'riskCategory', 'autoRenewalEnabled',
+      'displayPublicly', 'displayBadge', 'displayPriority',
+      'reminderDaysBefore', 'notes',
+    ]);
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    const filtered: Record<string, unknown> = {};
+    for (const key of Object.keys(body)) {
+      if (AUTHORITY_DOC_METADATA_FIELDS.has(key)) filtered[key] = (body as any)[key];
+    }
 
     const [updated] = await db
       .update(authorityDocuments)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...filtered, updatedAt: new Date() })
       .where(eq(authorityDocuments.id, id))
       .returning();
 
@@ -143,11 +164,34 @@ router.put("/authority-documents/:id", async (req: Request, res: Response) => {
 
 /**
  * DELETE /api/compliance/authority-documents/:id
- * Delete authority document
+ * Delete authority document — writes an audit row BEFORE the delete so a
+ * deleted document isn't invisible to a later compliance review (item 251,
+ * pairs with the audit-first pattern used by other reviewer actions).
  */
 router.delete("/authority-documents/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
+    const actorUid = (req as any).user?.uid || (req as any).user?.email || 'unknown';
+
+    // Snapshot the row for the audit trail before it disappears.
+    const [snapshot] = await db.select().from(authorityDocuments).where(eq(authorityDocuments.id, id)).limit(1);
+    if (!snapshot) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+    try {
+      await db.insert(complianceAuditTrail).values({
+        entityType: 'authority_document',
+        entityId: id,
+        action: 'deleted',
+        actor: String(actorUid),
+        details: { documentNumber: snapshot.documentNumber, authorityName: snapshot.authorityName, deletedAt: new Date().toISOString() },
+      } as any);
+    } catch (auditErr: any) {
+      // Audit must not silently swallow — a delete without audit is exactly
+      // the evidence-loss the CEO called out. Fail-closed.
+      console.error("Compliance audit write failed — refusing delete", { id, error: auditErr?.message });
+      return res.status(500).json({ error: "Audit write failed; delete refused" });
+    }
 
     await db.delete(authorityDocuments).where(eq(authorityDocuments.id, id));
 
@@ -155,6 +199,63 @@ router.delete("/authority-documents/:id", async (req: Request, res: Response) =>
   } catch (error: any) {
     console.error("Error deleting authority document:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * PATCH /api/compliance/authority-documents/:id/review
+ * Reviewer-only mutation: verify or reject a submitted authority document.
+ * verifiedBy is SERVER-DERIVED from req.user (never body); reviewer must
+ * supply a `reason` string.
+ */
+router.patch("/authority-documents/:id/review", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    const actorUid = (req as any).user?.uid || (req as any).user?.email;
+    if (!actorUid) return res.status(401).json({ error: 'Not authenticated' });
+
+    const body = (req.body && typeof req.body === 'object') ? req.body : {};
+    const nextStatus = typeof body.status === 'string' ? body.status : null;
+    const reason = typeof body.reason === 'string' ? body.reason.trim().slice(0, 1000) : '';
+    if (!nextStatus || !['active', 'expired', 'revoked', 'pending_renewal'].includes(nextStatus)) {
+      return res.status(400).json({ error: 'status must be one of: active, expired, revoked, pending_renewal' });
+    }
+    if (!reason) return res.status(400).json({ error: 'reason is required for a compliance review' });
+
+    const setPayload: Record<string, unknown> = {
+      status: nextStatus,
+      notes: reason,
+      updatedAt: new Date(),
+    };
+    if (nextStatus === 'active') {
+      setPayload.verifiedBy = String(actorUid);
+      setPayload.verifiedAt = new Date();
+    }
+
+    const [updated] = await db
+      .update(authorityDocuments)
+      .set(setPayload as any)
+      .where(eq(authorityDocuments.id, id))
+      .returning();
+
+    if (!updated) {
+      return res.status(404).json({ error: "Document not found" });
+    }
+
+    try {
+      await db.insert(complianceAuditTrail).values({
+        entityType: 'authority_document',
+        entityId: id,
+        action: 'reviewed',
+        actor: String(actorUid),
+        details: { newStatus: nextStatus, reason, reviewedAt: new Date().toISOString() },
+      } as any);
+    } catch { /* audit best-effort AFTER the fact */ }
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("Error reviewing authority document:", error);
+    res.status(400).json({ error: error.message });
   }
 });
 
@@ -236,13 +337,19 @@ router.post("/provider-licenses", async (req: Request, res: Response) => {
 router.put("/provider-licenses/:id/verify", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const { verifiedBy } = req.body;
+
+    // SERVER-DERIVED reviewer identity (audit item 251). The prior code read
+    // `verifiedBy` from req.body — any admin with a session could forge a
+    // colleague's ID as the reviewer of record. verifiedBy now comes from
+    // the authenticated caller (req.user), never from the request body.
+    const actorUid = (req as any).user?.uid || (req as any).user?.email;
+    if (!actorUid) return res.status(401).json({ error: 'Not authenticated' });
 
     const [updated] = await db
       .update(providerLicenses)
       .set({
         isVerified: true,
-        verifiedBy,
+        verifiedBy: String(actorUid),
         verifiedAt: new Date(),
         updatedAt: new Date(),
       })
@@ -252,6 +359,16 @@ router.put("/provider-licenses/:id/verify", async (req: Request, res: Response) 
     if (!updated) {
       return res.status(404).json({ error: "License not found" });
     }
+
+    try {
+      await db.insert(complianceAuditTrail).values({
+        entityType: 'provider_license',
+        entityId: id,
+        action: 'verified',
+        actor: String(actorUid),
+        details: { verifiedAt: new Date().toISOString() },
+      } as any);
+    } catch { /* audit best-effort */ }
 
     res.json(updated);
   } catch (error: any) {
