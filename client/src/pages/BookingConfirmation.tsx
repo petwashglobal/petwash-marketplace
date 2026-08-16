@@ -211,6 +211,7 @@ const labels = {
     petCount:         'חיות',
     date:             'תאריך',
     time:             'שעה',
+    paymentStartFailed: 'לא הצלחנו להתחיל את התשלום. נסו שוב.',
   },
   en: {
     title:            'Booking Confirmation',
@@ -279,6 +280,7 @@ const labels = {
     petCount:         'Pets',
     date:             'Date',
     time:             'Time',
+    paymentStartFailed: 'Could not start payment. Please try again.',
   },
 };
 

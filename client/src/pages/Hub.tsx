@@ -490,7 +490,7 @@ export default function Hub() {
         
         <Button
           variant="ghost"
-          onClick={() => { try { window.history.back(); } catch { setLocation('/dashboard'); } }}
+          onClick={() => { try { window.history.back(); } catch { setLocation('/'); } }}
           className="flex items-center gap-2 mb-6 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <BackArrow className="w-5 h-5" />
