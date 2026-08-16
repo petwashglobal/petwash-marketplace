@@ -16,9 +16,64 @@ import {
   type StationEvent,
 } from '@shared/firestore-schema';
 import { nanoid } from 'nanoid';
+import { z } from 'zod';
 import { computeStationScore, isComputeError } from './station-performance';
 
 const router = Router();
+
+// PR-DANGER-6: strict allowlist for the general station PATCH.
+//
+// The pre-fix PUT /:id handler at line 229 did `const updates = req.body;
+// ... updateDoc = { ...updates }; ... set(updateDoc, {merge:true})` — a
+// Firestore-side mass-assign that let any admin rewrite:
+//   * Nayax terminal identity (nayax.terminalId, deviceId, merchantId) —
+//     redirecting payment capture to an attacker's terminal
+//   * utilities (owner/operator contract, insurance renewalDate)
+//   * status (silent switch to 'paused' during rush hour = revenue loss)
+//   * arbitrary financial / security keys Firestore accepts by default
+// The only defense was three delete-lines for `id`, `createdBy`,
+// `createdAt` — everything else was accepted.
+//
+// This schema declares the SAFE general-metadata fields only. Every
+// field the CEO's classification flags as money / security / hardware
+// / owner is DELIBERATELY absent, and .strict() rejects unknown keys
+// with 400 so an admin who tries to set nayax terminals via the
+// general PATCH sees the field name and knows to route the change
+// through the correct audited endpoint (out of scope — flagged for
+// PR-DANGER-6-followup).
+const stationGeneralPatchSchema = z.object({
+  name:          z.string().min(1).max(200).optional(),
+  brand:         z.string().min(1).max(100).optional(),
+  serialNumber:  z.string().min(1).max(80).optional(),
+  address:       z.object({
+    line1:       z.string().min(1).max(200),
+    line2:       z.string().max(200).optional(),
+    city:        z.string().min(1).max(100),
+    postcode:    z.string().min(1).max(20),
+    country:     z.string().length(2).default('IL'),
+  }).optional(),
+  council:       z.string().max(200).optional(),
+  geo:           z.object({
+    lat:         z.number().min(-90).max(90),
+    lng:         z.number().min(-180).max(180),
+    plusCode:    z.string().max(40).optional(),
+  }).optional(),
+  photos:        z.array(z.string().url().max(2000)).max(20).optional(),
+  openedAt:      z.string().datetime().optional(),
+  thresholds:    z.object({
+    minStock: z.object({
+      shampoo:      z.number().int().min(0).max(10000).optional(),
+      conditioner:  z.number().int().min(0).max(10000).optional(),
+      disinfectant: z.number().int().min(0).max(10000).optional(),
+      fragrance:    z.number().int().min(0).max(10000).optional(),
+    }).partial().optional(),
+    alertEmail:  z.string().email().max(254).optional(),
+    alertSlack:  z.boolean().optional(),
+  }).partial().optional(),
+  // NOTE: `status`, `nayax`, `utilities`, `createdBy`, `createdAt`, `id`
+  // are DELIBERATELY absent — see the block comment above for why each
+  // one belongs on a dedicated audited endpoint.
+}).strict();
 
 // ============================================
 // STATION CRUD OPERATIONS
@@ -225,12 +280,21 @@ router.post('/', requireAdmin, async (req: Request, res: Response) => {
   }
 });
 
-// PUT /api/admin/stations/:id - Update existing station (alias for POST with id)
+// PUT /api/admin/stations/:id - Update existing station (general metadata only)
+// See stationGeneralPatchSchema above for the exact allowlist + the rationale
+// for why nayax terminal identity / utilities / status are NOT accepted here.
 router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
     const adminUid = req.firebaseUser!.uid;
-    const updates = req.body;
+    const parsed = stationGeneralPatchSchema.safeParse(req.body);
+    if (!parsed.success) {
+      // .strict() surfaces unknown-key names in the error so the admin
+      // knows which body field they tried to set (e.g. `nayax`, `status`)
+      // and can route the change through the correct audited endpoint.
+      return res.status(400).json({ error: 'Validation error', details: parsed.error.flatten() });
+    }
+    const updates = parsed.data;
 
     // Verify station exists
     const stationDoc = await db.collection('stations').doc(id).get();
@@ -244,11 +308,11 @@ router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
       const existingStations = await db.collection('stations')
         .where('serialNumber', '==', updates.serialNumber)
         .get();
-      
+
       if (!existingStations.empty) {
         const existingDoc = existingStations.docs[0];
         if (existingDoc.id !== id) {
-          return res.status(409).json({ 
+          return res.status(409).json({
             error: 'Serial number already exists',
             existingStationId: existingDoc.id,
             field: 'serialNumber'
@@ -257,18 +321,14 @@ router.put('/:id', requireAdmin, async (req: Request, res: Response) => {
       }
     }
 
-    // Build update object
+    // Build update object — the schema above already stripped every
+    // dangerous key, so the spread is safe.
     const now = new Date();
     const updateDoc: any = {
       ...updates,
       updatedBy: adminUid,
       updatedAt: now,
     };
-
-    // Remove read-only fields if accidentally included
-    delete updateDoc.id;
-    delete updateDoc.createdBy;
-    delete updateDoc.createdAt;
 
     await db.collection('stations').doc(id).set(updateDoc, { merge: true });
 
