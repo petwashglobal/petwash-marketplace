@@ -628,6 +628,121 @@ export class SumitClient {
    *                             the KEY is fine, the call shape isn't
    *   ok:false + !reachable   → could not reach SUMIT at all (network)
    */
+  /**
+   * POST /accounting/customers/create/
+   *
+   * SUMIT full-service adoption, Phase 2 (CEO 2026-08-16). Creates a
+   * SUMIT-side customer record so the member has a hosted customer-portal
+   * login and so downstream chargeRecurring / chargeSavedCard /
+   * setForCustomer have a real CustomerID to pass. Idempotent via
+   * ExternalIdentifier (SUMIT-side) + our own pre-check against the
+   * sumit_customers table (caller-side).
+   *
+   * BODY SHAPE WARNING: same unverified-against-authenticated-swagger
+   * caveat as createDocument. Confirmed against public OfficeGuy customer
+   * shape but MUST be exercised against SUMIT_SANDBOX=true before any
+   * production flip. Companion design doc:
+   *   docs/design/2026-08-16-sumit-full-service-adoption.md
+   *
+   * Safety contract:
+   *  - Not wired → returns {wired:false} without any HTTP call.
+   *  - Never throws — a customer-sync failure must never roll back signup.
+   */
+  async createCustomer(input: {
+    externalIdentifier: string;
+    name: string;
+    email?: string;
+    phone?: string;
+  }): Promise<{ wired: boolean; sumitCustomerId?: string; reason?: string; rawResponse?: unknown }> {
+    const env = readEnv();
+    if (!isWired()) {
+      logger.info('[SumitClient] createCustomer called while not wired (no-op)', {
+        externalIdentifier: input.externalIdentifier,
+      });
+      return {
+        wired: false,
+        reason: 'SumitClient not wired — set SUMIT_ENABLED=true plus all credentials',
+      };
+    }
+
+    const body = {
+      Credentials: {
+        CompanyID: env.companyId,
+        APIKey: env.apiKey,
+      },
+      Customer: {
+        Name: input.name,
+        EmailAddress: input.email || undefined,
+        PhoneNumber: input.phone || undefined,
+        ExternalIdentifier: input.externalIdentifier,
+        Language: 'Hebrew',
+      },
+    };
+
+    const url = `${env.baseUrl}/accounting/customers/create/`;
+    const startMs = Date.now();
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Idempotency-Key': `customer:${input.externalIdentifier}`,
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (networkErr) {
+      const msg = (networkErr as Error).message;
+      logger.error('[SumitClient] createCustomer network error', {
+        externalIdentifier: input.externalIdentifier,
+        elapsedMs: Date.now() - startMs,
+        err: msg,
+      });
+      return { wired: false, reason: `Network error: ${msg}` };
+    }
+
+    let parsedBody: unknown = null;
+    try { parsedBody = await res.json(); } catch { /* SUMIT may return non-JSON on error */ }
+
+    if (!res.ok) {
+      logger.warn('[SumitClient] createCustomer non-2xx', {
+        externalIdentifier: input.externalIdentifier,
+        status: res.status,
+        elapsedMs: Date.now() - startMs,
+      });
+      return {
+        wired: true,
+        reason: `SUMIT returned ${res.status}`,
+        rawResponse: parsedBody,
+      };
+    }
+
+    // Field name unverified — try common variants.
+    const b = (parsedBody && typeof parsedBody === 'object')
+      ? parsedBody as Record<string, unknown>
+      : {};
+    const sumitCustomerId = String(
+      b.CustomerID ??
+      b.customerId ??
+      (b.Data as Record<string, unknown> | undefined)?.CustomerID ??
+      (b.Customer as Record<string, unknown> | undefined)?.CustomerID ??
+      b.ID ??
+      b.id ??
+      '',
+    ) || undefined;
+
+    logger.info('[SumitClient] customer created', {
+      externalIdentifier: input.externalIdentifier,
+      sumitCustomerId,
+      sandbox: env.sandbox,
+      elapsedMs: Date.now() - startMs,
+    });
+
+    return { wired: true, sumitCustomerId, rawResponse: parsedBody };
+  }
+
   async connectionTest(): Promise<{
     ok: boolean;
     reachable: boolean;

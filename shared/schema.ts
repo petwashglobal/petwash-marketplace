@@ -11817,6 +11817,21 @@ export const paymentTokens = pgTable("payment_tokens", {
   index("idx_payment_tokens_processor").on(table.provider, table.processorTokenId),
 ]);
 
+// ── SUMIT customer sync (Phase 2 of SUMIT full-service adoption, 2026-08-16) ─
+// Maps a PetWash uid to its SUMIT-assigned CustomerID. Populated by
+// SumitCustomerService.syncForUser(). See migration 0116 + design doc
+// docs/design/2026-08-16-sumit-full-service-adoption.md.
+export const sumitCustomers = pgTable("sumit_customers", {
+  userId: varchar("user_id", { length: 128 }).primaryKey(),           // Firebase UID
+  sumitCustomerId: varchar("sumit_customer_id", { length: 128 }).notNull().unique(),
+  syncedAt: timestamp("synced_at").defaultNow().notNull(),
+  source: varchar("source", { length: 32 }).notNull(),                // 'signup' | 'backfill' | 'manual'
+  externalReference: varchar("external_reference", { length: 128 }).notNull(),
+  lastError: text("last_error"),
+}, (table) => [
+  index("idx_sumit_customers_synced_at").on(table.syncedAt),
+]);
+
 // ── Privilege / Prestige loyalty members (CTO P1-8, 2026-08-01) ─────────────────
 // Was a PHANTOM table created at request time in privilege-loyalty.ts (invisible to
 // migrations, schema-based backups, and types). Declared here + in migration 0112 so it
