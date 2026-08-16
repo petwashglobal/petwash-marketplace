@@ -651,9 +651,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         setMethod('email');
         setSent(true);
         try {
+          const step2Token = await executeTurnstileInvisible('signup_email_start').catch(() => null);
           await fetch(getApiUrl('/api/auth/email/start'), {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-            body: JSON.stringify({ email, purpose: 'signup', language }),
+            body: JSON.stringify({ email, purpose: 'signup', language, turnstileToken: step2Token }),
           });
           toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
         } catch { /* the email OTP screen has a resend */ }
@@ -678,9 +679,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // not 'signup' — otherwise the returning user's code is scoped wrong and the
       // flow attaches a synthetic signup DOB. Start + verify MUST agree on purpose.
       const emailPurpose = authMode === 'login' ? 'login' : 'signup';
+      // Turnstile bot check on the email OTP start (mirrors the SMS start
+      // path). When TURNSTILE_SECRET_KEY is unset on the server the guard
+      // skips + logs a warning; when set, a missing token 400s and the user
+      // sees the "Could not send the code right now" fallback below.
+      const emailTurnstileToken = await executeTurnstileInvisible('signup_email_start').catch(() => null);
       const r = await fetch(getApiUrl('/api/auth/email/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ email, purpose: emailPurpose, language }),
+        body: JSON.stringify({ email, purpose: emailPurpose, language, turnstileToken: emailTurnstileToken }),
       });
       const d = await r.json();
       if (!d.ok) { fail(d.message || (he ? 'לא ניתן לשלוח קוד כעת' : 'Could not send the code right now')); return; }

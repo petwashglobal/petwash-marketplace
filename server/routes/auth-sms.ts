@@ -25,7 +25,7 @@ import { isUnifiedVerificationLoginEnabled } from '../lib/feature-flags/unifiedV
 import { UnifiedVerificationError, unifiedVerificationService } from '../services/UnifiedVerificationService';
 import { logger } from '../lib/logger';
 import { logAuditEvent } from '../middleware/auditLog';
-import { verifyTurnstileToken } from '../lib/verifyTurnstile';
+import { turnstileGuard } from '../lib/turnstileGuard';
 
 // Last-4 only — never log a full phone number (PII) or the OTP code.
 function maskPhone(phone: unknown): string | undefined {
@@ -106,12 +106,11 @@ router.get('/status', (_req: Request, res: Response) => {
 });
 
 // POST /api/auth/sms/start — send a one-time login code to the phone.
-router.post('/start', async (req: Request, res: Response) => {
+router.post('/start', turnstileGuard({ action: 'signup_sms_start' }), async (req: Request, res: Response) => {
   const body = req.body ?? {};
   const rawPhone = body.phone;
   const language = typeof body.language === 'string' ? body.language : 'he';
   const flow = normalizeFlow(body.flow);
-  const turnstileToken = typeof body.turnstileToken === 'string' ? body.turnstileToken : undefined;
 
   if (!rawPhone || typeof rawPhone !== 'string') {
     return res.status(400).json({ ok: false, error: 'phone_required' });
@@ -120,20 +119,13 @@ router.post('/start', async (req: Request, res: Response) => {
 
   const callerIp = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
 
-  // Best-effort Turnstile verification (NEVER blocks).
-  // Mirrors the existing pattern in publicAuthRoutes.ts:294-317. The OTP code
-  // itself is the authentication factor; Turnstile is bonus signal. Blocking
-  // on missing/invalid token would lock users out whenever
-  // VITE_TURNSTILE_SITE_KEY is unset (PR #447 dependency) — that risk is not
-  // acceptable for the primary signup path.
-  let captchaSignal: 'turnstile_passed' | 'turnstile_failed' | 'turnstile_absent' = 'turnstile_absent';
-  if (turnstileToken) {
-    const tr = await verifyTurnstileToken(turnstileToken, callerIp);
-    captchaSignal = tr.valid ? 'turnstile_passed' : 'turnstile_failed';
-    if (!tr.valid) {
-      logger.warn('[auth-sms] Turnstile failed (non-blocking)', { phone: maskPhone(phone), reason: tr.reason });
-    }
-  }
+  // Bot check ran in turnstileGuard middleware above. When TURNSTILE_SECRET_KEY
+  // is configured, an invalid/missing token blocks with 400/403 before this
+  // handler runs. When the env is unset the middleware skips + logs a WARN;
+  // the /api/health/bot-check endpoint reports the unconfigured state to
+  // operators so they can fix it without stranding sign-ins.
+  const captchaSignal: 'turnstile_passed' | 'turnstile_absent' =
+    (req as any).turnstileVerified === true ? 'turnstile_passed' : 'turnstile_absent';
 
   try {
     if (isUnifiedVerificationLoginEnabled()) {
