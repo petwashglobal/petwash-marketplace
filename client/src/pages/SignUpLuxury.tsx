@@ -1729,7 +1729,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       email→email code). The name + any missing base fields are asked
                       after the code is verified — no password anywhere. */}
                   <button className="sl-cta"
-                    disabled={busy || (method === 'email' ? !emailValid : (!phoneValid || !emailValid))}
+                    disabled={busy || (method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed}
                     onClick={() => {
                       if (method === 'email') {
                         // Password set → create the account with it (saveable). Blank
@@ -1739,13 +1739,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     }}>
                     <FaMobileAlt aria-hidden /> {busy ? '…' : (method === 'email' && password ? (he ? 'יצירת חשבון' : 'Create account') : (he ? 'שליחת קוד אימות' : 'Send verification code'))}
                   </button>
-                  {(method === 'email' ? !emailValid : (!phoneValid || !emailValid)) && (
+                  {((method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed) && (
                     <div className="sl-hint sl-submitHint">
-                      {method === 'email'
-                        ? (he ? 'הזינו כתובת אימייל תקינה כדי לקבל קוד.' : 'Enter a valid email to get a code.')
-                        : (!phoneValid
-                            ? (he ? 'הזינו מספר נייד תקין.' : 'Enter a valid mobile number.')
-                            : (he ? 'הזינו גם אימייל — חשבון חדש מאמת נייד + אימייל.' : 'Add your email too — a new account verifies mobile + email.'))}
+                      {(method === 'email' ? !emailValid : (!phoneValid || !emailValid))
+                        ? (method === 'email'
+                            ? (he ? 'הזינו כתובת אימייל תקינה כדי לקבל קוד.' : 'Enter a valid email to get a code.')
+                            : (!phoneValid
+                                ? (he ? 'הזינו מספר נייד תקין.' : 'Enter a valid mobile number.')
+                                : (he ? 'הזינו גם אימייל — חשבון חדש מאמת נייד + אימייל.' : 'Add your email too — a new account verifies mobile + email.')))
+                        : (!over18
+                            ? (he ? 'סמנו: אני בן/בת 18 ומעלה.' : 'Tick the "I am 18 or older" box.')
+                            : (he ? 'בחרו תאריך לידה (18+).' : 'Set your date of birth (18+).'))}
                     </div>
                   )}
                 </>
