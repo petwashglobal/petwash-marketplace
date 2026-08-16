@@ -12,7 +12,8 @@
  * Future: Slack webhook, SMS (Twilio)
  */
 
-import { getSendGridClient, isSendGridConfigured } from '../../lib/sendgrid';
+import { isSendGridConfigured } from '../../lib/sendgrid';
+import { sendGuardedEmail } from '../../lib/guarded-sendgrid';
 import { logger } from '../../lib/logger';
 import type { AnomalyFlag } from './KYCAnomalyDetector';
 
@@ -65,8 +66,6 @@ export class KYCSecurityAlerts {
     }
 
     try {
-      const sgMail = getSendGridClient();
-
       const severityEmoji = input.severity === 'critical' ? '🚨' : input.severity === 'warning' ? '⚠️' : 'ℹ️';
       const severityColor = input.severity === 'critical' ? '#dc2626' : input.severity === 'warning' ? '#f59e0b' : '#3b82f6';
 
@@ -107,13 +106,24 @@ export class KYCSecurityAlerts {
         </div>
       `;
 
-      await sgMail.send({
-        to: ALERT_TO,
-        from: ALERT_FROM,
-        subject: `${ALERT_SUBJECT_PREFIX} ${severityEmoji} ${input.severity.toUpperCase()}: ${input.title}`,
-        html,
+      // Task 18 (PR-EMAIL-4): route through guarded helper. A KYC anomaly
+      // storm could otherwise fire hundreds of alert emails before an
+      // operator can silence it; EmailSpendGuard's circuit breaker
+      // bounds the runaway. No change to KYC approval logic — this
+      // covers the ALERT email transport only.
+      const r = await sendGuardedEmail({
+        service: 'internal:kyc-security-alert',
+        msg: {
+          to: ALERT_TO,
+          from: ALERT_FROM,
+          subject: `${ALERT_SUBJECT_PREFIX} ${severityEmoji} ${input.severity.toUpperCase()}: ${input.title}`,
+          html,
+        },
       });
-
+      if (!r.ok) {
+        logger.warn('[KYC2026:Alert] Email blocked or failed', { title: input.title, reason: r.reason });
+        return;
+      }
       logger.info(`[KYC2026:Alert] Email sent: ${input.title}`);
     } catch (err: any) {
       logger.error(`[KYC2026:Alert] Email send failed: ${err.message}`);
