@@ -1169,6 +1169,12 @@ self.addEventListener('notificationclick', (event) => {
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
       const { idToken, expiresInMs = 432000000, captchaToken, turnstileToken, dateOfBirth: bodyDob } = req.body;
+      // MASTER AUTH rebuild (2026-08-16): marketing consent rides alongside
+      // termsAccepted from every signup path (social + manual). Coerced to a
+      // strict boolean (accept only literal true) so a truthy string / 1 / null
+      // can never silently subscribe a user who never ticked the optional box.
+      const acceptedMarketingRaw = (req.body as any)?.acceptedMarketing;
+      const acceptedMarketing = acceptedMarketingRaw === true;
       
       if (!idToken) {
         logger.warn('[Session] Missing ID token in request - client error (400)', { traceId });
@@ -1421,6 +1427,26 @@ self.addEventListener('notificationclick', (event) => {
             });
           } catch (termsErr) {
             logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
+          }
+        }
+
+        // MASTER AUTH rebuild (2026-08-16): marketing consent is GRANULAR and
+        // must NOT be inferred from social OAuth (the provider screen consents
+        // to sign-in, not to marketing). Only the explicit `acceptedMarketing`
+        // flag from the signup client stamps it. Only on new-user signup —
+        // returning-login requests omit the field so we never overwrite an
+        // existing preference. Records the timestamp for audit (GDPR Art.7(1)).
+        if (_syncResult?.isNewUser && (req.body as any)?.acceptedMarketing !== undefined) {
+          try {
+            await authService.updateUser(decoded.uid, {
+              marketingConsent: acceptedMarketing,
+              privacyConsentUpdatedAt: new Date(),
+            });
+            logger.info('[Session] ✅ marketingConsent stamped for new signup', {
+              uid: decoded.uid, marketingConsent: acceptedMarketing,
+            });
+          } catch (mErr) {
+            logger.warn('[Session] Failed to stamp marketingConsent (non-blocking)', mErr);
           }
         }
 
