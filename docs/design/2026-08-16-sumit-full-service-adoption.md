@@ -1,169 +1,132 @@
-# SUMIT Full-Service Adoption — Phased Plan (CEO 2026-08-16)
+# SUMIT Full-Service Adoption — Implementation Plan (CEO 2026-08-16, revised after CEO correction)
 
-**Status:** MERGE-BLOCKED. Design only. No production behaviour change until each phase is explicitly signed off. Companion audit that mapped current state: see the "Full SUMIT integration audit" report attached to this session (SumitClient.ts + 57 files + 20 docs).
+**Principle:**
+> **PetWash owns the PRODUCT. SUMIT owns the accounting/invoicing platform.** SUMIT is the already-connected accounting/invoicing system used by the company. PetWash sends SUMIT the right transaction/customer/business data. We do NOT duplicate SUMIT functionality. We do NOT redesign Israeli accounting rules ourselves. We follow the official SUMIT documentation, API/Swagger, and the existing configured company account.
 
-**Origin:** CEO 2026-08-16 —
-> "all sumit.co.il team said we not using their amazing full service right smart, we dont get how good legal they are and we member user with dashboard control panel , israel invoices all"
+**Source of the official contract:** `docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md` (endpoint-by-endpoint, with fields, request/response shapes, and idempotency mechanisms verified against the SUMIT plugin + Swagger).
 
-Translation: SUMIT's engineering / product team have told us we are not using the platform correctly. They handle:
-1. All Israeli invoices with legal weight (registered ITA-clearance software, מספר תוכנה 00215702).
-2. A hosted customer / member dashboard where every invoice, receipt, subscription and past charge lives — one legally-authoritative place.
-3. Marketplace split, saved-card charging, recurring billing, refund/void — all first-class.
-
-Today we route about 15 % of what they can do through them. The other 85 % we do in-house, in code we own and are liable for. This doc lays out how to close that gap without breaking a live business.
+---
 
 ## 1. What we do today (verified in code)
 
 | Layer | We call SUMIT for | We do in-house (duplicates SUMIT capability) |
 |---|---|---|
-| Fiscal doc issuance | `createDocument` / `createCustomerReceipt` / `createCreditDocument` for supplier invoices + some receipts | `IsraeliDigitalReceiptService` (1,323 LOC), `TaxSequenceService`, `invoiceSequence.ts`, `VATCalculatorService` |
-| Payment page | `beginRedirect` (hosted, PCI SAQ-A) for `SumitBookingPayment`, `payments-sumit`, `egift-guest` | Nayax rail (separate provider — kept as before) |
-| Payment vault | `setForCustomer` + `chargeSavedCard` + `chargeRecurring` — **NEVER USED** because no SUMIT customer exists to charge | Full saved-card + recurring code exists as dead code |
-| ITA clearance ("Model H", Digital Invoice Law 2024) | Nothing — SUMIT would do this for us | `IsraeliTaxAPIService`, `IsraeliTaxAuthorityAPI`, `ITAComplianceMonitoringService`, `ElectronicInvoicingService` — direct OAuth to ITA ourselves |
-| Marketplace commission split | Nothing | `EscrowService`, `payoutGate`, `ProviderPayoutService`, `WalletLedger` — all custom money math |
-| Refund / void | Only writes a credit doc via `createCreditDocument` — never voids the actual card | `RefundService` — records the obligation; card void marked "Phase 2" |
-| Customer master | Nothing — `/accounting/customers/create/` is never called | Every SUMIT doc issued anonymously with `Customer` inlined |
+| Fiscal doc issuance | `createDocument` / `createCustomerReceipt` / `createCreditDocument` | `IsraeliDigitalReceiptService`, `TaxSequenceService`, `invoiceSequence.ts`, `VATCalculatorService` — a parallel in-house issuer |
+| Payment page | `beginRedirect` (hosted, PCI SAQ-A) | Nayax is a separate provider — unchanged |
+| Payment vault | `setForCustomer` + `chargeSavedCard` + `chargeRecurring` — **NEVER USED** because no SUMIT customer has ever been created | Full saved-card + recurring code exists as dead code |
+| ITA / SHAAM | Nothing | `IsraeliTaxAPIService`, `IsraeliTaxAuthorityAPI`, `ITAComplianceMonitoringService`, `ElectronicInvoicingService` — our own OAuth to ITA |
+| Marketplace commission split | Nothing (SUMIT has `multivendorcharge`) | `EscrowService`, `payoutGate`, `ProviderPayoutService`, `WalletLedger` |
+| Refund / void | Writes credit doc via `createCreditDocument` — never voids the actual card | `RefundService` — records the obligation only |
+| Customer master | Nothing — `/accounting/customers/create/` is never called | Every SUMIT doc issued anonymously with `Details.Customer` inlined |
 | Inbound reads | Nothing — every call is OUTBOUND write | N/A |
+| Webhook | Only `payment.succeeded` handled | `document.confirmed / document.failed / subscription.* / recurring.*` are TODO stubs |
 
-## 2. Why this matters (the CEO's point)
+## 2. What SUMIT gives us that we're not using
 
-- **Legal delegation.** When we are the invoice issuer, we own the audit trail, the numbering, the SHAAM allocation, the ITA relationship. If we make SUMIT the issuer, they are the ITA-registered software and the party of record for the tax authority. That is the "how good legal they are" line.
-- **Dashboard.** SUMIT hosts a customer portal — for each `SUMIT CustomerID` there is a login where they see every invoice/receipt/subscription/statement. We have never created a SUMIT customer, so no PetWash member has that dashboard reachable. That is the "member user with dashboard control panel" line.
-- **One source of truth for money to a customer.** Every eGift, every wash, every Prestige charge lives in one place — visible to the customer, exportable by them, cross-referable by any auditor. That is the "israel invoices all" line.
+From the SUMIT team's message and the official contract:
 
-## 3. Phased plan — order by legal-safety win
+- **Customer master + dashboard.** Every PetWash user should be a SUMIT customer with a `CustomerHistoryURL` — SUMIT hosts the invoice-list / receipt / statement UI. This is the "member user with dashboard control panel."
+- **All Israeli invoices legally.** When we send fiscal docs through SUMIT, SUMIT is the ITA-clearance software. We stop maintaining a parallel issuer.
+- **Recurring / saved-card / refund** — first-class, but blocked today because we've never created a SUMIT customer to bind them to.
+- **Marketplace** — `multivendorcharge` + sub-business creation + Upay clearing.
+- **Wallets** — Apple Pay / Google Pay / Bit on the hosted page (activation, not code).
 
-Each phase is a separate PR, each stays behind a hard-off feature flag until the CEO flips it in production.
+## 3. Order of work — smallest-first, keep signup fast
 
-### PHASE 2 — Sync SUMIT customer for every PetWash member (SAFEST START)
+Each phase is a separate PR, all behind feature flags that default OFF. Nothing changes in production until CEO flips the flag AND the phase has been exercised against `SUMIT_SANDBOX=true`.
 
-**Why first:** unblocks Phases 3, 5, 6. Zero money-math change. Zero legal delegation. Purely a foreign-key propagation.
+### Phase 2 (safest first) — Sync SUMIT customer for every PetWash member
+**Ships now (this PR + companion PR-SUMIT-PHASE-2-INFRA):**
+- New table `sumit_customers(user_id → sumit_customer_id, customer_history_url, source, external_reference, synced_at)`. Additive-only. No changes to `users`/`customers`/`payment_tokens`.
+- `SumitClient.createCustomer` — official contract:
+  - Endpoint: `POST /accounting/customers/create/`
+  - Body: `{ Details: AccountingTypedCustomer, Credentials }`
+  - `Details.SearchMode: "Automatic"` + `Details.ExternalIdentifier=uid` → find-or-create dedup on SUMIT side.
+  - Response fields pinned: `CustomerID`, `CustomerHistoryURL`. No heuristic parsing.
+- `SumitCustomerService.syncForUser(uid, profile, source)` — idempotent (pre-check `sumit_customers`, then call SUMIT with SearchMode Automatic). Fire-and-forget wrapper for hot paths — never throws.
+- `SumitCustomerService.getCustomerHistoryUrl(uid)` — server-resolved read helper. Caller passes authenticated uid; browser never supplies uid.
+- Feature flag: `SUMIT_CUSTOMER_SYNC_ENABLED` — default `'false'`.
 
-**Deliverables:**
-1. New table `sumit_customers`:
-   ```sql
-   CREATE TABLE sumit_customers (
-     user_id             VARCHAR(128) PRIMARY KEY,   -- Firebase UID
-     sumit_customer_id   VARCHAR(128) NOT NULL UNIQUE,
-     synced_at           TIMESTAMP    NOT NULL DEFAULT now(),
-     source              VARCHAR(32)  NOT NULL,       -- 'signup' | 'backfill' | 'manual'
-     external_reference  VARCHAR(128) NOT NULL         -- our idempotency handle (uid)
-   );
-   ```
-   Not touching the `users` or `customers` tables — additive-only.
-2. `SumitClient.createCustomer` method — POST `/accounting/customers/create/` with `{ Credentials, Customer: { Name, EmailAddress, PhoneNumber, ExternalIdentifier, Language: 'Hebrew' } }`. Idempotent via `ExternalIdentifier = uid` (SUMIT's own dedup) and via our own pre-check against `sumit_customers`. When not wired: `{wired:false}` no-op (same pattern as siblings).
-3. `SumitCustomerService.syncForUser(uid)` — checks `sumit_customers`; if absent, calls `createCustomer`; on success inserts the row. Fail-soft — never throws to caller.
-4. **Fire-and-forget hook** at the end of `activateFromVerifiedPayment` and post-signup activation. Signup must never fail because SUMIT is degraded.
-5. **Feature flag** `SUMIT_CUSTOMER_SYNC_ENABLED` — default `false`. Nothing fires in prod until CEO flips it.
-6. Backfill script queued (dry-run first) to walk existing verified users.
+**Ships in the wire-up PR (`PR-SUMIT-PHASE-2-WIRE`, follows this design merge):**
+- Fire-and-forget call in `activateFromVerifiedPayment` (after PetWash activation succeeds). Signup does not slow down and cannot fail on SUMIT hiccup.
+- Backfill script — **DRY RUN first**. Uses `SearchMode: "Automatic"` so a re-run cannot duplicate. Reports counts before writing.
+- "My Invoices / החשבוניות שלי" surface on the account page. Server-resolved: `GET /api/me/invoices/portal-url` returns the caller's own `CustomerHistoryURL`. User A can never obtain User B's link.
 
-**What can go wrong:** SUMIT rejects a duplicate `ExternalIdentifier` on a retry — we catch and treat as "already synced". SUMIT is down — the fire-and-forget swallows and logs; a nightly reconciler retries. No money impact either way.
+### Phase 3 — Webhook lifecycle completion
+Handle the SUMIT-documented events currently stubbed:
+- `document.confirmed`, `document.failed` — update `digital_receipts.sumit_document_id` state.
+- `subscription.created`, `subscription.cancelled` — drive Prestige membership state from SUMIT truth.
+- `recurring.charged`, `recurring.failed` — surface renewal outcomes.
+- `refund/cancel` — bind to `refund_transactions.sumit_credit_doc_ref`.
 
-### PHASE 3 — Member dashboard link (visible customer value)
+Idempotent processing per event (SUMIT event id).
 
-**Depends on:** Phase 2.
-
-- Add a "My Invoices / החשבוניות שלי" surface on the account page.
-- Deep-link to the SUMIT customer portal for the member's `sumit_customer_id`. Confirmed with SUMIT: what is the portal URL scheme? (Design question — need SUMIT support answer.)
-- Optionally mirror an invoice-list view in-app via a SUMIT read API (per Phase 7).
-
-### PHASE 4 — Marketplace `multivendorcharge` (BIGGEST DELETION, D12 firewall)
-
-**Depends on:** Phase 2 (needs SUMIT customer per member + SUMIT sub-business per provider).
-
-**What it retires:** `EscrowService`, `payoutLedger`, `ProviderPayoutService`, most of `payoutGate`, disclosed-agent commission math in `VATCalculatorService`.
-
-**Why huge:** every one of those files is money code we own. Moving to SUMIT `multivendorcharge` means the split, the payout, the T+1 clearing, and the provider KYC/AML happen inside SUMIT/Upay — we call one API and record the reference.
-
-**Why NOT first:** D12 firewall applies — this changes the money rail for every marketplace booking. Needs explicit CEO signoff AND at least one full sandbox reconciliation run against the current escrow numbers before flipping in prod.
-
-### PHASE 5 — Subscriptions (Prestige tiers, wash packages)
-
-**Depends on:** Phase 2.
-
-- Enable `chargeRecurring` + a renewal scheduler.
-- Move Prestige tier billing from "manual charge on signup" to "SUMIT standing order" (הוראת קבע).
+### Phase 4 — Subscriptions (Prestige tiers, wash packages)
+- Enable `chargeRecurring` — a valid `CustomerID` now exists after Phase 2.
+- Move Prestige tier billing from manual charge to SUMIT standing order (הוראת קבע).
 - Wash-package auto-refill on N-remaining threshold.
+- No business-rule change — same amounts, same commissions, same VAT.
 
-### PHASE 6 — Webhook lifecycle completion
-
-- Complete the `sumit-webhook.ts` skeleton: handle `document.confirmed`, `document.failed`, `subscription.created`, `subscription.cancelled`, `recurring.charged`, `recurring.failed`.
-- Drive Prestige membership state from SUMIT truth instead of polling.
-- Update `digital_receipts.sumit_document_id` when SUMIT confirms.
-
-### PHASE 7 — Inbound reads
-
-- Wire whatever SUMIT read APIs let us: invoice listing, payout report, customer statement, aging.
+### Phase 5 — Inbound reads for in-app admin dashboard
+- Whatever official read endpoints SUMIT exposes: invoice list, payout report, aging.
 - Mirror in the admin dashboard so operators don't leave PetWash for reconciliation.
 
-### PHASE 1 — Delegate ITA / SHAAM to SUMIT (BIGGEST LEGAL WIN, biggest deletion)
+### Phase 6 — Marketplace `multivendorcharge`
+Per official contract (§3.3 in the audit doc): `POST /billing/payments/multivendorcharge/` returns `Data.Vendors[]` with per-vendor Payment/DocumentID/CustomerID.
 
-**Deliberately last.** This is the most valuable in terms of legal risk offloaded — SUMIT becomes the issuer of record for every Israeli invoice, the ITA's counterparty is SUMIT not us. But it is also the deepest deletion (retires `IsraeliTaxAPIService`, `IsraeliTaxAuthorityAPI`, `ITAComplianceMonitoringService`, `ElectronicInvoicingService`, gapless-numbering code, most of `IsraeliDigitalReceiptService`).
+Prereqs: provider sub-businesses exist in SUMIT (`POST /website/companies/create/` — returns the sub-business's own API keys).
 
-**Why last:** requires (a) every payment class already going through SUMIT (Phases 2 + 4 + 5), (b) CPA / counsel signoff on the cutover, (c) one full month of dual-issue reconciliation ("SUMIT issued but we also self-issued") before we switch `issuer_of_record` universally to `sumit` and stop self-issuing.
+Once wired, SUMIT handles the customer charge, PetWash-commission slice, provider slice, and payout. We stop running our own commission math for marketplace bookings.
 
-## 4. Roll-forward / rollback contract
+**No business-rule change** — the same PetWash 15% commission, same provider payout math, same refund tiers. We change the RAIL, not the RULES.
 
-Every phase must ship:
-- Behind a feature flag that defaults to `false` in prod.
-- With a small canary path (staff-only account, one franchise, one payment class) before global flip.
-- With a `sumit_outbound_events` audit row per API call (already exists — reuse).
-- With an inverse migration where possible (adding a nullable column, not deleting).
-- With a "dual-issue" period where we keep both paths writing so a rollback is a flag flip, not a code revert.
+### Phase 7 — Retire the in-house parallel issuer
+Once every payment class is going through SUMIT and dual-issue reconciliation shows numbers match (see §4 below), retire the in-house `IsraeliDigitalReceiptService` + `IsraeliTaxAPIService` + `IsraeliTaxAuthorityAPI` + `ITAComplianceMonitoringService` + `ElectronicInvoicingService`. The SUMIT-connected company account is the sole issuer of record.
 
-**Money code guardrails from `petwash-money-booking-invariants` skill:**
-- §1 slot-lock — unchanged; SUMIT does not manage bookings.
-- §2 receipt at fiscal event — MOVES to SUMIT once Phase 1 lands; must be verified in dual-issue period.
-- §3 VAT per `paymentClass` — MOVES to SUMIT `VATIncluded` per doc type; the CPA mapping table must survive as documentation even after code delete.
-- §4 money-in idempotent — SUMIT already supports `ExternalIdentifier` for dedup; we must key on our own idempotency handle every call.
-- §5 encrypted PII — SUMIT customer sync must NOT ship national-ID; only the `sumit_customer_id` mapping.
-- §6 `booking_requests` canonical — unchanged.
+## 4. Verify-before-cutover contract
 
-## 5. Open questions for SUMIT support
+For each phase that touches money flow, we run in **dual-write mode**:
+1. Keep the current path running.
+2. Add the SUMIT path behind the flag.
+3. Enable flag in `SUMIT_SANDBOX=true` first — verify the wire.
+4. Turn flag on in production for a small canary (one payment class, one franchise, or one staff account).
+5. Compare SUMIT's numbers vs. our in-house numbers for a short observation window (not a fixed calendar month — long enough that we've seen an example of each event type).
+6. If they match, expand the canary. If they don't, disable and diff.
+7. Once every payment class is verified via canary, retire the in-house path.
 
-1. Portal URL scheme for a member deep-link — is it `https://sumit.co.il/customer/{CustomerID}` or an SSO-signed URL?
-2. `multivendorcharge` sub-business creation flow — do providers need to submit KYC via a SUMIT-hosted onboarding page, or can we push their KYC docs via API?
-3. Reporting API surface — is there a `/reports/invoices/list` we can call for the in-app admin dashboard, or is CSV export the only path?
-4. Cutover process for `issuer_of_record` — can SUMIT accept a historical dump of our self-issued numbers so their sequence continues without a gap, or do we start their sequence at 1 and keep our historical numbers frozen?
-5. Model H allocation number: is it fetched automatically per invoice, or do we need to pre-provision a batch?
-6. Do they support Apple Pay / Google Pay / Bit on the hosted page today (audit doc §1 rows 6-9)?
+This is a technical verification, not a legal gate. No lawyers, no external approvals. The check is "do the numbers agree between the two paths."
 
-## 6. Order of operations (recommended)
+## 5. Security
 
-```
-Phase 2  →  Phase 3  →  Phase 6 (webhook)  →  Phase 5 (subscriptions)
-                                     ↓
-                                  Phase 7 (reads)
-                                     ↓
-                             Phase 4 (multivendorcharge, D12)
-                                     ↓
-                             Phase 1 (SHAAM delegation, counsel signoff)
-```
+- SUMIT credentials (`SUMIT_API_KEY`, `SUMIT_COMPANY_ID`, `SUMIT_WEBHOOK_SECRET`) are server-only, never logged, never sent to frontend, never committed. The existing `readEnv()` in `SumitClient.ts` already enforces this — we do not touch it.
+- Customer identity on read helpers (e.g. `GET /api/me/invoices/portal-url`) is SERVER-resolved from the authenticated Firebase token. The uid is never accepted from a query/body.
+- `sumit_customers.customer_history_url` is a URL SUMIT issued to us — treat as sensitive (contains SUMIT customer scope). Only expose to the authenticated owner.
 
-Phase 2 is a one-day PR. Phase 4 is a two-week project. Phase 1 is a legal/CPA project first, code second.
+## 6. No new business rules
 
-## 7. What we ship in the immediate next PR
+This work is a rail change, not a policy change. **We do not modify:** VAT rates, commission percentages, refund rules, provider earnings math, Prestige pricing, wallet value, eGift value, invoice treatment, payout timing.
 
-**Infrastructure only, flag OFF:**
-- Migration `0116_sumit_customers.sql` — additive table.
-- `SumitClient.createCustomer` method.
-- `SumitCustomerService.syncForUser(uid)`.
-- Env flag `SUMIT_CUSTOMER_SYNC_ENABLED=false`.
-- No caller wiring yet — the sync is exported but not invoked from any hot path.
-- Regression test that pins the "flag off = no HTTP call" behaviour.
+## 7. What ships with this design PR
 
-Once CEO approves the design + SUMIT support answers Q1 (portal URL), a second PR wires the fire-and-forget hook and adds the "My Invoices" surface.
+- `docs/design/2026-08-16-sumit-full-service-adoption.md` — this doc.
+- **Companion infrastructure PR** (`claude/sumit-phase-2-infra`, PR #1864): the createCustomer client method (official contract), the mapping table, the sync service, feature flag OFF, regression tests. **No caller wired.**
+
+## 8. What ships next (immediately after this doc merges)
+
+- `PR-SUMIT-PHASE-2-WIRE` — fire-and-forget hook in activation + backfill dry-run script + "My Invoices" surface.
+- `PR-SUMIT-PHASE-3-WEBHOOKS` — complete the documented event handlers.
+- `PR-SUMIT-PHASE-4-SUBS` — enable Prestige subscription via `chargeRecurring`.
+- `PR-SUMIT-PHASE-5-READS` — admin dashboard invoice-list mirror.
+- `PR-SUMIT-PHASE-6-MARKETPLACE` — `multivendorcharge` wiring.
+- `PR-SUMIT-PHASE-7-RETIRE-INHOUSE` — retire the in-house parallel issuer after canary + dual-write verification.
+
+Each is a separate PR, each behind its own flag, each verified in sandbox before production flip.
 
 ---
 
-**Companion documents:**
-- `docs/finance/sumit-activation-checklist-2026-06-15.md`
-- `docs/finance/sumit-api-known-vs-assumed-2026-05-23.md`
+**Companion documents on main:**
+- `docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md` — endpoint + field reference (source of truth for the official contract).
 - `docs/SUMIT_CAPABILITIES_AUDIT.md`
-- `docs/legal/tax-sequence-hardening-2026.md`
-- `docs/finance/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V3.md`
-
-**Companion PRs (queued behind this doc):**
-- `PR-SUMIT-PHASE-2-INFRA` — the code from §7 above.
-- `PR-SUMIT-PHASE-2-WIRE` — the fire-and-forget hook + backfill script (requires SUMIT support Q1 answer).
-- `PR-SUMIT-PHASE-3-DASHBOARD` — the "My Invoices" surface.
+- `docs/finance/sumit-activation-checklist-2026-06-15.md`
+- `docs/finance/sumit-activation-plan.md`
+- `docs/finance/runbook-sumit-tax-authority-error.md`
