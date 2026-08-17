@@ -24,12 +24,17 @@ describe('sitter-suite provider-respond race guard', () => {
     expect(src).toMatch(/withBookingMutationLock\(\s*['"]sitter-provider-respond['"],\s*bookingId/);
   });
 
-  it('the lock wrap sits BEFORE the Nayax payment capture', () => {
-    const lockAt = src.indexOf("withBookingMutationLock('sitter-provider-respond'");
-    const nayaxAt = src.indexOf('nayaxSitterMarketplace.processBookingPayment');
-    expect(lockAt).toBeGreaterThan(-1);
+  it('the lock wrap sits BEFORE the Nayax payment capture (executable call site, not comment)', () => {
+    // Look for the actual invocation lines, not the LANE-B doc comment
+    // which also mentions both names. The real call sites are the ones
+    // ending with '(' — anchor on that.
+    const lockAt = src.indexOf("withBookingMutationLock(\n");
+    // fallback: withBookingMutationLock('sitter-provider-respond', on a single line
+    const lockAt2 = lockAt >= 0 ? lockAt : src.indexOf("await withBookingMutationLock('sitter-provider-respond'");
+    const nayaxAt = src.indexOf('nayaxSitterMarketplace.processBookingPayment({');
+    expect(lockAt2).toBeGreaterThan(-1);
     expect(nayaxAt).toBeGreaterThan(-1);
-    expect(lockAt).toBeLessThan(nayaxAt);
+    expect(lockAt2).toBeLessThan(nayaxAt);
   });
 
   it('surfaces a lock timeout as 503 (retryable) rather than 500', () => {

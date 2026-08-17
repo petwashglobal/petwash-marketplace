@@ -23,11 +23,10 @@ describe('walk-my-pet provider-respond race guard', () => {
     expect(src).toMatch(/from\s*['"][^'"]*bookingMutationLock['"]/);
   });
 
-  it('performs an atomic status claim BEFORE walkEliteBookingEngine.confirmBooking', () => {
-    // The atomic claim must fire before the escrow call — otherwise
-    // two concurrent Accepts both hit the escrow rail.
+  it('performs an atomic status claim BEFORE walkEliteBookingEngine.confirmBooking (executable call site, not comment)', () => {
+    // Anchor on real call sites, not comment mentions.
     const claimAt = src.indexOf(".set({ status: 'confirmed'");
-    const confirmAt = src.indexOf('walkEliteBookingEngine.confirmBooking');
+    const confirmAt = src.indexOf('await walkEliteBookingEngine.confirmBooking(');
     expect(claimAt).toBeGreaterThan(-1);
     expect(confirmAt).toBeGreaterThan(-1);
     expect(claimAt).toBeLessThan(confirmAt);

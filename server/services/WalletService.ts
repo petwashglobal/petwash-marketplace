@@ -515,10 +515,35 @@ class WalletService {
     const now = new Date();
     const refundTransactions: any[] = [];
 
+    // ── LANE-B RACE GUARD (2026-08-17) ───────────────────────────────────────
+    // ATOMIC STATUS CLAIM before any balance restore: only ONE caller may
+    // transition a session from 'completed' to 'refunded'. The prior code
+    // deferred this UPDATE to the end of the function, so two concurrent
+    // refund calls both passed the `session.status !== 'completed'` check
+    // above and both executed the atomic SQL increments — restoring credits
+    // TWICE. We now flip status FIRST with a conditional UPDATE; if the
+    // returning row count is zero, another caller won and we return true
+    // (idempotent-safe UX). Failure scenario: admin double-clicks Refund
+    // on ₪100 e-gift redemption; without this, e-gift balance restored
+    // ₪200.
+    // No money math change: identical restore amounts, identical audit
+    // rows, just single-shot.
+    const claimed = await db.update(redemptionSessions)
+      .set({ status: 'refunded' as any, updatedAt: now })
+      .where(and(
+        eq(redemptionSessions.sessionId, sessionId),
+        eq(redemptionSessions.status, 'completed'),
+      ))
+      .returning({ id: redemptionSessions.sessionId });
+    if (claimed.length === 0) {
+      logger.info('[Wallet] Redemption refund raced — session already refunded', { sessionId });
+      return true;
+    }
+
     // SECURITY (hostile audit T01): All refund restores use atomic SQL increments
     // so that concurrent refund attempts on the same session cannot produce a
-    // double-credit (lost-update race). The session status gate above prevents
-    // a second call reaching here, but the SQL increment is a defence-in-depth.
+    // double-credit (lost-update race). The status claim above is the primary
+    // guard; these atomic increments remain as defence-in-depth.
 
     // Restore e-gift
     if ((session.egiftAppliedCents || 0) > 0) {
