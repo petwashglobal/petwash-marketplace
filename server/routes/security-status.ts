@@ -1,120 +1,173 @@
-import { Router } from 'express';
+/**
+ * PR-AUTH-SECURITY-9 §2 — Account > Security STATUS endpoint.
+ *
+ * Single READ-ONLY GET that returns server-truth for every row on the
+ * Account > Security surface. The client MUST NOT infer any status from
+ * localStorage / sessionStorage — it always calls this endpoint (plus
+ * /api/webauthn/credentials for the passkey list).
+ *
+ * Identity is derived from the Firebase session (cookie OR Bearer). Any
+ * client-supplied uid/email is ignored.
+ *
+ * No side effects. No money code. No admin authorization changes.
+ */
+
+import { Router, Request, Response } from 'express';
+import { eq, and } from 'drizzle-orm';
+import { db } from '../db';
+import { users, userPins, mfaEnrollments } from '../../shared/schema';
 import { logger } from '../lib/logger';
-import { validateFirebaseToken } from '../middleware/firebase-auth';
+import { auth as firebaseAdminAuth } from '../lib/firebase-admin';
 
 const router = Router();
 
 /**
- * PetWash Shield™ Security Status API
- * Returns real-time status of all security systems
+ * Resolve the authenticated user from EITHER the pw_session/__session cookie
+ * OR an Authorization: Bearer id-token. Mirrors the pattern used by
+ * /api/session/whoami. Returns null on any failure (401 already sent).
  */
-router.get('/status', validateFirebaseToken, async (req, res) => {
+async function resolveAuthedSecurity(
+  req: Request,
+  res: Response,
+): Promise<{ uid: string; email: string | null; emailVerified: boolean } | null> {
+  const bearer = req.headers.authorization?.startsWith('Bearer ')
+    ? req.headers.authorization.substring(7)
+    : null;
+  const cookie = (req as any).cookies?.pw_session || (req as any).cookies?.__session;
   try {
-    // Check Biometric Access (WebAuthn/Passkey system)
-    const biometricAccess = {
-      name: 'Biometric Access',
-      status: 'active' as const,
-      description: 'WebAuthn Level 2 passkey authentication active with device registry',
-      lastChecked: new Date().toISOString(),
-    };
-
-    // Check Keypad Access (Firebase Auth + Session Management)
-    const keypadAccess = {
-      name: 'Keypad Access',
-      status: 'active' as const,
-      description: 'Firebase Authentication with secure session cookies',
-      lastChecked: new Date().toISOString(),
-    };
-
-    // Check Double-Spend Prevention (Blockchain Ledger)
-    const doubleSpendPrevention = await checkBlockchainLedger();
-
-    // Check Remote Emergency Stop (Nayax API)
-    const remoteEmergencyStop = await checkNayaxConnection();
-
-    // Determine overall status
-    const allChecks = [biometricAccess, keypadAccess, doubleSpendPrevention, remoteEmergencyStop];
-    const hasInactive = allChecks.some(check => check.status === 'inactive');
-    const overallStatus = hasInactive ? 'warning' : 'secure';
-
-    res.json({
-      biometricAccess,
-      keypadAccess,
-      doubleSpendPrevention,
-      remoteEmergencyStop,
-      overallStatus,
-    });
-
-    logger.info('[Security Status] Dashboard accessed', {
-      userId: req.firebaseUser?.uid,
-      overallStatus,
-    });
-  } catch (error) {
-    logger.error('[Security Status] Error fetching status', error);
-    res.status(500).json({ error: 'Failed to fetch security status' });
-  }
-});
-
-/**
- * Check Blockchain Ledger (SHA-256 hash chain)
- */
-async function checkBlockchainLedger() {
-  try {
-    // In production, this would verify the hash chain integrity
-    // For now, return active status
-    return {
-      name: 'Double-Spend Prevention',
-      status: 'active' as const,
-      description: 'SHA-256 blockchain ledger verified - No tampering detected',
-      lastChecked: new Date().toISOString(),
-    };
-  } catch (error) {
-    logger.error('[Security] Blockchain ledger check failed', error);
-    return {
-      name: 'Double-Spend Prevention',
-      status: 'inactive' as const,
-      description: 'Unable to verify blockchain integrity',
-      lastChecked: new Date().toISOString(),
-    };
-  }
-}
-
-/**
- * Check Nayax API Connection (Remote Emergency Stop)
- */
-async function checkNayaxConnection() {
-  try {
-    const nayaxConfigured = !!(
-      process.env.NAYAX_API_KEY &&
-      process.env.NAYAX_BASE_URL &&
-      process.env.NAYAX_MERCHANT_ID
-    );
-
-    if (!nayaxConfigured) {
+    if (bearer) {
+      const decoded = await firebaseAdminAuth.verifyIdToken(bearer, true);
       return {
-        name: 'Remote Emergency Stop',
-        status: 'inactive' as const,
-        description: 'Nayax API not configured - Emergency stop unavailable',
-        lastChecked: new Date().toISOString(),
+        uid: decoded.uid,
+        email: decoded.email?.toLowerCase() ?? null,
+        emailVerified: !!decoded.email_verified,
       };
     }
-
-    // In production, ping Nayax API to verify connectivity
-    return {
-      name: 'Remote Emergency Stop',
-      status: 'active' as const,
-      description: 'Nayax K9000 remote control API connected and operational',
-      lastChecked: new Date().toISOString(),
-    };
-  } catch (error) {
-    logger.error('[Security] Nayax connection check failed', error);
-    return {
-      name: 'Remote Emergency Stop',
-      status: 'inactive' as const,
-      description: 'Unable to connect to Nayax API',
-      lastChecked: new Date().toISOString(),
-    };
+    if (cookie) {
+      const decoded = await firebaseAdminAuth.verifySessionCookie(cookie, false);
+      return {
+        uid: decoded.uid,
+        email: decoded.email?.toLowerCase() ?? null,
+        emailVerified: !!decoded.email_verified,
+      };
+    }
+  } catch (err) {
+    logger.debug('[security/status] auth resolution failed', { err: (err as any)?.message });
   }
+  res.status(401).json({ ok: false, error: 'Authentication required', code: 'AUTH_REQUIRED' });
+  return null;
 }
+
+/**
+ * GET /api/security/status
+ *
+ * Returns the full server-truth Account > Security status for the
+ * authenticated user only. Fields marked `available:false` mean "we can't
+ * answer that on the current schema" — the UI should render "Not yet
+ * available" for those rows rather than guessing.
+ */
+router.get('/status', async (req: Request, res: Response) => {
+  const authed = await resolveAuthedSecurity(req, res);
+  if (!authed) return;
+
+  try {
+    // ─── Firebase Auth record: password provider + MFA factors ──────────────
+    let hasPassword = false;
+    let mfaFactorCount = 0;
+    let mfaFactors: Array<{ factorId?: string; displayName?: string | null; enrollmentTime?: string }> = [];
+    try {
+      const rec = await firebaseAdminAuth.getUser(authed.uid);
+      hasPassword = (rec.providerData || []).some((p: any) => p.providerId === 'password');
+      const enrolled = (rec.multiFactor && (rec.multiFactor as any).enrolledFactors) || [];
+      mfaFactorCount = enrolled.length;
+      mfaFactors = enrolled.map((f: any) => ({
+        factorId: f.factorId,
+        displayName: f.displayName || null,
+        enrollmentTime: f.enrollmentTime || null,
+      }));
+    } catch (err) {
+      logger.warn('[security/status] getUser failed — degrading', { uid: authed.uid, err: (err as any)?.message });
+    }
+
+    // ─── Postgres users row: mobile verification ────────────────────────────
+    const [pgUser] = await db.select().from(users).where(eq(users.id, authed.uid)).limit(1);
+    const mobile = pgUser?.phoneE164 || (pgUser as any)?.phone || null;
+    const mobileVerified = !!(pgUser?.mobileVerifiedAt) || (pgUser as any)?.phoneVerified === true;
+    const emailVerifiedPg = !!(pgUser?.emailVerifiedAt);
+
+    // ─── Passkey count via existing WebAuthn service (Firestore-backed) ─────
+    let passkeyCount = 0;
+    try {
+      const { getUserCredentials } = await import('../webauthn/service');
+      const creds = await getUserCredentials(authed.uid, false);
+      passkeyCount = (creds || []).filter((c: any) => !c.isRevoked).length;
+    } catch (err) {
+      logger.debug('[security/status] webauthn count failed', { err: (err as any)?.message });
+    }
+
+    // ─── PIN status (user_pins, active only) ────────────────────────────────
+    let pinSet = false;
+    try {
+      const [pinRow] = await db.select({ id: userPins.id, pinLength: userPins.pinLength }).from(userPins)
+        .where(and(eq(userPins.userId, authed.uid), eq(userPins.isActive, true)))
+        .limit(1);
+      pinSet = !!pinRow;
+    } catch (err) {
+      logger.debug('[security/status] pin count failed', { err: (err as any)?.message });
+    }
+
+    // ─── MFA fallback: mfa_enrollments table (SMS/TOTP) ─────────────────────
+    let mfaEnrolledPg = 0;
+    try {
+      const rows = await db.select({ id: mfaEnrollments.id }).from(mfaEnrollments)
+        .where(and(eq(mfaEnrollments.userId, authed.uid), eq(mfaEnrollments.isActive, true)));
+      mfaEnrolledPg = rows.length;
+    } catch (err) {
+      logger.debug('[security/status] mfa count failed', { err: (err as any)?.message });
+    }
+    const mfaEnrolled = mfaFactorCount + mfaEnrolledPg;
+
+    // ─── Response ───────────────────────────────────────────────────────────
+    return res.json({
+      ok: true,
+      generatedAt: new Date().toISOString(),
+      email: {
+        value: authed.email,
+        verified: authed.emailVerified || emailVerifiedPg,
+      },
+      mobile: {
+        value: mobile,
+        verified: mobileVerified,
+      },
+      password: {
+        set: hasPassword,
+      },
+      passkey: {
+        count: passkeyCount,
+      },
+      pin: {
+        set: pinSet,
+      },
+      trustedDevices: {
+        available: false,
+        count: null,
+        reason: 'Trusted-device inventory endpoint not yet wired',
+      },
+      mfa: {
+        enrolled: mfaEnrolled > 0,
+        count: mfaEnrolled,
+        factors: mfaFactors,
+      },
+      sessions: {
+        available: false,
+        count: null,
+        reason: 'Firebase Admin session inventory not exposed',
+      },
+    });
+  } catch (error) {
+    logger.error('[security/status] Unexpected error', error);
+    return res.status(500).json({ ok: false, error: 'Failed to fetch security status' });
+  }
+});
 
 export default router;

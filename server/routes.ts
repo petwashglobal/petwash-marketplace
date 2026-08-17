@@ -12399,6 +12399,8 @@ self.addEventListener('notificationclick', (event) => {
 
   // 🔐 PIN Authentication - December 2025 Edition (4-6 digit PIN, device binding, rate limiting)
   app.use('/api/pin-auth', apiLimiter, pinAuthRoutes);
+  // PR-AUTH-SECURITY-9 §2 (2026-08-17): read-only Account > Security status.
+  app.use('/api/security', apiLimiter, securityStatusRoutes);
   app.use('/api/user', optionalFirebaseToken, apiLimiter, userProfileRoutes);
   app.use('/api/user/addresses', apiLimiter, userAddressesRoutes);
   app.use('/api/account', apiLimiter, accountManagementRoutes);

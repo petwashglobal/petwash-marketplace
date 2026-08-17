@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { PasskeyEnforcementBanner } from '@/components/security/PasskeyEnforcementBanner';
+import { SecurityStatusPanel } from '@/components/security/SecurityStatusPanel';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
@@ -212,6 +213,11 @@ export default function SecuritySettings() {
             {t('security.subtitle')}
           </p>
         </motion.div>
+
+        {/* PR-AUTH-SECURITY-9 §2: server-truth status rows go FIRST. */}
+        <div className="mb-6">
+          <SecurityStatusPanel language={language} />
+        </div>
 
         {roleLoading ? (
           <Skeleton className="h-24 mb-6" />
