@@ -42,6 +42,7 @@ import { geocodeAddress } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { advancedBookingEngine as sitterAdvancedBookingEngine } from '../services/SitterAdvancedBookingEngine';
 import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
+import { withBookingMutationLock, BookingMutationLockTimeoutError } from '../lib/bookingMutationLock';
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import { IsraeliContractorComplianceService } from '../services/IsraeliContractorCompliance';
 import VATCalculatorService from '../services/VATCalculatorService';
@@ -1088,15 +1089,43 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       return res.status(400).json({ error: 'Action must be accept or decline' });
     }
 
+    // ── LANE-B RACE GUARD (2026-08-17) ────────────────────────────────────
+    // Serialize provider-respond on bookingId. Prior code did SELECT-then-
+    // Nayax-capture-then-UPDATE: two concurrent provider taps both passed
+    // `status !== 'pending_provider'`, both called
+    // nayaxSitterMarketplace.processBookingPayment() — a P0 double-charge
+    // of the customer — and both wrote status='confirmed'. Advisory lock
+    // forces the second request to wait; when it acquires, the re-read
+    // below sees `status !== 'pending_provider'` and returns 400. No money
+    // math change.
+    // Failure scenario: provider double-taps Accept in the app; customer's
+    // Nayax card charged twice for one booking.
+    let lockResult: any;
+    try {
+      lockResult = await withBookingMutationLock(
+        'sitter-provider-respond',
+        bookingId,
+        async () => await handleSitterProviderRespondInner(),
+      );
+    } catch (e: any) {
+      if (e instanceof BookingMutationLockTimeoutError) {
+        logger.warn('[Sitter Suite] provider-respond lock timeout', { bookingId });
+        return res.status(503).json({ error: 'Another response is being processed. Please retry.' });
+      }
+      throw e;
+    }
+    return lockResult;
+
+    async function handleSitterProviderRespondInner() {
     const [booking] = await db
       .select()
       .from(sitterBookings)
       .where(eq(sitterBookings.bookingId, bookingId));
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
+
     if (booking.status !== 'pending_provider') {
       return res.status(400).json({ error: `Booking is already ${booking.status}` });
     }
@@ -1106,11 +1135,11 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       .select()
       .from(sitterProfiles)
       .where(eq(sitterProfiles.id, booking.sitterId));
-    
+
     if (!sitter || sitter.userId !== providerUid) {
       return res.status(403).json({ error: 'Only the assigned provider can respond to this booking' });
     }
-    
+
     if (action === 'accept') {
       // PROVIDER ACCEPTED - Process payment using owner's stored payment method
       // Provider does NOT supply payment token - we use the owner's Nayax account
@@ -1401,6 +1430,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         message: 'ההזמנה נדחתה. הלקוח/ה יקבל/תקבל הודעה.',
       });
     }
+    } // end handleSitterProviderRespondInner (LANE-B race guard)
   } catch (error) {
     logger.error('[Sitter Suite] Provider respond error', error);
     res.status(500).json({ error: 'Failed to process provider response' });

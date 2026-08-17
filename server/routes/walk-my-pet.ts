@@ -35,6 +35,7 @@ import { calculateDistance } from '../services/location/MapsService';
 import { buildAllNavigationLinks } from '../utils/navigation';
 import { walkEliteBookingEngine } from '../services/booking-engines/walk/WalkEliteBookingEngine';
 import { acquireSlotLock, releaseSlotLock, BookingSlotConflictError } from '../lib/marketplaceSlotLock';
+import { withBookingMutationLock, BookingMutationLockTimeoutError } from '../lib/bookingMutationLock';
 import { calendarIntegrationService } from '../services/CalendarIntegrationService';
 import { IsraeliDigitalReceiptService } from '../services/IsraeliDigitalReceiptService';
 import VATCalculatorService from '../services/VATCalculatorService';
@@ -813,7 +814,30 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
     if (!walker || walker.userId !== providerUid) {
       return res.status(403).json({ error: 'Only the assigned walker can respond' });
     }
-    
+
+    // ── LANE-B RACE GUARD (2026-08-17) ────────────────────────────────────
+    // ATOMIC CLAIM before the escrow rail runs. Two concurrent
+    // provider-respond taps both pass the status check above; without this
+    // conditional UPDATE they both call walkEliteBookingEngine.confirmBooking
+    // (duplicate Firestore escrow doc) and both fire confirmation notifications.
+    // We flip status conditionally BEFORE the escrow call; if 0 rows update,
+    // the other request won and we short-circuit. If the escrow call later
+    // fails we DO NOT roll back (existing behaviour: the response returns 502
+    // and the status flip is treated as a hold — an ops-visible failure).
+    // No money math change: no additional or altered escrow computation.
+    // Failure scenario: walker double-taps Accept; duplicate escrow doc +
+    // duplicate owner-notified SMS.
+    if (action === 'accept') {
+      const claimed = await db.update(walkBookings)
+        .set({ status: 'confirmed', updatedAt: new Date() })
+        .where(and(eq(walkBookings.bookingId, bookingId), eq(walkBookings.status, 'pending_provider')))
+        .returning({ id: walkBookings.id });
+      if (claimed.length === 0) {
+        logger.info('[Walk My Pet] provider-respond raced — another accept won', { bookingId });
+        return res.status(409).json({ error: 'Booking response already recorded' });
+      }
+    }
+
     if (action === 'accept') {
       // Confirm booking with luxury engine (escrow + audit trail)
       try {
@@ -1278,11 +1302,19 @@ router.post('/walks/:bookingId/confirm', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Booking already processed' });
     }
 
+    // ── LANE-B RACE GUARD (2026-08-17) ────────────────────────────────────
+    // Conditional UPDATE prevents two concurrent confirms from both firing
+    // downstream alerts + calendar events. Idempotent overwrite otherwise.
+    // No money math change.
     const [updatedBooking] = await db
       .update(walkBookings)
       .set({ status: 'confirmed', updatedAt: new Date() })
-      .where(eq(walkBookings.bookingId, bookingId))
+      .where(and(eq(walkBookings.bookingId, bookingId), eq(walkBookings.status, 'pending')))
       .returning();
+    if (!updatedBooking) {
+      logger.info('[Walk My Pet] /walks/:bookingId/confirm raced — already confirmed', { bookingId });
+      return res.status(409).json({ error: 'Booking already confirmed' });
+    }
 
     await syncChatToBookingStatus(bookingId, 'confirmed', 'walk_my_pet');
 

@@ -28,6 +28,7 @@ import {
 import { eventPublisher } from '../services/EventPublisher';
 import { DomainEventType } from '@shared/events';
 import { ISRAELI_VAT_RATE } from '../services/VATCalculatorService';
+import { withBookingMutationLock, BookingMutationLockTimeoutError } from '../lib/bookingMutationLock';
 
 const router = Router();
 
@@ -528,29 +529,58 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
       });
     }
 
-    const booking = await loadBookingFromDB(bookingId);
-    if (!booking) {
-      return res.status(404).json({
-        success: false,
-        error: 'Booking not found'
+    // ── LANE-B RACE GUARD (2026-08-17) ──────────────────────────────────────
+    // unifiedBookingEngine.refund() has NO idempotency key and NO status
+    // gate: it unconditionally calls transactionStampService.stampRefund
+    // and then sets status='refunded'. Two concurrent admin POSTs would
+    // each create a refund transaction row → the customer would be
+    // refunded twice. Serialize the whole handler on bookingId, and
+    // re-check status inside the lock so a second click after the first
+    // commits sees 'REFUNDED' and returns 409. No money math change.
+    // Failure scenario: admin double-clicks Refund at ₪150; without this,
+    // two refund stamp rows get created and the customer gets ₪300.
+    // Note: this router is DARK by default (UNIFIED_BOOKING_ENABLED gate),
+    // so the fix is preventative — before that flag flips on GA.
+    try {
+      const result = await withBookingMutationLock(
+        'unified-booking-refund',
+        bookingId,
+        async () => {
+          const booking = await loadBookingFromDB(bookingId);
+          if (!booking) {
+            const err: any = new Error('Booking not found');
+            err.__http = 404; throw err;
+          }
+          if ((booking.status as string) === 'REFUNDED' || (booking.status as string) === 'refunded') {
+            const err: any = new Error('Booking already refunded');
+            err.__http = 409; throw err;
+          }
+          return unifiedBookingEngine.refund(
+            booking,
+            Number(refundAmount),
+            processedBy,
+            role,
+            reason,
+            isPartial,
+          );
+        },
+      );
+
+      return res.json({
+        success: true,
+        booking: result.booking,
+        refundTransactionId: result.refundTransactionId,
+        status: 'REFUNDED'
       });
+    } catch (err: any) {
+      if (err?.__http === 404) return res.status(404).json({ success: false, error: err.message });
+      if (err?.__http === 409) return res.status(409).json({ success: false, error: err.message, code: 'ALREADY_REFUNDED' });
+      if (err instanceof BookingMutationLockTimeoutError) {
+        logger.warn('[UnifiedBookingAPI] Refund lock timeout — retryable', { bookingId });
+        return res.status(503).json({ success: false, error: 'Refund is being processed by another admin. Please retry.' });
+      }
+      throw err;
     }
-
-    const result = await unifiedBookingEngine.refund(
-      booking,
-      Number(refundAmount),
-      processedBy,
-      role,
-      reason,
-      isPartial
-    );
-
-    res.json({
-      success: true,
-      booking: result.booking,
-      refundTransactionId: result.refundTransactionId,
-      status: 'REFUNDED'
-    });
   } catch (error: any) {
     logger.error('[UnifiedBookingAPI] Failed to refund', { error: error.message });
     res.status(500).json({
