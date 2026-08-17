@@ -101,8 +101,17 @@ export default function MarketplaceIntelligenceDashboard() {
 
   // ── Audit log for expanded provider ────────────────────────────────────────
 
+  // Server route is GET /api/marketplace/rankings/audit/:userId — the default
+  // queryFn fetches queryKey[0] which drops the :userId → 404, and the audit
+  // panel silently showed empty state (LANE E D9 CONFIRMED). Explicit queryFn
+  // appends the userId so overrides actually appear.
   const { data: auditData, isLoading: auditLoading } = useQuery<{ entries: AuditEntry[]; total: number }>({
     queryKey: ['/api/marketplace/rankings/audit', expandedAudit],
+    queryFn: async () => {
+      const res = await fetch(`/api/marketplace/rankings/audit/${expandedAudit}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Audit fetch failed (${res.status})`);
+      return res.json();
+    },
     enabled: !!expandedAudit && !!user,
   });
 

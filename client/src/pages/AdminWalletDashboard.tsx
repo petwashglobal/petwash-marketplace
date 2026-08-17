@@ -1201,8 +1201,16 @@ export default function AdminWalletDashboard() {
     onSuccess: (d) => { toast({ title: "Replay approved & executing", description: `Run: ${d.executeRunId}, sig: ${d.signature?.slice(0,8)}…` }); queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/admin/wallet/replay/approvals/pending'] }); refetchReplayRuns(); },
     onError: (e) => toast({ title: "Approve failed", description: e.message, variant: "destructive" }),
   });
+  // Server route is GET /admin/wallet/replay/reports/:runId — the default queryFn
+  // fetches queryKey[0] which drops the :runId → 404 (LANE E D4 CONFIRMED).
+  // Explicit queryFn appends the runId so the report modal actually loads.
   const { data: replayReportData, isLoading: replayReportLoading, refetch: refetchReplayReport } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/replay/reports', viewingReportRunId],
+    queryFn: async () => {
+      const res = await fetch(`/api/prestige-pass/admin/wallet/replay/reports/${viewingReportRunId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Report fetch failed (${res.status})`);
+      return res.json();
+    },
     enabled: !!viewingReportRunId,
   });
 
@@ -1213,10 +1221,13 @@ export default function AdminWalletDashboard() {
   const { data: forecastWeights, isLoading: forecastWeightsLoading, refetch: refetchForecastWeights } = useQuery<any>({
     queryKey: ['/api/prestige-pass/admin/wallet/cash-forecast/weights', weightHorizon],
   });
-  const { data: recomputeResult, isLoading: recomputeLoading, refetch: refetchRecompute } = useQuery<any>({
-    queryKey: ['/api/prestige-pass/admin/wallet/cash-forecast/recompute', weightHorizon],
-    enabled: false,
-  });
+  // Removed a dead useQuery that pointed at /cash-forecast/recompute — the
+  // canonical operation is a MUTATION (POST) defined below as `recomputeForecast`;
+  // wrapping it as a GET useQuery with `enabled: false` was dead code that also
+  // misled LANE E's contract scanner into flagging a wrong-method defect
+  // (D5 REJECTED — the real POST mutation matches the server route).
+  // If someone later needs an imperative refetch handle, drive it off
+  // `recomputeForecast.mutate()` instead of a fake read query.
   const { mutate: createForecastWeight, isPending: createWeightPending } = useMutation<any, any, any>({
     mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/cash-forecast/weights', body),
     onSuccess: () => { toast({ title: 'Weight added' }); refetchForecastWeights(); setNewWeight({ horizonDays: 7, factorName: 'payouts', weight: '1.0' }); },
@@ -3013,12 +3024,28 @@ export default function AdminWalletDashboard() {
   });
   const markRetrievalReadyPending = markReadyPending;
   // 3.6E — diff viewer state (two run IDs comparison)
+  // Server has NO handler for POST /admin/wallet/replay/diff (LANE E D3 CONFIRMED).
+  // Only per-runId GET /replay/diff/:runId exists. The mutation was hitting a
+  // 404 and the toast "Diff computed — 0 divergence(s)" was firing anyway
+  // because apiRequest resolves the Response and mutationFn didn't throw.
+  // Read the response first; throw on !ok so the admin sees the real state.
   const [diffRunA, setDiffRunA] = useState('');
   const [diffRunB, setDiffRunB] = useState('');
   const [replayDiff, setReplayDiff] = useState<any>(null);
   const { mutate: computeReplayDiff, isPending: computeDiffPending } = useMutation<any, any, { runAId: number; runBId: number }>({
-    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/replay/diff', body),
+    mutationFn: async (body) => {
+      const res = await apiRequest('POST', '/api/prestige-pass/admin/wallet/replay/diff', body);
+      if (!res.ok) {
+        throw new Error(
+          res.status === 404
+            ? 'Diff comparison endpoint not yet available server-side.'
+            : `Diff failed (${res.status})`
+        );
+      }
+      return res.json();
+    },
     onSuccess: (d) => { setReplayDiff(d); toast({ title: 'Diff computed', description: `${d.divergenceCount ?? 0} divergence(s)` }); },
+    onError: (err: any) => { toast({ title: 'Diff failed', description: err?.message || 'Unknown error', variant: 'destructive' }); },
   });
   // 3.6F — policy engine aliases
   const policyRules = financePolicies;
@@ -3033,9 +3060,24 @@ export default function AdminWalletDashboard() {
   const periodPacksLoading = periodPackLoading;
   const [closePeriodType, setClosePeriodType] = useState<'quarter' | 'year'>('quarter');
   const [closePeriodValue, setClosePeriodValue] = useState('');
+  // Server has NO handler for POST /admin/wallet/period-pack/generate
+  // (LANE E D2 CONFIRMED). Server exposes GET /period-pack which fetches
+  // (and can generate if missing). Throw on !res.ok so the admin doesn't
+  // see a false "generated" toast for an operation that never ran.
   const { mutate: generatePeriodPack, isPending: generatePeriodPackPending } = useMutation<any, any, { type: string; period: string }>({
-    mutationFn: (body) => apiRequest('POST', '/api/prestige-pass/admin/wallet/period-pack/generate', body),
+    mutationFn: async (body) => {
+      const res = await apiRequest('POST', '/api/prestige-pass/admin/wallet/period-pack/generate', body);
+      if (!res.ok) {
+        throw new Error(
+          res.status === 404
+            ? 'Period-pack generator not yet available server-side. Use GET /period-pack to fetch the current pack.'
+            : `Period-pack generate failed (${res.status})`
+        );
+      }
+      return res.json();
+    },
     onSuccess: (d) => { toast({ title: 'Period pack generated', description: `${d.pack?.period} — ${d.pack?.recordCount} records` }); refetchPeriodPack(); },
+    onError: (err: any) => { toast({ title: 'Period pack failed', description: err?.message || 'Unknown error', variant: 'destructive' }); },
   });
   const { mutate: exportPeriodPack, isPending: exportPeriodPackPending } = useMutation<any, any, void>({
     mutationFn: () => apiRequest('GET', '/api/prestige-pass/admin/wallet/period-pack/export'),

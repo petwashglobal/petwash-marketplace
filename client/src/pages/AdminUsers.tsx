@@ -135,12 +135,28 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
     newThisMonth: 0,
   };
 
-  // Delete user mutation
+  // Delete user mutation — server has NO handler for DELETE /api/admin/users/:userId
+  // (LANE E audit 2026-08-17 D6 CONFIRMED). Previously the mutationFn just
+  // returned the Response object, so react-query treated the 404 as success and
+  // the "User deleted" toast fired even though nothing happened — a GDPR
+  // erase silently failing is the worst possible false-success. Until the
+  // canonical destructive-admin endpoint is designed (cascade, audit trail,
+  // Firebase Auth delete, PII purge), throw on the 404 so onError fires and
+  // the admin sees the real state.
   const deleteUserMutation = useMutation({
     mutationFn: async (userId: string) => {
-      return apiRequest(`/api/admin/users/${userId}`, {
+      const res = await apiRequest(`/api/admin/users/${userId}`, {
         method: 'DELETE',
       });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(
+          res.status === 404
+            ? 'Delete-user endpoint not yet available. This action is disabled server-side.'
+            : `Delete failed (${res.status})${body ? `: ${body.slice(0, 200)}` : ''}`
+        );
+      }
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
@@ -150,28 +166,47 @@ export default function AdminUsers({ language, onLanguageChange }: AdminUsersPro
       });
       setShowUserModal(false);
     },
-    onError: () => {
+    onError: (err: any) => {
       toast({
         title: "Error",
-        description: "Failed to delete user",
+        description: err?.message || "Failed to delete user",
         variant: "destructive",
       });
     },
   });
 
-  // Update user role mutation
+  // Update user mutation — server has NO handler for PATCH /api/admin/users/:userId
+  // (LANE E audit D7 CONFIRMED). Same silent-success failure as delete above —
+  // the "User updated" toast fired but no row changed. Throw on !res.ok so
+  // the admin sees the real state instead of trusting a stale UI.
   const updateUserMutation = useMutation({
     mutationFn: async ({ userId, updates }: { userId: string; updates: any }) => {
-      return apiRequest(`/api/admin/users/${userId}`, {
+      const res = await apiRequest(`/api/admin/users/${userId}`, {
         method: 'PATCH',
         body: JSON.stringify(updates),
       });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(
+          res.status === 404
+            ? 'Update-user endpoint not yet available. This action is disabled server-side.'
+            : `Update failed (${res.status})${body ? `: ${body.slice(0, 200)}` : ''}`
+        );
+      }
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/users'] });
       toast({
         title: "User updated",
         description: "User has been successfully updated",
+      });
+    },
+    onError: (err: any) => {
+      toast({
+        title: "Error",
+        description: err?.message || "Failed to update user",
+        variant: "destructive",
       });
     },
   });
