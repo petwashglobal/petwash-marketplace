@@ -6,7 +6,14 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     setupFiles: ['./server/tests/setup.ts'],
-    include: ['server/tests/**/*.test.ts', 'client/src/**/*.test.ts', 'tests/**/*.test.ts'],
+    include: [
+      'server/tests/**/*.test.ts',
+      'client/src/**/*.test.ts',
+      'tests/**/*.test.ts',
+      // LANE F: supertest specs under tests/integration also use .spec.ts
+      // (companion naming to the Playwright .spec.ts files).
+      'tests/integration/**/*.spec.ts',
+    ],
     coverage: {
       provider: 'v8',
       reporter: ['text', 'json', 'html'],
