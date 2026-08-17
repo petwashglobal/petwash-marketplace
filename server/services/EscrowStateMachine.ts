@@ -21,7 +21,7 @@ import { createHash } from "crypto";
 import { nanoid } from "nanoid";
 import { db } from "../db";
 import { billingRecords, billingAuditLog } from "@shared/schema-billing";
-import { eq, desc } from "drizzle-orm";
+import { eq, and, desc } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import type { PaymentFlowStatus } from "@shared/schema-billing";
 
@@ -85,63 +85,118 @@ export interface TransitionParams {
   payload?: Record<string, unknown>;
 }
 
+/**
+ * Raised when a concurrent worker changed the record's status between our
+ * read and our compare-and-set write. The caller MUST NOT retry blindly —
+ * the other worker already applied a transition, and re-running would risk a
+ * second financial effect (e.g. a second refund delta on the same record).
+ */
+export class EscrowConcurrentTransitionError extends Error {
+  readonly code = "ESCROW_CONCURRENT_TRANSITION";
+  constructor(
+    readonly recordId: string,
+    readonly expectedFrom: PaymentFlowStatus,
+    readonly toStatus: PaymentFlowStatus,
+  ) {
+    super(
+      `Concurrent escrow transition on record ${recordId}: expected status ` +
+      `'${expectedFrom}' when writing '${toStatus}', but another worker changed it first.`
+    );
+    this.name = "EscrowConcurrentTransitionError";
+  }
+}
+
+/**
+ * CONCURRENCY (2026-08-17, sprint/money-concurrency M1) — NO financial rule changed.
+ *
+ * Previously this function did: SELECT status (outside any transaction) →
+ * validate the transition in JS → open a transaction → UNCONDITIONAL
+ * `UPDATE billing_records SET payment_flow_status = toStatus WHERE record_id = ?`.
+ *
+ * Two concurrent refunds of the SAME record therefore both:
+ *   1. read `held_in_escrow`
+ *   2. pass `isTransitionAllowed(held_in_escrow → refunded)`
+ *   3. write `refunded` — and BOTH appended a `held_in_escrow_to_refunded`
+ *      audit row carrying `deltaAgorot = refundAgorot`.
+ * Net effect: one payment recorded TWO refund deltas, and because both rows
+ * were built from the same `lastAudit`, the SHA-256 audit hash chain FORKED
+ * (two entries with the same prevHash) — destroying the tamper-evidence the
+ * chain exists to provide.
+ *
+ * The fix is entirely a concurrency control:
+ *   a. the read, the validation and the write now live in ONE transaction;
+ *   b. the record row is pinned with `SELECT … FOR UPDATE` so a second worker
+ *      blocks until the first commits and then re-reads the NEW status;
+ *   c. the UPDATE is a compare-and-set — `WHERE record_id = ? AND
+ *      payment_flow_status = <the status we validated against>` … RETURNING —
+ *      and 0 returned rows raises EscrowConcurrentTransitionError instead of
+ *      silently applying a duplicate transition;
+ *   d. the audit-chain tail is read INSIDE the same locked transaction, so
+ *      prevHash cannot fork.
+ *
+ * The allowed-transition table, the amounts, the delta and the audit payload
+ * are byte-for-byte unchanged. The same rule now simply fires exactly once.
+ */
 export async function transitionEscrowState(params: TransitionParams): Promise<void> {
   const { recordId, toStatus, actorType, actorId, deltaAgorot, notes, payload } = params;
 
-  const [record] = await db
-    .select()
-    .from(billingRecords)
-    .where(eq(billingRecords.recordId, recordId))
-    .limit(1);
+  const applied = await db.transaction(async (tx) => {
+    // (b) Pin the record for the whole transition. A concurrent transition on
+    // the same record queues here and observes our committed status after.
+    const [record] = await tx
+      .select()
+      .from(billingRecords)
+      .where(eq(billingRecords.recordId, recordId))
+      .limit(1)
+      .for("update");
 
-  if (!record) {
-    throw new Error(`BillingRecord ${recordId} not found`);
-  }
+    if (!record) {
+      throw new Error(`BillingRecord ${recordId} not found`);
+    }
 
-  const fromStatus = record.paymentFlowStatus as PaymentFlowStatus;
+    const fromStatus = record.paymentFlowStatus as PaymentFlowStatus;
 
-  if (fromStatus === toStatus) {
-    logger.info("[EscrowStateMachine] No-op: record already in target status", { recordId, toStatus });
-    return;
-  }
+    if (fromStatus === toStatus) {
+      logger.info("[EscrowStateMachine] No-op: record already in target status", { recordId, toStatus });
+      return null;
+    }
 
-  if (!isTransitionAllowed(fromStatus, toStatus)) {
-    throw new Error(
-      `Invalid escrow transition: ${fromStatus} → ${toStatus} for record ${recordId}. ` +
-      `Allowed from ${fromStatus}: [${ALLOWED_TRANSITIONS[fromStatus].join(", ")}]`
+    if (!isTransitionAllowed(fromStatus, toStatus)) {
+      throw new Error(
+        `Invalid escrow transition: ${fromStatus} → ${toStatus} for record ${recordId}. ` +
+        `Allowed from ${fromStatus}: [${ALLOWED_TRANSITIONS[fromStatus].join(", ")}]`
+      );
+    }
+
+    // (d) Chain tail read under the same lock — prevHash cannot fork.
+    const [lastAudit] = await tx
+      .select()
+      .from(billingAuditLog)
+      .where(eq(billingAuditLog.recordId, recordId))
+      .orderBy(desc(billingAuditLog.id))
+      .limit(1);
+
+    const auditId = `AUD-${nanoid(12).toUpperCase()}`;
+    const createdAt = new Date().toISOString();
+    const entryHash = computeAuditHash(
+      lastAudit?.entryHash ?? null,
+      auditId,
+      recordId,
+      `${fromStatus}_to_${toStatus}`,
+      toStatus,
+      deltaAgorot ?? null,
+      createdAt
     );
-  }
 
-  // Get the last audit entry for this record to build hash chain
-  const [lastAudit] = await db
-    .select()
-    .from(billingAuditLog)
-    .where(eq(billingAuditLog.recordId, recordId))
-    .orderBy(desc(billingAuditLog.id))
-    .limit(1);
+    // Apply timestamp updates based on new status
+    const timestampUpdates: Partial<typeof record> = {};
+    if (toStatus === "captured")          timestampUpdates.capturedAt = new Date();
+    if (toStatus === "released")          timestampUpdates.releasedAt = new Date();
+    if (toStatus === "refunded" || toStatus === "partially_refunded")
+                                          timestampUpdates.refundedAt = new Date();
 
-  const auditId = `AUD-${nanoid(12).toUpperCase()}`;
-  const createdAt = new Date().toISOString();
-  const entryHash = computeAuditHash(
-    lastAudit?.entryHash ?? null,
-    auditId,
-    recordId,
-    `${fromStatus}_to_${toStatus}`,
-    toStatus,
-    deltaAgorot ?? null,
-    createdAt
-  );
-
-  // Apply timestamp updates based on new status
-  const timestampUpdates: Partial<typeof record> = {};
-  if (toStatus === "captured")          timestampUpdates.capturedAt = new Date();
-  if (toStatus === "released")          timestampUpdates.releasedAt = new Date();
-  if (toStatus === "refunded" || toStatus === "partially_refunded")
-                                        timestampUpdates.refundedAt = new Date();
-
-  await db.transaction(async (tx) => {
-    // 1. Update billing record status
-    await tx
+    // (c) 1. Compare-and-set the billing record status.
+    const claimed = await tx
       .update(billingRecords)
       .set({
         paymentFlowStatus: toStatus,
@@ -149,7 +204,17 @@ export async function transitionEscrowState(params: TransitionParams): Promise<v
         updatedAt: new Date(),
         ...timestampUpdates,
       })
-      .where(eq(billingRecords.recordId, recordId));
+      .where(and(
+        eq(billingRecords.recordId, recordId),
+        eq(billingRecords.paymentFlowStatus, fromStatus),
+      ))
+      .returning({ recordId: billingRecords.recordId });
+
+    if (claimed.length === 0) {
+      // Lost the race. Abort the WHOLE transaction so no audit row is written
+      // and no duplicate financial delta is recorded.
+      throw new EscrowConcurrentTransitionError(recordId, fromStatus, toStatus);
+    }
 
     // 2. Append immutable audit log entry
     await tx.insert(billingAuditLog).values({
@@ -165,14 +230,18 @@ export async function transitionEscrowState(params: TransitionParams): Promise<v
       prevHash:    lastAudit?.entryHash ?? null,
       payload:     payload ?? {},
     });
+
+    return { fromStatus, auditId };
   });
+
+  if (!applied) return; // no-op path (already in target status)
 
   logger.info("[EscrowStateMachine] Transition applied", {
     recordId,
-    from: fromStatus,
+    from: applied.fromStatus,
     to:   toStatus,
     actorType,
-    auditId,
+    auditId: applied.auditId,
   });
 }
 
