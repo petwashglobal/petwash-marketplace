@@ -284,36 +284,46 @@ export default function ProviderPending() {
               </div>
             )}
 
-            {/* Progress steps */}
+            {/* Progress steps. Inactive dots/connectors used bg-white on a white
+                card, which rendered them invisible — the user saw only amber
+                dots for stages already passed and had no way to see how many
+                stages remained or where they were in the flow. Also the block
+                used to render dots twice (once with labels, once with
+                connectors) — collapsed to a single row with labels + connectors. */}
             <div className="py-1">
-              <div className="flex items-center justify-between mb-2">
-                {["documents_pending", "documents_under_review", "background_check_pending", "approved"].map((stage, i) => {
-                  const active = stageIndex >= STAGE_ORDER.indexOf(stage);
-                  const labels = {
-                    he: ["מסמכים", "בדיקה", "רקע", "אושר"],
-                    en: ["Docs", "Review", "Background", "Approved"],
-                  };
-                  return (
-                    <div key={stage} className="flex flex-col items-center gap-1 flex-1">
-                      <div className={`w-3 h-3 rounded-full ${active ? "bg-amber-500" : "bg-white"}`} />
-                      <span className={`text-xs ${active ? "text-amber-700 font-medium" : "text-gray-400"}`}>
-                        {he ? labels.he[i] : labels.en[i]}
-                      </span>
-                      {i < 3 && (
-                        <div className="absolute" style={{ display: "none" }} />
-                      )}
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="flex items-center gap-1 justify-center">
-                {["documents_pending", "documents_under_review", "background_check_pending", "approved"].map((stage, i) => (
-                  <div key={stage} className="flex items-center gap-1">
-                    <div className={`w-3 h-3 rounded-full ${stageIndex >= STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-white"}`} />
-                    {i < 3 && <div className={`w-8 h-0.5 ${stageIndex > STAGE_ORDER.indexOf(stage) ? "bg-amber-500" : "bg-white"}`} />}
+              {(() => {
+                const steps: { stage: string; en: string; he: string }[] = [
+                  { stage: "documents_pending", en: "Docs", he: "מסמכים" },
+                  { stage: "documents_under_review", en: "Review", he: "בדיקה" },
+                  { stage: "background_check_pending", en: "Background", he: "רקע" },
+                  { stage: "approved", en: "Approved", he: "אושר" },
+                ];
+                return (
+                  <div className="flex items-start">
+                    {steps.map((s, i) => {
+                      const stageAt = STAGE_ORDER.indexOf(s.stage);
+                      const active = stageIndex >= stageAt;
+                      const connectorActive = stageIndex > stageAt;
+                      return (
+                        <div key={s.stage} className="flex items-start flex-1 min-w-0">
+                          <div className="flex flex-col items-center gap-1 flex-shrink-0 w-16">
+                            <div
+                              className={`w-3 h-3 rounded-full ${active ? "bg-amber-500" : "bg-gray-200"}`}
+                              data-testid={`progress-dot-${s.stage}`}
+                            />
+                            <span className={`text-xs text-center leading-tight ${active ? "text-amber-700 font-medium" : "text-gray-400"}`}>
+                              {he ? s.he : s.en}
+                            </span>
+                          </div>
+                          {i < steps.length - 1 && (
+                            <div className={`h-0.5 flex-1 mt-1 ${connectorActive ? "bg-amber-500" : "bg-gray-200"}`} />
+                          )}
+                        </div>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
+                );
+              })()}
             </div>
 
             <div className="flex gap-2">

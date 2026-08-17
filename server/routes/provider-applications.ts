@@ -676,6 +676,22 @@ router.get('/my', async (req: Request, res: Response) => {
         .orderBy(desc(providerApplications.createdAt))
         .limit(1);
       if (canonical) {
+        // The canonical provider_applications table has a single `providerType`
+        // (walker | sitter | station_operator | driver | groomer | trainer)
+        // rather than a serviceTypes array. Map it to the service-types set
+        // getRequiredDocuments understands so the client's document upload
+        // section actually renders — the previous omission meant a sitter
+        // applicant who used the live form saw the status page but no way
+        // to upload the home_photos the server was waiting for.
+        const providerTypeToServices: Record<string, string[]> = {
+          sitter: ['pet_sitting'],
+          walker: ['dog_walking'],
+          groomer: ['grooming'],
+          trainer: [],
+          station_operator: [],
+          driver: ['pet_transport'],
+        };
+        const serviceTypes = providerTypeToServices[canonical.providerType] ?? [];
         return res.json({
           id: canonical.id,
           applicationId: canonical.applicationId,
@@ -692,6 +708,7 @@ router.get('/my', async (req: Request, res: Response) => {
           documents: [],
           tasks: [],
           backgroundChecks: [],
+          requiredDocuments: getRequiredDocuments(serviceTypes),
           progress: canonical.status === 'approved' ? 100 : 0,
         });
       }
@@ -727,17 +744,21 @@ router.get('/my', async (req: Request, res: Response) => {
     const completedTasks = tasks.filter(t => t.status === 'completed').length;
     const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
     
+    // Client (ProviderPending.tsx) reads `data.stage` / `data.status` at the
+    // top level; the earlier nested `{application: {stage, status, ...}}`
+    // shape meant a legacy applicant's stage was always undefined and the
+    // progress bar + status header rendered as if no data had loaded. The
+    // canonical-table bridge above already returns the flat shape — match it
+    // here so both paths agree.
     res.json({
-      application: {
-        id: application.id,
-        stage: application.stage,
-        status: application.status,
-        rejectionReason: application.rejectionReason,
-        submittedAt: application.submittedAt,
-        lastUpdatedAt: application.lastUpdatedAt,
-        invitationSentAt: application.invitationSentAt,
-        onboardingCompletedAt: application.onboardingCompletedAt
-      },
+      id: application.id,
+      stage: application.stage,
+      status: application.status,
+      rejectionReason: application.rejectionReason,
+      submittedAt: application.submittedAt,
+      lastUpdatedAt: application.lastUpdatedAt,
+      invitationSentAt: application.invitationSentAt,
+      onboardingCompletedAt: application.onboardingCompletedAt,
       documents: documents.map(d => ({
         id: d.id,
         documentType: d.documentType,
@@ -749,7 +770,8 @@ router.get('/my', async (req: Request, res: Response) => {
       tasks,
       backgroundChecks,
       progress,
-      requiredDocuments: getRequiredDocuments(application.serviceTypes)
+      requiredDocuments: getRequiredDocuments(application.serviceTypes),
+      source: 'provider_applicants', // marker: legacy applicants table
     });
     
   } catch (error) {
