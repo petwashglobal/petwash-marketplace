@@ -16561,3 +16561,42 @@ export const socialMetricSnapshots = pgTable("social_metric_snapshots", {
 }));
 export type SocialMetricSnapshot = typeof socialMetricSnapshots.$inferSelect;
 export type InsertSocialMetricSnapshot = typeof socialMetricSnapshots.$inferInsert;
+
+// ===== EMAIL / MOBILE CHANGE VERIFICATION QUEUES (PR-AUTH-SECURITY-9 §§6-7) =====
+// Short-lived request rows holding SHA-256 hashes of the confirmation token
+// (email link) or OTP (SMS). Never store plaintext.
+// See migration 0116_email_mobile_change_requests.sql.
+
+export const emailChangeRequests = pgTable("email_change_requests", {
+  id:         serial("id").primaryKey(),
+  userId:     varchar("user_id", { length: 128 }).notNull(),
+  newEmail:   varchar("new_email", { length: 320 }).notNull(),
+  tokenHash:  varchar("token_hash", { length: 64 }).notNull(),
+  expiresAt:  timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt: timestamp("consumed_at", { withTimezone: true }),
+  requestIp:  varchar("request_ip", { length: 64 }),
+  requestUa:  text("request_ua"),
+  createdAt:  timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userIdx:  index("idx_email_change_requests_user").on(t.userId, t.createdAt),
+  tokenIdx: index("idx_email_change_requests_token").on(t.tokenHash),
+}));
+export type EmailChangeRequest = typeof emailChangeRequests.$inferSelect;
+export type InsertEmailChangeRequest = typeof emailChangeRequests.$inferInsert;
+
+export const mobileChangeRequests = pgTable("mobile_change_requests", {
+  id:             serial("id").primaryKey(),
+  userId:         varchar("user_id", { length: 128 }).notNull(),
+  newMobileE164:  varchar("new_mobile_e164", { length: 20 }).notNull(),
+  otpHash:        varchar("otp_hash", { length: 64 }).notNull(),
+  attempts:       integer("attempts").notNull().default(0),
+  expiresAt:      timestamp("expires_at", { withTimezone: true }).notNull(),
+  consumedAt:     timestamp("consumed_at", { withTimezone: true }),
+  requestIp:      varchar("request_ip", { length: 64 }),
+  requestUa:      text("request_ua"),
+  createdAt:      timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (t) => ({
+  userIdx: index("idx_mobile_change_requests_user").on(t.userId, t.createdAt),
+}));
+export type MobileChangeRequest = typeof mobileChangeRequests.$inferSelect;
+export type InsertMobileChangeRequest = typeof mobileChangeRequests.$inferInsert;

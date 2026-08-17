@@ -266,6 +266,7 @@ const DiscountApplication = lazy(() => import("@/pages/DiscountApplication"));
 const CompanyReports = lazy(() => import("@/pages/CompanyReports"));
 const InvestorPresentation = lazy(() => import("@/pages/InvestorPresentation"));
 const AuthAction = lazy(() => import("@/pages/AuthAction"));
+const AuthChangeEmailConfirm = lazy(() => import("@/pages/AuthChangeEmailConfirm"));
 const NotFound = lazy(() => import("@/pages/not-found"));
 const JvPartnersDashboard = lazy(() => import("@/pages/JvPartnersDashboard"));
 const SuppliersDashboard = lazy(() => import("@/pages/SuppliersDashboard"));
@@ -1070,6 +1071,8 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         {/* Firebase Auth Action Handler (password reset, email verification) */}
         <Route path="/auth/action">{() => <AuthAction />}</Route>
         <Route path="/__/auth/action">{() => <AuthAction />}</Route>
+        {/* PR-AUTH-SECURITY-9 §6: verified-email-change confirm landing */}
+        <Route path="/auth/change-email/confirm">{() => <AuthChangeEmailConfirm />}</Route>
         
         {/* Protected route - Dashboard */}
         <Route path="/dashboard">

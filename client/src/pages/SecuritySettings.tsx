@@ -11,6 +11,8 @@ import { useToast } from '@/hooks/use-toast';
 import { PasskeyEnforcementBanner } from '@/components/security/PasskeyEnforcementBanner';
 import { SecurityStatusPanel } from '@/components/security/SecurityStatusPanel';
 import { ChangePasswordPanel } from '@/components/security/ChangePasswordPanel';
+import { ChangeEmailPanel } from '@/components/security/ChangeEmailPanel';
+import { ChangeMobilePanel } from '@/components/security/ChangeMobilePanel';
 import { useQuery as _useQuerySecurityHelper } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
@@ -226,6 +228,11 @@ export default function SecuritySettings() {
           <_PasswordPanelBridge language={language} />
         </div>
 
+        {/* PR-AUTH-SECURITY-9 §6: change email — dedicated verified-identity flow. */}
+        {/* PR-AUTH-SECURITY-9 §7: change mobile — dedicated SMS-OTP flow. */}
+        <_ContactChangePanels language={language} />
+
+
         {roleLoading ? (
           <Skeleton className="h-24 mb-6" />
         ) : (
@@ -233,7 +240,7 @@ export default function SecuritySettings() {
             required={passkeyRequired}
             hasPasskey={hasPasskey}
             onCreate={() => createPasskeyMutation.mutate()}
-            language={language}
+            language={language === 'he' ? 'he' : 'en'}
           />
         )}
 
@@ -416,5 +423,51 @@ export default function SecuritySettings() {
       </main>
       </div>
     </Layout>
+  );
+}
+
+// ── PR-AUTH-SECURITY-9 §5 bridge — waits for /api/security/status so we can
+// pass the server-truth hasPassword flag into the password panel. Handles the
+// missing definition LANE A's original commit referenced but did not include.
+function _PasswordPanelBridge({ language }: { language: string }) {
+  const { data } = useQuery<{ password?: { hasPassword?: boolean } }>({
+    queryKey: ['/api/security/status'],
+    queryFn: async () => {
+      const res = await fetch('/api/security/status', { credentials: 'include' });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+  const hasPassword = !!data?.password?.hasPassword;
+  return <ChangePasswordPanel language={language} hasPassword={hasPassword} />;
+}
+
+// ── PR-AUTH-SECURITY-9 §§6-7 bridge — surfaces the two verified-identity
+// change flows (email / mobile) as separate panels driven off the same
+// server-truth status shape returned by GET /api/security/status.
+function _ContactChangePanels({ language }: { language: string }) {
+  const { data } = useQuery<{
+    email?: { value?: string | null };
+    mobile?: { value?: string | null };
+  }>({
+    queryKey: ['/api/security/status'],
+    queryFn: async () => {
+      const res = await fetch('/api/security/status', { credentials: 'include' });
+      if (!res.ok) return {};
+      return res.json();
+    },
+    staleTime: 30_000,
+  });
+  const lang: 'en' | 'he' = language === 'he' ? 'he' : 'en';
+  return (
+    <>
+      <div className="mb-6">
+        <ChangeEmailPanel currentEmail={data?.email?.value ?? null} language={lang} />
+      </div>
+      <div className="mb-6">
+        <ChangeMobilePanel currentMobile={data?.mobile?.value ?? null} language={lang} />
+      </div>
+    </>
   );
 }

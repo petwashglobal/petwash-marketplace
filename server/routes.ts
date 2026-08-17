@@ -290,6 +290,8 @@ import marketplaceRankingRoutes from "./routes/marketplace-ranking";
 import disputesRoutes from "./routes/disputes";
 import groomingFeedbackRoutes from "./routes/grooming-feedback";
 import securityStatusRoutes from "./routes/security-status";
+import authChangeEmailRoutes from "./routes/auth-change-email";
+import authChangeMobileRoutes from "./routes/auth-change-mobile";
 import authEventsRoutes from "./routes/auth-events";
 import eventsRoutes from "./routes/events";
 import unifiedBookingRoutes from "./routes/unified-booking";
@@ -12401,6 +12403,12 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/pin-auth', apiLimiter, pinAuthRoutes);
   // PR-AUTH-SECURITY-9 §2 (2026-08-17): read-only Account > Security status.
   app.use('/api/security', apiLimiter, securityStatusRoutes);
+  // PR-AUTH-SECURITY-9 §§6-7 (2026-08-17): verified email + mobile change.
+  // Both routers derive identity from the Firebase Bearer/session cookie only
+  // (no body.uid, no body.email). authLimiter is applied per-route inside
+  // the routers for tighter budget than the mount-wide apiLimiter.
+  app.use('/api/auth/change-email', authChangeEmailRoutes);
+  app.use('/api/auth/change-mobile', authChangeMobileRoutes);
   app.use('/api/user', optionalFirebaseToken, apiLimiter, userProfileRoutes);
   app.use('/api/user/addresses', apiLimiter, userAddressesRoutes);
   app.use('/api/account', apiLimiter, accountManagementRoutes);
