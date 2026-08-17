@@ -88,8 +88,17 @@ async function resolveClaimsBasedAuth(req: Request, res: Response): Promise<{
     else role = 'public';
   }
 
+  // SECURITY (PR-ADMIN-AUTH-VERIFIED, 2026-08-17): grant super_admin ONLY when
+  // Firebase has verified the email address. `isSuperAdmin(email)` is the legacy
+  // primitive whose own docstring warns "New code must use isSuperAdminVerified".
+  // Here we're operating on a decoded session-cookie/ID-token rather than
+  // req.firebaseUser, so we inline the same rule: allowlist match AND the token's
+  // own email_verified claim must be strictly true. Without this gate, an
+  // attacker who registers a Firebase account with an email string that happens
+  // to match SUPER_ADMIN_EMAILS but who never verified the address would sail
+  // into every admin endpoint.
   const userEmail = (decoded.email || '').toLowerCase();
-  const isSuperAdminUser = isSuperAdmin(userEmail);
+  const isSuperAdminUser = decoded.email_verified === true && isSuperAdmin(userEmail);
   if (isSuperAdminUser) role = 'super_admin';
 
   const ip = req.ip || req.socket?.remoteAddress || 'unknown';
@@ -173,18 +182,21 @@ export const requireAuthenticatedRole = (allowedRoles: string[]) => {
 export const requireRole = (allowedRoles: string[]) => {
   return async (req: Request, res: Response, next: NextFunction) => {
     const adminUser = req.adminUser;
-    
-    // Check if the request has firebaseUser with email for super admin check
-    // Also check adminUser email as fallback
-    const userEmail = (req as any).firebaseUser?.email?.toLowerCase() 
-      || adminUser?.email?.toLowerCase() 
-      || '';
-    
-    // Super admins always have access
-    if (userEmail && isSuperAdmin(userEmail)) {
+
+    // SECURITY (PR-ADMIN-AUTH-VERIFIED, 2026-08-17): the super_admin shortcut
+    // used to accept ANY email that matched SUPER_ADMIN_EMAILS, even from an
+    // unverified Firebase account or from the DB `adminUser.email` fallback
+    // (which is trusted DB data but has no live email_verified signal). Now
+    // require the token's own `email_verified === true` before honouring the
+    // shortcut. If there is no live Firebase user on the request, fall through
+    // to the ordinary DB role check — the adminUser row must exist AND its role
+    // must be allowlisted.
+    const fu = (req as any).firebaseUser;
+    const tokenEmail = fu?.email?.toLowerCase() || '';
+    if (tokenEmail && fu?.email_verified === true && isSuperAdmin(tokenEmail)) {
       return next();
     }
-    
+
     if (!adminUser) {
       return res.status(401).json({ message: "Admin authentication required" });
     }

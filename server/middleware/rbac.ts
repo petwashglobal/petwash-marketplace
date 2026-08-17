@@ -410,15 +410,20 @@ export function requireAdmin(
 
     const userEmail = req.firebaseUser.email.toLowerCase();
 
-    // Quick check: Super admin email list
-    if (isSuperAdmin(userEmail)) {
+    // SECURITY (PR-ADMIN-AUTH-VERIFIED, 2026-08-17): gate the super_admin
+    // shortcut on Firebase's email_verified claim. The old check used the
+    // legacy isSuperAdmin(email) primitive whose own docstring says "New code
+    // must use isSuperAdminVerified" — without the verified requirement, an
+    // attacker who registers an unverified Firebase account with an email in
+    // SUPER_ADMIN_EMAILS could pass this gate.
+    if (isSuperAdminVerified(req)) {
       return next();
     }
 
     // For non-super-admins, we need to check the database
     // This provides a lightweight alternative to loadUserRole
     logger.warn(`Admin access denied for ${userEmail}`);
-    return res.status(403).json({ 
+    return res.status(403).json({
       error: 'Admin access required',
       message: 'This operation requires administrator privileges'
     });
@@ -447,8 +452,10 @@ export async function requireInternalAccount(
 
     const userEmail = req.firebaseUser.email.toLowerCase();
 
-    // Super admins always have internal access
-    if (isSuperAdmin(userEmail)) {
+    // SECURITY (PR-ADMIN-AUTH-VERIFIED, 2026-08-17): require verified email
+    // for the super_admin shortcut into internal-only routes. Matches the
+    // same rule applied to requireAdmin above.
+    if (isSuperAdminVerified(req)) {
       return next();
     }
 
