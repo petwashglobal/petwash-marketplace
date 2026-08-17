@@ -19,6 +19,13 @@
  *   a bare Express app and inject `req.firebaseUser` via a shim middleware.
  *   The logger and drizzle-based schema import are mocked to zero-value
  *   stubs so importing rbac.ts doesn't touch real infra.
+ *
+ * EXPECTED STATE ON origin/main
+ *   Three cases here (email_verified=false / missing / uppercase+false)
+ *   will FAIL on today's origin/main because rbac.ts still uses the
+ *   legacy `isSuperAdmin(email)` shortcut — with no `email_verified`
+ *   gate. Those failures ARE the regression this PR closes. Once
+ *   claude/pr-admin-auth-gaps merges, all seven cases pass.
  */
 import { describe, it, expect, vi, beforeAll, beforeEach } from 'vitest';
 import express, { type Request, type Response, type NextFunction } from 'express';
