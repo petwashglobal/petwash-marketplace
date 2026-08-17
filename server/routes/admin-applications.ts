@@ -14,15 +14,15 @@ import { db } from '../db';
 import { desc, inArray, ne, sql } from 'drizzle-orm';
 import { users, providerApplications } from '../../shared/schema';
 import { memberDiscountApplications } from '../../shared/schema';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdmin, isSuperAdminVerified } from '../middleware/rbac';
 import { computeRiskFlags, scoreFromFlags, ageFromDob, type RiskLevel } from '../services/applicationRiskEngine';
 import { logger } from '../lib/logger';
 
 const router = Router();
 
 function requireAdmin(req: any, res: any, next: any) {
-  const email = (req.firebaseUser?.email || '').toLowerCase();
-  if (!isSuperAdmin(email)) return res.status(403).json({ error: 'Full admin access required' });
+  // Canonical super-admin gate (allowlist + email_verified).
+  if (!isSuperAdminVerified(req)) return res.status(403).json({ error: 'Full admin access required' });
   next();
 }
 router.use(requireAdmin);

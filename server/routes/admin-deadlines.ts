@@ -36,7 +36,7 @@
 import { Router, type Request, type Response } from 'express';
 import { db } from '../db';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdmin, isSuperAdminVerified } from '../middleware/rbac';
 import {
   stationBills,
   stationAssets,
@@ -52,9 +52,12 @@ const router = Router();
 // ---- Auth: token first, then super-admin email check -----------------------
 router.use(validateFirebaseToken);
 function requireAdmin(req: any, res: Response, next: any) {
-  const email = (req.firebaseUser?.email || '').toLowerCase();
-  if (!isSuperAdmin(email)) {
-    return res.status(403).json({ error: 'Full admin access required' });
+  // Canonical super-admin gate: SUPER_ADMIN_EMAILS allowlist AND
+  // Firebase-verified email. isSuperAdminVerified enforces both;
+  // the plain isSuperAdmin(email) primitive is deprecated for gates.
+  if (!isSuperAdminVerified(req)) {
+return res.status(403).json({ error: 'Full admin access required' });
+  
   }
   next();
 }

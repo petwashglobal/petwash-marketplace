@@ -15,7 +15,7 @@ import { count, sql, gte, eq, and, inArray, desc } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import sanitizeHtml from 'sanitize-html';
 import { EmailService } from '../emailService';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdmin, isSuperAdminVerified } from '../middleware/rbac';
 import { SUPPORT_PHONE as CANONICAL_SUPPORT_PHONE } from '@shared/support-contact';
 
 const router = Router();
@@ -34,7 +34,9 @@ const ADMIN_VIEWER_EMAILS: string[] = (process.env.ADMIN_VIEWER_EMAILS || '')
 // Check if user has any admin/viewer access
 const requireAdminOrViewer = (req: any, res: any, next: any) => {
   const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-  const isAdmin = isSuperAdmin(userEmail);
+  // Admin path requires SUPER_ADMIN_EMAILS allowlist AND Firebase email_verified;
+  // viewer path is allowlist-only (read access to a rendered admin dashboard).
+  const isAdmin = isSuperAdminVerified(req);
   const isViewer = ADMIN_VIEWER_EMAILS.includes(userEmail);
 
   if (!isAdmin && !isViewer) {
@@ -47,9 +49,8 @@ const requireAdminOrViewer = (req: any, res: any, next: any) => {
 
 // Require full admin access (no viewers)
 const requireAdmin = (req: any, res: any, next: any) => {
-  const userEmail = (req.firebaseUser?.email || '').toLowerCase();
-
-  if (!isSuperAdmin(userEmail)) {
+  // Canonical super-admin gate: allowlist AND email_verified (rbac.ts).
+  if (!isSuperAdminVerified(req)) {
     return res.status(403).json({
       error: 'Full admin access required',
       message: 'This action requires administrator privileges. Viewers have read-only access.',
