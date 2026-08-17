@@ -237,7 +237,6 @@ const AdminBayMap = lazy(() => import("@/pages/AdminBayMap"));
 const AdminCommandLog = lazy(() => import("@/pages/AdminCommandLog"));
 const AdminCompensation = lazy(() => import("@/pages/AdminCompensation"));
 const CustomerTimeline = lazy(() => import("@/pages/CustomerTimeline"));
-const AdminUsers = lazy(() => import("@/pages/AdminUsers"));
 const AdminTeamInvitations = lazy(() => import("@/pages/AdminTeamInvitations"));
 const TeamInbox = lazy(() => import("@/pages/TeamInbox"));
 const MobileStationHub = lazy(() => import("@/pages/MobileStationHub"));
@@ -3661,9 +3660,17 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             </AdminRouteGuard>
           )}
         </Route>
-        {/* RETIRED generation: AdminUsers called /api/admin/users list/update/
-            delete — endpoints that never existed (its buttons could never
-            work). The live user-management surface is /admin/customers. */}
+        {/* RETIRED: the AdminUsers page called GET/PATCH/DELETE /api/admin/users
+            — endpoints that never existed. `/api/admin/users` mounts only
+            adminIntelligenceRouter (customer-intelligence.ts: GET /:uid/intelligence,
+            journey-state, POST /:uid/intelligence/recompute).
+            The route already redirected here, but the page file survived and kept a
+            "Delete User" button whose 404 read as a transient failure — a GDPR erase
+            that silently dropped. File deleted 2026-08-17; the live user-management
+            surface is /admin/customers (GET/PATCH /api/admin/customers/:id), and the
+            canonical Right-to-Erasure operation is POST /api/enterprise/user/delete
+            (server/enterprise/userDeletion.ts), which has no admin UI yet — see the
+            contract-sweep report. */}
         <Route path="/admin/users">{() => <Redirect to="/admin/customers" />}</Route>
         <Route path="/admin/team">
           {() => (
