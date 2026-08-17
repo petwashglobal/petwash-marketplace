@@ -502,20 +502,21 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
     const { bookingId } = req.params;
     const userId = req.user!.uid;
 
-    const bookingDoc = await db.collection("bookings").doc(bookingId).get();
-    if (!bookingDoc.exists) {
+    // Pre-transaction READ for the authorization decision. The authz check
+    // (station role / booking party / super-admin) does NOT itself need to
+    // be atomic with the status flip — it is a policy decision about who
+    // may attempt the confirm, and cannot change under concurrent load
+    // (the caller's identity is fixed).
+    const preDoc = await db.collection("bookings").doc(bookingId).get();
+    if (!preDoc.exists) {
       return res.status(404).json({ error: "Booking not found" });
     }
-    const booking = bookingDoc.data()!;
+    const preBooking = preDoc.data()!;
 
-    // firebaseUser.claims.role is not a custom claim we set — always use isSuperAdmin()
     const isSuperAdminUser = isSuperAdmin(((req as any).firebaseUser?.email || '').toLowerCase());
-    const bookingStationId = booking.stationId ? Number(booking.stationId) : null;
+    const bookingStationId = preBooking.stationId ? Number(preBooking.stationId) : null;
 
     if (bookingStationId) {
-      // Phase 10 — T24: station-assigned booking — ONLY station manager/owner (or super-admin) may confirm.
-      // The assigned provider and booking customer are intentionally excluded from this path
-      // to enforce clear station accountability: staff acknowledge bookings, not the recipient.
       if (!isSuperAdminUser) {
         const role = await resolveStationRole(req, bookingStationId);
         const hasStationAccess = role === 'manager' || role === 'owner';
@@ -527,26 +528,66 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
         }
       }
     } else {
-      // Non-station booking: assigned provider, booking customer, or super-admin may confirm
-      const isBookingProvider = booking.providerId === userId;
-      const isBookingOwner = booking.userId === userId || booking.customerId === userId;
+      const isBookingProvider = preBooking.providerId === userId;
+      const isBookingOwner = preBooking.userId === userId || preBooking.customerId === userId;
       if (!isBookingProvider && !isBookingOwner && !isSuperAdminUser) {
-        logger.warn('[Bookings] Unauthorized confirm attempt', { userId, bookingId, providerId: booking.providerId, customerId: booking.userId });
+        logger.warn('[Bookings] Unauthorized confirm attempt', { userId, bookingId, providerId: preBooking.providerId, customerId: preBooking.userId });
         return res.status(403).json({ error: 'Forbidden — you are not the assigned provider or booking owner' });
       }
     }
 
-    // SECURITY: Only confirm bookings in pending/awaiting_confirmation state
+    // ── LANE B FIRESTORE-CONFIRM TRANSACTION (2026-08-18) ────────────────────
+    // The status READ (line above) → status CHECK → status UPDATE window used
+    // to run OUTSIDE any transaction, so two concurrent confirmers both saw
+    // status='pending', both passed the confirmable-state check, and both
+    // performed the update — leading to duplicate audit rows and (via the
+    // setImmediate hooks below) duplicate calendar syncs, duplicate emails,
+    // and potentially duplicate loyalty/SUMIT downstream events.
+    //
+    // Re-run the confirmable-state check + status flip inside runTransaction.
+    // Firestore's optimistic locking guarantees only one transaction wins
+    // per document version; the loser retries, observes status='confirmed',
+    // and we throw ALREADY_CONFIRMED to bail out with a 409.
+    //
+    // Money invariance: no amount / VAT / commission / payout / SUMIT
+    // mapping touched. This ONLY prevents duplicate downstream execution;
+    // it never changes what a single successful confirm produces.
     const confirmableStates = ['pending', 'awaiting_confirmation', 'payment_held'];
-    if (booking.status && !confirmableStates.includes(booking.status)) {
-      return res.status(409).json({ error: `Cannot confirm a booking with status: ${booking.status}` });
+    let booking = preBooking;
+    try {
+      const txResult = await db.runTransaction(async (tx) => {
+        const ref = db.collection("bookings").doc(bookingId);
+        const snap = await tx.get(ref);
+        if (!snap.exists) {
+          throw Object.assign(new Error('Booking not found'), { code: 'NOT_FOUND' });
+        }
+        const current = snap.data()!;
+        if (current.status && !confirmableStates.includes(current.status)) {
+          throw Object.assign(
+            new Error(`Cannot confirm a booking with status: ${current.status}`),
+            { code: 'INVALID_STATE', currentStatus: current.status },
+          );
+        }
+        tx.update(ref, {
+          status: "confirmed",
+          confirmedAt: new Date(),
+          confirmedBy: userId,
+        });
+        return { booking: current };
+      });
+      // Use the fresh in-transaction snapshot for downstream side effects so
+      // the audit/notification payload reflects the exact document version
+      // that was just flipped (not the pre-tx read).
+      booking = txResult.booking;
+    } catch (err: any) {
+      if (err?.code === 'INVALID_STATE') {
+        return res.status(409).json({ error: err.message });
+      }
+      if (err?.code === 'NOT_FOUND') {
+        return res.status(404).json({ error: 'Booking not found' });
+      }
+      throw err;
     }
-
-    await db.collection("bookings").doc(bookingId).update({
-      status: "confirmed",
-      confirmedAt: new Date(),
-      confirmedBy: userId,
-    });
 
     // PR-D-BOOKING-AUDIT-WIRING: append-only audit event AFTER successful
     // status mutation. Fire-and-forget — auditLog already swallows errors,
