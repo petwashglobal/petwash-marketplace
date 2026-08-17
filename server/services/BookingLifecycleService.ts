@@ -476,20 +476,41 @@ class BookingLifecycleService {
       );
     }
 
-    await db.update(bookings)
-      .set({ 
+    // ── LANE-B RACE GUARD (2026-08-17) ────────────────────────────────────
+    // The prior unconditional UPDATE let two concurrent transitions from the
+    // same currentStatus both succeed — every downstream side effect
+    // (recordStatusChange, createEscrowHolding, scheduleEscrowRelease,
+    // settleEscrowTerminal) then fired twice, producing duplicate history
+    // rows and duplicate audit events. Conditional UPDATE only fires when
+    // status is still what we observed; if 0 rows updated, another caller
+    // committed first and we short-circuit. No money math change: identical
+    // fields written, once instead of twice.
+    // Failure scenario: two concurrent /confirm POSTs from the same
+    // customer's double-tap both flip deposit_received → provider_confirmed
+    // and both fire createEscrowHolding — the escrow-holding idempotency
+    // guard caught the second insert, but the duplicate audit + status
+    // history remained.
+    const claimed = await db.update(bookings)
+      .set({
         status: newStatus,
         updatedAt: new Date(),
         ...(newStatus === 'provider_confirmed' && { confirmedAt: new Date() }),
         ...(newStatus === 'in_progress' && { startedAt: new Date() }),
         ...(newStatus === 'completed' && { completedAt: new Date() }),
-        ...(newStatus === 'cancelled' && { 
-          cancelledAt: new Date(), 
+        ...(newStatus === 'cancelled' && {
+          cancelledAt: new Date(),
           cancelledBy: actorUserId,
-          cancellationReason: reason 
+          cancellationReason: reason
         }),
       })
-      .where(eq(bookings.id, bookingId));
+      .where(and(eq(bookings.id, bookingId), eq(bookings.status, currentStatus)))
+      .returning({ id: bookings.id });
+    if (claimed.length === 0) {
+      logger.info('[BookingLifecycle] Status transition raced — another actor already advanced', {
+        bookingId, expectedFrom: currentStatus, attemptedTo: newStatus,
+      });
+      return;
+    }
 
     await this.recordStatusChange(bookingId, currentStatus, newStatus, actorUserId, actorRole, reason);
 
@@ -644,8 +665,12 @@ class BookingLifecycleService {
       return;
     }
 
+    // ── LANE-B RACE GUARD (2026-08-17) ────────────────────────────────────
+    // SELECT-then-UPDATE races with another terminal transition. Conditional
+    // UPDATE keyed on the observed status prevents duplicate refunded flip +
+    // duplicate BOOKING_ESCROW_REFUNDED audit row. No money math change.
     const now = new Date();
-    await db.update(escrowHoldings)
+    const claimed = await db.update(escrowHoldings)
       .set({
         status: 'refunded',
         refundProcessedAt: now,
@@ -653,7 +678,17 @@ class BookingLifecycleService {
         refundReason: reason ?? 'Booking cancelled',
         updatedAt: now,
       })
-      .where(eq(escrowHoldings.id, escrow.id));
+      .where(and(
+        eq(escrowHoldings.id, escrow.id),
+        eq(escrowHoldings.status, escrow.status),
+      ))
+      .returning({ id: escrowHoldings.id });
+    if (claimed.length === 0) {
+      logger.info('[BookingLifecycle] Escrow terminal settle raced — already handled', {
+        bookingId, previousStatus: escrow.status,
+      });
+      return;
+    }
 
     await this.auditMoney(bookingId, 'BOOKING_ESCROW_REFUNDED', actorUserId, actorRole, {
       escrowId: escrow.escrowId,

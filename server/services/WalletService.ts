@@ -610,17 +610,12 @@ class WalletService {
       await db.insert(creditTransactions).values(refundTransactions);
     }
 
-    // Update session status to refunded
-    await db.update(redemptionSessions)
-      .set({ 
-        status: 'refunded' as any,
-        updatedAt: now,
-      })
-      .where(eq(redemptionSessions.sessionId, sessionId));
+    // Status flip already claimed atomically above (LANE-B RACE GUARD).
+    // Anchor comment retained for maintainers who grep "status to refunded".
 
-    logger.info('[Wallet] Redemption refunded', { 
-      sessionId, 
-      walletId: session.walletId, 
+    logger.info('[Wallet] Redemption refunded', {
+      sessionId,
+      walletId: session.walletId,
       reason,
       creditsRestored: refundTransactions.length,
     });

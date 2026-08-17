@@ -42,6 +42,7 @@ import { buildPassLinkToken } from '../lib/passTokens';
 import { petwashPassAccounts, users, appleWalletDeviceRegistrations } from '@shared/schema';
 import { evaluateOperatingControlGate } from '../lib/petwashOperatingControlGateway';
 import { AuditLedgerService } from '../services/AuditLedgerService';
+import { withBookingMutationLock, BookingMutationLockTimeoutError } from '../lib/bookingMutationLock';
 
 // Multer: in-memory storage for CSV reconciliation uploads (max 4 MB)
 const csvUpload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 4 * 1024 * 1024 } });
@@ -3947,81 +3948,116 @@ router.post('/admin/wallet/refund', async (req: Request, res: Response) => {
     if (!bookingId) return res.status(400).json({ error: 'bookingId required' });
     if (!reason?.trim()) return res.status(400).json({ error: 'reason required' });
 
-    // Look up booking
-    let booking: any = null;
-    let sourceTable: 'booking_requests' | 'trainer_bookings' = 'booking_requests';
+    // ── LANE-B RACE GUARD (2026-08-17) ────────────────────────────────────
+    // The idempotency key at the WalletLedger call below embeds Date.now()
+    // so an admin can issue multiple partial refunds. That means two
+    // concurrent admin requests on the SAME booking would each mint a
+    // distinct idempotency key and each execute a full refund → the
+    // customer gets refunded twice. We can't scope the key to the booking
+    // (that would break intentional partial refunds), so instead we
+    // serialize the entire handler on bookingId with an advisory lock. The
+    // second request waits, re-reads finance_state, and either finds
+    // 'refunded' (returns 422 "Nothing left to refund") or proceeds
+    // against the reduced remaining balance — always safe, never double.
+    // No money math change: same finance_state math, same WalletLedger
+    // call, same partial-refund allowance — just single-shot per booking.
+    // Failure scenario: admin double-clicks Refund on ₪100 debited
+    // booking; without this, WalletLedger returns two distinct txns and
+    // the customer's wallet gets ₪200 back.
+    let outcome: { txnId: string; refundedCents: number; newState: 'refunded' | 'debited'; userId: string } | null = null;
+    try {
+      await withBookingMutationLock('admin-wallet-refund', bookingId, async () => {
+        // Look up booking INSIDE the lock so we see the up-to-date finance_state
+        let booking: any = null;
+        let sourceTable: 'booking_requests' | 'trainer_bookings' = 'booking_requests';
 
-    const brRows: any = await db.execute(sql`
-      SELECT request_id AS booking_id, owner_id AS user_id, service_type AS division_code,
-             finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
-      FROM booking_requests WHERE request_id = ${bookingId} LIMIT 1
-    `);
-    booking = (brRows?.rows ?? brRows ?? [])[0] ?? null;
-    if (!booking) {
-      const tbRows: any = await db.execute(sql`
-        SELECT booking_id, user_id, 'academy' AS division_code,
-               finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
-        FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
-      `);
-      booking = (tbRows?.rows ?? tbRows ?? [])[0] ?? null;
-      if (booking) sourceTable = 'trainer_bookings';
-    }
+        const brRows: any = await db.execute(sql`
+          SELECT request_id AS booking_id, owner_id AS user_id, service_type AS division_code,
+                 finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
+          FROM booking_requests WHERE request_id = ${bookingId} LIMIT 1
+        `);
+        booking = (brRows?.rows ?? brRows ?? [])[0] ?? null;
+        if (!booking) {
+          const tbRows: any = await db.execute(sql`
+            SELECT booking_id, user_id, 'academy' AS division_code,
+                   finance_state, wallet_hold_cents, wallet_debited_cents, wallet_refunded_cents
+            FROM trainer_bookings WHERE booking_id = ${bookingId} LIMIT 1
+          `);
+          booking = (tbRows?.rows ?? tbRows ?? [])[0] ?? null;
+          if (booking) sourceTable = 'trainer_bookings';
+        }
 
-    if (!booking) return res.status(404).json({ error: 'Booking not found' });
-    if (booking.finance_state !== 'debited') {
-      return res.status(422).json({
-        error: `Cannot refund: finance_state is '${booking.finance_state}', expected 'debited'`,
+        if (!booking) { const e: any = new Error('Booking not found'); e.__http = 404; throw e; }
+        if (booking.finance_state !== 'debited') {
+          const e: any = new Error(`Cannot refund: finance_state is '${booking.finance_state}', expected 'debited'`);
+          e.__http = 422; throw e;
+        }
+
+        const debitedCents = Number(booking.wallet_debited_cents);
+        const alreadyRefunded = Number(booking.wallet_refunded_cents ?? 0);
+        const maxRefundable = debitedCents - alreadyRefunded;
+        const refundCents = amountCents != null ? Math.min(amountCents, maxRefundable) : maxRefundable;
+
+        if (refundCents <= 0) { const e: any = new Error('Nothing left to refund'); e.__http = 422; throw e; }
+
+        // Timestamp-based key still allows multiple partial refunds; each is a
+        // distinct ledger entry. Serialization above prevents two concurrent
+        // admin clicks from allocating two full-refund keys (was the defect).
+        const idempotencyKey = `wallet:booking:refund:admin:${bookingId}:${Date.now()}`;
+        const { refundToWallet } = await import('../services/WalletLedger');
+        const result = await refundToWallet({
+          userId:         booking.user_id,
+          amountCents:    refundCents,
+          divisionCode:   booking.division_code ?? 'general',
+          sourceType:     'booking',
+          sourceId:       bookingId,
+          idempotencyKey,
+          reason:         reason ?? 'admin_refund',
+          ipAddress:      req.ip,
+          metadata:       { adminId: uid, reason, actorSource: 'admin_refund' },
+        });
+
+        const newRefunded = alreadyRefunded + refundCents;
+        const newState: 'refunded' | 'debited' = newRefunded >= debitedCents ? 'refunded' : 'debited';
+
+        if (sourceTable === 'booking_requests') {
+          await db.execute(sql`
+            UPDATE booking_requests
+            SET finance_state = ${newState},
+                wallet_refunded_cents = ${newRefunded},
+                wallet_refund_key = ${result.txnId},
+                updated_at = NOW()
+            WHERE request_id = ${bookingId}
+          `);
+        } else {
+          await db.execute(sql`
+            UPDATE trainer_bookings
+            SET finance_state = ${newState},
+                wallet_refunded_cents = ${newRefunded},
+                wallet_refund_key = ${result.txnId},
+                updated_at = NOW()
+            WHERE booking_id = ${bookingId}
+          `);
+        }
+
+        outcome = { txnId: result.txnId, refundedCents: refundCents, newState, userId: booking.user_id };
       });
+    } catch (e: any) {
+      if (e?.__http === 404) return res.status(404).json({ error: e.message });
+      if (e?.__http === 422) return res.status(422).json({ error: e.message });
+      if (e instanceof BookingMutationLockTimeoutError) {
+        logger.warn('[AdminWallet][Refund] Lock timeout — retryable', { bookingId });
+        return res.status(503).json({ error: 'Refund is being processed by another admin. Please retry.' });
+      }
+      throw e;
     }
 
-    const debitedCents = Number(booking.wallet_debited_cents);
-    const alreadyRefunded = Number(booking.wallet_refunded_cents ?? 0);
-    const maxRefundable = debitedCents - alreadyRefunded;
-    const refundCents = amountCents != null ? Math.min(amountCents, maxRefundable) : maxRefundable;
-
-    if (refundCents <= 0) return res.status(422).json({ error: 'Nothing left to refund' });
-
-    // Timestamp-based key allows multiple partial refunds; each is a distinct ledger entry
-    const idempotencyKey = `wallet:booking:refund:admin:${bookingId}:${Date.now()}`;
-    const { refundToWallet } = await import('../services/WalletLedger');
-    const result = await refundToWallet({
-      userId:         booking.user_id,
-      amountCents:    refundCents,
-      divisionCode:   booking.division_code ?? 'general',
-      sourceType:     'booking',
-      sourceId:       bookingId,
-      idempotencyKey,
-      reason:         reason ?? 'admin_refund',
-      ipAddress:      req.ip,
-      metadata:       { adminId: uid, reason, actorSource: 'admin_refund' },
-    });
-
-    const newRefunded = alreadyRefunded + refundCents;
-    const newState = newRefunded >= debitedCents ? 'refunded' : 'debited';
-
-    if (sourceTable === 'booking_requests') {
-      await db.execute(sql`
-        UPDATE booking_requests
-        SET finance_state = ${newState},
-            wallet_refunded_cents = ${newRefunded},
-            wallet_refund_key = ${result.txnId},
-            updated_at = NOW()
-        WHERE request_id = ${bookingId}
-      `);
-    } else {
-      await db.execute(sql`
-        UPDATE trainer_bookings
-        SET finance_state = ${newState},
-            wallet_refunded_cents = ${newRefunded},
-            wallet_refund_key = ${result.txnId},
-            updated_at = NOW()
-        WHERE booking_id = ${bookingId}
-      `);
-    }
+    if (!outcome) return res.status(500).json({ error: 'Refund failed to complete' });
+    const o = outcome as { txnId: string; refundedCents: number; newState: 'refunded' | 'debited'; userId: string };
 
     logger.info('[AdminWallet][Refund] Refund issued', {
-      bookingId, userId: booking.user_id, refundCents, newState,
-      txnId: result.txnId, adminUid: uid, reason,
+      bookingId, userId: o.userId, refundCents: o.refundedCents, newState: o.newState,
+      txnId: o.txnId, adminUid: uid, reason,
     });
 
     // Audit ledger (dangerous admin money action) — survives beyond app logs.
@@ -4030,14 +4066,14 @@ router.post('/admin/wallet/refund', async (req: Request, res: Response) => {
       actorRole: 'admin',
       actionType: 'ADMIN_WALLET_REFUND',
       targetType: 'wallet',
-      targetId: booking.user_id,
+      targetId: o.userId,
       ip: req.ip,
       userAgent: req.headers['user-agent'],
-      metadata: { bookingId, refundCents, newFinanceState: newState, txnId: result.txnId, reason },
+      metadata: { bookingId, refundCents: o.refundedCents, newFinanceState: o.newState, txnId: o.txnId, reason },
       severity: 'warning',
     });
 
-    return res.json({ ok: true, txnId: result.txnId, refundedCents: refundCents, newFinanceState: newState });
+    return res.json({ ok: true, txnId: o.txnId, refundedCents: o.refundedCents, newFinanceState: o.newState });
   } catch (err: any) {
     logger.error('[AdminWallet][Refund] error', { error: err.message });
     return res.status(500).json({ error: 'Refund failed', detail: err.message });
