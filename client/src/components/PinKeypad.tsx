@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Delete, Check, Eye, EyeOff } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { getApiUrl } from '@/lib/apiConfig';
+import { apiRequest } from '@/lib/queryClient';
 
 interface PinKeypadProps {
   pinLength?: 4 | 5 | 6;
@@ -290,14 +291,13 @@ export function PinSetupFlow({
 
     setLoading(true);
     try {
-      const response = await fetch(getApiUrl('/api/pin-auth/setup'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          pin: confirmPin, 
-          email,
-          deviceType: 'web',
-        }),
+      // AUTH 2026-08-17: /api/pin-auth/setup now requires a verified Firebase
+      // token and derives the account from it. apiRequest attaches the bearer;
+      // the email is sent only so a mismatch is refused, never to select a user.
+      const response = await apiRequest('POST', '/api/pin-auth/setup', {
+        pin: confirmPin,
+        email,
+        deviceType: 'web',
       });
 
       const data = await response.json();
@@ -383,11 +383,7 @@ export function PinLoginFlow({
     setError('');
 
     try {
-      const response = await fetch(getApiUrl('/api/pin-auth/verify'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin, email }),
-      });
+      const response = await apiRequest('POST', '/api/pin-auth/verify', { pin, email });
 
       const data = await response.json();
 
