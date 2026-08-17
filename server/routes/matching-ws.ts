@@ -12,10 +12,34 @@
  */
 
 import { WebSocketServer, WebSocket } from 'ws';
-import type { Server } from 'http';
+import type { Server, IncomingMessage } from 'http';
 import { logger } from '../lib/logger';
-import { pool } from '../db';
+import { pool, db } from '../db';
 import { eventBus } from '../services/EventBus';
+import { verifySessionCookie, SESSION_COOKIE_NAME } from '../lib/sessionCookies';
+import { isSuperAdmin } from '../middleware/rbac';
+import { bookingRequests } from '../../shared/schema';
+import { eq } from 'drizzle-orm';
+
+// Per-socket identity attached by verifyClient. Never trust client-supplied
+// uid/email — this object is set from the verified Firebase session cookie
+// on the WS upgrade, before any message is processed.
+type AuthedSocket = WebSocket & {
+  uid?: string;
+  email?: string;
+  emailVerified?: boolean;
+};
+
+function parseSessionCookieFromHeader(cookieHeader: string | undefined): string | null {
+  if (!cookieHeader) return null;
+  for (const part of cookieHeader.split(';')) {
+    const eq = part.indexOf('=');
+    if (eq < 0) continue;
+    const name = part.slice(0, eq).trim();
+    if (name === SESSION_COOKIE_NAME) return part.slice(eq + 1).trim();
+  }
+  return null;
+}
 
 export interface ProviderMatch {
   id: string;
@@ -209,14 +233,59 @@ function wireBookingEventForwarding() {
 }
 
 export function setupMatchingWebSocket(server: Server): void {
-  const wss = new WebSocketServer({ server, path: '/ws/match' });
+  // AUTH (LANE E CONFIRMED P0 / CEO 2026-08-17): the WebSocket handshake now
+  // requires a valid pw_session HttpOnly cookie. verifyClient runs on the
+  // Upgrade request BEFORE `connection` fires; a missing / invalid session
+  // returns 401 and the socket never opens. The verified uid+email are
+  // attached to the socket for downstream authorization (SUBSCRIBE_ADMIN,
+  // SUBSCRIBE_BOOKING) — those message handlers now check the socket's
+  // identity, not the client-supplied one.
+  //
+  // Rationale: previously any internet caller could open ws://…/ws/match,
+  // send { type: "SUBSCRIBE_ADMIN" }, and receive the admin live event feed
+  // (provider.accepted, provider.arriving, matching.started with real
+  // requestId / providerId / ownerId payloads). SUBSCRIBE_BOOKING was
+  // similarly wide open — any requestId string received the booking's live
+  // events. Both are cross-tenant PII leaks.
+  const wss = new WebSocketServer({
+    server,
+    path: '/ws/match',
+    verifyClient: async (info: { req: IncomingMessage }, cb: (ok: boolean, code?: number, message?: string) => void) => {
+      try {
+        const cookie = parseSessionCookieFromHeader(info.req.headers.cookie);
+        if (!cookie) return cb(false, 401, 'Unauthorized');
+        const decoded = await verifySessionCookie(cookie, true);
+        // Stash on req; picked up in `connection` handler below.
+        (info.req as any)._pwAuth = {
+          uid: decoded.uid,
+          email: (decoded.email || '').toLowerCase(),
+          emailVerified: decoded.email_verified === true,
+        };
+        cb(true);
+      } catch (err) {
+        logger.warn('[MatchingWS] Rejected unauthenticated WS upgrade');
+        cb(false, 401, 'Unauthorized');
+      }
+    },
+  });
 
   // Wire EventBus → WS forwarding once
   wireBookingEventForwarding();
 
-  wss.on('connection', (ws: WebSocket, req) => {
+  wss.on('connection', (wsRaw: WebSocket, req) => {
+    const ws = wsRaw as AuthedSocket;
+    const auth = (req as any)._pwAuth as { uid: string; email: string; emailVerified: boolean } | undefined;
+    // Belt-and-braces: if verifyClient didn't run for some reason, close now.
+    if (!auth?.uid) {
+      ws.close(1008, 'Unauthorized');
+      return;
+    }
+    ws.uid = auth.uid;
+    ws.email = auth.email;
+    ws.emailVerified = auth.emailVerified;
+
     const ip = req.socket.remoteAddress;
-    logger.info('[MatchingWS] Client connected', { ip });
+    logger.info('[MatchingWS] Client connected', { ip, uid: auth.uid });
 
     let searchTimer: ReturnType<typeof setTimeout> | null = null;
     let subscribedBookings: string[] = [];
@@ -256,14 +325,39 @@ export function setupMatchingWebSocket(server: Server): void {
         }
 
         // ── Booking event subscription (intelligence layer) ──────────────────
+        // AUTHZ: the socket may subscribe to a booking's live events only
+        // if it is a party to that booking (customerId==uid OR providerId==uid).
+        // Verified super-admins may subscribe to any booking. Anyone else
+        // gets a FORBIDDEN response and no watcher added — closing the
+        // pre-fix cross-tenant leak.
         if (msg.type === 'SUBSCRIBE_BOOKING') {
           const requestId = msg.requestId as string;
-          if (requestId && !subscribedBookings.includes(requestId)) {
+          if (!requestId || subscribedBookings.includes(requestId)) return;
+          (async () => {
+            const isAdmin = !!ws.uid && !!ws.email && ws.emailVerified === true && isSuperAdmin(ws.email);
+            let party = false;
+            if (!isAdmin) {
+              try {
+                const [row] = await db
+                  .select({ ownerId: bookingRequests.ownerId, providerId: bookingRequests.providerId })
+                  .from(bookingRequests)
+                  .where(eq(bookingRequests.requestId, requestId))
+                  .limit(1);
+                if (row && (row.ownerId === ws.uid || row.providerId === ws.uid)) party = true;
+              } catch (err: any) {
+                logger.warn('[MatchingWS] booking party lookup failed', { requestId, error: err.message });
+              }
+            }
+            if (!isAdmin && !party) {
+              send(ws, { type: 'FORBIDDEN', requestId });
+              logger.warn('[MatchingWS] Rejected SUBSCRIBE_BOOKING — not party', { requestId, uid: ws.uid });
+              return;
+            }
             subscribedBookings.push(requestId);
             addWatcher(requestId, ws);
             send(ws, { type: 'SUBSCRIBED', requestId });
-            logger.info('[MatchingWS] Client subscribed to booking', { requestId });
-          }
+            logger.info('[MatchingWS] Client subscribed to booking', { requestId, uid: ws.uid, viaAdmin: isAdmin });
+          })().catch((err) => logger.error('[MatchingWS] SUBSCRIBE_BOOKING handler error', { error: err.message }));
         }
 
         if (msg.type === 'UNSUBSCRIBE_BOOKING') {
@@ -275,10 +369,19 @@ export function setupMatchingWebSocket(server: Server): void {
         }
 
         // ── Admin live feed subscription ──────────────────────────────────
+        // AUTHZ: only VERIFIED super-admins (SUPER_ADMIN_EMAILS +
+        // email_verified) receive the cross-marketplace event stream.
+        // Every other authenticated user is rejected. Was fully open before.
         if (msg.type === 'SUBSCRIBE_ADMIN') {
+          const isAdmin = !!ws.email && ws.emailVerified === true && isSuperAdmin(ws.email);
+          if (!isAdmin) {
+            send(ws, { type: 'FORBIDDEN', scope: 'admin' });
+            logger.warn('[MatchingWS] Rejected SUBSCRIBE_ADMIN — not super-admin', { uid: ws.uid, email: ws.email });
+            return;
+          }
           adminWatchers.add(ws);
           send(ws, { type: 'SUBSCRIBED', scope: 'admin' });
-          logger.info('[MatchingWS] Admin subscribed to live event feed');
+          logger.info('[MatchingWS] Admin subscribed to live event feed', { uid: ws.uid });
         }
       } catch (err) {
         logger.warn('[MatchingWS] Bad message', { raw: raw.toString() });
