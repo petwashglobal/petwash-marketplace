@@ -10,6 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { PasskeyEnforcementBanner } from '@/components/security/PasskeyEnforcementBanner';
 import { SecurityStatusPanel } from '@/components/security/SecurityStatusPanel';
+import { ChangePasswordPanel } from '@/components/security/ChangePasswordPanel';
+import { useQuery as _useQuerySecurityHelper } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useLanguage } from '@/lib/languageStore';
 import { Layout } from '@/components/Layout';
@@ -217,6 +219,11 @@ export default function SecuritySettings() {
         {/* PR-AUTH-SECURITY-9 §2: server-truth status rows go FIRST. */}
         <div className="mb-6">
           <SecurityStatusPanel language={language} />
+        </div>
+
+        {/* PR-AUTH-SECURITY-9 §5: change/add password — server-truth `hasPassword` drives the mode. */}
+        <div className="mb-6">
+          <_PasswordPanelBridge language={language} />
         </div>
 
         {roleLoading ? (

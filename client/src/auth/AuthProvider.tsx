@@ -27,6 +27,24 @@ export const AUTH_LOCAL_STORAGE_KEYS = [
   'signup_intent',
 ] as const;
 
+// PR-AUTH-SECURITY-9 §8: SSE cleanup registry. Any module that opens a
+// long-lived EventSource for an authed user MUST register its close fn here
+// so logout() can tear the stream down BEFORE clearing the session cookie.
+// A half-authed stream would otherwise keep pushing until the browser tab
+// closes.  Register/unregister is idempotent; unknown closers are ignored.
+const _sseClosers = new Set<() => void>();
+export function registerEventSourceCloser(close: () => void): () => void {
+  _sseClosers.add(close);
+  return () => { _sseClosers.delete(close); };
+}
+export function closeAllEventSources(): void {
+  for (const close of Array.from(_sseClosers)) {
+    try { close(); } catch { /* noop */ }
+  }
+  _sseClosers.clear();
+}
+
+
 // Mirror of `shared/adminRoles.ts` ADMIN_ROLES on the client. The literal must
 // include every role the server may mint as a Firebase custom claim — otherwise
 // `(c.role as UserRole) || 'public'` silently downgrades real admin roles
@@ -335,6 +353,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [isDevMode]);
 
   const logout = async () => {
+    // PR-AUTH-SECURITY-9 §8: tear down any authenticated SSE/EventSource
+    // BEFORE we invalidate the session cookie so a half-authed stream can't
+    // keep pushing after logout.
+    closeAllEventSources();
     // Always clear the React Query cache first, regardless of mode, so no
     // cached user data survives the logout even if subsequent steps fail.
     // PR-FRES-5: also clear the postLoginCoordinator (#182) module-level
