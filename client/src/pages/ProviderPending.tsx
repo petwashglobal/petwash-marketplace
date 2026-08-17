@@ -308,7 +308,7 @@ export default function ProviderPending() {
                         <div key={s.stage} className="flex items-start flex-1 min-w-0">
                           <div className="flex flex-col items-center gap-1 flex-shrink-0 w-16">
                             <div
-                              className={`w-3 h-3 rounded-full ${active ? "bg-amber-500" : "bg-gray-200"}`}
+                              className={`w-3 h-3 rounded-full ${active ? "bg-amber-500" : "bg-gray-400"}`}
                               data-testid={`progress-dot-${s.stage}`}
                             />
                             <span className={`text-xs text-center leading-tight ${active ? "text-amber-700 font-medium" : "text-gray-400"}`}>
@@ -316,7 +316,7 @@ export default function ProviderPending() {
                             </span>
                           </div>
                           {i < steps.length - 1 && (
-                            <div className={`h-0.5 flex-1 mt-1 ${connectorActive ? "bg-amber-500" : "bg-gray-200"}`} />
+                            <div className={`h-0.5 flex-1 mt-1 ${connectorActive ? "bg-amber-500" : "bg-gray-400"}`} />
                           )}
                         </div>
                       );
