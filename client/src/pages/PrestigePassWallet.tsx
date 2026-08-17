@@ -1095,6 +1095,12 @@ export default function PrestigePassWallet() {
   const [showKioskPass, setShowKioskPass]   = useState(false);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const [washEvent, setWashEvent]           = useState<{ bay:string; stationId:string|null; deductedCents:number; newBalanceCents:number; source:string; } | null>(null);
+  // Set to true when the wash-events SSE cannot be established — either the
+  // pw_session bootstrap failed, or the SSE socket landed in CLOSED state
+  // after browser retries. UI degrades to a banner instead of silently
+  // subscribing anonymously (which would risk cross-tenant event delivery).
+  // (CEO P0 patch 2026-08-17.)
+  const [liveEventsUnavailable, setLiveEventsUnavailable] = useState(false);
   const [petEditOpen, setPetEditOpen]       = useState(false);
   const [petForm, setPetForm]               = useState({ petName:'', petType:'dog', petBreed:'', petNotes:'' });
   const [savingPet, setSavingPet]           = useState(false);
@@ -1165,22 +1171,62 @@ export default function PrestigePassWallet() {
 
   useEffect(() => {
     if (!wallet?.pass.userId) return;
-    // EventSource can't send an Authorization header (browser API limitation).
-    // Bearer-only clients — mobile app webviews, sessions that never got the
-    // express session cookie — used to fail the SSE auth and never receive
-    // live K9000 wash events. We fetch the current Firebase ID token and
-    // append it as ?token=; the server verifies it in the SSE handler.
-    // Cookie-authenticated browsers still work without the token.
+    // Live wash-event stream. The Firebase ID token MUST NOT appear in the
+    // URL, query string, browser history, proxy logs, or Referer — that was
+    // the P0 regression the CEO called out on 2026-08-17. The correct pattern:
+    //
+    //   Firebase-authed client
+    //     → POST /api/auth/session with idToken in Authorization header
+    //     → server sets HttpOnly Secure pw_session cookie
+    //     → open EventSource; browser sends the cookie automatically
+    //     → server resolves canonical user from cookie ONLY
+    //
+    // AuthProvider already bootstraps the session on every onAuthStateChanged
+    // (see ensureServerSession in ../auth/AuthProvider.tsx), so for warm
+    // sessions the cookie is already present. For cold or edge cases where
+    // bootstrap has not yet completed / previously failed, we re-run it here
+    // BEFORE opening the stream, so a Bearer-only Firebase user still lands
+    // with a real cookie. If bootstrap fails, we surface an "unavailable"
+    // state instead of silently subscribing anonymously (which could deliver
+    // another user's events — the CEO tenancy rule).
     let cancelled = false;
     let es: EventSource | null = null;
     (async () => {
-      let url = '/api/prestige-pass/session/stream';
-      try {
-        const token = fbUser ? await fbUser.getIdToken() : null;
-        if (token) url += `?token=${encodeURIComponent(token)}`;
-      } catch { /* fall through — server may still accept via cookie */ }
+      if (fbUser) {
+        try {
+          const idToken = await fbUser.getIdToken();
+          const bootstrap = await fetch('/api/auth/session', {
+            method: 'POST',
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${idToken}`,
+            },
+            body: JSON.stringify({ idToken }),
+          });
+          if (!bootstrap.ok) {
+            // Bootstrap failed. Do not open the stream — an anonymous SSE
+            // subscribe risks routing events keyed on the wrong user.
+            if (!cancelled) setLiveEventsUnavailable(true);
+            return;
+          }
+        } catch {
+          if (!cancelled) setLiveEventsUnavailable(true);
+          return;
+        }
+      }
       if (cancelled) return;
-      es = new EventSource(url);
+      es = new EventSource('/api/prestige-pass/session/stream', { withCredentials: true });
+      es.onopen = () => {
+        if (!cancelled) setLiveEventsUnavailable(false);
+      };
+      es.onerror = () => {
+        // EventSource auto-reconnects on transient errors; only surface an
+        // "unavailable" indicator if the socket is decisively closed.
+        if (!cancelled && es?.readyState === EventSource.CLOSED) {
+          setLiveEventsUnavailable(true);
+        }
+      };
       es.onmessage = (e) => {
         try {
           const data = JSON.parse(e.data);
@@ -1343,6 +1389,21 @@ export default function PrestigePassWallet() {
             {he ? 'הוסף ל-Google Wallet' : 'Add to Google Wallet'}
           </button>
         </div>
+
+        {/* Live-events unavailable banner — surfaced when SSE bootstrap
+            failed or the socket permanently closed. Wallet still refreshes
+            via React Query; this only signals the loss of the wash-started
+            push. Silent anonymous SSE is not an option (would risk
+            cross-tenant event leakage). */}
+        {liveEventsUnavailable && !washEvent && (
+          <div
+            role="status"
+            data-testid="prestige-live-events-unavailable"
+            style={{ padding: '8px 20px', background: '#fef3c7', color: '#78350f', fontSize: '0.78rem', textAlign: 'center' }}
+          >
+            {he ? 'עדכונים בזמן אמת אינם זמינים כרגע — נסה לרענן.' : 'Live wash updates are temporarily unavailable — please refresh.'}
+          </div>
+        )}
 
         {/* Live wash banner */}
         {washEvent && (
