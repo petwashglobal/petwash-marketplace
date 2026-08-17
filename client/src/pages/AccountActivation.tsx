@@ -136,10 +136,18 @@ export default function AccountActivation() {
     : 4;
 
   // ── Send OTP ────────────────────────────────────────────────────────────
+  // Uses the canonical /api/auth/sms/start endpoint (PR-AUTH-OTP-8 stack).
+  // The legacy pair (/api/auth/phone/send-code + /verify-code) still exists
+  // in publicAuthRoutes.ts but is deprecated; SignUpLuxury was migrated in
+  // PR #1855 while this page was missed. The two endpoints diverged
+  // enough — different rate-limit budgets, different Turnstile handling,
+  // different audit-log actionType — that keeping activation on the legacy
+  // path meant the same phone number saw different lockout behavior between
+  // signup and activation. (Agent J audit 2026-08-16.)
   const sendOtpMutation = useMutation({
     mutationFn: async () => {
       if (!user?.phoneNumber && !user?.email) throw new Error("No phone number on account");
-      const res = await apiRequest("POST", "/api/auth/phone/send-code", {
+      const res = await apiRequest("POST", "/api/auth/sms/start", {
         phone: user.phoneNumber,
       });
       return res.json();
@@ -154,14 +162,18 @@ export default function AccountActivation() {
   });
 
   // ── Verify OTP ──────────────────────────────────────────────────────────
+  // Canonical endpoint returns `{ ok: true, verificationToken, ... }` on
+  // success and `{ ok: false, message }` (HTTP 401) on failure — different
+  // from the legacy shape (`success`/`verified`) the previous code was
+  // checking. Read the canonical shape.
   const verifyOtpMutation = useMutation({
     mutationFn: async (code: string) => {
-      const res = await apiRequest("POST", "/api/auth/phone/verify-code", {
+      const res = await apiRequest("POST", "/api/auth/sms/verify", {
         phone: user?.phoneNumber,
         code,
       });
       const data = await res.json();
-      if (!data.success && !data.verified) throw new Error(data.message || "Invalid code");
+      if (!data.ok || !data.verificationToken) throw new Error(data.message || "Invalid code");
       // Now persist activation via validate-tokens with userId
       if (userId) {
         await apiRequest("POST", "/api/onboarding-verification/validate-tokens", {
