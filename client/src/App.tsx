@@ -1192,7 +1192,11 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => <LoyaltyBirthday />}
         </Route>
         <Route path="/loyalty/refer">
-          {() => <LoyaltyRefer />}
+          {() => (
+            <RequireAuth>
+              <LoyaltyRefer />
+            </RequireAuth>
+          )}
         </Route>
         <Route path="/loyalty/credits">
           {() => (

@@ -208,7 +208,13 @@ const USER_MENU_ITEMS = [
 ];
 
 const PARTNER_MENU_ITEMS = [
-  { id: "franchise", labelKey: "franchise.label", href: "/franchise" },
+  // Drawer entry points at the CANONICAL /partners/franchise page which has
+  // the real wired inquiry form (POST /api/franchise/inquiry -> Firestore
+  // franchise_inquiries). The bare /franchise route renders a marketing page
+  // whose only CTAs are mailto:franchise@petwash.co.il -- every drawer click
+  // that landed there dropped the lead into an email inbox no one triages.
+  // (LANE D audit 2026-08-17, top severity.)
+  { id: "franchise", labelKey: "franchise.label", href: "/partners/franchise" },
   { id: "business-locations", labelKey: "business-locations.label", href: "/partners/locations" },
   { id: "suppliers", labelKey: "suppliers.label", href: "/partners/suppliers" },
   { id: "municipal", labelKey: "municipal.label", href: "/partners/municipal" },
