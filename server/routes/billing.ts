@@ -15,15 +15,56 @@
 
 import { Router } from "express";
 import { z } from "zod";
+import crypto from "crypto";
 import { BillingEngine } from "../services/BillingEngine";
 import {
   getBillingRecord,
   getBillingRecordsByBooking,
   getAuditTrail,
 } from "../services/BillingLedger";
+import { db } from "../db";
+import { sql } from "drizzle-orm";
 import { logger } from "../lib/logger";
 
 const router = Router();
+
+/**
+ * Serialize refund attempts on the same billing record with a Postgres advisory
+ * transaction lock. The lock key is derived from the recordId (SHA-1 → 8 bytes
+ * → bigint). Two rapid /refund calls with the same recordId (admin double-
+ * click, network retry, browser tab, webhook replay) queue up — only one
+ * transitionEscrowState runs at a time.
+ *
+ * Why this is needed: transitionEscrowState reads paymentFlowStatus OUTSIDE
+ * the update transaction (see EscrowStateMachine.ts:91-101). Without this
+ * lock two concurrent refunds both observe fromStatus='held_in_escrow',
+ * both pass the transition-allowed check, and both run the update — the
+ * second refund appends a duplicate audit row and (per BillingEngine.ts)
+ * resolves a second SUMIT document set.
+ *
+ * Lock scope: pg_advisory_xact_lock — auto-released on transaction commit/
+ * rollback. We wrap the entire refund flow in one transaction so the lock
+ * survives the underlying transitionEscrowState + document resolution.
+ *
+ * No money math change: the amount, VAT, commission, and SUMIT mapping the
+ * successful call produces are byte-identical to pre-fix. The lock only
+ * prevents a duplicate execution — it never changes what a single
+ * execution does.
+ */
+function recordIdLockKey(recordId: string): bigint {
+  const digest = crypto.createHash("sha1").update(`billing-refund:${recordId}`).digest();
+  // Take first 8 bytes as unsigned bigint; PG accepts signed bigint so mask
+  // the sign bit to stay in safe range for a two-key advisory lock.
+  return BigInt("0x" + digest.subarray(0, 8).toString("hex")) & BigInt("0x7fffffffffffffff");
+}
+
+async function withRefundLock<T>(recordId: string, fn: () => Promise<T>): Promise<T> {
+  const key = recordIdLockKey(recordId);
+  return await db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${key}::bigint)`);
+    return await fn();
+  });
+}
 
 // ── Zod schemas ───────────────────────────────────────────────────────────────
 
@@ -143,6 +184,13 @@ router.post("/service-completed", async (req, res) => {
 /**
  * POST /api/billing/refund
  * Issue a full or partial refund.
+ *
+ * Concurrency: serialized per-recordId via pg_advisory_xact_lock (see
+ * withRefundLock at the top of this file). Two concurrent refund calls
+ * for the same recordId queue; the second observes the updated
+ * paymentFlowStatus after the first commits and is no-op'd inside
+ * EscrowStateMachine.transitionEscrowState. Preserves all existing
+ * money math (amount / VAT / commission / SUMIT mapping unchanged).
  */
 router.post("/refund", async (req, res) => {
   try {
@@ -152,9 +200,12 @@ router.post("/refund", async (req, res) => {
     }
 
     const { recordId, bookingId, refundAgorot, isPartial, adminId } = parsed.data;
-    const result = await BillingEngine.handleRefund(
-      recordId, bookingId, refundAgorot, isPartial, adminId
-    );
+
+    const result = await withRefundLock(recordId, async () => {
+      return await BillingEngine.handleRefund(
+        recordId, bookingId, refundAgorot, isPartial, adminId
+      );
+    });
 
     return res.json({
       status:          result.status,
