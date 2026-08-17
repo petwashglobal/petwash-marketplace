@@ -1101,6 +1101,25 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // the "use a one-time code" link; social + passkey remain on both modes.
   const loginReady = !busy && emailValid && password.length >= 1;
 
+  // PR-AUTH-SECURITY-9: "Remember me on this device" checkbox.
+  //   ON  → 14-day persistent session cookie
+  //   OFF → session cookie (browser drops on tab close)
+  // Persisted per-device in a tiny sessionStorage key so AuthProvider's
+  // postSession() can attach it as `rememberMe: true|false`. NEVER a password.
+  const [rememberMe, setRememberMe] = useState<boolean>(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      const v = window.sessionStorage.getItem('pw_remember_me');
+      if (v === '0') return false;
+      if (v === '1') return true;
+    } catch { /* noop */ }
+    return true; // default ON for existing behavior
+  });
+  const persistRememberMe = (v: boolean) => {
+    setRememberMe(v);
+    try { window.sessionStorage.setItem('pw_remember_me', v ? '1' : '0'); } catch { /* noop */ }
+  };
+
   const ctaLabel = busy ? '…' : (he ? 'המשך' : 'Continue');
 
   function startSignup() {
@@ -1138,7 +1157,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       const idToken = await cred.user.getIdToken(true);
       const r = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ idToken }),
+        // PR-AUTH-SECURITY-9: honor the "Remember me" checkbox. Server maps
+        // rememberMe:false → SESSION cookie (browser close ends it). No password stored.
+        body: JSON.stringify({ idToken, rememberMe }),
       });
       if (r.status === 428) {
         // 2-step login is ON for this account — send the SMS code and switch to the
@@ -1502,7 +1523,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         <label className="sl-label">{t.emailLabel}</label>
                         <div className="sl-inputWrap">
                           <FaEnvelope className="sl-inputIcon" aria-hidden />
-                          <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                          {/* PR-AUTH-SECURITY-9: signup email autocomplete pinned to
+                              the exact spec value "email" (WICG HTML autofill). */}
+                          <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                             value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
                         </div>
                         <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
@@ -1578,7 +1601,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     <label className="sl-label">{t.emailLabel}</label>
                     <div className="sl-inputWrap">
                       <FaEnvelope className="sl-inputIcon" aria-hidden />
-                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
+                      {/* PR-AUTH-SECURITY-9: login email autocomplete pinned to
+                          the exact spec value "email" (WICG HTML autofill). */}
+                      <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
                         value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
                     </div>
                   </div>
@@ -1599,6 +1624,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
                         {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
                       </button>
+                      {/* PR-AUTH-SECURITY-9: "Remember me on this device" — session-cookie
+                          persistence toggle. Checked → 14 day cookie; unchecked → SESSION
+                          cookie (browser drops it on tab close). NEVER stores a password. */}
+                      <label className="sl-rememberMe" data-testid="remember-me-checkbox-label"
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', opacity: 0.9, padding: '4px 0', cursor: 'pointer', flexDirection: he ? 'row-reverse' : 'row', justifyContent: he ? 'flex-end' : 'flex-start', width: '100%' }}>
+                        <input type="checkbox" checked={rememberMe}
+                          onChange={(e) => persistRememberMe(e.target.checked)}
+                          data-testid="remember-me-checkbox"
+                          style={{ width: '16px', height: '16px', cursor: 'pointer' }} />
+                        <span>{he ? 'זכור אותי במכשיר הזה' : 'Remember me on this device'}</span>
+                      </label>
                     </>
                   )}
                   {/* Toggle ONLY switches between code-first and password — it does not

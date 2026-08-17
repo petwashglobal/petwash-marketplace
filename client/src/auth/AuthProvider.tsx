@@ -105,12 +105,31 @@ const createDevUser = (): Partial<User> => ({
   toJSON: () => ({})
 });
 
+// PR-AUTH-SECURITY-9: "Remember me on this device" preference is remembered
+// per-device (NOT per-account) via a tiny sessionStorage key set by the login
+// page before a fresh sign-in, and cleared by AUTH_LOCAL_STORAGE_KEYS on
+// logout. It's a UI preference — NEVER a password, NEVER a token.
+const REMEMBER_ME_KEY = 'pw_remember_me';
+
+function readRememberMePreference(): boolean | undefined {
+  if (typeof window === 'undefined') return undefined;
+  try {
+    const v = window.sessionStorage.getItem(REMEMBER_ME_KEY);
+    if (v === '1') return true;
+    if (v === '0') return false;
+    return undefined;
+  } catch { return undefined; }
+}
+
 async function postSession(idToken: string): Promise<Response> {
+  const rememberMe = readRememberMePreference();
   return fetch(getApiUrl('/api/auth/session'), {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     credentials: 'include',
-    body: JSON.stringify({ idToken }),
+    body: JSON.stringify(
+      typeof rememberMe === 'boolean' ? { idToken, rememberMe } : { idToken },
+    ),
   });
 }
 

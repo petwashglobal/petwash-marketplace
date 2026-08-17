@@ -1168,7 +1168,14 @@ self.addEventListener('notificationclick', (event) => {
         traceId,
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
-      const { idToken, expiresInMs = 432000000, captchaToken, turnstileToken, dateOfBirth: bodyDob } = req.body;
+      // PR-AUTH-SECURITY-9 (2026-08-17): rememberMe is an explicit boolean from
+      // the client's "Remember me on this device" checkbox.
+      //   true  → persistent 14-day cookie
+      //   false → SESSION cookie (browser drops on tab close) — no maxAge, no
+      //           password stored anywhere.
+      // Legacy callers may still pass expiresInMs; if rememberMe is undefined we
+      // honor expiresInMs for backward compatibility.
+      const { idToken, expiresInMs, rememberMe, captchaToken, turnstileToken, dateOfBirth: bodyDob } = req.body;
       
       if (!idToken) {
         logger.warn('[Session] Missing ID token in request - client error (400)', { traceId });
@@ -1286,10 +1293,16 @@ self.addEventListener('notificationclick', (event) => {
         return res.status(401).json({ error: 'Invalid ID token', errorCode: 'INVALID_TOKEN' });
       }
 
-      logger.debug('[Session] Verifying ID token and creating session cookie');
+      logger.debug('[Session] Verifying ID token and creating session cookie', {
+        rememberMe: typeof rememberMe === 'boolean' ? rememberMe : '(unset)',
+        expiresInMs: expiresInMs ?? '(unset)',
+      });
       const { createSessionCookie } = await import('./lib/sessionCookies');
       try {
-        await createSessionCookie(idToken, res);
+        await createSessionCookie(idToken, res, {
+          rememberMe: typeof rememberMe === 'boolean' ? rememberMe : undefined,
+          expiresInMs: typeof expiresInMs === 'number' ? expiresInMs : undefined,
+        });
       } catch (sessionCookieErr: any) {
         // Distinguish a Firebase Admin SDK / IAM misconfiguration (the most
         // common production failure mode for admin login) from a generic 500
@@ -1509,7 +1522,18 @@ self.addEventListener('notificationclick', (event) => {
           isNewUser: (_syncResult as any)?.isNewUser ?? null,
         },
       });
-      res.json({ ok: true, cookie: '__session', expiresInMs: 1209600000 });
+      // PR-AUTH-SECURITY-9: report the actual persistence chosen so the client
+      // can display the correct "signed in for X" hint. `session` means the
+      // cookie dies when the tab closes (rememberMe=false).
+      const rememberChosen = typeof rememberMe === 'boolean'
+        ? rememberMe
+        : (typeof expiresInMs === 'number' && expiresInMs > 0);
+      res.json({
+        ok: true,
+        cookie: '__session',
+        persistence: rememberChosen ? 'persistent' : 'session',
+        expiresInMs: rememberChosen ? 1209600000 : 0,
+      });
     } catch (error: any) {
       logger.error('[Session] Session cookie creation error', error, { traceId: req.body?.traceId });
       const errorCode = error.code === 'auth/id-token-expired' ? 'TOKEN_EXPIRED' : 'SESSION_FAILED';

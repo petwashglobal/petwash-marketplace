@@ -50,6 +50,13 @@ interface PhoneInputProps {
   label?: string;
   required?: boolean;
   disabled?: boolean;
+  /**
+   * PR-AUTH-SECURITY-9: WICG-spec autocomplete token to forward to the underlying
+   * <input>. Default "tel" per HTML autofill spec so iOS/Android/Chrome
+   * password-manager and contact-fill work correctly. Callers can override with
+   * "tel-national" or "off" if they specifically need that.
+   */
+  autoComplete?: string;
 }
 
 export function PhoneInput({
@@ -61,6 +68,7 @@ export function PhoneInput({
   defaultCountry = "IL",
   approvedCountries = [...APPROVED_COUNTRIES],
   disabled = false,
+  autoComplete = "tel",
 }: PhoneInputProps) {
   const allowed = useMemo(() => {
     const supported = new Set(getCountries());
@@ -114,6 +122,10 @@ export function PhoneInput({
           countrySelectProps={{
             "aria-label": "Country",
           }}
+          /* PR-AUTH-SECURITY-9: forward the WICG-spec autocomplete token to the
+             underlying <input>. react-phone-number-input exposes the underlying
+             number input via `numberInputProps`. Default "tel". */
+          numberInputProps={{ autoComplete }}
           defaultCountry={safeDefault as any}
           countries={allowed as any}
           /* Pin Israel to the top so it's the default/first choice regardless of the
