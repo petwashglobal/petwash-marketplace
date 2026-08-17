@@ -4,6 +4,7 @@ import { Layout } from '@/components/Layout';
 import { useLanguage } from '@/lib/languageStore';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { apiRequest } from '@/lib/queryClient';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { QRCodeSVG } from 'qrcode.react';
 import {
   Shield, RefreshCw, Wallet, ChevronRight, CreditCard, Zap, Gift,
@@ -1084,6 +1085,7 @@ export default function PrestigePassWallet() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [, navigate] = useLocation();
+  const { user: fbUser } = useFirebaseAuth();
 
   const [selectedBay, setSelectedBay]       = useState<'left' | 'right' | 'any'>('any');
   const [qrToken, setQrToken]               = useState<QrToken | null>(null);
@@ -1163,19 +1165,38 @@ export default function PrestigePassWallet() {
 
   useEffect(() => {
     if (!wallet?.pass.userId) return;
-    const es = new EventSource('/api/prestige-pass/session/stream');
-    es.onmessage = (e) => {
+    // EventSource can't send an Authorization header (browser API limitation).
+    // Bearer-only clients — mobile app webviews, sessions that never got the
+    // express session cookie — used to fail the SSE auth and never receive
+    // live K9000 wash events. We fetch the current Firebase ID token and
+    // append it as ?token=; the server verifies it in the SSE handler.
+    // Cookie-authenticated browsers still work without the token.
+    let cancelled = false;
+    let es: EventSource | null = null;
+    (async () => {
+      let url = '/api/prestige-pass/session/stream';
       try {
-        const data = JSON.parse(e.data);
-        if (data.type === 'wash_started') {
-          setWashEvent(data);
-          queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/wallet'] });
-          queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/division-activity'] });
-        }
-      } catch { /* ignore */ }
+        const token = fbUser ? await fbUser.getIdToken() : null;
+        if (token) url += `?token=${encodeURIComponent(token)}`;
+      } catch { /* fall through — server may still accept via cookie */ }
+      if (cancelled) return;
+      es = new EventSource(url);
+      es.onmessage = (e) => {
+        try {
+          const data = JSON.parse(e.data);
+          if (data.type === 'wash_started') {
+            setWashEvent(data);
+            queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/wallet'] });
+            queryClient.invalidateQueries({ queryKey: ['/api/prestige-pass/division-activity'] });
+          }
+        } catch { /* ignore */ }
+      };
+    })();
+    return () => {
+      cancelled = true;
+      if (es) es.close();
     };
-    return () => es.close();
-  }, [wallet?.pass.userId]);
+  }, [wallet?.pass.userId, fbUser]);
 
   useEffect(() => {
     if (walletData?.pet) {

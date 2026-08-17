@@ -2155,10 +2155,33 @@ router.post('/claim-gift', async (req: Request, res: Response) => {
 // ─────────────────────────────────────────────────────────
 // GET /session/stream — SSE: real-time K9000 wash events
 // Client subscribes; K9000 /token/redeem pushes events here
+//
+// Auth: session cookie OR ?token=<firebase ID token>.
+// EventSource cannot attach an Authorization header (browser API limitation),
+// so Bearer-only clients — mobile app webviews, fresh sessions that never
+// received the express session cookie — used to hit this endpoint, fail
+// resolveUid, and get 401. The K9000 live wash events never appeared for
+// them. Accepting the ID token as a query param on THIS SSE endpoint only
+// closes that gap. Note: query strings are visible in access logs; Firebase
+// ID tokens are short-lived (~1h) and can be revoked, so leakage impact is
+// bounded — but do not extend this pattern to other endpoints without a
+// specific reason. (Agent J audit 2026-08-16 / CEO octopus item 175.)
 // ─────────────────────────────────────────────────────────
-router.get('/session/stream', (req: Request, res: Response) => {
-  const session = (req as any).session;
-  const userId  = resolveUid(req);
+router.get('/session/stream', async (req: Request, res: Response) => {
+  let userId = resolveUid(req);
+
+  if (!userId) {
+    const queryToken = typeof req.query.token === 'string' ? req.query.token : '';
+    if (queryToken) {
+      try {
+        const decoded = await firebaseAuth.verifyIdToken(queryToken, true);
+        userId = decoded.uid;
+      } catch {
+        // fall through to 401 below
+      }
+    }
+  }
+
   if (!userId) { res.status(401).end(); return; }
 
   res.setHeader('Content-Type',  'text/event-stream');
