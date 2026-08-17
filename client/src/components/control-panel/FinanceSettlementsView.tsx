@@ -1,381 +1,111 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import {
-  DollarSign,
-  TrendingUp,
-  Users,
-  FileText,
-  Download,
-  Calendar,
-  CheckCircle,
-  Clock,
-  XCircle,
-  Building2,
-  Receipt,
-} from "lucide-react";
+/**
+ * FINANCE & SETTLEMENTS — Unified Control Panel tab
+ *
+ * ─────────────────────────────────────────────────────────────────────────────
+ * 2026-08-17 client↔server contract sweep (Lane E, D12)
+ *
+ * Every data source this tab was built on is missing on the server:
+ *
+ *   GET /api/finance/settlements               → no handler
+ *   GET /api/finance/settlements/:id/export    → no handler (opened in a new tab)
+ *   GET /api/finance/commissions               → no handler
+ *   GET /api/finance/summary                   → EXISTS but returns
+ *                                                { kpis, network, ownership,
+ *                                                  stationCount } — not the
+ *                                                { summary: { totalRevenue,
+ *                                                  totalCommissions, totalVAT,
+ *                                                  pendingSettlements } } this
+ *                                                view read.
+ *
+ * `server/routes/finance.ts` exposes only /profitability/stations,
+ * /profitability/network, /capital-signals, /ownership-comparison,
+ * /friction-analytics and /summary.
+ *
+ * The consequence was worse than an empty screen: the four headline cards
+ * rendered "₪0.00" revenue / commissions / VAT and "0" pending settlements from
+ * `?? '0.00'` fallbacks — fabricated money figures on an executive surface,
+ * indistinguishable from a genuinely quiet month.
+ *
+ * Per the platform rule ("No fake data in production… dashboards must read live
+ * state or render wired: false with a reason"), this tab now states plainly that
+ * it is not connected and points at the finance surfaces that ARE wired, rather
+ * than inventing a settlement ledger. Building a real partner-settlement /
+ * commission API is a product decision for the CEO + finance owner — it must not
+ * be improvised by a UI patch, and it must not create a second write authority
+ * over money that the payout/escrow services already own.
+ * ─────────────────────────────────────────────────────────────────────────────
+ */
+
+import { AlertTriangle, ExternalLink } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { useToast } from "@/hooks/use-toast";
 
-type SettlementStatus = "pending" | "approved" | "paid";
-type PartnerType = "city" | "council" | "mall" | "licensed_operator" | "location_partner" | "sponsor";
-
-interface Settlement {
-  id: string;
-  partnerId: string;
-  partnerName?: string;
-  partnerType?: PartnerType;
-  periodStart: string;
-  periodEnd: string;
-  grossRevenue: string;
-  partnerShare: string;
-  petwashShare: string;
-  vatAmount: string;
-  status: SettlementStatus;
-  createdAt: string;
-}
-
-interface Commission {
-  commissionId: string;
-  providerId: string;
-  providerName?: string;
-  customerPaidAmount: string;
-  commissionRate: string;
-  commissionAmount: string;
-  vatAmount: string;
-  providerPayout: string;
-  status: string;
-  createdAt: string;
-}
-
-interface SettlementsResponse {
-  settlements?: Settlement[];
-}
-
-interface CommissionsResponse {
-  commissions?: Commission[];
-}
-
-interface FinanceSummaryResponse {
-  summary?: {
-    totalRevenue: string;
-    totalCommissions: string;
-    totalVAT: string;
-    pendingSettlements: number;
-  };
-}
+/** Finance surfaces that are genuinely wired today. */
+const WIRED_ALTERNATIVES: { label: string; path: string; detail: string }[] = [
+  {
+    label: "Finance Profitability",
+    path: "/finance/profitability",
+    detail: "Per-station and network economics — GET /api/finance/profitability/*",
+  },
+  {
+    label: "Money Flow",
+    path: "/admin/money-flow",
+    detail: "Live money movement — GET /api/finance/money-flow-summary",
+  },
+  {
+    label: "Wallet & Payout Control",
+    path: "/admin/wallet-finance",
+    detail: "Payout batches, escrow, reconciliation exceptions",
+  },
+];
 
 export default function FinanceSettlementsView() {
-  const [periodFilter, setPeriodFilter] = useState<string>("current");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
-  const { toast } = useToast();
-
-  // Fetch settlements
-  const { data: settlementsData, isLoading: settlementsLoading } = useQuery<SettlementsResponse>({
-    queryKey: ["/api/finance/settlements", periodFilter, statusFilter],
-  });
-
-  // Fetch commissions
-  const { data: commissionsData } = useQuery<CommissionsResponse>({
-    queryKey: ["/api/finance/commissions", "recent"],
-  });
-
-  // Fetch financial summary
-  const { data: summaryData } = useQuery<FinanceSummaryResponse>({
-    queryKey: ["/api/finance/summary"],
-  });
-
-  const settlements = (settlementsData?.settlements || []) as Settlement[];
-  const commissions = (commissionsData?.commissions || []) as Commission[];
-  const summary = summaryData?.summary || {
-    totalRevenue: "0.00",
-    totalCommissions: "0.00",
-    totalVAT: "0.00",
-    pendingSettlements: 0,
-  };
-
-  const getStatusBadge = (status: SettlementStatus) => {
-    const variants: Record<SettlementStatus, "default" | "secondary" | "destructive"> = {
-      pending: "secondary",
-      approved: "default",
-      paid: "default",
-    };
-    const colors: Record<SettlementStatus, string> = {
-      pending: "",
-      approved: "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300",
-      paid: "bg-[#D4AF37] text-black dark:bg-[#B8932F] dark:text-[#D4AF37]",
-    };
-    return (
-      <Badge variant={variants[status]} className={colors[status]}>
-        {status}
-      </Badge>
-    );
-  };
-
-  const exportSettlement = (settlementId: string) => {
-    window.open(`/api/finance/settlements/${settlementId}/export`, '_blank');
-    toast({
-      title: "Exporting Settlement",
-      description: `CSV download started for settlement ${settlementId}`,
-    });
-  };
-
-  const downloadInvoice = (commissionId: string, language: "he" | "en" = "he") => {
-    window.open(`/api/contractor-invoices/${commissionId}/generate?lang=${language}`, "_blank");
-    toast({
-      title: "Generating Invoice",
-      description: `Creating ${language === "he" ? "Hebrew" : "English"} tax invoice...`,
-    });
-  };
-
   return (
     <div className="space-y-6">
-      {/* Financial Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-        <Card data-testid="card-total-revenue">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Total Revenue</CardTitle>
-            <TrendingUp className="w-4 h-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₪{summary.totalRevenue}</div>
-            <p className="text-xs text-muted-foreground mt-1">This month</p>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="card-total-commissions">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Commissions</CardTitle>
-            <Receipt className="w-4 h-4 text-[#B8932F]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₪{summary.totalCommissions}</div>
-            <p className="text-xs text-muted-foreground mt-1">Contractor payouts</p>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="card-total-vat">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">VAT (18%)</CardTitle>
-            <FileText className="w-4 h-4 text-[#B8932F]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">₪{summary.totalVAT}</div>
-            <p className="text-xs text-muted-foreground mt-1">Israeli tax compliance</p>
-          </CardContent>
-        </Card>
-
-        <Card data-testid="card-pending-settlements">
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pending Settlements</CardTitle>
-            <Clock className="w-4 h-4 text-[#B8932F]" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{summary.pendingSettlements}</div>
-            <p className="text-xs text-muted-foreground mt-1">Awaiting approval</p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Partner Settlements */}
-      <Card>
+      <Card data-testid="card-finance-settlements-not-wired">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Partner Settlements</CardTitle>
-              <CardDescription>
-                Monthly revenue sharing with approved cities, councils, sites, and operators
-              </CardDescription>
-            </div>
-            <Button variant="outline" data-testid="button-generate-settlements">
-              <Calendar className="w-4 h-4 mr-2" />
-              Generate Monthly
-            </Button>
-          </div>
+          <CardTitle className="flex items-center gap-2">
+            <AlertTriangle className="w-5 h-5 text-[#B8932F]" />
+            Settlements &amp; Commissions — not connected
+          </CardTitle>
+          <CardDescription>
+            This tab has no backing API. Nothing is being hidden from you: there is no
+            partner-settlement or contractor-commission endpoint on the server yet.
+          </CardDescription>
         </CardHeader>
-        <CardContent>
-          <div className="flex gap-4 mb-6">
-            <div className="flex-1">
-              <Label>Period</Label>
-              <Select value={periodFilter} onValueChange={setPeriodFilter}>
-                <SelectTrigger data-testid="select-period-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="current">Current Month</SelectItem>
-                  <SelectItem value="last">Last Month</SelectItem>
-                  <SelectItem value="all">All Periods</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex-1">
-              <Label>Status</Label>
-              <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger data-testid="select-status-filter">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">All Statuses</SelectItem>
-                  <SelectItem value="pending">Pending</SelectItem>
-                  <SelectItem value="approved">Approved</SelectItem>
-                  <SelectItem value="paid">Paid</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+        <CardContent className="space-y-4">
+          <div className="rounded-lg border border-dashed p-4 text-sm text-muted-foreground">
+            <p className="font-medium text-foreground mb-2">Missing endpoints</p>
+            <ul className="space-y-1 font-mono text-xs">
+              <li>GET /api/finance/settlements</li>
+              <li>GET /api/finance/settlements/:id/export</li>
+              <li>GET /api/finance/commissions</li>
+            </ul>
+            <p className="mt-3">
+              Until these exist, any number shown here would be invented. The previous
+              version of this screen displayed ₪0.00 totals that were not read from any
+              ledger.
+            </p>
           </div>
 
-          {settlementsLoading ? (
-            <div className="text-center py-12">
-              <Clock className="w-12 h-12 mx-auto mb-4 text-muted-foreground animate-spin" />
-              <p className="text-muted-foreground">Loading settlements...</p>
-            </div>
-          ) : settlements.length === 0 ? (
-            <div className="text-center py-12">
-              <DollarSign className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No settlements found</p>
-              <p className="text-sm text-muted-foreground mt-1">
-                Run monthly settlement job to generate
-              </p>
-            </div>
-          ) : (
-            <div className="border rounded-lg">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Partner</TableHead>
-                    <TableHead>Period</TableHead>
-                    <TableHead className="text-right">Gross Revenue</TableHead>
-                    <TableHead className="text-right">Partner Share</TableHead>
-                    <TableHead className="text-right">PetWash Share</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {settlements.map((settlement) => (
-                    <TableRow key={settlement.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Building2 className="w-4 h-4 text-muted-foreground" />
-                          <div>
-                            <div className="font-medium">{settlement.partnerName || "Unknown"}</div>
-                            <div className="text-xs text-muted-foreground">
-                              {settlement.partnerType}
-                            </div>
-                          </div>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="text-sm">
-                          {new Date(settlement.periodStart).toLocaleDateString()} -{" "}
-                          {new Date(settlement.periodEnd).toLocaleDateString()}
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-mono">
-                        ₪{parseFloat(settlement.grossRevenue).toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-green-600">
-                        ₪{parseFloat(settlement.partnerShare).toFixed(2)}
-                      </TableCell>
-                      <TableCell className="text-right font-mono text-[#B8932F]">
-                        ₪{parseFloat(settlement.petwashShare).toFixed(2)}
-                      </TableCell>
-                      <TableCell>{getStatusBadge(settlement.status)}</TableCell>
-                      <TableCell className="text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => exportSettlement(settlement.id)}
-                          data-testid={`button-export-${settlement.id}`}
-                        >
-                          <Download className="w-4 h-4" />
-                        </Button>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
-
-      {/* Recent Commissions */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Contractor Commissions</CardTitle>
-          <CardDescription>Latest marketplace commissions with Israeli VAT</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {commissions.length === 0 ? (
-            <div className="text-center py-8">
-              <Receipt className="w-12 h-12 mx-auto mb-4 text-muted-foreground opacity-50" />
-              <p className="text-muted-foreground">No recent commissions</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {commissions.slice(0, 10).map((commission) => (
-                <Card key={commission.commissionId} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Users className="w-4 h-4 text-muted-foreground" />
-                          <span className="font-medium">{commission.providerName || "Provider"}</span>
-                          <Badge variant="outline" className="text-xs">
-                            {commission.commissionRate}% commission
-                          </Badge>
-                        </div>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                          <span>Customer paid: ₪{commission.customerPaidAmount}</span>
-                          <span>VAT: ₪{commission.vatAmount}</span>
-                          <span className="text-green-600 font-medium">
-                            Provider payout: ₪{commission.providerPayout}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadInvoice(commission.commissionId, "he")}
-                          data-testid={`button-invoice-he-${commission.commissionId}`}
-                        >
-                          חשבונית (HE)
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => downloadInvoice(commission.commissionId, "en")}
-                          data-testid={`button-invoice-en-${commission.commissionId}`}
-                        >
-                          Invoice (EN)
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+          <div>
+            <p className="text-sm font-medium mb-2">Wired finance surfaces</p>
+            <div className="space-y-2">
+              {WIRED_ALTERNATIVES.map((alt) => (
+                <a
+                  key={alt.path}
+                  href={alt.path}
+                  className="flex items-start gap-2 rounded-lg border p-3 hover:bg-muted/50 transition-colors"
+                  data-testid={`link-wired-${alt.path.replace(/\//g, "-")}`}
+                >
+                  <ExternalLink className="w-4 h-4 mt-0.5 text-muted-foreground shrink-0" />
+                  <span>
+                    <span className="block text-sm font-medium">{alt.label}</span>
+                    <span className="block text-xs text-muted-foreground">{alt.detail}</span>
+                  </span>
+                </a>
               ))}
             </div>
-          )}
+          </div>
         </CardContent>
       </Card>
     </div>

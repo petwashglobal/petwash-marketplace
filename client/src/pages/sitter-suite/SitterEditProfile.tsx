@@ -30,6 +30,8 @@ interface SitterProfile {
   rating: string;
   isActive: boolean;
   isVerified: boolean;
+  latitude?: string | number | null;
+  longitude?: string | number | null;
 }
 
 export default function SitterEditProfile() {
@@ -43,10 +45,20 @@ export default function SitterEditProfile() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const { data: profile, isLoading } = useQuery<SitterProfile>({
-    queryKey: ['/api/sitter-suite/sitters', user?.uid],
+  // CONTRACT FIX: the default queryFn (client/src/lib/queryClient.ts) fetches
+  // `queryKey[0]` ONLY — the extra `user?.uid` element was silently dropped, so
+  // this hit the public BROWSE list `GET /api/sitter-suite/sitters` and `profile`
+  // was never a sitter object. Everything downstream broke off that: the form
+  // rendered empty and the save PATCHed `/sitters/undefined` → 404 while the UI
+  // still showed "Profile Updated".
+  // The canonical owner is `GET /api/sitter-suite/sitters/:id` (server/routes/
+  // sitter-suite.ts:301) which accepts a Firebase UID as well as a numeric id
+  // and answers `{ sitter, reviews }`.
+  const { data: profileResponse, isLoading } = useQuery<{ sitter: SitterProfile }>({
+    queryKey: [`/api/sitter-suite/sitters/${user?.uid}`],
     enabled: !!user?.uid,
   });
+  const profile = profileResponse?.sitter;
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -60,9 +72,15 @@ export default function SitterEditProfile() {
     longitude: null as number | null,
   });
 
+  // Snapshot of what the server actually gave us, so `handleSave` can send ONLY
+  // fields the sitter really changed. `GET /sitters/:id` deliberately withholds
+  // phone + email (PII on a public listing route) — blind-sending the whole form
+  // would have PATCHed `phone: ''` and wiped the sitter's number on every save.
+  const loadedFormRef = useRef<Record<string, any> | null>(null);
+
   useEffect(() => {
     if (profile) {
-      setFormData({
+      const loaded = {
         firstName: profile.firstName || '',
         lastName: profile.lastName || '',
         phone: profile.phone || '',
@@ -72,16 +90,21 @@ export default function SitterEditProfile() {
         pricePerDayCents: profile.pricePerDayCents || 0,
         latitude: profile.latitude ? parseFloat(String(profile.latitude)) : null,
         longitude: profile.longitude ? parseFloat(String(profile.longitude)) : null,
-      });
+      };
+      loadedFormRef.current = { ...loaded };
+      setFormData(loaded);
     }
   }, [profile]);
 
   const updateMutation = useMutation({
     mutationFn: async (data: Partial<SitterProfile>) => {
-      const response = await apiRequest('PATCH', `/api/sitter-suite/sitters/${profile?.id}`, data);
+      // Fail loudly instead of PATCHing `/sitters/undefined` and then claiming success.
+      if (!profile?.id) throw new Error('SITTER_PROFILE_NOT_LOADED');
+      const response = await apiRequest('PATCH', `/api/sitter-suite/sitters/${profile.id}`, data);
       return response.json();
     },
     onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [`/api/sitter-suite/sitters/${user?.uid}`] });
       queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/sitters'] });
       toast({
         title: isHebrew ? 'הפרופיל עודכן בהצלחה' : 'Profile Updated',
@@ -121,9 +144,31 @@ export default function SitterEditProfile() {
   };
 
   const handleSave = () => {
-    const updateData: Record<string, any> = { ...formData };
+    if (!profile?.id) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew
+          ? 'הפרופיל עדיין נטען — נסו שוב בעוד רגע'
+          : 'Profile is still loading — please try again in a moment',
+      });
+      return;
+    }
+    // Send only genuinely changed fields (see loadedFormRef above).
+    const loaded = loadedFormRef.current ?? {};
+    const updateData: Record<string, any> = {};
+    for (const [key, value] of Object.entries(formData)) {
+      if (loaded[key] !== value) updateData[key] = value;
+    }
     if (profilePhoto) {
       updateData.profilePictureUrl = profilePhoto;
+    }
+    if (Object.keys(updateData).length === 0) {
+      toast({
+        title: isHebrew ? 'אין שינויים' : 'No changes',
+        description: isHebrew ? 'לא שיניתם דבר לשמירה' : 'Nothing to save',
+      });
+      return;
     }
     updateMutation.mutate(updateData);
   };

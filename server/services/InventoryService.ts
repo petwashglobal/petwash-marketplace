@@ -4,6 +4,7 @@ import {
   stationSupplies, 
   inventoryRefills,
   stations,
+  locations,
   type Supply,
   type InsertSupply,
   type StationSupply,
@@ -368,6 +369,54 @@ export class InventoryService {
     } catch (error: any) {
       logger.error('[InventoryService] Failed to get station inventory', {
         stationId,
+        error: error.message,
+      });
+      throw error;
+    }
+  }
+
+  /**
+   * Get EVERY station-supply row across the network (not only low stock).
+   *
+   * Read-only. Added because the admin Inventory screen needs the full picture
+   * (ok / low / critical / empty) and previously called `/api/k9000/inventory`,
+   * a route that never existed — the page sat on a permanent skeleton loader.
+   * This service already owns `station_supplies`; no new write authority.
+   */
+  async getAllStationSupplies(): Promise<any[]> {
+    try {
+      const rows = await db
+        .select({
+          stationSupplyId: stationSupplies.id,
+          stationId: stationSupplies.stationId,
+          currentLevel: stationSupplies.currentLevel,
+          reorderThreshold: sql<number>`COALESCE(${stationSupplies.reorderThreshold}, ${supplies.reorderThreshold}, 10)`,
+          lastRefillAt: stationSupplies.lastRefillAt,
+          lastRefillAmount: stationSupplies.lastRefillAmount,
+          stationCode: stations.stationCode,
+          stationName: stations.name,
+          city: locations.city,
+          supply: {
+            id: supplies.id,
+            sku: supplies.sku,
+            name: supplies.name,
+            category: supplies.category,
+            unitType: supplies.unitType,
+            supplier: supplies.supplier,
+          },
+        })
+        .from(stationSupplies)
+        .leftJoin(supplies, eq(stationSupplies.supplyId, supplies.id))
+        .leftJoin(stations, eq(stationSupplies.stationId, stations.id))
+        .leftJoin(locations, eq(stations.locationId, locations.id));
+
+      logger.info('[InventoryService] All station supplies retrieved', {
+        count: rows.length,
+      });
+
+      return rows;
+    } catch (error: any) {
+      logger.error('[InventoryService] Failed to get all station supplies', {
         error: error.message,
       });
       throw error;

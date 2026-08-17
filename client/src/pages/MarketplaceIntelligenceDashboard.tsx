@@ -101,8 +101,13 @@ export default function MarketplaceIntelligenceDashboard() {
 
   // ── Audit log for expanded provider ────────────────────────────────────────
 
+  // CONTRACT FIX: the default queryFn fetches `queryKey[0]` only, so the
+  // provider id was dropped and this hit `/rankings/audit` (no such route) →
+  // 404 → the panel rendered "no history" while real override evidence existed.
+  // Canonical owner: GET /api/marketplace/rankings/audit/:userId
+  // (server/routes/marketplace-ranking.ts:466).
   const { data: auditData, isLoading: auditLoading } = useQuery<{ entries: AuditEntry[]; total: number }>({
-    queryKey: ['/api/marketplace/rankings/audit', expandedAudit],
+    queryKey: [`/api/marketplace/rankings/audit/${expandedAudit}`],
     enabled: !!expandedAudit && !!user,
   });
 
@@ -132,7 +137,7 @@ export default function MarketplaceIntelligenceDashboard() {
       });
       queryClient.invalidateQueries({ queryKey: ['/api/marketplace/rankings/providers'] });
       if (expandedAudit === vars.userId) {
-        queryClient.invalidateQueries({ queryKey: ['/api/marketplace/rankings/audit', vars.userId] });
+        queryClient.invalidateQueries({ queryKey: [`/api/marketplace/rankings/audit/${vars.userId}`] });
       }
     },
     onError: (err: any) => {

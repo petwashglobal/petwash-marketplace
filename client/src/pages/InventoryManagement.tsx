@@ -7,8 +7,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useLanguage } from '@/lib/languageStore';
-import { queryClient, apiRequest } from '@/lib/queryClient';
-import { getApiUrl } from '@/lib/apiConfig';
+import { apiRequest } from '@/lib/queryClient';
 import {
   Package,
   AlertTriangle,
@@ -27,6 +26,55 @@ import {
   XCircle,
 } from 'lucide-react';
 
+/**
+ * Row as returned by the canonical inventory owner:
+ *   GET /api/inventory/station-supplies  (server/routes/inventory.ts)
+ * NOTE: `station_supplies` has no "max capacity" column, so this screen shows
+ * the level against the REORDER THRESHOLD — the number the data actually has.
+ * The previous generation invented a `maxCapacity` and a `%-full` bar from a
+ * `/api/k9000/inventory` route that never existed.
+ */
+interface StationSupplyRow {
+  stationSupplyId: number;
+  stationId: number;
+  currentLevel: number | null;
+  reorderThreshold: number | null;
+  lastRefillAt: string | null;
+  lastRefillAmount: number | null;
+  stationCode: string | null;
+  stationName: string | null;
+  city: string | null;
+  supply: {
+    id: number;
+    sku: string;
+    name: string;
+    category: string;
+    unitType: string;
+    supplier: string | null;
+  } | null;
+}
+
+type StockStatus = 'ok' | 'low' | 'critical' | 'empty';
+
+/** Shape of GET /api/inventory/purchase-order (InventoryService.generatePurchaseOrder). */
+interface PurchaseOrderLine {
+  stationId: number;
+  stationCode: string | null;
+  stationName: string | null;
+  sku: string | null;
+  name: string | null;
+  unitType: string | null;
+  currentLevel: number | null;
+  reorderThreshold: number | null;
+  quantityNeeded: number;
+}
+interface PurchaseOrder {
+  generatedAt: string;
+  totalSuppliers: number;
+  totalItems: number;
+  suppliers: Record<string, PurchaseOrderLine[]>;
+}
+
 interface InventoryItem {
   id: number;
   stationId: number;
@@ -36,10 +84,46 @@ interface InventoryItem {
   itemType: string;
   currentLevel: number;
   minThreshold: number;
-  maxCapacity: number;
   unit: string;
-  lastRestocked: string;
-  status: 'ok' | 'low' | 'critical' | 'empty';
+  lastRestocked: string | null;
+  supplier: string | null;
+  status: StockStatus;
+}
+
+/**
+ * Bar width relative to the reorder threshold (capped at 100%). Purely a visual
+ * scale of two real numbers — NOT a "% of capacity", which we do not store.
+ */
+function levelVsThresholdPct(item: { currentLevel: number; minThreshold: number }): number {
+  if (item.minThreshold <= 0) return item.currentLevel > 0 ? 100 : 0;
+  return Math.max(0, Math.min(100, Math.round((item.currentLevel / item.minThreshold) * 100)));
+}
+
+/** Derived from real numbers only — nothing invented. */
+function deriveStatus(currentLevel: number, threshold: number): StockStatus {
+  if (currentLevel <= 0) return 'empty';
+  if (threshold > 0 && currentLevel <= threshold / 2) return 'critical';
+  if (threshold > 0 && currentLevel < threshold) return 'low';
+  return 'ok';
+}
+
+function toInventoryItem(row: StationSupplyRow): InventoryItem {
+  const currentLevel = row.currentLevel ?? 0;
+  const minThreshold = row.reorderThreshold ?? 0;
+  return {
+    id: row.stationSupplyId,
+    stationId: row.stationId,
+    stationCode: row.stationCode ?? '—',
+    stationName: row.stationName ?? '—',
+    city: row.city ?? '',
+    itemType: row.supply?.name ?? row.supply?.category ?? '—',
+    currentLevel,
+    minThreshold,
+    unit: row.supply?.unitType ?? '',
+    lastRestocked: row.lastRefillAt,
+    supplier: row.supply?.supplier ?? null,
+    status: deriveStatus(currentLevel, minThreshold),
+  };
 }
 
 export default function InventoryManagement() {
@@ -50,53 +134,44 @@ export default function InventoryManagement() {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [cityFilter, setCityFilter] = useState<string>('all');
 
-  const { data: rawInventoryData, isLoading } = useQuery<{ items: InventoryItem[] }>({
-    queryKey: ['/api/k9000/inventory'],
+  const [purchaseOrder, setPurchaseOrder] = useState<PurchaseOrder | null>(null);
+
+  // CONTRACT FIX: this page used to call `/api/k9000/inventory`,
+  // `/api/k9000/inventory/summary` and `/api/k9000/restock-request` — three
+  // routes that have never existed on any `/api/k9000` mount. The canonical
+  // owner of station inventory is `server/routes/inventory.ts` +
+  // `server/services/InventoryService.ts`, mounted at `/api/inventory`.
+  const { data: stationSupplyData, isLoading } = useQuery<{ items: StationSupplyRow[] }>({
+    queryKey: ['/api/inventory/station-supplies'],
     refetchInterval: 60000,
   });
 
-  // Fetch inventory summary
-  const { data: summaryData } = useQuery<any>({
-    queryKey: ['/api/k9000/inventory/summary'],
-    refetchInterval: 60000,
-  });
-
-  // Request restock mutation
-  const requestRestockMutation = useMutation({
-    mutationFn: async (data: { stationId: number; itemType: string; quantity: number }) => {
-      const response = await fetch(getApiUrl('/api/k9000/restock-request'), {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify(data),
-      });
-      if (!response.ok) throw new Error('Failed to request restock');
-      return response.json();
+  // Canonical restock mechanism: a purchase order for everything under its
+  // reorder threshold, grouped by supplier. There is no per-item
+  // "restock request" write anywhere in the platform, so the page no longer
+  // pretends to send one.
+  const purchaseOrderMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest('GET', '/api/inventory/purchase-order');
+      return (await response.json()) as PurchaseOrder;
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['/api/k9000/inventory'] });
+    onSuccess: (data) => {
+      setPurchaseOrder(data);
       toast({
-        title: isHebrew ? 'בקשה נשלחה' : 'Request Sent',
-        description: isHebrew ? 'בקשת מילוי מלאי נשלחה בהצלחה' : 'Restock request sent successfully',
+        title: isHebrew ? 'הזמנת רכש נוצרה' : 'Purchase order generated',
+        description: isHebrew
+          ? `${data.totalItems ?? 0} פריטים מ-${data.totalSuppliers ?? 0} ספקים`
+          : `${data.totalItems ?? 0} item(s) across ${data.totalSuppliers ?? 0} supplier(s)`,
       });
     },
     onError: () => {
       toast({
         title: isHebrew ? 'שגיאה' : 'Error',
-        description: isHebrew ? 'נכשל לשלוח בקשת מילוי' : 'Failed to send restock request',
+        description: isHebrew ? 'נכשל ליצור הזמנת רכש' : 'Failed to generate purchase order',
         variant: 'destructive',
       });
     },
   });
-
-  const handleRequestRestock = (item: InventoryItem) => {
-    const quantity = item.maxCapacity - item.currentLevel;
-    requestRestockMutation.mutate({
-      stationId: item.stationId,
-      itemType: item.itemType,
-      quantity,
-    });
-  };
 
   const getItemIcon = (itemType: string) => {
     switch (itemType?.toLowerCase()) {
@@ -163,8 +238,10 @@ export default function InventoryManagement() {
     }
   };
 
-  const formatDate = (dateString: string): string => {
+  const formatDate = (dateString: string | null): string => {
+    if (!dateString) return isHebrew ? 'לא תועד' : 'never recorded';
     const date = new Date(dateString);
+    if (Number.isNaN(date.getTime())) return isHebrew ? 'לא תועד' : 'never recorded';
     return date.toLocaleDateString(isHebrew ? 'he-IL' : 'en-US', {
       year: 'numeric',
       month: 'short',
@@ -172,8 +249,18 @@ export default function InventoryManagement() {
     });
   };
 
-  const allItems = rawInventoryData?.items || [];
-  const cities = Array.from(new Set(allItems.map(item => item.city)));
+  const allItems = (stationSupplyData?.items ?? []).map(toInventoryItem);
+  const cities = Array.from(new Set(allItems.map(item => item.city).filter(Boolean)));
+
+  // Summary is derived from the same real rows the table renders — no second,
+  // divergent endpoint, and no fabricated counts.
+  const summary = {
+    totalItems: allItems.length,
+    okCount: allItems.filter(i => i.status === 'ok').length,
+    lowCount: allItems.filter(i => i.status === 'low').length,
+    criticalCount: allItems.filter(i => i.status === 'critical').length,
+    emptyCount: allItems.filter(i => i.status === 'empty').length,
+  };
   const items = allItems.filter((item: InventoryItem) => {
     if (searchQuery) {
       const q = searchQuery.toLowerCase();
@@ -205,7 +292,7 @@ export default function InventoryManagement() {
         </div>
 
         {/* Summary Stats */}
-        {summaryData && (
+        {!isLoading && (
           <div className="luxury-grid-4 gap-4 mb-6 luxury-animate-fade-in luxury-delay-1">
             <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl">
               <div className="flex items-center justify-between">
@@ -214,7 +301,7 @@ export default function InventoryManagement() {
                     {isHebrew ? 'סה"כ פריטים' : 'Total Items'}
                   </p>
                   <p className="text-3xl font-bold luxury-text-gradient" data-testid="text-total-items">
-                    {summaryData.totalItems || 0}
+                    {summary.totalItems}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center">
@@ -230,7 +317,7 @@ export default function InventoryManagement() {
                     {isHebrew ? 'מלאי תקין' : 'OK Stock'}
                   </p>
                   <p className="text-3xl font-bold text-green-600" data-testid="text-ok-stock">
-                    {summaryData.okCount || 0}
+                    {summary.okCount}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-green-400 to-emerald-500 flex items-center justify-center">
@@ -246,7 +333,7 @@ export default function InventoryManagement() {
                     {isHebrew ? 'מלאי נמוך' : 'Low Stock'}
                   </p>
                   <p className="text-3xl font-bold text-yellow-600" data-testid="text-low-stock">
-                    {summaryData.lowCount || 0}
+                    {summary.lowCount}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-yellow-400 to-[#D4AF37] flex items-center justify-center">
@@ -262,7 +349,7 @@ export default function InventoryManagement() {
                     {isHebrew ? 'דחוף' : 'Critical'}
                   </p>
                   <p className="text-3xl font-bold text-red-600" data-testid="text-critical-stock">
-                    {(summaryData.criticalCount || 0) + (summaryData.emptyCount || 0)}
+                    {summary.criticalCount + summary.emptyCount}
                   </p>
                 </div>
                 <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-red-500 to-[#B8932F] flex items-center justify-center">
@@ -315,6 +402,66 @@ export default function InventoryManagement() {
               </Select>
             </div>
           </div>
+        </div>
+
+        {/* Restock — canonical purchase order (GET /api/inventory/purchase-order).
+            Replaces a per-item "Request Restock" button that POSTed to a route
+            that never existed and toasted success on failure. */}
+        <div className="luxury-glass-card luxury-shadow-lg p-6 rounded-2xl mb-6 luxury-animate-fade-in luxury-delay-2">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <h2 className="font-bold luxury-text-gradient flex items-center gap-2">
+                <Bell className="w-5 h-5" />
+                {isHebrew ? 'הזמנת רכש' : 'Purchase Order'}
+              </h2>
+              <p className="luxury-text-small mt-1">
+                {isHebrew
+                  ? 'מרכז את כל הפריטים מתחת לסף ההזמנה לפי ספק'
+                  : 'Collects every item below its reorder threshold, grouped by supplier'}
+              </p>
+            </div>
+            <Button
+              onClick={() => purchaseOrderMutation.mutate()}
+              disabled={purchaseOrderMutation.isPending}
+              data-testid="button-generate-purchase-order"
+            >
+              <RefreshCw className={`w-4 h-4 me-2 ${purchaseOrderMutation.isPending ? 'animate-spin' : ''}`} />
+              {isHebrew ? 'צור הזמנת רכש' : 'Generate Purchase Order'}
+            </Button>
+          </div>
+
+          {purchaseOrder && (
+            <div className="mt-4 space-y-3" data-testid="purchase-order-result">
+              <p className="text-xs text-gray-500">
+                {isHebrew ? 'נוצר' : 'Generated'}: {formatDate(purchaseOrder.generatedAt)} •{' '}
+                {purchaseOrder.totalItems} {isHebrew ? 'פריטים' : 'items'} •{' '}
+                {purchaseOrder.totalSuppliers} {isHebrew ? 'ספקים' : 'suppliers'}
+              </p>
+              {purchaseOrder.totalItems === 0 ? (
+                <p className="luxury-text-small">
+                  {isHebrew ? 'אין פריטים מתחת לסף — אין מה להזמין' : 'Nothing below threshold — no order needed'}
+                </p>
+              ) : (
+                Object.entries(purchaseOrder.suppliers).map(([supplierName, lines]) => (
+                  <div key={supplierName} className="luxury-glass-minimal rounded-xl p-4">
+                    <h3 className="font-semibold mb-2">{supplierName}</h3>
+                    <ul className="text-sm space-y-1">
+                      {lines.map((line, i) => (
+                        <li key={`${line.stationId}-${line.sku}-${i}`} className="flex justify-between gap-4">
+                          <span>
+                            {line.stationName ?? line.stationCode ?? `#${line.stationId}`} • {line.name ?? line.sku}
+                          </span>
+                          <span className="font-medium whitespace-nowrap">
+                            {line.quantityNeeded} {line.unitType ?? ''}
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                ))
+              )}
+            </div>
+          )}
         </div>
 
         {/* Inventory Table */}
@@ -372,37 +519,25 @@ export default function InventoryManagement() {
                           <span className="text-2xl font-bold text-gray-900 dark:text-black">
                             {item.currentLevel}
                           </span>
-                          <span className="text-sm text-gray-500">/{item.maxCapacity} {item.unit}</span>
+                          <span className="text-sm text-gray-500"> {item.unit}</span>
                         </div>
                       </div>
                     </div>
 
-                    {/* Progress Bar */}
-                    <div className="mb-3">
+                    {/* Level vs reorder threshold — station_supplies has no
+                        capacity column, so we never claim a "% full". */}
+                    <div className="mb-1">
                       <div className="h-3 bg-white dark:bg-white rounded-full overflow-hidden">
                         <div
                           className={`h-full transition-all ${getProgressColor(item.status)}`}
-                          style={{ width: `${(item.currentLevel / item.maxCapacity) * 100}%` }}
+                          style={{ width: `${levelVsThresholdPct(item)}%` }}
                         />
                       </div>
                       <div className="flex justify-between text-xs text-gray-500 mt-1">
-                        <span>{isHebrew ? 'סף מינימום' : 'Min threshold'}: {item.minThreshold} {item.unit}</span>
-                        <span>{Math.round((item.currentLevel / item.maxCapacity) * 100)}%</span>
+                        <span>{isHebrew ? 'סף הזמנה מחדש' : 'Reorder threshold'}: {item.minThreshold} {item.unit}</span>
+                        <span>{item.supplier || (isHebrew ? 'ספק לא ידוע' : 'Unknown supplier')}</span>
                       </div>
                     </div>
-
-                    {/* Action Button */}
-                    {(item.status === 'low' || item.status === 'critical' || item.status === 'empty') && (
-                      <button
-                        className="luxury-btn-primary w-full text-sm"
-                        onClick={() => handleRequestRestock(item)}
-                        disabled={requestRestockMutation.isPending}
-                        data-testid={`button-restock-${item.id}`}
-                      >
-                        <Bell className="w-4 h-4 mr-2" />
-                        {isHebrew ? 'בקש מילוי' : 'Request Restock'}
-                      </button>
-                    )}
                   </div>
                 ))}
               </div>

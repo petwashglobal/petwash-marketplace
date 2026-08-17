@@ -80,23 +80,15 @@ export function useCreateBooking() {
   });
 }
 
-/**
- * Get user's bookings (past and upcoming)
- * 
- * @param userId - User ID
- * @param status - Optional status filter (upcoming, past, cancelled)
- * @returns List of bookings
+/*
+ * REMOVED 2026-08-17 (client<->server contract sweep, Lane E D15):
+ *   export function useCustomerBookings(userId, status)
+ * It queried `['/api/bookings', {...}]`; the default queryFn fetches queryKey[0],
+ * and there is no bare `GET /api/bookings` handler — server/routes/bookings.ts
+ * exposes /create, /my-bookings, /availability, /:bookingId/*, /lock, /release.
+ * The hook had ZERO callers, so nothing regressed; it was a 404 waiting for its
+ * first consumer. Customer bookings must go through `GET /api/bookings/my-bookings`.
  */
-export function useCustomerBookings(
-  userId: string,
-  status?: 'upcoming' | 'past' | 'cancelled'
-) {
-  return useQuery({
-    queryKey: ['/api/bookings', { userId, status }],
-    enabled: !!userId,
-    staleTime: 1000 * 60 * 2, // Cache for 2 minutes
-  });
-}
 
 /**
  * Cancel a booking with refund
@@ -172,16 +164,11 @@ export function useProviderReviews(
   });
 }
 
-/**
- * Get provider earnings (for provider dashboard)
- * 
- * @param providerId - Provider ID
- * @returns Earnings summary with escrow, released payouts, total revenue
+/*
+ * REMOVED 2026-08-17 (client<->server contract sweep, Lane E D16):
+ *   export function useProviderEarnings(providerId)
+ * It queried `/api/providers/earnings/:providerId` — no such handler exists on the
+ * `/api/providers` mount (provider-search.ts / providers.ts). ZERO callers, so this
+ * removes a 404 trap rather than a feature. Provider earnings are owned by the
+ * payout/escrow surfaces, not by a marketplace search service.
  */
-export function useProviderEarnings(providerId: number) {
-  return useQuery({
-    queryKey: [`/api/providers/earnings/${providerId}`],
-    enabled: !!providerId,
-    staleTime: 1000 * 60 * 1, // Cache for 1 minute (earnings should be fresh)
-  });
-}
