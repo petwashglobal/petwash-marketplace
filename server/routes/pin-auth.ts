@@ -423,7 +423,10 @@ router.post('/trusted-device-verify', async (req: Request, res: Response) => {
       return res.status(401).json({ success: false, error: `Invalid PIN. ${attemptsRemaining} attempts remaining.`, code: 'INVALID_PIN', attemptsRemaining });
     }
 
-    await db.update(userPins).set({ failedAttempts: 0, lockoutUntil: null, lastUsedAt: new Date(), lastSuccessIP: clientIP }).where(eq(userPins.id, pinRecord.id));
+    // Note: lastSuccessIP column not present on the current user_pins schema; the client IP
+    // is still captured in the audit log below via logPinEvent(getClientIP). Adding a
+    // schema column would require a migration (out of scope for PR-AUTH-SECURITY-9).
+    await db.update(userPins).set({ failedAttempts: 0, lockoutUntil: null, lastUsedAt: new Date() }).where(eq(userPins.id, pinRecord.id));
     await logPinEvent({ userId: userInfo.id, userType: userInfo.type, action: 'trusted_device_login_success', req, deviceId });
 
     let customToken: string | null = null;
