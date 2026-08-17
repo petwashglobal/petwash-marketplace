@@ -1,7 +1,42 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Cookie, Shield, Target, TrendingUp, Settings, Database, Clock, Mail } from "lucide-react";
+import { ConsentManager } from "@/components/ConsentManager";
+import { useLanguage } from "@/lib/languageStore";
+import { useToast } from "@/hooks/use-toast";
+import { createRejectAllConsent, saveConsentPreferences } from "@/lib/consent";
 
 export default function CookiesPolicy() {
+  const { language } = useLanguage();
+  const isHe = language === "he";
+  const { toast } = useToast();
+  const [consentOpen, setConsentOpen] = useState(false);
+  const [blocking, setBlocking] = useState(false);
+
+  async function handleBlockOptional() {
+    if (blocking) return;
+    setBlocking(true);
+    try {
+      await saveConsentPreferences(createRejectAllConsent());
+      toast({
+        title: isHe ? "עוגיות לא-הכרחיות חסומות" : "Optional cookies blocked",
+        description: isHe
+          ? "כל העוגיות שאינן הכרחיות הושבתו. ההעדפות נשמרו."
+          : "All non-essential cookies have been disabled. Preferences saved.",
+      });
+    } catch {
+      toast({
+        title: isHe ? "שגיאה" : "Error",
+        description: isHe
+          ? "לא הצלחנו לשמור את העדפותיך. נסו שוב."
+          : "Could not save your preferences. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setBlocking(false);
+    }
+  }
+
   return (
     <div className="min-h-screen luxury-bg-mesh">
       <div className="luxury-container max-w-5xl py-16">
@@ -280,11 +315,20 @@ export default function CookiesPolicy() {
               </ul>
 
               <div className="flex flex-wrap gap-4">
-                <Button className="luxury-btn-primary">
+                <Button
+                  className="luxury-btn-primary"
+                  onClick={() => setConsentOpen(true)}
+                  data-testid="button-cookies-update-preferences"
+                >
                   Update Cookie Preferences
                 </Button>
-                <Button className="luxury-btn-secondary">
-                  Block All Optional Cookies
+                <Button
+                  className="luxury-btn-secondary"
+                  onClick={handleBlockOptional}
+                  disabled={blocking}
+                  data-testid="button-cookies-block-optional"
+                >
+                  {blocking ? "Saving…" : "Block All Optional Cookies"}
                 </Button>
               </div>
             </div>
@@ -356,6 +400,13 @@ export default function CookiesPolicy() {
           </div>
         </div>
       </div>
+
+      <ConsentManager
+        language={language}
+        isOpen={consentOpen}
+        onClose={() => setConsentOpen(false)}
+        onSave={() => setConsentOpen(false)}
+      />
     </div>
   );
 }
