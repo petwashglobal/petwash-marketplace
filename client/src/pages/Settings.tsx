@@ -55,19 +55,25 @@ interface PasskeyDevice {
   deviceType?: string;
 }
 
-// PIN Security Section Component - December 2025
+// PIN Security Section Component
+// PR-AUTH-SECURITY-9 §3 (2026-08-17): identity is derived on the SERVER from
+// the Bearer token. This component NEVER sends an email or userId — the server
+// derives them from the Firebase session and ignores any body field.
 function PinSecuritySection({ language, firebaseUser }: { language: string; firebaseUser: any }) {
   const { toast } = useToast();
   const [pinStatus, setPinStatus] = useState<{ hasPin: boolean; deviceName?: string } | null>(null);
   const [loading, setLoading] = useState(true);
-  const [showSetup, setShowSetup] = useState(false);
-  const [showChange, setShowChange] = useState(false);
+  // uiMode splits the three PIN flows so /change is never routed through /setup.
+  const [uiMode, setUiMode] = useState<'idle' | 'setup' | 'change' | 'remove'>('idle');
   const [newPin, setNewPin] = useState("");
-  const [confirmPin, setConfirmPin] = useState("");
   const [setupStep, setSetupStep] = useState<'enter' | 'confirm'>('enter');
+  const [changeStep, setChangeStep] = useState<'current' | 'new' | 'confirm'>('current');
+  const [currentPinBuffer, setCurrentPinBuffer] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // Legacy props still referenced by the JSX below; keep as derived aliases.
+  const showSetup = uiMode !== 'idle';
+  const _setShowSetup = (v: boolean) => setUiMode(v ? 'setup' : 'idle');
 
-  // Fetch PIN status
   useEffect(() => {
     const fetchPinStatus = async () => {
       if (!firebaseUser) return;
@@ -89,74 +95,89 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
     fetchPinStatus();
   }, [firebaseUser]);
 
-  // Handle PIN setup
-  const handleSetupPin = async () => {
-    if (!firebaseUser || newPin.length < 4) return;
-    
+  const handleSetupPin = async (pin: string) => {
+    if (!firebaseUser || pin.length < 4) return;
     setIsSubmitting(true);
     try {
       const token = await firebaseUser.getIdToken();
       const response = await fetch(getApiUrl('/api/pin-auth/setup'), {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          pin: newPin,
-          deviceId: `web-${Date.now()}`,
-          deviceName: navigator.userAgent.substring(0, 50),
-        }),
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        // PR-AUTH-SECURITY-9 §3: NO email. NO userId. Server derives from token.
+        body: JSON.stringify({ pin, deviceId: `web-${Date.now()}`, deviceName: navigator.userAgent.substring(0, 50) }),
       });
-
       if (response.ok) {
         setPinStatus({ hasPin: true });
-        setShowSetup(false);
+        setUiMode('idle');
         setNewPin("");
-        setConfirmPin("");
         setSetupStep('enter');
-        toast({
-          title: language === 'he' ? 'קוד PIN הוגדר בהצלחה' : 'PIN set successfully',
-          description: language === 'he' ? 'כעת תוכל להיכנס עם קוד PIN' : 'You can now sign in with your PIN',
-        });
+        toast({ title: language === 'he' ? 'קוד PIN הוגדר בהצלחה' : 'PIN set successfully', description: language === 'he' ? 'כעת תוכל להיכנס עם קוד PIN' : 'You can now sign in with your PIN' });
       } else {
         const data = await response.json();
-        toast({
-          variant: "destructive",
-          title: language === 'he' ? 'שגיאה' : 'Error',
-          description: data.error || 'Failed to set PIN',
-        });
+        toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: data.error || 'Failed to set PIN' });
       }
     } catch (error) {
       logger.error('Error setting PIN:', error);
-      toast({
-        variant: "destructive",
-        title: language === 'he' ? 'שגיאה' : 'Error',
-        description: language === 'he' ? 'לא ניתן להגדיר קוד PIN' : 'Failed to set PIN',
-      });
+      toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: language === 'he' ? 'לא ניתן להגדיר קוד PIN' : 'Failed to set PIN' });
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle PIN removal
-  const handleRemovePin = async () => {
+  const handleChangePin = async (currentPin: string, newPinValue: string) => {
     if (!firebaseUser) return;
-    
+    setIsSubmitting(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(getApiUrl('/api/pin-auth/change'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ currentPin, newPin: newPinValue, confirmNewPin: newPinValue }),
+      });
+      if (response.ok) {
+        setUiMode('idle');
+        setChangeStep('current');
+        setCurrentPinBuffer('');
+        setNewPin('');
+        toast({ title: language === 'he' ? 'קוד PIN עודכן' : 'PIN changed' });
+      } else {
+        const data = await response.json();
+        toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: data.error || 'Failed to change PIN' });
+        setChangeStep('current');
+        setCurrentPinBuffer('');
+        setNewPin('');
+      }
+    } catch (error) {
+      logger.error('Error changing PIN:', error);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleRemovePin = async (currentPin?: string) => {
+    if (!firebaseUser) return;
+    // If called without a PIN, open the remove-flow keypad. Actual DELETE fires when the user enters it.
+    if (!currentPin) {
+      setUiMode('remove');
+      return;
+    }
     setIsSubmitting(true);
     try {
       const token = await firebaseUser.getIdToken();
       const response = await fetch(getApiUrl('/api/pin-auth/remove'), {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: JSON.stringify({ currentPin }),
       });
-
       if (response.ok) {
         setPinStatus({ hasPin: false });
-        toast({
-          title: language === 'he' ? 'קוד PIN הוסר' : 'PIN removed',
-          description: language === 'he' ? 'קוד ה-PIN שלך הוסר בהצלחה' : 'Your PIN has been removed',
-        });
+        setUiMode('idle');
+        setCurrentPinBuffer('');
+        toast({ title: language === 'he' ? 'קוד PIN הוסר' : 'PIN removed', description: language === 'he' ? 'קוד ה-PIN שלך הוסר בהצלחה' : 'Your PIN has been removed' });
+      } else {
+        const data = await response.json();
+        toast({ variant: 'destructive', title: language === 'he' ? 'שגיאה' : 'Error', description: data.error || 'Failed to remove PIN' });
+        setCurrentPinBuffer('');
       }
     } catch (error) {
       logger.error('Error removing PIN:', error);
@@ -166,23 +187,42 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
   };
 
   const handlePinEntered = (pin: string) => {
-    if (setupStep === 'enter') {
-      setNewPin(pin);
-      setSetupStep('confirm');
-    } else {
-      setConfirmPin(pin);
-      if (pin === newPin) {
-        handleSetupPin();
+    if (uiMode === 'setup') {
+      if (setupStep === 'enter') {
+        setNewPin(pin);
+        setSetupStep('confirm');
       } else {
-        toast({
-          variant: "destructive",
-          title: language === 'he' ? 'קודי PIN לא תואמים' : 'PINs do not match',
-          description: language === 'he' ? 'נסה שוב' : 'Please try again',
-        });
-        setSetupStep('enter');
-        setNewPin("");
-        setConfirmPin("");
+        if (pin === newPin) {
+          handleSetupPin(pin);
+        } else {
+          toast({ variant: 'destructive', title: language === 'he' ? 'קודי PIN לא תואמים' : 'PINs do not match', description: language === 'he' ? 'נסה שוב' : 'Please try again' });
+          setSetupStep('enter');
+          setNewPin('');
+        }
       }
+      return;
+    }
+    if (uiMode === 'change') {
+      if (changeStep === 'current') {
+        setCurrentPinBuffer(pin);
+        setChangeStep('new');
+      } else if (changeStep === 'new') {
+        setNewPin(pin);
+        setChangeStep('confirm');
+      } else {
+        if (pin === newPin) {
+          handleChangePin(currentPinBuffer, newPin);
+        } else {
+          toast({ variant: 'destructive', title: language === 'he' ? 'קודי PIN לא תואמים' : 'PINs do not match', description: language === 'he' ? 'נסה שוב' : 'Please try again' });
+          setChangeStep('new');
+          setNewPin('');
+        }
+      }
+      return;
+    }
+    if (uiMode === 'remove') {
+      handleRemovePin(pin);
+      return;
     }
   };
 
@@ -239,10 +279,11 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
           <PinKeypad 
             onComplete={handlePinEntered}
             onCancel={() => {
-              setShowSetup(false);
+              setUiMode('idle');
               setNewPin("");
-              setConfirmPin("");
               setSetupStep('enter');
+              setChangeStep('current');
+              setCurrentPinBuffer("");
             }}
             language={language}
             loading={isSubmitting}
@@ -260,7 +301,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
               </p>
               <div className="flex gap-3">
                 <Button
-                  onClick={() => setShowSetup(true)}
+                  onClick={() => { setUiMode('change'); setChangeStep('current'); }}
                   variant="outline"
                   className="border-[#E8E3D9] text-[#1A1A1A] hover:bg-white"
                   data-testid="button-change-pin"
@@ -269,7 +310,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
                   {language === 'he' ? 'שנה קוד PIN' : 'Change PIN'}
                 </Button>
                 <Button
-                  onClick={handleRemovePin}
+                  onClick={() => setUiMode('remove')}
                   variant="outline"
                   disabled={isSubmitting}
                   className="text-red-400 hover:bg-red-500/10 border-red-500/30"
@@ -293,7 +334,7 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
                 }
               </p>
               <button
-                onClick={() => setShowSetup(true)}
+                onClick={() => { setUiMode('setup'); setSetupStep('enter'); }}
                 className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2"
                 data-testid="button-setup-pin"
               >
