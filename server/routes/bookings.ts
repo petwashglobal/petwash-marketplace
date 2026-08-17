@@ -542,11 +542,79 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
       return res.status(409).json({ error: `Cannot confirm a booking with status: ${booking.status}` });
     }
 
-    await db.collection("bookings").doc(bookingId).update({
-      status: "confirmed",
-      confirmedAt: new Date(),
-      confirmedBy: userId,
-    });
+    // ── ATOMIC CONFIRMATION CLAIM ────────────────────────────────────────────
+    // CONCURRENCY (2026-08-17, sprint/money-concurrency M2) — no financial rule
+    // changed.
+    //
+    // The status read above (`bookingDoc.get()`) and the write below used to be
+    // two separate Firestore operations. Two simultaneous confirmations — a
+    // double-tap, a customer and the provider pressing Confirm at the same
+    // moment, a client retry after a dropped response, or a super-admin
+    // replaying the call — both read `pending`, both passed the state check,
+    // and both ran the ENTIRE side-effect chain:
+    //
+    //   • two `booking_confirmed` audit rows for one confirmation
+    //   • two Google Sheets rows (logSitterBooking) — the ops ledger the team
+    //     reads for the day's jobs, silently duplicated
+    //   • two petWashOrchestrator.handleBookingConfirmed runs → a DUPLICATE
+    //     Google Calendar event for the provider, a second Sheets append, and
+    //     a second customer + provider notification
+    //
+    // The fix lifts read-check-write into ONE Firestore transaction. Firestore
+    // aborts and retries a transaction whose read set was modified before
+    // commit, so exactly one caller can flip pending → confirmed. Only that
+    // caller runs the side-effect chain; the loser gets an idempotent 200 with
+    // `alreadyConfirmed: true` and fires nothing.
+    //
+    // The authorization checks above deliberately stay outside the transaction:
+    // they are pure reads plus `resolveStationRole`, and a Firestore
+    // transaction body may be re-run on contention.
+    const bookingRef = db.collection("bookings").doc(bookingId);
+    const claim: 'claimed' | 'already_confirmed' | { conflictStatus: string } =
+      await db.runTransaction(async (tx) => {
+        const fresh = await tx.get(bookingRef);
+        if (!fresh.exists) {
+          return { conflictStatus: 'not_found' };
+        }
+        const freshStatus = fresh.data()?.status;
+
+        // Already confirmed by the racing request (or by an earlier retry of
+        // this same request) — idempotent, no second side effect.
+        if (freshStatus === 'confirmed') {
+          return 'already_confirmed' as const;
+        }
+
+        // Re-validate against the CURRENT state, not the one we read earlier:
+        // a cancellation could have landed in between.
+        if (freshStatus && !confirmableStates.includes(freshStatus)) {
+          return { conflictStatus: String(freshStatus) };
+        }
+
+        tx.update(bookingRef, {
+          status: "confirmed",
+          confirmedAt: new Date(),
+          confirmedBy: userId,
+        });
+        return 'claimed' as const;
+      });
+
+    if (typeof claim === 'object') {
+      if (claim.conflictStatus === 'not_found') {
+        return res.status(404).json({ error: "Booking not found" });
+      }
+      return res.status(409).json({ error: `Cannot confirm a booking with status: ${claim.conflictStatus}` });
+    }
+
+    if (claim === 'already_confirmed') {
+      // Lost the race, or a retry of a call that already succeeded. The booking
+      // IS confirmed, so this is a success for the caller — but NOTHING below
+      // runs: no duplicate audit row, no duplicate Sheets row, no duplicate
+      // calendar event, no duplicate notification.
+      logger.info('[Bookings] Confirm claim already held — returning idempotent success', { bookingId, userId });
+      return res.json({ success: true, alreadyConfirmed: true });
+    }
+
+    // ── From here on we are the SINGLE winner of the confirmation claim ──────
 
     // PR-D-BOOKING-AUDIT-WIRING: append-only audit event AFTER successful
     // status mutation. Fire-and-forget — auditLog already swallows errors,
