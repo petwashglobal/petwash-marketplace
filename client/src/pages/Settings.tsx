@@ -32,7 +32,7 @@ import {
 import { registerPasskey, getBiometricMethodName, isPasskeySupported } from "@/auth/passkey";
 import { useLocation } from "wouter";
 import { logger } from "@/lib/logger";
-import { getTrustedDeviceInfo, revokeDeviceTrust, getTrustDaysRemaining } from "@/lib/deviceTrust";
+import { revokeDeviceTrust } from "@/lib/deviceTrust";
 import { t } from "@/lib/i18n";
 import { PetAvatarDisplay } from "@/components/PetAvatarDisplay";
 import {
@@ -56,212 +56,229 @@ interface PasskeyDevice {
 }
 
 // PIN Security Section Component - December 2025
-// P0-142 — server-side authority is the Firebase Bearer token; the
-// client sends no email/uid on any of /status /setup /change /remove.
+//
+// TRUTHFULNESS FIX (auth/identity sweep 2026-08-17). Before this pass the whole
+// section lied:
+//   - status was fetched from GET /api/pin-auth/status with no `?email=`, which
+//     the server answered 400 to. The `if (response.ok)` guard swallowed it, so
+//     `pinStatus` stayed null and EVERY user — including users with a PIN — was
+//     shown "Not set".
+//   - "Remove PIN" sent no body to an endpoint that required `{ email, pin }`.
+//     It 400'd, and the handler had no `else`, so the button was a silent no-op.
+//   - "Change PIN" re-ran setup instead of calling /change with the current PIN.
+// Status is now server-authoritative, every leg reports its real outcome, and a
+// failed status read renders "unavailable" instead of a comforting lie.
+type PinStatus = {
+  hasPin: boolean;
+  pinLength: number | null;
+  isLocked: boolean;
+  lockoutMinutes: number | null;
+};
+
+type PinFlow = null | 'setup' | 'change-current' | 'change-new' | 'remove';
+
 function PinSecuritySection({ language, firebaseUser }: { language: string; firebaseUser: any }) {
   const { toast } = useToast();
-  const [pinStatus, setPinStatus] = useState<{ hasPin: boolean; deviceName?: string } | null>(null);
+  const isHebrew = language === 'he';
+  const [pinStatus, setPinStatus] = useState<PinStatus | null>(null);
+  const [statusError, setStatusError] = useState(false);
   const [loading, setLoading] = useState(true);
-  // Three explicit UI modes so setup/change/remove flows never overlap.
-  const [uiMode, setUiMode] = useState<'idle' | 'setup' | 'change' | 'remove'>('idle');
+  const [flow, setFlow] = useState<PinFlow>(null);
+  const [firstPin, setFirstPin] = useState("");
+  const [currentPin, setCurrentPin] = useState("");
   const [setupStep, setSetupStep] = useState<'enter' | 'confirm'>('enter');
-  const [changeStep, setChangeStep] = useState<'current' | 'new' | 'confirm'>('current');
-  const [currentPin, setCurrentPin] = useState('');
-  const [newPin, setNewPin] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetPinInputs = () => {
-    setSetupStep('enter');
-    setChangeStep('current');
-    setCurrentPin('');
-    setNewPin('');
+  const authedFetch = async (path: string, init: RequestInit = {}) => {
+    const token = await firebaseUser.getIdToken();
+    return fetch(getApiUrl(path), {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(init.headers || {}),
+        'Authorization': `Bearer ${token}`,
+      },
+    });
   };
 
-  // Fetch PIN status — Bearer only, NO ?email= per P0-142.
-  useEffect(() => {
-    const fetchPinStatus = async () => {
-      if (!firebaseUser) return;
-      try {
-        const token = await firebaseUser.getIdToken();
-        const response = await fetch(getApiUrl('/api/pin-auth/status'), {
-          headers: { 'Authorization': `Bearer ${token}` },
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setPinStatus(data);
-        }
-      } catch (error) {
-        logger.error('Error fetching PIN status:', error);
-      } finally {
-        setLoading(false);
+  const showError = (message: string) => {
+    toast({
+      variant: 'destructive',
+      title: isHebrew ? 'שגיאה' : 'Error',
+      description: message,
+    });
+  };
+
+  const genericError = isHebrew ? 'הפעולה נכשלה. נסה שוב.' : 'That did not work. Please try again.';
+
+  // Fetch PIN status — SERVER is the source of truth for whether a PIN exists.
+  const refreshStatus = async () => {
+    if (!firebaseUser) return;
+    try {
+      const response = await authedFetch('/api/pin-auth/status');
+      if (!response.ok) {
+        // Do NOT fall through to "Not set" — that is a security status we did
+        // not actually read. Say so.
+        setStatusError(true);
+        setPinStatus(null);
+        return;
       }
-    };
-    fetchPinStatus();
+      const data = await response.json();
+      setStatusError(false);
+      setPinStatus({
+        hasPin: !!data.hasPin,
+        pinLength: data.pinLength ?? null,
+        isLocked: !!data.isLocked,
+        lockoutMinutes: data.lockoutMinutes ?? null,
+      });
+    } catch (error) {
+      logger.error('Error fetching PIN status:', error);
+      setStatusError(true);
+      setPinStatus(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (!firebaseUser) {
+      setLoading(false);
+      return;
+    }
+    void refreshStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [firebaseUser]);
 
-  // Handle PIN setup — CREATE ONLY. Server returns 409 PIN_ALREADY_EXISTS
-  // if a PIN is already set for the account.
-  const handleSetupPin = async (pin: string) => {
-    if (!firebaseUser || pin.length < 4) return;
+  const resetFlow = () => {
+    setFlow(null);
+    setFirstPin("");
+    setCurrentPin("");
+    setSetupStep('enter');
+  };
+
+  const submitSetup = async (pin: string) => {
     setIsSubmitting(true);
     try {
-      const token = await firebaseUser.getIdToken();
-      const response = await fetch(getApiUrl('/api/pin-auth/setup'), {
+      const response = await authedFetch('/api/pin-auth/setup', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({
           pin,
-          deviceId: `web-${Date.now()}`,
+          deviceId: localStorage.getItem('petwash_device_id') || `web-${Date.now()}`,
           deviceName: navigator.userAgent.substring(0, 50),
+          deviceType: 'web',
         }),
       });
       const data = await response.json().catch(() => ({}));
-      if (response.ok) {
-        setPinStatus({ hasPin: true });
-        setUiMode('idle');
-        resetPinInputs();
-        toast({
-          title: language === 'he' ? 'קוד PIN הוגדר בהצלחה' : 'PIN set successfully',
-          description: language === 'he' ? 'כעת תוכל להיכנס עם קוד PIN' : 'You can now sign in with your PIN',
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: language === 'he' ? 'שגיאה' : 'Error',
-          description: data.error || (data.code === 'PIN_ALREADY_EXISTS'
-            ? (language === 'he' ? 'כבר קיים קוד PIN — השתמש בשינוי קוד' : 'PIN already exists — use Change PIN')
-            : 'Failed to set PIN'),
-        });
+      if (!response.ok || data.success === false) {
+        showError(data.error || genericError);
+        setSetupStep('enter');
+        setFirstPin("");
+        return;
       }
+      resetFlow();
+      await refreshStatus();
+      toast({
+        title: isHebrew ? 'קוד PIN הוגדר בהצלחה' : 'PIN set successfully',
+        description: isHebrew ? 'כעת תוכל להיכנס עם קוד PIN' : 'You can now sign in with your PIN',
+      });
     } catch (error) {
       logger.error('Error setting PIN:', error);
-      toast({
-        variant: 'destructive',
-        title: language === 'he' ? 'שגיאה' : 'Error',
-        description: language === 'he' ? 'לא ניתן להגדיר קוד PIN' : 'Failed to set PIN',
-      });
+      showError(genericError);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle PIN change — sends currentPin + newPin. Server verifies
-  // currentPin before persisting the new hash.
-  const handleChangePin = async (currentPinValue: string, newPinValue: string) => {
-    if (!firebaseUser || currentPinValue.length < 4 || newPinValue.length < 4) return;
+  const submitChange = async (newPin: string) => {
     setIsSubmitting(true);
     try {
-      const token = await firebaseUser.getIdToken();
-      const response = await fetch(getApiUrl('/api/pin-auth/change'), {
+      const response = await authedFetch('/api/pin-auth/change', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
-        body: JSON.stringify({ currentPin: currentPinValue, newPin: newPinValue }),
+        body: JSON.stringify({ currentPin, newPin }),
       });
       const data = await response.json().catch(() => ({}));
-      if (response.ok) {
-        setUiMode('idle');
-        resetPinInputs();
-        toast({
-          title: language === 'he' ? 'קוד PIN שונה' : 'PIN changed',
-          description: language === 'he' ? 'קוד ה-PIN שלך עודכן בהצלחה' : 'Your PIN has been updated',
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: language === 'he' ? 'שגיאה' : 'Error',
-          description: data.error || 'Failed to change PIN',
-        });
+      if (!response.ok || data.success === false) {
+        showError(data.error || genericError);
+        resetFlow();
+        return;
       }
+      resetFlow();
+      await refreshStatus();
+      toast({
+        title: isHebrew ? 'קוד ה-PIN עודכן' : 'PIN changed',
+        description: isHebrew ? 'השתמש בקוד החדש בכניסה הבאה.' : 'Use your new PIN next time you sign in.',
+      });
     } catch (error) {
       logger.error('Error changing PIN:', error);
+      showError(genericError);
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  // Handle PIN removal — requires current PIN in body per P0-142.
-  const handleRemovePin = async (pin: string) => {
-    if (!firebaseUser || pin.length < 4) return;
+  const submitRemove = async (pin: string) => {
     setIsSubmitting(true);
     try {
-      const token = await firebaseUser.getIdToken();
-      const response = await fetch(getApiUrl('/api/pin-auth/remove'), {
+      const response = await authedFetch('/api/pin-auth/remove', {
         method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${token}`,
-        },
         body: JSON.stringify({ pin }),
       });
       const data = await response.json().catch(() => ({}));
-      if (response.ok) {
-        setPinStatus({ hasPin: false });
-        setUiMode('idle');
-        resetPinInputs();
-        toast({
-          title: language === 'he' ? 'קוד PIN הוסר' : 'PIN removed',
-          description: language === 'he' ? 'קוד ה-PIN שלך הוסר בהצלחה' : 'Your PIN has been removed',
-        });
-      } else {
-        toast({
-          variant: 'destructive',
-          title: language === 'he' ? 'שגיאה' : 'Error',
-          description: data.error || 'Failed to remove PIN',
-        });
+      if (!response.ok || data.success === false) {
+        showError(data.error || genericError);
+        resetFlow();
+        return;
       }
+      resetFlow();
+      await refreshStatus();
+      toast({
+        title: isHebrew ? 'קוד PIN הוסר' : 'PIN removed',
+        description: isHebrew ? 'קוד ה-PIN שלך הוסר בהצלחה' : 'Your PIN has been removed',
+      });
     } catch (error) {
       logger.error('Error removing PIN:', error);
+      showError(genericError);
     } finally {
       setIsSubmitting(false);
     }
   };
 
   const handlePinEntered = (pin: string) => {
-    if (uiMode === 'setup') {
-      if (setupStep === 'enter') {
-        setNewPin(pin);
-        setSetupStep('confirm');
-      } else {
-        if (pin === newPin) {
-          handleSetupPin(newPin);
-        } else {
-          toast({
-            variant: 'destructive',
-            title: language === 'he' ? 'קודי PIN לא תואמים' : 'PINs do not match',
-            description: language === 'he' ? 'נסה שוב' : 'Please try again',
-          });
-          resetPinInputs();
-        }
-      }
-    } else if (uiMode === 'change') {
-      if (changeStep === 'current') {
-        setCurrentPin(pin);
-        setChangeStep('new');
-      } else if (changeStep === 'new') {
-        setNewPin(pin);
-        setChangeStep('confirm');
-      } else {
-        if (pin === newPin) {
-          handleChangePin(currentPin, newPin);
-        } else {
-          toast({
-            variant: 'destructive',
-            title: language === 'he' ? 'קודי PIN לא תואמים' : 'PINs do not match',
-            description: language === 'he' ? 'נסה שוב' : 'Please try again',
-          });
-          setChangeStep('new');
-          setNewPin('');
-        }
-      }
-    } else if (uiMode === 'remove') {
-      handleRemovePin(pin);
+    if (flow === 'remove') {
+      void submitRemove(pin);
+      return;
     }
+    if (flow === 'change-current') {
+      setCurrentPin(pin);
+      setFlow('change-new');
+      setSetupStep('enter');
+      return;
+    }
+    // setup + change-new share the enter → confirm pair
+    if (setupStep === 'enter') {
+      setFirstPin(pin);
+      setSetupStep('confirm');
+      return;
+    }
+    if (pin !== firstPin) {
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'קודי PIN לא תואמים' : 'PINs do not match',
+        description: isHebrew ? 'נסה שוב' : 'Please try again',
+      });
+      setSetupStep('enter');
+      setFirstPin("");
+      return;
+    }
+    if (flow === 'change-new') void submitChange(pin);
+    else void submitSetup(pin);
+  };
+
+  const keypadTitle = () => {
+    if (flow === 'remove') return isHebrew ? 'הזן את קוד ה-PIN הנוכחי כדי להסיר' : 'Enter your current PIN to remove it';
+    if (flow === 'change-current') return isHebrew ? 'הזן את קוד ה-PIN הנוכחי' : 'Enter your current PIN';
+    if (setupStep === 'enter') return isHebrew ? 'הזן קוד PIN חדש' : 'Enter new PIN';
+    return isHebrew ? 'אשר את קוד ה-PIN' : 'Confirm your PIN';
   };
 
   if (loading) {
@@ -283,76 +300,90 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
           </div>
           <div>
             <h2 className="luxury-dark-heading-lg text-lg">
-              {language === 'he' ? 'קוד PIN' : 'PIN Code'}
+              {isHebrew ? 'קוד PIN' : 'PIN Code'}
             </h2>
             <p className="luxury-dark-text-small mt-1">
-              {language === 'he' ? 'התחברות מהירה עם קוד PIN בן 4-6 ספרות' : 'Quick sign-in with 4-6 digit PIN'}
+              {isHebrew ? 'התחברות מהירה עם קוד PIN בן 4-6 ספרות' : 'Quick sign-in with 4-6 digit PIN'}
             </p>
           </div>
         </div>
-        
-        {pinStatus?.hasPin ? (
-          <Badge className="bg-emerald-500/15 text-emerald-400 border-0">
-            {language === 'he' ? 'מופעל' : 'Enabled'}
+
+        {statusError ? (
+          <Badge variant="outline" className="border-amber-500/40 text-amber-600" data-testid="badge-pin-unavailable">
+            {isHebrew ? 'הסטטוס לא זמין' : 'Status unavailable'}
+          </Badge>
+        ) : pinStatus?.hasPin ? (
+          <Badge className="bg-emerald-500/15 text-emerald-400 border-0" data-testid="badge-pin-enabled">
+            {isHebrew ? 'מופעל' : 'Enabled'}
           </Badge>
         ) : (
-          <Badge variant="outline" className="border-[#E8E3D9] text-[#8A8078]">
-            {language === 'he' ? 'לא מופעל' : 'Not set'}
+          <Badge variant="outline" className="border-[#E8E3D9] text-[#8A8078]" data-testid="badge-pin-not-set">
+            {isHebrew ? 'לא מופעל' : 'Not set'}
           </Badge>
         )}
       </div>
 
-      {uiMode !== 'idle' ? (
+      {flow ? (
         <div className="luxury-dark-surface p-6 rounded-2xl">
           <h3 className="luxury-dark-heading-sm text-center mb-4 text-[#1A1A1A]">
-            {uiMode === 'setup' && setupStep === 'enter'
-              ? (language === 'he' ? 'הזן קוד PIN חדש' : 'Enter new PIN')
-              : uiMode === 'setup' && setupStep === 'confirm'
-              ? (language === 'he' ? 'אשר את קוד ה-PIN' : 'Confirm your PIN')
-              : uiMode === 'change' && changeStep === 'current'
-              ? (language === 'he' ? 'הזן את קוד ה-PIN הנוכחי' : 'Enter current PIN')
-              : uiMode === 'change' && changeStep === 'new'
-              ? (language === 'he' ? 'הזן קוד PIN חדש' : 'Enter new PIN')
-              : uiMode === 'change' && changeStep === 'confirm'
-              ? (language === 'he' ? 'אשר את קוד ה-PIN החדש' : 'Confirm new PIN')
-              : (language === 'he' ? 'הזן את קוד ה-PIN הנוכחי כדי להסיר' : 'Enter current PIN to remove')}
+            {keypadTitle()}
           </h3>
           <p className="luxury-dark-text-small text-center mb-6">
-            {language === 'he' ? 'בחר קוד בן 4-6 ספרות' : 'Enter a 4-6 digit code'}
+            {isHebrew ? 'קוד בן 4-6 ספרות' : 'A 4-6 digit code'}
           </p>
 
           <PinKeypad
             onComplete={handlePinEntered}
-            onCancel={() => {
-              setUiMode('idle');
-              resetPinInputs();
-            }}
+            onCancel={resetFlow}
             language={language}
             loading={isSubmitting}
           />
+        </div>
+      ) : statusError ? (
+        <div className="space-y-4">
+          <p className="luxury-dark-text-body text-amber-700" data-testid="text-pin-status-error">
+            {isHebrew
+              ? 'לא הצלחנו לקרוא את מצב ה-PIN מהשרת, ולכן איננו מציגים מצב. נסה לרענן.'
+              : 'We could not read your PIN status from the server, so we are not showing one. Please retry.'}
+          </p>
+          <Button
+            onClick={() => { setLoading(true); void refreshStatus(); }}
+            variant="outline"
+            className="border-[#E8E3D9] text-[#1A1A1A] hover:bg-white"
+            data-testid="button-retry-pin-status"
+          >
+            {isHebrew ? 'נסה שוב' : 'Retry'}
+          </Button>
         </div>
       ) : (
         <div className="space-y-4">
           {pinStatus?.hasPin ? (
             <>
               <p className="luxury-dark-text-body">
-                {language === 'he'
+                {isHebrew
                   ? 'קוד ה-PIN שלך מוגדר ופעיל. תוכל להשתמש בו להתחברות מהירה.'
                   : 'Your PIN is set and active. You can use it for quick sign-in.'
                 }
               </p>
+              {pinStatus.isLocked && (
+                <p className="luxury-dark-text-body text-red-600" data-testid="text-pin-locked">
+                  {isHebrew
+                    ? `הקוד נעול זמנית. נסה שוב בעוד ${pinStatus.lockoutMinutes ?? 15} דקות.`
+                    : `Temporarily locked. Try again in ${pinStatus.lockoutMinutes ?? 15} minutes.`}
+                </p>
+              )}
               <div className="flex gap-3">
                 <Button
-                  onClick={() => { resetPinInputs(); setUiMode('change'); }}
+                  onClick={() => { setFlow('change-current'); setSetupStep('enter'); }}
                   variant="outline"
                   className="border-[#E8E3D9] text-[#1A1A1A] hover:bg-white"
                   data-testid="button-change-pin"
                 >
                   <KeyRound className="h-4 w-4 mr-2" />
-                  {language === 'he' ? 'שנה קוד PIN' : 'Change PIN'}
+                  {isHebrew ? 'שנה קוד PIN' : 'Change PIN'}
                 </Button>
                 <Button
-                  onClick={() => { resetPinInputs(); setUiMode('remove'); }}
+                  onClick={() => setFlow('remove')}
                   variant="outline"
                   disabled={isSubmitting}
                   className="text-red-400 hover:bg-red-500/10 border-red-500/30"
@@ -363,30 +394,167 @@ function PinSecuritySection({ language, firebaseUser }: { language: string; fire
                   ) : (
                     <Trash2 className="h-4 w-4 mr-2" />
                   )}
-                  {language === 'he' ? 'הסר PIN' : 'Remove PIN'}
+                  {isHebrew ? 'הסר PIN' : 'Remove PIN'}
                 </Button>
               </div>
             </>
           ) : (
             <>
               <p className="luxury-dark-text-body">
-                {language === 'he' 
+                {isHebrew
                   ? 'הגדר קוד PIN להתחברות מהירה ומאובטחת לחשבונך.'
                   : 'Set up a PIN for quick and secure sign-in to your account.'
                 }
               </p>
               <button
-                onClick={() => { resetPinInputs(); setUiMode('setup'); }}
+                onClick={() => { setFlow('setup'); setSetupStep('enter'); }}
                 className="luxury-dark-btn-gold px-5 py-3 flex items-center gap-2"
                 data-testid="button-setup-pin"
               >
                 <Plus className="h-4 w-4" />
-                {language === 'he' ? 'הגדר קוד PIN' : 'Set up PIN'}
+                {isHebrew ? 'הגדר קוד PIN' : 'Set up PIN'}
               </button>
             </>
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// Trusted-device ("remember this device") — SERVER-AUTHORITATIVE.
+//
+// Before this pass the card read localStorage (`getTrustedDeviceInfo`) and
+// "Revoke trust" called `revokeDeviceTrust()`, which only deleted that
+// localStorage key. The real credential is the HMAC-signed device-trust token
+// used by /api/pin-auth/trusted-device-verify — it survived the "revoke" for
+// its full 30 days, on every device. The card now asks the server whether the
+// token it holds is actually valid, and revoke kills it server-side everywhere.
+function TrustedDeviceSection({ language, firebaseUser }: { language: string; firebaseUser: any }) {
+  const { toast } = useToast();
+  const isHebrew = language === 'he';
+  const [state, setState] = useState<{ trusted: boolean; daysRemaining?: number; deviceId?: string | null } | null>(null);
+  const [unavailable, setUnavailable] = useState(false);
+  const [revoking, setRevoking] = useState(false);
+
+  const load = async () => {
+    if (!firebaseUser) return;
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(getApiUrl('/api/pin-auth/device-trust/status'), {
+        headers: {
+          'Authorization': `Bearer ${token}`,
+          'X-Device-Trust-Token': localStorage.getItem('petwash_device_trust_token') || '',
+        },
+      });
+      if (!response.ok) {
+        setUnavailable(true);
+        setState(null);
+        return;
+      }
+      const data = await response.json();
+      setUnavailable(false);
+      setState({ trusted: !!data.trusted, daysRemaining: data.daysRemaining, deviceId: data.deviceId });
+      // If the server says this token is dead, stop keeping it around.
+      if (!data.trusted) localStorage.removeItem('petwash_device_trust_token');
+    } catch (error) {
+      logger.error('Error reading device trust status:', error);
+      setUnavailable(true);
+      setState(null);
+    }
+  };
+
+  useEffect(() => {
+    void load();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [firebaseUser]);
+
+  const handleRevoke = async () => {
+    setRevoking(true);
+    try {
+      const token = await firebaseUser.getIdToken();
+      const response = await fetch(getApiUrl('/api/pin-auth/device-trust/revoke'), {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+        body: '{}',
+      });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok || data.success === false) {
+        toast({
+          variant: 'destructive',
+          title: isHebrew ? 'שגיאה' : 'Error',
+          description: data.error || (isHebrew ? 'לא הצלחנו לבטל את אמון המכשיר.' : 'We could not revoke device trust.'),
+        });
+        return;
+      }
+      // Server killed it everywhere; clear the local copies too.
+      localStorage.removeItem('petwash_device_trust_token');
+      revokeDeviceTrust();
+      await load();
+      toast({
+        title: isHebrew ? 'אמון המכשיר בוטל' : 'Device trust revoked',
+        description: isHebrew
+          ? 'כל המכשירים המוכרים הוסרו. בכניסה הבאה תידרש התחברות מלאה.'
+          : 'Every remembered device was removed. Full sign-in is required next time.',
+      });
+    } catch (error) {
+      logger.error('Error revoking device trust:', error);
+      toast({
+        variant: 'destructive',
+        title: isHebrew ? 'שגיאה' : 'Error',
+        description: isHebrew ? 'לא הצלחנו לבטל את אמון המכשיר.' : 'We could not revoke device trust.',
+      });
+    } finally {
+      setRevoking(false);
+    }
+  };
+
+  if (!state && !unavailable) return null;
+
+  return (
+    <div className="luxury-dark-card rounded-2xl p-6 mb-6 border border-emerald-500/20 luxury-animate-fade-in" data-testid="card-trusted-device">
+      <div className="flex items-start justify-between gap-4">
+        <div className="flex items-start gap-4 flex-1">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
+            <Shield className={`h-6 w-6 ${state?.trusted ? 'text-emerald-400' : 'text-[#8A8078]'}`} />
+          </div>
+          <div className="flex-1">
+            <h3 className={`luxury-dark-heading-sm ${state?.trusted ? 'text-emerald-400' : 'text-[#1A1A1A]'}`}>
+              {unavailable
+                ? (isHebrew ? 'מצב המכשיר לא זמין' : 'Device status unavailable')
+                : state?.trusted
+                  ? (isHebrew ? 'המכשיר הזה מוכר' : 'This device is remembered')
+                  : (isHebrew ? 'המכשיר הזה אינו מוכר' : 'This device is not remembered')}
+            </h3>
+            <p className="luxury-dark-text-body mt-2 text-[#6A6460]" data-testid="text-trusted-device-detail">
+              {unavailable
+                ? (isHebrew
+                    ? 'לא הצלחנו לאמת מול השרת, ולכן איננו מציגים מצב.'
+                    : 'We could not confirm this with the server, so we are not showing a status.')
+                : state?.trusted
+                  ? (isHebrew
+                      ? `כניסה מהירה עם PIN פעילה במכשיר הזה לעוד ${state.daysRemaining ?? 0} ימים.`
+                      : `Quick PIN sign-in is active on this device for ${state.daysRemaining ?? 0} more days.`)
+                  : (isHebrew
+                      ? 'נדרשת התחברות מלאה במכשיר הזה.'
+                      : 'Full sign-in is required on this device.')}
+            </p>
+          </div>
+        </div>
+        {state?.trusted && (
+          <Button
+            onClick={handleRevoke}
+            variant="outline"
+            size="sm"
+            disabled={revoking}
+            className="border-red-500/30 text-red-400 hover:bg-red-500/10 shrink-0"
+            data-testid="button-revoke-trust"
+          >
+            {revoking ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <X className="h-4 w-4 mr-1" />}
+            {isHebrew ? 'בטל אמון' : 'Revoke trust'}
+          </Button>
+        )}
+      </div>
     </div>
   );
 }
@@ -473,7 +641,7 @@ export default function Settings() {
   const [deletionReason, setDeletionReason] = useState("");
   const [legalConsentChecked, setLegalConsentChecked] = useState(false);
   const [deletionProcessing, setDeletionProcessing] = useState(false);
-  const [trustedDevice, setTrustedDevice] = useState(getTrustedDeviceInfo());
+  const [signingOutEverywhere, setSigningOutEverywhere] = useState(false);
 
   // Fetch user's passkey devices
   useEffect(() => {
@@ -628,14 +796,46 @@ export default function Settings() {
     }
   };
 
-  // Handle revoking device trust
-  const handleRevokeTrust = () => {
-    revokeDeviceTrust();
-    setTrustedDevice(null);
-    toast({
-      title: t('settings.trustRevoked', language),
-      description: t('settings.signInNextVisit', language),
-    });
+  // Sign out of every device. POST /api/auth/signout clears the server session
+  // cookie AND calls revokeRefreshTokens(uid), so this really is global — the
+  // security tab previously offered no way to reach it.
+  const handleSignOutEverywhere = async () => {
+    setSigningOutEverywhere(true);
+    try {
+      const response = await fetch(getApiUrl('/api/auth/signout'), {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      if (!response.ok) throw new Error('signout failed');
+
+      // Drop every local sign-in shortcut so this device cannot silently resume.
+      localStorage.removeItem('petwash_device_trust_token');
+      revokeDeviceTrust();
+
+      const { auth } = await import('@/lib/firebase');
+      await auth?.signOut().catch(() => {});
+
+      toast({
+        title: language === 'he' ? 'התנתקת מכל המכשירים' : 'Signed out everywhere',
+        description: language === 'he'
+          ? 'כל ההתחברויות הפעילות בוטלו.'
+          : 'All active sessions were revoked.',
+      });
+      navigate('/signin');
+    } catch (error) {
+      logger.error('Error signing out everywhere:', error);
+      toast({
+        variant: 'destructive',
+        title: t('settings.error', language),
+        description: language === 'he'
+          ? 'לא הצלחנו להתנתק מכל המכשירים. נסה שוב.'
+          : 'We could not sign you out everywhere. Please try again.',
+      });
+    } finally {
+      setSigningOutEverywhere(false);
+    }
   };
 
   // Handle account deletion with GDPR compliance
@@ -890,46 +1090,8 @@ export default function Settings() {
             </TabsContent>
 
             <TabsContent value="security">
-              {/* Trusted Device Status - Inline Quick View */}
-              {trustedDevice && (
-                <div className="luxury-dark-card rounded-2xl p-6 mb-6 border border-emerald-500/20 luxury-animate-fade-in">
-                  <div className="flex items-start justify-between">
-                    <div className="flex items-start gap-4 flex-1">
-                      <div className="p-3 rounded-xl bg-gradient-to-br from-emerald-500/20 to-emerald-600/10">
-                        <Shield className="h-6 w-6 text-emerald-400" />
-                      </div>
-                      <div className="flex-1">
-                        <h3 className="luxury-dark-heading-sm text-emerald-400">
-                          {t('settings.trustedDeviceActive', language)}
-                        </h3>
-                        <p className="luxury-dark-text-body text-emerald-300/60 mt-2">
-                          {t('settings.trustedDeviceDescFull', language).replace('{days}', getTrustDaysRemaining().toString())}
-                        </p>
-                        <div className="mt-3 space-y-2 luxury-dark-text-small text-emerald-400/60">
-                          <div className="flex items-center gap-2">
-                            <Laptop className="h-4 w-4" />
-                            <span>{trustedDevice.deviceInfo.browser} on {trustedDevice.deviceInfo.os}</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Smartphone className="h-4 w-4" />
-                            <span>{trustedDevice.deviceInfo.screenResolution}</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <Button
-                      onClick={handleRevokeTrust}
-                      variant="outline"
-                      size="sm"
-                      className="border-red-500/30 text-red-400 hover:bg-red-500/10"
-                      data-testid="button-revoke-trust"
-                    >
-                      <X className="h-4 w-4 mr-1" />
-                      {t('settings.revokeTrust', language)}
-                    </Button>
-                  </div>
-                </div>
-              )}
+              {/* Trusted device — server-verified, not localStorage */}
+              <TrustedDeviceSection language={language} firebaseUser={firebaseUser} />
 
               <div className="luxury-dark-card rounded-2xl p-8 luxury-animate-scale-in luxury-delay-1">
                 <div className="flex items-center justify-between mb-8">
@@ -1117,6 +1279,39 @@ export default function Settings() {
 
               {/* PIN Authentication Section - December 2025 */}
               <PinSecuritySection language={language} firebaseUser={firebaseUser} />
+
+              {/* Sessions — global revocation was previously unreachable from Settings */}
+              <div className="luxury-dark-card rounded-2xl p-8 mt-6 luxury-animate-scale-in luxury-delay-3" data-testid="card-sessions">
+                <div className="flex items-center gap-4 mb-6">
+                  <div className="p-3 rounded-xl bg-gradient-to-br from-[rgba(217, 184, 76,0.3)] to-[rgba(217, 184, 76,0.1)]">
+                    <Lock className="h-6 w-6 text-[#b0841c]" />
+                  </div>
+                  <div>
+                    <h2 className="luxury-dark-heading-lg text-lg">
+                      {language === 'he' ? 'התחברויות פעילות' : 'Active sessions'}
+                    </h2>
+                    <p className="luxury-dark-text-small mt-1">
+                      {language === 'he'
+                        ? 'ניתוק מכל המכשירים מבטל כל התחברות פעילה, בכל דפדפן ואפליקציה.'
+                        : 'Signing out everywhere revokes every active session, in every browser and app.'}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  onClick={handleSignOutEverywhere}
+                  disabled={signingOutEverywhere}
+                  variant="outline"
+                  className="border-red-500/30 text-red-500 hover:bg-red-500/10"
+                  data-testid="button-signout-everywhere"
+                >
+                  {signingOutEverywhere ? (
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                  ) : (
+                    <X className="h-4 w-4 mr-2" />
+                  )}
+                  {language === 'he' ? 'התנתק מכל המכשירים' : 'Sign out of all devices'}
+                </Button>
+              </div>
             </TabsContent>
           </Tabs>
         </div>
