@@ -12157,11 +12157,32 @@ self.addEventListener('notificationclick', (event) => {
       const expiresAt = new Date(Date.now() + TTL_SECONDS * 1000);
 
       try {
+        // The client rotates the QR every TTL_SECONDS, and each rotation calls this
+        // endpoint again. Retire the member's earlier k9000 holds first so we don't
+        // accumulate one orphan 'pending' row per 45 s for as long as the redeem
+        // screen stays open.
+        await db
+          .update(redemptionSessions)
+          .set({ status: 'expired', updatedAt: new Date() })
+          .where(and(
+            eq(redemptionSessions.userId, userId),
+            eq(redemptionSessions.platform, 'k9000'),
+            eq(redemptionSessions.status, 'pending'),
+          ));
+
         await db.insert(redemptionSessions).values({
           sessionId,
           walletId: passSerial,
           userId,
+          // REQUIRED — `session_type` is NOT NULL with no default in the live schema
+          // (prod-schema-2026-07-03.sql:20495). Omitting it made every insert throw
+          // a not-null violation, which the catch below swallowed as "non-fatal" —
+          // so the row NEVER existed, GET /api/credit-wallet/redemptions/:id/status
+          // always 404'd, and K9000Redeem.tsx could never leave the "show your QR"
+          // step. The member got the wash and the app never confirmed it. (2026-08-17)
+          sessionType: 'hardware_qr',
           platform: 'k9000',
+          serviceType: 'per_wash',
           redemptionType,
           requestedAmountCents: 5500, // ₪55 standard wash
           status: 'pending',
@@ -12169,8 +12190,9 @@ self.addEventListener('notificationclick', (event) => {
           stationId: req.body?.kioskId ?? 'any',
         } as any);
       } catch (dbErr: any) {
-        // Non-fatal — session row missing just breaks status polling, not the wash itself
-        logger.warn('[K9000 GenerateQR] Failed to create redemption session (non-fatal)', { error: dbErr?.message, sessionId });
+        // Still non-fatal for the wash itself, but log at ERROR: a missing row means
+        // the member's screen can never confirm, which reads as "nothing happened".
+        logger.error('[K9000 GenerateQR] Failed to create redemption session — member status polling will 404', { error: dbErr?.message, sessionId });
       }
 
       return res.json({

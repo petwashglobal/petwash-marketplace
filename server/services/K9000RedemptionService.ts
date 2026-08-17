@@ -241,6 +241,69 @@ export async function authorizeRedemption(input: RedemptionInput): Promise<Redem
   };
 }
 
+/**
+ * Close out the member's on-screen K9000 redeem hold.
+ *
+ * THE BUG THIS FIXES (2026-08-17): `POST /api/k9000/generate-qr` opens a
+ * `redemption_sessions` row (platform 'k9000', status 'pending') purely so the
+ * member's phone can poll `GET /api/credit-wallet/redemptions/:id/status` and
+ * learn that the bay accepted their QR. NOTHING ever moved that row off
+ * 'pending' — not `/api/k9000/redeem-wash`, not the Cortina settlement commit.
+ * So after a real, debited wash the app sat on the "show your QR" screen
+ * forever, rotating a fresh code every 45 s and never showing the new balance.
+ * A member reading that as "it didn't work" would present the next rotated QR
+ * at the other bay — a SECOND debit for one intended wash.
+ *
+ * The QR token carries no `redemption_sessions.sessionId`, and the client polls
+ * only the most recently issued one, so we settle every live 'pending' k9000
+ * hold for this member — which is exactly the set that one redeem screen
+ * produced.
+ *
+ * FAIL-SOFT BY CONTRACT: the money is already committed and audited by the time
+ * this runs. This function must never throw and must never be awaited in a way
+ * that can roll back a completed wash — it only updates a UI-status row.
+ *
+ * MONEY NOTE: touches no balance, no ledger, no receipt. Status only.
+ */
+export async function completeMemberRedemptionHold(params: {
+  userId: string;
+  washId?: string;
+  baySessionId?: string;
+  correlationId?: string;
+}): Promise<void> {
+  try {
+    const { redemptionSessions } = await import('@shared/schema');
+    const updated = await db
+      .update(redemptionSessions)
+      .set({
+        status: 'completed',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(redemptionSessions.userId, params.userId),
+        eq(redemptionSessions.platform, 'k9000'),
+        eq(redemptionSessions.status, 'pending'),
+      ))
+      .returning({ sessionId: redemptionSessions.sessionId });
+
+    logger.info('[K9000Redemption] Member redeem hold settled', {
+      userId: params.userId,
+      settled: updated.length,
+      washId: params.washId,
+      baySessionId: params.baySessionId,
+      correlationId: params.correlationId,
+    });
+  } catch (err: any) {
+    // Never propagate — the wash is already paid for and running.
+    logger.warn('[K9000Redemption] Could not settle member redeem hold (non-blocking)', {
+      userId: params.userId,
+      error: err?.message,
+      correlationId: params.correlationId,
+    });
+  }
+}
+
 // ── Bay session lifecycle helpers (called by Flow A route as well) ────────────
 
 /**

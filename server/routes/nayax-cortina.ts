@@ -30,6 +30,7 @@
  * logic (resolve → verify → reserve → debit → release/void) is final.
  */
 import { Router, type Request, type Response } from 'express';
+import crypto from 'crypto';
 import { db, pool } from '../db';
 import { stationBays, walletAccounts } from '@shared/schema';
 import { eq, or } from 'drizzle-orm';
@@ -51,7 +52,7 @@ import { verifyQrRedeemToken } from '../lib/passTokens';
 function resolveUserIdFromDynamicQr(code: string): string {
   return verifyQrRedeemToken(code).userId; // throws on any non-dynamic / expired QR
 }
-import { authorizeRedemption, closeBaySession, type K9000RedemptionType } from '../services/K9000RedemptionService';
+import { authorizeRedemption, closeBaySession, completeMemberRedemptionHold, type K9000RedemptionType } from '../services/K9000RedemptionService';
 import { logger } from '../lib/logger';
 
 const router = Router();
@@ -63,6 +64,80 @@ function cortinaEnabled(): boolean {
 }
 
 const isUniqueViolation = (e: any) => e?.code === '23505' || /duplicate key|unique/i.test(String(e?.message));
+
+/* ──────────────────────────────────────────────────────────────────────────────
+   INBOUND CALLER AUTHENTICATION  (added 2026-08-17)
+
+   These handlers are mounted under /api/webhooks/, which the global CSRF gate
+   skips on the stated grounds that "HMAC-verified webhooks are authenticated
+   out-of-band" (server/index.ts). That is true of server/routes/nayax-webhooks.ts
+   (it runs validateNayaxSignature) — it was NOT true here: nothing verified the
+   caller at all. With NAYAX_CORTINA_ENABLED=true, anyone on the internet who
+   guessed a bay's Nayax TerminalId (they are printed on the hardware; ours are
+   182443 / 182462) could POST /settlement and commit whichever reservation was
+   open on that bay — debiting a real member's pre-paid credit and opening a bay
+   session — or POST /void to cancel a paying member's hold, or spam /refund to
+   flood the ops reconciliation queue.
+
+   The guard is a constant-time shared-secret check. Nayax sends the operator's
+   64-char Cortina Secret Token; we accept it on the documented body field
+   (`SecretToken`) or, for proxies that strip bodies, on an Authorization: Bearer
+   / X-Nayax-Secret header.
+
+   FAIL-CLOSED ON MISCONFIGURATION: when Cortina is ENABLED but no inbound secret
+   is configured, every callback is declined. Flipping the feature flag can
+   therefore never, by itself, expose an anonymous money endpoint — the operator
+   must set NAYAX_CORTINA_INBOUND_SECRET (defaults to NAYAX_CORTINA_SECRET_TOKEN,
+   which is the same operator token) as a deliberate second step.
+   ────────────────────────────────────────────────────────────────────────── */
+function inboundSecret(): string {
+  return (
+    process.env.NAYAX_CORTINA_INBOUND_SECRET?.trim() ||
+    process.env.NAYAX_CORTINA_SECRET_TOKEN?.trim() ||
+    ''
+  );
+}
+
+function timingSafeEquals(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'utf8');
+  const bb = Buffer.from(b, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return crypto.timingSafeEqual(ab, bb);
+}
+
+function presentedSecret(req: Request): string {
+  const b: any = req.body ?? {};
+  const header =
+    (req.headers['x-nayax-secret'] as string | undefined) ??
+    (req.headers['x-cortina-secret'] as string | undefined) ??
+    ((req.headers['authorization'] as string | undefined)?.replace(/^Bearer\s+/i, ''));
+  return String(
+    b.SecretToken ?? b.secretToken ?? b.Secret ?? b.secret ??
+    b.BasicInfo?.SecretToken ?? b.basicInfo?.secretToken ??
+    header ?? '',
+  ).trim();
+}
+
+/**
+ * Returns null when the caller is authenticated, or the Cortina decline body to
+ * send back when it is not. Decline code 5 = "suspected fraud" per the verified
+ * StaticQR decline list — the correct signal for an unauthenticated caller.
+ */
+function rejectUnauthenticatedCaller(req: Request): Record<string, unknown> | null {
+  const expected = inboundSecret();
+  if (!expected) {
+    logger.error('[Cortina] REFUSING callback — NAYAX_CORTINA_ENABLED=true but no inbound secret configured. Set NAYAX_CORTINA_INBOUND_SECRET.');
+    return cortinaDecline(6, 'inbound_secret_not_configured'); // 6 = general system failure
+  }
+  if (!timingSafeEquals(presentedSecret(req), expected)) {
+    logger.warn('[Cortina] REFUSING callback — bad or missing inbound secret', {
+      path: req.path,
+      ip: (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.socket?.remoteAddress,
+    });
+    return cortinaDecline(5, 'unauthenticated_caller'); // 5 = suspected fraud
+  }
+  return null;
+}
 
 /** Resolve which physical bay a Nayax TerminalId / DOT reader maps to. */
 async function resolveBay(terminalId: string): Promise<{ stationId: string; side: 'left' | 'right'; bayId: string; status: string } | null> {
@@ -150,6 +225,8 @@ const cortinaDecline = (code: number, reason: string) =>
 // Cortina machine configuration works without a code change.
 router.post(['/authorize', '/sale', '/Authorization', '/Sale', '/staticqr/authorization', '/staticqr/sale'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
+  const unauth = rejectUnauthenticatedCaller(req);
+  if (unauth) return res.status(401).json(unauth);
   try {
     const { terminalId, code } = parseCortinaRequest(req.body);
     const bay = await resolveBay(terminalId);
@@ -196,6 +273,8 @@ router.post(['/authorize', '/sale', '/Authorization', '/Sale', '/staticqr/author
 // /Sale End Notification. Same commit logic serves both.
 router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement', '/SaleEndNotification', '/staticqr/settlement', '/staticqr/saleendnotification'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
+  const unauth = rejectUnauthenticatedCaller(req);
+  if (unauth) return res.status(401).json(unauth);
   const { terminalId, code, transactionId, vended } = parseCortinaRequest(req.body);
   try {
     // If Nayax reports the product did NOT vend, take no money (reservation TTL-expires).
@@ -251,6 +330,11 @@ router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement',
         correlationId: `cortina:${resv.reservation_ref}`,
       });
       await pool.query(`UPDATE k9000_redemption_reservations SET session_id=$1, updated_at=NOW() WHERE id=$2`, [result.sessionId, resv.id]);
+      // Settle the member's on-screen redeem hold so the app leaves the "show your
+      // QR" step and refreshes the balance. Fail-soft, status-only — see
+      // completeMemberRedemptionHold(). Without it the member sees no confirmation
+      // of a wash they just paid for, and may re-present a rotated QR at the other bay.
+      void completeMemberRedemptionHold({ userId: resv.user_id, baySessionId: result.sessionId, correlationId: `cortina:${resv.reservation_ref}` });
       logger.info('[Cortina] committed — pre-paid wash debited', { terminalId, stationId: bay.stationId, side: bay.side, reservationRef: resv.reservation_ref, sessionId: result.sessionId });
       return res.json(cortinaApprove({ sessionId: result.sessionId, remaining: result.remainingBalance }));
     } catch (err: any) {
@@ -283,6 +367,8 @@ router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement',
 // decline that triggers a Nayax retry storm.
 router.post(['/void', '/cancel', '/Void', '/Cancel', '/staticqr/void', '/staticqr/cancel'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
+  const unauth = rejectUnauthenticatedCaller(req);
+  if (unauth) return res.status(401).json(unauth);
   const { terminalId, transactionId } = parseCortinaRequest(req.body);
   try {
     if (!transactionId) return res.json(cortinaApprove({ note: 'no_transaction_id_nothing_to_void' }));
@@ -345,6 +431,8 @@ router.post(['/void', '/cancel', '/Void', '/Cancel', '/staticqr/void', '/staticq
 // refund rail, not here. Idempotent + ack-on-error (same rationale as void).
 router.post(['/refund', '/Refund', '/staticqr/refund'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled'));
+  const unauth = rejectUnauthenticatedCaller(req);
+  if (unauth) return res.status(401).json(unauth);
   const { terminalId, transactionId, amount } = parseCortinaRequest(req.body);
   try {
     if (!transactionId) return res.json(cortinaApprove({ note: 'no_transaction_id_nothing_to_refund' }));

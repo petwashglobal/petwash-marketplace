@@ -72,6 +72,7 @@ import {
   findBay,
   openBaySession,
   closeBaySession,
+  completeMemberRedemptionHold,
 } from '../services/K9000RedemptionService';
 import * as MachineCommandService from '../services/MachineCommandService';
 import { createOrUpdateAlert } from '../services/AlertEngine';
@@ -228,23 +229,25 @@ router.post('/wash/start_cycle', async (req, res) => {
     }
 
     // === IDEMPOTENCY CHECK: prevent double-activation for same transaction ===
+    //
+    // FIXED 2026-08-17 — this guard used to pull an ARBITRARY, unordered 50 rows
+    // of every k9000_wash_activated audit event ever written and then scan them
+    // in JS for a matching transactionId:
+    //     .where(eq(auditLedger.eventType, 'k9000_wash_activated')).limit(50)
+    // With no WHERE on the transaction id and no ORDER BY, the matching row falls
+    // out of that window as soon as the table passes ~50 rows — so the SAME Nayax
+    // transaction could start a SECOND wash, free. It only "worked" because live
+    // volume was tiny. MONEY-CRITICAL: match in SQL on the jsonb key, unbounded.
     if (transactionId) {
-      const existingWash = await db
-        .select({ id: auditLedger.id, metadata: auditLedger.metadata })
+      const duplicateRows = await db
+        .select({ id: auditLedger.id })
         .from(auditLedger)
-        .where(eq(auditLedger.eventType, 'k9000_wash_activated'))
-        .limit(50);
-
-      const duplicate = existingWash.find((row) => {
-        try {
-          const meta = typeof row.metadata === 'string'
-            ? JSON.parse(row.metadata)
-            : row.metadata;
-          return meta?.transactionId === transactionId;
-        } catch {
-          return false;
-        }
-      });
+        .where(and(
+          eq(auditLedger.eventType, 'k9000_wash_activated'),
+          sql`${auditLedger.metadata} ->> 'transactionId' = ${String(transactionId)}`,
+        ))
+        .limit(1);
+      const duplicate = duplicateRows[0];
 
       if (duplicate) {
         logger.warn('[K9000 Wash] Duplicate activation attempt blocked', {
@@ -1117,6 +1120,13 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
     }
 
     const { washId, bayId, sessionId, side: authorisedSide, remainingBalance, remainingUnit } = authorization;
+
+    // ── Step 8b: Settle the member's on-screen redeem hold ──────────────────
+    // Without this the phone polls `redemption_sessions` forever and never shows
+    // "wash started" or the new balance — see completeMemberRedemptionHold().
+    // Fire-and-forget + fail-soft: the debit is already committed and audited,
+    // and a UI-status write must never be able to unwind a running wash.
+    void completeMemberRedemptionHold({ userId, washId, baySessionId: sessionId, correlationId });
 
     // ── Step 9: Dispatch START_PUMP via machine command reliability layer ──
     // authorizeRedemption() already committed the debit.  We now create a
