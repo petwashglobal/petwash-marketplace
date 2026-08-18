@@ -1,18 +1,53 @@
 /**
- * Booking Idempotency Middleware
+ * Booking / checkout / POST idempotency middleware — ATOMIC CLAIM.
  *
- * Prevents double-charges when users tap "Book" twice (network retry,
- * impatient tap, back-button race, etc.).
+ * P0-141 CEO fix. The previous SELECT-existing → conditional INSERT
+ * pattern was NOT atomic: two concurrent requests with the same
+ * `Idempotency-Key` header could both SELECT nothing, both INSERT
+ * (ON CONFLICT DO NOTHING), and both call next() — so a strict
+ * checkout could double-charge on the exact race the header was
+ * designed to prevent.
  *
- * Protocol:
- *   Client sends header:  Idempotency-Key: <uuid-v4>
- *   Server:
- *     - First request: processes normally, stores (key, endpoint, response) in DB
- *     - Duplicate request within 24h: returns stored response immediately (HTTP 200)
- *     - Request without key: passes through (non-enforced routes)
+ * The atomic authority is now:
  *
- * Storage: existing `idempotency_keys` table in PostgreSQL.
- * TTL: rows older than 24h are invisible (not deleted — append-only for audit).
+ *   INSERT INTO idempotency_keys (key, endpoint, response_hash, created_at)
+ *   VALUES (${key}, ${endpoint}, 'pending', NOW())
+ *   ON CONFLICT (key) DO NOTHING
+ *   RETURNING key
+ *
+ * — the ONE worker whose RETURNING is non-empty owns the claim; all
+ * others were beaten by Postgres and MUST NOT call next().
+ *
+ * State handling for losing workers:
+ *
+ *   COMPLETE   — the prior claim's response_hash is anything other
+ *                than 'pending' (updated by the finalize hook on
+ *                res.json/res.end). Return the existing duplicate
+ *                message per the pre-existing contract.
+ *
+ *   PENDING    — the prior claim's response_hash is still 'pending'
+ *                AND the row is fresh (age < PENDING_LEASE_MS,
+ *                default 5 min). Return 409 IN_PROGRESS so the
+ *                client backs off and retries with the SAME key.
+ *
+ *   STALE      — the prior claim's response_hash is 'pending' AND
+ *                the row is older than PENDING_LEASE_MS. Try to
+ *                atomically steal via
+ *                  UPDATE ... SET created_at = NOW()
+ *                  WHERE key = ? AND response_hash = 'pending' AND created_at = ?
+ *                  RETURNING key
+ *                The UPDATE's exact-timestamp predicate ensures at
+ *                most one worker wins the steal.
+ *
+ * Failure policies:
+ *
+ *   requireIdempotency (non-money)  — FAIL-OPEN on DB error.
+ *                                     next() to keep the app up.
+ *   requireStrictIdempotency (money) — FAIL-CLOSED on DB error.
+ *                                     Return 503 IDEMPOTENCY_UNAVAILABLE.
+ *
+ * Storage schema unchanged: existing `idempotency_keys` (see
+ * shared/schema.ts §4.5D). No migration required.
  */
 
 import type { Request, Response, NextFunction } from 'express';
@@ -21,171 +56,261 @@ import { sql } from 'drizzle-orm';
 import { logger } from './requestIdAndLogs';
 import { SystemEventService } from '../services/SystemEventService';
 
-const TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+// A row is invisible after 24h (existing repo convention).
+const TTL_INTERVAL = "24 hours";
+// A 'pending' row older than this is considered a crashed worker —
+// another request may steal the claim.
+const PENDING_LEASE_MS = parseInt(
+  process.env.IDEMPOTENCY_PENDING_LEASE_MS || String(5 * 60 * 1000), // 5 minutes
+  10,
+);
+
+const PENDING_MARKER = 'pending';
+
+function validateKey(res: Response, key: string | undefined): key is string {
+  if (!key) {
+    res.status(400).json({
+      error: 'MISSING_IDEMPOTENCY_KEY',
+      message:
+        'Please include an Idempotency-Key header (UUID) to prevent duplicate submissions.',
+    });
+    return false;
+  }
+  if (key.length > 128 || !/^[a-zA-Z0-9\-_]+$/.test(key)) {
+    res.status(400).json({
+      error: 'INVALID_IDEMPOTENCY_KEY',
+      message: 'Idempotency-Key must be 1–128 alphanumeric characters.',
+    });
+    return false;
+  }
+  return true;
+}
 
 /**
- * Apply idempotency guard to a booking route.
- * Requires the client to supply an `Idempotency-Key` header (UUID).
- * If missing, returns 400.  If duplicate within TTL, returns cached response.
+ * Atomically insert a new claim OR find out why we can't.
+ * Returns:
+ *   { state: 'CLAIMED' }
+ *   { state: 'COMPLETE', response_hash, created_at }
+ *   { state: 'PENDING',  created_at }
+ *   { state: 'DB_ERROR', error }
+ */
+async function attemptClaim(
+  key: string,
+  endpoint: string,
+): Promise<
+  | { state: 'CLAIMED' }
+  | { state: 'COMPLETE'; response_hash: string; created_at: string }
+  | { state: 'PENDING'; created_at: string }
+  | { state: 'DB_ERROR'; error: string }
+> {
+  try {
+    const insertRes = await db.execute(sql`
+      INSERT INTO idempotency_keys (key, endpoint, response_hash, created_at)
+      VALUES (${key}, ${endpoint}, ${PENDING_MARKER}, NOW())
+      ON CONFLICT (key) DO NOTHING
+      RETURNING key
+    `);
+    if (insertRes.rows.length > 0) return { state: 'CLAIMED' };
+
+    // Someone else already inserted the key. Inspect state within the TTL.
+    const lookup = await db.execute(sql`
+      SELECT response_hash, created_at
+      FROM idempotency_keys
+      WHERE key = ${key}
+        AND created_at > NOW() - INTERVAL '${sql.raw(TTL_INTERVAL)}'
+      LIMIT 1
+    `);
+
+    if (lookup.rows.length === 0) {
+      // Row exists but is >TTL old. Try to atomically steal by
+      // re-initialising it (still gated by the stale timestamp).
+      const stolen = await db.execute(sql`
+        UPDATE idempotency_keys
+        SET response_hash = ${PENDING_MARKER}, created_at = NOW(), endpoint = ${endpoint}
+        WHERE key = ${key}
+          AND created_at <= NOW() - INTERVAL '${sql.raw(TTL_INTERVAL)}'
+        RETURNING key
+      `);
+      if (stolen.rows.length > 0) return { state: 'CLAIMED' };
+      // Another request stole it first — treat as PENDING.
+      return { state: 'PENDING', created_at: new Date().toISOString() };
+    }
+
+    const row = lookup.rows[0] as { response_hash: string | null; created_at: string };
+    const state = String(row.response_hash ?? PENDING_MARKER);
+    if (state !== PENDING_MARKER) {
+      return { state: 'COMPLETE', response_hash: state, created_at: row.created_at };
+    }
+
+    // PENDING. Check the lease.
+    const createdAtMs = new Date(row.created_at).getTime();
+    const ageMs = Date.now() - createdAtMs;
+    if (ageMs > PENDING_LEASE_MS) {
+      // Try to steal — exact-timestamp predicate ensures single winner.
+      const stolen = await db.execute(sql`
+        UPDATE idempotency_keys
+        SET created_at = NOW(), endpoint = ${endpoint}
+        WHERE key = ${key}
+          AND response_hash = ${PENDING_MARKER}
+          AND created_at = ${new Date(createdAtMs).toISOString()}::timestamptz
+        RETURNING key
+      `);
+      if (stolen.rows.length > 0) return { state: 'CLAIMED' };
+      // Another request stole first — still PENDING for us.
+      return { state: 'PENDING', created_at: row.created_at };
+    }
+
+    return { state: 'PENDING', created_at: row.created_at };
+  } catch (err: any) {
+    return { state: 'DB_ERROR', error: err?.message || String(err) };
+  }
+}
+
+/**
+ * Install the finalize hook that stamps the row with the final HTTP
+ * status ONCE the response is emitted. Uses res.on('finish') so
+ * res.send / res.end / res.status().end() paths are also captured
+ * (the previous wrapper only fired on res.json).
+ */
+function installFinalizeHook(key: string, res: Response) {
+  let finalized = false;
+  const finalize = () => {
+    if (finalized) return;
+    finalized = true;
+    const marker = JSON.stringify({ status: res.statusCode }).slice(0, 255);
+    db.execute(sql`
+      UPDATE idempotency_keys
+      SET response_hash = ${marker}
+      WHERE key = ${key}
+    `).catch(() => {
+      // Non-fatal — the PENDING lease will eventually let a retry steal.
+    });
+  };
+  res.on('finish', finalize);
+  res.on('close', finalize);
+}
+
+function returnCompletedDuplicate(
+  res: Response,
+  key: string,
+  endpoint: string,
+  createdAt: string,
+  variant: 'strict' | 'lax',
+) {
+  SystemEventService.doubleSubmitBlocked(
+    variant === 'strict' ? 'strict_idempotency' : 'idempotency_middleware',
+    key,
+    endpoint,
+  );
+  logger.info(`[Idempotency${variant === 'strict' ? ':strict' : ''}] Duplicate request blocked`, {
+    key,
+    endpoint,
+  });
+  return res.status(200).json({
+    idempotent: true,
+    message:
+      variant === 'strict'
+        ? 'This request was already processed. No duplicate charge was made.'
+        : 'This request was already processed. Your booking was not duplicated.',
+    originalProcessedAt: createdAt,
+  });
+}
+
+function returnInProgress(res: Response, key: string, endpoint: string) {
+  logger.info('[Idempotency] Duplicate request currently in progress', { key, endpoint });
+  return res.status(409).json({
+    error: 'IDEMPOTENT_REQUEST_IN_PROGRESS',
+    message:
+      'A prior request with this Idempotency-Key is still being processed. Retry with the same key after a short delay.',
+  });
+}
+
+// ── Public middlewares ─────────────────────────────────────────────────────
+
+/**
+ * Non-money idempotency guard. Missing key → 400. DB error → FAIL-OPEN
+ * (next()) so the app remains available.
  */
 export function requireIdempotency(req: Request, res: Response, next: NextFunction) {
   const key = (req.headers['idempotency-key'] as string | undefined)?.trim();
-
-  if (!key) {
-    return res.status(400).json({
-      error: 'MISSING_IDEMPOTENCY_KEY',
-      message: 'Please include an Idempotency-Key header (UUID) to prevent duplicate bookings.',
-    });
-  }
-
-  if (key.length > 128 || !/^[a-zA-Z0-9\-_]+$/.test(key)) {
-    return res.status(400).json({
-      error: 'INVALID_IDEMPOTENCY_KEY',
-      message: 'Idempotency-Key must be 1–128 alphanumeric characters.',
-    });
-  }
-
+  if (!validateKey(res, key)) return;
   const endpoint = `${req.method}:${req.path}`;
 
-  // Check for existing response
   (async () => {
-    try {
-      const rows = await db.execute(sql`
-        SELECT response_hash, endpoint, created_at
-        FROM idempotency_keys
-        WHERE key = ${key}
-          AND created_at > NOW() - INTERVAL '24 hours'
-        LIMIT 1
-      `);
-
-      if (rows.rows.length > 0) {
-        const existing = rows.rows[0] as any;
-
-        // Key already used — return cached indication
-        SystemEventService.doubleSubmitBlocked('idempotency_middleware', key, endpoint);
-        logger.info('[Idempotency] Duplicate request blocked', { key, endpoint, originalEndpoint: existing.endpoint });
-
-        return res.status(200).json({
-          idempotent: true,
-          message: 'This request was already processed. Your booking was not duplicated.',
-          originalProcessedAt: existing.created_at,
-        });
-      }
-
-      // Not a duplicate — store the key BEFORE processing (prevents race)
-      await db.execute(sql`
-        INSERT INTO idempotency_keys (key, endpoint, response_hash, created_at)
-        VALUES (${key}, ${endpoint}, 'pending', NOW())
-        ON CONFLICT (key) DO NOTHING
-      `);
-
-      // Patch res.json to update the record with the final status
-      const origJson = res.json.bind(res);
-      res.json = function (body: any) {
-        // Update stored key with result (non-blocking)
-        db.execute(sql`
-          UPDATE idempotency_keys
-          SET response_hash = ${JSON.stringify({ status: res.statusCode }).slice(0, 255)}
-          WHERE key = ${key}
-        `).catch(() => {});
-        return origJson(body);
-      };
-
-      next();
-    } catch (err: any) {
-      logger.error('[Idempotency] DB check failed, passing through', { error: err?.message, key });
-      // Fail open — don't block the booking if the idempotency check itself fails
-      next();
+    const outcome = await attemptClaim(key, endpoint);
+    if (outcome.state === 'CLAIMED') {
+      installFinalizeHook(key, res);
+      return next();
     }
-  })();
+    if (outcome.state === 'COMPLETE') {
+      return returnCompletedDuplicate(res, key, endpoint, outcome.created_at, 'lax');
+    }
+    if (outcome.state === 'PENDING') {
+      return returnInProgress(res, key, endpoint);
+    }
+    // DB_ERROR — FAIL-OPEN (non-money contract).
+    logger.error('[Idempotency] DB claim failed, passing through (FAIL-OPEN)', {
+      error: outcome.error,
+      key,
+      endpoint,
+    });
+    return next();
+  })().catch((err) => {
+    logger.error('[Idempotency] unexpected middleware error', { error: err?.message, key });
+    return next();
+  });
 }
 
 /**
- * Strict idempotency: FAIL-CLOSED on DB error.
- * Use on checkout / payment endpoints where a duplicate charge is worse than
- * a temporary 503. If the idempotency_keys table is unavailable we refuse
- * the request so the client can retry safely when the DB recovers.
- *
- * Behaviour differences from requireIdempotency:
- *   - Missing key  → 400 (same)
- *   - Duplicate    → 200 cached (same)
- *   - DB error     → 503 instead of passing through
+ * Money-path idempotency guard. Missing key → 400. DB error →
+ * FAIL-CLOSED (503) so the client retries with the same key when the
+ * DB recovers instead of double-charging.
  */
 export function requireStrictIdempotency(req: Request, res: Response, next: NextFunction) {
   const key = (req.headers['idempotency-key'] as string | undefined)?.trim();
-
-  if (!key) {
-    return res.status(400).json({
-      error: 'MISSING_IDEMPOTENCY_KEY',
-      message: 'Please include an Idempotency-Key header (UUID) to prevent duplicate charges.',
-    });
-  }
-
-  if (key.length > 128 || !/^[a-zA-Z0-9\-_]+$/.test(key)) {
-    return res.status(400).json({
-      error: 'INVALID_IDEMPOTENCY_KEY',
-      message: 'Idempotency-Key must be 1–128 alphanumeric characters.',
-    });
-  }
-
+  if (!validateKey(res, key)) return;
   const endpoint = `${req.method}:${req.path}`;
 
   (async () => {
-    try {
-      const rows = await db.execute(sql`
-        SELECT response_hash, endpoint, created_at
-        FROM idempotency_keys
-        WHERE key = ${key}
-          AND created_at > NOW() - INTERVAL '24 hours'
-        LIMIT 1
-      `);
-
-      if (rows.rows.length > 0) {
-        const existing = rows.rows[0] as any;
-        SystemEventService.doubleSubmitBlocked('strict_idempotency', key, endpoint);
-        logger.info('[Idempotency:strict] Duplicate request blocked', { key, endpoint });
-        return res.status(200).json({
-          idempotent: true,
-          message: 'This request was already processed. No duplicate charge was made.',
-          originalProcessedAt: existing.created_at,
-        });
-      }
-
-      // Insert BEFORE processing — ON CONFLICT DO NOTHING handles race window
-      await db.execute(sql`
-        INSERT INTO idempotency_keys (key, endpoint, response_hash, created_at)
-        VALUES (${key}, ${endpoint}, 'pending', NOW())
-        ON CONFLICT (key) DO NOTHING
-      `);
-
-      const origJson = res.json.bind(res);
-      res.json = function (body: any) {
-        db.execute(sql`
-          UPDATE idempotency_keys
-          SET response_hash = ${JSON.stringify({ status: res.statusCode }).slice(0, 255)}
-          WHERE key = ${key}
-        `).catch(() => {});
-        return origJson(body);
-      };
-
-      next();
-    } catch (err: any) {
-      // FAIL-CLOSED: DB unavailable means we cannot guarantee idempotency.
-      // Return 503 so the client retries with the same key when DB recovers.
-      logger.error('[Idempotency:strict] DB check failed — refusing request to prevent duplicate charge', {
-        error: err?.message, key, endpoint,
-      });
-      return res.status(503).json({
-        error: 'IDEMPOTENCY_UNAVAILABLE',
-        message: 'Payment service temporarily unavailable. Please retry with the same Idempotency-Key.',
-      });
+    const outcome = await attemptClaim(key, endpoint);
+    if (outcome.state === 'CLAIMED') {
+      installFinalizeHook(key, res);
+      return next();
     }
-  })();
+    if (outcome.state === 'COMPLETE') {
+      return returnCompletedDuplicate(res, key, endpoint, outcome.created_at, 'strict');
+    }
+    if (outcome.state === 'PENDING') {
+      // Strict: same contract as non-strict — return in-progress. A
+      // charging endpoint must NEVER run twice.
+      return returnInProgress(res, key, endpoint);
+    }
+    // DB_ERROR — FAIL-CLOSED.
+    logger.error(
+      '[Idempotency:strict] DB claim failed — refusing request to prevent duplicate charge',
+      { error: outcome.error, key, endpoint },
+    );
+    return res.status(503).json({
+      error: 'IDEMPOTENCY_UNAVAILABLE',
+      message:
+        'Payment service temporarily unavailable. Please retry with the same Idempotency-Key.',
+    });
+  })().catch((err) => {
+    logger.error(
+      '[Idempotency:strict] unexpected middleware error — failing closed',
+      { error: err?.message, key },
+    );
+    return res.status(503).json({
+      error: 'IDEMPOTENCY_UNAVAILABLE',
+      message:
+        'Payment service temporarily unavailable. Please retry with the same Idempotency-Key.',
+    });
+  });
 }
 
 /**
- * Soft idempotency: logs duplicates but doesn't block.
- * Use on endpoints where you want visibility but not enforcement.
+ * Soft idempotency: logs duplicates but doesn't block. No behaviour
+ * change from the previous version.
  */
 export function softIdempotency(req: Request, res: Response, next: NextFunction) {
   const key = (req.headers['idempotency-key'] as string | undefined)?.trim();
@@ -195,12 +320,13 @@ export function softIdempotency(req: Request, res: Response, next: NextFunction)
     try {
       const rows = await db.execute(sql`
         SELECT created_at FROM idempotency_keys
-        WHERE key = ${key} AND created_at > NOW() - INTERVAL '24 hours'
+        WHERE key = ${key} AND created_at > NOW() - INTERVAL '${sql.raw(TTL_INTERVAL)}'
         LIMIT 1
       `);
       if (rows.rows.length > 0) {
         logger.warn('[Idempotency:soft] Duplicate request detected (not blocked)', {
-          key, endpoint: `${req.method}:${req.path}`,
+          key,
+          endpoint: `${req.method}:${req.path}`,
         });
       }
     } catch {}
