@@ -130,7 +130,10 @@ export default function DashboardV2() {
             </div>
           </div>
           <div style={{ display: 'flex', gap: 9 }}>
-            <Link href="/account" aria-label={t(he, 'Notifications', 'התראות')} style={iconBtn}>
+            {/* 2026-08-18: bell now routes to /notifications (was /account —
+                identical to the adjacent Menu icon, so users couldn't reach
+                the notification list from this dashboard). */}
+            <Link href="/notifications" aria-label={t(he, 'Notifications', 'התראות')} style={iconBtn}>
               <Bell size={19} />
               {unreadCount > 0 && <span style={{ position: 'absolute', top: 9, insetInlineEnd: 9, width: 7, height: 7, borderRadius: '50%', background: C.ink, boxShadow: `0 0 0 2px ${C.bg}` }} />}
             </Link>

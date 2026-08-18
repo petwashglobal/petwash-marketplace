@@ -17,8 +17,23 @@ import { db } from '../db';
 import { bookings, payments, stations } from '@shared/super-app-schema';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 import { ISRAEL_VAT_RATE } from "@shared/israel-compliance-config";
+import { createHash } from 'crypto';
 
 const router = Router();
+
+const hashShort = (v: unknown): string =>
+  createHash('sha256').update(String(v ?? '')).digest('hex').slice(0, 12);
+
+const maskEmail = (email: string): string => {
+  if (!email || typeof email !== 'string' || !email.includes('@')) return '(invalid)';
+  const [local, domain] = email.split('@');
+  return `${local.slice(0, 2)}***@${domain}`;
+};
+
+const maskPhone = (phone: string): string => {
+  if (!phone || typeof phone !== 'string' || phone.length < 4) return '****';
+  return `***${phone.slice(-4)}`;
+};
 
 // ============================================
 // PUBLIC FRANCHISE INQUIRY (no auth required)
@@ -43,9 +58,21 @@ router.post('/inquiry', async (req, res) => {
       const inquiriesRef = firestore.collection('franchise_inquiries');
       await inquiriesRef.add(inquiryData);
     } catch (firestoreErr) {
-      logger.warn('Could not save franchise inquiry to Firestore, saving to logs', { inquiryData });
+      logger.warn('Could not save franchise inquiry to Firestore', {
+        emailMasked: maskEmail(email),
+        phoneMasked: maskPhone(phone),
+        country,
+        city,
+        error: (firestoreErr as any)?.message,
+      });
     }
-    logger.info('Franchise inquiry received', { fullName, email, phone, country, city });
+    logger.info('Franchise inquiry received', {
+      emailMasked: maskEmail(email),
+      phoneMasked: maskPhone(phone),
+      country,
+      city,
+      fullNameHash: hashShort(fullName),
+    });
     return res.json({ success: true, message: 'Inquiry submitted successfully' });
   } catch (error) {
     logger.error('Error processing franchise inquiry', error);

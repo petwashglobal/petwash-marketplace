@@ -21,6 +21,7 @@ import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
+import { useToast } from '@/hooks/use-toast';
 import {
   BriefcaseMedical, Syringe, ShieldCheck, CalendarDays, Stethoscope, MapPin,
   ShoppingBag, MoreHorizontal, Home, PawPrint, Heart, FileText, Bell, Pencil, Plus,
@@ -115,8 +116,19 @@ export default function PetPassportHome() {
   const [, navigate] = useLocation();
   const { user } = useFirebaseAuth();
   const { language } = useLanguage();
+  const { toast } = useToast();
   const isHe = language === 'he';
   const tr = (he: string, en: string) => (isHe ? he : en);
+
+  // Tiles/quick-actions that have no destination page yet must NOT silently
+  // dump the user onto /pets — that's a bait-and-switch. Surface a real
+  // "coming soon" toast so the owner knows what they clicked isn't wired.
+  const notReady = (labelHe: string, labelEn: string) => {
+    toast({
+      title: tr(labelHe, labelEn),
+      description: tr('בקרוב — עדיין בפיתוח', 'Coming soon — still in development'),
+    });
+  };
 
   const { data, isLoading } = useQuery({
     queryKey: ['/api/pets'],
@@ -207,8 +219,8 @@ export default function PetPassportHome() {
         {/* ── 3 passport tiles ── */}
         <div className="mt-5 grid grid-cols-3 gap-3">
           <Tile icon={<BriefcaseMedical />} label={tr('רשומות רפואיות', 'Medical records')} onClick={() => navigate('/documents')} />
-          <Tile icon={<Syringe />} label={tr('חיסונים', 'Vaccines')} onClick={() => navigate('/pets')} />
-          <Tile icon={<ShieldCheck />} label={tr('ביטוחים', 'Insurance')} onClick={() => navigate('/pets')} />
+          <Tile icon={<Syringe />} label={tr('חיסונים', 'Vaccines')} onClick={() => notReady('חיסונים', 'Vaccines')} />
+          <Tile icon={<ShieldCheck />} label={tr('ביטוחים', 'Insurance')} onClick={() => notReady('ביטוחים', 'Insurance')} />
         </div>
 
         {/* ── My Pets carousel ── */}
@@ -253,9 +265,9 @@ export default function PetPassportHome() {
             {tr('פעולות מהירות', 'Quick actions')}
           </div>
           <div className="mt-3 grid grid-cols-5 gap-2">
-            <Quick icon={<CalendarDays />} label={tr('תזכורות', 'Reminders')} onClick={() => navigate('/pets')} />
-            <Quick icon={<Stethoscope />} label={tr('וטרינר', 'Vet')} onClick={() => navigate('/pets')} />
-            <Quick icon={<MapPin />} label={tr('בתי חולים', 'Clinics')} onClick={() => navigate('/pets')} />
+            <Quick icon={<CalendarDays />} label={tr('תזכורות', 'Reminders')} onClick={() => notReady('תזכורות', 'Reminders')} />
+            <Quick icon={<Stethoscope />} label={tr('וטרינר', 'Vet')} onClick={() => notReady('וטרינר', 'Vet')} />
+            <Quick icon={<MapPin />} label={tr('בתי חולים', 'Clinics')} onClick={() => notReady('בתי חולים', 'Clinics')} />
             <Quick icon={<ShoppingBag />} label={tr('חנות', 'Shop')} onClick={() => navigate('/shop')} />
             <Quick icon={<MoreHorizontal />} label={tr('עוד', 'More')} onClick={() => navigate('/pets')} />
           </div>

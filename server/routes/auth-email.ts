@@ -15,6 +15,7 @@ import { z } from 'zod';
 import { UnifiedVerificationError, unifiedVerificationService } from '../services/UnifiedVerificationService';
 import { mintEmailVerifiedToken } from '../lib/emailVerifiedToken';
 import { logger } from '../lib/logger';
+import { turnstileGuard } from '../lib/turnstileGuard';
 
 const router = Router();
 
@@ -48,7 +49,11 @@ const startSchema = z.object({
 });
 
 // POST /api/auth/email/start
-router.post('/start', async (req: Request, res: Response) => {
+// Turnstile guard: previously this route had NO bot check at all — the only
+// customer-facing OTP surface without one. Same policy as the canonical SMS
+// surface: fully enforced when TURNSTILE_SECRET_KEY is configured, skipped
+// with a WARN otherwise (reported by /api/health/bot-check for operators).
+router.post('/start', turnstileGuard({ action: 'signup_email_start' }), async (req: Request, res: Response) => {
   const parsed = startSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ ok: false, error: 'invalid_email' });
   const { email, purpose, language } = parsed.data;

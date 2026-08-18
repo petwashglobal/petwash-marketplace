@@ -628,6 +628,134 @@ export class SumitClient {
    *                             the KEY is fine, the call shape isn't
    *   ok:false + !reachable   → could not reach SUMIT at all (network)
    */
+  /**
+   * POST /accounting/customers/create/
+   *
+   * SUMIT full-service adoption, Phase 2 (CEO 2026-08-16). Per the SUMIT
+   * official contract documented at
+   *   docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.1
+   * this endpoint is FIND-OR-CREATE when called with
+   * `SearchMode: "Automatic"` + a stable `ExternalIdentifier`. SUMIT
+   * dedupes on their side and returns the existing CustomerID + a
+   * `CustomerHistoryURL` (the customer-portal dashboard link).
+   *
+   * Body: `{ Details: AccountingTypedCustomer, Credentials }`.
+   * Response: `{ CustomerID, CustomerHistoryURL }` — official field names,
+   * no heuristic parsing.
+   *
+   * Safety contract:
+   *  - Not wired → returns {wired:false} without any HTTP call.
+   *  - Never throws — a customer-sync failure must never roll back signup.
+   *  - `SearchMode: "Automatic"` means a retry with the same
+   *    ExternalIdentifier does NOT duplicate the customer.
+   */
+  async createCustomer(input: {
+    externalIdentifier: string;
+    name: string;
+    email?: string;
+    phone?: string;
+  }): Promise<{
+    wired: boolean;
+    sumitCustomerId?: string;
+    customerHistoryUrl?: string;
+    reason?: string;
+    rawResponse?: unknown;
+  }> {
+    const env = readEnv();
+    if (!isWired()) {
+      logger.info('[SumitClient] createCustomer called while not wired (no-op)', {
+        externalIdentifier: input.externalIdentifier,
+      });
+      return {
+        wired: false,
+        reason: 'SumitClient not wired — set SUMIT_ENABLED=true plus all credentials',
+      };
+    }
+
+    // Body shape from official SUMIT API contract:
+    //   docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.1 lines 82, 87-101
+    //   Endpoint:  POST /accounting/customers/create/
+    //   Wrap key:  `Details` (NOT `Customer`)
+    //   Type:      AccountingTypedCustomer
+    //   Idempotency: `Customer.ExternalIdentifier` + `SearchMode: "Automatic"`
+    //   Response:  `{ CustomerID, CustomerHistoryURL }`
+    const body = {
+      Credentials: {
+        CompanyID: env.companyId,
+        APIKey: env.apiKey,
+      },
+      Details: {
+        Name: input.name,
+        EmailAddress: input.email || undefined,
+        Phone: input.phone || undefined,     // official field: Phone (not PhoneNumber)
+        ExternalIdentifier: input.externalIdentifier,
+        SearchMode: 'Automatic',              // find-or-create by ExternalIdentifier
+        NoVAT: false,
+      },
+    };
+
+    const url = `${env.baseUrl}/accounting/customers/create/`;
+    const startMs = Date.now();
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'Idempotency-Key': `customer:${input.externalIdentifier}`,
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+    } catch (networkErr) {
+      const msg = (networkErr as Error).message;
+      logger.error('[SumitClient] createCustomer network error', {
+        externalIdentifier: input.externalIdentifier,
+        elapsedMs: Date.now() - startMs,
+        err: msg,
+      });
+      return { wired: false, reason: `Network error: ${msg}` };
+    }
+
+    let parsedBody: unknown = null;
+    try { parsedBody = await res.json(); } catch { /* SUMIT may return non-JSON on error */ }
+
+    if (!res.ok) {
+      logger.warn('[SumitClient] createCustomer non-2xx', {
+        externalIdentifier: input.externalIdentifier,
+        status: res.status,
+        elapsedMs: Date.now() - startMs,
+      });
+      return {
+        wired: true,
+        reason: `SUMIT returned ${res.status}`,
+        rawResponse: parsedBody,
+      };
+    }
+
+    // Response fields pinned to the official contract (see doc §3.1). Do NOT
+    // add fallback field-name heuristics — if SUMIT changes the contract
+    // we want the tests + logs to surface it, not silently paper over.
+    const b = (parsedBody && typeof parsedBody === 'object')
+      ? parsedBody as Record<string, unknown>
+      : {};
+    const sumitCustomerId = b.CustomerID != null ? String(b.CustomerID) : undefined;
+    const customerHistoryUrl = typeof b.CustomerHistoryURL === 'string'
+      ? b.CustomerHistoryURL
+      : undefined;
+
+    logger.info('[SumitClient] customer create response', {
+      externalIdentifier: input.externalIdentifier,
+      sumitCustomerId,
+      hasCustomerHistoryUrl: Boolean(customerHistoryUrl),
+      sandbox: env.sandbox,
+      elapsedMs: Date.now() - startMs,
+    });
+
+    return { wired: true, sumitCustomerId, customerHistoryUrl, rawResponse: parsedBody };
+  }
+
   async connectionTest(): Promise<{
     ok: boolean;
     reachable: boolean;

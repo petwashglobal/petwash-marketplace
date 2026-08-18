@@ -20,15 +20,20 @@ import { ArrowRight, ArrowLeft, Camera, Loader2, Check } from 'lucide-react';
 const GREEN = '#063B22';
 const GOLD = '#D6B56D';
 
-// mockup species → API species (the API enum has turtle/reptile but no snake)
+// mockup species → API species (the API enum has reptile but no snake — the
+// snake tile is a UX shortcut that maps to reptile server-side). Grid must
+// cover the full canonical 9-species enum used across Pets, PetPassport,
+// PetPassportHome, and PrestigePassWallet — hamster and reptile were missing.
 const SPECIES: { key: string; api: string; he: string; en: string; emoji: string }[] = [
   { key: 'dog', api: 'dog', he: 'כלב', en: 'Dog', emoji: '🐕' },
   { key: 'cat', api: 'cat', he: 'חתול', en: 'Cat', emoji: '🐈' },
   { key: 'fish', api: 'fish', he: 'דג', en: 'Fish', emoji: '🐠' },
   { key: 'bird', api: 'bird', he: 'ציפור', en: 'Bird', emoji: '🦜' },
   { key: 'snake', api: 'reptile', he: 'נחש', en: 'Snake', emoji: '🐍' },
+  { key: 'reptile', api: 'reptile', he: 'זוחל', en: 'Reptile', emoji: '🦎' },
   { key: 'rabbit', api: 'rabbit', he: 'ארנב', en: 'Rabbit', emoji: '🐇' },
   { key: 'guinea_pig', api: 'guinea_pig', he: 'שרקן', en: 'Guinea Pig', emoji: '🐹' },
+  { key: 'hamster', api: 'hamster', he: 'אוגר', en: 'Hamster', emoji: '🐹' },
   { key: 'other', api: 'other', he: 'אחר', en: 'Other', emoji: '🐾' },
 ];
 

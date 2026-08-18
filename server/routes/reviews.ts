@@ -403,6 +403,57 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+// =================== GET TRUST SCORE ===================
+//
+// MUST be registered BEFORE the /:platform/:providerId catch-all below —
+// both are 2-segment routes and Express matches in registration order.
+// Registering trust-score after the catch-all lets /api/reviews/trust-score/:id
+// silently resolve to the review-list handler (platform="trust-score"),
+// returning the wrong shape.
+
+/**
+ * Get contractor trust score
+ * GET /api/reviews/trust-score/:contractorId
+ */
+router.get('/trust-score/:contractorId', async (req: Request, res: Response) => {
+  try {
+    const { contractorId } = req.params;
+
+    const [trustScore] = await db
+      .select()
+      .from(contractorTrustScores)
+      .where(eq(contractorTrustScores.contractorId, contractorId))
+      .limit(1);
+
+    if (!trustScore) {
+      // Return default score for new contractors
+      return res.json({
+        success: true,
+        contractorId,
+        publicTrustScore: 4.50,
+        totalReviews: 0,
+        totalBookings: 0,
+        isRecommended: false,
+        isPremiumBadge: false,
+      });
+    }
+
+    res.json({
+      success: true,
+      contractorId: trustScore.contractorId,
+      publicTrustScore: parseFloat(trustScore.publicTrustScore || '4.50'),
+      totalReviews: trustScore.totalReviews,
+      totalBookings: trustScore.totalBookings,
+      isRecommended: trustScore.isRecommended,
+      isPremiumBadge: trustScore.isPremiumBadge,
+      lastCalculatedAt: trustScore.lastCalculatedAt,
+    });
+  } catch (error: any) {
+    logger.error('[Trust Score] Get score error', error);
+    res.status(500).json({ error: error.message || 'Failed to get trust score' });
+  }
+});
+
 // =================== GET REVIEWS ===================
 
 /**
@@ -572,161 +623,5 @@ router.post('/:reviewId/respond', requireAuth, async (req: Request, res: Respons
 });
 
 // =================== GET TRUST SCORE ===================
-
-/**
- * Get contractor trust score
- * GET /api/reviews/trust-score/:contractorId
- */
-router.get('/trust-score/:contractorId', async (req: Request, res: Response) => {
-  try {
-    const { contractorId } = req.params;
-
-    const [trustScore] = await db
-      .select()
-      .from(contractorTrustScores)
-      .where(eq(contractorTrustScores.contractorId, contractorId))
-      .limit(1);
-
-    if (!trustScore) {
-      // Return default score for new contractors
-      return res.json({
-        success: true,
-        contractorId,
-        publicTrustScore: 4.50,
-        totalReviews: 0,
-        totalBookings: 0,
-        isRecommended: false,
-        isPremiumBadge: false,
-      });
-    }
-
-    res.json({
-      success: true,
-      contractorId: trustScore.contractorId,
-      publicTrustScore: parseFloat(trustScore.publicTrustScore || '4.50'),
-      totalReviews: trustScore.totalReviews,
-      totalBookings: trustScore.totalBookings,
-      isRecommended: trustScore.isRecommended,
-      isPremiumBadge: trustScore.isPremiumBadge,
-      lastCalculatedAt: trustScore.lastCalculatedAt,
-    });
-  } catch (error: any) {
-    logger.error('[Trust Score] Get score error', error);
-    res.status(500).json({ error: error.message || 'Failed to get trust score' });
-  }
-});
-
-// =================== HELPER FUNCTIONS ===================
-
-/**
- * Update contractor trust score (AI Trust Scoring Engine)
- * Combines review scores + vetting status + violations
- */
-async function updateContractorTrustScore(
-  contractorId: string,
-  contractorType: 'sitter' | 'walker' | 'driver' | 'station_operator'
-) {
-  try {
-    // Get all reviews for this contractor
-    const reviews = await db
-      .select()
-      .from(contractorReviews)
-      .where(
-        and(
-          eq(contractorReviews.subjectId, contractorId),
-          eq(contractorReviews.reviewType, 'owner_to_contractor'),
-          eq(contractorReviews.isVisible, true)
-        )
-      );
-
-    const totalReviews = reviews.length;
-    
-    // Calculate average review score
-    const avgReviewScore = totalReviews > 0
-      ? reviews.reduce((sum, r) => sum + (r.overallRating || 0), 0) / totalReviews
-      : 4.50;
-
-    // Get total completed bookings from unified bookings table
-    // First, find the provider record for this contractor
-    const providerRecord = await db
-      .select({ id: providers.id })
-      .from(providers)
-      .where(eq(providers.userId, contractorId))
-      .limit(1);
-
-    let totalBookings = 0;
-    if (providerRecord.length > 0) {
-      const bookingCount = await db
-        .select({ count: sql<number>`COUNT(*)` })
-        .from(bookings)
-        .where(and(
-          eq(bookings.providerId, providerRecord[0].id),
-          eq(bookings.status, 'completed')
-        ));
-      
-      totalBookings = Number(bookingCount[0]?.count || 0);
-    }
-
-    // Calculate public trust score (4.0 - 5.0 scale)
-    // Formula: Weighted average of review score + experience bonus
-    let publicTrustScore = avgReviewScore;
-    
-    // Experience bonus: +0.10 for every 10 completed bookings (max +0.50)
-    const experienceBonus = Math.min(0.50, (totalBookings / 10) * 0.10);
-    publicTrustScore = Math.min(5.0, publicTrustScore + experienceBonus);
-
-    // Determine badges
-    const isRecommended = publicTrustScore >= 4.80 && totalReviews >= 10;
-    const isPremiumBadge = publicTrustScore >= 4.95 && totalBookings >= 100;
-
-    // Upsert trust score
-    const existingScore = await db
-      .select()
-      .from(contractorTrustScores)
-      .where(eq(contractorTrustScores.contractorId, contractorId))
-      .limit(1);
-
-    if (existingScore.length > 0) {
-      await db
-        .update(contractorTrustScores)
-        .set({
-          publicTrustScore: publicTrustScore.toFixed(2),
-          reviewScore: avgReviewScore.toFixed(2),
-          totalReviews,
-          totalBookings,
-          isRecommended,
-          isPremiumBadge,
-          lastCalculatedAt: new Date(),
-          calculationNotes: `Updated based on ${totalReviews} reviews, avg ${avgReviewScore.toFixed(2)} stars`,
-          updatedAt: new Date(),
-        })
-        .where(eq(contractorTrustScores.contractorId, contractorId));
-    } else {
-      await db.insert(contractorTrustScores).values({
-        contractorId,
-        contractorType,
-        publicTrustScore: publicTrustScore.toFixed(2),
-        reviewScore: avgReviewScore.toFixed(2),
-        totalReviews,
-        totalBookings,
-        isRecommended,
-        isPremiumBadge,
-        calculationNotes: `Initial score based on ${totalReviews} reviews`,
-      });
-    }
-
-    logger.info('[Trust Score] Updated', {
-      contractorId,
-      publicTrustScore: publicTrustScore.toFixed(2),
-      totalReviews,
-      isRecommended,
-      isPremiumBadge
-    });
-
-  } catch (error) {
-    logger.error('[Trust Score] Update error', error, { contractorId });
-    throw error;
-  }
-}
 
 export default router;

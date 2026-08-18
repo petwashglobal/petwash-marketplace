@@ -31,7 +31,7 @@ export async function createSessionCookie(idToken: string, res: Response): Promi
     
     logger.debug('[SessionCookies] Calling Firebase Admin createSessionCookie', { 
       expiresInMs: COOKIE_MAX_AGE,
-      idTokenPrefix: idToken.substring(0, 20) + '...'
+      idTokenLength: idToken.length
     });
     
     const sessionCookie = await firebaseAdmin.auth().createSessionCookie(idToken, { 

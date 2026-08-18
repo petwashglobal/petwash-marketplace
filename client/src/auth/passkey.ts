@@ -168,18 +168,46 @@ export function getBrowserName(): string {
 }
 
 /**
- * Register a new passkey for the current user
- * PRODUCTION: Platform authenticator preferred (Face ID/Touch ID), with fallback
+ * UI discovery hint only — NEVER a source of truth. The server authoritative
+ * record of "this account has a passkey" is the Firestore credential collection
+ * exposed by GET /api/webauthn/credentials (see getServerPasskeyStatus below).
+ *
+ * This flag is written on successful registration + successful passkey login and
+ * used ONLY by the signed-out login screen to soften the discovery of the
+ * one-tap "Sign in with Face ID" button (which cannot query the server for a
+ * per-user credential without leaking whether the account exists). A cleared /
+ * missing flag must NEVER be treated as "no passkey enrolled" — the browser's
+ * conditional-mediation autofill still surfaces synced passkeys, and any UI that
+ * shows "Face ID: enabled" MUST derive that from the server call.
  */
-/**
- * Remember that THIS device now has a registered PetWash passkey. The login screen
- * gates the one-tap "Sign in with Face ID" button on this flag (petwash_passkey_email)
- * so the button only appears when a credential actually exists — and prefills the
- * email for conditional autofill. Set on successful registration AND passkey login.
- * Best-effort; storage being unavailable never breaks auth.
- */
-function rememberPasskeyEmail(email?: string | null): void {
+function rememberPasskeyEmailHint(email?: string | null): void {
   try { if (email) localStorage.setItem('petwash_passkey_email', email); } catch { /* storage disabled */ }
+}
+
+/**
+ * Server-authoritative passkey status for the CURRENT authenticated user.
+ *
+ * Returns { enrolled, count } derived from GET /api/webauthn/credentials, which
+ * requires a valid session cookie. This is the ONLY source of truth for
+ * "Face ID enabled on your PetWash account" — Settings/EnableFaceIDCard and any
+ * enrollment-status badge MUST use this instead of reading localStorage. On any
+ * network / auth failure returns { enrolled: false, count: 0 } so the UI fails
+ * closed (offers registration) rather than falsely showing "enabled".
+ */
+export async function getServerPasskeyStatus(): Promise<{ enrolled: boolean; count: number }> {
+  try {
+    const res = await fetch(getApiUrl('/api/webauthn/credentials'), {
+      method: 'GET',
+      credentials: 'include',
+    });
+    if (!res.ok) return { enrolled: false, count: 0 };
+    const data = await res.json();
+    const list = Array.isArray(data?.credentials) ? data.credentials : [];
+    const active = list.filter((c: any) => !c?.isRevoked);
+    return { enrolled: active.length > 0, count: active.length };
+  } catch {
+    return { enrolled: false, count: 0 };
+  }
 }
 
 export async function registerPasskey(
@@ -245,8 +273,9 @@ export async function registerPasskey(
       return { success: false, error: error.error || 'Registration verification failed' };
     }
 
-    // This device now has a passkey → let the login screen show the one-tap button.
-    rememberPasskeyEmail(auth.currentUser?.email);
+    // UI hint only — the Firestore write above (via server verify) is the
+    // authoritative "this account is enrolled" record. See rememberPasskeyEmailHint.
+    rememberPasskeyEmailHint(auth.currentUser?.email);
     return { success: true };
   } catch (error: any) {
     console.error('Passkey registration error:', error);
@@ -336,9 +365,9 @@ export async function signInWithPasskey(
 
     await signInWithCustomToken(auth, customToken);
 
-    // Confirm the one-tap signal for next time (covers users who registered before
-    // this flag existed, or on a fresh device that just used a synced passkey).
-    rememberPasskeyEmail(userData?.email || auth.currentUser?.email);
+    // Refresh the UI hint so the button surfaces next time on this device.
+    // Not authority — the successful server verify above is the record.
+    rememberPasskeyEmailHint(userData?.email || auth.currentUser?.email);
     return { success: true, uid: userData.uid };
   } catch (error: any) {
     console.error('Passkey sign-in error:', error);

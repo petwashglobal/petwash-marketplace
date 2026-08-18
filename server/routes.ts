@@ -186,6 +186,7 @@ import adminMemberDiscountRoutes from "./routes/admin-member-discount";
 import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
 import meStatusRoutes from "./routes/me-status";
+import serviceSessionRoutes from "./routes/service-sessions";
 // Control Tower admin panels (2026-06-20) — read-only views over existing ledgers/engines.
 import adminPaymentsControlRoutes from "./routes/admin-payments-control";
 import adminProviderControlRoutes from "./routes/admin-provider-control";
@@ -1169,6 +1170,35 @@ self.addEventListener('notificationclick', (event) => {
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
       const { idToken, expiresInMs = 432000000, captchaToken, turnstileToken, dateOfBirth: bodyDob } = req.body;
+      // Consent inputs — accept only literal `true` so a truthy string / 1 /
+      // null can never silently be treated as consent. Three independent
+      // signals kept separate on purpose:
+      //   ageConfirmed        — client-side "I am 18+" checkbox tick.
+      //   termsAccepted       — client-side Terms + Privacy acceptance tick.
+      //   acceptedMarketing   — optional marketing preference (never a gate).
+      // ageConfirmed on its own is NEVER trusted — the server independently
+      // recalculates age from `dateOfBirth` before any stamp is written.
+      const ageConfirmed = (req.body as any)?.ageConfirmed === true;
+      const termsAcceptedFlag = (req.body as any)?.termsAccepted === true;
+      const acceptedMarketing = (req.body as any)?.acceptedMarketing === true;
+      // Independent age calculation from the DOB the client typed. Any invalid
+      // shape / missing field resolves to null so the gate below fails closed.
+      const serverCalculatedAge = ((): number | null => {
+        if (typeof bodyDob !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(bodyDob)) return null;
+        const b = new Date(bodyDob + 'T00:00:00Z');
+        if (Number.isNaN(b.getTime())) return null;
+        const now = new Date();
+        let a = now.getUTCFullYear() - b.getUTCFullYear();
+        const m = now.getUTCMonth() - b.getUTCMonth();
+        if (m < 0 || (m === 0 && now.getUTCDate() < b.getUTCDate())) a--;
+        return a;
+      })();
+      const serverAdult = serverCalculatedAge !== null && serverCalculatedAge >= 18;
+      // Current published version of the Terms + Privacy Notice. Bumped whenever
+      // material text changes so `termsVersion` / `privacyVersion` on the users
+      // row records exactly which document the user accepted. Kept as one
+      // string for the pair — they are accepted together on the signup form.
+      const TERMS_VERSION_CURRENT = '2026-v1';
       
       if (!idToken) {
         logger.warn('[Session] Missing ID token in request - client error (400)', { traceId });
@@ -1400,27 +1430,85 @@ self.addEventListener('notificationclick', (event) => {
           uid: decoded.uid, isNewUser: _syncResult?.isNewUser ?? 'timeout',
         });
 
-        // Social OAuth providers implicitly consent via OAuth screen — stamp terms
-        // immediately so postLoginDecider does not redirect to /complete-profile.
-        // Rover-style passive consent (CEO 2026-07-27): the manual phone/email flow
-        // sends termsAccepted:true (the "by continuing you agree" disclosure is the
-        // affirmative act) — honour it here too so manual signups don't get
-        // re-prompted for terms.
         const socialOAuthProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
         const signInProviderForTerms = (decoded as any).firebase?.sign_in_provider || '';
-        const passiveConsent = (req.body as any)?.termsAccepted === true;
-        if ((socialOAuthProviders.includes(signInProviderForTerms) || passiveConsent) && _syncResult?.user && !(_syncResult.user as any).termsAcceptedAt) {
+
+        // Terms + Privacy stamp — one event, two audit fields.
+        // Recorded ONLY when the client has actually presented the checkboxes:
+        //   • ageConfirmed === true (from the explicit "I am 18+" tick), AND
+        //   • termsAccepted === true (from the Terms + Privacy tick), AND
+        //   • server-calculated age from `dateOfBirth` ≥ 18.
+        // The server never trusts the ageConfirmed tick alone — the DOB the
+        // user typed is the age evidence and it is re-checked here. Social
+        // OAuth on its own does NOT auto-stamp: OAuth authenticates identity,
+        // it does not accept Terms. Those social users complete the account
+        // (and this stamp) via the post-OAuth activation surface.
+        // The old-row bypass (only stamp when termsAcceptedAt is null) is
+        // retained so re-signing does not silently rewrite an earlier audit
+        // record with a newer version — versions must roll forward only via
+        // an explicit re-acceptance flow.
+        if (
+          _syncResult?.isNewUser
+          && ageConfirmed
+          && termsAcceptedFlag
+          && serverAdult
+          && _syncResult?.user
+          && !(_syncResult.user as any).termsAcceptedAt
+        ) {
           try {
             const consentNow = new Date();
             await authService.updateUser(decoded.uid, {
               termsAcceptedAt: consentNow,
+              termsVersion: TERMS_VERSION_CURRENT,
               privacyAcceptedAt: consentNow,
+              privacyVersion: TERMS_VERSION_CURRENT,
             });
-            logger.info('[Session] ✅ termsAcceptedAt stamped for social login user', {
-              uid: decoded.uid, provider: signInProviderForTerms,
+            logger.info('[Session] Terms + Privacy accepted', {
+              uid: decoded.uid,
+              provider: signInProviderForTerms || 'manual',
+              termsVersion: TERMS_VERSION_CURRENT,
             });
           } catch (termsErr) {
-            logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
+            logger.warn('[Session] Failed to stamp Terms/Privacy acceptance (non-blocking)', termsErr);
+          }
+        } else if (
+          _syncResult?.isNewUser
+          && termsAcceptedFlag
+          && (!ageConfirmed || !serverAdult)
+        ) {
+          // Explicit signup attempt with the Terms box ticked but either the
+          // ageConfirmed box unticked or the DOB failing the server 18+
+          // check. Record a warning so operators can spot mismatched clients
+          // that send termsAccepted without the age gate; the account row
+          // still exists (Firebase already minted it) but Terms are NOT
+          // stamped — the user must return through the completion surface.
+          logger.warn('[Session] Terms acceptance rejected — age gate not satisfied', {
+            uid: decoded.uid,
+            ageConfirmed,
+            serverAdult,
+            hasDob: typeof bodyDob === 'string',
+          });
+        }
+
+        // Marketing preference — separate opt-in, separate audit lane.
+        // Never inferred from social OAuth (the provider screen consents to
+        // sign-in, not to marketing). Only recorded on new-user signup when
+        // the client explicitly sent the flag; returning-login requests omit
+        // it so a stored preference is never overwritten. Does NOT touch
+        // the Terms/Privacy audit timestamps — this is a preference change,
+        // not a legal-consent change, and mixing the two makes the audit
+        // trail unusable.
+        if (_syncResult?.isNewUser && (req.body as any)?.acceptedMarketing !== undefined) {
+          try {
+            await authService.updateUser(decoded.uid, {
+              marketingConsent: acceptedMarketing,
+            });
+            logger.info('[Session] Marketing preference recorded', {
+              uid: decoded.uid,
+              marketingConsent: acceptedMarketing,
+            });
+          } catch (mErr) {
+            logger.warn('[Session] Failed to record marketing preference (non-blocking)', mErr);
           }
         }
 
@@ -2440,9 +2528,17 @@ self.addEventListener('notificationclick', (event) => {
         else role = 'public';
       }
 
+      // Verified-email gate on super_admin (audit item 199, 2026-08-16). The
+      // string-only isSuperAdmin() would grant super_admin to anyone whose
+      // Firebase account merely CLAIMS an email in SUPER_ADMIN_EMAILS. Since
+      // Firebase allows creating an account with an arbitrary email string
+      // before it is verified, that string-only check let an attacker register
+      // e.g. "someone-on-allowlist@example.com" and skip email confirmation to
+      // clear the gate. Now: only decoded.email_verified === true
+      // (Firebase-attested) plus the allowlist match grants super_admin.
       const { isSuperAdmin: checkSuperAdmin } = await import('./middleware/rbac');
       const userEmail = (decoded.email || '').toLowerCase();
-      const superAdmin = checkSuperAdmin(userEmail);
+      const superAdmin = checkSuperAdmin(userEmail) && decoded.email_verified === true;
 
       if (superAdmin) {
         role = 'super_admin';
@@ -2564,6 +2660,43 @@ self.addEventListener('notificationclick', (event) => {
   });
 
   // GET /api/me/role - Get current user's role level for RBAC and passkey enforcement
+  // GET /api/me/invoices/portal-url — server-resolved SUMIT customer portal link
+  // (My Invoices / החשבוניות שלי). Per CEO 2026-08-16 SUMIT full-service
+  // adoption Phase 2, the URL is returned by SUMIT's /accounting/customers/
+  // create/ response (CustomerHistoryURL) and persisted in sumit_customers.
+  // We MUST resolve the uid from the authenticated session — never from a
+  // query/body field. User A can never obtain User B's link.
+  app.get('/api/me/invoices/portal-url', async (req, res) => {
+    try {
+      const token = req.cookies?.pw_session;
+      const authHeader = req.headers.authorization;
+      let uid: string | undefined;
+      if (token) {
+        try {
+          const decoded = await firebaseAdmin.auth().verifySessionCookie(token, false);
+          uid = decoded.uid;
+        } catch { /* fall through to Bearer */ }
+      }
+      if (!uid && authHeader?.startsWith('Bearer ')) {
+        try {
+          const decoded = await firebaseAdmin.auth().verifyIdToken(authHeader.substring(7), true);
+          uid = decoded.uid;
+        } catch { /* fall through */ }
+      }
+      if (!uid) return res.status(401).json({ error: 'Authentication required' });
+
+      const { getCustomerHistoryUrl } = await import('./services/SumitCustomerService');
+      const url = await getCustomerHistoryUrl(uid);
+      if (!url) {
+        return res.status(200).json({ available: false, reason: 'not_synced' });
+      }
+      return res.status(200).json({ available: true, url });
+    } catch (err: any) {
+      logger.error('[MeInvoicesPortalUrl] lookup failed', { error: err?.message });
+      return res.status(500).json({ error: 'Portal lookup failed' });
+    }
+  });
+
   app.get('/api/me/role', async (req, res) => {
     try {
       const token = req.cookies?.pw_session;
@@ -3630,7 +3763,11 @@ self.addEventListener('notificationclick', (event) => {
       const tiktokUser = userData.data?.user;
 
       if (!tiktokUser || !tiktokUser.open_id) {
-        logger.error('[TikTok OAuth] Invalid user data', userData);
+        logger.error('[TikTok OAuth] Invalid user data', {
+          hasData: !!userData?.data,
+          hasUser: !!userData?.data?.user,
+          hasOpenId: !!userData?.data?.user?.open_id,
+        });
         return res.redirect('/signin?oauthError=invalid_user');
       }
 
@@ -10103,21 +10240,60 @@ self.addEventListener('notificationclick', (event) => {
       const customerId = req.params.id;
       const updates = req.body;
 
-      // SECURITY FIX: Create strict allowlist of updatable fields
-      const allowedFields = [
-        'firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'country', 
-        'gender', 'petType', 'profilePictureUrl', 'loyaltyProgram', 'reminders', 
-        'marketing', 'termsAccepted', 'isVerified', 'loyaltyTier', 'totalSpent', 
-        'washBalance', 'lastLogin', 'authProvider', 'authProviderId'
-      ];
-      
-      // Filter updates to only include allowed fields
-      const filteredUpdates = Object.keys(updates)
-        .filter(key => allowedFields.includes(key))
-        .reduce((obj, key) => {
-          obj[key] = updates[key];
-          return obj;
-        }, {} as any);
+      // Strict allowlist — PROFILE fields ONLY. The allowlist itself + the
+      // filter function live in server/lib/adminCustomerPatchAllowlist.ts so
+      // the behavior can be pinned by a real unit test (not just a source-
+      // pin grep). See that module's JSDoc for the full field classification.
+      //
+      // PR-DANGER-3 (initial): removed `loyaltyTier`, `totalSpent`,
+      //   `washBalance` — money balances / tier ladder. Bypass of
+      //   /api/admin/wallet-adjust audited path.
+      //
+      // PR-DANGER-3 (correction pass): every non-PROFILE field pulled out.
+      //   The generic admin customer PATCH is DELIBERATELY minimal — it
+      //   updates only the fields that (a) don't cross a security / consent /
+      //   money / identity boundary and (b) don't drift the canonical
+      //   identity that lives in Firebase. Everything else needs a
+      //   dedicated endpoint with the correct ceremony:
+      //
+      //   REMOVED (identity — creates Firebase↔Postgres drift):
+      //     * email          — must run through the verified email-change
+      //                        flow that updates Firebase + Postgres atomically
+      //                        (setting Postgres.email while Firebase still has
+      //                        the old address splits the identity — password
+      //                        reset, magic link, and passkey all break).
+      //     * phone          — same drift risk with the Firebase phoneNumber
+      //                        field + the SMS OTP records; needs the mobile-
+      //                        verification flow, not a body write.
+      //
+      //   REMOVED (consent — must be a real user event, never manufactured):
+      //     * termsAccepted  — an admin PATCH manufacturing Terms acceptance
+      //                        would forge legal evidence. Terms come from
+      //                        the user through the signup / re-acceptance flow.
+      //     * marketing      — granular consent (PR-AUTH-SIGNUP-2 correction);
+      //                        must go through the audited preference
+      //                        endpoint that records the actor + timestamp.
+      //     * reminders      — same preference-ownership argument.
+      //
+      //   REMOVED (security / system — never client- or admin-writable):
+      //     * isVerified     — KYC / identity-proofing state, set by the
+      //                        verification service on successful proof.
+      //     * lastLogin      — set by the login handler on real login events.
+      //     * authProvider   — the Firebase provider that authenticated the
+      //                        user (google.com / password / phone / …).
+      //                        Set by session creation.
+      //     * authProviderId — the provider-side identity id. Same as above.
+      //
+      //   REMOVED (loyalty binding — needs enrollment ceremony, not a toggle):
+      //     * loyaltyProgram — Prestige enrollment / withdrawal must record
+      //                        the actor + reason (loyalty ledger). Bypass
+      //                        of /api/prestige/join or the withdrawal endpoint.
+      //
+      // What stays is the safe general PROFILE surface: names, birthday,
+      // country, gender, avatar URL, pet type. Everything else must land
+      // on its dedicated audited endpoint.
+      const { filterAdminCustomerPatch } = await import('./lib/adminCustomerPatchAllowlist');
+      const filteredUpdates = filterAdminCustomerPatch(updates);
       
       // Create secure validation schema that explicitly excludes password and system fields
       const secureUpdateSchema = insertCustomerSchema.omit({
@@ -11706,7 +11882,14 @@ self.addEventListener('notificationclick', (event) => {
       } catch (firestoreErr) {
         logger.warn('[Franchise/inquiry] Firestore write failed, falling back to logs', { error: (firestoreErr as Error)?.message });
       }
-      logger.info('[Franchise/inquiry] received', { fullName, email, country, city });
+      logger.info('[Franchise/inquiry] received', {
+        emailMasked: email && typeof email === 'string' && email.includes('@')
+          ? email.split('@')[0].slice(0, 2) + '***@' + email.split('@')[1]
+          : '(invalid)',
+        country,
+        city,
+        hasFullName: !!fullName,
+      });
       return res.json({ success: true, message: 'Inquiry submitted successfully' });
     } catch (error) {
       logger.error('[Franchise/inquiry] handler error', error);
@@ -12247,6 +12430,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/member', apiLimiter, memberDiscountRoutes);
   // Single status source-of-truth (MASTER BIBLE §3/§9): GET /api/me/status
   app.use('/api/me', apiLimiter, meStatusRoutes);
+  // Canonical service-session read adapter (CEO 2026-08-18 §12/§13):
+  // GET /api/service-sessions/:bookingRef — projects booking_requests
+  // (and, in follow-up PRs, walk_bookings + pettrek_trips) into a
+  // stable ServiceSessionDTO shape at read time. No new store, no money.
+  app.use('/api/service-sessions', apiLimiter, serviceSessionRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across

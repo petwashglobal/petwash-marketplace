@@ -26,7 +26,7 @@ import {
   insertStaffLogbookSchema,
   insertFranchiseOrderSchema,
 } from '../../shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, or, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { staffOnboardingService } from '../services/StaffOnboardingService';
 import { receiptFraudDetection } from '../services/ReceiptFraudDetection';
@@ -67,6 +67,41 @@ export function registerStaffOnboardingRoutes(app: Express) {
    * Submit new staff application
    */
   app.post('/api/staff/applications', async (req, res) => {
+    // Task 22 — atomic business-idempotency guard. The endpoint is
+    // unauthenticated so we key on the normalised email (the natural
+    // uniqueness handle for a submission). Two simultaneous posts with
+    // the same email cannot both create a staff_applications row.
+    // FAIL-CLOSED on DB error (503).
+    const rawEmail = typeof req.body?.email === 'string' ? req.body.email : '';
+    const normalisedEmail = rawEmail.trim().toLowerCase();
+    const idempKey = normalisedEmail ? `staff_app_submit:${normalisedEmail}` : null;
+    let claimSucceeded = false;
+    const { claimBusinessOnce, finalizeBusinessClaim } = await import('../lib/businessIdempotency');
+    if (idempKey) {
+      const claim = await claimBusinessOnce(idempKey, 'POST /api/staff/applications');
+      if (claim === 'DB_ERROR') {
+        return res.status(503).json({
+          success: false,
+          error: 'IDEMPOTENCY_UNAVAILABLE',
+          message: 'Submission service temporarily unavailable. Please retry.',
+        });
+      }
+      if (claim === 'IN_FLIGHT') {
+        return res.status(409).json({
+          success: false,
+          error: 'DUPLICATE_SUBMISSION_IN_FLIGHT',
+          message: 'A submission is already being processed for this email. Wait a moment before retrying.',
+        });
+      }
+      if (claim === 'DONE') {
+        return res.status(409).json({
+          success: false,
+          error: 'ALREADY_SUBMITTED',
+          message: 'An application already exists for this email. Check your inbox for the status link.',
+        });
+      }
+      claimSucceeded = true;
+    }
     try {
       const data = insertStaffApplicationSchema.parse(req.body);
       const application = await staffOnboardingService.createApplication(data);
@@ -98,6 +133,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         logger.warn('[Staff] Google Sheets logging failed (non-blocking)', { sheetsErr });
       }
       
+      if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, true);
       res.json({
         success: true,
         application,
@@ -105,10 +141,111 @@ export function registerStaffOnboardingRoutes(app: Express) {
       });
     } catch (error: any) {
       logger.error('[API] Failed to create application', error);
+      // Release the claim so the user can fix their input + retry.
+      if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, false);
       res.status(400).json({
         success: false,
-        error: error.message || 'Failed to submit application',
+        error: 'Failed to submit application',
+        code: 'STAFF_APP_400',
       });
+    }
+  });
+
+  /**
+   * GET /api/staff/applications/mine
+   * Return the caller's most recent staff application, or { application: null }
+   * if none exists. Mirrors GET /api/provider-applications/my.
+   *
+   * Ownership model (post-security-patch, matches the implementation exactly):
+   *   - requireAuth validates the Firebase session/token. It does NOT by
+   *     itself require Firebase to have verified the email.
+   *   - UID ownership lookup (staffApplications.userId = caller uid) is
+   *     ALWAYS allowed for the authenticated caller.
+   *   - EMAIL FALLBACK IS VERIFIED-EMAIL ONLY. Because staffApplications.userId
+   *     is nullable (an application may have been submitted BEFORE the user
+   *     registered their Firebase account), we optionally allow a match on
+   *     email — but ONLY when req.firebaseUser.email_verified === true. An
+   *     unverified email is caller-controllable (anyone can sign up with any
+   *     address without confirming it), so trusting it would let a squatting
+   *     sign-up read a real person's pre-signup application.
+   *   - Email comparison uses case-insensitive EXACT equality via
+   *     sql`lower(col) = lower(val)`. Deliberately NOT ILIKE, whose `_` and
+   *     `%` are wildcards.
+   *   - Caller identity NEVER comes from req.query / req.params / req.body.
+   *     The authenticated uid comes from getAuthenticatedUserId(req); the
+   *     verified email comes from req.firebaseUser.
+   *
+   * Response projection is an explicit allow-list — see BLOCKER 2 comment on
+   * the db.select({...}) call below. Do NOT expand it to expose internal
+   * reviewer / fraud / banking / tax / KYC fields.
+   *
+   * PR-AUTH-FIX-STAFFPENDING-DEADEND (2026-08-15) — Agent A HIGH #5. The client
+   * StaffPending page was a static dead-end with no state fetch, so a user who
+   * had been REJECTED still saw "your request is being reviewed" forever with
+   * no path forward. This endpoint is the state source the rewritten
+   * StaffPending page uses to render pending / documents_required /
+   * under_review / background_check / approved / rejected branches.
+   *
+   * MUST be declared BEFORE the '/:id' route below — Express would otherwise
+   * try to parse "mine" as an integer id.
+   */
+  app.get('/api/staff/applications/mine', requireAuth, async (req, res) => {
+    try {
+      const userId = getAuthenticatedUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      // BLOCKER 1 (PR-AUTH-FIX-STAFFPENDING-DEADEND security patch, 2026-08-15):
+      // Email fallback is only safe when Firebase has VERIFIED the email.
+      // An unverified email is caller-controllable — anyone can sign up
+      // with any address without confirming it — so trusting it here
+      // would let a squatting sign-up read a real person's pre-signup
+      // application. Gate strictly on req.firebaseUser.email_verified === true.
+      // Never accept caller identity from req.query / req.params / req.body.
+      const fbUser = (req as any).firebaseUser;
+      const emailVerified = fbUser?.email_verified === true;
+      const verifiedEmail =
+        emailVerified && typeof fbUser?.email === 'string' && fbUser.email.length > 0
+          ? fbUser.email
+          : null;
+
+      // Case-insensitive EXACT email equality via lower(col) = lower(val).
+      // Do NOT use ILIKE here — `_` and `%` are wildcards in LIKE, and
+      // treating stored email as a pattern (or the verified caller email
+      // as a pattern) would match unintended rows.
+      const whereClause = verifiedEmail
+        ? or(
+            eq(staffApplications.userId, String(userId)),
+            sql`lower(${staffApplications.email}) = lower(${verifiedEmail})`,
+          )
+        : eq(staffApplications.userId, String(userId));
+
+      // BLOCKER 2 (same patch): EXPLICIT projection. The pre-patch
+      // db.select() returned the whole row, exposing internal / sensitive
+      // fields that the StaffPending page does not need and MUST NOT see:
+      // dateOfBirth, address, taxId, bank* (routing / account name / number),
+      // notes, reviewer notes, fraud/shortlist scores, criminal record,
+      // references, formData, etc. Only surface what the client actually
+      // consumes.
+      const rows = await db
+        .select({
+          id: staffApplications.id,
+          applicationType: staffApplications.applicationType,
+          status: staffApplications.status,
+          rejectionReason: staffApplications.rejectionReason,
+          submittedAt: staffApplications.submittedAt,
+          reviewedAt: staffApplications.reviewedAt,
+          approvedAt: staffApplications.approvedAt,
+        })
+        .from(staffApplications)
+        .where(whereClause)
+        .orderBy(desc(staffApplications.createdAt))
+        .limit(1);
+      const application = rows[0] ?? null;
+      return res.json({ success: true, application });
+    } catch (error: any) {
+      logger.error('[API] Failed to load caller staff application', error);
+      return res.status(500).json({ success: false, error: 'Failed to load application' });
     }
   });
 
@@ -525,7 +662,8 @@ export function registerStaffOnboardingRoutes(app: Express) {
       logger.error('[API] Failed to submit expense', error);
       res.status(400).json({
         success: false,
-        error: error.message || 'Failed to submit expense',
+        error: 'Failed to submit expense',
+        code: 'STAFF_EXPENSE_400',
       });
     }
   });
@@ -674,7 +812,8 @@ export function registerStaffOnboardingRoutes(app: Express) {
       logger.error('[API] Failed to submit logbook entry', error);
       res.status(400).json({
         success: false,
-        error: error.message || 'Failed to submit logbook entry',
+        error: 'Failed to submit logbook entry',
+        code: 'STAFF_LOGBOOK_400',
       });
     }
   });
@@ -745,7 +884,8 @@ export function registerStaffOnboardingRoutes(app: Express) {
       logger.error('[API] Failed to create franchise order', error);
       res.status(400).json({
         success: false,
-        error: error.message || 'Failed to create order',
+        error: 'Failed to create order',
+        code: 'STAFF_ORDER_400',
       });
     }
   });

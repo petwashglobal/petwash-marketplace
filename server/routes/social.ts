@@ -91,7 +91,7 @@ router.get('/feed', async (req, res) => {
     return res.json({ posts, page, hasMore: posts.length === limit });
   } catch (error: any) {
     logger.error('[Social Feed] Failed to get feed', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to get feed', code: 'SOCIAL_SOCIAL_FEED_FAILED_TO_GET_FEED_500' });
   }
 });
 
@@ -174,7 +174,7 @@ router.post('/posts', async (req, res) => {
     return res.json({ success: true, post: newPost });
   } catch (error: any) {
     logger.error('[Social Post] Failed to create', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to create', code: 'SOCIAL_SOCIAL_POST_FAILED_TO_CREATE_500' });
   }
 });
 
@@ -232,7 +232,7 @@ router.post('/posts/:postId/like', async (req, res) => {
     }
   } catch (error: any) {
     logger.error('[Social Like] Failed to toggle like', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to toggle like', code: 'SOCIAL_SOCIAL_LIKE_FAILED_TO_TOGGLE_LIKE_500' });
   }
 });
 
@@ -266,7 +266,7 @@ router.get('/posts/:postId/comments', async (req, res) => {
     return res.json({ comments });
   } catch (error: any) {
     logger.error('[Social Comments] Failed to get comments', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to get comments', code: 'SOCIAL_SOCIAL_COMMENTS_FAILED_TO_GET_COMME_500' });
   }
 });
 
@@ -333,7 +333,7 @@ router.post('/posts/:postId/comments', async (req, res) => {
     return res.json({ success: true, comment: newComment });
   } catch (error: any) {
     logger.error('[Social Comment] Failed to create', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to create', code: 'SOCIAL_SOCIAL_COMMENT_FAILED_TO_CREATE_500' });
   }
 });
 
@@ -373,7 +373,7 @@ router.get('/friends', async (req, res) => {
     return res.json({ friends });
   } catch (error: any) {
     logger.error('[Social Friends] Failed to get friends', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to get friends', code: 'SOCIAL_SOCIAL_FRIENDS_FAILED_TO_GET_FRIEND_500' });
   }
 });
 
@@ -401,7 +401,7 @@ router.get('/friend-requests', async (req, res) => {
     return res.json({ requests });
   } catch (error: any) {
     logger.error('[Social Friends] Failed to get requests', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to get requests', code: 'SOCIAL_SOCIAL_FRIENDS_FAILED_TO_GET_REQUES_500' });
   }
 });
 
@@ -458,7 +458,7 @@ router.post('/friend-requests', async (req, res) => {
     return res.json({ success: true, request });
   } catch (error: any) {
     logger.error('[Social Friends] Failed to send request', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to send request', code: 'SOCIAL_SOCIAL_FRIENDS_FAILED_TO_SEND_REQUE_500' });
   }
 });
 
@@ -502,7 +502,7 @@ router.post('/friend-requests/:requestId/accept', async (req, res) => {
     return res.json({ success: true, friendship: updated });
   } catch (error: any) {
     logger.error('[Social Friends] Failed to accept request', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to accept request', code: 'SOCIAL_SOCIAL_FRIENDS_FAILED_TO_ACCEPT_REQ_500' });
   }
 });
 
@@ -561,7 +561,7 @@ router.get('/conversations', async (req, res) => {
     return res.json({ conversations });
   } catch (error: any) {
     logger.error('[Social DM] Failed to get conversations', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to get conversations', code: 'SOCIAL_SOCIAL_DM_FAILED_TO_GET_CONVERSATIO_500' });
   }
 });
 
@@ -605,7 +605,7 @@ router.get('/conversations/:conversationId/messages', async (req, res) => {
     return res.json({ messages });
   } catch (error: any) {
     logger.error('[Social DM] Failed to get messages', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to get messages', code: 'SOCIAL_SOCIAL_DM_FAILED_TO_GET_MESSAGES_500' });
   }
 });
 
@@ -672,7 +672,7 @@ router.post('/messages', async (req, res) => {
     return res.json({ success: true, message: newMessage });
   } catch (error: any) {
     logger.error('[Social DM] Failed to send', error);
-    return res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'Failed to send', code: 'SOCIAL_SOCIAL_DM_FAILED_TO_SEND_500' });
   }
 });
 

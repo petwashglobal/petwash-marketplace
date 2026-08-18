@@ -1031,7 +1031,7 @@ router.post('/ceo/request-voucher', validateFirebaseToken, requireCEO, async (re
     });
   } catch (error) {
     logger.error('[CEO] Error requesting voucher 2FA', error);
-    res.status(500).json({ error: 'Failed to send verification code', details: error instanceof Error ? error.message : 'Unknown error' });
+    res.status(500).json({ error: 'Failed to send verification code', code: 'CEO_2FA_SEND_500' });
   }
 });
 

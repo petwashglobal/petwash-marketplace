@@ -228,19 +228,34 @@ async function autoApproveExpiredCompletions(): Promise<void> {
           ),
         );
 
-      // Notify provider
+      // Notify provider — same fix as the interactive /confirm path (2026-08-18):
+      // previously channels: ['inbox'] only, so a provider whose booking auto-
+      // approved after 24h customer inaction learned about the payout release
+      // only if they opened the Firestore inbox tab — no email receipt, no push
+      // wake-up. Expanded to ['inbox','email','push']. Bilingual title so the
+      // push preview is legible for EN providers. Booking-scoped CTA so the
+      // notification deep-links back to the job. Fire-and-forget + fail-soft.
+      const providerAmountIls = ((booking.subtotalCents ?? booking.totalCents) / 100).toFixed(2);
       try {
         await dispatchNotification({
           uid: booking.providerId,
           type: 'receipt',
-          title: '💰 תשלום שוחרר (אישור אוטומטי)',
-          bodyHtml: `<p>ה-24 שעות חלפו. התשלום עבור הזמנה <strong>${booking.requestId}</strong> שוחרר אוטומטית. ₪${((booking.subtotalCents ?? booking.totalCents) / 100).toFixed(2)} יועבר לחשבונך תוך 72 שעות.</p>`,
-          channels: ['inbox'],
+          title: '💰 תשלום שוחרר (אישור אוטומטי) / Payment released (auto-approved)',
+          bodyHtml:
+            `<p>ה-24 שעות חלפו. התשלום עבור הזמנה <strong>${booking.requestId}</strong> שוחרר אוטומטית. ` +
+            `₪${providerAmountIls} יועבר לחשבונך תוך 72 שעות.</p>` +
+            `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+            `<p>24 hours passed without customer confirmation. Payment of ` +
+            `<strong>₪${providerAmountIls}</strong> for booking <strong>${booking.requestId}</strong> ` +
+            `has been auto-released and will arrive in your account within 72 hours.</p>`,
+          ctaText: 'צפה בהזמנה / View booking',
+          ctaUrl: `https://petwash.co.il/provider/jobs/${booking.requestId}`,
+          channels: ['inbox', 'email', 'push'],
           priority: 5,
-          meta: { bookingId: booking.requestId },
+          meta: { bookingId: booking.requestId, amount: parseFloat(providerAmountIls), currency: 'ILS' },
         });
       } catch (notifErr: any) {
-        logger.warn('[AutoApprove] Provider notification failed', { error: notifErr.message, requestId: booking.requestId });
+        logger.warn('[AutoApprove] Provider payout notification failed', { error: notifErr.message, requestId: booking.requestId });
       }
 
       // Notify customer
@@ -252,7 +267,11 @@ async function autoApproveExpiredCompletions(): Promise<void> {
           titleHe: '✅ הזמנה הושלמה אוטומטית',
           body: `לא אישרת את הזמנה ${booking.requestId} תוך 24 שעות. ההזמנה סגורה אוטומטית והתשלום שוחרר לספק.`,
           bodyHe: `לא אישרת את הזמנה ${booking.requestId} תוך 24 שעות. ההזמנה סגורה אוטומטית והתשלום שוחרר לספק.`,
-          actionUrl: `/booking/confirmation/${booking.requestId}`,
+          // ?review=1 fires the end-of-stay banner + rating form auto-scroll
+          // on BookingConfirmation.tsx (PR #1906). The customer never rated
+          // the service (that's why cron auto-approved) — deep-link them
+          // straight to the star form so they can still leave a review.
+          actionUrl: `/booking/confirmation/${booking.requestId}?review=1`,
           actionType: 'open_booking',
           channels: ['in_app'],
           isRead: false,

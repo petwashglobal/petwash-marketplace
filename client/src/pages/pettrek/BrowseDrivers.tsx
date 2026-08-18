@@ -749,7 +749,10 @@ export default function BrowseDrivers() {
                           className="luxury-btn-secondary"
                           onClick={(e) => {
                             e.stopPropagation();
-                            setLocation(`/pettrek/driver/${driver.id}`);
+                            // 2026-08-18: was /pettrek/driver/${id} (singular).
+                            // Registered route is /pettrek/drivers/:id (plural)
+                            // — App.tsx:1994. Every "View Profile" tap 404'd.
+                            setLocation(`/pettrek/drivers/${driver.id}`);
                           }}
                           data-testid={`button-view-profile-${driver.id}`}
                         >

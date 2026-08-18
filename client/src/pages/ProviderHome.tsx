@@ -20,8 +20,7 @@ import { useQuery, useMutation } from '@tanstack/react-query';
 import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
-import { getApiUrl } from '@/lib/apiConfig';
-import { queryClient } from '@/lib/queryClient';
+import { queryClient, apiRequest } from '@/lib/queryClient';
 import {
   Bell, MessageCircle, Power, ShieldCheck, Star, ChevronRight, TrendingUp,
   Briefcase, CalendarDays, Wallet as WalletIcon, ClipboardList, FileText, User,
@@ -37,8 +36,10 @@ function nis(n: number | null | undefined): string {
   return `₪${v.toLocaleString('en-IL', { maximumFractionDigits: 0 })}`;
 }
 
+// Bearer + cookie via apiRequest so Firebase-only providers (no pw_session
+// cookie) see their real tiles instead of silently-empty {}.
 function fetchJson(url: string) {
-  return fetch(getApiUrl(url), { credentials: 'include' }).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
+  return apiRequest('GET', url).then((r) => (r.ok ? r.json() : {})).catch(() => ({}));
 }
 
 export default function ProviderHome() {
@@ -78,10 +79,7 @@ export default function ProviderHome() {
 
   const availabilityMut = useMutation({
     mutationFn: async (next: boolean) => {
-      const r = await fetch(getApiUrl('/api/provider-dashboard/availability'), {
-        method: 'POST', credentials: 'include', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ providerId, isAvailable: next }),
-      });
+      const r = await apiRequest('POST', '/api/provider-dashboard/availability', { providerId, isAvailable: next });
       if (!r.ok) throw new Error('availability_failed');
       return next;
     },

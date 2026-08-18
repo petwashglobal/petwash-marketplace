@@ -171,23 +171,16 @@ export default function PersonalInbox() {
       toast({ variant: 'destructive', title: isHebrew ? 'נדרש אימות' : 'Authentication Required' });
       return;
     }
-    try {
-      const recipientData = await apiRequest(`/api/messages/lookup-user?email=${encodeURIComponent(recipientEmail)}`, { method: 'GET' });
-      sendMessageMutation.mutate({
-        senderId: firebaseUser.uid,
-        senderName: firebaseUser.displayName || firebaseUser.email || 'Unknown',
-        senderEmail: firebaseUser.email || '',
-        recipientId: recipientData.uid,
-        recipientName: recipientData.displayName || recipientName,
-        recipientEmail,
-        subject,
-        body,
-        messageType: 'general',
-        priority,
-      });
-    } catch (error: any) {
-      toast({ variant: 'destructive', title: isHebrew ? 'הנמען לא נמצא' : 'Recipient Not Found', description: isHebrew ? 'לא נמצא משתמש עם כתובת אימייל זו' : 'Could not find a user with that email address.' });
-    }
+    // P0-143: sender identity is derived server-side from the Firebase
+    // Bearer token. Recipient uid/email/name are resolved server-side.
+    // The browser sends only { recipientEmail, subject, body, ... }.
+    sendMessageMutation.mutate({
+      recipientEmail,
+      subject,
+      body,
+      messageType: 'general',
+      priority,
+    } as any);
   };
 
   const handleSelectMessage = (msg: UserMessage) => {

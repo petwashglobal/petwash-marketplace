@@ -55,15 +55,11 @@ function getMissingFields(user: any, role: string): string[] {
   return required.filter((field: string) => !user[field]);
 }
 
-function intentToRole(intent: string): string {
-  switch (intent) {
-    case 'customer': return 'customer';
-    case 'loyalty': return 'loyalty';
-    case 'provider': return 'customer';
-    case 'staff_request': return 'customer';
-    default: return 'customer';
-  }
-}
+// intentToRole (deleted PR-AUTH-MULTIROLE-5): intent is no longer translated
+// into a role write. The base account is always 'customer'; provider/staff
+// capabilities are additive and sourced from provider_applications /
+// staff_access_requests via server/lib/userCapabilities.ts. Keeping the
+// helper alive as a comment so grep of prior PRs still finds this file.
 
 function buildRequiredActions(userStatus: string, role: string, user: any): string[] {
   const actions: string[] = [];
@@ -540,14 +536,23 @@ export async function postLoginDecider(req: Request, res: Response) {
             ));
         }
       } else if (safeIntent) {
-        const assignedRole = intentToRole(safeIntent);
+        // Intent is a ROUTING signal, not a role assignment. A signed-in body
+        // saying `intent=provider` or `intent=staff_request` must NEVER grant
+        // that capability — otherwise a customer request-body spoof could
+        // walk into provider/staff state. The base account is always a
+        // customer; the provider/staff capability is granted by the
+        // per-capability tables (provider_applications.status='approved',
+        // staff_access_requests.status='approved') which the aggregator in
+        // server/lib/userCapabilities.ts reads. Signup intent is persisted
+        // for later reference (routing, welcome-email steering) but does not
+        // touch the users.role authority.
         await storage.updateUser(userId, {
-          role: assignedRole,
+          role: 'customer',
           signupIntent: safeIntent,
           accessLevel: 1,
           userStatus: 'profile_incomplete',
         } as any);
-        userRole = assignedRole;
+        userRole = 'customer';
 
         if (safeIntent === 'staff_request') {
           const existingReq = await storage.getStaffAccessRequestByUser(userId);
@@ -1054,7 +1059,13 @@ export async function chooseRole(req: Request, res: Response) {
       return res.status(400).json({ error: "INVALID_INTENT" });
     }
 
-    const assignedRole = intentToRole(intent);
+    // Intent is a ROUTING signal, not a role assignment (see the identical
+    // reasoning in postLoginDecider above). The base account is always a
+    // customer; provider/staff capability is granted by the per-capability
+    // tables (provider_applications, staff_access_requests) read by
+    // server/lib/userCapabilities.ts. Persist signup intent for routing
+    // steering; do NOT let a request body pick the role.
+    const assignedRole = 'customer';
 
     await storage.updateUser(userId, {
       role: assignedRole,

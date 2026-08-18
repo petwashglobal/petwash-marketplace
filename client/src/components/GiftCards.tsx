@@ -30,7 +30,11 @@ const tierLabels: Record<string, Record<string, string>> = {
   CLASSIC: { en: 'Classic', he: 'קלאסי', ar: 'كلاسيك', ru: 'Классик', fr: 'Classique', es: 'Clásico' },
   PLUS: { en: 'Plus', he: 'פלוס', ar: 'بلس', ru: 'Плюс', fr: 'Plus', es: 'Plus' },
   PREMIUM: { en: 'Premium', he: 'פרימיום', ar: 'بريميوم', ru: 'Премиум', fr: 'Premium', es: 'Premium' },
-  ELITE: { en: 'Maison', he: 'יוקרה', ar: 'ميزون', ru: 'Мезон', fr: 'Maison', es: 'Maison' },
+  // PR-EGIFT-1000-PRODUCT-NAME (2026-08-15) — unify eGift tier label with
+  // the homepage + /egift page so all customer-facing surfaces render the
+  // same "Luxury / יוקרה" family. Internal tier key ELITE unchanged
+  // (used for card image + backend SKU lookup).
+  ELITE: { en: 'Luxury', he: 'יוקרה', ar: 'فخامة', ru: 'Роскошь', fr: 'Luxe', es: 'Lujo' },
 };
 
 const bestValueText: Record<string, string> = {

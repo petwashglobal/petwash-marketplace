@@ -25,8 +25,9 @@ export default function SalesLeadForm() {
     }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/global-forms/sales-lead', form) as any;
-      setSuccess(res.leadId || 'LEAD-OK');
+      const res = await apiRequest('POST', '/api/global-forms/sales-lead', form);
+      const body = await res.json().catch(() => ({} as any));
+      setSuccess(body?.leadId || 'LEAD-OK');
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again.' });
     } finally { setLoading(false); }

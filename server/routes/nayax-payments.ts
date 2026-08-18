@@ -171,10 +171,7 @@ router.post('/initiate-wash', requireAuth, async (req, res) => {
     
   } catch (error: any) {
     logger.error('[Nayax API] Wash initiation failed', { error: error.message });
-    res.status(500).json({
-      error: 'Payment processing failed',
-      message: error.message,
-    });
+    res.status(500).json({ error: 'Payment processing failed', code: 'NAYAX_WASH_INIT_500' });
   }
 });
 
@@ -205,7 +202,7 @@ router.post('/authorize', requireAuth, async (req, res) => {
     
   } catch (error: any) {
     logger.error('[Nayax API] Authorization failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Payment authorization failed', code: 'NAYAX_AUTH_500' });
   }
 });
 
@@ -235,7 +232,7 @@ router.post('/remote-vend', requireAuth, async (req, res) => {
     
   } catch (error: any) {
     logger.error('[Nayax API] Remote vend failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Remote vend failed', code: 'NAYAX_VEND_500' });
   }
 });
 
@@ -287,7 +284,7 @@ router.post('/settle', requireAuth, async (req, res) => {
     
   } catch (error: any) {
     logger.error('[Nayax API] Settlement failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Settlement failed', code: 'NAYAX_SETTLE_500' });
   }
 });
 
@@ -313,7 +310,7 @@ router.post('/void', requireAuth, async (req, res) => {
     
   } catch (error: any) {
     logger.error('[Nayax API] Void failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Void transaction failed', code: 'NAYAX_VOID_500' });
   }
 });
 
@@ -340,7 +337,7 @@ router.get('/machine-status/:terminalId', requireAuth, async (req, res) => {
       terminalId: req.params.terminalId,
       error: error.message,
     });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Machine status check failed', code: 'NAYAX_MACHINE_STATUS_500' });
   }
 });
 
@@ -374,7 +371,7 @@ router.post('/loyalty/create-card', requireAuth, async (req, res) => {
     }
   } catch (error: any) {
     logger.error('[Nayax API] Loyalty card creation failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Loyalty card creation failed', code: 'NAYAX_LOYALTY_CREATE_500' });
   }
 });
 
@@ -414,7 +411,7 @@ router.post('/redeem-qr', requireAuth, async (req, res) => {
     
   } catch (error: any) {
     logger.error('[Nayax API] QR redemption failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'QR redemption failed', code: 'NAYAX_QR_REDEEM_500' });
   }
 });
 
@@ -449,7 +446,7 @@ router.get('/transactions/:id', requireAuth, async (req, res) => {
     
   } catch (error: any) {
     logger.error('[Nayax API] Transaction lookup failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Transaction lookup failed', code: 'NAYAX_TX_LOOKUP_500' });
   }
 });
 
@@ -473,7 +470,7 @@ router.get('/transactions/customer/:customerUid', requireAuth, async (req, res) 
     
   } catch (error: any) {
     logger.error('[Nayax API] Customer transaction history failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Transaction history failed', code: 'NAYAX_TX_HISTORY_500' });
   }
 });
 

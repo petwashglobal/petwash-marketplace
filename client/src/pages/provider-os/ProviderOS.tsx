@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { Link, useLocation } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useQuery } from '@tanstack/react-query';
+import { apiRequest } from '@/lib/queryClient';
 import { Badge } from '@/components/ui/badge';
 import { FollowUsBar } from '@/components/FollowUsBar';
 import { Button } from '@/components/ui/button';
@@ -94,7 +95,7 @@ export default function ProviderOS() {
   // Real unread notification count from API
   const { data: notifications } = useQuery<any[]>({
     queryKey: ['/api/notifications'],
-    queryFn: () => fetch('/api/notifications', { credentials: 'include' }).then(r => r.json()),
+    queryFn: () => apiRequest('GET', '/api/notifications').then(r => r.json()),
     staleTime: 30_000,
     select: (data: any) => (Array.isArray(data?.notifications) ? data.notifications : Array.isArray(data) ? data : []),
   });
@@ -107,7 +108,7 @@ export default function ProviderOS() {
   // from the same stats payload the dashboard already uses.
   const { data: provStats } = useQuery<any>({
     queryKey: ['/api/provider-dashboard/v2/stats'],
-    queryFn: () => fetch('/api/provider-dashboard/v2/stats', { credentials: 'include' }).then(r => r.json()),
+    queryFn: () => apiRequest('GET', '/api/provider-dashboard/v2/stats').then(r => r.json()),
     staleTime: 30_000,
   });
   const providerId: number | undefined = provStats?.platforms?.[0]?.id;
@@ -120,12 +121,7 @@ export default function ProviderOS() {
     setIsAvailable(next); // optimistic
     if (!providerId) return;
     try {
-      const r = await fetch('/api/provider-dashboard/availability', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ providerId, isAvailable: next }),
-      });
+      const r = await apiRequest('POST', '/api/provider-dashboard/availability', { providerId, isAvailable: next });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
     } catch {
       setIsAvailable(!next); // revert on failure — never leave a lying toggle

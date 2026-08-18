@@ -39,13 +39,49 @@ function isSuperAdmin(req: { firebaseUser?: { email?: string; email_verified?: b
   return getSuperAdminEmails().includes(email.toLowerCase());
 }
 
+// PR-ACCESS-REQUESTS-MINE-PROJECTION (2026-08-15) — fire-order item 104.
+// storage.getStaffAccessRequestByUser returns the full staff_access_requests
+// row via bare db.select(), which includes:
+//   decidedBy      — admin uid that made the decision (internal only)
+//   approvalScope  — internal jsonb metadata (approver-level scoping)
+//   userId         — redundant with the caller's authenticated uid
+//   id             — internal db serial; the applicant does not need it
+// Reason is INTENTIONALLY kept — the applicant is entitled to see why
+// their request was rejected. Fresh columns added to the schema in the
+// future do NOT leak automatically; the author must consciously add
+// them to this projection.
+type SafeAccessRequestView = {
+  requestedRole: string;
+  department: string | null;
+  departmentCode: string | null;
+  justification: string | null;
+  managerName: string | null;
+  status: string;
+  reason: string | null;
+  requestedAt: Date | string | null;
+  decidedAt: Date | string | null;
+};
+function toSafeAccessRequestView(r: any): SafeAccessRequestView {
+  return {
+    requestedRole: r.requestedRole,
+    department: r.department ?? null,
+    departmentCode: r.departmentCode ?? null,
+    justification: r.justification ?? null,
+    managerName: r.managerName ?? null,
+    status: r.status,
+    reason: r.reason ?? null,
+    requestedAt: r.requestedAt ?? null,
+    decidedAt: r.decidedAt ?? null,
+  };
+}
+
 router.get('/mine', requireAuth, async (req, res) => {
   try {
     const userId = req.firebaseUser?.uid;
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
 
     const request = await storage.getStaffAccessRequestByUser(userId);
-    res.json({ request: request || null });
+    res.json({ request: request ? toSafeAccessRequestView(request) : null });
   } catch (error) {
     logger.error('[Access Requests] Error fetching user request', { error });
     res.status(500).json({ error: 'Failed to fetch access request' });
@@ -137,8 +173,17 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
 
     const now = new Date();
     try {
+      // Additive capabilities (PR-AUTH-MULTIROLE-5): approving a staff
+      // request adds a staff capability to the account — it does NOT
+      // replace the base customer / loyalty / provider identity. The staff
+      // capability is derived by server/lib/userCapabilities.ts from
+      // staff_access_requests.status='approved' (written above at line 132),
+      // so writing users.role='staff' here would clobber the account's
+      // other capabilities without adding anything the aggregator can't
+      // already see. Left in place: accessLevel + approvedBy + approvedAt +
+      // userStatus + staffApprovedAt + mfaRequired, which are staff-side
+      // audit / MFA settings that are additive by shape.
       await storage.updateUser(updated.userId, {
-        role: 'staff',
         accessLevel: 4,
         approvedBy: email!,
         approvedAt: now,
@@ -147,7 +192,7 @@ router.post('/:id/approve', requireAuth, async (req, res) => {
         mfaRequired: true,
       } as any);
     } catch (userErr) {
-      logger.error('[Access Requests] Failed to update user role after approval', { userErr, userId: updated.userId });
+      logger.error('[Access Requests] Failed to update user record after staff approval', { userErr, userId: updated.userId });
     }
 
     // PR-3 P0-2: Sync Firebase customClaims so the user's ID token reflects

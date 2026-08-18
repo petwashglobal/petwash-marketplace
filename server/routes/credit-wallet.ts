@@ -247,7 +247,7 @@ router.post('/topup', topupRateLimiter, async (req, res) => {
     res.json(response);
   } catch (error: any) {
     logger.error('[Credit Wallet] Top-up error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -353,7 +353,7 @@ router.get('/activity', async (req, res) => {
     res.json({ success: true, activities, total });
   } catch (error: any) {
     logger.error('[Credit Wallet] Activity error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -410,7 +410,7 @@ router.get('/summary', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[Credit Wallet] Summary error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -432,7 +432,7 @@ router.post('/preview', async (req, res) => {
     res.json({ success: true, preview });
   } catch (error: any) {
     logger.error('[Credit Wallet] Preview error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -463,7 +463,7 @@ router.post('/redemptions', redemptionRateLimiter, async (req, res) => {
     res.json({ success: true, redemption: result });
   } catch (error: any) {
     logger.error('[Credit Wallet] Create redemption error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -484,7 +484,7 @@ router.post('/redemptions/:sessionId/confirm', async (req, res) => {
     res.json({ success, message: success ? 'Redemption confirmed' : 'Confirmation failed' });
   } catch (error: any) {
     logger.error('[Credit Wallet] Confirm redemption error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -514,7 +514,7 @@ router.post('/redemptions/:sessionId/refund', async (req, res) => {
     res.json({ success, message: success ? 'Credits refunded successfully' : 'Refund failed' });
   } catch (error: any) {
     logger.error('[Credit Wallet] Refund error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -533,7 +533,7 @@ router.post('/redemptions/:sessionId/cancel', async (req, res) => {
     res.json({ success, message: success ? 'Session cancelled' : 'Cancel failed' });
   } catch (error: any) {
     logger.error('[Credit Wallet] Cancel session error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -564,7 +564,7 @@ router.get('/redemptions/:sessionId/status', async (req, res) => {
     res.json({ success: true, status: session.status, session });
   } catch (error: any) {
     logger.error('[Credit Wallet] Get session status error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -581,7 +581,7 @@ router.get('/transactions', async (req, res) => {
     res.json({ success: true, transactions });
   } catch (error: any) {
     logger.error('[Credit Wallet] Transactions error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -761,7 +761,7 @@ router.post('/credits/add', async (req, res) => {
     res.json(responsePayload);
   } catch (error: any) {
     logger.error('[Credit Wallet] Add credits error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -795,7 +795,7 @@ router.post('/nayax/validate-code', nayaxValidationRateLimiter, async (req, res)
     });
   } catch (error: any) {
     logger.error('[Credit Wallet] Nayax validate code error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -822,7 +822,7 @@ router.post('/nayax/acknowledge', async (req, res) => {
     res.json({ success: true, message: 'Redemption acknowledged and completed' });
   } catch (error: any) {
     logger.error('[Credit Wallet] Nayax acknowledge error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -976,7 +976,7 @@ router.post('/admin/inject', async (req, res) => {
     res.json(responsePayload);
   } catch (error: any) {
     logger.error('[Credit Wallet] Admin inject error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -996,7 +996,7 @@ router.get('/admin/injection-history/:userId', async (req, res) => {
     res.json({ success: true, injections: history });
   } catch (error: any) {
     logger.error('[Credit Wallet] Admin injection history error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -1018,7 +1018,7 @@ router.get('/expiring-credits', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[Credit Wallet] Get expiring credits error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -1052,7 +1052,7 @@ router.post('/admin/process-expired-credits', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[Credit Wallet] Process expired credits error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 
@@ -1074,7 +1074,7 @@ router.get('/admin/dormant-wallets', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[Credit Wallet] Dormant wallets check error', { error: error.message });
-    res.status(500).json({ success: false, error: error.message });
+    res.status(500).json({ success: false, error: 'Wallet operation failed', code: 'WALLET_500' });
   }
 });
 

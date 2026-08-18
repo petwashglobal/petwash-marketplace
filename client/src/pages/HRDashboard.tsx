@@ -1,6 +1,5 @@
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { getApiUrl } from "@/lib/apiConfig";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -25,11 +24,20 @@ export default function HRDashboard() {
   const [phoneValue, setPhoneValue] = useState('');
   const { toast } = useToast();
 
+  // PR-DANGER-7: all three queries now go through apiRequest so a Firebase
+  // Bearer id token flows on every request. The pre-fix `fetch(..., {
+  // credentials: 'include' })` shape sent only the pw_session cookie —
+  // the server-side `requireAdmin` middleware (server/adminAuth.ts) accepts
+  // either Bearer or session cookie, but on hosts where the pw_session
+  // cookie is missing (fresh browser, cross-origin dev, cookie cleared)
+  // every one of these three panels 401'd silently while the page shell
+  // still rendered "logged in". Reading via apiRequest picks up the
+  // Bearer from the current Firebase user AND still includes credentials,
+  // so both auth transports are covered.
   const { data: employees, isLoading: loadingEmployees } = useQuery({
     queryKey: ["/api/enterprise/hr/employees"],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/enterprise/hr/employees?filter=active"), { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch employees");
+      const response = await apiRequest("GET", "/api/enterprise/hr/employees?filter=active");
       return response.json();
     },
   });
@@ -37,8 +45,7 @@ export default function HRDashboard() {
   const { data: payroll, isLoading: loadingPayroll } = useQuery({
     queryKey: ["/api/enterprise/hr/payroll"],
     queryFn: async () => {
-      const response = await fetch(getApiUrl("/api/enterprise/hr/payroll"), { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch payroll");
+      const response = await apiRequest("GET", "/api/enterprise/hr/payroll");
       return response.json();
     },
   });
@@ -47,8 +54,7 @@ export default function HRDashboard() {
     queryKey: ["/api/enterprise/hr/employees", selectedEmployee?.id, "time-tracking"],
     queryFn: async () => {
       if (!selectedEmployee) return null;
-      const response = await fetch(getApiUrl(`/api/enterprise/hr/employees/${selectedEmployee.id}/time-tracking`), { credentials: "include" });
-      if (!response.ok) throw new Error("Failed to fetch time tracking");
+      const response = await apiRequest("GET", `/api/enterprise/hr/employees/${selectedEmployee.id}/time-tracking`);
       return response.json();
     },
     enabled: !!selectedEmployee,

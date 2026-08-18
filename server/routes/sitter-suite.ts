@@ -158,7 +158,7 @@ router.post('/upload/profile-photo', upload.single('photo'), async (req: Request
     });
   } catch (error: any) {
     logger.error('[Sitter Suite] Profile photo upload error', error);
-    res.status(500).json({ error: error.message || 'Failed to upload photo' });
+    res.status(500).json({ error: 'Failed to upload photo', code: 'SITTER_PHOTO_UPLOAD_500' });
   }
 });
 
@@ -211,7 +211,7 @@ router.post('/upload/document', upload.single('document'), async (req: Request, 
     });
   } catch (error: any) {
     logger.error('[Sitter Suite] Document upload error', error);
-    res.status(500).json({ error: error.message || 'Failed to upload document' });
+    res.status(500).json({ error: 'Failed to upload document', code: 'SITTER_DOC_UPLOAD_500' });
   }
 });
 

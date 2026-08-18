@@ -102,12 +102,39 @@ router.post('/', async (req: Request, res: Response) => {
 });
 
 // GET /api/disputes/my
+//
+// PR-DISPUTES-MY-PROJECTION (2026-08-15) — fire-order item 101. Same
+// self-service DTO discipline as PR #1760 (StaffPending). The pre-patch
+// bare db.select() returned the full bookingDisputes row, which includes:
+//   adminNotes       — internal reviewer commentary
+//   resolvedBy       — admin uid that resolved the ticket
+// Neither belongs on a customer-facing "my disputes" list — they can
+// contain internal deliberation, other-party context, or admin
+// process notes not intended for the customer.
+//
+// Fix — explicit allow-list projection. If a new column is added to
+// booking_disputes in the future, it does NOT automatically leak here;
+// the author must consciously add it.
+//
+// Ownership: requireAuth (verifyIdToken) sets uid from the Firebase
+// Bearer token ONLY — never req.query / req.params / req.body — so a
+// caller cannot spoof identity. WHERE clause is scoped to
+// customerId = uid (the authenticated caller); no email fallback here.
 router.get('/my', async (req: Request, res: Response) => {
   try {
     const uid = await requireAuth(req, res);
     if (!uid) return;
 
-    const disputes = await db.select()
+    const disputes = await db.select({
+      id: bookingDisputes.id,
+      bookingId: bookingDisputes.bookingId,
+      bookingType: bookingDisputes.bookingType,
+      reason: bookingDisputes.reason,
+      description: bookingDisputes.description,
+      status: bookingDisputes.status,
+      resolvedAt: bookingDisputes.resolvedAt,
+      createdAt: bookingDisputes.createdAt,
+    })
       .from(bookingDisputes)
       .where(eq(bookingDisputes.customerId, uid))
       .orderBy(desc(bookingDisputes.createdAt))

@@ -68,7 +68,12 @@ interface Pet {
   name: string;
   species: 'dog' | 'cat' | 'bird' | 'rabbit' | 'guinea_pig' | 'hamster' | 'reptile' | 'fish' | 'other';
   breed?: string;
-  birthdate: string;
+  // 2026-08-18 field-name fix: canonical column returned by /api/pets is
+  // `birthday` (see AddPetPassport.tsx:11 note + PetPassportHome.tsx:39,180).
+  // Legacy AddPet used `birthdate`. Accept both so pets added via either
+  // flow render age correctly.
+  birthday?: string;
+  birthdate?: string;
   weight?: number;
   allergies?: string;
   medicalNotes?: string;
@@ -395,7 +400,10 @@ export default function Pets() {
   const createMutation = useMutation({
     mutationFn: async (data: PetFormData) => {
       if (!authToken) throw new Error('Not authenticated');
-      return apiRequest('/api/pets', {
+      // apiRequest returns a Response, so we must .json() before touching the
+      // body. Reading `response.pet` on the raw Response silently returns
+      // undefined and the trackPetAdded analytics event never fires.
+      const res = await apiRequest('/api/pets', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -403,14 +411,16 @@ export default function Pets() {
         },
         body: JSON.stringify(data),
       });
+      return await res.json();
     },
     onSuccess: (response: any, variables: PetFormData) => {
       queryClient.invalidateQueries({ queryKey: ['/api/pets'] });
-      
+
       // Track pet added event
       const user = auth.currentUser;
-      if (user && response?.pet) {
-        trackPetAdded(user.uid, response.pet.id, variables.species, variables.name);
+      const petId = response?.pet?.id ?? response?.id;
+      if (user && petId) {
+        trackPetAdded(user.uid, petId, variables.species, variables.name);
       }
       
       toast({
@@ -531,7 +541,9 @@ export default function Pets() {
       name: pet.name,
       species: pet.species,
       breed: pet.breed || '',
-      birthdate: pet.birthdate,
+      // Prefer canonical `birthday` from /api/pets; fall back to the legacy
+      // `birthdate` shape so both entry paths hydrate the edit form.
+      birthdate: pet.birthday ?? pet.birthdate ?? '',
       weight: pet.weight,
       allergies: pet.allergies || '',
       medicalNotes: pet.medicalNotes || '',
@@ -671,7 +683,7 @@ export default function Pets() {
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <span className="text-gray-700 dark:text-black">
-                          {t('pets.age')} {getAge(pet.birthdate)}
+                          {t('pets.age')} {getAge(pet.birthday ?? pet.birthdate ?? '')}
                         </span>
                       </div>
                       {pet.weight && (

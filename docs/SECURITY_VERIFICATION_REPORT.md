@@ -36,7 +36,7 @@ Pet Wash™ has been audited against 2025 enterprise security standards. The pla
 - `server/middleware/rateLimiter.ts` - 5 specialized rate limiters
 - `server/customAuth.ts` - Authentication middleware
 - `@shared/schema.ts` - Validation schemas
-- `server/middleware/csrfProtection.ts` - CSRF tokens
+- `server/index.ts` - CSRF tokens via `doubleCsrfProtection` from the `csrf-csrf` library (double-submit cookie pattern; mounted globally with a curated skip list for HMAC-verified webhooks, WebAuthn, Bearer-authed calls, and public anonymous POSTs). (Historical note: an earlier hand-rolled helper at `server/middleware/csrfProtection.ts` was never mounted and was deleted 2026-08-15 in PR-AUTH-CSRF-DELETE-DEAD-MIDDLEWARE.)
 
 ---
 

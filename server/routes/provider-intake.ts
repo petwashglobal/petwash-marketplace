@@ -172,8 +172,7 @@ router.post('/sync', requireAuth, requireAdmin, async (req, res) => {
   } catch (error: any) {
     logger.error('[Provider Intake] Sync failed:', error);
     res.status(500).json({ 
-      error: 'Failed to sync from Google Sheet',
-      message: error.message 
+      error: 'Failed to sync from Google Sheet'
     });
   }
 });
@@ -231,8 +230,7 @@ router.post('/:intakeId/approve', requireAuth, requireAdmin, async (req, res) =>
   } catch (error: any) {
     logger.error('[Provider Intake] Approval failed:', error);
     res.status(500).json({ 
-      error: 'Failed to approve applicant',
-      message: error.message 
+      error: 'Failed to approve applicant'
     });
   }
 });
@@ -260,8 +258,7 @@ router.post('/:intakeId/reject', requireAuth, requireAdmin, async (req, res) => 
   } catch (error: any) {
     logger.error('[Provider Intake] Rejection failed:', error);
     res.status(500).json({ 
-      error: 'Failed to reject applicant',
-      message: error.message 
+      error: 'Failed to reject applicant'
     });
   }
 });
@@ -298,8 +295,7 @@ router.patch('/:intakeId', requireAuth, requireAdmin, async (req, res) => {
   } catch (error: any) {
     logger.error('[Provider Intake] Update failed:', error);
     res.status(500).json({ 
-      error: 'Failed to update intake record',
-      message: error.message 
+      error: 'Failed to update intake record'
     });
   }
 });
@@ -541,8 +537,7 @@ router.post('/submit', requireAuth, async (req, res) => {
     }
     logger.error('[Provider Intake] Submit failed:', error);
     res.status(500).json({ 
-      error: 'Failed to submit application',
-      message: error.message 
+      error: 'Failed to submit application'
     });
   }
 });
@@ -624,7 +619,7 @@ router.post('/submit-documents', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'Validation failed', details: error.errors });
     }
     logger.error('[Provider Intake] Document submission failed:', error);
-    res.status(500).json({ error: 'Failed to submit documents', message: error.message });
+    res.status(500).json({ error: 'Failed to submit documents' });
   }
 });
 

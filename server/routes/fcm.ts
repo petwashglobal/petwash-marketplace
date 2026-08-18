@@ -37,7 +37,7 @@ router.post('/register-token', requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[FCM API] Register token failed', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
 
@@ -62,7 +62,7 @@ router.post('/remove-token', requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[FCM API] Remove token failed', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
 
@@ -90,7 +90,7 @@ router.post('/test', requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[FCM API] Test notification failed', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong. Please try again.' });
   }
 });
 

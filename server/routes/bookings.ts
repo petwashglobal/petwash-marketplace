@@ -365,8 +365,12 @@ router.post("/create", requireAuth, async (req, res) => {
 
     res.json({ booking: bookingData });
   } catch (error: any) {
+    // PR-BOOKINGS-500-ERROR-SAFE (2026-08-15) — fire-order item 109.
+    // Was `error: error.message` — leaks raw exception + potential stack /
+    // constraint / SQL detail to the customer. Log internally, respond
+    // with a generic mapped error.
     console.error("[Bookings] Error creating:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to create booking' });
   }
 });
 
@@ -403,8 +407,9 @@ router.get("/my-bookings", requireAuth, async (req, res) => {
     
     res.json({ bookings });
   } catch (error: any) {
+    // PR-BOOKINGS-500-ERROR-SAFE — generic mapped error; details go to logs only.
     console.error("[Bookings] Error fetching:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch bookings' });
   }
 });
 
@@ -492,8 +497,9 @@ router.get("/:bookingId", requireAuth, async (req, res) => {
 
     res.json({ booking: data });
   } catch (error: any) {
+    // PR-BOOKINGS-500-ERROR-SAFE — generic mapped error; details go to logs only.
     console.error("[Bookings] Error fetching booking:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch booking' });
   }
 });
 
@@ -608,8 +614,9 @@ router.post("/:bookingId/confirm", requireAuth, async (req, res) => {
       }).catch(e => logger.warn('[Bookings] Orchestrator hook error', e)));
     }
   } catch (error: any) {
+    // PR-BOOKINGS-500-ERROR-SAFE — generic mapped error; details go to logs only.
     console.error("[Bookings] Error confirming:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to confirm booking' });
   }
 });
 
@@ -684,8 +691,9 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
 
     res.json({ success: true });
   } catch (error: any) {
+    // PR-BOOKINGS-500-ERROR-SAFE — generic mapped error; details go to logs only.
     console.error("[Bookings] Error completing:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to complete booking' });
   }
 });
 
@@ -914,8 +922,9 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
         : "ההזמנה בוטלה. אין החזר לפי מדיניות הביטול.",
     });
   } catch (error: any) {
+    // PR-BOOKINGS-500-ERROR-SAFE — generic mapped error; details go to logs only.
     console.error("[Bookings] Error cancelling:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to cancel booking' });
   }
 });
 

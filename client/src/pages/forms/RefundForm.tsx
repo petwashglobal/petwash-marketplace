@@ -26,8 +26,9 @@ export default function RefundForm() {
     }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/global-forms/refund-request', form) as any;
-      setSuccess(res.requestId || 'REF-OK');
+      const res = await apiRequest('POST', '/api/global-forms/refund-request', form);
+      const body = await res.json().catch(() => ({} as any));
+      setSuccess(body?.requestId || 'REF-OK');
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again or email finance@petwash.co.il' });
     } finally { setLoading(false); }
