@@ -1055,6 +1055,36 @@ router.post(
       }
 
       if (payload.event === 'payment.success') {
+        // Item 236 FIX (2026-08-18, MONEY-CODE) — atomic race guard.
+        // The old flow read status once above, then unconditionally
+        // updated users.totalSpent / users.loyaltyPoints below. Two
+        // concurrent webhook deliveries for the same washHistoryId both
+        // read status='pending', both bypassed the idempotency return,
+        // and both applied the blind SET totalSpent = totalSpent + N —
+        // silently double-crediting the customer's tier progression and
+        // birthday-coupon math. Nayax retries on non-2xx, so this race
+        // is trivially reachable on any transient upstream hiccup.
+        //
+        // Fix: claim the wash_history row atomically with a conditional
+        // UPDATE ... WHERE status='pending' RETURNING id. If the update
+        // touched zero rows, another delivery already won — we ack and
+        // exit without touching money-side columns. The rest of the
+        // handler only runs when we own the transition.
+        const claimed = await db
+          .update(washHistoryTable)
+          .set({ status: 'processing' })
+          .where(
+            and(
+              eq(washHistoryTable.id, washHistoryId),
+              eq(washHistoryTable.status, 'pending'),
+            ),
+          )
+          .returning({ id: washHistoryTable.id });
+
+        if (claimed.length === 0) {
+          logger.info('[CheckoutWebhook] Concurrent delivery lost race — idempotent ack', { washHistoryId });
+          return res.status(200).json({ received: true, note: 'concurrent_lost_race' });
+        }
         // Amount validation (1-agora tolerance)
         const expectedCents = Math.round(parseFloat(String(historyRow.finalPrice)) * 100);
         if (Math.abs(payload.amountCents - expectedCents) > 1) {
