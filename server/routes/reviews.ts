@@ -403,6 +403,57 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
   }
 });
 
+// =================== GET TRUST SCORE ===================
+//
+// MUST be registered BEFORE the /:platform/:providerId catch-all below —
+// both are 2-segment routes and Express matches in registration order.
+// Registering trust-score after the catch-all lets /api/reviews/trust-score/:id
+// silently resolve to the review-list handler (platform="trust-score"),
+// returning the wrong shape.
+
+/**
+ * Get contractor trust score
+ * GET /api/reviews/trust-score/:contractorId
+ */
+router.get('/trust-score/:contractorId', async (req: Request, res: Response) => {
+  try {
+    const { contractorId } = req.params;
+
+    const [trustScore] = await db
+      .select()
+      .from(contractorTrustScores)
+      .where(eq(contractorTrustScores.contractorId, contractorId))
+      .limit(1);
+
+    if (!trustScore) {
+      // Return default score for new contractors
+      return res.json({
+        success: true,
+        contractorId,
+        publicTrustScore: 4.50,
+        totalReviews: 0,
+        totalBookings: 0,
+        isRecommended: false,
+        isPremiumBadge: false,
+      });
+    }
+
+    res.json({
+      success: true,
+      contractorId: trustScore.contractorId,
+      publicTrustScore: parseFloat(trustScore.publicTrustScore || '4.50'),
+      totalReviews: trustScore.totalReviews,
+      totalBookings: trustScore.totalBookings,
+      isRecommended: trustScore.isRecommended,
+      isPremiumBadge: trustScore.isPremiumBadge,
+      lastCalculatedAt: trustScore.lastCalculatedAt,
+    });
+  } catch (error: any) {
+    logger.error('[Trust Score] Get score error', error);
+    res.status(500).json({ error: error.message || 'Failed to get trust score' });
+  }
+});
+
 // =================== GET REVIEWS ===================
 
 /**
@@ -572,49 +623,5 @@ router.post('/:reviewId/respond', requireAuth, async (req: Request, res: Respons
 });
 
 // =================== GET TRUST SCORE ===================
-
-/**
- * Get contractor trust score
- * GET /api/reviews/trust-score/:contractorId
- */
-router.get('/trust-score/:contractorId', async (req: Request, res: Response) => {
-  try {
-    const { contractorId } = req.params;
-
-    const [trustScore] = await db
-      .select()
-      .from(contractorTrustScores)
-      .where(eq(contractorTrustScores.contractorId, contractorId))
-      .limit(1);
-
-    if (!trustScore) {
-      // Return default score for new contractors
-      return res.json({
-        success: true,
-        contractorId,
-        publicTrustScore: 4.50,
-        totalReviews: 0,
-        totalBookings: 0,
-        isRecommended: false,
-        isPremiumBadge: false,
-      });
-    }
-
-    res.json({
-      success: true,
-      contractorId: trustScore.contractorId,
-      publicTrustScore: parseFloat(trustScore.publicTrustScore || '4.50'),
-      totalReviews: trustScore.totalReviews,
-      totalBookings: trustScore.totalBookings,
-      isRecommended: trustScore.isRecommended,
-      isPremiumBadge: trustScore.isPremiumBadge,
-      lastCalculatedAt: trustScore.lastCalculatedAt,
-    });
-  } catch (error: any) {
-    logger.error('[Trust Score] Get score error', error);
-    res.status(500).json({ error: error.message || 'Failed to get trust score' });
-  }
-});
-
 
 export default router;
