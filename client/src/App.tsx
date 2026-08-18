@@ -1903,7 +1903,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
-                <TrackMyPetLive language={language} onLanguageChange={handleLanguageChange} />
+                <TrackMyPetLive />
               </Suspense>
             </RequireAuth>
           )}
@@ -2261,7 +2261,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/shared-services/impact">
           {() => (
             <Suspense fallback={<PageLoader />}>
-              <SharedServicesImpact language={language} />
+              <SharedServicesImpact />
             </Suspense>
           )}
         </Route>
