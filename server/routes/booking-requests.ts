@@ -2122,10 +2122,45 @@ router.post('/:requestId/meet-greet', async (req, res) => {
           updatedAt: new Date(),
         })
         .where(eq(bookingRequests.requestId, requestId));
-      
+
       logBookingEvent('meet_greet_scheduled', buildEventPayload({ ...booking, status: 'meet_greet_scheduled' }), {
         customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       }).catch(() => {});
+
+      // Notify the counterparty (2026-08-18): before this, the schedule
+      // action silently updated the row without telling the other party.
+      // In practice the provider is the one scheduling and the customer
+      // gets NO notification — they'd have to open the app and refresh to
+      // see the meeting time. Fire-and-forget + fail-soft.
+      {
+        const otherId = actor === 'owner' ? booking.providerId : booking.ownerId;
+        if (otherId) {
+          const meetingWhen = new Date(date).toLocaleString('he-IL', {
+            timeZone: 'Asia/Jerusalem',
+            day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
+          });
+          db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, otherId)).limit(1)
+            .then(([u]) => u && dispatchNotification({
+              uid: otherId,
+              email: u.email || undefined,
+              phone: u.phone || undefined,
+              type: 'meet_greet_scheduled',
+              title: 'פגישת היכרות תואמה · Meet & Greet scheduled — PetWash™',
+              bodyHtml:
+                `<p>${actor === 'provider' ? 'הספק' : 'הלקוח/ה'} תיאם/ה פגישת היכרות ל-<strong>${meetingWhen}</strong>` +
+                `${location ? `, במיקום: ${location}` : ''}.</p>` +
+                `<p>${actor === 'provider' ? 'The provider' : 'The customer'} scheduled a Meet & Greet for <strong>${meetingWhen}</strong>` +
+                `${location ? `, at: ${location}` : ''}.</p>`,
+              bodyText: `PetWash: Meet & Greet scheduled ${meetingWhen}${location ? ` @ ${location}` : ''}.`,
+              ctaText: 'צפה בהזמנה / View booking',
+              ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+              channels: ['inbox', 'email', 'sms'],
+              priority: 7,
+              meta: { bookingId: requestId },
+            })).catch(() => {});
+        }
+      }
 
       res.json({ success: true, message: 'Meet & Greet scheduled!' });
       
@@ -2163,13 +2198,39 @@ router.post('/:requestId/meet-greet', async (req, res) => {
           updatedAt: new Date(),
         })
         .where(eq(bookingRequests.requestId, requestId));
-      
+
       logBookingEvent('meet_greet_completed', buildEventPayload({ ...booking, status: 'meet_greet_completed' }), {
         customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       }).catch(() => {});
 
-      res.json({ 
-        success: true, 
+      // Notify the customer that Meet & Greet is done and PAYMENT is the
+      // next step (2026-08-18). Without this, customers whose provider just
+      // approved the M&G wait for a notification that never arrives — the
+      // booking is stuck at meet_greet_completed until they open the app.
+      // Fire-and-forget + fail-soft.
+      if (booking.ownerId) {
+        db.select({ email: users.email, phone: users.phone })
+          .from(users).where(eq(users.id, booking.ownerId)).limit(1)
+          .then(([u]) => u && dispatchNotification({
+            uid: booking.ownerId,
+            email: u.email || undefined,
+            phone: u.phone || undefined,
+            type: 'meet_greet_completed',
+            title: 'פגישת ההיכרות הושלמה · Meet & Greet complete — pay to confirm',
+            bodyHtml:
+              `<p>הספק סימן שפגישת ההיכרות הושלמה. השלב הבא: השלימי תשלום כדי לאשר את ההזמנה.</p>` +
+              `<p>The provider marked your Meet & Greet as complete. Next step: complete payment to confirm the booking.</p>`,
+            bodyText: 'PetWash: Meet & Greet complete — pay to confirm your booking.',
+            ctaText: 'שלמו כעת / Pay now',
+            ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+            channels: ['inbox', 'email', 'sms', 'push'],
+            priority: 8,
+            meta: { bookingId: requestId, actionType: 'complete_payment' },
+          })).catch(() => {});
+      }
+
+      res.json({
+        success: true,
         message: 'Meet & Greet completed! Awaiting payment from owner.',
       });
       
