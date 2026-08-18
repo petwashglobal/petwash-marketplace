@@ -211,13 +211,19 @@ const translations: Record<string, Record<string, string>> = {
     fr: 'Livraison instantanée',
     es: 'Entrega instantánea',
   },
+  // PR-EGIFT-NO-ACCOUNT-HONEST (2026-08-15) — fire-order item 21. Guest
+  // PURCHASE is real (server/routes/egift-guest.ts POST /api/egift/guest/start
+  // takes senderEmail+recipientEmail+amount, no auth), but REDEMPTION still
+  // needs an account (recipient gets an activation link and signs in/registers
+  // to view the wallet balance). Scope the claim to "purchase" so the copy is
+  // true for the action the trust marker actually promises.
   noAccountRequired: {
-    en: 'No Account Required',
-    he: 'ללא צורך בחשבון',
-    ar: 'لا يتطلب حساب',
-    ru: 'Без регистрации',
-    fr: 'Sans compte requis',
-    es: 'Sin cuenta necesaria',
+    en: 'No account to buy',
+    he: 'רכישה ללא חשבון',
+    ar: 'الشراء بدون حساب',
+    ru: 'Покупка без аккаунта',
+    fr: 'Achat sans compte',
+    es: 'Compra sin cuenta',
   },
   valid12Months: {
     // PR-EGIFT-EXPIRY-TRUTH (2026-08-15) — fire-order item 20. Public copy
@@ -373,13 +379,16 @@ const translations: Record<string, Record<string, string>> = {
     fr: 'Payer et envoyer',
     es: 'Pagar y enviar regalo',
   },
+  // PR-EGIFT-NO-ACCOUNT-HONEST — same scoping as noAccountRequired above.
+  // "No account required" was true only for the purchase step; the recipient
+  // side still needs an account to see the wallet balance.
   secureCheckout: {
-    en: 'Secure checkout · No account required',
-    he: 'תשלום מאובטח · ללא צורך בחשבון',
-    ar: 'دفع آمن · لا يتطلب حساب',
-    ru: 'Безопасная оплата · Без регистрации',
-    fr: 'Paiement sécurisé · Sans compte requis',
-    es: 'Pago seguro · Sin cuenta necesaria',
+    en: 'Secure checkout · No account to buy',
+    he: 'תשלום מאובטח · רכישה ללא חשבון',
+    ar: 'دفع آمن · الشراء بدون حساب',
+    ru: 'Безопасная оплата · Покупка без аккаунта',
+    fr: 'Paiement sécurisé · Achat sans compte',
+    es: 'Pago seguro · Compra sin cuenta',
   },
   worksAtAll: {
     en: 'Works at all \u2066PetWash™\u2069 services',
