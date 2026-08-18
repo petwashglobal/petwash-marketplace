@@ -41,16 +41,29 @@ function fmtDate(d: string | null | undefined, he: boolean): string {
 }
 
 const STATUS_LABEL: Record<string, { en: string; he: string; tone: string }> = {
-  pending:      { en: 'New request',  he: 'בקשה חדשה',   tone: '#b45309' },
-  quote_sent:   { en: 'Quote sent',   he: 'הצעה נשלחה',  tone: '#b45309' },
-  confirmed:    { en: 'Confirmed',    he: 'מאושרת',       tone: GREEN },
-  in_progress:  { en: 'In progress',  he: 'בביצוע',       tone: '#1d4ed8' },
+  pending:              { en: 'New request',       he: 'בקשה חדשה',           tone: '#b45309' },
+  // Legacy per-service create status — kept as 'New request' so the label
+  // stays consistent across sitter/walk/academy bookings that create through
+  // the older router before booking-requests takes over. Same shape fix
+  // shipped for CustomerBookings (PR-CUSTOMER-BOOKINGS-STATUS-LABEL).
+  pending_provider:     { en: 'New request',       he: 'בקשה חדשה',           tone: '#b45309' },
+  quote_sent:           { en: 'Quote sent',        he: 'הצעה נשלחה',          tone: '#b45309' },
+  accepted:             { en: 'Accepted',          he: 'אושרה',               tone: GREEN },
+  // Full Meet & Greet lifecycle — provider was seeing the raw enum on any of these.
+  meet_greet_requested: { en: 'Meet & Greet requested', he: 'פגישת היכרות התבקשה', tone: '#b45309' },
+  meet_greet_scheduled: { en: 'Meet & Greet',      he: 'פגישת היכרות',        tone: '#b45309' },
+  meet_greet_completed: { en: 'Meet & Greet done', he: 'פגישה הושלמה',        tone: GREEN },
+  payment_pending:      { en: 'Awaiting payment',  he: 'ממתין לתשלום',        tone: '#b45309' },
+  confirmed:            { en: 'Confirmed',         he: 'מאושרת',              tone: GREEN },
+  in_progress:          { en: 'In progress',       he: 'בביצוע',              tone: '#1d4ed8' },
   // Provider marked done — waiting on the customer to approve (or 24h auto-approve).
   provider_marked_complete: { en: 'Awaiting confirmation', he: 'ממתין לאישור הלקוח', tone: '#1d4ed8' },
-  completed:    { en: 'Completed',    he: 'הושלמה',       tone: GREEN },
-  declined:     { en: 'Declined',     he: 'נדחתה',        tone: '#991b1b' },
-  cancelled:    { en: 'Cancelled',    he: 'בוטלה',        tone: '#991b1b' },
-  disputed:     { en: 'In review',    he: 'בבדיקה',       tone: '#991b1b' },
+  completed:            { en: 'Completed',         he: 'הושלמה',              tone: GREEN },
+  // Reviewed = completed AND customer left a rating; treat as green.
+  reviewed:             { en: 'Reviewed',          he: 'עם ביקורת',            tone: GREEN },
+  declined:             { en: 'Declined',          he: 'נדחתה',                tone: '#991b1b' },
+  cancelled:            { en: 'Cancelled',         he: 'בוטלה',                tone: '#991b1b' },
+  disputed:             { en: 'In review',         he: 'בבדיקה',               tone: '#991b1b' },
 };
 
 export default function ProviderJobDetail() {
