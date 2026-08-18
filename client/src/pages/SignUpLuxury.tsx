@@ -345,6 +345,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // login path; a "use a one-time code instead" link is still offered for accounts
   // with no password. Signup stays code-first (false).
   const [usePassword, setUsePassword] = useState(isLoginPath);
+  // 2026-08-18 PR-AUTH-SECURITY-9 — Remember me toggle:
+  // ON  → browserLocalPersistence (session persists across browser restart, current default)
+  // OFF → browserSessionPersistence (cleared on browser close — matches a shared / kiosk device)
+  // Kept in localStorage so returning users see their last choice on the next visit.
+  const [rememberMe, setRememberMe] = useState<boolean>(() => {
+    try {
+      const v = typeof window !== 'undefined' ? window.localStorage.getItem('petwash.rememberMe') : null;
+      return v === null ? true : v === '1';
+    } catch { return true; }
+  });
   // 2-STEP LOGIN (CEO 2026-07-31 "one-way or two-way verification"): opt-in at
   // join; when on, login asks for an SMS code AFTER the password. mfaChallenge
   // holds the in-flight login-time challenge (the idToken to prove + a masked
@@ -1249,6 +1259,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     // fires onAuthStateChanged immediately; we route ourselves once the session is minted).
     mfaLoginInFlight.current = true;
     try {
+      // 2026-08-18 PR-AUTH-SECURITY-9 — honour the Remember-me toggle.
+      // Must be called BEFORE signInWithEmailAndPassword so the resulting
+      // session is stored at the requested persistence level.
+      try {
+        const { setPersistence, browserLocalPersistence, browserSessionPersistence } = await import('firebase/auth');
+        await setPersistence(auth, rememberMe ? browserLocalPersistence : browserSessionPersistence);
+      } catch { /* fall back to Firebase default (LOCAL) if the module fails to load */ }
       const cred = await signInWithEmailAndPassword(auth, email.trim(), password);
       const idToken = await cred.user.getIdToken(true);
       const r = await fetch(getApiUrl('/api/auth/session'), {
@@ -1763,6 +1780,25 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
                         {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
                       </button>
+                      {/* 2026-08-18 PR-AUTH-SECURITY-9 — Remember me on this device.
+                          When OFF, the Firebase session is cleared on browser close
+                          (browserSessionPersistence) — right choice on a shared/kiosk
+                          machine. When ON (default), the session persists across
+                          restarts (browserLocalPersistence). Choice is remembered
+                          per-browser via localStorage so the user does not have to
+                          re-tick it on every visit. */}
+                      <label style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', opacity: 0.85, cursor: 'pointer', padding: '6px 0', flexDirection: he ? 'row-reverse' : 'row' }}
+                        data-testid="signin-remember-me-label">
+                        <input type="checkbox" checked={rememberMe}
+                          onChange={(e) => {
+                            const v = e.target.checked;
+                            setRememberMe(v);
+                            try { window.localStorage.setItem('petwash.rememberMe', v ? '1' : '0'); } catch { /* private-mode / quota */ }
+                          }}
+                          data-testid="signin-remember-me"
+                          style={{ accentColor: '#D4AF37', cursor: 'pointer' }} />
+                        <span>{he ? 'זכור אותי במכשיר הזה' : 'Remember me on this device'}</span>
+                      </label>
                       {/* Forgot password? (2026-08-16 audit D10). Firebase's
                           sendPasswordResetEmail has its own rate-limiting and
                           NEVER reveals whether the account exists — same generic
