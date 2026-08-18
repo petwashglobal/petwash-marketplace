@@ -76,7 +76,7 @@ router.get("/authority-documents", async (req: Request, res: Response) => {
     res.json(docs);
   } catch (error: any) {
     console.error("Error fetching authority documents:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -111,7 +111,7 @@ router.post("/authority-documents", async (req: Request, res: Response) => {
     res.status(201).json(doc);
   } catch (error: any) {
     console.error("Error creating authority document:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -137,7 +137,7 @@ router.put("/authority-documents/:id", async (req: Request, res: Response) => {
     res.json(updated);
   } catch (error: any) {
     console.error("Error updating authority document:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -154,7 +154,7 @@ router.delete("/authority-documents/:id", async (req: Request, res: Response) =>
     res.json({ success: true });
   } catch (error: any) {
     console.error("Error deleting authority document:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -193,7 +193,7 @@ router.get("/provider-licenses", async (req: Request, res: Response) => {
     res.json(licenses);
   } catch (error: any) {
     console.error("Error fetching provider licenses:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -225,7 +225,7 @@ router.post("/provider-licenses", async (req: Request, res: Response) => {
     res.status(201).json(license);
   } catch (error: any) {
     console.error("Error creating provider license:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -256,7 +256,7 @@ router.put("/provider-licenses/:id/verify", async (req: Request, res: Response) 
     res.json(updated);
   } catch (error: any) {
     console.error("Error verifying provider license:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -274,7 +274,7 @@ router.get("/provider-compliance/:providerId/:providerType", async (req: Request
     res.json(status);
   } catch (error: any) {
     console.error("Error checking provider compliance:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -291,7 +291,7 @@ router.get("/status", async (req: Request, res: Response) => {
     res.json(status);
   } catch (error: any) {
     console.error("Error running compliance monitoring:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -327,7 +327,7 @@ router.get("/tasks", async (req: Request, res: Response) => {
     res.json(tasks);
   } catch (error: any) {
     console.error("Error fetching compliance tasks:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -342,7 +342,7 @@ router.post("/tasks", async (req: Request, res: Response) => {
     res.status(201).json(task);
   } catch (error: any) {
     console.error("Error creating compliance task:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -368,7 +368,7 @@ router.put("/tasks/:id", async (req: Request, res: Response) => {
     res.json(updated);
   } catch (error: any) {
     console.error("Error updating compliance task:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -401,7 +401,7 @@ router.get("/booking-policies", async (req: Request, res: Response) => {
     res.json(policies);
   } catch (error: any) {
     console.error("Error fetching booking policies:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -424,7 +424,7 @@ router.post("/booking-policies", async (req: Request, res: Response) => {
     res.status(201).json(policy);
   } catch (error: any) {
     console.error("Error creating booking policy:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -457,7 +457,7 @@ router.get("/disputes", async (req: Request, res: Response) => {
     res.json(disputes);
   } catch (error: any) {
     console.error("Error fetching disputes:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -485,7 +485,7 @@ router.post("/disputes", async (req: Request, res: Response) => {
     res.status(201).json(dispute);
   } catch (error: any) {
     console.error("Error creating dispute:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -520,7 +520,7 @@ router.put("/disputes/:id/resolve", async (req: Request, res: Response) => {
     res.json(updated);
   } catch (error: any) {
     console.error("Error resolving dispute:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -545,7 +545,7 @@ router.get("/corporate-seals", async (req: Request, res: Response) => {
     res.json(seals);
   } catch (error: any) {
     console.error("Error fetching corporate seals:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -568,7 +568,7 @@ router.post("/corporate-seals", async (req: Request, res: Response) => {
     res.status(201).json(seal);
   } catch (error: any) {
     console.error("Error creating corporate seal:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -599,7 +599,7 @@ router.get("/board-resolutions", async (req: Request, res: Response) => {
     res.json(resolutions);
   } catch (error: any) {
     console.error("Error fetching board resolutions:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -622,7 +622,7 @@ router.post("/board-resolutions", async (req: Request, res: Response) => {
     res.status(201).json(resolution);
   } catch (error: any) {
     console.error("Error creating board resolution:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -655,7 +655,7 @@ router.get("/review-moderation-rules", async (req: Request, res: Response) => {
     res.json(rules);
   } catch (error: any) {
     console.error("Error fetching review moderation rules:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -686,7 +686,7 @@ router.get("/review-moderation", async (req: Request, res: Response) => {
     res.json(moderated);
   } catch (error: any) {
     console.error("Error fetching review moderation:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -710,7 +710,7 @@ router.post("/review-moderation", async (req: Request, res: Response) => {
     res.status(201).json(moderated);
   } catch (error: any) {
     console.error("Error creating review moderation:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
@@ -742,7 +742,7 @@ router.put("/review-moderation/:id/approve", async (req: Request, res: Response)
     res.json(updated);
   } catch (error: any) {
     console.error("Error approving review:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Something went wrong' });
   }
 });
 
