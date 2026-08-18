@@ -449,6 +449,7 @@ const ShopStore = lazy(() => import("@/pages/ShopStore"));
 const ShopOrders = lazy(() => import("@/pages/ShopOrders"));
 const BookingUnified = lazy(() => import("@/pages/BookingUnified"));
 const BookingConfirmation = lazy(() => import("@/pages/BookingConfirmation"));
+const BookingLive = lazy(() => import("@/pages/BookingLive"));
 const MultiPetBookingWizard = lazy(() => import("@/pages/booking/MultiPetBookingWizard"));
 const StationMap = lazy(() => import("@/pages/StationMap"));
 const Story = lazy(() => import("@/pages/Story"));
@@ -1287,6 +1288,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <BookingConfirmation />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Customer "Track Service" full-page — CEO §P1-7. Server-side
+             ownership check happens in serviceSessionAdapter, so a URL
+             guess by a non-party lands on the "unavailable" panel. */}
+        <Route path="/booking/:bookingRef/live">
+          {() => (
+            <RequireAuth>
+              <Suspense fallback={<PageLoader />}>
+                <BookingLive />
+              </Suspense>
             </RequireAuth>
           )}
         </Route>
