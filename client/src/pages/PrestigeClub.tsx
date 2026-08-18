@@ -108,8 +108,10 @@ const dict: Record<Lang, Record<string, string>> = {
     legal_p1: "בקשת הצטרפות אינה אישור חברות ואינה מנפיקה כרטיס Wallet. חברות, הטבות ויתרות מופעלות רק לאחר אימות ואישור לפי מדיניות Pet Wash Ltd.",
     legal_p2: "פרטי ביטוח, כיסוי K9000, תנאים מסחריים ומידע פנימי מוצגים לציבור רק בנוסח שאושר לפרסום. פרמיות, עלויות, מסמכי חברה ומידע סודי אינם מוצגים באתר.",
     contact_title: "לינקים מהירים",
-    metal_name: "ניר הדד",
-    metal_sub: "חבר פעיל · דרגת Gold",
+    // 2026-08-18: was hardcoded real founder name — public marketing page
+    // must never impersonate a real person. Neutral illustrative label.
+    metal_name: "השם שלך",
+    metal_sub: "דוגמת חבר · מסגרת הדגמה",
     metal_balance: "יתרה",
     metal_washes: "שטיפות",
     modal_h3: "תיאור",
@@ -214,8 +216,10 @@ const dict: Record<Lang, Record<string, string>> = {
     legal_p1: "Submitting interest is not membership approval and does not issue a Wallet pass. Membership, benefits and balances activate only after Pet Wash Ltd verification and approval.",
     legal_p2: "Insurance, K9000 coverage, commercial terms and internal company information appear publicly only in approved wording. Premiums, costs, company documents and confidential details are never shown on public pages.",
     contact_title: "Quick links",
-    metal_name: "Nir Hadad",
-    metal_sub: "Active member · Gold tier",
+    // 2026-08-18: was hardcoded real founder name — public marketing page
+    // must never impersonate a real person. Neutral illustrative label.
+    metal_name: "Your name",
+    metal_sub: "Sample member · illustration only",
     metal_balance: "Balance",
     metal_washes: "Washes",
     modal_h3: "Description",
@@ -531,14 +535,17 @@ export default function PrestigeClub() {
                   <p className="pc-metalSub">{i('metal_sub')}</p>
                 </div>
 
-                <div className="pc-metalBottom">
+                {/* 2026-08-18: illustrative sample values only. Real member
+                    balance renders on /prestige (authed dashboard); this is a
+                    marketing preview so numbers must not read as live data. */}
+                <div className="pc-metalBottom" data-testid="prestige-club-sample-metal">
                   <div className="pc-metalStat">
                     <Label>{i('metal_balance')}</Label>
-                    <strong>₪ 2,450</strong>
+                    <strong>₪ ——</strong>
                   </div>
                   <div className="pc-metalStat">
                     <Label>{i('metal_washes')}</Label>
-                    <strong>34</strong>
+                    <strong>——</strong>
                   </div>
                 </div>
               </div>
@@ -649,7 +656,11 @@ export default function PrestigeClub() {
                     <p className="pc-sub">{i('progress_sub')}</p>
                   </div>
 
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }}>
+                  {/* 2026-08-18: illustrative preview only — no fake numbers.
+                      Members see real balance + real ledger on the authed
+                      /prestige dashboard. Marketing page must not read as
+                      live data. */}
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12, marginTop: 12 }} data-testid="prestige-club-sample-progress">
                     <div className="pc-feature">
                       <div className="pc-ftitle">{i('progress_wallet_title')}</div>
                       <p className="pc-fdesc">{i('progress_wallet_desc')}</p>
@@ -657,7 +668,7 @@ export default function PrestigeClub() {
                       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 12 }}>
                         <div>
                           <div className="pc-muted">{i('progress_balance')}</div>
-                          <div style={{ fontSize: 22, fontWeight: 950 }}>₪ 420</div>
+                          <div style={{ fontSize: 22, fontWeight: 950 }}>₪ ——</div>
                         </div>
                         <div>
                           <div className="pc-muted">{i('progress_next')}</div>
@@ -672,13 +683,13 @@ export default function PrestigeClub() {
                       <div className="pc-hr" />
                       <div style={{ display: 'grid', gap: 10 }}>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                          <span className="pc-muted">{i('act1')}</span><b>+ ₪200</b>
+                          <span className="pc-muted">{i('act1')}</span><b>+ ₪ ——</b>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                          <span className="pc-muted">{i('act2')}</span><b>- ₪55</b>
+                          <span className="pc-muted">{i('act2')}</span><b>— ₪ ——</b>
                         </div>
                         <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12 }}>
-                          <span className="pc-muted">{i('act3')}</span><b>+ ₪150</b>
+                          <span className="pc-muted">{i('act3')}</span><b>+ ₪ ——</b>
                         </div>
                       </div>
                     </div>
