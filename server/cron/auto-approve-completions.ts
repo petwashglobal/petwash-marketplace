@@ -267,7 +267,11 @@ async function autoApproveExpiredCompletions(): Promise<void> {
           titleHe: '✅ הזמנה הושלמה אוטומטית',
           body: `לא אישרת את הזמנה ${booking.requestId} תוך 24 שעות. ההזמנה סגורה אוטומטית והתשלום שוחרר לספק.`,
           bodyHe: `לא אישרת את הזמנה ${booking.requestId} תוך 24 שעות. ההזמנה סגורה אוטומטית והתשלום שוחרר לספק.`,
-          actionUrl: `/booking/confirmation/${booking.requestId}`,
+          // ?review=1 fires the end-of-stay banner + rating form auto-scroll
+          // on BookingConfirmation.tsx (PR #1906). The customer never rated
+          // the service (that's why cron auto-approved) — deep-link them
+          // straight to the star form so they can still leave a review.
+          actionUrl: `/booking/confirmation/${booking.requestId}?review=1`,
           actionType: 'open_booking',
           channels: ['in_app'],
           isRead: false,

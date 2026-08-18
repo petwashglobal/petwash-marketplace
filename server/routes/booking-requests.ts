@@ -2781,7 +2781,12 @@ router.post('/:requestId/complete', async (req, res) => {
         titleHe: '✅ השירות הושלם — אשרי את ההזמנה',
         body: `הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.`,
         bodyHe: `הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.`,
-        actionUrl: `/booking/confirmation/${requestId}`,
+        // ?review=1 fires the end-of-stay banner + form auto-scroll on
+        // BookingConfirmation.tsx (see PR #1906 useEffect). Without it, a
+        // customer tapping this in-app notification lands at the top of the
+        // page and has to scroll past hero + financial + escrow panels to
+        // find the actionable star row.
+        actionUrl: `/booking/confirmation/${requestId}?review=1`,
         actionType: 'approve_completion',
         channels: ['in_app'],
         isRead: false,
@@ -2810,7 +2815,9 @@ router.post('/:requestId/complete', async (req, res) => {
           `Confirm to release payment, or open a dispute <strong>within 24 hours</strong> — ` +
           `otherwise it auto-approves and payment is released.</p>`,
         ctaText: 'אשרו / Confirm',
-        ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+        // ?review=1 fires the end-of-stay banner + rating form auto-scroll on
+        // BookingConfirmation.tsx (PR #1906 useEffect).
+        ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}?review=1`,
         channels: ['email', 'sms'],
         priority: 8,
         meta: { bookingId: requestId, actionType: 'approve_completion' },
