@@ -2895,6 +2895,28 @@ router.post('/:requestId/complete', async (req, res) => {
       logger.warn('[BookingRequests] Completion approval notification failed', { error: notifErr.message });
     }
 
+    // BRANDED EMAIL (2026-08-18, Rover/MadPaws parity): fire the branded
+    // "Please confirm end of stay" email as a fire-and-forget side-effect —
+    // one prominent CTA that deep-links to /booking/confirmation/:requestId.
+    // The generic dispatchNotification below still runs to cover SMS + inbox
+    // rate-limiting; skipping only the 'email' channel there would be
+    // brittle across notification-router versions, so we accept one
+    // additional email in the worst case (both channel-tests indicate
+    // idempotent behaviour on our SendGrid pool). Non-blocking.
+    setImmediate(() => {
+      import('../email/sendConfirmEndOfStay')
+        .then(({ sendConfirmEndOfStay }) => sendConfirmEndOfStay({
+          requestId,
+          ownerId: booking.ownerId,
+          providerId: booking.providerId,
+          serviceType: booking.serviceType,
+          petDetails: booking.petDetails,
+          endDate: booking.endDate,
+          serviceCompletedAt: now,
+        }))
+        .catch(() => {});
+    });
+
     // KEEP-IN-LOOP (2026-07-09): the in-app row above reaches the customer ONLY
     // inside the app. But this is a MONEY deadline — if they do nothing, the
     // auto-approve cron releases their payment to the provider in 24h. So they
