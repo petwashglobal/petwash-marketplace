@@ -334,6 +334,78 @@ router.post("/redeem/web", requireAuth, validate(webRedeemSchema), async (req: R
 // GET /my — caller's vouchers
 // ─────────────────────────────────────────────
 
+// PR-UNIFIED-VOUCHERS-MY-PROJECTION (2026-08-15) — fire-order item 103.
+// Explicit allow-list of what a voucher owner is allowed to see about
+// their own voucher. Deliberately EXCLUDES:
+//   signedJws          — ES256 JWS over the voucher's immutable fields.
+//                        This is the redemption secret: leaking it lets
+//                        an attacker verify or forge redemption payloads
+//                        offline. NEVER returned to the client.
+//   immutableHash      — SHA-256 fingerprint of immutable fields. Internal
+//                        integrity check; not for clients.
+//   purchasedByEmail   — buyer PII (an owner of a gift they received should
+//                        not learn the buyer's email address from this endpoint).
+//   purchasedByUserId  — buyer's Firebase UID.
+//   ownerUserId        — redundant (caller IS the owner via the OR match).
+//   nayaxTxId          — internal payment reference.
+//   purchaseOrderId    — internal payment reference.
+//   walletPassId       — internal PassKit / Google Wallet object id.
+//   svgTemplateKey     — internal renderer template key.
+//   cancelReason       — potentially internal admin note.
+//   recipientEmail     — bulk-listing on /my should not surface raw email
+//                        (recipient can be looked up per-serial where needed).
+//   recipientPhone     — same.
+//   metadata           — free-form JSON; unknown content.
+//   updatedAt          — internal timestamp.
+type SafeVoucherView = {
+  id: string;
+  voucherType: string;
+  designTheme: string;
+  status: string;
+  currency: string;
+  valueOriginal: string | number | null;
+  valueRemaining: string | number | null;
+  washesOriginal: number | null;
+  washesRemaining: number | null;
+  recipientDisplayName: string;
+  recipientLocale: string;
+  serialNumber: string;
+  expiresAt: Date | string | null;
+  activatedAt: Date | string | null;
+  fullyRedeemedAt: Date | string | null;
+  lastRedeemedAt: Date | string | null;
+  cancelledAt: Date | string | null;
+  personalMessage: string | null;
+  createdAt: Date | string;
+  ledgerBalanceValue: number | null;
+  ledgerBalanceWashes: number | null;
+};
+function toSafeVoucherView(v: any): SafeVoucherView {
+  return {
+    id: v.id,
+    voucherType: v.voucherType,
+    designTheme: v.designTheme,
+    status: v.status,
+    currency: v.currency,
+    valueOriginal: v.valueOriginal ?? null,
+    valueRemaining: v.valueRemaining ?? null,
+    washesOriginal: v.washesOriginal ?? null,
+    washesRemaining: v.washesRemaining ?? null,
+    recipientDisplayName: v.recipientDisplayName,
+    recipientLocale: v.recipientLocale,
+    serialNumber: v.serialNumber,
+    expiresAt: v.expiresAt ?? null,
+    activatedAt: v.activatedAt ?? null,
+    fullyRedeemedAt: v.fullyRedeemedAt ?? null,
+    lastRedeemedAt: v.lastRedeemedAt ?? null,
+    cancelledAt: v.cancelledAt ?? null,
+    personalMessage: v.personalMessage ?? null,
+    createdAt: v.createdAt,
+    ledgerBalanceValue: v.ledgerBalanceValue ?? null,
+    ledgerBalanceWashes: v.ledgerBalanceWashes ?? null,
+  };
+}
+
 router.get("/my", requireAuth, async (req: Request, res: Response) => {
   const tid = traceId();
   try {
@@ -349,14 +421,18 @@ router.get("/my", requireAuth, async (req: Request, res: Response) => {
       )
       .orderBy(desc(unifiedVouchers.createdAt));
 
-    // Attach ledger balance to each
+    // Attach ledger balance to each. getVoucherWithBalance spreads the
+    // full row (including signedJws + immutableHash + PII buyer/recipient
+    // fields), so we MUST run toSafeVoucherView on the result before
+    // sending it back to the client. Never trust the shared helper's
+    // shape to be safe for a self-service listing.
     const withBalance = await Promise.all(
       rows.map(async (v) => {
         try {
           const details = await getVoucherWithBalance(v.id);
-          return details;
+          return toSafeVoucherView(details);
         } catch {
-          return { ...v, ledgerBalanceValue: null, ledgerBalanceWashes: null, ledgerEntries: [] };
+          return toSafeVoucherView({ ...v, ledgerBalanceValue: null, ledgerBalanceWashes: null });
         }
       })
     );
