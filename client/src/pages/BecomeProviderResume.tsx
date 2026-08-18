@@ -31,43 +31,23 @@ import { useLocation, Redirect } from 'wouter';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { Loader2 } from 'lucide-react';
+import {
+  onboardingHref,
+  providerTypeSafe,
+  resumeTargetFromApplication,
+  type ResumeTarget,
+} from '@shared/lib/becomeProviderRouting';
 
-type ResumeTarget = string;
-
-/** Provider type whitelist matches becomeProvider.ts. */
-const PROVIDER_TYPE_WHITELIST = new Set([
-  'walker', 'sitter', 'driver', 'trainer', 'station_operator', 'pet_trek',
-]);
+// Re-export so external callers that already import from this file
+// (BecomeProviderResume.tsx) keep working. The pure routing logic lives
+// in @shared/lib/becomeProviderRouting so vitest can unit-test it
+// without pulling the React JSX through the node parser.
+export { resumeTargetFromApplication };
 
 function readProviderTypeFromUrl(): string | null {
   if (typeof window === 'undefined') return null;
   const raw = new URLSearchParams(window.location.search).get('type');
-  if (raw && PROVIDER_TYPE_WHITELIST.has(raw)) return raw;
-  return null;
-}
-
-function onboardingHref(type: string | null): ResumeTarget {
-  return type ? `/provider-onboarding?type=${encodeURIComponent(type)}` : '/provider-onboarding';
-}
-
-/**
- * Map a server application record to the correct destination path.
- * Kept side-effect-free + typed narrowly so future callers can reuse it.
- */
-export function resumeTargetFromApplication(
-  application: { status?: string | null; stage?: string | null } | null,
-  providerType: string | null,
-): ResumeTarget {
-  if (!application) return onboardingHref(providerType);
-  const status = (application.status || '').toString().toLowerCase();
-  // Approved wins over stage — server may mark stage='approved' before
-  // status is finalized, but "approved" as a status is the terminal grant.
-  if (status === 'approved' || application.stage === 'approved') return '/provider/today';
-  if (status === 'rejected' || application.stage === 'rejected') return '/provider/rejected';
-  if (status === 'withdrawn') return onboardingHref(providerType);
-  if (status === 'pending_review' || status === 'under_review') return '/provider/pending';
-  // draft OR unrecognized status → resume the onboarding flow.
-  return onboardingHref(providerType);
+  return providerTypeSafe(raw);
 }
 
 export default function BecomeProviderResume() {
