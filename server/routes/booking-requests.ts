@@ -2722,44 +2722,65 @@ router.get('/:requestId/sumit-return', async (req, res) => {
 router.post('/:requestId/start', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
-    
+
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
+
     if (booking.providerId !== userId) {
       return res.status(403).json({ error: 'Only provider can start service' });
     }
-    
-    if (booking.status !== 'confirmed') {
-      return res.status(400).json({ error: `Cannot start service with status: ${booking.status}` });
-    }
-    
+
     const statusHistory = (booking.statusHistory as any[]) || [];
+    const now = new Date();
     statusHistory.push({
       status: 'in_progress',
-      timestamp: new Date().toISOString(),
+      timestamp: now.toISOString(),
       note: 'Service started',
     });
-    
-    await db.update(bookingRequests)
+
+    // ATOMIC TRANSITION (audit item 169). Blind UPDATE let two concurrent
+    // /start taps both fire logBookingEvent('service_started') and duplicate
+    // arrival/notification workflows further down the chain. Guarding
+    // status inside the WHERE means Postgres row-lock ensures exactly one
+    // caller wins the confirmed → in_progress flip. Loser is idempotent.
+    const updated = await db.update(bookingRequests)
       .set({
         status: 'in_progress',
-        serviceStartedAt: new Date(),
+        serviceStartedAt: now,
         statusHistory,
-        updatedAt: new Date(),
+        updatedAt: now,
       })
-      .where(eq(bookingRequests.requestId, requestId));
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        eq(bookingRequests.status, 'confirmed'),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (updated.length === 0) {
+      const [current] = await db.select({ status: bookingRequests.status })
+        .from(bookingRequests)
+        .where(eq(bookingRequests.requestId, requestId))
+        .limit(1);
+      if (current?.status === 'in_progress') {
+        return res.json({ success: true, message: 'Service already started', alreadyStarted: true });
+      }
+      return res.status(409).json({
+        error: `Cannot start service with status: ${current?.status ?? 'unknown'}`,
+        currentStatus: current?.status ?? null,
+      });
+    }
 
     logBookingEvent('service_started', buildEventPayload({ ...booking, status: 'in_progress' }), {
-      customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
-      serviceStartedAt: new Date().toISOString(),
+      customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
+      serviceStartedAt: now.toISOString(),
     }).catch(() => {});
 
     // Notify the customer that their service just started (2026-08-18):
