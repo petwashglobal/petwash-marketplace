@@ -1169,6 +1169,35 @@ self.addEventListener('notificationclick', (event) => {
         userAgent: req.headers['user-agent']?.substring(0, 50)
       });
       const { idToken, expiresInMs = 432000000, captchaToken, turnstileToken, dateOfBirth: bodyDob } = req.body;
+      // Consent inputs — accept only literal `true` so a truthy string / 1 /
+      // null can never silently be treated as consent. Three independent
+      // signals kept separate on purpose:
+      //   ageConfirmed        — client-side "I am 18+" checkbox tick.
+      //   termsAccepted       — client-side Terms + Privacy acceptance tick.
+      //   acceptedMarketing   — optional marketing preference (never a gate).
+      // ageConfirmed on its own is NEVER trusted — the server independently
+      // recalculates age from `dateOfBirth` before any stamp is written.
+      const ageConfirmed = (req.body as any)?.ageConfirmed === true;
+      const termsAcceptedFlag = (req.body as any)?.termsAccepted === true;
+      const acceptedMarketing = (req.body as any)?.acceptedMarketing === true;
+      // Independent age calculation from the DOB the client typed. Any invalid
+      // shape / missing field resolves to null so the gate below fails closed.
+      const serverCalculatedAge = ((): number | null => {
+        if (typeof bodyDob !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(bodyDob)) return null;
+        const b = new Date(bodyDob + 'T00:00:00Z');
+        if (Number.isNaN(b.getTime())) return null;
+        const now = new Date();
+        let a = now.getUTCFullYear() - b.getUTCFullYear();
+        const m = now.getUTCMonth() - b.getUTCMonth();
+        if (m < 0 || (m === 0 && now.getUTCDate() < b.getUTCDate())) a--;
+        return a;
+      })();
+      const serverAdult = serverCalculatedAge !== null && serverCalculatedAge >= 18;
+      // Current published version of the Terms + Privacy Notice. Bumped whenever
+      // material text changes so `termsVersion` / `privacyVersion` on the users
+      // row records exactly which document the user accepted. Kept as one
+      // string for the pair — they are accepted together on the signup form.
+      const TERMS_VERSION_CURRENT = '2026-v1';
       
       if (!idToken) {
         logger.warn('[Session] Missing ID token in request - client error (400)', { traceId });
@@ -1400,27 +1429,85 @@ self.addEventListener('notificationclick', (event) => {
           uid: decoded.uid, isNewUser: _syncResult?.isNewUser ?? 'timeout',
         });
 
-        // Social OAuth providers implicitly consent via OAuth screen — stamp terms
-        // immediately so postLoginDecider does not redirect to /complete-profile.
-        // Rover-style passive consent (CEO 2026-07-27): the manual phone/email flow
-        // sends termsAccepted:true (the "by continuing you agree" disclosure is the
-        // affirmative act) — honour it here too so manual signups don't get
-        // re-prompted for terms.
         const socialOAuthProviders = ['google.com', 'apple.com', 'facebook.com', 'github.com'];
         const signInProviderForTerms = (decoded as any).firebase?.sign_in_provider || '';
-        const passiveConsent = (req.body as any)?.termsAccepted === true;
-        if ((socialOAuthProviders.includes(signInProviderForTerms) || passiveConsent) && _syncResult?.user && !(_syncResult.user as any).termsAcceptedAt) {
+
+        // Terms + Privacy stamp — one event, two audit fields.
+        // Recorded ONLY when the client has actually presented the checkboxes:
+        //   • ageConfirmed === true (from the explicit "I am 18+" tick), AND
+        //   • termsAccepted === true (from the Terms + Privacy tick), AND
+        //   • server-calculated age from `dateOfBirth` ≥ 18.
+        // The server never trusts the ageConfirmed tick alone — the DOB the
+        // user typed is the age evidence and it is re-checked here. Social
+        // OAuth on its own does NOT auto-stamp: OAuth authenticates identity,
+        // it does not accept Terms. Those social users complete the account
+        // (and this stamp) via the post-OAuth activation surface.
+        // The old-row bypass (only stamp when termsAcceptedAt is null) is
+        // retained so re-signing does not silently rewrite an earlier audit
+        // record with a newer version — versions must roll forward only via
+        // an explicit re-acceptance flow.
+        if (
+          _syncResult?.isNewUser
+          && ageConfirmed
+          && termsAcceptedFlag
+          && serverAdult
+          && _syncResult?.user
+          && !(_syncResult.user as any).termsAcceptedAt
+        ) {
           try {
             const consentNow = new Date();
             await authService.updateUser(decoded.uid, {
               termsAcceptedAt: consentNow,
+              termsVersion: TERMS_VERSION_CURRENT,
               privacyAcceptedAt: consentNow,
+              privacyVersion: TERMS_VERSION_CURRENT,
             });
-            logger.info('[Session] ✅ termsAcceptedAt stamped for social login user', {
-              uid: decoded.uid, provider: signInProviderForTerms,
+            logger.info('[Session] Terms + Privacy accepted', {
+              uid: decoded.uid,
+              provider: signInProviderForTerms || 'manual',
+              termsVersion: TERMS_VERSION_CURRENT,
             });
           } catch (termsErr) {
-            logger.warn('[Session] Failed to stamp termsAcceptedAt for social user (non-blocking)', termsErr);
+            logger.warn('[Session] Failed to stamp Terms/Privacy acceptance (non-blocking)', termsErr);
+          }
+        } else if (
+          _syncResult?.isNewUser
+          && termsAcceptedFlag
+          && (!ageConfirmed || !serverAdult)
+        ) {
+          // Explicit signup attempt with the Terms box ticked but either the
+          // ageConfirmed box unticked or the DOB failing the server 18+
+          // check. Record a warning so operators can spot mismatched clients
+          // that send termsAccepted without the age gate; the account row
+          // still exists (Firebase already minted it) but Terms are NOT
+          // stamped — the user must return through the completion surface.
+          logger.warn('[Session] Terms acceptance rejected — age gate not satisfied', {
+            uid: decoded.uid,
+            ageConfirmed,
+            serverAdult,
+            hasDob: typeof bodyDob === 'string',
+          });
+        }
+
+        // Marketing preference — separate opt-in, separate audit lane.
+        // Never inferred from social OAuth (the provider screen consents to
+        // sign-in, not to marketing). Only recorded on new-user signup when
+        // the client explicitly sent the flag; returning-login requests omit
+        // it so a stored preference is never overwritten. Does NOT touch
+        // the Terms/Privacy audit timestamps — this is a preference change,
+        // not a legal-consent change, and mixing the two makes the audit
+        // trail unusable.
+        if (_syncResult?.isNewUser && (req.body as any)?.acceptedMarketing !== undefined) {
+          try {
+            await authService.updateUser(decoded.uid, {
+              marketingConsent: acceptedMarketing,
+            });
+            logger.info('[Session] Marketing preference recorded', {
+              uid: decoded.uid,
+              marketingConsent: acceptedMarketing,
+            });
+          } catch (mErr) {
+            logger.warn('[Session] Failed to record marketing preference (non-blocking)', mErr);
           }
         }
 
