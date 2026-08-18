@@ -43,6 +43,11 @@ const STATUS_TO_TAB: Record<string, TabId> = {
   accepted:    'upcoming',
   confirmed:   'upcoming',
   in_progress: 'upcoming',
+  // meet_greet_requested is set by POST /:requestId/meet-greet {action:'request'}
+  // when the customer asks for a Meet & Greet before payment. Without this key
+  // the booking is INVISIBLE in every tab. Sibling of the 2026-07-31 fix that
+  // added pending_provider above. (2026-08-18)
+  meet_greet_requested: 'upcoming',
   meet_greet_scheduled: 'upcoming',
   meet_greet_completed: 'upcoming',
   payment_pending: 'upcoming',
