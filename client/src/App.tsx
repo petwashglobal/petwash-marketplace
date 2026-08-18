@@ -4312,7 +4312,18 @@ console.log("Build: 1769350182889");
               banner inside the native apps is website furniture leaking into a
               different product (CEO two-app spec); the apps collect their own
               consents at signup/onboarding. Same gating as the promo popup. */}
-          {!isNativeApp && (
+          {/* PR-COOKIE-CONSENT-IMMERSIVE-GATE (2026-08-15) — fire-order
+              item 58. Cookie banner was only gated on !isNativeApp; it
+              still rendered on /signup, /signin, /verify-email, /kyc,
+              /provider-onboarding, /admin/login-v2 and every other
+              immersive route, where it can cover the primary CTA (or
+              worse, sit on top of the OTP keyboard on iOS Safari).
+              Add the same !isImmersive gate the promo popup + floating
+              widgets already use. The consent choice for anonymous
+              visitors can be captured on the very first non-immersive
+              page they land on (homepage, /locations, /egift, etc.)
+              rather than the moment they hit the funnel. */}
+          {!isNativeApp && !isImmersive && (
             <CookieConsent
               language={currentLanguage}
               onOpenManager={() => setIsConsentManagerOpen(true)}
