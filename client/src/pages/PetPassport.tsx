@@ -197,7 +197,12 @@ export default function PetPassport() {
               <div className="px-6 pb-6">
                 <Row icon={<Cake className="w-4 h-4" />} label={tr('Birthday', 'יום הולדת')} value={pet.birthday} />
                 <Row icon={<span className="text-sm">⚧</span>} label={tr('Gender', 'מין')}
-                     value={pet.gender ? tr(pet.gender, pet.gender === 'male' ? 'זכר' : pet.gender === 'female' ? 'נקבה' : 'לא ידוע') : undefined} />
+                     value={pet.gender
+                       ? tr(
+                           pet.gender === 'male' ? 'Male' : pet.gender === 'female' ? 'Female' : 'Unknown',
+                           pet.gender === 'male' ? 'זכר' : pet.gender === 'female' ? 'נקבה' : 'לא ידוע',
+                         )
+                       : undefined} />
                 <Row icon={<span className="text-sm">⚖️</span>} label={tr('Weight', 'משקל')} value={pet.weightKg ? `${pet.weightKg} kg` : undefined} />
                 <Row icon={<Cpu className="w-4 h-4" />} label={tr('Microchip', 'שבב')} value={pet.microchip} />
                 <Row icon={<Stethoscope className="w-4 h-4" />} label={tr('Vet', 'וטרינר')} value={pet.vetName} />
