@@ -2666,12 +2666,20 @@ router.post('/:requestId/complete', async (req, res) => {
         .catch(() => {});
     });
 
-    // KEEP-IN-LOOP (2026-07-09): the in-app row above reaches the customer ONLY
-    // inside the app. But this is a MONEY deadline — if they do nothing, the
-    // auto-approve cron releases their payment to the provider in 24h. So they
-    // MUST be reachable off-app: also send EMAIL + SMS. dispatchNotification
-    // resolves the owner's email/phone from their uid; non-fatal + fire-and-forget
-    // (channels omit 'inbox' to avoid duplicating the row already written above).
+    // KEEP-IN-LOOP (2026-07-09, updated 2026-08-18): the in-app row above
+    // reaches the customer ONLY inside the app. But this is a MONEY deadline —
+    // if they do nothing, the auto-approve cron releases their payment to
+    // the provider in 24h. So they MUST be reachable off-app.
+    //
+    // Split of channels (2026-08-18):
+    //   • The branded, single-CTA email is sent by sendConfirmEndOfStay()
+    //     via setImmediate() above — that's the Rover/MadPaws-parity path.
+    //   • This dispatchNotification carries the SMS off-app so the same
+    //     wire still reaches the customer via text.
+    //   • 'inbox' is omitted here because a superAppNotifications row was
+    //     already written above.
+    // Both wires are fire-and-forget + fail-soft; if either breaks, the
+    // /complete transition still succeeds.
     try {
       await dispatchNotification({
         uid: booking.ownerId,
@@ -2686,12 +2694,12 @@ router.post('/:requestId/complete', async (req, res) => {
           `otherwise it auto-approves and payment is released.</p>`,
         ctaText: 'אשרו / Confirm',
         ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
-        channels: ['email', 'sms'],
+        channels: ['sms'],
         priority: 8,
         meta: { bookingId: requestId, actionType: 'approve_completion' },
       });
     } catch (notifErr: any) {
-      logger.warn('[BookingRequests] provider_marked_complete email/SMS failed (non-fatal)', { error: notifErr.message });
+      logger.warn('[BookingRequests] provider_marked_complete SMS failed (non-fatal)', { error: notifErr.message });
     }
 
     // ── Non-blocking: Schedule rebook nudges after service completion ─────────
