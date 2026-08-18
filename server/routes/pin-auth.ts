@@ -29,10 +29,13 @@ const LOCKOUT_MINUTES = 15;
 const MIN_PIN_LENGTH = 4;
 const MAX_PIN_LENGTH = 6;
 
-// Validation schemas
+// P0-142 — authority for /setup /change /remove /status is the
+// Firebase Bearer token. The email/uid in the body/query is IGNORED
+// so a client cannot pick which user's PIN gets modified. Only the
+// legacy /verify path retains an email field (it must match the
+// decoded token — a mismatch returns 403).
 const setupPinSchema = z.object({
   pin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
-  email: z.string().email(),
   deviceId: z.string().optional(),
   deviceName: z.string().optional(),
   deviceType: z.enum(['ios', 'android', 'web', 'kiosk']).optional(),
@@ -47,8 +50,55 @@ const verifyPinSchema = z.object({
 const changePinSchema = z.object({
   currentPin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
   newPin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
-  email: z.string().email(),
 });
+
+const removePinSchema = z.object({
+  pin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
+});
+
+/**
+ * P0-142 — resolve the authenticated Firebase user for a PIN-lifecycle
+ * request. Returns { uid, email } on success, or writes a 401 and
+ * returns null on any failure. The caller MUST early-return null.
+ *
+ * NO CLIENT-SUPPLIED email/uid may be trusted here — only the decoded
+ * Firebase Bearer token.
+ */
+async function resolveAuthedUser(
+  req: Request,
+  res: Response,
+): Promise<{ uid: string; email: string } | null> {
+  const authHeader = req.headers.authorization;
+  if (!authHeader?.startsWith('Bearer ')) {
+    res.status(401).json({
+      success: false,
+      error: 'Authentication required',
+      code: 'AUTH_REQUIRED',
+    });
+    return null;
+  }
+  const idToken = authHeader.substring(7);
+  try {
+    const decoded = await firebaseAdminAuth.verifyIdToken(idToken, true);
+    const email = (decoded.email || '').trim().toLowerCase();
+    if (!decoded.uid || !email) {
+      res.status(401).json({
+        success: false,
+        error: 'Authenticated token has no email',
+        code: 'INVALID_TOKEN',
+      });
+      return null;
+    }
+    return { uid: decoded.uid, email };
+  } catch {
+    res.status(401).json({
+      success: false,
+      error: 'Invalid authentication token',
+      code: 'INVALID_TOKEN',
+    });
+    return null;
+  }
+}
 
 // Helper: Get client IP
 function getClientIP(req: Request): string {
@@ -114,72 +164,49 @@ async function findUserByEmail(email: string): Promise<{ id: string; type: 'user
  * Create or update PIN for a user
  */
 router.post('/setup', async (req: Request, res: Response) => {
+  const authed = await resolveAuthedUser(req, res);
+  if (!authed) return;
   try {
     const validation = setupPinSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ 
-        success: false, 
+      return res.status(400).json({
+        success: false,
         error: 'Invalid PIN format. PIN must be 4-6 digits.',
-        details: validation.error.errors 
+        details: validation.error.errors,
       });
     }
+    const { pin, deviceId, deviceName, deviceType } = validation.data;
 
-    const { pin, email, deviceId, deviceName, deviceType } = validation.data;
-    
-    // Find user
-    const userInfo = await findUserByEmail(email);
+    // Identity from authenticated Firebase token — never from body.
+    const userInfo = await findUserByEmail(authed.email);
     if (!userInfo) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Account not found. Please register first.' 
+      return res.status(404).json({
+        success: false,
+        error: 'Account not found. Please register first.',
       });
     }
 
-    // Hash PIN
-    const pinHash = await bcrypt.hash(pin, SALT_ROUNDS);
-
-    // Check if PIN already exists for this user
+    // P0-142 — /setup is CREATE ONLY. If a PIN already exists (active or
+    // deactivated), return 409 PIN_ALREADY_EXISTS. Callers must use
+    // /change to update or /remove then /setup to reset.
     const [existingPin] = await db.select()
       .from(userPins)
       .where(and(
         eq(userPins.userId, userInfo.id),
-        eq(userPins.userType, userInfo.type)
+        eq(userPins.userType, userInfo.type),
+        eq(userPins.isActive, true),
       ))
       .limit(1);
 
     if (existingPin) {
-      // Update existing PIN
-      await db.update(userPins)
-        .set({
-          pinHash,
-          pinLength: pin.length,
-          deviceId: deviceId || existingPin.deviceId,
-          deviceName: deviceName || existingPin.deviceName,
-          deviceType: deviceType || existingPin.deviceType,
-          failedAttempts: 0,
-          lockoutUntil: null,
-          updatedAt: new Date(),
-        })
-        .where(eq(userPins.id, existingPin.id));
-
-      await logPinEvent({
-        userId: userInfo.id,
-        userType: userInfo.type,
-        action: 'pin_changed',
-        req,
-        deviceId,
-        deviceType,
-      });
-
-      logger.info('[PIN Auth] PIN updated', { userId: userInfo.id, email });
-      return res.json({ 
-        success: true, 
-        message: 'PIN updated successfully',
-        pinLength: pin.length 
+      return res.status(409).json({
+        success: false,
+        error: 'PIN already exists for this account. Use /change to update it.',
+        code: 'PIN_ALREADY_EXISTS',
       });
     }
 
-    // Create new PIN
+    const pinHash = await bcrypt.hash(pin, SALT_ROUNDS);
     await db.insert(userPins).values({
       userId: userInfo.id,
       userType: userInfo.type,
@@ -201,18 +228,17 @@ router.post('/setup', async (req: Request, res: Response) => {
       deviceType,
     });
 
-    logger.info('[PIN Auth] PIN created', { userId: userInfo.id, email });
-    return res.json({ 
-      success: true, 
+    logger.info('[PIN Auth] PIN created', { userId: userInfo.id });
+    return res.json({
+      success: true,
       message: 'PIN created successfully',
-      pinLength: pin.length 
+      pinLength: pin.length,
     });
-
   } catch (error) {
     logger.error('[PIN Auth] Setup error', error);
-    return res.status(500).json({ 
-      success: false, 
-      error: 'Failed to setup PIN. Please try again.' 
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to setup PIN. Please try again.',
     });
   }
 });
@@ -435,30 +461,31 @@ router.post('/verify', async (req: Request, res: Response) => {
  * Change PIN (requires current PIN)
  */
 router.post('/change', async (req: Request, res: Response) => {
+  const authed = await resolveAuthedUser(req, res);
+  if (!authed) return;
   try {
     const validation = changePinSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid PIN format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid PIN format',
       });
     }
-
-    const { currentPin, newPin, email } = validation.data;
+    const { currentPin, newPin } = validation.data;
 
     if (currentPin === newPin) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'New PIN must be different from current PIN' 
+      return res.status(400).json({
+        success: false,
+        error: 'New PIN must be different from current PIN',
       });
     }
 
-    // Find user
-    const userInfo = await findUserByEmail(email);
+    // Identity from authenticated Firebase token — never from body.
+    const userInfo = await findUserByEmail(authed.email);
     if (!userInfo) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Account not found' 
+      return res.status(404).json({
+        success: false,
+        error: 'Account not found',
       });
     }
 
@@ -507,10 +534,10 @@ router.post('/change', async (req: Request, res: Response) => {
       req,
     });
 
-    logger.info('[PIN Auth] PIN changed', { userId: userInfo.id, email });
-    return res.json({ 
-      success: true, 
-      message: 'PIN changed successfully' 
+    logger.info('[PIN Auth] PIN changed', { userId: userInfo.id });
+    return res.json({
+      success: true,
+      message: 'PIN changed successfully',
     });
 
   } catch (error) {
@@ -527,22 +554,25 @@ router.post('/change', async (req: Request, res: Response) => {
  * Remove PIN authentication
  */
 router.delete('/remove', async (req: Request, res: Response) => {
+  const authed = await resolveAuthedUser(req, res);
+  if (!authed) return;
   try {
-    const { email, pin } = req.body;
-
-    if (!email || !pin) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Email and PIN are required' 
+    const validation = removePinSchema.safeParse(req.body);
+    if (!validation.success) {
+      return res.status(400).json({
+        success: false,
+        error: 'Current PIN is required to remove PIN',
+        code: 'PIN_REQUIRED',
       });
     }
+    const { pin } = validation.data;
 
-    // Find user
-    const userInfo = await findUserByEmail(email);
+    // Identity from authenticated Firebase token — never from body.
+    const userInfo = await findUserByEmail(authed.email);
     if (!userInfo) {
-      return res.status(404).json({ 
-        success: false, 
-        error: 'Account not found' 
+      return res.status(404).json({
+        success: false,
+        error: 'Account not found',
       });
     }
 
@@ -584,10 +614,10 @@ router.delete('/remove', async (req: Request, res: Response) => {
       req,
     });
 
-    logger.info('[PIN Auth] PIN removed', { userId: userInfo.id, email });
-    return res.json({ 
-      success: true, 
-      message: 'PIN removed successfully' 
+    logger.info('[PIN Auth] PIN removed', { userId: userInfo.id });
+    return res.json({
+      success: true,
+      message: 'PIN removed successfully',
     });
 
   } catch (error) {
@@ -604,23 +634,17 @@ router.delete('/remove', async (req: Request, res: Response) => {
  * Check if user has PIN set up
  */
 router.get('/status', async (req: Request, res: Response) => {
+  const authed = await resolveAuthedUser(req, res);
+  if (!authed) return;
   try {
-    const email = req.query.email as string;
-
-    if (!email) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Email is required' 
-      });
-    }
-
-    // Find user
-    const userInfo = await findUserByEmail(email);
+    // Identity from authenticated Firebase token — never from query.
+    // NOTE: pre-P0-142 this endpoint accepted `?email=` and was
+    // unauthenticated → user-enumeration vector. Both are closed here.
+    const userInfo = await findUserByEmail(authed.email);
     if (!userInfo) {
-      return res.json({ 
-        success: true, 
+      return res.json({
+        success: true,
         hasPin: false,
-        reason: 'Account not found'
       });
     }
 
