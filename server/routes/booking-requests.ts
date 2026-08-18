@@ -39,13 +39,13 @@ import {
   userAddresses,
 } from '@shared/schema';
 import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
-import { eq, and, desc, sql, or, inArray, ne } from 'drizzle-orm';
+import { eq, and, desc, sql, or, inArray, ne, isNull } from 'drizzle-orm';
 import { calculateQuote, persistBookingQuote } from '../services/quoteEngine';
 import { logger } from '../lib/logger';
 import { z } from 'zod';
 import { isSuperAdminVerified } from '../middleware/rbac';
 import { nanoid } from 'nanoid';
-import { createHash, randomBytes } from 'crypto';
+import { createHash, randomBytes, randomUUID } from 'crypto';
 
 // Enterprise service integrations
 import EscrowService from '../services/EscrowService';
@@ -1316,6 +1316,14 @@ router.get('/:requestId/provider-contact', async (req, res) => {
 router.get('/:requestId', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    // Explicit 401 (2026-08-18): the router is mounted with
+    // optionalFirebaseToken, so an unauth caller previously slipped past
+    // this SELECT + the legacy-id fallback SELECT + the provider-name
+    // lookup, only to hit a misleading 403 at the ownership check below.
+    // Fail closed here — no anon read of any booking-request row (some
+    // fields, e.g. quote_breakdown, are business-sensitive even for
+    // parties not on the booking).
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
 
     let [booking] = await db.select()
@@ -2122,10 +2130,45 @@ router.post('/:requestId/meet-greet', async (req, res) => {
           updatedAt: new Date(),
         })
         .where(eq(bookingRequests.requestId, requestId));
-      
+
       logBookingEvent('meet_greet_scheduled', buildEventPayload({ ...booking, status: 'meet_greet_scheduled' }), {
         customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       }).catch(() => {});
+
+      // Notify the counterparty (2026-08-18): before this, the schedule
+      // action silently updated the row without telling the other party.
+      // In practice the provider is the one scheduling and the customer
+      // gets NO notification — they'd have to open the app and refresh to
+      // see the meeting time. Fire-and-forget + fail-soft.
+      {
+        const otherId = actor === 'owner' ? booking.providerId : booking.ownerId;
+        if (otherId) {
+          const meetingWhen = new Date(date).toLocaleString('he-IL', {
+            timeZone: 'Asia/Jerusalem',
+            day: 'numeric', month: 'numeric', hour: '2-digit', minute: '2-digit',
+          });
+          db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, otherId)).limit(1)
+            .then(([u]) => u && dispatchNotification({
+              uid: otherId,
+              email: u.email || undefined,
+              phone: u.phone || undefined,
+              type: 'meet_greet_scheduled',
+              title: 'פגישת היכרות תואמה · Meet & Greet scheduled — PetWash™',
+              bodyHtml:
+                `<p>${actor === 'provider' ? 'הספק' : 'הלקוח/ה'} תיאם/ה פגישת היכרות ל-<strong>${meetingWhen}</strong>` +
+                `${location ? `, במיקום: ${location}` : ''}.</p>` +
+                `<p>${actor === 'provider' ? 'The provider' : 'The customer'} scheduled a Meet & Greet for <strong>${meetingWhen}</strong>` +
+                `${location ? `, at: ${location}` : ''}.</p>`,
+              bodyText: `PetWash: Meet & Greet scheduled ${meetingWhen}${location ? ` @ ${location}` : ''}.`,
+              ctaText: 'צפה בהזמנה / View booking',
+              ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+              channels: ['inbox', 'email', 'sms'],
+              priority: 7,
+              meta: { bookingId: requestId },
+            })).catch(() => {});
+        }
+      }
 
       res.json({ success: true, message: 'Meet & Greet scheduled!' });
       
@@ -2163,13 +2206,39 @@ router.post('/:requestId/meet-greet', async (req, res) => {
           updatedAt: new Date(),
         })
         .where(eq(bookingRequests.requestId, requestId));
-      
+
       logBookingEvent('meet_greet_completed', buildEventPayload({ ...booking, status: 'meet_greet_completed' }), {
         customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       }).catch(() => {});
 
-      res.json({ 
-        success: true, 
+      // Notify the customer that Meet & Greet is done and PAYMENT is the
+      // next step (2026-08-18). Without this, customers whose provider just
+      // approved the M&G wait for a notification that never arrives — the
+      // booking is stuck at meet_greet_completed until they open the app.
+      // Fire-and-forget + fail-soft.
+      if (booking.ownerId) {
+        db.select({ email: users.email, phone: users.phone })
+          .from(users).where(eq(users.id, booking.ownerId)).limit(1)
+          .then(([u]) => u && dispatchNotification({
+            uid: booking.ownerId,
+            email: u.email || undefined,
+            phone: u.phone || undefined,
+            type: 'meet_greet_completed',
+            title: 'פגישת ההיכרות הושלמה · Meet & Greet complete — pay to confirm',
+            bodyHtml:
+              `<p>הספק סימן שפגישת ההיכרות הושלמה. השלב הבא: השלימי תשלום כדי לאשר את ההזמנה.</p>` +
+              `<p>The provider marked your Meet & Greet as complete. Next step: complete payment to confirm the booking.</p>`,
+            bodyText: 'PetWash: Meet & Greet complete — pay to confirm your booking.',
+            ctaText: 'שלמו כעת / Pay now',
+            ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+            channels: ['inbox', 'email', 'sms', 'push'],
+            priority: 8,
+            meta: { bookingId: requestId, actionType: 'complete_payment' },
+          })).catch(() => {});
+      }
+
+      res.json({
+        success: true,
         message: 'Meet & Greet completed! Awaiting payment from owner.',
       });
       
@@ -2193,14 +2262,15 @@ router.post('/:requestId/meet-greet', async (req, res) => {
 router.post('/:requestId/pay', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
     const { paymentMethod, transactionId } = req.body;
-    
+
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
@@ -2213,16 +2283,76 @@ router.post('/:requestId/pay', async (req, res) => {
         message: 'PetTrek™ payments are not available — service pending licensing in Israel.',
       });
     }
-    
+
     if (booking.ownerId !== userId) {
       return res.status(403).json({ error: 'Only the owner can make payment' });
     }
-    
+
     if (!['meet_greet_completed', 'accepted'].includes(booking.status)) {
-      return res.status(400).json({ 
-        error: `Cannot pay for booking with status: ${booking.status}. Meet & Greet must be completed first.` 
+      return res.status(400).json({
+        error: `Cannot pay for booking with status: ${booking.status}. Meet & Greet must be completed first.`
       });
     }
+
+    // ATOMIC PAYMENT SLOT CLAIM (2026-08-16 audit item 162, money-safety).
+    // Two concurrent /pay taps could both pass the checks above, both call
+    // Nayax createPaymentSession, both call EscrowService.createEscrowPayment,
+    // and both UPDATE the DB — leaving one row referencing session B while
+    // session A silently orphans (and the escrow layer has two docs for one
+    // booking).
+    //
+    // Claim the payment slot atomically by writing a placeholder into
+    // paymentTransactionId (which must be NULL for a booking that hasn't
+    // started paying). Postgres row-lock during UPDATE ensures exactly one
+    // caller wins the claim. Loser gets 409 immediately with the winner's
+    // txn hint — they can retry after the winner completes / times out.
+    //
+    // If the downstream Nayax/Escrow calls fail below, we ROLLBACK the claim
+    // so a legitimate retry succeeds; nothing is charged either way.
+    const claimToken = `CLAIM-${Date.now()}-${randomUUID()}`;
+    const claim = await db.update(bookingRequests)
+      .set({
+        paymentTransactionId: claimToken,
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        isNull(bookingRequests.paymentTransactionId),
+        inArray(bookingRequests.status, ['accepted', 'meet_greet_completed']),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (claim.length === 0) {
+      const [current] = await db.select({
+        status: bookingRequests.status,
+        paymentTransactionId: bookingRequests.paymentTransactionId,
+      }).from(bookingRequests).where(eq(bookingRequests.requestId, requestId)).limit(1);
+      logger.warn('[BookingRequests] /pay claim lost (concurrent request or booking not in payable state)', {
+        requestId, currentStatus: current?.status, hasTxn: !!current?.paymentTransactionId,
+      });
+      return res.status(409).json({
+        error: 'Payment already in progress or booking not in a payable state. Please refresh.',
+        currentStatus: current?.status ?? null,
+      });
+    }
+
+    // Helper to reset the claim if Nayax/Escrow fail below. Rollback is safe
+    // because the WHERE narrows to our exact claim token — we can't clobber
+    // a webhook-set real txId.
+    const rollbackClaim = async () => {
+      try {
+        await db.update(bookingRequests)
+          .set({ paymentTransactionId: null, updatedAt: new Date() })
+          .where(and(
+            eq(bookingRequests.requestId, requestId),
+            eq(bookingRequests.paymentTransactionId, claimToken),
+          ));
+      } catch (rollbackErr: any) {
+        logger.error('[BookingRequests] /pay claim rollback failed', {
+          requestId, claimToken, error: rollbackErr?.message,
+        });
+      }
+    };
     
     // Initiate a real hosted payment session.
     // Booking transitions to 'payment_pending' here and becomes 'confirmed' ONLY
@@ -2270,6 +2400,8 @@ router.post('/:requestId/pay', async (req, res) => {
     }
 
     if (!sessionResult.success) {
+      // Nayax failed — release the claim so a legitimate retry can proceed.
+      await rollbackClaim();
       // Online card rail not live yet — be honest, do NOT create escrow or move the
       // booking to payment_pending (this guard runs before both).
       if (sessionResult.error === 'ONLINE_CARD_NOT_LIVE') {
@@ -2317,6 +2449,8 @@ router.post('/:requestId/pay', async (req, res) => {
         requestId, escrowId: escrow.id, amount: booking.totalCents / 100,
       });
     } catch (escrowError: any) {
+      // Escrow failed — release the payment-slot claim so a retry succeeds.
+      await rollbackClaim();
       logger.error('[BookingRequests] Escrow creation FAILED — aborting payment initiation', {
         error: escrowError.message, requestId,
       });
@@ -2327,6 +2461,10 @@ router.post('/:requestId/pay', async (req, res) => {
     }
 
     // Transition booking to payment_pending — NOT confirmed until webhook fires.
+    // We ATOMICALLY promote our claim token to the real session ID. Guarding on
+    // paymentTransactionId=claimToken means only OUR row (the one we claimed
+    // above) is updated — a webhook that raced ahead and wrote the real txId
+    // cannot be clobbered.
     const statusHistory = (booking.statusHistory as any[]) || [];
     statusHistory.push({
       status: 'payment_pending',
@@ -2342,7 +2480,10 @@ router.post('/:requestId/pay', async (req, res) => {
         statusHistory,
         updatedAt: new Date(),
       })
-      .where(eq(bookingRequests.requestId, requestId));
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        eq(bookingRequests.paymentTransactionId, claimToken),
+      ));
 
     logger.info('[BookingRequests] Payment session initiated — awaiting Nayax confirmation', {
       requestId, sessionId: sessionResult.sessionId, demoMode: sessionResult.demoMode,
@@ -2507,6 +2648,67 @@ router.get('/:requestId/sumit-return', async (req, res) => {
       logger.warn('[BookingRequests] SUMIT legacy confirm write-back failed (non-blocking)', { requestId, error: bridgeErr?.message });
     }
 
+    // 2026-08-18 audit fix: parity with the Nayax webhook, which fires
+    // dispatchNotifications to BOTH parties after flipping to 'confirmed'.
+    // The SUMIT rail was silently confirming — customer never got a payment
+    // receipt, provider never learned their booking was paid. Fire-and-forget
+    // + fail-soft; the redirect below never waits on this.
+    const amountIls = (booking.totalCents / 100).toFixed(2);
+    setImmediate(async () => {
+      try {
+        // Customer: payment receipt
+        if (booking.ownerId) {
+          const [ownerRow] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, booking.ownerId)).limit(1);
+          if (ownerRow) {
+            await dispatchNotification({
+              uid: booking.ownerId,
+              email: ownerRow.email || undefined,
+              phone: ownerRow.phone || undefined,
+              type: 'receipt',
+              title: '✅ התשלום עבר — ההזמנה שלך מאושרת / Payment received — booking confirmed',
+              bodyHtml:
+                `<p>סכום של <strong>₪${amountIls}</strong> חויב בהצלחה. ההזמנה שלך <strong>${requestId}</strong> אושרה — הכספים מוחזקים במסלול מאובטח עד לסיום השירות.</p>` +
+                `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+                `<p><strong>₪${amountIls}</strong> was charged successfully. Booking <strong>${requestId}</strong> is confirmed — funds are held in secure escrow until the service is complete.</p>`,
+              ctaText: 'צפה בהזמנה / View booking',
+              ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+              channels: ['inbox', 'email', 'push'],
+              priority: 7,
+              meta: { bookingId: requestId, amount: parseFloat(amountIls), currency: 'ILS' },
+            });
+          }
+        }
+        // Provider: "customer just paid, prepare to deliver"
+        if (booking.providerId) {
+          const [provRow] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, booking.providerId)).limit(1);
+          if (provRow) {
+            await dispatchNotification({
+              uid: booking.providerId,
+              email: provRow.email || undefined,
+              phone: provRow.phone || undefined,
+              type: 'system',
+              title: '💰 הלקוח שילם — ההזמנה מאושרת / Customer paid — booking confirmed',
+              bodyHtml:
+                `<p>הלקוח שילם <strong>₪${amountIls}</strong> עבור הזמנה <strong>${requestId}</strong>. הכספים מוחזקים במסלול מאובטח וישוחררו לאחר סיום השירות.</p>` +
+                `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+                `<p>Customer paid <strong>₪${amountIls}</strong> for booking <strong>${requestId}</strong>. Funds are held in secure escrow and will be released to you after service completion.</p>`,
+              ctaText: 'צפה בהזמנה / View booking',
+              ctaUrl: `https://petwash.co.il/provider/jobs/${requestId}`,
+              channels: ['inbox', 'email', 'push'],
+              priority: 7,
+              meta: { bookingId: requestId, amount: parseFloat(amountIls), currency: 'ILS' },
+            });
+          }
+        }
+      } catch (notifyErr: any) {
+        logger.warn('[BookingRequests] SUMIT confirm notifications failed (non-blocking)', {
+          requestId, error: notifyErr?.message,
+        });
+      }
+    });
+
     return ok();
   } catch (err: any) {
     logger.error('[BookingRequests] SUMIT return handler error', { requestId, error: err?.message });
@@ -2559,7 +2761,32 @@ router.post('/:requestId/start', async (req, res) => {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       serviceStartedAt: new Date().toISOString(),
     }).catch(() => {});
-    
+
+    // Notify the customer that their service just started (2026-08-18):
+    // before this, /start silently flipped the row — customers had no
+    // signal that their pet's care was in progress until they opened the
+    // app. Rover / MadPaws / WhatIDog all push on this transition.
+    // Fire-and-forget + fail-soft.
+    if (booking.ownerId) {
+      db.select({ email: users.email, phone: users.phone })
+        .from(users).where(eq(users.id, booking.ownerId)).limit(1)
+        .then(([u]) => u && dispatchNotification({
+          uid: booking.ownerId,
+          email: u.email || undefined,
+          phone: u.phone || undefined,
+          type: 'system',
+          title: '🐾 השירות התחיל · Service started — PetWash™',
+          bodyHtml:
+            `<p>הספק דיווח שהשירות עבור הזמנה <strong>${requestId}</strong> החל. תוכלי לעקוב אחרי ההתקדמות באפליקציה.</p>` +
+            `<p>The provider marked the service for booking <strong>${requestId}</strong> as started. You can follow the progress in the app.</p>`,
+          ctaText: 'צפי במעקב חי / View live',
+          ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+          channels: ['inbox', 'email', 'push'],
+          priority: 7,
+          meta: { bookingId: requestId, actionType: 'service_started' },
+        })).catch(() => {});
+    }
+
     res.json({ success: true, message: 'Service started!' });
   } catch (error: any) {
     logger.error('[BookingRequests] Start service error', { error: error.message });
@@ -2580,25 +2807,24 @@ router.post('/:requestId/start', async (req, res) => {
 router.post('/:requestId/complete', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
-    
+
+    // Ownership check first — providerId is set at accept-time and doesn't
+    // change, so this is safe outside the atomic transition below.
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
+
     if (booking.providerId !== userId) {
       return res.status(403).json({ error: 'Only provider can mark service as complete' });
     }
-    
-    if (booking.status !== 'in_progress') {
-      return res.status(400).json({ error: `Cannot mark complete for booking with status: ${booking.status}` });
-    }
-    
+
     const statusHistory = (booking.statusHistory as any[]) || [];
     const now = new Date();
     statusHistory.push({
@@ -2608,8 +2834,15 @@ router.post('/:requestId/complete', async (req, res) => {
       actorId: userId,
       note: 'Provider marked service as done. Awaiting customer approval or 24-hour auto-approval.',
     });
-    
-    await db.update(bookingRequests)
+
+    // ATOMIC TRANSITION (2026-08-16 audit item 168). The old blind
+    // `UPDATE ... WHERE requestId=?` allowed two concurrent /complete
+    // taps to BOTH pass the status check above and BOTH run the side
+    // effects below (double notification, double rebook triggers, etc).
+    // Guarding on status IN the WHERE means Postgres row-level locking
+    // during UPDATE guarantees exactly one caller flips the row. The
+    // loser sees rowCount === 0 and returns idempotently.
+    const updated = await db.update(bookingRequests)
       .set({
         status: 'provider_marked_complete',
         serviceCompletedAt: now,
@@ -2617,7 +2850,28 @@ router.post('/:requestId/complete', async (req, res) => {
         statusHistory,
         updatedAt: now,
       } as any)
-      .where(eq(bookingRequests.requestId, requestId));
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        eq(bookingRequests.status, 'in_progress'),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (updated.length === 0) {
+      // Race lost OR status was never 'in_progress'. Re-read to decide.
+      const [current] = await db.select({ status: bookingRequests.status })
+        .from(bookingRequests)
+        .where(eq(bookingRequests.requestId, requestId))
+        .limit(1);
+      if (current?.status === 'provider_marked_complete') {
+        // Someone else won the same-intent race — this is the outcome we
+        // wanted. Return success without re-firing side effects.
+        return res.json({ ok: true, status: 'provider_marked_complete', alreadyMarked: true });
+      }
+      return res.status(409).json({
+        error: `Cannot mark complete for booking with status: ${current?.status ?? 'unknown'}`,
+        currentStatus: current?.status ?? null,
+      });
+    }
 
     logBookingEvent('service_completed', buildEventPayload({ ...booking, status: 'provider_marked_complete' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
@@ -2634,7 +2888,12 @@ router.post('/:requestId/complete', async (req, res) => {
         titleHe: '✅ השירות הושלם — אשרי את ההזמנה',
         body: `הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.`,
         bodyHe: `הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.`,
-        actionUrl: `/booking/confirmation/${requestId}`,
+        // ?review=1 fires the end-of-stay banner + form auto-scroll on
+        // BookingConfirmation.tsx (see PR #1906 useEffect). Without it, a
+        // customer tapping this in-app notification lands at the top of the
+        // page and has to scroll past hero + financial + escrow panels to
+        // find the actionable star row.
+        actionUrl: `/booking/confirmation/${requestId}?review=1`,
         actionType: 'approve_completion',
         channels: ['in_app'],
         isRead: false,
@@ -2643,6 +2902,28 @@ router.post('/:requestId/complete', async (req, res) => {
     } catch (notifErr: any) {
       logger.warn('[BookingRequests] Completion approval notification failed', { error: notifErr.message });
     }
+
+    // BRANDED EMAIL (2026-08-18, Rover/MadPaws parity): fire the branded
+    // "Please confirm end of stay" email as a fire-and-forget side-effect —
+    // one prominent CTA that deep-links to /booking/confirmation/:requestId.
+    // The generic dispatchNotification below still runs to cover SMS + inbox
+    // rate-limiting; skipping only the 'email' channel there would be
+    // brittle across notification-router versions, so we accept one
+    // additional email in the worst case (both channel-tests indicate
+    // idempotent behaviour on our SendGrid pool). Non-blocking.
+    setImmediate(() => {
+      import('../email/sendConfirmEndOfStay')
+        .then(({ sendConfirmEndOfStay }) => sendConfirmEndOfStay({
+          requestId,
+          ownerId: booking.ownerId,
+          providerId: booking.providerId,
+          serviceType: booking.serviceType,
+          petDetails: booking.petDetails,
+          endDate: booking.endDate,
+          serviceCompletedAt: now,
+        }))
+        .catch(() => {});
+    });
 
     // KEEP-IN-LOOP (2026-07-09): the in-app row above reaches the customer ONLY
     // inside the app. But this is a MONEY deadline — if they do nothing, the
@@ -2663,7 +2944,9 @@ router.post('/:requestId/complete', async (req, res) => {
           `Confirm to release payment, or open a dispute <strong>within 24 hours</strong> — ` +
           `otherwise it auto-approves and payment is released.</p>`,
         ctaText: 'אשרו / Confirm',
-        ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+        // ?review=1 fires the end-of-stay banner + rating form auto-scroll on
+        // BookingConfirmation.tsx (PR #1906 useEffect).
+        ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}?review=1`,
         channels: ['email', 'sms'],
         priority: 8,
         meta: { bookingId: requestId, actionType: 'approve_completion' },
@@ -2779,6 +3062,35 @@ router.post('/:requestId/arriving', async (req, res) => {
     }).catch(() => {});
 
     logger.info('[BookingRequests] Provider arriving signal emitted', { requestId, userId });
+
+    // Persistent notification to the customer (2026-08-18): the WS/eventBus
+    // publish above only wakes clients that are already connected to the
+    // marketplace socket. Customers who left the app or lost signal get
+    // nothing. Add a push+inbox row so the "provider is on the way" signal
+    // survives an app close. Deliberately no email — this is a fast
+    // real-time signal, email would arrive too late to matter.
+    // Fire-and-forget + fail-soft.
+    if (booking.ownerId) {
+      const etaMinutes = typeof eta === 'number' ? Math.round(eta) : null;
+      db.select({ email: users.email, phone: users.phone })
+        .from(users).where(eq(users.id, booking.ownerId)).limit(1)
+        .then(([u]) => u && dispatchNotification({
+          uid: booking.ownerId,
+          email: u.email || undefined,
+          phone: u.phone || undefined,
+          type: 'system',
+          title: '🚗 הספק בדרך אלייך · Your provider is on the way',
+          bodyHtml:
+            `<p>הספק דיווח שהוא/היא בדרך אלייך${etaMinutes ? ` — הגעה משוערת בעוד ${etaMinutes} דקות` : ''}.</p>` +
+            `<p>Your provider is heading over${etaMinutes ? ` — ETA about ${etaMinutes} minutes` : ''}.</p>`,
+          ctaText: 'צפי בהזמנה / View booking',
+          ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+          channels: ['inbox', 'push'],
+          priority: 8,
+          meta: { bookingId: requestId, etaMinutes, actionType: 'provider_arriving' },
+        })).catch(() => {});
+    }
+
     return res.json({ success: true, message: 'Arrival signal sent to customer' });
   } catch (error: any) {
     logger.error('[BookingRequests] Provider arriving error', { error: error.message });
@@ -2798,22 +3110,23 @@ router.post('/:requestId/arriving', async (req, res) => {
 async function handleConfirmCompletion(req: any, res: any): Promise<void> {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
     const { rating, review } = req.body;
-    
+
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
+
     if (booking.ownerId !== userId) {
       return res.status(403).json({ error: 'Only owner can confirm completion' });
     }
-    
+
     if (booking.status !== 'provider_marked_complete') {
       return res.status(400).json({ error: `Cannot confirm booking with status: ${booking.status}. Provider must mark the service as complete first.` });
     }
@@ -2832,6 +3145,58 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         message: 'This booking has no held payment, so no payout can be released. Please contact PetWash support.',
       });
     }
+
+    // ATOMIC CONFIRMATION CLAIM (2026-08-16 audit item 168-relation, biggest
+    // money side-effect chain). Two concurrent /confirm taps could both pass
+    // the checks above, both call createEarningRecord + generateReceipt +
+    // releaseEscrowPayment + writeBookingLedgerEntries + recordTransactionFromGross
+    // + all loyalty awards. Some downstream helpers dedupe (generateReceipt does),
+    // others do not. Race is money-critical.
+    //
+    // Use ownerConfirmedAt (currently NULL because status is provider_marked_complete)
+    // as the atomic claim marker — it is written naturally later at the final
+    // UPDATE; we just do it FIRST so concurrent callers see it and bail out.
+    // Guarded by ownerConfirmedAt IS NULL AND status='provider_marked_complete'.
+    // Rollback ownerConfirmedAt = NULL if the money helpers fail-closed below,
+    // so a legitimate retry succeeds (preserves the CEO-approved 2026-07-03
+    // fail-closed semantic).
+    const confirmClaim = await db.update(bookingRequests)
+      .set({ ownerConfirmedAt: new Date(), updatedAt: new Date() })
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        isNull(bookingRequests.ownerConfirmedAt),
+        eq(bookingRequests.status, 'provider_marked_complete'),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (confirmClaim.length === 0) {
+      const [current] = await db.select({
+        status: bookingRequests.status,
+        ownerConfirmedAt: bookingRequests.ownerConfirmedAt,
+      }).from(bookingRequests).where(eq(bookingRequests.requestId, requestId)).limit(1);
+      if (current?.ownerConfirmedAt && (current?.status === 'completed' || current?.status === 'reviewed')) {
+        // Race lost but same-intent already succeeded — idempotent 200.
+        return res.json({ ok: true, status: current.status, alreadyConfirmed: true });
+      }
+      logger.warn('[BookingRequests] /confirm claim lost', { requestId, currentStatus: current?.status, alreadyConfirmedAt: current?.ownerConfirmedAt });
+      return res.status(409).json({
+        error: 'Confirmation already in progress or booking status changed. Please refresh.',
+        currentStatus: current?.status ?? null,
+      });
+    }
+
+    const rollbackConfirmClaim = async () => {
+      try {
+        await db.update(bookingRequests)
+          .set({ ownerConfirmedAt: null, updatedAt: new Date() })
+          .where(and(
+            eq(bookingRequests.requestId, requestId),
+            eq(bookingRequests.status, 'provider_marked_complete'),
+          ));
+      } catch (rollbackErr: any) {
+        logger.error('[BookingRequests] /confirm claim rollback failed', { requestId, error: rollbackErr?.message });
+      }
+    };
 
     // ENTERPRISE: Create earning record via payoutLedger
     const platformFeePercent = 15; // 15% platform fee
@@ -2894,6 +3259,10 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           reportedBy: 'system:earning-fail-closed',
         });
       } catch { /* incident best-effort */ }
+      // Release our confirm-claim so the customer can retry after the
+      // earning failure is repaired — otherwise the ownerConfirmedAt marker
+      // would jam subsequent /confirm attempts on 409.
+      await rollbackConfirmClaim();
       return res.status(500).json({
         error: 'EARNING_RECORD_FAILED',
         message: 'We could not finalize the provider payout for this booking, so it has NOT been completed. Please try again shortly or contact PetWash support.',
@@ -3098,21 +3467,34 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         .catch(() => {});
     });
 
-    // Send inbox + email + SMS notifications via dispatchNotification
+    // Send inbox + email + push notifications to the provider on customer confirm.
+    // 2026-08-18 audit finding: previously channels: ['inbox'] only, so the provider
+    // learned about the payout release only if they opened the Firestore inbox tab —
+    // no email receipt, no push wake-up on their phone. Rover / MadPaws / WhatIDog
+    // all send an explicit "You've earned ₪X — payment on the way" push + email.
+    // Expanded to ['inbox','email','push'] (SMS deliberately omitted here — provider
+    // SMS on payout would be spammy). Same fire-and-forget + fail-soft envelope.
     const amountIls = (booking.subtotalCents / 100).toFixed(2);
     try {
       // Notify provider — payment released
       await dispatchNotification({
         uid: booking.providerId,
         type: 'receipt',
-        title: '💰 תשלום שוחרר!',
-        bodyHtml: `<p>סכום של <strong>₪${amountIls}</strong> שוחרר עבור הזמנה <strong>${requestId}</strong>.</p><p>ההעברה תגיע לחשבונך תוך 72 שעות.</p>`,
-        channels: ['inbox'],
+        title: '💰 תשלום שוחרר! / Payment released',
+        bodyHtml:
+          `<p>סכום של <strong>₪${amountIls}</strong> שוחרר עבור הזמנה <strong>${requestId}</strong>.</p>` +
+          `<p>ההעברה תגיע לחשבונך תוך 72 שעות.</p>` +
+          `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+          `<p><strong>₪${amountIls}</strong> released for booking <strong>${requestId}</strong>.</p>` +
+          `<p>The transfer will arrive in your account within 72 hours.</p>`,
+        ctaText: 'צפה בהזמנה / View booking',
+        ctaUrl: `https://petwash.co.il/provider/jobs/${requestId}`,
+        channels: ['inbox', 'email', 'push'],
         priority: 5,
         meta: { bookingId: requestId, amount: parseFloat(amountIls), currency: 'ILS' },
       });
     } catch (notifErr: any) {
-      logger.warn('[BookingRequests] Provider inbox notification failed', { error: notifErr.message });
+      logger.warn('[BookingRequests] Provider payout notification failed', { error: notifErr.message });
     }
     // LEGACY BRIDGE (2026-07-31): the customer just approved completion, so the
     // canonical booking is now truly 'completed'/'reviewed'. Sync that back to the
@@ -3509,7 +3891,7 @@ router.post('/:requestId/dispute', async (req, res) => {
       } as any)
       .where(eq(bookingRequests.requestId, requestId));
 
-    // Notify provider and admin
+    // Notify provider — in-app row (kept) + off-app push + email (added 2026-08-18)
     try {
       await db.insert(superAppNotifications).values({
         userId: booking.providerId,
@@ -3527,6 +3909,38 @@ router.post('/:requestId/dispute', async (req, res) => {
     } catch (notifErr: any) {
       logger.warn('[BookingRequests] Dispute notification failed', { error: notifErr.message });
     }
+
+    // Off-app dispatch to provider (2026-08-18 audit): the in-app row above
+    // only reaches a provider who opens the app. A dispute FREEZES escrow —
+    // this is a money-loss event the provider must respond to (photos, notes,
+    // rebuttal). Push wakes their phone; email gives them the paper trail
+    // and a link to respond. SMS is deliberately omitted — dispute is a
+    // multi-step response requiring reading and typing, not a fast alert.
+    // Fire-and-forget + fail-soft.
+    setImmediate(async () => {
+      try {
+        const [provRow] = await db.select({ email: users.email })
+          .from(users).where(eq(users.id, booking.providerId)).limit(1);
+        await dispatchNotification({
+          uid: booking.providerId,
+          email: provRow?.email || undefined,
+          type: 'system',
+          title: '⚠️ לקוח פתח מחלוקת · Customer opened a dispute — PetWash™',
+          bodyHtml:
+            `<p>הלקוח פתח מחלוקת על הזמנה <strong>${requestId}</strong>. התשלום מוקפא עד לפתרון.</p>` +
+            `<p>Please open the booking in PetWash to respond within 48 hours. Our team will review and mediate.</p>` +
+            `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+            `<p>The customer opened a dispute on booking <strong>${requestId}</strong>. Payment is frozen until resolution.</p>`,
+          ctaText: 'להגיב על המחלוקת / Respond to dispute',
+          ctaUrl: `https://petwash.co.il/provider/jobs/${requestId}`,
+          channels: ['inbox', 'email', 'push'],
+          priority: 9,
+          meta: { bookingId: requestId, actionType: 'dispute_response' },
+        });
+      } catch (notifErr: any) {
+        logger.warn('[BookingRequests] Dispute off-app notification failed', { error: notifErr.message });
+      }
+    });
 
     logBookingEvent('dispute_opened' as any, buildEventPayload({ ...booking, status: 'disputed' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
@@ -3733,6 +4147,42 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
       logger.warn('[BookingRequests] Emergency cancel customer notification failed', { error: notifErr.message });
     }
 
+    // Off-app dispatch (2026-08-18): the in-app row above only reaches the
+    // customer when they open the app. This is an EMERGENCY cancellation —
+    // the pet may have had care lined up for TODAY. Customer needs push
+    // + email + SMS immediately so they can arrange alternatives. Highest
+    // priority. Fire-and-forget + fail-soft.
+    if (booking.ownerId) {
+      const refundIls = (refundCents / 100).toFixed(2);
+      setImmediate(async () => {
+        try {
+          const [ownerRow] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, booking.ownerId)).limit(1);
+          await dispatchNotification({
+            uid: booking.ownerId,
+            email: ownerRow?.email || undefined,
+            phone: ownerRow?.phone || undefined,
+            type: 'system',
+            title: '🚨 הספק ביטל בחירום — החזר מלא · Provider emergency cancel — full refund',
+            bodyHtml:
+              `<p>הספק דיווח על נסיבות חירום עבור הזמנה <strong>${requestId}</strong> ולא יכול לתת שירות. ` +
+              `קיבלת החזר מלא של <strong>₪${refundIls}</strong>. אנחנו כאן לעזור לך למצוא ספק חלופי.</p>` +
+              `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+              `<p>The provider had an emergency for booking <strong>${requestId}</strong> and cannot deliver. ` +
+              `You've received a full refund of <strong>₪${refundIls}</strong>. We're here to help you find another provider.</p>`,
+            bodyText: `PetWash: Provider emergency-cancelled booking ${requestId}. Full refund ₪${refundIls}. Find a replacement: https://petwash.co.il/marketplace`,
+            ctaText: 'מצאי ספק חלופי / Find another provider',
+            ctaUrl: `https://petwash.co.il/marketplace`,
+            channels: ['inbox', 'email', 'sms', 'push'],
+            priority: 10,
+            meta: { bookingId: requestId, refundAmount: parseFloat(refundIls), currency: 'ILS', actionType: 'emergency_replacement' },
+          });
+        } catch (notifErr: any) {
+          logger.warn('[BookingRequests] Emergency cancel off-app dispatch failed', { error: notifErr.message });
+        }
+      });
+    }
+
     // Schedule rebook nudge for customer (1 h later)
     scheduleRebookTrigger('cancelled_recovery', {
       userId: booking.ownerId, requestId, providerId: booking.providerId,
@@ -3864,8 +4314,19 @@ router.post('/:requestId/cancel', async (req, res) => {
       actorId: userId,
       note: `Cancelled by ${cancelledBy}. Tier: ${cancellationTier}. Hours until service: ${hoursUntilService.toFixed(1)}. Refund: ₪${(refundCents / 100).toFixed(2)}${cancellationPenaltyCents > 0 ? `. Provider penalty: ₪${(cancellationPenaltyCents / 100).toFixed(2)}` : ''}. Reason: ${reason || 'No reason provided'}`,
     });
-    
-    await db.update(bookingRequests)
+
+    // ATOMIC TRANSITION (2026-08-16 audit item 166). Blind UPDATE meant two
+    // concurrent cancels could both pass applyTransition() and both fire
+    // recordRefund + releaseSlotLock + calendar delete + wallet release/refund
+    // + FCM push + rebook trigger. Money-adjacent: releaseBookingHold /
+    // refundBookingWallet can double-refund a wallet unless the wallet
+    // idempotency helpers dedupe (they do — see §4 of the money invariants
+    // skill — but state atomicity is the defence in depth). Guarding on the
+    // status we READ (`booking.status`) inside the WHERE means Postgres row
+    // lock ensures exactly one caller flips the row from that observed value
+    // to 'cancelled'. Loser bails out BEFORE touching refund / wallet /
+    // calendar side effects.
+    const updated = await db.update(bookingRequests)
       .set({
         status: 'cancelled',
         cancelledAt: new Date(),
@@ -3883,7 +4344,27 @@ router.post('/:requestId/cancel', async (req, res) => {
         statusHistory,
         updatedAt: new Date(),
       } as any)
-      .where(eq(bookingRequests.requestId, requestId));
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        eq(bookingRequests.status, booking.status),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (updated.length === 0) {
+      const [current] = await db.select({ status: bookingRequests.status })
+        .from(bookingRequests)
+        .where(eq(bookingRequests.requestId, requestId))
+        .limit(1);
+      if (current?.status === 'cancelled') {
+        // Someone else already cancelled it — same-intent race. Return 200 without
+        // re-firing refund / wallet / calendar / notification side effects.
+        return res.json({ ok: true, status: 'cancelled', alreadyCancelled: true });
+      }
+      return res.status(409).json({
+        error: `Booking status changed during cancel; current: ${current?.status ?? 'unknown'}`,
+        currentStatus: current?.status ?? null,
+      });
+    }
 
     // ── Deal Gate (§L/§16): audit the cancellation + record the refund/fee split ──
     // recordRefund writes shadow_only while AUTO_REFUNDS_ENABLED=false (no live money
@@ -4172,7 +4653,37 @@ router.post('/:requestId/photo-update', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(bookingRequests.requestId, requestId));
-    
+
+    // Notify the owner that a new photo update arrived (2026-08-18):
+    // before this, the provider "sent an update" to a customer who never
+    // learned it existed until they refreshed the booking page. Response
+    // message said "Photo update sent to owner!" — technically true only
+    // if the owner happened to be looking at the app. Push + inbox only —
+    // no email/SMS on every photo (would be spammy for long sessions).
+    // Fire-and-forget + fail-soft.
+    if (booking.ownerId) {
+      const preview = typeof caption === 'string' && caption.trim()
+        ? caption.trim().slice(0, 140)
+        : 'הספק שלח עדכון תמונה / Your provider sent a photo';
+      db.select({ email: users.email })
+        .from(users).where(eq(users.id, booking.ownerId)).limit(1)
+        .then(([u]) => u && dispatchNotification({
+          uid: booking.ownerId,
+          email: u.email || undefined,
+          type: 'system',
+          title: '📸 עדכון תמונה חדש · New photo update',
+          bodyHtml:
+            `<p>הספק שלח עדכון תמונה חדש עבור ההזמנה שלך <strong>${requestId}</strong>.</p>` +
+            `<p><em>${preview}</em></p>` +
+            `<p>The provider sent a new photo update for your booking <strong>${requestId}</strong>.</p>`,
+          ctaText: 'צפי בעדכון / View update',
+          ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+          channels: ['inbox', 'push'],
+          priority: 6,
+          meta: { bookingId: requestId, actionType: 'photo_update' },
+        })).catch(() => {});
+    }
+
     res.json({ success: true, message: 'Photo update sent to owner!' });
   } catch (error: any) {
     logger.error('[BookingRequests] Photo update error', { error: error.message });
@@ -4190,6 +4701,16 @@ router.post('/:requestId/reprice', async (req, res) => {
     const { requestId } = req.params;
     const userId = (req as any).userId || req.user?.uid || null;
 
+    // Explicit 401 (2026-08-18 hardening): fail-closed on missing auth BEFORE
+    // the DB fetch. Previously !userId was folded into the ownership 403
+    // below, so an unauth caller ate a wasted bookingRequests SELECT and got
+    // a misleading "Not authorized" instead of an honest "Authentication
+    // required". Splitting the two also makes admin-override path clearer:
+    // ownership check only runs once we know who's asking.
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const booking = await db
       .select()
       .from(bookingRequests)
@@ -4205,7 +4726,7 @@ router.post('/:requestId/reprice', async (req, res) => {
     // AUTH + OWNERSHIP (IDOR fix): only the booking owner (or a verified admin) may
     // reprice. Without this, any caller could reprice any requestId and attach their
     // own promo/wallet/gift-card flags, overwriting the victim's persisted quote.
-    if (!userId || (br.ownerId !== userId && !isSuperAdminVerified(req as any))) {
+    if (br.ownerId !== userId && !isSuperAdminVerified(req as any)) {
       return res.status(403).json({ error: 'Not authorized to reprice this booking' });
     }
 

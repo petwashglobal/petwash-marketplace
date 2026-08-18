@@ -164,19 +164,33 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const { toast } = useToast();
   const he = language === 'he';
 
-  // Consent — both UNCHECKED by default (active opt-in is a legal requirement;
-  // pre-ticked consent is unlawful under Israeli privacy law). Submit + every
-  // social method is blocked until both are ticked. Terms/Privacy are clickable.
+  // Consent state — three independent axes so the audit trail is unambiguous:
+  //   ageConfirmed18Plus  — explicit "I am 18+" checkbox (mandatory).
+  //   agreedTerms          — Terms + Privacy Notice checkbox (mandatory).
+  //   acceptedMarketing    — marketing preference (optional; NEVER blocks submit).
+  // All three default to false so nothing is pre-ticked. The DOB the user
+  // types is the age evidence; this checkbox is the explicit confirmation
+  // paired with it — the server enforces BOTH (age >= 18 AND ageConfirmed).
+  const [ageConfirmed18Plus, setAgeConfirmed18Plus] = useState(false);
   const [agreedTerms, setAgreedTerms] = useState(false);
+  const [acceptedMarketing, setAcceptedMarketing] = useState(false);
+  // Legacy `over18` state retained ONLY for the returning-user LOGIN paths
+  // that never re-collect DOB (kept out of the signup gate below).
   const [over18, setOver18] = useState(false);
-  // consentOk is defined AFTER isAdult (below) so a valid 18+ DOB can satisfy
-  // the age requirement without the redundant checkbox.
 
 
   // Capture ?intent=provider|loyalty|staff_request from the URL into the signup
   // intent cookie on arrival, so it survives the OAuth redirect and post-login
   // routing sends the user to the right place. (Ported from SignIn.tsx.)
   useEffect(() => { applyIntentFromUrl(); }, []);
+
+  // Tick the resend cooldown down once per second. Cleared when hitting 0 or
+  // when the component unmounts so no dangling interval.
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const t = setInterval(() => setResendCountdown((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCountdown]);
 
   useEffect(() => {
     const root = document.getElementById('root');
@@ -365,16 +379,21 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  // Resend cooldown (2026-08-16). "Resend code" used to silently drop the user
+  // back to the entry form without actually resending. Now it calls the real
+  // send function; the countdown throttles it so users can't spam-tap the
+  // server (server-side rate-limit remains the hard gate — this is UX).
+  const [resendCountdown, setResendCountdown] = useState(0);
   const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
-  // Date of birth — required, 18+. Server re-enforces at account creation.
-  // DOB defaults to the SAME date the wheel visually shows (year = now-25, an
-  // adult). Before this, dob started '' while the picker rendered `dob || now-25`
-  // — so the wheel SHOWED "2001 / June / 15" but the form state stayed empty, the
-  // 18+ gate read empty, and Continue stayed dead with no clear reason. Every year
-  // the wheel can offer is ≥18 (maxYear = now-18), so seeding the shown value is
-  // safe and honest: display === state === payload. The user spins to set their
-  // real birthday; not touching it now means "the date I see", not "nothing". (2026-07-31)
-  const [dob, setDob] = useState(`${new Date().getFullYear() - 25}-06-15`);
+  // Date of birth — REQUIRED, 18+. Server re-enforces at account creation.
+  // MUST default to empty: a pre-seeded "now-25" default stamped a synthetic
+  // birthday on every user who never touched the wheel (indistinguishable from
+  // deliberate input) — reads as consent to a data point the user never
+  // provided, and lies to the age gate. Empty = "not yet supplied", which is
+  // honest and forces the picker to be used. The picker still renders a sane
+  // initial view when dob==='' (see DOB input at ~L1533); the gate blocks
+  // submit until dobValid && isAdult. (2026-08-16 MASTER AUTH rebuild)
+  const [dob, setDob] = useState('');
   // Step 2 of dual-verify: after the phone code + account, we verify the email too.
   const [emailStep, setEmailStep] = useState(false);
   // The MIRROR of emailStep: a NEW user who started with email / Google / Apple (which
@@ -404,6 +423,42 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   } | null>(null);
   const [linkPassword, setLinkPassword] = useState('');
 
+  // PR-AUTH-FIX-RESET-EMAIL-3 (2026-08-15) — Forgot Password on the LOGIN
+  // screen. Pre-fix the customer sign-in page had NO way to trigger a
+  // password reset — users with a forgotten password were stuck on
+  // "Sign in" with no path forward. Anti-enumeration: the toast is
+  // ALWAYS the same generic "if an account exists" text regardless of
+  // whether Firebase confirmed the send, so a caller cannot probe
+  // account existence via error variance.
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const handleForgotPassword = async () => {
+    if (forgotBusy) return; // prevent double-submit
+    setInlineError(null);
+    const trimmed = (email || '').trim();
+    // Cheap RFC-ish shape check — Firebase will reject bad shapes, but
+    // rejecting client-side avoids a wasted round-trip AND lets us
+    // show a single specific "please enter a valid email" hint. Any
+    // OTHER error (rate-limit, unknown, network) becomes the generic
+    // anti-enumeration toast — never leaks account existence.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setInlineError(he ? 'הזן כתובת אימייל תקינה' : 'Please enter a valid email address');
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      const { auth: fbAuth } = await import('@/lib/firebase');
+      await sendPasswordResetEmail(fbAuth, trimmed);
+    } catch {
+      // Deliberately swallow. Anti-enumeration: the user sees the same
+      // generic success message whether the email exists or not.
+    } finally {
+      setForgotBusy(false);
+      setForgotSent(true);
+    }
+  };
+
   const fail = (msg: string) => setInlineError(msg);
 
   // On mount: detect a platform authenticator (Face ID / Touch ID / fingerprint)
@@ -415,20 +470,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       try {
         const avail = await isPlatformAuthenticatorAvailable();
         if (cancelled) return;
-        // Only show the explicit "Sign in with Face ID" button when this user has
-        // actually REGISTERED a passkey on this device (petwash_passkey_email is set
-        // at registration/first passkey login). Gating on device biometric capability
-        // ALONE made the button appear on every modern phone/Mac and then FAIL on tap
-        // (NotAllowedError — no matching credential) for anyone without a passkey →
-        // "Face ID is broken." Conditional autofill (below) still arms regardless: it's
-        // silent, discoverable-credential based, and surfaces the passkey in the email
-        // field when one exists — the true one-tap return path.
-        const hasRegisteredPasskey = (() => {
+        // The signed-out login screen cannot ask the server "does this account
+        // have a passkey?" without leaking whether the account exists, so the
+        // explicit "Sign in with Face ID" button uses a DEVICE-LOCAL HINT
+        // (petwash_passkey_email) — set on registration / first passkey login
+        // on this device — to soften discovery. This is NOT authority: the
+        // real "your account is enrolled" record lives on the server and is
+        // read by Settings/EnableFaceIDCard via getServerPasskeyStatus(). The
+        // hint being absent does not mean the account has no passkey; the
+        // conditional-mediation autofill below still surfaces synced passkeys
+        // silently — the true one-tap return path.
+        const passkeyHintOnDevice = (() => {
           try { return !!localStorage.getItem('petwash_passkey_email'); } catch { return false; }
         })();
         setPlatformAuthCapable(avail);
-        setBioAvailable(avail && hasRegisteredPasskey);
-        if (avail && hasRegisteredPasskey) setBioName(getBiometricMethodName());
+        setBioAvailable(avail && passkeyHintOnDevice);
+        if (avail && passkeyHintOnDevice) setBioName(getBiometricMethodName());
         signInWithPasskeyConditional().catch(() => {});
       } catch { /* passkeys unsupported — silent, normal flow continues */ }
     })();
@@ -437,13 +494,30 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
   // Explicit "Sign in with Face ID" tap. On success the useFirebaseAuth user
   // effect routes via the post-login decider; no consent gate (returning user
-  // already accepted terms at original signup).
+  // already accepted terms at original signup). On failure we present an
+  // honest fallback message — the device may hold the discovery hint but the
+  // server may have no matching credential (user cleared it, switched
+  // devices, or the hint predates a passkey reset). "Face ID sign-in failed"
+  // reads as a system fault when the real cause is "no matching passkey";
+  // point them at the other sign-in options and clear the stale hint so the
+  // button no longer misleads on the next page load.
   async function handlePasskeyLogin() {
     setBusy(true);
     setInlineError(null);
     try {
       const r = await signInWithPasskey();
-      if (!r.success) fail(r.error || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+      if (!r.success) {
+        const noPasskey = /not.?allowed|no matching|no credential|cancel|timed out/i.test(r.error || '');
+        if (noPasskey) {
+          try { localStorage.removeItem('petwash_passkey_email'); } catch { /* storage disabled */ }
+          setBioAvailable(false);
+          fail(he
+            ? 'לא נמצא Passkey במכשיר זה — התחברו עם Google, אימייל או מספר נייד.'
+            : 'No passkey found on this device — sign in with Google, email or mobile instead.');
+        } else {
+          fail(r.error || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+        }
+      }
     } catch (e: any) {
       fail(e?.message || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
     } finally {
@@ -470,11 +544,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }, []);
 
   const requireTerms = () => {
-    // Rover-style passive consent (CEO 2026-07-27): no terms checkbox. The manual
-    // flow still enforces the REAL 18+ gate via the DOB the user typed (stronger
-    // than a checkbox); terms acceptance is passive (disclosure line + submitting)
-    // and stamped on the session. Age via isAdult (DOB), not the removed box.
-    if (!isAdult) { fail(he ? 'יש להזין תאריך לידה — גיל 18 ומעלה' : 'Please enter your date of birth — you must be 18 or older.'); return false; }
+    // Signup gate — three MANDATORY checks. Marketing is intentionally absent
+    // (optional, never a blocker). All three are also re-enforced server-side
+    // on the /session handler; the server independently calculates age from
+    // the DOB and never trusts the ageConfirmed checkbox on its own.
+    if (!dobValid || !isAdult) {
+      fail(he ? 'יש להזין תאריך לידה — גיל 18 ומעלה' : 'Please enter your date of birth — you must be 18 or older.');
+      return false;
+    }
+    if (!ageConfirmed18Plus) {
+      fail(he ? 'יש לאשר שאתם בני 18 ומעלה' : 'Please confirm that you are 18 years of age or older.');
+      return false;
+    }
+    if (!agreedTerms) {
+      fail(he ? 'יש לאשר את תנאי השימוש והפרטיות' : 'Please accept the Terms of Service and Privacy Notice.');
+      return false;
+    }
     return true;
   };
 
@@ -635,7 +720,8 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         // Send the DOB so the users row is CREATED with it — persistDob's
         // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
-        body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true }),
+        // Marketing consent is granular per MASTER AUTH rebuild (2026-08-16).
+        body: JSON.stringify({ idToken, dateOfBirth: dob, ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
       });
       if (!sessionRes.ok) {
         // Hollow server session → app guards would 401-bounce to /signin. Fail
@@ -651,9 +737,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         setMethod('email');
         setSent(true);
         try {
+          const step2Token = await executeTurnstileInvisible('signup_email_start').catch(() => null);
           await fetch(getApiUrl('/api/auth/email/start'), {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-            body: JSON.stringify({ email, purpose: 'signup', language }),
+            body: JSON.stringify({ email, purpose: 'signup', language, turnstileToken: step2Token }),
           });
           toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
         } catch { /* the email OTP screen has a resend */ }
@@ -678,9 +765,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // not 'signup' — otherwise the returning user's code is scoped wrong and the
       // flow attaches a synthetic signup DOB. Start + verify MUST agree on purpose.
       const emailPurpose = authMode === 'login' ? 'login' : 'signup';
+      // Turnstile bot check on the email OTP start (mirrors the SMS start
+      // path). When TURNSTILE_SECRET_KEY is unset on the server the guard
+      // skips + logs a warning; when set, a missing token 400s and the user
+      // sees the "Could not send the code right now" fallback below.
+      const emailTurnstileToken = await executeTurnstileInvisible('signup_email_start').catch(() => null);
       const r = await fetch(getApiUrl('/api/auth/email/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ email, purpose: emailPurpose, language }),
+        body: JSON.stringify({ email, purpose: emailPurpose, language, turnstileToken: emailTurnstileToken }),
       });
       const d = await r.json();
       if (!d.ok) { fail(d.message || (he ? 'לא ניתן לשלוח קוד כעת' : 'Could not send the code right now')); return; }
@@ -734,10 +826,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         const idToken = await cred.user.getIdToken(true);
         const sessRes = await fetch(getApiUrl('/api/auth/session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          // Send the DOB so the users row is CREATED with it — persistDob's
-          // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
-          // (undefined on a returning login → server leaves the real DOB untouched.)
-          body: JSON.stringify({ idToken, dateOfBirth: dobForContext, termsAccepted: true }),
+          // On signup the users row is CREATED with the DOB the user typed
+          // (persistDob's UPDATE ran before the row existed, dropping it —
+          // 2026-07-24 fix). ageConfirmed + termsAccepted ride alongside so
+          // the server /session handler can enforce them; marketing is
+          // separate and only sent on signup. Returning-login requests omit
+          // all four so a returning user's stored values are never overwritten.
+          body: JSON.stringify({
+            idToken,
+            dateOfBirth: dobForContext,
+            ...(authMode === 'login'
+              ? {}
+              : { ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
+          }),
         });
         // NEW email signup → also collect + verify the mobile so the account confirms
         // BOTH contacts (CEO 2026-08-08). Returning users route straight in.
@@ -756,10 +857,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   }
 
   async function social(which: 'google' | 'apple' | 'facebook') {
-    // Rover-style passive consent (CEO 2026-07-27): no blocking checkbox. The
-    // disclosure line under the tiles + this deliberate tap ARE the affirmative
-    // action (action-based, NOT a pre-ticked box). Terms are stamped server-side
-    // for social logins (routes.ts session handler).
+    // Google/Apple is the easy button — the user taps ONE thing and the
+    // provider authenticates them. Do NOT gate the tap on DOB / 18+ /
+    // Terms checkboxes; we don't know who they are yet. After OAuth
+    // returns and the server determines they're a NEW / incomplete user,
+    // the AccountActivation surface (already served for missingSteps)
+    // collects the mandatory data they still owe (mobile / DOB / 18+ /
+    // Terms) before the account is marked ACTIVE. Returning fully-
+    // compliant users route straight through the post-login decider.
     setInlineError(null);
     setBusy(true);
     try {
@@ -781,6 +886,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
           ? await signInWithGoogleNative(auth)
           : await signInWithAppleNative(auth);
         const idToken = await cred.user.getIdToken(true);
+        // Social sessions are authenticated but NOT yet consented — the DOB /
+        // 18+ / Terms checkboxes are collected AFTER OAuth on the completion
+        // surface (AccountActivation for new users). Sending termsAccepted
+        // here would fabricate consent the user never ticked.
         const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({ idToken }),
@@ -822,6 +931,9 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       }
       const cred = await signInWithPopup(auth, provider);
       const idToken = await cred.user.getIdToken(true);
+      // Mirror the native-social path — the browser has not yet collected
+      // DOB / 18+ / Terms, so send only the id token. The AccountActivation
+      // surface finishes the account with the missing mandatory data.
       const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ idToken }),
@@ -1021,10 +1133,19 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       const idToken = await cred.user.getIdToken(true);
       const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        // Send the DOB the user just typed (the OTP paths already do — :467,:547).
-        // Was omitted here, so email+password members were re-asked their birthday
-        // at /complete-profile. (2026-07-27)
-        body: JSON.stringify({ idToken, dateOfBirth: dob, termsAccepted: true }),
+        // On signup send DOB + ageConfirmed + termsAccepted + acceptedMarketing
+        // so the server /session handler can validate age + record consent in
+        // one call — email+password members were previously re-asked their
+        // birthday at /complete-profile because DOB was dropped here
+        // (2026-07-27). Returning-login requests omit all consent fields so a
+        // stored preference is never overwritten.
+        body: JSON.stringify({
+          idToken,
+          dateOfBirth: dob,
+          ...(authMode === 'login'
+            ? {}
+            : { ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
+        }),
       });
       if (!sessionRes.ok) {
         // Surface the real failure instead of dropping the user into the app on a
@@ -1062,18 +1183,14 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     return a;
   })();
   const isAdult = age >= 18;
-  // AGE GATE (2026-07-24 fix): the DOB wheel AND a separate 'I am 18+' checkbox
-  // was redundant and confusing — a customer who entered their birthday still
-  // had to tick a box saying they're 18+, and Google sign-in / the phone Send
-  // button silently stayed blocked until they did. A VALID 18+ date of birth
-  // now satisfies the age requirement on its own; the checkbox remains the
-  // path for anyone who hasn't entered a DOB (e.g. pure social signup).
-  const ageConfirmed = over18 || isAdult;
-  // Rover-style passive consent (CEO 2026-07-27): terms are no longer a blocking
-  // checkbox — the disclosure line + the deliberate submit are the affirmative
-  // action, and terms are stamped on the session. The only hard gate that remains
-  // for the MANUAL flow is the real 18+ age check (from the DOB the user typed).
-  const consentOk = ageConfirmed;
+  // Signup consent gate — three independent signals:
+  //   dobValid + isAdult        — a real 18+ birthday the user typed.
+  //   ageConfirmed18Plus         — explicit "I am 18+" checkbox (mandatory).
+  //   agreedTerms                — Terms + Privacy Notice checkbox (mandatory).
+  // Marketing is intentionally absent — optional signals must never gate
+  // account creation. Server /session re-enforces every one of these AND
+  // independently calculates age from DOB before creating an active row.
+  const consentOk = dobValid && isAdult && ageConfirmed18Plus && agreedTerms;
   // ONE contact is enough (CEO 2026-07-24 "sign up not easy"): startSignup()
   // already branches phone-first-else-email, and the design intent above is
   // "type whichever they like, we detect which". The old gate demanded phone
@@ -1081,22 +1198,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // no reason shown. Now: either contact + 18+ DOB unlocks it; the second
   // contact is collected/verified after, not up front.
   const hasContact = phoneValid || emailValid;
-  // The Send-code button needs age confirmation via EITHER the '18+' checkbox
-  // OR a valid 18+ DOB — not the DOB specifically. Before this (2026-07-24) a
-  // provider who ticked the boxes and entered their mobile saw the Send button
-  // stay dead because they hadn't ALSO spun the DOB wheel — "no send button
-  // exists" (CEO). ageConfirmed = over18 || isAdult.
-  const readyForSubmit = !busy && hasContact && ageConfirmed;
+  // MASTER AUTH rebuild (2026-08-16): every signup Send-code / Continue tap
+  // requires BOTH a real 18+ DOB AND an active Terms/Privacy tick. `authMode`
+  // === 'login' bypasses consentOk (returning users already consented at join).
+  const readyForSubmit = !busy && hasContact && (authMode === 'login' ? true : consentOk);
 
   // ── CEO 2026-07-31 contract: JOIN needs BOTH contacts + a password ──────────
   // A real account, not the passwordless one-contact demo. Password ≥8; confirm
   // must match. See [[signup-contract-both-plus-password-2026-07-31]].
   const passwordValid = password.length >= 8;
   const bothContacts = phoneValid && emailValid;
-  // CEO 2026-07-31 (round 2, "it's too hard"): dropped the separate confirm-password
-  // field — the show/hide password toggle already lets the user verify what they typed,
-  // so a second box was pure friction. Member join = mobile + email + one password.
-  const joinReady = !busy && bothContacts && passwordValid && isAdult;
+  // MASTER AUTH rebuild (2026-08-16): join gate includes active consent
+  // (agreedTerms) — the previous joinReady let the user submit with a valid
+  // DOB but no Terms tick, which the new hard gate no longer permits.
+  const joinReady = !busy && bothContacts && passwordValid && consentOk;
   // LOGIN is email + password (returning member). Phone-OTP login still exists via
   // the "use a one-time code" link; social + passkey remain on both modes.
   const loginReady = !busy && emailValid && password.length >= 1;
@@ -1381,19 +1496,68 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   provider app locks flow='provider' by flavor. This also removes the
                   static "member" card that looked like a dead toggle. */}
 
-              {/* Rover-style passive consent (CEO 2026-07-27): the two blocking
-                  checkboxes (agree-to-terms + 18+) are gone. Social login is now ONE
-                  tap; the manual flow still enforces 18+ via the DOB the user types.
-                  This is action-based consent — the deliberate submit + this
-                  disclosure ARE the affirmative act — NOT a pre-ticked box (which is
-                  unlawful under Israeli privacy law). Terms are stamped on the
-                  session (social + manual). */}
-              <p className="sl-consent" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 8px', fontSize: '12.5px', lineHeight: 1.55, opacity: 0.75, textAlign: 'center' }}>
-                {he ? 'בהמשך אתם מאשרים שאתם בני 18 ומעלה ומסכימים ל' : 'By continuing, you confirm you are 18+ and agree to the '}
-                <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
-                {he ? ' ול' : ' & '}
-                <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'מדיניות הפרטיות' : 'Privacy Policy'}</a>.
-              </p>
+              {/* Signup consent — three independent axes, none pre-ticked:
+                  1) 18+ confirmation (mandatory) — paired with the DOB the
+                     user typed; server independently calculates age from DOB
+                     and requires BOTH to be true.
+                  2) Terms + Privacy Notice acceptance (mandatory) — one
+                     acceptance event, recorded together server-side.
+                  3) Marketing preference (optional) — separate opt-in, never
+                     blocks submit and never touches the terms/privacy audit
+                     timestamps.
+                  Hidden on returning-user LOGIN (consented at join). */}
+              {authMode !== 'login' && (
+                <div className="sl-consentBox" dir={he ? 'rtl' : 'ltr'} style={{ margin: '14px 0 10px', display: 'flex', flexDirection: 'column', gap: 8, fontSize: '13px', lineHeight: 1.45 }}>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={ageConfirmed18Plus}
+                      onChange={(e) => setAgeConfirmed18Plus(e.target.checked)}
+                      required
+                      aria-required="true"
+                      data-testid="checkbox-ageConfirmed18Plus"
+                      style={{ marginTop: 3, flexShrink: 0 }}
+                    />
+                    <span>
+                      {he
+                        ? 'אני מאשר/ת שאני בן/בת 18 ומעלה (חובה).'
+                        : 'I confirm that I am 18 years of age or older (required).'}
+                    </span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={agreedTerms}
+                      onChange={(e) => setAgreedTerms(e.target.checked)}
+                      required
+                      aria-required="true"
+                      data-testid="checkbox-agreedTerms"
+                      style={{ marginTop: 3, flexShrink: 0 }}
+                    />
+                    <span>
+                      {he ? 'קראתי ואני מסכים/ה ל' : 'I have read and agree to the '}
+                      <a href="/terms" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'תנאי השימוש' : 'Terms of Service'}</a>
+                      {he ? ' ול' : ' and '}
+                      <a href="/privacy" target="_blank" rel="noopener noreferrer" style={{ textDecoration: 'underline', color: 'inherit' }}>{he ? 'הודעת הפרטיות' : 'Privacy Notice'}</a>
+                      {he ? ' (חובה).' : ' (required).'}
+                    </span>
+                  </label>
+                  <label style={{ display: 'flex', alignItems: 'flex-start', gap: 8, cursor: 'pointer' }}>
+                    <input
+                      type="checkbox"
+                      checked={acceptedMarketing}
+                      onChange={(e) => setAcceptedMarketing(e.target.checked)}
+                      data-testid="checkbox-acceptedMarketing"
+                      style={{ marginTop: 3, flexShrink: 0 }}
+                    />
+                    <span style={{ opacity: 0.85 }}>
+                      {he
+                        ? 'שלחו לי חדשות ומבצעים של PetWash בדוא"ל / SMS (אופציונלי — ניתן לבטל בכל עת).'
+                        : 'Send me PetWash news and offers by email/SMS (optional — you can unsubscribe anytime).'}
+                    </span>
+                  </label>
+                </div>
+              )}
 
               {/* Consent/blocked-tap error shown HERE, right between the boxes and the
                   social tiles — the top-of-form inlineError (~400px up) was off-screen
@@ -1599,6 +1763,33 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
                         {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
                       </button>
+                      {/* Forgot password? (2026-08-16 audit D10). Firebase's
+                          sendPasswordResetEmail has its own rate-limiting and
+                          NEVER reveals whether the account exists — same generic
+                          copy on success and failure, so an unauthenticated
+                          attacker can't use this to enumerate accounts. */}
+                      <button type="button" className="sl-switchLink" disabled={busy || !emailValid}
+                        onClick={async () => {
+                          if (!emailValid) {
+                            fail(he ? 'הזינו אימייל תקין קודם' : 'Enter a valid email first');
+                            return;
+                          }
+                          try {
+                            const { sendPasswordResetEmail } = await import('firebase/auth');
+                            const { auth: fbAuth } = await import('@/lib/firebase');
+                            await sendPasswordResetEmail(fbAuth, email);
+                          } catch { /* Same generic message either way. */ }
+                          toast({
+                            title: he ? 'איפוס סיסמה נשלח' : 'Password reset sent',
+                            description: he
+                              ? `אם קיים חשבון עבור ${email}, הודעת איפוס בדרך.`
+                              : `If an account exists for ${email}, a reset email is on its way.`,
+                          });
+                        }}
+                        data-testid="button-forgot-password"
+                        style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.75, fontSize: '12.5px', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline', textAlign: he ? 'right' : 'left', width: '100%' }}>
+                        {he ? 'שכחתם סיסמה?' : 'Forgot password?'}
+                      </button>
                     </>
                   )}
                   {/* Toggle ONLY switches between code-first and password — it does not
@@ -1630,10 +1821,18 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${phone}` : `Enter the code sent to ${phone}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verify(c); }} loading={busy} language={he ? 'he' : 'en'} />
-              {/* Resend only needs the network idle — NOT consent again. The code
-                  was already sent (consent was given at first send); re-gating on
-                  consent created a dead button if the user later toggled a box. */}
-              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+              {/* Resend actually resends. Old handler was setSent(false) — it
+                  bounced the user back to the entry form and made them tap the
+                  primary Send button again. Now it calls the real network
+                  send; the countdown (server rate-limit is the hard gate) keeps
+                  users from spam-tapping into 429s. */}
+              <button className="sl-btn" disabled={busy || resendCountdown > 0}
+                onClick={() => { setResendCountdown(60); void sendCode(); }}
+                data-testid="button-resend-code-mobile">
+                {resendCountdown > 0
+                  ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
+                  : (he ? 'שלח קוד חדש' : 'Resend code')}
+              </button>
             </>
           )}
 
@@ -1642,7 +1841,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
             <>
               <p className="sl-helper sl-center">{he ? `הזן את הקוד שנשלח ל-${email}` : `Enter the code sent to ${email}`}</p>
               <OtpCodeInput length={6} onComplete={(c) => { void verifyEmailCode(c); }} loading={busy} language={he ? 'he' : 'en'} />
-              <button className="sl-btn" disabled={busy} onClick={() => setSent(false)}>{he ? 'שלח קוד חדש' : 'Resend code'}</button>
+              <button className="sl-btn" disabled={busy || resendCountdown > 0}
+                onClick={() => { setResendCountdown(60); void sendEmailCode(); }}
+                data-testid="button-resend-code-email">
+                {resendCountdown > 0
+                  ? (he ? `שלח שוב בעוד ${resendCountdown} שניות` : `Resend in ${resendCountdown}s`)
+                  : (he ? 'שלח קוד חדש' : 'Resend code')}
+              </button>
             </>
           )}
 
@@ -1729,7 +1934,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       email→email code). The name + any missing base fields are asked
                       after the code is verified — no password anywhere. */}
                   <button className="sl-cta"
-                    disabled={busy || (method === 'email' ? !emailValid : (!phoneValid || !emailValid))}
+                    disabled={busy || (method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed}
                     onClick={() => {
                       if (method === 'email') {
                         // Password set → create the account with it (saveable). Blank
@@ -1739,13 +1944,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     }}>
                     <FaMobileAlt aria-hidden /> {busy ? '…' : (method === 'email' && password ? (he ? 'יצירת חשבון' : 'Create account') : (he ? 'שליחת קוד אימות' : 'Send verification code'))}
                   </button>
-                  {(method === 'email' ? !emailValid : (!phoneValid || !emailValid)) && (
+                  {((method === 'email' ? !emailValid : (!phoneValid || !emailValid)) || !ageConfirmed) && (
                     <div className="sl-hint sl-submitHint">
-                      {method === 'email'
-                        ? (he ? 'הזינו כתובת אימייל תקינה כדי לקבל קוד.' : 'Enter a valid email to get a code.')
-                        : (!phoneValid
-                            ? (he ? 'הזינו מספר נייד תקין.' : 'Enter a valid mobile number.')
-                            : (he ? 'הזינו גם אימייל — חשבון חדש מאמת נייד + אימייל.' : 'Add your email too — a new account verifies mobile + email.'))}
+                      {(method === 'email' ? !emailValid : (!phoneValid || !emailValid))
+                        ? (method === 'email'
+                            ? (he ? 'הזינו כתובת אימייל תקינה כדי לקבל קוד.' : 'Enter a valid email to get a code.')
+                            : (!phoneValid
+                                ? (he ? 'הזינו מספר נייד תקין.' : 'Enter a valid mobile number.')
+                                : (he ? 'הזינו גם אימייל — חשבון חדש מאמת נייד + אימייל.' : 'Add your email too — a new account verifies mobile + email.')))
+                        : (!over18
+                            ? (he ? 'סמנו: אני בן/בת 18 ומעלה.' : 'Tick the "I am 18 or older" box.')
+                            : (he ? 'בחרו תאריך לידה (18+).' : 'Set your date of birth (18+).'))}
                     </div>
                   )}
                 </>
@@ -1759,9 +1968,39 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
                 </button>
               ) : usePassword ? (
-                <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
-                  <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
-                </button>
+                <>
+                  <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
+                    <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
+                  </button>
+                  {/* PR-AUTH-FIX-RESET-EMAIL-3: Forgot Password on the login
+                      screen. Generic success message regardless of whether an
+                      account exists (anti-enumeration). Disabled while in-flight
+                      to prevent double-submit. */}
+                  <div style={{ textAlign: 'center', marginTop: 10 }}>
+                    <button
+                      type="button"
+                      disabled={forgotBusy}
+                      onClick={() => { void handleForgotPassword(); }}
+                      data-testid="link-forgot-password"
+                      style={{ background: 'none', border: 'none', color: 'inherit', opacity: forgotBusy ? 0.5 : 0.85, fontSize: '13px', textDecoration: 'underline', cursor: forgotBusy ? 'wait' : 'pointer', padding: '4px 0' }}
+                    >
+                      {forgotBusy
+                        ? (he ? 'שולח…' : 'Sending…')
+                        : (he ? 'שכחתי את הסיסמה' : 'Forgot password?')}
+                    </button>
+                  </div>
+                  {forgotSent && (
+                    <p
+                      role="status"
+                      data-testid="text-forgot-sent"
+                      style={{ textAlign: 'center', fontSize: '13px', color: '#8A6A1B', marginTop: 8 }}
+                    >
+                      {he
+                        ? 'אם קיים חשבון לכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדוק את תיבת הדואר.'
+                        : 'If an account exists for that address, a password reset email has been sent. Please check your inbox.'}
+                    </p>
+                  )}
+                </>
               ) : (
                 // CODE-FIRST primary CTA (returning login): email → one-time code.
                 <button className="sl-cta" disabled={busy || !emailValid}

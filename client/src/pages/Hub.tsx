@@ -13,10 +13,6 @@ import {
   ShoppingBag,
   Award,
   Gift,
-  Star,
-  Activity,
-  Clock,
-  Sparkles,
   Heart,
 } from "lucide-react";
 import { useSEO, pageSEO } from '@/lib/seo';
@@ -447,41 +443,15 @@ export default function Hub() {
     },
   ];
 
-  // The quick-stats + recent-activity + loyalty panels below are HARDCODED demo
-  // placeholders ("1,250" points, "Tel Aviv Marina" wash, etc.) — not real
-  // per-user data. They were only hidden from logged-OUT visitors before, so a
-  // logged-IN user still saw fake numbers as if they were theirs. Hidden from
-  // everyone now (no fake data in prod) until wired to real per-user data.
-  const SHOW_DEMO_PANELS = false;
-  const quickStats = [
-    { labelKey: "activeBookings", value: "3", icon: Activity },
-    { labelKey: "loyaltyPoints", value: "1,250", icon: Star },
-    { labelKey: "servicesUsed", value: "12", icon: Sparkles },
-  ];
-
-  const recentActivity = [
-    {
-      titleKey: "washStationBooking",
-      descKey: "telAvivMarina",
-      timeKey: "hoursAgo2",
-      badgeKey: "completed",
-      badgeType: "success",
-    },
-    {
-      titleKey: "walkScheduled",
-      descKey: "tomorrowAt10",
-      timeKey: "hoursAgo5",
-      badgeKey: "upcoming",
-      badgeType: "default",
-    },
-    {
-      titleKey: "loyaltyRewardEarned",
-      descKey: "pointsAdded",
-      timeKey: "dayAgo",
-      badgeKey: "new",
-      badgeType: "gold",
-    },
-  ];
+  // PR-DANGER-9: three demo panels + their supporting arrays + the
+  // feature flag that gated them removed entirely. They rendered
+  // hardcoded per-user placeholders — not real data. Even though the
+  // flag was set to false, the fixture strings still shipped in the
+  // production bundle, one flag flip (or one accidental refactor that
+  // mounted the block) away from displaying invented activity to real
+  // users as if it were theirs. Real per-user dashboards live on
+  // /dashboard and /prestige/home — Hub.tsx is a marketing / entry
+  // page and does not carry per-user data here.
 
   return (
     <Layout>
@@ -490,7 +460,7 @@ export default function Hub() {
         
         <Button
           variant="ghost"
-          onClick={() => { try { window.history.back(); } catch { setLocation('/dashboard'); } }}
+          onClick={() => { try { window.history.back(); } catch { setLocation('/'); } }}
           className="flex items-center gap-2 mb-6 text-gray-600 hover:text-gray-900 transition-colors"
         >
           <BackArrow className="w-5 h-5" />
@@ -511,36 +481,7 @@ export default function Hub() {
           </p>
         </div>
 
-        {/* Quick stats panel — only shown to authenticated users.
-            The values rendered here (activeBookings, loyaltyPoints, servicesUsed)
-            are currently hardcoded placeholders ("3", "1,250", "12") and not
-            yet wired to live data. Showing them to logged-out visitors
-            displays misleading fake activity to people who have no account,
-            violating platform skill §2 ("no fake data in production").
-            Until these are wired to real per-user values, the entire panel
-            is hidden for unauthenticated visitors. */}
-        {SHOW_DEMO_PANELS && user && (
-          <div className="luxury-glass-card luxury-shadow-lg p-8 mb-12 luxury-animate-slide-up luxury-delay-1">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              {quickStats.map((stat) => {
-                const Icon = stat.icon;
-                return (
-                  <div key={stat.labelKey} className="text-center">
-                    <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] mb-4">
-                      <Icon className="w-8 h-8 text-white" />
-                    </div>
-                    <div className="luxury-heading-lg luxury-text-gradient mb-1">
-                      {stat.value}
-                    </div>
-                    <div className="luxury-text-small">
-                      {tx(stat.labelKey, language)}
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        )}
+        {/* Demo panel removed (PR-DANGER-9) — see rationale in component. */}
 
         <div className="mb-12">
           <h2 className="luxury-heading-md text-center mb-8 luxury-animate-fade-in luxury-delay-2">
@@ -593,82 +534,9 @@ export default function Hub() {
           </div>
         </div>
 
-        {/* Recent activity + loyalty status panels — both contain hardcoded
-            demo content ("Wash station booking — Tel Aviv Marina", "Gold
-            member", etc.) that is not derived from any real user data. Same
-            §2 "no fake data in production" issue as the quick-stats panel
-            above. Wrapping the whole grid in {user && (...)} so logged-out
-            visitors see neither — only authenticated users will see this
-            section, and once the demo strings are replaced with live data,
-            this gate can be relaxed if/when appropriate. */}
-        {SHOW_DEMO_PANELS && user && (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-12">
-          <div className="luxury-animate-slide-up luxury-delay-3">
-            <h3 className="luxury-heading-md mb-6">{tx('recentActivity', language)}</h3>
-            <div className="luxury-glass-panel p-6 space-y-4">
-              {recentActivity.map((activity, index) => (
-                <div
-                  key={index}
-                  className="luxury-glass-minimal p-4 luxury-hover-lift flex items-start gap-4"
-                >
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#D4AF37] to-[#D4AF37] flex items-center justify-center flex-shrink-0">
-                    <Clock className="w-5 h-5 text-white" />
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-start justify-between gap-2 mb-1">
-                      <h4 className="font-semibold text-gray-900 dark:text-black">
-                        {tx(activity.titleKey, language)}
-                      </h4>
-                      <span className={`luxury-badge ${
-                        activity.badgeType === 'success' ? 'luxury-badge-success' :
-                        activity.badgeType === 'gold' ? 'luxury-badge-gold' : 'luxury-badge'
-                      } flex-shrink-0`}>
-                        {tx(activity.badgeKey, language)}
-                      </span>
-                    </div>
-                    <p className="luxury-text-small mb-1">{tx(activity.descKey, language)}</p>
-                    <p className="luxury-text-small opacity-60">{tx(activity.timeKey, language)}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="luxury-animate-slide-up luxury-delay-4">
-            <h3 className="luxury-heading-md mb-6">{tx('loyaltyStatus', language)}</h3>
-            <div className="luxury-glass-card luxury-hover-glow p-8">
-              <div className="text-center mb-6">
-                <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-gradient-to-br from-yellow-500 to-[#D4AF37] mb-4">
-                  <Award className="w-10 h-10 text-white" />
-                </div>
-                <div className="luxury-badge-gold mb-3">
-                  {tx('goldMember', language)}
-                </div>
-                <div className="luxury-heading-lg luxury-text-gradient mb-1">
-                  1,250 {tx('points', language)}
-                </div>
-                <p className="luxury-text-small">
-                  {tx('pointsToNext', language)}
-                </p>
-              </div>
-              
-              <div className="relative h-3 bg-white dark:bg-white rounded-full overflow-hidden mb-6">
-                <div 
-                  className="absolute inset-y-0 left-0 bg-gradient-to-r from-[#D4AF37] to-[#D4AF37] rounded-full transition-all duration-500"
-                  style={{ width: '62.5%' }}
-                ></div>
-              </div>
-              
-              <Button 
-                className="luxury-btn-primary w-full"
-                onClick={() => setLocation('/loyalty')}
-              >
-                {tx('viewRewards', language)}
-              </Button>
-            </div>
-          </div>
-        </div>
-        )}
+        {/* Two more demo panels removed (PR-DANGER-9) — see rationale in
+            component. Real per-user activity + loyalty live on /dashboard
+            and /prestige/home. */}
 
         <div className="mt-16 text-center luxury-animate-fade-in luxury-delay-5">
           <div className="luxury-glass-card luxury-shadow-xl p-10">

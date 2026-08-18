@@ -61,7 +61,7 @@ router.get('/config', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Config check failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Config check failed', code: 'ITA_CONFIG_500' });
   }
 });
 
@@ -101,7 +101,7 @@ router.post('/invoices/create', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Invoice creation failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Invoice creation failed', code: 'ITA_INVOICE_CREATE_500' });
   }
 });
 
@@ -143,7 +143,7 @@ router.post('/invoices/:id/submit', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Invoice submission failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Invoice submission failed', code: 'ITA_INVOICE_SUBMIT_500' });
   }
 });
 
@@ -175,7 +175,7 @@ router.get('/invoices/:invoiceId/status', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Status check failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Status check failed', code: 'ITA_STATUS_500' });
   }
 });
 
@@ -192,7 +192,7 @@ router.post('/invoices/retry-failed', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Retry failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Retry failed', code: 'ITA_RETRY_500' });
   }
 });
 
@@ -211,7 +211,7 @@ router.get('/compliance/report', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Compliance report failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Compliance report failed', code: 'ITA_COMPLIANCE_REPORT_500' });
   }
 });
 
@@ -234,7 +234,7 @@ router.get('/invoices', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Invoice list failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Invoice list failed', code: 'ITA_INVOICE_LIST_500' });
   }
 });
 
@@ -279,7 +279,7 @@ router.get('/statistics', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Statistics failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Statistics failed', code: 'ITA_STATS_500' });
   }
 });
 
@@ -296,7 +296,7 @@ router.get('/compliance/check', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Compliance check failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Compliance check failed', code: 'ITA_COMPLIANCE_CHECK_500' });
   }
 });
 
@@ -310,7 +310,7 @@ router.get('/compliance/report-full', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Compliance report generation failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Compliance report generation failed', code: 'ITA_COMPLIANCE_REPORT_GEN_500' });
   }
 });
 
@@ -324,7 +324,7 @@ router.get('/compliance/regulations', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Regulations fetch failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Regulations fetch failed', code: 'ITA_REGULATIONS_500' });
   }
 });
 
@@ -338,7 +338,7 @@ router.post('/compliance/reset-circuit-breaker', async (req, res) => {
     });
   } catch (error: any) {
     logger.error('[ITA API] Circuit breaker reset failed', { error: error.message });
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Circuit breaker reset failed', code: 'ITA_CB_RESET_500' });
   }
 });
 

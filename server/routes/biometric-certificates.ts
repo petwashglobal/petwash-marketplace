@@ -293,10 +293,7 @@ router.post(
     } catch (error: any) {
       // Validation or middleware error - no files uploaded
       logger.error('[BiometricCertificates] Request failed', error);
-      res.status(500).json({ 
-        error: 'Request failed', 
-        details: error.message 
-      });
+      res.status(500).json({ error: 'Request failed' });
     }
   }
 );
@@ -511,7 +508,7 @@ router.post(
 
     } catch (error: any) {
       logger.error('[BiometricCertificates] Failed to approve verification', error);
-      res.status(500).json({ error: 'Failed to approve verification', details: error.message });
+      res.status(500).json({ error: 'Failed to approve verification' });
     }
   }
 );
@@ -566,7 +563,7 @@ router.post(
 
     } catch (error: any) {
       logger.error('[BiometricCertificates] Failed to reject verification', error);
-      res.status(500).json({ error: 'Failed to reject verification', details: error.message });
+      res.status(500).json({ error: 'Failed to reject verification' });
     }
   }
 );

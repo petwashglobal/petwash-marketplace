@@ -65,15 +65,17 @@ describe('signup black luxury canvas', () => {
     expect(signup).toContain('if (!requireTerms()) return;');
     expect(signup).toContain('sl-inlineError');
     expect(signup).toContain('role="alert"');
-    // Submit stays gated on consent + not-busy. The old single
-    // `readyForSubmit = terms && !busy` was SPLIT and STRENGTHENED:
-    //   consentOk    = agreedTerms && over18            (terms + 18+)
-    //   readyForSubmit = !busy && phoneValid && emailValid && isAdult
-    // and the CTA is disabled unless BOTH hold. The invariant (no submit
-    // without accepted terms, and never while busy) is preserved + stronger.
-    expect(signup).toContain('const consentOk = agreedTerms && over18');
+    // Submit stays gated on consent + not-busy. MASTER AUTH rebuild
+    // (2026-08-16) tightened consent again after the passive-consent era:
+    //   ageConfirmed   = isAdult                            (real DOB, not a checkbox shortcut)
+    //   consentOk      = ageConfirmed && agreedTerms        (active Terms tick REQUIRED)
+    //   readyForSubmit = !busy && hasContact && consentOk   (login bypasses consentOk)
+    // Passive submission is no longer treated as consent — the box must be
+    // ticked, and the DOB itself is the 18+ signal. Marketing is separate
+    // and never blocks submit (checked at signupConsentDobMandatory.test.ts).
+    expect(signup).toContain('const consentOk = ageConfirmed && agreedTerms;');
     expect(signup).toMatch(/const readyForSubmit = !busy &&/);
-    expect(signup).toContain('disabled={!readyForSubmit || !consentOk}');
+    expect(signup).toContain("(authMode === 'login' ? true : consentOk)");
     expect(signup).toContain('sl-submitHint');
     expect(signup).not.toContain('sl-entryBtn');
     expect(signup).not.toContain('entryBtn');

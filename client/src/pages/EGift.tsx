@@ -152,13 +152,16 @@ const messageLanguages = [
 ];
 
 const translations: Record<string, Record<string, string>> = {
+  // PR-EGIFT-ALL-SERVICES-HONEST (2026-08-15) — was "Platform-Wide Credit"
+  // implying every current+future PetWash surface. Aligned with the honest
+  // "All available services" phrasing used in the trust markers below.
   platformCredit: {
-    en: 'Platform-Wide Credit',
-    he: 'קרדיט לכל הפלטפורמות',
-    ar: 'رصيد لجميع المنصات',
-    ru: 'Кредит для всех платформ',
-    fr: 'Crédit multi-plateforme',
-    es: 'Crédito para todas las plataformas',
+    en: 'Credit for available services',
+    he: 'קרדיט לשירותים הזמינים',
+    ar: 'رصيد للخدمات المتاحة',
+    ru: 'Кредит для доступных услуг',
+    fr: 'Crédit pour les services disponibles',
+    es: 'Crédito para servicios disponibles',
   },
   title: {
     en: 'Gift Card Credit',
@@ -208,29 +211,53 @@ const translations: Record<string, Record<string, string>> = {
     fr: 'Livraison instantanée',
     es: 'Entrega instantánea',
   },
+  // PR-EGIFT-NO-ACCOUNT-HONEST (2026-08-15) — fire-order item 21. Guest
+  // PURCHASE is real (server/routes/egift-guest.ts POST /api/egift/guest/start
+  // takes senderEmail+recipientEmail+amount, no auth), but REDEMPTION still
+  // needs an account (recipient gets an activation link and signs in/registers
+  // to view the wallet balance). Scope the claim to "purchase" so the copy is
+  // true for the action the trust marker actually promises.
   noAccountRequired: {
-    en: 'No Account Required',
-    he: 'ללא צורך בחשבון',
-    ar: 'لا يتطلب حساب',
-    ru: 'Без регистрации',
-    fr: 'Sans compte requis',
-    es: 'Sin cuenta necesaria',
+    en: 'No account to buy',
+    he: 'רכישה ללא חשבון',
+    ar: 'الشراء بدون حساب',
+    ru: 'Покупка без аккаунта',
+    fr: 'Achat sans compte',
+    es: 'Compra sin cuenta',
   },
   valid12Months: {
-    en: 'Valid 24 Months',
-    he: 'בתוקף 24 חודשים',
-    ar: 'صالحة لمدة 24 شهراً',
-    ru: 'Действует 24 месяца',
-    fr: 'Valable 24 mois',
-    es: 'Válido 24 meses',
+    // PR-EGIFT-EXPIRY-TRUTH (2026-08-15) — fire-order item 20. Public copy
+    // said "24 months" but the backend expiry actually stamped when no
+    // explicit override is passed is 365 days (see server/routes/wallet.ts:259,
+    // server/routes/google-wallet.ts:148, server/routes/gift-cards.ts:644 and
+    // :769 — all default to `Date.now() + 365 * 24 * 60 * 60 * 1000`). Aligned
+    // public display to the enforced 12-month default so the customer is not
+    // promised a validity window the backend will not honor. If the CEO wants
+    // the actual expiry economics widened to 24 months, that is a separate
+    // decision: update the four backend defaults simultaneously and revert
+    // this copy — DO NOT change one side without the other.
+    en: 'Valid 12 Months',
+    he: 'בתוקף 12 חודשים',
+    ar: 'صالحة لمدة 12 شهراً',
+    ru: 'Действует 12 месяцев',
+    fr: 'Valable 12 mois',
+    es: 'Válido 12 meses',
   },
+  // PR-EGIFT-ALL-SERVICES-HONEST (2026-08-15) — fire-order item 18.
+  // "All Services" was too broad: PetTrek is coming-soon (item 5), and
+  // "All services" implies every current AND future service accepts the
+  // voucher — an unbounded promise. Change to "All available services"
+  // in every locale — bounded, honest, and stable as new services come
+  // online (each new live service is automatically "available"; each
+  // coming-soon one is explicitly excluded via the platformServices
+  // comingSoon flag surfaced elsewhere on the page).
   allServices: {
-    en: 'All Services',
-    he: 'כל השירותים',
-    ar: 'جميع الخدمات',
-    ru: 'Все услуги',
-    fr: 'Tous les services',
-    es: 'Todos los servicios',
+    en: 'All available services',
+    he: 'כל השירותים הזמינים',
+    ar: 'جميع الخدمات المتاحة',
+    ru: 'Все доступные услуги',
+    fr: 'Tous les services disponibles',
+    es: 'Todos los servicios disponibles',
   },
   selectCard: {
     en: 'Please select a gift card value',
@@ -352,13 +379,16 @@ const translations: Record<string, Record<string, string>> = {
     fr: 'Payer et envoyer',
     es: 'Pagar y enviar regalo',
   },
+  // PR-EGIFT-NO-ACCOUNT-HONEST — same scoping as noAccountRequired above.
+  // "No account required" was true only for the purchase step; the recipient
+  // side still needs an account to see the wallet balance.
   secureCheckout: {
-    en: 'Secure checkout · No account required',
-    he: 'תשלום מאובטח · ללא צורך בחשבון',
-    ar: 'دفع آمن · لا يتطلب حساب',
-    ru: 'Безопасная оплата · Без регистрации',
-    fr: 'Paiement sécurisé · Sans compte requis',
-    es: 'Pago seguro · Sin cuenta necesaria',
+    en: 'Secure checkout · No account to buy',
+    he: 'תשלום מאובטח · רכישה ללא חשבון',
+    ar: 'دفع آمن · الشراء بدون حساب',
+    ru: 'Безопасная оплата · Покупка без аккаунта',
+    fr: 'Paiement sécurisé · Achat sans compte',
+    es: 'Pago seguro · Compra sin cuenta',
   },
   worksAtAll: {
     en: 'Works at all \u2066PetWash™\u2069 services',
@@ -530,13 +560,22 @@ const translations: Record<string, Record<string, string>> = {
   },
 };
 
-const platformServices = [
-  { id: 'wash', name: '\u2066K9000 Wash Hub™\u2069' },
-  { id: 'sitter', name: '\u2066Sitter Suite™\u2069' },
-  { id: 'walk', name: '\u2066Walk My Pet™\u2069' },
-  { id: 'trek', name: '\u2066PetTrek™\u2069' },
+// PR-EGIFT-COMING-SOON-SERVICES (2026-08-15) — fire-order item 5.
+// The eGift page listed PetTrek as a redeemable service, but the
+// homepage labels PetTrek "coming soon". Advertising redemption on
+// a service that does not yet accept vouchers is dishonest and
+// creates a support burden.
+// Fix: annotate each service with an optional `comingSoon` flag; the
+// render sites show a small "Coming soon" tag and DISABLE the toggle
+// so the customer cannot silently select it as a redemption target.
+// When PetTrek goes live, flip the flag; no display code changes.
+const platformServices: Array<{ id: string; name: string; comingSoon?: boolean }> = [
+  { id: 'wash',    name: '\u2066K9000 Wash Hub™\u2069' },
+  { id: 'sitter',  name: '\u2066Sitter Suite™\u2069' },
+  { id: 'walk',    name: '\u2066Walk My Pet™\u2069' },
+  { id: 'trek',    name: '\u2066PetTrek™\u2069', comingSoon: true }, // homepage labels this coming soon
   { id: 'academy', name: '\u2066Pet Wash Academy™\u2069' },
-  { id: 'nayax', name: '\u2066Nayax PetWash™\u2069' }
+  { id: 'nayax',   name: '\u2066Nayax PetWash™\u2069' }
 ];
 
 const giftOptions = [
@@ -550,7 +589,14 @@ const tierLabels: Record<string, Record<string, string>> = {
   CLASSIC: { en: 'Classic', he: 'קלאסי', ar: 'كلاسيك', ru: 'Классик', fr: 'Classique', es: 'Clásico' },
   PLUS: { en: 'Plus', he: 'פלוס', ar: 'بلس', ru: 'Плюс', fr: 'Plus', es: 'Plus' },
   PREMIUM: { en: 'Premium', he: 'פרימיום', ar: 'بريميوم', ru: 'Премиум', fr: 'Premium', es: 'Premium' },
-  ELITE: { en: 'Maison', he: 'מזון', ar: 'ميزون', ru: 'Мезон', fr: 'Maison', es: 'Maison' },
+  // PR-EGIFT-1000-PRODUCT-NAME (2026-08-15) — fire-order item 4. The ₪1000
+  // top card was labelled `Maison` in English and `מזון` (which means "food"
+  // in Hebrew) in Hebrew — a translation defect. The homepage calls the
+  // equivalent top product `יוקרה` ("Luxury"). Unify all locales on the
+  // Luxury/יוקרה family so the eGift page matches the homepage. Internal
+  // tier key `ELITE` is unchanged (used for card image lookup + backend SKU
+  // mapping); only the DISPLAY string changes.
+  ELITE: { en: 'Luxury', he: 'יוקרה', ar: 'فخامة', ru: 'Роскошь', fr: 'Luxe', es: 'Lujo' },
 };
 
 function tx(key: string, lang: string): string {
@@ -1327,7 +1373,12 @@ export default function EGift() {
                 <div className="mt-5 p-4 bg-stage-white" style={{ borderRadius: '2px', border: '1px solid rgba(10,10,10,0.10)' }}>
                   <p className="text-[10px] md:text-[11px] tracking-[0.1em] uppercase font-semibold mb-2 text-ink-900">{tx('redeemableAt', lang)}</p>
                   <div className="flex flex-wrap gap-2">
-                    {platformServices.filter(s => selectedServices.includes(s.id)).map(service => (
+                    {/* Also exclude coming-soon services here in case one is
+                        somehow already in selectedServices (persisted state, URL
+                        param, upstream default). The toggle above is disabled
+                        but this belt-and-braces prevents the chip strip from
+                        listing an unavailable service as "redeemable at". */}
+                    {platformServices.filter(s => selectedServices.includes(s.id) && !s.comingSoon).map(service => (
                       <span
                         key={service.id}
                         className="px-2.5 py-1 text-[10px] sm:text-[11px] md:text-[12px] tracking-wide text-ink-900 bg-stage-white"
@@ -1422,7 +1473,8 @@ export default function EGift() {
                     </p>
                     <div className="mt-3 flex items-center justify-between text-[9px] md:text-[10px] tracking-wide text-ink-400">
                       <span>SN: {previewSerial}</span>
-                      <span>{lang === 'he' ? 'תוקף: 24 חודשים' : 'Valid: 24 months'}</span>
+                      {/* PR-EGIFT-EXPIRY-TRUTH: aligned to enforced 12-month default. */}
+                      <span>{lang === 'he' ? 'תוקף: 12 חודשים' : 'Valid: 12 months'}</span>
                     </div>
                   </div>
                 </div>
@@ -1492,10 +1544,17 @@ export default function EGift() {
                   ? 'שלח את מתנת הבחירה שלך עם כרטיס מתנה של PetWash'
                   : 'Send the gift of choice with a PetWash eGift Card'}
               </p>
+              {/* PR-EGIFT-REDEMPTION-COPY-CONSISTENT (2026-08-15) — fire-order
+                  item 19. The header promise said "wash station or app"; the
+                  service picker below (usableAt) lists K9000, Sitter Suite,
+                  Walk My Pet, Academy, Nayax (PetTrek gated as coming-soon by
+                  PR-EGIFT-COMING-SOON-SERVICES). "Wash station or app" was
+                  narrower than the picker — a contradiction. Aligned to the
+                  picker's honest scope. */}
               <p className="text-xs md:text-[13px] mt-2 leading-relaxed text-ink-400">
                 {lang === 'he'
-                  ? 'ניתן לפדות בתחנת שטיפה או באפליקציה. נשלח למייל בתאריך שתבחר.'
-                  : 'Redeemable at any wash station or online. Delivered to email on your chosen date.'}
+                  ? 'ניתן למימוש בשירותי PetWash הזמינים המוצגים למטה. נשלח למייל בתאריך שתבחר.'
+                  : 'Redeemable across the available PetWash services shown below. Delivered to email on your chosen date.'}
               </p>
             </div>
           </div>
@@ -1607,19 +1666,34 @@ export default function EGift() {
             </p>
             <div className="flex flex-wrap justify-center gap-2 md:gap-2.5">
               {platformServices.map(service => {
-                const isSelected = selectedServices.includes(service.id);
+                const isSelected = selectedServices.includes(service.id) && !service.comingSoon;
+                const isComingSoon = !!service.comingSoon;
                 return (
                   <button
                     key={service.id}
                     type="button"
-                    onClick={() => toggleService(service.id)}
+                    onClick={() => { if (!isComingSoon) toggleService(service.id); }}
+                    disabled={isComingSoon}
+                    aria-disabled={isComingSoon}
                     className={`px-3 sm:px-4 md:px-5 py-2 md:py-2.5 text-[10px] sm:text-[11px] md:text-[12px] tracking-[0.08em] font-medium transition-all duration-200 touch-manipulation ${
-                      isSelected ? 'bg-ink-900 text-stage-white border border-ink-900' : 'bg-stage-white text-ink-900 border border-ink-900/15'
+                      isComingSoon
+                        ? 'bg-stage-white text-ink-900/40 border border-ink-900/10 cursor-not-allowed'
+                        : isSelected
+                          ? 'bg-ink-900 text-stage-white border border-ink-900'
+                          : 'bg-stage-white text-ink-900 border border-ink-900/15'
                     }`}
                     style={{ borderRadius: '2px' }}
                     data-testid={`service-toggle-${service.id}`}
                   >
                     {service.name}
+                    {isComingSoon && (
+                      <span
+                        className="ml-1.5 text-[8px] sm:text-[9px] uppercase tracking-[0.15em] px-1.5 py-0.5 border border-ink-900/20 rounded-sm align-middle"
+                        data-testid={`service-coming-soon-${service.id}`}
+                      >
+                        {lang === 'he' ? 'בקרוב' : 'Coming soon'}
+                      </span>
+                    )}
                   </button>
                 );
               })}

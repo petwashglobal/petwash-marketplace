@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
@@ -166,6 +166,11 @@ const labels = {
     back:             'כל ההזמנות',
     escrow:           'נתיב מאובטח 72 שעות',
     thankYou:         'תודה שבחרת ב-PetWash™! נשמח לראותך שוב 😊',
+    paymentSuccessTitle: 'התשלום התקבל · ההזמנה מאושרת',
+    paymentSuccessSub:   'הכספים מוחזקים במסלול מאובטח עד לסיום השירות.',
+    paymentFailedTitle:  'התשלום לא עבר',
+    paymentFailedSub:    'לא בוצע חיוב. באפשרותך לנסות שוב או לפנות אלינו לעזרה.',
+    paymentBannerDismiss: 'סגור',
     phoneLabel:       'מספר טלפון',
     emailLabel:       'כתובת אימייל',
     phonePlaceholder: '+972...',
@@ -174,6 +179,12 @@ const labels = {
     confirming:       'מאשר...',
     rating:           'דרג את השירות',
     review:           'ביקורת (אופציונלי)',
+    endOfStayTitle:   'ההזמנה שלך הסתיימה — נכון?',
+    endOfStayLead:    'הספק דיווח שהשירות הושלם. אשרו לסיום ההזמנה — לאחר האישור התשלום ישוחרר לספק.',
+    endOfStayNext:    'מה קורה עכשיו?',
+    endOfStayStep1:   'אשרו את סיום השירות למטה.',
+    endOfStayStep2:   'תוזמנו לתת דירוג כוכבים וביקורת קצרה — זה עוזר להורי חיות אחרים לבחור.',
+    awaitingReport:   'ממתין לאישור סיום',
     chatNowTitle:     'ספקך אישר! מוכן להתחיל?',
     chatNowSub:       'שוחח עם הספק, תאם פרטים, ותכן את הביקור.',
     chatNowBtn:       'שוחח עכשיו',
@@ -201,6 +212,7 @@ const labels = {
     share:            'שתף',
     addCalendar:      'לוח שנה',
     messageProvider:  'הודעה',
+    callProvider:     'שיחה',
     navigate:         'נווט',
     cancelConfirm:    'לבטל את ההזמנה?',
     cancelYes:        'כן, בטל',
@@ -211,6 +223,7 @@ const labels = {
     petCount:         'חיות',
     date:             'תאריך',
     time:             'שעה',
+    paymentStartFailed: 'לא הצלחנו להתחיל את התשלום. נסו שוב.',
   },
   en: {
     title:            'Booking Confirmation',
@@ -234,6 +247,11 @@ const labels = {
     back:             'All Bookings',
     escrow:           '72-Hour Secure Escrow',
     thankYou:         'Thank you for choosing PetWash™! We hope to see you again 😊',
+    paymentSuccessTitle: 'Payment received · booking confirmed',
+    paymentSuccessSub:   'Funds are held in secure escrow until the service is complete.',
+    paymentFailedTitle:  'Payment could not be processed',
+    paymentFailedSub:    'Nothing was charged. You can try again or contact support.',
+    paymentBannerDismiss: 'Dismiss',
     phoneLabel:       'Phone Number',
     emailLabel:       'Email Address',
     phonePlaceholder: '+972...',
@@ -242,6 +260,12 @@ const labels = {
     confirming:       'Confirming...',
     rating:           'Rate the service',
     review:           'Review (optional)',
+    endOfStayTitle:   'Your booking has been completed — right?',
+    endOfStayLead:    'Your provider marked the service as done. Confirm to finalise the booking — payment will be released to the provider after your confirmation.',
+    endOfStayNext:    'What happens next?',
+    endOfStayStep1:   'Confirm the end of service below.',
+    endOfStayStep2:   'You\'ll be asked for a star rating and a short review — it helps other pet parents choose.',
+    awaitingReport:   'Awaiting your confirmation',
     chatNowTitle:     'Your provider confirmed! Ready to start?',
     chatNowSub:       'Chat with your provider, coordinate details, and prepare for the visit.',
     chatNowBtn:       'Chat Now',
@@ -269,6 +293,7 @@ const labels = {
     share:            'Share',
     addCalendar:      'Calendar',
     messageProvider:  'Message',
+    callProvider:     'Call',
     navigate:         'Navigate',
     cancelConfirm:    'Cancel this booking?',
     cancelYes:        'Yes, cancel',
@@ -279,6 +304,7 @@ const labels = {
     petCount:         'Pets',
     date:             'Date',
     time:             'Time',
+    paymentStartFailed: 'Could not start payment. Please try again.',
   },
 };
 
@@ -439,6 +465,16 @@ export default function BookingConfirmation() {
   const [confirmed, setConfirmed]             = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
+  // Payment-return banner state (2026-08-18): SUMIT redirects the customer
+  // back with ?payment=success or ?payment=failed. Before this the params
+  // were silently ignored — the customer got no feedback about whether the
+  // charge actually went through, and had to infer from the pill status.
+  const [paymentBanner, setPaymentBanner] = useState<'success' | 'failed' | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const p = new URLSearchParams(window.location.search).get('payment');
+    return p === 'success' || p === 'failed' ? p : null;
+  });
+
   const { data: bookingData, isLoading } = useQuery({
     queryKey: ['/api/booking-requests', requestId],
     enabled: !!requestId,
@@ -451,18 +487,32 @@ export default function BookingConfirmation() {
     }
   }, [booking]);
 
+  /* Idempotency keys per money-adjacent action (2026-08-16 audit CRIT).
+   * Server (booking-requests.ts:107, 227) trusts a caller-supplied
+   * Idempotency-Key. Without one, a slow network + double-tap could create
+   * two payment intents or fire the confirm→payout branch twice. We hold a
+   * fresh UUID per user-initiated action in a ref; RETRIES of the same
+   * action (network drop, transient 5xx) reuse it so the server dedupes;
+   * a SUCCESSFUL round-trip clears it so the next user-initiated action
+   * gets a new key. */
+  const confirmKeyRef = useRef<string | null>(null);
+  const payKeyRef = useRef<string | null>(null);
+  const cancelKeyRef = useRef<string | null>(null);
+  const meetGreetKeyRef = useRef<string | null>(null);
+
   /* confirm / review mutation */
   const confirmMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/confirm`, {
-        rating,
-        review: reviewText || undefined,
-        ownerPhone: phone || undefined,
-        ownerEmail: email || undefined,
+      if (!confirmKeyRef.current) confirmKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${requestId}/confirm`, {
+        method: 'POST',
+        body: { rating, review: reviewText || undefined, ownerPhone: phone || undefined, ownerEmail: email || undefined },
+        headers: { 'Idempotency-Key': confirmKeyRef.current },
       });
       return res.json();
     },
     onSuccess: (data: any) => {
+      confirmKeyRef.current = null;
       setConfirmed(true);
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
       toast({
@@ -473,13 +523,19 @@ export default function BookingConfirmation() {
     onError: () => toast({ title: 'Error', description: 'Failed to confirm booking', variant: 'destructive' }),
   });
 
-  /* cancel mutation */
+  /* pay mutation */
   const payMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/pay`, { paymentMethod: 'card' });
+      if (!payKeyRef.current) payKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${requestId}/pay`, {
+        method: 'POST',
+        body: { paymentMethod: 'card' },
+        headers: { 'Idempotency-Key': payKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: (data: any) => {
+      payKeyRef.current = null;
       // Server returns the hosted Nayax payment page — money is verified by
       // the payment webhook, which is the only writer of 'confirmed'.
       if (data?.paymentUrl) { window.location.href = data.paymentUrl; return; }
@@ -489,6 +545,7 @@ export default function BookingConfirmation() {
       // Surface the server's honest reason (e.g. online card rail not live yet)
       // instead of a generic failure — the booking is saved, nothing was charged.
       // apiRequest throws ApiError with the parsed JSON on `.body`.
+      // Key preserved in the ref so a retry of the SAME payment attempt reuses it.
       const msg = err?.body?.error || (t.paymentStartFailed ?? 'Could not start payment');
       toast({ title: msg, variant: 'destructive' });
     },
@@ -496,10 +553,16 @@ export default function BookingConfirmation() {
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { cancelledBy: 'customer' });
+      if (!cancelKeyRef.current) cancelKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${requestId}/cancel`, {
+        method: 'POST',
+        body: { cancelledBy: 'customer' },
+        headers: { 'Idempotency-Key': cancelKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: () => {
+      cancelKeyRef.current = null;
       setShowCancelConfirm(false);
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
       toast({ title: t.cancelSuccess });
@@ -511,10 +574,16 @@ export default function BookingConfirmation() {
   const [mgType, setMgType] = useState<'video' | 'phone' | 'public'>('video');
   const meetGreetMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest('POST', `/api/booking-requests/${requestId}/meet-greet`, { action: 'request', type: mgType });
+      if (!meetGreetKeyRef.current) meetGreetKeyRef.current = crypto.randomUUID();
+      const res = await apiRequest(`/api/booking-requests/${requestId}/meet-greet`, {
+        method: 'POST',
+        body: { action: 'request', type: mgType },
+        headers: { 'Idempotency-Key': meetGreetKeyRef.current },
+      });
       return res.json();
     },
     onSuccess: () => {
+      meetGreetKeyRef.current = null;
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
       toast({
         title: isRTL ? 'בקשת פגישת היכרות נשלחה' : 'Meet & Greet requested',
@@ -558,6 +627,48 @@ export default function BookingConfirmation() {
     if (booking?.requestId) navigate(`/booking-chat/${booking.requestId}`);
   };
 
+  /**
+   * Call the provider — fetches the server-side /provider-contact endpoint
+   * (already exists at server/routes/booking-requests.ts:1269, gated by
+   * ownership + status ∈ CONTACTABLE + 401). Opens tel: with the resolved
+   * number. Server was live but had zero client callers before this.
+   * Toast on failure — never throws in the render tree.
+   */
+  const handleCallProvider = async () => {
+    if (!booking?.requestId) return;
+    try {
+      const res = await apiRequest('GET', `/api/booking-requests/${booking.requestId}/provider-contact`);
+      const data = await res.json() as { phone?: string | null; providerName?: string | null };
+      const raw = (data?.phone ?? '').replace(/[\s-]/g, '');
+      if (!raw) {
+        toast({
+          title: isRTL ? 'טלפון לא זמין' : 'Phone unavailable',
+          description: isRTL ? 'הספק לא הגדיר מספר טלפון.' : 'The provider has not set a phone number.',
+        });
+        return;
+      }
+      // Open the OS tel: handler. On desktop this triggers the default
+      // system dialer (or the browser's chosen handler); on mobile it opens
+      // the phone app. Fallback: copy to clipboard so the customer can dial.
+      const opened = window.open(`tel:${raw}`, '_self');
+      if (!opened) {
+        try {
+          await navigator.clipboard?.writeText(raw);
+          toast({
+            title: isRTL ? 'המספר הועתק' : 'Number copied',
+            description: raw,
+          });
+        } catch { /* clipboard best-effort */ }
+      }
+    } catch (err: any) {
+      // Server returns 409 with code NOT_CONTACTABLE outside the allowed
+      // window, 403 for non-owner, 404 for no provider yet. Show the
+      // server's honest message when available (apiRequest ApiError shape).
+      const msg = err?.body?.error || (isRTL ? 'לא ניתן ליצור קשר כרגע' : 'Cannot reach the provider right now');
+      toast({ title: msg, variant: 'destructive' });
+    }
+  };
+
   /* ── Loading / not found ── */
   if (isLoading) {
     return (
@@ -581,7 +692,14 @@ export default function BookingConfirmation() {
   /* ── Derived booleans ── */
   const firstName      = user?.displayName?.split(' ')[0] || '';
   const isOwner        = booking.ownerId === user?.uid;
-  const canConfirm     = isOwner && booking.status === 'completed' && !confirmed;
+  // ── P0 correctness (2026-08-18): the server contract is
+  //     POST /:requestId/confirm requires status === 'provider_marked_complete'
+  //     (server/routes/booking-requests.ts:2817). Gating this on 'completed'
+  //     meant the "Confirm end of stay" form NEVER rendered for the customer —
+  //     the button was dead, the review capture was dead, and every booking
+  //     had to wait 24h for the auto-approve cron to fire. Rover / MadPaws
+  //     both show this exact "please confirm end of stay, then rate" step.
+  const canConfirm     = isOwner && booking.status === 'provider_marked_complete' && !confirmed;
   const showChatNow    = isOwner && booking.status === 'confirmed' && !!booking.requestId;
   // Provider said yes → the customer must PAY to confirm. Until 2026-07-30 no
   // client surface ever called /pay, so 'accepted' bookings dead-ended.
@@ -612,6 +730,57 @@ export default function BookingConfirmation() {
             <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
             {t.back}
           </Button>
+
+          {/* ── Payment-return banner (2026-08-18) ──
+              SUMIT redirects back with ?payment=success|failed. Before this
+              the params were silently ignored — the customer got no feedback
+              about whether the charge went through. */}
+          {paymentBanner === 'success' && (
+            <div
+              data-testid="payment-banner-success"
+              className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-start gap-3"
+            >
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-emerald-900 text-sm leading-snug">
+                  {t.paymentSuccessTitle}
+                </p>
+                <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
+                  {t.paymentSuccessSub}
+                </p>
+              </div>
+              <button
+                onClick={() => setPaymentBanner(null)}
+                aria-label={t.paymentBannerDismiss}
+                className="text-emerald-700 hover:text-emerald-900 shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          {paymentBanner === 'failed' && (
+            <div
+              data-testid="payment-banner-failed"
+              className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 flex items-start gap-3"
+            >
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-red-900 text-sm leading-snug">
+                  {t.paymentFailedTitle}
+                </p>
+                <p className="text-xs text-red-800 mt-0.5 leading-relaxed">
+                  {t.paymentFailedSub}
+                </p>
+              </div>
+              <button
+                onClick={() => setPaymentBanner(null)}
+                aria-label={t.paymentBannerDismiss}
+                className="text-red-700 hover:text-red-900 shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════════════════════
               BOOKING ENQUIRY SENT — pending request, pre-acceptance.
@@ -858,6 +1027,22 @@ export default function BookingConfirmation() {
                 onClick={handleMessageProvider}
                 disabled={!booking.requestId}
               />
+              {/* Call provider — hits GET /provider-contact for the resolved
+                  phone, opens tel:. Server enforces owner + contactable-status
+                  gate (409 outside window); disabled here on statuses the
+                  server would refuse so we don't waste a round-trip. */}
+              <QuickAction
+                icon={<Phone className="w-4 h-4" />}
+                label={t.callProvider}
+                onClick={handleCallProvider}
+                disabled={
+                  !booking.requestId ||
+                  !booking.providerId ||
+                  !['accepted', 'confirmed', 'in_progress',
+                    'meet_greet_completed', 'provider_marked_complete',
+                    'completed'].includes(booking.status)
+                }
+              />
               <QuickAction
                 icon={<Navigation className="w-4 h-4" />}
                 label={t.navigate}
@@ -981,14 +1166,19 @@ export default function BookingConfirmation() {
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-gray-500 text-sm">{t.status}</span>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    confirmed || booking.status === 'reviewed' ? 'bg-emerald-100 text-emerald-700'
-                    : booking.status === 'completed'           ? 'bg-[#D4AF37] text-black'
-                    : booking.status === 'confirmed'           ? 'bg-green-100 text-green-700'
-                    : booking.status === 'declined'            ? 'bg-red-100 text-red-700'
-                    : booking.status === 'cancelled'           ? 'bg-[#D4AF37] text-black'
+                    confirmed || booking.status === 'reviewed'          ? 'bg-emerald-100 text-emerald-700'
+                    : booking.status === 'completed'                    ? 'bg-[#D4AF37] text-black'
+                    : booking.status === 'provider_marked_complete'     ? 'bg-amber-100 text-amber-800'
+                    : booking.status === 'confirmed'                    ? 'bg-green-100 text-green-700'
+                    : booking.status === 'declined'                     ? 'bg-red-100 text-red-700'
+                    : booking.status === 'cancelled'                    ? 'bg-[#D4AF37] text-black'
                     : 'bg-white text-gray-700'
                   }`}>
-                    {confirmed ? t.confirmed : booking.status}
+                    {confirmed
+                      ? t.confirmed
+                      : booking.status === 'provider_marked_complete'
+                        ? t.awaitingReport
+                        : booking.status}
                   </span>
                 </div>
               </div>
@@ -1006,6 +1196,41 @@ export default function BookingConfirmation() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* ── End-of-service banner — Rover / MadPaws parity (2026-08-18) ── */}
+          {canConfirm && (
+            <div
+              data-testid="end-of-stay-banner"
+              className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5"
+            >
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-emerald-900 text-base leading-snug">
+                    {t.endOfStayTitle}
+                  </h3>
+                  <p className="text-sm text-emerald-800 leading-relaxed mt-1">
+                    {t.endOfStayLead}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 border-t border-emerald-100 pt-3">
+                <p className="text-xs font-semibold text-emerald-900 mb-2">
+                  {t.endOfStayNext}
+                </p>
+                <ol className="space-y-1.5 text-xs text-emerald-800">
+                  {[t.endOfStayStep1, t.endOfStayStep2].map((step, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white bg-emerald-600">
+                        {i + 1}
+                      </span>
+                      <span className="leading-relaxed">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
           )}
 
           {/* ── Rating + confirm form ── */}

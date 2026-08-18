@@ -1090,6 +1090,38 @@ app.get('/api/health', async (_req, res) => {
   });
 });
 
+// Bot-check production readiness — reports whether the environment variables
+// required by the Turnstile enforcement middleware are configured. Returns
+// BOOLEANS only, never the key values. Operators use this to verify a
+// deployment has the secrets set before flipping enforcement live.
+app.get('/api/health/bot-check', (_req, res) => {
+  const turnstileServerConfigured = !!process.env.TURNSTILE_SECRET_KEY;
+  // The client-side site key rides with the built bundle so a running
+  // server cannot observe it directly. What it CAN observe: whether the
+  // envs it needs (TURNSTILE_SECRET_KEY) are present, and whether the
+  // widget's paired env name (VITE_TURNSTILE_SITE_KEY) was set at build
+  // time (some deployments export it to the server env too for a matched
+  // pair). Both flags exposed so an ops dashboard can flag a mismatched
+  // rollout without exposing key material.
+  const turnstileSiteKeyEnvPresent = !!process.env.VITE_TURNSTILE_SITE_KEY;
+  const enforcementActive = turnstileServerConfigured;
+  res.status(200).json({
+    status: enforcementActive ? 'READY' : 'ADVISORY',
+    timestamp: new Date().toISOString(),
+    botCheck: 'turnstile',
+    turnstileServerConfigured,
+    turnstileSiteKeyEnvPresent,
+    enforcementActive,
+    protectedSurfaces: [
+      'signup_sms_start',
+      'signup_email_start',
+    ],
+    note: enforcementActive
+      ? 'Turnstile enforced on protected surfaces. Missing/invalid tokens will 400/403.'
+      : 'TURNSTILE_SECRET_KEY not set — protected surfaces log a WARN and skip the check.',
+  });
+});
+
 app.get('/api/health/strict', async (_req, res) => {
   const db = await checkDbOnce();
   if (!db.ok) {
@@ -1740,6 +1772,36 @@ if (isProduction) {
       if (isProduction) {
         try {
           const rawHtml = fs.readFileSync(indexPath, 'utf8');
+
+          // PR-SEO-PER-ROUTE-METADATA (2026-08-15) — items 23 + 24 + 25.
+          // The SPA catchall used to serve the SAME homepage <title>/description
+          // for /privacy, /terms, /walk-my-pet/explore. Crawlers that don't
+          // execute JS (or that snapshot before hydration) indexed the homepage
+          // wording on the wrong URL. Inject route-specific <title> / meta
+          // description / og:title / og:description / canonical + a summary
+          // paragraph inside the initial <div id="root"> so the page is
+          // meaningful even before React hydrates. React overwrites the root
+          // on mount, so this fallback only appears to non-JS clients.
+          type RouteMeta = { title: string; description: string; summary: string };
+          const ROUTE_META: Record<string, RouteMeta> = {
+            '/privacy': {
+              title: 'Privacy Policy | PetWash™',
+              description: 'PetWash™ privacy policy — what data we collect, how we use it, and the rights you have under Israeli privacy law and GDPR. Contact support@petwash.co.il.',
+              summary: 'Privacy Policy — This page explains what personal data PetWash™ collects, how it is used, who it is shared with, how long it is kept, and the rights you have to access, correct, delete, or restrict it. It is written to comply with Israeli privacy law and the EU GDPR. Full text loads with the app; if JavaScript is disabled, contact support@petwash.co.il for a printable copy.',
+            },
+            '/terms': {
+              title: 'Terms of Service | PetWash™',
+              description: 'PetWash™ terms of service — the agreement between you and PetWash Ltd covering account use, bookings, payments, refunds, and dispute resolution.',
+              summary: 'Terms of Service — This page contains the binding agreement between you and PetWash Ltd covering account registration, service bookings, payments, refunds, cancellations, provider conduct, and dispute resolution. Full text loads with the app; if JavaScript is disabled, contact support@petwash.co.il for a printable copy.',
+            },
+            '/walk-my-pet/explore': {
+              title: 'Walk My Pet™ — Book a Dog Walker in Israel | PetWash™',
+              description: 'Browse Walk My Pet™ dog walkers across Israel. Real-time GPS tracking, verified providers, split payments. Hebrew and English.',
+              summary: 'Walk My Pet™ — Browse verified dog walkers across Israel. Every walk includes real-time GPS tracking, before/after photos, and a split-payment engine that pays the walker on completion. Bookings, walker profiles, and reviews load with the app.',
+            },
+          };
+          const routeMeta = ROUTE_META[req.path];
+
           const projectId =
             process.env.FIREBASE_PROJECT_ID ||
             process.env.VITE_FIREBASE_PROJECT_ID ||
@@ -1769,10 +1831,29 @@ if (isProduction) {
                 process.env.VITE_FIREBASE_MEASUREMENT_ID ||
                 '',
             };
-            const injected = rawHtml.replace(
+            let injected = rawHtml.replace(
               '</head>',
               `<script>window.__FIREBASE_CONFIG__=${JSON.stringify(firebaseConfig)};</script></head>`,
             );
+            // PR-SEO-PER-ROUTE-METADATA: swap title / description / og:*
+            // / canonical for known content routes, plus seed the root with a
+            // summary paragraph for non-JS crawlers. React clobbers root on
+            // hydrate, so this is a strict SEO / fallback improvement.
+            if (routeMeta) {
+              const esc = (s: string) => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+              const canonicalUrl = `https://petwash.co.il${req.path}`;
+              injected = injected
+                .replace(/<title>[\s\S]*?<\/title>/i, `<title>${esc(routeMeta.title)}</title>`)
+                .replace(/<meta name="description" content="[^"]*">/i, `<meta name="description" content="${esc(routeMeta.description)}">`)
+                .replace(/<meta property="og:title" content="[^"]*">/i, `<meta property="og:title" content="${esc(routeMeta.title)}">`)
+                .replace(/<meta property="og:description" content="[^"]*">/i, `<meta property="og:description" content="${esc(routeMeta.description)}">`)
+                .replace(/<meta property="og:url" content="[^"]*">/i, `<meta property="og:url" content="${esc(canonicalUrl)}">`)
+                .replace(/<link rel="canonical" href="[^"]*">/i, `<link rel="canonical" href="${esc(canonicalUrl)}">`)
+                .replace(
+                  '<div id="root"></div>',
+                  `<div id="root"><main style="max-width:720px;margin:40px auto;padding:0 20px;font-family:system-ui,sans-serif;line-height:1.6"><h1>${esc(routeMeta.title.split(' | ')[0])}</h1><p>${esc(routeMeta.summary)}</p></main></div>`,
+                );
+            }
             res.setHeader('Content-Type', 'text/html; charset=utf-8');
             res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
             return res.send(injected);

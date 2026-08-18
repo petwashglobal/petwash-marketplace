@@ -32,6 +32,7 @@ import {
 } from '../services/providerServiceApproval';
 import { writeProviderAudit } from '../services/providerAudit';
 import { isProviderFullyVerifiedByUser, hasVerificationRecordByUser } from '../services/providerFullVerification';
+import { claimBusinessOnce, finalizeBusinessClaim } from '../lib/businessIdempotency';
 
 const submissionRateMap = new Map<string, { count: number; resetAt: number }>();
 const MAX_SUBMISSIONS_PER_IP_PER_HOUR = 3;
@@ -222,14 +223,50 @@ async function recordStageTransition(
 
 // POST /api/provider-applications - Submit new application
 router.post('/', uploadFields, async (req: Request, res: Response) => {
+  // Task 21 — atomic business-idempotency guard around the whole submit.
+  // Two simultaneous submits from the same user cannot both create a
+  // provider_applicants row (the pre-existing SELECT-then-INSERT check
+  // has a race window). This helper uses idempotency_keys with a PK
+  // + ON CONFLICT DO NOTHING RETURNING for atomic uniqueness.
+  //
+  // FAIL-CLOSED: on DB error the request is rejected with 503 so the
+  // client retries safely when the DB recovers. Do NOT reuse the
+  // lifecycle-notification helper's fail-open policy here — a
+  // duplicate provider row is a business-data problem, not a rare
+  // extra email.
+  let idempKey: string | null = null;
+  let claimSucceeded = false;
   try {
     const userId = (req as any).firebaseUser?.uid;
     if (!userId) {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
+    idempKey = `provider_app_submit:${userId}`;
+    const claim = await claimBusinessOnce(idempKey, 'POST /api/provider-applications');
+    if (claim === 'DB_ERROR') {
+      return res.status(503).json({
+        error: 'IDEMPOTENCY_UNAVAILABLE',
+        message: 'Submission service temporarily unavailable. Please retry.',
+      });
+    }
+    if (claim === 'IN_FLIGHT') {
+      return res.status(409).json({
+        error: 'DUPLICATE_SUBMISSION_IN_FLIGHT',
+        message: 'A submission is already being processed for this account. Wait a moment before retrying.',
+      });
+    }
+    if (claim === 'DONE') {
+      return res.status(409).json({
+        error: 'ALREADY_SUBMITTED',
+        message: 'You have already submitted an application. Check your inbox for the status link.',
+      });
+    }
+    claimSucceeded = true;
+
     const clientIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || 'unknown';
     if (!checkSubmissionRate(clientIp)) {
+      await finalizeBusinessClaim(idempKey, false); // release so retry after cool-down is possible
       return res.status(429).json({ error: 'TOO_MANY_REQUESTS', message: 'Too many applications submitted. Please wait an hour before trying again.' });
     }
     
@@ -249,31 +286,37 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
     // Validate form data
     const validationResult = providerApplicationFormSchema.safeParse(bodyData);
     if (!validationResult.success) {
-      return res.status(400).json({ 
-        error: 'Validation failed', 
-        details: validationResult.error.flatten() 
+      if (idempKey) await finalizeBusinessClaim(idempKey, false);
+      return res.status(400).json({
+        error: 'Validation failed',
+        details: validationResult.error.flatten()
       });
     }
-    
+
     const formData = validationResult.data;
-    
-    // Check for existing application
+
+    // Check for existing application (defensive — the business-idempotency
+    // claim above already covers the race window, but this preserves the
+    // richer 409 payload the client relies on for status/stage display).
     const existing = await db.select()
       .from(providerApplicants)
       .where(eq(providerApplicants.userId, userId))
       .limit(1);
-    
+
     if (existing.length > 0) {
       const status = existing[0].status;
       if (status === 'pending') {
-        return res.status(409).json({ 
+        // Existing pending row is authoritative — mark this claim 'done'.
+        if (idempKey) await finalizeBusinessClaim(idempKey, true);
+        return res.status(409).json({
           error: 'You already have a pending application',
           applicationId: existing[0].id,
           stage: existing[0].stage
         });
       }
       if (status === 'approved') {
-        return res.status(409).json({ 
+        if (idempKey) await finalizeBusinessClaim(idempKey, true);
+        return res.status(409).json({
           error: 'You are already an approved provider'
         });
       }
@@ -507,6 +550,8 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
       logger.error('[ProviderApplication] Failed to send confirmation SMS', { smsError, applicationId: application.id });
     }
     
+    // Success — finalize the business-idempotency claim as 'done'.
+    if (idempKey) await finalizeBusinessClaim(idempKey, true);
     res.status(201).json({
       success: true,
       applicationId: application.id,
@@ -515,10 +560,12 @@ router.post('/', uploadFields, async (req: Request, res: Response) => {
       message: 'Application submitted successfully. Please upload required documents.',
       requiredDocuments: getRequiredDocuments(formData.serviceTypes)
     });
-    
+
   } catch (error) {
     const traceId = req.traceId || '';
     logger.error('[ProviderApplication] Submit error', { error, traceId });
+    // Release the claim so the user can retry after fixing the underlying issue.
+    if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, false);
     res.status(500).json({ error: 'SERVER_ERROR', message: 'Failed to submit application', traceId });
   }
 });
@@ -704,8 +751,26 @@ router.get('/my', async (req: Request, res: Response) => {
       .where(eq(providerDocuments.applicantId, application.id))
       .orderBy(desc(providerDocuments.uploadedAt));
     
-    // Get tasks
-    const tasks = await db.select()
+    // PR-PROVIDER-APPLICATIONS-MY-PROJECTION (2026-08-15) — fire-order item 102.
+    // provider_onboarding_tasks carries `verifiedBy` (admin uid that ticked
+    // the task) and `notes` (internal admin note on the applicant's task).
+    // Neither belongs on a self-service /my response — an applicant who
+    // reads their own row should not see which admin reviewed it or the
+    // admin's freeform notes. Explicit allow-list — the applicant sees
+    // what task, what stage, whether it's required, and status.
+    const tasks = await db.select({
+      id: providerOnboardingTasks.id,
+      taskKey: providerOnboardingTasks.taskKey,
+      taskName: providerOnboardingTasks.taskName,
+      taskNameHe: providerOnboardingTasks.taskNameHe,
+      description: providerOnboardingTasks.description,
+      descriptionHe: providerOnboardingTasks.descriptionHe,
+      stage: providerOnboardingTasks.stage,
+      sortOrder: providerOnboardingTasks.sortOrder,
+      isRequired: providerOnboardingTasks.isRequired,
+      status: providerOnboardingTasks.status,
+      completedAt: providerOnboardingTasks.completedAt,
+    })
       .from(providerOnboardingTasks)
       .where(eq(providerOnboardingTasks.applicantId, application.id))
       .orderBy(providerOnboardingTasks.stage, providerOnboardingTasks.sortOrder);

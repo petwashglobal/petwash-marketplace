@@ -516,7 +516,11 @@ export function NotificationBell({ className = "", language = 'en' }: Notificati
             className={`absolute -top-0.5 -right-0.5 min-w-[16px] h-4 px-0.5 rounded-full text-[10px] font-bold text-white flex items-center justify-center ${isPulsing ? 'badge-glow' : ''}`}
             style={{ background: "linear-gradient(135deg,#0B57D0,#4E8DF7)", boxShadow: "0 1px 4px rgba(11,87,208,0.4)" }}
           >
-            {count > 9 ? "9+" : count}
+            {/* 2026-08-18: raised cap from 9+ to 99+ so a user with 47 unread
+                sees "47" on the bell and "47" in the panel header instead of
+                "9+" outside vs "47" inside — consistency with the panel's
+                own cap on line 266. */}
+            {count > 99 ? "99+" : count}
           </span>
         )}
       </button>

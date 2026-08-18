@@ -124,7 +124,7 @@ import SitterAdvancedBookingEngine from '@/services/SitterAdvancedBookingEngine'
 **Additional Files:**
 - `server/webauthn/service.ts` (700+ lines) - WebAuthn/Passkey implementation
 - `server/webauthn/deviceRegistry.ts` - Device management
-- `server/webauthn/csrfProtection.ts` - CSRF protection
+- ~~`server/webauthn/csrfProtection.ts`~~ — RETIRED (deleted 2026-08-15, PR-AUTH-CSRF-DELETE-DEAD-MIDDLEWARE). This hand-rolled WebAuthn-scoped CSRF helper was never mounted. CSRF for the whole app — WebAuthn included, via a `/api/webauthn/` skip — is provided by `doubleCsrfProtection` (from the `csrf-csrf` library) mounted globally in `server/index.ts`.
 - `client/src/auth/passkey.ts` - Client-side passkey handling
 
 ---
@@ -456,7 +456,7 @@ Standard shadcn/ui library with full customization:
 | `loginRateLimiter.ts` | Login rate limiting |
 | `securityHeaders.ts` | Security headers |
 | `k9000Security.ts` | K9000-specific security |
-| `csrfProtection.ts` | CSRF protection |
+| ~~`csrfProtection.ts`~~ | RETIRED (deleted 2026-08-15, PR-AUTH-CSRF-DELETE-DEAD-MIDDLEWARE). CSRF is now provided by `doubleCsrfProtection` (from the `csrf-csrf` library) mounted globally in `server/index.ts`. |
 | `circuit.ts` | Circuit breaker |
 | `performance-2025.ts` | Performance monitoring |
 | `requestIdAndLogs.ts` | Request logging |

@@ -114,6 +114,16 @@ function parseCortinaRequest(body: any): CortinaRequest {
   // (stable virtual-machine id), then any flat/UniQR fallbacks. Never key on
   // DeviceInfo.HwSerial (it changes on a device swap).
   const machineTerminalId = String(machine.TerminalId ?? machine.terminalId ?? '') || undefined;
+  // VERIFIED against the Nayax dev portal (Cortina External Prepaid, 2026-08-12):
+  // when the DOT reader scans a QR, the scanned content arrives as
+  // CardData.CardNumber with CardData.EntryMode === "QR" ("Card number read from a
+  // QR by the DOT" — /reference/cortina/cortina-prepaid/cortina-prepaid-sale). Our
+  // earlier flat b.Code/b.qr guesses never appear in the real payload, so `code`
+  // resolved to '' and EVERY redemption declined (code 2). Read CardData first; the
+  // old keys stay only as belt-and-suspenders fallbacks.
+  const cardData = b.CardData ?? b.cardData ?? {};
+  const entryMode = String(cardData.EntryMode ?? cardData.entryMode ?? '').toUpperCase();
+  const qrFromCard = entryMode === 'QR' ? (cardData.CardNumber ?? cardData.cardNumber) : undefined;
   return {
     terminalId: String(
       machineTerminalId ??
@@ -121,7 +131,7 @@ function parseCortinaRequest(body: any): CortinaRequest {
       basic.TerminalId ?? basic.terminalId ?? machineId ?? '',
     ),
     machineId,
-    code:       String(b.Code ?? b.code ?? b.Data ?? b.qr ?? basic.Code ?? basic.code ?? ''),
+    code:       String(qrFromCard ?? cardData.CardNumber ?? cardData.cardNumber ?? b.Code ?? b.code ?? b.Data ?? b.qr ?? basic.Code ?? basic.code ?? ''),
     transactionId: b.TransactionId ?? b.transactionId ?? basic.TransactionId ?? basic.transactionId,
     vended: b.Vended ?? b.vended ?? b.Success ?? b.success,
     amount:   typeof basic.Amount === 'number' ? basic.Amount : undefined,

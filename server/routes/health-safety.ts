@@ -112,7 +112,7 @@ router.post(
       logger.error('[HealthSafety API] Failed to report incident', error);
       res.status(500).json({ 
         error: 'Failed to report incident',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_REPORT_500'
       });
     }
   }
@@ -176,7 +176,7 @@ router.get(
       logger.error('[HealthSafety API] Failed to list incidents', error);
       res.status(500).json({ 
         error: 'Failed to list incidents',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_LIST_500'
       });
     }
   }
@@ -212,7 +212,7 @@ router.get(
       logger.error('[HealthSafety API] Failed to get incident', error);
       res.status(500).json({ 
         error: 'Failed to get incident',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_GET_500'
       });
     }
   }
@@ -247,7 +247,7 @@ router.get(
       logger.error('[HealthSafety API] Failed to get station incidents', error);
       res.status(500).json({ 
         error: 'Failed to get station incidents',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_STATION_500'
       });
     }
   }
@@ -302,7 +302,7 @@ router.patch(
       logger.error('[HealthSafety API] Failed to update incident status', error);
       res.status(500).json({ 
         error: 'Failed to update incident status',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_UPDATE_STATUS_500'
       });
     }
   }
@@ -348,7 +348,7 @@ router.patch(
       logger.error('[HealthSafety API] Failed to assign incident', error);
       res.status(500).json({ 
         error: 'Failed to assign incident',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_ASSIGN_500'
       });
     }
   }
@@ -400,7 +400,7 @@ router.patch(
       logger.error('[HealthSafety API] Failed to resolve incident', error);
       res.status(500).json({ 
         error: 'Failed to resolve incident',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_RESOLVE_500'
       });
     }
   }
@@ -454,7 +454,7 @@ router.post(
       logger.error('[HealthSafety API] Failed to upload photo', error);
       res.status(500).json({ 
         error: 'Failed to upload photo',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_PHOTO_500'
       });
     }
   }
@@ -483,7 +483,7 @@ router.get(
       logger.error('[HealthSafety API] Failed to get dashboard', error);
       res.status(500).json({ 
         error: 'Failed to get dashboard',
-        message: error instanceof Error ? error.message : 'Unknown error'
+        code: 'HS_DASHBOARD_500'
       });
     }
   }

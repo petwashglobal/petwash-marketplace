@@ -360,7 +360,7 @@ router.post('/admin/invite-codes/generate', requireAdmin, async (req: Request, r
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Generate invite code error', error);
-    res.status(500).json({ error: error.message || 'Failed to generate invite code', errorCode: 'INVITE_CODE_FAILED' });
+    res.status(500).json({ error: 'Failed to generate invite code', errorCode: 'INVITE_CODE_FAILED' });
   }
 });
 
@@ -422,7 +422,7 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Validate invite code error', { error: error.message });
-    res.status(500).json({ error: error.message || 'Failed to validate invite code', errorCode: 'VALIDATION_FAILED' });
+    res.status(500).json({ error: 'Failed to validate invite code', errorCode: 'VALIDATION_FAILED' });
   }
 });
 
@@ -1577,7 +1577,7 @@ router.get('/application/status', async (req: Request, res: Response) => {
     res.json({ applications });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Get application status error', { error: error.message });
-    res.status(500).json({ error: error.message, errorCode: 'STATUS_CHECK_FAILED' });
+    res.status(500).json({ error: 'Failed to fetch application status', errorCode: 'STATUS_CHECK_FAILED' });
   }
 });
 
@@ -1598,7 +1598,7 @@ router.get('/admin/applications/pending', requireSupport, async (req: Request, r
     res.json({ applications });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Get pending applications error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch pending applications', errorCode: 'PENDING_APPS_500' });
   }
 });
 
@@ -1666,7 +1666,7 @@ router.get('/admin/applications/pending-review', requireSupport, async (req: Req
     res.json({ applications, count: applications.length });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Get pending-review applications error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch pending-review applications', errorCode: 'PENDING_REVIEW_500' });
   }
 });
 
@@ -1765,7 +1765,7 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Get application detail error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch application detail', errorCode: 'APP_DETAIL_500' });
   }
 });
 
@@ -1916,7 +1916,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Approve application error', { error: error.message });
-    res.status(500).json({ error: error.message, errorCode: 'APPROVAL_FAILED' });
+    res.status(500).json({ error: 'Failed to approve application', errorCode: 'APPROVAL_FAILED' });
   }
 });
 
@@ -2008,7 +2008,7 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
     });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Reject application error', { error: error.message });
-    res.status(500).json({ error: error.message, errorCode: 'REJECTION_FAILED' });
+    res.status(500).json({ error: 'Failed to reject application', errorCode: 'REJECTION_FAILED' });
   }
 });
 
@@ -2030,7 +2030,8 @@ router.get('/admin/applications/queue', requireSupport, async (req: Request, res
     const { open, urgent } = await (await import('../services/providerQueue')).getQueueBadgeCount();
     res.json({ items, total, badge: { open, urgent } });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('[ProviderOnboarding] queue list error', { error: err?.message });
+    res.status(500).json({ error: 'Failed to fetch queue', errorCode: 'QUEUE_LIST_500' });
   }
 });
 
@@ -2075,7 +2076,7 @@ router.post('/admin/applications/:numericId/promote-trainee', requireAdmin, asyn
         logger.info('[ProviderOnboarding] Trainee promoted to full provider', { userId: app.user_id, applicationId: app.application_id });
       } catch (claimsErr: any) {
         logger.error('[ProviderOnboarding] Failed to update claims on trainee promote', { error: claimsErr?.message });
-        return res.status(500).json({ error: 'Failed to update role claims', details: claimsErr?.message });
+        return res.status(500).json({ error: 'Failed to update role claims', errorCode: 'CLAIMS_UPDATE_500' });
       }
     }
 
@@ -2096,7 +2097,7 @@ router.post('/admin/applications/:numericId/promote-trainee', requireAdmin, asyn
     res.json({ success: true, message: 'Trainee promoted to full provider' });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] promote-trainee error', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to promote trainee', errorCode: 'PROMOTE_TRAINEE_500' });
   }
 });
 
@@ -2111,7 +2112,8 @@ router.post('/admin/applications/:numericId/assign', requireSupport, async (req:
     writeProviderAudit({ applicationId, eventType: 'queue_assigned', actorUserId: adminUid, actorRole: 'admin', payload: { assignedTo } }).catch(() => {});
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('[ProviderOnboarding] queue assign error', { error: err?.message });
+    res.status(500).json({ error: 'Failed to assign queue item', errorCode: 'QUEUE_ASSIGN_500' });
   }
 });
 
@@ -2201,7 +2203,7 @@ router.post('/admin/applications/:numericId/resubmit-request', requireSupport, a
     res.json({ success: true, expiresAt: expiresAt.toISOString() });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] Resubmit request error', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to request resubmission', errorCode: 'RESUBMIT_REQ_500' });
   }
 });
 
@@ -2213,7 +2215,8 @@ router.get('/admin/applications/:numericId/audit', requireSupport, async (req: R
     const events = await getAuditTrail(applicationId);
     res.json({ events });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('[ProviderOnboarding] audit trail error', { error: err?.message });
+    res.status(500).json({ error: 'Failed to fetch audit trail', errorCode: 'AUDIT_TRAIL_500' });
   }
 });
 
@@ -2226,7 +2229,8 @@ router.get('/admin/applications/:numericId/messages', requireSupport, async (req
     clearUnreadCount(applicationId).catch(() => {});
     res.json({ messages });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('[ProviderOnboarding] admin messages fetch error', { error: err?.message });
+    res.status(500).json({ error: 'Failed to fetch messages', errorCode: 'MSG_LIST_500' });
   }
 });
 
@@ -2271,7 +2275,8 @@ router.post('/admin/applications/:numericId/message', requireSupport, async (req
     writeProviderAudit({ applicationId, eventType: 'message_sent', actorUserId: adminUid, actorRole: 'admin', payload: { direction, channel, providerVisible } }).catch(() => {});
     res.json({ success: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('[ProviderOnboarding] admin message send error', { error: err?.message });
+    res.status(500).json({ error: 'Failed to send message', errorCode: 'MSG_SEND_500' });
   }
 });
 
@@ -2330,7 +2335,7 @@ router.get('/my/status', async (req: Request, res: Response) => {
     });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] My status error', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to fetch my status', errorCode: 'MY_STATUS_500' });
   }
 });
 
@@ -2365,7 +2370,7 @@ router.post('/withdraw', async (req: Request, res: Response) => {
     res.json({ success: true, status: 'withdrawn' });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] Withdraw error', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to withdraw application', errorCode: 'WITHDRAW_500' });
   }
 });
 
@@ -2384,7 +2389,8 @@ router.get('/my/messages', async (req: Request, res: Response) => {
     const messages = await getThreadMessages(appRow.rows[0].id, false);
     res.json({ messages });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('[ProviderOnboarding] applicant messages fetch error', { error: err?.message });
+    res.status(500).json({ error: 'Failed to fetch messages', errorCode: 'APPLICANT_MSG_LIST_500' });
   }
 });
 
@@ -2432,7 +2438,8 @@ router.post('/my/messages', async (req: Request, res: Response) => {
 
     res.json({ ok: true });
   } catch (err: any) {
-    res.status(500).json({ error: err.message });
+    logger.error('[ProviderOnboarding] applicant message send error', { error: err?.message });
+    res.status(500).json({ error: 'Failed to send message', errorCode: 'APPLICANT_MSG_SEND_500' });
   }
 });
 
@@ -2764,7 +2771,7 @@ router.post(
       }
     } catch (err: any) {
       logger.error('[ProviderOnboarding] Resubmit token upload error', { error: err.message });
-      res.status(500).json({ error: err.message, errorCode: 'RESUBMIT_FAILED' });
+      res.status(500).json({ error: 'Failed to upload resubmission', errorCode: 'RESUBMIT_FAILED' });
     }
   }
 );
@@ -2856,7 +2863,7 @@ router.get('/mgmt/analytics', requireManagement, async (req: Request, res: Respo
     });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] mgmt/analytics error', { error: err.message });
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ error: 'Failed to fetch analytics', errorCode: 'MGMT_ANALYTICS_500' });
   }
 });
 

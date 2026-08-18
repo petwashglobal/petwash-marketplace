@@ -10,6 +10,7 @@ import multer from 'multer';
 import admin from '../lib/firebase-admin';
 import crypto from 'crypto';
 import { encryptField } from '../services/secretFieldCrypto';
+import { claimBusinessOnce, finalizeBusinessClaim } from '../lib/businessIdempotency';
 
 const router = Router();
 
@@ -34,6 +35,42 @@ const upload = multer({
 const _tableReady: Promise<void> = Promise.resolve();
 
 router.post('/register', upload.single('idDocument'), async (req: Request, res: Response) => {
+  // Task 23 — atomic business-idempotency guard around Prestige enrolment.
+  // Two simultaneous /register submits with the same email cannot both
+  // create a privilege_members row.
+  //
+  // D12 firewall: RESPONSE-ONLY dedup — no accounting / balance /
+  // membership-benefit change. Same helper the provider + staff
+  // application POSTs use (fail-closed, no auto-steal).
+  const rawEmail = typeof req.body?.email === 'string' ? req.body.email : '';
+  const normalisedEmail = rawEmail.trim().toLowerCase();
+  const idempKey = normalisedEmail ? `prestige_join:${normalisedEmail}` : null;
+  let claimSucceeded = false;
+  if (idempKey) {
+    const claim = await claimBusinessOnce(idempKey, 'POST /api/privilege/register');
+    if (claim === 'DB_ERROR') {
+      return res.status(503).json({
+        error: 'IDEMPOTENCY_UNAVAILABLE',
+        errorCode: 'IDEMPOTENCY_UNAVAILABLE',
+        message: 'Registration service temporarily unavailable. Please retry.',
+      });
+    }
+    if (claim === 'IN_FLIGHT') {
+      return res.status(409).json({
+        error: 'DUPLICATE_REGISTRATION_IN_FLIGHT',
+        errorCode: 'DUPLICATE_REGISTRATION_IN_FLIGHT',
+        message: 'A registration is already being processed for this email.',
+      });
+    }
+    if (claim === 'DONE') {
+      return res.status(409).json({
+        error: 'ALREADY_REGISTERED',
+        errorCode: 'ALREADY_REGISTERED',
+        message: 'This email is already registered in PetWash Privilege.',
+      });
+    }
+    claimSucceeded = true;
+  }
   try {
     const {
       firstName, lastName, email, phone, dob, gender,
@@ -47,6 +84,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
     logger.info('[Privilege Register] Processing', { traceId, email });
 
     if (!firstName || !lastName || !email || !phone || !dob || !termsConsent) {
+      if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, false);
       return res.status(400).json({ error: 'Missing required fields', errorCode: 'MISSING_FIELDS' });
     }
 
@@ -307,6 +345,7 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       logger.error('[Privilege] Failed to send admin notification', { adminEmailErr });
     }
 
+    if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, true);
     res.status(201).json({
       ok: true,
       memberId,
@@ -319,8 +358,13 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
     } catch { errMsg = String(error); }
     logger.error(`[Privilege] Registration failed: ${errMsg}`, { traceId: req.body?.traceId });
     if (errMsg?.includes('duplicate key') || errMsg?.includes('unique constraint')) {
+      // A prior successful registration; leave the marker as done so future
+      // replays keep returning 409 without touching the DB again.
+      if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, true);
       return res.status(409).json({ error: 'This email is already registered in PetWash Privilege', errorCode: 'ALREADY_REGISTERED' });
     }
+    // Unknown failure — release the claim so the user can safely retry.
+    if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, false);
     res.status(500).json({ error: 'Registration failed. Please try again.', errorCode: 'REGISTRATION_FAILED' });
   }
 });

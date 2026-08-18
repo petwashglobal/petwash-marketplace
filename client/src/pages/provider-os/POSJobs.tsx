@@ -40,7 +40,14 @@ const STATUSES = [
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string; border: string }> = {
   // V2 booking_requests statuses
   pending:              { label: 'Pending',      color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
+  // Legacy per-service create status (2026-08-18): before this the card
+  // rendered a fallback grey pill reading "pending". Match the primary
+  // 'pending' visual so both entry paths look the same.
+  pending_provider:     { label: 'Pending',      color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
   accepted:             { label: 'Accepted',     color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+  // Meet & Greet REQUESTED: customer opted into a M&G but provider hasn't
+  // scheduled a time yet. Was missing — rendered as raw "meet_greet_requested".
+  meet_greet_requested: { label: 'M&G Requested', color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
   meet_greet_scheduled: { label: 'Meet & Greet', color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
   meet_greet_completed: { label: 'Meet Done',    color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
   payment_pending:      { label: 'Awaiting Pmt', color: '#b45309', bg: '#fef3c7', border: '#fbbf24' },
@@ -470,6 +477,28 @@ function JobCard({
                 <span className="font-semibold text-green-700">₪{payout.toFixed(0)}</span>
               )}
             </div>
+            {/* Payout-released celebration line (2026-08-18): mirrors the
+                ProviderJobDetail panel so the /provider-os/jobs list itself
+                signals that a completed booking has actually paid out — before
+                this the completed tab was just a silent bucket. */}
+            {['completed', 'reviewed'].includes(booking.status) && payout > 0 && (
+              <p
+                data-testid={`payout-released-${booking.id}`}
+                className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1 mt-1"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                ₪{payout.toFixed(0)} released · arriving in 72h
+              </p>
+            )}
+            {booking.status === 'reviewed' && (booking.ownerRating || booking.rating) && (
+              <p
+                data-testid={`review-badge-${booking.id}`}
+                className="text-[11px] font-semibold text-amber-700 flex items-center gap-1 mt-0.5"
+              >
+                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                Customer left {booking.ownerRating || booking.rating}/5
+              </p>
+            )}
           </div>
           <button onClick={() => setExpanded(!expanded)} className="p-1 text-gray-400 hover:text-gray-600 transition-colors shrink-0">
             <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />

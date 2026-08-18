@@ -26,7 +26,7 @@
 
 import { logger } from '../lib/logger';
 import { redis } from './redis';
-import sgMail from '@sendgrid/mail';
+import { sendGuardedEmail } from '../lib/guarded-sendgrid';
 
 const SENDGRID_API_KEY = process.env.SENDGRID_API_KEY || '';
 const ADMIN_ALERT_EMAIL = process.env.SUPER_ADMIN_EMAILS?.split(',')[0]?.trim() || 'admin@petwash.co.il';
@@ -123,11 +123,17 @@ class SmsAbuseDetector {
     logger.warn(`[SmsAbuse] 🚨 ALERT: ${subject}`);
     if (!SENDGRID_API_KEY) return;
     try {
-      await sgMail.send({
-        to: ADMIN_ALERT_EMAIL,
-        from: FROM_EMAIL,
-        subject: `🚨 PetWash SMS Security Alert: ${subject}`,
-        html: `
+      // Task 18 (PR-EMAIL-4): routed through guarded helper. During an SMS
+      // abuse incident the alert fires repeatedly (per-window dedup only);
+      // the EmailSpendGuard circuit breaker bounds runaway spend if
+      // SendGrid itself is faulty and the retries stack up.
+      const r = await sendGuardedEmail({
+        service: 'internal:sms-abuse-alert',
+        msg: {
+          to: ADMIN_ALERT_EMAIL,
+          from: FROM_EMAIL,
+          subject: `🚨 PetWash SMS Security Alert: ${subject}`,
+          html: `
           <div style="font-family:sans-serif;max-width:600px;margin:0 auto">
             <div style="background:#ef4444;color:white;padding:16px;border-radius:8px 8px 0 0">
               <h2 style="margin:0">🚨 SMS Security Alert</h2>
@@ -142,7 +148,12 @@ class SmsAbuseDetector {
               </p>
             </div>
           </div>`,
+        },
       });
+      if (!r.ok) {
+        logger.warn('[SmsAbuse] Alert email blocked or failed', { subject, reason: r.reason });
+        return;
+      }
       logger.info('[SmsAbuse] Alert email sent', { to: ADMIN_ALERT_EMAIL, subject });
     } catch (err: any) {
       logger.error('[SmsAbuse] Failed to send alert email', { error: err?.message });

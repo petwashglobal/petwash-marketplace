@@ -135,7 +135,7 @@ router.get('/birthday', async (req, res) => {
     };
 
     await promoRef.set(promoData);
-    logger.info('[BirthdayPromo] Generated new code', { uid, code, expiresAt });
+    logger.info('[BirthdayPromo] Generated new code', { uid, codeHash: createHash('sha256').update(code).digest('hex').slice(0, 12), expiresAt });
 
     return res.json({
       code,
@@ -185,7 +185,7 @@ router.post('/birthday/claim', async (req, res) => {
 
     // Validate code matches
     if (data.code !== code) {
-      logger.warn('[BirthdayPromo] Code mismatch attempt', { uid, providedCode: code, actualCode: data.code });
+      logger.warn('[BirthdayPromo] Code mismatch attempt', { uid, providedCodeHash: createHash('sha256').update(String(code)).digest('hex').slice(0, 12), expectedCodeHash: createHash('sha256').update(String(data.code)).digest('hex').slice(0, 12) });
       return res.status(400).json({ error: 'Invalid promo code' });
     }
 
@@ -220,7 +220,7 @@ router.post('/birthday/claim', async (req, res) => {
       claimedUserAgentHash: uaHash,
     });
 
-    logger.info('[BirthdayPromo] Code claimed', { uid, code, ip: ip.substring(0, 8) + '...' });
+    logger.info('[BirthdayPromo] Code claimed', { uid, codeHash: createHash('sha256').update(code).digest('hex').slice(0, 12), ip: ip.substring(0, 8) + '...' });
 
     return res.json({
       ok: true,
@@ -423,7 +423,7 @@ router.get('/seasonal', async (req, res) => {
     };
 
     await promoRef.set(promoData);
-    logger.info('[SeasonalPromo] Generated new code', { uid, code, season: season.name, expiresAt });
+    logger.info('[SeasonalPromo] Generated new code', { uid, codeHash: createHash('sha256').update(code).digest('hex').slice(0, 12), season: season.name, expiresAt });
 
     // Send notification (inbox + email) — fire and forget
     const userDoc = await firestoreDb.collection('users').doc(uid).get();
@@ -489,7 +489,7 @@ router.post('/seasonal/claim', async (req, res) => {
 
     await promoRef.update({ claimed: true, claimedAt: new Date().toISOString(), claimedIp: ip, claimedUserAgentHash: uaHash });
 
-    logger.info('[SeasonalPromo] Claimed', { uid, code, season });
+    logger.info('[SeasonalPromo] Claimed', { uid, codeHash: createHash('sha256').update(code).digest('hex').slice(0, 12), season });
     return res.json({ ok: true, discountPercent: data.discountPercent, messageHe: 'הקוד הוחל בהצלחה!' });
   } catch (error) {
     logger.error('[SeasonalPromo] Claim error', error);

@@ -31,10 +31,10 @@ export default defineConfig({
   use: {
     /**
      * CRITICAL FIX for Replit E2E Testing:
-     * 
+     *
      * 1. process.env.REPLIT_DEV_DOMAIN: Public URL automatically provided by Replit
      * 2. Falls back to http://localhost:5000 for local development
-     * 
+     *
      * This allows E2E tests to access the public dev environment.
      */
     baseURL: process.env.REPLIT_DEV_DOMAIN
@@ -43,12 +43,44 @@ export default defineConfig({
 
     // Collect trace when retrying the failed test
     trace: 'on-first-retry',
-    
+
     // Take screenshot on failure
     screenshot: 'only-on-failure',
-    
+
     // Ignore HTTPS errors (for dev environments)
     ignoreHTTPSErrors: true,
+
+    /**
+     * TEST_BYPASS_TOKEN plumbing (2026-08-18):
+     *
+     * The server's dev-only auth bypass (server/customAuth.ts:170,
+     * server/middleware/gates.ts:78, and requireStaffApproved) reads
+     * the header `x-test-user-bypass` and compares it to
+     * `process.env.TEST_BYPASS_TOKEN`. In production the token env var
+     * is unset and the bypass is fail-closed, so this is safe to plumb
+     * unconditionally.
+     *
+     * When TEST_BYPASS_TOKEN is set in the shell that launches
+     * Playwright, we forward it as `x-test-user-bypass` on every
+     * request, and forward `x-test-user-role` + `x-test-user-status`
+     * from optional companion env vars so a spec can act as a specific
+     * persona.
+     *
+     * Specs override these headers per-persona via
+     * `test.use({ extraHTTPHeaders: {...} })` when they need mixed
+     * customer / provider identities in the same run.
+     */
+    extraHTTPHeaders: process.env.TEST_BYPASS_TOKEN
+      ? {
+          'x-test-user-bypass': process.env.TEST_BYPASS_TOKEN,
+          ...(process.env.TEST_USER_ROLE
+            ? { 'x-test-user-role': process.env.TEST_USER_ROLE }
+            : {}),
+          ...(process.env.TEST_USER_STATUS
+            ? { 'x-test-user-status': process.env.TEST_USER_STATUS }
+            : {}),
+        }
+      : {},
   },
 
   // Configure projects for major browsers

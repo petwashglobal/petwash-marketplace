@@ -23,6 +23,7 @@ import {
   type InsertWalkerReview
 } from '../../shared/schema';
 import { formatUserAddress, bookingSnapshotToAddress } from '../../shared/formatAddress';
+import { projectPublicWalker } from '@shared/lib/publicWalkerProfile';
 import { eq, and, gte, lte, lt, sql, desc, asc, isNotNull } from 'drizzle-orm';
 import { z } from 'zod';
 import crypto from 'crypto';
@@ -202,11 +203,24 @@ router.patch('/walkers/location', requireAuth, async (req, res) => {
   }
 });
 
-// Get walker profile
+// Get walker profile.
+//
+// P0-2 fix (2026-08-18): previously returned the RAW walker_profiles row,
+// which mixes marketing display with KYC (kycCompleted, backgroundCheckStatus,
+// selfiePhotoUrl, governmentIdUrl, biometricMatchScore), banking
+// (bankAccountVerified, nayaxPayoutAccountId), commission (commissionRate),
+// admin ops (suspensionReason, suspendedUntil, instantBookMinTrust,
+// acceptanceRate), and the walker's Firebase UID (userId). This endpoint
+// is UNAUTHENTICATED — any of that leaking is a real problem, and a new
+// sensitive column added later would silently ship to the public.
+//
+// Now: project through the explicit PublicWalkerProfileDTO allowlist in
+// shared/lib/publicWalkerProfile.ts. Unknown / sensitive fields cannot be
+// exposed without an explicit addition to the DTO (which is reviewed).
 router.get('/walkers/:walkerId', async (req, res) => {
   try {
     const { walkerId } = req.params;
-    
+
     const [walker] = await db
       .select()
       .from(walkerProfiles)
@@ -217,7 +231,13 @@ router.get('/walkers/:walkerId', async (req, res) => {
       return res.status(404).json({ error: 'Walker not found' });
     }
 
-    res.json({ walker });
+    const dto = projectPublicWalker(walker);
+    if (!dto) {
+      // Row present but projector rejected it (shape unexpected) — treat
+      // as not-found rather than surface a broken response.
+      return res.status(404).json({ error: 'Walker not found' });
+    }
+    res.json({ walker: dto });
   } catch (error: any) {
     console.error('[Walk My Pet] Get walker error:', error);
     res.status(500).json({ error: 'Failed to fetch walker profile' });

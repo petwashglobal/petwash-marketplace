@@ -52,7 +52,6 @@ router.get('/', requireAdmin, async (req, res) => {
     logger.error('[Events API] Failed to fetch events', { error: error.message });
     res.status(500).json({
       error: 'Failed to fetch events',
-      message: error.message,
     });
   }
 });
@@ -84,7 +83,6 @@ router.get('/:id', requireAdmin, async (req, res) => {
     });
     res.status(500).json({
       error: 'Failed to fetch event',
-      message: error.message,
     });
   }
 });
@@ -134,7 +132,6 @@ router.get('/type/:type', requireAdmin, async (req, res) => {
     });
     res.status(500).json({
       error: 'Failed to fetch events by type',
-      message: error.message,
     });
   }
 });
@@ -159,7 +156,6 @@ router.post('/replay/:id', requireAdmin, async (req, res) => {
     });
     res.status(500).json({
       error: 'Failed to replay event',
-      message: error.message,
     });
   }
 });
@@ -218,7 +214,6 @@ router.get('/aggregate/:aggregateType/:aggregateId', requireAdmin, async (req, r
     });
     res.status(500).json({
       error: 'Failed to fetch events by aggregate',
-      message: error.message,
     });
   }
 });
@@ -260,7 +255,6 @@ router.get('/stats', requireAdmin, async (req, res) => {
     });
     res.status(500).json({
       error: 'Failed to fetch event statistics',
-      message: error.message,
     });
   }
 });

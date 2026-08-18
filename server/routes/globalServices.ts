@@ -68,7 +68,7 @@ router.post('/currency/convert', async (req: Request, res: Response) => {
     res.json(conversion);
   } catch (error: any) {
     console.error('[API] Currency conversion failed:', error);
-    res.status(400).json({ error: error.message || 'Conversion failed' });
+    res.status(400).json({ error: 'Conversion failed' });
   }
 });
 
@@ -89,7 +89,7 @@ router.get('/currency/format/:amountCents/:currency/:language', async (req: Requ
     res.json({ formatted });
   } catch (error: any) {
     console.error('[API] Currency formatting failed:', error);
-    res.status(400).json({ error: error.message || 'Formatting failed' });
+    res.status(400).json({ error: 'Formatting failed' });
   }
 });
 
@@ -129,7 +129,7 @@ router.get('/geolocation/detect', async (req: Request, res: Response) => {
     res.json(location);
   } catch (error: any) {
     console.error('[API] Geolocation detection failed:', error);
-    res.status(500).json({ error: error.message || 'Detection failed' });
+    res.status(500).json({ error: 'Detection failed' });
   }
 });
 
@@ -157,7 +157,7 @@ router.post('/geolocation/validate-same-country', async (req: Request, res: Resp
     res.json(validation);
   } catch (error: any) {
     console.error('[API] Same-country validation failed:', error);
-    res.status(500).json({ error: error.message || 'Validation failed' });
+    res.status(500).json({ error: 'Validation failed' });
   }
 });
 
@@ -173,7 +173,7 @@ router.get('/geolocation/restrictions/:countryCode', async (req: Request, res: R
     res.json(restrictions);
   } catch (error: any) {
     console.error('[API] Failed to get country restrictions:', error);
-    res.status(500).json({ error: error.message || 'Failed to get restrictions' });
+    res.status(500).json({ error: 'Failed to get restrictions' });
   }
 });
 
@@ -189,7 +189,7 @@ router.get('/legal/compliance/:countryCode', async (req: Request, res: Response)
     res.json(requirements);
   } catch (error: any) {
     console.error('[API] Failed to get legal requirements:', error);
-    res.status(500).json({ error: error.message || 'Failed to get requirements' });
+    res.status(500).json({ error: 'Failed to get requirements' });
   }
 });
 
@@ -218,7 +218,7 @@ router.post('/legal/validate-sitter', async (req: Request, res: Response) => {
     res.json(validation);
   } catch (error: any) {
     console.error('[API] Sitter validation failed:', error);
-    res.status(500).json({ error: error.message || 'Validation failed' });
+    res.status(500).json({ error: 'Validation failed' });
   }
 });
 

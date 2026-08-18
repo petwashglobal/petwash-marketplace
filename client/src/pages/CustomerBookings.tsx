@@ -43,6 +43,11 @@ const STATUS_TO_TAB: Record<string, TabId> = {
   accepted:    'upcoming',
   confirmed:   'upcoming',
   in_progress: 'upcoming',
+  // meet_greet_requested is set by POST /:requestId/meet-greet {action:'request'}
+  // when the customer asks for a Meet & Greet before payment. Without this key
+  // the booking is INVISIBLE in every tab. Sibling of the 2026-07-31 fix that
+  // added pending_provider above. (2026-08-18)
+  meet_greet_requested: 'upcoming',
   meet_greet_scheduled: 'upcoming',
   meet_greet_completed: 'upcoming',
   payment_pending: 'upcoming',
@@ -112,18 +117,27 @@ const STATUS_ICONS: Record<string, any> = {
 };
 
 const STATUS_LABELS: Record<string, { he: string; en: string }> = {
-  pending:              { he: 'ממתין',           en: 'Pending'             },
-  accepted:             { he: 'אושר',            en: 'Accepted'            },
-  confirmed:            { he: 'מאושר',           en: 'Confirmed'           },
-  meet_greet_scheduled: { he: 'פגישה מתוכננת',  en: 'Meet & Greet'        },
-  meet_greet_completed: { he: 'פגישה הושלמה',   en: 'Meet & Greet done'   },
-  payment_pending:      { he: 'ממתין לתשלום',   en: 'Awaiting payment'    },
-  in_progress:          { he: 'בתהליך',         en: 'In Progress'         },
-  completed:            { he: 'הושלם',           en: 'Completed'           },
-  reviewed:             { he: 'עם ביקורת',       en: 'Reviewed'            },
-  declined:             { he: 'נדחה',            en: 'Declined'            },
-  cancelled:            { he: 'בוטל',            en: 'Cancelled'           },
-  disputed:             { he: 'במחלוקת',         en: 'Disputed'            },
+  pending:                  { he: 'ממתין',                 en: 'Pending'                     },
+  // 2026-07-31 legacy sitter/walk create status. Kept as 'Pending' so the
+  // customer sees a familiar label; buckets to the same 'pending' tab.
+  pending_provider:         { he: 'ממתין',                 en: 'Pending'                     },
+  accepted:                 { he: 'אושר',                  en: 'Accepted'                    },
+  confirmed:                { he: 'מאושר',                 en: 'Confirmed'                   },
+  meet_greet_requested:     { he: 'פגישת היכרות התבקשה',    en: 'Meet & Greet requested'      },
+  meet_greet_scheduled:     { he: 'פגישה מתוכננת',         en: 'Meet & Greet'                },
+  meet_greet_completed:     { he: 'פגישה הושלמה',          en: 'Meet & Greet done'           },
+  payment_pending:          { he: 'ממתין לתשלום',          en: 'Awaiting payment'            },
+  in_progress:              { he: 'בתהליך',                en: 'In Progress'                 },
+  // 2026-08-18: was missing — CustomerBookings rendered "provider_marked_complete"
+  // as the raw enum literal. Now shows an actionable label so the customer
+  // knows the next step is theirs (companion to the "Confirm & rate" CTA
+  // from PR-CUSTOMER-BOOKINGS-REVIEW-CTA).
+  provider_marked_complete: { he: 'ממתין לאישור סיום',      en: 'Awaiting your confirmation'  },
+  completed:                { he: 'הושלם',                 en: 'Completed'                   },
+  reviewed:                 { he: 'עם ביקורת',              en: 'Reviewed'                    },
+  declined:                 { he: 'נדחה',                  en: 'Declined'                    },
+  cancelled:                { he: 'בוטל',                  en: 'Cancelled'                   },
+  disputed:                 { he: 'במחלוקת',                en: 'Disputed'                    },
 };
 
 const SERVICE_TO_ROUTE: Record<string, string> = {
@@ -531,7 +545,21 @@ function BookingCard({
                       && booking.kind !== 'academy';
   const hasRefund   = (booking.refundCents ?? 0) > 0;
   const hasMeetGreet = !!(booking.meetGreetDate || booking.meetGreetLocation);
-  const canReview   = booking.status === 'completed';
+  // Review CTA gate (2026-08-18): before this PR the button was gated on
+  // status === 'completed' ONLY — and its onClick landed the customer on
+  // BookingConfirmation.tsx where the star-rating form is gated on
+  // status === 'provider_marked_complete' (see PR #1902). Result: the CTA
+  // opened a page with no review form.
+  //
+  // Broader gate: show the "Confirm & rate" affordance the moment the
+  // provider marks the service done (provider_marked_complete) OR the
+  // fallback "Leave a review" for a completed booking that has no
+  // customer rating yet (cron auto-approved without customer input).
+  // Never show it if the customer already left a rating (ownerRating set,
+  // or status has already flipped to 'reviewed').
+  const canReview   =
+    (booking.status === 'provider_marked_complete') ||
+    (booking.status === 'completed' && !booking.ownerRating);
 
   const cleanReason = (r: string | null | undefined) =>
     r?.replace(/^(DECLINED:|CANCELLED:|DISPUTE:|CANCELED:)\s*/i, '') || null;
@@ -548,7 +576,11 @@ function BookingCard({
 
   const handleReview = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    navigate(`/booking/confirmation/${booking.requestId}`);
+    // ?review=1 triggers the end-of-stay banner + star-form auto-scroll on
+    // BookingConfirmation.tsx (see PR #1906 useEffect). Without it the
+    // customer lands at the top of the page and has to scroll to find the
+    // rating row.
+    navigate(`/booking/confirmation/${booking.requestId}?review=1`);
   };
 
   // Countdown chip for upcoming bookings
@@ -797,15 +829,21 @@ function BookingCard({
             </button>
           )}
 
-          {/* Leave a review CTA — only for completed, not reviewed */}
+          {/* Leave a review / Confirm & rate CTA — context-aware label
+              (2026-08-18): pre-customer-confirm uses "Confirm & rate"
+              because that's the actionable step; post-confirm uses "Leave
+              a review" for the cron-auto-approved fallback. */}
           {canReview && (
             <button
+              data-testid={`booking-review-cta-${booking.requestId}`}
               onClick={handleReview}
               className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors"
               style={{ borderColor: `${GOLD}60`, color: GOLD, background: `${GOLD}0C` }}
             >
               <Star size={10} />
-              {isRTL ? 'כתוב ביקורת' : 'Leave a review'}
+              {booking.status === 'provider_marked_complete'
+                ? (isRTL ? 'אשר/י ודרג/י' : 'Confirm & rate')
+                : (isRTL ? 'כתוב ביקורת' : 'Leave a review')}
             </button>
           )}
 
@@ -1040,7 +1078,7 @@ export default function CustomerBookings() {
   const sitterQuery = useQuery<SitterRow[] | { bookings?: SitterRow[] }>({
     queryKey: ['/api/sitter-suite/bookings', { role: 'owner' }],
     queryFn: () =>
-      fetch('/api/sitter-suite/bookings?role=owner', { credentials: 'include' })
+      apiRequest('GET', '/api/sitter-suite/bookings?role=owner')
         .then((r) => (r.ok ? r.json() : [])),
     enabled: !!user,
     retry: false,
@@ -1049,7 +1087,7 @@ export default function CustomerBookings() {
   const walkerQuery = useQuery<{ success: boolean; bookings: WalkerRow[] }>({
     queryKey: ['/api/walk-my-pet/walks/mine'],
     queryFn: () =>
-      fetch('/api/walk-my-pet/walks/mine', { credentials: 'include' })
+      apiRequest('GET', '/api/walk-my-pet/walks/mine')
         .then((r) => (r.ok ? r.json() : { success: false, bookings: [] })),
     enabled: !!user,
     retry: false,
@@ -1058,7 +1096,7 @@ export default function CustomerBookings() {
   const academyQuery = useQuery<AcademyRow[]>({
     queryKey: ['/api/academy/bookings'],
     queryFn: () =>
-      fetch('/api/academy/bookings', { credentials: 'include' })
+      apiRequest('GET', '/api/academy/bookings')
         .then((r) => (r.ok ? r.json() : [])),
     enabled: !!user,
     retry: false,

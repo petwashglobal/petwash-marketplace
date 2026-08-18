@@ -71,6 +71,7 @@ const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
 const ChoosePath = lazy(() => import("@/pages/ChoosePath"));
 const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
+const BecomeProviderResume = lazy(() => import("@/pages/BecomeProviderResume"));
 const ProviderRejected = lazy(() => import("@/pages/ProviderRejected"));
 const StaffPending = lazy(() => import("@/pages/StaffPending"));
 const StaffRejected = lazy(() => import("@/pages/StaffRejected"));
@@ -542,6 +543,7 @@ const TrackMyPetLive = lazy(() => import("@/pages/WalkTracking"));
 // Provider OS — Full Operating System
 const ProviderOS = lazy(() => import("@/pages/provider-os/ProviderOS"));
 const ProviderHome = lazy(() => import("@/pages/ProviderHome"));
+const ProviderToday = lazy(() => import("@/pages/ProviderToday"));
 
 // E-Signature System
 
@@ -660,42 +662,6 @@ class RouteErrorBoundary extends Component<{ children: ReactNode; routeName: str
 }
 
 /**
- * Issue #153 PR-BPV-1 — Become Provider straight-through redirect helper.
- *
- * Replaces the inline closure that unconditionally redirected to
- * /sign-in?redirect=/provider-onboarding regardless of auth state.
- * That pattern caused a visible flash to the SignIn chrome and fed
- * into the post-login decider race (diagnostic 4404078588 V3).
- *
- * Behaviour:
- *   • loading      → render nothing for ~50ms while auth resolves
- *                    (better than flashing /sign-in to a signed-in user)
- *   • user signed-in → Redirect directly to /provider-onboarding
- *   • anonymous    → Redirect to /sign-in?redirect=… (canonical anon flow)
- *
- * Routing-only. No auth contract change, no whoami change, no schema,
- * no money, no BookingEngine, no K9000/Nayax/Tranzila.
- */
-function BecomeProviderRedirect() {
-  const { user, loading } = useFirebaseAuth();
-  const allowedTypes = new Set([
-    "walker", "sitter", "driver", "trainer", "station_operator", "pet_trek",
-  ]);
-  const rawType =
-    typeof window !== "undefined"
-      ? new URLSearchParams(window.location.search).get("type")
-      : null;
-  const safeType = rawType && allowedTypes.has(rawType) ? rawType : null;
-  const redirectTarget = safeType
-    ? `/provider-onboarding?type=${encodeURIComponent(safeType)}`
-    : "/provider-onboarding";
-
-  if (loading) return null;
-  if (user) return <Redirect to={redirectTarget} />;
-  return <Redirect to={`/sign-in?redirect=${encodeURIComponent(redirectTarget)}`} />;
-}
-
-/**
  * PR Phase A (2026-05-16): /apply-provider and /join-team are duplicate
  * legacy entry points for becoming a provider.
  * Both redirect to the canonical /provider-onboarding. Routes remain
@@ -706,6 +672,29 @@ function BecomeProviderRedirect() {
 function LegacyProviderRouteRedirect() {
   const search = typeof window !== "undefined" ? window.location.search : "";
   return <Redirect to={`/provider-onboarding${search}`} />;
+}
+
+/**
+ * PR-MOBILE-NAV-BODY-PADDING (2026-08-15) — fire-order item 9.
+ *
+ * Toggle `data-pw-mobile-nav="on"` on <html> whenever the MobileBottomNav
+ * is mounted. The paired CSS rule in client/src/index.css keys off this
+ * attribute to add body padding (56px + safe-area) on mobile so the fixed
+ * nav does not overlay page CTAs on routes that don't wrap in <Layout>
+ * (Layout adds its own pb-16). Cleaned up on unmount / disable so
+ * immersive routes (auth, KYC, onboarding) never carry the padding.
+ */
+function MobileNavBodyPaddingToggle({ enabled }: { enabled: boolean }) {
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    const root = document.documentElement;
+    if (enabled) {
+      root.setAttribute("data-pw-mobile-nav", "on");
+      return () => root.removeAttribute("data-pw-mobile-nav");
+    }
+    root.removeAttribute("data-pw-mobile-nav");
+  }, [enabled]);
+  return null;
 }
 
 function Router({ language, onLanguageChange }: { language: Language; onLanguageChange: (lang: Language) => void }) {
@@ -1903,7 +1892,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <Suspense fallback={<PageLoader />}>
-                <TrackMyPetLive language={language} onLanguageChange={handleLanguageChange} />
+                <TrackMyPetLive />
               </Suspense>
             </RequireAuth>
           )}
@@ -1942,6 +1931,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <ProviderHome />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* PR-PROVIDER-TODAY-DASHBOARD 2026-08-18 — WhatIDog-benchmark focused
+            provider surface: one state-aware primary CTA per the CEO
+            §"Provider TODAY" spec. Existing /provider/home + /provider-os
+            dashboards remain unchanged; this is the "focus mode" entry. */}
+        <Route path="/provider/today">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderToday />
               </Suspense>
             </RoleProtectedRoute>
           )}
@@ -2261,7 +2264,7 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/shared-services/impact">
           {() => (
             <Suspense fallback={<PageLoader />}>
-              <SharedServicesImpact language={language} />
+              <SharedServicesImpact />
             </Suspense>
           )}
         </Route>
@@ -3058,20 +3061,25 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         </Route>
         <Route path="/become-provider">
           {() => {
-            // Issue #153 PR-BPV-1 — Become Provider straight-through.
-            // BEFORE: this handler unconditionally returned a Redirect to
-            // /sign-in?redirect=/provider-onboarding for EVERY visitor,
-            // including signed-in users. The /sign-in chrome flashed,
-            // then SignIn forwarded back to /provider-onboarding, then
-            // the post-login decider race (V3 in diagnostic 4404078588)
-            // overwrote that to /home. The result on iPhone Safari was
-            // "Become Provider appears for ~1s then disappears."
-            // AFTER: branch on auth state — signed-in users redirect
-            // directly to /provider-onboarding (no /sign-in detour),
-            // anonymous users still get the SignIn flow with the
-            // canonical ?redirect= param. Routing-only fix; no auth
-            // contract change, no whoami change, no schema, no money.
-            return <BecomeProviderRedirect />;
+            // 2026-08-18 (CEO §35.5 / §8): state-aware resume router.
+            // BEFORE (PR-BPV-1, still correct in principle): branched on
+            // auth state only. Signed-in users were unconditionally sent
+            // to /provider-onboarding regardless of their existing
+            // application state — a user with an "approved" application
+            // saw the onboarding wizard again; a "pending_review" user
+            // saw the intake form instead of their pending screen.
+            // AFTER: BecomeProviderResume reads /api/provider-applications/my
+            // (server authority) and routes:
+            //   null/404      → /provider-onboarding (new draft)
+            //   draft         → /provider-onboarding (resume)
+            //   pending_review/under_review → /provider/pending
+            //   approved      → /provider/today (CEO benchmark surface)
+            //   rejected      → /provider/rejected
+            //   withdrawn     → /provider-onboarding (reapply)
+            // Anonymous → /sign-in with the canonical ?redirect= back
+            // to /become-provider so the resume decision runs post-login.
+            // Routing-only; no auth contract change, no schema, no money.
+            return <BecomeProviderResume />;
           }}
         </Route>
         <Route path="/provider-onboarding">
@@ -4259,6 +4267,15 @@ console.log("Build: 1769350182889");
                   bleeding behind the iOS keyboard, capturing taps meant
                   for form fields. */}
               {showMobileNav && <MobileBottomNav />}
+              {/* PR-MOBILE-NAV-BODY-PADDING (2026-08-15) — fire-order item 9.
+                  The nav is `position: fixed` and overlays the bottom of the
+                  viewport. Pages that don't wrap in <Layout> (e.g. /egift,
+                  /booking) had NO reserved bottom space and their primary CTA
+                  was covered by the nav on mobile. Toggle a root data attr
+                  that a CSS rule in index.css keys off to add body padding
+                  ONLY on mobile ONLY when the nav is present. Desktop and
+                  immersive routes are unaffected. */}
+              <MobileNavBodyPaddingToggle enabled={showMobileNav} />
           </AuthProvider>
           
           {/* PWA "add to home screen" prompt REMOVED (CEO 2026-06-27): PetWash is a real
@@ -4280,7 +4297,18 @@ console.log("Build: 1769350182889");
               banner inside the native apps is website furniture leaking into a
               different product (CEO two-app spec); the apps collect their own
               consents at signup/onboarding. Same gating as the promo popup. */}
-          {!isNativeApp && (
+          {/* PR-COOKIE-CONSENT-IMMERSIVE-GATE (2026-08-15) — fire-order
+              item 58. Cookie banner was only gated on !isNativeApp; it
+              still rendered on /signup, /signin, /verify-email, /kyc,
+              /provider-onboarding, /admin/login-v2 and every other
+              immersive route, where it can cover the primary CTA (or
+              worse, sit on top of the OTP keyboard on iOS Safari).
+              Add the same !isImmersive gate the promo popup + floating
+              widgets already use. The consent choice for anonymous
+              visitors can be captured on the very first non-immersive
+              page they land on (homepage, /locations, /egift, etc.)
+              rather than the moment they hit the funnel. */}
+          {!isNativeApp && !isImmersive && (
             <CookieConsent
               language={currentLanguage}
               onOpenManager={() => setIsConsentManagerOpen(true)}

@@ -136,7 +136,10 @@ export const translations: TranslationStrings = {
   'giftCards.yourEmail': { en: 'Your Email', he: 'האימייל שלך', ar: 'بريدك الإلكتروني', ru: 'Ваш e-mail', fr: 'Votre e-mail', es: 'Tu correo' },
   'giftCards.continuePayment': { en: 'Continue to Payment', he: 'המשך לתשלום', ar: 'متابعة الدفع', ru: 'Перейти к оплате', fr: 'Continuer vers le paiement', es: 'Continuar al pago' },
   'giftCards.terms': { en: '📋 Terms & Conditions:', he: '📋 תנאים והגבלות:', ar: '📋 الشروط والأحكام:', ru: '📋 Условия использования:', fr: '📋 Termes et conditions:', es: '📋 Términos y condiciones:' },
-  'giftCards.term1': { en: 'Gift cards valid for 24 months', he: 'תווי שי תקפים ל-24 חודשים', ar: 'القسائم صالحة لمدة 24 شهرًا', ru: 'Ваучеры действительны 24 месяца', fr: 'Bons valables 24 mois', es: 'Vales válidos por 24 meses' },
+  // PR-EGIFT-EXPIRY-TRUTH (2026-08-15) — aligned to the enforced 12-month
+  // backend default (see server/routes/wallet.ts:259, google-wallet.ts:148,
+  // gift-cards.ts:644 + 769). The pre-fix 24-month copy over-promised.
+  'giftCards.term1': { en: 'Gift cards valid for 12 months', he: 'תווי שי תקפים ל-12 חודשים', ar: 'القسائم صالحة لمدة 12 شهرًا', ru: 'Ваучеры действительны 12 месяцев', fr: 'Bons valables 12 mois', es: 'Vales válidos por 12 meses' },
   'giftCards.term2': { en: 'Redeemable at all K9000 stations', he: 'ניתן למימוש בכל תחנות K9000', ar: 'قابلة للاسترداد في جميع محطات K9000', ru: 'Действует на всех станциях K9000', fr: 'Valable dans toutes les stations K9000', es: 'Canjeable en todas las estaciones K9000' },
   'giftCards.term3': { en: 'No refunds - store credit only', he: 'אין החזר כספי - רק זיכוי', ar: 'لا مبالغ مستردة - رصيد المتجر فقط', ru: 'Без возврата - только кредит магазина', fr: 'Pas de remboursement - crédit magasin uniquement', es: 'Sin reembolsos - solo crédito en tienda' },
   'giftCards.term4': { en: 'QR code will be sent via email', he: 'קוד QR ייש לח באימייל', ar: 'سيتم إرسال رمز QR عبر البريد الإلكتروني', ru: 'QR-код будет отправлен по электронной почте', fr: 'Le code QR sera envoyé par e-mail', es: 'El código QR se enviará por correo' },
@@ -2156,7 +2159,11 @@ export const translations: TranslationStrings = {
   'privilege.verifiedBadge': { en: 'Verified Members Only', he: 'לחברים מאומתים בלבד', ar: 'للأعضاء المعتمدين فقط', ru: 'Только для проверенных членов', fr: 'Membres vérifiés uniquement', es: 'Solo miembros verificados' },
   'privilege.benefitsTitle': { en: 'Exclusive Member Benefits', he: 'הטבות בלעדיות לחברים', ar: 'مزايا حصرية للأعضاء', ru: 'Эксклюзивные преимущества для членов', fr: 'Avantages exclusifs pour les membres', es: 'Beneficios exclusivos para miembros' },
   'privilege.benefit1': { en: 'Priority booking at all ⁦PetWash™⁩ stations', he: 'הזמנה מועדפת בכל תחנות ⁦PetWash™⁩', ar: 'حجز ذو أولوية في جميع محطات ⁦PetWash™⁩', ru: 'Приоритетное бронирование на всех станциях ⁦PetWash™⁩', fr: 'Réservation prioritaire dans toutes les stations ⁦PetWash™⁩', es: 'Reserva prioritaria en todas las estaciones ⁦PetWash™⁩' },
-  'privilege.benefit2': { en: 'Earn points on every service', he: 'צבירת נקודות על כל שירות', ar: 'اكسب نقاطًا على كل خدمة', ru: 'Начисление баллов за каждую услугу', fr: 'Gagnez des points sur chaque service', es: 'Gana puntos en cada servicio' },
+  // PR-LOYALTY-COPY-TRUTH (2026-08-15) — fire-order item 39. Backend awards
+  // points via awardLoyaltyPoints only from booking-requests (sitter/walker),
+  // Nayax K9000 washes, and monyx card events. eGift purchase does NOT
+  // award points today. Aligned to the honest scope: eligible services.
+  'privilege.benefit2': { en: 'Earn points on eligible services', he: 'צבירת נקודות בשירותים מזכים', ar: 'اكسب نقاطًا على الخدمات المؤهلة', ru: 'Начисление баллов за подходящие услуги', fr: 'Gagnez des points sur les services éligibles', es: 'Gana puntos en servicios elegibles' },
   'privilege.benefit3': { en: 'Birthday rewards for you and your pet', he: 'מתנות יום הולדת לך ולחיית המחמד שלך', ar: 'مكافآت أعياد الميلاد لك ولحيوانك الأليف', ru: 'Подарки на день рождения для вас и вашего питомца', fr: 'Récompenses d\'anniversaire pour vous et votre animal', es: 'Recompensas de cumpleaños para ti y tu mascota' },
   'privilege.benefit4': { en: '5% member discount on K9000 station washes', he: '5% הנחת חבר על רחיצות בעמדות K9000', ar: '5٪ خصم للأعضاء على غسيل محطات K9000', ru: '5% скидка для участников на мойки K9000', fr: '5% de réduction membre sur les lavages en station K9000', es: '5% de descuento para miembros en lavados de estación K9000' },
   'privilege.benefit5': { en: 'VIP concierge support', he: 'תמיכת קונסיירז\' אישית', ar: 'دعم كونسيرج شخصي', ru: 'Персональная поддержка консьержа', fr: 'Support conciergerie VIP', es: 'Soporte de conserjería VIP' },
@@ -2186,9 +2193,16 @@ export const translations: TranslationStrings = {
   'privilege.pillarPriority': { en: 'Priority', he: 'עדיפות', ar: 'أولوية', ru: 'Приоритет', fr: 'Priorité', es: 'Prioridad' },
   'privilege.pillarPriorityDesc': { en: 'Early access, preferred booking windows, and dedicated support channels', he: 'גישה מוקדמת, חלונות הזמנה מועדפים וערוצי תמיכה ייעודיים', ar: 'وصول مبكر ونوافذ حجز مفضلة وقنوات دعم مخصصة', ru: 'Ранний доступ, приоритетное бронирование и выделенная поддержка', fr: 'Accès anticipé, créneaux de réservation préférentiels et canaux de support dédiés', es: 'Acceso anticipado, ventanas de reserva preferentes y canales de soporte dedicados' },
   'privilege.pillarRewards': { en: 'Rewards', he: 'תגמולים', ar: 'مكافآت', ru: 'Награды', fr: 'Récompenses', es: 'Recompensas' },
-  'privilege.pillarRewardsDesc': { en: 'Prestige Credits on every service, milestone bonuses, and anniversary recognition', he: 'נקודות Prestige על כל שירות, בונוסים על אבני דרך והכרה ביום הצטרפות', ar: 'رصيد Prestige على كل خدمة ومكافآت الإنجاز والتقدير السنوي', ru: 'Кредиты Prestige за каждую услугу, бонусы за достижения и признание годовщины', fr: 'Crédits Prestige sur chaque service, bonus d\'étapes et reconnaissance d\'anniversaire', es: 'Créditos Prestige en cada servicio, bonos por hitos y reconocimiento de aniversario' },
+  // PR-LOYALTY-COPY-TRUTH — same as benefit2 above. Prestige credits accrue
+  // on eligible services (K9000 washes, sitter/walker bookings, Nayax card).
+  // eGift purchases do NOT accrue points today.
+  'privilege.pillarRewardsDesc': { en: 'Prestige Credits on eligible services, milestone bonuses, and anniversary recognition', he: 'נקודות Prestige בשירותים מזכים, בונוסים על אבני דרך והכרה ביום הצטרפות', ar: 'رصيد Prestige على الخدمات المؤهلة، ومكافآت الإنجاز، والتقدير السنوي', ru: 'Кредиты Prestige за подходящие услуги, бонусы за достижения и признание годовщины', fr: 'Crédits Prestige sur les services éligibles, bonus d\'étapes et reconnaissance d\'anniversaire', es: 'Créditos Prestige en servicios elegibles, bonos por hitos y reconocimiento de aniversario' },
   'privilege.pillarStatus': { en: 'Status', he: 'סטטוס', ar: 'المكانة', ru: 'Статус', fr: 'Statut', es: 'Estatus' },
-  'privilege.pillarStatusDesc': { en: 'Five distinct tiers of recognition, from Member to the exclusive Black Reserve', he: 'חמש דרגות ייחודיות של הכרה, מחבר ועד Black Reserve הבלעדי', ar: 'خمسة مستويات مميزة من التقدير، من عضو إلى Black Reserve الحصري', ru: 'Пять уровней признания: от Участника до эксклюзивного Black Reserve', fr: 'Cinq niveaux de reconnaissance distincts, de Membre au prestigieux Black Reserve', es: 'Cinco niveles distintos de reconocimiento, desde Miembro hasta el exclusivo Black Reserve' },
+  // PR-LOYALTY-COPY-7-TIERS (2026-08-15) — fire-order item 3. The actual Prestige
+  // structure is SEVEN tiers (Member, Silver, Gold, Platinum, Diamond, Emerald,
+  // Black Reserve) but this pillar copy said "five". Fixed across all 6 locales
+  // to match the real tier count rendered by /loyalty.
+  'privilege.pillarStatusDesc': { en: 'Seven distinct tiers of recognition, from Member to the exclusive Black Reserve', he: 'שבע דרגות ייחודיות של הכרה, מחבר ועד Black Reserve הבלעדי', ar: 'سبع درجات مميزة من التقدير، من عضو إلى Black Reserve الحصري', ru: 'Семь уровней признания: от Участника до эксклюзивного Black Reserve', fr: 'Sept niveaux de reconnaissance distincts, de Membre au prestigieux Black Reserve', es: 'Siete niveles distintos de reconocimiento, desde Miembro hasta el exclusivo Black Reserve' },
   'privilege.tierMember': { en: 'Member', he: 'חבר', ar: 'عضو', ru: 'Участник', fr: 'Membre', es: 'Miembro' },
   'privilege.tierSignature': { en: 'Signature', he: 'Signature', ar: 'Signature', ru: 'Signature', fr: 'Signature', es: 'Signature' },
   'privilege.tierElite': { en: 'Elite', he: 'Elite', ar: 'Elite', ru: 'Elite', fr: 'Elite', es: 'Elite' },

@@ -23,7 +23,7 @@ import { tryClaimWebhookEvent } from '../lib/nayaxWebhookDedup';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
 import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings, users } from '@shared/schema';
-import { eq, sql } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from '../services/googleSheetsIntegration';
@@ -588,8 +588,20 @@ router.post(
         // All three writes are PostgreSQL. Wrapping them in db.transaction()
         // guarantees atomicity: if the escrow update fails, the booking status
         // update also rolls back — no "paid but escrow still pending_payment" drift.
+        //
+        // ATOMIC STATUS GUARD (2026-08-16 audit item 236). The pre-guard
+        // read-then-check at L556 was TOCTOU — two concurrent retries could
+        // both pass the status gate above and both fire the escrow update,
+        // status_history insert, and downstream side effects. Now the UPDATE
+        // itself carries WHERE status='pending_payment' and returns the
+        // affected row count; loser aborts the transaction cleanly.
+        //
+        // Redis dedup at other routes is not used here — this route relies on
+        // paymentIntentId equality (line 540) + the status gate, both of
+        // which race. The atomic UPDATE is the real backstop.
+        let atomicWinner = true;
         await db.transaction(async (tx) => {
-          await tx
+          const flipped = await tx
             .update(bookings)
             .set({
               status: 'pending_confirmation',
@@ -597,7 +609,20 @@ router.post(
               paymentIntentId: payload.transactionId,  // [2] indexed DB column
               updatedAt: new Date(),
             } as any)
-            .where(eq(bookings.id, payload.bookingId));
+            .where(and(
+              eq(bookings.id, payload.bookingId),
+              eq(bookings.status, 'pending_payment'),
+            ))
+            .returning({ id: bookings.id });
+
+          if (flipped.length === 0) {
+            // Another delivery already committed the transition inside the
+            // TOCTOU window between our SELECT (L528) and this UPDATE. Abort
+            // the transaction so the status_history row + escrow write don't
+            // land twice.
+            atomicWinner = false;
+            throw new Error('__nayax_payment_race_lost');
+          }
 
           await tx.insert(bookingStatusHistory).values({
             bookingId: payload.bookingId,
@@ -627,7 +652,20 @@ router.post(
               updatedAt: new Date(),
             } as any)
             .where(eq(escrowHoldings.bookingId, payload.bookingId));
+        }).catch((txErr: any) => {
+          if (txErr?.message === '__nayax_payment_race_lost') {
+            // Sentinel — transaction cleanly aborted; not a real error.
+            return;
+          }
+          throw txErr;
         });
+
+        if (!atomicWinner) {
+          logger.info('[NayaxPaymentWebhook] Race lost — another delivery already flipped the booking; idempotent 200 without re-firing side effects', {
+            bookingId: payload.bookingId, transactionId: payload.transactionId,
+          });
+          return res.status(200).json({ received: true, note: 'already_paid_race' });
+        }
 
         logger.info('[NayaxPaymentWebhook] ✅ Atomic transaction committed — booking paid, escrow held', {
           bookingId: payload.bookingId,
@@ -1352,8 +1390,17 @@ router.post(
           note: `Payment of ₪${(bookingTotalCents / 100).toFixed(2)} confirmed by Nayax. Held in 72-hour escrow. txId: ${payload.transactionId}`,
         });
 
-        // Atomic DB write: confirmed + real transaction ID
-        await db
+        // Atomic DB write: confirmed + real transaction ID, GUARDED on
+        // status='payment_pending' (2026-08-16 audit item 165).
+        // Redis dedup above is best-effort — if Redis is unavailable the
+        // dedup silently no-ops and processing continues. The status gate
+        // right before this UPDATE is a check-then-write race. Two webhook
+        // deliveries (Nayax retries) surviving Redis + the gate could both
+        // fire this UPDATE and downstream side-effects (legacy bridge,
+        // notifications, escrow document update) — double confirmation
+        // + double push. Guarding status in the WHERE makes the flip
+        // atomic — Postgres row-lock ensures exactly one caller wins.
+        const confirmed = await db
           .update(bookingRequestsTable)
           .set({
             status: 'confirmed',
@@ -1362,7 +1409,21 @@ router.post(
             statusHistory,
             updatedAt: new Date(),
           } as any)
-          .where(eq(bookingRequestsTable.requestId, payload.bookingId));
+          .where(and(
+            eq(bookingRequestsTable.requestId, payload.bookingId),
+            eq(bookingRequestsTable.status, 'payment_pending'),
+          ))
+          .returning({ id: bookingRequestsTable.id });
+
+        if (confirmed.length === 0) {
+          // Another webhook delivery already flipped this booking to confirmed
+          // between our status gate and this UPDATE. Return 200 idempotent — do
+          // NOT re-fire the legacy bridge / notifications / etc. below.
+          logger.info('[BookingReqWebhook] Confirmation already committed by another delivery (race) — idempotent 200', {
+            bookingId: payload.bookingId, transactionId: payload.transactionId,
+          });
+          return res.status(200).json({ received: true, note: 'already_confirmed_race' });
+        }
 
         logger.info('[BookingReqWebhook] ✅ Booking confirmed via real Nayax payment', {
           bookingId: payload.bookingId,

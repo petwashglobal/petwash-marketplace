@@ -344,7 +344,7 @@ The platform has a **COMPLETE** authentication system. DO NOT create parallel au
 **Backend:**
 - `server/webauthn/service.ts` (700+ lines) - Complete WebAuthn implementation
 - `server/webauthn/deviceRegistry.ts` - Device management
-- `server/webauthn/csrfProtection.ts` - CSRF protection
+- CSRF protection is app-wide via `doubleCsrfProtection` (from the `csrf-csrf` library), mounted globally in `server/index.ts`. WebAuthn routes are covered by that gate's `/api/webauthn/` skip (WebAuthn ceremonies are inherently CSRF-safe because every step requires a server-issued challenge in a signed cookie AND the authenticator signs over the page origin). (Historical note: `server/webauthn/csrfProtection.ts` was a hand-rolled helper that was never mounted and was deleted 2026-08-15 in PR-AUTH-CSRF-DELETE-DEAD-MIDDLEWARE.)
 
 **Frontend:**
 - `client/src/auth/passkey.ts` - Passkey registration/authentication

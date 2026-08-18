@@ -52,6 +52,21 @@ interface WeatherForecast {
   dataSnapshot?: Record<string, any>;
 }
 
+// Bilingual labels for the wash-schedule status enum. Rendering the raw
+// enum key ("pending"/"completed"/"cancelled") next to the check/hourglass
+// icon shipped programmer-jargon to owners.
+const SCHEDULE_STATUS_LABEL: Record<string, [string, string]> = {
+  pending:   ['Pending',   'ממתין'],
+  completed: ['Completed', 'הושלם'],
+  cancelled: ['Cancelled', 'בוטל'],
+};
+
+function scheduleStatusLabel(status: string, he: boolean): string {
+  const entry = SCHEDULE_STATUS_LABEL[status];
+  if (!entry) return status.charAt(0).toUpperCase() + status.slice(1);
+  return he ? entry[1] : entry[0];
+}
+
 export default function PetCarePlanner({ language = 'en' }: { language?: string }) {
   useSEO(pageSEO.petCarePlanner);
   const isHebrew = language === 'he';
@@ -634,7 +649,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                         variant={schedule.status === 'completed' ? 'default' : 'outline'} 
                         className="px-4 py-2 text-sm font-bold"
                       >
-                        {schedule.status === 'completed' ? '✅' : '⏳'} {schedule.status}
+                        {schedule.status === 'completed' ? '✅' : '⏳'} {scheduleStatusLabel(schedule.status, isHebrew)}
                       </Badge>
                     </div>
                     

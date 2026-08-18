@@ -21,6 +21,7 @@ import { logger } from '../lib/logger';
 import { pool } from '../db';
 import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
+import { resolveProviderBookingActions } from '@shared/lib/providerBookingActions';
 import { releaseSlotLock } from '../lib/marketplaceSlotLock';
 import { dispatchNotification } from '../lib/notificationDispatcher';
 import { walletService } from '../services/WalletService';
@@ -80,9 +81,31 @@ function resolveStatuses(statusParam: string | undefined): string[] | null {
 
 // Converts a booking_requests row to the same shape the V1 API returns (ILS, not cents)
 // so existing POSJobs UI works without change.
+//
+// P1-17 additive fields (2026-08-18): `primaryAction` + `allowedActions`
+// are computed HERE, on the server, from the canonical booking status +
+// minutes-until-start (and, when present, minutes-until-meet-greet). The
+// client picks the button label + icon; it MUST NOT synthesise an action
+// that the server did not list. See shared/lib/providerBookingActions.ts.
 function toV1Shape(row: Record<string, any>) {
   const centsToILS = (c: number | null | undefined) =>
     c != null ? (c / 100).toFixed(2) : null;
+
+  const minutesUntil = (v: unknown): number | null => {
+    if (v == null) return null;
+    const d = v instanceof Date ? v : new Date(v as any);
+    const t = d.getTime();
+    if (!Number.isFinite(t)) return null;
+    return Math.round((t - Date.now()) / 60000);
+  };
+
+  const startDate = row.start_date ?? row.startDate;
+  const meetGreetDate = row.meet_greet_date ?? row.meetGreetDate;
+  const actions = resolveProviderBookingActions({
+    status: row.status,
+    minutesUntilStart: minutesUntil(startDate),
+    minutesUntilMeetGreet: minutesUntil(meetGreetDate),
+  });
 
   return {
     // IDs — use requestId as the public booking reference
@@ -123,6 +146,9 @@ function toV1Shape(row: Record<string, any>) {
     petCount:            row.pet_count ?? row.petCount,
     ownerMessage:        row.owner_message ?? row.ownerMessage,
     providerResponse:    row.provider_response ?? row.providerResponse,
+    // Server-authoritative action gating (CEO §P1-17).
+    primaryAction:       actions.primaryAction,
+    allowedActions:      actions.allowedActions,
     _source:             'booking_requests', // watermark for shadow comparison logging
   };
 }
@@ -1105,6 +1131,144 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
             }),
           );
         }
+      }
+    }
+
+    // ── Customer notification on start (2026-08-18 parity gap fix) ───────────
+    // V1 /:requestId/start (PR #1922) notifies the customer their service began.
+    // V2 was silent. ProviderJobDetail's "Start Job" button calls V2, so a
+    // customer whose provider actually kicked off the walk/sit got zero signal.
+    if (action === 'start') {
+      const ownerId = booking.owner_id as string | undefined;
+      const requestId = booking.request_id as string | undefined;
+      if (ownerId && requestId) {
+        setImmediate(async () => {
+          try {
+            await dispatchNotification({
+              uid: ownerId,
+              type: 'system',
+              title: '🐾 השירות התחיל · Service started — PetWash™',
+              bodyHtml:
+                `<p>הספק דיווח שהשירות עבור הזמנה <strong>${requestId}</strong> החל. תוכלי לעקוב אחרי ההתקדמות באפליקציה.</p>` +
+                `<p>The provider marked the service for booking <strong>${requestId}</strong> as started. You can follow the progress in the app.</p>`,
+              ctaText: 'צפי במעקב חי / View live',
+              ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+              channels: ['inbox', 'email', 'push'],
+              priority: 7,
+              meta: { bookingId: requestId, actionType: 'service_started' },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderDashboardV2] service_started notify failed', { error: notifErr.message });
+          }
+        });
+      }
+    }
+
+    // ── Counterparty notification on cancel (2026-08-18 parity gap fix) ──────
+    // V1 /:requestId/cancel fires superAppNotifications + FCM push. V2 was
+    // silent — a provider using the app to cancel left the customer in the
+    // dark. Notify the customer with inbox + push (email deliberately omitted
+    // — cancel is often followed by an immediate rebook flow; email would
+    // land after the customer's already searching).
+    if (action === 'cancel') {
+      const ownerId = booking.owner_id as string | undefined;
+      const requestId = booking.request_id as string | undefined;
+      if (ownerId && requestId) {
+        setImmediate(async () => {
+          try {
+            await dispatchNotification({
+              uid: ownerId,
+              type: 'system',
+              title: '⚠️ הספק ביטל את ההזמנה · Provider cancelled — PetWash™',
+              bodyHtml:
+                `<p>הספק ביטל את הזמנתך <strong>${requestId}</strong>. אנחנו כאן כדי לעזור לך למצוא ספק חלופי.</p>` +
+                `<p>The provider cancelled your booking <strong>${requestId}</strong>. We're here to help you find another provider.</p>`,
+              ctaText: 'מצאי ספק חלופי / Find another provider',
+              ctaUrl: `https://petwash.co.il/marketplace`,
+              channels: ['inbox', 'push'],
+              priority: 8,
+              meta: { bookingId: requestId, actionType: 'provider_cancelled' },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderDashboardV2] provider_cancelled notify failed', { error: notifErr.message });
+          }
+        });
+      }
+    }
+
+    // ── Customer notification on complete (2026-08-18 parity gap fix) ────────
+    // V1 booking-requests.ts /complete fires THREE notifications when the
+    // provider marks a service done: an inbox row (booking_completion_approval),
+    // the branded sendConfirmEndOfStay email (Rover/MadPaws parity), and an
+    // SMS wire. This V2 handler is what ProviderJobDetail actually calls —
+    // but until now V2 flipped status silently, so ANY provider using the app
+    // marked jobs complete without telling the customer to confirm. Mirror
+    // the V1 notification block (setImmediate + fail-soft).
+    if (action === 'complete') {
+      const ownerId = booking.owner_id as string | undefined;
+      const requestId = booking.request_id as string | undefined;
+      if (ownerId && requestId) {
+        // 1) Inbox row — matches V1 booking_completion_approval shape
+        setImmediate(async () => {
+          try {
+            await db.insert(superAppNotifications).values({
+              userId: ownerId,
+              type: 'booking_completion_approval',
+              title: '✅ השירות הושלם — אשרי את ההזמנה',
+              titleHe: '✅ השירות הושלם — אשרי את ההזמנה',
+              body: 'הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.',
+              bodyHe: 'הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.',
+              actionUrl: `/booking/confirmation/${requestId}?review=1`,
+              actionType: 'approve_completion',
+              channels: ['in_app'],
+              isRead: false,
+              createdAt: new Date(),
+            } as any);
+          } catch (notifErr: any) {
+            logger.warn('[ProviderDashboardV2] Completion approval inbox row failed', { error: notifErr.message, requestId });
+          }
+        });
+
+        // 2) Branded HE+EN "Confirm end of stay" email (Rover/MadPaws parity)
+        setImmediate(() => {
+          import('../email/sendConfirmEndOfStay')
+            .then(({ sendConfirmEndOfStay }) => sendConfirmEndOfStay({
+              requestId,
+              ownerId,
+              providerId: user.uid,
+              serviceType: booking.service_type,
+              petDetails: undefined,
+              endDate: booking.end_date,
+              serviceCompletedAt: now,
+            }))
+            .catch(() => {});
+        });
+
+        // 3) SMS wire (email covered by branded template above — matches
+        //    PR-DEDUPE-COMPLETE-EMAIL discipline; no double-send)
+        setImmediate(async () => {
+          try {
+            await dispatchNotification({
+              uid: ownerId,
+              type: 'system',
+              title: 'PetWash — אשרו את ההזמנה תוך 24 שעות / Confirm within 24h',
+              bodyHtml:
+                `<p>הספק דיווח שהשירות עבור הזמנה <strong>${requestId}</strong> הסתיים. ` +
+                `אשרו כדי לשחרר את התשלום, או פתחו מחלוקת <strong>תוך 24 שעות</strong> — ` +
+                `אחרת ההזמנה תאושר אוטומטית והתשלום ישוחרר לספק.</p>` +
+                `<p>Your provider marked booking <strong>${requestId}</strong> complete. ` +
+                `Confirm to release payment, or open a dispute <strong>within 24 hours</strong> — ` +
+                `otherwise it auto-approves and payment is released.</p>`,
+              ctaText: 'אשרו / Confirm',
+              ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}?review=1`,
+              channels: ['sms'],
+              priority: 8,
+              meta: { bookingId: requestId, actionType: 'approve_completion' },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderDashboardV2] provider_marked_complete SMS failed (non-fatal)', { error: notifErr.message });
+          }
+        });
       }
     }
 
