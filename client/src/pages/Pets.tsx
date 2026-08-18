@@ -400,7 +400,10 @@ export default function Pets() {
   const createMutation = useMutation({
     mutationFn: async (data: PetFormData) => {
       if (!authToken) throw new Error('Not authenticated');
-      return apiRequest('/api/pets', {
+      // apiRequest returns a Response, so we must .json() before touching the
+      // body. Reading `response.pet` on the raw Response silently returns
+      // undefined and the trackPetAdded analytics event never fires.
+      const res = await apiRequest('/api/pets', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${authToken}`,
@@ -408,14 +411,16 @@ export default function Pets() {
         },
         body: JSON.stringify(data),
       });
+      return await res.json();
     },
     onSuccess: (response: any, variables: PetFormData) => {
       queryClient.invalidateQueries({ queryKey: ['/api/pets'] });
-      
+
       // Track pet added event
       const user = auth.currentUser;
-      if (user && response?.pet) {
-        trackPetAdded(user.uid, response.pet.id, variables.species, variables.name);
+      const petId = response?.pet?.id ?? response?.id;
+      if (user && petId) {
+        trackPetAdded(user.uid, petId, variables.species, variables.name);
       }
       
       toast({
