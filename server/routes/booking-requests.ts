@@ -2507,6 +2507,67 @@ router.get('/:requestId/sumit-return', async (req, res) => {
       logger.warn('[BookingRequests] SUMIT legacy confirm write-back failed (non-blocking)', { requestId, error: bridgeErr?.message });
     }
 
+    // 2026-08-18 audit fix: parity with the Nayax webhook, which fires
+    // dispatchNotifications to BOTH parties after flipping to 'confirmed'.
+    // The SUMIT rail was silently confirming — customer never got a payment
+    // receipt, provider never learned their booking was paid. Fire-and-forget
+    // + fail-soft; the redirect below never waits on this.
+    const amountIls = (booking.totalCents / 100).toFixed(2);
+    setImmediate(async () => {
+      try {
+        // Customer: payment receipt
+        if (booking.ownerId) {
+          const [ownerRow] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, booking.ownerId)).limit(1);
+          if (ownerRow) {
+            await dispatchNotification({
+              uid: booking.ownerId,
+              email: ownerRow.email || undefined,
+              phone: ownerRow.phone || undefined,
+              type: 'receipt',
+              title: '✅ התשלום עבר — ההזמנה שלך מאושרת / Payment received — booking confirmed',
+              bodyHtml:
+                `<p>סכום של <strong>₪${amountIls}</strong> חויב בהצלחה. ההזמנה שלך <strong>${requestId}</strong> אושרה — הכספים מוחזקים במסלול מאובטח עד לסיום השירות.</p>` +
+                `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+                `<p><strong>₪${amountIls}</strong> was charged successfully. Booking <strong>${requestId}</strong> is confirmed — funds are held in secure escrow until the service is complete.</p>`,
+              ctaText: 'צפה בהזמנה / View booking',
+              ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+              channels: ['inbox', 'email', 'push'],
+              priority: 7,
+              meta: { bookingId: requestId, amount: parseFloat(amountIls), currency: 'ILS' },
+            });
+          }
+        }
+        // Provider: "customer just paid, prepare to deliver"
+        if (booking.providerId) {
+          const [provRow] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, booking.providerId)).limit(1);
+          if (provRow) {
+            await dispatchNotification({
+              uid: booking.providerId,
+              email: provRow.email || undefined,
+              phone: provRow.phone || undefined,
+              type: 'system',
+              title: '💰 הלקוח שילם — ההזמנה מאושרת / Customer paid — booking confirmed',
+              bodyHtml:
+                `<p>הלקוח שילם <strong>₪${amountIls}</strong> עבור הזמנה <strong>${requestId}</strong>. הכספים מוחזקים במסלול מאובטח וישוחררו לאחר סיום השירות.</p>` +
+                `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+                `<p>Customer paid <strong>₪${amountIls}</strong> for booking <strong>${requestId}</strong>. Funds are held in secure escrow and will be released to you after service completion.</p>`,
+              ctaText: 'צפה בהזמנה / View booking',
+              ctaUrl: `https://petwash.co.il/provider/jobs/${requestId}`,
+              channels: ['inbox', 'email', 'push'],
+              priority: 7,
+              meta: { bookingId: requestId, amount: parseFloat(amountIls), currency: 'ILS' },
+            });
+          }
+        }
+      } catch (notifyErr: any) {
+        logger.warn('[BookingRequests] SUMIT confirm notifications failed (non-blocking)', {
+          requestId, error: notifyErr?.message,
+        });
+      }
+    });
+
     return ok();
   } catch (err: any) {
     logger.error('[BookingRequests] SUMIT return handler error', { requestId, error: err?.message });
