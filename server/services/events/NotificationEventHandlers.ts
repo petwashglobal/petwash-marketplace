@@ -496,6 +496,16 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
+        const idempotencyKey = `provider_approved:${event.data.providerId}:${event.userId}`;
+        const claimed = await claimIdempotencyKey(idempotencyKey);
+        if (!claimed) {
+          logger.info('[NotificationEventHandler] provider_approved already dispatched — skipping', {
+            providerId: event.data.providerId,
+            userId: event.userId,
+            idempotencyKey,
+          });
+          return;
+        }
         await NotificationService.sendNotification({
           templateKey: 'provider_approved',
           userId: event.userId,
@@ -525,6 +535,16 @@ export function registerNotificationEventHandlers() {
 
     try {
       if (event.userId) {
+        const idempotencyKey = `provider_rejected:${event.data.providerId}:${event.userId}`;
+        const claimed = await claimIdempotencyKey(idempotencyKey);
+        if (!claimed) {
+          logger.info('[NotificationEventHandler] provider_rejected already dispatched — skipping', {
+            providerId: event.data.providerId,
+            userId: event.userId,
+            idempotencyKey,
+          });
+          return;
+        }
         await NotificationService.sendNotification({
           templateKey: 'provider_rejected',
           userId: event.userId,
