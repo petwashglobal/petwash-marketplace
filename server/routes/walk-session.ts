@@ -11,9 +11,13 @@ router.post('/check-in', requireAuth, async (req, res) => {
     const schema = z.object({
       walkId: z.number(),
       location: z.object({
-        latitude: z.number(),
-        longitude: z.number(),
-        accuracy: z.number(),
+        // P1-9 hardening (2026-08-18): reject NaN/Infinity, off-globe
+        // coordinates, and impossible accuracy. Applied to check-in +
+        // check-out schemas (gps-update is validated separately below
+        // with an additional timestamp bound).
+        latitude: z.number().finite().min(-90).max(90),
+        longitude: z.number().finite().min(-180).max(180),
+        accuracy: z.number().finite().min(0).max(10_000),
       }),
       deviceInfo: z.string().optional().default('unknown'),
     });
@@ -32,9 +36,8 @@ router.post('/check-in', requireAuth, async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('[WALK SESSION] Check-in error:', error);
-    res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to check in',
-    });
+    // P1-15 pattern: never echo error.message.
+    res.status(400).json({ error: 'Failed to check in' });
   }
 });
 
@@ -44,9 +47,13 @@ router.post('/check-out', requireAuth, async (req, res) => {
     const schema = z.object({
       walkId: z.number(),
       location: z.object({
-        latitude: z.number(),
-        longitude: z.number(),
-        accuracy: z.number(),
+        // P1-9 hardening (2026-08-18): reject NaN/Infinity, off-globe
+        // coordinates, and impossible accuracy. Applied to check-in +
+        // check-out schemas (gps-update is validated separately below
+        // with an additional timestamp bound).
+        latitude: z.number().finite().min(-90).max(90),
+        longitude: z.number().finite().min(-180).max(180),
+        accuracy: z.number().finite().min(0).max(10_000),
       }),
       totalDistance: z.number(), // meters
       totalDuration: z.number(), // seconds
@@ -77,22 +84,48 @@ router.post('/check-out', requireAuth, async (req, res) => {
     res.json(result);
   } catch (error) {
     console.error('[WALK SESSION] Check-out error:', error);
-    res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to check out',
-    });
+    // P1-15 pattern: never echo error.message.
+    res.status(400).json({ error: 'Failed to check out' });
   }
 });
 
-// Update GPS location during active walk
+// Update GPS location during active walk.
+//
+// P1-9 hardening (2026-08-18): the raw z.number() accepted NaN,
+// Infinity, out-of-globe coordinates, negative accuracy, and any
+// timestamp (including years-in-the-future). A spoofed device — or a
+// bug on the walker app — could poison the location trail and inflate
+// distance / route displays. Now:
+//   • latitude  ∈ [-90, 90] (finite)
+//   • longitude ∈ [-180, 180] (finite)
+//   • accuracy  ∈ [0, 10_000] metres (finite; 10 km is already a
+//                 laughable GPS reading — anything worse means the
+//                 signal is unusable)
+//   • timestamp: rejected if > 5 min in the future (clock skew tolerance)
+//                and > 6 h in the past (stale replay guard). 6 h is the
+//                walk-day slack; §P1-10 sequence-ID dedup is a schema
+//                change and lives in a separate PR.
+// Also: 400 body is now generic — never echo `error.message` (P1-15
+// pattern applied to walk-session too).
 router.post('/gps-update', requireAuth, async (req, res) => {
   try {
+    const now = Date.now();
     const schema = z.object({
-      walkId: z.number(),
+      walkId: z.number().int().positive(),
       location: z.object({
-        latitude: z.number(),
-        longitude: z.number(),
-        accuracy: z.number(),
-        timestamp: z.string().transform((val) => new Date(val)),
+        latitude: z.number().finite().min(-90).max(90),
+        longitude: z.number().finite().min(-180).max(180),
+        accuracy: z.number().finite().min(0).max(10_000),
+        timestamp: z.string().transform((val) => new Date(val)).refine(
+          (d) => {
+            const t = d.getTime();
+            if (!Number.isFinite(t)) return false;
+            const futureSkew = 5 * 60 * 1000;   // 5 minutes forward
+            const pastLimit = 6 * 60 * 60 * 1000; // 6 hours back
+            return t <= now + futureSkew && t >= now - pastLimit;
+          },
+          { message: 'timestamp out of range' },
+        ),
       }),
     });
 
@@ -102,15 +135,13 @@ router.post('/gps-update', requireAuth, async (req, res) => {
     await walkSessionService.updateGPSLocation(
       data.walkId,
       walkerId,
-      data.location
+      data.location,
     );
 
     res.json({ success: true });
   } catch (error) {
     console.error('[WALK SESSION] GPS update error:', error);
-    res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to update GPS',
-    });
+    res.status(400).json({ error: 'Failed to update GPS' });
   }
 });
 
@@ -139,9 +170,8 @@ router.post('/vital-update', requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (error) {
     console.error('[WALK SESSION] Vital data update error:', error);
-    res.status(400).json({
-      error: error instanceof Error ? error.message : 'Failed to update vital data',
-    });
+    // P1-15 pattern: never echo error.message.
+    res.status(400).json({ error: 'Failed to update vital data' });
   }
 });
 
@@ -197,9 +227,7 @@ router.get('/owner/active-walks', requireAuth, async (req, res) => {
     });
   } catch (error) {
     console.error('[WALK SESSION] Get owner active walks error:', error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to get active walks',
-    });
+    res.status(500).json({ error: 'Failed to get active walks' });
   }
 });
 
@@ -226,9 +254,7 @@ router.get('/owner/:walkId/live-location', requireAuth, async (req, res) => {
     res.json(liveLocation);
   } catch (error) {
     console.error('[WALK SESSION] Get owner live location error:', error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to get live location',
-    });
+    res.status(500).json({ error: 'Failed to get live location' });
   }
 });
 
