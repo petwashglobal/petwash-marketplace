@@ -22,10 +22,11 @@
  * §35.10). This is the compact "live pulse" widget that fits anywhere.
  */
 
+import { Link } from 'wouter';
 import { useLanguage } from '@/lib/languageStore';
 import { useServiceSession } from '@/hooks/useServiceSession';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Activity, MapPin, CheckCircle2, XCircle, Clock } from 'lucide-react';
+import { Activity, MapPin, CheckCircle2, XCircle, Clock, ChevronRight } from 'lucide-react';
 import type { ServiceSessionDTO } from '@shared/lib/serviceSession';
 
 export interface LiveServiceCardProps {
@@ -49,16 +50,48 @@ export function LiveServiceCard({
   }
   if (error || !session) return null;
 
+  // Only make the card tap-through when the session is worth watching.
+  // For scheduled/cancelled statuses there is nothing to drill into.
+  const canDrillDown = session.isActive || session.status === 'completed';
+  const liveHref = `/booking/${encodeURIComponent(bookingRef)}/live`;
+  const chevron = <ChevronRight className={`h-4 w-4 text-gray-400 ${isHe ? 'rotate-180' : ''}`} />;
+
+  const inner = (
+    <>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex-1 min-w-0">
+          <StatusRow session={session} isHe={isHe} testId={testId} />
+          {session.isActive && (
+            <LastPingRow session={session} isHe={isHe} testId={testId} />
+          )}
+        </div>
+        {canDrillDown && chevron}
+      </div>
+    </>
+  );
+
+  const baseClass = `block rounded-lg border border-gray-200 bg-white p-3 ${className}`;
+
+  if (canDrillDown) {
+    return (
+      <Link
+        href={liveHref}
+        className={`${baseClass} transition hover:border-gray-300 hover:bg-gray-50`}
+        data-testid={testId}
+        aria-label={isHe ? 'פתח מעקב חי' : 'Open live tracking'}
+      >
+        <div dir={isHe ? 'rtl' : 'ltr'}>{inner}</div>
+      </Link>
+    );
+  }
+
   return (
     <div
       dir={isHe ? 'rtl' : 'ltr'}
-      className={`rounded-lg border border-gray-200 bg-white p-3 ${className}`}
+      className={baseClass}
       data-testid={testId}
     >
-      <StatusRow session={session} isHe={isHe} testId={testId} />
-      {session.isActive && (
-        <LastPingRow session={session} isHe={isHe} testId={testId} />
-      )}
+      {inner}
     </div>
   );
 }
