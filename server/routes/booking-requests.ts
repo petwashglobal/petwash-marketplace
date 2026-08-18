@@ -1316,6 +1316,14 @@ router.get('/:requestId/provider-contact', async (req, res) => {
 router.get('/:requestId', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    // Explicit 401 (2026-08-18): the router is mounted with
+    // optionalFirebaseToken, so an unauth caller previously slipped past
+    // this SELECT + the legacy-id fallback SELECT + the provider-name
+    // lookup, only to hit a misleading 403 at the ownership check below.
+    // Fail closed here — no anon read of any booking-request row (some
+    // fields, e.g. quote_breakdown, are business-sensitive even for
+    // parties not on the booking).
+    if (!userId) return res.status(401).json({ error: 'Authentication required' });
     const { requestId } = req.params;
 
     let [booking] = await db.select()
