@@ -550,7 +550,14 @@ const tierLabels: Record<string, Record<string, string>> = {
   CLASSIC: { en: 'Classic', he: 'קלאסי', ar: 'كلاسيك', ru: 'Классик', fr: 'Classique', es: 'Clásico' },
   PLUS: { en: 'Plus', he: 'פלוס', ar: 'بلس', ru: 'Плюс', fr: 'Plus', es: 'Plus' },
   PREMIUM: { en: 'Premium', he: 'פרימיום', ar: 'بريميوم', ru: 'Премиум', fr: 'Premium', es: 'Premium' },
-  ELITE: { en: 'Maison', he: 'מזון', ar: 'ميزون', ru: 'Мезон', fr: 'Maison', es: 'Maison' },
+  // PR-EGIFT-1000-PRODUCT-NAME (2026-08-15) — fire-order item 4. The ₪1000
+  // top card was labelled `Maison` in English and `מזון` (which means "food"
+  // in Hebrew) in Hebrew — a translation defect. The homepage calls the
+  // equivalent top product `יוקרה` ("Luxury"). Unify all locales on the
+  // Luxury/יוקרה family so the eGift page matches the homepage. Internal
+  // tier key `ELITE` is unchanged (used for card image lookup + backend SKU
+  // mapping); only the DISPLAY string changes.
+  ELITE: { en: 'Luxury', he: 'יוקרה', ar: 'فخامة', ru: 'Роскошь', fr: 'Luxe', es: 'Lujo' },
 };
 
 function tx(key: string, lang: string): string {
