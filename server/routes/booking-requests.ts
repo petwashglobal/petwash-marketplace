@@ -3128,12 +3128,34 @@ router.post('/:requestId/arriving', async (req, res) => {
  * - Triggers provider payout after 72 hours
  * - Sends notifications to both parties
  */
+// Input schema for POST /:requestId/confirm — locks the customer-supplied
+// fields before any DB write. Everything is optional (a confirm without a
+// review is legal — the customer just clicks the CTA to release payment).
+// Money-adjacent fields (rating triggers finalStatus 'reviewed' vs
+// 'completed' — display label only, payout amount unchanged) are still
+// hard-bounded here so bad input never reaches the ledger.
+const confirmCompletionInputSchema = z.object({
+  rating: z.number().int().min(1).max(5).optional(),
+  review: z.string().max(2000).optional(),
+  ownerPhone: z.string().max(32).optional(),
+  ownerEmail: z.string().email().max(255).optional(),
+}).passthrough();
+
 async function handleConfirmCompletion(req: any, res: any): Promise<void> {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
-    const { rating, review } = req.body;
+    // Validate customer-supplied input (2026-08-18 hardening): rating must
+    // be 1–5 integer or absent; review capped at 2000 chars. Zero-rating
+    // submits (button pressed without picking stars) now normalize to
+    // "no rating" instead of writing ownerRating="0" to the ledger.
+    const parsed = confirmCompletionInputSchema.safeParse(req.body || {});
+    if (!parsed.success) {
+      return res.status(400).json({ error: 'Invalid confirmation payload' });
+    }
+    const rating = parsed.data.rating;
+    const review = parsed.data.review;
 
     const [booking] = await db.select()
       .from(bookingRequests)
