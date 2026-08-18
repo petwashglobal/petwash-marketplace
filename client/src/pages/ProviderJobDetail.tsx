@@ -22,9 +22,10 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { bookingStatusLabel } from '@shared/lib/bookingStatusLabels';
 import {
   ArrowLeft, ArrowRight, MapPin, Clock, PawPrint, MessageCircle, Camera,
-  CheckCircle2, XCircle, Play, Flag, ChevronRight, ShieldCheck, Loader2, Star,
+  CheckCircle2, XCircle, Play, Flag, ChevronRight, ShieldCheck, Loader2,
 } from 'lucide-react';
 
 const GOLD = '#D4AF37';
@@ -40,30 +41,27 @@ function fmtDate(d: string | null | undefined, he: boolean): string {
   try { return new Date(d).toLocaleString(he ? 'he-IL' : 'en-IL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch { return '—'; }
 }
 
-const STATUS_LABEL: Record<string, { en: string; he: string; tone: string }> = {
-  pending:              { en: 'New request',       he: 'בקשה חדשה',           tone: '#b45309' },
-  // Legacy per-service create status — kept as 'New request' so the label
-  // stays consistent across sitter/walk/academy bookings that create through
-  // the older router before booking-requests takes over. Same shape fix
-  // shipped for CustomerBookings (PR-CUSTOMER-BOOKINGS-STATUS-LABEL).
-  pending_provider:     { en: 'New request',       he: 'בקשה חדשה',           tone: '#b45309' },
-  quote_sent:           { en: 'Quote sent',        he: 'הצעה נשלחה',          tone: '#b45309' },
-  accepted:             { en: 'Accepted',          he: 'אושרה',               tone: GREEN },
-  // Full Meet & Greet lifecycle — provider was seeing the raw enum on any of these.
-  meet_greet_requested: { en: 'Meet & Greet requested', he: 'פגישת היכרות התבקשה', tone: '#b45309' },
-  meet_greet_scheduled: { en: 'Meet & Greet',      he: 'פגישת היכרות',        tone: '#b45309' },
-  meet_greet_completed: { en: 'Meet & Greet done', he: 'פגישה הושלמה',        tone: GREEN },
-  payment_pending:      { en: 'Awaiting payment',  he: 'ממתין לתשלום',        tone: '#b45309' },
-  confirmed:            { en: 'Confirmed',         he: 'מאושרת',              tone: GREEN },
-  in_progress:          { en: 'In progress',       he: 'בביצוע',              tone: '#1d4ed8' },
-  // Provider marked done — waiting on the customer to approve (or 24h auto-approve).
-  provider_marked_complete: { en: 'Awaiting confirmation', he: 'ממתין לאישור הלקוח', tone: '#1d4ed8' },
-  completed:            { en: 'Completed',         he: 'הושלמה',              tone: GREEN },
-  // Reviewed = completed AND customer left a rating; treat as green.
-  reviewed:             { en: 'Reviewed',          he: 'עם ביקורת',            tone: GREEN },
-  declined:             { en: 'Declined',          he: 'נדחתה',                tone: '#991b1b' },
-  cancelled:            { en: 'Cancelled',         he: 'בוטלה',                tone: '#991b1b' },
-  disputed:             { en: 'In review',         he: 'בבדיקה',               tone: '#991b1b' },
+// Status labels come from @shared/lib/bookingStatusLabels — canonical
+// coverage (14 statuses) shared across the app. The local per-status
+// TONE color map below is kept file-local for now because this page's
+// pill uses a bespoke inline color style that would need design sign-off
+// to swap to the canonical badge palette.
+const STATUS_TONE: Record<string, string> = {
+  pending:                  '#b45309',
+  quote_sent:               '#b45309',
+  accepted:                 '#b45309',
+  meet_greet_requested:     '#b45309',
+  meet_greet_scheduled:     '#b45309',
+  meet_greet_completed:     GREEN,
+  payment_pending:          '#b45309',
+  confirmed:                GREEN,
+  in_progress:              '#1d4ed8',
+  provider_marked_complete: '#1d4ed8',
+  completed:                GREEN,
+  reviewed:                 '#6b7280',
+  declined:                 '#991b1b',
+  cancelled:                '#991b1b',
+  disputed:                 '#991b1b',
 };
 
 export default function ProviderJobDetail() {
@@ -93,7 +91,8 @@ export default function ProviderJobDetail() {
 
   const b: any = data?.booking ?? null;
   const status: string = b?.status ?? '';
-  const stl = STATUS_LABEL[status] ?? { en: status || '—', he: status || '—', tone: '#6b7280' };
+  const statusLabel = status ? bookingStatusLabel(status, isHe ? 'he' : 'en') : '—';
+  const statusTone = STATUS_TONE[status] ?? '#6b7280';
 
   const actionMut = useMutation({
     mutationFn: async (action: 'accept' | 'decline' | 'start' | 'complete') => {
@@ -164,8 +163,8 @@ export default function ProviderJobDetail() {
                     <p className="text-white text-lg font-semibold leading-tight">{String(b.serviceType ?? '—').replace(/_/g, ' ')}</p>
                     <p className="text-white/70 text-xs mt-0.5 font-mono">{b.requestId ?? requestId}</p>
                   </div>
-                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium bg-white" style={{ color: stl.tone }}>
-                    {isHe ? stl.he : stl.en}
+                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium bg-white" style={{ color: statusTone }}>
+                    {statusLabel}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-4 text-white/90 text-xs">
@@ -206,46 +205,6 @@ export default function ProviderJobDetail() {
               )}
               {busy && <p className="text-center text-[11px] text-gray-400">{isHe ? 'מעדכן…' : 'Updating…'}</p>}
             </section>
-
-            {/* Customer-confirmed / auto-approved payout panel (2026-08-18):
-                previously the provider saw only a silent label flip when the
-                customer confirmed the service (or the 24h cron auto-approved).
-                Now surface an explicit celebration + payout summary so the
-                provider knows their money is in flight — Rover/MadPaws parity. */}
-            {(status === 'completed' || status === 'reviewed') && (b.customerApprovedAt || b.ownerConfirmedAt) && (
-              <section className="px-4 mt-4" data-testid="provider-payout-released">
-                <div className="rounded-2xl p-4 border border-emerald-200 bg-emerald-50">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                      <p className="text-sm font-semibold text-emerald-900 leading-snug">
-                        {b.customerApprovedAt
-                          ? (isHe ? '✅ הלקוח אישר את השירות' : '✅ Customer confirmed the service')
-                          : (isHe ? '✅ אושר אוטומטית לאחר 24 שעות' : '✅ Auto-approved after 24 hours')}
-                      </p>
-                      <p className="text-xs text-emerald-800 mt-1 leading-relaxed">
-                        {isHe
-                          ? `${ils(b.providerPayoutCents)} שוחררו — יגיעו לחשבונך תוך 72 שעות.`
-                          : `${ils(b.providerPayoutCents)} released — arriving in your account within 72 hours.`}
-                      </p>
-                      {status === 'reviewed' && b.ownerRating && (
-                        <div className="mt-2 inline-flex items-center gap-1 rounded-full bg-amber-100 border border-amber-200 px-2.5 py-0.5 text-[11px] font-semibold text-amber-800">
-                          <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
-                          {isHe
-                            ? `הלקוח נתן ${b.ownerRating}/5`
-                            : `Customer left ${b.ownerRating}/5`}
-                        </div>
-                      )}
-                      {b.ownerReview && (
-                        <p className="text-xs text-emerald-900 mt-2 italic leading-relaxed border-l-2 border-emerald-300 pl-2">
-                          "{b.ownerReview}"
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </section>
-            )}
 
             {/* Customer / location / notes */}
             <section className="px-4 mt-5 space-y-3">
