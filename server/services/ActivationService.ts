@@ -320,5 +320,38 @@ async function _onFullActivation(userId: string, email?: string): Promise<void> 
     aggregateType: 'user', aggregateId: userId, userId,
   });
 
+  // 4. Sync to SUMIT (fire-and-forget, feature-flagged, per CEO 2026-08-16
+  // SUMIT full-service adoption plan — docs/design/2026-08-16-sumit-full-
+  // service-adoption.md). Signup MUST NOT slow down or fail here. The sync
+  // uses SUMIT's SearchMode:"Automatic" so a retry cannot duplicate the
+  // customer. Feature flag SUMIT_CUSTOMER_SYNC_ENABLED gates the call —
+  // defaults to OFF; when off the function is inert.
+  try {
+    const { fireAndForgetSync } = await import('./SumitCustomerService');
+    // Read minimal identity for the SUMIT customer record. Fall back to
+    // conservative defaults — SUMIT accepts them and the record can be
+    // enriched later. Never send national-id / bank / tax fields here.
+    const [profile] = await db.select({
+      email: users.email,
+      phone: users.phone,
+      firstName: users.firstName,
+      lastName: users.lastName,
+    }).from(users).where(eq(users.id, userId)).limit(1);
+    const displayName = [profile?.firstName, profile?.lastName]
+      .filter(Boolean).join(' ').trim() || 'PetWash Member';
+    fireAndForgetSync(userId, {
+      name: displayName,
+      email: profile?.email ?? email,
+      phone: profile?.phone ?? undefined,
+    }, 'signup');
+  } catch (err: any) {
+    // Belt-and-braces: the fire-and-forget wrapper is designed not to throw,
+    // but we still catch here so a bug in the sync module can never break
+    // activation for a real user.
+    logger.warn('[Activation] SUMIT customer sync dispatch failed (non-blocking)', {
+      userId, error: err?.message,
+    });
+  }
+
   logger.info('[Activation] Full activation complete ✅', { userId });
 }
