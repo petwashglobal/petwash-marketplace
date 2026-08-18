@@ -72,8 +72,13 @@ async function processExpiredWalkBookings(): Promise<void> {
         .where(eq(walkBookings.bookingId, booking.bookingId));
     }
 
-    await db.update(walkBookings).set({ status: 'expired', updatedAt: now })
-      .where(eq(walkBookings.bookingId, booking.bookingId));
+    // LANE B R-17 (2026-08-18): conditional UPDATE serializes concurrent
+    // cron workers on the same row. Only the winner (rowCount===1) runs
+    // the chat sync + ops page + log entry — no dup.
+    const claim = await db.update(walkBookings).set({ status: 'expired', updatedAt: now })
+      .where(and(eq(walkBookings.bookingId, booking.bookingId), eq(walkBookings.status, 'pending_provider')));
+    const claimed = (claim as any)?.rowCount ?? (claim as any)?.count ?? 0;
+    if (claimed !== 1) continue;
     await syncChatToBookingStatus(booking.bookingId, 'expired', 'walk_my_pet');
     SystemEventService.bookingStuck('booking_expiry', booking.bookingId, 'pending_provider', 120);
     logger.info('[BookingExpiry] Walk hard-expired', { bookingId: booking.bookingId, attempts });
@@ -115,8 +120,12 @@ async function processExpiredSitterBookings(): Promise<void> {
         .where(eq(sitterBookings.bookingId, booking.bookingId));
     }
 
-    await db.update(sitterBookings).set({ status: 'expired', updatedAt: now })
-      .where(eq(sitterBookings.bookingId, booking.bookingId));
+    // LANE B R-17: conditional UPDATE guards against dup chat sync + ops page
+    // when multiple cron workers race on the same expiry row.
+    const claim = await db.update(sitterBookings).set({ status: 'expired', updatedAt: now })
+      .where(and(eq(sitterBookings.bookingId, booking.bookingId), eq(sitterBookings.status, 'pending_provider')));
+    const claimed = (claim as any)?.rowCount ?? (claim as any)?.count ?? 0;
+    if (claimed !== 1) continue;
     await syncChatToBookingStatus(booking.bookingId, 'expired', 'sitter_suite');
     SystemEventService.bookingStuck('booking_expiry', booking.bookingId, 'pending_provider', 240);
     logger.info('[BookingExpiry] Sitter hard-expired', { bookingId: booking.bookingId, attempts });
@@ -210,6 +219,21 @@ async function processExpiredMarketplaceBookings(): Promise<void> {
 
   try {
     // ── 1. pending_payment > 2h — customer abandoned checkout ────────────────
+    //
+    // LANE B PLAUSIBLE-VERIFY R-17 (2026-08-17): two cron workers running
+    // concurrently (Cloud Run instance count > 1, manual re-invocation,
+    // deploy overlap) would both see the same set of pending_payment rows,
+    // both UPDATE unconditionally, both release the slot, both void the
+    // escrow, and both fire SystemEventService.bookingStuck — duplicate
+    // pages / duplicate slot events / duplicate escrow-transition side
+    // effects.
+    //
+    // Fix: conditional UPDATE `WHERE status = 'pending_payment'` — Postgres
+    // serializes row-level writes; only ONE worker sees rowCount === 1.
+    // Everyone else observes rowCount === 0 and short-circuits. The slot
+    // release and escrow void only run for the winner. Money math is
+    // unchanged — the same "escrow voided when payment never captured"
+    // semantic; we just make sure it fires exactly once per expiry event.
     const paymentExpiredBookings = await db
       .select({ id: bookings.id })
       .from(bookings)
@@ -222,11 +246,19 @@ async function processExpiredMarketplaceBookings(): Promise<void> {
       .limit(50);
 
     for (const b of paymentExpiredBookings) {
-      await db.update(bookings)
+      // Atomic claim: only the winner sees rowCount === 1. WHERE status
+      // pin is what serializes concurrent cron workers.
+      const claim = await db.update(bookings)
         .set({ status: 'payment_failed', paymentStatus: 'expired', updatedAt: now } as any)
-        .where(eq(bookings.id, b.id));
+        .where(and(eq(bookings.id, b.id), eq(bookings.status, 'pending_payment')));
+      const claimed = (claim as any)?.rowCount ?? (claim as any)?.count ?? 0;
+      if (claimed !== 1) {
+        // Another worker won — skip everything downstream. No dup slot
+        // release, no dup escrow void, no dup ops page.
+        continue;
+      }
 
-      // Release the slot this booking held
+      // Winner path — safe to release slot, void escrow, and page ops.
       await db.update(availabilitySlots)
         .set({
           status: 'available',
@@ -238,7 +270,6 @@ async function processExpiredMarketplaceBookings(): Promise<void> {
         } as any)
         .where(eq(availabilitySlots.bookingId, b.id));
 
-      // Void escrow — payment was never captured
       await db.update(escrowHoldings)
         .set({ status: 'refunded', updatedAt: now } as any)
         .where(eq(escrowHoldings.bookingId, b.id));
@@ -250,6 +281,10 @@ async function processExpiredMarketplaceBookings(): Promise<void> {
     }
 
     // ── 2. Early-stage bookings stuck without a slot (alert only) ────────────
+    //
+    // Same conditional-UPDATE pattern: only the worker whose UPDATE actually
+    // flipped the row (rowCount === 1) sends the operational page and log.
+    // No money side effect here — this path only writes booking status.
     const staleStates = [
       { status: 'inquiry',          maxAgeH: 24 },
       { status: 'quote_sent',       maxAgeH: 48 },
@@ -270,9 +305,11 @@ async function processExpiredMarketplaceBookings(): Promise<void> {
         .limit(50);
 
       for (const b of stale) {
-        await db.update(bookings)
+        const claim = await db.update(bookings)
           .set({ status: 'expired', updatedAt: now } as any)
-          .where(eq(bookings.id, b.id));
+          .where(and(eq(bookings.id, b.id), eq(bookings.status, stuckStatus as string)));
+        const claimed = (claim as any)?.rowCount ?? (claim as any)?.count ?? 0;
+        if (claimed !== 1) continue; // another worker won — no dup page/log
         logger.warn('[BookingExpiry] Marketplace booking expired', {
           bookingId: b.id, fromStatus: stuckStatus, maxAgeH,
         });
