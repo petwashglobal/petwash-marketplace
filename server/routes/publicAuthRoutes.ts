@@ -1379,7 +1379,19 @@ function unifiedSignupErrorStatus(error: UnifiedVerificationError): number {
 // this, the newer /otp/send endpoint was reachable directly with no
 // HTTP-layer rate limit — only the in-service per-phone hourly cap
 // gated abuse, which an attacker rotates around with fresh numbers.
+// Retired: RegistrationOTPService phone stack. PR-AUTH-OTP-8 mapped this to
+// have ZERO client callers in client/src — SignUpLuxury moved to
+// /api/auth/sms/{start,verify} months ago and no other page hits these paths.
+// The handler is short-circuited to 410 Gone so any stray caller (mobile app
+// build behind, staging test) sees a loud failure and switches to the
+// canonical surface. Full handler body preserved below the return for a
+// safe rollback if a hidden production caller surfaces.
 publicAuthRouter.post('/api/auth/phone/otp/send', phoneSendRateLimiter, async (req, res) => {
+  return res.status(410).json({
+    error: 'ENDPOINT_RETIRED',
+    message: 'Use /api/auth/sms/start (canonical customer SMS surface).',
+  });
+  // eslint-disable-next-line no-unreachable
   try {
     const parsed = otpSendSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -1467,6 +1479,11 @@ publicAuthRouter.post('/api/auth/phone/otp/send', phoneSendRateLimiter, async (r
 // service layer now also enforces the per-phone hourly cap on resend
 // (see RegistrationOTPService.resendOTP below).
 publicAuthRouter.post('/api/auth/phone/otp/resend', phoneSendRateLimiter, async (req, res) => {
+  return res.status(410).json({
+    error: 'ENDPOINT_RETIRED',
+    message: 'Use /api/auth/sms/start (canonical customer SMS surface).',
+  });
+  // eslint-disable-next-line no-unreachable
   try {
     const parsed = otpResendSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -1533,6 +1550,11 @@ publicAuthRouter.post('/api/auth/phone/otp/resend', phoneSendRateLimiter, async 
 // per IP per 5 min). The per-otpId attempt counter (max 5 + 15-min lockout)
 // remains the primary brute-force defence; this adds defence-in-depth.
 publicAuthRouter.post('/api/auth/phone/otp/verify', phoneVerifyRateLimiter, async (req, res) => {
+  return res.status(410).json({
+    error: 'ENDPOINT_RETIRED',
+    message: 'Use /api/auth/sms/verify (canonical customer SMS surface).',
+  });
+  // eslint-disable-next-line no-unreachable
   try {
     const parsed = otpVerifySchema.safeParse(req.body);
     if (!parsed.success) {

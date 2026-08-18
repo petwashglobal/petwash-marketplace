@@ -1090,6 +1090,38 @@ app.get('/api/health', async (_req, res) => {
   });
 });
 
+// Bot-check production readiness — reports whether the environment variables
+// required by the Turnstile enforcement middleware are configured. Returns
+// BOOLEANS only, never the key values. Operators use this to verify a
+// deployment has the secrets set before flipping enforcement live.
+app.get('/api/health/bot-check', (_req, res) => {
+  const turnstileServerConfigured = !!process.env.TURNSTILE_SECRET_KEY;
+  // The client-side site key rides with the built bundle so a running
+  // server cannot observe it directly. What it CAN observe: whether the
+  // envs it needs (TURNSTILE_SECRET_KEY) are present, and whether the
+  // widget's paired env name (VITE_TURNSTILE_SITE_KEY) was set at build
+  // time (some deployments export it to the server env too for a matched
+  // pair). Both flags exposed so an ops dashboard can flag a mismatched
+  // rollout without exposing key material.
+  const turnstileSiteKeyEnvPresent = !!process.env.VITE_TURNSTILE_SITE_KEY;
+  const enforcementActive = turnstileServerConfigured;
+  res.status(200).json({
+    status: enforcementActive ? 'READY' : 'ADVISORY',
+    timestamp: new Date().toISOString(),
+    botCheck: 'turnstile',
+    turnstileServerConfigured,
+    turnstileSiteKeyEnvPresent,
+    enforcementActive,
+    protectedSurfaces: [
+      'signup_sms_start',
+      'signup_email_start',
+    ],
+    note: enforcementActive
+      ? 'Turnstile enforced on protected surfaces. Missing/invalid tokens will 400/403.'
+      : 'TURNSTILE_SECRET_KEY not set — protected surfaces log a WARN and skip the check.',
+  });
+});
+
 app.get('/api/health/strict', async (_req, res) => {
   const db = await checkDbOnce();
   if (!db.ok) {

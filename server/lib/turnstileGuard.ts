@@ -1,0 +1,99 @@
+/**
+ * Turnstile bot-check guard — one policy, one middleware.
+ *
+ * Applied to the customer OTP / signup surfaces the MASTER AUTH contract
+ * requires: signup init, SMS OTP start, email OTP start, high-risk resend,
+ * password-recovery start. One helper so the enforcement policy lives in
+ * exactly one place and cannot drift between endpoints.
+ *
+ * Enforcement policy — deliberately conservative so a missing env cannot
+ * lock every user out of the primary signup path:
+ *
+ *   1) TURNSTILE_SECRET_KEY unset       → SKIP the check, log a WARN.
+ *      Production readiness endpoint reports the misconfiguration so
+ *      operators can fix it, but sign-in continues to work. The CEO's
+ *      section 20 rule "do not hard-enable enforcement before production
+ *      configuration is ready" applies here.
+ *
+ *   2) TURNSTILE_SECRET_KEY set + client sent NO token → 400 with
+ *      TURNSTILE_TOKEN_REQUIRED. The client widget is armed in
+ *      TurnstileWidget.tsx / executeTurnstileInvisible; a missing token
+ *      is a client bug or a scripted bot skipping the widget.
+ *
+ *   3) TURNSTILE_SECRET_KEY set + Turnstile verify says invalid → 403
+ *      with TURNSTILE_CHECK_FAILED (includes Cloudflare error code as
+ *      `reason` so a real user can retry / a bot cannot brute-force
+ *      by inspecting the response shape).
+ *
+ * Body field: `turnstileToken` (already the convention across the
+ * codebase — see SignUpLuxury.tsx executeTurnstileInvisible callers).
+ *
+ * SPECIFICITY: the middleware accepts an `action` label used by
+ * Turnstile's `action` telemetry and included in the audit log entry.
+ * Different endpoints ("signup_sms_start", "signup_email_start",
+ * "password_reset_start") should pass distinct labels so the
+ * Cloudflare console can slice failure rates per surface.
+ */
+import type { Request, Response, NextFunction } from 'express';
+import { verifyTurnstileToken } from './verifyTurnstile';
+import { logger } from './logger';
+
+export interface TurnstileGuardOptions {
+  /** Cloudflare `action` telemetry label — pick a unique short slug per endpoint. */
+  action: string;
+  /**
+   * Which body/header field carries the token. Defaults to `turnstileToken`
+   * (the codebase-wide convention).
+   */
+  tokenField?: string;
+}
+
+export function isTurnstileConfigured(): boolean {
+  return !!process.env.TURNSTILE_SECRET_KEY;
+}
+
+export function turnstileGuard(opts: TurnstileGuardOptions) {
+  const tokenField = opts.tokenField ?? 'turnstileToken';
+  return async function turnstileGuardMiddleware(req: Request, res: Response, next: NextFunction) {
+    // Env-not-configured: SKIP + WARN. Production-readiness endpoint
+    // /api/health/bot-check reports the misconfiguration to operators.
+    if (!isTurnstileConfigured()) {
+      logger.warn('[TurnstileGuard] TURNSTILE_SECRET_KEY not configured — check skipped', {
+        action: opts.action,
+      });
+      return next();
+    }
+
+    const rawToken = (req.body ?? {})[tokenField];
+    const token = typeof rawToken === 'string' ? rawToken.trim() : '';
+    if (!token) {
+      logger.warn('[TurnstileGuard] Token missing on protected surface', { action: opts.action });
+      return res.status(400).json({
+        ok: false,
+        error: 'TURNSTILE_TOKEN_REQUIRED',
+        action: opts.action,
+      });
+    }
+
+    const callerIp = req.ip || (req.headers['x-forwarded-for'] as string) || undefined;
+    const result = await verifyTurnstileToken(token, callerIp);
+    if (!result.valid) {
+      logger.warn('[TurnstileGuard] Token rejected', {
+        action: opts.action,
+        reason: result.reason,
+      });
+      return res.status(403).json({
+        ok: false,
+        error: 'TURNSTILE_CHECK_FAILED',
+        reason: result.reason,
+        action: opts.action,
+      });
+    }
+
+    // Stash the pass on the request so downstream handlers can include the
+    // signal in their audit log without re-verifying.
+    (req as any).turnstileVerified = true;
+    (req as any).turnstileAction = opts.action;
+    next();
+  };
+}
