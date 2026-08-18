@@ -70,8 +70,9 @@ export default function QuickBookingForm() {
     }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/global-forms/quick-booking', form) as any;
-      setSuccess(res?.bookingRef || `BK-${Date.now().toString(36).toUpperCase()}`);
+      const res = await apiRequest('POST', '/api/global-forms/quick-booking', form);
+      const body = await res.json().catch(() => ({} as any));
+      setSuccess(body?.bookingRef || `BK-${Date.now().toString(36).toUpperCase()}`);
     } catch {
       toast({ variant: 'destructive', title: 'Booking failed', description: 'Please try again or call 1-800-PETWASH' });
     } finally { setLoading(false); }

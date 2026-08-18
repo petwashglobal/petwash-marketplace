@@ -27,8 +27,9 @@ export default function CustomerOnboardingForm() {
     }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/global-forms/customer-onboarding', form) as any;
-      setSuccess(res.petId || 'PET-OK');
+      const res = await apiRequest('POST', '/api/global-forms/customer-onboarding', form);
+      const body = await res.json().catch(() => ({} as any));
+      setSuccess(body?.petId || 'PET-OK');
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again.' });
     } finally { setLoading(false); }

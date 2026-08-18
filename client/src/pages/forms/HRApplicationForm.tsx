@@ -27,8 +27,9 @@ export default function HRApplicationForm() {
     }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/global-forms/hr-application', form) as any;
-      setSuccess(res.applicationId || 'HR-OK');
+      const res = await apiRequest('POST', '/api/global-forms/hr-application', form);
+      const body = await res.json().catch(() => ({} as any));
+      setSuccess(body?.applicationId || 'HR-OK');
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again.' });
     } finally { setLoading(false); }

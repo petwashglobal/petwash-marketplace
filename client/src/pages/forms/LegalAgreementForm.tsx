@@ -174,14 +174,18 @@ export default function LegalAgreementForm() {
     }
     setLoading(true);
     try {
+      // apiRequest returns a Response — must .json() before reading server IDs,
+      // else the signer sees a fabricated SIG-<timestamp> ref that doesn't
+      // match the row the server wrote (legally binding surface).
       const res = await apiRequest('POST', '/api/global-forms/legal-agreement', {
         ...form,
         agreementId: selected,
         agreementTitle: agreement?.title,
         agreementVersion: agreement?.version,
         signedAt: new Date().toISOString(),
-      }) as any;
-      setSuccess(res?.signatureId || `SIG-${Date.now().toString(36).toUpperCase()}`);
+      });
+      const body = await res.json().catch(() => ({} as any));
+      setSuccess(body?.signatureId || `SIG-${Date.now().toString(36).toUpperCase()}`);
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Contact legal@petwash.co.il' });
     } finally { setLoading(false); }

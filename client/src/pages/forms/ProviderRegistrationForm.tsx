@@ -54,8 +54,9 @@ export default function ProviderRegistrationForm() {
     }
     setLoading(true);
     try {
-      const res = await apiRequest('POST', '/api/global-forms/provider-registration', form) as any;
-      setSuccess(res?.applicationId || `PRV-${Date.now().toString(36).toUpperCase()}`);
+      const res = await apiRequest('POST', '/api/global-forms/provider-registration', form);
+      const body = await res.json().catch(() => ({} as any));
+      setSuccess(body?.applicationId || `PRV-${Date.now().toString(36).toUpperCase()}`);
     } catch {
       toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again or email providers@petwash.co.il' });
     } finally { setLoading(false); }
