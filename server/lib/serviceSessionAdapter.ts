@@ -27,7 +27,7 @@
 
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { bookingRequests, walkBookings, walkerProfiles } from '@shared/schema';
+import { bookingRequests, walkBookings, walkerProfiles, pettrekTrips, pettrekProviders } from '@shared/schema';
 import type {
   ServiceSessionDTO,
   ServiceSessionStatus,
@@ -148,7 +148,16 @@ export async function resolveServiceSession(
     throw e;
   }
 
-  // TODO: pettrek_trips branch — see file header.
+  try {
+    const pt = await resolveFromPettrekTrips(bookingRef, callerUid);
+    if (pt.ok || pt.reason === 'unauthorized') return pt;
+  } catch (e: any) {
+    logger.warn('[serviceSessionAdapter] pettrek_trips projection failed', {
+      bookingRef, err: e?.message,
+    });
+    throw e;
+  }
+
   return { ok: false, reason: 'not_found' };
 }
 
@@ -250,6 +259,107 @@ async function resolveFromWalkBookings(
     isActive,
     lastLocation: jsonbToLocation(row.lastKnownLocation),
     startLocation: jsonbToLocation(row.checkInLocation),
+    reportStatus: 'none',
+  };
+
+  return { ok: true, session };
+}
+
+/**
+ * pettrek_trips universe:
+ *   • bookingRef matches pettrek_trips.tripId
+ *   • authorization joins pettrek_providers.id (integer FK) → userId
+ *     for the assigned provider (nullable — a dispatched-but-not-yet-
+ *     accepted trip has no assigned provider yet, in which case only
+ *     the customer is authorized)
+ *   • lastKnown lat/lon columns are decimal-strings; startLocation
+ *     comes from pickup coordinates because the pettrek table has no
+ *     dedicated check-in blob (yet)
+ *
+ * NOTE: the pettrek router is behind a permanent legal 403 block in
+ * production (server/routes/pettrek.ts) — this branch is dead in the
+ * live app today. It exists so the adapter's shape is complete when
+ * the legal gate is removed. Cost is a table lookup on a booking-ref
+ * miss.
+ */
+function bucketPettrekStatus(status: string | null | undefined): ServiceSessionStatus {
+  const s = (status || '').toLowerCase();
+  if (s === 'in_progress') return 'in_progress';
+  if (s === 'completed') return 'completed';
+  if (s === 'canceled' || s === 'cancelled') return 'cancelled';
+  // requested | dispatched | accepted → scheduled
+  return 'scheduled';
+}
+
+async function resolveFromPettrekTrips(
+  bookingRef: string,
+  callerUid: string,
+): Promise<ResolveOutcome> {
+  const [row] = await db
+    .select()
+    .from(pettrekTrips)
+    .where(eq(pettrekTrips.tripId, bookingRef))
+    .limit(1);
+
+  if (!row) return { ok: false, reason: 'not_found' };
+
+  const customerId = (row.customerId || null) as string | null;
+
+  let providerId: string | null = null;
+  if (row.providerId != null) {
+    const [prov] = await db
+      .select({ userId: pettrekProviders.userId })
+      .from(pettrekProviders)
+      .where(eq(pettrekProviders.id, row.providerId))
+      .limit(1);
+    providerId = (prov?.userId || null) as string | null;
+  }
+
+  const authorized = callerUid === customerId || (providerId != null && callerUid === providerId);
+  if (!authorized) return { ok: false, reason: 'unauthorized' };
+
+  const startedAt = row.actualPickupTime ? new Date(row.actualPickupTime).toISOString() : null;
+  const endedAt = row.actualDropoffTime ? new Date(row.actualDropoffTime).toISOString() : null;
+  const status = bucketPettrekStatus(row.status);
+  const isActive = status === 'in_progress' || status === 'awaiting_report';
+
+  const lastLat = row.lastKnownLatitude != null ? Number(row.lastKnownLatitude) : NaN;
+  const lastLon = row.lastKnownLongitude != null ? Number(row.lastKnownLongitude) : NaN;
+  const lastLocation: ServiceLocation | null = (Number.isFinite(lastLat) && Number.isFinite(lastLon))
+    ? {
+        latitude: lastLat,
+        longitude: lastLon,
+        recordedAt: row.lastGPSUpdate ? new Date(row.lastGPSUpdate).toISOString() : new Date(0).toISOString(),
+        accuracyM: null,
+      }
+    : null;
+
+  const pickupLat = Number(row.pickupLatitude);
+  const pickupLon = Number(row.pickupLongitude);
+  const startLocation: ServiceLocation | null = (Number.isFinite(pickupLat) && Number.isFinite(pickupLon))
+    ? {
+        latitude: pickupLat,
+        longitude: pickupLon,
+        recordedAt: startedAt ?? (row.scheduledPickupTime ? new Date(row.scheduledPickupTime).toISOString() : new Date(0).toISOString()),
+        accuracyM: null,
+      }
+    : null;
+
+  const session: ServiceSessionDTO = {
+    sessionId: `pt-${row.tripId}`,
+    bookingRef,
+    source: 'pettrek_trips',
+    serviceType: 'pet_transport',
+    status,
+    customerId,
+    providerId,
+    scheduledStartAt: row.scheduledPickupTime ? new Date(row.scheduledPickupTime).toISOString() : null,
+    scheduledEndAt: row.scheduledDropoffTime ? new Date(row.scheduledDropoffTime).toISOString() : null,
+    startedAt,
+    endedAt,
+    isActive,
+    lastLocation,
+    startLocation,
     reportStatus: 'none',
   };
 
