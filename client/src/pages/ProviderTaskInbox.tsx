@@ -281,9 +281,23 @@ export default function ProviderTaskInbox() {
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
                   <div>
-                    <p className="font-semibold text-gray-900 dark:text-black text-sm">
-                      {b.serviceType || "Service Request"}
-                    </p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <p className="font-semibold text-gray-900 dark:text-black text-sm">
+                        {b.serviceType || "Service Request"}
+                      </p>
+                      {/* 2026-08-18: STATUS_LABEL map already declared in this
+                          file but never rendered — provider couldn't tell
+                          state at a glance. Render as chip so pending vs
+                          in_progress vs completed is visible. */}
+                      {STATUS_LABEL[b.status] && (
+                        <span
+                          data-testid={`task-inbox-status-${b.id}`}
+                          className="text-[10px] font-semibold px-1.5 py-0.5 rounded-md bg-gray-100 text-gray-700 border border-gray-200"
+                        >
+                          {STATUS_LABEL[b.status]}
+                        </span>
+                      )}
+                    </div>
                     <p className="text-xs text-gray-500 mt-0.5">#{b.bookingNumber}</p>
                   </div>
                   <div className="text-right flex-shrink-0">
@@ -337,7 +351,10 @@ export default function ProviderTaskInbox() {
                     size="sm"
                     variant="ghost"
                     className="px-2"
-                    onClick={() => navigate(`/booking-chat/${b.bookingNumber || b.id}`)}
+                    // 2026-08-18: was navigate(`/booking-chat/${b.bookingNumber || b.id}`) —
+                    // the human bookingNumber (BK-XXXX) 404s at the /booking-chat/:bookingId
+                    // route; every other caller in the app uses b.id.
+                    onClick={() => navigate(`/booking-chat/${b.id}`)}
                     aria-label="Message customer"
                   >
                     <MessageSquare className="w-4 h-4 text-[#D4AF37]" />
