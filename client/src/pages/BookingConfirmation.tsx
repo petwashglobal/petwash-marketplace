@@ -20,6 +20,7 @@ import {
   Dog, Users, ChevronRight,
 } from 'lucide-react';
 import { BookingFinancialSummary } from '@/components/wallet/BookingFinancialSummary';
+import { LiveServiceCard } from '@/components/LiveServiceCard';
 
 /* ── Service route map ────────────────────────────────────────────────── */
 const SERVICE_TO_ROUTE: Record<string, string> = {
@@ -942,6 +943,21 @@ export default function BookingConfirmation() {
 
           {/* ── Declined / Cancelled alert ── */}
           {showAlertPanel && <StatusAlertPanel booking={booking} t={t} navigate={navigate} />}
+
+          {/* ── Live service pulse (CEO §P1-6) ──
+             LiveServiceCard reads /api/service-sessions/:bookingRef and
+             renders a compact live-pulse widget with "Updated 45s ago"
+             (§16). Mounted only for statuses where a real session may be
+             underway or just closed — for scheduled / declined /
+             cancelled the page already carries the primary status
+             signal, so mounting here would be duplicative. */}
+          {booking.requestId
+            && ['in_progress', 'provider_marked_complete', 'completed', 'reviewed'].includes(booking.status)
+            && (
+              <div className="mb-4">
+                <LiveServiceCard bookingRef={booking.requestId} />
+              </div>
+            )}
 
           {/* ── Financial summary ── */}
           <GlassmorphismCard className="mb-4">
