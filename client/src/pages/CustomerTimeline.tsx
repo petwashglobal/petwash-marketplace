@@ -11,6 +11,10 @@ import {
   RefreshCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  bookingStatusLabel,
+  bookingStatusBadgeClasses,
+} from "@shared/lib/bookingStatusLabels";
 
 const TYPE_CONFIG: Record<string, { icon: any; color: string; label: string; amountSign: string }> = {
   marketplace_booking: { icon: CalendarDays, color: "text-[#D4AF37]",    label: "הזמנה",            amountSign: "-" },
@@ -22,25 +26,12 @@ const TYPE_CONFIG: Record<string, { icon: any; color: string; label: string; amo
   loyalty_redeemed:    { icon: Star,         color: "text-amber-400",   label: "נקודות מומשו",     amountSign: "-" },
 };
 
-const BOOKING_STATUS_LABELS: Record<string, string> = {
-  pending:     "ממתין",
-  confirmed:   "מאושר",
-  in_progress: "בתהליך",
-  completed:   "הושלם",
-  cancelled:   "בוטל",
-  declined:    "נדחה",
-  disputed:    "במחלוקת",
-};
-
-const BOOKING_STATUS_COLOR: Record<string, string> = {
-  completed:   "bg-green-100 text-green-800",
-  in_progress: "bg-[#D4AF37] text-black",
-  confirmed:   "bg-[#D4AF37] text-black",
-  pending:     "bg-yellow-100 text-yellow-800",
-  cancelled:   "bg-white text-gray-600",
-  declined:    "bg-white text-gray-600",
-  disputed:    "bg-red-100 text-red-700",
-};
+// Status labels + badge tone come from the canonical
+// shared/lib/bookingStatusLabels helper — coverage stays in sync when new
+// canonical statuses are added to bookingStateMachine.ts. Previously
+// this file had 7 hard-coded statuses; missing meet_greet_*,
+// payment_pending, provider_marked_complete, and reviewed all rendered
+// as no badge at all.
 
 function TimelineItem({ item }: { item: any }) {
   const cfg = TYPE_CONFIG[item.type] ?? { icon: CalendarDays, color: "text-gray-400", label: item.type, amountSign: "" };
@@ -56,9 +47,9 @@ function TimelineItem({ item }: { item: any }) {
       <div className="flex-1 min-w-0">
         <div className="flex items-center gap-2 flex-wrap">
           <span className="text-xs text-muted-foreground">{cfg.label}</span>
-          {item.status && BOOKING_STATUS_LABELS[item.status] && (
-            <Badge className={cn("text-xs", BOOKING_STATUS_COLOR[item.status] ?? "bg-white text-gray-600")}>
-              {BOOKING_STATUS_LABELS[item.status]}
+          {item.status && (
+            <Badge className={cn("text-xs border", bookingStatusBadgeClasses(item.status))}>
+              {bookingStatusLabel(item.status, "he")}
             </Badge>
           )}
         </div>
