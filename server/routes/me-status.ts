@@ -12,7 +12,7 @@ import { Router, type Request, type Response } from 'express';
 import { and, desc, eq, inArray, sql } from 'drizzle-orm';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { storage } from '../storage';
-import { db } from '../db';
+import { db, pool } from '../db';
 import { pets } from '../../shared/schema';
 import { memberDiscountApplications } from '../../shared/schema';
 import { providerServices } from '../../shared/schema-provider-services';
@@ -53,12 +53,44 @@ router.get('/status', validateFirebaseToken, async (req: Request, res: Response)
     age_verified: ageVerified,
   };
 
-  // ── prestige (active immediately once 18+, per spec) ───────────────────────
-  const prestige = {
-    status: ageVerified ? 'ACTIVE' : 'PENDING',
+  // ── prestige (enrollment truth = privilege_members row) ────────────────────
+  // BEFORE (2026-08-18 audit finding): reported ACTIVE for anyone aged 18+,
+  // even if the user had NEVER joined Prestige. That over-reported enrollment
+  // across the customer surface (Prestige-only CTAs shown to non-members,
+  // reward-rate display promised to walk-ins, etc.).
+  // AFTER: read the authoritative privilege_members table (raw SQL matches
+  // the pattern used by prestige-join.ts + privilege-loyalty.ts). ACTIVE only
+  // when the user has actually enrolled AND the membership is not suspended.
+  // Age remains a gate for JOINING (elsewhere) — but it is not proof of
+  // enrollment, so it must not drive this shape's status any longer.
+  let prestige = {
+    status: 'NOT_JOINED' as string,
     reward_rate: 5,
     scope: 'K9000_WASH_ONLY',
+    tier: null as string | null,
+    member_id: null as string | null,
   };
+  try {
+    const r = await pool.query(
+      `SELECT member_id, tier, status
+         FROM privilege_members
+        WHERE firebase_uid = $1
+        LIMIT 1`,
+      [uid],
+    );
+    const row = r.rows[0];
+    if (row) {
+      const st = (row.status || '').toString().toLowerCase();
+      // 'active' → ACTIVE. Anything else (suspended, cancelled, pending, …)
+      // → whatever the DB says, uppercased, so admins can inspect the raw
+      // state without a second query.
+      prestige.status = st === 'active' ? 'ACTIVE' : (st || 'UNKNOWN').toUpperCase();
+      prestige.tier = row.tier || null;
+      prestige.member_id = row.member_id || null;
+    }
+  } catch (e: any) {
+    logger.warn('[me/status] prestige load failed', { err: e?.message });
+  }
 
   // ── discount (resolved rate + latest application status) ───────────────────
   let discount = { status: 'NOT_APPLIED' as string, type: null as string | null, rate: 0 };
