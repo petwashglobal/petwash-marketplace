@@ -1170,6 +1170,82 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
       }
     }
 
+    // ── Customer notification on complete (2026-08-18 parity gap fix) ────────
+    // V1 booking-requests.ts /complete fires THREE notifications when the
+    // provider marks a service done: an inbox row (booking_completion_approval),
+    // the branded sendConfirmEndOfStay email (Rover/MadPaws parity), and an
+    // SMS wire. This V2 handler is what ProviderJobDetail actually calls —
+    // but until now V2 flipped status silently, so ANY provider using the app
+    // marked jobs complete without telling the customer to confirm. Mirror
+    // the V1 notification block (setImmediate + fail-soft).
+    if (action === 'complete') {
+      const ownerId = booking.owner_id as string | undefined;
+      const requestId = booking.request_id as string | undefined;
+      if (ownerId && requestId) {
+        // 1) Inbox row — matches V1 booking_completion_approval shape
+        setImmediate(async () => {
+          try {
+            await db.insert(superAppNotifications).values({
+              userId: ownerId,
+              type: 'booking_completion_approval',
+              title: '✅ השירות הושלם — אשרי את ההזמנה',
+              titleHe: '✅ השירות הושלם — אשרי את ההזמנה',
+              body: 'הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.',
+              bodyHe: 'הספק דיווח שהשירות הסתיים. אשרי כדי לשחרר את התשלום, או פתחי מחלוקת תוך 24 שעות.',
+              actionUrl: `/booking/confirmation/${requestId}?review=1`,
+              actionType: 'approve_completion',
+              channels: ['in_app'],
+              isRead: false,
+              createdAt: new Date(),
+            } as any);
+          } catch (notifErr: any) {
+            logger.warn('[ProviderDashboardV2] Completion approval inbox row failed', { error: notifErr.message, requestId });
+          }
+        });
+
+        // 2) Branded HE+EN "Confirm end of stay" email (Rover/MadPaws parity)
+        setImmediate(() => {
+          import('../email/sendConfirmEndOfStay')
+            .then(({ sendConfirmEndOfStay }) => sendConfirmEndOfStay({
+              requestId,
+              ownerId,
+              providerId: user.uid,
+              serviceType: booking.service_type,
+              petDetails: undefined,
+              endDate: booking.end_date,
+              serviceCompletedAt: now,
+            }))
+            .catch(() => {});
+        });
+
+        // 3) SMS wire (email covered by branded template above — matches
+        //    PR-DEDUPE-COMPLETE-EMAIL discipline; no double-send)
+        setImmediate(async () => {
+          try {
+            await dispatchNotification({
+              uid: ownerId,
+              type: 'system',
+              title: 'PetWash — אשרו את ההזמנה תוך 24 שעות / Confirm within 24h',
+              bodyHtml:
+                `<p>הספק דיווח שהשירות עבור הזמנה <strong>${requestId}</strong> הסתיים. ` +
+                `אשרו כדי לשחרר את התשלום, או פתחו מחלוקת <strong>תוך 24 שעות</strong> — ` +
+                `אחרת ההזמנה תאושר אוטומטית והתשלום ישוחרר לספק.</p>` +
+                `<p>Your provider marked booking <strong>${requestId}</strong> complete. ` +
+                `Confirm to release payment, or open a dispute <strong>within 24 hours</strong> — ` +
+                `otherwise it auto-approves and payment is released.</p>`,
+              ctaText: 'אשרו / Confirm',
+              ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}?review=1`,
+              channels: ['sms'],
+              priority: 8,
+              meta: { bookingId: requestId, actionType: 'approve_completion' },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderDashboardV2] provider_marked_complete SMS failed (non-fatal)', { error: notifErr.message });
+          }
+        });
+      }
+    }
+
     // Structured log — retained for the Phase 4 transition window
     logger.info(`[ProviderDashboardV2] ACTION:${action.toUpperCase()}`, {
       bookingId,
