@@ -10194,21 +10194,60 @@ self.addEventListener('notificationclick', (event) => {
       const customerId = req.params.id;
       const updates = req.body;
 
-      // SECURITY FIX: Create strict allowlist of updatable fields
-      const allowedFields = [
-        'firstName', 'lastName', 'email', 'phone', 'dateOfBirth', 'country', 
-        'gender', 'petType', 'profilePictureUrl', 'loyaltyProgram', 'reminders', 
-        'marketing', 'termsAccepted', 'isVerified', 'loyaltyTier', 'totalSpent', 
-        'washBalance', 'lastLogin', 'authProvider', 'authProviderId'
-      ];
-      
-      // Filter updates to only include allowed fields
-      const filteredUpdates = Object.keys(updates)
-        .filter(key => allowedFields.includes(key))
-        .reduce((obj, key) => {
-          obj[key] = updates[key];
-          return obj;
-        }, {} as any);
+      // Strict allowlist — PROFILE fields ONLY. The allowlist itself + the
+      // filter function live in server/lib/adminCustomerPatchAllowlist.ts so
+      // the behavior can be pinned by a real unit test (not just a source-
+      // pin grep). See that module's JSDoc for the full field classification.
+      //
+      // PR-DANGER-3 (initial): removed `loyaltyTier`, `totalSpent`,
+      //   `washBalance` — money balances / tier ladder. Bypass of
+      //   /api/admin/wallet-adjust audited path.
+      //
+      // PR-DANGER-3 (correction pass): every non-PROFILE field pulled out.
+      //   The generic admin customer PATCH is DELIBERATELY minimal — it
+      //   updates only the fields that (a) don't cross a security / consent /
+      //   money / identity boundary and (b) don't drift the canonical
+      //   identity that lives in Firebase. Everything else needs a
+      //   dedicated endpoint with the correct ceremony:
+      //
+      //   REMOVED (identity — creates Firebase↔Postgres drift):
+      //     * email          — must run through the verified email-change
+      //                        flow that updates Firebase + Postgres atomically
+      //                        (setting Postgres.email while Firebase still has
+      //                        the old address splits the identity — password
+      //                        reset, magic link, and passkey all break).
+      //     * phone          — same drift risk with the Firebase phoneNumber
+      //                        field + the SMS OTP records; needs the mobile-
+      //                        verification flow, not a body write.
+      //
+      //   REMOVED (consent — must be a real user event, never manufactured):
+      //     * termsAccepted  — an admin PATCH manufacturing Terms acceptance
+      //                        would forge legal evidence. Terms come from
+      //                        the user through the signup / re-acceptance flow.
+      //     * marketing      — granular consent (PR-AUTH-SIGNUP-2 correction);
+      //                        must go through the audited preference
+      //                        endpoint that records the actor + timestamp.
+      //     * reminders      — same preference-ownership argument.
+      //
+      //   REMOVED (security / system — never client- or admin-writable):
+      //     * isVerified     — KYC / identity-proofing state, set by the
+      //                        verification service on successful proof.
+      //     * lastLogin      — set by the login handler on real login events.
+      //     * authProvider   — the Firebase provider that authenticated the
+      //                        user (google.com / password / phone / …).
+      //                        Set by session creation.
+      //     * authProviderId — the provider-side identity id. Same as above.
+      //
+      //   REMOVED (loyalty binding — needs enrollment ceremony, not a toggle):
+      //     * loyaltyProgram — Prestige enrollment / withdrawal must record
+      //                        the actor + reason (loyalty ledger). Bypass
+      //                        of /api/prestige/join or the withdrawal endpoint.
+      //
+      // What stays is the safe general PROFILE surface: names, birthday,
+      // country, gender, avatar URL, pet type. Everything else must land
+      // on its dedicated audited endpoint.
+      const { filterAdminCustomerPatch } = await import('./lib/adminCustomerPatchAllowlist');
+      const filteredUpdates = filterAdminCustomerPatch(updates);
       
       // Create secure validation schema that explicitly excludes password and system fields
       const secureUpdateSchema = insertCustomerSchema.omit({
