@@ -15,6 +15,7 @@
  */
 
 import { Router, Request, Response } from "express";
+import { z } from "zod";
 import { db } from "../db";
 import { eq, and, or, desc, sql } from "drizzle-orm";
 import {
@@ -117,22 +118,86 @@ router.post("/authority-documents", async (req: Request, res: Response) => {
 
 /**
  * PUT /api/compliance/authority-documents/:id
- * Update authority document
+ * Update authority document — SUBMITTER-METADATA fields only.
+ *
+ * Previous shape: `const updates = req.body; ... .set({ ...updates, updatedAt })`
+ * — mass-assigned any column, so a compliance-role admin who is NOT the
+ * document's reviewer could set `status: 'active'`, `verifiedBy: <self>`,
+ * `verifiedAt: now`, `displayBadge: true` on evidence they submitted — an
+ * evidence-tampering vector where the submitter also self-approves their
+ * own compliance document.
+ *
+ * Fix: two dedicated endpoints — this PUT covers submitter-metadata
+ * fields only (title / description / URLs / expiry / coverage / hints).
+ * Reviewer fields go through PATCH /authority-documents/:id/review below,
+ * which requires a `reason` field and writes a distinct audit-trail row.
  */
+const putAuthorityDocumentSubmitterSchema = z.object({
+  documentType:         z.string().min(1).max(80).optional(),
+  authorityName:        z.string().min(1).max(200).optional(),
+  authorityNameHe:      z.string().max(200).optional().nullable(),
+  authorityType:        z.string().min(1).max(80).optional(),
+  country:              z.string().max(80).optional(),
+  documentNumber:       z.string().min(1).max(120).optional(),
+  title:                z.string().min(1).max(200).optional(),
+  titleHe:              z.string().max(200).optional().nullable(),
+  description:          z.string().max(5000).optional().nullable(),
+  descriptionHe:        z.string().max(5000).optional().nullable(),
+  issuedDate:           z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  expiryDate:           z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  documentUrl:          z.string().url().max(2000).optional(),
+  verificationUrl:      z.string().url().max(2000).optional().nullable(),
+  qrCode:               z.string().max(4000).optional().nullable(),
+  coverageAmount:       z.string().optional().nullable(),
+  coverageCurrency:     z.string().length(3).optional(),
+  applicableServices:   z.array(z.string()).optional().nullable(),
+  applicableLocations:  z.array(z.string()).optional().nullable(),
+  autoRenewalEnabled:   z.boolean().optional(),
+  displayPublicly:      z.boolean().optional(),
+  reminderDaysBefore:   z.number().int().min(0).max(365).optional(),
+  notes:                z.string().max(5000).optional().nullable(),
+  // NOTE: `status`, `verifiedBy`, `verifiedAt`, `complianceLevel`,
+  // `riskCategory`, `displayBadge`, `displayPriority` are deliberately
+  // absent — reviewer-only via the /review endpoint below.
+}).strict();
+
 router.put("/authority-documents/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
-    const updates = req.body;
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid document id" });
+    }
+    const parsed = putAuthorityDocumentSubmitterSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Validation error", details: parsed.error.flatten() });
+    }
+
+    // Load the previous state so the audit trail can carry the diff.
+    const [previous] = await db
+      .select()
+      .from(authorityDocuments)
+      .where(eq(authorityDocuments.id, id))
+      .limit(1);
+    if (!previous) return res.status(404).json({ error: "Document not found" });
 
     const [updated] = await db
       .update(authorityDocuments)
-      .set({ ...updates, updatedAt: new Date() })
+      .set({ ...parsed.data, updatedAt: new Date() } as any)
       .where(eq(authorityDocuments.id, id))
       .returning();
 
-    if (!updated) {
-      return res.status(404).json({ error: "Document not found" });
-    }
+    // Audit trail — mirror the create-side pattern at line ~100.
+    await db.insert(complianceAuditTrail).values({
+      eventId: `AUDIT-${new Date().getFullYear()}-${nanoid(12)}`,
+      eventType: "document_updated_metadata",
+      entityType: "authority_document",
+      entityId: updated.id,
+      action: "updated",
+      actionBy: (req as any).firebaseUser?.uid || (req as any).userId || 0,
+      previousState: previous,
+      newState: updated,
+      cryptographicHash: createHash("sha256").update(JSON.stringify(updated)).digest("hex"),
+    });
 
     res.json(updated);
   } catch (error: any) {
@@ -142,12 +207,118 @@ router.put("/authority-documents/:id", async (req: Request, res: Response) => {
 });
 
 /**
+ * PATCH /api/compliance/authority-documents/:id/review
+ * Reviewer-only mutation surface for compliance evidence. Writes the
+ * status / verification / risk / display-badge fields that determine
+ * whether a document counts as a valid credential in the platform's
+ * trust surface. Requires a `reason` field for the audit trail.
+ *
+ * `verifiedBy` is derived from the authenticated caller — the body
+ * cannot set it (that would let a reviewer attribute the review to
+ * a different person). `verifiedAt` is server-stamped on `status`
+ * transitions to `active`.
+ */
+const patchAuthorityDocumentReviewSchema = z.object({
+  status:           z.enum(['active', 'expired', 'revoked', 'pending_renewal']),
+  complianceLevel:  z.enum(['mandatory', 'recommended', 'optional']).optional(),
+  riskCategory:     z.enum(['low', 'medium', 'high', 'critical']).optional(),
+  displayBadge:     z.boolean().optional(),
+  displayPriority:  z.number().int().min(1).max(999).optional(),
+  reason:           z.string().min(10).max(1000),
+}).strict();
+
+router.patch("/authority-documents/:id/review", async (req: Request, res: Response) => {
+  try {
+    const id = parseInt(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid document id" });
+    }
+    const parsed = patchAuthorityDocumentReviewSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Validation error", details: parsed.error.flatten() });
+    }
+    const { reason, ...reviewFields } = parsed.data;
+
+    const [previous] = await db
+      .select()
+      .from(authorityDocuments)
+      .where(eq(authorityDocuments.id, id))
+      .limit(1);
+    if (!previous) return res.status(404).json({ error: "Document not found" });
+
+    const reviewerUid = (req as any).firebaseUser?.uid || (req as any).userId;
+    const reviewerNumericId = typeof reviewerUid === 'number' ? reviewerUid : 0;
+
+    const now = new Date();
+    const patch: Record<string, any> = {
+      ...reviewFields,
+      verifiedBy: reviewerNumericId || previous.verifiedBy,
+      updatedAt: now,
+    };
+    // Stamp verifiedAt on transitions into 'active' only — revocation /
+    // expiry / pending do not "verify" the doc, they demote it.
+    if (reviewFields.status === 'active' && previous.status !== 'active') {
+      patch.verifiedAt = now;
+    }
+
+    const [updated] = await db
+      .update(authorityDocuments)
+      .set(patch as any)
+      .where(eq(authorityDocuments.id, id))
+      .returning();
+
+    await db.insert(complianceAuditTrail).values({
+      eventId: `AUDIT-${new Date().getFullYear()}-${nanoid(12)}`,
+      eventType: "document_reviewed",
+      entityType: "authority_document",
+      entityId: updated.id,
+      action: "reviewed",
+      actionBy: reviewerNumericId,
+      previousState: previous,
+      newState: updated,
+      cryptographicHash: createHash("sha256").update(JSON.stringify(updated)).digest("hex"),
+      notes: reason,
+    } as any);
+
+    res.json(updated);
+  } catch (error: any) {
+    console.error("Error reviewing authority document:", error);
+    res.status(400).json({ error: error.message });
+  }
+});
+
+/**
  * DELETE /api/compliance/authority-documents/:id
- * Delete authority document
+ * Retire a document. Writes an audit-trail row before the delete so the
+ * evidence chain records who removed what and when — otherwise a delete
+ * leaves the audit trail with only the creation event and no closure.
  */
 router.delete("/authority-documents/:id", async (req: Request, res: Response) => {
   try {
     const id = parseInt(req.params.id);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid document id" });
+    }
+    const [previous] = await db
+      .select()
+      .from(authorityDocuments)
+      .where(eq(authorityDocuments.id, id))
+      .limit(1);
+    if (!previous) return res.status(404).json({ error: "Document not found" });
+
+    const reviewerUid = (req as any).firebaseUser?.uid || (req as any).userId;
+    const reviewerNumericId = typeof reviewerUid === 'number' ? reviewerUid : 0;
+
+    await db.insert(complianceAuditTrail).values({
+      eventId: `AUDIT-${new Date().getFullYear()}-${nanoid(12)}`,
+      eventType: "document_deleted",
+      entityType: "authority_document",
+      entityId: id,
+      action: "deleted",
+      actionBy: reviewerNumericId,
+      previousState: previous,
+      cryptographicHash: createHash("sha256").update(JSON.stringify(previous)).digest("hex"),
+    });
 
     await db.delete(authorityDocuments).where(eq(authorityDocuments.id, id));
 
