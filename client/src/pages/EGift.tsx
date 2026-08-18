@@ -1524,10 +1524,17 @@ export default function EGift() {
                   ? 'שלח את מתנת הבחירה שלך עם כרטיס מתנה של PetWash'
                   : 'Send the gift of choice with a PetWash eGift Card'}
               </p>
+              {/* PR-EGIFT-REDEMPTION-COPY-CONSISTENT (2026-08-15) — fire-order
+                  item 19. The header promise said "wash station or app"; the
+                  service picker below (usableAt) lists K9000, Sitter Suite,
+                  Walk My Pet, Academy, Nayax (PetTrek gated as coming-soon by
+                  PR-EGIFT-COMING-SOON-SERVICES). "Wash station or app" was
+                  narrower than the picker — a contradiction. Aligned to the
+                  picker's honest scope. */}
               <p className="text-xs md:text-[13px] mt-2 leading-relaxed text-ink-400">
                 {lang === 'he'
-                  ? 'ניתן לפדות בתחנת שטיפה או באפליקציה. נשלח למייל בתאריך שתבחר.'
-                  : 'Redeemable at any wash station or online. Delivered to email on your chosen date.'}
+                  ? 'ניתן למימוש בשירותי PetWash הזמינים המוצגים למטה. נשלח למייל בתאריך שתבחר.'
+                  : 'Redeemable across the available PetWash services shown below. Delivered to email on your chosen date.'}
               </p>
             </div>
           </div>
