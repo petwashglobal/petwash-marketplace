@@ -797,12 +797,32 @@ function DigitalCardSection({
                   style={{ width:'100%', padding:'10px 12px', borderRadius:'10px', border:'1.5px solid rgba(217, 184, 76,0.25)', fontSize:'0.88rem', outline:'none', boxSizing:'border-box', color:'#1A1A1A' }} />
               </div>
             ))}
-            <div style={{ display:'flex', gap:'6px' }}>
-              {(['dog','cat','rabbit','bird','other'] as const).map(t => (
-                <button key={t} onClick={() => setPetForm((f: any) => ({ ...f, petType: t }))} style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'6px 10px', borderRadius:'100px', border:'none', cursor:'pointer', background: petForm.petType === t ? 'rgba(217, 184, 76,0.15)' : 'rgba(0,0,0,0.04)', outline: petForm.petType === t ? '1.5px solid #D9B84C' : 'none', color: petForm.petType === t ? '#B8860B' : '#7A7068', fontWeight: petForm.petType === t ? 700 : 400, fontSize:'0.72rem' }}>
-                  <PetWashIcon name={t === 'dog' ? 'animal_dog' : t === 'cat' ? 'animal_cat' : t === 'rabbit' ? 'animal_rabbit' : t === 'bird' ? 'animal_bird' : 'brand_paw'} size={16} label={t} /> {t}
-                </button>
-              ))}
+            <div style={{ display:'flex', gap:'6px', flexWrap:'wrap' }}>
+              {(() => {
+                // Picker must cover the full species enum that /api/pets and
+                // the pet passport already support — otherwise owners of
+                // guinea pigs, hamsters, reptiles, or fish can never file
+                // their card's species and it silently sticks on 'dog'.
+                const SPECIES: Array<{ key: string; icon: string; en: string; he: string }> = [
+                  { key: 'dog',        icon: 'animal_dog',        en: 'Dog',        he: 'כלב' },
+                  { key: 'cat',        icon: 'animal_cat',        en: 'Cat',        he: 'חתול' },
+                  { key: 'rabbit',     icon: 'animal_rabbit',     en: 'Rabbit',     he: 'ארנב' },
+                  { key: 'bird',       icon: 'animal_bird',       en: 'Bird',       he: 'ציפור' },
+                  { key: 'guinea_pig', icon: 'animal_guinea_pig', en: 'Guinea pig', he: 'שרקן' },
+                  { key: 'hamster',    icon: 'animal_hamster',    en: 'Hamster',    he: 'אוגר' },
+                  { key: 'reptile',    icon: 'animal_lizard',     en: 'Reptile',    he: 'זוחל' },
+                  { key: 'fish',       icon: 'animal_fish',       en: 'Fish',       he: 'דג' },
+                  { key: 'other',      icon: 'brand_paw',         en: 'Other',      he: 'אחר' },
+                ];
+                return SPECIES.map(({ key, icon, en, he: hv }) => {
+                  const label = he ? hv : en;
+                  return (
+                    <button key={key} onClick={() => setPetForm((f: any) => ({ ...f, petType: key }))} style={{ display:'inline-flex', alignItems:'center', gap:'4px', padding:'6px 10px', borderRadius:'100px', border:'none', cursor:'pointer', background: petForm.petType === key ? 'rgba(217, 184, 76,0.15)' : 'rgba(0,0,0,0.04)', outline: petForm.petType === key ? '1.5px solid #D9B84C' : 'none', color: petForm.petType === key ? '#B8860B' : '#7A7068', fontWeight: petForm.petType === key ? 700 : 400, fontSize:'0.72rem' }}>
+                      <PetWashIcon name={icon} size={16} label={label} /> {label}
+                    </button>
+                  );
+                });
+              })()}
             </div>
             <button disabled={savingPet || !petForm.petName?.trim()} onClick={async () => {
               setSavingPet(true);
