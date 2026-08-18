@@ -3733,6 +3733,42 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
       logger.warn('[BookingRequests] Emergency cancel customer notification failed', { error: notifErr.message });
     }
 
+    // Off-app dispatch (2026-08-18): the in-app row above only reaches the
+    // customer when they open the app. This is an EMERGENCY cancellation —
+    // the pet may have had care lined up for TODAY. Customer needs push
+    // + email + SMS immediately so they can arrange alternatives. Highest
+    // priority. Fire-and-forget + fail-soft.
+    if (booking.ownerId) {
+      const refundIls = (refundCents / 100).toFixed(2);
+      setImmediate(async () => {
+        try {
+          const [ownerRow] = await db.select({ email: users.email, phone: users.phone })
+            .from(users).where(eq(users.id, booking.ownerId)).limit(1);
+          await dispatchNotification({
+            uid: booking.ownerId,
+            email: ownerRow?.email || undefined,
+            phone: ownerRow?.phone || undefined,
+            type: 'system',
+            title: '🚨 הספק ביטל בחירום — החזר מלא · Provider emergency cancel — full refund',
+            bodyHtml:
+              `<p>הספק דיווח על נסיבות חירום עבור הזמנה <strong>${requestId}</strong> ולא יכול לתת שירות. ` +
+              `קיבלת החזר מלא של <strong>₪${refundIls}</strong>. אנחנו כאן לעזור לך למצוא ספק חלופי.</p>` +
+              `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+              `<p>The provider had an emergency for booking <strong>${requestId}</strong> and cannot deliver. ` +
+              `You've received a full refund of <strong>₪${refundIls}</strong>. We're here to help you find another provider.</p>`,
+            bodyText: `PetWash: Provider emergency-cancelled booking ${requestId}. Full refund ₪${refundIls}. Find a replacement: https://petwash.co.il/marketplace`,
+            ctaText: 'מצאי ספק חלופי / Find another provider',
+            ctaUrl: `https://petwash.co.il/marketplace`,
+            channels: ['inbox', 'email', 'sms', 'push'],
+            priority: 10,
+            meta: { bookingId: requestId, refundAmount: parseFloat(refundIls), currency: 'ILS', actionType: 'emergency_replacement' },
+          });
+        } catch (notifErr: any) {
+          logger.warn('[BookingRequests] Emergency cancel off-app dispatch failed', { error: notifErr.message });
+        }
+      });
+    }
+
     // Schedule rebook nudge for customer (1 h later)
     scheduleRebookTrigger('cancelled_recovery', {
       userId: booking.ownerId, requestId, providerId: booking.providerId,
