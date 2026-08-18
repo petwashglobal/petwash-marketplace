@@ -67,11 +67,52 @@ router.post("/employees", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/enterprise/hr/employees/:id - Update employee
+// Explicit allowlist — the previous `const updates = req.body` mass-assigned
+// every column on the hr_employees row, including compensation (`salary`,
+// `salaryCurrency`, `paymentFrequency`), encrypted PII (`bankAccountDetails`,
+// `taxDetails`, `socialInsuranceNumber`, `personalId`), identity binding
+// (`firebaseUid`), RBAC (`role`, `permissions`), and org-boundary
+// (`franchiseId`, `employeeId`). Any admin token that reaches this handler
+// could rewrite any employee's salary or bank details by adding one field to
+// the request body. Those fields are DELIBERATELY not in this schema — they
+// belong on a separate audited compensation-change endpoint (out of scope
+// for this PR, tracked as PR-DANGER-2-followup). The safe general HR
+// PATCH shape: identity/contact/employment metadata only.
+const patchHrEmployeeSchema = z.object({
+  firstName:         z.string().min(1).max(80).optional(),
+  lastName:          z.string().min(1).max(80).optional(),
+  email:             z.string().email().optional(),
+  phone:             z.string().min(4).max(40).optional().nullable(),
+  address:           z.string().max(500).optional().nullable(),
+  dateOfBirth:       z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  gender:            z.string().max(20).optional().nullable(),
+  nationality:       z.string().max(80).optional().nullable(),
+  emergencyContact:  z.record(z.any()).optional().nullable(),
+  department:        z.string().min(1).max(80).optional(),
+  position:          z.string().min(1).max(120).optional(),
+  employmentType:    z.enum(['full_time', 'part_time', 'contractor', 'intern']).optional(),
+  startDate:         z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional(),
+  endDate:           z.string().regex(/^\d{4}-\d{2}-\d{2}$/).optional().nullable(),
+  managerId:         z.number().int().positive().optional().nullable(),
+  isActive:          z.boolean().optional(),
+  photoUrl:          z.string().url().optional().nullable(),
+}).strict();
+
 router.patch("/employees/:id", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const updates = req.body;
-    const employee = await storage.updateEmployee(id, updates);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid employee id" });
+    }
+    const parsed = patchHrEmployeeSchema.safeParse(req.body);
+    if (!parsed.success) {
+      // Zod .strict() rejects unknown keys with `unrecognized_keys` — surfacing
+      // the field names in the error tells an admin exactly which body key was
+      // ignored (e.g. `salary`) so they route the compensation change through
+      // the correct audited flow instead of retrying with a bigger body.
+      return res.status(400).json({ error: "Validation error", details: parsed.error.flatten() });
+    }
+    const employee = await storage.updateEmployee(id, parsed.data as any);
     res.json(employee);
   } catch (error: any) {
     console.error("[Enterprise HR] Error updating employee:", error);
@@ -120,11 +161,27 @@ router.post("/payroll", requireAdmin, async (req, res) => {
 });
 
 // PATCH /api/enterprise/hr/payroll/:id/status - Update payroll status
+// Explicit status enum — the previous handler took `req.body.status` as
+// an arbitrary string and passed it through to the DB, so an admin could
+// set any payroll row's `payment_status` to any value (including
+// unrecognised strings that downstream reports treat as "unknown" and
+// silently exclude, effectively hiding an unpaid payroll). The enum
+// matches the schema comment at shared/schema-hr.ts:88 exactly.
+const patchPayrollStatusSchema = z.object({
+  status: z.enum(['pending', 'processed', 'paid', 'failed']),
+}).strict();
+
 router.patch("/payroll/:id/status", requireAdmin, async (req, res) => {
   try {
     const id = parseInt(req.params.id);
-    const { status } = req.body;
-    const payroll = await storage.updatePayrollStatus(id, status);
+    if (Number.isNaN(id) || id <= 0) {
+      return res.status(400).json({ error: "Invalid payroll id" });
+    }
+    const parsed = patchPayrollStatusSchema.safeParse(req.body);
+    if (!parsed.success) {
+      return res.status(400).json({ error: "Validation error", details: parsed.error.flatten() });
+    }
+    const payroll = await storage.updatePayrollStatus(id, parsed.data.status);
     res.json(payroll);
   } catch (error: any) {
     console.error("[Enterprise HR] Error updating payroll status:", error);
