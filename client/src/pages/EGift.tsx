@@ -530,13 +530,22 @@ const translations: Record<string, Record<string, string>> = {
   },
 };
 
-const platformServices = [
-  { id: 'wash', name: '\u2066K9000 Wash Hub™\u2069' },
-  { id: 'sitter', name: '\u2066Sitter Suite™\u2069' },
-  { id: 'walk', name: '\u2066Walk My Pet™\u2069' },
-  { id: 'trek', name: '\u2066PetTrek™\u2069' },
+// PR-EGIFT-COMING-SOON-SERVICES (2026-08-15) — fire-order item 5.
+// The eGift page listed PetTrek as a redeemable service, but the
+// homepage labels PetTrek "coming soon". Advertising redemption on
+// a service that does not yet accept vouchers is dishonest and
+// creates a support burden.
+// Fix: annotate each service with an optional `comingSoon` flag; the
+// render sites show a small "Coming soon" tag and DISABLE the toggle
+// so the customer cannot silently select it as a redemption target.
+// When PetTrek goes live, flip the flag; no display code changes.
+const platformServices: Array<{ id: string; name: string; comingSoon?: boolean }> = [
+  { id: 'wash',    name: '\u2066K9000 Wash Hub™\u2069' },
+  { id: 'sitter',  name: '\u2066Sitter Suite™\u2069' },
+  { id: 'walk',    name: '\u2066Walk My Pet™\u2069' },
+  { id: 'trek',    name: '\u2066PetTrek™\u2069', comingSoon: true }, // homepage labels this coming soon
   { id: 'academy', name: '\u2066Pet Wash Academy™\u2069' },
-  { id: 'nayax', name: '\u2066Nayax PetWash™\u2069' }
+  { id: 'nayax',   name: '\u2066Nayax PetWash™\u2069' }
 ];
 
 const giftOptions = [
@@ -1334,7 +1343,12 @@ export default function EGift() {
                 <div className="mt-5 p-4 bg-stage-white" style={{ borderRadius: '2px', border: '1px solid rgba(10,10,10,0.10)' }}>
                   <p className="text-[10px] md:text-[11px] tracking-[0.1em] uppercase font-semibold mb-2 text-ink-900">{tx('redeemableAt', lang)}</p>
                   <div className="flex flex-wrap gap-2">
-                    {platformServices.filter(s => selectedServices.includes(s.id)).map(service => (
+                    {/* Also exclude coming-soon services here in case one is
+                        somehow already in selectedServices (persisted state, URL
+                        param, upstream default). The toggle above is disabled
+                        but this belt-and-braces prevents the chip strip from
+                        listing an unavailable service as "redeemable at". */}
+                    {platformServices.filter(s => selectedServices.includes(s.id) && !s.comingSoon).map(service => (
                       <span
                         key={service.id}
                         className="px-2.5 py-1 text-[10px] sm:text-[11px] md:text-[12px] tracking-wide text-ink-900 bg-stage-white"
@@ -1614,19 +1628,34 @@ export default function EGift() {
             </p>
             <div className="flex flex-wrap justify-center gap-2 md:gap-2.5">
               {platformServices.map(service => {
-                const isSelected = selectedServices.includes(service.id);
+                const isSelected = selectedServices.includes(service.id) && !service.comingSoon;
+                const isComingSoon = !!service.comingSoon;
                 return (
                   <button
                     key={service.id}
                     type="button"
-                    onClick={() => toggleService(service.id)}
+                    onClick={() => { if (!isComingSoon) toggleService(service.id); }}
+                    disabled={isComingSoon}
+                    aria-disabled={isComingSoon}
                     className={`px-3 sm:px-4 md:px-5 py-2 md:py-2.5 text-[10px] sm:text-[11px] md:text-[12px] tracking-[0.08em] font-medium transition-all duration-200 touch-manipulation ${
-                      isSelected ? 'bg-ink-900 text-stage-white border border-ink-900' : 'bg-stage-white text-ink-900 border border-ink-900/15'
+                      isComingSoon
+                        ? 'bg-stage-white text-ink-900/40 border border-ink-900/10 cursor-not-allowed'
+                        : isSelected
+                          ? 'bg-ink-900 text-stage-white border border-ink-900'
+                          : 'bg-stage-white text-ink-900 border border-ink-900/15'
                     }`}
                     style={{ borderRadius: '2px' }}
                     data-testid={`service-toggle-${service.id}`}
                   >
                     {service.name}
+                    {isComingSoon && (
+                      <span
+                        className="ml-1.5 text-[8px] sm:text-[9px] uppercase tracking-[0.15em] px-1.5 py-0.5 border border-ink-900/20 rounded-sm align-middle"
+                        data-testid={`service-coming-soon-${service.id}`}
+                      >
+                        {lang === 'he' ? 'בקרוב' : 'Coming soon'}
+                      </span>
+                    )}
                   </button>
                 );
               })}
