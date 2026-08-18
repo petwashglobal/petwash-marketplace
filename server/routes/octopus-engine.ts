@@ -165,96 +165,14 @@ router.all('/v1/ledger*', (_req: Request, res: Response) => {
   });
 });
 
-// =================== CREATE BOOKING ===================
-const createBookingSchema = z.object({
-  userId: z.string().min(1),
-  platform: z.enum(VALID_PLATFORMS),
-  price: z.number().int().positive(),
-  providerId: z.string().optional(),
-  idempotencyKey: z.string().optional(),
-});
-
-// [DEAD CODE] The router.all handlers above intercept all /v1/bookings*,
-// /v1/providers*, /v1/wallet* and /v1/ledger* requests — these handlers can
-// never be reached. Kept for reference until a future cleanup sprint removes
-// them entirely. The /v1/egift* handlers below remain active by design.
-router.post("/v1/bookings", async (req: Request, res: Response) => {
-  logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings called — migrate to POST /api/booking-requests');
-  try {
-    const body = createBookingSchema.parse(req.body);
-
-    // BOLA guard: if Firebase auth token is present, userId in body must match
-    const authUid = (req as any).firebaseUser?.uid;
-    const isAdminToken = (req as any).firebaseUser?.token?.role === 'admin' ||
-                         (req as any).firebaseUser?.token?.admin === true;
-    if (authUid && !isAdminToken && body.userId !== authUid) {
-      logger.warn('[Octopus] BOLA attempt blocked', { authUid, bodyUserId: body.userId });
-      return res.status(403).json({ error: "Cannot create bookings on behalf of other users" });
-    }
-
-    if (body.idempotencyKey) {
-      const [existing] = await db
-        .select()
-        .from(octopusBookings)
-        .where(eq(octopusBookings.idempotencyKey, body.idempotencyKey))
-        .limit(1);
-
-      if (existing) {
-        logger.info("[Idempotency] Returning cached booking", { idempotencyKey: body.idempotencyKey, bookingId: existing.id });
-        return res.json(existing);
-      }
-    }
-
-    const [user] = await db.select().from(users).where(eq(users.id, body.userId)).limit(1);
-    if (!user) {
-      return res.status(404).json({ error: "User not found" });
-    }
-
-    const kycStatus = (user as any).biometricMatchStatus || (user as any).kycStatus || "pending";
-    if (kycStatus === "failed" || kycStatus === "rejected") {
-      return res.status(403).json({ error: "KYC verification required before booking", kycStatus });
-    }
-
-    const split = calculateSplit(body.price);
-    const bookingId = generateId("OB");
-
-    const [booking] = await db.insert(octopusBookings).values({
-      id: bookingId,
-      userId: body.userId,
-      platform: body.platform,
-      price: body.price,
-      platformFee: split.platformFee,
-      providerShare: split.providerShare,
-      status: "CONFIRMED",
-      providerId: body.providerId || null,
-      idempotencyKey: body.idempotencyKey || null,
-    }).returning();
-
-    await db.insert(octopusLedger).values({
-      id: generateId("OL"),
-      type: "BOOKING_CREATED",
-      bookingId: booking.id,
-      amount: body.price,
-      platform: body.platform,
-    });
-
-    logger.info("[Booking] Created", {
-      bookingId: booking.id,
-      platform: body.platform,
-      price: body.price,
-      platformFee: split.platformFee,
-      providerShare: split.providerShare,
-    });
-
-    return res.status(201).json(booking);
-  } catch (err: any) {
-    if (err instanceof z.ZodError) {
-      return res.status(400).json({ error: "Validation failed", details: err.errors });
-    }
-    logger.error("[Booking] Creation failed", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
+// PR-DANGER-4: `POST /v1/bookings` handler + companion `createBookingSchema`
+// DELETED alongside the other three /v1/bookings/* handlers. Unreachable
+// via the /v1/bookings* sentinel at line 97. Handler had a BOLA guard for
+// authed callers but accepted `body.userId` from unauthenticated callers,
+// so if the sentinel were ever reordered the handler could insert an
+// octopus_bookings row for any userId at any price (the CONFIRMED status
+// short-circuited any payment step). Zero client callers — canonical
+// booking creation lives at POST /api/booking-requests.
 
 // PR-DANGER-1: `POST /v1/wallet/redeem` + `POST /v1/wallet/credit` handlers
 // DELETED. Both accepted `{ userId, platform, amount }` from the request
@@ -300,232 +218,32 @@ router.get("/v1/wallet/:userId", async (req: Request, res: Response) => {
   }
 });
 
-// =================== COMPLETE BOOKING (Race-safe) ===================
-// [DEPRECATED V1] Use PATCH /api/booking-requests/:id/complete instead
-// SECURITY 2026-08-08: was unauthenticated — an anonymous POST could force-complete
-// any booking AND release its escrow (line ~480). Gated requireAdmin: this deprecated
-// route is dead to the client (only /v1/timeline/* is used), so admin-only closes the
-// public money-moving hole with zero client impact. Real flow = /api/booking-requests.
-router.post("/v1/bookings/:id/complete", requireAdmin, async (req: Request, res: Response) => {
-  logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings/:id/complete called — migrate to PATCH /api/booking-requests/:id/complete');
-  try {
-    const { id } = req.params;
+// PR-DANGER-4: `POST /v1/bookings/:id/complete` handler DELETED.
+// The router.all('/v1/bookings*') sentinel at line 97 short-circuits every
+// /v1/bookings/* request with 410 Gone BEFORE this handler could run.
+// However, the handler still lived below it as ~120 lines of live money-
+// mutating code (PAYMENT_CAPTURED + PROVIDER_EARNING + PLATFORM_FEE
+// ledger inserts on the deprecated octopus_bookings + octopus_invoices
+// tables, plus escrow.releaseEscrowPayment() as a fire-and-forget side
+// effect). One future edit that reordered the mounts or removed the
+// sentinel would resurrect an admin-gated path capable of double-
+// counting revenue against modern booking_requests without any migration
+// or audit ceremony. Zero client callers (verified). Canonical booking
+// completion exists at PATCH /api/booking-requests/:id/complete and at
+// PATCH /api/sitter-suite/bookings/:id/complete (sitter-payout flow).
+// The sentinel migration table names /api/booking-requests as the
+// canonical rail — callers that reach the 410 see the correct target.
 
-    await db.transaction(async (tx) => {
-      const updated = await tx
-        .update(octopusBookings)
-        .set({ status: "COMPLETED", updatedAt: new Date() })
-        .where(and(
-          eq(octopusBookings.id, id),
-          sql`${octopusBookings.status} NOT IN ('COMPLETED', 'CANCELLED')`
-        ))
-        .returning();
-
-      if (updated.length === 0) {
-        const [existing] = await tx
-          .select()
-          .from(octopusBookings)
-          .where(eq(octopusBookings.id, id))
-          .limit(1);
-
-        if (!existing) {
-          throw { status: 404, message: "Booking not found" };
-        }
-        if (existing.status === "COMPLETED") {
-          throw { status: 200, message: "Booking already completed", alreadyDone: true };
-        }
-        throw { status: 400, message: `Cannot complete a ${existing.status.toLowerCase()} booking` };
-      }
-
-      const booking = updated[0];
-
-      const ledgerEntries = [
-        { id: generateId("OL"), type: "PAYMENT_CAPTURED", bookingId: id, amount: booking.price, platform: booking.platform },
-        { id: generateId("OL"), type: "PROVIDER_EARNING", bookingId: id, amount: booking.providerShare, platform: booking.platform },
-        { id: generateId("OL"), type: "PLATFORM_FEE", bookingId: id, amount: booking.platformFee, platform: booking.platform },
-      ];
-
-      for (const entry of ledgerEntries) {
-        await tx.insert(octopusLedger).values(entry);
-      }
-
-      const docNumber = `INV-${Date.now()}`;
-      await tx.insert(octopusInvoices).values({
-        id: generateId("OI"),
-        bookingId: id,
-        docNumber,
-      });
-
-      await tx.insert(octopusLedger).values({
-        id: generateId("OL"),
-        type: "INVOICE_ISSUED",
-        bookingId: id,
-        amount: booking.price,
-        platform: booking.platform,
-      });
-
-      logger.info("[Booking] Completed", {
-        bookingId: id,
-        price: booking.price,
-        platformFee: booking.platformFee,
-        providerShare: booking.providerShare,
-        docNumber,
-      });
-    });
-
-    // Release escrow funds (non-blocking, outside transaction)
-    (async () => {
-      try {
-        await escrowService.releaseEscrowPayment(id, 'octopus_engine_completion');
-        logger.info("[Escrow] Released after booking completion", { bookingId: id });
-      } catch (escrowErr: any) {
-        logger.warn("[Escrow] Release failed (may not have escrow record)", { bookingId: id, error: escrowErr?.message });
-      }
-    })();
-
-    // Backup financial records to Google Cloud Storage (non-blocking)
-    (async () => {
-      try {
-        const [completedBooking] = await db.select().from(octopusBookings).where(eq(octopusBookings.id, id)).limit(1);
-        if (completedBooking) {
-          const ledgerEntries = await db.select().from(octopusLedger).where(eq(octopusLedger.bookingId, id));
-          const financialRecord = JSON.stringify({
-            booking: completedBooking,
-            ledgerEntries,
-            completedAt: new Date().toISOString(),
-            integrityHash: createHash('sha256').update(JSON.stringify(completedBooking)).digest('hex'),
-          }, null, 2);
-          await backupFinancialDocument({
-            documentType: 'ledger_export',
-            bookingId: id,
-            platform: completedBooking.platform,
-            content: financialRecord,
-            metadata: {
-              totalPrice: completedBooking.price.toString(),
-              platformFee: completedBooking.platformFee.toString(),
-              providerShare: completedBooking.providerShare.toString(),
-            },
-          });
-        }
-      } catch (gcsErr: any) {
-        logger.warn("[GCS] Financial backup failed (non-blocking)", { bookingId: id, error: gcsErr?.message });
-      }
-    })();
-
-    return res.json({ success: true });
-  } catch (err: any) {
-    if (err.alreadyDone) {
-      return res.json({ success: true, message: err.message });
-    }
-    if (err.status && err.status !== 200) {
-      return res.status(err.status).json({ error: err.message });
-    }
-    logger.error("[Booking] Completion failed", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// =================== CANCEL BOOKING (Race-safe) ===================
-// [DEPRECATED V1] Use POST /api/booking-requests/:id/cancel instead
-// SECURITY 2026-08-08: was unauthenticated — anyone could cancel any booking by id. Gated requireAdmin (route dead to client).
-router.post("/v1/bookings/:id/cancel", requireAdmin, async (req: Request, res: Response) => {
-  logger.warn('[DEPRECATED V1] POST /api/octopus/v1/bookings/:id/cancel called — migrate to POST /api/booking-requests/:id/cancel');
-  try {
-    const { id } = req.params;
-
-    const updated = await db
-      .update(octopusBookings)
-      .set({ status: "CANCELLED", updatedAt: new Date() })
-      .where(and(
-        eq(octopusBookings.id, id),
-        sql`${octopusBookings.status} NOT IN ('COMPLETED', 'CANCELLED')`
-      ))
-      .returning();
-
-    if (updated.length === 0) {
-      const [existing] = await db
-        .select()
-        .from(octopusBookings)
-        .where(eq(octopusBookings.id, id))
-        .limit(1);
-
-      if (!existing) {
-        return res.status(404).json({ error: "Booking not found" });
-      }
-      return res.status(400).json({ error: `Cannot cancel a ${existing.status.toLowerCase()} booking` });
-    }
-
-    logger.info("[Booking] Cancelled", { bookingId: id });
-    return res.json({ success: true });
-  } catch (err: any) {
-    logger.error("[Booking] Cancellation failed", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// =================== GET BOOKING (with ledger + invoice) ===================
-// [DEPRECATED V1] Use GET /api/booking-requests/:id instead
-// SECURITY 2026-08-08: was unauthenticated — leaked booking + full ledger (price/providerShare/platformFee) + invoice by id. Gated requireAdmin (route dead to client).
-router.get("/v1/bookings/:id", requireAdmin, async (req: Request, res: Response) => {
-  logger.warn('[DEPRECATED V1] GET /api/octopus/v1/bookings/:id called — migrate to GET /api/booking-requests/:id');
-  try {
-    const { id } = req.params;
-
-    const [booking] = await db
-      .select()
-      .from(octopusBookings)
-      .where(eq(octopusBookings.id, id))
-      .limit(1);
-
-    if (!booking) {
-      return res.status(404).json({ error: "Booking not found" });
-    }
-
-    const ledgerEntries = await db
-      .select()
-      .from(octopusLedger)
-      .where(eq(octopusLedger.bookingId, id));
-
-    const [invoice] = await db
-      .select()
-      .from(octopusInvoices)
-      .where(eq(octopusInvoices.bookingId, id))
-      .limit(1);
-
-    return res.json({ booking, ledger: ledgerEntries, invoice: invoice || null });
-  } catch (err: any) {
-    logger.error("[Booking] Fetch failed", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
-
-// =================== LIST BOOKINGS ===================
-// [DEPRECATED V1] Use GET /api/booking-requests instead
-// SECURITY 2026-08-08: was unauthenticated — client-supplied ?userId let anyone dump any user's bookings (or the whole table). Gated requireAdmin (route dead to client).
-router.get("/v1/bookings", requireAdmin, async (req: Request, res: Response) => {
-  logger.warn('[DEPRECATED V1] GET /api/octopus/v1/bookings called — migrate to GET /api/booking-requests');
-  try {
-    const { userId, platform } = req.query;
-
-    const conditions = [];
-    if (userId) conditions.push(eq(octopusBookings.userId, userId as string));
-    if (platform && VALID_PLATFORMS.includes(platform as any)) {
-      conditions.push(eq(octopusBookings.platform, platform as string));
-    }
-
-    const bookings = await db
-      .select()
-      .from(octopusBookings)
-      .where(conditions.length > 0 ? and(...conditions) : undefined)
-      .orderBy(sql`${octopusBookings.createdAt} DESC`)
-      .limit(100);
-
-    return res.json({ bookings, total: bookings.length });
-  } catch (err: any) {
-    logger.error("[Bookings] List failed", err);
-    return res.status(500).json({ error: "Internal server error" });
-  }
-});
+// PR-DANGER-4: `POST /v1/bookings/:id/cancel` + `GET /v1/bookings/:id` +
+// `GET /v1/bookings` handlers DELETED alongside the /complete handler
+// above. All four were unreachable via the router.all('/v1/bookings*')
+// sentinel at line 97 (410), and all four wrote to / read from the
+// deprecated octopus_bookings table which the canonical flow no longer
+// touches. Canonical replacements (already live, referenced in the
+// sentinel migration table):
+//   * cancel:   POST  /api/booking-requests/:id/cancel
+//   * get one:  GET   /api/booking-requests/:id
+//   * list:     GET   /api/booking-requests
 
 // =================== PROVIDER SEARCH ===================
 router.get("/v1/providers/search", async (req: Request, res: Response) => {
