@@ -404,6 +404,42 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   } | null>(null);
   const [linkPassword, setLinkPassword] = useState('');
 
+  // PR-AUTH-FIX-RESET-EMAIL-3 (2026-08-15) — Forgot Password on the LOGIN
+  // screen. Pre-fix the customer sign-in page had NO way to trigger a
+  // password reset — users with a forgotten password were stuck on
+  // "Sign in" with no path forward. Anti-enumeration: the toast is
+  // ALWAYS the same generic "if an account exists" text regardless of
+  // whether Firebase confirmed the send, so a caller cannot probe
+  // account existence via error variance.
+  const [forgotBusy, setForgotBusy] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
+  const handleForgotPassword = async () => {
+    if (forgotBusy) return; // prevent double-submit
+    setInlineError(null);
+    const trimmed = (email || '').trim();
+    // Cheap RFC-ish shape check — Firebase will reject bad shapes, but
+    // rejecting client-side avoids a wasted round-trip AND lets us
+    // show a single specific "please enter a valid email" hint. Any
+    // OTHER error (rate-limit, unknown, network) becomes the generic
+    // anti-enumeration toast — never leaks account existence.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
+      setInlineError(he ? 'הזן כתובת אימייל תקינה' : 'Please enter a valid email address');
+      return;
+    }
+    setForgotBusy(true);
+    try {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      const { auth: fbAuth } = await import('@/lib/firebase');
+      await sendPasswordResetEmail(fbAuth, trimmed);
+    } catch {
+      // Deliberately swallow. Anti-enumeration: the user sees the same
+      // generic success message whether the email exists or not.
+    } finally {
+      setForgotBusy(false);
+      setForgotSent(true);
+    }
+  };
+
   const fail = (msg: string) => setInlineError(msg);
 
   // On mount: detect a platform authenticator (Face ID / Touch ID / fingerprint)
@@ -1778,9 +1814,39 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                   <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
                 </button>
               ) : usePassword ? (
-                <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
-                  <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
-                </button>
+                <>
+                  <button className="sl-cta" disabled={busy} onClick={() => { void loginWithPassword(); }}>
+                    <FaLock aria-hidden /> {busy ? '…' : (he ? 'התחברות' : 'Sign in')}
+                  </button>
+                  {/* PR-AUTH-FIX-RESET-EMAIL-3: Forgot Password on the login
+                      screen. Generic success message regardless of whether an
+                      account exists (anti-enumeration). Disabled while in-flight
+                      to prevent double-submit. */}
+                  <div style={{ textAlign: 'center', marginTop: 10 }}>
+                    <button
+                      type="button"
+                      disabled={forgotBusy}
+                      onClick={() => { void handleForgotPassword(); }}
+                      data-testid="link-forgot-password"
+                      style={{ background: 'none', border: 'none', color: 'inherit', opacity: forgotBusy ? 0.5 : 0.85, fontSize: '13px', textDecoration: 'underline', cursor: forgotBusy ? 'wait' : 'pointer', padding: '4px 0' }}
+                    >
+                      {forgotBusy
+                        ? (he ? 'שולח…' : 'Sending…')
+                        : (he ? 'שכחתי את הסיסמה' : 'Forgot password?')}
+                    </button>
+                  </div>
+                  {forgotSent && (
+                    <p
+                      role="status"
+                      data-testid="text-forgot-sent"
+                      style={{ textAlign: 'center', fontSize: '13px', color: '#8A6A1B', marginTop: 8 }}
+                    >
+                      {he
+                        ? 'אם קיים חשבון לכתובת שסופקה, נשלח אימייל לאיפוס סיסמה. בדוק את תיבת הדואר.'
+                        : 'If an account exists for that address, a password reset email has been sent. Please check your inbox.'}
+                    </p>
+                  )}
+                </>
               ) : (
                 // CODE-FIRST primary CTA (returning login): email → one-time code.
                 <button className="sl-cta" disabled={busy || !emailValid}
