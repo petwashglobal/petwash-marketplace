@@ -162,21 +162,77 @@ export async function syncForUser(
 }
 
 /**
- * Read-only helper for the "My Invoices" surface. Returns the stored
- * `CustomerHistoryURL` for a uid (server-resolved — the caller must pass the
- * authenticated uid; do NOT accept it from the browser). null if the user
- * has no SUMIT customer synced yet.
+ * Read-only helper for the "My Invoices" surface. Returns a CURRENT
+ * customer-portal URL for the given uid.
+ *
+ * Per CEO 2026-08-16 SUMIT lane: the URL is treated as a generated /
+ * potentially-expiring access URL. CustomerID is the canonical mapping.
+ * We refresh via the official /accounting/customers/getdetailsurl/
+ * endpoint and cache the returned URL for a short window (5 min in-row)
+ * so we don't hammer SUMIT on every tap.
+ *
+ * Caller MUST pass the AUTHENTICATED uid — never accept it from the browser.
+ * Returns null if the user has no SUMIT customer synced yet.
  */
+const FRESH_URL_TTL_MS = 5 * 60 * 1000;
+
 export async function getCustomerHistoryUrl(uid: string): Promise<string | null> {
   if (!uid) return null;
   try {
-    const [row] = await db.select({ url: sumitCustomers.customerHistoryUrl })
+    const [row] = await db.select({
+      customerId: sumitCustomers.sumitCustomerId,
+      cachedUrl: sumitCustomers.customerHistoryUrl,
+      syncedAt: sumitCustomers.syncedAt,
+    })
       .from(sumitCustomers)
       .where(eq(sumitCustomers.userId, uid))
       .limit(1);
-    return row?.url ?? null;
+    if (!row?.customerId) return null;
+
+    // Cache window — if we refreshed recently, reuse.
+    if (row.cachedUrl && row.syncedAt) {
+      const ageMs = Date.now() - new Date(row.syncedAt).getTime();
+      if (ageMs < FRESH_URL_TTL_MS) return row.cachedUrl;
+    }
+
+    // Refresh via the official getdetailsurl endpoint. CustomerID is the
+    // canonical mapping — the URL is a generated access URL.
+    const refresh = await client.getCustomerDetailsUrl(row.customerId);
+    if (refresh.wired && refresh.url) {
+      try {
+        await db.update(sumitCustomers)
+          .set({ customerHistoryUrl: refresh.url, syncedAt: new Date() })
+          .where(eq(sumitCustomers.userId, uid));
+      } catch { /* cache update is best-effort */ }
+      return refresh.url;
+    }
+
+    // Refresh failed. Fall back to the cached URL if we have one — better
+    // than an empty state; SUMIT can still land the customer on their
+    // login page from an expired portal URL.
+    return row.cachedUrl ?? null;
   } catch (err: any) {
     logger.warn('[SumitCustomerService] getCustomerHistoryUrl failed', {
+      uid, error: err?.message,
+    });
+    return null;
+  }
+}
+
+/**
+ * Diagnostics helper — returns just the canonical SUMIT CustomerID for a
+ * PetWash uid (no URL, no refresh). Used by admin / reconciliation code.
+ */
+export async function getSumitCustomerId(uid: string): Promise<string | null> {
+  if (!uid) return null;
+  try {
+    const [row] = await db.select({ customerId: sumitCustomers.sumitCustomerId })
+      .from(sumitCustomers)
+      .where(eq(sumitCustomers.userId, uid))
+      .limit(1);
+    return row?.customerId ?? null;
+  } catch (err: any) {
+    logger.warn('[SumitCustomerService] getSumitCustomerId failed', {
       uid, error: err?.message,
     });
     return null;
