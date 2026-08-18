@@ -201,6 +201,7 @@ const labels = {
     share:            'שתף',
     addCalendar:      'לוח שנה',
     messageProvider:  'הודעה',
+    callProvider:     'שיחה',
     navigate:         'נווט',
     cancelConfirm:    'לבטל את ההזמנה?',
     cancelYes:        'כן, בטל',
@@ -269,6 +270,7 @@ const labels = {
     share:            'Share',
     addCalendar:      'Calendar',
     messageProvider:  'Message',
+    callProvider:     'Call',
     navigate:         'Navigate',
     cancelConfirm:    'Cancel this booking?',
     cancelYes:        'Yes, cancel',
@@ -556,6 +558,48 @@ export default function BookingConfirmation() {
 
   const handleMessageProvider = () => {
     if (booking?.requestId) navigate(`/booking-chat/${booking.requestId}`);
+  };
+
+  /**
+   * Call the provider — fetches the server-side /provider-contact endpoint
+   * (already exists at server/routes/booking-requests.ts:1269, gated by
+   * ownership + status ∈ CONTACTABLE + 401). Opens tel: with the resolved
+   * number. Server was live but had zero client callers before this.
+   * Toast on failure — never throws in the render tree.
+   */
+  const handleCallProvider = async () => {
+    if (!booking?.requestId) return;
+    try {
+      const res = await apiRequest('GET', `/api/booking-requests/${booking.requestId}/provider-contact`);
+      const data = await res.json() as { phone?: string | null; providerName?: string | null };
+      const raw = (data?.phone ?? '').replace(/[\s-]/g, '');
+      if (!raw) {
+        toast({
+          title: isRTL ? 'טלפון לא זמין' : 'Phone unavailable',
+          description: isRTL ? 'הספק לא הגדיר מספר טלפון.' : 'The provider has not set a phone number.',
+        });
+        return;
+      }
+      // Open the OS tel: handler. On desktop this triggers the default
+      // system dialer (or the browser's chosen handler); on mobile it opens
+      // the phone app. Fallback: copy to clipboard so the customer can dial.
+      const opened = window.open(`tel:${raw}`, '_self');
+      if (!opened) {
+        try {
+          await navigator.clipboard?.writeText(raw);
+          toast({
+            title: isRTL ? 'המספר הועתק' : 'Number copied',
+            description: raw,
+          });
+        } catch { /* clipboard best-effort */ }
+      }
+    } catch (err: any) {
+      // Server returns 409 with code NOT_CONTACTABLE outside the allowed
+      // window, 403 for non-owner, 404 for no provider yet. Show the
+      // server's honest message when available (apiRequest ApiError shape).
+      const msg = err?.body?.error || (isRTL ? 'לא ניתן ליצור קשר כרגע' : 'Cannot reach the provider right now');
+      toast({ title: msg, variant: 'destructive' });
+    }
   };
 
   /* ── Loading / not found ── */
@@ -857,6 +901,22 @@ export default function BookingConfirmation() {
                 label={t.messageProvider}
                 onClick={handleMessageProvider}
                 disabled={!booking.requestId}
+              />
+              {/* Call provider — hits GET /provider-contact for the resolved
+                  phone, opens tel:. Server enforces owner + contactable-status
+                  gate (409 outside window); disabled here on statuses the
+                  server would refuse so we don't waste a round-trip. */}
+              <QuickAction
+                icon={<Phone className="w-4 h-4" />}
+                label={t.callProvider}
+                onClick={handleCallProvider}
+                disabled={
+                  !booking.requestId ||
+                  !booking.providerId ||
+                  !['accepted', 'confirmed', 'in_progress',
+                    'meet_greet_completed', 'provider_marked_complete',
+                    'completed'].includes(booking.status)
+                }
               />
               <QuickAction
                 icon={<Navigation className="w-4 h-4" />}
