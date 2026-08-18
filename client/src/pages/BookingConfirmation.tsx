@@ -504,9 +504,20 @@ export default function BookingConfirmation() {
   const confirmMutation = useMutation({
     mutationFn: async () => {
       if (!confirmKeyRef.current) confirmKeyRef.current = crypto.randomUUID();
+      // Clamp rating to the server's zod boundary (1..5 integer or absent).
+      const safeRating =
+        typeof rating === 'number' && rating >= 1 && rating <= 5
+          ? Math.floor(rating)
+          : undefined;
+      const trimmedReview = (reviewText || '').trim().slice(0, 2000);
       const res = await apiRequest(`/api/booking-requests/${requestId}/confirm`, {
         method: 'POST',
-        body: { rating, review: reviewText || undefined, ownerPhone: phone || undefined, ownerEmail: email || undefined },
+        body: {
+          rating: safeRating,
+          review: trimmedReview || undefined,
+          ownerPhone: phone || undefined,
+          ownerEmail: email || undefined,
+        },
         headers: { 'Idempotency-Key': confirmKeyRef.current },
       });
       return res.json();
