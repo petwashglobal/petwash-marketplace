@@ -3,6 +3,7 @@ import crypto from 'crypto';
 import { google } from 'googleapis';
 import { logger } from '../lib/logger';
 import { auth as firebaseAdmin, db } from '../lib/firebase-admin';
+import { requireAdmin } from '../adminAuth';
 
 const router = Router();
 
@@ -200,19 +201,40 @@ router.get('/status', async (_req, res) => {
 
 /**
  * POST /api/gmail/send
- * Send an email via Gmail using Replit connector
- * SECURITY: Requires Firebase authentication
+ * Send an email via Gmail using the connected PetWash Gmail identity.
+ *
+ * SECURITY (2026-08-18 hardening):
+ *   1. requireAdmin — this endpoint speaks AS petwash.co.il. Any Firebase-auth
+ *      user was previously able to send arbitrary email from the brand identity,
+ *      turning it into a brand-abuse + phishing tool. Restricted to admins only.
+ *   2. Header injection guard — the previous version interpolated `to` and
+ *      `subject` straight into a raw MIME header. A payload like
+ *      `to = "victim@x\r\nBcc:leak@evil.com\r\nFrom:ceo@petwash.co.il"` would
+ *      inject extra headers into the outbound message (CRLF injection). We now
+ *      reject any control-character sequence (\r, \n, or bare \0) in `to` or
+ *      `subject` with 400, and also refuse comma-separated `to` values (a
+ *      single explicit recipient is the intended contract).
  */
-router.post('/send', requireFirebaseAuth, async (req, res) => {
+router.post('/send', requireAdmin, async (req, res) => {
   try {
-    const userId = (req as any).user?.uid;
-    if (!userId) {
-      return res.status(401).json({ success: false, error: 'User not authenticated' });
+    const { to, subject, body, html } = req.body;
+    if (typeof to !== 'string' || typeof subject !== 'string' || !to || !subject) {
+      return res.status(400).json({ success: false, error: 'to and subject are required (strings)' });
     }
 
-    const { to, subject, body, html } = req.body;
-    if (!to || !subject) {
-      return res.status(400).json({ success: false, error: 'to and subject are required' });
+    // Header-injection guard: no CR/LF/NUL in headers, no comma-list recipients.
+    const HEADER_UNSAFE = /[\r\n\0]/;
+    if (HEADER_UNSAFE.test(to) || HEADER_UNSAFE.test(subject) || to.includes(',')) {
+      return res.status(400).json({ success: false, error: 'Invalid header content' });
+    }
+    // Cheap but strict deliverable-address check — server-side belt+suspenders on
+    // top of admin gating. Rejects obviously-broken addresses BEFORE they hit the
+    // Gmail API and count against the daily send cap.
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to) || to.length > 254) {
+      return res.status(400).json({ success: false, error: 'Invalid recipient address' });
+    }
+    if (subject.length > 998) {
+      return res.status(400).json({ success: false, error: 'Subject too long' });
     }
 
     const gmail = await getUncachableGmailClient();
@@ -238,7 +260,12 @@ router.post('/send', requireFirebaseAuth, async (req, res) => {
       },
     });
 
-    logger.info('[Gmail] Email sent via Replit connector', { to, subject, messageId: result.data.id });
+    logger.info('[Gmail] Email sent via Replit connector', {
+      to,
+      subject,
+      messageId: result.data.id,
+      adminUid: (req as any).user?.uid,
+    });
 
     return res.status(200).json({
       success: true,
