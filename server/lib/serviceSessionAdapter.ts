@@ -45,7 +45,7 @@ export type ResolveOutcome =
  * lifecycle projection, not a display label. Every real DTO consumer
  * cares about the bucket, not the raw booking status.
  */
-function bucketBookingStatus(status: string | null | undefined): ServiceSessionStatus {
+export function bucketBookingStatus(status: string | null | undefined): ServiceSessionStatus {
   const s = (status || '').toLowerCase();
   if (s === 'in_progress') return 'in_progress';
   if (s === 'provider_marked_complete') return 'awaiting_report';
@@ -169,7 +169,7 @@ export async function resolveServiceSession(
  *   • lastKnownLocation + checkInLocation jsonb columns become the DTO's
  *     lastLocation / startLocation
  */
-function bucketWalkStatus(status: string | null | undefined, endedAt: Date | null): ServiceSessionStatus {
+export function bucketWalkStatus(status: string | null | undefined, endedAt: Date | null): ServiceSessionStatus {
   const s = (status || '').toLowerCase();
   if (s === 'in_progress') return 'in_progress';
   if (s === 'completed') return endedAt ? 'completed' : 'awaiting_report';
@@ -177,7 +177,7 @@ function bucketWalkStatus(status: string | null | undefined, endedAt: Date | nul
   return 'scheduled';
 }
 
-function jsonbToLocation(raw: unknown): ServiceLocation | null {
+export function jsonbToLocation(raw: unknown): ServiceLocation | null {
   if (!raw || typeof raw !== 'object') return null;
   const o = raw as Record<string, unknown>;
   const lat = typeof o.latitude === 'number' ? o.latitude : Number(o.latitude);
@@ -282,7 +282,7 @@ async function resolveFromWalkBookings(
  * the legal gate is removed. Cost is a table lookup on a booking-ref
  * miss.
  */
-function bucketPettrekStatus(status: string | null | undefined): ServiceSessionStatus {
+export function bucketPettrekStatus(status: string | null | undefined): ServiceSessionStatus {
   const s = (status || '').toLowerCase();
   if (s === 'in_progress') return 'in_progress';
   if (s === 'completed') return 'completed';
