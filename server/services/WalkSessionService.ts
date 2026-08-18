@@ -48,38 +48,61 @@ interface WalkSessionLog {
 
 export class WalkSessionService {
   /**
+   * P1-14 helper (2026-08-18): translate a caller's Firebase UID into the
+   * WALKER-uuid stored in walk_bookings.walkerId. Returns null when the
+   * caller isn't a registered walker.
+   *
+   * Route handlers pass req.user.uid (a Firebase UID) as `walkerId`, but
+   * the walk_bookings column stores a `WALKER-<uuid>` string (references
+   * walker_profiles.walkerId). Every prior string-compare between the
+   * two was silently false, so walker-facing write paths were dead —
+   * check-in / check-out / gps-update / vital-update / bathroom-marker
+   * all rejected the assigned walker.
+   */
+  private async resolveWalkerUuid(callerUid: string): Promise<string | null> {
+    if (!callerUid) return null;
+    const [row] = await db
+      .select({ walkerId: walkerProfiles.walkerId })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.userId, callerUid))
+      .limit(1);
+    return (row?.walkerId || null) as string | null;
+  }
+
+  /**
    * Check-in: Walker starts the walk session
    * Creates blockchain audit entry and updates walk status
+   *
+   * P0-3 (2026-08-18): atomic transition. Previously SELECT + UPDATE with
+   * a WHERE guarded only on `id` — two concurrent start taps both
+   * observed status='confirmed' and both wrote. Now: conditional UPDATE
+   * WHERE `status='confirmed' AND walkerId=<resolved WALKER-uuid>`
+   * RETURNING; exactly one caller wins. Second concurrent tap detected
+   * as "already started by same walker" → idempotent success (returns
+   * the same sessionId/checkInTime the first caller established). Any
+   * other state → 409 INVALID_TRANSITION.
+   *
+   * P1-14 (2026-08-18): walker identity check uses the resolved
+   * WALKER-uuid (not the Firebase UID) so real walkers pass — see helper
+   * above.
    */
   async checkIn(data: CheckInData): Promise<{
     success: boolean;
     sessionId: string;
     checkInTime: Date;
     estimatedCheckOut: Date;
+    alreadyStarted?: boolean;
   }> {
     const checkInTime = data.timestamp;
-    
-    // Get walk booking details
-    const [walk] = await db
-      .select()
-      .from(walkBookings)
-      .where(eq(walkBookings.id, data.walkId))
-      .limit(1);
 
-    if (!walk) {
-      throw new Error('Walk booking not found');
+    const walkerUuid = await this.resolveWalkerUuid(data.walkerId);
+    if (!walkerUuid) {
+      throw new Error('Not registered as walker');
     }
 
-    if (walk.walkerId !== data.walkerId) {
-      throw new Error('Unauthorized: Walker ID mismatch');
-    }
-
-    if (walk.status !== 'confirmed') {
-      throw new Error('Walk must be in confirmed status to check in');
-    }
-
-    // Update walk status to in_progress with check-in timestamp
-    await db
+    // Atomic transition — the only writer for status: confirmed → in_progress
+    // on this booking that also matches THIS walker's assignment.
+    const winners = await db
       .update(walkBookings)
       .set({
         status: 'in_progress',
@@ -88,7 +111,39 @@ export class WalkSessionService {
         isLiveTrackingActive: true,
         updatedAt: new Date(),
       })
-      .where(eq(walkBookings.id, data.walkId));
+      .where(and(
+        eq(walkBookings.id, data.walkId),
+        eq(walkBookings.status, 'confirmed'),
+        eq(walkBookings.walkerId, walkerUuid),
+      ))
+      .returning();
+
+    if (winners.length === 0) {
+      // No row updated. Diagnose: does the row exist? is it assigned to
+      // this walker? has it already been started by this walker?
+      const [current] = await db
+        .select()
+        .from(walkBookings)
+        .where(eq(walkBookings.id, data.walkId))
+        .limit(1);
+      if (!current) throw new Error('Walk booking not found');
+      if (current.walkerId !== walkerUuid) throw new Error('Unauthorized: Walker ID mismatch');
+      if (current.status === 'in_progress' && current.actualStartTime) {
+        // Idempotent success — second concurrent tap sees the winner's state.
+        const est = new Date(current.actualStartTime.getTime() + (current.durationMinutes || 60) * 60000);
+        return {
+          success: true,
+          sessionId: data.walkId as any,
+          checkInTime: current.actualStartTime,
+          estimatedCheckOut: est,
+          alreadyStarted: true,
+        };
+      }
+      throw new Error(`Cannot check in from status "${current.status}"`);
+    }
+
+    // Winner path — proceed with side effects exactly once.
+    const walk = winners[0];
 
     // Create blockchain audit entry for check-in
     await db.insert(walkBlockchainAudit).values({
@@ -183,42 +238,16 @@ export class WalkSessionService {
   }> {
     const checkOutTime = data.timestamp;
 
-    // Get walk booking details
-    const [walk] = await db
-      .select()
-      .from(walkBookings)
-      .where(eq(walkBookings.id, data.walkId))
-      .limit(1);
-
-    if (!walk) {
-      throw new Error('Walk booking not found');
+    // P1-14 fix — see helper above.
+    const walkerUuid = await this.resolveWalkerUuid(data.walkerId);
+    if (!walkerUuid) {
+      throw new Error('Not registered as walker');
     }
 
-    if (walk.walkerId !== data.walkerId) {
-      throw new Error('Unauthorized: Walker ID mismatch');
-    }
-
-    if (walk.status !== 'in_progress') {
-      throw new Error('Walk must be in progress to check out');
-    }
-
-    if (!walk.actualStartTime) {
-      throw new Error('No check-in time found - cannot check out');
-    }
-
-    // Calculate payment breakdown (15% platform commission)
-    // Walker gets 85% of base price
-    const totalCostValue = walk.totalCost;
-    if (!totalCostValue || isNaN(parseFloat(totalCostValue as any))) {
-      throw new Error('Invalid or missing totalCost - cannot calculate payment');
-    }
-    const totalPaid = parseFloat(totalCostValue as any); // What owner paid (base + 15%)
-    const basePriceEstimate = totalPaid / 1.15; // Reverse engineer base from owner payment
-    const walkerEarnings = basePriceEstimate * 0.85; // Walker gets 85% of base
-    const platformFee = totalPaid - walkerEarnings; // Platform keeps the difference
-
-    // Update walk status to completed with check-out data
-    await db
+    // P0-4 atomic transition: only walker who currently owns the
+    // in_progress row wins. Second concurrent finish tap sees zero rows
+    // updated → we diagnose and return idempotently or throw.
+    const winners = await db
       .update(walkBookings)
       .set({
         status: 'completed',
@@ -233,7 +262,78 @@ export class WalkSessionService {
         ownerNotified: true,
         updatedAt: new Date(),
       })
-      .where(eq(walkBookings.id, data.walkId));
+      .where(and(
+        eq(walkBookings.id, data.walkId),
+        eq(walkBookings.status, 'in_progress'),
+        eq(walkBookings.walkerId, walkerUuid),
+      ))
+      .returning();
+
+    if (winners.length === 0) {
+      const [current] = await db
+        .select()
+        .from(walkBookings)
+        .where(eq(walkBookings.id, data.walkId))
+        .limit(1);
+      if (!current) throw new Error('Walk booking not found');
+      if (current.walkerId !== walkerUuid) throw new Error('Unauthorized: Walker ID mismatch');
+      if (current.status === 'completed') {
+        // Idempotent — second concurrent finish tap, or same walker resubmitting.
+        // We do NOT re-fire audit / earnings side effects — they belong to the
+        // one winner. Return the current row's authoritative summary. The
+        // money block is preserved unchanged for wire-compatibility with any
+        // legacy client that still reads it (audit found none). See P0-5
+        // note below the winner path.
+        const idemTotal = parseFloat((current.totalCost as any) || '0');
+        const idemBase = idemTotal / 1.15;
+        const idemWalker = idemBase * 0.85;
+        const idemFee = idemTotal - idemWalker;
+        return {
+          success: true,
+          sessionSummary: {
+            checkInTime: current.actualStartTime!,
+            checkOutTime: current.actualEndTime ?? checkOutTime,
+            duration: (current.actualDurationMinutes ?? 0) * 60,
+            distance: current.totalDistanceMeters ?? 0,
+            vitalData: current.vitalDataSummary || {},
+            earningsBreakdown: {
+              totalPaid: idemTotal,
+              basePriceEstimate: idemBase,
+              platformFee: idemFee,
+              walkerEarnings: idemWalker,
+              currency: current.currency || 'ILS',
+            },
+          },
+        } as any;
+      }
+      throw new Error(`Cannot check out from status "${current.status}"`);
+    }
+
+    const walk = winners[0];
+    if (!walk.actualStartTime) {
+      throw new Error('No check-in time found - cannot check out');
+    }
+
+    // P0-5 NOTE (2026-08-18, deferred to money-orchestrator work):
+    // The commission math below reverse-engineers walker earnings from
+    // totalCost * 0.85 / 1.15. Audit 2026-08-18 confirmed ZERO downstream
+    // consumers of the returned earningsBreakdown (no client reads it, no
+    // server callers read it; processNayaxPayment is commented-out dead
+    // code). The canonical money authorities are quoteEngine +
+    // UnifiedPricingService (pricing), EscrowService (holds), and
+    // ProviderPayoutService (walker earnings). WalkSessionService MUST NOT
+    // become a second commission engine. This block is preserved for
+    // strict wire-compat this cycle; a follow-up money-orchestrator PR
+    // (CEO §31, needs money approval) replaces the recompute with a read
+    // from ProviderPayoutService.getWalkerPayout(walkId).
+    const totalCostValue = walk.totalCost;
+    if (!totalCostValue || isNaN(parseFloat(totalCostValue as any))) {
+      throw new Error('Invalid or missing totalCost - cannot calculate payment');
+    }
+    const totalPaid = parseFloat(totalCostValue as any);
+    const basePriceEstimate = totalPaid / 1.15;
+    const walkerEarnings = basePriceEstimate * 0.85;
+    const platformFee = totalPaid - walkerEarnings;
 
     // Create blockchain audit entry for check-out
     await db.insert(walkBlockchainAudit).values({
@@ -310,11 +410,15 @@ export class WalkSessionService {
     walkerId: string,
     location: { latitude: number; longitude: number; accuracy: number; timestamp: Date }
   ): Promise<void> {
-    // Verify walk is in progress
+    // P1-14 fix — resolve WALKER-uuid so the assignment check works.
+    const walkerUuid = await this.resolveWalkerUuid(walkerId);
+    if (!walkerUuid) throw new Error('Not registered as walker');
+
+    // Verify walk is in progress AND belongs to this walker.
     const [walk] = await db
       .select()
       .from(walkBookings)
-      .where(and(eq(walkBookings.id, walkId), eq(walkBookings.walkerId, walkerId)))
+      .where(and(eq(walkBookings.id, walkId), eq(walkBookings.walkerId, walkerUuid)))
       .limit(1);
 
     if (!walk || walk.status !== 'in_progress') {
@@ -372,11 +476,15 @@ export class WalkSessionService {
     walkerId: string,
     vitalData: { heartRate?: number; steps?: number; hydrationStops?: number; timestamp: Date }
   ): Promise<void> {
-    // Verify walk is in progress
+    // P1-14 fix — resolve WALKER-uuid so the assignment check works.
+    const walkerUuid = await this.resolveWalkerUuid(walkerId);
+    if (!walkerUuid) throw new Error('Not registered as walker');
+
+    // Verify walk is in progress AND belongs to this walker.
     const [walk] = await db
       .select()
       .from(walkBookings)
-      .where(and(eq(walkBookings.id, walkId), eq(walkBookings.walkerId, walkerId)))
+      .where(and(eq(walkBookings.id, walkId), eq(walkBookings.walkerId, walkerUuid)))
       .limit(1);
 
     if (!walk || walk.status !== 'in_progress') {
@@ -431,11 +539,15 @@ export class WalkSessionService {
       notes?: string;
     }
   ): Promise<void> {
-    // Verify walk is in progress
+    // P1-14 fix — resolve WALKER-uuid so the assignment check works.
+    const walkerUuid = await this.resolveWalkerUuid(walkerId);
+    if (!walkerUuid) throw new Error('Not registered as walker');
+
+    // Verify walk is in progress AND belongs to this walker.
     const [walk] = await db
       .select()
       .from(walkBookings)
-      .where(and(eq(walkBookings.id, walkId), eq(walkBookings.walkerId, walkerId)))
+      .where(and(eq(walkBookings.id, walkId), eq(walkBookings.walkerId, walkerUuid)))
       .limit(1);
 
     if (!walk || walk.status !== 'in_progress') {
@@ -663,19 +775,28 @@ export class WalkSessionService {
   }
 
   /**
-   * Log session action with timestamp and protocol stamp
+   * P0-6 (2026-08-18): operational log only — NO raw GPS / vitals / route.
+   *
+   * Before: console.log dumped the whole `log.data` object which, for
+   * `gps_update`, contained live latitude/longitude/accuracy/timestamp,
+   * and for `vital_update`, contained heart-rate / steps / hydration —
+   * private customer + pet data going into ordinary Cloud Run logs.
+   *
+   * After: log only the operational fields (walkId, action, timestamp,
+   * protocol stamp). The protocol stamp is still a hash over the full
+   * payload — auditors verifying integrity can re-derive it from the
+   * DB row where the data actually lives, without the log ever holding
+   * the raw values. If richer audit is needed, store it in the dedicated
+   * walk_blockchain_audit table (already used for check-in / check-out),
+   * not in ordinary logs.
    */
   private async logSessionAction(log: WalkSessionLog): Promise<void> {
-    // Store in system logs table (can be queried for audit)
     console.log(`[WALK SESSION LOG] ${log.action.toUpperCase()}`, {
       walkId: log.walkId,
       timestamp: log.timestamp.toISOString(),
-      data: log.data,
       protocol: 'WALK_MY_PET_V1',
       stamp: this.generateProtocolStamp(log),
     });
-
-    // TODO: Store in dedicated session_logs table if needed for compliance
   }
 
   /**
