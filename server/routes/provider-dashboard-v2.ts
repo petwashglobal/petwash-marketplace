@@ -21,6 +21,7 @@ import { logger } from '../lib/logger';
 import { pool } from '../db';
 import { scheduleRebookTrigger } from '../jobs/rebook-scheduler';
 import { BLOCKING_STATUSES } from '@shared/lib/bookingOverlap';
+import { resolveProviderBookingActions } from '@shared/lib/providerBookingActions';
 import { releaseSlotLock } from '../lib/marketplaceSlotLock';
 import { dispatchNotification } from '../lib/notificationDispatcher';
 import { walletService } from '../services/WalletService';
@@ -80,9 +81,31 @@ function resolveStatuses(statusParam: string | undefined): string[] | null {
 
 // Converts a booking_requests row to the same shape the V1 API returns (ILS, not cents)
 // so existing POSJobs UI works without change.
+//
+// P1-17 additive fields (2026-08-18): `primaryAction` + `allowedActions`
+// are computed HERE, on the server, from the canonical booking status +
+// minutes-until-start (and, when present, minutes-until-meet-greet). The
+// client picks the button label + icon; it MUST NOT synthesise an action
+// that the server did not list. See shared/lib/providerBookingActions.ts.
 function toV1Shape(row: Record<string, any>) {
   const centsToILS = (c: number | null | undefined) =>
     c != null ? (c / 100).toFixed(2) : null;
+
+  const minutesUntil = (v: unknown): number | null => {
+    if (v == null) return null;
+    const d = v instanceof Date ? v : new Date(v as any);
+    const t = d.getTime();
+    if (!Number.isFinite(t)) return null;
+    return Math.round((t - Date.now()) / 60000);
+  };
+
+  const startDate = row.start_date ?? row.startDate;
+  const meetGreetDate = row.meet_greet_date ?? row.meetGreetDate;
+  const actions = resolveProviderBookingActions({
+    status: row.status,
+    minutesUntilStart: minutesUntil(startDate),
+    minutesUntilMeetGreet: minutesUntil(meetGreetDate),
+  });
 
   return {
     // IDs — use requestId as the public booking reference
@@ -123,6 +146,9 @@ function toV1Shape(row: Record<string, any>) {
     petCount:            row.pet_count ?? row.petCount,
     ownerMessage:        row.owner_message ?? row.ownerMessage,
     providerResponse:    row.provider_response ?? row.providerResponse,
+    // Server-authoritative action gating (CEO §P1-17).
+    primaryAction:       actions.primaryAction,
+    allowedActions:      actions.allowedActions,
     _source:             'booking_requests', // watermark for shadow comparison logging
   };
 }
