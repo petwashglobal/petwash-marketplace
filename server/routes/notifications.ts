@@ -41,7 +41,7 @@ router.post("/send", requireAuth, async (req, res) => {
     });
   } catch (error: any) {
     logger.error("[Notifications] Error sending notification:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Failed to send notification', code: 'NOTIF_SEND_400' });
   }
 });
 
@@ -60,7 +60,7 @@ router.get("/templates", requireAdmin, async (req, res) => {
     res.json({ templates });
   } catch (error: any) {
     logger.error("[Notifications] Error fetching templates:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch templates', code: 'NOTIF_TEMPLATES_500' });
   }
 });
 
@@ -81,7 +81,7 @@ router.get("/templates/:key", requireAdmin, async (req, res) => {
     res.json({ template });
   } catch (error: any) {
     logger.error("[Notifications] Error fetching template:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch template', code: 'NOTIF_TEMPLATE_GET_500' });
   }
 });
 
@@ -98,7 +98,7 @@ router.post("/templates", requireAdmin, async (req, res) => {
     res.status(201).json({ template });
   } catch (error: any) {
     logger.error("[Notifications] Error creating template:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Failed to create template', code: 'NOTIF_TEMPLATE_CREATE_400' });
   }
 });
 
@@ -120,7 +120,7 @@ router.patch("/templates/:key", requireAdmin, async (req, res) => {
     res.json({ template });
   } catch (error: any) {
     logger.error("[Notifications] Error updating template:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Failed to update template', code: 'NOTIF_TEMPLATE_UPDATE_400' });
   }
 });
 
@@ -141,7 +141,7 @@ router.delete("/templates/:key", requireAdmin, async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     logger.error("[Notifications] Error deleting template:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to delete template', code: 'NOTIF_TEMPLATE_DELETE_500' });
   }
 });
 
@@ -175,7 +175,7 @@ router.get("/logs", requireAdmin, async (req, res) => {
     res.json({ logs });
   } catch (error: any) {
     logger.error("[Notifications] Error fetching logs:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Failed to fetch logs', code: 'NOTIF_LOGS_400' });
   }
 });
 
@@ -202,7 +202,7 @@ router.get("/stats", requireAdmin, async (req, res) => {
     res.json({ stats });
   } catch (error: any) {
     logger.error("[Notifications] Error fetching stats:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch stats', code: 'NOTIF_STATS_500' });
   }
 });
 
@@ -225,7 +225,7 @@ router.post("/webhook/delivered", async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     logger.error("[Notifications] Error marking as delivered:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Failed to mark as delivered', code: 'NOTIF_MARK_DELIVERED_400' });
   }
 });
 
@@ -247,7 +247,7 @@ router.post("/webhook/failed", async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     logger.error("[Notifications] Error marking as failed:", error);
-    res.status(400).json({ error: error.message });
+    res.status(400).json({ error: 'Failed to mark as failed', code: 'NOTIF_MARK_FAILED_400' });
   }
 });
 
@@ -278,7 +278,7 @@ router.get("/unread-count", requireAuth, async (req, res) => {
     res.json({ count: result[0]?.count ?? 0 });
   } catch (error: any) {
     logger.error("[Notifications] Error fetching unread count:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch unread count', code: 'NOTIF_UNREAD_500' });
   }
 });
 
@@ -300,7 +300,7 @@ router.get("/", requireAuth, async (req, res) => {
     res.json({ notifications: logs });
   } catch (error: any) {
     logger.error("[Notifications] Error fetching user notifications:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to fetch notifications', code: 'NOTIF_USER_LIST_500' });
   }
 });
 
@@ -326,7 +326,7 @@ router.post("/:logId/read", requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     logger.error("[Notifications] Error marking as read:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to mark as read', code: 'NOTIF_MARK_READ_500' });
   }
 });
 
@@ -348,7 +348,7 @@ router.post("/read-all", requireAuth, async (req, res) => {
     res.json({ success: true });
   } catch (error: any) {
     logger.error("[Notifications] Error marking all as read:", error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Failed to mark all as read', code: 'NOTIF_MARK_ALL_READ_500' });
   }
 });
 

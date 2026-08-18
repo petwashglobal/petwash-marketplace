@@ -399,7 +399,7 @@ router.post('/posts', requireAuth, requireVerifiedClubMember, async (req, res) =
     const code =
       ['DESCRIPTION_REQUIRED','CITY_REQUIRED','EVENT_DATE_REQUIRED','PRIMARY_MEDIA_REQUIRED'].includes(err.message)
         ? 400 : 500;
-    res.status(code).json({ error: err.message || 'create_failed' });
+    res.status(code).json({ error: 'create_failed', code: 'PAWFINDER_CREATE_ERR' });
   }
 });
 
@@ -474,7 +474,7 @@ router.post('/posts/:id/contact', requireAuth, requireVerifiedClubMember, async 
       err.message === 'POST_NOT_CONTACTABLE'    ? 409 :
       err.message === 'CANNOT_CONTACT_OWN_POST' ? 400 :
       err.message === 'MESSAGE_REQUIRED'         ? 400 : 500;
-    res.status(status).json({ error: err.message || 'contact_failed' });
+    res.status(status).json({ error: 'contact_failed', code: 'PAWFINDER_CONTACT_ERR' });
   }
 });
 
@@ -516,7 +516,7 @@ router.post('/my/posts/:id/resolve', requireAuth, async (req, res) => {
       err.message === 'NOT_POST_OWNER'      ? 403 :
       err.message === 'ALREADY_RESOLVED'    ? 409 :
       err.message === 'POST_NOT_RESOLVABLE' ? 422 : 500;
-    res.status(status).json({ error: err.message || 'resolve_failed' });
+    res.status(status).json({ error: 'resolve_failed', code: 'PAWFINDER_RESOLVE_ERR' });
   }
 });
 

@@ -123,7 +123,6 @@ router.get('/conversations', requireAuth, async (req: AuthenticatedRequest, res:
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch conversations',
-      message: error.message 
     });
   }
 });
@@ -168,7 +167,6 @@ router.get('/conversations/franchise/:franchiseId', requireAuth, async (req: Aut
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch conversations',
-      message: error.message 
     });
   }
 });
@@ -208,7 +206,6 @@ router.get('/conversations/:conversationId', requireAuth, async (req: Authentica
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch conversation',
-      message: error.message 
     });
   }
 });
@@ -246,7 +243,6 @@ router.post('/conversations', requireAuth, async (req: AuthenticatedRequest, res
     res.status(500).json({ 
       success: false, 
       error: 'Failed to create conversation',
-      message: error.message 
     });
   }
 });
@@ -308,7 +304,6 @@ router.patch('/conversations/:conversationId', requireAuth, async (req: Authenti
     res.status(500).json({ 
       success: false, 
       error: 'Failed to update conversation',
-      message: error.message 
     });
   }
 });
@@ -368,7 +363,6 @@ router.delete('/conversations/:conversationId', requireAuth, async (req: Authent
     res.status(500).json({ 
       success: false, 
       error: 'Failed to delete conversation',
-      message: error.message 
     });
   }
 });
@@ -433,7 +427,6 @@ router.get('/conversations/:conversationId/messages', requireAuth, async (req: A
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch messages',
-      message: error.message 
     });
   }
 });
@@ -501,7 +494,6 @@ router.post('/messages', requireAuth, async (req: AuthenticatedRequest, res: Res
     res.status(500).json({ 
       success: false, 
       error: 'Failed to create message',
-      message: error.message 
     });
   }
 });
@@ -557,7 +549,6 @@ router.patch('/messages/:messageId/read', requireAuth, async (req: Authenticated
     res.status(500).json({ 
       success: false, 
       error: 'Failed to update message',
-      message: error.message 
     });
   }
 });
@@ -609,7 +600,6 @@ router.get('/search', requireAuth, async (req: AuthenticatedRequest, res: Respon
     res.status(500).json({ 
       success: false, 
       error: 'Failed to search messages',
-      message: error.message 
     });
   }
 });
@@ -663,7 +653,6 @@ router.post('/analytics', requireAuth, async (req: AuthenticatedRequest, res: Re
     res.status(500).json({ 
       success: false, 
       error: 'Failed to track analytics event',
-      message: error.message 
     });
   }
 });
@@ -709,7 +698,6 @@ router.get('/analytics/:conversationId', requireAuth, async (req: AuthenticatedR
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch analytics',
-      message: error.message 
     });
   }
 });
@@ -763,7 +751,6 @@ router.post('/attachments', requireAuth, async (req: AuthenticatedRequest, res: 
     res.status(500).json({ 
       success: false, 
       error: 'Failed to create attachment',
-      message: error.message 
     });
   }
 });
@@ -815,7 +802,6 @@ router.get('/messages/:messageId/attachments', requireAuth, async (req: Authenti
     res.status(500).json({ 
       success: false, 
       error: 'Failed to fetch attachments',
-      message: error.message 
     });
   }
 });
