@@ -1108,6 +1108,68 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
       }
     }
 
+    // ── Customer notification on start (2026-08-18 parity gap fix) ───────────
+    // V1 /:requestId/start (PR #1922) notifies the customer their service began.
+    // V2 was silent. ProviderJobDetail's "Start Job" button calls V2, so a
+    // customer whose provider actually kicked off the walk/sit got zero signal.
+    if (action === 'start') {
+      const ownerId = booking.owner_id as string | undefined;
+      const requestId = booking.request_id as string | undefined;
+      if (ownerId && requestId) {
+        setImmediate(async () => {
+          try {
+            await dispatchNotification({
+              uid: ownerId,
+              type: 'system',
+              title: '🐾 השירות התחיל · Service started — PetWash™',
+              bodyHtml:
+                `<p>הספק דיווח שהשירות עבור הזמנה <strong>${requestId}</strong> החל. תוכלי לעקוב אחרי ההתקדמות באפליקציה.</p>` +
+                `<p>The provider marked the service for booking <strong>${requestId}</strong> as started. You can follow the progress in the app.</p>`,
+              ctaText: 'צפי במעקב חי / View live',
+              ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+              channels: ['inbox', 'email', 'push'],
+              priority: 7,
+              meta: { bookingId: requestId, actionType: 'service_started' },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderDashboardV2] service_started notify failed', { error: notifErr.message });
+          }
+        });
+      }
+    }
+
+    // ── Counterparty notification on cancel (2026-08-18 parity gap fix) ──────
+    // V1 /:requestId/cancel fires superAppNotifications + FCM push. V2 was
+    // silent — a provider using the app to cancel left the customer in the
+    // dark. Notify the customer with inbox + push (email deliberately omitted
+    // — cancel is often followed by an immediate rebook flow; email would
+    // land after the customer's already searching).
+    if (action === 'cancel') {
+      const ownerId = booking.owner_id as string | undefined;
+      const requestId = booking.request_id as string | undefined;
+      if (ownerId && requestId) {
+        setImmediate(async () => {
+          try {
+            await dispatchNotification({
+              uid: ownerId,
+              type: 'system',
+              title: '⚠️ הספק ביטל את ההזמנה · Provider cancelled — PetWash™',
+              bodyHtml:
+                `<p>הספק ביטל את הזמנתך <strong>${requestId}</strong>. אנחנו כאן כדי לעזור לך למצוא ספק חלופי.</p>` +
+                `<p>The provider cancelled your booking <strong>${requestId}</strong>. We're here to help you find another provider.</p>`,
+              ctaText: 'מצאי ספק חלופי / Find another provider',
+              ctaUrl: `https://petwash.co.il/marketplace`,
+              channels: ['inbox', 'push'],
+              priority: 8,
+              meta: { bookingId: requestId, actionType: 'provider_cancelled' },
+            });
+          } catch (notifErr: any) {
+            logger.warn('[ProviderDashboardV2] provider_cancelled notify failed', { error: notifErr.message });
+          }
+        });
+      }
+    }
+
     // Structured log — retained for the Phase 4 transition window
     logger.info(`[ProviderDashboardV2] ACTION:${action.toUpperCase()}`, {
       bookingId,
