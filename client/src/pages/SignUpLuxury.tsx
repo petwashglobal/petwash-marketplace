@@ -1763,6 +1763,33 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.7, fontSize: '12.5px', cursor: 'pointer', padding: '2px 0', textAlign: he ? 'right' : 'left', width: '100%' }}>
                         {showPwd ? (he ? 'הסתר סיסמה' : 'Hide password') : (he ? 'הצג סיסמה' : 'Show password')}
                       </button>
+                      {/* Forgot password? (2026-08-16 audit D10). Firebase's
+                          sendPasswordResetEmail has its own rate-limiting and
+                          NEVER reveals whether the account exists — same generic
+                          copy on success and failure, so an unauthenticated
+                          attacker can't use this to enumerate accounts. */}
+                      <button type="button" className="sl-switchLink" disabled={busy || !emailValid}
+                        onClick={async () => {
+                          if (!emailValid) {
+                            fail(he ? 'הזינו אימייל תקין קודם' : 'Enter a valid email first');
+                            return;
+                          }
+                          try {
+                            const { sendPasswordResetEmail } = await import('firebase/auth');
+                            const { auth: fbAuth } = await import('@/lib/firebase');
+                            await sendPasswordResetEmail(fbAuth, email);
+                          } catch { /* Same generic message either way. */ }
+                          toast({
+                            title: he ? 'איפוס סיסמה נשלח' : 'Password reset sent',
+                            description: he
+                              ? `אם קיים חשבון עבור ${email}, הודעת איפוס בדרך.`
+                              : `If an account exists for ${email}, a reset email is on its way.`,
+                          });
+                        }}
+                        data-testid="button-forgot-password"
+                        style={{ background: 'none', border: 'none', color: 'inherit', opacity: 0.75, fontSize: '12.5px', cursor: 'pointer', padding: '4px 0', textDecoration: 'underline', textAlign: he ? 'right' : 'left', width: '100%' }}>
+                        {he ? 'שכחתם סיסמה?' : 'Forgot password?'}
+                      </button>
                     </>
                   )}
                   {/* Toggle ONLY switches between code-first and password — it does not
