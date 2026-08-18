@@ -117,18 +117,27 @@ const STATUS_ICONS: Record<string, any> = {
 };
 
 const STATUS_LABELS: Record<string, { he: string; en: string }> = {
-  pending:              { he: 'ממתין',           en: 'Pending'             },
-  accepted:             { he: 'אושר',            en: 'Accepted'            },
-  confirmed:            { he: 'מאושר',           en: 'Confirmed'           },
-  meet_greet_scheduled: { he: 'פגישה מתוכננת',  en: 'Meet & Greet'        },
-  meet_greet_completed: { he: 'פגישה הושלמה',   en: 'Meet & Greet done'   },
-  payment_pending:      { he: 'ממתין לתשלום',   en: 'Awaiting payment'    },
-  in_progress:          { he: 'בתהליך',         en: 'In Progress'         },
-  completed:            { he: 'הושלם',           en: 'Completed'           },
-  reviewed:             { he: 'עם ביקורת',       en: 'Reviewed'            },
-  declined:             { he: 'נדחה',            en: 'Declined'            },
-  cancelled:            { he: 'בוטל',            en: 'Cancelled'           },
-  disputed:             { he: 'במחלוקת',         en: 'Disputed'            },
+  pending:                  { he: 'ממתין',                 en: 'Pending'                     },
+  // 2026-07-31 legacy sitter/walk create status. Kept as 'Pending' so the
+  // customer sees a familiar label; buckets to the same 'pending' tab.
+  pending_provider:         { he: 'ממתין',                 en: 'Pending'                     },
+  accepted:                 { he: 'אושר',                  en: 'Accepted'                    },
+  confirmed:                { he: 'מאושר',                 en: 'Confirmed'                   },
+  meet_greet_requested:     { he: 'פגישת היכרות התבקשה',    en: 'Meet & Greet requested'      },
+  meet_greet_scheduled:     { he: 'פגישה מתוכננת',         en: 'Meet & Greet'                },
+  meet_greet_completed:     { he: 'פגישה הושלמה',          en: 'Meet & Greet done'           },
+  payment_pending:          { he: 'ממתין לתשלום',          en: 'Awaiting payment'            },
+  in_progress:              { he: 'בתהליך',                en: 'In Progress'                 },
+  // 2026-08-18: was missing — CustomerBookings rendered "provider_marked_complete"
+  // as the raw enum literal. Now shows an actionable label so the customer
+  // knows the next step is theirs (companion to the "Confirm & rate" CTA
+  // from PR-CUSTOMER-BOOKINGS-REVIEW-CTA).
+  provider_marked_complete: { he: 'ממתין לאישור סיום',      en: 'Awaiting your confirmation'  },
+  completed:                { he: 'הושלם',                 en: 'Completed'                   },
+  reviewed:                 { he: 'עם ביקורת',              en: 'Reviewed'                    },
+  declined:                 { he: 'נדחה',                  en: 'Declined'                    },
+  cancelled:                { he: 'בוטל',                  en: 'Cancelled'                   },
+  disputed:                 { he: 'במחלוקת',                en: 'Disputed'                    },
 };
 
 const SERVICE_TO_ROUTE: Record<string, string> = {
