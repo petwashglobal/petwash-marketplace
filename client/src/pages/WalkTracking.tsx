@@ -115,13 +115,22 @@ export default function WalkTracking() {
     ws.onopen = () => {
       console.log('[GPS] WebSocket connected');
       setWsConnected(true);
-      
-      // Subscribe to walk updates
-      ws.send(JSON.stringify({
-        type: 'subscribe',
-        channel: `walk:${walkId}`,
-        userId: user.uid,
-      }));
+
+      // NOTE (2026-08-18 audit): the server WS handler at
+      // server/websocket.ts:427 (handleSubscribe) only reads
+      // `payload.stations` — a walk-scoped subscribe like
+      // `{ type: 'subscribe', channel: 'walk:X' }` is silently dropped
+      // (no server-side per-walk broadcast channel, no ownership
+      // verification on the channel key). Sending it would create
+      // a false "connected" signal for realtime that never fires.
+      //
+      // Until walk-scoped WS routing lands (needs owner/walker
+      // ownership check on the channel to avoid cross-user leaks —
+      // same class as the HTTP /walk-session/:walkId/active P0 fix),
+      // realtime here is DELIVERED VIA THE 5-SECOND POLL below
+      // (refetchInterval on the useQuery), not via WS. Leave the
+      // connection open so a future server upgrade can start pushing
+      // gps_update frames the existing onmessage handler is ready for.
     };
 
     ws.onmessage = (event) => {
