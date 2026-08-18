@@ -61,12 +61,23 @@ export class WalkSessionService {
    */
   private async resolveWalkerUuid(callerUid: string): Promise<string | null> {
     if (!callerUid) return null;
-    const [row] = await db
+    // Adversarial-review Q10 (2026-08-18): walker_profiles.userId has NO
+    // unique constraint (schema.ts:4735-4842 — only walkerId is unique).
+    // A duplicate row for the same Firebase UID is physically possible,
+    // and `.limit(1)` without ORDER BY returns implementation-defined
+    // row — the same walker could resolve to a different WALKER-uuid
+    // across requests and quietly bypass the walk_bookings.walkerId
+    // assignment check. Fetch two + throw on ambiguity so ops SEE it.
+    const rows = await db
       .select({ walkerId: walkerProfiles.walkerId })
       .from(walkerProfiles)
       .where(eq(walkerProfiles.userId, callerUid))
-      .limit(1);
-    return (row?.walkerId || null) as string | null;
+      .limit(2);
+    if (rows.length === 0) return null;
+    if (rows.length > 1) {
+      throw new Error('resolveWalkerUuid: duplicate walker_profiles rows for userId — refusing to auto-pick');
+    }
+    return (rows[0].walkerId || null) as string | null;
   }
 
   /**
@@ -133,7 +144,11 @@ export class WalkSessionService {
         const est = new Date(current.actualStartTime.getTime() + (current.durationMinutes || 60) * 60000);
         return {
           success: true,
-          sessionId: data.walkId as any,
+          // sessionId is declared as `string` on the interface; use the
+          // public bookingId (WALK-YYYY-NNNNNN) rather than the internal
+          // numeric row PK. Falls back to a string cast if bookingId is
+          // ever missing so we never crash here.
+          sessionId: current.bookingId || String(data.walkId),
           checkInTime: current.actualStartTime,
           estimatedCheckOut: est,
           alreadyStarted: true,
@@ -207,7 +222,9 @@ export class WalkSessionService {
 
     return {
       success: true,
-      sessionId: data.walkId,
+      // Interface declares sessionId: string. Use bookingId (WALK-YYYY-…),
+      // fall back to numeric-string if bookingId is somehow missing.
+      sessionId: walk.bookingId || String(data.walkId),
       checkInTime,
       estimatedCheckOut,
     };
@@ -284,6 +301,14 @@ export class WalkSessionService {
         // money block is preserved unchanged for wire-compatibility with any
         // legacy client that still reads it (audit found none). See P0-5
         // note below the winner path.
+        //
+        // Adversarial-review Q2 (2026-08-18): a `completed` row without
+        // actualStartTime is a data-integrity error, not something to
+        // absorb silently — better to surface it than crash on `.getTime()`
+        // downstream via the non-null assertion. Treat null as failure.
+        if (!current.actualStartTime) {
+          throw new Error('Completed walk has no actualStartTime — data-integrity error');
+        }
         const idemTotal = parseFloat((current.totalCost as any) || '0');
         const idemBase = idemTotal / 1.15;
         const idemWalker = idemBase * 0.85;
@@ -291,7 +316,7 @@ export class WalkSessionService {
         return {
           success: true,
           sessionSummary: {
-            checkInTime: current.actualStartTime!,
+            checkInTime: current.actualStartTime,
             checkOutTime: current.actualEndTime ?? checkOutTime,
             duration: (current.actualDurationMinutes ?? 0) * 60,
             distance: current.totalDistanceMeters ?? 0,
@@ -383,10 +408,12 @@ export class WalkSessionService {
     // TODO: Trigger Nayax payment split when API keys available
     // await this.processNayaxPayment(data.walkId, grossAmount, platformFee, walkerEarnings);
 
+    // Guard at line ~338 already threw if walk.actualStartTime is null,
+    // so the reference below is safe without the ! assertion.
     return {
       success: true,
       sessionSummary: {
-        checkInTime: walk.actualStartTime!,
+        checkInTime: walk.actualStartTime,
         checkOutTime,
         duration: data.totalDuration,
         distance: data.totalDistance,
