@@ -27,10 +27,11 @@
 
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
-import { bookingRequests } from '@shared/schema';
+import { bookingRequests, walkBookings, walkerProfiles } from '@shared/schema';
 import type {
   ServiceSessionDTO,
   ServiceSessionStatus,
+  ServiceLocation,
 } from '@shared/lib/serviceSession';
 import { logger } from './logger';
 
@@ -137,6 +138,120 @@ export async function resolveServiceSession(
     throw e;
   }
 
-  // TODO: walk_bookings + pettrek_trips branches — see file header.
+  try {
+    const wb = await resolveFromWalkBookings(bookingRef, callerUid);
+    if (wb.ok || wb.reason === 'unauthorized') return wb;
+  } catch (e: any) {
+    logger.warn('[serviceSessionAdapter] walk_bookings projection failed', {
+      bookingRef, err: e?.message,
+    });
+    throw e;
+  }
+
+  // TODO: pettrek_trips branch — see file header.
   return { ok: false, reason: 'not_found' };
+}
+
+/**
+ * walk_bookings universe:
+ *   • bookingRef matches walk_bookings.bookingId
+ *   • authorization joins walker_profiles.walkerId to derive the walker's
+ *     Firebase UID (walk_bookings.walkerId is a WALKER-UUID, not a UID)
+ *   • lastKnownLocation + checkInLocation jsonb columns become the DTO's
+ *     lastLocation / startLocation
+ */
+function bucketWalkStatus(status: string | null | undefined, endedAt: Date | null): ServiceSessionStatus {
+  const s = (status || '').toLowerCase();
+  if (s === 'in_progress') return 'in_progress';
+  if (s === 'completed') return endedAt ? 'completed' : 'awaiting_report';
+  if (s === 'cancelled') return 'cancelled';
+  return 'scheduled';
+}
+
+function jsonbToLocation(raw: unknown): ServiceLocation | null {
+  if (!raw || typeof raw !== 'object') return null;
+  const o = raw as Record<string, unknown>;
+  const lat = typeof o.latitude === 'number' ? o.latitude : Number(o.latitude);
+  const lon = typeof o.longitude === 'number' ? o.longitude : Number(o.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+  const ts = typeof o.timestamp === 'string' ? o.timestamp : (o.timestamp instanceof Date ? o.timestamp.toISOString() : null);
+  const acc = typeof o.accuracy === 'number' ? o.accuracy : (o.accuracy != null ? Number(o.accuracy) : null);
+  return {
+    latitude: lat,
+    longitude: lon,
+    recordedAt: ts ?? new Date(0).toISOString(),
+    accuracyM: Number.isFinite(acc as number) ? (acc as number) : null,
+  };
+}
+
+function composeWalkScheduledStart(scheduledDate: unknown, hhmm: string | null | undefined): string | null {
+  if (!scheduledDate) return null;
+  const dateStr = typeof scheduledDate === 'string'
+    ? scheduledDate
+    : (scheduledDate instanceof Date ? scheduledDate.toISOString().slice(0, 10) : null);
+  if (!dateStr) return null;
+  const time = (hhmm || '00:00').match(/^\d{2}:\d{2}$/) ? hhmm : '00:00';
+  const iso = new Date(`${dateStr}T${time}:00`);
+  return Number.isNaN(iso.getTime()) ? null : iso.toISOString();
+}
+
+async function resolveFromWalkBookings(
+  bookingRef: string,
+  callerUid: string,
+): Promise<ResolveOutcome> {
+  const [row] = await db
+    .select()
+    .from(walkBookings)
+    .where(eq(walkBookings.bookingId, bookingRef))
+    .limit(1);
+
+  if (!row) return { ok: false, reason: 'not_found' };
+
+  const customerId = (row.ownerId || null) as string | null;
+
+  // Resolve walker's Firebase UID via walker_profiles.walkerId → userId.
+  let providerId: string | null = null;
+  if (row.walkerId) {
+    const [walker] = await db
+      .select({ userId: walkerProfiles.userId })
+      .from(walkerProfiles)
+      .where(eq(walkerProfiles.walkerId, row.walkerId))
+      .limit(1);
+    providerId = (walker?.userId || null) as string | null;
+  }
+
+  const authorized = callerUid === customerId || (providerId != null && callerUid === providerId);
+  if (!authorized) return { ok: false, reason: 'unauthorized' };
+
+  const startedAt = row.actualStartTime ? new Date(row.actualStartTime).toISOString() : null;
+  const endedAt = row.actualEndTime ? new Date(row.actualEndTime).toISOString() : null;
+  const status = bucketWalkStatus(row.status, row.actualEndTime ?? null);
+  const isActive = status === 'in_progress' || status === 'awaiting_report';
+
+  const scheduledStartAt = composeWalkScheduledStart(row.scheduledDate, row.scheduledStartTime);
+  const scheduledEndAt = (() => {
+    if (!scheduledStartAt || !row.durationMinutes) return null;
+    const end = new Date(new Date(scheduledStartAt).getTime() + row.durationMinutes * 60_000);
+    return end.toISOString();
+  })();
+
+  const session: ServiceSessionDTO = {
+    sessionId: `wb-${row.bookingId}`,
+    bookingRef,
+    source: 'walk_bookings',
+    serviceType: 'dog_walking',
+    status,
+    customerId,
+    providerId,
+    scheduledStartAt,
+    scheduledEndAt,
+    startedAt,
+    endedAt,
+    isActive,
+    lastLocation: jsonbToLocation(row.lastKnownLocation),
+    startLocation: jsonbToLocation(row.checkInLocation),
+    reportStatus: 'none',
+  };
+
+  return { ok: true, session };
 }
