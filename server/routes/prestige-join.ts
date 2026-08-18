@@ -255,22 +255,25 @@ router.post('/join', async (req: Request, res: Response) => {
     //   • is_club_member = true
     //   • loyalty_tier   = bronze only if not already set to a higher tier
     //   • loyalty_points += welcome points, on a FRESH enrollment only
-    //   • role promoted to 'loyalty' ONLY from a plain customer/public — never
-    //     downgrade a provider/staff/admin/super_admin.
+    //
+    // Additive capabilities (PR-AUTH-MULTIROLE-5): Prestige enrollment does
+    // NOT touch users.role. Loyalty is a CAPABILITY the account carries in
+    // addition to customer/provider/staff — writing role='loyalty' here
+    // would replace an existing customer or provider identity. The
+    // membership of record lives in loyalty_profiles + privilege_members
+    // (created above), and server/lib/userCapabilities.ts reads those to
+    // derive the loyalty capability without going through users.role.
     try {
       const [current] = await db
-        .select({ role: users.role, tier: users.loyaltyTier })
+        .select({ tier: users.loyaltyTier })
         .from(users)
         .where(eq(users.id, userId))
         .limit(1);
-      const promotableRoles = new Set(['customer', 'public', 'new', '', null as any, undefined as any]);
-      const rolePatch = promotableRoles.has(current?.role as any) ? { role: 'loyalty' } : {};
       const tierPatch = (!current?.tier || current.tier === 'bronze') ? { loyaltyTier: 'bronze' } : {};
       await db.update(users).set({
         isClubMember: true,
         ...tierPatch,
         ...(alreadyEnrolled ? {} : { loyaltyPoints: sql`${users.loyaltyPoints} + ${WELCOME_POINTS}` }),
-        ...rolePatch,
         updatedAt: new Date(),
       }).where(eq(users.id, userId));
     } catch (userSyncErr: any) {
