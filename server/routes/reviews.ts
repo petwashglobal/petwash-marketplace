@@ -5,6 +5,7 @@
  */
 
 import { Router, Request, Response } from 'express';
+import crypto from 'crypto';
 import { db } from '../db';
 import {
   contractorReviews,
@@ -12,9 +13,11 @@ import {
   reviewFlaggingRules,
   insertContractorReviewSchema,
   sitterBookings,
+  sitterProfiles,
   walkBookings,
+  walkerProfiles,
   pettrekTrips,
-  trainerBookings
+  trainerBookings,
 } from '@shared/schema';
 import { bookings, providers } from '@shared/super-app-schema';
 import { eq, and, desc, sql, inArray } from 'drizzle-orm';
@@ -22,6 +25,52 @@ import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { triggerTrustScoreUpdate } from '../services/trustScoring';
+
+/**
+ * Advisory-lock key for concurrent review submission — P1-16 idempotency.
+ * contractorReviews has no unique constraint on (bookingId,reviewType,reviewerId)
+ * so a plain SELECT-then-INSERT races. SHA-256 (not SHA-1) — this hash is a
+ * mutex key, not a cryptographic primitive.
+ */
+function reviewLockKey(bookingId: string, reviewType: string, reviewerId: string): bigint {
+  const digest = crypto
+    .createHash('sha256')
+    .update(`review:${bookingId}:${reviewType}:${reviewerId}`)
+    .digest();
+  return BigInt('0x' + digest.subarray(0, 8).toString('hex')) & BigInt('0x7fffffffffffffff');
+}
+
+/**
+ * Resolve a sitter's Firebase UID from the integer sitter_profiles.id used
+ * by sitter_bookings.sitterId. P1-14 fix: prior code compared the integer
+ * FK to a Firebase UID string — the comparison is always false, so
+ * contractor_to_owner sitter reviews were silently impossible AND
+ * owner_to_contractor reviews' subjectId targeted the wrong contractor id.
+ */
+async function resolveSitterUid(sitterProfileId: number | null | undefined): Promise<string | null> {
+  if (sitterProfileId == null) return null;
+  const [row] = await db
+    .select({ userId: sitterProfiles.userId })
+    .from(sitterProfiles)
+    .where(eq(sitterProfiles.id, sitterProfileId))
+    .limit(1);
+  return (row?.userId || null) as string | null;
+}
+
+/**
+ * Resolve a walker's Firebase UID from the WALKER-uuid stored in
+ * walk_bookings.walkerId (references walker_profiles.walkerId). P1-14 fix
+ * (sibling to resolveSitterUid): identical shape.
+ */
+async function resolveWalkerUid(walkerUuid: string | null | undefined): Promise<string | null> {
+  if (!walkerUuid) return null;
+  const [row] = await db
+    .select({ userId: walkerProfiles.userId })
+    .from(walkerProfiles)
+    .where(eq(walkerProfiles.walkerId, walkerUuid))
+    .limit(1);
+  return (row?.userId || null) as string | null;
+}
 
 const router = Router();
 
@@ -105,14 +154,21 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
 
       booking = sitterBooking;
       isOwner = sitterBooking.ownerId === userId;
-      isContractor = sitterBooking.sitterId.toString() === userId;
+      // P1-14 FIX (2026-08-18): sitterBookings.sitterId is an INTEGER FK to
+      // sitter_profiles.id — string-comparing it to a Firebase UID always
+      // yields false. Resolve the sitter's Firebase UID via the join.
+      const sitterUid = await resolveSitterUid(sitterBooking.sitterId as number | null);
+      isContractor = sitterUid != null && sitterUid === userId;
 
       // Set subject based on review direction
       if (reviewType === 'owner_to_contractor') {
         if (!isOwner) {
           return res.status(403).json({ error: 'You are not the owner of this booking' });
         }
-        subjectId = sitterBooking.sitterId.toString();
+        if (!sitterUid) {
+          return res.status(500).json({ error: 'Failed to resolve sitter identity' });
+        }
+        subjectId = sitterUid;
         subjectName = `Sitter ${sitterBooking.sitterId}`;
         subjectType = 'sitter';
       } else if (reviewType === 'contractor_to_owner') {
@@ -143,13 +199,20 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
 
       booking = walkBooking;
       isOwner = walkBooking.ownerId === userId;
-      isContractor = walkBooking.walkerId === userId;
+      // P1-14 FIX (2026-08-18): walkBookings.walkerId stores a WALKER-uuid
+      // (references walker_profiles.walkerId), NOT a Firebase UID. Compare
+      // against the resolved Firebase UID from the join.
+      const walkerUid = await resolveWalkerUid(walkBooking.walkerId);
+      isContractor = walkerUid != null && walkerUid === userId;
 
       if (reviewType === 'owner_to_contractor') {
         if (!isOwner) {
           return res.status(403).json({ error: 'You are not the owner of this walk booking' });
         }
-        subjectId = walkBooking.walkerId;
+        if (!walkerUid) {
+          return res.status(500).json({ error: 'Failed to resolve walker identity' });
+        }
+        subjectId = walkerUid;
         subjectName = `Walker ${walkBooking.walkerId}`;
         subjectType = 'walker';
       } else if (reviewType === 'contractor_to_owner') {
@@ -243,22 +306,15 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
       return res.status(400).json({ error: 'Invalid booking type. Must be: sitter, walker, pettrek, or trainer' });
     }
 
-    // Check if review already exists for this booking
-    const existingReview = await db
-      .select()
-      .from(contractorReviews)
-      .where(
-        and(
-          eq(contractorReviews.bookingId, bookingId),
-          eq(contractorReviews.reviewType, reviewType),
-          eq(contractorReviews.reviewerId, userId)
-        )
-      )
-      .limit(1);
-
-    if (existingReview.length > 0) {
-      return res.status(400).json({ error: 'You have already reviewed this booking' });
-    }
+    // P1-16 IDEMPOTENCY GATE (2026-08-18): the check-then-insert must be
+    // atomic under a per-review pg_advisory_xact_lock. Without this, two
+    // concurrent submits from the same reviewer both pass the SELECT and
+    // both INSERT (contractorReviews has no unique constraint on
+    // (bookingId, reviewType, reviewerId)). The check + insert are unified
+    // below inside the transaction; this variable carries the "already
+    // reviewed" verdict out of the tx.
+    const lockKey = reviewLockKey(bookingId, reviewType, userId);
+    let alreadyReviewed = false;
 
     // Generate review ID
     const reviewId = `REV-${new Date().getFullYear()}-${nanoid(8).toUpperCase()}`;
@@ -344,35 +400,68 @@ router.post('/submit', requireAuth, async (req: Request, res: Response) => {
       }
     }
 
-    // Insert review
-    const [review] = await db.insert(contractorReviews).values({
-      reviewId,
-      bookingType,
-      bookingId,
-      reviewType,
-      reviewerId: userId,
-      reviewerName,
-      reviewerType,
-      subjectId,
-      subjectName,
-      subjectType,
-      overallRating,
-      punctualityRating: punctualityRating || null,
-      communicationRating: communicationRating || null,
-      professionalismRating: professionalismRating || null,
-      cleanlinessRating: cleanlinessRating || null,
-      safetyRating: safetyRating || null,
-      reviewText: reviewText || null,
-      reviewPhotos: reviewPhotos || [],
-      isFlagged,
-      flaggedKeywords: flaggedKeywords.length > 0 ? flaggedKeywords : null,
-      flaggedReason: flaggedReason,
-      flaggedAt: isFlagged ? new Date() : null,
-      moderationStatus: isFlagged ? 'pending' : 'approved',
-      isVerifiedBooking: true, // Verified via booking validation above
-      isVisible: !shouldAutoHide, // Only hide if rule explicitly requires it
-      isPublic: true,
-    }).returning();
+    // ATOMIC CHECK + INSERT — under the pg_advisory_xact_lock keyed on
+    // (bookingId, reviewType, reviewerId). Concurrent submitter with the
+    // same tuple blocks here until we commit; if we insert, they see the
+    // row on their check and 400 out; if we detect an existing row first,
+    // they hit the same 400. Exactly one INSERT per (booking, reviewType,
+    // reviewer). See P1-16.
+    let review: any = null;
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`);
+      const existing = await tx
+        .select({ id: contractorReviews.id })
+        .from(contractorReviews)
+        .where(
+          and(
+            eq(contractorReviews.bookingId, bookingId),
+            eq(contractorReviews.reviewType, reviewType),
+            eq(contractorReviews.reviewerId, userId),
+          ),
+        )
+        .limit(1);
+      if (existing.length > 0) {
+        alreadyReviewed = true;
+        return;
+      }
+      const [inserted] = await tx.insert(contractorReviews).values({
+        reviewId,
+        bookingType,
+        bookingId,
+        reviewType,
+        reviewerId: userId,
+        reviewerName,
+        reviewerType,
+        subjectId,
+        subjectName,
+        subjectType,
+        overallRating,
+        punctualityRating: punctualityRating || null,
+        communicationRating: communicationRating || null,
+        professionalismRating: professionalismRating || null,
+        cleanlinessRating: cleanlinessRating || null,
+        safetyRating: safetyRating || null,
+        reviewText: reviewText || null,
+        reviewPhotos: reviewPhotos || [],
+        isFlagged,
+        flaggedKeywords: flaggedKeywords.length > 0 ? flaggedKeywords : null,
+        flaggedReason: flaggedReason,
+        flaggedAt: isFlagged ? new Date() : null,
+        moderationStatus: isFlagged ? 'pending' : 'approved',
+        isVerifiedBooking: true,
+        isVisible: !shouldAutoHide,
+        isPublic: true,
+      }).returning();
+      review = inserted;
+    });
+
+    if (alreadyReviewed) {
+      return res.status(400).json({ error: 'You have already reviewed this booking' });
+    }
+    if (!review) {
+      logger.error('[Reviews] Insert returned no row', { reviewId, bookingId, reviewType });
+      return res.status(500).json({ error: 'Failed to submit review' });
+    }
 
     // Update trust score asynchronously (for contractor being reviewed)
     if (reviewType === 'owner_to_contractor') {
