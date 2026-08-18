@@ -166,6 +166,11 @@ const labels = {
     back:             'כל ההזמנות',
     escrow:           'נתיב מאובטח 72 שעות',
     thankYou:         'תודה שבחרת ב-PetWash™! נשמח לראותך שוב 😊',
+    paymentSuccessTitle: 'התשלום התקבל · ההזמנה מאושרת',
+    paymentSuccessSub:   'הכספים מוחזקים במסלול מאובטח עד לסיום השירות.',
+    paymentFailedTitle:  'התשלום לא עבר',
+    paymentFailedSub:    'לא בוצע חיוב. באפשרותך לנסות שוב או לפנות אלינו לעזרה.',
+    paymentBannerDismiss: 'סגור',
     phoneLabel:       'מספר טלפון',
     emailLabel:       'כתובת אימייל',
     phonePlaceholder: '+972...',
@@ -234,6 +239,11 @@ const labels = {
     back:             'All Bookings',
     escrow:           '72-Hour Secure Escrow',
     thankYou:         'Thank you for choosing PetWash™! We hope to see you again 😊',
+    paymentSuccessTitle: 'Payment received · booking confirmed',
+    paymentSuccessSub:   'Funds are held in secure escrow until the service is complete.',
+    paymentFailedTitle:  'Payment could not be processed',
+    paymentFailedSub:    'Nothing was charged. You can try again or contact support.',
+    paymentBannerDismiss: 'Dismiss',
     phoneLabel:       'Phone Number',
     emailLabel:       'Email Address',
     phonePlaceholder: '+972...',
@@ -439,6 +449,16 @@ export default function BookingConfirmation() {
   const [confirmed, setConfirmed]             = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
 
+  // Payment-return banner state (2026-08-18): SUMIT redirects the customer
+  // back with ?payment=success or ?payment=failed. Before this the params
+  // were silently ignored — the customer got no feedback about whether the
+  // charge actually went through, and had to infer from the pill status.
+  const [paymentBanner, setPaymentBanner] = useState<'success' | 'failed' | null>(() => {
+    if (typeof window === 'undefined') return null;
+    const p = new URLSearchParams(window.location.search).get('payment');
+    return p === 'success' || p === 'failed' ? p : null;
+  });
+
   const { data: bookingData, isLoading } = useQuery({
     queryKey: ['/api/booking-requests', requestId],
     enabled: !!requestId,
@@ -612,6 +632,57 @@ export default function BookingConfirmation() {
             <ArrowLeft className={`w-4 h-4 ${isRTL ? 'rotate-180' : ''}`} />
             {t.back}
           </Button>
+
+          {/* ── Payment-return banner (2026-08-18) ──
+              SUMIT redirects back with ?payment=success|failed. Before this
+              the params were silently ignored — the customer got no feedback
+              about whether the charge went through. */}
+          {paymentBanner === 'success' && (
+            <div
+              data-testid="payment-banner-success"
+              className="mb-4 rounded-2xl border border-emerald-200 bg-emerald-50 p-4 flex items-start gap-3"
+            >
+              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-emerald-900 text-sm leading-snug">
+                  {t.paymentSuccessTitle}
+                </p>
+                <p className="text-xs text-emerald-800 mt-0.5 leading-relaxed">
+                  {t.paymentSuccessSub}
+                </p>
+              </div>
+              <button
+                onClick={() => setPaymentBanner(null)}
+                aria-label={t.paymentBannerDismiss}
+                className="text-emerald-700 hover:text-emerald-900 shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+          {paymentBanner === 'failed' && (
+            <div
+              data-testid="payment-banner-failed"
+              className="mb-4 rounded-2xl border border-red-200 bg-red-50 p-4 flex items-start gap-3"
+            >
+              <AlertTriangle className="w-5 h-5 text-red-600 shrink-0 mt-0.5" />
+              <div className="flex-1">
+                <p className="font-semibold text-red-900 text-sm leading-snug">
+                  {t.paymentFailedTitle}
+                </p>
+                <p className="text-xs text-red-800 mt-0.5 leading-relaxed">
+                  {t.paymentFailedSub}
+                </p>
+              </div>
+              <button
+                onClick={() => setPaymentBanner(null)}
+                aria-label={t.paymentBannerDismiss}
+                className="text-red-700 hover:text-red-900 shrink-0"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
 
           {/* ══════════════════════════════════════════════════════════
               BOOKING ENQUIRY SENT — pending request, pre-acceptance.
