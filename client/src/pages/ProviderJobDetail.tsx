@@ -22,6 +22,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { getApiUrl } from '@/lib/apiConfig';
 import { apiRequest, queryClient } from '@/lib/queryClient';
+import { bookingStatusLabel } from '@shared/lib/bookingStatusLabels';
 import {
   ArrowLeft, ArrowRight, MapPin, Clock, PawPrint, MessageCircle, Camera,
   CheckCircle2, XCircle, Play, Flag, ChevronRight, ShieldCheck, Loader2,
@@ -40,17 +41,27 @@ function fmtDate(d: string | null | undefined, he: boolean): string {
   try { return new Date(d).toLocaleString(he ? 'he-IL' : 'en-IL', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }); } catch { return '—'; }
 }
 
-const STATUS_LABEL: Record<string, { en: string; he: string; tone: string }> = {
-  pending:      { en: 'New request',  he: 'בקשה חדשה',   tone: '#b45309' },
-  quote_sent:   { en: 'Quote sent',   he: 'הצעה נשלחה',  tone: '#b45309' },
-  confirmed:    { en: 'Confirmed',    he: 'מאושרת',       tone: GREEN },
-  in_progress:  { en: 'In progress',  he: 'בביצוע',       tone: '#1d4ed8' },
-  // Provider marked done — waiting on the customer to approve (or 24h auto-approve).
-  provider_marked_complete: { en: 'Awaiting confirmation', he: 'ממתין לאישור הלקוח', tone: '#1d4ed8' },
-  completed:    { en: 'Completed',    he: 'הושלמה',       tone: GREEN },
-  declined:     { en: 'Declined',     he: 'נדחתה',        tone: '#991b1b' },
-  cancelled:    { en: 'Cancelled',    he: 'בוטלה',        tone: '#991b1b' },
-  disputed:     { en: 'In review',    he: 'בבדיקה',       tone: '#991b1b' },
+// Status labels come from @shared/lib/bookingStatusLabels — canonical
+// coverage (14 statuses) shared across the app. The local per-status
+// TONE color map below is kept file-local for now because this page's
+// pill uses a bespoke inline color style that would need design sign-off
+// to swap to the canonical badge palette.
+const STATUS_TONE: Record<string, string> = {
+  pending:                  '#b45309',
+  quote_sent:               '#b45309',
+  accepted:                 '#b45309',
+  meet_greet_requested:     '#b45309',
+  meet_greet_scheduled:     '#b45309',
+  meet_greet_completed:     GREEN,
+  payment_pending:          '#b45309',
+  confirmed:                GREEN,
+  in_progress:              '#1d4ed8',
+  provider_marked_complete: '#1d4ed8',
+  completed:                GREEN,
+  reviewed:                 '#6b7280',
+  declined:                 '#991b1b',
+  cancelled:                '#991b1b',
+  disputed:                 '#991b1b',
 };
 
 export default function ProviderJobDetail() {
@@ -80,7 +91,8 @@ export default function ProviderJobDetail() {
 
   const b: any = data?.booking ?? null;
   const status: string = b?.status ?? '';
-  const stl = STATUS_LABEL[status] ?? { en: status || '—', he: status || '—', tone: '#6b7280' };
+  const statusLabel = status ? bookingStatusLabel(status, isHe ? 'he' : 'en') : '—';
+  const statusTone = STATUS_TONE[status] ?? '#6b7280';
 
   const actionMut = useMutation({
     mutationFn: async (action: 'accept' | 'decline' | 'start' | 'complete') => {
@@ -151,8 +163,8 @@ export default function ProviderJobDetail() {
                     <p className="text-white text-lg font-semibold leading-tight">{String(b.serviceType ?? '—').replace(/_/g, ' ')}</p>
                     <p className="text-white/70 text-xs mt-0.5 font-mono">{b.requestId ?? requestId}</p>
                   </div>
-                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium bg-white" style={{ color: stl.tone }}>
-                    {isHe ? stl.he : stl.en}
+                  <span className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-medium bg-white" style={{ color: statusTone }}>
+                    {statusLabel}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 mt-4 text-white/90 text-xs">
