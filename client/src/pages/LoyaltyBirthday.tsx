@@ -10,41 +10,64 @@ export default function LoyaltyBirthday() {
   const [language] = useState(localStorage.getItem('petwash_lang') || 'he');
   const isHebrew = language === 'he';
 
+  // PR-LOYALTY-BIRTHDAY-COPY-TRUTH (2026-08-15) — fire-order item 40.
+  // Backend implementation of the birthday programme (server/birthday-coupon.ts)
+  // is exactly ONE thing: a 10% discount coupon, valid inside a 30-day window
+  // around the member's birthday, once per year, applied to K9000 wash
+  // transactions (K9000TransactionService.ts:226 discountApplied =
+  // birthdayDiscount.discountPercent). None of the other pre-launch marketing
+  // items on this page (double points, gift package, pet rewards, VIP session)
+  // have any backend implementation. Aligned the LIVE row to the real benefit
+  // and marked the other four rows as planned so members are not promised
+  // benefits that don't ship. Do NOT delete the aspirational rows outright —
+  // they read as the CEO's product roadmap the customer can look forward to;
+  // just brand them Coming Soon so today's promise is honest.
   const rewards = [
     {
       icon: Gift,
-      title: isHebrew ? 'רחיצה פרימיום חינם' : 'Free Premium Wash',
-      subtitle: isHebrew ? 'Free Premium Wash' : 'רחיצה פרימיום חינם',
-      description: isHebrew ? 'רחיצת פרימיום חינם בחודש יום ההולדת שלכם' : 'Complimentary premium wash on your birthday month',
+      // The ONE benefit that is live today (10% discount within a 30-day
+      // window around the member's birthday, once per year). Replaces the
+      // pre-fix aspirational row 1 that promised a complimentary premium
+      // wash — no such coupon is issued by the backend today.
+      title: isHebrew ? 'הנחת יום הולדת 10%' : '10% Birthday Discount',
+      subtitle: isHebrew ? '10% Birthday Discount' : 'הנחת יום הולדת 10%',
+      description: isHebrew
+        ? 'הנחה של 10% על שטיפת K9000, חלון של 30 יום סביב יום ההולדת שלכם, פעם בשנה.'
+        : '10% off a K9000 wash, valid inside a 30-day window around your birthday, once per year.',
       tier: isHebrew ? 'כל החברים' : 'All Members',
+      live: true,
     },
     {
       icon: Sparkles,
       title: isHebrew ? 'נקודות כפולות' : 'Double Points',
       subtitle: isHebrew ? 'Double Points' : 'נקודות כפולות',
-      description: isHebrew ? 'צברו X2 נקודות על כל הרחיצות בחודש יום ההולדת' : 'Earn 2x points on all washes during your birthday month',
+      description: isHebrew ? 'הטבה מתוכננת — בהמשך.' : 'Planned benefit — coming soon.',
       tier: isHebrew ? 'כסף+' : 'Silver+',
+      live: false,
     },
     {
       icon: PartyPopper,
       title: isHebrew ? 'מתנת יום הולדת בלעדית' : 'Exclusive Birthday Gift',
       subtitle: isHebrew ? 'Exclusive Birthday Gift' : 'מתנת יום הולדת בלעדית',
-      description: isHebrew ? 'חבילת מתנה מיוחדת ישירות עד הדלת' : 'Special surprise gift package delivered to your door',
+      description: isHebrew ? 'הטבה מתוכננת — בהמשך.' : 'Planned benefit — coming soon.',
       tier: isHebrew ? 'זהב+' : 'Gold+',
+      live: false,
     },
     {
       icon: Heart,
       title: isHebrew ? 'הטבות יום הולדת לחיית מחמד' : 'Pet Birthday Rewards',
       subtitle: isHebrew ? 'Pet Birthday Rewards' : 'הטבות יום הולדת לחיית מחמד',
-      description: isHebrew ? 'חטיפים וצעצועים מיוחדים ליום ההולדת של החיה שלכם' : 'Special treats and toys for your furry friends birthday',
+      description: isHebrew ? 'הטבה מתוכננת — בהמשך.' : 'Planned benefit — coming soon.',
       tier: isHebrew ? 'כל החברים' : 'All Members',
+      live: false,
     },
     {
       icon: Star,
       title: isHebrew ? 'חוויית VIP ליום הולדת' : 'VIP Birthday Experience',
       subtitle: isHebrew ? 'VIP Birthday Experience' : 'חוויית VIP ליום הולדת',
-      description: isHebrew ? 'סשן רחיצה פרטי עם שמפניה ופינוקים' : 'Private wash session with champagne and treats',
+      description: isHebrew ? 'הטבה מתוכננת — בהמשך.' : 'Planned benefit — coming soon.',
       tier: isHebrew ? 'מלכותי' : 'Royal',
+      live: false,
     },
   ];
 
@@ -153,7 +176,16 @@ export default function LoyaltyBirthday() {
                 <div className="w-12 h-12 rounded-xl bg-[rgba(236,72,153,0.1)] flex items-center justify-center mb-4 transition-all duration-300 group-hover:bg-[rgba(236,72,153,0.2)]">
                   <reward.icon className="w-6 h-6 text-[#D4AF37]" />
                 </div>
-                <h3 className="text-[#1A1A1A] font-bold text-lg mb-1">{reward.title}</h3>
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-[#1A1A1A] font-bold text-lg">{reward.title}</h3>
+                  {/* PR-LOYALTY-BIRTHDAY-COPY-TRUTH: coming-soon tag so
+                      planned benefits don't read as live promises. */}
+                  {!reward.live && (
+                    <span className="text-[9px] uppercase tracking-[0.12em] px-1.5 py-0.5 border border-amber-200 text-amber-700 rounded-sm">
+                      {isHebrew ? 'בקרוב' : 'Coming Soon'}
+                    </span>
+                  )}
+                </div>
                 <p className="text-[#9A9088] text-xs mb-3">{reward.subtitle}</p>
                 <p className="text-[#7A7068] text-sm mb-4 leading-relaxed">{reward.description}</p>
                 <span className="inline-block text-xs font-semibold px-3 py-1 rounded-full bg-[rgba(217, 184, 76,0.1)] text-[#0a0a0a] border border-[rgba(217, 184, 76,0.2)]">
