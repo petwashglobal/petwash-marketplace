@@ -463,6 +463,34 @@ export default function BookingConfirmation() {
     }
   }, [booking]);
 
+  // Email deep-link handler (2026-08-18): the branded completion email
+  // (PR-1903) and the older review-request email both append ?review=1
+  // to the /booking/confirmation/:ref link. Before this, the param was
+  // silently ignored — customers arriving from the "Rate your service"
+  // CTA landed at the top of the page and had to scroll past hero +
+  // financial + escrow panels to find the star row. Now we scroll the
+  // end-of-stay banner (which sits directly above the star form) into
+  // the viewport once the booking has loaded and the confirm form is
+  // actually rendered — otherwise the scroll would target a not-yet-
+  // mounted DOM node. Runs once per mount; a second render (e.g. after
+  // the mutation flips `confirmed`) doesn't re-trigger.
+  useEffect(() => {
+    if (!booking) return;
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('review') !== '1') return;
+    if (booking.status !== 'provider_marked_complete') return;
+    // Defer one frame so the banner has painted before we scroll.
+    const raf = window.requestAnimationFrame(() => {
+      const el = document.querySelector('[data-testid="end-of-stay-banner"]');
+      if (el && typeof (el as HTMLElement).scrollIntoView === 'function') {
+        (el as HTMLElement).scrollIntoView({ behavior: 'smooth', block: 'start' });
+      }
+    });
+    return () => window.cancelAnimationFrame(raf);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [booking?.status]);
+
   /* confirm / review mutation */
   const confirmMutation = useMutation({
     mutationFn: async () => {
