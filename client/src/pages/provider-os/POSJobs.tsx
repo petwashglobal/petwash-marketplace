@@ -40,7 +40,14 @@ const STATUSES = [
 const STATUS_STYLES: Record<string, { label: string; color: string; bg: string; border: string }> = {
   // V2 booking_requests statuses
   pending:              { label: 'Pending',      color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
+  // Legacy per-service create status (2026-08-18): before this the card
+  // rendered a fallback grey pill reading "pending". Match the primary
+  // 'pending' visual so both entry paths look the same.
+  pending_provider:     { label: 'Pending',      color: '#1e40af', bg: '#dbeafe', border: '#93c5fd' },
   accepted:             { label: 'Accepted',     color: '#065f46', bg: '#d1fae5', border: '#6ee7b7' },
+  // Meet & Greet REQUESTED: customer opted into a M&G but provider hasn't
+  // scheduled a time yet. Was missing — rendered as raw "meet_greet_requested".
+  meet_greet_requested: { label: 'M&G Requested', color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
   meet_greet_scheduled: { label: 'Meet & Greet', color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
   meet_greet_completed: { label: 'Meet Done',    color: '#92400e', bg: '#fef3c7', border: '#fbbf24' },
   payment_pending:      { label: 'Awaiting Pmt', color: '#b45309', bg: '#fef3c7', border: '#fbbf24' },
