@@ -1,4 +1,5 @@
-import { pgTable, serial, varchar, integer, timestamp, boolean, text, decimal, jsonb } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, integer, timestamp, boolean, text, decimal, jsonb, uniqueIndex } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
 
@@ -124,21 +125,31 @@ export type InsertLoyaltyProfile = z.infer<typeof insertLoyaltyProfileSchema>;
 export const pointsTransactions = pgTable('points_transactions', {
   id: serial('id').primaryKey(),
   userId: varchar('user_id', { length: 255 }).notNull(),
-  
+
   // Transaction Details
   type: varchar('type', { length: 50 }).notNull(), // earned, redeemed, expired, bonus, refund
   amount: integer('amount').notNull(), // Positive for earned, negative for spent
   balance: integer('balance').notNull(), // Balance after transaction
-  
+
   // Source Information
   source: varchar('source', { length: 100 }).notNull(), // wash, challenge, referral, bonus, purchase
   sourceId: varchar('source_id', { length: 255 }), // Reference ID (wash ID, challenge ID, etc.)
   description: text('description').notNull(),
-  
+
   // Metadata
   metadata: jsonb('metadata').default({}), // Additional context
   createdAt: timestamp('created_at').notNull().defaultNow(),
-});
+}, (table) => ({
+  // Item 222 (2026-08-18, MONEY-CODE): storage-layer idempotency guard.
+  // Every earn caller today deduplicates via SELECT-then-INSERT on
+  // (userId, source, sourceId). That's a race under concurrent webhook
+  // retries. Partial-unique index enforces exactly-once per source-ref
+  // at the DB layer; NULL source_id rows (bonus events without a stable
+  // ref) stay unconstrained. Matches migrations/0117.
+  uniqUserSourceRef: uniqueIndex('points_transactions_user_source_ref_uniq_idx')
+    .on(table.userId, table.source, table.sourceId)
+    .where(sql`${table.sourceId} IS NOT NULL`),
+}));
 
 export type PointsTransaction = typeof pointsTransactions.$inferSelect;
 export const insertPointsTransactionSchema = createInsertSchema(pointsTransactions).omit({
