@@ -2559,7 +2559,32 @@ router.post('/:requestId/start', async (req, res) => {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       serviceStartedAt: new Date().toISOString(),
     }).catch(() => {});
-    
+
+    // Notify the customer that their service just started (2026-08-18):
+    // before this, /start silently flipped the row — customers had no
+    // signal that their pet's care was in progress until they opened the
+    // app. Rover / MadPaws / WhatIDog all push on this transition.
+    // Fire-and-forget + fail-soft.
+    if (booking.ownerId) {
+      db.select({ email: users.email, phone: users.phone })
+        .from(users).where(eq(users.id, booking.ownerId)).limit(1)
+        .then(([u]) => u && dispatchNotification({
+          uid: booking.ownerId,
+          email: u.email || undefined,
+          phone: u.phone || undefined,
+          type: 'system',
+          title: '🐾 השירות התחיל · Service started — PetWash™',
+          bodyHtml:
+            `<p>הספק דיווח שהשירות עבור הזמנה <strong>${requestId}</strong> החל. תוכלי לעקוב אחרי ההתקדמות באפליקציה.</p>` +
+            `<p>The provider marked the service for booking <strong>${requestId}</strong> as started. You can follow the progress in the app.</p>`,
+          ctaText: 'צפי במעקב חי / View live',
+          ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+          channels: ['inbox', 'email', 'push'],
+          priority: 7,
+          meta: { bookingId: requestId, actionType: 'service_started' },
+        })).catch(() => {});
+    }
+
     res.json({ success: true, message: 'Service started!' });
   } catch (error: any) {
     logger.error('[BookingRequests] Start service error', { error: error.message });
@@ -2779,6 +2804,35 @@ router.post('/:requestId/arriving', async (req, res) => {
     }).catch(() => {});
 
     logger.info('[BookingRequests] Provider arriving signal emitted', { requestId, userId });
+
+    // Persistent notification to the customer (2026-08-18): the WS/eventBus
+    // publish above only wakes clients that are already connected to the
+    // marketplace socket. Customers who left the app or lost signal get
+    // nothing. Add a push+inbox row so the "provider is on the way" signal
+    // survives an app close. Deliberately no email — this is a fast
+    // real-time signal, email would arrive too late to matter.
+    // Fire-and-forget + fail-soft.
+    if (booking.ownerId) {
+      const etaMinutes = typeof eta === 'number' ? Math.round(eta) : null;
+      db.select({ email: users.email, phone: users.phone })
+        .from(users).where(eq(users.id, booking.ownerId)).limit(1)
+        .then(([u]) => u && dispatchNotification({
+          uid: booking.ownerId,
+          email: u.email || undefined,
+          phone: u.phone || undefined,
+          type: 'system',
+          title: '🚗 הספק בדרך אלייך · Your provider is on the way',
+          bodyHtml:
+            `<p>הספק דיווח שהוא/היא בדרך אלייך${etaMinutes ? ` — הגעה משוערת בעוד ${etaMinutes} דקות` : ''}.</p>` +
+            `<p>Your provider is heading over${etaMinutes ? ` — ETA about ${etaMinutes} minutes` : ''}.</p>`,
+          ctaText: 'צפי בהזמנה / View booking',
+          ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+          channels: ['inbox', 'push'],
+          priority: 8,
+          meta: { bookingId: requestId, etaMinutes, actionType: 'provider_arriving' },
+        })).catch(() => {});
+    }
+
     return res.json({ success: true, message: 'Arrival signal sent to customer' });
   } catch (error: any) {
     logger.error('[BookingRequests] Provider arriving error', { error: error.message });
@@ -4240,7 +4294,37 @@ router.post('/:requestId/photo-update', async (req, res) => {
         updatedAt: new Date(),
       })
       .where(eq(bookingRequests.requestId, requestId));
-    
+
+    // Notify the owner that a new photo update arrived (2026-08-18):
+    // before this, the provider "sent an update" to a customer who never
+    // learned it existed until they refreshed the booking page. Response
+    // message said "Photo update sent to owner!" — technically true only
+    // if the owner happened to be looking at the app. Push + inbox only —
+    // no email/SMS on every photo (would be spammy for long sessions).
+    // Fire-and-forget + fail-soft.
+    if (booking.ownerId) {
+      const preview = typeof caption === 'string' && caption.trim()
+        ? caption.trim().slice(0, 140)
+        : 'הספק שלח עדכון תמונה / Your provider sent a photo';
+      db.select({ email: users.email })
+        .from(users).where(eq(users.id, booking.ownerId)).limit(1)
+        .then(([u]) => u && dispatchNotification({
+          uid: booking.ownerId,
+          email: u.email || undefined,
+          type: 'system',
+          title: '📸 עדכון תמונה חדש · New photo update',
+          bodyHtml:
+            `<p>הספק שלח עדכון תמונה חדש עבור ההזמנה שלך <strong>${requestId}</strong>.</p>` +
+            `<p><em>${preview}</em></p>` +
+            `<p>The provider sent a new photo update for your booking <strong>${requestId}</strong>.</p>`,
+          ctaText: 'צפי בעדכון / View update',
+          ctaUrl: `https://petwash.co.il/booking/confirmation/${requestId}`,
+          channels: ['inbox', 'push'],
+          priority: 6,
+          meta: { bookingId: requestId, actionType: 'photo_update' },
+        })).catch(() => {});
+    }
+
     res.json({ success: true, message: 'Photo update sent to owner!' });
   } catch (error: any) {
     logger.error('[BookingRequests] Photo update error', { error: error.message });
