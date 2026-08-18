@@ -154,8 +154,12 @@ export default function AccountActivation() {
   const sendOtpMutation = useMutation({
     mutationFn: async () => {
       if (!user?.phoneNumber && !user?.email) throw new Error("No phone number on account");
-      const res = await apiRequest("POST", "/api/auth/phone/send-code", {
+      // Canonical SMS route (audit item 181, D6). Was /api/auth/phone/send-code
+      // which is @deprecated per publicAuthRoutes.ts. Same server-side rate
+      // limiting + Turnstile guard; same response envelope.
+      const res = await apiRequest("POST", "/api/auth/sms/start", {
         phone: user.phoneNumber,
+        flow: 'activation',
       });
       return res.json();
     },
@@ -171,9 +175,13 @@ export default function AccountActivation() {
   // ── Verify OTP ──────────────────────────────────────────────────────────
   const verifyOtpMutation = useMutation({
     mutationFn: async (code: string) => {
-      const res = await apiRequest("POST", "/api/auth/phone/verify-code", {
+      // Canonical SMS verify route (audit item 181, D6). Was
+      // /api/auth/phone/verify-code (deprecated). Returns the same
+      // verificationToken so the downstream /validate-tokens call is unchanged.
+      const res = await apiRequest("POST", "/api/auth/sms/verify", {
         phone: user?.phoneNumber,
         code,
+        flow: 'activation',
       });
       const data = await res.json();
       if (!data.success && !data.verified) throw new Error(data.message || "Invalid code");
