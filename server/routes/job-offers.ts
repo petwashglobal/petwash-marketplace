@@ -103,7 +103,8 @@ router.post("/create", requireAuth, async (req, res) => {
     logger.error("[JobOffers API] Error creating job offer", error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to create job offer',
+      code: 'JOB_OFFER_CREATE_500',
     });
   }
 });
@@ -135,7 +136,8 @@ router.post("/:id/accept", requireAuth, async (req, res) => {
     logger.error("[JobOffers API] Error accepting job offer", error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to accept job offer',
+      code: 'JOB_OFFER_ACCEPT_500',
     });
   }
 });
@@ -166,7 +168,8 @@ router.post("/:id/reject", requireAuth, async (req, res) => {
     logger.error("[JobOffers API] Error rejecting job offer", error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to reject job offer',
+      code: 'JOB_OFFER_REJECT_500',
     });
   }
 });
@@ -196,7 +199,8 @@ router.get("/:id/dispatch-status", requireAuth, async (req, res) => {
     logger.error("[JobOffers API] Error getting dispatch status", error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to get dispatch status',
+      code: 'JOB_DISPATCH_STATUS_500',
     });
   }
 });
@@ -228,7 +232,8 @@ router.get("/operator/:operatorId", requireAuth, async (req, res) => {
     logger.error("[JobOffers API] Error getting operator job offers", error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to get operator job offers',
+      code: 'JOB_OFFER_LIST_500',
     });
   }
 });
@@ -251,7 +256,8 @@ router.post("/operator/presence", requireAuth, async (req, res) => {
     logger.error("[JobOffers API] Error updating operator presence", error);
     res.status(500).json({
       success: false,
-      error: error instanceof Error ? error.message : "Unknown error",
+      error: 'Failed to update operator presence',
+      code: 'OPERATOR_PRESENCE_500',
     });
   }
 });
