@@ -2188,7 +2188,11 @@ export const translations: TranslationStrings = {
   'privilege.pillarRewards': { en: 'Rewards', he: 'תגמולים', ar: 'مكافآت', ru: 'Награды', fr: 'Récompenses', es: 'Recompensas' },
   'privilege.pillarRewardsDesc': { en: 'Prestige Credits on every service, milestone bonuses, and anniversary recognition', he: 'נקודות Prestige על כל שירות, בונוסים על אבני דרך והכרה ביום הצטרפות', ar: 'رصيد Prestige على كل خدمة ومكافآت الإنجاز والتقدير السنوي', ru: 'Кредиты Prestige за каждую услугу, бонусы за достижения и признание годовщины', fr: 'Crédits Prestige sur chaque service, bonus d\'étapes et reconnaissance d\'anniversaire', es: 'Créditos Prestige en cada servicio, bonos por hitos y reconocimiento de aniversario' },
   'privilege.pillarStatus': { en: 'Status', he: 'סטטוס', ar: 'المكانة', ru: 'Статус', fr: 'Statut', es: 'Estatus' },
-  'privilege.pillarStatusDesc': { en: 'Five distinct tiers of recognition, from Member to the exclusive Black Reserve', he: 'חמש דרגות ייחודיות של הכרה, מחבר ועד Black Reserve הבלעדי', ar: 'خمسة مستويات مميزة من التقدير، من عضو إلى Black Reserve الحصري', ru: 'Пять уровней признания: от Участника до эксклюзивного Black Reserve', fr: 'Cinq niveaux de reconnaissance distincts, de Membre au prestigieux Black Reserve', es: 'Cinco niveles distintos de reconocimiento, desde Miembro hasta el exclusivo Black Reserve' },
+  // PR-LOYALTY-COPY-7-TIERS (2026-08-15) — fire-order item 3. The actual Prestige
+  // structure is SEVEN tiers (Member, Silver, Gold, Platinum, Diamond, Emerald,
+  // Black Reserve) but this pillar copy said "five". Fixed across all 6 locales
+  // to match the real tier count rendered by /loyalty.
+  'privilege.pillarStatusDesc': { en: 'Seven distinct tiers of recognition, from Member to the exclusive Black Reserve', he: 'שבע דרגות ייחודיות של הכרה, מחבר ועד Black Reserve הבלעדי', ar: 'سبع درجات مميزة من التقدير، من عضو إلى Black Reserve الحصري', ru: 'Семь уровней признания: от Участника до эксклюзивного Black Reserve', fr: 'Sept niveaux de reconnaissance distincts, de Membre au prestigieux Black Reserve', es: 'Siete niveles distintos de reconocimiento, desde Miembro hasta el exclusivo Black Reserve' },
   'privilege.tierMember': { en: 'Member', he: 'חבר', ar: 'عضو', ru: 'Участник', fr: 'Membre', es: 'Miembro' },
   'privilege.tierSignature': { en: 'Signature', he: 'Signature', ar: 'Signature', ru: 'Signature', fr: 'Signature', es: 'Signature' },
   'privilege.tierElite': { en: 'Elite', he: 'Elite', ar: 'Elite', ru: 'Elite', fr: 'Elite', es: 'Elite' },
