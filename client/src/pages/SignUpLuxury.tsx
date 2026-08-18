@@ -415,20 +415,22 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       try {
         const avail = await isPlatformAuthenticatorAvailable();
         if (cancelled) return;
-        // Only show the explicit "Sign in with Face ID" button when this user has
-        // actually REGISTERED a passkey on this device (petwash_passkey_email is set
-        // at registration/first passkey login). Gating on device biometric capability
-        // ALONE made the button appear on every modern phone/Mac and then FAIL on tap
-        // (NotAllowedError — no matching credential) for anyone without a passkey →
-        // "Face ID is broken." Conditional autofill (below) still arms regardless: it's
-        // silent, discoverable-credential based, and surfaces the passkey in the email
-        // field when one exists — the true one-tap return path.
-        const hasRegisteredPasskey = (() => {
+        // The signed-out login screen cannot ask the server "does this account
+        // have a passkey?" without leaking whether the account exists, so the
+        // explicit "Sign in with Face ID" button uses a DEVICE-LOCAL HINT
+        // (petwash_passkey_email) — set on registration / first passkey login
+        // on this device — to soften discovery. This is NOT authority: the
+        // real "your account is enrolled" record lives on the server and is
+        // read by Settings/EnableFaceIDCard via getServerPasskeyStatus(). The
+        // hint being absent does not mean the account has no passkey; the
+        // conditional-mediation autofill below still surfaces synced passkeys
+        // silently — the true one-tap return path.
+        const passkeyHintOnDevice = (() => {
           try { return !!localStorage.getItem('petwash_passkey_email'); } catch { return false; }
         })();
         setPlatformAuthCapable(avail);
-        setBioAvailable(avail && hasRegisteredPasskey);
-        if (avail && hasRegisteredPasskey) setBioName(getBiometricMethodName());
+        setBioAvailable(avail && passkeyHintOnDevice);
+        if (avail && passkeyHintOnDevice) setBioName(getBiometricMethodName());
         signInWithPasskeyConditional().catch(() => {});
       } catch { /* passkeys unsupported — silent, normal flow continues */ }
     })();
@@ -437,13 +439,30 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
   // Explicit "Sign in with Face ID" tap. On success the useFirebaseAuth user
   // effect routes via the post-login decider; no consent gate (returning user
-  // already accepted terms at original signup).
+  // already accepted terms at original signup). On failure we present an
+  // honest fallback message — the device may hold the discovery hint but the
+  // server may have no matching credential (user cleared it, switched
+  // devices, or the hint predates a passkey reset). "Face ID sign-in failed"
+  // reads as a system fault when the real cause is "no matching passkey";
+  // point them at the other sign-in options and clear the stale hint so the
+  // button no longer misleads on the next page load.
   async function handlePasskeyLogin() {
     setBusy(true);
     setInlineError(null);
     try {
       const r = await signInWithPasskey();
-      if (!r.success) fail(r.error || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+      if (!r.success) {
+        const noPasskey = /not.?allowed|no matching|no credential|cancel|timed out/i.test(r.error || '');
+        if (noPasskey) {
+          try { localStorage.removeItem('petwash_passkey_email'); } catch { /* storage disabled */ }
+          setBioAvailable(false);
+          fail(he
+            ? 'לא נמצא Passkey במכשיר זה — התחברו עם Google, אימייל או מספר נייד.'
+            : 'No passkey found on this device — sign in with Google, email or mobile instead.');
+        } else {
+          fail(r.error || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
+        }
+      }
     } catch (e: any) {
       fail(e?.message || (he ? 'התחברות עם Face ID נכשלה' : 'Face ID sign-in failed'));
     } finally {
