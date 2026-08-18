@@ -418,6 +418,50 @@ function LuxuryCard({ children, className = '', delay = 0 }: { children: ReactNo
   );
 }
 
+// Human labels for the raw booking.platform and booking.status enums the
+// /activity endpoint returns. Rendering the enum key directly ("walk_my_pet",
+// "in_progress") ships programmer-jargon to customers.
+const PLATFORM_LABELS: Record<string, [string, string]> = {
+  walk_my_pet:      ['Walk My Pet',        'הליכת חיה'],
+  sitter_suite:     ['Pet Wash Stay',      'פנסיון'],
+  pet_wash_station: ['K9000 Wash',         'שטיפה'],
+  pettrek:          ['PetTrek Transport',  'הסעת חיות'],
+  pet_wash_academy: ['PetWash Academy',    'אקדמיה'],
+  vet_visit:        ['Vet Visit',          'ביקור וטרינר'],
+  grooming:         ['Grooming',           'טיפוח'],
+};
+
+function platformLabel(platform: string, he: boolean): string {
+  const entry = PLATFORM_LABELS[platform];
+  if (!entry) {
+    // Unknown platform: convert snake_case → Title Case so we never ship the raw enum.
+    return platform.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+  return he ? entry[1] : entry[0];
+}
+
+const BOOKING_STATUS_LABELS: Record<string, [string, string]> = {
+  pending:                    ['Pending',           'ממתין'],
+  pending_provider:           ['Awaiting provider', 'ממתין לספק'],
+  accepted:                   ['Accepted',          'התקבל'],
+  confirmed:                  ['Confirmed',         'מאושר'],
+  meet_greet_requested:       ['Meet & Greet',      'היכרות'],
+  in_progress:                ['In progress',       'בתהליך'],
+  provider_marked_complete:   ['Awaiting confirm',  'ממתין לאישור סיום'],
+  completed:                  ['Completed',         'הושלם'],
+  reviewed:                   ['Reviewed',          'דורג'],
+  cancelled:                  ['Cancelled',         'בוטל'],
+  declined:                   ['Declined',          'נדחה'],
+};
+
+function bookingStatusLabel(status: string, he: boolean): string {
+  const entry = BOOKING_STATUS_LABELS[status];
+  if (!entry) {
+    return status.split('_').map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
+  }
+  return he ? entry[1] : entry[0];
+}
+
 export default function Dashboard() {
   const { user: firebaseUser, loading, logout } = useFirebaseAuth();
   const { role: serverRole, isLoading: whoamiLoading } = useWhoami();
@@ -1213,11 +1257,11 @@ export default function Dashboard() {
                   >
                     <CalendarCheck className="w-4 h-4 flex-shrink-0" style={{ color: '#D4AF37' }} />
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate" style={{ color: '#111111' }}>{booking.platform}</p>
+                      <p className="text-sm font-medium truncate" style={{ color: '#111111' }}>{platformLabel(booking.platform, he)}</p>
                       <p className="text-[10px]" style={{ color: '#666666' }}>
                         {new Date(booking.startDate).toLocaleDateString(language === 'he' ? 'he-IL' : 'en-IL', { day: 'numeric', month: 'short' })}
                         {' · '}
-                        <span className="capitalize">{booking.status}</span>
+                        <span>{bookingStatusLabel(booking.status, he)}</span>
                       </p>
                     </div>
                     {booking.amountCents > 0 && (
