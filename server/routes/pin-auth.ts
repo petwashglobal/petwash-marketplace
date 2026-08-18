@@ -18,7 +18,8 @@ import { userPins, pinAuthLogs, customers, users } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
-import { auth as firebaseAdminAuth } from '../lib/firebase-admin';
+import admin, { auth as firebaseAdminAuth } from '../lib/firebase-admin';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 
 const router = Router();
 
@@ -28,14 +29,19 @@ const MAX_FAILED_ATTEMPTS = 5;
 const LOCKOUT_MINUTES = 15;
 const MIN_PIN_LENGTH = 4;
 const MAX_PIN_LENGTH = 6;
+// Same "recent authentication" bar the email-change flow uses (profile-settings.ts).
+const RECENT_AUTH_WINDOW_SECONDS = 300;
 
-// P0-142 — authority for /setup /change /remove /status is the
-// Firebase Bearer token. The email/uid in the body/query is IGNORED
-// so a client cannot pick which user's PIN gets modified. Only the
-// legacy /verify path retains an email field (it must match the
-// decoded token — a mismatch returns 403).
+// Validation schemas
+//
+// SECURITY (auth/identity sweep 2026-08-17): `email` is accepted for backward
+// compatibility with older clients but is NEVER used to choose whose PIN is
+// read or written. Identity is always the server-verified Firebase UID from
+// `validateFirebaseToken`. A body-supplied email that disagrees with the token
+// is rejected (403 EMAIL_MISMATCH) rather than honoured.
 const setupPinSchema = z.object({
   pin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
+  email: z.string().email().optional(),
   deviceId: z.string().optional(),
   deviceName: z.string().optional(),
   deviceType: z.enum(['ios', 'android', 'web', 'kiosk']).optional(),
@@ -43,62 +49,20 @@ const setupPinSchema = z.object({
 
 const verifyPinSchema = z.object({
   pin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
-  email: z.string().email(),
+  email: z.string().email().optional(),
   deviceId: z.string().optional(),
 });
 
 const changePinSchema = z.object({
   currentPin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
   newPin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
+  email: z.string().email().optional(),
 });
 
 const removePinSchema = z.object({
-  pin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits'),
+  pin: z.string().min(4).max(6).regex(/^\d+$/, 'PIN must contain only digits').optional(),
+  email: z.string().email().optional(),
 });
-
-/**
- * P0-142 — resolve the authenticated Firebase user for a PIN-lifecycle
- * request. Returns { uid, email } on success, or writes a 401 and
- * returns null on any failure. The caller MUST early-return null.
- *
- * NO CLIENT-SUPPLIED email/uid may be trusted here — only the decoded
- * Firebase Bearer token.
- */
-async function resolveAuthedUser(
-  req: Request,
-  res: Response,
-): Promise<{ uid: string; email: string } | null> {
-  const authHeader = req.headers.authorization;
-  if (!authHeader?.startsWith('Bearer ')) {
-    res.status(401).json({
-      success: false,
-      error: 'Authentication required',
-      code: 'AUTH_REQUIRED',
-    });
-    return null;
-  }
-  const idToken = authHeader.substring(7);
-  try {
-    const decoded = await firebaseAdminAuth.verifyIdToken(idToken, true);
-    const email = (decoded.email || '').trim().toLowerCase();
-    if (!decoded.uid || !email) {
-      res.status(401).json({
-        success: false,
-        error: 'Authenticated token has no email',
-        code: 'INVALID_TOKEN',
-      });
-      return null;
-    }
-    return { uid: decoded.uid, email };
-  } catch {
-    res.status(401).json({
-      success: false,
-      error: 'Invalid authentication token',
-      code: 'INVALID_TOKEN',
-    });
-    return null;
-  }
-}
 
 // Helper: Get client IP
 function getClientIP(req: Request): string {
@@ -137,6 +101,45 @@ async function logPinEvent(params: {
   }
 }
 
+export type PinIdentity = { id: string; type: 'user' | 'customer'; email: string | null };
+
+/**
+ * SERVER-DERIVED IDENTITY (auth/identity sweep 2026-08-17).
+ *
+ * Resolves the PIN-owning row from the VERIFIED Firebase UID on the request —
+ * never from a browser-supplied email. `users.id` IS the Firebase UID, so the
+ * primary lookup is by UID. The `customers` table has no UID column, so it is
+ * only reachable via the token's own verified email (still not client input).
+ *
+ * Returns null when the caller has no PetWash row yet.
+ */
+export async function resolvePinIdentityFromRequest(req: Request): Promise<PinIdentity | null> {
+  const uid = req.firebaseUser?.uid;
+  if (!uid) return null;
+
+  const [user] = await db.select().from(users).where(eq(users.id, uid)).limit(1);
+  if (user) return { id: user.id, type: 'user', email: user.email ?? null };
+
+  const tokenEmail = (req.firebaseUser?.email || '').trim().toLowerCase();
+  if (tokenEmail) {
+    const [customer] = await db.select().from(customers).where(eq(customers.email, tokenEmail)).limit(1);
+    if (customer) return { id: customer.id.toString(), type: 'customer', email: customer.email ?? null };
+  }
+
+  return null;
+}
+
+/**
+ * A body-supplied email may NEVER select a different account. If a legacy client
+ * still sends one, it must match the verified token; otherwise refuse.
+ */
+function bodyEmailConflictsWithToken(req: Request, bodyEmail?: string): boolean {
+  if (!bodyEmail) return false;
+  const tokenEmail = (req.firebaseUser?.email || '').trim().toLowerCase();
+  if (!tokenEmail) return false;
+  return bodyEmail.trim().toLowerCase() !== tokenEmail;
+}
+
 // Helper: Find user by email (check both tables)
 async function findUserByEmail(email: string): Promise<{ id: string; type: 'user' | 'customer' } | null> {
   // Check customers table first
@@ -145,13 +148,8 @@ async function findUserByEmail(email: string): Promise<{ id: string; type: 'user
     return { id: customer.id.toString(), type: 'customer' };
   }
   
-  // Check users table — projection: this helper only needs id. Avoid pulling
-  // phone / passwordHash / MFA columns into the lookup.
-  const [user] = await db
-    .select({ id: users.id })
-    .from(users)
-    .where(eq(users.email, email))
-    .limit(1);
+  // Check users table
+  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
   if (user) {
     return { id: user.id, type: 'user' };
   }
@@ -163,50 +161,81 @@ async function findUserByEmail(email: string): Promise<{ id: string; type: 'user
  * POST /api/pin-auth/setup
  * Create or update PIN for a user
  */
-router.post('/setup', async (req: Request, res: Response) => {
-  const authed = await resolveAuthedUser(req, res);
-  if (!authed) return;
+router.post('/setup', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
     const validation = setupPinSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         success: false,
         error: 'Invalid PIN format. PIN must be 4-6 digits.',
-        details: validation.error.errors,
+        details: validation.error.errors
       });
     }
-    const { pin, deviceId, deviceName, deviceType } = validation.data;
 
-    // Identity from authenticated Firebase token — never from body.
-    const userInfo = await findUserByEmail(authed.email);
+    const { pin, email, deviceId, deviceName, deviceType } = validation.data;
+
+    if (bodyEmailConflictsWithToken(req, email)) {
+      return res.status(403).json({ success: false, error: 'Email does not match authenticated user', code: 'EMAIL_MISMATCH' });
+    }
+
+    // Identity comes from the verified token — NEVER from the request body.
+    const userInfo = await resolvePinIdentityFromRequest(req);
     if (!userInfo) {
       return res.status(404).json({
         success: false,
-        error: 'Account not found. Please register first.',
+        error: 'Account not found. Please register first.'
       });
     }
 
-    // P0-142 — /setup is CREATE ONLY. If a PIN already exists (active or
-    // deactivated), return 409 PIN_ALREADY_EXISTS. Callers must use
-    // /change to update or /remove then /setup to reset.
+    // Hash PIN
+    const pinHash = await bcrypt.hash(pin, SALT_ROUNDS);
+
+    // Check if PIN already exists for this user
     const [existingPin] = await db.select()
       .from(userPins)
       .where(and(
         eq(userPins.userId, userInfo.id),
-        eq(userPins.userType, userInfo.type),
-        eq(userPins.isActive, true),
+        eq(userPins.userType, userInfo.type)
       ))
       .limit(1);
 
     if (existingPin) {
-      return res.status(409).json({
-        success: false,
-        error: 'PIN already exists for this account. Use /change to update it.',
-        code: 'PIN_ALREADY_EXISTS',
+      // Update existing PIN
+      await db.update(userPins)
+        .set({
+          pinHash,
+          pinLength: pin.length,
+          deviceId: deviceId || existingPin.deviceId,
+          deviceName: deviceName || existingPin.deviceName,
+          deviceType: deviceType || existingPin.deviceType,
+          failedAttempts: 0,
+          lockoutUntil: null,
+          // BUGFIX 2026-08-17: /remove soft-deletes (isActive=false). Re-running
+          // /setup afterwards updated the same row but left isActive=false, so the
+          // "new" PIN silently never worked. Re-activate on setup.
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(userPins.id, existingPin.id));
+
+      await logPinEvent({
+        userId: userInfo.id,
+        userType: userInfo.type,
+        action: 'pin_changed',
+        req,
+        deviceId,
+        deviceType,
+      });
+
+      logger.info('[PIN Auth] PIN updated', { userId: userInfo.id, userType: userInfo.type });
+      return res.json({ 
+        success: true, 
+        message: 'PIN updated successfully',
+        pinLength: pin.length 
       });
     }
 
-    const pinHash = await bcrypt.hash(pin, SALT_ROUNDS);
+    // Create new PIN
     await db.insert(userPins).values({
       userId: userInfo.id,
       userType: userInfo.type,
@@ -228,17 +257,18 @@ router.post('/setup', async (req: Request, res: Response) => {
       deviceType,
     });
 
-    logger.info('[PIN Auth] PIN created', { userId: userInfo.id });
-    return res.json({
-      success: true,
+    logger.info('[PIN Auth] PIN created', { userId: userInfo.id, userType: userInfo.type });
+    return res.json({ 
+      success: true, 
       message: 'PIN created successfully',
-      pinLength: pin.length,
+      pinLength: pin.length 
     });
+
   } catch (error) {
     logger.error('[PIN Auth] Setup error', error);
-    return res.status(500).json({
-      success: false,
-      error: 'Failed to setup PIN. Please try again.',
+    return res.status(500).json({ 
+      success: false, 
+      error: 'Failed to setup PIN. Please try again.' 
     });
   }
 });
@@ -283,8 +313,8 @@ router.post('/verify', async (req: Request, res: Response) => {
 
     const { pin, email, deviceId } = validation.data;
 
-    // Verify email matches authenticated user
-    if (email.toLowerCase() !== decodedToken.email?.toLowerCase()) {
+    // A legacy client may still send an email, but it may never SELECT the account.
+    if (email && decodedToken.email && email.toLowerCase() !== decodedToken.email.toLowerCase()) {
       return res.status(403).json({
         success: false,
         error: 'Email does not match authenticated user',
@@ -292,12 +322,15 @@ router.post('/verify', async (req: Request, res: Response) => {
       });
     }
 
-    // Find user
-    const userInfo = await findUserByEmail(email);
+    // Identity comes from the verified token — NEVER from the request body.
+    // (Bug 2026-08-17: TransactionPinModal posts `{ pin }` with no email, so the
+    // old email-keyed lookup 400'd and transaction-PIN verification was dead.)
+    req.firebaseUser = req.firebaseUser || { uid: decodedToken.uid, email: decodedToken.email };
+    const userInfo = await resolvePinIdentityFromRequest(req);
     if (!userInfo) {
-      return res.status(401).json({ 
-        success: false, 
-        error: 'Invalid email or PIN' 
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or PIN'
       });
     }
 
@@ -365,7 +398,6 @@ router.post('/verify', async (req: Request, res: Response) => {
       if (shouldLockout) {
         logger.warn('[PIN Auth] Account locked due to failed attempts', { 
           userId: userInfo.id, 
-          email,
           attempts: newFailedAttempts 
         });
         return res.status(429).json({ 
@@ -416,18 +448,7 @@ router.post('/verify', async (req: Request, res: Response) => {
         };
       }
     } else {
-      // Projection: only the columns the client response cares about.
-      // Never pull passwordHash / MFA / phone into this handler.
-      const [user] = await db
-        .select({
-          id: users.id,
-          email: users.email,
-          firstName: users.firstName,
-          lastName: users.lastName,
-          loyaltyTier: users.loyaltyTier,
-        })
-        .from(users)
-        .where(eq(users.id, userInfo.id));
+      const [user] = await db.select().from(users).where(eq(users.id, userInfo.id));
       if (user) {
         userData = {
           id: user.id,
@@ -439,7 +460,7 @@ router.post('/verify', async (req: Request, res: Response) => {
       }
     }
 
-    logger.info('[PIN Auth] Login success', { userId: userInfo.id, email });
+    logger.info('[PIN Auth] Login success', { userId: userInfo.id, userType: userInfo.type });
     return res.json({ 
       success: true, 
       message: 'PIN verified successfully',
@@ -460,32 +481,35 @@ router.post('/verify', async (req: Request, res: Response) => {
  * POST /api/pin-auth/change
  * Change PIN (requires current PIN)
  */
-router.post('/change', async (req: Request, res: Response) => {
-  const authed = await resolveAuthedUser(req, res);
-  if (!authed) return;
+router.post('/change', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
     const validation = changePinSchema.safeParse(req.body);
     if (!validation.success) {
       return res.status(400).json({
         success: false,
-        error: 'Invalid PIN format',
+        error: 'Invalid PIN format'
       });
     }
-    const { currentPin, newPin } = validation.data;
+
+    const { currentPin, newPin, email } = validation.data;
 
     if (currentPin === newPin) {
       return res.status(400).json({
         success: false,
-        error: 'New PIN must be different from current PIN',
+        error: 'New PIN must be different from current PIN'
       });
     }
 
-    // Identity from authenticated Firebase token — never from body.
-    const userInfo = await findUserByEmail(authed.email);
+    if (bodyEmailConflictsWithToken(req, email)) {
+      return res.status(403).json({ success: false, error: 'Email does not match authenticated user', code: 'EMAIL_MISMATCH' });
+    }
+
+    // Identity comes from the verified token — NEVER from the request body.
+    const userInfo = await resolvePinIdentityFromRequest(req);
     if (!userInfo) {
       return res.status(404).json({
         success: false,
-        error: 'Account not found',
+        error: 'Account not found'
       });
     }
 
@@ -534,10 +558,10 @@ router.post('/change', async (req: Request, res: Response) => {
       req,
     });
 
-    logger.info('[PIN Auth] PIN changed', { userId: userInfo.id });
-    return res.json({
-      success: true,
-      message: 'PIN changed successfully',
+    logger.info('[PIN Auth] PIN changed', { userId: userInfo.id, userType: userInfo.type });
+    return res.json({ 
+      success: true, 
+      message: 'PIN changed successfully' 
     });
 
   } catch (error) {
@@ -553,26 +577,24 @@ router.post('/change', async (req: Request, res: Response) => {
  * DELETE /api/pin-auth/remove
  * Remove PIN authentication
  */
-router.delete('/remove', async (req: Request, res: Response) => {
-  const authed = await resolveAuthedUser(req, res);
-  if (!authed) return;
+router.delete('/remove', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
-    const validation = removePinSchema.safeParse(req.body);
+    const validation = removePinSchema.safeParse(req.body ?? {});
     if (!validation.success) {
-      return res.status(400).json({
-        success: false,
-        error: 'Current PIN is required to remove PIN',
-        code: 'PIN_REQUIRED',
-      });
+      return res.status(400).json({ success: false, error: 'Invalid PIN format' });
     }
-    const { pin } = validation.data;
+    const { email, pin } = validation.data;
 
-    // Identity from authenticated Firebase token — never from body.
-    const userInfo = await findUserByEmail(authed.email);
+    if (bodyEmailConflictsWithToken(req, email)) {
+      return res.status(403).json({ success: false, error: 'Email does not match authenticated user', code: 'EMAIL_MISMATCH' });
+    }
+
+    // Identity comes from the verified token — NEVER from the request body.
+    const userInfo = await resolvePinIdentityFromRequest(req);
     if (!userInfo) {
       return res.status(404).json({
         success: false,
-        error: 'Account not found',
+        error: 'Account not found'
       });
     }
 
@@ -587,19 +609,35 @@ router.delete('/remove', async (req: Request, res: Response) => {
       .limit(1);
 
     if (!pinRecord) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'No PIN set up for this account' 
+      return res.status(400).json({
+        success: false,
+        error: 'No PIN set up for this account'
       });
     }
 
-    // Verify PIN before removal
-    const isValid = await bcrypt.compare(pin, pinRecord.pinHash);
-    if (!isValid) {
-      return res.status(401).json({ 
-        success: false, 
-        error: 'Invalid PIN' 
+    // Removing a sign-in factor is a security-reducing action: require proof of
+    // presence — either the current PIN, or a Firebase sign-in from the last
+    // 5 minutes (same recent-auth bar the email-change flow uses).
+    const authTimeSec = Number((req.firebaseUser?.claims as any)?.auth_time ?? 0);
+    const recentlyAuthenticated = authTimeSec > 0 && authTimeSec >= Math.floor(Date.now() / 1000) - RECENT_AUTH_WINDOW_SECONDS;
+
+    if (!pin && !recentlyAuthenticated) {
+      return res.status(401).json({
+        success: false,
+        error: 'Enter your current PIN, or sign in again, to remove your PIN.',
+        code: 'PIN_OR_REAUTH_REQUIRED',
       });
+    }
+
+    if (pin) {
+      const isValid = await bcrypt.compare(pin, pinRecord.pinHash);
+      if (!isValid) {
+        return res.status(401).json({
+          success: false,
+          error: 'Invalid PIN',
+          code: 'INVALID_PIN',
+        });
+      }
     }
 
     // Deactivate PIN (soft delete)
@@ -614,10 +652,10 @@ router.delete('/remove', async (req: Request, res: Response) => {
       req,
     });
 
-    logger.info('[PIN Auth] PIN removed', { userId: userInfo.id });
-    return res.json({
-      success: true,
-      message: 'PIN removed successfully',
+    logger.info('[PIN Auth] PIN removed', { userId: userInfo.id, userType: userInfo.type });
+    return res.json({ 
+      success: true, 
+      message: 'PIN removed successfully' 
     });
 
   } catch (error) {
@@ -633,18 +671,22 @@ router.delete('/remove', async (req: Request, res: Response) => {
  * GET /api/pin-auth/status
  * Check if user has PIN set up
  */
-router.get('/status', async (req: Request, res: Response) => {
-  const authed = await resolveAuthedUser(req, res);
-  if (!authed) return;
+router.get('/status', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
-    // Identity from authenticated Firebase token — never from query.
-    // NOTE: pre-P0-142 this endpoint accepted `?email=` and was
-    // unauthenticated → user-enumeration vector. Both are closed here.
-    const userInfo = await findUserByEmail(authed.email);
+    // SECURITY 2026-08-17: this used to be unauthenticated and keyed on
+    // `?email=` — anyone could enumerate whether an arbitrary account had a PIN,
+    // its length and its lockout state. It is now authenticated and reports the
+    // CALLER's own PIN posture only.
+    //
+    // BUGFIX 2026-08-17: the Settings page calls this with no `?email=`, so the
+    // old handler answered 400 and the UI fell back to "PIN: Not set" for every
+    // user — including users who had one. Status is now server-authoritative.
+    const userInfo = await resolvePinIdentityFromRequest(req);
     if (!userInfo) {
       return res.json({
         success: true,
         hasPin: false,
+        reason: 'Account not found'
       });
     }
 
@@ -708,50 +750,169 @@ function generateDeviceTrustToken(userId: string, email: string, deviceId: strin
   return Buffer.from(`${payload}.${signature}`).toString('base64');
 }
 
-// Helper: Verify device trust token
-function verifyDeviceTrustToken(token: string): { 
-  valid: boolean; 
-  userId?: string; 
-  email?: string; 
-  deviceId?: string 
-} {
+export type DeviceTrustCheck = {
+  valid: boolean;
+  reason?: 'no_secret' | 'malformed' | 'bad_signature' | 'expired' | 'revoked';
+  userId?: string;
+  email?: string;
+  deviceId?: string;
+  issuedAt?: number;
+  expiresAt?: number;
+};
+
+/**
+ * SERVER-SIDE REVOCATION (auth/identity sweep 2026-08-17).
+ *
+ * The device-trust token is a stateless HMAC, so before this change "revoke
+ * trust" in Settings only deleted a localStorage key — the signed token stayed
+ * valid for its full 30 days and any copy of it still bought a PIN sign-in.
+ * We now keep a per-user revocation epoch in Firestore (`device_trust/{uid}`)
+ * and refuse every token minted at or before it. Same store the email-change
+ * flow already uses; no Postgres migration required.
+ */
+const DEVICE_TRUST_COLLECTION = 'device_trust';
+
+export async function getDeviceTrustRevokedAt(userId: string): Promise<number> {
+  try {
+    const doc = await admin.firestore().collection(DEVICE_TRUST_COLLECTION).doc(userId).get();
+    const value = doc.exists ? (doc.data() as any)?.revokedAtMs : undefined;
+    return typeof value === 'number' ? value : 0;
+  } catch (error) {
+    // FAIL CLOSED for a security check: if we cannot confirm the token was NOT
+    // revoked, treat it as revoked rather than granting trust on an outage.
+    logger.error('[PIN Auth] device-trust revocation lookup failed — failing closed', error);
+    return Number.MAX_SAFE_INTEGER;
+  }
+}
+
+// Helper: Verify device trust token (signature + expiry + server-side revocation)
+export async function verifyDeviceTrustToken(token: string): Promise<DeviceTrustCheck> {
   try {
     if (!DEVICE_TRUST_SECRET) {
       logger.error('[PIN Auth] Cannot verify token: JWT_SECRET not configured');
-      return { valid: false };
+      return { valid: false, reason: 'no_secret' };
     }
 
     const decoded = Buffer.from(token, 'base64').toString('utf8');
     const [payloadStr, signature] = decoded.split('.');
-    
+
     if (!payloadStr || !signature) {
-      return { valid: false };
+      return { valid: false, reason: 'malformed' };
     }
-    
+
     const expectedSignature = crypto.createHmac('sha256', DEVICE_TRUST_SECRET)
       .update(payloadStr)
       .digest('hex');
-    
-    if (signature !== expectedSignature) {
-      return { valid: false };
+
+    // Constant-time compare — a plain `!==` leaks a byte-position oracle.
+    const sigBuf = Buffer.from(signature, 'utf8');
+    const expBuf = Buffer.from(expectedSignature, 'utf8');
+    if (sigBuf.length !== expBuf.length || !crypto.timingSafeEqual(sigBuf, expBuf)) {
+      return { valid: false, reason: 'bad_signature' };
     }
-    
+
     const payload = JSON.parse(payloadStr);
-    
+
     if (payload.expiresAt < Date.now()) {
-      return { valid: false };
+      return { valid: false, reason: 'expired' };
     }
-    
-    return { 
-      valid: true, 
-      userId: payload.userId, 
+
+    const revokedAt = await getDeviceTrustRevokedAt(String(payload.userId));
+    if (revokedAt && Number(payload.issuedAt || 0) <= revokedAt) {
+      return { valid: false, reason: 'revoked' };
+    }
+
+    return {
+      valid: true,
+      userId: payload.userId,
       email: payload.email,
-      deviceId: payload.deviceId 
+      deviceId: payload.deviceId,
+      issuedAt: payload.issuedAt,
+      expiresAt: payload.expiresAt,
     };
   } catch (error) {
-    return { valid: false };
+    return { valid: false, reason: 'malformed' };
   }
 }
+
+/**
+ * GET /api/pin-auth/device-trust/status
+ *
+ * Server-authoritative "is this device remembered?" — replaces the Settings page
+ * reading localStorage and calling that a security status. The client presents
+ * whatever trust token it holds; the SERVER decides whether it is real, whose it
+ * is, and when it dies.
+ */
+router.get('/device-trust/status', validateFirebaseToken, async (req: Request, res: Response) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const token = (req.headers['x-device-trust-token'] as string) || '';
+
+    if (!token) {
+      return res.json({ success: true, trusted: false, reason: 'no_token' });
+    }
+
+    const result = await verifyDeviceTrustToken(token);
+    // A valid token belonging to somebody else must never render as "your device".
+    if (!result.valid || result.userId !== uid) {
+      return res.json({
+        success: true,
+        trusted: false,
+        reason: result.valid ? 'other_account' : (result.reason || 'invalid'),
+      });
+    }
+
+    const daysRemaining = Math.max(0, Math.ceil(((result.expiresAt || 0) - Date.now()) / (24 * 60 * 60 * 1000)));
+    return res.json({
+      success: true,
+      trusted: true,
+      deviceId: result.deviceId || null,
+      issuedAt: result.issuedAt || null,
+      expiresAt: result.expiresAt || null,
+      daysRemaining,
+    });
+  } catch (error) {
+    logger.error('[PIN Auth] device-trust status error', error);
+    return res.status(500).json({ success: false, error: 'Failed to check device trust' });
+  }
+});
+
+/**
+ * POST /api/pin-auth/device-trust/revoke
+ *
+ * Revokes EVERY device-trust token this user holds, on the server, immediately.
+ * Previously "Revoke trust" only cleared localStorage on the device you clicked
+ * from — the stolen/other device stayed trusted.
+ */
+router.post('/device-trust/revoke', validateFirebaseToken, async (req: Request, res: Response) => {
+  try {
+    const uid = req.firebaseUser!.uid;
+    const revokedAtMs = Date.now();
+
+    await admin.firestore().collection(DEVICE_TRUST_COLLECTION).doc(uid).set({
+      revokedAtMs,
+      revokedAt: admin.firestore.FieldValue.serverTimestamp(),
+      ipAddress: getClientIP(req),
+      userAgent: req.headers['user-agent'] || 'unknown',
+    }, { merge: true });
+
+    const userInfo = await resolvePinIdentityFromRequest(req);
+    if (userInfo) {
+      await logPinEvent({
+        userId: userInfo.id,
+        userType: userInfo.type,
+        action: 'device_trust_revoked',
+        req,
+      });
+    }
+
+    logger.info('[PIN Auth] Device trust revoked for all devices', { userId: uid });
+    return res.json({ success: true, revokedAtMs });
+  } catch (error) {
+    logger.error('[PIN Auth] device-trust revoke error', error);
+    return res.status(500).json({ success: false, error: 'Failed to revoke device trust' });
+  }
+});
 
 /**
  * POST /api/pin-auth/trusted-device-verify
@@ -793,28 +954,30 @@ router.post('/trusted-device-verify', async (req: Request, res: Response) => {
       });
     }
 
-    const tokenResult = verifyDeviceTrustToken(trustToken);
+    const tokenResult = await verifyDeviceTrustToken(trustToken);
     if (!tokenResult.valid) {
       return res.status(401).json({
         success: false,
-        error: 'Device trust expired. Please sign in again.',
-        code: 'INVALID_TRUST_TOKEN'
+        error: tokenResult.reason === 'revoked'
+          ? 'This device is no longer trusted. Please sign in again.'
+          : 'Device trust expired. Please sign in again.',
+        code: tokenResult.reason === 'revoked' ? 'TRUST_REVOKED' : 'INVALID_TRUST_TOKEN'
       });
     }
 
     // Validate request body
     const validation = verifyPinSchema.safeParse(req.body);
     if (!validation.success) {
-      return res.status(400).json({ 
-        success: false, 
-        error: 'Invalid PIN format' 
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid PIN format'
       });
     }
 
     const { pin, email, deviceId } = validation.data;
 
-    // Verify email matches trust token
-    if (email.toLowerCase() !== tokenResult.email?.toLowerCase()) {
+    // A body email may never select a different account than the signed trust token.
+    if (email && email.toLowerCase() !== tokenResult.email?.toLowerCase()) {
       return res.status(401).json({
         success: false,
         error: 'Email does not match trusted device.',
@@ -822,12 +985,16 @@ router.post('/trusted-device-verify', async (req: Request, res: Response) => {
       });
     }
 
-    // Find user
-    const userInfo = await findUserByEmail(email);
+    // Identity comes from the SIGNED trust token, never from the request body.
+    const trustedEmail = tokenResult.email;
+    if (!trustedEmail) {
+      return res.status(401).json({ success: false, error: 'Invalid trust token', code: 'INVALID_TRUST_TOKEN' });
+    }
+    const userInfo = await findUserByEmail(trustedEmail);
     if (!userInfo) {
-      return res.status(401).json({ 
-        success: false, 
-        error: 'Invalid email or PIN' 
+      return res.status(401).json({
+        success: false,
+        error: 'Invalid email or PIN'
       });
     }
 
@@ -939,7 +1106,7 @@ router.post('/trusted-device-verify', async (req: Request, res: Response) => {
       });
     }
 
-    logger.info('[PIN Auth] Trusted device PIN login success', { userId: userInfo.id, email });
+    logger.info('[PIN Auth] Trusted device PIN login success', { userId: userInfo.id, userType: userInfo.type });
     return res.json({ 
       success: true, 
       message: 'PIN verified successfully',
