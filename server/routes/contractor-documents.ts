@@ -134,7 +134,7 @@ router.post("/upload", upload.single("file"), async (req: any, res) => {
     res.status(201).json({ success: true, document, message: "Document uploaded successfully" });
   } catch (error) {
     logger.error("[Contractor Documents] Upload failed", error);
-    res.status(500).json({ error: "Failed to upload document", details: error instanceof Error ? error.message : "Unknown error" });
+    res.status(500).json({ error: "Failed to upload document", code: "CONTRACTOR_DOC_UPLOAD_500" });
   }
 });
 
@@ -160,7 +160,7 @@ router.get("/:contractorId", async (req: any, res) => {
     res.json({ success: true, documents, count: documents.length });
   } catch (error) {
     logger.error("[Contractor Documents] Failed to fetch documents", error);
-    res.status(500).json({ error: "Failed to fetch documents", details: error instanceof Error ? error.message : "Unknown error" });
+    res.status(500).json({ error: "Failed to fetch documents", code: "CONTRACTOR_DOC_LIST_500" });
   }
 });
 
@@ -202,7 +202,7 @@ router.post("/:documentId/verify", async (req: any, res) => {
     res.json({ success: true, document, message: "Document verified successfully" });
   } catch (error) {
     logger.error("[Contractor Documents] Verification failed", error);
-    res.status(500).json({ error: "Failed to verify document", details: error instanceof Error ? error.message : "Unknown error" });
+    res.status(500).json({ error: "Failed to verify document", code: "CONTRACTOR_DOC_VERIFY_500" });
   }
 });
 
@@ -248,7 +248,7 @@ router.delete("/:documentId", async (req: any, res) => {
     res.json({ success: true, message: "Document deleted successfully" });
   } catch (error) {
     logger.error("[Contractor Documents] Deletion failed", error);
-    res.status(500).json({ error: "Failed to delete document", details: error instanceof Error ? error.message : "Unknown error" });
+    res.status(500).json({ error: "Failed to delete document", code: "CONTRACTOR_DOC_DELETE_500" });
   }
 });
 
@@ -279,7 +279,7 @@ router.get("/type/:contractorId/:type", async (req: any, res) => {
     res.json({ success: true, documents, count: documents.length });
   } catch (error) {
     logger.error("[Contractor Documents] Failed to fetch document by type", error);
-    res.status(500).json({ error: "Failed to fetch documents", details: error instanceof Error ? error.message : "Unknown error" });
+    res.status(500).json({ error: "Failed to fetch documents", code: "CONTRACTOR_DOC_LIST2_500" });
   }
 });
 
