@@ -198,7 +198,7 @@ router.post('/upload', upload.single('file'), async (req: Request, res: Response
     }).catch(e => logger.warn('[KYC] Orchestrator hook error', e)));
   } catch (error: any) {
     logger.error('KYC upload error', error);
-    res.status(500).json({ error: error.message || 'Upload failed' });
+    res.status(500).json({ error: 'Something went wrong' || 'Upload failed' });
   }
 });
 
@@ -245,7 +245,7 @@ router.get('/status/:uid', async (req: Request, res: Response) => {
     res.json(safeDoc);
   } catch (error: any) {
     logger.error('Get KYC status error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -258,7 +258,7 @@ router.get('/admin/pending', requireAdmin, async (req: Request, res: Response) =
     res.json({ submissions: pending });
   } catch (error: any) {
     logger.error('Get pending submissions error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -339,7 +339,7 @@ router.post('/admin/approve', requireAdmin, async (req: Request, res: Response) 
     res.json({ success: true, message: 'KYC approved successfully' });
   } catch (error: any) {
     logger.error('Approve KYC error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -413,7 +413,7 @@ router.post('/admin/reject', requireAdmin, async (req: Request, res: Response) =
     res.json({ success: true, message: 'KYC rejected' });
   } catch (error: any) {
     logger.error('Reject KYC error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -449,7 +449,7 @@ router.get('/admin/document/:uid', requireAdmin, async (req: Request, res: Respo
     res.json({ urls });
   } catch (error: any) {
     logger.error('Get document URL error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -508,7 +508,7 @@ router.delete('/delete/:uid', validateFirebaseToken, loadUserRole, async (req: R
     res.json({ success: true, message: 'KYC data deleted successfully' });
   } catch (error: any) {
     logger.error('Delete KYC error', error);
-    res.status(500).json({ error: error.message });
+    res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
