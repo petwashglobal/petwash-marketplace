@@ -134,7 +134,51 @@ type PrimaryAction =
   | { kind: 'meet_greet_complete'; label: string; endpoint: 'meet-greet' }
   | { kind: 'view';                label: string; endpoint: null };
 
+/**
+ * Bridge server-authoritative `primaryAction` (CEO §P1-17, shipped in
+ * provider-dashboard-v2 DTO) to this file's local PrimaryAction shape.
+ * Returns null when the server didn't emit a primaryAction (older DTOs
+ * or a status the server chose not to gate here) — caller falls back to
+ * the local `resolvePrimary` derivation. When both server and local
+ * agree, the server wins; when the server says VIEW_DETAILS but the
+ * local rule would have offered an action, the server still wins (CEO
+ * §P1-17: "Frontend decides button appearance. Do NOT make client infer
+ * eligibility from text label only.").
+ */
+function primaryFromServer(b: UpcomingBooking, isHe: boolean): PrimaryAction | null {
+  const svr = (b as any).primaryAction as string | undefined;
+  if (!svr) return null;
+  const svc = serviceLabel(b.serviceType, isHe);
+  switch (svr) {
+    case 'START_SERVICE':
+      return { kind: 'start', endpoint: 'start', label: isHe ? `התחל ${svc}` : `START ${svc.toUpperCase()}` };
+    case 'FINISH_SERVICE':
+      return { kind: 'complete', endpoint: 'complete', label: isHe ? `סיים ${svc}` : `FINISH ${svc.toUpperCase()}` };
+    case 'ARRIVING':
+      return { kind: 'arriving', endpoint: 'arriving', label: isHe ? 'בדרך' : "I'M ON THE WAY" };
+    case 'COMPLETE_MEET_GREET':
+      return { kind: 'meet_greet_complete', endpoint: 'meet-greet', label: isHe ? 'סיים היכרות' : 'COMPLETE MEET & GREET' };
+    case 'VIEW_DETAILS':
+    case 'MESSAGE':
+    case 'ACCEPT':
+    case 'DECLINE':
+    case 'SCHEDULE_MEET_GREET':
+    default:
+      // Server said "no active step" — surface View. The other
+      // enum values (ACCEPT / DECLINE / SCHEDULE_MEET_GREET) don't
+      // have first-class buttons on the ProviderToday focus card
+      // yet; falling to View sends the provider into the full job
+      // page where those actions already live.
+      return { kind: 'view', endpoint: null, label: isHe ? 'פרטי הזמנה' : 'View details' };
+  }
+}
+
 function resolvePrimary(b: UpcomingBooking, isHe: boolean): PrimaryAction {
+  // Prefer server-computed action when the DTO carries it (P1-17).
+  const fromServer = primaryFromServer(b, isHe);
+  if (fromServer) return fromServer;
+
+  // Legacy fallback for older DTOs that don't emit primaryAction yet.
   const status = (b.status || '').toLowerCase();
   const minsLeft = minutesUntil(effectiveStart(b));
   const svc = serviceLabel(b.serviceType, isHe);
