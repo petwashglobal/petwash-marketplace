@@ -18,12 +18,11 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { useScrollReveal } from '@/hooks/useScrollReveal';
-// K9000 station image: responsive webp variants (was a single 2.3MB PNG served
-// full-size to phones). 480w for phones, 1152w for desktop → srcset picks per
-// screen. 2.3MB → 37KB on a phone. (CEO 2026-07-27: "big files on small screens".)
-import k9000Station480 from '@assets/k9000_station_480.webp';
-import k9000Station768 from '@assets/k9000_station_768.webp';
-import k9000Station1152 from '@assets/k9000_station_1152.webp';
+// Real on-site photo of the live Kfar Saba (Park 80) K9000 dual-bay station —
+// green painted floor, green fencing, Hebrew signage "חוויית רחיצה מושלמת לכלב.ה".
+// Same asset the Locations page uses (see Locations.tsx). Portrait aspect —
+// the Technology section renders inside max-w-3xl and lets height flow.
+import greenKfarSabaStationPhoto from '@assets/green_kfarsaba_station.jpg';
 
 interface LandingProps {
   language: Language;
@@ -283,12 +282,12 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               {t('technology.description', language)}
             </p>
             
-            <div className="mt-6 sm:mt-8 max-w-3xl mx-auto">
+            <div className="mt-6 sm:mt-8 max-w-xl mx-auto">
               <img
-                src={k9000Station1152}
-                srcSet={`${k9000Station480} 480w, ${k9000Station768} 768w, ${k9000Station1152} 1152w`}
-                sizes="(min-width: 640px) 768px, 92vw"
-                alt="⁦PetWash™⁩ K9000 Dual Wash Station"
+                src={greenKfarSabaStationPhoto}
+                alt={language === 'he'
+                  ? 'תחנת PetWash בכפר סבא הירוקה (פארק 80) — עמדת שטיפה עצמית K9000 דו-תאית, פתוחה 24/7'
+                  : 'PetWash station at Green Kfar Saba (Park 80) — dual K9000 self-service wash bay, open 24/7'}
                 className="w-full rounded-sm"
                 style={{ filter: 'drop-shadow(0 8px 24px rgba(0,0,0,0.12))' }}
                 loading="lazy"
