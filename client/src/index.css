@@ -4566,3 +4566,33 @@ body[data-pw-page="signup"] #petwash-signup-page main.sl-panel {
 /* Apple-style wheel picker (apple-wheel-picker.tsx): native scroll + snap, no scrollbar. */
 .wheel-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 .wheel-scroll::-webkit-scrollbar { display: none; }
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * PR-MOBILE-NAV-BODY-PADDING (2026-08-15) — fire-order item 9.
+ *
+ * MobileBottomNav is `position: fixed` at the bottom of the viewport with
+ * `z-index: 40` and height 56px (`h-14`) + `env(safe-area-inset-bottom)`.
+ * Pages that render OUTSIDE the `<Layout>` wrapper (Layout adds `pb-16
+ * md:pb-0`) had NO reserved bottom space — the nav overlaid the primary
+ * CTA on /egift, /booking, and any other Layout-less page.
+ *
+ * Fix: whenever the shell has mounted the nav, App.tsx toggles
+ * `data-pw-mobile-nav="on"` on `<html>`. This rule then reserves the nav
+ * height (plus safe-area) on the ROOT scroll container across every
+ * mobile viewport. Pages already inside `<Layout>` are unaffected — the
+ * `pb-16` and this rule sum to ≈120px, which is still just a small
+ * cushion at the end of a scroll, never a visual defect.
+ *
+ * Desktop (>=768px, where the nav is `md:hidden`) is untouched — no
+ * padding added.
+ *
+ * The two other bottom-anchored overlays (PromoAdPopup, AiChatWidget,
+ * cookie banner, FloatingStack) already gate off with isImmersiveRoute
+ * on their respective routes; this rule is orthogonal — it addresses the
+ * NAV specifically.
+ * ─────────────────────────────────────────────────────────────────────── */
+@media (max-width: 767px) {
+  html[data-pw-mobile-nav="on"] body {
+    padding-bottom: calc(56px + env(safe-area-inset-bottom, 0px));
+  }
+}
