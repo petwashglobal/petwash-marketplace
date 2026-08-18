@@ -219,7 +219,11 @@ export default function PetPassportHome() {
         {/* ── 3 passport tiles ── */}
         <div className="mt-5 grid grid-cols-3 gap-3">
           <Tile icon={<BriefcaseMedical />} label={tr('רשומות רפואיות', 'Medical records')} onClick={() => navigate('/documents')} />
-          <Tile icon={<Syringe />} label={tr('חיסונים', 'Vaccines')} onClick={() => notReady('חיסונים', 'Vaccines')} />
+          {/* 2026-08-18 COMPETITIVE (WhatIDog gap): Vaccines is REAL — per-pet
+              PetHealthPanel on /pets already stores nextVaccineDate + the
+              enableVaccineReminders toggle and reads /api/pets/:id/health-events.
+              Route the tile there instead of showing a coming-soon toast. */}
+          <Tile icon={<Syringe />} label={tr('חיסונים', 'Vaccines')} onClick={() => navigate('/pets')} />
           <Tile icon={<ShieldCheck />} label={tr('ביטוחים', 'Insurance')} onClick={() => notReady('ביטוחים', 'Insurance')} />
         </div>
 
@@ -265,8 +269,13 @@ export default function PetPassportHome() {
             {tr('פעולות מהירות', 'Quick actions')}
           </div>
           <div className="mt-3 grid grid-cols-5 gap-2">
-            <Quick icon={<CalendarDays />} label={tr('תזכורות', 'Reminders')} onClick={() => notReady('תזכורות', 'Reminders')} />
-            <Quick icon={<Stethoscope />} label={tr('וטרינר', 'Vet')} onClick={() => notReady('וטרינר', 'Vet')} />
+            {/* 2026-08-18 COMPETITIVE (WhatIDog gap): Reminders and Vet are REAL —
+                /pets renders per-pet PetHealthPanel with vaccine-reminder,
+                deworming, and vet-visit event flows over /api/pets/:id/health-events.
+                Route to the same feature the user already has. Clinics stays
+                coming-soon until we surface a locator. */}
+            <Quick icon={<CalendarDays />} label={tr('תזכורות', 'Reminders')} onClick={() => navigate('/pets')} />
+            <Quick icon={<Stethoscope />} label={tr('וטרינר', 'Vet')} onClick={() => navigate('/pets')} />
             <Quick icon={<MapPin />} label={tr('בתי חולים', 'Clinics')} onClick={() => notReady('בתי חולים', 'Clinics')} />
             <Quick icon={<ShoppingBag />} label={tr('חנות', 'Shop')} onClick={() => navigate('/shop')} />
             <Quick icon={<MoreHorizontal />} label={tr('עוד', 'More')} onClick={() => navigate('/pets')} />
