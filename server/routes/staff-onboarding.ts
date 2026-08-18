@@ -67,6 +67,41 @@ export function registerStaffOnboardingRoutes(app: Express) {
    * Submit new staff application
    */
   app.post('/api/staff/applications', async (req, res) => {
+    // Task 22 — atomic business-idempotency guard. The endpoint is
+    // unauthenticated so we key on the normalised email (the natural
+    // uniqueness handle for a submission). Two simultaneous posts with
+    // the same email cannot both create a staff_applications row.
+    // FAIL-CLOSED on DB error (503).
+    const rawEmail = typeof req.body?.email === 'string' ? req.body.email : '';
+    const normalisedEmail = rawEmail.trim().toLowerCase();
+    const idempKey = normalisedEmail ? `staff_app_submit:${normalisedEmail}` : null;
+    let claimSucceeded = false;
+    const { claimBusinessOnce, finalizeBusinessClaim } = await import('../lib/businessIdempotency');
+    if (idempKey) {
+      const claim = await claimBusinessOnce(idempKey, 'POST /api/staff/applications');
+      if (claim === 'DB_ERROR') {
+        return res.status(503).json({
+          success: false,
+          error: 'IDEMPOTENCY_UNAVAILABLE',
+          message: 'Submission service temporarily unavailable. Please retry.',
+        });
+      }
+      if (claim === 'IN_FLIGHT') {
+        return res.status(409).json({
+          success: false,
+          error: 'DUPLICATE_SUBMISSION_IN_FLIGHT',
+          message: 'A submission is already being processed for this email. Wait a moment before retrying.',
+        });
+      }
+      if (claim === 'DONE') {
+        return res.status(409).json({
+          success: false,
+          error: 'ALREADY_SUBMITTED',
+          message: 'An application already exists for this email. Check your inbox for the status link.',
+        });
+      }
+      claimSucceeded = true;
+    }
     try {
       const data = insertStaffApplicationSchema.parse(req.body);
       const application = await staffOnboardingService.createApplication(data);
@@ -98,6 +133,7 @@ export function registerStaffOnboardingRoutes(app: Express) {
         logger.warn('[Staff] Google Sheets logging failed (non-blocking)', { sheetsErr });
       }
       
+      if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, true);
       res.json({
         success: true,
         application,
@@ -105,6 +141,8 @@ export function registerStaffOnboardingRoutes(app: Express) {
       });
     } catch (error: any) {
       logger.error('[API] Failed to create application', error);
+      // Release the claim so the user can fix their input + retry.
+      if (idempKey && claimSucceeded) await finalizeBusinessClaim(idempKey, false);
       res.status(400).json({
         success: false,
         error: 'Failed to submit application',
