@@ -186,6 +186,7 @@ import adminMemberDiscountRoutes from "./routes/admin-member-discount";
 import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
 import meStatusRoutes from "./routes/me-status";
+import serviceSessionRoutes from "./routes/service-sessions";
 // Control Tower admin panels (2026-06-20) — read-only views over existing ledgers/engines.
 import adminPaymentsControlRoutes from "./routes/admin-payments-control";
 import adminProviderControlRoutes from "./routes/admin-provider-control";
@@ -12247,6 +12248,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/member', apiLimiter, memberDiscountRoutes);
   // Single status source-of-truth (MASTER BIBLE §3/§9): GET /api/me/status
   app.use('/api/me', apiLimiter, meStatusRoutes);
+  // Canonical service-session read adapter (CEO 2026-08-18 §12/§13):
+  // GET /api/service-sessions/:bookingRef — projects booking_requests
+  // (and, in follow-up PRs, walk_bookings + pettrek_trips) into a
+  // stable ServiceSessionDTO shape at read time. No new store, no money.
+  app.use('/api/service-sessions', apiLimiter, serviceSessionRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across
