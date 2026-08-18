@@ -470,6 +470,28 @@ function JobCard({
                 <span className="font-semibold text-green-700">₪{payout.toFixed(0)}</span>
               )}
             </div>
+            {/* Payout-released celebration line (2026-08-18): mirrors the
+                ProviderJobDetail panel so the /provider-os/jobs list itself
+                signals that a completed booking has actually paid out — before
+                this the completed tab was just a silent bucket. */}
+            {['completed', 'reviewed'].includes(booking.status) && payout > 0 && (
+              <p
+                data-testid={`payout-released-${booking.id}`}
+                className="text-[11px] font-semibold text-emerald-700 flex items-center gap-1 mt-1"
+              >
+                <CheckCircle2 className="w-3 h-3" />
+                ₪{payout.toFixed(0)} released · arriving in 72h
+              </p>
+            )}
+            {booking.status === 'reviewed' && (booking.ownerRating || booking.rating) && (
+              <p
+                data-testid={`review-badge-${booking.id}`}
+                className="text-[11px] font-semibold text-amber-700 flex items-center gap-1 mt-0.5"
+              >
+                <Star className="w-3 h-3 fill-amber-500 text-amber-500" />
+                Customer left {booking.ownerRating || booking.rating}/5
+              </p>
+            )}
           </div>
           <button onClick={() => setExpanded(!expanded)} className="p-1 text-gray-400 hover:text-gray-600 transition-colors shrink-0">
             <ChevronDown className={`w-4 h-4 transition-transform ${expanded ? 'rotate-180' : ''}`} />
