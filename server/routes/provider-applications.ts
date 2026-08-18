@@ -704,8 +704,26 @@ router.get('/my', async (req: Request, res: Response) => {
       .where(eq(providerDocuments.applicantId, application.id))
       .orderBy(desc(providerDocuments.uploadedAt));
     
-    // Get tasks
-    const tasks = await db.select()
+    // PR-PROVIDER-APPLICATIONS-MY-PROJECTION (2026-08-15) — fire-order item 102.
+    // provider_onboarding_tasks carries `verifiedBy` (admin uid that ticked
+    // the task) and `notes` (internal admin note on the applicant's task).
+    // Neither belongs on a self-service /my response — an applicant who
+    // reads their own row should not see which admin reviewed it or the
+    // admin's freeform notes. Explicit allow-list — the applicant sees
+    // what task, what stage, whether it's required, and status.
+    const tasks = await db.select({
+      id: providerOnboardingTasks.id,
+      taskKey: providerOnboardingTasks.taskKey,
+      taskName: providerOnboardingTasks.taskName,
+      taskNameHe: providerOnboardingTasks.taskNameHe,
+      description: providerOnboardingTasks.description,
+      descriptionHe: providerOnboardingTasks.descriptionHe,
+      stage: providerOnboardingTasks.stage,
+      sortOrder: providerOnboardingTasks.sortOrder,
+      isRequired: providerOnboardingTasks.isRequired,
+      status: providerOnboardingTasks.status,
+      completedAt: providerOnboardingTasks.completedAt,
+    })
       .from(providerOnboardingTasks)
       .where(eq(providerOnboardingTasks.applicantId, application.id))
       .orderBy(providerOnboardingTasks.stage, providerOnboardingTasks.sortOrder);
