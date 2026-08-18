@@ -2527,9 +2527,17 @@ self.addEventListener('notificationclick', (event) => {
         else role = 'public';
       }
 
+      // Verified-email gate on super_admin (audit item 199, 2026-08-16). The
+      // string-only isSuperAdmin() would grant super_admin to anyone whose
+      // Firebase account merely CLAIMS an email in SUPER_ADMIN_EMAILS. Since
+      // Firebase allows creating an account with an arbitrary email string
+      // before it is verified, that string-only check let an attacker register
+      // e.g. "someone-on-allowlist@example.com" and skip email confirmation to
+      // clear the gate. Now: only decoded.email_verified === true
+      // (Firebase-attested) plus the allowlist match grants super_admin.
       const { isSuperAdmin: checkSuperAdmin } = await import('./middleware/rbac');
       const userEmail = (decoded.email || '').toLowerCase();
-      const superAdmin = checkSuperAdmin(userEmail);
+      const superAdmin = checkSuperAdmin(userEmail) && decoded.email_verified === true;
 
       if (superAdmin) {
         role = 'super_admin';
