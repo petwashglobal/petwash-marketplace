@@ -12,6 +12,7 @@ import {
   Loader2, MessageSquare, MapPin, Coins,
 } from 'lucide-react';
 import { WalletLifecycleMessage, resolveWalletAmountCents } from '@/components/wallet/WalletLifecycleMessage';
+import { bookingStatusLabel } from '@shared/lib/bookingStatusLabels';
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel,
@@ -111,21 +112,11 @@ const STATUS_ICONS: Record<string, any> = {
   disputed:             AlertTriangle,
 };
 
-const STATUS_LABELS: Record<string, { he: string; en: string }> = {
-  pending:              { he: 'ממתין',           en: 'Pending'             },
-  accepted:             { he: 'אושר',            en: 'Accepted'            },
-  confirmed:            { he: 'מאושר',           en: 'Confirmed'           },
-  meet_greet_scheduled: { he: 'פגישה מתוכננת',  en: 'Meet & Greet'        },
-  meet_greet_completed: { he: 'פגישה הושלמה',   en: 'Meet & Greet done'   },
-  payment_pending:      { he: 'ממתין לתשלום',   en: 'Awaiting payment'    },
-  in_progress:          { he: 'בתהליך',         en: 'In Progress'         },
-  completed:            { he: 'הושלם',           en: 'Completed'           },
-  reviewed:             { he: 'עם ביקורת',       en: 'Reviewed'            },
-  declined:             { he: 'נדחה',            en: 'Declined'            },
-  cancelled:            { he: 'בוטל',            en: 'Cancelled'           },
-  disputed:             { he: 'במחלוקת',         en: 'Disputed'            },
-};
-
+// Status labels come from @shared/lib/bookingStatusLabels — full canonical
+// coverage (14 statuses), single source of truth for HE + EN. Previously
+// this file's local map was missing `meet_greet_requested` and
+// `provider_marked_complete` — both rendered as raw enum strings in the
+// badge.
 const SERVICE_TO_ROUTE: Record<string, string> = {
   k9000_wash:  '/k9000',
   pet_sitting: '/sitter-suite',
@@ -508,7 +499,7 @@ function BookingCard({
 
   const service    = SERVICE_TYPES.find(s => s.id === booking.serviceType) || SERVICE_TYPES[0];
   const statusInfo = STATUS_COLORS[booking.status] || { bg: '#F3F4F6', text: '#374151', border: '#E5E7EB' };
-  const statusLabel = STATUS_LABELS[booking.status] || { he: booking.status, en: booking.status };
+  const statusLabel = bookingStatusLabel(booking.status, isRTL ? 'he' : 'en');
   const StatusIcon  = STATUS_ICONS[booking.status] || CircleDot;
 
   const nights      = calcNights(booking.startDate, booking.endDate);
@@ -648,7 +639,7 @@ function BookingCard({
                   style={{ background: statusInfo.bg, color: statusInfo.text, borderColor: statusInfo.border }}
                 >
                   <StatusIcon size={10} />
-                  {isRTL ? statusLabel.he : statusLabel.en}
+                  {statusLabel}
                 </span>
               </div>
 
