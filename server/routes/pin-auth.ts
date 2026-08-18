@@ -95,8 +95,13 @@ async function findUserByEmail(email: string): Promise<{ id: string; type: 'user
     return { id: customer.id.toString(), type: 'customer' };
   }
   
-  // Check users table
-  const [user] = await db.select().from(users).where(eq(users.email, email)).limit(1);
+  // Check users table — projection: this helper only needs id. Avoid pulling
+  // phone / passwordHash / MFA columns into the lookup.
+  const [user] = await db
+    .select({ id: users.id })
+    .from(users)
+    .where(eq(users.email, email))
+    .limit(1);
   if (user) {
     return { id: user.id, type: 'user' };
   }
@@ -385,7 +390,18 @@ router.post('/verify', async (req: Request, res: Response) => {
         };
       }
     } else {
-      const [user] = await db.select().from(users).where(eq(users.id, userInfo.id));
+      // Projection: only the columns the client response cares about.
+      // Never pull passwordHash / MFA / phone into this handler.
+      const [user] = await db
+        .select({
+          id: users.id,
+          email: users.email,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          loyaltyTier: users.loyaltyTier,
+        })
+        .from(users)
+        .where(eq(users.id, userInfo.id));
       if (user) {
         userData = {
           id: user.id,
