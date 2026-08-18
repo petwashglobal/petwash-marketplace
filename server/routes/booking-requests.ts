@@ -3459,21 +3459,34 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         .catch(() => {});
     });
 
-    // Send inbox + email + SMS notifications via dispatchNotification
+    // Send inbox + email + push notifications to the provider on customer confirm.
+    // 2026-08-18 audit finding: previously channels: ['inbox'] only, so the provider
+    // learned about the payout release only if they opened the Firestore inbox tab —
+    // no email receipt, no push wake-up on their phone. Rover / MadPaws / WhatIDog
+    // all send an explicit "You've earned ₪X — payment on the way" push + email.
+    // Expanded to ['inbox','email','push'] (SMS deliberately omitted here — provider
+    // SMS on payout would be spammy). Same fire-and-forget + fail-soft envelope.
     const amountIls = (booking.subtotalCents / 100).toFixed(2);
     try {
       // Notify provider — payment released
       await dispatchNotification({
         uid: booking.providerId,
         type: 'receipt',
-        title: '💰 תשלום שוחרר!',
-        bodyHtml: `<p>סכום של <strong>₪${amountIls}</strong> שוחרר עבור הזמנה <strong>${requestId}</strong>.</p><p>ההעברה תגיע לחשבונך תוך 72 שעות.</p>`,
-        channels: ['inbox'],
+        title: '💰 תשלום שוחרר! / Payment released',
+        bodyHtml:
+          `<p>סכום של <strong>₪${amountIls}</strong> שוחרר עבור הזמנה <strong>${requestId}</strong>.</p>` +
+          `<p>ההעברה תגיע לחשבונך תוך 72 שעות.</p>` +
+          `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+          `<p><strong>₪${amountIls}</strong> released for booking <strong>${requestId}</strong>.</p>` +
+          `<p>The transfer will arrive in your account within 72 hours.</p>`,
+        ctaText: 'צפה בהזמנה / View booking',
+        ctaUrl: `https://petwash.co.il/provider/jobs/${requestId}`,
+        channels: ['inbox', 'email', 'push'],
         priority: 5,
         meta: { bookingId: requestId, amount: parseFloat(amountIls), currency: 'ILS' },
       });
     } catch (notifErr: any) {
-      logger.warn('[BookingRequests] Provider inbox notification failed', { error: notifErr.message });
+      logger.warn('[BookingRequests] Provider payout notification failed', { error: notifErr.message });
     }
     // LEGACY BRIDGE (2026-07-31): the customer just approved completion, so the
     // canonical booking is now truly 'completed'/'reviewed'. Sync that back to the
