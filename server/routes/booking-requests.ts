@@ -2727,25 +2727,24 @@ router.post('/:requestId/start', async (req, res) => {
 router.post('/:requestId/complete', async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
+    if (!userId) return res.status(401).json({ error: 'Not authenticated' });
     const { requestId } = req.params;
-    
+
+    // Ownership check first — providerId is set at accept-time and doesn't
+    // change, so this is safe outside the atomic transition below.
     const [booking] = await db.select()
       .from(bookingRequests)
       .where(eq(bookingRequests.requestId, requestId))
       .limit(1);
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
+
     if (booking.providerId !== userId) {
       return res.status(403).json({ error: 'Only provider can mark service as complete' });
     }
-    
-    if (booking.status !== 'in_progress') {
-      return res.status(400).json({ error: `Cannot mark complete for booking with status: ${booking.status}` });
-    }
-    
+
     const statusHistory = (booking.statusHistory as any[]) || [];
     const now = new Date();
     statusHistory.push({
@@ -2755,8 +2754,15 @@ router.post('/:requestId/complete', async (req, res) => {
       actorId: userId,
       note: 'Provider marked service as done. Awaiting customer approval or 24-hour auto-approval.',
     });
-    
-    await db.update(bookingRequests)
+
+    // ATOMIC TRANSITION (2026-08-16 audit item 168). The old blind
+    // `UPDATE ... WHERE requestId=?` allowed two concurrent /complete
+    // taps to BOTH pass the status check above and BOTH run the side
+    // effects below (double notification, double rebook triggers, etc).
+    // Guarding on status IN the WHERE means Postgres row-level locking
+    // during UPDATE guarantees exactly one caller flips the row. The
+    // loser sees rowCount === 0 and returns idempotently.
+    const updated = await db.update(bookingRequests)
       .set({
         status: 'provider_marked_complete',
         serviceCompletedAt: now,
@@ -2764,7 +2770,28 @@ router.post('/:requestId/complete', async (req, res) => {
         statusHistory,
         updatedAt: now,
       } as any)
-      .where(eq(bookingRequests.requestId, requestId));
+      .where(and(
+        eq(bookingRequests.requestId, requestId),
+        eq(bookingRequests.status, 'in_progress'),
+      ))
+      .returning({ id: bookingRequests.id });
+
+    if (updated.length === 0) {
+      // Race lost OR status was never 'in_progress'. Re-read to decide.
+      const [current] = await db.select({ status: bookingRequests.status })
+        .from(bookingRequests)
+        .where(eq(bookingRequests.requestId, requestId))
+        .limit(1);
+      if (current?.status === 'provider_marked_complete') {
+        // Someone else won the same-intent race — this is the outcome we
+        // wanted. Return success without re-firing side effects.
+        return res.json({ ok: true, status: 'provider_marked_complete', alreadyMarked: true });
+      }
+      return res.status(409).json({
+        error: `Cannot mark complete for booking with status: ${current?.status ?? 'unknown'}`,
+        currentStatus: current?.status ?? null,
+      });
+    }
 
     logBookingEvent('service_completed', buildEventPayload({ ...booking, status: 'provider_marked_complete' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
