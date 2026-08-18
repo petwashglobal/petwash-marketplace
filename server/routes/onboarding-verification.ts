@@ -18,6 +18,31 @@ import {
 import { buildActivationEmail } from '../lib/luxuryActivationEmail';
 import { redis } from '../services/redis';
 
+// ── Auth helper — derive the current user from Bearer OR pw_session cookie ────
+// Never trust a request-body / query-string userId for anything that returns
+// user-scoped state; the previous /activation-status accepted ?userId=x from
+// any caller. Mirrors the pattern used by publicAuthRoutes.getFirebaseUserFromRequest,
+// scoped locally so this route file has no extra shared-module coupling. Returns
+// null on any auth failure — the route decides whether to 401 or fall through.
+async function resolveActivationUid(req: Request): Promise<string | null> {
+  try {
+    const authHeader = req.headers.authorization;
+    const sessionCookie = (req as any).cookies?.pw_session;
+    if (!authHeader?.startsWith('Bearer ') && !sessionCookie) return null;
+    const { auth: fbAdmin } = await import('../lib/firebase-admin');
+    let decoded: any = null;
+    if (authHeader?.startsWith('Bearer ')) {
+      decoded = await fbAdmin.verifyIdToken(authHeader.substring(7), true);
+    } else if (sessionCookie) {
+      decoded = await fbAdmin.verifySessionCookie(sessionCookie, true);
+    }
+    return decoded?.uid ?? null;
+  } catch (err) {
+    logger.debug('[Verification] resolveActivationUid failed', { error: (err as any)?.message });
+    return null;
+  }
+}
+
 // ── Redis key helpers ────────────────────────────────────────────────────────
 const K_EMAIL_CODE    = (e: string) => `email:verify:code:${e}`;
 const K_LINK_TOKEN    = (t: string) => `email:verify:link:${t}`;
@@ -712,14 +737,17 @@ router.post('/validate-tokens', async (req: Request, res: Response) => {
   }
 });
 
-// GET /api/onboarding-verification/activation-status?userId=xxx
+// GET /api/onboarding-verification/activation-status
+// Returns the current user's activation state. Auth-derived only — the previous
+// ?userId=xxx query variant let any caller read any user's verification state
+// (an enumeration + PII disclosure defect). Accepts a Bearer id token OR the
+// pw_session cookie so the AccountActivation page + ActivationBanner can query
+// with the same header the rest of the client uses. (PR-AUTH-CONTACTS-3)
 router.get('/activation-status', async (req: Request, res: Response) => {
   try {
-    const { userId } = req.query;
-    if (!userId || typeof userId !== 'string') {
-      return res.status(400).json({ success: false, message: 'userId required' });
-    }
-    const state = await getActivationState(userId);
+    const uid = await resolveActivationUid(req);
+    if (!uid) return res.status(401).json({ success: false, message: 'Authentication required' });
+    const state = await getActivationState(uid);
     return res.json({ success: true, ...state });
   } catch (error: any) {
     logger.error('[Verification] Activation status error', { error: error.message });
