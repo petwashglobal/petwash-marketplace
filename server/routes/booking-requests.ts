@@ -3509,7 +3509,7 @@ router.post('/:requestId/dispute', async (req, res) => {
       } as any)
       .where(eq(bookingRequests.requestId, requestId));
 
-    // Notify provider and admin
+    // Notify provider — in-app row (kept) + off-app push + email (added 2026-08-18)
     try {
       await db.insert(superAppNotifications).values({
         userId: booking.providerId,
@@ -3527,6 +3527,38 @@ router.post('/:requestId/dispute', async (req, res) => {
     } catch (notifErr: any) {
       logger.warn('[BookingRequests] Dispute notification failed', { error: notifErr.message });
     }
+
+    // Off-app dispatch to provider (2026-08-18 audit): the in-app row above
+    // only reaches a provider who opens the app. A dispute FREEZES escrow —
+    // this is a money-loss event the provider must respond to (photos, notes,
+    // rebuttal). Push wakes their phone; email gives them the paper trail
+    // and a link to respond. SMS is deliberately omitted — dispute is a
+    // multi-step response requiring reading and typing, not a fast alert.
+    // Fire-and-forget + fail-soft.
+    setImmediate(async () => {
+      try {
+        const [provRow] = await db.select({ email: users.email })
+          .from(users).where(eq(users.id, booking.providerId)).limit(1);
+        await dispatchNotification({
+          uid: booking.providerId,
+          email: provRow?.email || undefined,
+          type: 'system',
+          title: '⚠️ לקוח פתח מחלוקת · Customer opened a dispute — PetWash™',
+          bodyHtml:
+            `<p>הלקוח פתח מחלוקת על הזמנה <strong>${requestId}</strong>. התשלום מוקפא עד לפתרון.</p>` +
+            `<p>Please open the booking in PetWash to respond within 48 hours. Our team will review and mediate.</p>` +
+            `<hr style="border:none;border-top:1px solid #eee;margin:16px 0;">` +
+            `<p>The customer opened a dispute on booking <strong>${requestId}</strong>. Payment is frozen until resolution.</p>`,
+          ctaText: 'להגיב על המחלוקת / Respond to dispute',
+          ctaUrl: `https://petwash.co.il/provider/jobs/${requestId}`,
+          channels: ['inbox', 'email', 'push'],
+          priority: 9,
+          meta: { bookingId: requestId, actionType: 'dispute_response' },
+        });
+      } catch (notifErr: any) {
+        logger.warn('[BookingRequests] Dispute off-app notification failed', { error: notifErr.message });
+      }
+    });
 
     logBookingEvent('dispute_opened' as any, buildEventPayload({ ...booking, status: 'disputed' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
