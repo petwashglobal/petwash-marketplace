@@ -68,7 +68,12 @@ interface Pet {
   name: string;
   species: 'dog' | 'cat' | 'bird' | 'rabbit' | 'guinea_pig' | 'hamster' | 'reptile' | 'fish' | 'other';
   breed?: string;
-  birthdate: string;
+  // 2026-08-18 field-name fix: canonical column returned by /api/pets is
+  // `birthday` (see AddPetPassport.tsx:11 note + PetPassportHome.tsx:39,180).
+  // Legacy AddPet used `birthdate`. Accept both so pets added via either
+  // flow render age correctly.
+  birthday?: string;
+  birthdate?: string;
   weight?: number;
   allergies?: string;
   medicalNotes?: string;
@@ -531,7 +536,9 @@ export default function Pets() {
       name: pet.name,
       species: pet.species,
       breed: pet.breed || '',
-      birthdate: pet.birthdate,
+      // Prefer canonical `birthday` from /api/pets; fall back to the legacy
+      // `birthdate` shape so both entry paths hydrate the edit form.
+      birthdate: pet.birthday ?? pet.birthdate ?? '',
       weight: pet.weight,
       allergies: pet.allergies || '',
       medicalNotes: pet.medicalNotes || '',
@@ -671,7 +678,7 @@ export default function Pets() {
                       <div className="flex items-center gap-2 text-sm">
                         <Calendar className="h-4 w-4 text-gray-500" />
                         <span className="text-gray-700 dark:text-black">
-                          {t('pets.age')} {getAge(pet.birthdate)}
+                          {t('pets.age')} {getAge(pet.birthday ?? pet.birthdate ?? '')}
                         </span>
                       </div>
                       {pet.weight && (
