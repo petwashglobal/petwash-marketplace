@@ -49,6 +49,15 @@ const IMMINENT_MINUTES = 15; // "starting soon" window per CEO spec
 
 type UpcomingBooking = {
   id: string;
+  // requestId is the public booking reference. The server routes
+  // /api/booking-requests/:requestId/{start,complete,arriving,meet-greet}
+  // match on booking_requests.requestId — NOT the internal numeric row
+  // id. `id` here is `String(row.id)` (see toV1Shape in
+  // server/routes/provider-dashboard-v2.ts) so posting to those routes
+  // with `id` yields a 404. Always send `requestId` when calling those
+  // handlers; fall back to `id` only for surfaces that navigate to a
+  // client-side detail page keyed on the internal id.
+  requestId?: string | null;
   bookingNumber?: string | null;
   userId?: string | null;
   providerId?: string | null;
@@ -200,7 +209,14 @@ export default function ProviderToday() {
       navigate(`/provider/jobs/${b.id}`);
       return;
     }
-    actionMutation.mutate({ id: b.id, endpoint: action.endpoint });
+    // CRITICAL fix (2026-08-18 adversarial review): the server routes
+    // /api/booking-requests/:requestId/{start,complete,arriving} match on
+    // booking_requests.requestId, NOT the internal numeric row `id`.
+    // Prior code sent `b.id` (String(row.id)) → every tap 404'd. Use
+    // requestId if available; only fall back to id for legacy row shapes
+    // that never populated requestId.
+    const pathId = b.requestId || b.id;
+    actionMutation.mutate({ id: pathId, endpoint: action.endpoint });
   };
 
   return (
