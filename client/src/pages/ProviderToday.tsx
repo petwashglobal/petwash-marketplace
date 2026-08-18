@@ -20,9 +20,13 @@
  *      administrative work.
  *
  * Actions call the CANONICAL per-service endpoints already on the server:
- *   POST /api/booking-requests/:id/arriving
- *   POST /api/booking-requests/:id/start
- *   POST /api/booking-requests/:id/complete
+ *   POST /api/booking-requests/:requestId/arriving
+ *   POST /api/booking-requests/:requestId/start
+ *   POST /api/booking-requests/:requestId/complete
+ *   POST /api/booking-requests/:requestId/meet-greet  { action: 'complete' }
+ *      — Meet & Greet completion, per CEO §"Meet & Greet as first-class
+ *        state". Server enforces that only the provider can complete;
+ *        state machine enforces the transition to meet_greet_completed.
  *
  * No new backend contract. No money math. No canonical-state change. No
  * cross-tenant risk (server derives provider_id from the Firebase token
@@ -42,13 +46,14 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Clock, MapPin, Dog, ChevronRight, Loader2, CalendarDays, RefreshCw,
-  PlayCircle, Flag, Navigation2, Info,
+  PlayCircle, Flag, Navigation2, Info, Handshake,
 } from 'lucide-react';
 
 const IMMINENT_MINUTES = 15; // "starting soon" window per CEO spec
 
 type UpcomingBooking = {
   id: string;
+  requestId?: string | null;   // canonical public booking id — meet-greet route uses this
   bookingNumber?: string | null;
   userId?: string | null;
   providerId?: string | null;
@@ -59,7 +64,24 @@ type UpcomingBooking = {
   status?: string | null;
   total?: string | null;
   currency?: string | null;
+  // Meet & Greet — only populated when status is a meet_greet_* state
+  meetGreetDate?: string | null;
+  meetGreetLocation?: string | null;
+  meetGreetNotes?: string | null;
 };
+
+/**
+ * "When does this booking actually happen from the provider's POV?"
+ * For meet_greet_scheduled rows, the effective time is the meet_greet_date
+ * (the interview), NOT start_date (the eventual service that hasn't been
+ * paid for yet). For everything else, use startTime.
+ */
+function effectiveStart(b: UpcomingBooking): string | null | undefined {
+  if ((b.status || '').toLowerCase() === 'meet_greet_scheduled' && b.meetGreetDate) {
+    return b.meetGreetDate;
+  }
+  return b.startTime;
+}
 
 function minutesUntil(iso?: string | null, now: Date = new Date()): number | null {
   if (!iso) return null;
@@ -106,16 +128,28 @@ function serviceLabel(t: string | null | undefined, isHe: boolean): string {
 
 /** State-aware primary action per CEO §"BOOKING CARD"/"Provider Booking Card". */
 type PrimaryAction =
-  | { kind: 'start';    label: string; endpoint: 'start' }
-  | { kind: 'arriving'; label: string; endpoint: 'arriving' }
-  | { kind: 'complete'; label: string; endpoint: 'complete' }
-  | { kind: 'view';     label: string; endpoint: null };
+  | { kind: 'start';               label: string; endpoint: 'start' }
+  | { kind: 'arriving';            label: string; endpoint: 'arriving' }
+  | { kind: 'complete';            label: string; endpoint: 'complete' }
+  | { kind: 'meet_greet_complete'; label: string; endpoint: 'meet-greet' }
+  | { kind: 'view';                label: string; endpoint: null };
 
 function resolvePrimary(b: UpcomingBooking, isHe: boolean): PrimaryAction {
   const status = (b.status || '').toLowerCase();
-  const minsLeft = minutesUntil(b.startTime);
+  const minsLeft = minutesUntil(effectiveStart(b));
   const svc = serviceLabel(b.serviceType, isHe);
 
+  // Meet & Greet — provider is the one who marks it complete after the
+  // in-person / video interview. Show COMPLETE MEET & GREET once the
+  // scheduled time is "here" (within IMMINENT_MINUTES going forward, or
+  // any time in the past — meet-greets often run over).
+  if (status === 'meet_greet_scheduled' && minsLeft != null && minsLeft <= IMMINENT_MINUTES) {
+    return {
+      kind: 'meet_greet_complete',
+      endpoint: 'meet-greet',
+      label: isHe ? 'סיים היכרות' : 'COMPLETE MEET & GREET',
+    };
+  }
   if (status === 'in_progress' || status === 'started') {
     return { kind: 'complete', endpoint: 'complete', label: isHe ? `סיים ${svc}` : `FINISH ${svc.toUpperCase()}` };
   }
@@ -158,11 +192,16 @@ export default function ProviderToday() {
   const list = useMemo(() => {
     const raw = upcomingQ.data?.upcoming ?? [];
     // Only TODAY. Everything else lives on the full ProviderHome.
-    const today = raw.filter((b) => isSameDay(b.startTime));
+    // For meet_greet_scheduled bookings, "today" is judged against the
+    // meet_greet_date (the interview), not start_date (the eventual paid
+    // service that isn't confirmed yet). Same rule for sort order.
+    const today = raw.filter((b) => isSameDay(effectiveStart(b)));
     today.sort((a, b) => {
-      const at = a.startTime ? new Date(a.startTime).getTime() : 0;
-      const bt = b.startTime ? new Date(b.startTime).getTime() : 0;
-      return at - bt;
+      const at = effectiveStart(a);
+      const bt = effectiveStart(b);
+      const atn = at ? new Date(at).getTime() : 0;
+      const btn = bt ? new Date(bt).getTime() : 0;
+      return atn - btn;
     });
     return today;
     // `tick` keeps this memo fresh so `minutesUntil` re-evaluates.
@@ -175,11 +214,17 @@ export default function ProviderToday() {
   const primary = focus ? resolvePrimary(focus, isHe) : null;
 
   const actionMutation = useMutation({
-    mutationFn: async ({ id, endpoint }: { id: string; endpoint: 'start' | 'arriving' | 'complete' }) => {
-      const res = await apiRequest('POST', `/api/booking-requests/${id}/${endpoint}`, {});
-      const body = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(body?.error || body?.message || `Action failed (${res.status})`);
-      return body;
+    mutationFn: async ({
+      id, endpoint, body,
+    }: {
+      id: string;
+      endpoint: 'start' | 'arriving' | 'complete' | 'meet-greet';
+      body?: unknown;
+    }) => {
+      const res = await apiRequest('POST', `/api/booking-requests/${id}/${endpoint}`, body ?? {});
+      const payload = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(payload?.error || payload?.message || `Action failed (${res.status})`);
+      return payload;
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['/api/provider-dashboard/v2/upcoming'] });
@@ -200,7 +245,15 @@ export default function ProviderToday() {
       navigate(`/provider/jobs/${b.id}`);
       return;
     }
-    actionMutation.mutate({ id: b.id, endpoint: action.endpoint });
+    // Meet-greet route is keyed on requestId (public booking reference),
+    // not the internal numeric id. Every other action accepts either but
+    // requestId is the canonical public id, so prefer it.
+    const pathId = b.requestId || b.id;
+    if (action.endpoint === 'meet-greet') {
+      actionMutation.mutate({ id: pathId, endpoint: 'meet-greet', body: { action: 'complete' } });
+      return;
+    }
+    actionMutation.mutate({ id: pathId, endpoint: action.endpoint });
   };
 
   return (
@@ -317,14 +370,16 @@ function FocusCard({
   onTrigger: () => void;
   busy: boolean;
 }) {
-  const mins = minutesUntil(booking.startTime);
-  const time = fmtTime(booking.startTime, isHe ? 'he-IL' : 'en-IL');
+  const isMeetGreet = (booking.status || '').toLowerCase() === 'meet_greet_scheduled';
+  const startIso = effectiveStart(booking);
+  const mins = minutesUntil(startIso);
+  const time = fmtTime(startIso, isHe ? 'he-IL' : 'en-IL');
   const svc = serviceLabel(booking.serviceType, isHe);
   const pets = booking.specialRequests
     ? (booking.specialRequests.length > 60 ? booking.specialRequests.slice(0, 60) + '…' : booking.specialRequests)
     : null;
 
-  const eyebrow = booking.status === 'in_progress' || booking.status === 'started'
+  const eyebrowBase = booking.status === 'in_progress' || booking.status === 'started'
     ? (isHe ? 'בתהליך' : 'IN PROGRESS')
     : mins != null && mins <= 0
       ? (isHe ? 'עכשיו' : 'NOW')
@@ -332,25 +387,47 @@ function FocusCard({
         ? (isHe ? `בעוד ${mins} דק'` : `IN ${mins} MIN`)
         : (isHe ? `בשעה ${time}` : `AT ${time}`);
 
+  const eyebrow = isMeetGreet
+    ? (isHe ? `היכרות · ${eyebrowBase}` : `MEET & GREET · ${eyebrowBase}`)
+    : eyebrowBase;
+
   const Icon =
-    primary.kind === 'start'    ? PlayCircle :
-    primary.kind === 'complete' ? Flag :
-    primary.kind === 'arriving' ? Navigation2 :
-                                  Info;
+    primary.kind === 'meet_greet_complete' ? Handshake :
+    primary.kind === 'start'               ? PlayCircle :
+    primary.kind === 'complete'            ? Flag :
+    primary.kind === 'arriving'            ? Navigation2 :
+                                             Info;
 
   return (
     <Card data-testid="provider-today-focus" className="border-2 border-black shadow-lg">
       <CardContent className="p-6">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wider text-amber-700">{eyebrow}</p>
+        <p className={`mb-1 text-xs font-semibold uppercase tracking-wider ${isMeetGreet ? 'text-indigo-700' : 'text-amber-700'}`}>{eyebrow}</p>
         <div className="flex items-baseline justify-between gap-4">
           <div>
             <div className="text-4xl font-bold leading-tight" data-testid="provider-today-focus-time">{time}</div>
-            <div className="mt-1 text-lg text-gray-900">{svc}</div>
+            <div className="mt-1 text-lg text-gray-900">
+              {isMeetGreet ? (isHe ? `היכרות לפני ${svc}` : `Meet & Greet · ${svc}`) : svc}
+            </div>
           </div>
           <div className="text-right text-sm text-gray-500">
             <div className="font-mono">{booking.bookingNumber || `#${booking.id}`}</div>
           </div>
         </div>
+
+        {/* Meet & Greet — surface the location + provider-facing note so
+            the provider isn't forced into details to see where to go. */}
+        {isMeetGreet && booking.meetGreetLocation && (
+          <div className="mt-3 flex items-start gap-2 text-sm text-gray-700" data-testid="provider-today-mg-location">
+            <MapPin className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+            <span>{booking.meetGreetLocation}</span>
+          </div>
+        )}
+        {isMeetGreet && booking.meetGreetNotes && (
+          <div className="mt-2 flex items-start gap-2 text-sm text-gray-700">
+            <Info className="mt-0.5 h-4 w-4 flex-shrink-0 text-gray-500" />
+            <span>{booking.meetGreetNotes.length > 80 ? booking.meetGreetNotes.slice(0, 80) + '…' : booking.meetGreetNotes}</span>
+          </div>
+        )}
 
         {pets && (
           <div className="mt-3 flex items-start gap-2 text-sm text-gray-700">
@@ -377,8 +454,13 @@ function FocusCard({
 }
 
 function NextRow({ booking, isHe, onOpen }: { booking: UpcomingBooking; isHe: boolean; onOpen: () => void }) {
-  const time = fmtTime(booking.startTime, isHe ? 'he-IL' : 'en-IL');
+  const isMeetGreet = (booking.status || '').toLowerCase() === 'meet_greet_scheduled';
+  const time = fmtTime(effectiveStart(booking), isHe ? 'he-IL' : 'en-IL');
   const svc = serviceLabel(booking.serviceType, isHe);
+  const label = isMeetGreet
+    ? (isHe ? `היכרות · ${svc}` : `Meet & Greet · ${svc}`)
+    : svc;
+  const RowIcon = isMeetGreet ? Handshake : Clock;
   return (
     <button
       type="button"
@@ -387,10 +469,10 @@ function NextRow({ booking, isHe, onOpen }: { booking: UpcomingBooking; isHe: bo
       data-testid={`provider-today-next-${booking.id}`}
     >
       <div className="flex items-center gap-3">
-        <Clock className="h-4 w-4 text-gray-500" />
+        <RowIcon className={`h-4 w-4 ${isMeetGreet ? 'text-indigo-600' : 'text-gray-500'}`} />
         <div>
           <div className="text-sm font-semibold text-gray-900">{time}</div>
-          <div className="text-xs text-gray-600">{svc}</div>
+          <div className="text-xs text-gray-600">{label}</div>
         </div>
       </div>
       <ChevronRight className={`h-4 w-4 text-gray-400 ${isHe ? 'rotate-180' : ''}`} />
