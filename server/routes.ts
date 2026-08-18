@@ -186,6 +186,7 @@ import adminMemberDiscountRoutes from "./routes/admin-member-discount";
 import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
 import meStatusRoutes from "./routes/me-status";
+import meCapabilitiesRoutes from "./routes/me-capabilities";
 // Control Tower admin panels (2026-06-20) — read-only views over existing ledgers/engines.
 import adminPaymentsControlRoutes from "./routes/admin-payments-control";
 import adminProviderControlRoutes from "./routes/admin-provider-control";
@@ -12247,6 +12248,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/member', apiLimiter, memberDiscountRoutes);
   // Single status source-of-truth (MASTER BIBLE §3/§9): GET /api/me/status
   app.use('/api/me', apiLimiter, meStatusRoutes);
+  // Canonical capabilities resolver (CEO 2026-08-18 §35.4 / §6):
+  // GET /api/me/capabilities — additive to /status, does not replace it.
+  // Consumed by mode switch, Become Provider router, and any UI branch
+  // that asks "can this user do X?". Server is authority.
+  app.use('/api/me', apiLimiter, meCapabilitiesRoutes);
   logger.info('[Routes] ✅ Prestige Pass routes registered (QR, redemption, wallet passes)');
 
   // Prestige Join coordinator — atomic POST /api/prestige/join enrolls user across
