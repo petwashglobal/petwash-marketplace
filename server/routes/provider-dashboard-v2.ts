@@ -123,6 +123,10 @@ function toV1Shape(row: Record<string, any>) {
     petCount:            row.pet_count ?? row.petCount,
     ownerMessage:        row.owner_message ?? row.ownerMessage,
     providerResponse:    row.provider_response ?? row.providerResponse,
+    // Meet & Greet — only populated for pre-payment meet_greet_* states
+    meetGreetDate:       row.meet_greet_date ?? row.meetGreetDate ?? null,
+    meetGreetLocation:   row.meet_greet_location ?? row.meetGreetLocation ?? null,
+    meetGreetNotes:      row.meet_greet_notes ?? row.meetGreetNotes ?? null,
     _source:             'booking_requests', // watermark for shadow comparison logging
   };
 }
@@ -198,7 +202,17 @@ router.get('/bookings', async (req: Request, res: Response) => {
 });
 
 // ── GET /api/provider-dashboard/v2/upcoming ────────────────────────────────────
-// Upcoming confirmed/in-progress jobs within the next 7 days.
+// Upcoming jobs within the next 7 days.
+//
+// Includes:
+//   • confirmed / in_progress bookings — scheduled by start_date
+//   • meet_greet_scheduled bookings — scheduled by meet_greet_date
+//     (the pre-payment interview the provider still has to show up to;
+//     ProviderToday needs to surface these as first-class today-items so
+//     the provider doesn't miss them.)
+//
+// The effective "when" for each row is COALESCE(meet_greet_date, start_date)
+// so a meet & greet at 15:00 outranks a confirmed job at 17:00.
 router.get('/upcoming', async (req: Request, res: Response) => {
   try {
     const user = await getAuthenticatedUser(req, res);
@@ -212,15 +226,21 @@ router.get('/upcoming', async (req: Request, res: Response) => {
         id, request_id, owner_id, provider_id, status,
         service_type, special_requirements, owner_message,
         start_date, end_date,
+        meet_greet_date, meet_greet_location, meet_greet_notes,
         subtotal_cents, service_fee_cents, provider_payout_cents, total_cents,
         currency, payout_status, pet_count, created_at
        FROM booking_requests
        WHERE provider_id = $1
-         AND status IN ('confirmed', 'in_progress')
-         AND start_date IS NOT NULL
-         AND start_date >= $2
-         AND start_date <= $3
-       ORDER BY start_date ASC
+         AND (
+           (status IN ('confirmed', 'in_progress')
+             AND start_date IS NOT NULL
+             AND start_date >= $2 AND start_date <= $3)
+           OR
+           (status = 'meet_greet_scheduled'
+             AND meet_greet_date IS NOT NULL
+             AND meet_greet_date >= $2 AND meet_greet_date <= $3)
+         )
+       ORDER BY COALESCE(meet_greet_date, start_date) ASC
        LIMIT 20`,
       [user.uid, now, sevenDaysOut],
     );
