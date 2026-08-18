@@ -33,22 +33,48 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { walkerProfiles } from '@shared/schema';
 
+/**
+ * Duplicate-row hardening (adversarial-review finding, 2026-08-18):
+ * `walker_profiles.userId` currently has NO unique constraint or unique
+ * index (shared/schema.ts:4735-4842 — only `walkerId` is unique). A
+ * duplicate row for the same Firebase UID is physically possible, and
+ * `.limit(1)` without `ORDER BY` returns an implementation-defined
+ * row — the same walker could resolve to a DIFFERENT WALKER-uuid across
+ * requests and quietly bypass the `walk_bookings.walkerId` assignment
+ * check. Fetch UP TO TWO rows and throw if ambiguity is detected. That
+ * fails LOUD so ops can fix the duplicate rather than silently
+ * mis-authorizing. A follow-up migration should add
+ * `CREATE UNIQUE INDEX ... ON walker_profiles(user_id)` — deferred
+ * (schema change requires separate approval).
+ */
+
 export async function walkerUuidForCaller(callerUid: string | null | undefined): Promise<string | null> {
   if (!callerUid) return null;
-  const [row] = await db
+  const rows = await db
     .select({ walkerId: walkerProfiles.walkerId })
     .from(walkerProfiles)
     .where(eq(walkerProfiles.userId, callerUid))
-    .limit(1);
-  return (row?.walkerId || null) as string | null;
+    .limit(2);
+  if (rows.length === 0) return null;
+  if (rows.length > 1) {
+    throw new Error(`walkerUuidForCaller: duplicate walker_profiles rows for userId — refusing to auto-pick`);
+  }
+  return (rows[0].walkerId || null) as string | null;
 }
 
 export async function walkerUidForUuid(walkerUuid: string | null | undefined): Promise<string | null> {
   if (!walkerUuid) return null;
-  const [row] = await db
+  // walker_profiles.walkerId IS unique (schema.ts:4737) so a duplicate
+  // here would be a data corruption. Same LOUD-fail guard for symmetry
+  // — we never silently pick.
+  const rows = await db
     .select({ userId: walkerProfiles.userId })
     .from(walkerProfiles)
     .where(eq(walkerProfiles.walkerId, walkerUuid))
-    .limit(1);
-  return (row?.userId || null) as string | null;
+    .limit(2);
+  if (rows.length === 0) return null;
+  if (rows.length > 1) {
+    throw new Error(`walkerUidForUuid: duplicate walker_profiles rows for walkerId ${walkerUuid} — data-integrity error`);
+  }
+  return (rows[0].userId || null) as string | null;
 }
