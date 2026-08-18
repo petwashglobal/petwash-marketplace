@@ -1,14 +1,30 @@
 /**
- * ActivationService — Customer account activation state machine
+ * ActivationService — Customer account activation state machine.
+ *
+ * PR-AUTH-IDENTITY-1 (MASTER AUTH CONTRACT): activation requires BOTH
+ * verified contacts (phone + email). Behind an env flag for a safe
+ * rollout so existing single-contact "active" users are not silently
+ * demoted while PR-AUTH-SIGNUP-2 / PR-AUTH-CONTACTS-3 land the client
+ * flows that guarantee both contacts every time.
+ *
+ *   AUTH_REQUIRE_BOTH_CONTACTS = 'true'  → STRICT: NEW activation
+ *                                          requires phoneVerified AND
+ *                                          emailVerified. Contract-
+ *                                          compliant end state.
+ *   (unset / any other value)            → LEGACY: EITHER contact
+ *                                          is enough. Kept as the
+ *                                          default so a deploy of
+ *                                          just this PR does not
+ *                                          strand users mid-flow.
+ *
+ * Regardless of the flag, existing rows already at `activationStatus =
+ * 'active'` are NEVER demoted by a re-read — they were set active
+ * legitimately under the old contract and remain grandfathered. Only
+ * the FORWARD transition (draft/*_verified → active) is affected.
  *
  * States:
- *   draft → mobile_verified → active   (if email already verified)
- *   draft → email_verified  → active   (if mobile already verified)
- *   draft → mobile_verified | email_verified → active (both required)
- *
- * Active requires BOTH:
- *   - mobileVerifiedAt is set
- *   - emailVerifiedAt is set
+ *   draft → mobile_verified → active   (legacy: email-optional; strict: needs email too)
+ *   draft → email_verified  → active   (legacy: phone-optional; strict: needs phone too)
  *
  * On activation:
  *   - accountActivatedAt written
@@ -47,6 +63,15 @@ export interface ActivationState {
   isFullyActive: boolean;
 }
 
+/**
+ * Toggle: when true, activation requires BOTH verified contacts
+ * (MASTER AUTH contract). When false (default), the pre-existing
+ * one-of-two rule is preserved for a safe rollout.
+ */
+export function isBothContactsRequired(): boolean {
+  return (process.env.AUTH_REQUIRE_BOTH_CONTACTS || '').toLowerCase() === 'true';
+}
+
 function computeStatus(
   mobileVerifiedAt: Date | null,
   emailVerifiedAt: Date | null,
@@ -55,11 +80,24 @@ function computeStatus(
   if (currentStatus === 'suspended' || currentStatus === 'deleted') {
     return currentStatus as ActivationStatus;
   }
-  // ONE verified contact is enough to activate. This matches the CEO "one contact
-  // is enough" signup rule (SignUpLuxury contactMode is phone-OR-email). Requiring
-  // BOTH permanently locked out every normal signup — a phone-only user sat at
-  // 'mobile_verified' forever with no way to reach the product. The unverified
-  // second channel is now an optional post-signup nudge, not a gate. (2026-07-31)
+
+  // Grandfathering: an already-active row stays active regardless of the flag.
+  // We NEVER demote existing users when the flag flips on; the intent is to
+  // require both for NEW forward transitions only.
+  if (currentStatus === 'active') return 'active';
+
+  const strict = isBothContactsRequired();
+  if (strict) {
+    if (mobileVerifiedAt && emailVerifiedAt) return 'active';
+    if (mobileVerifiedAt) return 'mobile_verified';
+    if (emailVerifiedAt) return 'email_verified';
+    return 'draft';
+  }
+
+  // Legacy pre-MASTER-AUTH-contract behaviour (default): ONE verified contact
+  // is enough. Preserved so a solo deploy of PR-AUTH-IDENTITY-1 does not
+  // strand every signup that hasn't yet completed the second contact.
+  if (mobileVerifiedAt && emailVerifiedAt) return 'active';
   if (mobileVerifiedAt || emailVerifiedAt) return 'active';
   return 'draft';
 }
@@ -169,13 +207,22 @@ export async function getActivationState(userId: string): Promise<ActivationStat
 
   const mobileVerifiedAt = user.mobileVerifiedAt ?? null;
   const emailVerifiedAt = user.emailVerifiedAt ?? null;
-  // Usable = at least ONE verified contact, and not suspended/deleted. Derived
-  // from the actual verified timestamps (not the stored status string) so it
-  // AUTO-HEALS the users who were frozen at 'mobile_verified'/'email_verified'
-  // by the old both-required rule — no backfill migration needed. Matches the
-  // "one contact is enough" rule now in computeStatus. (2026-07-31)
+  // PR-AUTH-IDENTITY-1: isFullyActive tracks computeStatus semantics.
+  //   - suspended / deleted → always false.
+  //   - existing 'active' rows (grandfathered) → always true.
+  //   - STRICT mode → both contacts required.
+  //   - LEGACY mode → either contact is enough.
+  // The stored status is authoritative for grandfathering; the timestamps
+  // drive the forward derivation for still-activating rows.
   const suspended = user.activationStatus === 'suspended' || user.activationStatus === 'deleted';
-  const isFullyActive = !suspended && (mobileVerifiedAt != null || emailVerifiedAt != null);
+  const strict = isBothContactsRequired();
+  const isFullyActive = suspended
+    ? false
+    : user.activationStatus === 'active'
+      ? true
+      : strict
+        ? (mobileVerifiedAt != null && emailVerifiedAt != null)
+        : (mobileVerifiedAt != null || emailVerifiedAt != null);
 
   const missingSteps: ('mobile' | 'email')[] = [];
   if (!mobileVerifiedAt) missingSteps.push('mobile');
