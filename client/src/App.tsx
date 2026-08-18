@@ -542,6 +542,7 @@ const TrackMyPetLive = lazy(() => import("@/pages/WalkTracking"));
 // Provider OS — Full Operating System
 const ProviderOS = lazy(() => import("@/pages/provider-os/ProviderOS"));
 const ProviderHome = lazy(() => import("@/pages/ProviderHome"));
+const ProviderToday = lazy(() => import("@/pages/ProviderToday"));
 
 // E-Signature System
 
@@ -1965,6 +1966,20 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
             <RoleProtectedRoute minRole="provider">
               <Suspense fallback={<PageLoader />}>
                 <ProviderHome />
+              </Suspense>
+            </RoleProtectedRoute>
+          )}
+        </Route>
+
+        {/* PR-PROVIDER-TODAY-DASHBOARD 2026-08-18 — WhatIDog-benchmark focused
+            provider surface: one state-aware primary CTA per the CEO
+            §"Provider TODAY" spec. Existing /provider/home + /provider-os
+            dashboards remain unchanged; this is the "focus mode" entry. */}
+        <Route path="/provider/today">
+          {() => (
+            <RoleProtectedRoute minRole="provider">
+              <Suspense fallback={<PageLoader />}>
+                <ProviderToday />
               </Suspense>
             </RoleProtectedRoute>
           )}
