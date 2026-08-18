@@ -1,7 +1,7 @@
 {
   "name": "Pet Wash™",
   "short_name": "Pet Wash",
-  "description": "Premium Organic Pet Care - Book & Manage Pet Washing Services",
+  "description": "Premium self-service dog wash stations across Israel, plus grooming, dog walking and pet sitting bookings.",
   "id": "/",
   "start_url": "/",
   "display": "standalone",
