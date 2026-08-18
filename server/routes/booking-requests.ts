@@ -4701,6 +4701,16 @@ router.post('/:requestId/reprice', async (req, res) => {
     const { requestId } = req.params;
     const userId = (req as any).userId || req.user?.uid || null;
 
+    // Explicit 401 (2026-08-18 hardening): fail-closed on missing auth BEFORE
+    // the DB fetch. Previously !userId was folded into the ownership 403
+    // below, so an unauth caller ate a wasted bookingRequests SELECT and got
+    // a misleading "Not authorized" instead of an honest "Authentication
+    // required". Splitting the two also makes admin-override path clearer:
+    // ownership check only runs once we know who's asking.
+    if (!userId) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const booking = await db
       .select()
       .from(bookingRequests)
@@ -4716,7 +4726,7 @@ router.post('/:requestId/reprice', async (req, res) => {
     // AUTH + OWNERSHIP (IDOR fix): only the booking owner (or a verified admin) may
     // reprice. Without this, any caller could reprice any requestId and attach their
     // own promo/wallet/gift-card flags, overwriting the victim's persisted quote.
-    if (!userId || (br.ownerId !== userId && !isSuperAdminVerified(req as any))) {
+    if (br.ownerId !== userId && !isSuperAdminVerified(req as any)) {
       return res.status(403).json({ error: 'Not authorized to reprice this booking' });
     }
 
