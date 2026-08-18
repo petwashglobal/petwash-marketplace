@@ -174,6 +174,12 @@ const labels = {
     confirming:       'מאשר...',
     rating:           'דרג את השירות',
     review:           'ביקורת (אופציונלי)',
+    endOfStayTitle:   'ההזמנה שלך הסתיימה — נכון?',
+    endOfStayLead:    'הספק דיווח שהשירות הושלם. אשרו לסיום ההזמנה — לאחר האישור התשלום ישוחרר לספק.',
+    endOfStayNext:    'מה קורה עכשיו?',
+    endOfStayStep1:   'אשרו את סיום השירות למטה.',
+    endOfStayStep2:   'תוזמנו לתת דירוג כוכבים וביקורת קצרה — זה עוזר להורי חיות אחרים לבחור.',
+    awaitingReport:   'ממתין לאישור סיום',
     chatNowTitle:     'ספקך אישר! מוכן להתחיל?',
     chatNowSub:       'שוחח עם הספק, תאם פרטים, ותכן את הביקור.',
     chatNowBtn:       'שוחח עכשיו',
@@ -242,6 +248,12 @@ const labels = {
     confirming:       'Confirming...',
     rating:           'Rate the service',
     review:           'Review (optional)',
+    endOfStayTitle:   'Your booking has been completed — right?',
+    endOfStayLead:    'Your provider marked the service as done. Confirm to finalise the booking — payment will be released to the provider after your confirmation.',
+    endOfStayNext:    'What happens next?',
+    endOfStayStep1:   'Confirm the end of service below.',
+    endOfStayStep2:   'You\'ll be asked for a star rating and a short review — it helps other pet parents choose.',
+    awaitingReport:   'Awaiting your confirmation',
     chatNowTitle:     'Your provider confirmed! Ready to start?',
     chatNowSub:       'Chat with your provider, coordinate details, and prepare for the visit.',
     chatNowBtn:       'Chat Now',
@@ -581,7 +593,14 @@ export default function BookingConfirmation() {
   /* ── Derived booleans ── */
   const firstName      = user?.displayName?.split(' ')[0] || '';
   const isOwner        = booking.ownerId === user?.uid;
-  const canConfirm     = isOwner && booking.status === 'completed' && !confirmed;
+  // ── P0 correctness (2026-08-18): the server contract is
+  //     POST /:requestId/confirm requires status === 'provider_marked_complete'
+  //     (server/routes/booking-requests.ts:2817). Gating this on 'completed'
+  //     meant the "Confirm end of stay" form NEVER rendered for the customer —
+  //     the button was dead, the review capture was dead, and every booking
+  //     had to wait 24h for the auto-approve cron to fire. Rover / MadPaws
+  //     both show this exact "please confirm end of stay, then rate" step.
+  const canConfirm     = isOwner && booking.status === 'provider_marked_complete' && !confirmed;
   const showChatNow    = isOwner && booking.status === 'confirmed' && !!booking.requestId;
   // Provider said yes → the customer must PAY to confirm. Until 2026-07-30 no
   // client surface ever called /pay, so 'accepted' bookings dead-ended.
@@ -981,14 +1000,19 @@ export default function BookingConfirmation() {
                 <div className="flex justify-between items-center py-2.5">
                   <span className="text-gray-500 text-sm">{t.status}</span>
                   <span className={`px-3 py-1 rounded-full text-xs font-semibold ${
-                    confirmed || booking.status === 'reviewed' ? 'bg-emerald-100 text-emerald-700'
-                    : booking.status === 'completed'           ? 'bg-[#D4AF37] text-black'
-                    : booking.status === 'confirmed'           ? 'bg-green-100 text-green-700'
-                    : booking.status === 'declined'            ? 'bg-red-100 text-red-700'
-                    : booking.status === 'cancelled'           ? 'bg-[#D4AF37] text-black'
+                    confirmed || booking.status === 'reviewed'          ? 'bg-emerald-100 text-emerald-700'
+                    : booking.status === 'completed'                    ? 'bg-[#D4AF37] text-black'
+                    : booking.status === 'provider_marked_complete'     ? 'bg-amber-100 text-amber-800'
+                    : booking.status === 'confirmed'                    ? 'bg-green-100 text-green-700'
+                    : booking.status === 'declined'                     ? 'bg-red-100 text-red-700'
+                    : booking.status === 'cancelled'                    ? 'bg-[#D4AF37] text-black'
                     : 'bg-white text-gray-700'
                   }`}>
-                    {confirmed ? t.confirmed : booking.status}
+                    {confirmed
+                      ? t.confirmed
+                      : booking.status === 'provider_marked_complete'
+                        ? t.awaitingReport
+                        : booking.status}
                   </span>
                 </div>
               </div>
@@ -1006,6 +1030,41 @@ export default function BookingConfirmation() {
                 </div>
               </CardContent>
             </Card>
+          )}
+
+          {/* ── End-of-service banner — Rover / MadPaws parity (2026-08-18) ── */}
+          {canConfirm && (
+            <div
+              data-testid="end-of-stay-banner"
+              className="mb-4 rounded-2xl border border-emerald-100 bg-emerald-50 p-5"
+            >
+              <div className="flex items-start gap-3">
+                <CheckCircle2 className="w-6 h-6 text-emerald-600 shrink-0 mt-0.5" />
+                <div>
+                  <h3 className="font-bold text-emerald-900 text-base leading-snug">
+                    {t.endOfStayTitle}
+                  </h3>
+                  <p className="text-sm text-emerald-800 leading-relaxed mt-1">
+                    {t.endOfStayLead}
+                  </p>
+                </div>
+              </div>
+              <div className="mt-4 border-t border-emerald-100 pt-3">
+                <p className="text-xs font-semibold text-emerald-900 mb-2">
+                  {t.endOfStayNext}
+                </p>
+                <ol className="space-y-1.5 text-xs text-emerald-800">
+                  {[t.endOfStayStep1, t.endOfStayStep2].map((step, i) => (
+                    <li key={i} className="flex items-start gap-2">
+                      <span className="flex h-4 w-4 shrink-0 items-center justify-center rounded-full text-[10px] font-bold text-white bg-emerald-600">
+                        {i + 1}
+                      </span>
+                      <span className="leading-relaxed">{step}</span>
+                    </li>
+                  ))}
+                </ol>
+              </div>
+            </div>
           )}
 
           {/* ── Rating + confirm form ── */}
