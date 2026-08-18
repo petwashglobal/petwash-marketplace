@@ -3,18 +3,27 @@ import { Badge } from "@/components/ui/badge";
 import { CheckCircle2, AlertCircle, Clock } from "lucide-react";
 import { useSEO, pageSEO } from '@/lib/seo';
 
+// PR-PETTREK-COMING-SOON-CONSISTENCY (2026-08-15) — fire-order item 31.
+// PetTrek was marked "operational" on this public status page while the
+// homepage marks it "coming soon" and the /egift picker gates it
+// (PR-EGIFT-COMING-SOON-SERVICES). Consistent honest labelling.
+type SystemStatusValue = 'operational' | 'coming_soon';
+
 export default function SystemStatus() {
   useSEO(pageSEO.status);
-  const systems = [
+  const systems: Array<{ name: string; status: SystemStatusValue }> = [
     { name: "Pet Wash Stations (K9000)", status: "operational" },
     { name: "Pet Sitter Suite", status: "operational" },
     { name: "Walk My Pet", status: "operational" },
-    { name: "PetTrek Transport", status: "operational" },
+    { name: "PetTrek Transport", status: "coming_soon" },
     { name: "Pet Wash Academy", status: "operational" },
     { name: "Loyalty & VIP Club", status: "operational" },
     { name: "Booking Engine", status: "operational" },
     { name: "Payment Gateway (Nayax)", status: "operational" },
   ];
+  // Summary must not still say "All Systems Operational" if a service
+  // is coming_soon. Compute dynamically so a future flip is honest too.
+  const allLive = systems.every((s) => s.status === 'operational');
 
   return (
     <div className="min-h-screen luxury-bg-mesh">
@@ -36,7 +45,7 @@ export default function SystemStatus() {
             </div>
             <div>
               <h3 className="font-semibold text-green-900">
-                All Systems Operational
+                {allLive ? 'All Systems Operational' : 'Live Services Operational · Some Services Coming Soon'}
               </h3>
               <p className="text-sm text-green-700">
                 Last updated: {new Date().toLocaleString()}
@@ -55,10 +64,17 @@ export default function SystemStatus() {
               <div className="flex items-center justify-between">
                 <span className="font-medium">{system.name}</span>
                 <div className="flex items-center gap-2">
-                  <Badge className="luxury-badge bg-green-500 animate-pulse">
-                    <CheckCircle2 className="w-3 h-3 mr-1" />
-                    Operational
-                  </Badge>
+                  {system.status === 'coming_soon' ? (
+                    <Badge className="luxury-badge bg-amber-500">
+                      <Clock className="w-3 h-3 mr-1" />
+                      Coming Soon
+                    </Badge>
+                  ) : (
+                    <Badge className="luxury-badge bg-green-500 animate-pulse">
+                      <CheckCircle2 className="w-3 h-3 mr-1" />
+                      Operational
+                    </Badge>
+                  )}
                 </div>
               </div>
             </Card>
