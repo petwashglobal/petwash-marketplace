@@ -531,7 +531,21 @@ function BookingCard({
                       && booking.kind !== 'academy';
   const hasRefund   = (booking.refundCents ?? 0) > 0;
   const hasMeetGreet = !!(booking.meetGreetDate || booking.meetGreetLocation);
-  const canReview   = booking.status === 'completed';
+  // Review CTA gate (2026-08-18): before this PR the button was gated on
+  // status === 'completed' ONLY — and its onClick landed the customer on
+  // BookingConfirmation.tsx where the star-rating form is gated on
+  // status === 'provider_marked_complete' (see PR #1902). Result: the CTA
+  // opened a page with no review form.
+  //
+  // Broader gate: show the "Confirm & rate" affordance the moment the
+  // provider marks the service done (provider_marked_complete) OR the
+  // fallback "Leave a review" for a completed booking that has no
+  // customer rating yet (cron auto-approved without customer input).
+  // Never show it if the customer already left a rating (ownerRating set,
+  // or status has already flipped to 'reviewed').
+  const canReview   =
+    (booking.status === 'provider_marked_complete') ||
+    (booking.status === 'completed' && !booking.ownerRating);
 
   const cleanReason = (r: string | null | undefined) =>
     r?.replace(/^(DECLINED:|CANCELLED:|DISPUTE:|CANCELED:)\s*/i, '') || null;
@@ -548,7 +562,11 @@ function BookingCard({
 
   const handleReview = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
-    navigate(`/booking/confirmation/${booking.requestId}`);
+    // ?review=1 triggers the end-of-stay banner + star-form auto-scroll on
+    // BookingConfirmation.tsx (see PR #1906 useEffect). Without it the
+    // customer lands at the top of the page and has to scroll to find the
+    // rating row.
+    navigate(`/booking/confirmation/${booking.requestId}?review=1`);
   };
 
   // Countdown chip for upcoming bookings
@@ -797,15 +815,21 @@ function BookingCard({
             </button>
           )}
 
-          {/* Leave a review CTA — only for completed, not reviewed */}
+          {/* Leave a review / Confirm & rate CTA — context-aware label
+              (2026-08-18): pre-customer-confirm uses "Confirm & rate"
+              because that's the actionable step; post-confirm uses "Leave
+              a review" for the cron-auto-approved fallback. */}
           {canReview && (
             <button
+              data-testid={`booking-review-cta-${booking.requestId}`}
               onClick={handleReview}
               className="inline-flex items-center gap-1.5 text-[11px] font-semibold px-3 py-1.5 rounded-full border transition-colors"
               style={{ borderColor: `${GOLD}60`, color: GOLD, background: `${GOLD}0C` }}
             >
               <Star size={10} />
-              {isRTL ? 'כתוב ביקורת' : 'Leave a review'}
+              {booking.status === 'provider_marked_complete'
+                ? (isRTL ? 'אשר/י ודרג/י' : 'Confirm & rate')
+                : (isRTL ? 'כתוב ביקורת' : 'Leave a review')}
             </button>
           )}
 
