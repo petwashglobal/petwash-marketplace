@@ -8,6 +8,7 @@ import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
 import { PremiumPlatformGrid } from '@/components/marketing/PremiumPlatformGrid';
+import { LandingLiveBayStrip } from '@/components/LandingLiveBayStrip';
 import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
@@ -198,7 +199,7 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
               style={{ transitionDelay: '750ms' }}
             >
               <div className="relative mx-auto max-w-sm sm:max-w-lg lg:max-w-2xl">
-                <img 
+                <img
                   src="/hero-image.jpeg"
                   alt="Professional pet washing service with adorable dogs and cats"
                   className="w-full object-contain h-60 sm:h-80 lg:h-96 mx-auto"
@@ -209,6 +210,12 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 {/* Gold glow effect behind image */}
                 <div className="absolute -inset-4 bg-gradient-to-br from-[#c6a664]/20 via-transparent to-[#c6a664]/10 rounded-2xl -z-10 blur-xl animate-gold-pulse" />
               </div>
+              {/* 2026-08-18 COMPETITIVE — live K9000 bay status under the hero.
+                  Reads real hardware state on 15s poll. WhatIDog (a directory)
+                  literally cannot show a signal like this because they have no
+                  station. Fail-quiet: if the API is unreachable, the strip shows
+                  a neutral "signal not available" state instead of vanishing. */}
+              <LandingLiveBayStrip language={language} />
             </div>
           </div>
         </section>
