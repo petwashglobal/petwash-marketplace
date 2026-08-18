@@ -26,7 +26,7 @@ import {
   insertStaffLogbookSchema,
   insertFranchiseOrderSchema,
 } from '../../shared/schema';
-import { eq, and, desc } from 'drizzle-orm';
+import { eq, and, desc, or, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { staffOnboardingService } from '../services/StaffOnboardingService';
 import { receiptFraudDetection } from '../services/ReceiptFraudDetection';
@@ -109,6 +109,104 @@ export function registerStaffOnboardingRoutes(app: Express) {
         success: false,
         error: error.message || 'Failed to submit application',
       });
+    }
+  });
+
+  /**
+   * GET /api/staff/applications/mine
+   * Return the caller's most recent staff application, or { application: null }
+   * if none exists. Mirrors GET /api/provider-applications/my.
+   *
+   * Ownership model (post-security-patch, matches the implementation exactly):
+   *   - requireAuth validates the Firebase session/token. It does NOT by
+   *     itself require Firebase to have verified the email.
+   *   - UID ownership lookup (staffApplications.userId = caller uid) is
+   *     ALWAYS allowed for the authenticated caller.
+   *   - EMAIL FALLBACK IS VERIFIED-EMAIL ONLY. Because staffApplications.userId
+   *     is nullable (an application may have been submitted BEFORE the user
+   *     registered their Firebase account), we optionally allow a match on
+   *     email — but ONLY when req.firebaseUser.email_verified === true. An
+   *     unverified email is caller-controllable (anyone can sign up with any
+   *     address without confirming it), so trusting it would let a squatting
+   *     sign-up read a real person's pre-signup application.
+   *   - Email comparison uses case-insensitive EXACT equality via
+   *     sql`lower(col) = lower(val)`. Deliberately NOT ILIKE, whose `_` and
+   *     `%` are wildcards.
+   *   - Caller identity NEVER comes from req.query / req.params / req.body.
+   *     The authenticated uid comes from getAuthenticatedUserId(req); the
+   *     verified email comes from req.firebaseUser.
+   *
+   * Response projection is an explicit allow-list — see BLOCKER 2 comment on
+   * the db.select({...}) call below. Do NOT expand it to expose internal
+   * reviewer / fraud / banking / tax / KYC fields.
+   *
+   * PR-AUTH-FIX-STAFFPENDING-DEADEND (2026-08-15) — Agent A HIGH #5. The client
+   * StaffPending page was a static dead-end with no state fetch, so a user who
+   * had been REJECTED still saw "your request is being reviewed" forever with
+   * no path forward. This endpoint is the state source the rewritten
+   * StaffPending page uses to render pending / documents_required /
+   * under_review / background_check / approved / rejected branches.
+   *
+   * MUST be declared BEFORE the '/:id' route below — Express would otherwise
+   * try to parse "mine" as an integer id.
+   */
+  app.get('/api/staff/applications/mine', requireAuth, async (req, res) => {
+    try {
+      const userId = getAuthenticatedUserId(req);
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'Authentication required' });
+      }
+      // BLOCKER 1 (PR-AUTH-FIX-STAFFPENDING-DEADEND security patch, 2026-08-15):
+      // Email fallback is only safe when Firebase has VERIFIED the email.
+      // An unverified email is caller-controllable — anyone can sign up
+      // with any address without confirming it — so trusting it here
+      // would let a squatting sign-up read a real person's pre-signup
+      // application. Gate strictly on req.firebaseUser.email_verified === true.
+      // Never accept caller identity from req.query / req.params / req.body.
+      const fbUser = (req as any).firebaseUser;
+      const emailVerified = fbUser?.email_verified === true;
+      const verifiedEmail =
+        emailVerified && typeof fbUser?.email === 'string' && fbUser.email.length > 0
+          ? fbUser.email
+          : null;
+
+      // Case-insensitive EXACT email equality via lower(col) = lower(val).
+      // Do NOT use ILIKE here — `_` and `%` are wildcards in LIKE, and
+      // treating stored email as a pattern (or the verified caller email
+      // as a pattern) would match unintended rows.
+      const whereClause = verifiedEmail
+        ? or(
+            eq(staffApplications.userId, String(userId)),
+            sql`lower(${staffApplications.email}) = lower(${verifiedEmail})`,
+          )
+        : eq(staffApplications.userId, String(userId));
+
+      // BLOCKER 2 (same patch): EXPLICIT projection. The pre-patch
+      // db.select() returned the whole row, exposing internal / sensitive
+      // fields that the StaffPending page does not need and MUST NOT see:
+      // dateOfBirth, address, taxId, bank* (routing / account name / number),
+      // notes, reviewer notes, fraud/shortlist scores, criminal record,
+      // references, formData, etc. Only surface what the client actually
+      // consumes.
+      const rows = await db
+        .select({
+          id: staffApplications.id,
+          applicationType: staffApplications.applicationType,
+          status: staffApplications.status,
+          rejectionReason: staffApplications.rejectionReason,
+          submittedAt: staffApplications.submittedAt,
+          reviewedAt: staffApplications.reviewedAt,
+          approvedAt: staffApplications.approvedAt,
+        })
+        .from(staffApplications)
+        .where(whereClause)
+        .orderBy(desc(staffApplications.createdAt))
+        .limit(1);
+      const application = rows[0] ?? null;
+      return res.json({ success: true, application });
+    } catch (error: any) {
+      logger.error('[API] Failed to load caller staff application', error);
+      return res.status(500).json({ success: false, error: 'Failed to load application' });
     }
   });
 
