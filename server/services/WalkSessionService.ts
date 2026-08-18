@@ -1,8 +1,36 @@
 import { db } from '../db';
 import crypto from 'crypto';
-import { walkBookings, users, walkBlockchainAudit } from '../../shared/schema';
+import { walkBookings, users, walkBlockchainAudit, walkerProfiles } from '../../shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { sql } from 'drizzle-orm';
+
+/**
+ * SafeLiveSessionDTO — the projection returned to authorized callers for
+ * an active walk. Never contains raw walkBookings columns (which include
+ * pricing internals, walker profile FKs, and other fields no client
+ * needs to see). Kept in-service so the route handler cannot forget to
+ * project. See P0-1 fix, 2026-08-18.
+ */
+export interface SafeLiveSessionDTO {
+  walkId: number;
+  bookingId: string;
+  status: string;
+  petId: string | null;
+  petName: string | null;
+  scheduledDate: string | null;
+  durationMinutes: number | null;
+  actualStartTime: string | null;
+  elapsedTime: number;         // seconds since actualStartTime
+  estimatedRemaining: number;  // seconds
+  currentLocation: unknown;    // jsonb {latitude, longitude, accuracy, timestamp}
+  lastGPSUpdate: string | null;
+  totalDistanceMeters: number;
+  vitalDataSummary: unknown;   // jsonb — summary only, not raw sequence
+  routePolyline: string;
+  isLiveTrackingActive: boolean;
+  /** Whether the caller is the owner or the walker. Never both. */
+  callerRole: 'owner' | 'walker';
+}
 
 interface CheckInData {
   walkId: number; // Primary key (serial)
@@ -494,16 +522,33 @@ export class WalkSessionService {
   /**
    * Get active walk session details
    */
-  async getActiveSession(walkId: number): Promise<{
-    walk: any;
-    checkInTime: Date | null;
-    elapsedTime: number;
-    estimatedRemaining: number;
-    currentLocation: any;
-    totalDistance: number;
-    vitalData: any;
-    routePolyline: string;
-  } | null> {
+  /**
+   * Get active session details for an authorized caller.
+   *
+   * P0-1 fix (2026-08-18): the previous signature `getActiveSession(walkId)`
+   * enforced ZERO ownership — any authenticated user could enumerate walk
+   * IDs and pull another customer's live GPS + vitals. Now REQUIRES the
+   * caller's Firebase UID and asserts the caller is either the walk's
+   * owner or the assigned walker (whose UID is derived server-side via
+   * the walker_profiles join — the walker table stores WALKER-uuid, not
+   * a Firebase UID, so a direct compare against callerUid would have
+   * silently locked walkers out).
+   *
+   * Returns null on:
+   *   • walk not found
+   *   • walk not currently in_progress (no active session)
+   *   • caller neither owner nor assigned walker  ← "privacy 404"
+   *
+   * The route handler then 404s uniformly — same response for
+   * "doesn't exist" and "not yours" — so trial-and-error enumeration
+   * yields nothing.
+   *
+   * The return shape is a strict SafeLiveSessionDTO (see top of file),
+   * NOT the raw walk row. Never let a route re-project raw columns.
+   */
+  async getActiveSession(walkId: number, callerUid: string): Promise<SafeLiveSessionDTO | null> {
+    if (!callerUid) return null;
+
     const [walk] = await db
       .select()
       .from(walkBookings)
@@ -514,20 +559,49 @@ export class WalkSessionService {
       return null;
     }
 
+    // Resolve the walker's Firebase UID (walk_bookings.walkerId is a
+    // WALKER-uuid, not a Firebase UID — this is the P1-14 mismatch the
+    // CEO called out; comparing callerUid directly against walk.walkerId
+    // would falsely reject the assigned walker).
+    let walkerUid: string | null = null;
+    if (walk.walkerId) {
+      const [walkerRow] = await db
+        .select({ userId: walkerProfiles.userId })
+        .from(walkerProfiles)
+        .where(eq(walkerProfiles.walkerId, walk.walkerId))
+        .limit(1);
+      walkerUid = (walkerRow?.userId || null) as string | null;
+    }
+
+    const isOwner = callerUid === walk.ownerId;
+    const isWalker = walkerUid != null && callerUid === walkerUid;
+    if (!isOwner && !isWalker) {
+      return null; // privacy 404 — do not confirm the walk exists
+    }
+
     const now = new Date();
-    const elapsedTime = Math.floor((now.getTime() - walk.actualStartTime.getTime()) / 1000); // seconds
-    const plannedDuration = (walk.durationMinutes || 60) * 60; // convert minutes to seconds
+    const elapsedTime = Math.floor((now.getTime() - walk.actualStartTime.getTime()) / 1000);
+    const plannedDuration = (walk.durationMinutes || 60) * 60;
     const estimatedRemaining = Math.max(0, plannedDuration - elapsedTime);
 
     return {
-      walk,
-      checkInTime: walk.actualStartTime,
+      walkId: walk.id,
+      bookingId: walk.bookingId,
+      status: walk.status ?? 'in_progress',
+      petId: (walk.petId ?? null) as string | null,
+      petName: (walk.petName ?? null) as string | null,
+      scheduledDate: walk.scheduledDate ? String(walk.scheduledDate) : null,
+      durationMinutes: walk.durationMinutes ?? null,
+      actualStartTime: walk.actualStartTime.toISOString(),
       elapsedTime,
       estimatedRemaining,
       currentLocation: walk.lastKnownLocation || walk.checkInLocation || null,
-      totalDistance: walk.totalDistanceMeters || 0,
-      vitalData: walk.vitalDataSummary || {},
+      lastGPSUpdate: walk.lastGPSUpdate ? new Date(walk.lastGPSUpdate).toISOString() : null,
+      totalDistanceMeters: walk.totalDistanceMeters || 0,
+      vitalDataSummary: walk.vitalDataSummary ?? null,
       routePolyline: walk.routePolyline || '',
+      isLiveTrackingActive: !!walk.isLiveTrackingActive,
+      callerRole: isOwner ? 'owner' : 'walker',
     };
   }
 

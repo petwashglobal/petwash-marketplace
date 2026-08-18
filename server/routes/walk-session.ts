@@ -145,31 +145,43 @@ router.post('/vital-update', requireAuth, async (req, res) => {
   }
 });
 
-// Get active session details
+// Get active session details.
+//
+// P0-1 fix (2026-08-18): previously this handler passed only `walkId` to
+// getActiveSession, which loaded by walkId alone and returned the raw
+// walk row + live GPS + vitals + route polyline to ANY authenticated
+// caller. Cross-user leak — a customer could enumerate walkIds and read
+// another customer's live pet-walk.
+//
+// Now:
+//   • callerUid is threaded into the service
+//   • the service authorizes caller ∈ { owner, assigned walker } via
+//     the walker_profiles.walkerId → userId join (also fixes P1-14:
+//     walk_bookings.walkerId is a WALKER-UUID, not a Firebase UID; a
+//     direct compare would have silently locked walkers out)
+//   • unauthorized callers get the same "no active session" 404 as
+//     "not found" (privacy 404 — do not confirm existence)
+//   • the response is a strict SafeLiveSessionDTO — no raw walk row
 router.get('/:walkId/active', requireAuth, async (req, res) => {
   try {
     const walkId = parseInt(req.params.walkId);
-    
     if (isNaN(walkId)) {
-      return res.status(400).json({
-        error: 'Invalid walk ID',
-      });
+      return res.status(400).json({ error: 'Invalid walk ID' });
     }
-    
-    const session = await walkSessionService.getActiveSession(walkId);
-
+    const callerUid = req.user?.uid;
+    if (!callerUid) {
+      return res.status(401).json({ error: 'AUTH_REQUIRED' });
+    }
+    const session = await walkSessionService.getActiveSession(walkId, callerUid);
     if (!session) {
-      return res.status(404).json({
-        error: 'No active session found for this walk',
-      });
+      return res.status(404).json({ error: 'No active session found for this walk' });
     }
-
     res.json(session);
   } catch (error) {
+    // Log full error server-side, return a stable generic client message —
+    // never leak error.message (it may reveal query / schema details).
     console.error('[WALK SESSION] Get active session error:', error);
-    res.status(500).json({
-      error: error instanceof Error ? error.message : 'Failed to get active session',
-    });
+    res.status(500).json({ error: 'Failed to get active session' });
   }
 });
 
