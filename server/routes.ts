@@ -12953,8 +12953,23 @@ self.addEventListener('notificationclick', (event) => {
   // Provider Dashboard V2 — Phase 3 migration: reads from booking_requests (new source of truth)
   // Dual-read safety phase: both V1 and V2 live simultaneously; switch UI query keys to /v2 once
   // migration-diff confirms parity. Remove V1 routes after Phase 3 is complete.
+  //
+  // SECURITY 2026-08-18 (CEO §2 "Provider Today must be a real backend product"):
+  // Gate on requireProviderActive so a customer / pending applicant / rejected
+  // provider who guesses the URL gets an explicit 403 rather than a silently-
+  // empty result from the WHERE provider_id = $1 filter. Applied at the mount
+  // (not per route) so every current + future v2 endpoint inherits the check.
+  // V1 (/api/provider-dashboard) intentionally does NOT get this gate: it
+  // still serves /application-status which a pending applicant must reach.
   const providerDashboardV2Routes = (await import('./routes/provider-dashboard-v2')).default;
-  app.use('/api/provider-dashboard/v2', validateFirebaseToken, apiLimiter, providerDashboardV2Routes);
+  const { requireProviderActive } = await import('./middleware/gates');
+  app.use(
+    '/api/provider-dashboard/v2',
+    validateFirebaseToken,
+    apiLimiter,
+    requireProviderActive,
+    providerDashboardV2Routes,
+  );
 
   // Provider phone OTP verification (no CAPTCHA — user is already authenticated)
   const { providerPhoneRouter } = await import('./routes/provider-phone');
