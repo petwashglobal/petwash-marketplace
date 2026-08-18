@@ -141,7 +141,11 @@ router.get('/tiktok/callback', async (req: Request, res: Response) => {
     const tiktokUser = userData.data?.user;
 
     if (!tiktokUser?.open_id) {
-      logger.error('[TikTok OAuth] Failed to get user info', { userData });
+      logger.error('[TikTok OAuth] Failed to get user info', {
+        hasData: !!userData?.data,
+        hasUser: !!userData?.data?.user,
+        hasOpenId: !!userData?.data?.user?.open_id,
+      });
       return res.redirect('/signin?error=tiktok_user_failed');
     }
 

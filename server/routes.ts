@@ -3630,7 +3630,11 @@ self.addEventListener('notificationclick', (event) => {
       const tiktokUser = userData.data?.user;
 
       if (!tiktokUser || !tiktokUser.open_id) {
-        logger.error('[TikTok OAuth] Invalid user data', userData);
+        logger.error('[TikTok OAuth] Invalid user data', {
+          hasData: !!userData?.data,
+          hasUser: !!userData?.data?.user,
+          hasOpenId: !!userData?.data?.user?.open_id,
+        });
         return res.redirect('/signin?oauthError=invalid_user');
       }
 
@@ -11706,7 +11710,14 @@ self.addEventListener('notificationclick', (event) => {
       } catch (firestoreErr) {
         logger.warn('[Franchise/inquiry] Firestore write failed, falling back to logs', { error: (firestoreErr as Error)?.message });
       }
-      logger.info('[Franchise/inquiry] received', { fullName, email, country, city });
+      logger.info('[Franchise/inquiry] received', {
+        emailMasked: email && typeof email === 'string' && email.includes('@')
+          ? email.split('@')[0].slice(0, 2) + '***@' + email.split('@')[1]
+          : '(invalid)',
+        country,
+        city,
+        hasFullName: !!fullName,
+      });
       return res.json({ success: true, message: 'Inquiry submitted successfully' });
     } catch (error) {
       logger.error('[Franchise/inquiry] handler error', error);
