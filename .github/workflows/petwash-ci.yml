@@ -2318,13 +2318,28 @@ jobs:
           fi
 
           echo ""
-          echo "── Last 200 application log lines (ALL severities — DEFAULT/DEBUG/INFO/NOTICE/WARNING/ERROR/CRITICAL/ALERT/EMERGENCY) ──"
+          echo "── Container logs via Cloud Run API (roles/run.viewer — already granted) ──"
+          # PRIMARY log source. `gcloud run services logs read` uses Cloud Run's
+          # own log endpoint and needs roles/run.viewer (which the deploy SA
+          # already has). This works even when roles/logging.viewer is NOT
+          # granted — the historical `gcloud logging read` fallback below silently
+          # PERMISSION_DENIED'd on every failed deploy and hid every container
+          # crash message. See 2026-08-19 boot-crash root-cause session.
+          if [ -n "$REV_NAME" ]; then
+            gcloud run services logs read "$SVC" \
+              --region "$REGION" --project "$PROJECT" \
+              --limit=200 \
+              2>&1 || echo "(run services logs read failed — check IAM: roles/run.viewer)"
+          fi
+
+          echo ""
+          echo "── Last 200 application log lines via Cloud Logging (needs roles/logging.viewer) ──"
           if [ -n "$REV_NAME" ]; then
             gcloud logging read \
               "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"$SVC\" AND resource.labels.revision_name=\"$REV_NAME\"" \
               --project "$PROJECT" --limit=200 --order=desc --freshness=1h \
               --format='table(timestamp,severity,textPayload,jsonPayload.message,jsonPayload.error)' \
-              2>&1 || echo "(log read failed — check IAM: roles/logging.viewer)"
+              2>&1 || echo "(log read failed — check IAM: roles/logging.viewer. The `gcloud run services logs read` above is the authoritative source; this one is a wider audit fallback only.)"
           fi
 
           echo ""
