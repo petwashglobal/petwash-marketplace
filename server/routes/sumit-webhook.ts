@@ -107,6 +107,38 @@ function isPaymentSuccessEvent(eventType: string): boolean {
   return isPaymentish && isSuccessish;
 }
 
+/**
+ * Categorize the SUMIT lifecycle event so we can audit + observe non-money
+ * events (document / recurring / subscription / payment-fail) that today were
+ * silently dropped after signature verification. Item 7 of the SUMIT Phase 2
+ * lane (2026-08-19 CEO approval). NONE of these categories touches the money
+ * path — they only fan out into structured audit rows for admin observability.
+ */
+type SumitLifecycleCategory =
+  | 'payment.success'
+  | 'payment.failed'
+  | 'document.confirmed'
+  | 'document.failed'
+  | 'subscription.event'
+  | 'recurring.event'
+  | 'refund.event'
+  | 'other';
+
+function categorizeSumitEvent(eventType: string): SumitLifecycleCategory {
+  const t = eventType.toLowerCase();
+  if (/(refund|chargeback|reversal)/.test(t)) return 'refund.event';
+  if (isPaymentSuccessEvent(eventType))       return 'payment.success';
+  if (/(payment|charge|transaction)/.test(t) && /(fail|declin|expire|void|cancel)/.test(t)) {
+    return 'payment.failed';
+  }
+  if (/document/.test(t)) {
+    return /(fail|reject|declin|error)/.test(t) ? 'document.failed' : 'document.confirmed';
+  }
+  if (/subscription/.test(t)) return 'subscription.event';
+  if (/recurring/.test(t))    return 'recurring.event';
+  return 'other';
+}
+
 function extractEventType(body: Record<string, unknown> | null): string | null {
   if (!body || typeof body !== 'object') return null;
   const candidates = [
@@ -295,10 +327,61 @@ router.post(
       }
     }
 
+    // ── Item 7 (2026-08-19): SUMIT Phase 2 lifecycle observability ─────────
+    // Before this, document/subscription/recurring/refund events were logged
+    // once at line ~247 and then silently dropped. Now we categorize each
+    // non-payment-success event and write a per-category audit row so admin
+    // dashboards and the Item 11 reconciler have something to compare against.
+    // NONE of this touches the money path — activation still gates on
+    // isPaymentSuccessEvent above. This is pure observability + a hook point
+    // for the follow-up handlers (subscription auto-renew, refund cascade).
+    const category = categorizeSumitEvent(eventType);
+    if (category !== 'payment.success' && category !== 'other') {
+      try {
+        const transactionId = extractTransactionId(parsed) || null;
+        const externalRef   = extractExternalRef(parsed) || null;
+        await recordAuditEvent({
+          eventType: `sumit.webhook.${category}`,
+          customerUid: 'system',
+          metadata: {
+            eventId,
+            sumitEventType: eventType,
+            transactionId,
+            externalRef,
+            category,
+          },
+          ipAddress: req.ip || null,
+          userAgent: '[SumitWebhook]',
+        });
+        logger.info('[SumitWebhook] lifecycle event categorized', {
+          eventId,
+          eventType,
+          category,
+          transactionId,
+          externalRef,
+        });
+      } catch (err: any) {
+        // Never let audit-write failures turn into a retry storm. SUMIT only
+        // retries on non-2xx; we still ack 200.
+        logger.error('[SumitWebhook] lifecycle audit failed (continuing)', {
+          err: err?.message,
+          category,
+          eventId,
+        });
+      }
+    }
+
     // 200 quickly — SUMIT only retries on non-2xx. We've persisted the raw
     // payload in the audit chain and (when the flag is on) attempted an
     // idempotent activation. The outcome is echoed for observability.
-    res.status(200).json({ ok: true, eventId, eventType, received: true, activation: activation?.outcome ?? 'skipped' });
+    res.status(200).json({
+      ok: true,
+      eventId,
+      eventType,
+      received: true,
+      activation: activation?.outcome ?? 'skipped',
+      category,
+    });
   },
 );
 
