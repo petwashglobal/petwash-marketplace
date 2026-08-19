@@ -23,7 +23,10 @@ import {
   FileText,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
-import { getAuth } from 'firebase/auth';
+// Firebase-audit 2026-08-19 SEV-2 #4: prefer shared `auth` (see
+// client/src/lib/firebase.ts:143 initializeAuth). Raw getAuth() risks a
+// second Auth instance without persistence/resolver on lazy-loaded pages.
+import { auth } from '@/lib/firebase';
 
 /** One required declaration as returned by GET /api/provider-declarations/status. */
 interface DeclarationStatusItem {
@@ -74,7 +77,7 @@ const SOURCE_PDF: Record<string, string> = {
 };
 
 async function bearer(): Promise<string> {
-  const user = getAuth().currentUser;
+  const user = auth.currentUser;
   if (!user) throw new Error('Not signed in');
   return user.getIdToken();
 }

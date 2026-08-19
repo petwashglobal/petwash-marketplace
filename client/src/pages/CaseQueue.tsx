@@ -18,7 +18,10 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Link } from 'wouter';
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { getAuth } from 'firebase/auth';
+// Firebase-audit 2026-08-19 SEV-2 #4: prefer shared `auth` (see
+// client/src/lib/firebase.ts:143 initializeAuth). Raw getAuth() risks a
+// second Auth instance without persistence/resolver on lazy-loaded pages.
+import { auth } from '@/lib/firebase';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -888,7 +891,7 @@ export default function CaseQueue() {
 
   // Get Firebase current user UID
   useEffect(() => {
-    const auth = getAuth();
+    // `auth` is imported from '@/lib/firebase' above (no local getAuth()).
     const unsub = auth.onAuthStateChanged(u => setCurrentUid(u?.uid ?? null));
     return unsub;
   }, []);

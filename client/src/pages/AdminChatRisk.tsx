@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { getAuth } from 'firebase/auth';
+// Firebase-audit 2026-08-19 SEV-2 #4: prefer shared `auth` (see
+// client/src/lib/firebase.ts:143 initializeAuth). Raw getAuth() risks a
+// second Auth instance without persistence/resolver on lazy-loaded pages.
+import { auth } from '@/lib/firebase';
 import { getApiUrl } from '@/lib/apiConfig';
 import { ShieldAlert, RefreshCw, Loader2, Inbox } from 'lucide-react';
 
@@ -22,7 +25,7 @@ const RED_REASONS = new Set([
 ]);
 
 async function bearer(): Promise<string> {
-  const u = getAuth().currentUser;
+  const u = auth.currentUser;
   if (!u) throw new Error('Not signed in');
   return u.getIdToken();
 }
