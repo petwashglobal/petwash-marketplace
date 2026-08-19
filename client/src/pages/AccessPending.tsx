@@ -4,7 +4,7 @@ import { Card, CardContent, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
-import { Clock, CheckCircle, XCircle, Loader2 } from 'lucide-react';
+import { Clock, CheckCircle, XCircle, Loader2, Home, Mail, LogOut } from 'lucide-react';
 
 type RequestStatus = 'pending' | 'approved' | 'rejected' | null;
 
@@ -21,10 +21,19 @@ interface AccessRequest {
 
 export default function AccessPending() {
   const [, navigate] = useLocation();
-  const { user, getIdToken } = useFirebaseAuth();
+  const { user, getIdToken, signOut } = useFirebaseAuth() as any;
   const [status, setStatus] = useState<RequestStatus>(null);
   const [reason, setReason] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const goHome = () => navigate('/');
+  const openSupportEmail = () => {
+    if (typeof window !== 'undefined') window.location.href = 'mailto:support@petwash.co.il';
+  };
+  const doSignOut = async () => {
+    try { if (typeof signOut === 'function') await signOut(); } catch { /* fall through */ }
+    navigate('/signin');
+  };
 
   const lang = (typeof window !== 'undefined' && localStorage.getItem('i18nextLng')) || 'en';
   const isHe = lang === 'he';
@@ -44,7 +53,13 @@ export default function AccessPending() {
     rejectedDesc: isHe ? 'לצערנו, בקשת הגישה שלך נדחתה.' : 'Unfortunately, your access request has been rejected.',
     rejectionReason: isHe ? 'סיבה:' : 'Reason:',
     noRequest: isHe ? 'לא נמצאה בקשת גישה' : 'No access request found',
+    noRequestDesc: isHe
+      ? 'עדיין לא הגשת בקשת גישה. אם התכוונת להשתמש בפטוואש בתור לקוח, חזרו לעמוד הראשי.'
+      : "You haven't submitted an access request yet. If you meant to use PetWash as a customer, head back to the home page.",
     error: isHe ? 'שגיאה בטעינת הנתונים' : 'Error loading data',
+    backHome: isHe ? 'חזרה לעמוד הראשי' : 'Back to Home',
+    contactSupport: isHe ? 'צור קשר עם התמיכה' : 'Contact support',
+    signOut: isHe ? 'התנתקות' : 'Sign out',
   };
 
   useEffect(() => {
@@ -103,7 +118,7 @@ export default function AccessPending() {
               <CheckCircle className="w-16 h-16 text-green-500 mx-auto" />
               <h2 className="text-lg font-semibold text-green-700">{t.approvedTitle}</h2>
               <p className="text-gray-600 text-sm">{t.approvedDesc}</p>
-              <Button onClick={() => navigate('/admin/dashboard')} className="w-full mt-4">
+              <Button onClick={() => navigate('/admin/dashboard')} className="w-full mt-4" data-testid="button-access-approved-dashboard">
                 {t.goToDashboard}
               </Button>
             </>
@@ -123,8 +138,48 @@ export default function AccessPending() {
           )}
 
           {status === null && (
-            <p className="text-gray-500 text-sm">{t.noRequest}</p>
+            <>
+              <XCircle className="w-16 h-16 text-gray-400 mx-auto" />
+              <h2 className="text-lg font-semibold text-gray-700">{t.noRequest}</h2>
+              <p className="text-gray-500 text-sm">{t.noRequestDesc}</p>
+            </>
           )}
+
+          {/* Always-visible escape hatches. Signup-friction audit 2026-08-19 SEV-1 #2:
+              pending/rejected/null states were literal dead ends — no home, no
+              support, no sign-out. Every terminal auth state must offer at least
+              a way back to the app and a way to reach a human. */}
+          <div className="flex flex-col gap-2 pt-4 border-t border-gray-100">
+            <Button
+              variant="outline"
+              onClick={goHome}
+              className="w-full"
+              data-testid="button-access-pending-home"
+            >
+              <Home className="w-4 h-4 me-2" />
+              {t.backHome}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={openSupportEmail}
+              className="w-full"
+              data-testid="button-access-pending-support"
+            >
+              <Mail className="w-4 h-4 me-2" />
+              {t.contactSupport}
+            </Button>
+            {status === 'rejected' && (
+              <Button
+                variant="ghost"
+                onClick={doSignOut}
+                className="w-full text-gray-500"
+                data-testid="button-access-pending-signout"
+              >
+                <LogOut className="w-4 h-4 me-2" />
+                {t.signOut}
+              </Button>
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

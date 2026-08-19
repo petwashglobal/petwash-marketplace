@@ -709,6 +709,16 @@ const AUTH_CSRF_EXEMPT = new Set([
   // returned by /api/auth/email/verify (mirror of /api/auth/phone-session).
   // Pre-session origin, the proof token IS the auth. Without this it 403s.
   '/api/auth/email-session',
+  // Dual-verify step 2 (server/routes/publicAuthRoutes.ts:601 & :681). The
+  // client (SignUpLuxury.tsx dual-verify block) POSTs an id-token + a signed
+  // email-/mobile-verified proof token in the JSON body — the handler
+  // Firebase-Admin-verifies BOTH before doing anything. Neither the id-token
+  // nor the proof token rides in an Authorization: Bearer header, so the
+  // Bearer-CSRF-skip does NOT fire and the global gate returns 403
+  // EBADCSRFTOKEN — dead-ending EVERY signup at the "second contact" step.
+  // (Signup-friction audit 2026-08-19 SEV-1 #1.)
+  '/api/auth/verify-signup-email',
+  '/api/auth/verify-signup-mobile',
   // Post-login role-routing and onboarding steps — all require a valid Firebase
   // session cookie (requireAuth) which already scopes them to the authenticated user.
   '/api/auth/post-login',
