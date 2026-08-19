@@ -2713,6 +2713,110 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
+  // ── SUMIT Phase 2 Item 8/9/10 (CEO 2026-08-19) ─────────────────────────────
+  // GET  /api/me/sumit/summary            — READ adapter: {savedMethods, documents}
+  // GET  /api/me/sumit/add-card-url       — hosted "add card" portal URL
+  // DELETE /api/me/sumit/methods/:token   — remove a saved payment method
+  //
+  // Every route derives uid from the authenticated Firebase session/token.
+  // A userId is NEVER accepted from body/query/params. User A cannot ever
+  // read or mutate User B's SUMIT state.
+  //
+  // Fail-quiet when SUMIT is dormant (missing env / flag off) — READ routes
+  // return empty arrays, the add-card route returns available:false, and the
+  // DELETE route returns 503.
+  async function resolveAuthenticatedUid(req: any): Promise<string | undefined> {
+    const token = req.cookies?.pw_session;
+    const authHeader = req.headers.authorization;
+    if (token) {
+      try {
+        const decoded = await firebaseAdmin.auth().verifySessionCookie(token, false);
+        return decoded.uid;
+      } catch { /* fall through to Bearer */ }
+    }
+    if (authHeader?.startsWith('Bearer ')) {
+      try {
+        const decoded = await firebaseAdmin.auth().verifyIdToken(authHeader.substring(7), true);
+        return decoded.uid;
+      } catch { /* fall through */ }
+    }
+    return undefined;
+  }
+
+  app.get('/api/me/sumit/summary', async (req, res) => {
+    try {
+      const uid = await resolveAuthenticatedUid(req);
+      if (!uid) return res.status(401).json({ error: 'Authentication required' });
+
+      const { getFinancialsSummary } = await import('./services/SumitFinancialsService');
+      const summary = await getFinancialsSummary(uid);
+      // Never leak sumit_customer_id or CustomerHistoryURL — the summary
+      // object already excludes them by construction, but we re-project here
+      // as defence-in-depth so an accidental field bleed from the service
+      // is caught at the wire boundary.
+      return res.status(200).json({
+        available: summary.available,
+        savedMethods: summary.savedMethods,
+        documents: summary.documents,
+      });
+    } catch (err: any) {
+      logger.error('[MeSumitSummary] failed', { error: err?.message });
+      // Fail-quiet — never crash the Account page over a SUMIT read.
+      return res.status(200).json({ available: false, savedMethods: [], documents: [] });
+    }
+  });
+
+  // Hosted "add card" flow — return the current SUMIT customer-portal URL so
+  // the browser can navigate/iframe SUMIT's own vault-safe card capture. The
+  // card lands in SUMIT's PCI vault, not ours.
+  app.get('/api/me/sumit/add-card-url', async (req, res) => {
+    try {
+      const uid = await resolveAuthenticatedUid(req);
+      if (!uid) return res.status(401).json({ error: 'Authentication required' });
+
+      const { getCustomerHistoryUrl } = await import('./services/SumitCustomerService');
+      const url = await getCustomerHistoryUrl(uid);
+      if (!url) return res.status(200).json({ available: false, reason: 'not_synced' });
+      return res.status(200).json({ available: true, url });
+    } catch (err: any) {
+      logger.error('[MeSumitAddCardUrl] failed', { error: err?.message });
+      return res.status(200).json({ available: false });
+    }
+  });
+
+  app.delete('/api/me/sumit/methods/:token', async (req, res) => {
+    try {
+      const uid = await resolveAuthenticatedUid(req);
+      if (!uid) return res.status(401).json({ error: 'Authentication required' });
+
+      const paymentMethodId = String(req.params.token || '').trim();
+      if (!paymentMethodId) return res.status(400).json({ error: 'paymentMethodId required' });
+
+      const { getSumitCustomerId } = await import('./services/SumitCustomerService');
+      const sumitCustomerId = await getSumitCustomerId(uid);
+      if (!sumitCustomerId) {
+        return res.status(404).json({ error: 'no SUMIT customer for this user' });
+      }
+
+      const { SumitClient } = await import('./services/SumitClient');
+      const client = new SumitClient();
+      if (!client.isWired()) {
+        return res.status(503).json({ error: 'SUMIT not enabled' });
+      }
+      const result = await client.removeSavedMethod({ sumitCustomerId, paymentMethodId });
+      if (!result.removed) {
+        logger.warn('[MeSumitMethodRemove] SUMIT did not confirm remove', {
+          uid, paymentMethodId, reason: result.reason,
+        });
+        return res.status(502).json({ error: 'SUMIT did not confirm removal', reason: result.reason });
+      }
+      return res.status(200).json({ removed: true });
+    } catch (err: any) {
+      logger.error('[MeSumitMethodRemove] failed', { error: err?.message });
+      return res.status(500).json({ error: 'Remove failed' });
+    }
+  });
+
   app.get('/api/me/role', async (req, res) => {
     try {
       const token = req.cookies?.pw_session;

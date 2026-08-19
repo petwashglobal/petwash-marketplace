@@ -224,6 +224,7 @@ const StaffScan = lazy(() => import("@/pages/staff/StaffScan"));
 const K9000Redeem = lazy(() => import("@/pages/K9000Redeem"));
 const MyAccount = lazy(() => import("@/pages/MyAccount"));
 const ProfileV2 = lazy(() => import("@/pages/ProfileV2"));
+const AccountFinancials = lazy(() => import("@/pages/AccountFinancials"));
 const AdminStations = lazy(() => import("@/pages/AdminStations"));
 const AdminFaultIntel = lazy(() => import("@/pages/AdminFaultIntel"));
 const AdminReconfirmation = lazy(() => import("@/pages/AdminReconfirmation"));
@@ -2985,6 +2986,18 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
                 <Suspense fallback={<PageLoader />}>
                   {/* ProfileV2 (luxury account hub) behind a flag; legacy MyAccount is the default + deep-edit target. */}
                   {import.meta.env.VITE_PROFILE_V2_ENABLED === 'true' ? <ProfileV2 /> : <MyAccount />}
+                </Suspense>
+              </RouteErrorBoundary>
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Account > Documents & Payments — SUMIT Phase 2 Items 9 + 10 (CEO 2026-08-19) */}
+        <Route path="/account/financials">
+          {() => (
+            <RequireAuth>
+              <RouteErrorBoundary routeName="/account/financials">
+                <Suspense fallback={<PageLoader />}>
+                  <AccountFinancials />
                 </Suspense>
               </RouteErrorBoundary>
             </RequireAuth>
