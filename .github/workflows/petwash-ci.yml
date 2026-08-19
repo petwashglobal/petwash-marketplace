@@ -1200,11 +1200,22 @@ jobs:
           # CI smoke and Cloud Run is the class of bug this alignment kills.
           # PAYMENT_PROVIDER_MODE stays `mock` so real Nayax/SUMIT credentials
           # aren't needed here — but every OTHER prod flag is now identical.
+          # 2026-08-19 (follow-up to PR #1964): PAYMENT_MOCK_PROD_ALLOWED is the
+          # second opt-in flag payment-provider-mode.ts:59 requires in production
+          # before it will honour PAYMENT_PROVIDER_MODE=mock. Without it, mock is
+          # silently downgraded to LIVE, NayaxSparkService.ts:62 throws
+          # "NAYAX_API_KEY is not set", the container spins its startup
+          # heartbeat on `phase=loading_routes` for 5 min, /health never
+          # returns 200, and the smoke test kills it — exactly the class of
+          # "the smoke says green while Cloud Run refuses" bug the env-alignment
+          # step exists to catch. Real production sets neither flag, so this
+          # doesn't weaken prod deploys.
           docker run -d --name petwash-smoke \
             -p 18080:8080 \
             -e PORT=8080 \
             -e NODE_ENV=production \
             -e PAYMENT_PROVIDER_MODE=mock \
+            -e PAYMENT_MOCK_PROD_ALLOWED=true \
             -e GOOGLE_PLACES_LIVE=false \
             -e SHOP_ENABLED=true \
             -e SHOP_CHECKOUT_ENABLED=false \
