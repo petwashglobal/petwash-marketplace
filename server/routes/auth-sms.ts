@@ -48,7 +48,15 @@ function normalizePhoneServer(raw: string): string {
   return digits || raw;
 }
 
-export type AuthFlow = 'prestige' | 'provider' | 'guest';
+// All flow values the client actually hands to /api/auth/sms/*.
+// Signup-friction audit 2026-08-19 SEV-2 #7: previously only prestige|provider|
+// guest were recognized, so 'general' (SignUpLuxury default), 'booking'
+// (/booking entry), and 'activation' (AccountActivation) were silently
+// bucketed as prestige — the post-verify redirect and every audit-log tag
+// then falsely said "prestige signup". The union now mirrors the client's
+// Flow union in SignUpLuxury.tsx plus 'activation' from AccountActivation.tsx.
+// Grep(client): flow: ['"](prestige|provider|guest|general|booking|activation)
+export type AuthFlow = 'prestige' | 'provider' | 'guest' | 'general' | 'booking' | 'activation';
 
 // Post-verify destination per onboarding channel. These are the canonical
 // targets from the platform plan; the client navigates here after the session
@@ -57,11 +65,32 @@ const FLOW_REDIRECTS: Record<AuthFlow, string> = {
   prestige: '/member/dashboard',
   provider: '/provider/dashboard',
   guest: '/egift',
+  // 'booking' users came in from /booking — return them to it after auth so
+  // the interrupted booking flow resumes at the step they left it on.
+  booking: '/booking',
+  // 'activation' users came in from /activate-account (email-first signups
+  // finishing the phone half). Return them to complete the second half.
+  activation: '/activate-account',
+  // 'general' is SignUpLuxury's default when no explicit flow was passed —
+  // land them on the app root and let the standard whoami-based routing
+  // pick their real destination.
+  general: '/',
 };
 const DEFAULT_FLOW: AuthFlow = 'prestige';
 
+const KNOWN_FLOWS: ReadonlySet<AuthFlow> = new Set<AuthFlow>([
+  'prestige',
+  'provider',
+  'guest',
+  'general',
+  'booking',
+  'activation',
+]);
+
 export function normalizeFlow(input: unknown): AuthFlow {
-  return input === 'provider' || input === 'guest' || input === 'prestige' ? input : DEFAULT_FLOW;
+  return typeof input === 'string' && (KNOWN_FLOWS as Set<string>).has(input)
+    ? (input as AuthFlow)
+    : DEFAULT_FLOW;
 }
 
 export function redirectForFlow(flow: AuthFlow): string {
