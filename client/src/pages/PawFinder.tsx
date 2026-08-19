@@ -613,6 +613,34 @@ function ReportForm({ onSuccess }: { onSuccess: () => void }) {
       setUploadedFilePath(j.filePath);
       setUploadProgress('done');
       toast({ title: '✅ תמונה הועלתה בהצלחה' });
+
+      // 2026-08-19 COMPETITIVE (WhatIDog gap): Gemini identified this photo
+      // for us. Auto-fill species / breed / primary color where the user hasn't
+      // typed anything yet, so a distraught owner gets a pre-filled report
+      // instead of a blank form. Preserve any manual edits — we ONLY set
+      // fields that are still their EMPTY_FORM default. Skip degraded results
+      // (no key / not a pet / gemini_error) — the user just types manually.
+      const ident = j.identification;
+      if (ident && !ident.degraded && (ident.confidence ?? 0) >= 0.35) {
+        setForm((prev) => {
+          const next = { ...prev };
+          // Only overwrite defaults, never overwrite what the user typed.
+          if (ident.species && (['dog', 'cat', 'bird'].includes(ident.species) || ident.species === 'other')) {
+            if (prev.petType === EMPTY_FORM.petType) next.petType = ident.species as typeof prev.petType;
+          }
+          if (ident.breedGuess && !prev.breed.trim()) {
+            next.breed = String(ident.breedGuess).slice(0, 100);
+          }
+          if (ident.primaryColor && !prev.colorPrimary.trim()) {
+            next.colorPrimary = String(ident.primaryColor).slice(0, 60);
+          }
+          return next;
+        });
+        // Only show a nudge toast if we actually filled something.
+        if (ident.breedGuess || ident.primaryColor || ident.species) {
+          toast({ title: '🤖 זיהוי אוטומטי', description: 'מילאנו את הפרטים שזיהינו. ניתן לערוך.' });
+        }
+      }
     } catch {
       setUploadProgress('error');
       toast({ variant: 'destructive', title: 'שגיאת רשת', description: 'ההעלאה נכשלה. בדוק חיבור לאינטרנט ונסה שוב.' });
