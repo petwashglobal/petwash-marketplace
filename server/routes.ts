@@ -13071,7 +13071,13 @@ self.addEventListener('notificationclick', (event) => {
   // V1 (/api/provider-dashboard) intentionally does NOT get this gate: it
   // still serves /application-status which a pending applicant must reach.
   const providerDashboardV2Routes = (await import('./routes/provider-dashboard-v2')).default;
-  const { requireProviderActive } = await import('./middleware/gates');
+  // requireProviderActive is already imported at module scope (line 214) — do NOT redeclare
+  // it here with `const { requireProviderActive } = await import(...)`. A local `const`
+  // inside registerRoutes puts the name into TDZ for the entire function body, so the
+  // EARLIER use at `app.use('/api/provider/', requireProviderActive)` (line 550) reads
+  // an uninitialized binding and throws "Cannot access 'requireProviderActive2' before
+  // initialization" the moment production route registration begins — Cloud Run smoke
+  // test then fails Phase 1 (port never binds). See git log for the boot-crash regression.
   app.use(
     '/api/provider-dashboard/v2',
     validateFirebaseToken,
