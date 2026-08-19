@@ -1272,6 +1272,186 @@ export class SumitClient {
   }
 
   /**
+   * POST /billing/paymentmethods/getforcustomer/
+   *
+   * READ-ONLY list of a SUMIT customer's saved payment methods (cards on file
+   * in SUMIT's PCI vault — we NEVER see the PAN). Item 8 of the CEO 2026-08-16
+   * SUMIT Phase 2 lane. Feeds the Account > Payments UI (item 9/10).
+   *
+   * Endpoint CONFIRMED per audit doc §3.3 line 131:
+   *   POST /billing/paymentmethods/getforcustomer/  { Customer:{ID}, Credentials }
+   *
+   * Response shape unverified against authenticated swagger — accept the two
+   * most likely list keys (Items / PaymentMethods / Data) and pass raw array
+   * items through to the caller (Account UI normalises for display).
+   *
+   * Safety contract:
+   *  - Not wired → returns {wired:false, items:[]} without any HTTP call.
+   *  - Never throws — a saved-methods read failure must never break Account UI.
+   */
+  async getForCustomer(sumitCustomerId: number | string): Promise<{
+    wired: boolean;
+    items: unknown[];
+    reason?: string;
+    rawResponse?: unknown;
+  }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, items: [], reason: 'SUMIT not enabled' };
+    if (!sumitCustomerId) return { wired: false, items: [], reason: 'missing sumitCustomerId' };
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Customer: { ID: sumitCustomerId },
+    };
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/paymentmethods/getforcustomer/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) {
+        return { wired: true, items: [], reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      }
+      const items = Array.isArray(parsed?.Items)
+        ? parsed.Items
+        : Array.isArray(parsed?.PaymentMethods)
+          ? parsed.PaymentMethods
+          : Array.isArray(parsed?.Data)
+            ? parsed.Data
+            : [];
+      return { wired: true, items, rawResponse: parsed };
+    } catch (err: any) {
+      logger.error('[SumitClient] getForCustomer network error', {
+        sumitCustomerId, err: err?.message,
+      });
+      return { wired: false, items: [], reason: `Network error: ${err?.message}` };
+    }
+  }
+
+  /**
+   * POST /accounting/documents/search/ (fallback /list/)
+   *
+   * READ-ONLY list of a SUMIT customer's fiscal documents (חשבונית מס/קבלה,
+   * receipts, credit docs). Item 8 of the CEO 2026-08-16 SUMIT Phase 2 lane —
+   * feeds "Documents / Invoices" on the Account UI (item 9).
+   *
+   * ⚠️ UNVERIFIED SWAGGER: the audit doc marks this endpoint as "body UNKNOWN,
+   * likely uses CoreTypedFilter/CoreTypedPaging". Body below is best-known
+   * shape; the fail-quiet network layer means a wrong shape returns an empty
+   * list — no user-facing crash. Confirm on first sandbox call.
+   *
+   * Safety contract:
+   *  - Not wired → returns {wired:false, items:[]} without any HTTP call.
+   *  - Never throws — a docs read failure must never break Account UI.
+   */
+  async listDocumentsForCustomer(sumitCustomerId: number | string, opts?: {
+    pageSize?: number;
+  }): Promise<{
+    wired: boolean;
+    items: unknown[];
+    reason?: string;
+    rawResponse?: unknown;
+  }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, items: [], reason: 'SUMIT not enabled' };
+    if (!sumitCustomerId) return { wired: false, items: [], reason: 'missing sumitCustomerId' };
+    // Best-known body — CoreTypedFilter around Customer.ID + a paging cap.
+    // UNTESTED-SWAGGER — see docs/PROVIDER_FINANCE_SUMIT_INTEGRATION_AUDIT_V2.md §3.2.
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Filter: { Customer: { ID: sumitCustomerId } },
+      Paging: { Page: 1, PageSize: opts?.pageSize ?? 50 },
+    };
+    try {
+      const res = await fetch(`${env.baseUrl}/accounting/documents/search/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) {
+        return { wired: true, items: [], reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      }
+      const items = Array.isArray(parsed?.Items)
+        ? parsed.Items
+        : Array.isArray(parsed?.Documents)
+          ? parsed.Documents
+          : Array.isArray(parsed?.Data)
+            ? parsed.Data
+            : [];
+      return { wired: true, items, rawResponse: parsed };
+    } catch (err: any) {
+      logger.error('[SumitClient] listDocumentsForCustomer network error', {
+        sumitCustomerId, err: err?.message,
+      });
+      return { wired: false, items: [], reason: `Network error: ${err?.message}` };
+    }
+  }
+
+  /**
+   * POST /billing/paymentmethods/remove/
+   *
+   * Remove a saved payment method from a SUMIT customer's vault. Item 10 of the
+   * CEO 2026-08-16 SUMIT Phase 2 lane. Called from the Account UI's per-card
+   * "Remove" button after a confirmation dialog.
+   *
+   * Endpoint CONFIRMED per audit doc §3.3 line 132; body shape UNKNOWN /
+   * UNTESTED-SWAGGER. Best-known shape below — the fail-quiet layer surfaces
+   * a non-2xx as a caller-visible reason without throwing.
+   *
+   * Safety contract:
+   *  - Not wired → returns {wired:false, removed:false} without any HTTP call.
+   *  - Never throws.
+   */
+  async removeSavedMethod(input: {
+    sumitCustomerId: number | string;
+    paymentMethodId: string;
+  }): Promise<{ wired: boolean; removed: boolean; reason?: string; rawResponse?: unknown }> {
+    const env = readEnv();
+    if (!isWired()) return { wired: false, removed: false, reason: 'SUMIT not enabled' };
+    if (!input.sumitCustomerId || !input.paymentMethodId) {
+      return { wired: true, removed: false, reason: 'sumitCustomerId and paymentMethodId required' };
+    }
+    const body = {
+      Credentials: { CompanyID: env.companyId, APIKey: env.apiKey },
+      Customer: { ID: input.sumitCustomerId },
+      PaymentMethodID: input.paymentMethodId,
+    };
+    try {
+      const res = await fetch(`${env.baseUrl}/billing/paymentmethods/remove/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Accept': 'application/json',
+          'X-PetWash-Sandbox': env.sandbox ? 'true' : 'false',
+        },
+        body: JSON.stringify(body),
+      });
+      let parsed: any = null;
+      try { parsed = await res.json(); } catch { /* non-JSON */ }
+      if (!res.ok) {
+        return { wired: true, removed: false, reason: `SUMIT returned ${res.status}`, rawResponse: parsed };
+      }
+      return { wired: true, removed: true, rawResponse: parsed };
+    } catch (err: any) {
+      logger.error('[SumitClient] removeSavedMethod network error', {
+        sumitCustomerId: input.sumitCustomerId, err: err?.message,
+      });
+      return { wired: false, removed: false, reason: `Network error: ${err?.message}` };
+    }
+  }
+
+  /**
    * POST /billing/paymentmethods/setforcustomer — save a card to a SUMIT customer so it
    * can be charged later (chargeRecurring / chargeSavedCard) with no re-entry. The token
    * comes from SUMIT's own tokenization (hosted page / JS widget) — we NEVER see the PAN.
