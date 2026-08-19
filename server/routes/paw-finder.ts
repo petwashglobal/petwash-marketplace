@@ -198,7 +198,30 @@ router.post('/upload', requireAuth, upload.single('photo'), async (req: any, res
     );
     const duplicate = dupCheck.rows[0] || null;
 
-    res.json({ filePath, hash, duplicate, fileSize });
+    // 2026-08-19 COMPETITIVE (WhatIDog gap): auto-identify species / breed /
+    // primary colour off the uploaded photo. Runs on the same Gemini stack
+    // ContentModerationService already uses; fail-quiet if the API key is
+    // absent. Client uses this to auto-fill the post form, so a distraught
+    // owner can post a lost-pet report in one tap. Attackers can supply
+    // arbitrary photos here — but that's already the case for the moderation
+    // pipeline, so we accept the same trust boundary. Runs after the dup check
+    // so a re-upload of an already-posted photo skips the model call.
+    let identification: import('../services/PetIdentificationService').PetIdentificationResult | undefined;
+    if (!duplicate) {
+      try {
+        const buffer = fs.readFileSync(uploadedPath);
+        const mimeType = req.file.mimetype || 'image/jpeg';
+        const { petIdentificationService } = await import('../services/PetIdentificationService');
+        identification = await petIdentificationService.identifyFromBuffer(buffer, mimeType);
+      } catch (identifyErr: any) {
+        logger.warn('[PawFinder] identifyFromBuffer failed (non-fatal)', {
+          err: identifyErr?.message,
+        });
+        identification = { ok: true, degraded: true, errorCode: 'gemini_error' };
+      }
+    }
+
+    res.json({ filePath, hash, duplicate, fileSize, identification });
   } catch (err: any) {
     logger.error('[PawFinder] upload failed', { error: err.message });
     res.status(500).json({ error: 'upload_failed' });
