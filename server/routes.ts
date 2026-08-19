@@ -17981,6 +17981,16 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // record (e.g. due to transient DB errors in the fire-and-forget hook).
   startSettlementReconciliationJob();
 
+  // ── SUMIT daily reconciler (Phase 2 Item 11 — CEO 2026-08-19) ────────────
+  // Walks a bounded sample of sumit_customers and diffs SUMIT-known documents
+  // vs local receipts/purchases/vouchers/washes. READ-ONLY on both sides;
+  // report is persisted to sumit_reconcile_runs. Scheduler runs at 03:00
+  // Asia/Jerusalem but is FEATURE-FLAGGED OFF by default
+  // (SUMIT_DAILY_RECONCILE_ENABLED) — the reconcile function short-circuits
+  // with status='flag_off' until the flag flips.
+  const { startSumitReconciliationJob } = await import('./services/SumitReconciliationService');
+  startSumitReconciliationJob();
+
   // Admin: run reconciliation on-demand
   app.post('/api/admin/finance/reconciliation/run-now', adminLimiter, async (req: any, res: any) => {
     const role = req.user?.customClaims?.role ?? req.user?.role;
