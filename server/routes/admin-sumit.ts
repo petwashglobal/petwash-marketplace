@@ -432,4 +432,46 @@ router.get(
   },
 );
 
+/**
+ * GET /api/admin/sumit/reconcile-report
+ *
+ * Phase 2 Item 11 (CEO 2026-08-19). Returns the last N runs of the daily
+ * SUMIT reconciler (SumitReconciliationService.runDailyReconcile) — including
+ * the mismatch rows the cron wrote to sumit_reconcile_runs. READ-ONLY: this
+ * endpoint never fires a SUMIT call, never modifies data.
+ *
+ * Super-admin gated: the mismatch report can enumerate uid ↔ sumitCustomerId
+ * pairs, which is operationally sensitive.
+ *
+ * Query params:
+ *   - limit: number of runs to return (default 10, max 50) — clamped by the
+ *     service. NEVER a userId — the reconciler walks server-side.
+ */
+router.get(
+  '/reconcile-report',
+  validateFirebaseToken,
+  loadUserRole,
+  checkAccessLevel(8),
+  requireSuperAdminGate,
+  async (req: Request, res: Response) => {
+    try {
+      const { getRecentReconcileRuns, isSumitDailyReconcileEnabled } =
+        await import('../services/SumitReconciliationService');
+      const rawLimit = Number(req.query.limit);
+      const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.floor(rawLimit) : 10;
+      const runs = await getRecentReconcileRuns(limit);
+      return res.json({
+        flag: {
+          enabled: isSumitDailyReconcileEnabled(),
+          envName: 'SUMIT_DAILY_RECONCILE_ENABLED',
+        },
+        runs,
+      });
+    } catch (err: any) {
+      logger.error('[AdminSumit] reconcile-report failed', { err: err?.message });
+      return res.status(500).json({ error: 'reconcile_report_failed' });
+    }
+  },
+);
+
 export default router;

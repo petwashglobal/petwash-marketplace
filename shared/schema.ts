@@ -11836,6 +11836,25 @@ export const sumitCustomers = pgTable("sumit_customers", {
   index("idx_sumit_customers_synced_at").on(table.syncedAt),
 ]);
 
+// ── SUMIT daily reconciler run log (Phase 2 Item 11, CEO 2026-08-19) ──────────
+// Persisted output of SumitReconciliationService.runDailyReconcile(). READ-ONLY
+// from SUMIT + local; this table stores the OUTPUT of each reconcile pass so
+// the admin endpoint GET /api/admin/sumit/reconcile-report can render the last
+// run's mismatches without re-hitting SUMIT. See migration 0118.
+export const sumitReconcileRuns = pgTable("sumit_reconcile_runs", {
+  id: serial("id").primaryKey(),
+  runAt: timestamp("run_at").defaultNow().notNull(),
+  checkedUsers: integer("checked_users").default(0).notNull(),
+  mismatches: integer("mismatches").default(0).notNull(),
+  skipped: integer("skipped").default(0).notNull(),
+  sampleSize: integer("sample_size").default(0).notNull(),
+  status: varchar("status", { length: 32 }).notNull(),        // 'ok' | 'dormant' | 'flag_off' | 'error'
+  reason: text("reason"),
+  report: jsonb("report").default(sql`'[]'::jsonb`).notNull(),
+}, (table) => [
+  index("idx_sumit_reconcile_runs_run_at").on(table.runAt),
+]);
+
 // ── Privilege / Prestige loyalty members (CTO P1-8, 2026-08-01) ─────────────────
 // Was a PHANTOM table created at request time in privilege-loyalty.ts (invisible to
 // migrations, schema-based backups, and types). Declared here + in migration 0112 so it
