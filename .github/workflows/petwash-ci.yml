@@ -1191,13 +1191,35 @@ jobs:
           # at workflow lines 456-460 (ensure_secret + Cloud Run mapping). The
           # dummies here only need to satisfy presence + format (length ≥ 32
           # for COOKIE_SECRET / PASS_TOKEN_SECRET, 64-hex for encryption keys).
+          # 2026-08-19: env flags below MUST mirror the real Cloud Run deploy's
+          # --set-env-vars (see the `gcloud run deploy ... --set-env-vars ...`
+          # invocation later in this file). Prior config passed NAYAX_ENABLED=false
+          # + SUMIT_ENABLED=false, which suppressed the exact prod-only init code
+          # paths that were hanging Cloud Run's startup probe → smoke test passed
+          # while production refused to boot for 4+ hours. Boot env drift between
+          # CI smoke and Cloud Run is the class of bug this alignment kills.
+          # PAYMENT_PROVIDER_MODE stays `mock` so real Nayax/SUMIT credentials
+          # aren't needed here — but every OTHER prod flag is now identical.
           docker run -d --name petwash-smoke \
             -p 18080:8080 \
             -e PORT=8080 \
             -e NODE_ENV=production \
             -e PAYMENT_PROVIDER_MODE=mock \
-            -e NAYAX_ENABLED=false \
-            -e SUMIT_ENABLED=false \
+            -e GOOGLE_PLACES_LIVE=false \
+            -e SHOP_ENABLED=true \
+            -e SHOP_CHECKOUT_ENABLED=false \
+            -e NAYAX_ENABLED=true \
+            -e SUMIT_ENABLED=true \
+            -e SUMIT_SANDBOX=false \
+            -e SMS_GLOBAL_HOURLY_LIMIT=120 \
+            -e SMS_GLOBAL_DAILY_LIMIT=400 \
+            -e IDENTITY_UNIFIED_ENABLED=true \
+            -e LYNX_ENABLED=true \
+            -e LYNX_SANDBOX=false \
+            -e LYNX_OPERATOR_ID=2002942146 \
+            -e UNIFIED_VERIFICATION_ENABLED=true \
+            -e UNIFIED_VERIFICATION_SIGNUP_ENABLED=true \
+            -e UNIFIED_VERIFICATION_LOGIN_ENABLED=true \
             -e PRESTIGE_QR_SECRET=smoke-dummy-prestige-do-not-use-this-value-anywhere \
             -e DOCUMENT_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
             -e TREASURY_FIELD_ENCRYPTION_KEY=0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef \
@@ -1206,8 +1228,12 @@ jobs:
             "${{ env.IMAGE }}:${{ github.sha }}"
 
           # ── Phase 1: wait for /health to return 200 ──────────────────────────
+          # Wait budget = 300s to MATCH Cloud Run's startupProbe budget
+          # (failureThreshold=30 * periodSeconds=10 + initialDelaySeconds=5).
+          # A 90 s cap here would keep hiding legitimate slow boots that
+          # Cloud Run would ALSO fail on. Cheap either way — first-200 wins.
           BOOT_OK=false
-          MAX_WAIT_SECONDS=90
+          MAX_WAIT_SECONDS=300
           POLL_INTERVAL=5
           MAX_ATTEMPTS=$((MAX_WAIT_SECONDS / POLL_INTERVAL))
           for i in $(seq 1 $MAX_ATTEMPTS); do
@@ -1220,19 +1246,22 @@ jobs:
               echo "  /health response: $(cat /tmp/smoke_health.json 2>/dev/null || echo '(empty)')"
               break
             fi
-            # Print recent container output on every failed attempt for fast diagnosis
-            docker logs petwash-smoke 2>&1 | tail -20
+            # Print recent container output on every failed attempt for fast diagnosis.
+            # This is the ONLY reliable window into what the prod container is
+            # actually doing during boot (Cloud Run's own logs need
+            # roles/logging.viewer which the github-actions SA does NOT have).
+            docker logs petwash-smoke 2>&1 | tail -25
           done
 
           if [ "$BOOT_OK" != "true" ]; then
             echo ""
-            echo "--- Full container logs (last 100 lines) ---"
-            docker logs petwash-smoke 2>&1 | tail -100
+            echo "--- FULL container logs (all lines, first→last) ---"
+            docker logs petwash-smoke 2>&1
             docker stop petwash-smoke || true
             docker rm   petwash-smoke || true
             echo ""
-            echo "❌ Container smoke test FAILED (Phase 1) — container did not bind port 8080 within 90 s."
-            echo "   Root cause is in the container logs above."
+            echo "❌ Container smoke test FAILED (Phase 1) — container did not bind port 8080 within ${MAX_WAIT_SECONDS} s."
+            echo "   Root cause is in the container logs above (grep for [Startup t= lines to see where boot stalled)."
             echo "   Fix the container startup error before re-running to avoid Cloud Run probe failures."
             exit 1
           fi
