@@ -2317,6 +2317,13 @@ jobs:
       # startup failures (probe timeouts, ENOENT secrets, bind errors, container
       # crashes) frequently log at DEFAULT/INFO/WARNING and would be hidden by
       # the default Logs Explorer ERROR filter.
+      # 2026-08-19 (post-#1966): CEO granted roles/logging.viewer to
+      # github-actions@***.iam.gserviceaccount.com after PR #1966's smoke test
+      # confirmed the boot passes in mock env but Cloud Run's real-env deploy
+      # still fails startup probe. With logging.viewer now in place, the
+      # `gcloud logging read` calls below finally succeed instead of returning
+      # `PERMISSION_DENIED`, so the next failed deploy's diagnostic step
+      # prints the container's actual boot stack trace into the CI log.
       - name: Diagnose failed revision (logs at ALL severities)
         if: failure()
         run: |
