@@ -84,9 +84,23 @@ async function redisDel(key: string): Promise<void> {
 
 class SmsAbuseDetector {
   constructor() {
-    if (SENDGRID_API_KEY) {
-      sgMail.setApiKey(SENDGRID_API_KEY);
-    }
+    // 2026-08-20 boot-crash fix: this constructor used to call
+    // `sgMail.setApiKey(SENDGRID_API_KEY)` but `sgMail` was NEVER imported
+    // into this file — dead code left behind by a refactor that migrated
+    // every alert-email path to `sendGuardedEmail` (imported line 29, called
+    // line 130). The undefined-symbol reference threw
+    //   ReferenceError: sgMail is not defined
+    //     at new SmsAbuseDetector (/app/server/services/SmsAbuseDetector.ts:88:7)
+    // the moment the module loaded in prod, exit(1)'d every Cloud Run
+    // revision at boot for 24+ hours (revisions 04191-kex through 04204-bej).
+    // The CI smoke test with mock env did not fire the module import early
+    // enough to catch it because SmsAbuseDetector is loaded lazily by the
+    // SMS routes.
+    //
+    // `sendGuardedEmail` handles SendGrid API-key init via
+    // `server/lib/sendgrid.ts:20` (module-load side effect). Nothing in this
+    // file needs to call `setApiKey` — leaving the constructor empty is the
+    // correct fix.
   }
 
   /**
