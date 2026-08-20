@@ -142,12 +142,14 @@ async function processEscrowAutoRelease(): Promise<void> {
 async function processStuckUnifiedBookings(): Promise<void> {
   const now = new Date();
   try {
-    // Trainer bookings stuck in pending for >45 minutes
+    // Trainer bookings stuck in pending for >45 minutes.
+    // NOTE: the column is `booking_status`, not `status` (shared/schema.ts:7287).
+    // Prod-runtime-errors regression 2026-08-20: querying `status` here 500'd every 60s.
     const trainerStuck = await db.execute(sql`
-      SELECT booking_id, status, created_at,
+      SELECT booking_id, booking_status, created_at,
         EXTRACT(EPOCH FROM (NOW() - created_at)) / 60 AS age_minutes
       FROM trainer_bookings
-      WHERE status IN ('pending', 'payment_pending')
+      WHERE booking_status IN ('pending', 'payment_pending')
         AND created_at < NOW() - INTERVAL '45 minutes'
       LIMIT 50
     `);
@@ -155,23 +157,23 @@ async function processStuckUnifiedBookings(): Promise<void> {
       SystemEventService.bookingStuck(
         'booking_expiry_unified',
         row.booking_id,
-        row.status,
+        row.booking_status,
         Math.round(row.age_minutes),
       );
       logger.warn('[BookingExpiry] Trainer booking stuck', {
-        bookingId: row.booking_id, status: row.status, ageMin: Math.round(row.age_minutes),
+        bookingId: row.booking_id, status: row.booking_status, ageMin: Math.round(row.age_minutes),
       });
     }
 
-    // Orphaned wallet holds — wallet_hold_key set but booking is >45min and still pending
-    // This catches the "payment taken but booking row never created" scenario
+    // Orphaned wallet holds — wallet_hold_key set but booking is >45min and still pending.
+    // Same column-name fix: booking_status not status.
     const orphaned = await db.execute(sql`
       SELECT tb.booking_id, tb.wallet_hold_cents, tb.created_at,
         EXTRACT(EPOCH FROM (NOW() - tb.created_at)) / 60 AS age_minutes
       FROM trainer_bookings tb
       WHERE tb.wallet_hold_key IS NOT NULL
         AND tb.wallet_debit_key IS NULL
-        AND tb.status IN ('pending', 'payment_pending', 'expired', 'cancelled')
+        AND tb.booking_status IN ('pending', 'payment_pending', 'expired', 'cancelled')
         AND tb.created_at < NOW() - INTERVAL '45 minutes'
         AND (tb.wallet_hold_cents IS NOT NULL AND tb.wallet_hold_cents > 0)
       LIMIT 50
