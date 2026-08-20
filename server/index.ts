@@ -625,6 +625,10 @@ const globalJsonParser = express.json({ limit: '10mb' }); // Increased limit for
 const RAW_BODY_WEBHOOK_PATHS = new Set([
   '/api/webhooks/sendgrid',      // SendGrid events — ECDSA over raw bytes
   '/api/webhooks/nayax-events',  // Monyx/kiosk events — HMAC over raw bytes
+  '/api/webhooks/whatsapp',      // Meta WhatsApp Cloud API — HMAC-SHA256 over
+                                 // raw bytes (x-hub-signature-256). If parsed
+                                 // by express.json() first, the signature
+                                 // check fails on every real Meta delivery.
 ]);
 app.use((req, res, next) =>
   (RAW_BODY_WEBHOOK_PATHS.has(req.path) || req.path.startsWith('/api/webhooks/nayax/'))
