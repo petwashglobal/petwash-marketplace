@@ -488,8 +488,29 @@ class AdminProviderReviewService {
         })
         .where(eq(providerApprovalQueue.id, applicationId));
 
-      logger.info('[AdminReview] Application approved', { 
-        applicationId, 
+      // SEV-1 fix (2026-08-20): mirror-write the SAME status into
+      // provider_applications, the table storage.getProviderApplicationByUser
+      // (server/storage.ts:5475) actually reads from — post-login.ts:80-112
+      // gated /provider-os vs /provider/pending on THIS row's status. Without
+      // the mirror, the queue said 'approved' but the reader saw 'pending' and
+      // an approved provider still routed to /provider/pending on next login.
+      // providerId in the queue IS the Firebase UID (see the walker/sitter/trainer
+      // joins on userId below), which is the same lookup key
+      // provider_applications uses (user_id). Mirroring here keeps ONE table
+      // of truth for post-login routing without touching any reader.
+      try {
+        await db
+          .update(providerApplications)
+          .set({ status: 'approved', updatedAt: new Date() })
+          .where(eq(providerApplications.userId, review.application.providerId));
+      } catch (mirrorErr: any) {
+        logger.warn('[AdminReview] provider_applications mirror-write failed (non-blocking)', {
+          applicationId, providerId: review.application.providerId, error: mirrorErr?.message,
+        });
+      }
+
+      logger.info('[AdminReview] Application approved', {
+        applicationId,
         reviewerId,
         providerId: review.application.providerId,
         platform: review.application.platform,
@@ -689,8 +710,24 @@ class AdminProviderReviewService {
         })
         .where(eq(providerApprovalQueue.id, applicationId));
 
-      logger.info('[AdminReview] Application rejected', { 
-        applicationId, 
+      // SEV-1 fix (2026-08-20): mirror-write the rejected status into
+      // provider_applications so post-login.ts:181 routes to /provider/rejected.
+      // Same rationale as the approve path — the reader in post-login.ts uses
+      // provider_applications, not the queue; without this mirror a rejected
+      // provider would still land on /provider/pending on next login.
+      try {
+        await db
+          .update(providerApplications)
+          .set({ status: 'rejected', updatedAt: new Date() })
+          .where(eq(providerApplications.userId, review.application.providerId));
+      } catch (mirrorErr: any) {
+        logger.warn('[AdminReview] provider_applications mirror-write failed (non-blocking)', {
+          applicationId, providerId: review.application.providerId, error: mirrorErr?.message,
+        });
+      }
+
+      logger.info('[AdminReview] Application rejected', {
+        applicationId,
         reviewerId,
         reason: rejectionReason,
       });
@@ -799,6 +836,14 @@ class AdminProviderReviewService {
     reason: string
   ): Promise<{ success: boolean; messageHe: string; messageEn: string }> {
     try {
+      // Fetch the providerId (Firebase UID) BEFORE the update so we can
+      // mirror-write to provider_applications in the same logical operation.
+      const [queueRow] = await db
+        .select({ providerId: providerApprovalQueue.providerId })
+        .from(providerApprovalQueue)
+        .where(eq(providerApprovalQueue.id, applicationId))
+        .limit(1);
+
       await db
         .update(providerApprovalQueue)
         .set({
@@ -809,8 +854,26 @@ class AdminProviderReviewService {
         })
         .where(eq(providerApprovalQueue.id, applicationId));
 
-      logger.info('[AdminReview] Application put on hold', { 
-        applicationId, 
+      // SEV-1 fix (2026-08-20): mirror-write to provider_applications so the
+      // post-login reader agrees with the queue. provider_applications has no
+      // 'on_hold' status value; 'under_review' keeps the applicant on
+      // /provider/pending (see post-login.ts:100), which matches the intent
+      // of an on-hold review.
+      if (queueRow?.providerId) {
+        try {
+          await db
+            .update(providerApplications)
+            .set({ status: 'under_review', updatedAt: new Date() })
+            .where(eq(providerApplications.userId, queueRow.providerId));
+        } catch (mirrorErr: any) {
+          logger.warn('[AdminReview] provider_applications mirror-write failed (non-blocking)', {
+            applicationId, providerId: queueRow.providerId, error: mirrorErr?.message,
+          });
+        }
+      }
+
+      logger.info('[AdminReview] Application put on hold', {
+        applicationId,
         reviewerId,
         reason,
       });

@@ -15,7 +15,7 @@ import { sql, eq } from 'drizzle-orm';
 import { pool, db } from '../db';
 import { userConsents, authEvents, users, smsEvidence, otpEvents } from '@shared/schema';
 import { storage } from '../storage';
-import { ensureUserProvisioned } from '../services/authBootstrap';
+import { ensureUserProvisioned, AuthBootstrapUsersRowFailed } from '../services/authBootstrap';
 import { validateEmailVerifiedToken } from '../lib/emailVerifiedToken';
 import { mintMfaLoginToken } from '../lib/mfaLoginToken';
 
@@ -979,7 +979,24 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
     }
 
     // Heal/provision for ALL phone sessions (new AND existing) — orphan-safe.
-    await ensureUserProvisioned(user.uid, { channel: 'phone', phone: formattedPhone, email: null });
+    // SEV-1 hard gate (2026-08-20): the users-row branch of authBootstrap
+    // now throws AuthBootstrapUsersRowFailed when the row cannot be proven
+    // present; we translate that to HTTP 502 { code: 'DB_UNAVAILABLE' } so
+    // the client retries deterministically instead of continuing into a
+    // silent-broken state (whoami 404, wallet crash, booking blocked).
+    try {
+      await ensureUserProvisioned(user.uid, { channel: 'phone', phone: formattedPhone, email: null });
+    } catch (bootErr: any) {
+      if (bootErr instanceof AuthBootstrapUsersRowFailed) {
+        logger.error('[PhoneAuth] users row bootstrap HARD-FAILED — returning 502', { uid: user.uid });
+        return res.status(502).json({
+          ok: false,
+          error: 'user_bootstrap_failed',
+          code: 'DB_UNAVAILABLE',
+        });
+      }
+      throw bootErr;
+    }
 
     const customToken = await adminAuth.createCustomToken(user.uid, {
       phone: formattedPhone,

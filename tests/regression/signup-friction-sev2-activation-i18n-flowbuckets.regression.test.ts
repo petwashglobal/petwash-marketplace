@@ -135,7 +135,10 @@ describe('signup-friction 2026-08-19 SEV-2 fixes', () => {
       const end = AUTH_SMS.indexOf('};', start);
       expect(end).toBeGreaterThan(start);
       const block = AUTH_SMS.slice(start, end);
-      expect(block).toMatch(/prestige:\s*['"]\/member\/dashboard['"]/);
+      // SEV-1 fix (2026-08-20): /member/dashboard was a 404 — the canonical
+      // members' route is /prestige/home. See auth-wiring-sev1-five-gaps
+      // regression test for the pin against the new value.
+      expect(block).toMatch(/prestige:\s*['"]\/prestige\/home['"]/);
       expect(block).toMatch(/provider:\s*['"]\/provider\/dashboard['"]/);
       expect(block).toMatch(/guest:\s*['"]\/egift['"]/);
       expect(block).toMatch(/booking:\s*['"]\/booking['"]/);
