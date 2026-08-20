@@ -9,6 +9,7 @@
  */
 
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { auth } from '@/lib/firebase';
 
 export interface ProviderArrivingEvent {
   requestId: string;
@@ -64,10 +65,15 @@ export function useBookingEvents(requestId?: string): BookingEventsState {
     const ws = new WebSocket(`${proto}//${window.location.host}/ws/match`);
     wsRef.current = ws;
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       if (!activeRef.current) { ws.close(); return; }
       setState(s => ({ ...s, connected: true }));
-      ws.send(JSON.stringify({ type: 'SUBSCRIBE_BOOKING', requestId }));
+      // Server now requires Firebase idToken + booking-participant match
+      // (owner or provider) to accept SUBSCRIBE_BOOKING. Previously any
+      // anonymous connection could iterate requestIds and tap the stream.
+      let idToken: string | undefined;
+      try { idToken = await auth.currentUser?.getIdToken(); } catch { /* best-effort */ }
+      ws.send(JSON.stringify({ type: 'SUBSCRIBE_BOOKING', requestId, idToken }));
     };
 
     ws.onmessage = (event) => {
