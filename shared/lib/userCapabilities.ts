@@ -78,6 +78,15 @@ export interface UserCapabilities {
   };
 
   /**
+   * STAFF — internal-role capability. Authority is a row in
+   * staff_access_requests with status = 'approved'. Additive: a staffer
+   * keeps their customer/loyalty capability at the same time.
+   */
+  staff: {
+    active: boolean;
+  };
+
+  /**
    * ADMIN — canonical source is the isSuperAdminVerified check (email in
    * SUPER_ADMIN_EMAILS allowlist AND Firebase email_verified). Regular
    * admin roles come from users.role ∈ ADMIN_ROLES.
@@ -95,6 +104,7 @@ export function emptyCapabilities(userId = ''): UserCapabilities {
     identity: { emailVerified: false, mobileVerified: false, activated: false },
     prestige: { enrolled: false, tier: null, memberId: null },
     provider: { applicant: false, active: false, applicationStatus: null, services: [] },
+    staff: { active: false },
     admin: { admin: false, superAdmin: false },
   };
 }
@@ -104,9 +114,27 @@ export const hasCustomerCapability      = (c: UserCapabilities): boolean => c.id
 export const hasPrestigeCapability      = (c: UserCapabilities): boolean => c.prestige.enrolled;
 export const hasProviderCapability      = (c: UserCapabilities): boolean => c.provider.active;
 export const hasApplicantCapability     = (c: UserCapabilities): boolean => c.provider.applicant;
+export const hasStaffCapability         = (c: UserCapabilities): boolean => c.staff.active;
+export const hasAdminCapability         = (c: UserCapabilities): boolean => c.admin.admin || c.admin.superAdmin;
 export const hasWalkerCapability        = (c: UserCapabilities): boolean =>
   c.provider.active && c.provider.services.includes('dog_walking');
 export const hasSitterCapability        = (c: UserCapabilities): boolean =>
   c.provider.active && c.provider.services.includes('pet_sitting');
 export const hasTrainerCapability       = (c: UserCapabilities): boolean =>
   c.provider.active && c.provider.services.includes('training');
+
+/**
+ * Canonical roles list for a capability set. Order is fixed:
+ * `['customer','loyalty','provider','staff','admin']` — only the true
+ * capabilities appear. Used by /api/session/whoami so callers see every
+ * capability the user actually holds, not the single mutable users.role.
+ */
+export function rolesFromCapabilities(c: UserCapabilities): string[] {
+  const out: string[] = [];
+  if (hasCustomerCapability(c))  out.push('customer');
+  if (hasPrestigeCapability(c))  out.push('loyalty');
+  if (hasProviderCapability(c))  out.push('provider');
+  if (hasStaffCapability(c))     out.push('staff');
+  if (hasAdminCapability(c))     out.push('admin');
+  return out;
+}

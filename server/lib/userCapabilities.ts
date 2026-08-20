@@ -1,50 +1,67 @@
 /**
  * User capabilities aggregator — the additive multi-role authority.
  *
- * Reads from the existing per-capability tables and returns a boolean
- * shape for downstream authorization/routing decisions. Deliberately
- * additive: an account can hold `customer + loyalty + provider` or
+ * Reads from the existing per-capability tables and returns the CANONICAL
+ * nested UserCapabilities shape declared in `shared/lib/userCapabilities.ts`.
+ * There is ONE shape shared by server + client — no drift, no adapters.
+ *
+ * Additive: an account can hold `customer + loyalty + provider` or
  * `customer + staff` simultaneously — no capability replaces another.
  *
  * Source tables (all already declared + populated in production):
- *   customer  — always true (base account capability)
- *   loyalty   — loyalty_profiles OR privilege_members (either row = enrolled)
- *   provider  — provider_applications.status = 'approved'
- *   staff     — staff_access_requests.status = 'approved'
- *   admin     — admin_users row OR SUPER_ADMIN_EMAILS allowlist match
+ *   identity   — users.email_verified + users.phone_verified
+ *                (activated ⇔ BOTH verified — the PR-AUTH-IDENTITY-1 gate)
+ *   prestige   — privilege_members (by email) — tier + memberId
+ *   provider   — provider_applications.status (+ provider_services for `services`)
+ *   staff      — staff_access_requests.status = 'approved'
+ *   admin      — admin_users row OR SUPER_ADMIN_EMAILS allowlist (verified)
  *
- * Never reads `users.role`. That scalar column is legacy — kept for
- * display / routing convenience — and MUST NOT be treated as the
- * capability authority. A provider promotion that overwrites `role`
- * from `customer` to `provider` (see server/routes/post-login.ts) is a
- * DISPLAY convenience that this aggregator ignores; the capability
- * calculation would return { customer: true, provider: true } either
- * way, because it sources from the provider_applications row.
+ * Never reads `users.role`. That scalar column is a legacy cache — kept
+ * for display / routing convenience — and MUST NOT be treated as the
+ * capability authority. A provider promotion that used to overwrite
+ * `role` from `customer` to `provider` was removed on 2026-08-20 as part
+ * of the multi-role wiring fixes; this aggregator sourced from
+ * provider_applications the whole time so nothing changes for callers.
  *
- * Fails closed: on any per-source query error the aggregator drops that
- * capability to false, so a Redis / Postgres blip cannot silently grant
- * privilege. Customer stays true because it is the base capability.
+ * Fails soft: on any per-source query error the aggregator leaves that
+ * sub-capability at its default (false / empty), so a Redis / Postgres
+ * blip cannot silently grant privilege.
  */
 
-import { eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 import { db } from '../db';
-import { users, providerApplications, staffAccessRequests, adminUsers, privilegeMembers } from '../../shared/schema';
-import { loyaltyProfiles } from '../../shared/schema-loyalty';
+import {
+  users,
+  providerApplications,
+  staffAccessRequests,
+  adminUsers,
+  privilegeMembers,
+} from '../../shared/schema';
+import { providerServices } from '../../shared/schema-provider-services';
 import { logger } from './logger';
+import {
+  emptyCapabilities,
+  type ProviderApplicationStatus,
+  type ProviderServiceType,
+  type UserCapabilities,
+} from '@shared/lib/userCapabilities';
 
-// privilege_members links to a user by `email` (there is no userId FK on that
-// table — see shared/schema.ts:11825+). loyalty_profiles is the primary
-// truth for "has loyalty capability"; privilege_members is a secondary
-// lookup by email for Prestige-branded enrollment.
+// Re-export the canonical type so downstream `import { UserCapabilities }
+// from '../lib/userCapabilities'` sites keep resolving to the SAME shape
+// the client uses.
+export type { UserCapabilities } from '@shared/lib/userCapabilities';
 
-export interface UserCapabilities {
-  userId: string;
-  customer: boolean;
-  loyalty: boolean;
-  provider: boolean;
-  staff: boolean;
-  admin: boolean;
-}
+// Provider service rows only count toward `services` when their status is
+// in one of the two "approved for real work" buckets (matches me-status.ts).
+const APPROVED_SERVICE_STATUSES = ['approved_for_booking', 'approved_for_payout'] as const;
+
+// Application rows in these statuses mean "user has an in-flight application"
+// (applicant = true) but is NOT yet an active provider.
+const APPLICANT_STATUSES = new Set<ProviderApplicationStatus>([
+  'draft',
+  'pending_review',
+  'under_review',
+]);
 
 function isSuperAdminEmail(email: string | null | undefined): boolean {
   if (!email) return false;
@@ -55,61 +72,156 @@ function isSuperAdminEmail(email: string | null | undefined): boolean {
   return list.includes(email.trim().toLowerCase());
 }
 
-export async function computeCapabilities(userId: string): Promise<UserCapabilities> {
-  const caps: UserCapabilities = {
-    userId,
-    customer: true,
-    loyalty: false,
-    provider: false,
-    staff: false,
-    admin: false,
+export interface GetUserCapabilitiesOptions {
+  /**
+   * When the caller has already run the stricter isSuperAdminVerified check
+   * (email in SUPER_ADMIN_EMAILS AND Firebase email_verified === true),
+   * pass true so the aggregator surfaces `admin.superAdmin = true`. Without
+   * verification we still consult the allowlist as a soft signal for
+   * `admin.admin`, but never mark superAdmin from an unverified email.
+   */
+  superAdminVerified?: boolean;
+}
+
+/**
+ * getUserCapabilities — the ONE aggregator. Returns the canonical nested
+ * UserCapabilities shape from shared/lib/userCapabilities.ts.
+ *
+ * On complete failure returns the empty-capabilities shape (least privilege)
+ * for the given userId — never throws.
+ */
+export async function getUserCapabilities(
+  userId: string,
+  opts: GetUserCapabilitiesOptions = {},
+): Promise<UserCapabilities> {
+  const caps = emptyCapabilities(userId);
+  if (!userId) return caps;
+
+  // Base user row — needed for email lookups (prestige + admin) and for
+  // the identity capability. Fail-soft: an empty user row leaves all
+  // capabilities at their defaults.
+  let email: string | null = null;
+  let emailVerified = false;
+  let phoneVerified = false;
+  try {
+    const [row] = await db
+      .select({
+        email: users.email,
+        emailVerified: users.emailVerified,
+        phoneVerified: users.phoneVerified,
+      })
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    if (row) {
+      email = row.email ?? null;
+      emailVerified = !!row.emailVerified;
+      phoneVerified = !!row.phoneVerified;
+    }
+  } catch (e: any) {
+    logger.warn('[Capabilities] user lookup failed (defaulting empty)', { userId, error: e?.message });
+  }
+
+  caps.identity = {
+    emailVerified,
+    mobileVerified: phoneVerified,
+    activated: emailVerified && phoneVerified,
   };
 
-  const [userRow] = await db.select({ email: users.email })
-    .from(users).where(eq(users.id, userId)).limit(1).catch(() => [] as any);
-  const email = userRow?.email ?? null;
-
   await Promise.all([
+    // ── PRESTIGE ─────────────────────────────────────────────────────────
     (async () => {
+      if (!email) return;
       try {
-        const [row] = await db.select({ userId: loyaltyProfiles.userId })
-          .from(loyaltyProfiles).where(eq(loyaltyProfiles.userId, userId)).limit(1);
-        if (row) { caps.loyalty = true; return; }
-        // Fallback lookup by email for Prestige-branded enrollment rows that
-        // predate the loyalty_profiles-per-user convention.
-        if (email) {
-          const [priv] = await db.select({ id: privilegeMembers.id })
-            .from(privilegeMembers).where(eq(privilegeMembers.email, email)).limit(1);
-          if (priv) caps.loyalty = true;
+        const [row] = await db
+          .select({
+            memberId: privilegeMembers.memberId,
+            tier: privilegeMembers.tier,
+            status: privilegeMembers.status,
+          })
+          .from(privilegeMembers)
+          .where(eq(privilegeMembers.email, email))
+          .limit(1);
+        if (row && (row.status ?? 'active') === 'active') {
+          caps.prestige = {
+            enrolled: true,
+            tier: row.tier ?? null,
+            memberId: row.memberId ?? null,
+          };
         }
       } catch (e: any) {
-        logger.warn('[Capabilities] loyalty lookup failed (defaulting false)', { userId, error: e?.message });
+        logger.warn('[Capabilities] prestige lookup failed (defaulting false)', { userId, error: e?.message });
       }
     })(),
+
+    // ── PROVIDER ─────────────────────────────────────────────────────────
     (async () => {
       try {
-        const [row] = await db.select({ status: providerApplications.status })
-          .from(providerApplications).where(eq(providerApplications.userId, userId)).limit(1);
-        caps.provider = row?.status === 'approved';
+        const [row] = await db
+          .select({ status: providerApplications.status })
+          .from(providerApplications)
+          .where(eq(providerApplications.userId, userId))
+          .limit(1);
+        const status = (row?.status ?? null) as ProviderApplicationStatus | null;
+        const active = status === 'approved';
+        const applicant = !!status && APPLICANT_STATUSES.has(status);
+        caps.provider.applicationStatus = status;
+        caps.provider.active = active;
+        caps.provider.applicant = applicant;
+
+        if (active) {
+          try {
+            const svcRows = await db
+              .select({ svc: providerServices.serviceType })
+              .from(providerServices)
+              .where(and(
+                eq(providerServices.providerId, userId),
+                inArray(providerServices.serviceStatus, APPROVED_SERVICE_STATUSES as unknown as string[]),
+              ));
+            caps.provider.services = svcRows
+              .map((r) => r.svc as ProviderServiceType)
+              .filter(Boolean);
+          } catch (e: any) {
+            logger.warn('[Capabilities] provider services lookup failed (defaulting empty)', { userId, error: e?.message });
+          }
+        }
       } catch (e: any) {
         logger.warn('[Capabilities] provider lookup failed (defaulting false)', { userId, error: e?.message });
       }
     })(),
+
+    // ── STAFF ────────────────────────────────────────────────────────────
     (async () => {
       try {
-        const [row] = await db.select({ status: staffAccessRequests.status })
-          .from(staffAccessRequests).where(eq(staffAccessRequests.userId, userId)).limit(1);
-        caps.staff = row?.status === 'approved';
+        const [row] = await db
+          .select({ status: staffAccessRequests.status })
+          .from(staffAccessRequests)
+          .where(eq(staffAccessRequests.userId, userId))
+          .limit(1);
+        caps.staff.active = row?.status === 'approved';
       } catch (e: any) {
         logger.warn('[Capabilities] staff lookup failed (defaulting false)', { userId, error: e?.message });
       }
     })(),
+
+    // ── ADMIN ────────────────────────────────────────────────────────────
     (async () => {
       try {
-        if (isSuperAdminEmail(email)) { caps.admin = true; return; }
-        const [row] = await db.select({ id: adminUsers.id })
-          .from(adminUsers).where(eq(adminUsers.email, email ?? '')).limit(1);
-        if (row) caps.admin = true;
+        // Row in admin_users → admin. SUPER_ADMIN_EMAILS allowlist → admin
+        // as a soft signal; superAdmin only when the caller has verified
+        // the email via isSuperAdminVerified (Firebase email_verified === true).
+        if (email) {
+          const [row] = await db
+            .select({ id: adminUsers.id })
+            .from(adminUsers)
+            .where(eq(adminUsers.email, email))
+            .limit(1);
+          if (row) caps.admin.admin = true;
+        }
+        if (isSuperAdminEmail(email)) {
+          caps.admin.admin = true;
+          if (opts.superAdminVerified) caps.admin.superAdmin = true;
+        }
       } catch (e: any) {
         logger.warn('[Capabilities] admin lookup failed (defaulting false)', { userId, error: e?.message });
       }

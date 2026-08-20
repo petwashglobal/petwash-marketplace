@@ -182,14 +182,14 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
       return { nextUrl: '/provider/rejected', reason: 'PROVIDER_REJECTED', profileStatus: 'rejected', role, userStatus };
     }
     if (providerApp.status === 'approved') {
-      // postLoginDecider auto-upgrades effectiveRole to 'provider' when userStatus='provider_active'.
-      // If role is still not 'provider' here, fall through to the default routing rather than
-      // directing a non-provider user to the provider dashboard.
-      if (role === 'provider') {
-        return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
-      }
-      // Role mismatch — data inconsistency; route to home and let post-login re-sync on next call.
-      return { nextUrl: '/prestige/home', reason: 'ROLE_SYNC_PENDING', profileStatus: 'pending_review', role, userStatus };
+      // MULTI-ROLE CONTRACT (2026-08-20): route by CAPABILITY, not by the
+      // mutable users.role scalar. postLoginDecider no longer overwrites
+      // role='customer' → 'provider' on approval (shared/lib/userCapabilities.ts
+      // §4-7). An approved application row IS the provider capability, so
+      // route straight to /provider-os. The client mode switch
+      // (client/src/lib/uiMode.ts) hands the same user back to customer
+      // surfaces without any server-side role rewrite.
+      return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
     }
   }
 
@@ -756,92 +756,45 @@ export async function postLoginDecider(req: Request, res: Response) {
     }
 
     if (userStatus === 'provider_active' && effectiveRole !== 'provider') {
+      // MULTI-ROLE CONTRACT (2026-08-20): DO NOT MUTATE users.role on
+      // provider approval. The old code overwrote role='customer' →
+      // 'provider' (and rewrote Firebase custom claims to match), which
+      // silently DELETED the user's customer capability from every
+      // downstream `role === 'customer'` check — the exact anti-pattern
+      // that shared/lib/userCapabilities.ts:4-7 forbids ("ONE user.
+      // Additive capabilities. No mutation of user.role on mode switch.")
+      // and that .claude/skills/petwash-provider-onboarding/SKILL.md:8
+      // requires ("separate status, separate permissions, separate risk").
+      //
+      // The additive capability aggregator (server/lib/userCapabilities.ts)
+      // sources provider capability from provider_applications.status ===
+      // 'approved' directly, so no cache-write is needed for the UI to see
+      // the provider capability. `providerApprovedAt` is still stamped as
+      // a display-convenience timestamp only. The role upgrade audit event
+      // is preserved — it now records the CAPABILITY grant, not a
+      // destructive role overwrite.
       const previousRole = effectiveRole;
-      updates.role = 'provider';
       updates.providerApprovedAt = new Date();
-      effectiveRole = 'provider';
 
-      // Sync Firebase custom claims so the client picks up the new role on
-      // its next token refresh — otherwise the user has to log out + back
-      // in to see their approved-provider state. Best-effort + audited.
-      // PR-CLAIMS-SYNC: also write `accountType: 'provider'` so the client
-      // ID token + RBAC middleware (provider-applications.ts:1015-1023)
-      // both see a consistent shape. Lane B-B audit found this gap caused
-      // 403s and stale UI for hours after server-side approval.
-      let claimsWritten = false;
-      try {
-        const fbAdminModule = await import('../lib/firebase-admin');
-        const fbAuth = fbAdminModule.auth;
-        if (fbAuth) {
-          const userRec = await fbAuth.getUser(userId);
-          const existingClaims = (userRec.customClaims || {}) as Record<string, any>;
-          const needsUpdate = existingClaims.role !== 'provider'
-            || existingClaims.accountType !== 'provider';
-          if (needsUpdate) {
-            await fbAuth.setCustomUserClaims(userId, {
-              ...existingClaims,
-              role: 'provider',
-              accountType: 'provider',
-            });
-            claimsWritten = true;
-            logger.info('[PostLogin] ✅ Firebase claims synced to role=provider, accountType=provider', {
-              userId,
-              previousRole,
-              previousAccountType: existingClaims.accountType,
-            });
-          }
-        }
-      } catch (claimsErr) {
-        logger.warn('[PostLogin] Failed to sync Firebase claims to provider (non-blocking)', {
-          userId,
-          error: String(claimsErr),
-        });
-      }
-
-      // PR-CLAIMS-SYNC: push force_token_refresh notification so the
-      // client refreshes its ID token within ~100ms instead of waiting
-      // for the natural Firebase ~1h refresh window. Closes the
-      // visible "approved on server but UI still shows customer" gap.
-      // Fail-soft: notification helper swallows errors internally.
-      if (claimsWritten) {
-        try {
-          const { sendForceTokenRefreshNotification } = await import('../lib/sendForceTokenRefresh');
-          await sendForceTokenRefreshNotification({
-            userId,
-            reason: 'provider_approved',
-            actionUrl: '/provider/dashboard',
-            preferredLanguage: (u as any)?.preferredLanguage,
-          });
-        } catch (notifErr) {
-          logger.warn('[PostLogin] force_token_refresh notification failed (non-blocking)', {
-            userId,
-            error: String(notifErr),
-          });
-        }
-      }
-
-      // Audit-log the silent role escalation. Drift between providerApp.status
-      // and users.role had been auto-fixed but never recorded — that gap
-      // hid real provider-onboarding outcomes from the audit trail.
       try {
         await logAuditEvent({
           actorUserId: userId,
-          actorRole: 'provider',
-          actionType: 'POST_LOGIN_ROLE_UPGRADE',
+          actorRole: previousRole || 'customer',
+          actionType: 'PROVIDER_CAPABILITY_ACTIVATED',
           targetType: 'user',
           targetId: userId,
           ip: getClientIP(req) || req.ip || '',
           userAgent: req.headers['user-agent'] || '',
           traceId: (req as any).traceId || '',
           metadata: {
-            from: previousRole,
-            to: 'provider',
+            previousRole,
             reason: 'provider_application_approved',
             providerApplicationId: providerApp?.id ?? null,
+            note: 'Additive capability grant — users.role NOT mutated (multi-role contract §4-7).',
           },
         });
       } catch (auditErr) {
-        logger.warn('[PostLogin] Failed to audit-log role upgrade (non-blocking)', {
+        logger.warn('[PostLogin] Failed to audit-log provider capability activation (non-blocking)', {
           userId,
           error: String(auditErr),
         });

@@ -186,6 +186,13 @@ import adminMemberDiscountRoutes from "./routes/admin-member-discount";
 import adminApplicationsRoutes from "./routes/admin-applications";
 import memberDiscountRoutes from "./routes/member-discount";
 import meStatusRoutes from "./routes/me-status";
+import meCapabilitiesRoutes from "./routes/me-capabilities";
+// Canonical multi-role aggregator — used by whoami to emit `roles: string[]`
+// derived from every true capability, so ONE identity is visible across all
+// journeys (customer / loyalty / provider / staff / admin) instead of the
+// single mutable users.role scalar. See shared/lib/userCapabilities.ts §4-7.
+import { getUserCapabilities } from "./lib/userCapabilities";
+import { rolesFromCapabilities } from "@shared/lib/userCapabilities";
 import serviceSessionRoutes from "./routes/service-sessions";
 // Control Tower admin panels (2026-06-20) — read-only views over existing ledgers/engines.
 import adminPaymentsControlRoutes from "./routes/admin-payments-control";
@@ -2606,7 +2613,30 @@ self.addEventListener('notificationclick', (event) => {
       const activeFlow: 'prestige' | 'provider' | 'guest' | 'booking' | 'general' =
         rawIntent === 'prestige' || rawIntent === 'provider' || rawIntent === 'guest' || rawIntent === 'booking'
           ? rawIntent : 'general';
-      const roles: string[] = Array.from(new Set([role].filter(Boolean)));
+
+      // roles[] — ONE IDENTITY across all journeys. Derived from the
+      // canonical additive capability aggregator so every true capability
+      // (customer, loyalty, provider, staff, admin) contributes a role
+      // string in the fixed order the client contract expects. Replaces
+      // the old single-role `[role]` collapse (violates octopus vision
+      // v2 amendment §53). Fails soft: on aggregator error we degrade to
+      // the legacy single-role list so whoami never 500s over multi-role
+      // reads.
+      let roles: string[];
+      try {
+        const caps = await getUserCapabilities(decoded.uid, { superAdminVerified: superAdmin });
+        roles = rolesFromCapabilities(caps);
+        // Preserve the scalar `role` in the array too when the aggregator
+        // reports nothing yet (fresh user, verifications not persisted) —
+        // avoids regressing consumers that treat an empty roles[] as
+        // "not authenticated".
+        if (roles.length === 0 && role) roles = [role];
+      } catch (rolesErr) {
+        logger.warn('[Whoami] roles aggregation failed — degrading to single-role', {
+          uid: decoded.uid, err: (rolesErr as any)?.message,
+        });
+        roles = Array.from(new Set([role].filter(Boolean)));
+      }
 
       const ip = req.ip || req.socket?.remoteAddress || 'unknown';
       const userAgent = req.headers['user-agent'] || 'unknown';
@@ -12539,6 +12569,11 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/member', apiLimiter, memberDiscountRoutes);
   // Single status source-of-truth (MASTER BIBLE §3/§9): GET /api/me/status
   app.use('/api/me', apiLimiter, meStatusRoutes);
+  // Canonical additive capabilities endpoint (CEO 2026-08-18 §35.4 + §6):
+  // GET /api/me/capabilities — server is authority; client never invents.
+  // The router internally applies validateFirebaseToken on the /capabilities
+  // handler, so an unauthenticated call returns 401 (never 200 with empty caps).
+  app.use('/api/me', apiLimiter, meCapabilitiesRoutes);
   // Canonical service-session read adapter (CEO 2026-08-18 §12/§13):
   // GET /api/service-sessions/:bookingRef — projects booking_requests
   // (and, in follow-up PRs, walk_bookings + pettrek_trips) into a
