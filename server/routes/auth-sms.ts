@@ -67,7 +67,13 @@ const FLOW_REDIRECTS: Record<AuthFlow, string> = {
   // (SignUpLuxury's default) landed on a 404 immediately after verify. The
   // canonical members' home is /prestige/home (matches post-login.ts:168,230).
   prestige: '/prestige/home',
-  provider: '/provider/dashboard',
+  // SEV-1 fix (evil-hunt 2026-08-20): was '/provider/dashboard' — which is
+  // only a REDIRECT stub in client/src/App.tsx (→ /provider-os). Round-
+  // tripping through a redirect right after the session cookie is minted
+  // races the auth guard (wouter renders the redirect before the cookie
+  // propagates and the app RequireAuth kicks the user back to /signin).
+  // The canonical approved-provider home is /provider-os per post-login.ts:192.
+  provider: '/provider-os',
   guest: '/egift',
   // 'booking' users came in from /booking — return them to it after auth so
   // the interrupted booking flow resumes at the step they left it on.
@@ -75,10 +81,12 @@ const FLOW_REDIRECTS: Record<AuthFlow, string> = {
   // 'activation' users came in from /activate-account (email-first signups
   // finishing the phone half). Return them to complete the second half.
   activation: '/activate-account',
-  // 'general' is SignUpLuxury's default when no explicit flow was passed —
-  // land them on the app root and let the standard whoami-based routing
-  // pick their real destination.
-  general: '/',
+  // 'general' is SignUpLuxury's default when no explicit flow was passed.
+  // Pre-fix this was '/' (marketing homepage) — a returning-member SMS login
+  // landed on the marketing page instead of their member home. Use /home
+  // (existing route in App.tsx:898); the client's post-login coordinator
+  // still overrides this with the whoami-based decision when it fires.
+  general: '/home',
 };
 const DEFAULT_FLOW: AuthFlow = 'prestige';
 

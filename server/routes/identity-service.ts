@@ -248,7 +248,7 @@ router.post("/login/standard", async (req, res) => {
       // Create Firebase session cookie for admin panel access
       try {
         const { createSessionCookie } = await import('../lib/sessionCookies');
-        await createSessionCookie(firebaseIdToken, res);
+        await createSessionCookie(firebaseIdToken, res, req);
         logger.info(`[Identity] Session cookie created for: ${email}`);
       } catch (cookieError) {
         logger.warn(`[Identity] Failed to create session cookie (non-fatal): ${cookieError}`);

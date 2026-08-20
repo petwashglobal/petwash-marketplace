@@ -1041,6 +1041,10 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
     const adminAuth = fbAdminAuth;
 
     let user;
+    // Tracks whether THIS request just minted the Firebase user. Set only in
+    // the create branch below; the rollback path (bootstrap fail) must never
+    // delete a pre-existing account for a returning user (getUserByEmail path).
+    let createdNewFirebaseUser = false;
     try {
       user = await adminAuth.getUserByEmail(email);
     } catch (error: any) {
@@ -1052,6 +1056,7 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
         }
         // Email is proven (matched code) → safe to create as a verified account.
         user = await adminAuth.createUser({ email, emailVerified: true });
+        createdNewFirebaseUser = true;
         // DOB persisted AFTER the users row is created below (the UPDATE-before-INSERT
         // ordering silently dropped it — same fix as phone-session). (2026-07-31)
         logger.info('[EmailAuth] Created new user for email', { email: email.replace(/(.{2}).*(@.*)/, '$1•••$2') });
@@ -1119,7 +1124,37 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
     }
 
     // Heal/provision for ALL email sessions (new AND existing) — orphan-safe.
-    await ensureUserProvisioned(user.uid, { channel: 'email', email, phone: null });
+    // SEV-1 (evil-hunt 2026-08-20): mirror the phone-session hard-gate. When
+    // the users-row branch of authBootstrap throws AuthBootstrapUsersRowFailed
+    // the previous code let it bubble to the outer 500 handler, and — CRUCIALLY
+    // — left the just-minted Firebase auth account behind. The next retry hit
+    // getUserByEmail(), skipped the create branch (account exists!), and the
+    // same bootstrap threw again → permanent lockout with a verified Firebase
+    // user and no Postgres row. Now: on hard-fail, DELETE the Firebase user
+    // we just created so the retry starts clean, and return 502 DB_UNAVAILABLE.
+    // Existing users (getUserByEmail succeeded above) are NEVER deleted —
+    // only the newly created uid, tracked by `createdNewFirebaseUser`.
+    try {
+      await ensureUserProvisioned(user.uid, { channel: 'email', email, phone: null });
+    } catch (bootErr: any) {
+      if (bootErr instanceof AuthBootstrapUsersRowFailed) {
+        if (createdNewFirebaseUser) {
+          try {
+            await adminAuth.deleteUser(user.uid);
+            logger.warn('[EmailAuth] rolled back just-created Firebase user after bootstrap fail', { uid: user.uid });
+          } catch (cleanupErr: any) {
+            logger.error('[EmailAuth] Firebase user rollback FAILED — will orphan', { uid: user.uid, error: cleanupErr?.message });
+          }
+        }
+        logger.error('[EmailAuth] users row bootstrap HARD-FAILED — returning 502', { uid: user.uid });
+        return res.status(502).json({
+          ok: false,
+          error: 'user_bootstrap_failed',
+          code: 'DB_UNAVAILABLE',
+        });
+      }
+      throw bootErr;
+    }
 
     const customToken = await adminAuth.createCustomToken(user.uid, { email, authMethod: 'email' });
     logger.info('[EmailAuth] Custom token created', { uid: user.uid });
