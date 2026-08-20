@@ -63,23 +63,22 @@ function getFirebaseConfig() {
     .map(([, envVar]) => envVar);
   
   if (missingFields.length > 0) {
-    console.warn(
-      `[Firebase] ⚠️ Configuration incomplete (fail-open mode). Missing: ${missingFields.join(', ')}\n` +
-      `Authentication and Firebase features will be disabled until configured.\n` +
-      `Please check your .env file or Replit Secrets configuration.`
-    );
-    
-    // Return safe placeholder config to allow app to render
-    // Firebase features will be disabled but UI will load
-    return {
-      apiKey: 'placeholder-api-key',
-      authDomain: 'placeholder.firebaseapp.com',
-      projectId: 'placeholder-project',
-      storageBucket: 'placeholder.appspot.com',
-      messagingSenderId: '000000000000',
-      appId: '1:000000000000:web:placeholder',
-      measurementId: 'G-PLACEHOLDER'
-    };
+    // FAIL-HARD (Evil-hunt 2026-08-20 SEV-1 #3): the previous placeholder
+    // config let initializeApp succeed and the page render, but every auth
+    // call then threw `auth/api-key-not-valid` — visible only in DevTools,
+    // NOTHING on the page said "signup is dead". This is the root of the
+    // "buttons do nothing" reports. A missing VITE_FIREBASE_* at build time
+    // is a release-gating bug, not a runtime toggle. Throwing here surfaces
+    // the misconfig loudly (the error boundary catches it and reports it)
+    // instead of silently shipping a broken production build.
+    const msg =
+      `[Firebase] MISSING REQUIRED CONFIG: ${missingFields.join(', ')}. ` +
+      `The client cannot authenticate without these. In production, set them ` +
+      `as Cloud Run env vars AND rebuild the client. In dev, add them to .env ` +
+      `and restart Vite. This is a build-gating misconfiguration — do NOT ` +
+      `ship a bundle with placeholder Firebase credentials.`;
+    console.error(msg);
+    throw new Error(msg);
   }
   
   if (import.meta.env.DEV) {
