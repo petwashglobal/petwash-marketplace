@@ -49,6 +49,11 @@ const CSP_DIRECTIVES = [
     "https://www.google.com/recaptcha/",
     "https://www.gstatic.com/recaptcha/",
     "https://www.recaptcha.net",
+    // Cloudflare Turnstile — the ONE bot-check for customer OTP send (PR-AUTH-OTP-8).
+    // Without this the /turnstile/v0/api.js script is CSP-blocked, executeTurnstileInvisible
+    // silently returns null, and every /api/auth/sms/start + /api/auth/email/start hits
+    // the fail-closed TURNSTILE_TOKEN_REQUIRED 400 — mobile + email OTP signup dead.
+    "https://challenges.cloudflare.com",
     // Twilio
     "https://media.twiliocdn.com",
     // Sentry
@@ -123,6 +128,8 @@ const CSP_DIRECTIVES = [
     "https://maps.googleapis.com",
     // reCAPTCHA connect (mirrors script-src — recaptcha.net for non-google regions)
     "https://www.recaptcha.net",
+    // Cloudflare Turnstile — XHR back to challenges.cloudflare.com during widget solve.
+    "https://challenges.cloudflare.com",
     // Gemini AI (client-side SDK)
     "https://generativelanguage.googleapis.com",
     // Apple Sign-In — token/userinfo exchange (parallel to accounts.google.com).
@@ -156,6 +163,8 @@ const CSP_DIRECTIVES = [
     "https://www.google.com/recaptcha/",
     "https://recaptcha.google.com/",
     "https://accounts.google.com",
+    // Cloudflare Turnstile iframe (invisible + interactive challenge).
+    "https://challenges.cloudflare.com",
     // Apple Sign-In popup/iframe (parallel to accounts.google.com). MISSING this
     // silently blocked "Sign in with Apple" → the button did nothing. (2026-06-28)
     "https://appleid.apple.com",

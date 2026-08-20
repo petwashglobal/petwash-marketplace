@@ -590,15 +590,36 @@ app.use(cors({
   maxAge: 86400,
 }));
 
-// 2. Non-credentialed CORS for *.petwash.co.il subdomains and dev/preview origins.
-//    Uses a literal '*' wildcard — no user-supplied value reaches the header.
-//    Access-Control-Allow-Credentials is intentionally absent (incompatible with '*').
+// 2. CORS for *.petwash.co.il subdomains and dev/preview origins.
+//
+//    Subdomain match (petwash.co.il only, closed by regex): MIRROR the origin
+//    with Access-Control-Allow-Credentials:true so `fetch(..., { credentials:
+//    'include' })` from a preview subdomain (e.g. signup.petwash.co.il) can
+//    still send the __session cookie. The old wildcard `*` overrode the ACAO
+//    the cors() middleware had already set for apex/www, AND `*` is illegal
+//    combined with credentials — browser silently dropped the cookie, every
+//    signup POST failed unauthenticated. (Firebase-audit 2026-08-20 SEV-2 #4.)
+//
+//    Dev origin match (Cloud Run *.run.app in non-prod): keep the wildcard,
+//    no credentials — dev previews don't share the __session cookie anyway.
+//
+//    User-controlled origin is NEVER reflected unchecked: PETWASH_SUBDOMAIN_RE
+//    is anchored to the petwash.co.il apex, and CORS_DEV_PATTERNS is a closed
+//    list of dev suffixes. Both close the CWE-942 taint path CodeQL tracks.
 app.use((req: any, res: any, next: any) => {
   const reqOrigin = req.headers.origin as string | undefined;
   if (!reqOrigin) return next();
   const isSubdomain = PETWASH_SUBDOMAIN_RE.test(reqOrigin);
   const isDevOrigin = !isProduction && CORS_DEV_PATTERNS.some(p => p.test(reqOrigin));
-  if (isSubdomain || isDevOrigin) {
+  if (isSubdomain) {
+    res.setHeader('Access-Control-Allow-Origin', reqOrigin);
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    res.setHeader('Vary', 'Origin');
+    res.setHeader('Access-Control-Allow-Methods', _CORS_METHODS);
+    res.setHeader('Access-Control-Allow-Headers', _CORS_HEADERS);
+    res.setHeader('Access-Control-Max-Age', '86400');
+    if (req.method === 'OPTIONS') { res.status(204).end(); return; }
+  } else if (isDevOrigin) {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Methods', _CORS_METHODS);
     res.setHeader('Access-Control-Allow-Headers', _CORS_HEADERS);
@@ -724,6 +745,13 @@ const AUTH_CSRF_EXEMPT = new Set([
   '/api/auth/post-login',
   '/api/auth/choose-role',
   '/api/auth/complete-profile',
+  // Two-step login (mfa/sms) — the pre-session challenge posts an idToken +
+  // MFA proof in the JSON body BEFORE a session cookie exists. Missing from
+  // the exempt list = 403 EBADCSRFTOKEN on every 2FA'd account, locking
+  // legacy/admin-provisioned users out at login even with TWO_STEP_LOGIN_READY
+  // gated off. (Firebase-audit 2026-08-20 SEV-2 #5.)
+  '/api/auth/login/2fa/start',
+  '/api/auth/login/2fa/verify',
   // Pre-session / anonymous auth-namespace POSTs that fire DURING sign-in,
   // before a Firebase Bearer or pw.csrf cookie exists. None mutate
   // auth-sensitive third-party state:
