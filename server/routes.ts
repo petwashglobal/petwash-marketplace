@@ -13,7 +13,15 @@ import { QRCodeService } from "./qrCode";
 import { SmartReceiptService } from "./smartReceiptService";
 import { EmailService } from "./emailService";
 import { GoogleMessagingService } from "./services/GoogleMessagingService";
-import { ensureUserProvisioned } from "./services/authBootstrap";
+import { ensureUserProvisioned, AuthBootstrapUsersRowFailed } from "./services/authBootstrap";
+
+// SEV-1 fix (2026-08-20): was inlined 3000 ms on the ensureUserInPostgres
+// race — a slow-but-successful insert resolved to null and was indistinguishable
+// from failure, so first-time users silently landed with no Postgres row.
+// Named constant + a longer 8 s ceiling gives the write time to commit and
+// makes the value greppable; if we still time out we now HARD-FAIL 502
+// instead of returning success with a broken account.
+const DB_BOOTSTRAP_TIMEOUT_MS = 8000;
 import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
@@ -1439,7 +1447,7 @@ self.addEventListener('notificationclick', (event) => {
           // (who require dateOfBirth) aren't re-asked at /complete-profile.
           dateOfBirth: (typeof bodyDob === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(bodyDob)) ? bodyDob : undefined,
         });
-        const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), 3000));
+        const timeoutPromise = new Promise<null>(resolve => setTimeout(() => resolve(null), DB_BOOTSTRAP_TIMEOUT_MS));
         _syncResult = await Promise.race([syncRace, timeoutPromise]) as typeof _syncResult;
 
         logger.info('[Session] ✅ PostgreSQL user sync complete', {
@@ -1534,13 +1542,52 @@ self.addEventListener('notificationclick', (event) => {
         // verified) email so the account activates. Orphan-safe, never overwrites
         // the existing row. (2026-07-31)
         if (socialOAuthProviders.includes(signInProviderForTerms)) {
-          await ensureUserProvisioned(decoded.uid, {
-            channel: 'social',
-            email: decoded.email || undefined,
-          }).catch((e: any) => logger.warn('[Session] social provision failed (non-blocking)', { error: e?.message }));
+          try {
+            await ensureUserProvisioned(decoded.uid, {
+              channel: 'social',
+              email: decoded.email || undefined,
+            });
+          } catch (e: any) {
+            // AuthBootstrapUsersRowFailed is the hard-gate signal — re-throw so
+            // the outer catch can convert it to HTTP 502. Everything else stays
+            // non-blocking (wallet/loyalty/verified are best-effort).
+            if (e instanceof AuthBootstrapUsersRowFailed) throw e;
+            logger.warn('[Session] social provision failed (non-blocking)', { error: e?.message });
+          }
         }
-      } catch (syncErr) {
+      } catch (syncErr: any) {
+        // SEV-1 hard gate (2026-08-20): the users-row invariant is the one
+        // signal we do NOT swallow — every downstream request (whoami, wallet,
+        // booking) depends on it. Return 502 so the client retries deterministically
+        // instead of silently succeeding into a broken account. All other sync
+        // errors remain non-blocking.
+        if (syncErr instanceof AuthBootstrapUsersRowFailed) {
+          logger.error('[Session] users row bootstrap HARD-FAILED — returning 502', { uid: _syncDecoded?.uid });
+          return res.status(502).json({
+            ok: false,
+            error: 'user_bootstrap_failed',
+            code: 'DB_UNAVAILABLE',
+          });
+        }
         logger.warn('[Session] Critical PostgreSQL sync failed (non-blocking) — post-login recovery will retry', syncErr);
+      }
+
+      // SEV-1 hard gate (2026-08-20): _syncResult === null means either the
+      // 8-second DB_BOOTSTRAP_TIMEOUT_MS race lost OR ensureUserInPostgres threw
+      // (it swallows to null). In either case the invariant is not proven, so
+      // we return 502 { code: 'DB_UNAVAILABLE' } instead of a false-success 200.
+      // The mobile/web client can retry — silent success into a rowless account
+      // was the exact regression this fix closes.
+      if (!_syncResult) {
+        logger.error('[Session] PostgreSQL user sync timed out or failed — returning 502', {
+          uid: _syncDecoded?.uid,
+          timeoutMs: DB_BOOTSTRAP_TIMEOUT_MS,
+        });
+        return res.status(502).json({
+          ok: false,
+          error: 'user_bootstrap_failed',
+          code: 'DB_UNAVAILABLE',
+        });
       }
 
       // ── Non-critical async path: external CRM / analytics (fire-and-forget) ─
@@ -1613,7 +1660,17 @@ self.addEventListener('notificationclick', (event) => {
           isNewUser: (_syncResult as any)?.isNewUser ?? null,
         },
       });
-      res.json({ ok: true, cookie: '__session', expiresInMs: 1209600000 });
+      // SEV-1 fix (2026-08-20): echo isNewUser so the client's mandatory
+      // "verify BOTH contacts" screen (CEO 2026-08-08) is not silently skipped
+      // on first-time Google/Apple social signups. Client (SignUpLuxury.tsx)
+      // gates verify-signup-mobile on `if (ssd?.isNewUser)`; without this field
+      // the flag was always false and the second-factor screen never ran.
+      res.json({
+        ok: true,
+        cookie: '__session',
+        expiresInMs: 1209600000,
+        isNewUser: !!_syncResult?.isNewUser,
+      });
     } catch (error: any) {
       logger.error('[Session] Session cookie creation error', error, { traceId: req.body?.traceId });
       const errorCode = error.code === 'auth/id-token-expired' ? 'TOKEN_EXPIRED' : 'SESSION_FAILED';

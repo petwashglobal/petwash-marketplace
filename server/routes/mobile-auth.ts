@@ -141,19 +141,58 @@ router.post('/google', async (req: Request, res: Response) => {
         country: 'IL',
         language: 'he',
       });
+      // SEV-1 hard gate (2026-08-20): previously the failure branch only logged
+      // "user may not be able to book" and still returned 200 + customToken —
+      // the mobile client then landed with no Postgres row (every wallet/booking
+      // query 500s). Return 502 { code: 'DB_UNAVAILABLE' } so the client retries
+      // deterministically instead of silently succeeding into a broken account.
       if (!pgResult) {
-        logger.error('[Mobile Auth] Failed to create PostgreSQL user row — user may not be able to book', { uid });
-      } else {
-        logger.info(`[Mobile Auth] PostgreSQL user + wallet ready for ${email} (isNew=${pgResult.isNewUser})`);
+        logger.error('[Mobile Auth] Failed to create PostgreSQL user row — HARD FAIL', { uid });
+        return res.status(502).json({
+          success: false,
+          error: 'user_bootstrap_failed',
+          code: 'DB_UNAVAILABLE',
+        });
       }
+      logger.info(`[Mobile Auth] PostgreSQL user + wallet ready for ${email} (isNew=${pgResult.isNewUser})`);
     } else {
       // Existing user — update last login in Firestore and ensure DB row exists
       await userRef.update({
         lastLogin: new Date().toISOString(),
         googleId, // Update if not set
       });
-      // Idempotent: ensures wallet/loyalty exist even if they were missed previously
-      await authService.ensureUserInPostgres(uid, email);
+      // Idempotent: ensures wallet/loyalty exist even if they were missed previously.
+      // Same SEV-1 hard-fail semantics — an existing Firebase user with a missing
+      // Postgres row is the exact orphan class that causes the whoami 404 → 502.
+      const pgHeal = await authService.ensureUserInPostgres(uid, email);
+      if (!pgHeal) {
+        logger.error('[Mobile Auth] Failed to heal PostgreSQL user row — HARD FAIL', { uid });
+        return res.status(502).json({
+          success: false,
+          error: 'user_bootstrap_failed',
+          code: 'DB_UNAVAILABLE',
+        });
+      }
+    }
+
+    // SEV-1 fix (2026-08-20): stamp the customer role claim so whoami sees
+    // role='customer' instead of 'public' (which used to happen because
+    // setCustomUserClaims was never called on the mobile-google path).
+    // MERGE with existing claims — never overwrite an existing role (a provider
+    // signing in with Google must keep the 'provider' claim from
+    // AdminProviderReviewService.approveApplication).
+    try {
+      const existingClaims = (firebaseUser.customClaims || {}) as Record<string, any>;
+      if (!existingClaims.role) {
+        await auth.setCustomUserClaims(uid, {
+          ...existingClaims,
+          role: 'customer',
+          accountType: 'pet_parent',
+        });
+        logger.info('[Mobile Auth] customer role claim stamped', { uid });
+      }
+    } catch (claimsErr: any) {
+      logger.warn('[Mobile Auth] setCustomUserClaims failed (non-blocking)', { uid, error: claimsErr?.message });
     }
 
     // Store refresh token if provided (for offline Google API access)

@@ -62,7 +62,11 @@ export type AuthFlow = 'prestige' | 'provider' | 'guest' | 'general' | 'booking'
 // targets from the platform plan; the client navigates here after the session
 // cookie is minted via the existing /api/auth/session chain.
 const FLOW_REDIRECTS: Record<AuthFlow, string> = {
-  prestige: '/member/dashboard',
+  // SEV-1 fix (2026-08-20): was '/member/dashboard' — a route that does NOT
+  // exist in client/src/App.tsx, so every SMS signup with the default flow
+  // (SignUpLuxury's default) landed on a 404 immediately after verify. The
+  // canonical members' home is /prestige/home (matches post-login.ts:168,230).
+  prestige: '/prestige/home',
   provider: '/provider/dashboard',
   guest: '/egift',
   // 'booking' users came in from /booking — return them to it after auth so
