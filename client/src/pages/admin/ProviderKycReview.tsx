@@ -1,6 +1,9 @@
 import { useState } from 'react';
 import { useParams, useLocation } from 'wouter';
-import { getAuth } from 'firebase/auth';
+// Firebase-audit 2026-08-19 SEV-2 #4: prefer shared `auth` (see
+// client/src/lib/firebase.ts:143 initializeAuth). Raw getAuth() risks a
+// second Auth instance without persistence/resolver on lazy-loaded pages.
+import { auth } from '@/lib/firebase';
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { apiRequest, queryClient } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -381,7 +384,7 @@ export default function ProviderKycReview() {
               className="h-7 text-xs"
               disabled={assignMutation.isPending}
               onClick={() => {
-                const currentUser = getAuth().currentUser;
+                const currentUser = auth.currentUser;
                 const identity = currentUser?.email ?? currentUser?.uid ?? 'admin';
                 assignMutation.mutate(identity);
               }}

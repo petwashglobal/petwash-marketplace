@@ -6,7 +6,10 @@
 
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { getAuth } from 'firebase/auth';
+// Firebase-audit 2026-08-19 SEV-2 #4: prefer shared `auth` (see
+// client/src/lib/firebase.ts:143 initializeAuth). Raw getAuth() risks a
+// second Auth instance without persistence/resolver on lazy-loaded pages.
+import { auth } from '@/lib/firebase';
 import { apiRequest } from '@/lib/queryClient';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -82,7 +85,7 @@ const AGING_COLORS: Record<string, string> = {
 };
 
 async function fetchAnalytics(): Promise<AnalyticsData> {
-  const auth = getAuth();
+  // `auth` is imported from '@/lib/firebase' above (no local getAuth()).
   const user = auth.currentUser;
   const token = user ? await user.getIdToken() : null;
   const res = await apiRequest('GET', '/api/provider-onboarding/mgmt/analytics', undefined, {

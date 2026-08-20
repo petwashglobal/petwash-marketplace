@@ -23,7 +23,13 @@ import {
   Info,
 } from 'lucide-react';
 import { useLanguage } from '@/lib/languageStore';
-import { getAuth } from 'firebase/auth';
+// Firebase-audit 2026-08-19 SEV-2 #4: use the shared `auth` instance created
+// by initializeAuth(app, { popupRedirectResolver, persistence: [...] }) in
+// client/src/lib/firebase.ts:143. Raw getAuth() from firebase/auth risks
+// auto-creating a second Auth instance without the app-wide persistence /
+// popup resolver if a code-split chunk lazy-loads before firebase.ts has run,
+// which would leave currentUser=null after login on THIS page only.
+import { auth } from '@/lib/firebase';
 import { Link } from 'wouter';
 import { becomeProviderHref, setProviderSignupIntent } from '@/lib/becomeProvider';
 
@@ -95,7 +101,7 @@ function StatusBadge({ status }: { status: string }) {
 }
 
 async function getBearerToken() {
-  const user = getAuth().currentUser;
+  const user = auth.currentUser;
   if (!user) throw new Error('Not signed in');
   return user.getIdToken();
 }
