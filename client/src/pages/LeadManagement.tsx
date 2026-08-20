@@ -249,12 +249,20 @@ export default function LeadManagement() {
 
   // Admin authentication check
   const { isAuthenticated: isAdminAuthenticated, isLoading: isAdminLoading } = useAdminAuth();
-  
-  // Redirect if not authenticated
-  if (!isAdminLoading && !isAdminAuthenticated) {
-    setLocation('/signin');
-    return null;
-  }
+
+  // Redirect if not authenticated. This USED to be an imperative
+  // `if (...) { setLocation('/signin'); return null; }` right here, but that
+  // was a hook-order violation — every useForm / useQuery / useMutation
+  // below was skipped the moment `useAdminAuth` resolved to unauthenticated,
+  // so React threw "Rendered fewer hooks than expected" and the CRM console
+  // crashed for any admin whose session had lapsed. The redirect now fires
+  // from useEffect (safe from render), and the render is aborted below the
+  // hooks (see the block just before the JSX return).
+  useEffect(() => {
+    if (!isAdminLoading && !isAdminAuthenticated) {
+      setLocation('/signin');
+    }
+  }, [isAdminLoading, isAdminAuthenticated, setLocation]);
 
   // Forms
   const leadForm = useForm({
@@ -606,6 +614,11 @@ export default function LeadManagement() {
     if (score >= 25) return 'text-orange-600';
     return 'text-red-600';
   };
+
+  // Admin-auth safety net (see the useEffect above). Placed AFTER all hooks
+  // so React sees a consistent hook count across renders when the admin auth
+  // state resolves to unauthenticated.
+  if (!isAdminLoading && !isAdminAuthenticated) return null;
 
   if (isAdminLoading || leadsLoading) {
     return (

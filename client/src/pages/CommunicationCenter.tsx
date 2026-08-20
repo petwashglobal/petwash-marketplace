@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { getApiUrl } from '@/lib/apiConfig';
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
@@ -216,11 +216,21 @@ export default function CommunicationCenter() {
   const [_, setLocation] = useLocation();
   const { toast } = useToast();
 
-  // Auth check
-  if (!isAuthenticated) {
-    setLocation('/signin');
-    return null;
-  }
+  // Auth check. This USED to be an imperative
+  // `if (!isAuthenticated) { setLocation('/signin'); return null; }` right
+  // here, but that was a hook-order violation of the WORST kind: on the
+  // FIRST render `isAuthenticated` is false → early return → NONE of the
+  // useQuery/useMutation/useForm hooks below were registered. Then admin auth
+  // resolved, `isAuthenticated` flipped to true → hooks were suddenly called
+  // for the first time → React threw "Rendered MORE hooks than during the
+  // previous render" and the /crm/communications page white-screened on
+  // every visit. The redirect now fires from useEffect, and the render is
+  // aborted below the hooks (see the block just before the JSX return).
+  useEffect(() => {
+    if (!isAuthenticated) {
+      setLocation('/signin');
+    }
+  }, [isAuthenticated, setLocation]);
 
   // Data queries
   const { data: stats, isLoading: statsLoading } = useQuery<CommunicationStats>({
@@ -446,6 +456,11 @@ export default function CommunicationCenter() {
     { name: 'Clicked', value: stats?.emailsClicked || 0, color: '#3b82f6' },
     { name: 'Unopened', value: (stats?.emailsSent || 0) - (stats?.emailsOpened || 0), color: '#e5e7eb' },
   ];
+
+  // Auth safety net (see the useEffect above). Placed AFTER all hooks so
+  // React sees a consistent hook count across renders when isAuthenticated
+  // flips.
+  if (!isAuthenticated) return null;
 
   if (statsLoading) {
     return (

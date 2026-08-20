@@ -470,14 +470,18 @@ export default function Dashboard() {
   const { toast } = useToast();
   const he = language === 'he';
 
-  // Providers must use /provider-os — never the customer dashboard
+  // Providers must use /provider-os — never the customer dashboard.
+  // The redirect fires in useEffect. The `return null` that used to live HERE
+  // was a hook-order violation: it caused every hook below (useMutation and
+  // ~7 useQuery/useEffect calls) to be skipped once whoami resolved to a
+  // provider role, so React threw "Rendered fewer hooks than expected" the
+  // moment a provider account hit /dashboard. The early return is now BELOW
+  // all hooks (see the block right before the JSX return).
   useEffect(() => {
     if (!whoamiLoading && serverRole === 'provider') {
       setLocation('/provider-os');
     }
   }, [whoamiLoading, serverRole, setLocation]);
-
-  if (!whoamiLoading && serverRole === 'provider') return null;
 
   const sendWalletEmailMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {}),
@@ -631,6 +635,10 @@ export default function Dashboard() {
   const loyaltyPoints = wallet?.loyaltyPointsBalance || 0;
   const totalBalance = wallet ? formatCurrency(wallet.totalCreditsValueCents) : '0';
   const giftBalance = wallet ? formatCurrency(wallet.egiftBalanceCents) : '0';
+
+  // Provider safety net (see the useEffect above). Placed AFTER all hooks so
+  // React sees a consistent hook count across renders when whoami resolves.
+  if (!whoamiLoading && serverRole === 'provider') return null;
 
   if (loading) {
     return (
