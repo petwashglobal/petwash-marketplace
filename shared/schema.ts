@@ -7310,6 +7310,10 @@ export const trainerBookings = pgTable("trainer_bookings", {
   walletRefundKey:     varchar("wallet_refund_key", { length: 200 }),
   financeState:        varchar("finance_state", { length: 30 }).notNull().default("none"),
 
+  // Once-only stuck-hold SMS-escalation flag — see wallet-reconciliation.ts.
+  // MIGRATION: migrations/0119_prod_runtime_errors_2026_08_20.sql
+  stuckHoldAlertSentAt: timestamp("stuck_hold_alert_sent_at"),
+
   // Audit Trail
   ipAddress: varchar("ip_address"),
   userAgent: varchar("user_agent"),
@@ -11028,6 +11032,10 @@ export const bookingRequests = pgTable("booking_requests", {
   customerLatitude:      decimal("customer_latitude", { precision: 10, scale: 7 }),
   customerLongitude:     decimal("customer_longitude", { precision: 10, scale: 7 }),
   customerPlaceId:       varchar("customer_place_id", { length: 200 }),
+
+  // Once-only stuck-hold SMS-escalation flag — see wallet-reconciliation.ts.
+  // MIGRATION: migrations/0119_prod_runtime_errors_2026_08_20.sql
+  stuckHoldAlertSentAt: timestamp("stuck_hold_alert_sent_at"),
 
   // ── Idempotency fingerprint (booking-hardening 2026-06-20) ────────────────
   // ⚠️ MIGRATION (CEO-authorized) — migrations/0059_booking_hardening.sql
