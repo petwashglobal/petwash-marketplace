@@ -1,17 +1,25 @@
 /**
  * LOGIN RATE LIMITER - Advanced Credential Stuffing Protection
- * 
+ *
  * Based on banking-level security principles:
  * - Tracks failed login attempts per email/phone
  * - Blocks users after 5 failed attempts for 5 minutes
- * - Uses LRU cache to prevent memory leaks (max 1000 users)
- * - Prevents credential stuffing and brute force attacks
- * 
- * Inspired by FastAPI best practices, implemented for Express.js
+ * - Redis-backed state so the limit HOLDS across Cloud Run instances
+ *   (previously an in-memory LRU per-instance let an attacker get
+ *    N × 5 attempts before being blocked — trivially bypassed at scale)
+ * - Falls back to the local LRU only when Redis is offline (fail-open
+ *   is preferable to DoS'ing our own login page during a Redis outage)
+ * - LRU still bounds memory in the fallback path
+ *
+ * Evil-hunt 2026-08-20: multi-instance bypass. Prior state was
+ * per-container-only, so `MAX_ATTEMPTS` was effectively unbounded in
+ * production. Now the primary counter lives in Redis, atomic INCR +
+ * EXPIRE; the LRU is a degraded-mode backup.
  */
 
 import type { Request, Response, NextFunction } from 'express';
 import { logger } from '../lib/logger';
+import { redis } from '../services/redis';
 
 // LRU Cache implementation (Least Recently Used)
 class LRUCache<K, V> {
@@ -69,101 +77,138 @@ const loginAttemptCache = new LRUCache<string, LoginAttemptRecord>(1000);
 // Configuration
 const MAX_ATTEMPTS = 5;
 const BLOCK_TIME_SECONDS = 300; // 5 minutes
+const ATTEMPT_WINDOW_SECONDS = 300; // count only recent 5 min
 
-/**
- * Check if login is rate limited for this email/phone
- * 
- * @param identifier - Email address or phone number
- * @returns true if blocked, false if allowed
- */
-export function checkLoginRateLimit(identifier: string): { 
-  blocked: boolean; 
-  remainingTime?: number; 
-  attempts?: number 
-} {
-  const now = Math.floor(Date.now() / 1000);
-  const record = loginAttemptCache.get(identifier) || {
-    attempts: 0,
-    blockedUntil: 0,
-    lastAttempt: 0,
-  };
+const kAttempts = (id: string) => `rl:login:attempts:${id}`;
+const kBlocked = (id: string) => `rl:login:blocked:${id}`;
 
-  // Check if user is currently blocked
-  if (record.blockedUntil > now) {
-    const remainingTime = record.blockedUntil - now;
-    logger.warn('[Login Rate Limit] User is blocked', {
-      identifier: identifier.substring(0, 3) + '***', // Masked for privacy
-      remainingTime,
-    });
-    return {
-      blocked: true,
-      remainingTime,
-      attempts: record.attempts,
-    };
-  }
-
-  // Check if max attempts exceeded
-  if (record.attempts >= MAX_ATTEMPTS) {
-    // Block user for 5 minutes
-    record.blockedUntil = now + BLOCK_TIME_SECONDS;
-    record.attempts = 0; // Reset counter after blocking
-    loginAttemptCache.set(identifier, record);
-    
-    logger.warn('[Login Rate Limit] User exceeded max attempts, now blocked', {
-      identifier: identifier.substring(0, 3) + '***',
-      blockDuration: BLOCK_TIME_SECONDS,
-    });
-    
-    return {
-      blocked: true,
-      remainingTime: BLOCK_TIME_SECONDS,
-      attempts: MAX_ATTEMPTS,
-    };
-  }
-
-  return {
-    blocked: false,
-    attempts: record.attempts,
-  };
+function maskId(id: string): string {
+  return id.length > 3 ? id.substring(0, 3) + '***' : '***';
 }
 
 /**
- * Record a failed login attempt
- * 
- * @param identifier - Email address or phone number
+ * Check if login is rate limited for this email/phone.
+ * Redis-first (shared across Cloud Run instances); LRU-fallback when Redis
+ * is unavailable so login itself doesn't hard-fail on cache outage.
+ *
+ * NOTE: previously synchronous. Now async so the multi-instance Redis path
+ * can actually be honoured. Every caller runs inside an async handler.
  */
-export function recordFailedLogin(identifier: string): void {
+export async function checkLoginRateLimit(identifier: string): Promise<{
+  blocked: boolean;
+  remainingTime?: number;
+  attempts?: number;
+}> {
+  const now = Math.floor(Date.now() / 1000);
+
+  // ── Redis (authoritative when reachable) ────────────────────────────
+  if (redis.isConnected()) {
+    try {
+      const blockedRaw = await redis.getRaw(kBlocked(identifier));
+      if (blockedRaw) {
+        const ttl = await redis.ttl(kBlocked(identifier));
+        return {
+          blocked: true,
+          remainingTime: ttl > 0 ? ttl : BLOCK_TIME_SECONDS,
+          attempts: MAX_ATTEMPTS,
+        };
+      }
+      const attemptsRaw = await redis.getRaw(kAttempts(identifier));
+      const attempts = attemptsRaw ? parseInt(attemptsRaw, 10) || 0 : 0;
+      return { blocked: false, attempts };
+    } catch (err) {
+      logger.warn('[Login Rate Limit] Redis check failed — falling back to LRU', { err: (err as Error)?.message });
+    }
+  }
+
+  // ── LRU fallback (degraded mode) ────────────────────────────────────
+  const record = loginAttemptCache.get(identifier) || {
+    attempts: 0,
+    blockedUntil: 0,
+    lastAttempt: 0,
+  };
+  if (record.blockedUntil > now) {
+    return {
+      blocked: true,
+      remainingTime: record.blockedUntil - now,
+      attempts: record.attempts,
+    };
+  }
+  if (record.attempts >= MAX_ATTEMPTS) {
+    record.blockedUntil = now + BLOCK_TIME_SECONDS;
+    record.attempts = 0;
+    loginAttemptCache.set(identifier, record);
+    return { blocked: true, remainingTime: BLOCK_TIME_SECONDS, attempts: MAX_ATTEMPTS };
+  }
+  return { blocked: false, attempts: record.attempts };
+}
+
+/**
+ * Record a failed login attempt. Redis-first (atomic INCR + EXPIRE on first
+ * increment, then SET blocked when the counter reaches MAX). LRU fallback.
+ */
+export async function recordFailedLogin(identifier: string): Promise<void> {
+  if (redis.isConnected()) {
+    try {
+      const attempts = await redis.incr(kAttempts(identifier));
+      if (attempts === 1) {
+        // Set expiry only on first increment so a burst doesn't extend the window.
+        await redis.expire(kAttempts(identifier), ATTEMPT_WINDOW_SECONDS);
+      }
+      if (attempts >= MAX_ATTEMPTS) {
+        await redis.setRaw(kBlocked(identifier), '1', BLOCK_TIME_SECONDS);
+        await redis.del(kAttempts(identifier));
+        logger.warn('[Login Rate Limit] Blocked (redis)', {
+          identifier: maskId(identifier),
+          blockDuration: BLOCK_TIME_SECONDS,
+        });
+      } else {
+        logger.info('[Login Rate Limit] Failed attempt recorded (redis)', {
+          identifier: maskId(identifier),
+          attempts,
+          remainingAttempts: MAX_ATTEMPTS - attempts,
+        });
+      }
+      return;
+    } catch (err) {
+      logger.warn('[Login Rate Limit] Redis record failed — LRU fallback', { err: (err as Error)?.message });
+    }
+  }
+
+  // LRU fallback
   const now = Math.floor(Date.now() / 1000);
   const record = loginAttemptCache.get(identifier) || {
     attempts: 0,
     blockedUntil: 0,
     lastAttempt: 0,
   };
-
   record.attempts += 1;
   record.lastAttempt = now;
   loginAttemptCache.set(identifier, record);
-
-  logger.info('[Login Rate Limit] Failed attempt recorded', {
-    identifier: identifier.substring(0, 3) + '***',
+  logger.info('[Login Rate Limit] Failed attempt recorded (LRU)', {
+    identifier: maskId(identifier),
     attempts: record.attempts,
-    maxAttempts: MAX_ATTEMPTS,
     remainingAttempts: MAX_ATTEMPTS - record.attempts,
   });
 }
 
 /**
- * Clear failed login attempts after successful login
- * 
- * @param identifier - Email address or phone number
+ * Clear failed login attempts after successful login. Redis + LRU both.
  */
-export function clearLoginAttempts(identifier: string): void {
+export async function clearLoginAttempts(identifier: string): Promise<void> {
+  if (redis.isConnected()) {
+    try {
+      await redis.del([kAttempts(identifier), kBlocked(identifier)]);
+    } catch (err) {
+      logger.warn('[Login Rate Limit] Redis clear failed', { err: (err as Error)?.message });
+    }
+  }
   if (loginAttemptCache.has(identifier)) {
     loginAttemptCache.delete(identifier);
-    logger.info('[Login Rate Limit] Attempts cleared after successful login', {
-      identifier: identifier.substring(0, 3) + '***',
-    });
   }
+  logger.info('[Login Rate Limit] Attempts cleared after successful login', {
+    identifier: maskId(identifier),
+  });
 }
 
 /**
@@ -176,11 +221,11 @@ export function clearLoginAttempts(identifier: string): void {
  * });
  * ```
  */
-export function loginRateLimitMiddleware(
+export async function loginRateLimitMiddleware(
   req: Request,
   res: Response,
   next: NextFunction
-): void {
+): Promise<void> {
   const identifier = req.body?.email || req.body?.phoneNumber || req.body?.phone;
 
   if (!identifier) {
@@ -188,7 +233,7 @@ export function loginRateLimitMiddleware(
     return next();
   }
 
-  const result = checkLoginRateLimit(identifier);
+  const result = await checkLoginRateLimit(identifier);
 
   if (result.blocked) {
     const retryAfter = result.remainingTime || 0;

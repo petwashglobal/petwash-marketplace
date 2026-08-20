@@ -1334,7 +1334,7 @@ self.addEventListener('notificationclick', (event) => {
       logger.debug('[Session] Verifying ID token and creating session cookie');
       const { createSessionCookie } = await import('./lib/sessionCookies');
       try {
-        await createSessionCookie(idToken, res);
+        await createSessionCookie(idToken, res, req);
       } catch (sessionCookieErr: any) {
         // Distinguish a Firebase Admin SDK / IAM misconfiguration (the most
         // common production failure mode for admin login) from a generic 500
@@ -1507,17 +1507,34 @@ self.addEventListener('notificationclick', (event) => {
           && termsAcceptedFlag
           && (!ageConfirmed || !serverAdult)
         ) {
-          // Explicit signup attempt with the Terms box ticked but either the
-          // ageConfirmed box unticked or the DOB failing the server 18+
-          // check. Record a warning so operators can spot mismatched clients
-          // that send termsAccepted without the age gate; the account row
-          // still exists (Firebase already minted it) but Terms are NOT
-          // stamped — the user must return through the completion surface.
+          // SEV-1 fix (evil-hunt 2026-08-20): pre-fix this branch only warned
+          // then fell through to a 200 { isNewUser: true } response. The
+          // Firebase user was already minted, the client saw "success", and
+          // the account existed as a half-formed row with no Terms/Age
+          // stamp — a silent bypass of the mandatory 18+ / Terms gate that
+          // still granted access. Now: DELETE the just-minted Firebase user
+          // (only when _syncResult.isNewUser confirms THIS request created
+          // it, never for a returning session) and return 400 TERMS_REJECTED
+          // so the client shows the real reason and the user starts clean.
           logger.warn('[Session] Terms acceptance rejected — age gate not satisfied', {
             uid: decoded.uid,
             ageConfirmed,
             serverAdult,
             hasDob: typeof bodyDob === 'string',
+          });
+          try {
+            await fbAdminAuth.deleteUser(decoded.uid);
+            logger.warn('[Session] rolled back just-created Firebase user (terms rejected)', { uid: decoded.uid });
+          } catch (cleanupErr: any) {
+            logger.error('[Session] Firebase user rollback FAILED (terms rejected)', {
+              uid: decoded.uid,
+              error: cleanupErr?.message,
+            });
+          }
+          return res.status(400).json({
+            ok: false,
+            error: 'terms_rejected',
+            code: 'TERMS_REJECTED',
           });
         }
 
@@ -1689,7 +1706,7 @@ self.addEventListener('notificationclick', (event) => {
   app.post('/api/auth/signout', async (req, res) => {
     try {
       const { clearSessionCookie } = await import('./lib/sessionCookies');
-      clearSessionCookie(res);
+      clearSessionCookie(res, req);
       
       const token = req.cookies?.pw_session;
       if (token) {
@@ -2359,16 +2376,18 @@ self.addEventListener('notificationclick', (event) => {
         .limit(1);
 
       if (!user) {
-        // Record failed attempt (user not found)
-        recordFailedLogin(identifier);
+        // Record failed attempt (user not found) — await so Redis has the
+        // incremented counter before the client can fire another request
+        // (evil-hunt 2026-08-20: multi-instance bypass).
+        await recordFailedLogin(identifier);
         return res.status(401).json({ ok: false, error: 'Invalid email or password' });
       }
 
       // Verify password
       const isValid = await verifyPassword(password, user.password);
       if (!isValid) {
-        // Record failed attempt (wrong password)
-        recordFailedLogin(identifier);
+        // Record failed attempt (wrong password) — awaited (see above).
+        await recordFailedLogin(identifier);
         
         const rateLimit = (req as any).loginRateLimit;
         const attemptsRemaining = 5 - (rateLimit?.attempts || 0) - 1; // -1 for current attempt
@@ -2385,8 +2404,8 @@ self.addEventListener('notificationclick', (event) => {
         });
       }
 
-      // ✅ SUCCESS: Clear failed attempts
-      clearLoginAttempts(identifier);
+      // ✅ SUCCESS: Clear failed attempts (awaited — see above).
+      await clearLoginAttempts(identifier);
 
       // Update last login for security monitoring and audit
       await db
