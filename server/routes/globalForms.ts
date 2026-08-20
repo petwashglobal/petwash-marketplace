@@ -9,7 +9,15 @@ import { Router } from 'express';
 import { z } from 'zod';
 import { GoogleSheetsService } from '../services/googleSheetsIntegration';
 import { logger } from '../lib/logger';
-import { validateFirebaseToken } from '../franchiseAuth';
+// 2026-08-20 (agent-7): The old import pulled `validateFirebaseToken` from
+// server/franchiseAuth.ts — that variant sets `req.firebaseUid`, but the
+// downstream `requireAdminRole` in server/lib/adminCheck.ts reads
+// `req.firebaseUser?.uid`. Result: GET /api/global-forms/admin/sheets-url
+// always failed with 401 "Authentication required" no matter who called it
+// (dead admin route). The canonical middleware in `middleware/firebase-auth`
+// populates `req.firebaseUser` (uid + email + email_verified) — the exact
+// shape `requireAdminRole` expects.
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { requireAdminRole } from '../lib/adminCheck';
 import { EmailService } from '../emailService';
 import { sendFranchiseApplicationConfirmation } from '../email/luxury-email-service';
