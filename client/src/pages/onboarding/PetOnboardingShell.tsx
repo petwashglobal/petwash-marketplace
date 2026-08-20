@@ -50,6 +50,8 @@ import {
   lookupWithFallback,
 } from './petOnboardingI18n';
 import { type Lang, SUPPORTED_LANGS } from '../../../../shared/data/pet-breeds';
+import { apiRequest } from '../../lib/queryClient';
+import { toast } from '../../hooks/use-toast';
 
 const WelcomeStep = lazy(() =>
   import('./steps/WelcomeStep').then((m) => ({ default: m.WelcomeStep })),
@@ -261,7 +263,7 @@ function Footer({
       style={{ paddingBottom: 'max(12px, env(safe-area-inset-bottom))' }}
     >
       {isLast ? (
-        <StubbedSaveButton t={t} />
+        <SaveButton t={t} />
       ) : (
         <button
           type="button"
@@ -281,27 +283,70 @@ function Footer({
   );
 }
 
-/** Save CTA on the Review step. Deliberately a no-op for PR-PET-4 —
- *  backend persistence is out of scope (CEO directive 2026-05-09).
- *  Future PR-PET-4B (draft persistence) will replace this. */
-function StubbedSaveButton({ t }: { t: (k: string) => string }) {
-  const [confirmed, setConfirmed] = useState(false);
+/** Save CTA on the Review step.
+ *
+ *  Modernity SEV-1 #5 (2026-08-20 audit): the button used to be a
+ *  `console.log` no-op; the draft was collected and then discarded, so the
+ *  entire flow shipped as a dead end. This now POSTs the collected draft to
+ *  the existing /api/pets endpoint. The route is still feature-flagged at
+ *  the App.tsx mount (VITE_PET_ONBOARDING_SHELL_ENABLED); flipping the flag
+ *  is a CEO decision that is deliberately not touched here. Photo upload
+ *  remains deferred to PR-PET-6 — the base64 draft photo is not sent. */
+function SaveButton({ t }: { t: (k: string) => string }) {
+  const [, setLocation] = useLocation();
+  const { draft } = usePetOnboarding();
+  const [saving, setSaving] = useState(false);
+
+  const canSave =
+    draft.name.trim().length > 0 &&
+    draft.species !== null &&
+    draft.breedId !== null &&
+    !saving;
+
+  async function handleSave() {
+    if (!canSave) return;
+    setSaving(true);
+    try {
+      const res = await apiRequest('/api/pets', 'POST', {
+        name: draft.name.trim(),
+        species: draft.species,
+        breedId: draft.breedId,
+      });
+      if (res.status === 200 || res.status === 201) {
+        toast({
+          title: t('petOnboarding.start.saveAndReturn'),
+          description: draft.name.trim(),
+        });
+        setLocation('/pets');
+        return;
+      }
+      throw new Error(`unexpected ${res.status}`);
+    } catch (err) {
+      toast({
+        title: t('petOnboarding.start.saveAndReturn'),
+        description: err instanceof Error ? err.message : 'Save failed',
+        variant: 'destructive',
+      });
+      setSaving(false);
+    }
+  }
+
   return (
     <div>
       <button
         type="button"
-        onClick={() => setConfirmed(true)}
-        className="w-full h-12 rounded-full bg-slate-900 text-white text-base font-medium hover:bg-slate-800 transition-colors motion-reduce:transition-none"
-        data-pr-pet-4-save-stub="true"
+        onClick={handleSave}
+        disabled={!canSave}
+        className={[
+          'w-full h-12 rounded-full text-base font-medium transition-colors motion-reduce:transition-none',
+          canSave
+            ? 'bg-slate-900 text-white hover:bg-slate-800'
+            : 'bg-slate-100 text-slate-400 cursor-not-allowed',
+        ].join(' ')}
+        data-pet-onboarding-save="true"
       >
         {t('petOnboarding.start.continue')}
       </button>
-      {confirmed && (
-        <p className="mt-3 text-xs text-slate-400 text-center">
-          {/* PR-PET-4 stub: no backend write. Persistence lands in a later PR. */}
-          {t('petOnboarding.start.saveAndReturn')}
-        </p>
-      )}
     </div>
   );
 }

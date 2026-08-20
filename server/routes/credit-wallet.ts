@@ -7,6 +7,10 @@ import { db } from '../db';
 import { creditTransactions, walletAccounts, unifiedVouchers, unifiedVoucherLedger, walletIdempotencyKeys } from '@shared/schema';
 import { eq, or, inArray, and, desc, sql } from 'drizzle-orm';
 import { isSuperAdmin } from '../middleware/rbac';
+// Modernity SEV-1 #1 (2026-08-20 audit): wrap every money-mutating POST in
+// the canonical audit middleware so admin dashboards can filter on
+// action_type. Read-only GETs remain untouched.
+import { auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 import { deriveTopupIdempotencyKey } from '../lib/topup-idempotency';
 import { deriveAdminCreditIdempotencyKey } from '../lib/admin-credit-idempotency';
 import { verifyNayaxTopup, type WalletTopupVerifyReason } from '../lib/wallet-topup-verify';
@@ -83,7 +87,7 @@ const topupSchema = z.object({
   description: z.string().optional(),
 });
 
-router.post('/topup', topupRateLimiter, async (req, res) => {
+router.post('/topup', topupRateLimiter, auditLogMiddleware('WALLET_TOPUP'), async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -467,7 +471,7 @@ router.post('/redemptions', redemptionRateLimiter, async (req, res) => {
   }
 });
 
-router.post('/redemptions/:sessionId/confirm', async (req, res) => {
+router.post('/redemptions/:sessionId/confirm', auditLogMiddleware('WALLET_BURN'), async (req, res) => {
   try {
     const userId = req.user?.uid || req.firebaseUser?.uid;
     if (!userId) {
@@ -488,7 +492,7 @@ router.post('/redemptions/:sessionId/confirm', async (req, res) => {
   }
 });
 
-router.post('/redemptions/:sessionId/refund', async (req, res) => {
+router.post('/redemptions/:sessionId/refund', auditLogMiddleware('REFUND'), async (req, res) => {
   try {
     const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
 
@@ -585,7 +589,7 @@ router.get('/transactions', async (req, res) => {
   }
 });
 
-router.post('/credits/add', async (req, res) => {
+router.post('/credits/add', auditLogMiddleware('CREDIT_WALLET_ADJUST'), async (req, res) => {
   try {
     // SECURITY: Only super admins (verified server-side via Firebase email) can add credits.
     const adminEmail = (req.firebaseUser as any)?.email || (req.user as any)?.email || '';
@@ -799,7 +803,7 @@ router.post('/nayax/validate-code', nayaxValidationRateLimiter, async (req, res)
   }
 });
 
-router.post('/nayax/acknowledge', async (req, res) => {
+router.post('/nayax/acknowledge', auditLogMiddleware('WALLET_BURN'), async (req, res) => {
   try {
     const stationApiKey = req.headers['x-station-key'] as string;
     if (!stationApiKey) {
@@ -836,7 +840,7 @@ const adminInjectSchema = z.object({
   approvalReference: z.string().optional(),
 });
 
-router.post('/admin/inject', async (req, res) => {
+router.post('/admin/inject', auditLogMiddleware('CREDIT_WALLET_ADJUST'), async (req, res) => {
   try {
     // SECURITY: Admin identity derived from server-verified Firebase token only.
     // All x-admin-* headers were removed — they are client-controllable and exploitable.

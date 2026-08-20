@@ -23,6 +23,9 @@ import { verifyTurnstileToken } from '../lib/verifyTurnstile';
 import { paymentLimiter } from '../middleware/rateLimiter';
 import { EGIFT_EXEMPTION_CAP_ILS } from '../lib/egift-denominations';
 import { logger } from '../lib/logger';
+// Modernity SEV-1 #1 (2026-08-20 audit): audit-log wrapper on the public
+// eGift purchase POST — pay-then-issue mutates money and issues a voucher.
+import { auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 
 const router = Router();
 function baseUrl(): string { return process.env.BASE_URL || 'https://petwash.co.il'; }
@@ -51,7 +54,7 @@ const guestStartSchema = z.object({
 });
 
 // POST /api/egift/guest/start — PUBLIC. Bot-protected, server-owned price.
-router.post('/guest/start', paymentLimiter, async (req: Request, res: Response) => {
+router.post('/guest/start', paymentLimiter, auditLogMiddleware('EGIFT_ISSUE'), async (req: Request, res: Response) => {
   if (!isEgiftPurchaseEnabled()) {
     return res.status(503).json({ error: 'eGift purchase is not available right now', errorCode: 'EGIFT_DISABLED' });
   }
