@@ -810,9 +810,21 @@ export class ShopService {
   // ─── Helpers ──────────────────────────────────────────────────────────────
 
   private _generateOrderNumber(): string {
+        // EVIL FIX (2026-08-20): the previous `Math.random() * 90000 + 10000`
+        // gave only 90k order-number possibilities per month. With ~1000 shop
+        // orders/month, the birthday-paradox collision probability is >1%,
+        // and with a UNIQUE constraint on shop_orders.order_number the INSERT
+        // inside createOrder()'s transaction throws → the whole checkout
+        // aborts → payment was already captured → customer sees error, order
+        // lost, refund cycle. Bump to a cryptographically-strong 10-hex
+        // suffix (2^40 ≈ 10^12 possibilities per month — essentially zero
+        // collision) using node:crypto. Preserves the `PW-YYYYMM-XXX` shape;
+        // suffix is now 10 hex chars instead of 5 decimal digits.
         const now = new Date();
         const yyyymm = `${now.getFullYear()}${String(now.getMonth() + 1).padStart(2, '0')}`;
-        const rand = Math.floor(Math.random() * 90000) + 10000;
-        return `PW-${yyyymm}-${rand}`;
+        // eslint-disable-next-line @typescript-eslint/no-var-requires
+        const { randomBytes } = require('crypto');
+        const suffix = randomBytes(5).toString('hex').toUpperCase(); // 10 chars
+        return `PW-${yyyymm}-${suffix}`;
   }
 }
