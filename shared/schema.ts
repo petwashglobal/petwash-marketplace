@@ -16599,3 +16599,186 @@ export const socialMetricSnapshots = pgTable("social_metric_snapshots", {
 }));
 export type SocialMetricSnapshot = typeof socialMetricSnapshots.$inferSelect;
 export type InsertSocialMetricSnapshot = typeof socialMetricSnapshots.$inferInsert;
+
+// ═════════════════════════════════════════════════════════════════════════════
+// DB-drift SEV-1 audit 2026-08-20 — 9 tables consumed by prod code but never
+// added to the schema. MIGRATION: migrations/0120_db_drift_sev1_2026_08_20.sql.
+// (The 10th missing table, loyalty_activity_log, lives in schema-loyalty.ts.)
+// ═════════════════════════════════════════════════════════════════════════════
+
+// ─── coupon_reservations (SEV-1 #2) ─────────────────────────────────────────
+// UnifiedPricingService reserve/confirm/abandon lifecycle. reservation_id is
+// a text id like `R-${nanoid(16)}` — not a UUID column.
+export const couponReservations = pgTable("coupon_reservations", {
+  reservationId:        text("reservation_id").primaryKey(),
+  couponId:             text("coupon_id").notNull(),
+  issuanceId:           text("issuance_id"),
+  userId:               text("user_id").notNull(),
+  orderType:            text("order_type").notNull(),
+  grossAmountCents:     integer("gross_amount_cents").notNull(),
+  discountAmountCents:  integer("discount_amount_cents").notNull(),
+  expiresAt:            timestamp("expires_at").notNull(),
+  idempotencyKey:       text("idempotency_key"),
+  status:               text("status").notNull().default("reserved"),
+  orderId:              text("order_id"),
+  confirmedAt:          timestamp("confirmed_at"),
+  abandonedAt:          timestamp("abandoned_at"),
+  createdAt:            timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  userCouponStatusIdx: index("idx_coupon_reservations_user_coupon_status")
+    .on(t.userId, t.couponId, t.status),
+  expiresStatusIdx: index("idx_coupon_reservations_expires_status")
+    .on(t.expiresAt, t.status),
+}));
+export type CouponReservation = typeof couponReservations.$inferSelect;
+export type InsertCouponReservation = typeof couponReservations.$inferInsert;
+
+// ─── system_events (SEV-1 #3) ───────────────────────────────────────────────
+// Append-only black-box recorder. Fire-and-forget from SystemEventService.stamp().
+export const systemEvents = pgTable("system_events", {
+  id:           bigint("id", { mode: "number" }).primaryKey(),
+  eventType:    text("event_type").notNull(),
+  severity:     text("severity").notNull(),
+  source:       text("source"),
+  platform:     text("platform"),
+  message:      text("message").notNull(),
+  detail:       jsonb("detail"),
+  bookingId:    text("booking_id"),
+  userUid:      text("user_uid"),
+  providerUid:  text("provider_uid"),
+  resolved:     boolean("resolved").notNull().default(false),
+  resolvedAt:   timestamp("resolved_at"),
+  resolvedBy:   text("resolved_by"),
+  createdAt:    timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  createdAtIdx: index("idx_system_events_created_at").on(t.createdAt),
+  eventTypeCreatedIdx: index("idx_system_events_event_type_created")
+    .on(t.eventType, t.createdAt),
+  severityUnresolvedIdx: index("idx_system_events_severity_unresolved")
+    .on(t.severity, t.resolvedAt),
+}));
+export type SystemEvent = typeof systemEvents.$inferSelect;
+export type InsertSystemEvent = typeof systemEvents.$inferInsert;
+
+// ─── teams (SEV-1 #4) ────────────────────────────────────────────────────────
+export const teams = pgTable("teams", {
+  id:          serial("id").primaryKey(),
+  name:        text("name").notNull(),
+  description: text("description"),
+  isActive:    boolean("is_active").notNull().default(true),
+  createdAt:   timestamp("created_at").notNull().defaultNow(),
+});
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = typeof teams.$inferInsert;
+
+// ─── team_members (SEV-1 #4) ─────────────────────────────────────────────────
+export const teamMembers = pgTable("team_members", {
+  id:         serial("id").primaryKey(),
+  teamId:     integer("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  userUid:    text("user_uid").notNull(),
+  role:       text("role").notNull().default("agent"),
+  isActive:   boolean("is_active").notNull().default(true),
+  createdAt:  timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  userUidIdx: index("idx_team_members_user_uid").on(t.userUid),
+  teamIdIdx:  index("idx_team_members_team_id").on(t.teamId),
+}));
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = typeof teamMembers.$inferInsert;
+
+// ─── case_assignments (SEV-1 #4) ─────────────────────────────────────────────
+export const caseAssignments = pgTable("case_assignments", {
+  id:               bigint("id", { mode: "number" }).primaryKey(),
+  caseType:         text("case_type").notNull(),
+  caseRefId:        text("case_ref_id").notNull(),
+  assignedToUid:    text("assigned_to_uid"),
+  assignedTeamId:   integer("assigned_team_id"),
+  assignedByUid:    text("assigned_by_uid"),
+  note:             text("note"),
+  networkScope:     text("network_scope"),
+  isActive:         boolean("is_active").notNull().default(true),
+  assignedAt:       timestamp("assigned_at").notNull().defaultNow(),
+}, (t) => ({
+  caseActiveIdx:     index("idx_case_assignments_case_active").on(t.caseType, t.caseRefId, t.isActive),
+  assigneeActiveIdx: index("idx_case_assignments_assignee_active").on(t.assignedToUid, t.isActive),
+  teamActiveIdx:     index("idx_case_assignments_team_active").on(t.assignedTeamId, t.isActive),
+}));
+export type CaseAssignment = typeof caseAssignments.$inferSelect;
+export type InsertCaseAssignment = typeof caseAssignments.$inferInsert;
+
+// ─── case_sla_states (SEV-1 #4) ──────────────────────────────────────────────
+// UNIQUE(case_type, case_ref_id) is REQUIRED for the ON CONFLICT upsert
+// at sla-monitor.ts:276. Do not drop that constraint.
+export const caseSlaStates = pgTable("case_sla_states", {
+  id:                 bigint("id", { mode: "number" }).primaryKey(),
+  caseType:           text("case_type").notNull(),
+  caseRefId:          text("case_ref_id").notNull(),
+  slaStatus:          text("sla_status"),
+  slaBudgetHours:     integer("sla_budget_hours"),
+  ageHours:           numeric("age_hours", { precision: 10, scale: 2 }),
+  breachDetectedAt:   timestamp("breach_detected_at"),
+  escalatedAt:        timestamp("escalated_at"),
+  escalatedToUid:     text("escalated_to_uid"),
+  lastActionAt:       timestamp("last_action_at"),
+  checkedAt:          timestamp("checked_at").notNull().defaultNow(),
+}, (t) => ({
+  caseUniq:   unique("case_sla_states_case_uniq").on(t.caseType, t.caseRefId),
+  statusIdx:  index("idx_case_sla_states_status").on(t.slaStatus),
+}));
+export type CaseSlaState = typeof caseSlaStates.$inferSelect;
+export type InsertCaseSlaState = typeof caseSlaStates.$inferInsert;
+
+// ─── case_escalation_log (SEV-1 #4) ──────────────────────────────────────────
+export const caseEscalationLog = pgTable("case_escalation_log", {
+  id:          bigint("id", { mode: "number" }).primaryKey(),
+  caseType:    text("case_type").notNull(),
+  caseRefId:   text("case_ref_id").notNull(),
+  eventType:   text("event_type").notNull(),
+  fromUid:     text("from_uid"),
+  toUid:       text("to_uid"),
+  note:        text("note"),
+  createdAt:   timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  caseCreatedIdx:  index("idx_case_escalation_log_case").on(t.caseType, t.caseRefId, t.createdAt),
+  eventCreatedIdx: index("idx_case_escalation_log_event").on(t.eventType, t.createdAt),
+}));
+export type CaseEscalationLog = typeof caseEscalationLog.$inferSelect;
+export type InsertCaseEscalationLog = typeof caseEscalationLog.$inferInsert;
+
+// ─── case_notes (SEV-1 #4) ───────────────────────────────────────────────────
+export const caseNotes = pgTable("case_notes", {
+  id:          bigint("id", { mode: "number" }).primaryKey(),
+  caseType:    text("case_type").notNull(),
+  caseRefId:   text("case_ref_id").notNull(),
+  authorUid:   text("author_uid"),
+  authorRole:  text("author_role"),
+  noteText:    text("note_text").notNull(),
+  createdAt:   timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  caseCreatedIdx: index("idx_case_notes_case_created").on(t.caseType, t.caseRefId, t.createdAt),
+}));
+export type CaseNote = typeof caseNotes.$inferSelect;
+export type InsertCaseNote = typeof caseNotes.$inferInsert;
+
+// ─── remittance_email_log (SEV-1 #6) ─────────────────────────────────────────
+// Composite PRIMARY KEY (batch_id, provider_uid) satisfies the ON CONFLICT
+// clause used all over prestige-pass.ts remittance flow. `id` is kept as a
+// separate UNIQUE surrogate for the SELECT id ... at prestige-pass.ts:8317.
+export const remittanceEmailLog = pgTable("remittance_email_log", {
+  id:            bigint("id", { mode: "number" }).notNull(),
+  batchId:       text("batch_id").notNull(),
+  providerUid:   text("provider_uid").notNull(),
+  status:        text("status"),
+  sentAt:        timestamp("sent_at"),
+  retryCount:    integer("retry_count").notNull().default(0),
+  lastRetryAt:   timestamp("last_retry_at"),
+  errorDetail:   text("error_detail"),
+  createdAt:     timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  pk:            uniqueIndex("remittance_email_log_pk").on(t.batchId, t.providerUid),
+  idUniq:        unique("remittance_email_log_id_uniq").on(t.id),
+  providerIdx:   index("idx_remittance_email_log_provider").on(t.providerUid, t.sentAt),
+  statusIdx:     index("idx_remittance_email_log_status").on(t.status),
+}));
+export type RemittanceEmailLog = typeof remittanceEmailLog.$inferSelect;
+export type InsertRemittanceEmailLog = typeof remittanceEmailLog.$inferInsert;

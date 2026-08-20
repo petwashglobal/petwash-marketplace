@@ -1,4 +1,4 @@
-import { pgTable, serial, varchar, integer, timestamp, boolean, text, decimal, jsonb, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, serial, varchar, integer, timestamp, boolean, text, decimal, jsonb, uniqueIndex, index } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
 import { createInsertSchema } from 'drizzle-zod';
 import { z } from 'zod';
@@ -679,3 +679,24 @@ export const referralCredits = pgTable('referral_credits', {
 });
 
 export type ReferralCredit = typeof referralCredits.$inferSelect;
+
+// ─── loyalty_activity_log ────────────────────────────────────────────────────
+// Append-only audit trail for every loyalty-point delta. Written INSIDE the
+// db.transaction() in server/actions/loyaltySync.ts (award + rollback branches)
+// and read by the replay-guard SELECT that dedups by (user_id, reason,
+// metadata->>'bookingId'). MIGRATION: migrations/0120_db_drift_sev1_2026_08_20.sql.
+export const loyaltyActivityLog = pgTable('loyalty_activity_log', {
+  id:           serial('id').primaryKey(),
+  userId:       text('user_id').notNull(),
+  pointsDelta:  integer('points_delta').notNull(),
+  reason:       text('reason').notNull(),
+  newBalance:   integer('new_balance').notNull(),
+  newTier:      text('new_tier'),
+  metadata:     jsonb('metadata'),
+  createdAt:    timestamp('created_at').notNull().defaultNow(),
+}, (t) => ({
+  userCreatedIdx: index('idx_loyalty_activity_log_user_created').on(t.userId, t.createdAt),
+}));
+
+export type LoyaltyActivityLog = typeof loyaltyActivityLog.$inferSelect;
+export type InsertLoyaltyActivityLog = typeof loyaltyActivityLog.$inferInsert;
