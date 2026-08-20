@@ -19,7 +19,14 @@ import express from 'express';
 import crypto from 'crypto';
 import { logger } from '../lib/logger';
 import { redis } from '../services/redis';
-import { tryClaimWebhookEvent } from '../lib/nayaxWebhookDedup';
+import {
+  tryClaimWebhookEvent,
+  claimEvent,
+  markProcessing,
+  markCompleted,
+  markFailedFinal,
+  markFailedRetryable,
+} from '../lib/nayaxWebhookDedup';
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
 import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings, users } from '@shared/schema';
@@ -51,11 +58,24 @@ const captureRawBody = express.raw({
 // ==================== CONFIGURATION ====================
 
 const NAYAX_WEBHOOK_SECRET = process.env.NAYAX_WEBHOOK_SECRET || '';
-const NAYAX_ALLOWED_IPS = process.env.NAYAX_ALLOWED_IPS?.split(',') || [
-  // Nayax Israel production webhook servers
-  // These IPs should be obtained from Nayax documentation
-  '185.60.216.0/24', // Example - replace with actual Nayax IPs
-];
+
+// P0-C (2026-08-20 audit): a MONEY webhook must NEVER run behind an example
+// IP allowlist. The old fallback array (`['185.60.216.0/24', // Example …]`)
+// let unset NAYAX_ALLOWED_IPS silently authorise Nayax's example CIDR — a
+// public range that has nothing to do with the operator's Nayax integration.
+// The list is now read straight from the environment; when unset, the
+// createIPAllowlist middleware fails CLOSED with 503. No fallback IPs.
+// The startup log below reports only whether the list is configured — never
+// the values, so a log leak can't reveal the allowlist.
+{
+  const configured = !!process.env.NAYAX_ALLOWED_IPS?.trim();
+  logger.info('[Nayax] IP allowlist configured: ' + (configured ? 'true' : 'false'));
+  if (!configured) {
+    logger.error(
+      '[Nayax] NAYAX_ALLOWED_IPS is unset — every webhook request will be rejected with 503 until the allowlist is configured. Set NAYAX_ALLOWED_IPS to the operator-provided Nayax egress CIDR list.',
+    );
+  }
+}
 
 // Redis-based deduplication — survives restarts and horizontal scaling.
 // Falls back to accepting (non-deduplicating) when Redis is unavailable,
@@ -140,11 +160,17 @@ function validateNayaxSignature(
       crypto.timingSafeEqual(expectedBuf, providedBuf);
     
     if (!isValid) {
+      // P0-D (2026-08-20 audit): NEVER log the expected HMAC. Logging even a
+      // truncated slice of the computed digest lets any log reader forge the
+      // remaining bytes by brute force off the leaked prefix, and the operator
+      // has no lawful reason to see it in ops logs. Keep only forensically
+      // useful, non-secret metadata.
       logger.warn('[NayaxWebhook] Invalid signature', {
         ip: req.ip,
-        providedSignature: providedSignature.substring(0, 16) + '...',
-        expectedSignature: expectedSignature.substring(0, 16) + '...',
-        bodyLength: (Buffer.isBuffer(rawBody) || typeof rawBody === 'string') ? rawBody.length : 0,
+        route: req.originalUrl || req.url,
+        signaturePresent: true,
+        signatureLength: providedSignature.length,
+        bodyLength: Buffer.isBuffer(rawBody) ? rawBody.length : 0,
       });
       return res.status(401).json({ error: 'Invalid webhook signature' });
     }
@@ -164,57 +190,138 @@ function validateNayaxSignature(
 }
 
 /**
- * Check if webhook has already been processed (idempotency).
+ * Extract a stable idempotency key from a Nayax payload.
  *
- * DB-backed insert-first dedup using nayax_processed_event_ids (PK on
- * event_id). The INSERT is atomic — survives Node restart and works
- * across horizontally-scaled Cloud Run instances without shared state.
+ * Different Nayax callbacks carry the stable ID under DIFFERENT top-level keys:
+ *   • terminal              → eventId / transactionId
+ *   • settlement            → settlementId (Nayax's real settlement payloads
+ *                             do NOT include eventId or transactionId at the
+ *                             top level; the old generic `eventId || txnId`
+ *                             extractor 400'd every settlement before the
+ *                             handler ran — dead route.)
+ *   • refund                → RefundID / refundId (from the Nayax Lynx refunds
+ *                             skill contract), falling back to transactionId
  *
- * Behavior:
- *   - new event → INSERT succeeds, next()
- *   - duplicate event → INSERT short-circuits via ON CONFLICT DO NOTHING,
- *     returns 200 OK with { deduplicated: true } so Nayax stops retrying
- *   - DB failure → 503 (fail closed). Nayax retries on its own schedule.
- *     This is intentional: failing OPEN here is what caused the prior
- *     vulnerability (Redis fallback allowed duplicates through and
- *     could double-credit wallets on Nayax's retry).
+ * Each route pins its own extractor so a new payload shape can't silently
+ * revert to the generic default.
  */
-async function checkIdempotency(
-  req: express.Request,
-  res: express.Response,
-  next: express.NextFunction
-) {
-  const eventId = req.body.eventId || req.body.transactionId;
+export type EventKeyExtractor = (body: any) => string | null;
 
-  if (!eventId) {
-    logger.warn('[NayaxWebhook] Missing event ID');
-    return res.status(400).json({ error: 'Missing event ID' });
-  }
+/**
+ * Nayax webhook inbox middleware (P0-A + P0-B, 2026-08-20 audit).
+ *
+ * The middleware factory turns each route into a state-machine driver:
+ *
+ *   1. Extract the route-specific idempotency key. Missing → 400.
+ *   2. claimEvent() inserts RECEIVED on first arrival, or reads the existing
+ *      row and decides:
+ *        • dedup    (COMPLETED / FAILED_FINAL) → 200 duplicate:true
+ *        • conflict (fresh RECEIVED / PROCESSING) → 409 so Nayax retries later
+ *        • retry    (FAILED_RETRYABLE, stale PROCESSING, stale RECEIVED)
+ *          → mark PROCESSING and hand the handler a fresh attempt
+ *        • new      (row just inserted) → mark PROCESSING and run the handler
+ *   3. On DB failure at claim time → 503, no audit row, no processing.
+ *
+ * The route then owns transitioning the row to COMPLETED / FAILED_RETRYABLE /
+ * FAILED_FINAL via res.locals.nayaxInbox.mark*. The old "row exists = dedup"
+ * shortcut is gone — the inbox now proves the business handler actually
+ * committed before a replay is short-circuited.
+ */
+export function checkIdempotency(keyExtractor: EventKeyExtractor = defaultKeyExtractor) {
+  return async function inboxMiddleware(
+    req: express.Request,
+    res: express.Response,
+    next: express.NextFunction,
+  ) {
+    let eventId: string | null;
+    try {
+      eventId = keyExtractor(req.body);
+    } catch {
+      eventId = null;
+    }
 
-  try {
-    const result = await tryClaimWebhookEvent({
-      eventId: String(eventId),
-      sourceRoute: req.originalUrl || req.url,
-    });
-    if (result.processed === 'duplicate') {
-      return res.status(200).json({
-        received: true,
-        deduplicated: true,
-        message: 'Webhook already processed',
+    if (!eventId || !String(eventId).trim()) {
+      logger.warn('[NayaxWebhook] Missing event ID', { route: req.originalUrl || req.url });
+      return res.status(400).json({ error: 'Missing event ID' });
+    }
+
+    const route = req.originalUrl || req.url;
+    let decision;
+    try {
+      decision = await claimEvent({ eventId: String(eventId), sourceRoute: route });
+    } catch (err: any) {
+      // Fail CLOSED on DB outage — no processing without an audit row. Nayax
+      // will retry, and any prior in-flight claim is bounded by the
+      // stale-PROCESSING window so we can't deadlock a stuck event forever.
+      logger.error('[NayaxWebhook] DB inbox unavailable — failing closed', {
+        eventId,
+        route,
+        err: err?.message,
+      });
+      return res.status(503).json({
+        error: 'Webhook inbox unavailable — Nayax should retry',
       });
     }
+
+    if (decision.decision === 'dedup') {
+      return res.status(200).json({
+        received: true,
+        duplicate: true,
+        status: decision.row.status,
+      });
+    }
+
+    if (decision.decision === 'conflict') {
+      // Fresh PROCESSING row from a concurrent delivery — 409 lets Nayax retry
+      // once the in-flight attempt finishes.
+      return res.status(409).json({
+        error: 'Webhook already in flight — retry shortly',
+      });
+    }
+
+    // 'new' or 'retry' — move the row into PROCESSING and hand it to the
+    // route handler along with the mark* helpers.
+    try {
+      await markProcessing(String(eventId));
+    } catch (err: any) {
+      // Bumping to PROCESSING failed — treat as DB outage.
+      logger.error('[NayaxWebhook] markProcessing failed — failing closed', {
+        eventId, route, err: err?.message,
+      });
+      return res.status(503).json({
+        error: 'Webhook inbox unavailable — Nayax should retry',
+      });
+    }
+
+    res.locals.nayaxInbox = {
+      eventId: String(eventId),
+      decision: decision.decision,
+      row: decision.row,
+      markCompleted: () => markCompleted(String(eventId)),
+      markFailedRetryable: (code: string) => markFailedRetryable(String(eventId), code),
+      markFailedFinal: (code: string) => markFailedFinal(String(eventId), code),
+    };
+
     return next();
-  } catch (err) {
-    // Fail CLOSED on DB outage — Nayax will retry. Better than failing
-    // open and risking duplicate processing of a real payment event.
-    logger.error('[NayaxWebhook] DB dedup unavailable — failing closed', {
-      eventId,
-      err: (err as Error).message,
-    });
-    return res.status(503).json({
-      error: 'Webhook deduplication service unavailable — Nayax should retry',
-    });
-  }
+  };
+}
+
+/** Default extractor — used by /terminal. */
+export function defaultKeyExtractor(body: any): string | null {
+  const v = body?.eventId ?? body?.transactionId;
+  return v ? String(v) : null;
+}
+
+/** Settlement callbacks carry only settlementId at the top level. */
+export function settlementKeyExtractor(body: any): string | null {
+  const v = body?.settlementId ?? body?.SettlementId ?? body?.eventId ?? body?.transactionId;
+  return v ? String(v) : null;
+}
+
+/** Refund callbacks carry RefundID (Nayax Lynx refunds spec). */
+export function refundKeyExtractor(body: any): string | null {
+  const v = body?.RefundID ?? body?.refundId ?? body?.RefundId ?? body?.eventId ?? body?.transactionId;
+  return v ? String(v) : null;
 }
 
 // ==================== ROUTES ====================
@@ -244,11 +351,12 @@ router.post(
   validateIPAllowlist, // MUST be first - blocks unauthorized IPs
   captureRawBody, // Captures raw bytes for signature validation
   validateNayaxSignature, // Uses raw bytes for HMAC
-  checkIdempotency,
+  checkIdempotency(defaultKeyExtractor),
   async (req, res) => {
+    const inbox = res.locals.nayaxInbox;
     try {
       const payload: WebhookPayload = req.body;
-      
+
       logger.info('[NayaxWebhook] Terminal webhook received', {
         eventType: payload.eventType,
         transactionId: payload.transactionId,
@@ -256,11 +364,12 @@ router.post(
         amount: payload.amount,
         status: payload.status,
       });
-      
+
       // Process through PaymentGatewayService
       const result = await PaymentGatewayService.handleNayaxWebhook(payload);
-      
+
       if (result.processed) {
+        await inbox?.markCompleted?.();
         res.status(200).json({
           received: true,
           transactionId: payload.transactionId,
@@ -269,16 +378,21 @@ router.post(
         logger.error('[NayaxWebhook] Processing failed', result.error, {
           transactionId: payload.transactionId,
         });
-        
-        // Return 200 to prevent Nayax retries (we've logged the error)
+        // Handler returned a permanent processing rejection (bad payload,
+        // gateway said "no such booking"). Mark FAILED_FINAL so Nayax stops
+        // retrying — the row exists for audit and the 200 tells Nayax we're
+        // done with it.
+        await inbox?.markFailedFinal?.('handler_rejected');
         res.status(200).json({
           received: true,
           error: result.error,
         });
       }
-    } catch (error) {
+    } catch (error: any) {
       logger.error('[NayaxWebhook] Unexpected error', error);
-      
+      // Transient error — leave the inbox in FAILED_RETRYABLE so Nayax's next
+      // retry re-runs the handler instead of short-circuiting on a lost event.
+      await inbox?.markFailedRetryable?.('handler_exception');
       // Return 500 to trigger Nayax retry
       res.status(500).json({
         error: 'Internal server error',
@@ -298,8 +412,12 @@ router.post(
   validateIPAllowlist, // Block unauthorized IPs
   captureRawBody,
   validateNayaxSignature,
-  checkIdempotency,
+  // P0-B: settlement payloads carry only settlementId at the top level.
+  // The generic default extractor (eventId || transactionId) 400'd every real
+  // Nayax settlement — dead route. Pin the route-specific extractor here.
+  checkIdempotency(settlementKeyExtractor),
   async (req, res) => {
+    const inbox = res.locals.nayaxInbox;
     try {
       const { settlementId, date, totalAmount, currency, transactions } = req.body;
       
@@ -384,6 +502,7 @@ router.post(
         discrepancies: discrepancies.length,
       });
 
+      await inbox?.markCompleted?.();
       res.status(200).json({
         received: true,
         settlementId,
@@ -394,8 +513,9 @@ router.post(
           status: discrepancies.length > 0 ? 'discrepancy' : 'matched',
         },
       });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('[NayaxWebhook] Settlement error', error);
+      await inbox?.markFailedRetryable?.('settlement_exception');
       res.status(500).json({ error: 'Settlement processing failed' });
     }
   }
@@ -411,18 +531,21 @@ router.post(
   validateIPAllowlist, // Block unauthorized IPs
   captureRawBody,
   validateNayaxSignature,
-  checkIdempotency,
+  // P0-B: refund payloads carry RefundID (Nayax Lynx refunds spec) — see
+  // .agents/skills/nayax-lynx-refunds/references/request-refund.md.
+  checkIdempotency(refundKeyExtractor),
   async (req, res) => {
+    const inbox = res.locals.nayaxInbox;
     try {
       const { transactionId, refundId, amount, currency, reason } = req.body;
-      
+
       logger.info('[NayaxWebhook] Refund webhook received', {
         transactionId,
         refundId,
         amount,
         reason,
       });
-      
+
       // Update payment intent status to refunded
       await db.update(paymentIntents)
         .set({
@@ -430,13 +553,15 @@ router.post(
           updatedAt: new Date(),
         })
         .where(eq(paymentIntents.transactionId, transactionId));
-      
+
+      await inbox?.markCompleted?.();
       res.status(200).json({
         received: true,
         refundId,
       });
-    } catch (error) {
+    } catch (error: any) {
       logger.error('[NayaxWebhook] Refund error', error);
+      await inbox?.markFailedRetryable?.('refund_exception');
       res.status(500).json({ error: 'Refund processing failed' });
     }
   }
@@ -974,6 +1099,9 @@ router.post(
   validateIPAllowlist,
   captureRawBody,
   async (req: express.Request & { rawBody?: Buffer }, res: express.Response) => {
+    // Hoisted for the outer catch — set after the claim succeeds so the
+    // catch can mark the inbox row FAILED_RETRYABLE if the handler throws.
+    let checkoutInboxEventIdOuter: string | null = null;
     try {
       // FAIL-CLOSED: the previous fallback `Buffer.from(JSON.stringify(req.body))`
       // was a silent HMAC-bypass trap — if any middleware ordering change ever
@@ -1040,25 +1168,44 @@ router.post(
         return res.status(400).json({ error: 'Invalid washHistoryId' });
       }
 
-      // Fail-CLOSED DB dedup (insert-first on nayax_processed_event_ids) — the same
-      // helper /nayax/terminal + /nayax/settlement use. Replaces the old fail-OPEN
-      // Redis dedup: on a concurrent Nayax retry with Redis down, that path
-      // "proceeded without dedup" and could DOUBLE-MINT a wash package (bug hunt
-      // 2026-07-09, HIGH). The DB PK makes the claim atomic, and a claim failure
-      // fails closed (Nayax retries) instead of processing an unclaimed event.
+      // Fail-CLOSED DB webhook inbox (P0-A, 2026-08-20). The prior insert-first
+      // dedup marked the eventId processed BEFORE the wash-balance award ran —
+      // if the award threw the retry short-circuited on the claimed row and the
+      // customer paid without receiving credits. The new state machine writes
+      // RECEIVED at claim time and only marks COMPLETED after the award commits;
+      // a mid-flight failure is FAILED_RETRYABLE and Nayax's next retry re-runs.
+      const checkoutInboxEventId = `checkout:${payload.transactionId}`;
+      let checkoutClaim;
       try {
-        const claim = await tryClaimWebhookEvent({
-          eventId: `checkout:${payload.transactionId}`,
+        checkoutClaim = await claimEvent({
+          eventId: checkoutInboxEventId,
           sourceRoute: req.originalUrl || req.url,
         });
-        if (claim.processed === 'duplicate') {
-          logger.info('[CheckoutWebhook] Duplicate — already processed', { transactionId: payload.transactionId });
-          return res.status(200).json({ received: true, note: 'already_processed' });
-        }
       } catch (dedupErr: any) {
-        logger.error('[CheckoutWebhook] DB dedup unavailable — failing closed (Nayax will retry)', { error: dedupErr?.message });
-        return res.status(503).json({ error: 'dedup_unavailable_retry' });
+        logger.error('[CheckoutWebhook] DB inbox unavailable — failing closed (Nayax will retry)', { error: dedupErr?.message });
+        return res.status(503).json({ error: 'inbox_unavailable_retry' });
       }
+      if (checkoutClaim.decision === 'dedup') {
+        logger.info('[CheckoutWebhook] Duplicate — already processed', { transactionId: payload.transactionId });
+        return res.status(200).json({ received: true, note: 'already_processed' });
+      }
+      if (checkoutClaim.decision === 'conflict') {
+        return res.status(409).json({ error: 'already_in_flight_retry' });
+      }
+      try {
+        await markProcessing(checkoutInboxEventId);
+      } catch (err: any) {
+        logger.error('[CheckoutWebhook] markProcessing failed — failing closed', { error: err?.message });
+        return res.status(503).json({ error: 'inbox_unavailable_retry' });
+      }
+      // Route-scoped mark helpers — every non-dedup return path below MUST hit
+      // one of them, so the inbox row can never linger in RECEIVED/PROCESSING.
+      const checkoutMarkCompleted = () => markCompleted(checkoutInboxEventId);
+      const checkoutMarkFailedFinal = (code: string) => markFailedFinal(checkoutInboxEventId, code);
+      // Publish the inbox id to the outer catch so an uncaught exception below
+      // still moves the row to FAILED_RETRYABLE (rather than leaving it stuck
+      // in PROCESSING until the 10-minute stale window elapses).
+      checkoutInboxEventIdOuter = checkoutInboxEventId;
 
       // Load pending washHistory record
       const { washHistory: washHistoryTable, users: usersTable, washPackages: washPackagesTable } = await import('@shared/schema');
@@ -1070,12 +1217,14 @@ router.post(
 
       if (!historyRow) {
         logger.error('[CheckoutWebhook] washHistory record not found', { washHistoryId });
+        await checkoutMarkFailedFinal('wash_history_not_found');
         return res.status(404).json({ error: 'Checkout session not found' });
       }
 
       // Idempotency: if already completed, return success without re-awarding.
       if (historyRow.status === 'completed') {
         logger.info('[CheckoutWebhook] Already completed — idempotent response', { washHistoryId });
+        await checkoutMarkCompleted();
         return res.status(200).json({ received: true, note: 'already_completed' });
       }
 
@@ -1108,6 +1257,7 @@ router.post(
 
         if (claimed.length === 0) {
           logger.info('[CheckoutWebhook] Concurrent delivery lost race — idempotent ack', { washHistoryId });
+          await checkoutMarkCompleted();
           return res.status(200).json({ received: true, note: 'concurrent_lost_race' });
         }
         // Amount validation (1-agora tolerance)
@@ -1116,6 +1266,7 @@ router.post(
           logger.error('[CheckoutWebhook] Amount mismatch — possible fraud', {
             washHistoryId, expected: expectedCents, received: payload.amountCents,
           });
+          await checkoutMarkFailedFinal('amount_mismatch');
           return res.status(400).json({ error: 'Amount mismatch', expected: expectedCents, received: payload.amountCents });
         }
 
@@ -1240,6 +1391,7 @@ router.post(
           userId, washHistoryId, washCount, finalPrice, transactionId: payload.transactionId,
         });
 
+        await checkoutMarkCompleted();
         return res.status(200).json({ received: true, washesAwarded: washCount });
 
       } else if (payload.event === 'payment.failed' || payload.event === 'payment.expired' || payload.event === 'payment.cancelled') {
@@ -1253,13 +1405,23 @@ router.post(
           washHistoryId, event: payload.event,
         });
 
+        await checkoutMarkCompleted();
         return res.status(200).json({ received: true, note: `checkout_${payload.event}` });
       }
 
+      await checkoutMarkCompleted();
       return res.status(200).json({ received: true, note: 'unhandled_event', event: payload.event });
 
     } catch (error: any) {
       logger.error('[CheckoutWebhook] Unhandled error', { error: error.message });
+      // Best-effort mark FAILED_RETRYABLE — the inbox row exists only if the
+      // claim actually succeeded, so short-circuit when it didn't. This keeps
+      // Nayax's next retry re-running the handler instead of dedup'ing on a
+      // half-processed event.
+      if (checkoutInboxEventIdOuter) {
+        try { await markFailedRetryable(checkoutInboxEventIdOuter, 'checkout_exception'); }
+        catch { /* non-fatal */ }
+      }
       return res.status(500).json({ error: 'Internal server error' });
     }
   }
@@ -1279,6 +1441,8 @@ router.post(
   validateIPAllowlist,
   captureRawBody,
   async (req: express.Request & { rawBody?: Buffer }, res: express.Response) => {
+    // Hoisted for the outer catch — see /nayax/checkout-payment comment.
+    let bookingReqInboxEventIdOuter: string | null = null;
     try {
       // FAIL-CLOSED: the previous fallback `Buffer.from(JSON.stringify(req.body))`
       // was a silent HMAC-bypass trap — if any middleware ordering change ever
@@ -1332,17 +1496,43 @@ router.post(
         return res.status(400).json({ error: 'Missing required fields' });
       }
 
-      // Deduplicate
-      const dedupKey = `br-webhook:${payload.transactionId}`;
+      // Fail-CLOSED DB webhook inbox (P0-A, 2026-08-20). Redis-only dedup was
+      // fail-OPEN: a Redis hiccup let concurrent Nayax retries both pass the
+      // dedup and drive downstream side-effects. The DB inbox is atomic and
+      // survives Redis outages. The redis fallback below is retained only as a
+      // best-effort short-TTL guard for other callers on the same key.
+      const bookingReqInboxEventId = `br-webhook:${payload.transactionId}`;
+      let brClaim;
       try {
-        const alreadyProcessed = await redis.get(dedupKey);
-        if (alreadyProcessed) {
-          logger.info('[BookingReqWebhook] Duplicate — already processed', { transactionId: payload.transactionId });
-          return res.status(200).json({ received: true, note: 'already_processed' });
-        }
-        await redis.setEx(dedupKey, WEBHOOK_DEDUP_TTL_SECONDS, '1');
+        brClaim = await claimEvent({
+          eventId: bookingReqInboxEventId,
+          sourceRoute: req.originalUrl || req.url,
+        });
+      } catch (inboxErr: any) {
+        logger.error('[BookingReqWebhook] DB inbox unavailable — failing closed (Nayax will retry)', { error: inboxErr?.message });
+        return res.status(503).json({ error: 'inbox_unavailable_retry' });
+      }
+      if (brClaim.decision === 'dedup') {
+        logger.info('[BookingReqWebhook] Duplicate — already processed', { transactionId: payload.transactionId });
+        return res.status(200).json({ received: true, note: 'already_processed' });
+      }
+      if (brClaim.decision === 'conflict') {
+        return res.status(409).json({ error: 'already_in_flight_retry' });
+      }
+      try {
+        await markProcessing(bookingReqInboxEventId);
+      } catch (err: any) {
+        logger.error('[BookingReqWebhook] markProcessing failed — failing closed', { error: err?.message });
+        return res.status(503).json({ error: 'inbox_unavailable_retry' });
+      }
+      bookingReqInboxEventIdOuter = bookingReqInboxEventId;
+      const brMarkCompleted = () => markCompleted(bookingReqInboxEventId);
+      const brMarkFailedFinal = (code: string) => markFailedFinal(bookingReqInboxEventId, code);
+      // Redis short-TTL flag (non-authoritative — other callers may still rely on it).
+      try {
+        await redis.setEx(`br-webhook:${payload.transactionId}`, WEBHOOK_DEDUP_TTL_SECONDS, '1');
       } catch (redisErr: any) {
-        logger.warn('[BookingReqWebhook] Redis dedup unavailable', { error: redisErr.message });
+        logger.warn('[BookingReqWebhook] Redis dedup unavailable (non-fatal — DB inbox is authoritative)', { error: redisErr?.message });
       }
 
       const { bookingRequests: bookingRequestsTable } = await import('@shared/schema');
@@ -1355,12 +1545,14 @@ router.post(
 
       if (!booking) {
         logger.error('[BookingReqWebhook] Booking not found', { bookingId: payload.bookingId });
+        await brMarkFailedFinal('booking_not_found');
         return res.status(404).json({ error: 'Booking not found' });
       }
 
       // Idempotency: already confirmed
       if (booking.status === 'confirmed' || booking.status === 'in_progress') {
         logger.info('[BookingReqWebhook] Booking already confirmed — idempotent', { bookingId: payload.bookingId });
+        await brMarkCompleted();
         return res.status(200).json({ received: true, note: 'already_confirmed' });
       }
 
@@ -1376,6 +1568,7 @@ router.post(
           logger.warn('[BookingReqWebhook] Status gate: booking not in payment_pending — ignoring payment.success', {
             bookingId: payload.bookingId, currentStatus: booking.status,
           });
+          await brMarkCompleted();
           return res.status(200).json({ received: true, note: 'status_gate_blocked', currentStatus: booking.status });
         }
 
@@ -1385,6 +1578,7 @@ router.post(
           logger.error('[BookingReqWebhook] Amount mismatch — POTENTIAL FRAUD', {
             bookingId: payload.bookingId, expected: bookingTotalCents, received: payload.amountCents,
           });
+          await brMarkFailedFinal('amount_mismatch');
           return res.status(400).json({ error: 'Amount mismatch', expected: bookingTotalCents, received: payload.amountCents });
         }
 
@@ -1420,6 +1614,7 @@ router.post(
           // 200, not 4xx/5xx: we successfully RECEIVED and recorded the payment
           // event (escrow already holds the money); Nayax must not retry this.
           // The block is a data/process problem for a human, not a delivery failure.
+          await brMarkCompleted();
           return res.status(200).json({
             received: true,
             note: 'deal_gate_blocked',
@@ -1485,6 +1680,7 @@ router.post(
           logger.info('[BookingReqWebhook] Confirmation already committed by another delivery (race) — idempotent 200', {
             bookingId: payload.bookingId, transactionId: payload.transactionId,
           });
+          await brMarkCompleted();
           return res.status(200).json({ received: true, note: 'already_confirmed_race' });
         }
 
@@ -1674,6 +1870,7 @@ router.post(
           }
         });
 
+        await brMarkCompleted();
         return res.status(200).json({ received: true, bookingId: payload.bookingId, status: 'confirmed' });
 
       } else if (payload.event === 'payment.failed' || payload.event === 'payment.expired' || payload.event === 'payment.cancelled') {
@@ -1719,13 +1916,19 @@ router.post(
           bookingId: payload.bookingId, event: payload.event,
         });
 
+        await brMarkCompleted();
         return res.status(200).json({ received: true, note: `payment_${payload.event}`, bookingId: payload.bookingId });
       }
 
+      await brMarkCompleted();
       return res.status(200).json({ received: true, note: 'unhandled_event', event: payload.event });
 
     } catch (error: any) {
       logger.error('[BookingReqWebhook] Unhandled error', { error: error.message });
+      if (bookingReqInboxEventIdOuter) {
+        try { await markFailedRetryable(bookingReqInboxEventIdOuter, 'booking_req_exception'); }
+        catch { /* non-fatal */ }
+      }
       return res.status(500).json({ error: 'Internal server error' });
     }
   }

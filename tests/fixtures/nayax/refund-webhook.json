@@ -1,0 +1,7 @@
+{
+  "RefundID": "rfd_2026_08_20_001",
+  "TransactionId": "txn_terminal_9f2a",
+  "amount": 45.0,
+  "currency": "ILS",
+  "reason": "customer_requested"
+}

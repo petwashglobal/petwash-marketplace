@@ -1,0 +1,13 @@
+{
+  "eventType": "payment.success",
+  "eventId": "evt_terminal_2026_08_20_001",
+  "transactionId": "txn_terminal_9f2a",
+  "terminalId": "TERM_TLV_001",
+  "stationId": "K9000_TLV_001",
+  "amount": 45.0,
+  "currency": "ILS",
+  "status": "completed",
+  "timestamp": "2026-08-20T10:30:00Z",
+  "cardBrand": "visa",
+  "cardLast4": "4242"
+}

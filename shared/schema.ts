@@ -16431,8 +16431,22 @@ export const nayaxProcessedEventIds = pgTable("nayax_processed_event_ids", {
   eventId: text("event_id").primaryKey(),
   processedAt: timestamp("processed_at", { withTimezone: true }).notNull().defaultNow(),
   sourceRoute: varchar("source_route", { length: 60 }),
+  // ── Webhook-inbox state machine (migration 0121, 2026-08-20 audit P0-A) ──
+  // The old "row exists = dedup" pattern lost events whose handler threw after
+  // the row was inserted. The dedup lib now uses these fields explicitly:
+  //   RECEIVED          — arrived, handler about to run
+  //   PROCESSING        — handler started
+  //   COMPLETED         — handler committed; safe to short-circuit replays
+  //   FAILED_RETRYABLE  — transient failure; retry re-runs the handler
+  //   FAILED_FINAL      — permanent failure; short-circuit to stop Nayax retries
+  status: text("status").notNull().default('COMPLETED'),
+  attemptCount: integer("attempt_count").notNull().default(1),
+  lastAttemptAt: timestamp("last_attempt_at", { withTimezone: true }).notNull().defaultNow(),
+  completedAt: timestamp("completed_at", { withTimezone: true }),
+  errorCode: text("error_code"),
 }, (table) => [
   index("idx_nayax_processed_event_ids_processed_at").on(table.processedAt),
+  index("idx_nayax_processed_event_ids_status_last_attempt").on(table.status, table.lastAttemptAt),
 ]);
 
 export type NayaxProcessedEventId = typeof nayaxProcessedEventIds.$inferSelect;
