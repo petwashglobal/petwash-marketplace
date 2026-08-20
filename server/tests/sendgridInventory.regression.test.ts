@@ -61,7 +61,11 @@ const RAW_SEND_ALLOWLIST = [
   // pr-email-3-monitoring-alerts.test.ts "Out of scope" comment.
   'email/luxury-email-service.ts',
   'israeliTaxReport.ts',
-  'lib/notificationDispatcher.ts',
+  // NOTE: lib/notificationDispatcher.ts was migrated OFF direct sgMail.send()
+  // onto sendGuardedEmail (EmailSpendGuard-checked path). Do not add it back
+  // — a direct call from the shared notification dispatcher bypasses the
+  // circuit breaker and the per-recipient limiter for every promo / receipt
+  // / system-alert send in the app.
   'routes/booking-chat.ts',
   'routes/ceo-wallet.ts',
   'routes/provider-onboarding.ts',
