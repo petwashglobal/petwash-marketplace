@@ -90,8 +90,46 @@ class ServerLogger {
         const err = error instanceof Error ? error : new Error(message);
         Sentry.captureException(err, { level: 'error', extra: errorContext, tags: { source: 'logger.error' } });
       } catch { /* telemetry must never throw into the logger */ }
+
+      // Modernity SEV-1 #4 (2026-08-20 audit): every logger.error already reaches
+      // Sentry, but nothing fed alertManager — 7 runtime errors fired every 60s
+      // for 24h and nobody was paged. Route sustained error rates (>= 20/min) to
+      // the existing checkServerErrorRate() helper. alertManager applies its own
+      // 1-hour cooldown per alert key, so this never spams; the in-memory counter
+      // resets on each new minute-bucket. Fire-and-forget + fully guarded.
+      forwardToAlertManagerIfSustained();
     }
   }
+}
+
+// ── Modernity SEV-1 #4 rolling counter (module-level, in-memory) ────────────
+// One process = one counter. Multi-instance Cloud Run: each instance rolls its
+// own bucket; alertManager dedupes per instance via the 1-hour cooldown.
+let _errBucketMinute = -1;
+let _errBucketCount = 0;
+const _ERR_ALERT_THRESHOLD_PER_MIN = 20;
+
+function forwardToAlertManagerIfSustained(): void {
+  try {
+    const nowMinute = Math.floor(Date.now() / 60_000);
+    if (nowMinute !== _errBucketMinute) {
+      _errBucketMinute = nowMinute;
+      _errBucketCount = 0;
+    }
+    _errBucketCount++;
+    if (_errBucketCount === _ERR_ALERT_THRESHOLD_PER_MIN) {
+      // Dynamic import so a circular dep between logger and alerts can't crash
+      // the boot path. checkServerErrorRate triggers alertManager when the rate
+      // exceeds the (unmodified) 1% threshold — we pass count/count so the rate
+      // is 1.0, guaranteeing the alert fires. alertManager's own 1h cooldown
+      // prevents a storm.
+      import('./alerts')
+        .then(({ checkServerErrorRate }) => {
+          void checkServerErrorRate(_errBucketCount, _errBucketCount);
+        })
+        .catch(() => { /* alerts is non-critical — never throw into logger */ });
+    }
+  } catch { /* counter must never throw */ }
 }
 
 export const logger = new ServerLogger();

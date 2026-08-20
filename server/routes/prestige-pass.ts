@@ -32,7 +32,7 @@ import { db, pool } from '../db';
 import { walletAccounts, creditTransactions, walletLedgerEntries, walletReconciliationRuns, adminActionReversals, providerPayoutEntries } from '@shared/schema';
 import { eq, desc, and, sql, gte, lte, SQL } from 'drizzle-orm';
 import { logger } from '../lib/logger';
-import { logAuditEvent } from '../middleware/auditLog';
+import { logAuditEvent, auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 import { z } from 'zod';
 import multer from 'multer';
 import { EmailService } from '../emailService';
@@ -482,7 +482,7 @@ const generateSchema = z.object({
   machineId: z.string().max(100).optional(),
 });
 
-router.post('/token/generate', generateTokenLimiter, async (req: Request, res: Response) => {
+router.post('/token/generate', generateTokenLimiter, auditLogMiddleware('PRESTIGE_ISSUE'), async (req: Request, res: Response) => {
   try {
     const session  = (req as any).session;
     const userId   = resolveUid(req);
@@ -717,7 +717,7 @@ function traceWalletRedemption(
   })();
 }
 
-router.post('/token/redeem', redeemLimiter, async (req: Request, res: Response) => {
+router.post('/token/redeem', redeemLimiter, auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const parsed = redeemSchema.safeParse(req.body);
     if (!parsed.success) return res.status(400).json({ ok: false, error: 'Invalid input' });
@@ -1203,7 +1203,7 @@ const topupSchema = z.object({
   reference:   z.string().optional(),
 });
 
-router.post('/topup', async (req: Request, res: Response) => {
+router.post('/topup', auditLogMiddleware('WALLET_TOPUP'), async (req: Request, res: Response) => {
   // DISABLED (410) — SECURITY: this route called topUpCashWallet() directly, which
   // is a pure ledger credit with NO payment capture and NO proof the referenced
   // charge occurred. Any authenticated user could mint up to ₪10,000 into their own
@@ -1449,7 +1449,7 @@ const activateSchema = z.object({
   cardNumber:  z.string().optional(),
 });
 
-router.post('/activate', async (req: Request, res: Response) => {
+router.post('/activate', auditLogMiddleware('PRESTIGE_JOIN'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const userId  = resolveUid(req);
@@ -1629,7 +1629,7 @@ const redeemOnlineSchema = z.object({
   amountGross: z.number().min(1).max(500_000),   // in agorot (ILS cents)
 });
 
-router.post('/redeem-online', async (req: Request, res: Response) => {
+router.post('/redeem-online', auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const userId  = resolveUid(req);
@@ -2002,7 +2002,7 @@ const issueGiftSchema = z.object({
   senderId:       z.string().optional(), // admin path: override sender
 });
 
-router.post('/issue-gift', async (req: Request, res: Response) => {
+router.post('/issue-gift', auditLogMiddleware('EGIFT_ISSUE'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const senderId = resolveUid(req);
@@ -2080,7 +2080,7 @@ const claimGiftSchema = z.object({
   giftCode: z.string().min(8).max(64),
 });
 
-router.post('/claim-gift', async (req: Request, res: Response) => {
+router.post('/claim-gift', auditLogMiddleware('EGIFT_REDEEM'), async (req: Request, res: Response) => {
   try {
     const session = (req as any).session;
     const userId  = resolveUid(req);
@@ -2501,7 +2501,7 @@ const adminCreditSchema = z.object({
   idempotencyKey: z.string().min(8).max(128),
 });
 
-router.post('/admin/manual-credit', async (req: Request, res: Response) => {
+router.post('/admin/manual-credit', auditLogMiddleware('CREDIT_WALLET_ADJUST'), async (req: Request, res: Response) => {
   try {
     // Audit #27: this endpoint MINTS wallet credit (real money value). The shared
     // static x-admin-secret header alone is not sufficient — anyone who learns the
@@ -3934,7 +3934,7 @@ router.post('/admin/wallet/release', async (req: Request, res: Response) => {
 // Admin: refund a debited booking (finance_state must be debited).
 // Supports partial refunds. Supports both booking tables.
 // ──────────────────────────────────────────────────────────────────────────────
-router.post('/admin/wallet/refund', async (req: Request, res: Response) => {
+router.post('/admin/wallet/refund', auditLogMiddleware('REFUND'), async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });
@@ -4048,7 +4048,7 @@ router.post('/admin/wallet/refund', async (req: Request, res: Response) => {
 // POST /api/prestige-pass/admin/wallet/adjust
 // Admin: manually credit or debit a user's cash wallet (no booking required).
 // ──────────────────────────────────────────────────────────────────────────────
-router.post('/admin/wallet/adjust', async (req: Request, res: Response) => {
+router.post('/admin/wallet/adjust', auditLogMiddleware('CREDIT_WALLET_ADJUST'), async (req: Request, res: Response) => {
   try {
     const uid = (req as any).user?.uid || (req as any).firebaseUser?.uid;
     if (!uid) return res.status(401).json({ error: 'Unauthorized' });

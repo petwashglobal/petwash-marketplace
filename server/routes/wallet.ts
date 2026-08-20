@@ -18,6 +18,10 @@ import sgMail from '../lib/sendgrid';
 import crypto from 'crypto';
 import { nanoid } from 'nanoid';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
+// Modernity SEV-1 #1 (2026-08-20 audit): audit-log wrapper on the
+// loyalty-redemption POST — the only money-mutating path in this Apple Wallet
+// router (a scan burns discount + writes a redemption row).
+import { auditMiddleware as auditLogMiddleware } from '../middleware/auditLog';
 
 const router = express.Router();
 
@@ -1233,7 +1237,7 @@ router.delete('/v1/devices/:deviceID/registrations/:passTypeID/:serialNumber', a
  * Nayax terminal endpoint to scan and validate loyalty QR codes
  * 🔓 Public endpoint - authenticated by terminal secret
  */
-router.post('/nayax/redeem-loyalty', async (req, res) => {
+router.post('/nayax/redeem-loyalty', auditLogMiddleware('WALLET_BURN'), async (req, res) => {
   try {
     const { qrData, terminalId, stationId } = req.body;
 

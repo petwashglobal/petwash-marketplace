@@ -2648,6 +2648,37 @@ router.get('/:requestId/sumit-return', async (req, res) => {
       logger.warn('[BookingRequests] SUMIT legacy confirm write-back failed (non-blocking)', { requestId, error: bridgeErr?.message });
     }
 
+    // ── Modernity SEV-1 #2 (2026-08-20 audit) ────────────────────────────────
+    // Google Calendar event MUST be created only after payment truth. This is
+    // the confirmed+paid branch for the SUMIT rail — mirror walk-my-pet.ts:916
+    // (which fires createBookingEvent at the confirmed+paid transition) and
+    // nayax-webhooks.ts (which does the same on the Nayax rail). Wrapped in
+    // setImmediate so a slow/failed calendar call never delays or rolls back
+    // the payment confirmation. The guard test in
+    // server/tests/booking-calendar-after-payment.guard.test.ts was updated in
+    // this same PR to allow createBookingEvent ONLY inside this specific
+    // confirmed+paid branch; ANY create outside it remains banned.
+    setImmediate(() => {
+      calendarIntegrationService.createBookingEvent({
+        platform: (booking as any).providerType || (booking as any).serviceType || 'PetWash',
+        bookingId: requestId,
+        title: `PetWash™ — ${(booking as any).serviceType || 'Booking'}`,
+        description: (booking as any).ownerMessage || `Booking ${requestId}`,
+        startTime: new Date((booking as any).meetGreetDate ?? (booking as any).startDate),
+        endTime: new Date(
+          (booking as any).endDate ??
+            new Date((booking as any).meetGreetDate ?? (booking as any).startDate).getTime() + 60 * 60 * 1000,
+        ),
+        location: (booking as any).meetGreetLocation || undefined,
+        customerName: booking.ownerId,
+        providerName: booking.providerId,
+      }).catch((calErr: any) => {
+        logger.warn('[BookingRequests] SUMIT confirm calendar create failed (non-blocking)', {
+          requestId, error: calErr?.message,
+        });
+      });
+    });
+
     // 2026-08-18 audit fix: parity with the Nayax webhook, which fires
     // dispatchNotifications to BOTH parties after flipping to 'confirmed'.
     // The SUMIT rail was silently confirming — customer never got a payment
