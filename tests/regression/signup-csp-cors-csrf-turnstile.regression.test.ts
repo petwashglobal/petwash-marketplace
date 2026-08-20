@@ -47,17 +47,39 @@ describe('signup wave-2 pins — CSP + CORS + CSRF + Turnstile docs', () => {
   describe('CORS mirrors petwash.co.il subdomains with credentials', () => {
     const src = root('server/index.ts');
 
-    it('subdomain branch mirrors the origin (never a wildcard)', () => {
-      // The block guarded by isSubdomain must set ACAO to reqOrigin and ACAC:true.
-      const subdomainBlock = src.match(/if \(isSubdomain\)\s*\{[\s\S]*?\}/)?.[0] ?? '';
-      expect(subdomainBlock).toMatch(/Access-Control-Allow-Origin['"],\s*reqOrigin/);
-      expect(subdomainBlock).toMatch(/Access-Control-Allow-Credentials['"],\s*['"]true['"]/);
-      expect(subdomainBlock).not.toMatch(/Access-Control-Allow-Origin['"],\s*['"]\*['"]/);
+    // 2026-08-20 hardening (Agent-2 hunt): the old "second custom middleware"
+    // for subdomains was dead code on OPTIONS — the FIRST cors() middleware
+    // terminated the preflight with 204 + NO ACAO before the subdomain code
+    // ever ran, so signup.petwash.co.il preflights failed silently in prod.
+    // Fix: the origin check moved INTO the cors() `origin` callback so the
+    // cors package emits the correct ACAO + ACAC on the preflight response.
+    // The pins below track the invariants of the new implementation.
+    it('CORS_EXACT_ORIGINS lists the real subdomains that need credentialed access', () => {
+      const block = src.slice(
+        src.indexOf('CORS_EXACT_ORIGINS'),
+        src.indexOf('];', src.indexOf('CORS_EXACT_ORIGINS')),
+      );
+      // Apex + www + the known-controlled subdomains in the repo/docs.
+      expect(block).toContain("'https://petwash.co.il'");
+      expect(block).toContain("'https://www.petwash.co.il'");
+      expect(block).toContain("'https://app.petwash.co.il'");
+      expect(block).toContain("'https://signup.petwash.co.il'");
+      expect(block).toContain("'https://admin.petwash.co.il'");
+      expect(block).toContain("'https://api.petwash.co.il'");
     });
 
-    it('Vary: Origin is set so proxies do not cache the wrong CORS response', () => {
-      const subdomainBlock = src.match(/if \(isSubdomain\)\s*\{[\s\S]*?\}/)?.[0] ?? '';
-      expect(subdomainBlock).toMatch(/Vary['"],\s*['"]Origin['"]/);
+    it('cors() middleware sets credentials:true and uses the origin callback', () => {
+      // Preflight must be handled by cors() itself, and every allowed origin
+      // must receive Access-Control-Allow-Credentials (never wildcard `*`).
+      expect(src).toMatch(/app\.use\(cors\(\{[\s\S]*?origin:\s*corsOriginCallback[\s\S]*?credentials:\s*true/);
+    });
+
+    it('subdomain trust is a CLOSED explicit set, not a broad *.petwash.co.il regex', () => {
+      // The old PETWASH_SUBDOMAIN_RE trusted ANY *.petwash.co.il with
+      // credentials — a takeover of an unclaimed subdomain would inherit
+      // __session. Ensure that broad-trust regex is gone.
+      expect(src).not.toMatch(/PETWASH_SUBDOMAIN_RE/);
+      expect(src).not.toMatch(/\[a-z0-9-\]\+\\\.\)\?petwash\\\.co\\\.il/);
     });
   });
 

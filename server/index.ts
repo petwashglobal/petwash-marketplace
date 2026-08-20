@@ -561,75 +561,71 @@ app.use((req: any, res: any, next: any) => {
 
 // C. CORS — strict allowlist with credential safety (CWE-942)
 // Access-Control-Allow-Credentials is ONLY set when the request origin exactly
-// matches an entry in the static CORS_EXACT_ORIGINS list.  This is enforced by
-// the `cors` npm package, which CodeQL recognises as a safe CORS implementation.
-// For regex-matched subdomains and dev/preview origins we serve a non-credentialed
-// response with a literal '*' wildcard — no user-controlled value is ever reflected
-// into a response header, eliminating the taint path CodeQL tracks (CWE-942).
+// matches an entry in the static CORS_EXACT_ORIGINS list OR the closed
+// petwash.co.il subdomain regex. Everything is decided INSIDE the `cors`
+// package's `origin` callback so the `cors` middleware itself terminates the
+// preflight (200/204) with the correct ACAO/ACAC headers set — the old
+// "second custom middleware" pattern was dead code on OPTIONS: `cors()` ended
+// the OPTIONS request before the subdomain middleware ever ran, so preview
+// subdomain preflights got 204 with NO Access-Control-Allow-Origin and the
+// browser rejected the follow-up POST. (Behavioral verification — Agent 2
+// hunt, 2026-08-20.)
+//
+// SUBDOMAIN POLICY: only the explicit, controlled apex + subdomain list below
+// receives credentialed CORS. The old "trust ANY *.petwash.co.il" fallback
+// was too broad — a takeover of an unclaimed subdomain would have inherited
+// __session cookies. Real production origins (grepped 2026-08-20 across
+// server/, docs/, cloudrun-service.yaml, .github/, firebase.json) are:
+//   apex, www, app, signup, admin, api, auth, staging.
 const CORS_EXACT_ORIGINS: string[] = [
   'https://petwash.co.il',
   'https://www.petwash.co.il',
+  'https://app.petwash.co.il',
+  'https://signup.petwash.co.il',
+  'https://admin.petwash.co.il',
+  'https://api.petwash.co.il',
+  'https://auth.petwash.co.il',
+  'https://staging.petwash.co.il',
   ...(process.env.BASE_URL ? [process.env.BASE_URL] : ['http://localhost:5000']),
 ];
+const CORS_EXACT_SET = new Set(CORS_EXACT_ORIGINS);
 const CORS_DEV_PATTERNS: RegExp[] = [
-  /\.run\.app$/,
+  /^https:\/\/[a-z0-9-]+\.run\.app$/,
   // Replit preview domains removed 2026-06 — CEO cut all Replit ties.
 ];
-const PETWASH_SUBDOMAIN_RE = /^https:\/\/([a-z0-9-]+\.)?petwash\.co\.il$/;
 
 const _CORS_METHODS  = 'GET, POST, PUT, PATCH, DELETE, OPTIONS';
 const _CORS_HEADERS  = 'Content-Type, Authorization, X-WebAuthn-CSRF-Token, X-Firebase-AppCheck, X-CSRF-Token';
 
-// 1. Credentialed CORS — `cors` package with static array; CodeQL-safe.
-//    Only origins in CORS_EXACT_ORIGINS receive Access-Control-Allow-Credentials.
+// Decide-in-one-place origin callback: exact-match apex/www/known subdomains
+// only; dev-preview *.run.app in non-prod. User-controlled origin is NEVER
+// reflected unchecked — every accept path is either a Set.has() lookup or a
+// closed regex anchored to a known suffix. CWE-942 taint path stays closed.
+function corsOriginCallback(
+  origin: string | undefined,
+  cb: (err: Error | null, allow?: boolean) => void,
+): void {
+  // No Origin header (same-origin request, curl, server-to-server): allow.
+  if (!origin) return cb(null, true);
+  if (CORS_EXACT_SET.has(origin)) return cb(null, true);
+  if (!isProduction && CORS_DEV_PATTERNS.some((p) => p.test(origin))) return cb(null, true);
+  if (isProduction) console.warn(`[CORS] Blocked origin: ${origin}`);
+  // `cors` package: false = no ACAO header emitted (browser will reject).
+  // Do NOT pass an Error here — the cors middleware would 500 the request and
+  // shadow the real block reason in the browser.
+  return cb(null, false);
+}
+
+// 1. Credentialed CORS — the `cors` package handles ALL origin checks AND
+//    preflight (OPTIONS) itself. `credentials: true` sets ACAC on every allowed
+//    origin, `Vary: Origin` is emitted automatically because `origin` is a fn.
 app.use(cors({
-  origin: CORS_EXACT_ORIGINS,
+  origin: corsOriginCallback,
   credentials: true,
   methods: _CORS_METHODS.split(', '),
   allowedHeaders: _CORS_HEADERS.split(', '),
   maxAge: 86400,
 }));
-
-// 2. CORS for *.petwash.co.il subdomains and dev/preview origins.
-//
-//    Subdomain match (petwash.co.il only, closed by regex): MIRROR the origin
-//    with Access-Control-Allow-Credentials:true so `fetch(..., { credentials:
-//    'include' })` from a preview subdomain (e.g. signup.petwash.co.il) can
-//    still send the __session cookie. The old wildcard `*` overrode the ACAO
-//    the cors() middleware had already set for apex/www, AND `*` is illegal
-//    combined with credentials — browser silently dropped the cookie, every
-//    signup POST failed unauthenticated. (Firebase-audit 2026-08-20 SEV-2 #4.)
-//
-//    Dev origin match (Cloud Run *.run.app in non-prod): keep the wildcard,
-//    no credentials — dev previews don't share the __session cookie anyway.
-//
-//    User-controlled origin is NEVER reflected unchecked: PETWASH_SUBDOMAIN_RE
-//    is anchored to the petwash.co.il apex, and CORS_DEV_PATTERNS is a closed
-//    list of dev suffixes. Both close the CWE-942 taint path CodeQL tracks.
-app.use((req: any, res: any, next: any) => {
-  const reqOrigin = req.headers.origin as string | undefined;
-  if (!reqOrigin) return next();
-  const isSubdomain = PETWASH_SUBDOMAIN_RE.test(reqOrigin);
-  const isDevOrigin = !isProduction && CORS_DEV_PATTERNS.some(p => p.test(reqOrigin));
-  if (isSubdomain) {
-    res.setHeader('Access-Control-Allow-Origin', reqOrigin);
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Vary', 'Origin');
-    res.setHeader('Access-Control-Allow-Methods', _CORS_METHODS);
-    res.setHeader('Access-Control-Allow-Headers', _CORS_HEADERS);
-    res.setHeader('Access-Control-Max-Age', '86400');
-    if (req.method === 'OPTIONS') { res.status(204).end(); return; }
-  } else if (isDevOrigin) {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', _CORS_METHODS);
-    res.setHeader('Access-Control-Allow-Headers', _CORS_HEADERS);
-    res.setHeader('Access-Control-Max-Age', '86400');
-    if (req.method === 'OPTIONS') { res.status(204).end(); return; }
-  } else if (isProduction && reqOrigin) {
-    console.warn(`[CORS] Blocked origin: ${reqOrigin}`);
-  }
-  return next();
-});
 
 // SendGrid's Event Webhook signature (ECDSA over timestamp + RAW BYTES) can only
 // be verified against the exact request body. The global JSON parser was eating
