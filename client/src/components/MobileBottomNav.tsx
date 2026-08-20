@@ -8,6 +8,14 @@ import { useAccountNavigation } from '@/hooks/useAccountNavigation';
 import { isImmersiveRoute } from '@/lib/immersive-routes';
 import { useAppFlavor } from '@/lib/appFlavor';
 import { PrestigeTabsBar, ProviderTabsBar } from '@/components/app-shell/FlavorBottomNav';
+// MULTI-ROLE CONTRACT (2026-08-20): the bottom nav must never collapse a
+// user to a single role — a provider-customer keeps their Bookings/Wallet/
+// Pets/eGift surfaces. Base tab visibility on additive CAPABILITIES; use
+// `uiMode` only to decide which set to emphasise when both capabilities
+// are true.
+import { useUserCapabilities } from '@/hooks/useUserCapabilities';
+import { hasCustomerCapability, hasProviderCapability } from '@shared/lib/userCapabilities';
+import { useUiMode } from '@/lib/uiMode';
 
 const GOLD = '#D9B84C';
 const GRAY = '#9CA3AF';
@@ -78,11 +86,13 @@ const ACCOUNT_HOME_PREFIXES = [
 export function MobileBottomNav() {
   const [location, setLocation] = useLocation();
   const { user, loading } = useFirebaseAuth();
-  const { role, isLoading: roleLoading } = useWhoami();
+  const { isLoading: roleLoading } = useWhoami();
   const { language } = useLanguage();
   const { resolveAccountRoute } = useAccountNavigation();
   const [isResolvingAccount, setIsResolvingAccount] = useState(false);
   const flavor = useAppFlavor();
+  const { capabilities } = useUserCapabilities();
+  const [uiMode] = useUiMode();
   const isRTL = language === 'he' || language === 'ar';
 
   if (loading || roleLoading || !user) return null;
@@ -120,8 +130,20 @@ export function MobileBottomNav() {
   if (flavor === 'customer' || (flavor === 'web' && onPrestigeSurface)) return <PrestigeTabsBar />;
   if (flavor === 'provider' || (flavor === 'web' && onProviderSurface)) return <ProviderTabsBar />;
 
-  const isProvider = role === 'provider';
-  const NAV_ITEMS = isProvider ? PROVIDER_NAV : CUSTOMER_NAV;
+  // Capability-driven nav (never a single role): a provider-customer keeps
+  // BOTH surfaces available. `uiMode` decides emphasis when both are true;
+  // the user swaps via ModeSwitch. Never mutate users.role to swap tabs.
+  const canCustomer = hasCustomerCapability(capabilities);
+  const canProvider = hasProviderCapability(capabilities);
+  // Precedence rules:
+  //  • both capabilities → show the surface for the current uiMode
+  //  • provider-only     → PROVIDER_NAV
+  //  • customer-only (or none yet) → CUSTOMER_NAV (least-privilege default)
+  const NAV_ITEMS = canProvider && canCustomer
+    ? (uiMode === 'provider' ? PROVIDER_NAV : CUSTOMER_NAV)
+    : canProvider
+      ? PROVIDER_NAV
+      : CUSTOMER_NAV;
 
   return (
     <nav

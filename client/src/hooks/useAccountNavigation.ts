@@ -37,6 +37,13 @@ import { useFirebaseAuth, type UserRole } from '@/auth/AuthProvider';
 import { auth } from '@/lib/firebase';
 import { isStickyAccountPath } from '@/lib/sticky-account-paths';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
+// MULTI-ROLE CONTRACT (2026-08-20): a provider-customer must be able to
+// reach /my-account (their eGift / wallet / pets / bookings) when their
+// UI mode is "customer". Routing the Account tap by raw role locked
+// providers OUT of their member surfaces. Route by uiMode instead — the
+// same user, additive capabilities. Read the persisted mode without a
+// hook so the async resolver works inside a click handler.
+import { readUiMode } from '@/lib/uiMode';
 
 /**
  * Resolve the LIVE Firebase user. The React `user`/`loading`/`claims` values are
@@ -85,11 +92,12 @@ function adminEmailMatch(email: string | null | undefined): boolean {
 
 function routeFromRole(role: UserRole | undefined): string | null {
   if (role === 'franchise_owner') return '/franchise/dashboard';
-  if (role === 'provider') return '/provider-os';
   if (role && ADMIN_ROLES.includes(role)) return '/admin/dashboard';
-  // 'customer' isn't a UserRole literal — customers carry no role claim and
-  // fall through to the default '/my-account' below in the sync resolver, or
-  // to the server post-login decider in the async resolver.
+  // MULTI-ROLE CONTRACT (2026-08-20): DO NOT route `role === 'provider'`
+  // here. A provider tapping "Account" while in customer uiMode wants
+  // /my-account (their eGift / wallet / pets), not /provider-os. Provider
+  // routing is decided by uiMode inside {get,resolve}AccountRoute below.
+  // 'customer' isn't a UserRole literal — customers carry no role claim.
   return null;
 }
 
@@ -110,6 +118,12 @@ export function useAccountNavigation() {
 
     if (adminEmailMatch(user.email)) return '/admin/dashboard';
 
+    // MULTI-ROLE CONTRACT (2026-08-20): a user who currently has provider
+    // uiMode selected wants their provider surface; a customer uiMode user
+    // (whether or not they also hold provider capability) wants /my-account.
+    // Server-side capability is still the gate for whether provider uiMode
+    // could be set (see client/src/components/ModeSwitch.tsx).
+    if (readUiMode() === 'provider') return '/provider-os';
     return '/my-account';
   };
 
@@ -167,6 +181,17 @@ export function useAccountNavigation() {
     if (fromRole) return fromRole;
 
     if (adminEmailMatch(fbUser.email)) return '/admin/dashboard';
+
+    // 2b. uiMode-driven routing (multi-role contract). After admin /
+    //     franchise fast-paths above, everyone else is either a customer
+    //     or a provider-customer. uiMode tells us which surface the user
+    //     currently wants — the mode switch guarantees provider mode is
+    //     only available when server-side capability allows it.
+    //     Provider mode → /provider-os. Customer mode → /my-account.
+    //     No server round-trip needed for this decision.
+    const mode = readUiMode();
+    if (mode === 'provider') return '/provider-os';
+    if (mode === 'customer') return '/my-account';
 
     // 3. Server fallback — authoritative, role-resolves from DB.
     //    PR-FRES-B: routed through postLoginCoordinator so a tap on the
