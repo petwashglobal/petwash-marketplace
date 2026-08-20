@@ -17085,7 +17085,7 @@ router.post('/admin/wallet/run-money-checks', async (req, res) => {
       SELECT pb.id, pb.total_amount_cents,
              COALESCE(SUM(pe.amount_cents),0) AS entry_sum
       FROM payout_batches pb
-      LEFT JOIN payout_entries pe ON pe.batch_id = pb.id
+      LEFT JOIN provider_payout_entries pe ON pe.batch_id = pb.id
       WHERE pb.status != 'cancelled'
       GROUP BY pb.id, pb.total_amount_cents
       HAVING ABS(pb.total_amount_cents - COALESCE(SUM(pe.amount_cents),0)) > 0
@@ -17124,7 +17124,7 @@ router.post('/admin/wallet/run-money-checks', async (req, res) => {
              COUNT(pe.*) FILTER (WHERE pe.status = 'settled') AS settled_count,
              COUNT(re.*) AS recon_count
       FROM payout_batches pb
-      LEFT JOIN payout_entries pe ON pe.batch_id = pb.id
+      LEFT JOIN provider_payout_entries pe ON pe.batch_id = pb.id
       LEFT JOIN recon_entries re ON re.batch_id = pb.id
       WHERE pb.status = 'settled'
       GROUP BY pb.id
@@ -17223,7 +17223,7 @@ router.get('/admin/wallet/consistency-check', async (req, res) => {
     const orphanDisputes = await pool.query(`
       SELECT d.id FROM disputes d
       WHERE d.status = 'resolved'
-        AND NOT EXISTS (SELECT 1 FROM refunds r WHERE r.dispute_id = d.id)
+        AND NOT EXISTS (SELECT 1 FROM booking_refunds r WHERE r.dispute_id = d.id)
         AND NOT EXISTS (SELECT 1 FROM remediation_outcomes ro WHERE ro.plan_id IN (
             SELECT id FROM remediation_plans WHERE id = d.id
           ))
@@ -17236,7 +17236,7 @@ router.get('/admin/wallet/consistency-check', async (req, res) => {
     // Check 3: Payout entries settled but wallet not updated
     const settledNotPaid = await pool.query(`
       SELECT pe.id, pe.provider_uid, pe.amount_cents
-      FROM payout_entries pe
+      FROM provider_payout_entries pe
       WHERE pe.status = 'settled'
         AND NOT EXISTS (
           SELECT 1 FROM transactions t
@@ -17375,7 +17375,7 @@ async function runE2EProofInternal(runType: string): Promise<{ steps: any[]; fai
     await step('Batch totals match entry sums', async () => {
       const r = await pool.query(`
         SELECT COUNT(*) AS c FROM payout_batches pb
-        LEFT JOIN payout_entries pe ON pe.batch_id = pb.id
+        LEFT JOIN provider_payout_entries pe ON pe.batch_id = pb.id
         WHERE pb.status != 'cancelled'
         GROUP BY pb.id, pb.total_amount_cents
         HAVING ABS(pb.total_amount_cents - COALESCE(SUM(pe.amount_cents),0)) > 0
@@ -17385,14 +17385,14 @@ async function runE2EProofInternal(runType: string): Promise<{ steps: any[]; fai
     });
 
     await step('No orphan payout entries (missing batch)', async () => {
-      const r = await pool.query(`SELECT COUNT(*) AS c FROM payout_entries pe WHERE NOT EXISTS (SELECT 1 FROM payout_batches pb WHERE pb.id = pe.batch_id)`);
+      const r = await pool.query(`SELECT COUNT(*) AS c FROM provider_payout_entries pe WHERE NOT EXISTS (SELECT 1 FROM payout_batches pb WHERE pb.id = pe.batch_id)`);
       const c = parseInt(r.rows[0].c);
       return { ok: c === 0, detail: c === 0 ? 'All entries have valid batch reference' : `${c} orphan entry(ies) found` };
     });
 
     await step('Settled entries have ledger transactions', async () => {
       const r = await pool.query(`
-        SELECT COUNT(*) AS c FROM payout_entries pe
+        SELECT COUNT(*) AS c FROM provider_payout_entries pe
         WHERE pe.status = 'settled'
           AND NOT EXISTS (SELECT 1 FROM transactions t WHERE t.owner_id = pe.provider_uid AND t.type = 'payout' AND ABS(t.amount_cents) = pe.amount_cents)
         LIMIT 1
@@ -17406,7 +17406,7 @@ async function runE2EProofInternal(runType: string): Promise<{ steps: any[]; fai
     await step('No resolved disputes without refund or outcome', async () => {
       const r = await pool.query(`
         SELECT COUNT(*) AS c FROM disputes d WHERE d.status = 'resolved'
-          AND NOT EXISTS (SELECT 1 FROM refunds r2 WHERE r2.dispute_id = d.id)
+          AND NOT EXISTS (SELECT 1 FROM booking_refunds r2 WHERE r2.dispute_id = d.id)
           AND NOT EXISTS (SELECT 1 FROM remediation_outcomes ro JOIN remediation_plans rp ON rp.id = ro.plan_id WHERE rp.id = d.id)
       `);
       const c = parseInt(r.rows[0].c);
@@ -18911,7 +18911,7 @@ async function executeSelfHealingAction(
       const { key, value } = actionParams;
       if (!key) return { success: false, note: 'Missing key in action_params' };
       await pool.query(`
-        INSERT INTO kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
+        INSERT INTO system_kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
         VALUES ('${key}', ${!!value}, NOW(), 'self_healing_engine', 'Auto-triggered by rule: ${context.ruleName.replace(/'/g, "''")}')
         ON CONFLICT (switch_key) DO UPDATE
           SET enabled = ${!!value}, last_toggled_at = NOW(),
@@ -18923,7 +18923,7 @@ async function executeSelfHealingAction(
 
     if (actionType === 'shadow_mode_enable') {
       await pool.query(`
-        INSERT INTO kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
+        INSERT INTO system_kill_switches (switch_key, enabled, last_toggled_at, toggled_by, reason)
         VALUES ('shadow_mode', true, NOW(), 'self_healing_engine', 'Auto shadow mode by rule: ${context.ruleName.replace(/'/g, "''")}')
         ON CONFLICT (switch_key) DO UPDATE
           SET enabled = true, last_toggled_at = NOW(),
