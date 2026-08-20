@@ -110,14 +110,17 @@ router.get('/stats', requireAuth, requireAdmin, async (req, res) => {
       updatedAt: new Date().toISOString()
     });
   } catch (error: any) {
+    // EVIL FIX (2026-08-20): the previous body returned `success: true` with
+    // all counters zero on DB failure. The admin dashboard then showed "0
+    // pending providers" during any DB outage or query error — CEO thought
+    // nothing needed approval when in reality dozens were waiting. Silent
+    // dishonesty. Return a real error; the client can render "stats
+    // unavailable — retry" instead of a fake zero.
     logger.error('[Provider Intake] Stats fetch failed:', error);
-    res.json({
-      success: true,
-      newCount: 0,
-      pendingCount: 0,
-      approvedCount: 0,
-      totalCount: 0,
-      updatedAt: new Date().toISOString()
+    res.status(503).json({
+      success: false,
+      error: 'STATS_UNAVAILABLE',
+      message: 'Provider intake stats unavailable — refresh in a moment',
     });
   }
 });
