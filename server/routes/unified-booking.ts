@@ -528,6 +528,18 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
       });
     }
 
+    // MONEY-SAFETY (evil-hunt 2026-08-20): reject non-finite / non-positive
+    // refundAmount at the route boundary before it reaches the engine. The
+    // engine also validates, but early-rejecting at 400 gives a clean caller
+    // error instead of a 500 from a thrown engine invariant.
+    const parsedRefundAmount = Number(refundAmount);
+    if (!Number.isFinite(parsedRefundAmount) || parsedRefundAmount <= 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'refundAmount must be a positive number',
+      });
+    }
+
     const booking = await loadBookingFromDB(bookingId);
     if (!booking) {
       return res.status(404).json({
@@ -536,9 +548,27 @@ router.post('/:bookingId/refund', requireAuth, requireAdmin, async (req: Request
       });
     }
 
+    // Server-side cap: refundAmount must not exceed the booking's captured
+    // gross. Prevents an admin (or a stolen admin token) from posting a
+    // refundAmount larger than what was ever charged. The engine enforces
+    // the same rule as a defence-in-depth backstop.
+    const grossAmount = Number(booking.priceSnapshot?.gross ?? 0);
+    if (!(grossAmount > 0)) {
+      return res.status(422).json({
+        success: false,
+        error: 'Booking has no captured charge to refund',
+      });
+    }
+    if (parsedRefundAmount > grossAmount + 0.005) {
+      return res.status(400).json({
+        success: false,
+        error: `refundAmount ${parsedRefundAmount} exceeds booking gross ${grossAmount}`,
+      });
+    }
+
     const result = await unifiedBookingEngine.refund(
       booking,
-      Number(refundAmount),
+      parsedRefundAmount,
       processedBy,
       role,
       reason,
