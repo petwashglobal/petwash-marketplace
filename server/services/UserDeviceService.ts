@@ -80,7 +80,19 @@ export class UserDeviceService {
    * Hash WiFi BSSID (MAC address) for privacy
    */
   static hashWifiBssid(bssid: string): string {
-    const salt = process.env.KYC_SALT || 'default-salt';
+    const salt = process.env.KYC_SALT;
+    if (!salt) {
+      if (process.env.NODE_ENV === 'production') {
+        // Fail-closed: a literal 'default-salt' would be public knowledge and
+        // would let anyone with a rainbow table reverse a stored BSSID hash.
+        throw new Error(
+          '[UserDeviceService] KYC_SALT must be set in production — hashWifiBssid ' +
+          'cannot fall back to a hardcoded literal salt.'
+        );
+      }
+      // Dev-only fallback so local work without env vars keeps functioning.
+      return crypto.createHash('sha256').update(bssid + 'default-salt-dev-only').digest('hex');
+    }
     return crypto.createHash('sha256').update(bssid + salt).digest('hex');
   }
   

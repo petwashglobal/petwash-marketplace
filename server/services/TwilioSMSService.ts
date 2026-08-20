@@ -39,6 +39,28 @@ const phoneDailySendCount = new Map<string, { count: number; resetAt: number }>(
 const RESEND_COOLDOWN_SECONDS = 60;
 const phoneLastSentAt = new Map<string, number>(); // phone → epoch ms of last send
 
+/**
+ * Resolve the HMAC secret used for OTP code storage.
+ *
+ * Fail-closed in production: if neither APP_SESSION_SECRET nor COOKIE_SECRET
+ * is set, throw at first use — never allow the previous public literal
+ * fallback ('petwash-otp-hmac') to run in production, because it is public
+ * knowledge (this source file) and would let an attacker who reads leaked
+ * Redis contents forge/verify OTP HMACs.
+ */
+function resolveOtpHmacSecret(): string {
+  const secret = process.env.APP_SESSION_SECRET || process.env.COOKIE_SECRET;
+  if (secret && secret.length > 0) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[TwilioSMSService] APP_SESSION_SECRET or COOKIE_SECRET must be set in production ' +
+      '— OTP HMAC storage cannot fall back to a hardcoded literal.'
+    );
+  }
+  // Dev-only fallback so local development without env vars keeps working.
+  return 'petwash-otp-hmac-dev-only';
+}
+
 // LAUNCH-SAFETY 2026-06-18: was 150 and PER-INSTANCE in-memory — it reset on every
 // deploy, behaved differently across Cloud Run instances ("SMS randomly stops"), and
 // fired BELOW the real Redis-backed abuse detector (SmsAbuseDetector). Raised well
@@ -455,7 +477,7 @@ class TwilioSMSService {
 
     // ── Primary store: Redis (survives restarts, shared across all instances) ──
     // HMAC of the code is stored — never the raw code.
-    const hmacSecret = process.env.APP_SESSION_SECRET || process.env.COOKIE_SECRET || 'petwash-otp-hmac';
+    const hmacSecret = resolveOtpHmacSecret();
     const codeHmac = crypto.createHmac('sha256', hmacSecret).update(code).digest('hex');
 
     if (redis.isConnected()) {
@@ -637,7 +659,7 @@ class TwilioSMSService {
     lockedUntil?: number;
   }> {
     const formattedPhone = this.formatPhoneNumber(phone);
-    const hmacSecret = process.env.APP_SESSION_SECRET || process.env.COOKIE_SECRET || 'petwash-otp-hmac';
+    const hmacSecret = resolveOtpHmacSecret();
     const LOCKOUT_TTL = Math.floor(LOCKOUT_DURATION_MS / 1000);
 
     const lockMsg = (remainMin: number): string => {

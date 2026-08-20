@@ -36,7 +36,25 @@ export function assertValidStaticStickerPayload(input: any): input is StaticStic
 
 // ── Signing / verifying dynamic QR payloads ───────────────────────────────────
 
-const QR_SECRET = process.env.QR_SECRET || 'petwash-qr-default-replace-in-prod';
+/**
+ * Resolve the QR-signing secret.
+ *
+ * Fail-closed in production: a literal fallback ('petwash-qr-default-…')
+ * would let anyone forge or verify a machine-QR HMAC, defeating the whole
+ * point of the signature. Dev retains a placeholder so local admin tools
+ * keep working without env config.
+ */
+function resolveQrSecret(): string {
+  const secret = process.env.QR_SECRET;
+  if (secret && secret.length > 0) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[QR] QR_SECRET must be set in production — signQrPayload cannot fall ' +
+      'back to a hardcoded literal.'
+    );
+  }
+  return 'petwash-qr-default-dev-only';
+}
 
 export function signQrPayload(
   machineId: string,
@@ -45,7 +63,7 @@ export function signQrPayload(
   nonce: string,
 ): string {
   const raw = `${machineId}:${locationId}:${ts}:${nonce}`;
-  return crypto.createHmac('sha256', QR_SECRET).update(raw).digest('hex');
+  return crypto.createHmac('sha256', resolveQrSecret()).update(raw).digest('hex');
 }
 
 export function verifyQrSignature(payload: QrPayload): boolean {
