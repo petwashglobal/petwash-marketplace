@@ -386,10 +386,18 @@ export class NayaxPaymentService {
       .createHmac('sha256', this.WEBHOOK_SECRET)
       .update(rawBody)
       .digest('hex');
-    
-    return crypto.timingSafeEqual(
-      Buffer.from(signature),
-      Buffer.from(expectedSignature)
+
+    // Nayax sends signatures as `sha256=<hex>` (matches nayax-webhooks.ts:122
+    // and nayax-monyx-events.ts:58). The previous code compared the prefixed
+    // header to a bare hex digest, so no real signature ever matched — every
+    // signed webhook was rejected. Also, timingSafeEqual THROWS on
+    // unequal-length buffers, so a length check must precede the compare.
+    const providedHex = signature.replace(/^sha256=/, '');
+    const providedBuf = Buffer.from(providedHex);
+    const expectedBuf = Buffer.from(expectedSignature);
+    return (
+      providedBuf.length === expectedBuf.length &&
+      crypto.timingSafeEqual(providedBuf, expectedBuf)
     );
   }
 

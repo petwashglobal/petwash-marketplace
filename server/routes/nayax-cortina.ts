@@ -62,6 +62,54 @@ function cortinaEnabled(): boolean {
   return (process.env.NAYAX_CORTINA_ENABLED || '').trim().toLowerCase() === 'true';
 }
 
+/**
+ * Cortina inbound authentication.
+ *
+ * Every Cortina inbound (authorize / sale / settlement / void / cancel /
+ * refund) SPENDS pre-paid credit if it succeeds. Previously the routes were
+ * guarded ONLY by `cortinaEnabled()` — no IP allowlist, no shared secret —
+ * so anyone who could reach `/api/webhooks/nayax/cortina/settlement` in
+ * production could trigger a debit against a live reservation.
+ *
+ * The Cortina StaticQR spec authenticates callers by echoing the shared
+ * `SecretToken` (the same 64-char credential we send outbound on /start,
+ * stored in NAYAX_CORTINA_SECRET_TOKEN). This function returns null on a
+ * valid caller, or a Cortina Declined response for the route to send back.
+ *
+ * Sandbox / bring-up: if the env var is unset, we log a critical warning
+ * and STILL refuse (fail-closed). To disable Cortina entirely for a
+ * sandbox test, set NAYAX_CORTINA_ENABLED=false — that path already
+ * short-circuits above this check.
+ */
+function assertCortinaSecret(body: any): { Status: { Verdict: 'Declined'; Code: number; StatusMessage: string } } | null {
+  const expected = (process.env.NAYAX_CORTINA_SECRET_TOKEN || '').trim();
+  if (!expected) {
+    logger.error('[Cortina] NAYAX_CORTINA_SECRET_TOKEN not set while NAYAX_CORTINA_ENABLED=true — refusing inbound (fail-closed)');
+    return { Status: { Verdict: 'Declined', Code: 5, StatusMessage: 'secret_not_configured' } };
+  }
+  const provided = String(body?.SecretToken ?? body?.secretToken ?? '').trim();
+  if (!provided || provided.length !== expected.length) {
+    logger.warn('[Cortina] Inbound rejected — missing/malformed SecretToken');
+    return { Status: { Verdict: 'Declined', Code: 5, StatusMessage: 'bad_secret' } };
+  }
+  // Constant-time compare — do NOT `===` a shared secret.
+  const a = Buffer.from(provided);
+  const b = Buffer.from(expected);
+  if (a.length !== b.length) {
+    return { Status: { Verdict: 'Declined', Code: 5, StatusMessage: 'bad_secret' } };
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const crypto = require('crypto') as typeof import('crypto');
+    if (!crypto.timingSafeEqual(a, b)) {
+      return { Status: { Verdict: 'Declined', Code: 5, StatusMessage: 'bad_secret' } };
+    }
+  } catch {
+    return { Status: { Verdict: 'Declined', Code: 5, StatusMessage: 'bad_secret' } };
+  }
+  return null;
+}
+
 const isUniqueViolation = (e: any) => e?.code === '23505' || /duplicate key|unique/i.test(String(e?.message));
 
 /** Resolve which physical bay a Nayax TerminalId / DOT reader maps to. */
@@ -160,6 +208,8 @@ const cortinaDecline = (code: number, reason: string) =>
 // Cortina machine configuration works without a code change.
 router.post(['/authorize', '/sale', '/Authorization', '/Sale', '/staticqr/authorization', '/staticqr/sale'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
+  const secretReject = assertCortinaSecret(req.body);
+  if (secretReject) return res.status(401).json(secretReject);
   try {
     const { terminalId, code } = parseCortinaRequest(req.body);
     const bay = await resolveBay(terminalId);
@@ -206,6 +256,8 @@ router.post(['/authorize', '/sale', '/Authorization', '/Sale', '/staticqr/author
 // /Sale End Notification. Same commit logic serves both.
 router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement', '/SaleEndNotification', '/staticqr/settlement', '/staticqr/saleendnotification'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
+  const secretReject = assertCortinaSecret(req.body);
+  if (secretReject) return res.status(401).json(secretReject);
   const { terminalId, code, transactionId, vended } = parseCortinaRequest(req.body);
   try {
     // If Nayax reports the product did NOT vend, take no money (reservation TTL-expires).
@@ -293,6 +345,8 @@ router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement',
 // decline that triggers a Nayax retry storm.
 router.post(['/void', '/cancel', '/Void', '/Cancel', '/staticqr/void', '/staticqr/cancel'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
+  const secretReject = assertCortinaSecret(req.body);
+  if (secretReject) return res.status(401).json(secretReject);
   const { terminalId, transactionId } = parseCortinaRequest(req.body);
   try {
     if (!transactionId) return res.json(cortinaApprove({ note: 'no_transaction_id_nothing_to_void' }));
@@ -355,6 +409,8 @@ router.post(['/void', '/cancel', '/Void', '/Cancel', '/staticqr/void', '/staticq
 // refund rail, not here. Idempotent + ack-on-error (same rationale as void).
 router.post(['/refund', '/Refund', '/staticqr/refund'], async (req: Request, res: Response) => {
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled'));
+  const secretReject = assertCortinaSecret(req.body);
+  if (secretReject) return res.status(401).json(secretReject);
   const { terminalId, transactionId, amount } = parseCortinaRequest(req.body);
   try {
     if (!transactionId) return res.json(cortinaApprove({ note: 'no_transaction_id_nothing_to_refund' }));

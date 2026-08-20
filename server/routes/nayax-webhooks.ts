@@ -106,7 +106,16 @@ function validateNayaxSignature(
     
     // Get raw body bytes (critical for signature validation). Only trust the
     // captured raw Buffer — NEVER HMAC a parsed body object (type confusion).
-    const rawBody = req.rawBody;
+    //
+    // captureRawBody = express.raw({ type: 'application/json' }) puts the raw
+    // buffer into req.body (Express's documented behaviour), NOT req.rawBody.
+    // Reading req.rawBody first returned undefined on every call, so every
+    // Nayax terminal / settlement / refund webhook silently 500'd. Prefer the
+    // buffer we actually captured; fall back to req.rawBody for any legacy
+    // caller that pre-populates it.
+    const rawBody: Buffer | undefined = Buffer.isBuffer(req.body)
+      ? (req.body as Buffer)
+      : (req as any).rawBody;
 
     if (!Buffer.isBuffer(rawBody)) {
       logger.error('[NayaxWebhook] No raw body buffer available for signature validation');
@@ -454,9 +463,17 @@ router.post(
   async (req, res) => {
     try {
       // ── Parse raw body ────────────────────────────────────────────────────────
-      const rawBodyBuffer: Buffer = Buffer.isBuffer(req.body)
-        ? req.body
-        : Buffer.from(JSON.stringify(req.body));
+      // FAIL-CLOSED: the previous fallback `Buffer.from(JSON.stringify(req.body))`
+      // was a silent HMAC-bypass trap — if any middleware ordering change ever
+      // parsed the body before we saw it, HMAC would be computed over a
+      // re-serialised JSON string (different bytes than Nayax signed), which
+      // could reject real webhooks or, in a key-order collision, accept forged
+      // ones. Only trust the raw Buffer captured by express.raw().
+      if (!Buffer.isBuffer(req.body)) {
+        logger.error('[NayaxWebhook] Raw body buffer unavailable — refusing to fabricate one for HMAC');
+        return res.status(500).json({ error: 'raw_body_unavailable' });
+      }
+      const rawBodyBuffer: Buffer = req.body;
       const rawBody = rawBodyBuffer.toString('utf8');
 
       let parsedBody: any;
@@ -958,9 +975,17 @@ router.post(
   captureRawBody,
   async (req: express.Request & { rawBody?: Buffer }, res: express.Response) => {
     try {
-      const rawBodyBuffer: Buffer = Buffer.isBuffer(req.body)
-        ? req.body
-        : Buffer.from(JSON.stringify(req.body));
+      // FAIL-CLOSED: the previous fallback `Buffer.from(JSON.stringify(req.body))`
+      // was a silent HMAC-bypass trap — if any middleware ordering change ever
+      // parsed the body before we saw it, HMAC would be computed over a
+      // re-serialised JSON string (different bytes than Nayax signed), which
+      // could reject real webhooks or, in a key-order collision, accept forged
+      // ones. Only trust the raw Buffer captured by express.raw().
+      if (!Buffer.isBuffer(req.body)) {
+        logger.error('[NayaxWebhook] Raw body buffer unavailable — refusing to fabricate one for HMAC');
+        return res.status(500).json({ error: 'raw_body_unavailable' });
+      }
+      const rawBodyBuffer: Buffer = req.body;
       const rawBody = rawBodyBuffer.toString('utf8');
 
       let parsedBody: any;
@@ -1255,9 +1280,17 @@ router.post(
   captureRawBody,
   async (req: express.Request & { rawBody?: Buffer }, res: express.Response) => {
     try {
-      const rawBodyBuffer: Buffer = Buffer.isBuffer(req.body)
-        ? req.body
-        : Buffer.from(JSON.stringify(req.body));
+      // FAIL-CLOSED: the previous fallback `Buffer.from(JSON.stringify(req.body))`
+      // was a silent HMAC-bypass trap — if any middleware ordering change ever
+      // parsed the body before we saw it, HMAC would be computed over a
+      // re-serialised JSON string (different bytes than Nayax signed), which
+      // could reject real webhooks or, in a key-order collision, accept forged
+      // ones. Only trust the raw Buffer captured by express.raw().
+      if (!Buffer.isBuffer(req.body)) {
+        logger.error('[NayaxWebhook] Raw body buffer unavailable — refusing to fabricate one for HMAC');
+        return res.status(500).json({ error: 'raw_body_unavailable' });
+      }
+      const rawBodyBuffer: Buffer = req.body;
       const rawBody = rawBodyBuffer.toString('utf8');
 
       let parsedBody: any;
