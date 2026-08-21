@@ -129,7 +129,7 @@ function testSmsBuilders() {
   });
   assert('membership_cancelled SMS contains tier', cancelledSms.includes('silver'));
   assert('membership_cancelled SMS contains effective date', cancelledSms.includes('23.3.2026'));
-  assert('membership_cancelled SMS has re-join link', cancelledSms.includes('petwash.co.il/prestige'));
+  assert('membership_cancelled SMS has re-join link', cancelledSms.includes('petwash.co.il/prestige/home'));
 }
 
 // ─────────────────────────────────────────────────────────────────────────────

@@ -153,7 +153,7 @@ async function run24hBucket(result: CareNotesReminderResult): Promise<void> {
   for (const row of incomplete) {
     try {
       const lang: 'he' | 'en' = (row.language ?? 'he') === 'en' ? 'en' : 'he';
-      const rendered = renderSms('care_notes_reminder_24h', { pet_name: row.pet_name, link: 'petwash.co.il/me' }, lang);
+      const rendered = renderSms('care_notes_reminder_24h', { pet_name: row.pet_name, link: 'petwash.co.il/my-account' }, lang);
 
       if (rendered && row.phone) {
         const emailHtml = `<!DOCTYPE html><html lang="${lang}" dir="${lang === 'he' ? 'rtl' : 'ltr'}"><body style="font-family:Arial;padding:24px;color:#111;background:#fff;">
@@ -161,7 +161,7 @@ async function run24hBucket(result: CareNotesReminderResult): Promise<void> {
 <p>${lang === 'he'
     ? `ההזמנה שלך מתחילה בפחות מ-24 שעות. נא להשלים את פרטי הטיפול ל${row.pet_name} כדי שהספק יהיה מוכן.`
     : `Your booking starts in under 24 hours. Please complete ${row.pet_name}'s care details so the provider is ready.`}</p>
-<p style="margin-top:20px;"><a href="https://petwash.co.il/me" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">${lang === 'he' ? 'השלמת פרטי טיפול' : 'Complete care notes'}</a></p>
+<p style="margin-top:20px;"><a href="https://petwash.co.il/my-account" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">${lang === 'he' ? 'השלמת פרטי טיפול' : 'Complete care notes'}</a></p>
 <p style="margin-top:24px;font-size:12px;color:#888;">PetWash Ltd — support@petwash.co.il</p>
 </body></html>`;
 

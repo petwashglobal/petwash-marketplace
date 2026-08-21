@@ -414,7 +414,7 @@ export function buildPrestigeJoinedSms(params: {
     `ברוך הבא לתכנית הנאמנות!\n` +
     `מס' חבר: ${params.memberNumber}\n` +
     `רמה: ${params.tier}\n` +
-    `petwash.co.il/prestige`
+    `petwash.co.il/prestige/home`
   );
 }
 
@@ -524,7 +524,7 @@ export function buildPointsRedeemedSms(params: {
     `נקודות שנוצלו: ${params.pointsCost}\n` +
     `קוד קופון: ${params.voucherCode}\n` +
     `יתרת נקודות: ${params.newBalance}\n` +
-    `petwash.co.il/prestige`
+    `petwash.co.il/prestige/home`
   );
 }
 
@@ -537,7 +537,7 @@ export function buildMembershipRenewedSms(params: {
     `חברות מורחבת!\n` +
     `רמה: ${params.tier}\n` +
     `תקף עד: ${params.renewedUntil}\n` +
-    `petwash.co.il/prestige`
+    `petwash.co.il/prestige/home`
   );
 }
 
@@ -549,6 +549,6 @@ export function buildMembershipCancelledSms(params: {
     `PetWash™ - חברות בוטלה\n` +
     `רמת חברות ${params.tier} בוטלה.\n` +
     `תוקף הטבות עד: ${params.effectiveDate}\n` +
-    `להצטרפות מחדש: petwash.co.il/prestige`
+    `להצטרפות מחדש: petwash.co.il/prestige/home`
   );
 }

@@ -1751,7 +1751,7 @@ router.post(
 <p style="font-size:13px;color:#666;">${isHe
     ? 'לביטחון כולם, נא לשמור על כל ההודעות, השיחות והתשלומים בתוך PetWash.'
     : 'For everyone’s safety, keep all messages, calls, updates and payments inside PetWash.'}</p>
-<p style="margin-top:20px;"><a href="https://petwash.co.il/me" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">${isHe ? 'השלמת פרטי טיפול' : 'Complete Care Notes'}</a></p>
+<p style="margin-top:20px;"><a href="https://petwash.co.il/my-account" style="background:#000;color:#fff;padding:10px 20px;border-radius:8px;text-decoration:none;display:inline-block;">${isHe ? 'השלמת פרטי טיפול' : 'Complete Care Notes'}</a></p>
 <p style="font-size:12px;color:#888;margin-top:20px;">${isHe
     ? 'התשלום שלך נרשם בבטחה ב-PetWash. תשלום הספק לא משתלם באופן מיידי — היתרה מוחזקת בהתאם לכללי PetWash ומשולמת רק לאחר השלמת השירות, בכפוף לביטולים, מחלוקות, החזרים, תקריות ומדיניות הפלטפורמה.'
     : 'Your payment is safely recorded by PetWash. Provider payout is not released immediately. The provider balance is held according to PetWash rules and released only after the service is completed, subject to cancellations, disputes, refunds, incidents and platform policy.'}</p>
