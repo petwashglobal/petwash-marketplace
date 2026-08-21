@@ -388,6 +388,10 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // to retry from step 2 without asking the user to enter a fresh code.
   // Cleared on successful signup OR when the user changes their email.
   const [cachedEmailSessionToken, setCachedEmailSessionToken] = useState<string | null>(null);
+  // SAME pattern for mobile SMS: /sms/verify → /phone-session → sign-in →
+  // /api/auth/session. Stage 1 consumes the code. Cache the verificationToken
+  // so a stage-2/3/4 failure doesn't force the user to burn a fresh SMS.
+  const [cachedPhoneVerificationToken, setCachedPhoneVerificationToken] = useState<string | null>(null);
   // Resend cooldown (2026-08-16). "Resend code" used to silently drop the user
   // back to the entry form without actually resending. Now it calls the real
   // send function; the countdown throttles it so users can't spam-tap the
@@ -699,65 +703,127 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   async function verify(c: string) {
     setInlineError(null);
     setBusy(true);
+    // SMS verify is a 4-stage chain: /sms/verify → /phone-session →
+    // signInWithCustomToken → /api/auth/session. Stage 1 CONSUMES the code.
+    // Cache the verificationToken so retries after stage-2/3/4 hiccups reuse
+    // the already-validated SMS. Specific error message per stage so the user
+    // knows if it's a wrong code, a network blip, a server cold-start 502,
+    // or a Firebase cred failure — not a blanket "Verification failed".
     try {
-      const v = await fetch(getApiUrl('/api/auth/sms/verify'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ phone, code: c, language, flow }),
-      });
-      const vd = await v.json();
-      if (!vd.ok) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
-      // MOBILE STEP-2: the user is ALREADY signed in (Google / Apple / email). ATTACH +
-      // verify this phone onto their existing account — do NOT call phone-session (which
-      // would mint a separate phone-first account). (CEO 2026-08-08 both-contacts)
+      let verificationToken = cachedPhoneVerificationToken;
+
+      // ── Stage 1: validate the OTP (skips if cached from a prior attempt) ──
+      if (!verificationToken) {
+        let v: Response;
+        try {
+          v = await fetch(getApiUrl('/api/auth/sms/verify'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ phone, code: c, language, flow }),
+          });
+        } catch (netErr) {
+          logger.error('[signup] sms/verify network', netErr);
+          fail(he ? 'תקלת רשת. בדוק חיבור אינטרנט ונסה שוב.' : 'Network error. Check your connection and try again.');
+          return;
+        }
+        const vd = await v.json().catch(() => ({} as any));
+        if (!vd.ok || !vd.verificationToken) {
+          fail(vd.message || vd.error || (he ? 'קוד שגוי או פג תוקף' : 'Wrong or expired code'));
+          return;
+        }
+        verificationToken = vd.verificationToken;
+        setCachedPhoneVerificationToken(verificationToken);
+      }
+
+      // ── Stage 2 (dual-verify attach path) ────────────────────────────────
+      // User is ALREADY signed in via Google/Apple/email — attach + verify
+      // this phone onto the existing account. No second account created.
       if (mobileStep) {
         const idToken = await auth.currentUser?.getIdToken(true);
-        const a = await fetch(getApiUrl('/api/auth/verify-signup-mobile'), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ idToken, verificationToken: vd.verificationToken }),
-        });
-        const ad = await a.json();
-        if (!ad.ok) { fail(ad.error || (he ? 'אימות הנייד נכשל' : 'Mobile verification failed')); return; }
+        let a: Response;
+        try {
+          a = await fetch(getApiUrl('/api/auth/verify-signup-mobile'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ idToken, verificationToken }),
+          });
+        } catch (netErr) {
+          logger.error('[signup] verify-signup-mobile network', netErr);
+          fail(he ? 'תקלת רשת בשמירת הנייד. נסה שוב.' : 'Network error saving your mobile. Try again.');
+          return;
+        }
+        const ad = await a.json().catch(() => ({} as any));
+        if (!ad.ok) {
+          fail(ad.error || ad.message || (he ? 'שמירת הנייד נכשלה. נסה שוב.' : 'Mobile attach failed. Try again.'));
+          return;
+        }
+        setCachedPhoneVerificationToken(null);
         setMobileStep(false);
         await finishAndRoute();
         return;
       }
-      const s = await fetch(getApiUrl('/api/auth/phone-session'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ verificationToken: vd.verificationToken, dateOfBirth: dob, email }),
-      });
-      const sd = await s.json();
-      // DUPLICATE GUARD: this email already has an account — don't create a second one.
-      // Send them to sign in (email), then they can add the phone. (CEO 2026-08-08)
+
+      // ── Stage 2 (fresh phone signup path): mint custom token ─────────────
+      let s: Response;
+      try {
+        s = await fetch(getApiUrl('/api/auth/phone-session'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ verificationToken, dateOfBirth: dob, email }),
+        });
+      } catch (netErr) {
+        logger.error('[signup] phone-session network', netErr);
+        fail(he ? 'תקלת רשת. הקוד עדיין תקף — לחץ אמת שוב.' : 'Network error. Your code is still valid — press verify again.');
+        return;
+      }
+      const sd = await s.json().catch(() => ({} as any));
+
+      // DUPLICATE GUARD: this email already has an account — clear cached
+      // token and route to sign-in (a fresh SMS will be needed on retry).
       if (sd.code === 'EMAIL_HAS_ACCOUNT') {
+        setCachedPhoneVerificationToken(null);
         setAuthMode('login');
         setMethod('email');
         setSent(false);
         fail(sd.error || (he ? 'לאימייל הזה כבר יש חשבון — התחברו כדי להוסיף את מספר הנייד.' : 'This email already has an account — sign in to add your mobile number.'));
         return;
       }
-      if (!sd.customToken) {
-        // No session token came back (phone-session error / unexpected shape). Do
-        // NOT fall through to finishAndRoute() session-less — RequireAuth would then
-        // bounce the user to /signin: "I entered my code and it kicked me out."
-        // Mirror verifyEmailCode()'s honest-fail guard instead.
-        fail(sd.message || (he ? 'האימות נכשל — נסה שוב' : 'Verification could not be completed. Please try again.'));
+      if (!sd?.customToken) {
+        fail(sd?.message || sd?.error || (he ? 'הפעלת החשבון נכשלה. נסה שוב.' : 'Account activation failed. Try again.'));
         return;
       }
-      const cred = await signInWithCustomToken(auth, sd.customToken);
+
+      // ── Stage 3: Firebase sign-in ────────────────────────────────────────
+      let cred;
+      try {
+        cred = await signInWithCustomToken(auth, sd.customToken);
+      } catch (fbErr: any) {
+        logger.error('[signup] signInWithCustomToken failed', fbErr);
+        fail(he ? 'ההתחברות ל-Firebase נכשלה. הקוד עדיין תקף — לחץ אמת שוב.' : 'Firebase sign-in failed. Your code is still valid — press verify again.');
+        return;
+      }
       const idToken = await cred.user.getIdToken(true);
-      const sessionRes = await fetch(getApiUrl('/api/auth/session'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        // Send the DOB so the users row is CREATED with it — persistDob's
-        // UPDATE ran before the row existed, dropping it (2026-07-24 fix).
-        // Marketing consent is granular per MASTER AUTH rebuild (2026-08-16).
-        body: JSON.stringify({ idToken, dateOfBirth: dob, ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
-      });
-      if (!sessionRes.ok) {
-        // Hollow server session → app guards would 401-bounce to /signin. Fail
-        // honestly rather than route into a session-less app.
-        fail(he ? 'ההתחברות לא הושלמה — נסה שוב' : 'Sign-in could not be completed. Please try again.');
+
+      // ── Stage 4: mint server session cookie ──────────────────────────────
+      let sessionRes: Response;
+      try {
+        sessionRes = await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ idToken, dateOfBirth: dob, ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
+        });
+      } catch (netErr) {
+        logger.error('[signup] /session network', netErr);
+        fail(he ? 'שמירת הכניסה נכשלה. נסה שוב.' : 'Session save failed. Try again.');
         return;
       }
+      if (!sessionRes.ok) {
+        const errBody = await sessionRes.json().catch(() => ({} as any));
+        if (sessionRes.status === 502) {
+          fail(he ? 'השרת מתעורר. חכה כמה שניות ולחץ אמת שוב.' : 'Server is warming up. Wait a few seconds and press verify again.');
+        } else {
+          fail(errBody?.error || errBody?.message || (he ? `שמירת הכניסה נכשלה (${sessionRes.status}). נסה שוב.` : `Session save failed (${sessionRes.status}). Try again.`));
+        }
+        return;
+      }
+      // Success — clear the cached token so a future phone change won't reuse.
+      setCachedPhoneVerificationToken(null);
       // Step 2 — NEW accounts only: phone verified + account live, now verify the
       // EMAIL with its own code before we route (both contacts confirmed). Returning
       // users (already verified) skip straight through.
@@ -784,8 +850,12 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         return;
       }
       await finishAndRoute();
-    } catch (e) { logger.error('[signup] verify', e); fail(he ? 'האימות נכשל' : 'Verification failed'); }
-    finally { setBusy(false); }
+    } catch (e) {
+      logger.error('[signup] verify unexpected', e);
+      fail(he ? 'שגיאה לא צפויה באימות. נסה שוב.' : 'Unexpected verification error. Try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   // ── Passwordless EMAIL 6-digit code (mirror of the mobile OTP flow) ──────────
@@ -1589,7 +1659,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               </p>
               <div className="sl-field">
                 <label className="sl-label">{t.phoneLabel}</label>
-                <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
+                <PhoneInput value={phone} onChange={(v) => { setPhone(v); setCachedPhoneVerificationToken(null); }} language={language} defaultCountry="IL" />
               </div>
               <button className="sl-cta" disabled={busy || !phoneValid} onClick={() => { void sendCode(); }}>
                 <FaMobileAlt aria-hidden /> {busy ? '…' : (he ? 'שלחו לי קוד ב-SMS' : 'Text me a one-time code')}
@@ -1755,7 +1825,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       )}
                       <div className="sl-field">
                         <label className="sl-label">{t.phoneLabel}</label>
-                        <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
+                        <PhoneInput value={phone} onChange={(v) => { setPhone(v); setCachedPhoneVerificationToken(null); }} language={language} defaultCountry="IL" />
                       </div>
                       {/* A NEW account verifies BOTH contacts (CEO 2026-08-08: "one thing
                           not enough for new users"). Collect the email here so the already-
@@ -1841,7 +1911,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       the DOB gate in login mode and verify() routes an existing user. */}
                   <div className="sl-field">
                     <label className="sl-label">{t.phoneLabel}</label>
-                    <PhoneInput value={phone} onChange={setPhone} language={language} defaultCountry="IL" />
+                    <PhoneInput value={phone} onChange={(v) => { setPhone(v); setCachedPhoneVerificationToken(null); }} language={language} defaultCountry="IL" />
                   </div>
                   <button type="button" className="sl-switchLink" disabled={busy}
                     onClick={() => { setMethod('email'); setSent(false); setInlineError(null); }}
