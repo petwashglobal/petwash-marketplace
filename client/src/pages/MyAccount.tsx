@@ -14,6 +14,8 @@ import MyInvoicesLink from '@/components/account/MyInvoicesLink';
 import { useWhoami } from '@/auth/useWhoami';
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { PetWashIcon } from '@/components/PetWashIcon';
+import { CityPicker, type CityPickerSelection } from '@/components/location/CityPicker';
+import { findIsraelCityBySymbol } from '@shared/data/israel-cities';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -617,6 +619,10 @@ export default function MyAccount() {
   const [inboxExpanded, setInboxExpanded] = useState<Record<string, boolean>>({});
   const [isEditing, setIsEditing] = useState(false);
   const [editedProfile, setEditedProfile] = useState<Partial<UserProfile>>({});
+  // City picker state (2026-08-21) — CEO plan: profile PIN address uses the
+  // baked shared/data/israel-cities.ts dataset for suggested city names +
+  // postcode, not free-text or Google Places. Opens the CityPicker sheet.
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
   
   // Account management state
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
@@ -1472,9 +1478,36 @@ export default function MyAccount() {
 
   return (
     <Layout>
+      {/* City picker sheet — mounted at the top of Layout so the portal
+          overlay covers the whole page, per CityPicker's mobile-first
+          bottom-sheet design (docs/location/PROGRAM.md §3). Selecting a
+          city writes the human-readable name into editedProfile.city and,
+          when the city has exactly one known postcode in the baked
+          dataset, auto-fills postalCode. (2026-08-21 CEO plan.) */}
+      <CityPicker
+        open={cityPickerOpen}
+        onOpenChange={setCityPickerOpen}
+        value={null}
+        language={isHebrew ? 'he' : 'en'}
+        onChange={(sel: CityPickerSelection) => {
+          const displayCity = isHebrew ? sel.hebrewName : (sel.englishName || sel.hebrewName);
+          setEditedProfile((prev) => {
+            const auto: Partial<UserProfile> = { city: displayCity };
+            const rec = findIsraelCityBySymbol(sel.citySymbol);
+            // Only autofill when the city has EXACTLY one known
+            // postcode — a multi-postcode city (e.g. Tel Aviv) is
+            // ambiguous and would risk stamping a wrong value.
+            if (rec && rec.postcodes.length === 1 && !prev.postalCode) {
+              auto.postalCode = rec.postcodes[0];
+            }
+            return { ...prev, ...auto };
+          });
+          setCityPickerOpen(false);
+        }}
+      />
       <div className="pw-account-page min-h-screen py-8 px-4" dir={(language === 'he' || language === 'ar') ? 'rtl' : 'ltr'}>
         <div className="max-w-4xl mx-auto space-y-6">
-          
+
           <div className="text-center mb-6 pt-2">
             <h1 className="pw-account-title mb-2">
               {isHebrew ? 'החשבון שלי' : 'My Account'}
@@ -2261,14 +2294,25 @@ export default function MyAccount() {
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
                               {isHebrew ? 'עיר / ישוב' : 'City / Town'}
                             </label>
-                            <Input
-                              value={editedProfile.city || ''}
-                              onChange={(e) => setEditedProfile({ ...editedProfile, city: e.target.value })}
-                              placeholder={isHebrew ? 'תל אביב' : 'Tel Aviv'}
-                              className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
-                              style={{ fontSize: '16px' }}
-                              dir="rtl"
-                            />
+                            {/* City picker (2026-08-21): opens the baked
+                                Israel-cities picker. Selecting a city writes
+                                the canonical Hebrew/English name into `city`
+                                AND auto-fills postalCode when the city has
+                                exactly one known postcode in the dataset.
+                                Multiple postcodes → leave existing postal
+                                for the user to pick from Postal Code below. */}
+                            <button
+                              type="button"
+                              onClick={() => setCityPickerOpen(true)}
+                              className="h-10 w-full rounded-xl border border-gray-200 bg-white text-sm text-left px-3 flex items-center justify-between hover:border-amber-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition"
+                              dir={isHebrew ? 'rtl' : 'ltr'}
+                              data-testid="my-account-city-picker-open"
+                            >
+                              <span className={editedProfile.city ? 'text-gray-900' : 'text-gray-400'}>
+                                {editedProfile.city || (isHebrew ? 'בחר עיר…' : 'Choose city…')}
+                              </span>
+                              <span className="text-xs text-gray-400">▾</span>
+                            </button>
                           </div>
                         </div>
 
