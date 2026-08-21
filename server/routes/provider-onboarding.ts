@@ -2292,10 +2292,31 @@ router.get('/my/status', async (req: Request, res: Response) => {
     const token = authHeader.split(' ')[1];
     const decodedToken = await auth.verifyIdToken(token, true);
 
+    // Israeli privacy-law fix (Agent 2 forensics 2026-08-21): the previous
+    // SELECT returned 22 columns while HIDING 15 that the applicant themselves
+    // filled in — insurance, tax status, DOB, age flag, self-declaration,
+    // enhanced-verification reasons, biometric OCR scores. Under Israeli
+    // Protection of Privacy Law (§13) the data subject has a right to know
+    // what personal data an organisation holds. Return everything the
+    // applicant submitted, so they can verify + request correction.
+    // Sensitive raw values that stay hidden: israeli_id_encrypted (AES),
+    // government_id_url + selfie_photo_url + insurance_cert_url + business_license_url
+    // (audit-gated file paths — served through /files with per-request audit).
     const appRow = await pool.query(
       `SELECT id, application_id, status, sub_status, provider_type, first_name, last_name,
+              email, phone_number, city, country,
+              date_of_birth, age_confirmed_18_plus,
               biometric_status, biometric_match_score, biometric_verified_at,
-              kyc_document_type, kyc_fraud_risk_level, kyc_decision_flags,
+              kyc_ocr_confidence, kyc_liveness_score,
+              kyc_document_type, kyc_document_expiry, kyc_id_last_four,
+              kyc_fraud_risk_level, kyc_decision_flags,
+              tax_status,
+              insurance_policy_number, insurance_provider, insurance_expires_at,
+              insurance_coverage_amount,
+              self_declaration_no_relevant_convictions, self_declaration_at,
+              requires_enhanced_verification, enhanced_verification_reasons,
+              declaration_signature_sha256,
+              pet_first_aid_provider, pet_first_aid_expires_at,
               resubmission_count, last_requested_resubmission_at, last_resubmitted_at,
               submitted_at, reviewed_at, reviewed_by, rejection_reason, approved_as_provider_id,
               created_at, updated_at
