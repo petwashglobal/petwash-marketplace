@@ -33,14 +33,21 @@ export default function ComplianceControlTower() {
     queryKey: ["/api/compliance/authority-documents"],
   });
 
-  // Fetch compliance tasks
+  // Fetch compliance tasks — Agent 8 audit (2026-08-21): passing `{status:'pending'}`
+  // as queryKey[1] was silently dropped because the default queryFn uses only
+  // queryKey[0] as the URL. The tile was showing ALL tasks (all history),
+  // inflating the "pending" count on the dashboard. Baking the filter into the
+  // URL string forces the server (server/routes/compliance.ts:477 reads
+  // req.query.status) to actually filter.
   const { data: complianceTasks } = useQuery({
-    queryKey: ["/api/compliance/tasks", { status: "pending" }],
+    queryKey: ["/api/compliance/tasks?status=pending"],
   });
 
-  // Fetch corporate seals
+  // Fetch corporate seals — same bug: `{isActive:'true'}` was dropped, tile
+  // showed every seal ever created. Now filters server-side
+  // (compliance.ts:706 reads req.query.isActive).
   const { data: corporateSeals } = useQuery({
-    queryKey: ["/api/compliance/corporate-seals", { isActive: "true" }],
+    queryKey: ["/api/compliance/corporate-seals?isActive=true"],
   });
 
   const getRiskColor = (risk: string) => {
