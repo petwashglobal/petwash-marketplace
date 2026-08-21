@@ -380,7 +380,7 @@ const defaultTemplates: InsertNotificationTemplate[] = [
             <p>מעתה תוכל לקבל הזמנות ולהתחיל לעבוד עם לקוחות דרך הפלטפורמה.</p>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #dee2e6;">
             <p style="margin-top: 20px; text-align: center;">
-              <a href="https://petwash.co.il/provider/dashboard"
+              <a href="https://petwash.co.il/provider-os"
                  style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
                 עבור לדשבורד שלי
               </a>

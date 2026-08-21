@@ -1423,7 +1423,7 @@ async function sendAlertEmail(alertId: string, alert: Omit<StationAlert, 'id'>):
           </ul>
 
           <p>
-            <a href="https://petwash.co.il/admin/stations?id=${alert.stationId}" 
+            <a href="https://petwash.co.il/admin/stations/${alert.stationId}/timeline" 
                style="background: #2563eb; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;">
               View Station Details
             </a>

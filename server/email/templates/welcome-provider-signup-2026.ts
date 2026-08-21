@@ -240,7 +240,7 @@ export function generateProviderWelcomeEmail(data: ProviderWelcomeEmailData): { 
         ` : ''}
         
         <div style="text-align: center; margin: 40px 0;">
-          <a href="https://petwash.co.il/provider/dashboard" style="display: inline-block; background: linear-gradient(135deg, #F1DA83, #D4AF37 55%, #B8902F); color: #1a1a1a; text-decoration: none; padding: 16px 44px; border-radius: 2px; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Georgia', serif;">
+          <a href="https://petwash.co.il/provider-os" style="display: inline-block; background: linear-gradient(135deg, #F1DA83, #D4AF37 55%, #B8902F); color: #1a1a1a; text-decoration: none; padding: 16px 44px; border-radius: 2px; font-size: 14px; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; font-family: 'Georgia', serif;">
             ${isHebrew ? '\u05DC\u05D5\u05D7 \u05D4\u05D1\u05E7\u05E8\u05D4 \u05E9\u05DC\u05D9' : 'My Dashboard'}
           </a>
         </div>
