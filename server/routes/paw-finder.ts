@@ -18,6 +18,7 @@ import {
   createContactRequest,
 } from '../services/PawFinderService';
 import { logger } from '../lib/logger';
+import { escapeLike } from '../lib/sqlLike';
 
 const router = Router();
 
@@ -274,7 +275,7 @@ router.get('/posts', async (req, res) => {
          AND ($1::text IS NULL OR p.post_type    = $1)
          AND ($2::text IS NULL OR LOWER(p.city)  = LOWER($2))
          AND ($3::text IS NULL OR p.pet_type     = $3)
-         AND ($4::text IS NULL OR LOWER(COALESCE(p.breed,'')) ILIKE '%' || LOWER($4) || '%')
+         AND ($4::text IS NULL OR LOWER(COALESCE(p.breed,'')) ILIKE '%' || LOWER($4) || '%' ESCAPE '\')
          AND ($5::date IS NULL OR NULLIF(p.event_date,'')::date >= $5::date)
          AND ($6::date IS NULL OR NULLIF(p.event_date,'')::date <= $6::date)
          AND (NOT $7::bool OR p.reward_amount IS NOT NULL AND p.reward_amount > 0)
@@ -282,7 +283,8 @@ router.get('/posts', async (req, res) => {
        ORDER BY p.published_at DESC NULLS LAST, p.created_at DESC
        LIMIT $9 OFFSET $10`,
       [
-        postType || null, city || null, pet || null, breed || null,
+        postType || null, city || null, pet || null,
+        breed ? escapeLike(String(breed)) : null,
         dateFrom || null, dateTo || null,
         hasReward, matchedOnly,
         limit, offset,
@@ -302,8 +304,20 @@ router.get('/posts/:id', async (req, res) => {
     const id = Number(req.params.id);
     if (!Number.isFinite(id)) return res.status(400).json({ error: 'invalid_id' });
 
+    // Explicit projection (was `SELECT p.*`). A public endpoint on a growing
+    // table auto-exposes every new column added by future migrations — devs
+    // remembered to strip contact_phone below but any next migration (e.g.
+    // contact_email, internal_notes, owner_national_id) would silently leak.
+    // Listing the safe public columns here is the belt-and-suspenders fix.
     const postRes = await pool.query(
-      `SELECT p.* FROM paw_finder_posts p
+      `SELECT
+         p.id, p.user_id, p.post_type, p.pet_type, p.pet_name, p.breed,
+         p.color_primary, p.color_secondary, p.size_category, p.sex,
+         p.description, p.reward_amount, p.contact_preference,
+         p.city, p.area, p.address_text,
+         p.latitude, p.longitude, p.event_date,
+         p.status, p.created_at, p.published_at, p.resolved_at
+       FROM paw_finder_posts p
        WHERE p.id = $1 AND p.status NOT IN ('rejected','archived')
        LIMIT 1`,
       [id],
