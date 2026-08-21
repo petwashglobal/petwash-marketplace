@@ -215,21 +215,29 @@ router.post("/logout", async (req, res) => {
       // running bcrypt.compare() on each, which is O(n×bcrypt) and a DoS
       // vector. Fixed: decode first → revoke by jti directly (same pattern
       // as /refresh uses).
+      //
+      // EVIL FIX (2026-08-20): the previous single try/catch wrapping BOTH
+      // jwt.verify AND the db.update() swallowed every error including DB
+      // failures — so the outer "success" path always ran and the client
+      // thought logout succeeded. Narrow the inner catch to jwt.verify ONLY
+      // (invalid/expired token is a no-op); let DB errors propagate to the
+      // outer catch that returns 503 LOGOUT_INCOMPLETE.
+      let decoded: any = null;
       try {
-        const decoded = jwt.verify(token, JWT_REFRESH_SECRET) as any;
-        if (decoded?.jti) {
-          await db
-            .update(refreshTokens)
-            .set({ revokedAt: new Date() })
-            .where(
-              and(
-                eq(refreshTokens.jti, decoded.jti),
-                isNull(refreshTokens.revokedAt)
-              )
-            );
-        }
+        decoded = jwt.verify(token, JWT_REFRESH_SECRET);
       } catch (_verifyErr) {
         // Token is already invalid/expired — nothing to revoke, not an error.
+      }
+      if (decoded?.jti) {
+        await db
+          .update(refreshTokens)
+          .set({ revokedAt: new Date() })
+          .where(
+            and(
+              eq(refreshTokens.jti, decoded.jti),
+              isNull(refreshTokens.revokedAt)
+            )
+          );
       }
     }
 
@@ -238,11 +246,18 @@ router.post("/logout", async (req, res) => {
       message: "Logged out successfully",
     });
   } catch (error: any) {
+    // EVIL FIX (2026-08-20): the previous body returned success even when
+    // refresh-token revocation THREW (DB error, connection reset, etc.).
+    // The client marked the session "logged out" and moved on — but the
+    // refresh token remained valid in the DB, so anyone with it (an old
+    // device, a stolen bearer, a shared machine) could keep minting new
+    // access tokens for the full refresh-token TTL. Return a real error
+    // status so the client can persist "logout-pending" and complete the
+    // revocation on the next boot.
     console.error("[Mobile Auth] Logout error:", error);
-    // Even if error, return success (logout is best-effort)
-    res.json({
-      success: true,
-      message: "Logged out successfully",
+    res.status(503).json({
+      error: "LOGOUT_INCOMPLETE",
+      message: "Logout could not complete on server — retry once online",
     });
   }
 });
