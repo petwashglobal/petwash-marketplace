@@ -1968,6 +1968,22 @@ if (isProduction) {
       }
     }
 
+    // Wire GENERAL WebSocket (booking chat / walk tracking / station telemetry
+    // / admin alerts). setupWebSocket() has been in server/websocket.ts for
+    // months but was never actually called on boot — every broadcastBookingChatMessage,
+    // broadcastReaction, broadcastBookingChatRead, broadcastTelemetryUpdate,
+    // broadcastAlert iterated an empty clients Map and silently no-op'd.
+    // Real-time chat, walk-tracking, station telemetry, admin alerts were all
+    // dead client-side even though the server "sent" them. (2026-08-21 hunt.)
+    // Runs in BOTH dev and prod — chat should work locally too.
+    const generalHttpServer = (app as any)._server;
+    if (generalHttpServer) {
+      import('./websocket').then(({ setupWebSocket }) => {
+        setupWebSocket(generalHttpServer);
+        console.log('✅ [Server] General WebSocket wired (booking-chat / walk / telemetry / alerts)');
+      }).catch((e) => console.error('[WebSocket] Setup failed', e));
+    }
+
     serverReady = true;
     healthState.app.routesReady = true;
     connectDbNonBlocking().catch(() => {});
