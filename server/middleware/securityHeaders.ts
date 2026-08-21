@@ -32,10 +32,20 @@ const CSP_DIRECTIVES = [
   // Documents
   `default-src 'self'${replitHosts}`,
 
-  // Scripts — 'strict-dynamic' for future inline-hash support; nonce approach on SSR pages
+  // Scripts — 'unsafe-inline' is REQUIRED for the SPA fallback that Cloud Run
+  // serves on every non-Hosting route (see server/index.ts SPA route + the
+  // hard-coded <script>window.__FIREBASE_CONFIG__=…</script> injected before
+  // the app bundle). Removing it CSP-blocks the config script → firebase.ts
+  // throws MISSING REQUIRED CONFIG → white screen + broken sign-in on every
+  // /sitter-suite, /walk-my-pet, /academy, /k9000, /stations, /egift,
+  // /prestige-pass, /groomers, /pettrek route (all of which are Cloud Run
+  // rewrites in firebase.json). Do NOT drop this until every inline <script>
+  // in client/index.html + server/index.ts has been replaced with a nonce or
+  // externalised. Firebase Hosting's own CSP already permits it.
   [
     "script-src",
     "'self'",
+    "'unsafe-inline'",
     // Google / Firebase
     "https://apis.google.com",
     "https://www.gstatic.com",
