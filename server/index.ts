@@ -959,13 +959,20 @@ app.use(
   })
 );
 
-// Canonical URL redirect (www → non-www) for SEO
+// Canonical URL redirect (www → non-www) for SEO.
+//
+// Uses 308 (Permanent Redirect) NOT 301: `authDomain: petwash.co.il` makes
+// www.petwash.co.il a foreign origin, so if any client lands on www and the
+// browser POSTs /api/auth/session (or any other auth-relevant POST) before
+// the client-side www→apex JS runs, the browser downgrades 301 + POST to
+// GET, dropping the idToken body. 308 preserves method AND body so the mint
+// call reaches the apex intact. GETs behave identically under 308.
 app.use((req, res, next) => {
   const host = req.get('host')?.toLowerCase() || '';
   if (host.startsWith('www.')) {
     const protocol = req.secure || req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
     const nonWwwHost = host.replace(/^www\./, '');
-    return res.redirect(301, `${protocol}://${nonWwwHost}${req.originalUrl}`);
+    return res.redirect(308, `${protocol}://${nonWwwHost}${req.originalUrl}`);
   }
   next();
 });
