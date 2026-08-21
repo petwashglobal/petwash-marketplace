@@ -381,6 +381,13 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  // CACHED email sessionToken (2026-08-21). The OTP verify chain is 4 calls:
+  // /email/verify → /email-session → signInWithCustomToken → /api/auth/session.
+  // Step 1 CONSUMES the 6-digit code — it can't be replayed. If any of the
+  // later steps fails (cold-start 502, Firebase network blip, etc.) we want
+  // to retry from step 2 without asking the user to enter a fresh code.
+  // Cleared on successful signup OR when the user changes their email.
+  const [cachedEmailSessionToken, setCachedEmailSessionToken] = useState<string | null>(null);
   // Resend cooldown (2026-08-16). "Resend code" used to silently drop the user
   // back to the entry form without actually resending. Now it calls the real
   // send function; the countdown throttles it so users can't spam-tap the
@@ -821,53 +828,101 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   async function verifyEmailCode(c: string) {
     setInlineError(null);
     setBusy(true);
+    // The verify chain is 4 stages. Stage 1 CONSUMES the OTP; stages 2-4 do
+    // session mint + Firebase sign-in + cookie mint. Cache the stage-1 token
+    // in state so the user can retry from stage 2 on transient failures
+    // WITHOUT asking them to request a fresh code (which they already used).
+    // Every stage now surfaces WHICH step failed so the toast tells the user
+    // something actionable instead of a blanket "Verification failed". The
+    // old code lumped all 4 into one generic error → user thought the code
+    // was wrong when actually the SERVER cookie mint had 502'd.
     try {
-      // Must match the purpose sent at /email/start (login vs signup).
-      const emailPurpose = authMode === 'login' ? 'login' : 'signup';
-      const v = await fetch(getApiUrl('/api/auth/email/verify'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ email, code: c, purpose: emailPurpose }),
-      });
-      const vd = await v.json();
-      if (!vd.ok || !vd.sessionToken) { fail(vd.message || (he ? 'קוד שגוי' : 'Invalid code')); return; }
+      let sessionToken = cachedEmailSessionToken;
 
-      // Step 2 path: the user is already signed in via phone — attach + verify the
-      // email on their account, then route. (No second account is created.)
+      // ── Stage 1: validate the OTP (skips if cached from a prior attempt) ──
+      if (!sessionToken) {
+        const emailPurpose = authMode === 'login' ? 'login' : 'signup';
+        let v: Response;
+        try {
+          v = await fetch(getApiUrl('/api/auth/email/verify'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ email, code: c, purpose: emailPurpose }),
+          });
+        } catch (netErr) {
+          logger.error('[signup] verifyEmailCode stage1 network', netErr);
+          fail(he ? 'תקלת רשת. בדוק חיבור אינטרנט ונסה שוב.' : 'Network error. Check your connection and try again.');
+          return;
+        }
+        const vd = await v.json().catch(() => ({} as any));
+        if (!vd.ok || !vd.sessionToken) {
+          fail(vd.message || vd.error || (he ? 'קוד שגוי או פג תוקף' : 'Wrong or expired code'));
+          return;
+        }
+        sessionToken = vd.sessionToken;
+        setCachedEmailSessionToken(sessionToken);
+      }
+
+      // ── Stage 2 (dual-verify attach path) ────────────────────────────────
+      // User is already signed in via phone — attach + verify the email on
+      // their account, then route. No second account is created.
       if (emailStep) {
         const idToken = await auth.currentUser?.getIdToken(true);
-        const a = await fetch(getApiUrl('/api/auth/verify-signup-email'), {
-          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          // BOTH contacts now verified → set the password the user chose at join so
-          // they can log in with email + password (CEO 2026-07-31). Only sent when
-          // a valid password was collected (join flow); OTP-only paths omit it and
-          // the server leaves the credential untouched.
-          body: JSON.stringify({ idToken, sessionToken: vd.sessionToken, password: passwordValid ? password : undefined, twoFactorEnabled: twoFactor }),
-        });
-        const ad = await a.json();
-        if (!ad.ok) { fail(ad.error || (he ? 'אימות האימייל נכשל' : 'Email verification failed')); return; }
+        let a: Response;
+        try {
+          a = await fetch(getApiUrl('/api/auth/verify-signup-email'), {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ idToken, sessionToken, password: passwordValid ? password : undefined, twoFactorEnabled: twoFactor }),
+          });
+        } catch (netErr) {
+          logger.error('[signup] verify-signup-email network', netErr);
+          fail(he ? 'תקלת רשת בשמירת האימייל. נסה שוב.' : 'Network error saving your email. Try again.');
+          return;
+        }
+        const ad = await a.json().catch(() => ({} as any));
+        if (!ad.ok) {
+          fail(ad.error || ad.message || (he ? 'שמירת האימייל נכשלה. נסה שוב.' : 'Email attach failed. Try again.'));
+          return;
+        }
+        setCachedEmailSessionToken(null);
         await finishAndRoute();
         return;
       }
-      // On a returning LOGIN, do NOT send the synthetic default DOB (now-25) — it
-      // could stamp a bogus birthday over the user's real one. Only the JOIN flow
-      // (new-user row creation) carries the DOB.
+
+      // ── Stage 2 (fresh email signup path): mint custom token ─────────────
       const dobForContext = authMode === 'login' ? undefined : dob;
-      const s = await fetch(getApiUrl('/api/auth/email-session'), {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-        body: JSON.stringify({ sessionToken: vd.sessionToken, dateOfBirth: dobForContext }),
-      });
-      const sd = await s.json();
-      if (sd.customToken) {
-        const cred = await signInWithCustomToken(auth, sd.customToken);
-        const idToken = await cred.user.getIdToken(true);
-        const sessRes = await fetch(getApiUrl('/api/auth/session'), {
+      let s: Response;
+      try {
+        s = await fetch(getApiUrl('/api/auth/email-session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          // On signup the users row is CREATED with the DOB the user typed
-          // (persistDob's UPDATE ran before the row existed, dropping it —
-          // 2026-07-24 fix). ageConfirmed + termsAccepted ride alongside so
-          // the server /session handler can enforce them; marketing is
-          // separate and only sent on signup. Returning-login requests omit
-          // all four so a returning user's stored values are never overwritten.
+          body: JSON.stringify({ sessionToken, dateOfBirth: dobForContext }),
+        });
+      } catch (netErr) {
+        logger.error('[signup] email-session network', netErr);
+        fail(he ? 'תקלת רשת. הקוד עדיין תקף — לחץ אמת שוב.' : 'Network error. Your code is still valid — press verify again.');
+        return;
+      }
+      const sd = await s.json().catch(() => ({} as any));
+      if (!sd?.customToken) {
+        fail(sd?.error || (he ? 'הפעלת החשבון נכשלה. נסה שוב.' : 'Account activation failed. Try again.'));
+        return;
+      }
+
+      // ── Stage 3: Firebase sign-in ────────────────────────────────────────
+      let cred;
+      try {
+        cred = await signInWithCustomToken(auth, sd.customToken);
+      } catch (fbErr: any) {
+        logger.error('[signup] signInWithCustomToken failed', fbErr);
+        fail(he ? 'ההתחברות ל-Firebase נכשלה. הקוד עדיין תקף — לחץ אמת שוב.' : 'Firebase sign-in failed. Your code is still valid — press verify again.');
+        return;
+      }
+      const idToken = await cred.user.getIdToken(true);
+
+      // ── Stage 4: mint server session cookie ──────────────────────────────
+      let sessRes: Response;
+      try {
+        sessRes = await fetch(getApiUrl('/api/auth/session'), {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
           body: JSON.stringify({
             idToken,
             dateOfBirth: dobForContext,
@@ -876,20 +931,40 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
               : { ageConfirmed: true, termsAccepted: true, acceptedMarketing }),
           }),
         });
-        // NEW email signup → also collect + verify the mobile so the account confirms
-        // BOTH contacts (CEO 2026-08-08). Returning users route straight in.
-        const sessData = await sessRes.json().catch(() => ({} as any));
-        if (authMode === 'join' && sessData?.isNewUser) {
-          setPhone(''); setSent(false); setMethod('mobile'); setMobileStep(true);
-          toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
-          return;
-        }
-        await finishAndRoute();
+      } catch (netErr) {
+        logger.error('[signup] /session network', netErr);
+        fail(he ? 'שמירת הכניסה נכשלה. נסה שוב.' : 'Session save failed. Try again.');
         return;
       }
-      fail(he ? 'האימות נכשל' : 'Verification failed');
-    } catch (e) { logger.error('[signup] verifyEmailCode', e); fail(he ? 'האימות נכשל' : 'Verification failed'); }
-    finally { setBusy(false); }
+      if (!sessRes.ok) {
+        const errBody = await sessRes.json().catch(() => ({} as any));
+        // 502 DB_UNAVAILABLE means the server is warming up. Encourage retry
+        // rather than dumping a technical code on the user.
+        if (sessRes.status === 502) {
+          fail(he ? 'השרת מתעורר. חכה כמה שניות ולחץ אמת שוב.' : 'Server is warming up. Wait a few seconds and press verify again.');
+        } else {
+          fail(errBody?.error || errBody?.message || (he ? `שמירת הכניסה נכשלה (${sessRes.status}). נסה שוב.` : `Session save failed (${sessRes.status}). Try again.`));
+        }
+        return;
+      }
+      const sessData = await sessRes.json().catch(() => ({} as any));
+
+      // Success — clear the cached token so a future email won't reuse it.
+      setCachedEmailSessionToken(null);
+
+      // NEW email signup → also collect + verify mobile (both-contacts rule).
+      if (authMode === 'join' && sessData?.isNewUser) {
+        setPhone(''); setSent(false); setMethod('mobile'); setMobileStep(true);
+        toast({ title: he ? 'שלב אחרון — אימות מספר הנייד' : 'One last step — verify your mobile' });
+        return;
+      }
+      await finishAndRoute();
+    } catch (e) {
+      logger.error('[signup] verifyEmailCode unexpected', e);
+      fail(he ? 'שגיאה לא צפויה באימות. נסה שוב.' : 'Unexpected verification error. Try again.');
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function social(which: 'google' | 'apple' | 'facebook') {
@@ -1691,7 +1766,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         <div className="sl-inputWrap">
                           <FaEnvelope className="sl-inputIcon" aria-hidden />
                           <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                            value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+                            value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
                         </div>
                         <div className="sl-hint">{he ? 'נאמת גם את האימייל — חשבון חדש מאמת נייד + אימייל.' : "We'll verify your email too — a new account confirms mobile + email."}</div>
                       </div>
@@ -1710,7 +1785,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                         <div className="sl-inputWrap">
                           <FaEnvelope className="sl-inputIcon" aria-hidden />
                           <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                            value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+                            value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
                         </div>
                         <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
                       </div>
@@ -1786,7 +1861,7 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                     <div className="sl-inputWrap">
                       <FaEnvelope className="sl-inputIcon" aria-hidden />
                       <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email webauthn" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                        value={email} onChange={(e) => setEmail(e.target.value)} placeholder={t.emailPh} />
+                        value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
                     </div>
                   </div>
                   {/* Password is now the SECONDARY path (behind the toggle below).
