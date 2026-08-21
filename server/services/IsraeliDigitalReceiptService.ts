@@ -1250,10 +1250,23 @@ export class IsraeliDigitalReceiptService {
             context: { platform: params.platform, bookingId: params.bookingId, creditNoteNumber },
           });
           if (creditResult.sumitDocumentId) {
-            await db.update(digitalReceipts)
-              .set({ sumitDocumentId: creditResult.sumitDocumentId, issuerOfRecord: 'sumit' })
-              .where(eq(digitalReceipts.id, creditNote.id))
-              .catch(() => {});
+            // MUST log loudly on failure — if this stamp doesn't land, our
+            // local credit note has no reference back to the SUMIT document,
+            // ops thinks SUMIT is broken and re-issues manually → duplicate
+            // credit in SUMIT. The previous `.catch(() => {})` hid this.
+            // (Evil-hunt 2026-08-20: silent SUMIT ID drop.)
+            try {
+              await db.update(digitalReceipts)
+                .set({ sumitDocumentId: creditResult.sumitDocumentId, issuerOfRecord: 'sumit' })
+                .where(eq(digitalReceipts.id, creditNote.id));
+            } catch (stampErr: any) {
+              logger.error('[Digital Receipt] CRITICAL: SUMIT credit issued but local sumitDocumentId stamp FAILED — reconcile manually', {
+                creditNoteNumber,
+                creditNoteId: creditNote.id,
+                sumitDocumentId: creditResult.sumitDocumentId,
+                error: stampErr?.message,
+              });
+            }
           }
         } catch (sumitErr: any) {
           logger.warn('[Digital Receipt] credit note issued locally but SUMIT credit failed (non-fatal)', {
