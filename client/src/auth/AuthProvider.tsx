@@ -18,6 +18,11 @@ import {
   invalidatePostLoginCache,
   registerPostLoginResolvedHandler,
 } from "@/lib/postLoginCoordinator";
+import {
+  drainPendingLogout,
+  performServerSignOut,
+} from "@/auth/serverSignOut";
+import { singleFlightMint } from "@/auth/sessionMintSingleFlight";
 
 /** All localStorage keys that are user-session-specific and must be wiped on logout. */
 export const AUTH_LOCAL_STORAGE_KEYS = [
@@ -56,8 +61,8 @@ export interface UserClaims {
 
 const DEFAULT_CLAIMS: UserClaims = { role: 'public' };
 
-type AuthContextType = { 
-  user: User | null; 
+type AuthContextType = {
+  user: User | null;
   loading: boolean;
   claims: UserClaims;
   claimsLoading: boolean;
@@ -67,8 +72,8 @@ type AuthContextType = {
   disableDevMode: () => void;
 };
 
-const AuthContext = createContext<AuthContextType>({ 
-  user: null, 
+const AuthContext = createContext<AuthContextType>({
+  user: null,
   loading: true,
   claims: DEFAULT_CLAIMS,
   claimsLoading: true,
@@ -114,28 +119,56 @@ async function postSession(idToken: string): Promise<Response> {
   });
 }
 
-async function ensureServerSession(firebaseUser: User): Promise<void> {
-  try {
-    let response = await postSession(await firebaseUser.getIdToken());
-    // BUGFIX 2026-06-18: a 401/INVALID_TOKEN here used to be swallowed, then the
-    // app revealed the user as "logged in" with NO server session — split-brain
-    // where every cookie-authed call 401s and guards bounce the user to /signup.
-    // On a token-rejection, retry ONCE with a force-refreshed token (handles a
-    // stale/expired cached token, the most common cause).
-    if (!response.ok && (response.status === 401 || response.status === 403)) {
-      logger.warn('[AuthProvider] Session 401/403 — retrying with refreshed token', { status: response.status });
-      response = await postSession(await firebaseUser.getIdToken(true));
-    }
-    if (response.ok) {
-      logger.info('[AuthProvider] Server session created', { uid: firebaseUser.uid });
-    } else {
-      // Do NOT force-signout here: a transient 5xx/offline blip shouldn't kick a
-      // returning user. But log loudly so the failure is visible (it used to be silent).
+/**
+ * Mint the server session cookie for a Firebase user.
+ *
+ * Returns TRUE only when the server actually accepted the token and set
+ * __session. Any failure (5xx, CORS block, network error, still-401 after
+ * a refreshed retry) returns FALSE. Never throws.
+ *
+ * WHY THIS SIGNATURE MATTERS: the caller sits behind a Promise.race + 6s
+ * watchdog and uses the outcome to decide whether to (a) mark the user
+ * "session-ready" for cookie-authed /api/* calls, or (b) kick a background
+ * retry loop until the cookie lands. The old `Promise<void>` return let
+ * `.then(() => sessionDone = true)` fire on error too — so the retry loop
+ * was skipped and every follow-up API call 401'd. That's the recurring
+ * "signed in then kicked out" symptom the CEO kept flagging.
+ * (Evil-hunt 2026-08-20 SEV-1 #1.)
+ *
+ * WHY SINGLE-FLIGHT (Evil-hunt 2026-08-20 P0-B): the watchdog does NOT
+ * cancel the in-flight fetch. If it wins, the background retry loop then
+ * fires up to 4 additional ensureServerSession() calls at 1.5s intervals —
+ * on a slow (8s) server that was FIVE simultaneous POST /api/auth/session
+ * for the same UID: duplicated telemetry, cookie-overwrite ordering
+ * races, wasted Firebase Admin verify work, session drift. Coalescing
+ * concurrent callers into a single per-uid in-flight promise fixes all
+ * four. The watchdog still controls UI reveal but no longer influences
+ * the number of network operations.
+ */
+async function ensureServerSession(firebaseUser: User): Promise<boolean> {
+  return singleFlightMint(firebaseUser.uid, async () => {
+    try {
+      let response = await postSession(await firebaseUser.getIdToken());
+      // A 401/INVALID_TOKEN often means the cached idToken was stale. Retry
+      // ONCE with a force-refreshed token before giving up.
+      if (!response.ok && (response.status === 401 || response.status === 403)) {
+        logger.warn('[AuthProvider] Session 401/403 — retrying with refreshed token', { status: response.status });
+        response = await postSession(await firebaseUser.getIdToken(true));
+      }
+      if (response.ok) {
+        logger.info('[AuthProvider] Server session created', { uid: firebaseUser.uid });
+        return true;
+      }
+      // Do NOT force-signout here: a transient 5xx/offline blip shouldn't kick
+      // a returning user. But return FALSE so the caller runs the retry loop
+      // until the cookie actually lands.
       logger.error('[AuthProvider] Server session creation FAILED after retry', { status: response.status, uid: firebaseUser.uid });
+      return false;
+    } catch (err) {
+      logger.warn('[AuthProvider] Server session creation network error (non-blocking)', err);
+      return false;
     }
-  } catch (err) {
-    logger.warn('[AuthProvider] Server session creation network error (non-blocking)', err);
-  }
+  });
 }
 
 async function setPersistenceWithFallback(): Promise<void> {
@@ -228,6 +261,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     (async () => {
       await setPersistenceWithFallback();
 
+      // BOOT-TIME LOGOUT DRAIN (Evil-hunt 2026-08-20 P0-A):
+      // If a previous session's server-side sign-out failed (5xx, offline, or
+      // still-403 after refresh-retry), a pw_logout_pending sentinel is
+      // sitting in localStorage. Complete the server-cookie invalidation NOW,
+      // BEFORE onAuthStateChanged subscribes and any restored session cookie
+      // can be used. Sentinel is cleared only on 2xx.
+      try {
+        await drainPendingLogout({
+          getIdToken: async () => {
+            try { return (await auth.currentUser?.getIdToken()) ?? null; }
+            catch { return null; }
+          },
+          forceRefreshIdToken: async () => {
+            try { return (await auth.currentUser?.getIdToken(true)) ?? null; }
+            catch { return null; }
+          },
+          deps: { endpoint: getApiUrl('/api/auth/signout'), logger },
+        });
+      } catch (err) {
+        logger.warn('[AuthProvider] drainPendingLogout unexpected error', err);
+      }
+
       // Handle iOS Safari redirect-based sign-in completion.
       // After signInWithRedirect, the user is sent to Google and returns here.
       // getRedirectResult resolves the pending result — onAuthStateChanged fires
@@ -250,30 +305,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // Don't let a hung server-session call block the reveal forever
             // (native __session cookie / network). Cap at 6s; only mark done if
             // it actually completed, so a later auth event (and whoami) can retry.
-            let sessionDone = false;
+            // sessionOk is set to true ONLY when the server actually accepted the
+            // token — NOT on 5xx/CORS/network failure. Previously the `.then()`
+            // fired unconditionally, so the retry loop was skipped and every
+            // follow-up /api call 401'd. (Evil-hunt 2026-08-20 SEV-1 #1.)
+            //
+            // ensureServerSession is single-flight-guarded per uid, so the
+            // retry loop below cannot fan out into parallel POSTs even if the
+            // watchdog fires before the first flight resolves.
+            // (Evil-hunt 2026-08-20 P0-B.)
+            let sessionOk = false;
+            const uidAtStart = firebaseUser.uid;
             await Promise.race([
-              ensureServerSession(firebaseUser).then(() => { sessionDone = true; }),
+              ensureServerSession(firebaseUser).then((ok) => { sessionOk = ok; }),
               new Promise<void>((resolve) => setTimeout(resolve, 6000)),
             ]);
-            if (sessionDone) {
-              sessionCreatedForUid.current = firebaseUser.uid;
-            } else {
-              // Session didn't confirm within 6s. We still reveal the user below
-              // (never trap them on an infinite loader), but the __session cookie
-              // may not have landed yet — so a cookie-authed API call in the gap
-              // could 401 and bounce the user to /signin ("logged in but kicked
-              // out"). Keep re-minting in the BACKGROUND (fire-and-forget, bounded)
-              // so the cookie lands ASAP and the window shrinks. ensureServerSession
-              // is idempotent. (verification-drift follow-up 2026-08-07)
-              const uidAtStart = firebaseUser.uid;
+            // GUARD (P0-B): NEVER stamp the ref for a stale uid — protects
+            // against a user-switch (or logout) mid-flight, where the OLD
+            // uid's promise resolves after auth.currentUser has already
+            // moved on. The single-flight map is keyed by uid so the new
+            // user gets its own flight, but stamping needs its own guard.
+            if (sessionOk && auth.currentUser?.uid === uidAtStart) {
+              sessionCreatedForUid.current = uidAtStart;
+            } else if (!sessionOk) {
+              // Either the 6s watchdog fired first, OR ensureServerSession returned
+              // false (server rejected / errored). Reveal the user below (never
+              // trap them on an infinite loader), but keep re-minting in the
+              // BACKGROUND (fire-and-forget, bounded) so the cookie lands ASAP
+              // and the "logged in but 401" window shrinks. ensureServerSession
+              // is idempotent AND single-flight-guarded — the retry loop reuses
+              // any still-in-flight promise, never spawns a parallel POST.
               void (async () => {
                 for (let i = 0; i < 4 && sessionCreatedForUid.current !== uidAtStart; i++) {
                   await new Promise((r) => setTimeout(r, 1500));
-                  if (auth.currentUser?.uid !== uidAtStart) return; // user changed — abort
-                  try {
-                    await ensureServerSession(firebaseUser);
+                  if (auth.currentUser?.uid !== uidAtStart) return; // user changed OR logged out — abort
+                  const ok = await ensureServerSession(firebaseUser);
+                  // Re-check uid AFTER the await — the user may have logged
+                  // out or switched while we were waiting for the network.
+                  if (ok && auth.currentUser?.uid === uidAtStart) {
                     sessionCreatedForUid.current = uidAtStart;
-                  } catch { /* keep retrying up to the bound */ }
+                    return;
+                  }
                 }
               })();
             }
@@ -333,15 +405,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const userId = user?.uid;
     try {
-      // 2. Destroy the server-side session cookie.
-      try {
-        await fetch(getApiUrl('/api/auth/signout'), {
-          method: 'POST',
-          credentials: 'include',
-        });
-      } catch (e) {
-        logger.debug("Server signout call failed (non-blocking)", e);
-      }
+      // 2. Destroy the server-side session cookie via the canonical robust
+      //    helper. It checks response.ok, retries once with a force-refreshed
+      //    idToken on 401/403, and on persistent failure (still !ok, 5xx, or
+      //    network error) persists pw_logout_pending so the next app boot
+      //    finishes the invalidation BEFORE any session can be restored.
+      //    Firebase local signOut still happens below regardless of the
+      //    server outcome.
+      //
+      //    WHY (Evil-hunt 2026-08-20 P0-A): the prior `await fetch(...)`
+      //    resolved on ANY HTTP status. Server 401/403/500 all looked
+      //    successful, and the __session HttpOnly cookie stayed on the
+      //    device for its 14-day TTL — the next user on that browser
+      //    inherited the previous user's server session while Firebase was
+      //    signed out (classic session-fixation / privilege-carryover).
+      //    Attaching Bearer alone (SEV-2 #7) fixed the CSRF-403 case but
+      //    silently swallowed all other statuses.
+      await performServerSignOut({
+        uid: userId ?? null,
+        getIdToken: async () => {
+          try { return (await auth.currentUser?.getIdToken()) ?? null; }
+          catch { return null; }
+        },
+        forceRefreshIdToken: async () => {
+          try { return (await auth.currentUser?.getIdToken(true)) ?? null; }
+          catch { return null; }
+        },
+        deps: { endpoint: getApiUrl('/api/auth/signout'), logger },
+      });
 
       // 3. Sign out of Firebase (fires onAuthStateChanged → null).
       await signOut(auth);
