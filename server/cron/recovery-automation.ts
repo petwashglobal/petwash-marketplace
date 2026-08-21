@@ -98,7 +98,7 @@ async function runIncompleteSignupRecovery() {
           <p>לחץ על הכפתור להשלמת הפרופיל שלך וגישה לכל השירותים.</p>
         `,
         ctaText: 'להשלמת הרישום',
-        ctaUrl: 'https://petwash.co.il/complete-registration',
+        ctaUrl: 'https://petwash.co.il/complete-profile',
         channels: ['email'],
         locale: 'he',
       });

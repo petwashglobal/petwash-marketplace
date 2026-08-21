@@ -1180,7 +1180,7 @@ router.post('/rewards/redeem', async (req: AuthenticatedRequest, res: Response) 
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תוקף</td><td style="padding:8px;border-bottom:1px solid #eee;">30 יום</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il/prestige</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il/prestige/home</p>
 </body></html>`;
 
         const docRef = await FinancialDocumentService.create({
@@ -1496,7 +1496,7 @@ router.post('/membership/renew', requireAdmin, async (req: AuthenticatedRequest,
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תקף עד</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;color:#1a7a1a;">${renewedUntilStr}</td></tr>
   <tr><td style="padding:8px;color:#555;">תאריך חידוש</td><td style="padding:8px;">${issuedAt}</td></tr>
 </table>
-<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il/prestige</p>
+<p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL} | petwash.co.il/prestige/home</p>
 </body></html>`;
 
         const docRef = await FinancialDocumentService.create({
@@ -1598,7 +1598,7 @@ router.post('/membership/cancel', requireAdmin, async (req: AuthenticatedRequest
 <table style="border-collapse:collapse;width:100%;max-width:480px;">
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">רמת חברות</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${tier}</td></tr>
   <tr><td style="padding:8px;border-bottom:1px solid #eee;color:#555;">תוקף הטבות עד</td><td style="padding:8px;border-bottom:1px solid #eee;font-weight:bold;">${effectiveDateStr}</td></tr>
-  <tr><td style="padding:8px;color:#555;">להצטרפות מחדש</td><td style="padding:8px;"><a href="https://petwash.co.il/prestige">petwash.co.il/prestige</a></td></tr>
+  <tr><td style="padding:8px;color:#555;">להצטרפות מחדש</td><td style="padding:8px;"><a href="https://petwash.co.il/prestige/home">petwash.co.il/prestige/home</a></td></tr>
 </table>
 <p style="margin-top:16px;font-size:12px;color:#888;">PetWash Ltd. | ${CANONICAL_SUPPORT_EMAIL}</p>
 </body></html>`;
