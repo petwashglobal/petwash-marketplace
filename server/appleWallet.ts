@@ -506,9 +506,25 @@ export class AppleWalletService {
    * Generate authentication token for pass updates
    */
   private static generateAuthToken(userId: string): string {
+    const secret = process.env.MOBILE_LINK_SECRET;
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        // Fail-closed: a literal 'secret' fallback would let anyone forge
+        // pass-update auth tokens (userId + literal → sha256).
+        throw new Error(
+          '[Apple Wallet] MOBILE_LINK_SECRET must be set in production — ' +
+          'generateAuthToken cannot fall back to a hardcoded literal.'
+        );
+      }
+      // Dev-only fallback preserves local development flow.
+      return crypto
+        .createHash('sha256')
+        .update(`${userId}_mobile-link-secret-dev-only`)
+        .digest('hex');
+    }
     return crypto
       .createHash('sha256')
-      .update(`${userId}_${process.env.MOBILE_LINK_SECRET || 'secret'}`)
+      .update(`${userId}_${secret}`)
       .digest('hex');
   }
 

@@ -4662,7 +4662,7 @@ export default function AdminWalletDashboard() {
                   </button>
                 </div>
                 <p className="text-sm text-gray-500">
-                  Refunds above the auto-approve threshold (₪{((Number(process.env.REFUND_AUTO_APPROVE_LIMIT_CENTS ?? 50)) / 100).toFixed(0) ?? "50"} default ₪50) require a second admin approver.
+                  Refunds above the auto-approve threshold (default ₪50; server-configured via REFUND_AUTO_APPROVE_LIMIT_CENTS) require a second admin approver.
                   The approver cannot be the original requester.
                 </p>
               </CardHeader>
