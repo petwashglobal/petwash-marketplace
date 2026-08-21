@@ -5,7 +5,10 @@ import { logger } from '../lib/logger';
 import { sendClubWelcomeEmail, sendLuxuryEmail } from '../email/luxury-email-service';
 import { verifyCaptchaToken } from '../lib/verifyCaptcha';
 import { verifyTurnstileToken } from '../lib/verifyTurnstile';
-import { syncUserToHubSpot, trackHubSpotEvent } from '../hubspot';
+// HubSpot removed 2026-08-21 (CEO): hubspot.ts has been a no-op since the
+// Replit connector was cut in June. Prestige-join CRM sync now sits in the
+// Google Sheets logRegistration + audit_events trail; no external CRM push
+// until a direct HubSpot integration is wired.
 import multer from 'multer';
 import admin from '../lib/firebase-admin';
 import crypto from 'crypto';
@@ -219,30 +222,10 @@ router.post('/register', upload.single('idDocument'), async (req: Request, res: 
       geminiPlatformMonitor.recordRegistration('prestige');
     } catch {}
 
-    // ── HubSpot CRM — Prestige members were previously invisible to CRM ───────
-    syncUserToHubSpot({
-      uid: memberId,
-      email: email.trim().toLowerCase(),
-      firstname: firstName.trim(),
-      lastname: lastName.trim(),
-      phone: phone.trim(),
-      lang: language || 'he',
-      country: country || 'Israel',
-      loyaltyProgram: true,
-      consent: termsConsent === 'true' || termsConsent === true,
-      consentTimestamp: new Date().toISOString(),
-    }).catch(err => {
-      logger.warn('[Privilege] HubSpot sync failed (non-blocking)', { error: err?.message });
-    });
-
-    trackHubSpotEvent(email.trim().toLowerCase(), 'petwash_prestige_joined', {
-      memberId,
-      tier: 'bronze',
-      country: country || 'Israel',
-      petsCount: parsedPets.length,
-      hasIdDocument: !!idDocumentUrl,
-      joinedAt: new Date().toISOString(),
-    }).catch(() => {});
+    // HubSpot sync removed 2026-08-21 (see import comment).
+    // Prestige-member capture lives in Google Sheets logLoyaltyEnrollment
+    // (see server/services/googleSheetsIntegration.ts) plus the audit_events
+    // trail — no external CRM push until direct HubSpot integration lands.
 
     // ── FCM push notification to the new member (if they have an FCM token) ──
     try {
