@@ -1708,7 +1708,7 @@ jobs:
             --port=8080
             --execution-environment=gen2
             --ingress=all
-            --set-env-vars=NODE_ENV=production,GOOGLE_PLACES_LIVE=false,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false,NAYAX_ENABLED=true,SUMIT_ENABLED=true,SUMIT_SANDBOX=false,SMS_GLOBAL_HOURLY_LIMIT=120,SMS_GLOBAL_DAILY_LIMIT=400,IDENTITY_UNIFIED_ENABLED=true,LYNX_ENABLED=true,LYNX_SANDBOX=false,LYNX_OPERATOR_ID=2002942146,UNIFIED_VERIFICATION_ENABLED=true,UNIFIED_VERIFICATION_SIGNUP_ENABLED=true,UNIFIED_VERIFICATION_LOGIN_ENABLED=true
+            --set-env-vars=NODE_ENV=production,SHOP_ENABLED=true,SHOP_CHECKOUT_ENABLED=false,NAYAX_ENABLED=true,SUMIT_ENABLED=true,SUMIT_SANDBOX=false,SMS_GLOBAL_HOURLY_LIMIT=120,SMS_GLOBAL_DAILY_LIMIT=400,IDENTITY_UNIFIED_ENABLED=true,LYNX_ENABLED=true,LYNX_SANDBOX=false,LYNX_OPERATOR_ID=2002942146,UNIFIED_VERIFICATION_ENABLED=true,UNIFIED_VERIFICATION_SIGNUP_ENABLED=true,UNIFIED_VERIFICATION_LOGIN_ENABLED=true
             --no-traffic
             --tag=cand-${{ github.run_id }}-${{ github.run_attempt }}
             --startup-probe=httpGet.path=/health,initialDelaySeconds=5,periodSeconds=10,timeoutSeconds=10,failureThreshold=30
