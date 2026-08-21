@@ -571,6 +571,7 @@ export default function SitterBookingFlow() {
               <AddressPicker
                 label="כתובת מלאה"
                 value={address}
+                showCitySuggestion
                 onChange={(value, details) => {
                   setAddress(value);
                   if (details?.city) setAddressCity(details.city);

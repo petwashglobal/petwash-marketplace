@@ -518,6 +518,7 @@ export default function WalkBookingFlow() {
                 label="כתובת לאיסוף"
                 required
                 value={pickupAddress}
+                showCitySuggestion
                 onChange={(val, details) => {
                   setPickupAddress(val);
                   if (details) setPickupDetails(details);

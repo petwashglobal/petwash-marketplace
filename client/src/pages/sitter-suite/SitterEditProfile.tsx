@@ -10,8 +10,9 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { GooglePlacesAutocomplete } from "@/components/ui/google-places-autocomplete";
-import { 
-  ArrowLeft, Camera, Save, User, MapPin, Phone, 
+import { CityPicker, type CityPickerSelection } from "@/components/location/CityPicker";
+import {
+  ArrowLeft, Building2, Camera, Save, User, MapPin, Phone,
   DollarSign, Star, Shield, Loader2, Check
 } from "lucide-react";
 
@@ -47,6 +48,8 @@ export default function SitterEditProfile() {
     queryKey: ['/api/sitter-suite/sitters', user?.uid],
     enabled: !!user?.uid,
   });
+
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
 
   const [formData, setFormData] = useState({
     firstName: '',
@@ -280,6 +283,18 @@ export default function SitterEditProfile() {
                   <MapPin className="h-4 w-4" />
                   {t.city}
                 </Label>
+                <button
+                  type="button"
+                  onClick={() => setCityPickerOpen(true)}
+                  className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50/60 text-sm text-amber-900 hover:bg-amber-50"
+                  data-testid="sitter-city-picker-open"
+                >
+                  <Building2 className="w-4 h-4 shrink-0 text-amber-500" />
+                  <span className={`flex-1 text-right truncate ${!(formData.city || profile?.city) ? 'text-amber-500' : ''}`}>
+                    {(formData.city || profile?.city) || (isHebrew ? 'בחר עיר מהרשימה' : 'Choose a city from the list')}
+                  </span>
+                  <span className="text-xs text-amber-500">▾</span>
+                </button>
                 <GooglePlacesAutocomplete
                   value={formData.city || profile?.city || ''}
                   onChange={(value, details) => {
@@ -293,9 +308,20 @@ export default function SitterEditProfile() {
                       longitude: lng,
                     }));
                   }}
-                  placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city or address...'}
+                  placeholder={isHebrew ? 'או חפש עיר עם מפה...' : 'Or search with the map...'}
                   country={['il']}
                   inputClassName="h-12 rounded-xl border-[#D4AF37]/20 focus:border-[#D4AF37]/40"
+                />
+                <CityPicker
+                  open={cityPickerOpen}
+                  onOpenChange={setCityPickerOpen}
+                  value={null}
+                  language={isHebrew ? 'he' : 'en'}
+                  onChange={(sel: CityPickerSelection) => {
+                    const displayCity = isHebrew ? sel.hebrewName : (sel.englishName || sel.hebrewName);
+                    setFormData(prev => ({ ...prev, city: displayCity }));
+                    setCityPickerOpen(false);
+                  }}
                 />
               </div>
             </div>
