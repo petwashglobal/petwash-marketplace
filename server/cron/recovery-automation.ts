@@ -279,13 +279,14 @@ export function startRecoveryAutomationCron() {
     }
   });
 
-  // Daily at 10:00 AM — re-engage users inactive for 30+ days
+  // Daily at 10:00 Israel time — re-engage users inactive for 30+ days.
+  // (Was UTC → fired at 12:00 / 13:00 Israel, not the intended morning slot.)
   cron.schedule('0 10 * * *', async () => {
     try { await runInactiveUserReengagement(); }
     catch (err: any) {
       logger.error('[RecoveryAutomation] Winback 30d job failed', { err: err.message });
     }
-  });
+  }, { timezone: 'Asia/Jerusalem' });
 
-  logger.info('[RecoveryAutomation] Cron jobs registered (signup: 60min, booking: 30min, winback: daily 10:00)');
+  logger.info('[RecoveryAutomation] Cron jobs registered (signup: 60min, booking: 30min, winback: daily 10:00 Asia/Jerusalem)');
 }

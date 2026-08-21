@@ -310,7 +310,8 @@ ${error instanceof Error ? error.message : String(error)}
 export function startMonthlySettlementsCron() {
   logger.info('[MonthlySettlements] Initializing monthly settlements cron job');
 
-  // Run on the 1st of each month at 00:05
+  // Run on the 1st of each month at 00:05 Israel time (was UTC → fired at
+  // 02:05 / 03:05 Israel, labelling "August" reports slightly off-boundary).
   cron.schedule('5 0 1 * *', async () => {
     logger.info('[MonthlySettlements] Cron job triggered');
     // Leader-elected: on multi-replica Cloud Run exactly ONE instance runs this,
@@ -322,7 +323,7 @@ export function startMonthlySettlementsCron() {
     } catch (err: any) {
       logger.error('[MonthlySettlements] Cron run failed', { error: err?.message });
     }
-  });
+  }, { timezone: 'Asia/Jerusalem' });
 
   logger.info('[MonthlySettlements] Cron job scheduled successfully (1st of month at 00:05)');
   
