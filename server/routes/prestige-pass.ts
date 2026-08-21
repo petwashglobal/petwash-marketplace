@@ -10051,11 +10051,13 @@ router.get('/admin/wallet/finance-audit', async (req: Request, res: Response) =>
     const pageSize = 50;
     const offset   = (pageNum - 1) * pageSize;
 
-    // Build WHERE clauses
+    // Build WHERE clauses — escape wildcards in user-typed filter values so
+    // a literal `%` doesn't match every row.
+    const { escapeLike } = await import('../lib/sqlLike');
     const conditions: any[] = [];
-    if (actor)      conditions.push(sql`actor_uid   ILIKE ${'%' + actor      + '%'}`);
-    if (action)     conditions.push(sql`action      ILIKE ${'%' + action     + '%'}`);
-    if (entityType) conditions.push(sql`entity_type ILIKE ${'%' + entityType + '%'}`);
+    if (actor)      conditions.push(sql`actor_uid   ILIKE ${'%' + escapeLike(String(actor))      + '%'} ESCAPE '\\'`);
+    if (action)     conditions.push(sql`action      ILIKE ${'%' + escapeLike(String(action))     + '%'} ESCAPE '\\'`);
+    if (entityType) conditions.push(sql`entity_type ILIKE ${'%' + escapeLike(String(entityType)) + '%'} ESCAPE '\\'`);
     if (from)       conditions.push(sql`created_at >= ${from}::timestamptz`);
     if (to)         conditions.push(sql`created_at <= ${to}::timestamptz`);
 

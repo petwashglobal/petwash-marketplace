@@ -17668,9 +17668,14 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       let query;
       let countQuery;
       if (search) {
-        const searchPattern = `%${search}%`;
-        query = sql`SELECT id, email, first_name, last_name, phone, country, loyalty_tier, is_club_member, created_at, roles FROM users WHERE email ILIKE ${searchPattern} OR first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR phone ILIKE ${searchPattern} ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
-        countQuery = sql`SELECT COUNT(*) as count FROM users WHERE email ILIKE ${searchPattern} OR first_name ILIKE ${searchPattern} OR last_name ILIKE ${searchPattern} OR phone ILIKE ${searchPattern}`;
+        // Escape wildcards in admin-typed search string. Parameterization
+        // stops SQLi but a literal `%` or `_` from the admin returned
+        // every user / matched every prefix. escapeLike + ESCAPE '\\' fixes
+        // it without changing normal-name search behavior.
+        const { escapeLike } = await import('./lib/sqlLike');
+        const searchPattern = `%${escapeLike(String(search))}%`;
+        query = sql`SELECT id, email, first_name, last_name, phone, country, loyalty_tier, is_club_member, created_at, roles FROM users WHERE email ILIKE ${searchPattern} ESCAPE '\\' OR first_name ILIKE ${searchPattern} ESCAPE '\\' OR last_name ILIKE ${searchPattern} ESCAPE '\\' OR phone ILIKE ${searchPattern} ESCAPE '\\' ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
+        countQuery = sql`SELECT COUNT(*) as count FROM users WHERE email ILIKE ${searchPattern} ESCAPE '\\' OR first_name ILIKE ${searchPattern} ESCAPE '\\' OR last_name ILIKE ${searchPattern} ESCAPE '\\' OR phone ILIKE ${searchPattern} ESCAPE '\\'`;
       } else {
         query = sql`SELECT id, email, first_name, last_name, phone, country, loyalty_tier, is_club_member, created_at, roles FROM users ORDER BY created_at DESC LIMIT ${limit} OFFSET ${offset}`;
         countQuery = sql`SELECT COUNT(*) as count FROM users`;

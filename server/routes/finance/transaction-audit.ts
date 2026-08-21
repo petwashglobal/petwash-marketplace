@@ -28,6 +28,7 @@ import {
   walletAccounts,
 } from '@shared/schema';
 import { eq, desc, and, gte, lte, sql, or, like } from 'drizzle-orm';
+import { escapeLike } from '../../lib/sqlLike';
 import { requireAdmin } from '../../adminAuth';
 import { logger } from '../../lib/logger';
 import { z } from 'zod';
@@ -154,10 +155,15 @@ router.get('/bookings', async (req, res) => {
       whereConditions.push(sql`b.created_at <= ${params.dateTo}::timestamp`);
     }
     if (params.search) {
+      // Escape %/_/\ in user input — parameterisation blocks SQLi but not
+      // wildcard-injection. Also cast b.id::text so ILIKE on a UUID column
+      // never throws `operator does not exist: integer ~~* text` (the id
+      // column type varies across bookings tables in this codebase).
+      const safeSearch = `%${escapeLike(String(params.search))}%`;
       whereConditions.push(sql`(
-        b.booking_number ILIKE ${`%${params.search}%`} OR 
-        b.user_id ILIKE ${`%${params.search}%`} OR
-        b.id ILIKE ${`%${params.search}%`}
+        b.booking_number ILIKE ${safeSearch} ESCAPE '\\' OR
+        b.user_id::text  ILIKE ${safeSearch} ESCAPE '\\' OR
+        b.id::text       ILIKE ${safeSearch} ESCAPE '\\'
       )`);
     }
     if (params.hasCredits === 'true') {
