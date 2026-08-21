@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useAdminAuth } from "@/hooks/useAdminAuth";
 import { t } from "@/lib/i18n";
@@ -162,12 +162,20 @@ export default function CustomerManagement() {
   
   // Admin authentication check
   const { isAuthenticated: isAdminAuthenticated, isLoading: isAdminLoading } = useAdminAuth();
-  
-  // Redirect if not authenticated
-  if (!isAdminLoading && !isAdminAuthenticated) {
-    setLocation('/signin');
-    return null;
-  }
+
+  // Redirect if not authenticated. This USED to be an imperative
+  // `if (...) { setLocation('/signin'); return null; }` right here, but that
+  // was a hook-order violation — every useQuery / useMutation below was
+  // skipped on the render after `useAdminAuth` resolved to unauthenticated,
+  // so React threw "Rendered fewer hooks than expected" and crashed the
+  // admin console for anyone whose session had lapsed. The redirect now fires
+  // from useEffect (safe from render), and the render is aborted below the
+  // hooks (see the block just before the JSX return).
+  useEffect(() => {
+    if (!isAdminLoading && !isAdminAuthenticated) {
+      setLocation('/signin');
+    }
+  }, [isAdminLoading, isAdminAuthenticated, setLocation]);
 
   // Fetch customers with pagination and filters
   const { data: customersData, isLoading: customersLoading, isError: customersError, refetch: refetchCustomers } = useQuery({
@@ -297,6 +305,11 @@ export default function CustomerManagement() {
     setSearchTerm('');
     setCurrentPage(1);
   };
+
+  // Admin-auth safety net (see the useEffect above). Placed AFTER all hooks
+  // so React sees a consistent hook count across renders when the admin auth
+  // state resolves.
+  if (!isAdminLoading && !isAdminAuthenticated) return null;
 
   if (customersLoading) {
     return (
