@@ -264,3 +264,102 @@ Symptom: after approval, customer flavor of the app cannot route the user via `r
 
 Signing evidence stored: userId, submissionId, templateSlug, documentType (`provider_declaration:{key}:{version}`), documentName, language, status, signerEmail, signerName, signedAt, completedAt, `certificateUrl=inapp-attestation:sha256:{hash}`, ipAddress, userAgent. Missing: device_id, app_version, tenant=IL, PDF snapshot binary.
 
+---
+
+## SECTION J — PROVIDER APPROVAL CHAIN (Agent 5, 2026-08-21)
+
+Three separate admin-approve endpoints, none inserts into the marketplace `providers` table:
+
+| # | Endpoint | Application table WRITTEN | providers row? | Marketplace-searchable? |
+|---|---|---|---|---|
+| A | `POST /api/provider-applications/admin/:id/approve` | `provider_applicants` (wrong table for capability aggregator) | **NO** | **NO** |
+| B | `POST /api/provider-onboarding/admin/applications/approve` | `provider_applications` | **NO** | **NO** (walker/sitter/trainer profiles get flags but `providers.isActive` inner JOIN in `providerSearchService.ts` still fails) |
+| C | `AdminProviderReviewService.approveApplication` (via `POST /api/provider-review/admin/approve/:id`) | `provider_approval_queue` + mirror to `provider_applications` | **NO** | Partial (walker/sitter/trainer profiles set, but `provider_services` NEVER seeded → per-service booking gate blocks unless legacy fail-open triggers) |
+
+**Root cause:** `db.insert(providers)` / `INSERT INTO providers` returns ZERO writes anywhere in `server/`. Every "approved" provider is invisible to the marketplace inner-JOIN.
+
+**Firebase custom claim `role: 'provider'` OVERWRITE:** all three endpoints spread `existingClaims` then set `role: 'provider'` — replaces `role: 'customer'` in claims. `users.role` DB scalar correctly preserved (multi-role contract) BUT client consumers (`ProviderPending.tsx:111`, `App.tsx:798`, `useAccountNavigation.ts:173-181`, `AdminRouteGuard.tsx:35,65`) read the claim as canonical.
+
+**Zero transactional rollback.** Every side-effect wrapped in try/catch fallback; partial failure leaves the app row `approved` with no compensator.
+
+Diagnostic SQL to identify historical broken approvals available in agent transcript (union across BOTH application tables — provider_applicants and provider_applications).
+
+## SECTION K — BOOKING UNIVERSE DRIFT (Agent 6, 2026-08-21)
+
+**Three declarations of `bookings` table:**
+- `shared/schema.ts:8540` — varchar UUID PK — LIVE (used by marketplace-bookings + BookingLifecycleService)
+- `shared/super-app-schema.ts:320` — serial int PK — ghost (imported only by `reviews.ts:22`)
+- `shared/super-app-schema-v2.ts:346` — serial int PK — dead (no imports)
+
+**Six first-class per-service tables** (`bookings`, `booking_requests`, `sitter_bookings`, `walk_bookings`, `trainer_bookings`, `pettrek_trips`) plus `octopus_bookings`, `escrow_holdings`, Firestore `bookings` collection. Nine parallel booking stores.
+
+**Groomer bookings recorded in `contractor_earnings` as WALKER earnings** (`booking-requests.ts:3283`) — silent taxonomy corruption of provider earnings.
+
+**PetTrek** is officially LEGAL_BLOCKED at 3 route layers yet `pettrek.ts:168` still inserts `pettrek_trips` and `pettrek.ts:588` still completes them.
+
+**No delivery booking table or route exists** despite Agent 4's inventory listing "Delivery" as a service.
+
+**Trainer_bookings** uses `booking_status` column while every other table uses `status` — bridge writer accounts for it at `legacyBookingBridge.ts:270` but no other consumer knows.
+
+**Every legacy create fans out 3-5 mirror INSERTs**, wrapped in `try {}` — a bridge failure creates a row invisible to the provider inbox forever (mitigated only by an alert).
+
+**Payout linkage split-brain:** `contractor_earnings.booking_id` = `booking_requests.requestId` when canonical `/confirm` fires; = `sitter_bookings.bookingId` / `walk_bookings.bookingId` when legacy `/complete` fires. Same booking, two rows, unique index doesn't dedupe because keys differ.
+
+**No route unions the tables** — a customer with sitter+walker+trainer+marketplace bookings only sees them via 4+ separate endpoints. K9000 washes missing from every `my-bookings` endpoint (they live in `bay_sessions`).
+
+## SECTION L — NOTIFICATION WIRING (Agent 7, 2026-08-21)
+
+**THREE parallel dispatch stacks + one EventBus subscriber layer:**
+- Stack A `PetWashNotificationEngine.dispatchNotifications()` — canonical (booking / payout / loyalty), retry, idempotency, consent-gated for marketing
+- Stack B `dispatchNotification()` — receipts, promo, generic alerts, no retry, no idempotency, no consent
+- Stack C `NotificationService.sendNotification()` — EventBus-driven, no consent, no retry (rows land in `notification_logs` with `retryCount=null` → `NotificationRetryService.sweep()` SKIPS them → every Stack C failure is permanent-and-invisible)
+
+**Stack C bypasses consent entirely** — `booking.confirmed`, `booking.cancelled`, `booking.completed`, `provider_approved/rejected`, `loyalty.tier_upgraded`, `payout.issued`, `inventory.low`, `station.heartbeat_missed` all reach opted-out users. `loyalty.tier_upgraded` is arguably marketing.
+
+**KYC applicant emails** at `provider-onboarding.ts:1432,1449,1462,1474` use raw `sgMail.send()` — no `EmailSpendGuard`, no fallback, no audit; failures only `logger.warn`. If SendGrid returns 5xx or is unconfigured, KYC applicants never hear their status.
+
+**FCM identity mismatch:** `FCMService.ts:32` returns `false` when caller passes internal Postgres id vs Firestore uid mismatch. Multiple Stack A callers pass `providerUserId` where Firestore doc lives under a different key.
+
+**`sendTopicPush()`** defined at `sendPush.ts:357` but has ZERO call sites — franchise/HQ topic broadcast is unimplemented.
+
+**`refund_pending` was NOT transactional** → post-cancel refund notice silently blocked. **Fixed in PR #2020**.
+
+## SECTION M — IDENTITY NAMESPACE DRIFT (Agent 5b, 2026-08-21)
+
+**providerId polymorphism proven** — the column is `varchar` (Firebase UID) in `bookings`, `booking_requests`, `providerServices`, `providerRateCards`; `integer` (providers.id) in `super_app_bookings`, `availabilitySlots`, `providerLicenses`; `WALKER-UUID` / `SITTER-UUID` in walker/sitter profile tables.
+
+**Smoking gun:** `sitter-suite.ts` writes stringified integer PKs into columns whose comment says "Firebase UID":
+- line 404: `providerApprovalQueue.providerId = String(newSitter.id)`
+- line 883: sitter lock keyed on int-string
+- line 1243, 1656: `providerId = booking.sitterId.toString()`
+
+Meanwhile the aggregator + payout gate compare Firebase UID. A sitter approved through the sitter-suite queue therefore appears in `providerApprovalQueue` as `"42"` but in `providerServices` as its Firebase UID. Two rows, two namespaces, same person.
+
+**`approvedServices` custom claim written but NEVER read** — dead claim at `provider-applications.ts:1418, 1613`.
+
+**signupIntent once-set-at-signup contract violated in 3 places:**
+- `post-login.ts:532` — returning-customer who taps Become-Provider overwrites intent
+- `post-login.ts:1025` (`chooseRole`) — unconditional overwrite on every call
+- `access-requests.ts:121` — staff request unconditionally overwrites `signupIntent = 'staff_request'` + `userStatus = 'staff_pending_approval'`
+
+**~14 server files re-implement admin/provider role checks** instead of calling the `userCapabilities` aggregator. List of RE-IMPLEMENTATIONS documented in agent transcript.
+
+---
+
+## APPENDIX — Fixes shipped this cycle (PRs post-CEO-directive)
+
+- **#2009** — Israel timezone batch (birthday cron, paw-finder limit, 3 crons, finance date filter)
+- **#2010** — ILIKE wildcard escape + drop `SELECT p.*` on public paw-finder
+- **#2011** — Archaeology doc v1 + 3 dead deep-links
+- **#2012** — Deep-link round 2 (5 more URLs)
+- **#2013** — Admin platform-status dashboard Israel-local calendar day
+- **#2014** — HubSpot no-op cleanup
+- **#2015** — Provider `/my/status` returns 15 privacy-required fields
+- **#2016** — GOOGLE_PLACES_LIVE CI/YAML conflict fix
+- **#2017** — Date-picker min uses local calendar day (was UTC)
+- **#2018** — Pet-first-aid cert serial no longer stored in provider-name column
+- **#2019** — Deep-link round 3 (`/provider/dashboard` → `/provider-os`, admin station alert)
+- **#2020** — `refund_pending` added to TRANSACTIONAL_EVENTS
+- **#2021** (this) — archaeology doc round 2 (Sections J/K/L/M)
+
+**Total this cycle: 13 PRs opened, 0 merged (per CEO §27 lock).**
