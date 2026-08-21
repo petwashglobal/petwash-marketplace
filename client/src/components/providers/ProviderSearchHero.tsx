@@ -4,6 +4,7 @@
  * Online service domains only. NOT for K9000.
  */
 
+import { todayLocalIso } from '@/lib/localDate';
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Input } from "@/components/ui/input";
@@ -166,7 +167,7 @@ export function ProviderSearchHero({ filters, onChange, onSearch, onSearchDeboun
                 type="date"
                 className="pl-10"
                 value={filters.startDate || ""}
-                min={new Date().toISOString().split("T")[0]}
+                min={todayLocalIso()}
                 onChange={(e) => {
                   const v = e.target.value || undefined;
                   onChange({
@@ -196,7 +197,7 @@ export function ProviderSearchHero({ filters, onChange, onSearch, onSearchDeboun
                   type="date"
                   className="pl-10"
                   value={filters.endDate || ""}
-                  min={filters.startDate || new Date().toISOString().split("T")[0]}
+                  min={filters.startDate || todayLocalIso()}
                   onChange={(e) =>
                     onChange({ ...filters, endDate: e.target.value || undefined, page: 1 })
                   }

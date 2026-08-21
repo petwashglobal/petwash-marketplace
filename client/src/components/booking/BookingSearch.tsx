@@ -1,3 +1,4 @@
+import { todayLocalIso } from '@/lib/localDate';
 import { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation } from '@tanstack/react-query';
@@ -320,7 +321,7 @@ export default function BookingSearch() {
                   data-testid="input-start-date"
                   type="date"
                   value={filters.startDate}
-                  min={new Date().toISOString().split('T')[0]}
+                  min={todayLocalIso()}
                   onChange={(e) => {
                     const v = e.target.value;
                     setFilters(prev => ({
@@ -345,7 +346,7 @@ export default function BookingSearch() {
                   data-testid="input-end-date"
                   type="date"
                   value={filters.endDate}
-                  min={filters.startDate || new Date().toISOString().split('T')[0]}
+                  min={filters.startDate || todayLocalIso()}
                   onChange={(e) => setFilters(prev => ({ ...prev, endDate: e.target.value }))}
                   className="pl-10"
                 />
