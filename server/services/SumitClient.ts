@@ -957,10 +957,17 @@ export class SumitClient {
       .update(body)
       .digest('hex');
 
+    // Strip the `sha256=` prefix — the route (server/routes/sumit-webhook.ts)
+    // accepts the header from `x-sumit-signature`, `x-signature`, OR
+    // `x-hub-signature-256`; the last one (GitHub/Meta convention) ALWAYS
+    // sends `sha256=<hex>`. Without stripping, `Buffer.from('sha256=abc',
+    // 'hex')` returns 0 bytes → length check trivially fails → every
+    // signed webhook via that header rejects. (Evil-hunt 2026-08-20.)
+    const providedHex = headerSignature.replace(/^sha256=/, '');
     const expectedBuf = Buffer.from(expected, 'hex');
     let receivedBuf: Buffer;
     try {
-      receivedBuf = Buffer.from(headerSignature, 'hex');
+      receivedBuf = Buffer.from(providedHex, 'hex');
     } catch {
       return false;
     }
