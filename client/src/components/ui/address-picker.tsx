@@ -1,10 +1,12 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { MapPin, Home, Briefcase, Clock, Star, Plus, Loader2, Navigation } from "lucide-react";
+import { MapPin, Home, Briefcase, Clock, Star, Plus, Loader2, Navigation, Building2 } from "lucide-react";
 import { GooglePlacesAutocomplete, type PlaceDetails } from "@/components/ui/google-places-autocomplete";
 import { apiRequest } from "@/lib/queryClient";
 import { useFirebaseAuth } from "@/auth/AuthProvider";
 import type { UserAddress } from "@shared/schema";
+import { CityPicker, type CityPickerSelection } from "@/components/location/CityPicker";
+import { findIsraelCityBySymbol } from "@shared/data/israel-cities";
 
 // ── Label config ─────────────────────────────────────────────────────────────
 const LABEL_CONFIG: Record<string, { icon: React.ReactNode; text: string; textHe: string }> = {
@@ -28,6 +30,10 @@ export interface AddressPickerProps {
   error?: string;
   country?: string[];           // 2026-06-18: overridable (was hardcoded ['IL'])
   autoSelectDefault?: boolean;  // auto-fill the pinned default address (off for e.g. a drop-off field)
+  // Show a "Choose city" chip that opens the mapped Israeli-city sheet (shared/data/israel-cities.ts).
+  // On pick, seeds the Google Places search input with the city so the free-text autocomplete
+  // is biased to that locality. Off by default so existing consumers don't change.
+  showCitySuggestion?: boolean;
 }
 
 export function AddressPicker({
@@ -44,11 +50,15 @@ export function AddressPicker({
   error,
   country = ["il"],
   autoSelectDefault = true,
+  showCitySuggestion = false,
 }: AddressPickerProps) {
   const { user } = useFirebaseAuth();
   const queryClient = useQueryClient();
   const [geoLoading, setGeoLoading] = useState(false);
   const [showNew, setShowNew] = useState(!value);
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
+  const [pickedCitySymbol, setPickedCitySymbol] = useState<string | null>(null);
+  const [pickedCityLabel, setPickedCityLabel] = useState<string | null>(null);
 
   // ── Saved addresses ───────────────────────────────────────────────────────
   const { data: savedAddresses = [] } = useQuery<UserAddress[]>({
@@ -298,6 +308,22 @@ export function AddressPicker({
       {/* ── New address input ─────────────────────────────────────────────── */}
       {(showNew || !value) ? (
         <div>
+          {showCitySuggestion && (
+            <button
+              type="button"
+              onClick={() => setCityPickerOpen(true)}
+              className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 bg-amber-50/60 text-sm text-amber-900 hover:bg-amber-50 mb-2"
+              data-testid="address-picker-city-suggestion-open"
+            >
+              <Building2 className="w-4 h-4 shrink-0 text-amber-500" />
+              <span className="flex-1 text-right truncate">
+                {pickedCityLabel
+                  ? pickedCityLabel
+                  : (isHebrew ? "בחר עיר מהרשימה" : "Choose a city from the list")}
+              </span>
+              <span className="text-xs text-amber-500">▾</span>
+            </button>
+          )}
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1 mb-1.5">
             {isHebrew ? "הזן כתובת חדשה" : "Enter a new address"}
           </p>
@@ -329,6 +355,38 @@ export function AddressPicker({
       )}
 
       {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
+
+      {showCitySuggestion && (
+        <CityPicker
+          open={cityPickerOpen}
+          onOpenChange={setCityPickerOpen}
+          selectedCitySymbol={pickedCitySymbol}
+          language={isHebrew ? "he" : "en"}
+          onChange={(sel: CityPickerSelection) => {
+            const displayCity = isHebrew
+              ? sel.hebrewName
+              : (sel.englishName || sel.hebrewName);
+            setPickedCitySymbol(sel.citySymbol);
+            setPickedCityLabel(displayCity);
+            const rec = findIsraelCityBySymbol(sel.citySymbol);
+            // Seed the free-text input with the city + comma so Google Places
+            // biases the next suggestions to this locality. User types the
+            // street after the comma.
+            const seeded = `${displayCity}, `;
+            const seededDetails: PlaceDetails = {
+              formattedAddress: seeded,
+              city: displayCity,
+              postalCode:
+                rec && rec.postcodes.length === 1
+                  ? rec.postcodes[0]
+                  : undefined,
+            };
+            onChange(seeded, seededDetails);
+            setShowNew(true);
+            setCityPickerOpen(false);
+          }}
+        />
+      )}
     </div>
   );
 }
