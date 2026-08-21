@@ -360,7 +360,7 @@ export function AddressPicker({
         <CityPicker
           open={cityPickerOpen}
           onOpenChange={setCityPickerOpen}
-          selectedCitySymbol={pickedCitySymbol}
+          value={pickedCitySymbol}
           language={isHebrew ? "he" : "en"}
           onChange={(sel: CityPickerSelection) => {
             const displayCity = isHebrew

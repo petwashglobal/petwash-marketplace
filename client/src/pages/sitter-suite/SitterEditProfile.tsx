@@ -315,7 +315,7 @@ export default function SitterEditProfile() {
                 <CityPicker
                   open={cityPickerOpen}
                   onOpenChange={setCityPickerOpen}
-                  selectedCitySymbol={null}
+                  value={null}
                   language={isHebrew ? 'he' : 'en'}
                   onChange={(sel: CityPickerSelection) => {
                     const displayCity = isHebrew ? sel.hebrewName : (sel.englishName || sel.hebrewName);
