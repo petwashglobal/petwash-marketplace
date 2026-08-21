@@ -10,6 +10,7 @@
  * - Mark services as complete
  */
 
+import { safeUuid } from '@/lib/idempotencyKey';
 import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -330,7 +331,7 @@ function PendingBookingCard({
 
   const respondMutation = useMutation({
     mutationFn: async ({ action, data }: { action: 'accept' | 'decline'; data?: any }) => {
-      if (!respondKeyRef.current) respondKeyRef.current = crypto.randomUUID();
+      if (!respondKeyRef.current) respondKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${booking.requestId}/respond`, {
         method: 'POST',
         body: { action, ...data },
@@ -542,7 +543,7 @@ function UpcomingBookingCard({
 
   const completeMeetGreetMutation = useMutation({
     mutationFn: async () => {
-      if (!completeMgKeyRef.current) completeMgKeyRef.current = crypto.randomUUID();
+      if (!completeMgKeyRef.current) completeMgKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${booking.requestId}/meet-greet`, {
         method: 'POST',
         body: { action: 'complete' },
@@ -562,7 +563,7 @@ function UpcomingBookingCard({
 
   const startServiceMutation = useMutation({
     mutationFn: async () => {
-      if (!startKeyRef.current) startKeyRef.current = crypto.randomUUID();
+      if (!startKeyRef.current) startKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${booking.requestId}/start`, {
         method: 'POST',
         headers: { 'Idempotency-Key': startKeyRef.current },
@@ -584,7 +585,7 @@ function UpcomingBookingCard({
 
   const arrivingMutation = useMutation({
     mutationFn: async () => {
-      if (!arrivingKeyRef.current) arrivingKeyRef.current = crypto.randomUUID();
+      if (!arrivingKeyRef.current) arrivingKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${booking.requestId}/arriving`, {
         method: 'POST',
         body: { eta: etaMinutes ? `${etaMinutes} דקות` : null },
@@ -747,7 +748,7 @@ function ActiveBookingCard({
 
   const completeServiceMutation = useMutation({
     mutationFn: async () => {
-      if (!completeSvcKeyRef.current) completeSvcKeyRef.current = crypto.randomUUID();
+      if (!completeSvcKeyRef.current) completeSvcKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${booking.requestId}/complete`, {
         method: 'POST',
         headers: { 'Idempotency-Key': completeSvcKeyRef.current },

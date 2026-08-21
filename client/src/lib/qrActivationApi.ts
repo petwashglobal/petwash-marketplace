@@ -1,3 +1,4 @@
+import { safeUuid } from '@/lib/idempotencyKey';
 import { apiRequest } from './queryClient';
 
 export type QrPayload = {
@@ -47,7 +48,7 @@ export async function activateQrSession(qrPayload: QrPayload): Promise<Activatio
     body: JSON.stringify(qrPayload),
     headers: {
       'Content-Type': 'application/json',
-      'idempotency-key': crypto.randomUUID(),
+      'idempotency-key': safeUuid(),
     },
   });
   const data = await res.json();

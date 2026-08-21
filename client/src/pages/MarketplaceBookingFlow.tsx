@@ -9,6 +9,7 @@
  * - Step 5: Proceed to Nayax payment
  */
 
+import { safeUuid } from '@/lib/idempotencyKey';
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
@@ -100,7 +101,7 @@ export default function MarketplaceBookingFlow() {
   const [quoteId, setQuoteId] = useState<string | null>(null);
   // Stable idempotency key per quote — same UUID if checkout is retried
   // for the same slot/time, new UUID when a fresh quote is created.
-  const checkoutIdempotencyKey = useMemo(() => crypto.randomUUID(), [quoteId]);
+  const checkoutIdempotencyKey = useMemo(() => safeUuid(), [quoteId]);
   const [quoteData, setQuoteData] = useState<{
     baseAmountCents: number;
     additionalPetsCents: number;
