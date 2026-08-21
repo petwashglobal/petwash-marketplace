@@ -147,11 +147,16 @@ router.get('/bookings', async (req, res) => {
     if (params.paymentMethod) {
       whereConditions.push(sql`b.payment_method = ${params.paymentMethod}`);
     }
+    // Finance date filters — Israel-local calendar day. Casting a bare date
+    // string to ::timestamp treated the boundary as UTC midnight (03:00 IL),
+    // so "August 21" missed the first 3 h of Israeli Aug 21 and picked up
+    // the last 3 h of Israeli Aug 20 — real finance-report drift.
     if (params.dateFrom) {
-      whereConditions.push(sql`b.created_at >= ${params.dateFrom}::timestamp`);
+      whereConditions.push(sql`b.created_at >= ((${params.dateFrom}::date) AT TIME ZONE 'Asia/Jerusalem')`);
     }
     if (params.dateTo) {
-      whereConditions.push(sql`b.created_at <= ${params.dateTo}::timestamp`);
+      // Include the whole dateTo day in Israel time (up to next-day midnight).
+      whereConditions.push(sql`b.created_at < ((${params.dateTo}::date + INTERVAL '1 day') AT TIME ZONE 'Asia/Jerusalem')`);
     }
     if (params.search) {
       whereConditions.push(sql`(

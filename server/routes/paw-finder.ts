@@ -357,10 +357,13 @@ router.post('/posts', requireAuth, requireVerifiedClubMember, async (req, res) =
     const userId = uid(req);
     if (!userId) return res.status(401).json({ error: 'not_authenticated' });
 
-    // Daily post limit
+    // Daily post limit — Israel-local calendar day (UTC would give the user
+    // a fresh window at 03:00 Israel and cap them ~10/day around the shift).
     const { rows: todayCnt } = await pool.query(
       `SELECT COUNT(*)::int AS cnt FROM paw_finder_posts
-       WHERE user_id = $1 AND created_at >= CURRENT_DATE`,
+       WHERE user_id = $1
+         AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date
+             = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date`,
       [userId],
     );
     if ((todayCnt[0]?.cnt ?? 0) >= 5) {

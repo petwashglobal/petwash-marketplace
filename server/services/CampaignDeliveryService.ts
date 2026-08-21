@@ -462,10 +462,17 @@ export class CampaignDeliveryService {
   // ─── Trigger helpers ──────────────────────────────────────────────────────
 
   async triggerBirthdayCampaign(couponId: number, adminId?: string): Promise<DeliveryResult> {
+    // Compare month+day against Israel-local date, not UTC. Cloud Run runs
+    // UTC, so between ~21:00–23:59 Israel time the calendar day is ahead of
+    // UTC — a user born Aug 21 stopped matching at 21:00 Israel on Aug 21,
+    // and Feb-29-born members were missed every non-leap year. Wrapping in
+    // AT TIME ZONE 'Asia/Jerusalem' picks the correct local calendar day.
     const birthdayUsers = await pool.query(
       `SELECT id FROM users
-       WHERE date_part('month', date_of_birth) = date_part('month', CURRENT_DATE)
-         AND date_part('day',   date_of_birth) = date_part('day',   CURRENT_DATE)
+       WHERE date_part('month', date_of_birth)
+             = date_part('month', (NOW() AT TIME ZONE 'Asia/Jerusalem')::date)
+         AND date_part('day',   date_of_birth)
+             = date_part('day',   (NOW() AT TIME ZONE 'Asia/Jerusalem')::date)
          AND is_active = true`
     );
     const userIds = birthdayUsers.rows.map((r: any) => r.id);

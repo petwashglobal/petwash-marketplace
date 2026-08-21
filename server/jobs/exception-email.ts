@@ -209,11 +209,12 @@ export function startExceptionEmailJob(): void {
     logger.info('[ExceptionEmail] Disabled (EXCEPTION_EMAIL_ENABLED != true) — skipping');
     return;
   }
-  // 06:00 UTC = 08:00 IL winter / 09:00 IL summer
+  // Fires 06:00 Israel time (was UTC → landed at 08:00 / 09:00 Israel,
+  // not the intended local operator morning hour).
   cron.schedule('0 6 * * *', () => {
     logger.info('[ExceptionEmail] Daily cron fired — sending exception report');
     sendExceptionEmail().catch((e) => logger.error('[ExceptionEmail] Unhandled error', { error: e?.message }));
-  }, { timezone: 'UTC' });
+  }, { timezone: 'Asia/Jerusalem' });
 
-  logger.info('[ExceptionEmail] Daily cron scheduled (06:00 UTC)');
+  logger.info('[ExceptionEmail] Daily cron scheduled (06:00 Asia/Jerusalem)');
 }
