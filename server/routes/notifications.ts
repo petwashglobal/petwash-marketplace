@@ -207,49 +207,26 @@ router.get("/stats", requireAdmin, async (req, res) => {
 });
 
 // ==================== WEBHOOK CALLBACKS ====================
-
-/**
- * POST /api/notifications/webhook/delivered
- * Mark notification as delivered (for webhook callbacks)
- */
-router.post("/webhook/delivered", async (req, res) => {
-  try {
-    const schema = z.object({
-      logId: z.number(),
-    });
-    
-    const data = schema.parse(req.body);
-    
-    await NotificationService.markAsDelivered(data.logId);
-    
-    res.json({ success: true });
-  } catch (error: any) {
-    logger.error("[Notifications] Error marking as delivered:", error);
-    res.status(400).json({ error: 'Failed to mark as delivered', code: 'NOTIF_MARK_DELIVERED_400' });
-  }
-});
-
-/**
- * POST /api/notifications/webhook/failed
- * Mark notification as failed (for webhook callbacks)
- */
-router.post("/webhook/failed", async (req, res) => {
-  try {
-    const schema = z.object({
-      logId: z.number(),
-      reason: z.string(),
-    });
-    
-    const data = schema.parse(req.body);
-    
-    await NotificationService.markAsFailed(data.logId, data.reason);
-    
-    res.json({ success: true });
-  } catch (error: any) {
-    logger.error("[Notifications] Error marking as failed:", error);
-    res.status(400).json({ error: 'Failed to mark as failed', code: 'NOTIF_MARK_FAILED_400' });
-  }
-});
+//
+// REMOVED 2026-08-21 (webhook contract-drift audit):
+//   POST /api/notifications/webhook/delivered
+//   POST /api/notifications/webhook/failed
+//
+// These endpoints were labelled "for webhook callbacks" but:
+//   (a) No provider posts here — a repository-wide grep across server/, client/,
+//       and docs turned up zero callers. SendGrid deliveries land at
+//       /api/webhooks/sendgrid (routes.ts) and update the communicationLogs
+//       table directly. Twilio SMS status callbacks land at
+//       /api/webhooks/twilio/sms-status (sms-status.ts) and update
+//       smsEvidence + otpEvents. Nothing configured or coded ever hit these
+//       notifications-scoped routes.
+//   (b) Neither endpoint verified a signature, checked an auth token, or ran
+//       under requireAuth/requireAdmin. Any unauthenticated internet caller
+//       could POST {"logId": <n>} against a small integer id space and flip an
+//       arbitrary notification_logs row to 'delivered' (hiding a real SMS/email
+//       failure from monitoring) or 'failed' (poisoning the delivery audit).
+// Removing the dead code closes the forgery vector; genuine delivery status is
+// updated only in the signed provider webhook handlers listed above.
 
 // ==================== USER-FACING ENDPOINTS ====================
 

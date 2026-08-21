@@ -646,6 +646,28 @@ const RAW_BODY_WEBHOOK_PATHS = new Set([
                                  // raw bytes (x-hub-signature-256). If parsed
                                  // by express.json() first, the signature
                                  // check fails on every real Meta delivery.
+  '/api/webhooks/nayax',         // Legacy Nayax webhook (inline handler in
+                                 // routes.ts — SHA-256 HMAC over raw bytes via
+                                 // nayaxFirestoreService.verifyWebhookSignature).
+                                 // NOT covered by the startsWith('/api/webhooks/nayax/')
+                                 // guard below because that requires a trailing
+                                 // slash — the path Nayax actually posts to per
+                                 // docs/NAYAX_PRODUCTION_SETUP_GUIDE.md has NO slash,
+                                 // so before this fix every real webhook body was
+                                 // consumed by express.json() first, req.body arrived
+                                 // as a parsed object, and the handler's
+                                 // `req.body as Buffer` cast produced "[object Object]"
+                                 // that JSON.parse then crashed → 400 on every delivery.
+  '/api/sumit/webhook',          // SUMIT (routes/sumit-webhook.ts) — HMAC-SHA256 over
+                                 // raw bytes via sumitClient.verifyWebhookSignature.
+                                 // The route mounts its own express.raw({ type: '*/*' })
+                                 // but that silently no-ops when the global parser has
+                                 // already consumed the body (express body parsers skip
+                                 // whenever req._body is set). Before this fix req.body
+                                 // arrived as a parsed object, failed the Buffer.isBuffer
+                                 // guard at the top of the handler, and returned 400
+                                 // invalid_body on every real SUMIT delivery — SUMIT
+                                 // then retries on non-2xx, storming the endpoint.
 ]);
 app.use((req, res, next) =>
   (RAW_BODY_WEBHOOK_PATHS.has(req.path) || req.path.startsWith('/api/webhooks/nayax/'))
