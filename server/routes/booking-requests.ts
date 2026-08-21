@@ -3592,7 +3592,7 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
         title: ownerTitle,
         bodyHtml: ownerBody,
         ctaText: 'הזמן שוב',
-        ctaUrl: 'https://petwash.co.il/book',
+        ctaUrl: 'https://petwash.co.il/booking',
         channels: ['inbox'],
         meta: { bookingId: requestId },
       });

@@ -415,7 +415,7 @@ export async function sendPromoCode(params: {
     title,
     bodyHtml,
     ctaText: locale === 'he' ? 'הזמן עכשיו' : 'Book Now',
-    ctaUrl: `https://petwash.co.il/book?promo=${code}`,
+    ctaUrl: `https://petwash.co.il/booking?promo=${code}`,
     priority: 5,
     meta: { voucherCode: code, discountPercent, expiry: new Date(expiresAt) },
     channels: ['inbox', 'email'],

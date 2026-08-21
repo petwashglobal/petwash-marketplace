@@ -1438,7 +1438,7 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
       req
     );
     
-    const invitationUrl = `${process.env.APP_URL || 'https://petwash.co.il'}/provider/onboard?token=${invitationToken}`;
+    const invitationUrl = `${process.env.APP_URL || 'https://petwash.co.il'}/provider-onboarding?token=${invitationToken}`;
     
     // Send invitation email — track real result
     let invitationEmailSent = false;

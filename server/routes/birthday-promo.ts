@@ -40,7 +40,7 @@ function buildBirthdayCalendarLink(
     `קוד ההנחה שלך לבלאק פריידי / יום הולדת:\n` +
     `\n🏷️ ${code}\n\n` +
     `✅ חד-פעמי · תקף עד ${expiresAt} · לשימוש אישי בלבד\n\n` +
-    `https://petwash.co.il/book?promo=${code}`
+    `https://petwash.co.il/booking?promo=${code}`
   );
 
   return (
