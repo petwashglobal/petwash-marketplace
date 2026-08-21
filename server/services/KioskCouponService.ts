@@ -260,7 +260,15 @@ export class KioskCouponService {
        WHERE token = $1 AND status = 'pending'`,
       [token]
     );
-    logger.info('[KioskCoupon] Token cancelled', { token, reason });
+    // NEVER log the raw redeemable token — Cloud Logging retains logs and
+    // anyone with roles/logging.viewer could grep it out and race redemption
+    // if the cancel UPDATE actually matched zero rows (token still pending).
+    // Log a short prefix for correlation only. (Evil-hunt 2026-08-20.)
+    logger.info('[KioskCoupon] Token cancelled', {
+      tokenPrefix: token.length > 6 ? token.substring(0, 6) + '…' : '***',
+      tokenLength: token.length,
+      reason,
+    });
   }
 
   /**
