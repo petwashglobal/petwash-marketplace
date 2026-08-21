@@ -1,3 +1,4 @@
+import { safeUuid } from '@/lib/idempotencyKey';
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { Layout } from '@/components/Layout';
@@ -503,7 +504,7 @@ export default function BookingConfirmation() {
   /* confirm / review mutation */
   const confirmMutation = useMutation({
     mutationFn: async () => {
-      if (!confirmKeyRef.current) confirmKeyRef.current = crypto.randomUUID();
+      if (!confirmKeyRef.current) confirmKeyRef.current = safeUuid();
       // Clamp rating to the server's zod boundary (1..5 integer or absent).
       const safeRating =
         typeof rating === 'number' && rating >= 1 && rating <= 5
@@ -537,7 +538,7 @@ export default function BookingConfirmation() {
   /* pay mutation */
   const payMutation = useMutation({
     mutationFn: async () => {
-      if (!payKeyRef.current) payKeyRef.current = crypto.randomUUID();
+      if (!payKeyRef.current) payKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${requestId}/pay`, {
         method: 'POST',
         body: { paymentMethod: 'card' },
@@ -564,7 +565,7 @@ export default function BookingConfirmation() {
 
   const cancelMutation = useMutation({
     mutationFn: async () => {
-      if (!cancelKeyRef.current) cancelKeyRef.current = crypto.randomUUID();
+      if (!cancelKeyRef.current) cancelKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${requestId}/cancel`, {
         method: 'POST',
         body: { cancelledBy: 'customer' },
@@ -585,7 +586,7 @@ export default function BookingConfirmation() {
   const [mgType, setMgType] = useState<'video' | 'phone' | 'public'>('video');
   const meetGreetMutation = useMutation({
     mutationFn: async () => {
-      if (!meetGreetKeyRef.current) meetGreetKeyRef.current = crypto.randomUUID();
+      if (!meetGreetKeyRef.current) meetGreetKeyRef.current = safeUuid();
       const res = await apiRequest(`/api/booking-requests/${requestId}/meet-greet`, {
         method: 'POST',
         body: { action: 'request', type: mgType },
