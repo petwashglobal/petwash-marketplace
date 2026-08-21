@@ -13317,51 +13317,69 @@ self.addEventListener('notificationclick', (event) => {
       const { pool: dbPool } = await import('./db');
       const t0 = Date.now();
 
+      // Israel-local "today" — Cloud Run runs UTC. The admin platform
+      // dashboard used to compare every timestamp to UTC CURRENT_DATE,
+      // so between 21:00-23:59 Israel the "today active" counts and
+      // revenue lines showed either yesterday's or tomorrow's data —
+      // exactly during Israeli operational evening hours. Wrap each
+      // comparison in AT TIME ZONE 'Asia/Jerusalem' to align to
+      // Israeli business day boundaries.
       const metricsResult = await dbPool.query(`
         SELECT
           -- Sitter Suite (booking_requests with sitter service type)
           (SELECT COUNT(*)::int FROM booking_requests
-           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')
              AND service_type IN ('dog_sitting','pet_boarding','sitter')) AS sitter_active,
           (SELECT COALESCE(SUM(total_cents),0)::numeric/100
            FROM booking_requests
-           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')
              AND service_type IN ('dog_sitting','pet_boarding','sitter')) AS sitter_revenue,
 
-          -- Walk My Pet (walk_bookings)
+          -- Walk My Pet (walk_bookings) — scheduled_date compared in Israel local
           (SELECT COUNT(*)::int FROM walk_bookings
-           WHERE DATE(scheduled_date) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS walk_active,
+           WHERE (scheduled_date AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')) AS walk_active,
           (SELECT COALESCE(SUM(total_cost),0)::numeric
            FROM walk_bookings
-           WHERE DATE(scheduled_date) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS walk_revenue,
+           WHERE (scheduled_date AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')) AS walk_revenue,
 
           -- PetWash Hub (station bookings)
           (SELECT COUNT(*)::int FROM bookings
-           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS wash_active,
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')) AS wash_active,
           (SELECT COALESCE(SUM(total),0)::numeric FROM bookings
-           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS wash_revenue,
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')) AS wash_revenue,
 
           -- PetTrek (pettrek service_type in booking_requests)
           (SELECT COUNT(*)::int FROM booking_requests
-           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')
              AND service_type = 'pettrek') AS pettrek_active,
           (SELECT COALESCE(SUM(total_cents),0)::numeric/100
            FROM booking_requests
-           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')
              AND service_type = 'pettrek') AS pettrek_revenue,
 
           -- Paw Finder: providers who had at least one accepted booking today
           (SELECT COUNT(DISTINCT provider_id)::int FROM booking_requests
-           WHERE DATE(created_at) = CURRENT_DATE AND status = 'accepted') AS finder_active,
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status = 'accepted') AS finder_active,
           (SELECT COALESCE(SUM(total_cents),0)::numeric/100 FROM booking_requests
-           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')
              AND service_type = 'paw_finder') AS finder_revenue,
 
-          -- Enterprise: users with management/admin roles active today
+          -- Enterprise: users with management/admin roles active today (Israel-local start of today)
           (SELECT COUNT(*)::int FROM users WHERE role IN ('admin','management','staff')
-             AND last_login_at >= CURRENT_DATE) AS enterprise_active,
+             AND last_login_at >= ((NOW() AT TIME ZONE 'Asia/Jerusalem')::date AT TIME ZONE 'Asia/Jerusalem')) AS enterprise_active,
           (SELECT COALESCE(SUM(total),0)::numeric FROM bookings
-           WHERE DATE(created_at) = CURRENT_DATE AND status NOT IN ('cancelled','refunded')) AS enterprise_revenue
+           WHERE (created_at AT TIME ZONE 'Asia/Jerusalem')::date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
+             AND status NOT IN ('cancelled','refunded')) AS enterprise_revenue
       `);
 
       const dbLatencyMs = Date.now() - t0;
