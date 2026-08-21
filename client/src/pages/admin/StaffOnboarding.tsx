@@ -32,19 +32,18 @@ export default function StaffOnboarding() {
     queryKey: ['/api/staff/applications'],
   });
 
-  // Fetch suspicious expenses
+  // Filters were passed at queryKey[1] and silently dropped by default queryFn
+  // — every tile showed the same unfiltered list. "Suspicious" and "Pending"
+  // expense tiles were IDENTICAL. Bake filter into URL. (Wider-hidden-dead-
+  // code hunt 2026-08-21.)
   const { data: suspiciousExpenses } = useQuery({
-    queryKey: ['/api/staff/expenses', { verificationStatus: 'suspicious' }],
+    queryKey: ['/api/staff/expenses?verificationStatus=suspicious'],
   });
-
-  // Fetch pending expenses
   const { data: pendingExpenses } = useQuery({
-    queryKey: ['/api/staff/expenses', { status: 'pending' }],
+    queryKey: ['/api/staff/expenses?status=pending'],
   });
-
-  // Fetch unpaid franchise orders
   const { data: unpaidOrders } = useQuery({
-    queryKey: ['/api/franchise/orders', { paymentStatus: 'payment_required' }],
+    queryKey: ['/api/franchise/orders?paymentStatus=payment_required'],
   });
 
   // Approve application mutation

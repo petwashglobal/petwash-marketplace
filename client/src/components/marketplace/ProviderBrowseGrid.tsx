@@ -157,8 +157,12 @@ export function ProviderBrowseGrid({
   });
 
   // ── Fetch providers from backend ─────────────────────────────────────────
+  // Default queryFn uses queryKey[0] verbatim as URL — so putting
+  // backendParams at queryKey[1] would silently drop every filter chip.
+  // Bake the params into the URL string. Verified by wider-hidden-dead-code
+  // hunt agent (2026-08-21) as a real bug affecting marketplace browse.
   const { data: browseData, isLoading: browseLoading } = useQuery<{ providers: ProviderCardData[] }>({
-    queryKey: ['/api/providers/browse', backendParams.toString()],
+    queryKey: [`/api/providers/browse?${backendParams.toString()}`],
     enabled: !staticProviders,
     staleTime: 60_000,
   });
