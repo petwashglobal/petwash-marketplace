@@ -30,8 +30,13 @@ interface OpsDashboardProps {
 export default function OpsDashboard({ language, onLanguageChange }: OpsDashboardProps) {
   const [refreshInterval, setRefreshInterval] = useState(5000);
 
+  // Fixed 2026-08-21 (Agent 8 CEO-dashboard audit): metrics router mounts at
+  // /api/metrics (routes.ts:13286), route path is /health/metrics-summary
+  // (routes/metrics.ts:17). The old '/health/metrics-summary' queryKey hit a
+  // client-side 404 (default queryFn uses queryKey[0] as URL verbatim), so
+  // the top-of-Ops-dashboard metrics tile was always empty.
   const { data: metricsData, isLoading: metricsLoading } = useQuery<any>({
-    queryKey: ['/health/metrics-summary'],
+    queryKey: ['/api/metrics/health/metrics-summary'],
     refetchInterval: refreshInterval,
   });
 
