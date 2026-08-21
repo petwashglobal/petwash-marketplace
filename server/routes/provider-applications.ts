@@ -23,7 +23,7 @@ import { logProviderApplication } from '../services/googleSheetsIntegration';
 import { sendSmsTemplate } from '../services/smsTemplates';
 import { assignProviderMembership } from '../services/MembershipService';
 import { auth as firebaseAuth } from '../lib/firebase-admin';
-import { isSuperAdmin } from '../middleware/rbac';
+import { isSuperAdmin, isSuperAdminVerified } from '../middleware/rbac';
 import {
   seedProviderServicesOnApproval,
   resolveApplicationServiceTypes,
@@ -1120,8 +1120,13 @@ const ADMIN_ACCOUNT_TYPES = ['internal', 'admin'] as const;
 function callerIsAdmin(req: Request): boolean {
   const fb = (req as any).firebaseUser;
   const claims = fb?.claims || {};
-  const email = (fb?.email || '').toLowerCase();
-  if (email && isSuperAdmin(email)) return true;
+  // SUPER-ADMIN via email allowlist MUST also require Firebase-verified email.
+  // isSuperAdmin(email) alone would accept an attacker who registers an account
+  // with an email matching SUPER_ADMIN_EMAILS but has not clicked the verify
+  // link. Server-side custom claims (accountType) are safe on their own because
+  // only our own /post-login writer sets them. (Evil-hunt 2026-08-20 — mirrors
+  // Item 199 fix on whoami and rbac.ts:isSuperAdminVerified.)
+  if (isSuperAdminVerified(req)) return true;
   const accountType = typeof claims.accountType === 'string' ? claims.accountType : undefined;
   if (accountType && (ADMIN_ACCOUNT_TYPES as readonly string[]).includes(accountType)) return true;
   return false;
