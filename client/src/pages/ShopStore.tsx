@@ -18,6 +18,8 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { logger } from '@/lib/logger';
 import { ShoppingBag, Plus, Minus, X, Loader2, Sparkles, ArrowLeft, Package, Gem, Bone, Droplets, Shirt } from 'lucide-react';
+import { CityPicker, type CityPickerSelection } from '@/components/location/CityPicker';
+import { findIsraelCityBySymbol } from '@shared/data/israel-cities';
 
 interface ShopStoreProps { language: Language; onLanguageChange?: (l: Language) => void; }
 
@@ -80,6 +82,10 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
   const [addressId, setAddressId] = useState<number | null>(null);
   const [addingAddress, setAddingAddress] = useState(false);
   const [addr, setAddr] = useState({ fullName: '', phone: '', street: '', city: '', zipCode: '' });
+  // City picker (2026-08-21 CEO plan) — Shop checkout city input backed by
+  // the baked shared/data/israel-cities dataset. Auto-fills zip when the
+  // picked city has exactly one known postcode.
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
   // Street autocomplete for the courier address — same Hebrew street engine the
   // rest of the app uses (/api/geocode/suggest: Photon + offline 63k streets, no
   // Google key). Picking a suggestion fills street + city + zip in one tap so the
@@ -440,6 +446,26 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
 
   return (
     <Layout language={language} onLanguageChange={onLanguageChange || (() => {})}>
+      {/* Shop-checkout city picker sheet — CEO baked Israel-cities dataset,
+          same picker as MyAccount profile. Portal-safe so the sheet
+          overlays the whole shop page. (2026-08-21) */}
+      <CityPicker
+        open={cityPickerOpen}
+        onOpenChange={setCityPickerOpen}
+        selectedCitySymbol={null}
+        language={he ? 'he' : 'en'}
+        onChange={(sel: CityPickerSelection) => {
+          const displayCity = he ? sel.hebrewName : (sel.englishName || sel.hebrewName);
+          setAddr((v) => {
+            const rec = findIsraelCityBySymbol(sel.citySymbol);
+            const nextZip = (rec && rec.postcodes.length === 1 && !v.zipCode)
+              ? rec.postcodes[0]
+              : v.zipCode;
+            return { ...v, city: displayCity, zipCode: nextZip };
+          });
+          setCityPickerOpen(false);
+        }}
+      />
       <div className="min-h-screen luxury-bg-mesh">
         {/* Hero + cart button */}
         <div className="luxury-services-hero">
@@ -680,10 +706,21 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
                         )}
                       </div>
                       <div className="flex gap-2">
-                        <input type="text" dir="auto" maxLength={80} value={addr.city} autoComplete="address-level2"
-                          onChange={e => setAddr(v => ({ ...v, city: e.target.value }))}
-                          placeholder={tr('City', 'עיר')} aria-label={tr('City', 'עיר')}
-                          className="flex-1 min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm focus:border-black outline-none" />
+                        {/* City picker (2026-08-21 CEO plan): opens the
+                            baked Israel-cities dataset. Selecting a city
+                            fills the display name + auto-fills zip when
+                            the city has exactly one known postcode. Falls
+                            back to typing when the pick doesn't match. */}
+                        <button type="button"
+                          onClick={() => setCityPickerOpen(true)}
+                          className="flex-1 min-w-0 rounded-lg border border-gray-200 px-3 py-2 text-sm text-left focus:border-black outline-none flex items-center justify-between"
+                          data-testid="shop-city-picker-open"
+                          aria-label={tr('City', 'עיר')}>
+                          <span className={addr.city ? '' : 'text-gray-400'}>
+                            {addr.city || tr('Choose city…', 'בחר עיר…')}
+                          </span>
+                          <span className="text-xs text-gray-400 ml-2">▾</span>
+                        </button>
                         <input type="text" inputMode="numeric" dir="ltr" maxLength={12} value={addr.zipCode} autoComplete="postal-code"
                           onChange={e => setAddr(v => ({ ...v, zipCode: e.target.value }))}
                           placeholder={tr('Zip (optional)', 'מיקוד (רשות)')} aria-label={tr('Zip code', 'מיקוד')}
