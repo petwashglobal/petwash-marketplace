@@ -2504,29 +2504,56 @@ router.post('/walker/reject/:walkId', requireAuth, async (req, res) => {
       return res.status(404).json({ error: 'Walk request not found or cannot be rejected' });
     }
 
-    // Refund customer's wallet (full refund — walker declined before service started)
+    // Walker-declined a PENDING walk request. Refund money-side effects
+    // (evil-hunt 2026-08-20):
+    //
+    // The previous code did a raw `UPDATE wallet_accounts SET cash_wallet_
+    // balance_cents = cash_wallet_balance_cents + totalCents` here — that is
+    // exactly what the money-invariants skill forbids:
+    //   (a) it bypasses WalletLedger (no hash-chain, no double-entry, no
+    //       division tracking, no audit row);
+    //   (b) it has no idempotency key, so a retry double-mints;
+    //   (c) most importantly, this route is guarded on `status='pending'`
+    //       (walker has not yet accepted → NO money has been captured on
+    //       walk-my-pet at all — this arm doesn't use holdBookingWallet on
+    //       request-create). Crediting the customer's cash wallet on a
+    //       walker-decline of a pending walk therefore MINTS wallet credit
+    //       from nothing.
+    //
+    // If a real wallet hold ever exists for a walk, we release it through
+    // WalletLedger (idempotency key keys on the walk id). Otherwise there is
+    // nothing to refund — the request never charged the customer.
     const customerId: string | null = updated.ownerId ?? null;
-    const refundCents: number = updated.totalCents ?? 0;
+    const holdCents = Number((updated as any).walletHoldCents) || 0;
+    const debitedCents = Number((updated as any).walletDebitedCents) || 0;
+    const financeState = (updated as any).financeState as string | null;
 
-    if (customerId && refundCents > 0) {
+    if (customerId && financeState === 'hold_active' && holdCents > 0) {
       try {
-        await pool.query(
-          `INSERT INTO wallet_accounts (wallet_id, user_id, cash_wallet_balance_cents)
-           VALUES ($1, $2, 0)
-           ON CONFLICT (wallet_id) DO NOTHING`,
-          [`WALLET-${customerId.slice(0, 20)}`, customerId],
-        );
-        await pool.query(
-          `UPDATE wallet_accounts
-           SET cash_wallet_balance_cents = cash_wallet_balance_cents + $1,
-               updated_at = NOW()
-           WHERE user_id = $2`,
-          [refundCents, customerId],
-        );
-        logger.info('[Walk My Pet] Wallet refund on walker reject', { customerId, refundCents, walkId });
+        const { walletService } = await import('../services/WalletService');
+        await walletService.releaseBookingHold({
+          userId: customerId, amountCents: holdCents, bookingId: walkId,
+          divisionCode: 'walkers', ipAddress: req.ip ?? null,
+        });
+        logger.info('[Walk My Pet] Wallet hold released on walker reject', { customerId, holdCents, walkId });
+      } catch (walletErr: any) {
+        logger.error('[Walk My Pet] Wallet hold release failed on reject', { walkId, error: walletErr.message });
+      }
+    } else if (customerId && financeState === 'debited' && debitedCents > 0) {
+      try {
+        const { walletService } = await import('../services/WalletService');
+        await walletService.refundBookingWallet({
+          userId: customerId, amountCents: debitedCents, bookingId: walkId,
+          divisionCode: 'walkers', reason: 'walker_rejected', ipAddress: req.ip ?? null,
+        });
+        logger.info('[Walk My Pet] Wallet refunded on walker reject', { customerId, debitedCents, walkId });
       } catch (walletErr: any) {
         logger.error('[Walk My Pet] Wallet refund failed on reject', { walkId, error: walletErr.message });
       }
+    } else {
+      logger.info('[Walk My Pet] Walker rejected pending walk — no money to refund (no hold, no debit)', {
+        walkId, customerId, financeState,
+      });
     }
 
     // Notify customer that their walk was cancelled by the walker

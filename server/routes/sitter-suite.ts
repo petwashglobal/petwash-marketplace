@@ -1599,6 +1599,53 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
       });
     }
 
+    // MONEY-SAFETY GATE (evil-hunt 2026-08-20): reject re-completion.
+    // /complete recordProviderSettlement + processSitterPayout + VAT ledger
+    // write are NOT idempotent on booking id — two rapid calls (customer +
+    // sitter each hitting "mark completed", or a network retry) would create
+    // two settlement rows (withholding + broker commission), attempt two
+    // payouts, and duplicate the P&L VAT entry. Guard on booking.status BEFORE
+    // any money-side effects. Non-'completed' statuses that shouldn't complete
+    // (cancelled/declined/refunded) are also refused. (2026-08-20)
+    if (booking.status === 'completed') {
+      logger.info('[Sitter Suite] /complete idempotent no-op — booking already completed', {
+        bookingId: booking.bookingId, callerUid,
+      });
+      return res.status(200).json({ ...booking, alreadyCompleted: true });
+    }
+    const COMPLETABLE_STATUSES = new Set(['confirmed', 'in_progress', 'accepted']);
+    if (!COMPLETABLE_STATUSES.has(String(booking.status))) {
+      return res.status(409).json({
+        error: `Cannot complete booking in status '${booking.status}'`,
+        code: 'BOOKING_NOT_COMPLETABLE',
+      });
+    }
+
+    // Atomic status transition BEFORE side effects. If two concurrent callers
+    // both pass the read-time guard above, only ONE flips the row from its
+    // observed status to 'completed'; the loser gets updated.length === 0 and
+    // bails out WITHOUT re-firing settlement/payout/VAT.
+    const claim = await db
+      .update(sitterBookings)
+      .set({
+        status: 'completed',
+        payoutStatus: 'pending',
+        completedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(and(
+        eq(sitterBookings.id, bookingId),
+        sql`${sitterBookings.status} = ${booking.status}`,
+      ))
+      .returning({ id: sitterBookings.id });
+    if (claim.length === 0) {
+      logger.info('[Sitter Suite] /complete lost the completion race — no-op', {
+        bookingId: booking.bookingId, observedStatus: booking.status,
+      });
+      const [fresh] = await db.select().from(sitterBookings).where(eq(sitterBookings.id, bookingId));
+      return res.status(200).json({ ...(fresh ?? booking), alreadyCompleted: true });
+    }
+
     // STEP 1: Calculate provider settlement with Israeli law deductions
     const grossPayoutCents = booking.sitterPayoutCents;
     const grossPayoutILS = grossPayoutCents / 100;
@@ -1653,22 +1700,18 @@ router.patch('/bookings/:id/complete', requireAuth, async (req, res) => {
       return res.status(500).json({ error: 'Payout failed' });
     }
     
-    // STEP 3: Update booking status.
+    // STEP 3: Read the freshly-completed booking row.
     // HONESTY (no-fake-data rule): the SERVICE is completed, but processSitterPayout
     // does NOT actually transfer money yet (real Nayax payout rail is a TODO). So the
-    // payout is 'pending' (owed, not sent) — never 'completed' — until a real transfer
-    // exists. The settlement + VAT records above are correct (the taxable supply is the
-    // completed service, independent of when the sitter is actually paid).
+    // payout stays 'pending' (owed, not sent) — never 'completed' — until a real transfer
+    // exists. The atomic status flip already happened in the completion-claim update
+    // above; here we just re-read to return the current row shape (avoid a second
+    // UPDATE that could re-trigger downstream triggers). Settlement + VAT records
+    // above are the source of truth for the taxable supply.
     const [updatedBooking] = await db
-      .update(sitterBookings)
-      .set({
-        status: 'completed',
-        payoutStatus: 'pending',
-        completedAt: new Date(),
-        updatedAt: new Date(),
-      })
-      .where(eq(sitterBookings.id, bookingId))
-      .returning();
+      .select()
+      .from(sitterBookings)
+      .where(eq(sitterBookings.id, bookingId));
     
     await syncChatToBookingStatus(booking.bookingId, 'completed', 'sitter_suite');
     

@@ -18,7 +18,7 @@
 import { nanoid } from 'nanoid';
 import { db } from '../../db';
 import { bookings, type InsertBooking } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '../../lib/logger';
 import { transactionStampService } from './TransactionStampService';
 import { eventLogService } from './EventLogService';
@@ -635,9 +635,52 @@ export class UnifiedBookingEngine {
     isPartial: boolean = false
   ): Promise<{ booking: UnifiedBooking; refundTransactionId: string }> {
     try {
+      // MONEY-SAFETY (evil-hunt 2026-08-20): refund guards. This method used
+      // to accept ANY refundAmount from the caller (routed straight from
+      // req.body) and re-fire even when the booking was already REFUNDED —
+      // an admin (or a stolen admin token) could refund arbitrarily large
+      // amounts or repeatedly refund the same booking. Guards, in order:
+      //   1. Amount must be a positive finite number.
+      //   2. Amount must not exceed booking.priceSnapshot.gross (server-side
+      //      authoritative — never trust the request body for money math).
+      //   3. Booking must not already be REFUNDED (idempotent no-op path
+      //      belongs to the caller, not the engine — we hard-refuse here so
+      //      a second refund NEVER writes another refund transaction).
+      //   4. Cancellations and drafts cannot be refunded (nothing was
+      //      captured).
+      if (!Number.isFinite(refundAmount) || refundAmount <= 0) {
+        throw new Error('INVALID_REFUND_AMOUNT: refundAmount must be a positive number');
+      }
+      const grossAmount = Number(booking.priceSnapshot?.gross ?? 0);
+      if (!Number.isFinite(grossAmount) || grossAmount <= 0) {
+        throw new Error('BOOKING_HAS_NO_CHARGE: nothing was captured on this booking');
+      }
+      // Allow a 1-agora rounding tolerance for JS float math.
+      if (refundAmount > grossAmount + 0.005) {
+        throw new Error(
+          `REFUND_EXCEEDS_CHARGE: refund ${refundAmount} > booking gross ${grossAmount}`,
+        );
+      }
+      if (booking.status === 'REFUNDED') {
+        throw new Error('ALREADY_REFUNDED: booking is already refunded');
+      }
+      const REFUNDABLE_STATUSES = new Set([
+        'COMPLETED', 'CONFIRMED', 'IN_PROGRESS', 'CANCELLED',
+      ]);
+      if (!REFUNDABLE_STATUSES.has(String(booking.status))) {
+        throw new Error(`NOT_REFUNDABLE_IN_STATUS: booking status is ${booking.status}`);
+      }
+
+      const originalTransactionId = booking.metadata?.transactionId;
+      if (!originalTransactionId || String(originalTransactionId).trim() === '') {
+        // No underlying transaction to reverse — refuse instead of stamping
+        // an 'unknown' refund that reconciliation cannot trace.
+        throw new Error('NO_ORIGINAL_TRANSACTION: cannot refund a booking with no captured transaction');
+      }
+
       const refundTransaction = await transactionStampService.stampRefund({
         bookingId: booking.id,
-        originalTransactionId: booking.metadata?.transactionId || 'unknown',
+        originalTransactionId,
         refundAmount,
         reason,
         stampedBy: processedBy,
@@ -647,14 +690,25 @@ export class UnifiedBookingEngine {
       booking.status = 'REFUNDED';
       booking.updatedAt = new Date();
 
-      await db.update(bookings)
+      // Atomic status transition — a concurrent refund call that observed
+      // the same non-REFUNDED status must lose the update race and NOT get
+      // a second refund transaction row committed. If updateResult is empty
+      // the winner already flipped the row; treat as ALREADY_REFUNDED.
+      const updateResult = await db.update(bookings)
         .set({
           status: 'refunded',
           refundAmount: refundAmount.toString(),
           refundProcessedAt: new Date(),
           updatedAt: new Date()
         })
-        .where(eq(bookings.id, booking.id));
+        .where(and(
+          eq(bookings.id, booking.id),
+          sql`${bookings.status} != 'refunded'`,
+        ))
+        .returning({ id: bookings.id });
+      if (updateResult.length === 0) {
+        throw new Error('ALREADY_REFUNDED: booking was refunded concurrently');
+      }
 
       await eventLogService.logRefundProcessed({
         bookingId: booking.id,
