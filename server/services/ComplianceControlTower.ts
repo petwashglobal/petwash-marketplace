@@ -593,7 +593,7 @@ export class ComplianceControlTowerService {
           `שלום ${toName},\n\n` +
           `תזכורת: ${docLabel} יפוג בעוד ${daysUntilExpiry} יום.\n` +
           `אנא חדש/י את המסמך בהקדם כדי להמשיך לפעול.\n\n` +
-          `לפרטים: https://petwash.co.il/provider/compliance\n\n` +
+          `לפרטים: https://petwash.co.il/provider-compliance\n\n` +
           `PetWash™ Compliance Team`;
 
         await mail.send({

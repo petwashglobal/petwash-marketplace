@@ -343,7 +343,7 @@ const defaultTemplates: InsertNotificationTemplate[] = [
               💳 אם שולמה מקדמה, היא תוחזר לארנק שלך תוך 1-3 ימי עסקים.
             </p>
             <p style="margin-top: 20px; text-align: center;">
-              <a href="https://petwash.co.il/book"
+              <a href="https://petwash.co.il/booking"
                  style="background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
                 הזמן שוב
               </a>
