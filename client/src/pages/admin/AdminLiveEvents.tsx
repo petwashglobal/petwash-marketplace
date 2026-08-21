@@ -12,6 +12,7 @@ import { Layout } from '@/components/Layout';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { auth } from '@/lib/firebase';
 import {
   Radio, Zap, CheckCircle, Navigation2, Search, Trash2, Wifi, WifiOff, FlaskConical
 } from 'lucide-react';
@@ -108,9 +109,13 @@ export default function AdminLiveEvents() {
     const ws = new WebSocket(`${proto}//${window.location.host}/ws/match`);
     wsRef.current = ws;
 
-    ws.onopen = () => {
+    ws.onopen = async () => {
       setConnected(true);
-      ws.send(JSON.stringify({ type: 'SUBSCRIBE_ADMIN' }));
+      // Server now requires Firebase idToken + admin membership to accept
+      // SUBSCRIBE_ADMIN. Previously anyone could stream this feed.
+      let idToken: string | undefined;
+      try { idToken = await auth.currentUser?.getIdToken(); } catch { /* best-effort */ }
+      ws.send(JSON.stringify({ type: 'SUBSCRIBE_ADMIN', idToken }));
     };
 
     ws.onmessage = (e) => {

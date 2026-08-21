@@ -16,6 +16,56 @@ import type { Server } from 'http';
 import { logger } from '../lib/logger';
 import { pool } from '../db';
 import { eventBus } from '../services/EventBus';
+import { auth as firebaseAdminAuth } from '../lib/firebase-admin';
+import { getSuperAdmins } from '../middleware/rbac';
+
+/**
+ * Verify a Firebase ID token supplied over the WebSocket subscribe payload.
+ * Returns decoded uid/email/emailVerified on success, null on any failure.
+ * Never throws.
+ *
+ * Evil-hunt 2026-08-20: /ws/match accepted `SUBSCRIBE_ADMIN` and
+ * `SUBSCRIBE_BOOKING` with NO authentication whatsoever. Any anonymous
+ * connection could stream every marketplace live event (owner ID,
+ * provider ID, service type) or tap any booking's status stream by
+ * iterating requestIds. Both subscribe types now require an idToken.
+ */
+async function verifyWsToken(idToken: unknown): Promise<{ uid: string; email: string | null; emailVerified: boolean } | null> {
+  if (typeof idToken !== 'string' || idToken.length < 100) return null;
+  try {
+    const decoded = await firebaseAdminAuth.verifyIdToken(idToken, true);
+    return {
+      uid: decoded.uid,
+      email: (decoded.email || '').toLowerCase() || null,
+      emailVerified: decoded.email_verified === true,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function isCallerAdmin(user: { email: string | null; emailVerified: boolean }): boolean {
+  if (!user.email || !user.emailVerified) return false;
+  return getSuperAdmins().includes(user.email);
+}
+
+async function isCallerBookingParticipant(requestId: string, uid: string): Promise<boolean> {
+  if (!requestId || !uid) return false;
+  try {
+    const q = await pool.query(
+      `SELECT 1
+         FROM booking_requests
+        WHERE request_id = $1
+          AND (owner_id = $2 OR provider_id = $2)
+        LIMIT 1`,
+      [requestId, uid],
+    );
+    return q.rows.length > 0;
+  } catch (err: any) {
+    logger.warn('[MatchingWS] booking-participant check failed', { requestId, err: err?.message });
+    return false;
+  }
+}
 
 export interface ProviderMatch {
   id: string;
@@ -258,11 +308,27 @@ export function setupMatchingWebSocket(server: Server): void {
         // ── Booking event subscription (intelligence layer) ──────────────────
         if (msg.type === 'SUBSCRIBE_BOOKING') {
           const requestId = msg.requestId as string;
-          if (requestId && !subscribedBookings.includes(requestId)) {
-            subscribedBookings.push(requestId);
-            addWatcher(requestId, ws);
-            send(ws, { type: 'SUBSCRIBED', requestId });
-            logger.info('[MatchingWS] Client subscribed to booking', { requestId });
+          if (!requestId || subscribedBookings.includes(requestId)) {
+            // already-subscribed / missing id → silent no-op
+          } else {
+            // AUTH gate — verify idToken AND booking membership.
+            void (async () => {
+              const user = await verifyWsToken(msg.idToken);
+              if (!user) {
+                send(ws, { type: 'ERROR', code: 'UNAUTHORIZED', scope: 'SUBSCRIBE_BOOKING' });
+                return;
+              }
+              const allowed = await isCallerBookingParticipant(requestId, user.uid);
+              if (!allowed) {
+                send(ws, { type: 'ERROR', code: 'FORBIDDEN', scope: 'SUBSCRIBE_BOOKING', requestId });
+                logger.warn('[MatchingWS] SUBSCRIBE_BOOKING denied — not a participant', { requestId, uid: user.uid });
+                return;
+              }
+              subscribedBookings.push(requestId);
+              addWatcher(requestId, ws);
+              send(ws, { type: 'SUBSCRIBED', requestId });
+              logger.info('[MatchingWS] Client subscribed to booking', { requestId, uid: user.uid });
+            })();
           }
         }
 
@@ -276,9 +342,22 @@ export function setupMatchingWebSocket(server: Server): void {
 
         // ── Admin live feed subscription ──────────────────────────────────
         if (msg.type === 'SUBSCRIBE_ADMIN') {
-          adminWatchers.add(ws);
-          send(ws, { type: 'SUBSCRIBED', scope: 'admin' });
-          logger.info('[MatchingWS] Admin subscribed to live event feed');
+          // AUTH gate — require Firebase-verified super-admin.
+          void (async () => {
+            const user = await verifyWsToken(msg.idToken);
+            if (!user) {
+              send(ws, { type: 'ERROR', code: 'UNAUTHORIZED', scope: 'SUBSCRIBE_ADMIN' });
+              return;
+            }
+            if (!isCallerAdmin(user)) {
+              send(ws, { type: 'ERROR', code: 'FORBIDDEN', scope: 'SUBSCRIBE_ADMIN' });
+              logger.warn('[MatchingWS] SUBSCRIBE_ADMIN denied — not an admin', { uid: user.uid, email: user.email });
+              return;
+            }
+            adminWatchers.add(ws);
+            send(ws, { type: 'SUBSCRIBED', scope: 'admin' });
+            logger.info('[MatchingWS] Admin subscribed to live event feed', { uid: user.uid });
+          })();
         }
       } catch (err) {
         logger.warn('[MatchingWS] Bad message', { raw: raw.toString() });
