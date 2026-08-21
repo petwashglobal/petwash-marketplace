@@ -162,28 +162,33 @@ export function createIPAllowlist(
         return next();
       }
 
-      // PRODUCTION: fail-closed when IP allowlist env var is not set
+      // PRODUCTION: fail-closed when IP allowlist env var is not set.
+      // Returns 503 (Service Unavailable) — the endpoint is not ready to accept
+      // traffic; the caller (Nayax) will retry. A 403 here would misleadingly
+      // signal "we know who's allowed and it isn't you" when the truth is
+      // "we can't safely accept anyone yet". (P0-C, 2026-08-20 audit.)
       if (allowedCIDRs.length === 0) {
-        logger.error(`[IPAllowlist:${providerName}] FATAL: ${envVarName} not set in production - blocking all requests`, {
+        logger.error(`[IPAllowlist:${providerName}] FATAL: ${envVarName} not set in production - refusing all requests (fail-closed)`, {
           ip: rawIP,
         });
-        return res.status(403).json({
-          error: 'Forbidden',
+        return res.status(503).json({
+          error: 'Service Unavailable',
           message: 'Webhook IP allowlist not configured',
         });
       }
-      
+
       // Check if IP is allowed
       const allowed = isIPAllowed(rawIP, allowedCIDRs);
-      
+
       if (!allowed) {
+        // Never log the allowlist contents — a rejection log leaking the CIDR
+        // ranges would advertise the exact addresses an attacker has to spoof.
         logger.error(`[IPAllowlist:${providerName}] Unauthorized IP blocked`, {
           ip: rawIP,
-          allowedRanges: allowedCIDRs,
           path: req.path,
           method: req.method,
         });
-        
+
         return res.status(403).json({
           error: 'Forbidden',
           message: 'IP address not allowed',

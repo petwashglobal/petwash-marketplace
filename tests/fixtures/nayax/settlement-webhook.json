@@ -1,0 +1,10 @@
+{
+  "settlementId": "settle_2026_08_20_daily_001",
+  "date": "2026-08-20",
+  "totalAmount": 4230.5,
+  "currency": "ILS",
+  "transactions": [
+    { "transactionId": "txn_terminal_9f2a", "amount": 45.0 },
+    { "transactionId": "txn_terminal_a7bd", "amount": 90.0 }
+  ]
+}

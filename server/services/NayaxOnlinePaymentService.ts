@@ -232,13 +232,22 @@ export class NayaxOnlinePaymentService {
    * Verify that an incoming webhook request came from Nayax.
    * Uses HMAC-SHA256 over the raw request body.
    *
-   * Returns true if signature is valid or if no webhook secret is configured
-   * (so demo / test environments pass without breaking).
+   * FAIL-CLOSED: if NAYAX_WEBHOOK_SECRET is not set, returns false. The
+   * previous "return true when unset" was a footgun — any caller that
+   * dropped the route-level `isSignatureEnforced()` gate would silently
+   * accept every unsigned webhook. The route wrapper (nayax-webhooks.ts)
+   * already fails-closed at request time; this helper now matches so a
+   * future direct caller can't undo the guarantee.
+   *
+   * Also strips the `sha256=` prefix Nayax sends (see nayax-webhooks.ts:122
+   * + nayax-monyx-events.ts:58 — every other Nayax entry-point already
+   * handles it), and treats the signature as hex bytes for the length
+   * check instead of parsing hex twice.
    */
   static verifyWebhookSignature(rawBody: string, signature: string): boolean {
     if (!NAYAX_WEBHOOK_SECRET) {
-      logger.warn('[NayaxOnline] NAYAX_WEBHOOK_SECRET not set — skipping signature verification (set in production)');
-      return true;
+      logger.error('[NayaxOnline] NAYAX_WEBHOOK_SECRET not set — rejecting signature (fail-closed)');
+      return false;
     }
 
     try {
@@ -247,11 +256,12 @@ export class NayaxOnlinePaymentService {
         .update(rawBody)
         .digest('hex');
 
-      const signatureBuffer = Buffer.from(signature, 'hex');
-      const expectedBuffer = Buffer.from(expected, 'hex');
+      const providedHex = signature.replace(/^sha256=/, '');
+      const providedBuf = Buffer.from(providedHex);
+      const expectedBuf = Buffer.from(expected);
 
-      if (signatureBuffer.length !== expectedBuffer.length) return false;
-      return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+      if (providedBuf.length !== expectedBuf.length) return false;
+      return crypto.timingSafeEqual(providedBuf, expectedBuf);
     } catch {
       return false;
     }
