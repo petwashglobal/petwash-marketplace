@@ -26,8 +26,12 @@ export default function TechnicianView({ technicianId }: TechnicianViewProps) {
   const [selectedWorkOrder, setSelectedWorkOrder] = useState<number | null>(null);
   const [notes, setNotes] = useState("");
 
+  // Same queryKey[1]-drop bug: technicianId dropped by default queryFn.
+  // Technician saw EVERY work order in the system rather than only theirs.
+  // Bake into URL. (Query filter drop hunt, 2026-08-21.)
   const { data: workOrders, isLoading } = useQuery({
-    queryKey: ["/api/enterprise/work-orders", { technicianId }],
+    queryKey: [`/api/enterprise/work-orders?technicianId=${encodeURIComponent(technicianId || '')}`],
+    enabled: !!technicianId,
   });
 
   const updateWorkOrderMutation = useMutation({

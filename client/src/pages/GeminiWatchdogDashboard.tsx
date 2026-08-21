@@ -75,22 +75,23 @@ export default function GeminiWatchdogDashboard() {
     refetchInterval: 5000, // Real-time: refresh every 5 seconds
   });
 
-  // Fetch open issues with real-time updates (every 10 seconds)
+  // Same queryKey[1]-drop family as PR #2023/#2024. Bake into URL string
+  // so the server (server/routes/gemini-watchdog.ts) actually filters +
+  // limits. Prior behaviour: dashboard hit the same unfiltered endpoint
+  // for issues / struggles / auto-fixes and displayed everything.
   const { data: issuesData, isFetching: issuesFetching } = useQuery<{ issues: Issue[] }>({
-    queryKey: ["/api/gemini-watchdog/issues", { status: "open", limit: 20 }],
-    refetchInterval: 10000, // Real-time: refresh every 10 seconds
+    queryKey: ["/api/gemini-watchdog/issues?status=open&limit=20"],
+    refetchInterval: 10000,
   });
 
-  // Fetch user struggles with real-time updates (every 15 seconds)
   const { data: strugglesData, isFetching: strugglesFetching } = useQuery<{ struggles: UserStruggle[] }>({
-    queryKey: ["/api/gemini-watchdog/struggles", { resolved: "false", limit: 20 }],
-    refetchInterval: 15000, // Real-time: refresh every 15 seconds
+    queryKey: ["/api/gemini-watchdog/struggles?resolved=false&limit=20"],
+    refetchInterval: 15000,
   });
 
-  // Fetch auto-fixes with real-time updates (every 10 seconds)
   const { data: autoFixesData, isFetching: autoFixesFetching } = useQuery<{ autoFixes: AutoFix[] }>({
-    queryKey: ["/api/gemini-watchdog/auto-fixes", { limit: 20 }],
-    refetchInterval: 10000, // Real-time: refresh every 10 seconds
+    queryKey: ["/api/gemini-watchdog/auto-fixes?limit=20"],
+    refetchInterval: 10000,
   });
 
   const status = statusData?.status;

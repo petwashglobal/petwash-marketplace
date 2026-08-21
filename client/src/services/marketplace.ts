@@ -91,8 +91,14 @@ export function useCustomerBookings(
   userId: string,
   status?: 'upcoming' | 'past' | 'cancelled'
 ) {
+  // queryKey[1] filter drop family (2026-08-21). Default queryFn uses
+  // queryKey[0] verbatim as URL, so `{userId, status}` was dropped and
+  // every caller got the same unfiltered list. Bake into URL.
+  const qs = new URLSearchParams();
+  if (userId) qs.set('userId', userId);
+  if (status) qs.set('status', status);
   return useQuery({
-    queryKey: ['/api/bookings', { userId, status }],
+    queryKey: [qs.toString() ? `/api/bookings?${qs.toString()}` : '/api/bookings'],
     enabled: !!userId,
     staleTime: 1000 * 60 * 2, // Cache for 2 minutes
   });
