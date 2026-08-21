@@ -83,7 +83,7 @@ import { applyIntentFromUrl } from '@/lib/intentParam';
 import { setProviderSignupIntent } from '@/lib/becomeProvider';
 import { AppleWheelDatePicker } from '@/components/ui/apple-wheel-picker';
 import { useSEO, pageSEO } from '@/lib/seo';
-import { executeTurnstileInvisible } from '@/components/TurnstileWidget';
+import { executeTurnstileInvisible, turnstileFailureMessage } from '@/components/TurnstileWidget';
 import {
   isPlatformAuthenticatorAvailable,
   getBiometricMethodName,
@@ -648,10 +648,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
     setBusy(true);
     try {
       // Real bot protection via Cloudflare Turnstile (invisible).
-      // Returns null when VITE_TURNSTILE_SITE_KEY is unset (dev/staging
+      // A typed result: `ok:true` → token, `ok:false` → user-facing error.
+      // `SITE_KEY_MISSING` means the client build never had a key (dev/staging
       // without the secret) — the server treats Turnstile as best-effort
-      // bonus signal, never blocking, so a missing token is safe.
-      const turnstileToken = await executeTurnstileInvisible('signup_sms_start').catch(() => null);
+      // bonus signal in that case, so we still call through. Every OTHER
+      // failure code means the widget was configured but failed at runtime
+      // (CSP blocked, script blocked, timeout) — the user MUST see it,
+      // otherwise signup silently 400s at TURNSTILE_TOKEN_REQUIRED. (Agent-2
+      // hunt 2026-08-20 — the exact class of bug that dead-ended prod signup.)
+      const ts = await executeTurnstileInvisible('signup_sms_start');
+      if (!ts.ok && ts.code !== 'SITE_KEY_MISSING') {
+        fail(turnstileFailureMessage(ts.code, he ? 'he' : 'en'));
+        return;
+      }
+      const turnstileToken = ts.ok ? ts.token : null;
       const r = await fetch(getApiUrl('/api/auth/sms/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ phone, language, flow, turnstileToken }),
@@ -749,12 +759,20 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         setMethod('email');
         setSent(true);
         try {
-          const step2Token = await executeTurnstileInvisible('signup_email_start').catch(() => null);
-          await fetch(getApiUrl('/api/auth/email/start'), {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-            body: JSON.stringify({ email, purpose: 'signup', language, turnstileToken: step2Token }),
-          });
-          toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
+          const step2 = await executeTurnstileInvisible('signup_email_start');
+          if (!step2.ok && step2.code !== 'SITE_KEY_MISSING') {
+            // Non-blocking step: show the same inline error but don't unwind
+            // the mobile-verified state — user can tap "resend" on the email
+            // OTP screen once the Turnstile issue is transient.
+            fail(turnstileFailureMessage(step2.code, he ? 'he' : 'en'));
+          } else {
+            const step2Token = step2.ok ? step2.token : null;
+            await fetch(getApiUrl('/api/auth/email/start'), {
+              method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+              body: JSON.stringify({ email, purpose: 'signup', language, turnstileToken: step2Token }),
+            });
+            toast({ title: he ? 'קוד נשלח לאימייל 📧' : 'Code sent to your email 📧' });
+          }
         } catch { /* the email OTP screen has a resend */ }
         return;
       }
@@ -778,10 +796,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       // flow attaches a synthetic signup DOB. Start + verify MUST agree on purpose.
       const emailPurpose = authMode === 'login' ? 'login' : 'signup';
       // Turnstile bot check on the email OTP start (mirrors the SMS start
-      // path). When TURNSTILE_SECRET_KEY is unset on the server the guard
-      // skips + logs a warning; when set, a missing token 400s and the user
-      // sees the "Could not send the code right now" fallback below.
-      const emailTurnstileToken = await executeTurnstileInvisible('signup_email_start').catch(() => null);
+      // path). SITE_KEY_MISSING = dev/staging without a key → treat as
+      // best-effort and continue. Any RUNTIME failure code (LOAD_FAILED,
+      // EXECUTE_FAILED, TIMEOUT, TOKEN_EMPTY) surfaces to the user — the
+      // server would 400 TURNSTILE_TOKEN_REQUIRED silently otherwise.
+      const emailTs = await executeTurnstileInvisible('signup_email_start');
+      if (!emailTs.ok && emailTs.code !== 'SITE_KEY_MISSING') {
+        fail(turnstileFailureMessage(emailTs.code, he ? 'he' : 'en'));
+        return;
+      }
+      const emailTurnstileToken = emailTs.ok ? emailTs.token : null;
       const r = await fetch(getApiUrl('/api/auth/email/start'), {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
         body: JSON.stringify({ email, purpose: emailPurpose, language, turnstileToken: emailTurnstileToken }),

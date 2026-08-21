@@ -262,9 +262,12 @@ export default function PrivilegeSignup({ language, onLanguageChange }: Privileg
       formData.append('language', language);
       // Turnstile bot check: non-blocking — if the widget fails (Safari ITP,
       // ad-blockers, slow network) we still allow submission; the server soft-fails.
+      // The result is a typed { ok, token/code }; unwrap the token on success,
+      // leave null (→ empty form field) on any failure code.
       let freshCaptchaToken: string | null = null;
       try {
-        freshCaptchaToken = await executeTurnstileInvisible('privilege_register');
+        const r = await executeTurnstileInvisible('privilege_register');
+        freshCaptchaToken = r.ok ? r.token : null;
       } catch {
         freshCaptchaToken = null;
       }

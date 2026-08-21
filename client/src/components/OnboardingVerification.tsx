@@ -294,11 +294,12 @@ export function OnboardingVerification({
       toast({ title: isRTL ? 'אנא הזינו מספר טלפון תקין' : 'Please enter a valid phone number', variant: 'destructive' });
       return;
     }
-    const freshCaptchaToken = await executeTurnstileInvisible('send_sms').catch(() => null);
-    if (!freshCaptchaToken) {
+    const ts = await executeTurnstileInvisible('send_sms').catch(() => ({ ok: false as const, code: 'EXECUTE_FAILED' as const }));
+    if (!ts.ok) {
       toast({ title: isRTL ? 'אימות אבטחה נכשל' : 'Security check failed', description: isRTL ? 'לא ניתן לאמת את הבקשה, אנא רענן את הדף ונסה שוב' : 'Could not verify request. Please refresh and try again.', variant: 'destructive' });
       return;
     }
+    const freshCaptchaToken = ts.token;
     setLoading(true);
     try {
       const res = await apiRequest('POST', '/api/onboarding-verification/send-sms-code', { phone, language, turnstileToken: freshCaptchaToken });
