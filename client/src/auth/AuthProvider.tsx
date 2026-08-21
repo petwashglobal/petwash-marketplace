@@ -316,9 +316,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             // (Evil-hunt 2026-08-20 P0-B.)
             let sessionOk = false;
             const uidAtStart = firebaseUser.uid;
+            // WATCHDOG BUDGET: 15s (was 6s). Cloud Run runs minScale=0 to save
+            // cost (cloudrun-service.yaml:16 — CEO cost cut 2026-08-01), so the
+            // first request of a cold minute hits container startup + Firebase
+            // Admin verifyIdToken RPC + Identity Toolkit createSessionCookie
+            // RPC. That serial round-trip commonly exceeds 6s and the watchdog
+            // fired first → the background retry landed the cookie 1.5–7.5s
+            // later, so every /api/* in the meantime 401'd and the whole app
+            // felt "signed in but not connected". 15s covers the full cold
+            // path; the retry loop still runs afterwards if we're truly wedged.
             await Promise.race([
               ensureServerSession(firebaseUser).then((ok) => { sessionOk = ok; }),
-              new Promise<void>((resolve) => setTimeout(resolve, 6000)),
+              new Promise<void>((resolve) => setTimeout(resolve, 15000)),
             ]);
             // GUARD (P0-B): NEVER stamp the ref for a stale uid — protects
             // against a user-switch (or logout) mid-flight, where the OLD
