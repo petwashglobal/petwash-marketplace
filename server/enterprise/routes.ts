@@ -3,7 +3,7 @@
  * All advanced enterprise endpoints
  */
 
-import type { Express } from 'express';
+import express, { type Express } from 'express';
 import { deleteUserData, exportUserData } from './userDeletion';
 import { handleWhatsAppWebhook } from './whatsappWebhook';
 import { generateTaxInvoice, checkInvoiceStatus } from './israeliTax';
@@ -58,8 +58,24 @@ export function registerEnterpriseRoutes(app: Express): void {
   // ============================================
   
   // WHATSAPP BUSINESS INTEGRATION
+  //
+  // Meta signs the RAW bytes of the POST body with HMAC-SHA256
+  // (x-hub-signature-256). The route-level express.raw() below keeps req.body
+  // as a Buffer so verifyMetaSignature() can HMAC the exact bytes Meta signed.
+  // GET is only the subscription challenge and takes query params — no body.
+  //
+  // For this to actually work end-to-end, /api/webhooks/whatsapp is ALSO
+  // listed in RAW_BODY_WEBHOOK_PATHS in server/index.ts so the global
+  // express.json() parser skips the path (otherwise the JSON parser would
+  // consume the stream before this route-level express.raw() ever ran, and
+  // req.body would arrive as a parsed object — signature verification would
+  // fail on every real Meta delivery).
   app.get('/api/webhooks/whatsapp', handleWhatsAppWebhook);
-  app.post('/api/webhooks/whatsapp', handleWhatsAppWebhook);
+  app.post(
+    '/api/webhooks/whatsapp',
+    express.raw({ type: 'application/json', limit: '2mb' }),
+    handleWhatsAppWebhook,
+  );
   
   // ISRAELI TAX (ITA) INTEGRATION  
   app.post('/api/enterprise/tax/invoice', adminLimiter, requireAdmin, generateTaxInvoice);

@@ -15,7 +15,8 @@ import { db as firestoreDb } from './firebase-admin';
 import { FIRESTORE_PATHS } from '../../shared/firestore-schema';
 import { logger } from './logger';
 import { COMPANY_TAX_ID } from '@shared/finance-identity';
-import { isSendGridConfigured, sgMail } from './sendgrid';
+import { isSendGridConfigured } from './sendgrid';
+import { sendGuardedEmail } from './guarded-sendgrid';
 import { twilioSMSService } from '../services/TwilioSMSService';
 
 export type NotificationChannel = 'inbox' | 'email' | 'sms' | 'push';
@@ -236,15 +237,36 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
         const htmlBody = buildEmailHtml(title, bodyHtml, ctaText, ctaUrl);
         const plainText = bodyText || stripHtml(bodyHtml) + (ctaText && ctaUrl ? `\n\n${ctaText}: ${ctaUrl}` : '');
 
-        await sgMail.send({
-          to: email,
-          from: { email: FROM_EMAIL, name: FROM_NAME },
-          subject: title,
-          html: htmlBody,
-          text: plainText,
+        // Route through sendGuardedEmail so EmailSpendGuard (hourly / daily
+        // circuit + per-recipient limiter) sees this send. The previous direct
+        // sgMail.send() bypassed the guard — a runaway loop through
+        // sendTransactionReceipt / sendPromoCode / sendSystemAlert could burn
+        // through the SendGrid budget before any counter noticed, and a hot
+        // caller could re-send to the same recipient in a tight loop with no
+        // per-recipient limiter engaging. The guarded helper attributes the
+        // send under a stable service tag so spend dashboards group
+        // notification-channel volume separately from other callers, and
+        // skips the SendGrid call entirely if the circuit is open.
+        const guarded = await sendGuardedEmail({
+          service: `notification-dispatcher:${type}`,
+          msg: {
+            to: email,
+            from: { email: FROM_EMAIL, name: FROM_NAME },
+            subject: title,
+            html: htmlBody,
+            text: plainText,
+          },
         });
-        emailSent = true;
-        logger.info('[NotificationDispatcher] Email sent', { uid, email, type });
+        if (guarded.ok) {
+          emailSent = true;
+          // PII-safe log: never write the full email address.
+          logger.info('[NotificationDispatcher] Email sent', { uid, type });
+        } else {
+          errors.push(`Email guarded-send ${guarded.reason}`);
+          logger.warn('[NotificationDispatcher] Email guarded-send failed', {
+            uid, type, reason: guarded.reason,
+          });
+        }
       }
     } catch (err) {
       const msg = `Email send failed: ${err instanceof Error ? err.message : err}`;
