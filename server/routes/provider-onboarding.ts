@@ -916,7 +916,15 @@ router.post('/apply', upload.fields([
       requiresEnhancedVerification,
       enhancedVerificationReasons,
       petFirstAidCertUrl: petFirstAidCertUrl || null,
-      petFirstAidProvider: petFirstAidNumber || null,
+      // FIELD-NAME COLLISION FIX (2026-08-21): the client field
+      // `petFirstAidNumber` (the certificate SERIAL) used to be written into
+      // the `pet_first_aid_provider` column (whose schema comment says
+      // "Red Cross, etc" — the certifying BODY). That corrupted every stored
+      // row (Agent 2 forensics). Stop writing the serial into the wrong
+      // column; the serial is preserved via internalNotes JSON below
+      // ({petFirstAidNumber: ...}), and the provider column is left null
+      // until a proper certifying-body field is captured in the UI.
+      petFirstAidProvider: null,
       petFirstAidExpiresAt: petFirstAidExpiry ? new Date(petFirstAidExpiry) : null,
       drivingRecordUrl: drivingRecordUrl || null,
       drivingRecordNotes: drivingLicenseNumber ? JSON.stringify({ licenseNumber: drivingLicenseNumber, licenseClass: drivingLicenseClass, expiryDate: drivingLicenseExpiry }) : null,
@@ -933,7 +941,24 @@ router.post('/apply', upload.fields([
       // Structured ID (no image forced): which document + when it expires.
       kycDocumentType: kycDocumentType || null,
       kycDocumentExpiry: (() => { const d = kycDocumentExpiryRaw ? new Date(kycDocumentExpiryRaw) : null; return d && !isNaN(d.getTime()) ? d : null; })(),
-      internalNotes: Object.keys(declarations).length > 0 ? JSON.stringify({ declarations, providerTypes: (() => { try { return rawProviderTypes ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes) : [providerType]; } catch { return [providerType]; } })() }) : null,
+      internalNotes: (() => {
+        const hasDeclarations = Object.keys(declarations).length > 0;
+        const hasFirstAid     = !!petFirstAidNumber;
+        if (!hasDeclarations && !hasFirstAid) return null;
+        const providerTypesArr = (() => {
+          try {
+            return rawProviderTypes
+              ? (typeof rawProviderTypes === 'string' ? JSON.parse(rawProviderTypes) : rawProviderTypes)
+              : [providerType];
+          } catch { return [providerType]; }
+        })();
+        const blob: Record<string, unknown> = {};
+        if (hasDeclarations) { blob.declarations = declarations; blob.providerTypes = providerTypesArr; }
+        // Preserve the cert serial number that used to be misfiled into
+        // pet_first_aid_provider (see comment on that column above).
+        if (hasFirstAid) blob.petFirstAidNumber = petFirstAidNumber;
+        return JSON.stringify(blob);
+      })(),
       status: 'pending',
     }).returning();
 
