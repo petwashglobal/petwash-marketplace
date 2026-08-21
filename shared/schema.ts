@@ -9,6 +9,7 @@ import {
   uniqueIndex,
   integer,
   bigint,
+  bigserial,
   decimal,
   numeric,
   boolean,
@@ -16790,3 +16791,80 @@ export const remittanceEmailLog = pgTable("remittance_email_log", {
 }));
 export type RemittanceEmailLog = typeof remittanceEmailLog.$inferSelect;
 export type InsertRemittanceEmailLog = typeof remittanceEmailLog.$inferInsert;
+
+// ─── mig 0121 — schema-migration drift heal 2026-08-20 ──────────────────────
+// These tables were referenced by prod code but never defined in a migration
+// (Drizzle-only via `drizzle-kit push`, or purely raw-SQL). Both the SQL
+// migration and the drizzle model land together so drift cannot recur.
+
+// server/services/googleSheetsIntegration.ts:787,806 — duplicate-suppress
+// anchor for form-submission appends to Google Sheets (legal compliance).
+export const googleSheetsIdempotency = pgTable("google_sheets_idempotency", {
+  id:              bigserial("id", { mode: "number" }).primaryKey(),
+  idempotencyKey:  text("idempotency_key").notNull(),
+  sheetName:       text("sheet_name").notNull(),
+  createdAt:       timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  keyUniq:         uniqueIndex("uq_google_sheets_idempotency_key").on(t.idempotencyKey),
+}));
+export type GoogleSheetsIdempotency = typeof googleSheetsIdempotency.$inferSelect;
+
+// server/services/googleSheetsIntegration.ts:601–672 — durable retry queue
+// for failed Google Sheets appends. Survives process restarts.
+export const googleSheetsRetryQueue = pgTable("google_sheets_retry_queue", {
+  id:            bigserial("id", { mode: "number" }).primaryKey(),
+  sheetName:     text("sheet_name").notNull(),
+  data:          jsonb("data").notNull(),
+  attempts:      integer("attempts").notNull().default(0),
+  status:        text("status").notNull().default("pending"),
+  errorMessage:  text("error_message"),
+  nextRetryAt:   timestamp("next_retry_at").notNull().defaultNow(),
+  lastAttempt:   timestamp("last_attempt"),
+  createdAt:     timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  pendingDue:    index("idx_gs_retry_pending_due").on(t.status, t.nextRetryAt),
+  statusIdx:     index("idx_gs_retry_status").on(t.status),
+}));
+export type GoogleSheetsRetryQueue = typeof googleSheetsRetryQueue.$inferSelect;
+
+// server/services/CampaignDeliveryService.ts:357,445 + server/cron/wash-reminder.ts:163
+// De-dupe anchor for campaign / marketing sends. ON CONFLICT
+// (campaign_type, user_id, coupon_id) DO NOTHING requires the composite
+// to be unique — expressed as two partial unique indexes (PG treats NULL
+// coupon_id as distinct in a plain unique index, which would defeat
+// null-coupon de-dupe used by the wash-reminder cron).
+export const campaignTriggerLog = pgTable("campaign_trigger_log", {
+  id:            bigserial("id", { mode: "number" }).primaryKey(),
+  campaignType:  text("campaign_type").notNull(),
+  userId:        text("user_id").notNull(),
+  couponId:      text("coupon_id"),
+  channel:       text("channel"),
+  status:        text("status").notNull(),
+  sentAt:        timestamp("sent_at").notNull().defaultNow(),
+}, (t) => ({
+  couponUniq:    uniqueIndex("uq_campaign_trigger_log_coupon")
+                   .on(t.campaignType, t.userId, t.couponId)
+                   .where(sql`coupon_id IS NOT NULL`),
+  noCouponUniq:  uniqueIndex("uq_campaign_trigger_log_no_coupon")
+                   .on(t.campaignType, t.userId)
+                   .where(sql`coupon_id IS NULL`),
+  recencyIdx:    index("idx_campaign_trigger_log_recency")
+                   .on(t.campaignType, t.userId, t.sentAt),
+}));
+export type CampaignTriggerLog = typeof campaignTriggerLog.$inferSelect;
+
+// server/routes/booking-chat.ts:1673–1687,1734–1737 — emoji reactions on
+// booking-chat messages. Toggle path: SELECT / INSERT ON CONFLICT DO NOTHING /
+// DELETE keyed by (message_id, user_id, reaction).
+export const messageReactions = pgTable("message_reactions", {
+  id:          bigserial("id", { mode: "number" }).primaryKey(),
+  messageId:   text("message_id").notNull(),
+  userId:      text("user_id").notNull(),
+  reaction:    text("reaction").notNull(),
+  createdAt:   timestamp("created_at").notNull().defaultNow(),
+}, (t) => ({
+  tripletUniq: uniqueIndex("uq_message_reactions_triplet")
+                 .on(t.messageId, t.userId, t.reaction),
+  messageIdx:  index("idx_message_reactions_message").on(t.messageId),
+}));
+export type MessageReaction = typeof messageReactions.$inferSelect;
