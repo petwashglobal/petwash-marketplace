@@ -49,6 +49,13 @@ const TRANSACTIONAL_EVENTS = new Set([
   'egift_redeemed',
   'prestige_joined',
   'refund_issued',
+  // ADDITION 2026-08-21 (notification agent hi-sev #3): refund_pending is
+  // fired at server/routes/super-app-bookings.ts:1310 as the companion to
+  // booking_cancelled. Not marking it transactional meant users who
+  // hadn't opted into marketing SMS/push were silently blocked from
+  // hearing that their refund is on the way — after WE cancelled. That
+  // is not "marketing"; that is telling the customer where their money is.
+  'refund_pending',
   'booking_cancelled',
   'membership_renewed',
   'membership_cancelled',
