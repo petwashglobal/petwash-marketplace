@@ -452,7 +452,7 @@ export default function ShopStore({ language, onLanguageChange }: ShopStoreProps
       <CityPicker
         open={cityPickerOpen}
         onOpenChange={setCityPickerOpen}
-        selectedCitySymbol={null}
+        value={null}
         language={he ? 'he' : 'en'}
         onChange={(sel: CityPickerSelection) => {
           const displayCity = he ? sel.hebrewName : (sel.englishName || sel.hebrewName);
