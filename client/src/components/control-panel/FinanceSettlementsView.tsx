@@ -87,14 +87,21 @@ export default function FinanceSettlementsView() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const { toast } = useToast();
 
-  // Fetch settlements
+  // Fetch settlements — bake filters into URL, default queryFn drops
+  // queryKey[1+]. Prior behaviour: dashboard showed unfiltered settlements
+  // regardless of period/status chip. (Wider-hidden-dead-code hunt 2026-08-21.)
+  const settlementsQs = new URLSearchParams();
+  if (periodFilter && periodFilter !== 'all') settlementsQs.set('period', periodFilter);
+  if (statusFilter && statusFilter !== 'all') settlementsQs.set('status', statusFilter);
   const { data: settlementsData, isLoading: settlementsLoading } = useQuery<SettlementsResponse>({
-    queryKey: ["/api/finance/settlements", periodFilter, statusFilter],
+    queryKey: [settlementsQs.toString()
+      ? `/api/finance/settlements?${settlementsQs.toString()}`
+      : "/api/finance/settlements"],
   });
 
-  // Fetch commissions
+  // Fetch commissions — same class: "recent" was dropped.
   const { data: commissionsData } = useQuery<CommissionsResponse>({
-    queryKey: ["/api/finance/commissions", "recent"],
+    queryKey: ["/api/finance/commissions?period=recent"],
   });
 
   // Fetch financial summary

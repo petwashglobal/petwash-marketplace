@@ -32,11 +32,15 @@ export default function AdminBookingChat() {
 
   const ADMIN_ROLES = ['admin', 'management', 'super_admin', 'hr', 'staff'];
 
+  // Server route is /admin/:bookingId (booking-chat.ts:1493) — default queryFn
+  // hits queryKey[0] verbatim, so queryKey[1] as bookingId was silently
+  // dropped and admin opened a blank chat. Bake into URL. (Wider-hidden-
+  // dead-code hunt 2026-08-21.)
   const { data: chatData, isLoading, error } = useQuery<{
     conversation: BookingConversation;
     messages: BookingMessage[];
   }>({
-    queryKey: ["/api/booking-chat/admin", bookingId],
+    queryKey: [`/api/booking-chat/admin/${bookingId}`],
     enabled: !!bookingId && ADMIN_ROLES.includes(claims?.role ?? ''),
   });
 

@@ -50,8 +50,17 @@ export default function NayaxMonitoring() {
     status: ''
   });
 
+  // Bake filters into URL query string — default queryFn drops queryKey[1].
+  // Prior behaviour: every filter change re-issued the same URL, admin saw
+  // unfiltered data + CSV export contained everything. (Wider-hidden-dead-
+  // code hunt 2026-08-21.)
+  const filterQs = new URLSearchParams(
+    Object.entries(filters).filter(([, v]) => v && v !== '')
+  ).toString();
   const { data: transactions, isLoading, refetch } = useQuery<NayaxTransaction[]>({
-    queryKey: ['/api/admin/nayax/transactions', filters],
+    queryKey: [filterQs
+      ? `/api/admin/nayax/transactions?${filterQs}`
+      : '/api/admin/nayax/transactions'],
     refetchInterval: 10000, // Refresh every 10 seconds
   });
 
