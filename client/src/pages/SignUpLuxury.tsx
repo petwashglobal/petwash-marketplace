@@ -184,14 +184,6 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // routing sends the user to the right place. (Ported from SignIn.tsx.)
   useEffect(() => { applyIntentFromUrl(); }, []);
 
-  // Tick the resend cooldown down once per second. Cleared when hitting 0 or
-  // when the component unmounts so no dangling interval.
-  useEffect(() => {
-    if (resendCountdown <= 0) return;
-    const t = setInterval(() => setResendCountdown((n) => Math.max(0, n - 1)), 1000);
-    return () => clearInterval(t);
-  }, [resendCountdown]);
-
   useEffect(() => {
     const root = document.getElementById('root');
     document.documentElement.setAttribute('data-pw-page', 'signup');
@@ -394,6 +386,16 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   // send function; the countdown throttles it so users can't spam-tap the
   // server (server-side rate-limit remains the hard gate — this is UX).
   const [resendCountdown, setResendCountdown] = useState(0);
+  // Tick the resend cooldown down once per second. Cleared when hitting 0 or
+  // when the component unmounts so no dangling interval. Must live BELOW the
+  // useState above — before this fix it sat at ~L189 and read `resendCountdown`
+  // in its dep array before the state binding existed, triggering a TDZ
+  // ReferenceError on every /signup mount (ErrorBoundary crash 2026-08-20).
+  useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const t = setInterval(() => setResendCountdown((n) => Math.max(0, n - 1)), 1000);
+    return () => clearInterval(t);
+  }, [resendCountdown]);
   const [smsProviderHealthy, setSmsProviderHealthy] = useState(true);
   // Date of birth — REQUIRED, 18+. Server re-enforces at account creation.
   // MUST default to empty: a pre-seeded "now-25" default stamped a synthetic
