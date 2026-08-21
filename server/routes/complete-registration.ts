@@ -7,7 +7,10 @@ import { generateMembershipId, assignCustomerMembership } from '../services/Memb
 import { WelcomeEmailService } from '../services/WelcomeEmailService';
 import { peekEmailVerificationToken } from './onboarding-verification';
 import { twilioSMSService } from '../services/TwilioSMSService';
-import { syncUserToHubSpot, trackHubSpotEvent } from '../hubspot';
+// HubSpot removed 2026-08-21 (CEO): hubspot.ts has been a no-op since the
+// Replit connector was cut in June. Every syncUserToHubSpot / trackHubSpotEvent
+// call did nothing — kept only a "disabled" log line. Google stack (Sheets /
+// Docs / Forms / Drive / Maps) is the source of truth for signup capture.
 import crypto from 'crypto';
 
 const router = Router();
@@ -131,24 +134,7 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
       });
     }
 
-    // ── HubSpot CRM sync — server-side safety net (fires regardless of client-side success) ──
-    syncUserToHubSpot({
-      uid: membershipNumber,
-      email: normalizedEmail,
-      firstname: firstName?.trim() || undefined,
-      lastname: lastName?.trim() || undefined,
-      lang: language,
-    }).catch(err => {
-      logger.warn('[CompleteRegistration] HubSpot sync failed (non-blocking)', { error: err?.message, traceId });
-    });
-
-    // Track lifecycle event in HubSpot timeline
-    trackHubSpotEvent(normalizedEmail, `petwash_${userType}_registered`, {
-      membershipNumber,
-      userType,
-      language,
-      registeredAt: new Date().toISOString(),
-    }).catch(() => {});
+    // HubSpot sync removed 2026-08-21 (see import comment above).
 
     return res.json({
       success: true,
