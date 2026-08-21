@@ -21,7 +21,14 @@ import { ensureUserProvisioned, AuthBootstrapUsersRowFailed } from "./services/a
 // Named constant + a longer 8 s ceiling gives the write time to commit and
 // makes the value greppable; if we still time out we now HARD-FAIL 502
 // instead of returning success with a broken account.
-const DB_BOOTSTRAP_TIMEOUT_MS = 8000;
+// COLD-START MARGIN: 20s (was 8s). Cloud Run runs at minScale=0 for cost, so
+// the first request of a cold minute pays for container start + Firestore
+// profile fetch + users insert + wallet/loyalty triggers + SUMIT enqueue
+// serially. The 8s budget was blowing on every cold signup → 502 → user saw
+// "sign-in could not be completed" and abandoned. 20s covers the cold path
+// with margin; the request handler already sits behind rate limiters and CDN,
+// so the extra ceiling can't be abused to hold connections.
+const DB_BOOTSTRAP_TIMEOUT_MS = 20000;
 import kycRoutes from "./routes/kyc";
 import supplierInvoiceRoutes from "./routes/supplier-invoices";
 import adminSuppliersRoutes from "./routes/admin-suppliers";
@@ -1641,23 +1648,11 @@ self.addEventListener('notificationclick', (event) => {
             logger.warn('[Session] Google Sheets registration logging failed (non-blocking)', sheetsErr);
           }
 
-          try {
-            const { syncUserToHubSpot, trackHubSpotEvent } = await import('./hubspot');
-            const provider = (decoded as any).firebase?.sign_in_provider || 'unknown';
-            await syncUserToHubSpot({
-              uid: decoded.uid, email: decoded.email || '',
-              firstname: firstName, lastname: lastName,
-              phone: phone || decoded.phone_number || undefined,
-              lang: lang || 'he', country: country || 'IL',
-            });
-            await trackHubSpotEvent(decoded.email || '', 'petwash_user_registered', {
-              registrationSource: provider, language: lang || 'he',
-              country: country || 'IL', registeredAt: new Date().toISOString(),
-            });
-            logger.info('[Session] ✅ HubSpot new user synced', { uid: decoded.uid, provider });
-          } catch (hubspotErr) {
-            logger.warn('[Session] HubSpot new user sync failed (non-blocking)', hubspotErr);
-          }
+          // HubSpot removed 2026-08-21 (CEO): the module was a no-op stub since
+          // the Replit connector was cut in June and no direct HubSpot access
+          // token was ever wired. Every call did nothing. The Google stack
+          // (Sheets, Docs, Forms, Drive, Maps) is the source of truth for
+          // signup capture — see logRegistration() above.
         })();
       }
       
