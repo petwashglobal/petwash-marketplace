@@ -1,4 +1,4 @@
-import { Response } from 'express';
+import { Request, Response } from 'express';
 import firebaseAdmin from './firebase-admin';
 import { logger } from './logger';
 
@@ -15,17 +15,56 @@ const SESSION_COOKIE_NAME = '__session';
 // activity — a larger change tracked separately; 14 days is the longest single cookie.
 const COOKIE_MAX_AGE = 1209600000; // 14 days in milliseconds (Firebase session-cookie max)
 
-// Environment-based cookie domain configuration
-const getCookieDomain = (): string | undefined => {
-  // In development, don't set a domain (cookies will be set for the exact host)
-  if (process.env.NODE_ENV === 'development') {
-    return undefined;
+const APEX_DOMAIN = 'petwash.co.il';
+const APEX_DOMAIN_SUFFIX = '.' + APEX_DOMAIN;
+
+// Extract the caller's Host header (strip any :port). Trusts the last
+// forwarded Host over the raw Host header — Cloud Run / Firebase Hosting
+// terminates TLS in front of us, so req.hostname reflects the visible host
+// after Express applies the proxy trust config we already set in index.ts.
+function requestHost(req: Request | undefined | null): string | undefined {
+  if (!req) return undefined;
+  const raw = (req.hostname || req.headers?.host || '').toString();
+  if (!raw) return undefined;
+  const host = raw.split(':')[0].trim().toLowerCase();
+  return host || undefined;
+}
+
+// Return the cookie Domain that the browser will actually accept for THIS
+// request. Sending Domain=.petwash.co.il on a request that arrived at
+// staging.a.run.app / *.web.app / localhost / preview-*.petwashglobal.dev
+// makes the browser silently DROP the cookie (RFC 6265 §5.3.6 "reject
+// cookies whose Domain attribute is not a suffix of the request host"),
+// so /api/session/whoami then 401s and the user is "signed in but kicked
+// out on every reload". Only send Domain when the request host actually
+// ends in .petwash.co.il (or IS petwash.co.il itself); otherwise omit
+// Domain so the browser scopes the cookie to the exact host.
+//
+// Dev remains undefined so the cookie binds to the exact localhost host.
+// This function must return the SAME value from setSessionCookie and
+// clearSessionCookie for a given request — the browser will not clear a
+// cookie whose Domain (or lack of one) does not match what was set.
+const resolveCookieDomain = (req?: Request | null): string | undefined => {
+  if (process.env.NODE_ENV === 'development') return undefined;
+  const host = requestHost(req);
+  if (!host) return undefined; // no host header → host-only cookie is safest
+  if (host === APEX_DOMAIN || host.endsWith(APEX_DOMAIN_SUFFIX)) {
+    return APEX_DOMAIN_SUFFIX;
   }
-  // In production, use .petwash.co.il to cover root + www
-  return '.petwash.co.il';
+  // Cloud Run *.a.run.app / *.web.app / preview / staging / anywhere else —
+  // Domain=.petwash.co.il would be rejected; omit Domain so the cookie is
+  // bound to the exact host and actually reaches the client.
+  return undefined;
 };
 
-export async function createSessionCookie(idToken: string, res: Response): Promise<void> {
+// Back-compat alias used by unit tests / older callers that didn't pass req.
+// Prefer resolveCookieDomain(req).
+const getCookieDomain = (): string | undefined => {
+  if (process.env.NODE_ENV === 'development') return undefined;
+  return APEX_DOMAIN_SUFFIX;
+};
+
+export async function createSessionCookie(idToken: string, res: Response, req?: Request): Promise<void> {
   try {
     logger.debug('[SessionCookies] Starting session cookie creation');
     
@@ -38,9 +77,9 @@ export async function createSessionCookie(idToken: string, res: Response): Promi
       expiresIn: COOKIE_MAX_AGE 
     });
     logger.debug('[SessionCookies] Session cookie created successfully');
-    
-    setSessionCookie(res, sessionCookie);
-    
+
+    setSessionCookie(res, sessionCookie, req);
+
     logger.info('[SessionCookies] Session cookie set successfully');
   } catch (error: any) {
     // Check if this is an expected Firebase auth error (invalid ID token)
@@ -63,8 +102,8 @@ export async function createSessionCookie(idToken: string, res: Response): Promi
   }
 }
 
-export function setSessionCookie(res: Response, sessionCookie: string) {
-  const cookieDomain = getCookieDomain();
+export function setSessionCookie(res: Response, sessionCookie: string, req?: Request) {
+  const cookieDomain = resolveCookieDomain(req);
   const isDevelopment = process.env.NODE_ENV === 'development';
   
   // CRITICAL FIX: Multi-domain cookie (petwash.co.il + www.petwash.co.il)
@@ -99,10 +138,14 @@ export function setSessionCookie(res: Response, sessionCookie: string) {
   });
 }
 
-export function clearSessionCookie(res: Response) {
-  const cookieDomain = getCookieDomain();
+export function clearSessionCookie(res: Response, req?: Request) {
+  // MUST resolve Domain the SAME way setSessionCookie did for this request,
+  // or the browser will refuse to clear the cookie (RFC 6265: a Set-Cookie
+  // whose Domain does not match the original cookie's Domain does not
+  // overwrite it → the cookie survives logout). See resolveCookieDomain().
+  const cookieDomain = resolveCookieDomain(req);
   const isDevelopment = process.env.NODE_ENV === 'development';
-  
+
   // Clear cookie with matching configuration (must match setSessionCookie exactly)
   const clearOptions: any = {
     httpOnly: true,
@@ -111,7 +154,7 @@ export function clearSessionCookie(res: Response) {
     path: '/',
     domain: cookieDomain  // Must match domain from setSessionCookie
   };
-  
+
   res.clearCookie(SESSION_COOKIE_NAME, clearOptions);
   // Also clear the legacy 'pw_session' cookie name (pre-2026-06-19) so a stale
   // copy in any browser can't shadow the new __session cookie after logout.

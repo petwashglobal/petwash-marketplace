@@ -704,11 +704,25 @@ app.use((req, _res, next) => {
 //     so cross-origin requests with Authorization: Bearer <token> are not CSRF-vulnerable.
 // `doubleCsrfProtection` is applied via app.use() directly so CodeQL's
 // js/missing-csrf-middleware query can statically detect the protection.
-const csrfSecret = process.env.SESSION_SECRET || process.env.COOKIE_SECRET || (() => {
+// SEV-1 evil-hunt 2026-08-20: the previous fallback (random per-instance key)
+// silently broke multi-instance Cloud Run — a CSRF token minted on instance A
+// is unverifiable on instance B (different secret), so every CSRF-protected
+// POST rolled the dice on 403 EBADCSRFTOKEN under any horizontal scale. In
+// production we FAIL BOOT if neither SESSION_SECRET nor COOKIE_SECRET is set
+// (better a loud crash Cloud Run reports than silent EBADCSRFTOKEN storms);
+// non-production continues to accept an ephemeral key with a WARN so local
+// dev / tests don't require the env. The secret VALUE is never logged.
+const _csrfSecretFromEnv = process.env.SESSION_SECRET || process.env.COOKIE_SECRET;
+const csrfSecretConfigured = !!_csrfSecretFromEnv;
+const csrfSecret: string = _csrfSecretFromEnv || (() => {
+  if (process.env.NODE_ENV === 'production') {
+    // Fail loud + fast. Cloud Run marks the revision unhealthy and reports the
+    // reason to the operator; no request is served against a per-instance key.
+    console.error('[startup] FATAL: SESSION_SECRET and COOKIE_SECRET are both unset in production. Set one in Secret Manager and redeploy — refusing to boot with a per-instance CSRF key (would silently break multi-instance CSRF verification).');
+    throw new Error('SESSION_SECRET_REQUIRED_IN_PRODUCTION');
+  }
   const fallback = crypto.randomBytes(32).toString('hex');
-  // Do not throw — crashing here kills the process before port binds (Cloud Run startup probe failure).
-  // Sessions and CSRF tokens will not survive restarts; fix by setting SESSION_SECRET in Secret Manager.
-  console.error('[startup] SECURITY: SESSION_SECRET and COOKIE_SECRET are both unset — CSRF protection uses an ephemeral key; set one immediately.');
+  console.error('[startup] SECURITY: SESSION_SECRET and COOKIE_SECRET are both unset — CSRF protection uses an ephemeral key. Fine for dev/tests; MUST be set in production.');
   return fallback;
 })();
 
@@ -1145,6 +1159,9 @@ app.get('/api/health', async (_req, res) => {
     uptimeSec: Math.floor((Date.now() - bootEpochMs) / 1000),
     traceId,
     revision: process.env.K_REVISION || null,
+    // Boolean only — NEVER the secret value. Operators use this to confirm
+    // multi-instance CSRF verification will actually agree across pods.
+    csrfSecretConfigured,
     state: {
       bootTs: healthState.bootTs,
       app: { ok: healthState.app.ok, routesReady: healthState.app.routesReady },
