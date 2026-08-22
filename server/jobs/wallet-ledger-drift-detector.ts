@@ -58,6 +58,30 @@ const DRIFT_FIELDS: DriftField[] = [
   { accountColumn: 'washPackageCredits',    creditType: 'wash_package',    ledgerColumn: 'amount_units', label: 'wash_package_units' },
 ];
 
+// SECOND pass (Lane B audit 2026-08-22 B-01): reconcile wallet_accounts
+// against the CANONICAL ledger `wallet_ledger_entries` (bucket-keyed
+// double-entry). Drift between wallet_ledger_entries and credit_transactions
+// themselves was invisible until now — the primary pass above compares
+// only against credit_transactions. This pass keys on the bucket enum
+// (cash_wallet | egift | promo | wash_package | loyalty | ...) using
+// direction to signed-sum. Same detect-only guarantee: writes only to
+// wallet_reconciliation_runs. Empty ledger sum for an account is
+// treated as "no drift to report" (rather than -balance drift) —
+// wallet_ledger_entries adoption is per-writer and partial today.
+type LedgerV2DriftField = {
+  accountColumn: 'egiftBalanceCents' | 'promoBalanceCents' | 'cashWalletBalanceCents' | 'washPackageCredits' | 'loyaltyPointsBalance';
+  bucket: 'egift' | 'promo' | 'cash_wallet' | 'wash_package' | 'loyalty';
+  label: string;
+};
+
+const LEDGER_V2_DRIFT_FIELDS: LedgerV2DriftField[] = [
+  { accountColumn: 'egiftBalanceCents',     bucket: 'egift',        label: 'egift@v2' },
+  { accountColumn: 'promoBalanceCents',     bucket: 'promo',        label: 'promo@v2' },
+  { accountColumn: 'cashWalletBalanceCents',bucket: 'cash_wallet',  label: 'cash_wallet@v2' },
+  { accountColumn: 'washPackageCredits',    bucket: 'wash_package', label: 'wash_package_units@v2' },
+  { accountColumn: 'loyaltyPointsBalance',  bucket: 'loyalty',      label: 'loyalty_points@v2' },
+];
+
 interface DriftRow {
   walletId: string;
   userId: string;
@@ -101,7 +125,8 @@ export async function runWalletLedgerDriftDetector(
         promo_balance_cents  AS "promoBalanceCents",
         referral_balance_cents AS "referralBalanceCents",
         loyalty_points_balance AS "loyaltyPointsBalance",
-        wash_package_credits AS "washPackageCredits"
+        wash_package_credits AS "washPackageCredits",
+        cash_wallet_balance_cents AS "cashWalletBalanceCents"
       FROM wallet_accounts
       WHERE is_active = true
     `);
@@ -126,6 +151,52 @@ export async function runWalletLedgerDriftDetector(
 
       for (const acc of rows) {
         const expected = ledgerMap.get(acc.walletId) ?? 0;
+        const actual = Number(acc[field.accountColumn]) || 0;
+        if (expected !== actual) {
+          drifts.push({
+            walletId: acc.walletId,
+            userId: acc.userId,
+            field: field.label,
+            expectedFromLedger: expected,
+            actualOnAccount: actual,
+            delta: actual - expected,
+          });
+        }
+      }
+    }
+
+    // 2b. LEDGER-V2 PASS (Lane B audit 2026-08-22 B-01): reconcile the
+    //     same wallet_accounts caches against the canonical
+    //     wallet_ledger_entries ledger keyed by bucket. Double-entry
+    //     means the signed balance = SUM(credit) - SUM(debit) per
+    //     (wallet_id, bucket). Empty ledger for a bucket-on-account is
+    //     SKIPPED (rather than treated as -balance) because adoption of
+    //     wallet_ledger_entries is per-writer and partial today — a
+    //     ZERO ledger sum against a real cache balance is more likely
+    //     "not yet adopted" than "drift". Only NON-ZERO ledger sums
+    //     that disagree with the cache are surfaced. This is the
+    //     tightest safe read.
+    for (const field of LEDGER_V2_DRIFT_FIELDS) {
+      const ledgerSums = await db.execute(sql.raw(`
+        SELECT
+          wallet_id AS "walletId",
+          COALESCE(SUM(
+            CASE WHEN direction = 'credit' THEN amount_cents
+                 WHEN direction = 'debit'  THEN -amount_cents
+                 ELSE 0 END
+          ), 0)::int AS "ledgerSum"
+        FROM wallet_ledger_entries
+        WHERE bucket = '${field.bucket}'
+        GROUP BY wallet_id
+      `));
+      const ledgerMap = new Map<string, number>();
+      for (const r of (ledgerSums as any).rows as Array<{ walletId: string; ledgerSum: number }>) {
+        ledgerMap.set(r.walletId, Number(r.ledgerSum) || 0);
+      }
+
+      for (const acc of rows) {
+        const expected = ledgerMap.get(acc.walletId);
+        if (expected === undefined || expected === 0) continue; // no v2 rows for this wallet+bucket
         const actual = Number(acc[field.accountColumn]) || 0;
         if (expected !== actual) {
           drifts.push({
