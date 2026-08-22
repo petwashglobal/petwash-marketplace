@@ -10674,8 +10674,11 @@ router.get('/admin/wallet/control-center', async (req: Request, res: Response) =
       db.execute(sql`SELECT COUNT(*)::int AS cnt FROM bank_reconciliation_exceptions WHERE status = 'open'`),
       // Critical unacknowledged alerts
       db.execute(sql`SELECT COUNT(*)::int AS cnt FROM finance_alerts WHERE severity = 'critical' AND acknowledged_at IS NULL`),
-      // Today close status
-      db.execute(sql`SELECT * FROM finance_close_records WHERE close_date = CURRENT_DATE LIMIT 1`),
+      // Today close status — Israel calendar day, not UTC CURRENT_DATE
+      // (Lane D audit 2026-08-22 round 3). Between 21:00-23:59 IST the
+      // UTC date was already tomorrow, so the finance close for "today"
+      // returned an old row or nothing at all.
+      db.execute(sql`SELECT * FROM finance_close_records WHERE close_date = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date LIMIT 1`),
     ]);
 
     const fr  = (forecastRaw?.rows ?? forecastRaw)?.[0];
@@ -13407,10 +13410,14 @@ router.post('/admin/wallet/forecast-backtests/run', async (req: Request, res: Re
     }
 
     // Fetch actuals from closed period data
+    // TZ FIX (Lane D audit 2026-08-22 round 3): bucket by Israel calendar
+    // day so period boundaries match the Israeli business day rather than
+    // the UTC container day. Otherwise the last 3h of every Israeli day
+    // was double-counted or missing depending on the period edges.
     const [revenueRaw, payoutsRaw, refundsRaw] = await Promise.all([
-      db.execute(sql`SELECT COALESCE(SUM(amount_cents),0) as total FROM wallet_transactions WHERE type='credit' AND created_at::date BETWEEN ${periodStart} AND ${periodEnd}`),
-      db.execute(sql`SELECT COALESCE(SUM(total_amount_cents),0) as total FROM payout_batches WHERE status='paid' AND created_at::date BETWEEN ${periodStart} AND ${periodEnd}`),
-      db.execute(sql`SELECT COALESCE(SUM(amount_cents),0) as total FROM refund_requests WHERE status='completed' AND created_at::date BETWEEN ${periodStart} AND ${periodEnd}`),
+      db.execute(sql`SELECT COALESCE(SUM(amount_cents),0) as total FROM wallet_transactions WHERE type='credit' AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date BETWEEN ${periodStart} AND ${periodEnd}`),
+      db.execute(sql`SELECT COALESCE(SUM(total_amount_cents),0) as total FROM payout_batches WHERE status='paid' AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date BETWEEN ${periodStart} AND ${periodEnd}`),
+      db.execute(sql`SELECT COALESCE(SUM(amount_cents),0) as total FROM refund_requests WHERE status='completed' AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date BETWEEN ${periodStart} AND ${periodEnd}`),
     ]);
 
     const actualRevenue   = parseInt((revenueRaw  as any)?.rows?.[0]?.total ?? '0', 10);
