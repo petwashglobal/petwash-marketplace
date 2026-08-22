@@ -23,8 +23,32 @@ function isNearby(lat1: number, lng1: number, lat2: number, lng2: number): boole
 router.get("/", requireAuth, async (req, res) => {
   try {
     const userId = (req as any).user.uid;
+    // DTO round 2 (2026-08-22): explicit column projection instead of
+    // `.select()`. Self-scoped so cross-user leaks are impossible, but
+    // any column added later (geocoder debug, moderation flags, an
+    // internalScore) would silently ship on the response — the
+    // narrow list keeps the wire contract stable.
     const rows = await db
-      .select()
+      .select({
+        id: userAddresses.id,
+        label: userAddresses.label,
+        customLabel: userAddresses.customLabel,
+        address: userAddresses.address,
+        street: userAddresses.street,
+        streetNumber: userAddresses.streetNumber,
+        apartment: userAddresses.apartment,
+        floor: userAddresses.floor,
+        entrance: userAddresses.entrance,
+        notes: userAddresses.notes,
+        city: userAddresses.city,
+        postalCode: userAddresses.postalCode,
+        lat: userAddresses.lat,
+        lng: userAddresses.lng,
+        isDefault: userAddresses.isDefault,
+        usageCount: userAddresses.usageCount,
+        lastUsedAt: userAddresses.lastUsedAt,
+        createdAt: userAddresses.createdAt,
+      })
       .from(userAddresses)
       .where(eq(userAddresses.userId, userId))
       .orderBy(desc(userAddresses.isDefault), desc(userAddresses.usageCount), desc(userAddresses.lastUsedAt));

@@ -393,15 +393,36 @@ router.get("/my-bookings", requireAuth, async (req, res) => {
       .limit(50)
       .get();
 
-    // Convert Firestore Timestamps to ISO strings for frontend
+    // DTO round 2 (2026-08-22): previously spread `...data` on every
+    // booking. On the ?role=provider query that meant the provider saw
+    // customer-side internals (customer address, phone, feeSnapshot,
+    // stripe/sumit customer IDs, any `internal*` moderation field) that
+    // do not belong on the provider view. Explicit allowlist — a
+    // superset of what the customer + provider UIs both actually render.
     const bookings = snapshot.docs.map((doc) => {
-      const data = doc.data();
+      const data = doc.data() as any;
+      const iso = (v: any) =>
+        v?.toDate ? v.toDate().toISOString() : v ?? null;
       return {
-        ...data,
-        serviceDate: data.serviceDate?.toDate ? data.serviceDate.toDate().toISOString() : data.serviceDate,
-        startDate: data.startDate || (data.serviceDate?.toDate ? data.serviceDate.toDate().toISOString() : data.serviceDate),
-        endDate: data.endDate || (data.serviceDate?.toDate ? data.serviceDate.toDate().toISOString() : data.serviceDate),
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate().toISOString() : data.createdAt,
+        id: doc.id,
+        requestId: data.requestId ?? doc.id,
+        ownerId: data.ownerId ?? null,
+        providerId: data.providerId ?? null,
+        providerName: data.providerName ?? null,
+        providerAddress: data.providerAddress ?? null,
+        pickupAddress: data.pickupAddress ?? null,
+        serviceType: data.serviceType ?? null,
+        petCount: data.petCount ?? null,
+        petIds: Array.isArray(data.petIds) ? data.petIds : [],
+        status: data.status ?? null,
+        serviceDate: iso(data.serviceDate),
+        startDate: data.startDate || iso(data.serviceDate),
+        endDate: data.endDate || iso(data.serviceDate),
+        subtotalCents: typeof data.subtotalCents === 'number' ? data.subtotalCents : null,
+        feeCents: typeof data.feeCents === 'number' ? data.feeCents : null,
+        totalCents: typeof data.totalCents === 'number' ? data.totalCents : null,
+        currency: data.currency ?? 'ILS',
+        createdAt: iso(data.createdAt),
       };
     });
     
