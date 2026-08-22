@@ -207,6 +207,20 @@ const cortinaApprove = (extra: Record<string, unknown> = {}) =>
 const cortinaDecline = (code: number, reason: string) =>
   ({ Status: { Verdict: 'Declined', Code: code, StatusMessage: reason } });
 
+// Nayax may quote the currency as ISO alpha-3 ('ILS') or as ISO-4217 numeric
+// ('376' as string or number). PetWash operates on the Israel Shekel only and
+// every K9000 SKU price is denominated in agorot — a callback quoting USD
+// would silently pass through settlement math as if it were ILS. Accept only
+// ILS/376/empty; refuse anything else. Empty is allowed because some Cortina
+// callback types (e.g. authorize) legitimately omit currency; the real
+// authoritative price is our own WASH_PRICE_ILS_CENTS.
+// (Lane B audit 2026-08-22.)
+function isIlsCurrency(currency: unknown): boolean {
+  if (currency === undefined || currency === null || currency === '') return true;
+  const s = String(currency).trim().toUpperCase();
+  return s === 'ILS' || s === '376';
+}
+
 // Nayax asks: may this scan get a wash here? (RESERVE, no debit yet.)
 // PreAuthorization flow calls /Authorization; PreSelection flow calls /Sale.
 // Same PetWash logic (verify credit → reserve → approve → the machine vends),
@@ -217,7 +231,12 @@ router.post(['/authorize', '/sale', '/Authorization', '/Sale', '/staticqr/author
   const secretReject = assertCortinaSecret(req.body);
   if (secretReject) return res.status(401).json(secretReject);
   try {
-    const { terminalId, code } = parseCortinaRequest(req.body);
+    const parsed = parseCortinaRequest(req.body);
+    const { terminalId, code } = parsed;
+    if (!isIlsCurrency(parsed.currency)) {
+      logger.warn('[Cortina] authorise refused — non-ILS currency', { terminalId, currency: parsed.currency });
+      return res.json(cortinaDecline(6, 'currency_not_ils'));
+    }
     const bay = await resolveBay(terminalId);
     if (!bay) return res.json(cortinaDecline(50, 'bay_not_found')); // 50 = Unknown machine Id (NOT 5=fraud)
     if (bay.status !== 'ready') return res.json(cortinaDecline(6, `bay_${bay.status}`));
@@ -264,7 +283,12 @@ router.post(['/settlement', '/sale-end-notification', '/saleend', '/Settlement',
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled')); // 6 = General system failure
   const secretReject = assertCortinaSecret(req.body);
   if (secretReject) return res.status(401).json(secretReject);
-  const { terminalId, code, transactionId, vended } = parseCortinaRequest(req.body);
+  const parsedSettle = parseCortinaRequest(req.body);
+  const { terminalId, code, transactionId, vended } = parsedSettle;
+  if (!isIlsCurrency(parsedSettle.currency)) {
+    logger.warn('[Cortina] settlement refused — non-ILS currency', { terminalId, transactionId, currency: parsedSettle.currency });
+    return res.json(cortinaDecline(6, 'currency_not_ils'));
+  }
 
   // Webhook-inbox audit + state machine (P0-A, 2026-08-20). The k9000
   // reservation table already guarantees exactly-once for the money debit;
@@ -452,7 +476,12 @@ router.post(['/refund', '/Refund', '/staticqr/refund'], async (req: Request, res
   if (!cortinaEnabled()) return res.status(503).json(cortinaDecline(6, 'cortina_disabled'));
   const secretReject = assertCortinaSecret(req.body);
   if (secretReject) return res.status(401).json(secretReject);
-  const { terminalId, transactionId, amount } = parseCortinaRequest(req.body);
+  const parsedRefund = parseCortinaRequest(req.body);
+  const { terminalId, transactionId, amount } = parsedRefund;
+  if (!isIlsCurrency(parsedRefund.currency)) {
+    logger.warn('[Cortina] refund refused — non-ILS currency', { terminalId, transactionId, currency: parsedRefund.currency });
+    return res.json(cortinaDecline(6, 'currency_not_ils'));
+  }
   try {
     if (!transactionId) return res.json(cortinaApprove({ note: 'no_transaction_id_nothing_to_refund' }));
 
