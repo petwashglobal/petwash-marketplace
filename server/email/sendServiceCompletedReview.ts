@@ -68,7 +68,8 @@ export async function sendServiceCompletedReview(booking: {
       loyaltyTier: owner.tier || 'Member',
       reviewUrl: `${confirmationUrl}?review=1`,
       bookAgainUrl: 'https://petwash.co.il/marketplace',
-      dashboardUrl: 'https://petwash.co.il/my-bookings',
+      // Deeplinks-round-2 (2026-08-22): /my-bookings is a 404 — real route is /bookings.
+      dashboardUrl: 'https://petwash.co.il/bookings',
     });
 
     await EmailService.send({

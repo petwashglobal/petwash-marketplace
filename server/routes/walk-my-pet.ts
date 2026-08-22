@@ -965,7 +965,8 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           bodyHtml: `<p>המטייל/ת אישר/ה את הטיול שלך ב-⁦Walk My Pet™⁩. אפשר לצפות בפרטים באזור ההזמנות שלך.</p>`,
           bodyText: 'הטיול שלך ב-Walk My Pet אושר! היכנס/י לאזור ההזמנות לפרטים.',
           ctaText: 'צפייה בהזמנות',
-          ctaUrl: `${base}/my-bookings`,
+          // Deeplinks-round-2 (2026-08-22): /my-bookings is a 404 — real route is /bookings.
+          ctaUrl: `${base}/bookings`,
           channels: ['inbox', 'sms', 'push'],
           priority: 8,
           meta: { bookingId: booking.bookingId },
