@@ -19,6 +19,23 @@ import { Storage } from '@google-cloud/storage';
 import { requireAdmin } from '../adminAuth';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
 
+// Ownership check for in-progress (draft) applications.
+//
+// The natural token during the pre-submit / pre-Firebase-signup phase of
+// a careers application is the `sessionId` returned by /start-application.
+// Only the browser that started the draft knows this GUID. When the caller
+// supplies a sessionId that matches the row's persisted sessionId, treat
+// them as the owner. Post-submit apps that no longer have a session token
+// must fall back to Firebase-email match (see /status endpoint).
+function sessionIdOwns(
+  application: { sessionId?: string | null },
+  claimedSessionId: unknown,
+): boolean {
+  if (!application?.sessionId) return false;
+  if (typeof claimedSessionId !== 'string' || claimedSessionId.length === 0) return false;
+  return application.sessionId === claimedSessionId;
+}
+
 const router = Router();
 
 // SECURITY (2026-07-27): every /admin/* careers route (applications list/detail =
@@ -564,29 +581,44 @@ router.post('/apply', async (req: Request, res: Response) => {
   }
 });
 
-// Upload resume/document for application
+// Upload resume/document for application.
+//
+// SECURITY (2026-08-22): previously accepted uploads for any applicationId
+// with NO ownership check — anyone could inject documents into any
+// stranger's application (append a fake CV, plant a doc that shows up in
+// admin review). Fix: require the caller to prove ownership by supplying
+// the sessionId that /start-application returned to them.
 router.post('/applications/:applicationId/documents', upload.single('document'), async (req: Request, res: Response) => {
   const correlationId = crypto.randomUUID();
-  
+
   try {
     const { applicationId } = req.params;
-    const { documentType = 'resume' } = req.body;
-    
+    const { documentType = 'resume', sessionId } = req.body;
+
     if (!req.file) {
       return res.status(400).json({ error: 'No file uploaded' });
     }
-    
+
     // Verify application exists
     const [application] = await db
       .select()
       .from(staffApplications)
       .where(eq(staffApplications.id, parseInt(applicationId)))
       .limit(1);
-    
+
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
-    
+
+    // Ownership: sessionId must match the draft's sessionId.
+    if (!sessionIdOwns(application, sessionId)) {
+      logger.warn('[Careers] Rejected documents upload — sessionId mismatch', {
+        applicationId,
+        correlationId,
+      });
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     // Upload to GCS
     const fileName = `careers/${applicationId}/${documentType}_${Date.now()}_${req.file.originalname}`;
     const bucket = storage.bucket(BUCKET_NAME);
@@ -726,29 +758,43 @@ router.post('/start-application', async (req: Request, res: Response) => {
   }
 });
 
-// Autosave step progress
+// Autosave step progress.
+//
+// SECURITY (2026-08-22): previously accepted autosaves for any
+// applicationId with NO ownership check — an attacker who guessed a draft
+// ID could overwrite a stranger's in-progress form (name, DOB, address).
+// Fix: require the caller's sessionId to match the draft's sessionId.
 router.post('/applications/:applicationId/autosave', async (req: Request, res: Response) => {
   const correlationId = crypto.randomUUID();
-  
+
   try {
     const { applicationId } = req.params;
     const { stepNumber, stepName, data, sessionId } = req.body;
-    
+
     if (!stepNumber || !data) {
       return res.status(400).json({ error: 'Step number and data are required' });
     }
-    
+
     // Verify application exists and is in draft status
     const [application] = await db
       .select()
       .from(staffApplications)
       .where(eq(staffApplications.id, parseInt(applicationId)))
       .limit(1);
-    
+
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
-    
+
+    // Ownership: sessionId from client must match persisted sessionId.
+    if (!sessionIdOwns(application, sessionId)) {
+      logger.warn('[Careers] Rejected autosave — sessionId mismatch', {
+        applicationId,
+        correlationId,
+      });
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     // Update or insert step progress
     const existingStep = await db
       .select()
@@ -845,28 +891,40 @@ router.post('/applications/:applicationId/autosave', async (req: Request, res: R
   }
 });
 
-// Get step progress for an application
+// Get step progress for an application.
+//
+// SECURITY (2026-08-22): previously accepted any applicationId with NO
+// ownership check and returned steps.dataSnapshot — the applicant's
+// firstName, lastName, email, phone, dateOfBirth, address, city,
+// prior employer, referral source, consent state. That's PII an
+// attacker with a guessable numeric ID could pull. Fix: require the
+// sessionId query param to match the draft's sessionId.
 router.get('/applications/:applicationId/progress', async (req: Request, res: Response) => {
   try {
     const { applicationId } = req.params;
     const { sessionId } = req.query;
-    
-    const progress = await db
-      .select()
-      .from(applicationStepProgress)
-      .where(eq(applicationStepProgress.applicationId, parseInt(applicationId)))
-      .orderBy(applicationStepProgress.stepNumber);
-    
+
     const [application] = await db
       .select()
       .from(staffApplications)
       .where(eq(staffApplications.id, parseInt(applicationId)))
       .limit(1);
-    
+
     if (!application) {
       return res.status(404).json({ error: 'Application not found' });
     }
-    
+
+    // Ownership: sessionId query param must match persisted sessionId.
+    if (!sessionIdOwns(application, sessionId)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
+    const progress = await db
+      .select()
+      .from(applicationStepProgress)
+      .where(eq(applicationStepProgress.applicationId, parseInt(applicationId)))
+      .orderBy(applicationStepProgress.stepNumber);
+
     res.json({
       applicationId: parseInt(applicationId),
       status: application.status,
@@ -885,16 +943,29 @@ router.get('/applications/:applicationId/progress', async (req: Request, res: Re
   }
 });
 
-// Get application status (for applicant tracking)
-router.get('/applications/:applicationId/status', async (req: Request, res: Response) => {
+// Get application status (for applicant tracking).
+//
+// SECURITY (2026-08-22): previously took `email` as a raw query param
+// with NO auth — an attacker who guessed a numeric applicationId + email
+// pair could confirm the person applied to PetWash + read their
+// application status + document filenames. Fix: require Firebase auth
+// and enforce that req.firebaseUser.email matches the queried email
+// (case-insensitive). Mirrors the /my-applications hardening from
+// PR-CAREERS-MY-APPS-AUTH.
+router.get('/applications/:applicationId/status', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
     const { applicationId } = req.params;
     const { email } = req.query;
-    
-    if (!email) {
+
+    if (!email || typeof email !== 'string') {
       return res.status(400).json({ error: 'Email verification required' });
     }
-    
+
+    const callerEmail = (req.firebaseUser?.email || '').toLowerCase();
+    if (!callerEmail || callerEmail !== email.toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+
     const [application] = await db
       .select({
         id: staffApplications.id,
@@ -907,7 +978,7 @@ router.get('/applications/:applicationId/status', async (req: Request, res: Resp
       .where(
         and(
           eq(staffApplications.id, parseInt(applicationId)),
-          eq(staffApplications.email, email as string)
+          eq(staffApplications.email, email)
         )
       )
       .limit(1);
