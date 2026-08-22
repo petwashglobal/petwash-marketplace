@@ -15,6 +15,7 @@ import {
   customerPets,
   sitterBookings,
   walkBookings,
+  trainerBookings,
   creditTransactions,
 } from '@shared/schema';
 import { legalStamps } from '@shared/schema-finance';
@@ -100,6 +101,33 @@ router.get('/summary', async (req: any, res) => {
         .limit(3);
     } catch { walkUpcoming = []; }
 
+    // ── Upcoming Academy (trainer) sessions ────────────────────────────────
+    // Was silently omitted from the dashboard's upcoming rail: a customer
+    // who booked a training session saw nothing on /dashboard until they
+    // navigated to /bookings and hit /api/academy/bookings directly.
+    // `sessionEnd` is derived from `sessionDate + sessionDuration` (minutes)
+    // so the "endDate" column stays consistent with the sitter/walk shapes
+    // the client already renders. `totalAmount` is a decimal string in the
+    // schema — cast to cents (rounded) so the client's amountCents contract
+    // is preserved. Same shape ⇒ no client change needed.
+    let academyUpcoming: any[] = [];
+    try {
+      academyUpcoming = await db
+        .select({
+          id: trainerBookings.id,
+          bookingId: trainerBookings.bookingId,
+          platform: sql<string>`'pet_wash_academy'`,
+          status: trainerBookings.bookingStatus,
+          startDate: trainerBookings.sessionDate,
+          endDate: sql<Date>`${trainerBookings.sessionDate} + (${trainerBookings.sessionDuration} * interval '1 minute')`,
+          amountCents: sql<number>`round(${trainerBookings.totalAmount}::numeric * 100)::int`,
+        })
+        .from(trainerBookings)
+        .where(and(eq(trainerBookings.userId, uid), gte(trainerBookings.sessionDate, now)))
+        .orderBy(trainerBookings.sessionDate)
+        .limit(3);
+    } catch { academyUpcoming = []; }
+
     // Recent wallet transactions
     let recentTransactions: any[] = [];
     try {
@@ -128,7 +156,7 @@ router.get('/summary', async (req: any, res) => {
       stampCount = row?.count ?? 0;
     } catch { stampCount = 0; }
 
-    const upcomingBookings = [...sitterUpcoming, ...walkUpcoming].sort((a: any, b: any) =>
+    const upcomingBookings = [...sitterUpcoming, ...walkUpcoming, ...academyUpcoming].sort((a: any, b: any) =>
       new Date(a.startDate).getTime() - new Date(b.startDate).getTime(),
     );
 
@@ -154,6 +182,7 @@ router.get('/bookings', async (req: any, res) => {
 
     let sitter: any[] = [];
     let walk: any[] = [];
+    let academy: any[] = [];
 
     try {
       sitter = await db
@@ -191,7 +220,28 @@ router.get('/bookings', async (req: any, res) => {
         .limit(20);
     } catch { walk = []; }
 
-    const all = [...sitter, ...walk].sort((a: any, b: any) =>
+    // Academy training sessions — same rationale as the /summary feed:
+    // was previously omitted so a customer with only academy bookings
+    // saw an empty /bookings list even though their sessions were real.
+    try {
+      academy = await db
+        .select({
+          id: trainerBookings.id,
+          bookingId: trainerBookings.bookingId,
+          platform: sql<string>`'pet_wash_academy'`,
+          status: trainerBookings.bookingStatus,
+          startDate: trainerBookings.sessionDate,
+          endDate: sql<Date>`${trainerBookings.sessionDate} + (${trainerBookings.sessionDuration} * interval '1 minute')`,
+          amountCents: sql<number>`round(${trainerBookings.totalAmount}::numeric * 100)::int`,
+          currency: sql<string>`'ILS'`,
+        })
+        .from(trainerBookings)
+        .where(eq(trainerBookings.userId, uid))
+        .orderBy(desc(trainerBookings.sessionDate))
+        .limit(20);
+    } catch { academy = []; }
+
+    const all = [...sitter, ...walk, ...academy].sort((a: any, b: any) =>
       new Date(b.startDate).getTime() - new Date(a.startDate).getTime(),
     );
 
