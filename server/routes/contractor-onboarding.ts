@@ -28,6 +28,31 @@ import crypto from "crypto";
 
 const router = Router();
 
+// SECURITY (2026-08-22): every self-service contractor-onboarding endpoint
+// below shipped with NO auth and read `contractorId` from the request body
+// or path — any signed-in user could overwrite a stranger's bank details,
+// fake a "CLEAR" background check on any provider, plant a tax profile,
+// stamp legal-consent timestamps, enable service capabilities, or read the
+// full onboarding snapshot (name/phone/tax/insurance/bg-check/bank status)
+// for any contractor id.
+//
+// Fix: mount `requireAuth` for the whole router so a valid Firebase session
+// (cookie or Bearer) is required, and in every handler derive the target
+// contractorId from `req.user.uid` — never from the request body / params.
+// The body-supplied `contractorId` field is ignored so an attacker cannot
+// pivot to another contractor after authenticating.
+//
+// Admin actions on other contractors' data live under separate /admin
+// routes in `provider-applications.ts` (gated by requireAdmin), so this
+// tightening does not remove any legitimate cross-contractor write.
+router.use(requireAuth);
+
+/** Extract the authenticated caller's Firebase UID or 401 with a message. */
+function callerUid(req: any): string | null {
+  const uid = req?.user?.uid || req?.firebaseUser?.uid || null;
+  return typeof uid === 'string' && uid.length > 0 ? uid : null;
+}
+
 // ─── Bank Account, Tax ID, and NI Encryption (AES-256-GCM) ─────────────────
 // Uses DOCUMENT_ENCRYPTION_KEY (same key used for document security)
 function encryptBankAccount(plaintext: string): string {
@@ -140,11 +165,10 @@ router.post("/profile", requireAuth, async (req, res) => {
  */
 router.post("/accept-terms", async (req, res) => {
   try {
-    const { contractorId, acceptTerms, acceptIndependentStatus, acceptPrivacyPolicy } = req.body;
+    const contractorId = callerUid(req);
+    if (!contractorId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!contractorId) {
-      return res.status(400).json({ error: "Missing contractorId" });
-    }
+    const { acceptTerms, acceptIndependentStatus, acceptPrivacyPolicy } = req.body;
 
     const updates: any = {};
     if (acceptTerms) updates.acceptedPlatformTermsAt = new Date();
@@ -192,10 +216,12 @@ router.post("/accept-terms", async (req, res) => {
  */
 router.post("/tax-profile", async (req, res) => {
   try {
-    const { contractorId, taxData } = req.body;
+    const contractorId = callerUid(req);
+    if (!contractorId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!contractorId || !taxData) {
-      return res.status(400).json({ error: "Missing contractorId or taxData" });
+    const { taxData } = req.body;
+    if (!taxData) {
+      return res.status(400).json({ error: "Missing taxData" });
     }
 
     // Create or update tax compliance record
@@ -245,10 +271,12 @@ router.post("/tax-profile", async (req, res) => {
  */
 router.post("/insurance", async (req, res) => {
   try {
-    const { contractorId, insurance } = req.body;
+    const contractorId = callerUid(req);
+    if (!contractorId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!contractorId || !insurance) {
-      return res.status(400).json({ error: "Missing contractorId or insurance" });
+    const { insurance } = req.body;
+    if (!insurance) {
+      return res.status(400).json({ error: "Missing insurance" });
     }
 
     const insuranceRecord: InsertContractorInsurance = {
@@ -293,14 +321,18 @@ router.post("/insurance", async (req, res) => {
  */
 router.post("/background-check", async (req, res) => {
   try {
-    const { contractorId, backgroundCheck } = req.body;
+    const contractorId = callerUid(req);
+    if (!contractorId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!contractorId || !backgroundCheck) {
-      return res.status(400).json({
-        error: "Missing contractorId or backgroundCheck",
-      });
+    const { backgroundCheck } = req.body;
+    if (!backgroundCheck) {
+      return res.status(400).json({ error: "Missing backgroundCheck" });
     }
 
+    // SECURITY: the applicant supplies vendor/reference metadata but may
+    // NEVER set `result` — a "CLEAR" verdict must come from an admin who
+    // reviewed the actual bg-check report, not from the applicant's own
+    // POST body. Force result to PENDING on self-service submission.
     const bgCheckRecord: InsertContractorBackgroundCheck = {
       contractorId,
       providerName: backgroundCheck.providerName || null,
@@ -308,8 +340,8 @@ router.post("/background-check", async (req, res) => {
       completedAt: backgroundCheck.completedAt
         ? new Date(backgroundCheck.completedAt)
         : null,
-      result: backgroundCheck.result || "PENDING",
-      findings: backgroundCheck.findings || null,
+      result: "PENDING",
+      findings: null,
       documentId: backgroundCheck.documentId || null,
     };
 
@@ -343,10 +375,12 @@ router.post("/background-check", async (req, res) => {
  */
 router.post("/bank-details", async (req, res) => {
   try {
-    const { contractorId, bankDetails } = req.body;
+    const contractorId = callerUid(req);
+    if (!contractorId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!contractorId || !bankDetails) {
-      return res.status(400).json({ error: "Missing contractorId or bankDetails" });
+    const { bankDetails } = req.body;
+    if (!bankDetails) {
+      return res.status(400).json({ error: "Missing bankDetails" });
     }
 
     const bankRecord: InsertContractorBankDetails = {
@@ -395,12 +429,12 @@ router.post("/bank-details", async (req, res) => {
  */
 router.post("/service-area", async (req, res) => {
   try {
-    const { contractorId, serviceArea } = req.body;
+    const contractorId = callerUid(req);
+    if (!contractorId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!contractorId || !serviceArea) {
-      return res.status(400).json({
-        error: "Missing contractorId or serviceArea",
-      });
+    const { serviceArea } = req.body;
+    if (!serviceArea) {
+      return res.status(400).json({ error: "Missing serviceArea" });
     }
 
     const areaRecord: InsertContractorServiceArea = {
@@ -445,12 +479,12 @@ router.post("/service-area", async (req, res) => {
  */
 router.post("/capability", async (req, res) => {
   try {
-    const { contractorId, serviceType } = req.body;
+    const contractorId = callerUid(req);
+    if (!contractorId) return res.status(401).json({ error: 'Authentication required' });
 
-    if (!contractorId || !serviceType) {
-      return res.status(400).json({
-        error: "Missing contractorId or serviceType",
-      });
+    const { serviceType } = req.body;
+    if (!serviceType) {
+      return res.status(400).json({ error: "Missing serviceType" });
     }
 
     // Check if capability already exists
@@ -509,7 +543,16 @@ router.post("/capability", async (req, res) => {
  */
 router.get("/status/:contractorId", async (req, res) => {
   try {
+    const callerId = callerUid(req);
+    if (!callerId) return res.status(401).json({ error: 'Authentication required' });
+
     const { contractorId } = req.params;
+    // Ownership: a contractor may only read their own onboarding snapshot.
+    // Cross-contractor read paths belong under /admin (see
+    // provider-applications.ts admin routes).
+    if (contractorId !== callerId) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
 
     // Fetch all contractor data
     const [profile] = await db

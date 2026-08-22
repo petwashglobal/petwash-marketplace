@@ -113,13 +113,23 @@ router.get("/link", requireAuth, async (req: any, res) => {
   }
 });
 
-/** POST /api/referral/register-click — someone opened a referral link. */
+/**
+ * POST /api/referral/register-click — someone opened a referral link.
+ *
+ * SECURITY (2026-08-22): previously accepted a caller-supplied `toEmail`
+ * that was persisted into `referral_clicks`. An anonymous attacker could
+ * stuff arbitrary emails into the audit table — PII pollution + audit
+ * noise + spam vector. Fix: drop the toEmail field on the public unauth
+ * path (referral tracking never needed it for anonymous clicks — email
+ * only becomes meaningful at /link-signup once the invitee actually
+ * creates an account with a verified Firebase identity).
+ */
 router.post("/register-click", async (req, res) => {
   try {
-    const { referralCode, toEmail } = req.body ?? {};
+    const { referralCode } = req.body ?? {};
     if (!referralCode) return res.status(400).json({ error: "MISSING_CODE" });
 
-    const result = await recordClick(String(referralCode), toEmail ?? null);
+    const result = await recordClick(String(referralCode), null);
     if (!result.ok) return res.status(404).json({ error: "INVALID_CODE" });
 
     res.json({ ok: true, referralCode: String(referralCode).toUpperCase() });
@@ -129,16 +139,32 @@ router.post("/register-click", async (req, res) => {
   }
 });
 
-/** POST /api/referral/link-signup — attach a new signup to the inviter's code. */
-router.post("/link-signup", async (req, res) => {
+/**
+ * POST /api/referral/link-signup — attach a new signup to the inviter's code.
+ *
+ * SECURITY (2026-08-22): previously accepted body-supplied `userId` + `email`
+ * with NO auth. An attacker could POST { referralCode: 'THEIR_OWN',
+ * userId: ANY_VICTIM_UID, email: 'anything' } to (a) hijack referral credit
+ * for any new signup by racing ahead of the legitimate call, and (b) write
+ * an arbitrary email string into the referrals table against any UID.
+ * Fix: require a verified Firebase session and derive inviteeUserId + email
+ * from `req.firebaseUser` — the body's userId/email fields are ignored.
+ */
+router.post("/link-signup", requireAuth, async (req: any, res) => {
   try {
-    const { referralCode, userId, email } = req.body ?? {};
-    if (!referralCode || !userId) return res.status(400).json({ error: "MISSING_REQUIRED_FIELDS" });
+    const inviteeUserId = uid(req);
+    if (!inviteeUserId) return res.status(401).json({ error: "UNAUTHORIZED" });
+
+    const { referralCode } = req.body ?? {};
+    if (!referralCode) return res.status(400).json({ error: "MISSING_REQUIRED_FIELDS" });
+
+    // Trust the Firebase-verified email if present; ignore anything from body.
+    const inviteeEmail = (req.firebaseUser?.email as string | undefined)?.toLowerCase() || null;
 
     const result = await linkSignup({
       code: String(referralCode),
-      inviteeUserId: String(userId),
-      inviteeEmail: email ?? null,
+      inviteeUserId,
+      inviteeEmail,
     });
 
     if (!result.ok) {
@@ -152,7 +178,7 @@ router.post("/link-signup", async (req, res) => {
         eventType: "referral.signed_up",
         timestamp: new Date().toISOString(),
         platform: "referral",
-        userId: String(userId),
+        userId: inviteeUserId,
         data: { referralId: result.referralId, code: String(referralCode).toUpperCase() },
       } as any),
     ).catch(() => {});

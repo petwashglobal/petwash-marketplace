@@ -1170,9 +1170,15 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
     // Notifies Apple that the pass changed → device pulls fresh pass data.
     const passTypeId = process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher';
     const appleWalletPushUrl = `${process.env.BASE_URL || 'https://petwash.co.il'}/api/wallet/notify-pass-update`;
+    // Attach the internal-service secret so the loopback POST authenticates
+    // against wallet.ts /notify-pass-update (hardened 2026-08-22).
+    const internalSecret = process.env.INTERNAL_SERVICE_SECRET || '';
     fetch(appleWalletPushUrl, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(internalSecret ? { 'x-internal-secret': internalSecret } : {}),
+      },
       body: JSON.stringify({
         userId,
         passSerial,

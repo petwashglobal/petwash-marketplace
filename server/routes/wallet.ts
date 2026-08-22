@@ -1459,6 +1459,23 @@ router.get('/nayax/verify-loyalty/:userId', async (req, res) => {
  * Not exposed to the public internet — no auth required for internal calls.
  */
 router.post('/notify-pass-update', async (req, res) => {
+  // SECURITY (2026-08-22): route documented as loopback-only but shipped
+  // with NO enforcement — anyone with a leaked (userId, passSerial) tuple
+  // (screenshot of a wallet pass, support-ticket attachment, admin log
+  // export) could POST a fake remainingWashes and inflate or drain a
+  // customer's wash credit balance. Enforce the internal-service secret
+  // that the sibling google-services.ts route already uses.
+  const providedSecret = (req.headers['x-internal-secret'] as string | undefined) || '';
+  const expectedSecret = process.env.INTERNAL_SERVICE_SECRET || '';
+  if (!expectedSecret) {
+    logger.error('[Wallet Notify] INTERNAL_SERVICE_SECRET not configured — refusing to accept pass update');
+    return res.status(503).json({ error: 'Internal service not configured' });
+  }
+  if (providedSecret !== expectedSecret) {
+    logger.warn('[Wallet Notify] Rejected — missing/invalid x-internal-secret');
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
   const { userId, passSerial, passTypeId, remainingWashes } = req.body as {
     userId?: string;
     passSerial?: string;
