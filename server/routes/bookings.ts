@@ -6,7 +6,12 @@ import { requireAuth } from "../customAuth";
 import VATCalculatorService from "../services/VATCalculatorService";
 import EscrowService from "../services/EscrowService";
 import NotificationService from "../services/NotificationService";
-import ChatService from "../services/ChatService";
+// ChatService (Firestore `conversations` collection) is intentionally NOT
+// imported. The canonical customer↔provider chat is stored in Postgres
+// `booking_conversations` and served by /api/booking-chat/*
+// (see server/routes/booking-chat.ts, wired live via WebSocket at
+// server/websocket.ts). The Firestore write was a duplicate that no
+// customer-facing surface ever read.
 import { ImmutableStampService } from "../services/ImmutableStampService";
 import { petWashOrchestrator } from "../services/PetWashOperationsOrchestrator";
 import { logger } from "../lib/logger";
@@ -336,12 +341,15 @@ router.post("/create", requireAuth, async (req, res) => {
       { type: "booking" }
     );
 
-    await ChatService.createConversation(
-      customerId,
-      booking.providerId,
-      bookingRef.id,
-      booking.platform === "sitter-suite" ? "sitter" : booking.platform === "walk-my-pet" ? "walk" : "transport"
-    );
+    // DEAD-CHAT-CLEANUP (2026-08-22): the previous line here was
+    //   await ChatService.createConversation(customerId, providerId, bookingRef.id, ...)
+    // which wrote a Firestore `conversations` doc that NO customer- or
+    // provider-facing surface ever read. The real per-booking chat is
+    // the Postgres `booking_conversations` table + /api/booking-chat/*
+    // endpoints + WebSocket subscription. Removing the duplicate write
+    // avoids a second doc drifting from the canonical one on the fields
+    // that MATTER (last message, unread counts, chat status) and cuts
+    // one Firestore round-trip off every booking creation.
 
     await NotificationService.sendNotification({
       userId: customerId,
