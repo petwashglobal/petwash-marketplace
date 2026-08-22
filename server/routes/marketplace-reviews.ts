@@ -31,6 +31,25 @@ import { auth } from '../lib/firebase-admin';
 import { logger } from '../lib/logger';
 import { computeAndPersistRankingScore } from './marketplace-ranking';
 import { validateFirebaseToken } from '../middleware/firebase-auth';
+import crypto from 'crypto';
+
+/**
+ * Advisory-lock key for concurrent marketplace-review submission.
+ * marketplace_reviews has no DB UNIQUE on (bookingId, customerId), so a
+ * plain SELECT-then-INSERT can race — two concurrent /api/marketplace-reviews
+ * calls with the same booking+customer both pass the SELECT and both INSERT,
+ * duplicating the review and firing the trust-score recompute twice.
+ * Mirror the same reviewLockKey pattern reviews.ts:35-41 uses. SHA-256 is
+ * used as a mutex key, not a cryptographic primitive.
+ * (Lane C audit 2026-08-22.)
+ */
+function marketplaceReviewLockKey(bookingId: string, customerId: string): bigint {
+  const digest = crypto
+    .createHash('sha256')
+    .update(`marketplace-review:${bookingId}:${customerId}`)
+    .digest();
+  return BigInt('0x' + digest.subarray(0, 8).toString('hex')) & BigInt('0x7fffffffffffffff');
+}
 
 const router = Router();
 
@@ -211,33 +230,54 @@ router.post('/', validateFirebaseToken, async (req: Request, res: Response) => {
       });
     }
 
-    // Trust integrity rule 4: one review per booking
-    const [existing] = await db.select({ id: marketplaceReviews.id })
-      .from(marketplaceReviews)
-      .where(and(
-        eq(marketplaceReviews.bookingId, bookingId),
-        eq(marketplaceReviews.customerId, uid)
-      ))
-      .limit(1);
-
-    if (existing) {
-      return res.status(409).json({ error: 'You have already reviewed this booking' });
-    }
-
     const providerId = booking.providerId || '';
     const isFlagged  = rating <= 2;
 
-    // ── Insert review ─────────────────────────────────────────────────────────
-    const [review] = await db.insert(marketplaceReviews).values({
-      bookingId,
-      customerId: uid,
-      providerId,
-      overallRating: rating,
-      reviewText: reviewText?.trim() || null,
-      isVisible:   true,
-      isFlagged,
-      flagReason: isFlagged ? `Low rating: ${rating}/5` : null,
-    }).returning();
+    // ── Trust integrity rule 4: one review per booking (RACE-SAFE) ────────
+    // Advisory-lock keyed on (bookingId, customerId) serializes concurrent
+    // submissions for the same booking. Without the lock two double-tapped
+    // requests both passed the SELECT and both INSERTed. marketplace_reviews
+    // has no DB UNIQUE on (bookingId, customerId), so the DB won't catch it.
+    // Mirrors reviews.ts:311+ pattern for contractor_reviews.
+    // (Lane C audit 2026-08-22.)
+    const lockKey = marketplaceReviewLockKey(bookingId, uid);
+    let review;
+    try {
+      review = await db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(${lockKey}::bigint)`);
+
+        // Re-check inside the lock (the winner's INSERT will land before we
+        // release; the loser will see the winner's row here).
+        const [existing] = await tx.select({ id: marketplaceReviews.id })
+          .from(marketplaceReviews)
+          .where(and(
+            eq(marketplaceReviews.bookingId, bookingId),
+            eq(marketplaceReviews.customerId, uid)
+          ))
+          .limit(1);
+
+        if (existing) {
+          throw new Error('ALREADY_REVIEWED');
+        }
+
+        const [inserted] = await tx.insert(marketplaceReviews).values({
+          bookingId,
+          customerId: uid,
+          providerId,
+          overallRating: rating,
+          reviewText: reviewText?.trim() || null,
+          isVisible:   true,
+          isFlagged,
+          flagReason: isFlagged ? `Low rating: ${rating}/5` : null,
+        }).returning();
+        return inserted;
+      });
+    } catch (err: any) {
+      if (err?.message === 'ALREADY_REVIEWED') {
+        return res.status(409).json({ error: 'You have already reviewed this booking' });
+      }
+      throw err;
+    }
 
     // ── Mark booking as reviewed ──────────────────────────────────────────────
     await db.update(bookings)
