@@ -51,6 +51,7 @@ interface KycApplication {
   phoneNumber: string;
   providerType: string;
   city: string;
+  country?: string | null;
   status: string;
   biometricMatchScore: string | null;
   biometricFailureReason: string | null;
@@ -72,6 +73,30 @@ interface KycApplication {
   assignedTo?: string | null;
   unreadCount?: number;
   queueStatus?: string | null;
+  // Personal (was hidden — Lane A audit 2026-08-22)
+  dateOfBirth?: string | null;
+  // Tax / business (was hidden)
+  taxStatus?: string | null;
+  // Insurance (was hidden)
+  insurancePolicyNumber?: string | null;
+  insuranceProvider?: string | null;
+  insuranceExpiresAt?: string | null;
+  insuranceCoverageAmount?: string | null;
+  insuranceLastVerified?: string | null;
+  // Trust / background (was hidden)
+  residentialHistory?: string | null;      // JSON string
+  criminalCheckConsent?: boolean | null;
+  criminalCheckConsentDate?: string | null;
+  selfDeclarationNoRelevantConvictions?: boolean | null;
+  selfDeclarationAt?: string | null;
+  selfDeclarationIp?: string | null;
+  requiresEnhancedVerification?: boolean | null;
+  enhancedVerificationReasons?: string[] | null;
+  // Declaration attestation (was hidden)
+  declarationAttestation?: unknown | null;
+  declarationSignatureSha256?: string | null;
+  // Onboarding-form declarations JSON blob (was hidden — 14 checkboxes)
+  internalNotes?: string | null;           // JSON string containing declarations + providerTypes[]
 }
 
 interface KycDetail {
@@ -139,6 +164,45 @@ const RESUBMISSION_REASONS = [
   'Wrong document type uploaded',
   'Suspected tampered or digitally altered document',
 ];
+
+// Pretty-print JSON safely — returns the input as-is when it's not JSON so
+// admin still sees SOMETHING instead of an empty box. Used for
+// residentialHistory (JSON array) and declaration blobs.
+function safePretty(raw: string | null | undefined): string {
+  if (!raw) return '';
+  try {
+    return JSON.stringify(JSON.parse(raw), null, 2);
+  } catch {
+    return raw;
+  }
+}
+
+// Render the 14 role-specific onboarding-form declaration checkboxes from
+// `internal_notes` JSON. Server stores them as { declarations: {key: bool} }
+// (with additional keys like providerTypes[] we skip). Displays each key with
+// a ✓ / ✗. Falls back to raw JSON block if the shape isn't what we expect.
+function DeclarationList({ raw }: { raw: string }) {
+  let parsed: any = null;
+  try { parsed = JSON.parse(raw); } catch { /* fall through */ }
+  const decl = parsed && typeof parsed === 'object' ? parsed.declarations : null;
+  if (!decl || typeof decl !== 'object') {
+    return <pre className="text-xs whitespace-pre-wrap font-mono max-h-40 overflow-y-auto bg-white rounded px-3 py-2">{safePretty(raw)}</pre>;
+  }
+  const keys = Object.keys(decl);
+  if (keys.length === 0) {
+    return <div className="text-xs text-muted-foreground bg-white rounded px-3 py-2">No declarations captured</div>;
+  }
+  return (
+    <div className="grid grid-cols-2 gap-2 text-sm">
+      {keys.map((k) => (
+        <div key={k} className="flex items-center justify-between bg-white rounded px-3 py-2">
+          <span className="text-muted-foreground text-xs">{k}</span>
+          {decl[k] ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-400" />}
+        </div>
+      ))}
+    </div>
+  );
+}
 
 function formatEventType(type: string) {
   return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
@@ -604,6 +668,150 @@ export default function ProviderKycReview() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Personal + tax + insurance + trust + declarations
+                  (Lane A audit 2026-08-22: these 20+ fields were persisted
+                  but never displayed to admin — pure additive UI, no server
+                  change; the /admin/applications/:id endpoint already
+                  returned the whole providerApplications row.) */}
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Personal</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Date of birth</span>
+                      <span className="font-medium">{app.dateOfBirth || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Country</span>
+                      <span className="font-medium">{app.country || '—'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Tax / Business</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Tax status</span>
+                      <span className="font-medium">{app.taxStatus || '—'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Insurance</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Provider</span>
+                      <span className="font-medium">{app.insuranceProvider || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Policy number</span>
+                      <span className="font-medium">{app.insurancePolicyNumber || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Expires</span>
+                      <span className="font-medium">{app.insuranceExpiresAt ? new Date(app.insuranceExpiresAt).toLocaleDateString() : '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Coverage</span>
+                      <span className="font-medium">{app.insuranceCoverageAmount || '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Last verified</span>
+                      <span className="font-medium">{app.insuranceLastVerified ? new Date(app.insuranceLastVerified).toLocaleDateString() : '—'}</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Trust &amp; Background</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 gap-2 text-sm">
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Self-declaration (no relevant convictions)</span>
+                      {app.selfDeclarationNoRelevantConvictions ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-400" />}
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Declared at</span>
+                      <span className="font-medium">{app.selfDeclarationAt ? new Date(app.selfDeclarationAt).toLocaleString() : '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Criminal-check consent</span>
+                      {app.criminalCheckConsent ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-400" />}
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                      <span className="text-muted-foreground">Consent date</span>
+                      <span className="font-medium">{app.criminalCheckConsentDate ? new Date(app.criminalCheckConsentDate).toLocaleString() : '—'}</span>
+                    </div>
+                    <div className="flex items-center justify-between bg-white rounded px-3 py-2 col-span-2">
+                      <span className="text-muted-foreground">Enhanced verification</span>
+                      {app.requiresEnhancedVerification ? (
+                        <Badge variant="outline" className="border-amber-400 text-amber-800 bg-white text-xs">
+                          REQUIRED
+                        </Badge>
+                      ) : <span className="text-muted-foreground">no</span>}
+                    </div>
+                    {app.enhancedVerificationReasons && app.enhancedVerificationReasons.length > 0 && (
+                      <div className="col-span-2 flex flex-wrap gap-2 bg-white rounded px-3 py-2">
+                        <span className="text-muted-foreground text-xs">Reasons:</span>
+                        {app.enhancedVerificationReasons.map((r) => (
+                          <Badge key={r} variant="outline" className="text-xs">{r}</Badge>
+                        ))}
+                      </div>
+                    )}
+                    {app.residentialHistory && (
+                      <div className="col-span-2 bg-white rounded px-3 py-2">
+                        <div className="text-muted-foreground text-xs mb-1">Residential history (last 10 years)</div>
+                        <pre className="text-xs whitespace-pre-wrap font-mono max-h-40 overflow-y-auto">{safePretty(app.residentialHistory)}</pre>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Onboarding-form declarations (14 role-specific checkboxes) —
+                  persisted only inside internal_notes JSON per Lane A audit
+                  (SAVED-BUT-NOT-READBACK). Surface them so admin can verify
+                  each check was actually ticked. Server never re-validated
+                  these; we're only reading, not gating. */}
+              {app.internalNotes && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Onboarding Declarations</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <DeclarationList raw={app.internalNotes} />
+                  </CardContent>
+                </Card>
+              )}
+
+              {app.declarationSignatureSha256 && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Declaration Attestation</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-xs font-mono break-all bg-white rounded px-3 py-2 text-slate-700">
+                      SHA-256: {app.declarationSignatureSha256}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* Review flags */}
               {flags.length > 0 && (
