@@ -40,7 +40,8 @@ const CONTENT: Record<EmailVariant, Record<'en' | 'he', {
       accountUrl: 'https://petwash.co.il/my-account',
       helpLabel: 'Help:',
       helpDesc: 'FAQs, contact, troubleshooting',
-      helpUrl: 'https://petwash.co.il/help',
+      // Deeplinks-round-3 (2026-08-22): /help is a 404 on the client; canonical is /support.
+      helpUrl: 'https://petwash.co.il/support',
       quickAccess: 'Quick access',
       subject: (name) => `Welcome to Pet Wash\u2122, ${name} \u2014 Your Account is Ready`,
     },
@@ -56,7 +57,8 @@ const CONTENT: Record<EmailVariant, Record<'en' | 'he', {
       accountUrl: 'https://petwash.co.il/my-account',
       helpLabel: '\u05E2\u05D6\u05E8\u05D4:',
       helpDesc: '\u05E9\u05D0\u05DC\u05D5\u05EA \u05E0\u05E4\u05D5\u05E6\u05D5\u05EA, \u05D9\u05E6\u05D9\u05E8\u05EA \u05E7\u05E9\u05E8, \u05E4\u05EA\u05E8\u05D5\u05DF \u05D1\u05E2\u05D9\u05D5\u05EA',
-      helpUrl: 'https://petwash.co.il/help',
+      // Deeplinks-round-3 (2026-08-22): /help is a 404 on the client; canonical is /support.
+      helpUrl: 'https://petwash.co.il/support',
       quickAccess: '\u05D2\u05D9\u05E9\u05D4 \u05DE\u05D4\u05D9\u05E8\u05D4',
       subject: (name) => `\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC-Pet Wash\u2122, ${name} \u2014 \u05D4\u05D7\u05E9\u05D1\u05D5\u05DF \u05E9\u05DC\u05DA \u05DE\u05D5\u05DB\u05DF`,
     },
@@ -71,10 +73,18 @@ const CONTENT: Record<EmailVariant, Record<'en' | 'he', {
       ctaUrl: 'https://petwash.co.il/provider-onboarding',
       accountLabel: 'Account:',
       accountDesc: 'update details, security, availability',
-      accountUrl: 'https://petwash.co.il/provider/settings',
+      // Deeplinks-round-3 (2026-08-22): /provider/settings is a 404. The
+      // canonical provider settings surface is /provider-os?m=profile —
+      // App.tsx already ships a Redirect from /provider/account to that
+      // target, so linking there gets a stable landing without adding a
+      // second redirect indirection.
+      accountUrl: 'https://petwash.co.il/provider/account',
       helpLabel: 'Help:',
       helpDesc: 'provider FAQs, policies, support',
-      helpUrl: 'https://petwash.co.il/help/providers',
+      // Deeplinks-round-3 (2026-08-22): /help/providers is a 404 — falling
+      // back to the shared /support surface until a dedicated provider help
+      // hub exists.
+      helpUrl: 'https://petwash.co.il/support',
       quickAccess: 'Quick access',
       subject: (name) => `Welcome to Pet Wash\u2122 Team, ${name} \u2014 Provider Account Created`,
     },
@@ -87,10 +97,18 @@ const CONTENT: Record<EmailVariant, Record<'en' | 'he', {
       ctaUrl: 'https://petwash.co.il/provider-onboarding',
       accountLabel: '\u05D7\u05E9\u05D1\u05D5\u05DF:',
       accountDesc: '\u05E2\u05D3\u05DB\u05D5\u05DF \u05E4\u05E8\u05D8\u05D9\u05DD, \u05D0\u05D1\u05D8\u05D7\u05D4, \u05D6\u05DE\u05D9\u05E0\u05D5\u05EA',
-      accountUrl: 'https://petwash.co.il/provider/settings',
+      // Deeplinks-round-3 (2026-08-22): /provider/settings is a 404. The
+      // canonical provider settings surface is /provider-os?m=profile —
+      // App.tsx already ships a Redirect from /provider/account to that
+      // target, so linking there gets a stable landing without adding a
+      // second redirect indirection.
+      accountUrl: 'https://petwash.co.il/provider/account',
       helpLabel: '\u05E2\u05D6\u05E8\u05D4:',
       helpDesc: '\u05E9\u05D0\u05DC\u05D5\u05EA \u05E0\u05E4\u05D5\u05E6\u05D5\u05EA \u05DC\u05E1\u05E4\u05E7\u05D9\u05DD, \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA, \u05EA\u05DE\u05D9\u05DB\u05D4',
-      helpUrl: 'https://petwash.co.il/help/providers',
+      // Deeplinks-round-3 (2026-08-22): /help/providers is a 404 — falling
+      // back to the shared /support surface until a dedicated provider help
+      // hub exists.
+      helpUrl: 'https://petwash.co.il/support',
       quickAccess: '\u05D2\u05D9\u05E9\u05D4 \u05DE\u05D4\u05D9\u05E8\u05D4',
       subject: (name) => `\u05D1\u05E8\u05D5\u05DB\u05D9\u05DD \u05D4\u05D1\u05D0\u05D9\u05DD \u05DC\u05E6\u05D5\u05D5\u05EA Pet Wash\u2122, ${name} \u2014 \u05D7\u05E9\u05D1\u05D5\u05DF \u05E1\u05E4\u05E7 \u05E0\u05D5\u05E6\u05E8`,
     },
@@ -108,7 +126,8 @@ const CONTENT: Record<EmailVariant, Record<'en' | 'he', {
       accountUrl: 'https://petwash.co.il/my-account',
       helpLabel: 'Help:',
       helpDesc: 'staff FAQs, policies, IT support',
-      helpUrl: 'https://petwash.co.il/help',
+      // Deeplinks-round-3 (2026-08-22): /help is a 404 on the client; canonical is /support.
+      helpUrl: 'https://petwash.co.il/support',
       quickAccess: 'Quick access',
       subject: (name) => `PetWash \u2014 Access Request Received, ${name}`,
     },
@@ -124,7 +143,8 @@ const CONTENT: Record<EmailVariant, Record<'en' | 'he', {
       accountUrl: 'https://petwash.co.il/my-account',
       helpLabel: '\u05E2\u05D6\u05E8\u05D4:',
       helpDesc: '\u05E9\u05D0\u05DC\u05D5\u05EA \u05E0\u05E4\u05D5\u05E6\u05D5\u05EA, \u05DE\u05D3\u05D9\u05E0\u05D9\u05D5\u05EA, \u05EA\u05DE\u05D9\u05DB\u05D4 \u05D8\u05DB\u05E0\u05D9\u05EA',
-      helpUrl: 'https://petwash.co.il/help',
+      // Deeplinks-round-3 (2026-08-22): /help is a 404 on the client; canonical is /support.
+      helpUrl: 'https://petwash.co.il/support',
       quickAccess: '\u05D2\u05D9\u05E9\u05D4 \u05DE\u05D4\u05D9\u05E8\u05D4',
       subject: (name) => `PetWash \u2014 \u05D1\u05E7\u05E9\u05EA \u05D2\u05D9\u05E9\u05D4 \u05D4\u05EA\u05E7\u05D1\u05DC\u05D4, ${name}`,
     },
