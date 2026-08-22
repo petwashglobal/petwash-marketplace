@@ -314,23 +314,21 @@ router.get('/walkers/search', async (req, res) => {
       .orderBy(desc(walkerProfiles.averageRating))
       .limit(200);
 
-    const mapped = walkers.map(w => ({
-      ...w,
-      fullName: w.fullName || '',
-      city: w.city || '',
-      hourlyRateIls: w.hourlyRateIls ? Number(w.hourlyRateIls) : 60,
-      rating: w.averageRating ? parseFloat(w.averageRating) : 0,
-      completedWalks: w.totalWalksCompleted || 0,
-      available: w.isAvailable ?? false,
-      verified: w.verificationStatus === 'verified',
-      instantBook: w.instantBook ?? false,
-      specialties: w.specialties || [],
-      dogSizes: w.dogSizes || [],
-      hasBodyCamera: w.hasBodyCamera ?? false,
-      hasDroneAccess: w.hasDroneAccess ?? false,
-    }));
+    // DTO round 1 (2026-08-22): previously `walkers.map(w => ({...w, ...}))`
+    // spread the FULL row on an UNAUTHENTICATED endpoint — leaking every
+    // walker's email, phone, kycVerified, governmentIdUrl, biometricMatchScore,
+    // bankAccountVerified, nayaxPayoutAccountId, commissionRate, adminNotes,
+    // internalNotes to any anonymous visitor. Uses the existing
+    // `projectPublicWalker` helper (already used at line 234 for /walkers/:id)
+    // so the surface stays a single audited allowlist. filter(Boolean) drops
+    // any row that fails projection.
+    const mapped = walkers
+      .map(w => projectPublicWalker(w))
+      .filter((w): w is NonNullable<typeof w> => w !== null);
 
-    const filtered = city ? mapped.filter(w => w.city.toLowerCase().includes(city.toLowerCase())) : mapped;
+    const filtered = city
+      ? mapped.filter(w => (w.city || '').toLowerCase().includes(city.toLowerCase()))
+      : mapped;
     res.json(filtered);
   } catch (error: any) {
     logger.error('[Walk My Pet] GET walkers/search error', { error: error.message });
@@ -371,20 +369,22 @@ router.post('/walkers/search', async (req, res) => {
 
     const walkers = await query;
 
-    // Calculate exact distance and filter by premium features (using shared MapsService)
+    // DTO round 1 (2026-08-22): same as the GET /walkers/search fix above —
+    // this UNAUTHENTICATED geo-search previously spread `...walker` on every
+    // result, echoing KYC + banking + live GPS back to the anonymous caller.
+    // Now: compute distance/eligibility on the raw row (server-side), then
+    // project to the public DTO before echoing. Live currentLatitude /
+    // currentLongitude are consumed server-side and DELIBERATELY dropped
+    // from the response — the DTO carries neither.
     const walkersWithDistance = walkers
       .map(walker => {
         const walkerLat = parseFloat(walker.currentLatitude || '0');
         const walkerLon = parseFloat(walker.currentLongitude || '0');
-        
-        // Use shared distance calculation
         const distance = calculateDistance(latitude, longitude, walkerLat, walkerLon);
-
-        return {
-          ...walker,
-          distanceKm: distance
-        };
+        const dto = projectPublicWalker(walker);
+        return dto ? { ...dto, distanceKm: distance, hasBodyCamera: walker.hasBodyCamera === true, hasDroneAccess: walker.hasDroneAccess === true } : null;
       })
+      .filter((w): w is NonNullable<typeof w> => w !== null)
       .filter(w => w.distanceKm <= radiusKm)
       .filter(w => !hasBodyCamera || w.hasBodyCamera)
       .filter(w => !hasDroneAccess || w.hasDroneAccess)
@@ -2024,24 +2024,18 @@ router.get('/walker-detail/:id', async (req, res) => {
       .orderBy(desc(walkerReviews.createdAt))
       .limit(10);
 
-    // Transform to frontend expected format
-    const walkerForFrontend = {
-      id: walker.id,
-      userId: walker.userId,
-      firstName: walker.firstName || 'Walker',
-      lastName: walker.lastName || '',
-      email: walker.email || '',
-      phone: walker.phone || '',
-      city: walker.city || 'Tel Aviv',
-      bio: walker.bio || '',
-      yearsOfExperience: walker.yearsOfExperience || 0,
-      pricePerWalkCents: walker.pricePerWalkCents || 5000,
-      profilePictureUrl: walker.profilePhotoUrl,
-      rating: walker.averageRating || '4.9',
-      totalWalks: walker.totalWalks || 0,
-      isActive: walker.isActive !== false,
-      isVerified: walker.verificationStatus === 'verified',
-    };
+    // DTO round 1 (2026-08-22): previously echoed `walker.email`,
+    // `walker.phone`, and `walker.userId` on this UNAUTHENTICATED
+    // endpoint. Numeric-ID enumeration harvested every walker's real
+    // phone / email for spam and revealed their Firebase UID. Now
+    // routed through the shared `projectPublicWalker` allowlist —
+    // same DTO the search endpoints emit. Contact-reach flows go
+    // through the authenticated /booking-requests/:id/provider-contact
+    // gate (owner + status-window check) rather than a raw phone leak.
+    const walkerForFrontend = projectPublicWalker(walker);
+    if (!walkerForFrontend) {
+      return res.status(404).json({ error: 'Walker not available' });
+    }
 
     const reviewsForFrontend = reviews.map(r => ({
       id: r.id,
