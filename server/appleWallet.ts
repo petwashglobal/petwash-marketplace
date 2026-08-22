@@ -45,6 +45,32 @@ interface StationLocation {
   relevantText: string;
 }
 
+interface BookingPassData {
+  /** Booking / requestId shown as Order Reference on the pass and encoded in the QR. */
+  requestId: string;
+  /** Firebase uid of the customer this pass belongs to (ownership + push targeting). */
+  userId: string;
+  /** Displayed on the pass (usually the caller's Firebase display name). */
+  userName: string;
+  /** Service label already localised by the caller (e.g. "K9000 Wash" / "שטיפת K9000"). */
+  serviceLabel: string;
+  /** Provider display name (host / sitter / walker / groomer). Optional for K9000. */
+  providerName?: string | null;
+  /** Address shown on the pass and used to seed the proximity notification. */
+  providerAddress?: string | null;
+  /** ISO-like scheduled start moment. Powers the pass' `relevantDate`. */
+  scheduledAt?: Date | null;
+  /** Pre-formatted date+time strings so pass text matches the confirmation UI. */
+  dateLabel: string;
+  timeLabel: string;
+  /** Optional line-items to mirror the confirmation-page Order Summary block. */
+  totalCents?: number | null;
+  subtotalCents?: number | null;
+  feeCents?: number | null;
+  /** ILS by default — no other currency is billed on PetWash today. */
+  currency?: string;
+}
+
 interface BusinessCardData {
   name: string;
   title: string;
@@ -461,6 +487,182 @@ export class AppleWalletService {
     } catch (error) {
       logger.error('[Apple Wallet] Error generating E-Voucher:', error);
       throw new Error('Failed to generate E-Voucher');
+    }
+  }
+
+  /**
+   * pass.json for the booking-confirmation ticket. Uses PKPass "eventTicket"
+   * style so the Wallet card renders like a cinema/airline ticket rather
+   * than the coupon/loyalty layouts already used above.
+   *
+   * Money numbers on the pass are read-only labels — the pass never carries
+   * writable credit and never bypasses the SUMIT / VAT ledger.
+   */
+  private static getBookingPassTemplate(data: BookingPassData) {
+    const authToken = this.generateAuthToken(data.userId);
+    const currency = data.currency || 'ILS';
+    const ils = (cents?: number | null) =>
+      typeof cents === 'number' ? `₪${(cents / 100).toFixed(2)}` : '';
+
+    const secondary: any[] = [
+      { key: 'date',     label: 'DATE', value: data.dateLabel },
+      { key: 'time',     label: 'TIME', value: data.timeLabel },
+    ];
+    if (data.providerAddress) {
+      secondary.push({ key: 'location', label: 'LOCATION', value: data.providerAddress });
+    }
+
+    const auxiliary: any[] = [];
+    if (data.providerName) {
+      auxiliary.push({ key: 'provider', label: 'PROVIDER', value: data.providerName });
+    }
+    if (typeof data.totalCents === 'number') {
+      auxiliary.push({
+        key: 'total',
+        label: 'TOTAL',
+        value: ils(data.totalCents),
+        currencyCode: currency,
+      });
+    }
+
+    const backFields: any[] = [
+      { key: 'orderRef',  label: 'Order Reference', value: data.requestId },
+      { key: 'customer',  label: 'Customer',        value: data.userName },
+      { key: 'service',   label: 'Service',         value: data.serviceLabel },
+    ];
+    if (typeof data.subtotalCents === 'number') {
+      backFields.push({ key: 'subtotal', label: 'Subtotal', value: ils(data.subtotalCents) });
+    }
+    if (typeof data.feeCents === 'number') {
+      backFields.push({ key: 'fee', label: 'Service Fee', value: ils(data.feeCents) });
+    }
+    backFields.push({
+      key: 'support',
+      label: 'Support',
+      value: 'Contact PetWash™ inside the app if you need to reschedule or cancel.',
+    });
+
+    return {
+      formatVersion: 1,
+      passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID || 'pass.com.petwash.voucher',
+      teamIdentifier: process.env.APPLE_TEAM_ID || '000000000',
+      organizationName: '⁦PetWash™⁩',
+      description: `PetWash Booking — ${data.serviceLabel}`,
+      logoText: '⁦PetWash™⁩',
+      serialNumber: `BOOKING_${data.requestId}`,
+
+      // Brand palette: black surface, white text, gold labels.
+      backgroundColor: 'rgb(12, 12, 12)',
+      foregroundColor: 'rgb(255, 255, 255)',
+      labelColor: 'rgb(212, 175, 55)',
+
+      sharingProhibited: true,
+
+      webServiceURL: `${process.env.BASE_URL || 'https://petwash.co.il'}/api/wallet`,
+      authenticationToken: authToken,
+
+      // Bring the pass to the top of the lock screen around the appointment.
+      ...(data.scheduledAt ? { relevantDate: data.scheduledAt.toISOString() } : {}),
+
+      // Station proximity — reuse the real (audited) K9000 station list.
+      locations: this.STATION_LOCATIONS,
+
+      voided: false,
+
+      eventTicket: {
+        headerFields: [{ key: 'ref', label: 'ORDER', value: data.requestId }],
+        primaryFields: [{
+          key: 'service',
+          label: 'BOOKING',
+          value: data.serviceLabel,
+        }],
+        secondaryFields: secondary,
+        auxiliaryFields: auxiliary,
+        backFields,
+      },
+
+      // QR encodes the requestId — the same value we display on the
+      // confirmation page. Providers scan it from Provider Today to
+      // resolve the booking; no signed token here since a booking QR is
+      // NOT a redemption credential.
+      barcodes: [{
+        message: data.requestId,
+        format: 'PKBarcodeFormatQR',
+        messageEncoding: 'iso-8859-1',
+        altText: `Booking ${data.requestId}`,
+      }],
+    };
+  }
+
+  /**
+   * Generate the booking-confirmation Wallet pass for a single booking.
+   * Emits a signed .pkpass buffer the caller streams to the client.
+   *
+   * NOT a redemption credential — carries display data only. Ownership is
+   * enforced upstream in the route handler (must match the caller's uid).
+   */
+  static async generateBookingPass(data: BookingPassData): Promise<Buffer> {
+    try {
+      if (!this.hasValidCertificates()) {
+        throw new Error('Apple Wallet certificates not configured.');
+      }
+
+      // Small QR (128px) rendered from the requestId; same content the
+      // pass barcode carries so the pass' logo/icon stay legible even on
+      // devices that render the icon in a small footprint.
+      const qrCodeBuffer = await QRCode.toBuffer(data.requestId, {
+        errorCorrectionLevel: 'M',
+        width: 200,
+        margin: 1,
+        color: { dark: '#000000', light: '#FFFFFF' },
+      });
+
+      const passJson = this.getBookingPassTemplate(data);
+
+      const pass = new PKPass(
+        {
+          'pass.json': Buffer.from(JSON.stringify(passJson)),
+          'icon.png': qrCodeBuffer,
+          'icon@2x.png': qrCodeBuffer,
+          'logo.png': qrCodeBuffer,
+          'logo@2x.png': qrCodeBuffer,
+        },
+        {
+          wwdr: process.env.APPLE_WWDR_CERT!,
+          signerCert: process.env.APPLE_SIGNER_CERT!,
+          signerKey: process.env.APPLE_SIGNER_KEY!,
+          signerKeyPassphrase: process.env.APPLE_KEY_PASSPHRASE || '',
+        },
+        {},
+      );
+
+      const passBuffer = pass.getAsBuffer();
+
+      const authToken = this.generateAuthToken(data.userId);
+      await this.storePassMetadata({
+        userId: data.userId,
+        serialNumber: passJson.serialNumber,
+        authenticationToken: authToken,
+        type: 'booking',
+        requestId: data.requestId,
+        serviceLabel: data.serviceLabel,
+        providerName: data.providerName || null,
+        scheduledAt: data.scheduledAt || null,
+        totalCents: typeof data.totalCents === 'number' ? data.totalCents : null,
+        userName: data.userName,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      } as any);
+
+      logger.info('[Apple Wallet] Booking pass generated', {
+        requestId: data.requestId,
+        userId: data.userId,
+      });
+
+      return passBuffer;
+    } catch (error) {
+      logger.error('[Apple Wallet] Error generating booking pass:', error);
+      throw new Error('Failed to generate booking pass');
     }
   }
 

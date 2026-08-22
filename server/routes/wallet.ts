@@ -545,6 +545,135 @@ router.post('/my-business-card', requireAuth, async (req, res) => {
 });
 
 /**
+ * POST /api/wallet/booking-pass
+ * Generate a booking-confirmation .pkpass for Apple Wallet.
+ *
+ * 🔒 Requires authentication AND ownership: `booking_requests.owner_id`
+ *    MUST equal the caller's Firebase UID. A booking pass carries
+ *    display-only data (order reference, service, date, location, total
+ *    label) — it is NOT a redemption credential, so the QR encodes the
+ *    plain requestId (same value shown on /booking/confirmation/:id).
+ *
+ * Companion to the BookingConfirmedHero on the client — the "Add to
+ * Apple Wallet" button posts here and streams the pkpass back for
+ * Safari/iOS to open directly in Wallet.
+ */
+router.post('/booking-pass', requireAuth, async (req, res) => {
+  try {
+    const userId = resolveUid(req);
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+
+    const { requestId } = req.body as { requestId?: string };
+    if (!requestId || typeof requestId !== 'string') {
+      return res.status(400).json({ error: 'requestId is required' });
+    }
+
+    // Lazy import so the wallet router stays lean.
+    const { db: pgDb } = await import('../db');
+    const { bookingRequests } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const [row] = await pgDb
+      .select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+
+    if (!row) return res.status(404).json({ error: 'Booking not found' });
+    if (row.ownerId !== userId) {
+      logger.warn('[Wallet API] Booking pass request rejected — owner mismatch', {
+        callerUid: userId,
+        requestId,
+      });
+      return res.status(403).json({ error: 'Not the booking owner' });
+    }
+
+    if (!AppleWalletService.hasValidCertificates()) {
+      return res.status(503).json({ error: 'Apple Wallet is not configured. Please contact support.' });
+    }
+
+    // Firebase profile → display name (falls back to caller email local-part).
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data() || {};
+    const userName: string =
+      userData.displayName ||
+      userData.name ||
+      (userData.email as string | undefined)?.split('@')[0] ||
+      'Guest';
+
+    // Localise service label the same way the confirmation page does —
+    // Hebrew primary, English fallback. Accept-Language wins if present.
+    const acceptLanguage = (req.headers['accept-language'] || '').toLowerCase();
+    const isHebrew = acceptLanguage.includes('he') || acceptLanguage.startsWith('iw');
+    const serviceLabelsHe: Record<string, string> = {
+      k9000_wash: 'שטיפת K9000',
+      pet_sitting: 'שמרטפות',
+      dog_walking: 'טיול כלבים',
+      grooming: 'טיפוח',
+      pet_taxi: 'מונית לחיות',
+      daycare: 'מעון יומי',
+      training: 'אילוף',
+    };
+    const serviceLabelsEn: Record<string, string> = {
+      k9000_wash: 'K9000 Wash',
+      pet_sitting: 'Pet Sitting',
+      dog_walking: 'Dog Walking',
+      grooming: 'Grooming',
+      pet_taxi: 'Pet Taxi',
+      daycare: 'Daycare',
+      training: 'Training',
+    };
+    const serviceLabel =
+      (isHebrew ? serviceLabelsHe[row.serviceType] : serviceLabelsEn[row.serviceType]) ||
+      row.serviceType ||
+      'Booking';
+
+    const startDate = row.startDate ? new Date(row.startDate as any) : null;
+    const dateLabel = startDate
+      ? startDate.toLocaleDateString(isHebrew ? 'he-IL' : 'en-GB', {
+          day: '2-digit', month: 'short', year: 'numeric',
+        })
+      : '—';
+    const timeLabel = startDate
+      ? startDate.toLocaleTimeString(isHebrew ? 'he-IL' : 'en-GB', {
+          hour: '2-digit', minute: '2-digit',
+        })
+      : '—';
+
+    const passBuffer = await AppleWalletService.generateBookingPass({
+      requestId: row.requestId,
+      userId,
+      userName,
+      serviceLabel,
+      providerName: (row as any).providerName || null,
+      providerAddress:
+        (row as any).providerAddress || (row as any).pickupAddress || null,
+      scheduledAt: startDate,
+      dateLabel,
+      timeLabel,
+      totalCents: typeof row.totalCents === 'number' ? row.totalCents : Number(row.totalCents) || null,
+      subtotalCents: typeof row.subtotalCents === 'number' ? row.subtotalCents : Number(row.subtotalCents) || null,
+      feeCents: typeof row.serviceFeeCents === 'number' ? row.serviceFeeCents : Number(row.serviceFeeCents) || null,
+      currency: (row.currency as string) || 'ILS',
+    });
+
+    res.setHeader('Content-Type', 'application/vnd.apple.pkpass');
+    res.setHeader(
+      'Content-Disposition',
+      `inline; filename="PetWash_Booking_${row.requestId}.pkpass"`,
+    );
+    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+    res.setHeader('Pragma', 'no-cache');
+    res.send(passBuffer);
+
+    logger.info('[Wallet API] Booking pass generated', { requestId, userId });
+  } catch (error) {
+    logger.error('[Wallet API] Error generating booking pass:', error);
+    res.status(500).json({ error: 'Failed to generate booking pass' });
+  }
+});
+
+/**
  * POST /api/wallet/business-card
  * Generate a digital business card for Apple Wallet.
  *
