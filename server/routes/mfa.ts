@@ -259,6 +259,14 @@ mfaRouter.post('/verify', validateFirebaseToken, mfaRateLimiter, async (req: Req
       const result = method === 'sms'
         ? await twoFactorAuth.verifySmsCode(uid, sessionId, code)
         : await twoFactorAuth.verifyEmailCode(uid, sessionId, code);
+      // False-success round 1 (2026-08-22): TwoFactorAuthService returns
+      // `{ success: false, message: 'Invalid code' | 'Too many attempts'
+      // | 'Code expired' }` on failure. Streaming that at HTTP 200 lets
+      // clients that only branch on `res.ok` treat a WRONG OTP as a
+      // verified one — a hard 2FA bypass. Status must reflect success.
+      if (!result?.success) {
+        return res.status(400).json(result || { success: false, message: 'Verification failed' });
+      }
       return res.json(result);
     }
 
@@ -285,6 +293,18 @@ mfaRouter.post('/send-otp', validateFirebaseToken, async (req: Request, res: Res
     }
 
     const result = await twoFactorAuth.sendCode(uid, method, { phone, email, firstName }, language || 'he');
+    // False-success round 1 (2026-08-22): sendCode returns
+    // `{ success: false, reason: 'cooldown_active' | 'rate_limited_ip'
+    // | 'delivery_failed' | 'invalid_phone' }` on failure. Wire it as
+    // 4xx/5xx so the client's "code sent" screen only shows on real
+    // sends. cooldown/rate-limit are 429; delivery/invalid are 400.
+    if (!result?.success) {
+      const status =
+        result?.reason === 'cooldown_active' || result?.reason === 'rate_limited_ip'
+          ? 429
+          : 400;
+      return res.status(status).json(result);
+    }
     res.json(result);
   } catch (error) {
     logger.error('[MFA-API] Send OTP error:', error);
