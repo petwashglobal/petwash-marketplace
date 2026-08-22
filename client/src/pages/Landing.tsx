@@ -8,7 +8,11 @@ import { Layout } from '@/components/Layout';
 import { LegalFooter } from '@/components/LegalFooter';
 import { PetWashDivisions } from '@/components/PetWashDivisions';
 import { PremiumPlatformGrid } from '@/components/marketing/PremiumPlatformGrid';
-import { LandingLiveBayStrip } from '@/components/LandingLiveBayStrip';
+// LandingLiveBayStrip import removed 2026-08-22 — the strip is no
+// longer mounted on the public Landing page (CEO directive: live
+// per-bay hardware telemetry is back-office only). Component itself
+// is preserved for the back-office /k9000/bay-status view; the
+// regression test now pins the NON-inclusion on public.
 import { LuxuryPageWrapper, LuxuryCardGrid, LuxuryFeatureCard } from '@/components/LuxuryThemeWrapper';
 import ProviderRegistrationBanner from '@/components/ProviderRegistrationBanner';
 import { t, type Language } from '@/lib/i18n';
@@ -210,12 +214,15 @@ export default function Landing({ language, onLanguageChange }: LandingProps) {
                 {/* Gold glow effect behind image */}
                 <div className="absolute -inset-4 bg-gradient-to-br from-[#c6a664]/20 via-transparent to-[#c6a664]/10 rounded-2xl -z-10 blur-xl animate-gold-pulse" />
               </div>
-              {/* 2026-08-18 COMPETITIVE — live K9000 bay status under the hero.
-                  Reads real hardware state on 15s poll. WhatIDog (a directory)
-                  literally cannot show a signal like this because they have no
-                  station. Fail-quiet: if the API is unreachable, the strip shows
-                  a neutral "signal not available" state instead of vanishing. */}
-              <LandingLiveBayStrip language={language} />
+              {/* REMOVED 2026-08-22 (CEO) — the live K9000 bay-status strip
+                  (`LandingLiveBayStrip`) was shipping real per-station,
+                  per-bay hardware telemetry on the PUBLIC Landing hero. That
+                  data is operational / back-office only (station usage
+                  patterns, downtime, per-bay availability) — public
+                  exposure is a competitive-intelligence gift and reveals
+                  when a station is empty. Component + polling endpoint are
+                  preserved for the back-office bay-status view at
+                  /k9000/bay-status; this only removes the public mount. */}
             </div>
           </div>
         </section>
