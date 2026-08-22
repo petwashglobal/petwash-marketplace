@@ -814,8 +814,15 @@ export default function Settings() {
       localStorage.removeItem('petwash_device_trust_token');
       revokeDeviceTrust();
 
+      // Firebase local signOut MUST succeed before we declare "signed out
+      // everywhere" — silent swallow (Lane D audit 2026-08-22 §8) meant
+      // the user could see the success toast while their local Firebase
+      // session lingered on a shared device. If signOut throws, we log
+      // and surface the failure so the caller doesn't false-claim.
       const { auth } = await import('@/lib/firebase');
-      await auth?.signOut().catch(() => {});
+      if (auth) {
+        await auth.signOut();
+      }
 
       toast({
         title: language === 'he' ? 'התנתקת מכל המכשירים' : 'Signed out everywhere',
