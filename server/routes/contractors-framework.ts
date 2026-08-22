@@ -250,16 +250,47 @@ router.post("/ratings", authMiddleware, async (req, res) => {
   }
 });
 
-// GET /api/ratings - Get all ratings (PROTECTED)
+// GET /api/ratings?contractorId=... — list ratings for a specific contractor.
+//
+// DTO round 3 (2026-08-22): previously `db.select().from(ratings)` dumped
+// the ENTIRE ratings table to any authenticated caller and echoed the
+// `given_by_user_id` column, associating each rating with the customer
+// who wrote it (a soft PII leak that lets you build a per-customer
+// review-history profile). Fix: require an explicit `contractorId` filter
+// so callers can't scrape the corpus, and project to a public shape that
+// omits `givenByUserId`.
 router.get("/ratings", authMiddleware, async (req, res) => {
   try {
-    const result = await db.select().from(ratings);
-    res.json(result);
+    const contractorId = typeof req.query.contractorId === 'string'
+      ? req.query.contractorId
+      : '';
+    if (!contractorId) {
+      return res.status(400).json({
+        error: 'VALIDATION_ERROR',
+        message: 'contractorId query param is required',
+      });
+    }
+
+    const rows = await db
+      .select({
+        id: ratings.id,
+        contractorId: ratings.contractorId,
+        score: ratings.score,
+        category: ratings.category,
+        comment: ratings.comment,
+        createdAt: ratings.createdAt,
+        // givenByUserId intentionally NOT selected — public review
+        // reader should see the score + text, not the reviewer id.
+      })
+      .from(ratings)
+      .where(eq(ratings.contractorId, contractorId));
+
+    res.json(rows);
   } catch (error: any) {
     console.error("[Ratings API] List error:", error);
-    res.status(500).json({ 
-      error: "INTERNAL_ERROR", 
-      message: "Failed to list ratings" 
+    res.status(500).json({
+      error: "INTERNAL_ERROR",
+      message: "Failed to list ratings"
     });
   }
 });
