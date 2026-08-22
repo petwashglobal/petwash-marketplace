@@ -759,10 +759,12 @@ export class WalkSessionService {
       )
       .orderBy(sql`${walkBookings.actualStartTime} DESC`);
 
+    // DTO discipline (Lane C audit 2026-08-22): drop walkerId (internal id;
+    // owner reaches the walker through the booking / messaging surface) and
+    // vitalDataSummary (untyped blob not currently rendered by the owner UI).
     return activeWalks.map(walk => ({
       id: walk.id,
       bookingId: walk.bookingId,
-      walkerId: walk.walkerId,
       petId: walk.petId,
       scheduledDate: walk.scheduledDate,
       actualStartTime: walk.actualStartTime,
@@ -770,7 +772,6 @@ export class WalkSessionService {
       lastKnownLocation: walk.lastKnownLocation || walk.checkInLocation,
       lastGPSUpdate: walk.lastGPSUpdate,
       totalDistanceMeters: walk.totalDistanceMeters,
-      vitalDataSummary: walk.vitalDataSummary,
       isLiveTrackingActive: walk.isLiveTrackingActive,
     }));
   }
@@ -820,13 +821,22 @@ export class WalkSessionService {
     // Get walker details (would fetch from users table in production)
     // const walkerInfo = await this.getWalkerInfo(walk.walkerId);
 
+    // DTO discipline (Lane C audit 2026-08-22): strip fields the customer
+    // has no business seeing on the live-tracking view:
+    //   - walkerId (internal id; owner sees the walker via profile/messaging)
+    //   - isVideoStreamActive / isDroneMonitoringActive (internal ops signals
+    //     for the OWNER-VIEW they leak enterprise capability flags)
+    //   - safety block (geofenceViolationCount / emergencyStopReason are
+    //     ops-facing; a real safety event is surfaced through notifications,
+    //     not through a raw counter on the tracking screen)
+    //   - vitals (arbitrary blob, not currently rendered — remove until a
+    //     typed DTO exists)
     return {
       status: 'active',
       walk: {
         id: walk.id,
         bookingId: walk.bookingId,
         petId: walk.petId,
-        walkerId: walk.walkerId,
         actualStartTime: walk.actualStartTime,
         elapsedTime,
         estimatedRemaining,
@@ -839,17 +849,9 @@ export class WalkSessionService {
         routePolyline: walk.routePolyline,
         totalDistanceMeters: walk.totalDistanceMeters || 0,
       },
-      vitals: walk.vitalDataSummary || {},
       bathroomMarkers: walk.bathroomMarkers || [], // PetWash™ pee/poo flags
       tracking: {
         isLiveTrackingActive: walk.isLiveTrackingActive,
-        isVideoStreamActive: walk.isVideoStreamActive,
-        isDroneMonitoringActive: walk.isDroneMonitoringActive,
-      },
-      safety: {
-        geofenceViolationCount: walk.geofenceViolationCount,
-        emergencyStopTriggered: walk.emergencyStopTriggered,
-        emergencyStopReason: walk.emergencyStopReason,
       },
     };
   }
