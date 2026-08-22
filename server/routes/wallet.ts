@@ -366,6 +366,119 @@ router.post('/update-vip', requireAuth, async (req, res) => {
 });
 
 /**
+ * POST /api/wallet/booking-pass/google
+ * Return the Google Wallet "save-to-wallet" URL for a booking.
+ *
+ * 🔒 Requires authentication AND ownership. Mirrors the Apple
+ * /api/wallet/booking-pass endpoint (which streams a .pkpass) — this
+ * one returns `{ saveUrl }` because Google's save-to-wallet flow is a
+ * client-side redirect to `https://pay.google.com/gp/v/save/{jwt}`.
+ *
+ * NOT a redemption credential — the pass carries display-only data
+ * (order reference, service, date, location, total label). The barcode
+ * value is the plain requestId.
+ */
+router.post('/booking-pass/google', requireAuth, async (req, res) => {
+  try {
+    const userId = resolveUid(req);
+    if (!userId) return res.status(401).json({ error: 'User not authenticated' });
+
+    const { requestId } = req.body as { requestId?: string };
+    if (!requestId || typeof requestId !== 'string') {
+      return res.status(400).json({ error: 'requestId is required' });
+    }
+
+    const { db: pgDb } = await import('../db');
+    const { bookingRequests } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+
+    const [row] = await pgDb
+      .select()
+      .from(bookingRequests)
+      .where(eq(bookingRequests.requestId, requestId))
+      .limit(1);
+
+    if (!row) return res.status(404).json({ error: 'Booking not found' });
+    if (row.ownerId !== userId) {
+      logger.warn('[Wallet API] Google booking pass rejected — owner mismatch', {
+        callerUid: userId,
+        requestId,
+      });
+      return res.status(403).json({ error: 'Not the booking owner' });
+    }
+
+    // Lazy-import Google service — keeps the wallet router lean.
+    const { GoogleWalletService } = await import('../googleWallet');
+    if (!GoogleWalletService.hasValidCredentials()) {
+      return res.status(503).json({ error: 'Google Wallet is not configured. Please contact support.' });
+    }
+
+    const userDoc = await db.collection('users').doc(userId).get();
+    const userData = userDoc.data() || {};
+    const userName: string =
+      userData.displayName ||
+      userData.name ||
+      (userData.email as string | undefined)?.split('@')[0] ||
+      'Guest';
+
+    const acceptLanguage = (req.headers['accept-language'] || '').toLowerCase();
+    const isHebrew = acceptLanguage.includes('he') || acceptLanguage.startsWith('iw');
+    const serviceLabelsHe: Record<string, string> = {
+      k9000_wash: 'שטיפת K9000', pet_sitting: 'שמרטפות', dog_walking: 'טיול כלבים',
+      grooming: 'טיפוח', pet_taxi: 'מונית לחיות', daycare: 'מעון יומי', training: 'אילוף',
+    };
+    const serviceLabelsEn: Record<string, string> = {
+      k9000_wash: 'K9000 Wash', pet_sitting: 'Pet Sitting', dog_walking: 'Dog Walking',
+      grooming: 'Grooming', pet_taxi: 'Pet Taxi', daycare: 'Daycare', training: 'Training',
+    };
+    const serviceLabel =
+      (isHebrew ? serviceLabelsHe[row.serviceType] : serviceLabelsEn[row.serviceType]) ||
+      row.serviceType || 'Booking';
+
+    const startDate = row.startDate ? new Date(row.startDate as any) : null;
+    const dateLabel = startDate
+      ? startDate.toLocaleDateString(isHebrew ? 'he-IL' : 'en-GB', {
+          day: '2-digit', month: 'short', year: 'numeric',
+        })
+      : '—';
+    const timeLabel = startDate
+      ? startDate.toLocaleTimeString(isHebrew ? 'he-IL' : 'en-GB', {
+          hour: '2-digit', minute: '2-digit',
+        })
+      : '—';
+
+    const jwt = await GoogleWalletService.generateBookingPassJWT({
+      requestId: row.requestId,
+      userId,
+      userName,
+      serviceLabel,
+      providerName: (row as any).providerName || null,
+      providerAddress:
+        (row as any).providerAddress || (row as any).pickupAddress || null,
+      scheduledAt: startDate,
+      dateLabel,
+      timeLabel,
+      totalCents: typeof row.totalCents === 'number' ? row.totalCents : Number(row.totalCents) || null,
+      subtotalCents: typeof row.subtotalCents === 'number' ? row.subtotalCents : Number(row.subtotalCents) || null,
+      feeCents: typeof row.serviceFeeCents === 'number' ? row.serviceFeeCents : Number(row.serviceFeeCents) || null,
+      currency: (row.currency as string) || 'ILS',
+    });
+
+    const saveUrl = `https://pay.google.com/gp/v/save/${jwt}`;
+
+    logger.info('[Wallet API] Google booking pass save URL generated', {
+      requestId,
+      userId,
+    });
+
+    res.json({ saveUrl });
+  } catch (error) {
+    logger.error('[Wallet API] Error generating Google booking pass:', error);
+    res.status(500).json({ error: 'Failed to generate Google booking pass' });
+  }
+});
+
+/**
  * POST /api/wallet/my-business-card
  * Generate authenticated user's personal business card
  * 🔒 Requires authentication

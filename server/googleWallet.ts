@@ -33,6 +33,22 @@ interface GoogleWalletVoucherData {
   description: string;
 }
 
+interface GoogleWalletBookingData {
+  requestId: string;
+  userId: string;
+  userName: string;
+  serviceLabel: string;
+  providerName?: string | null;
+  providerAddress?: string | null;
+  scheduledAt?: Date | null;
+  dateLabel: string;
+  timeLabel: string;
+  totalCents?: number | null;
+  subtotalCents?: number | null;
+  feeCents?: number | null;
+  currency?: string;
+}
+
 interface GoogleWalletBusinessCardData {
   name: string;
   title: string;
@@ -453,6 +469,147 @@ END:VCARD`;
     } catch (error) {
       logger.error('[Google Wallet] Error generating business card JWT:', error);
       throw new Error('Failed to generate Google Wallet business card');
+    }
+  }
+
+  /**
+   * Generate JWT for Google Wallet Booking Pass (Generic Object).
+   *
+   * NOT a redemption credential — encodes the plain requestId (same value
+   * shown on the confirmation page). Ownership is enforced upstream in
+   * the route handler (must match the caller's uid). Companion to the
+   * Apple `generateBookingPass` on the BookingConfirmedHero.
+   *
+   * Returns a base64url-encoded, unsigned save-to-wallet JWT that the
+   * client pastes into `https://pay.google.com/gp/v/save/{jwt}`.
+   */
+  static async generateBookingPassJWT(data: GoogleWalletBookingData): Promise<string> {
+    try {
+      const issuerId = process.env.GOOGLE_WALLET_ISSUER_ID;
+      if (!issuerId) throw new Error('GOOGLE_WALLET_ISSUER_ID not set');
+
+      const classId = `${issuerId}.petwash_booking`;
+      // Deterministic per-booking objectId — safe to re-issue for the same
+      // booking without piling up phantom passes in Google Wallet.
+      const objectId = `${issuerId}.booking_${data.requestId}`;
+
+      const currency = data.currency || 'ILS';
+      const ils = (cents?: number | null) =>
+        typeof cents === 'number' ? `₪${(cents / 100).toFixed(2)}` : '';
+
+      // Compose the primary "hero" text lines shown on the pass front.
+      const heroLines: Array<{ header: string; body: string }> = [
+        { header: 'DATE', body: `${data.dateLabel} · ${data.timeLabel}` },
+      ];
+      if (data.providerName)   heroLines.push({ header: 'PROVIDER', body: data.providerName });
+      if (data.providerAddress) heroLines.push({ header: 'LOCATION', body: data.providerAddress });
+      if (typeof data.totalCents === 'number') {
+        heroLines.push({ header: 'TOTAL', body: ils(data.totalCents) });
+      }
+
+      const textModulesData = heroLines.slice(0, 4).map((line, idx) => ({
+        id: `line_${idx}`,
+        header: line.header,
+        body: line.body,
+      }));
+
+      // Generic object — Google's canonical "event ticket / booking" shape.
+      // Uses the same black+gold palette the Apple pass and the client
+      // ticket hero already carry.
+      const genericObject: Record<string, unknown> = {
+        id: objectId,
+        classId,
+        state: 'ACTIVE',
+        cardTitle: {
+          defaultValue: { language: 'en', value: 'Pet Wash™ Booking' },
+        },
+        subheader: {
+          defaultValue: { language: 'en', value: data.serviceLabel },
+        },
+        header: {
+          defaultValue: { language: 'en', value: `Order ${data.requestId}` },
+        },
+        // Booking QR — plain requestId, same as the client hero + Apple pass.
+        barcode: {
+          type: 'QR_CODE',
+          value: data.requestId,
+          alternateText: `Booking ${data.requestId}`,
+        },
+        hexBackgroundColor: '#0C0C0C',
+        textModulesData,
+      };
+
+      // Inline the Generic Class so the JWT works even if the class has
+      // not been pre-created in Google Wallet Console yet. Google accepts
+      // both `genericClasses` and `genericObjects` in the same claims
+      // payload — the class is created on first save and re-used
+      // thereafter. Without this, the very first customer to click "Add
+      // to Google Wallet" hits an "invalid class id" error from
+      // pay.google.com.
+      const genericClass = {
+        id: classId,
+        classTemplateInfo: {
+          cardTemplateOverride: {
+            cardRowTemplateInfos: [
+              {
+                twoItems: {
+                  startItem: {
+                    firstValue: {
+                      fields: [{ fieldPath: 'object.textModulesData["line_0"]' }],
+                    },
+                  },
+                  endItem: {
+                    firstValue: {
+                      fields: [{ fieldPath: 'object.textModulesData["line_1"]' }],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+        hexBackgroundColor: '#0C0C0C',
+      };
+
+      const claims = {
+        iss: process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL,
+        aud: 'google',
+        origins: ['https://petwash.co.il'],
+        typ: 'savetowallet',
+        payload: {
+          // Inline the class alongside the object — Google Wallet API
+          // upserts the class on first save. Prevents the "invalid class
+          // id" pay.google.com failure on the first ever save call.
+          genericClasses: [genericClass],
+          genericObjects: [genericObject],
+        },
+      };
+
+      // Store metadata for later push / analytics.
+      await this.storePassMetadata({
+        userId: data.userId,
+        passId: objectId,
+        classId,
+        type: 'google_booking_pass',
+        requestId: data.requestId,
+        serviceLabel: data.serviceLabel,
+        providerName: data.providerName || null,
+        scheduledAt: data.scheduledAt || null,
+        totalCents: typeof data.totalCents === 'number' ? data.totalCents : null,
+        currency,
+        platform: 'google_wallet',
+        createdAt: new Date(),
+      });
+
+      logger.info('[Google Wallet] Booking pass JWT generated', {
+        requestId: data.requestId,
+        userId: data.userId,
+      });
+
+      return Buffer.from(JSON.stringify(claims)).toString('base64url');
+    } catch (error) {
+      logger.error('[Google Wallet] Error generating booking pass JWT:', error);
+      throw new Error('Failed to generate Google Wallet booking pass');
     }
   }
 
