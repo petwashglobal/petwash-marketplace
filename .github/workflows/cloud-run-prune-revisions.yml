@@ -1,10 +1,13 @@
-# One-click cleanup of stale Cloud Run revisions (they pin warm instances and burn
-# the me-west1 CPU quota). DRY-RUN by default — run once to preview, then re-run with
-# mode=delete. NEVER deletes the live revision or any tagged/traffic-serving one, and
-# keeps the newest N for rollback. Trigger from the Actions tab → "Run workflow".
+# Cleanup of stale Cloud Run revisions (they pin warm instances and burn the me-west1
+# CPU quota). Runs automatically every Sunday 04:07 UTC in DELETE mode, keeping the
+# newest 3 revisions and never touching the live-traffic one. Manual dispatch stays
+# available for on-demand runs (defaults to dry-run so a preview click stays safe).
 name: Prune old Cloud Run revisions
 
 on:
+  schedule:
+    # Sunday 04:07 UTC — off-peak, weekly. Pairs with the cost-cleanup cron at 03:17.
+    - cron: '7 4 * * 0'
   workflow_dispatch:
     inputs:
       mode:
@@ -40,8 +43,11 @@ jobs:
 
       - name: Prune old revisions
         env:
-          MODE: ${{ inputs.mode }}
-          KEEP: ${{ inputs.keep }}
+          # Scheduled runs have no `inputs.*` — fall back to delete mode + keep=3
+          # so the weekly cron actually cleans up. Manual dispatch keeps its own
+          # choices (dry-run stays the default when someone clicks the button).
+          MODE: ${{ inputs.mode || 'delete' }}
+          KEEP: ${{ inputs.keep || '3' }}
         run: |
           set -euo pipefail
           SVC="${SERVICE_NAME}"; REGION="${REGION}"; KEEP="${KEEP:-3}"
