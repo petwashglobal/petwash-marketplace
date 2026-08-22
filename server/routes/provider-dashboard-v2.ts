@@ -153,7 +153,6 @@ function toV1Shape(row: Record<string, any>) {
     meetGreetDate:       row.meet_greet_date ?? row.meetGreetDate ?? null,
     meetGreetLocation:   row.meet_greet_location ?? row.meetGreetLocation ?? null,
     meetGreetNotes:      row.meet_greet_notes ?? row.meetGreetNotes ?? null,
-    _source:             'booking_requests', // watermark for shadow comparison logging
   };
 }
 
@@ -219,7 +218,6 @@ router.get('/bookings', async (req: Request, res: Response) => {
       total,
       page: pageNum,
       totalPages: Math.ceil(total / limitNum),
-      _source: 'booking_requests',
     });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /bookings error', error);
@@ -276,7 +274,6 @@ router.get('/upcoming', async (req: Request, res: Response) => {
     res.json({
       success: true,
       upcoming: result.rows.map(toV1Shape),
-      _source: 'booking_requests',
     });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /upcoming error', error);
@@ -320,7 +317,7 @@ router.get('/booking-counts', async (req: Request, res: Response) => {
 
     logger.info('[ProviderDashboardV2] GET /booking-counts', { uid: user.uid, counts });
 
-    res.json({ success: true, counts, _source: 'booking_requests' });
+    res.json({ success: true, counts });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /booking-counts error', error);
     res.status(500).json({ error: 'Failed to load booking counts (v2)' });
@@ -487,7 +484,6 @@ router.get('/earnings', async (req: Request, res: Response) => {
           platformId:    'booking_requests',
         })),
       },
-      _source: 'booking_requests',
     });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /earnings error', error);
@@ -550,7 +546,6 @@ router.get('/stats', async (req: Request, res: Response) => {
         })),
         isActive: providerRecords.some(p => p.isActive),
       },
-      _source: 'booking_requests',
     });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /stats error', error);
@@ -725,7 +720,6 @@ router.get('/intelligence', async (req: Request, res: Response) => {
       missedThisWeek:   missedCount,
       alerts,
       optimizationSuggestions: suggestions,
-      _source: 'booking_requests_v2',
     });
   } catch (err: any) {
     logger.error('[ProviderDashboardV2] /intelligence error', err);
@@ -1311,7 +1305,6 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
       newStatus,
       updatedAt: updated.updated_at,
       stamp:     `BOOKING_${action.toUpperCase()}::${user.uid}::${now.toISOString()}`,
-      _source:   'booking_requests',
     });
   } catch (error) {
     logger.error(`[ProviderDashboardV2] ACTION:${action} error`, error);
@@ -1400,7 +1393,7 @@ router.get('/marketplace-bookings', async (req: Request, res: Response) => {
 
     logger.info('[ProviderDashboardV2] GET /marketplace-bookings', { uid: user.uid, count: rows.length });
 
-    res.json({ success: true, bookings: rows, _source: 'bookings' });
+    res.json({ success: true, bookings: rows });
   } catch (error) {
     logger.error('[ProviderDashboardV2] /marketplace-bookings error', error);
     res.status(500).json({ error: 'Failed to load marketplace bookings' });
