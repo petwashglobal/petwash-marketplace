@@ -100,10 +100,22 @@ export default function MarketplaceIntelligenceDashboard() {
   });
 
   // ── Audit log for expanded provider ────────────────────────────────────────
+  // queryKey drop fix: default queryFn used queryKey[0] verbatim, so the
+  // panel showed the top-level audit LIST payload (all providers) inside
+  // the per-provider expand row instead of that provider's own audit
+  // trail. Explicit queryFn scopes to the expanded userId.
 
   const { data: auditData, isLoading: auditLoading } = useQuery<{ entries: AuditEntry[]; total: number }>({
     queryKey: ['/api/marketplace/rankings/audit', expandedAudit],
     enabled: !!expandedAudit && !!user,
+    queryFn: async () => {
+      const res = await fetch(
+        `/api/marketplace/rankings/audit?userId=${encodeURIComponent(expandedAudit!)}`,
+        { credentials: 'include' },
+      );
+      if (!res.ok) throw new Error(`Failed to load audit entries: ${res.status}`);
+      return res.json();
+    },
   });
 
   // ── Override mutation ───────────────────────────────────────────────────────

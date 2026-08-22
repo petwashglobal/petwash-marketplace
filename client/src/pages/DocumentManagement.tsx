@@ -100,10 +100,19 @@ export default function DocumentManagement() {
     queryKey: ['/api/documents'],
   });
 
-  // Fetch access log for selected document
+  // Fetch access log for selected document.
+  // queryKey drop fix: default queryFn used queryKey[0] = '/api/documents'
+  // verbatim, so the panel showed the LIST payload instead of the per-
+  // document access log — an admin auditing "who read document X" was
+  // reading the document catalog instead.
   const { data: accessLogData } = useQuery<{ logs: AccessLogEntry[] }>({
     queryKey: ['/api/documents', selectedDocument?.id, 'access-log'],
     enabled: !!selectedDocument && showAccessLog,
+    queryFn: async () => {
+      const res = await fetch(`/api/documents/${selectedDocument!.id}/access-log`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Failed to load access log: ${res.status}`);
+      return res.json();
+    },
   });
 
   const documents = documentsData?.documents || [];

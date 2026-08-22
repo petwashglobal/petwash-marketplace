@@ -62,8 +62,21 @@ const policyStatusConfig: Record<string, { label: string; variant: any }> = {
 export default function MyExpenses() {
   const [selectedStatus, setSelectedStatus] = useState<string>('all');
 
+  // queryKey drop fix: default queryFn used queryKey[0] verbatim, so the
+  // `?status=...` fragment sitting in queryKey[1] was NEVER appended to
+  // the URL — the endpoint always returned every expense unfiltered. The
+  // client-side status counts still worked because the array is filtered
+  // in JS, but a server that later switched to server-side filtering
+  // would silently break. Explicit queryFn wires the query string into
+  // the actual request URL, matching the author's intent.
   const { data: expenses, isLoading } = useQuery<{ data: Expense[] }>({
-    queryKey: ['/api/expenses', selectedStatus !== 'all' ? `?status=${selectedStatus}` : ''],
+    queryKey: ['/api/expenses', selectedStatus],
+    queryFn: async () => {
+      const qs = selectedStatus !== 'all' ? `?status=${encodeURIComponent(selectedStatus)}` : '';
+      const res = await fetch(`/api/expenses${qs}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Failed to load expenses: ${res.status}`);
+      return res.json();
+    },
   });
 
   const expensesList = expenses?.data || [];

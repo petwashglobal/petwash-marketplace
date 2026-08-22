@@ -16,9 +16,19 @@ export default function PetTrekCustomerDashboard() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("upcoming");
 
-  // Fetch real bookings from API
-  const { data: bookingsData } = useQuery({
-    queryKey: ['/api/bookings/my-bookings', { platform: 'pettrek' }],
+  // Fetch real bookings from API.
+  // queryKey drop fix: default queryFn used queryKey[0] verbatim, so the
+  // `{ platform: 'pettrek' }` filter was silently dropped — the PetTrek
+  // dashboard rendered bookings from EVERY platform (wash, sitter,
+  // walker, etc). Explicit queryFn wires the platform filter into the
+  // URL so the customer only sees their PetTrek trips.
+  const { data: bookingsData } = useQuery<{ bookings: any[] }>({
+    queryKey: ['/api/bookings/my-bookings', 'pettrek'],
+    queryFn: async () => {
+      const res = await fetch(`/api/bookings/my-bookings?platform=pettrek`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Failed to load PetTrek bookings: ${res.status}`);
+      return res.json();
+    },
   });
 
   const allTrips = bookingsData?.bookings || [];

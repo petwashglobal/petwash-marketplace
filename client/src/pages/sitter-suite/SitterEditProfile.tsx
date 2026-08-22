@@ -44,9 +44,18 @@ export default function SitterEditProfile() {
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
+  // queryKey drop fix: default queryFn used queryKey[0] verbatim (list
+  // endpoint), returning ALL sitters instead of the caller's own profile —
+  // the edit form then bound to whichever sitter came first. Explicit
+  // queryFn hits the by-uid detail route.
   const { data: profile, isLoading } = useQuery<SitterProfile>({
     queryKey: ['/api/sitter-suite/sitters', user?.uid],
     enabled: !!user?.uid,
+    queryFn: async () => {
+      const res = await fetch(`/api/sitter-suite/sitters/${user!.uid}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Failed to load sitter profile: ${res.status}`);
+      return res.json();
+    },
   });
 
   const [cityPickerOpen, setCityPickerOpen] = useState(false);
