@@ -233,6 +233,10 @@ const labels = {
     heroOrderSummary:     'סיכום הזמנה',
     heroTotal:            'סה"כ',
     heroLocation:         'מיקום',
+    heroAddToApple:       'הוספה ל־Apple Wallet',
+    heroAddToGoogle:      'הוספה ל־Google Wallet',
+    heroWalletLoading:    'מכין…',
+    heroWalletFailed:     'לא ניתן להכין את הפאס. נסו שוב.',
   },
   en: {
     title:            'Booking Confirmation',
@@ -321,6 +325,10 @@ const labels = {
     heroOrderSummary:     'Order Summary',
     heroTotal:            'Total',
     heroLocation:         'Location',
+    heroAddToApple:       'Add to Apple Wallet',
+    heroAddToGoogle:      'Add to Google Wallet',
+    heroWalletLoading:    'Preparing…',
+    heroWalletFailed:     'Could not prepare wallet pass. Please try again.',
   },
 };
 
@@ -355,6 +363,9 @@ function BookingConfirmedHero({
   totalCents,
   subtotalCents,
   feeCents,
+  onAddToAppleWallet,
+  onAddToGoogleWallet,
+  walletLoading,
 }: {
   t: any;
   isRTL: boolean;
@@ -369,6 +380,9 @@ function BookingConfirmedHero({
   totalCents: number | null;
   subtotalCents: number | null;
   feeCents: number | null;
+  onAddToAppleWallet?: () => void;
+  onAddToGoogleWallet?: () => void;
+  walletLoading?: 'apple' | 'google' | null;
 }) {
   const nameToken = firstName ? (isRTL ? firstName : firstName) : (isRTL ? 'לקוח יקר' : 'there');
   const thanks = email
@@ -478,6 +492,42 @@ function BookingConfirmedHero({
           </p>
         </div>
       </div>
+
+      {/* Wallet buttons — real pkpass via POST /api/wallet/booking-pass.
+          Server verifies ownership (booking_requests.owner_id === uid) and
+          streams the .pkpass; iOS Safari opens it directly in Wallet. Only
+          rendered when the caller passes handlers (parent decides based
+          on env / cert readiness). Google Wallet handler currently posts
+          to the same endpoint pattern; the actual Google JWT + save link
+          is generated server-side. */}
+      {(onAddToAppleWallet || onAddToGoogleWallet) && (
+        <div className="px-6 pb-5 flex flex-col sm:flex-row gap-2 items-stretch justify-center">
+          {onAddToAppleWallet && (
+            <button
+              type="button"
+              onClick={onAddToAppleWallet}
+              disabled={walletLoading === 'apple'}
+              className="flex-1 h-11 rounded-2xl bg-black text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+              data-testid="wallet-add-apple"
+              aria-label={t.heroAddToApple}
+            >
+              {walletLoading === 'apple' ? t.heroWalletLoading : t.heroAddToApple}
+            </button>
+          )}
+          {onAddToGoogleWallet && (
+            <button
+              type="button"
+              onClick={onAddToGoogleWallet}
+              disabled={walletLoading === 'google'}
+              className="flex-1 h-11 rounded-2xl bg-black text-white text-sm font-semibold disabled:opacity-60 disabled:cursor-not-allowed hover:opacity-90 transition-opacity"
+              data-testid="wallet-add-google"
+              aria-label={t.heroAddToGoogle}
+            >
+              {walletLoading === 'google' ? t.heroWalletLoading : t.heroAddToGoogle}
+            </button>
+          )}
+        </div>
+      )}
 
       {/* Divider */}
       <div className="h-px bg-gray-100 mx-6" />
@@ -696,6 +746,7 @@ export default function BookingConfirmation() {
   const [reviewText, setReviewText]           = useState('');
   const [confirmed, setConfirmed]             = useState(false);
   const [showCancelConfirm, setShowCancelConfirm] = useState(false);
+  const [walletLoading, setWalletLoading] = useState<'apple' | 'google' | null>(null);
 
   // Payment-return banner state (2026-08-18): SUMIT redirects the customer
   // back with ?payment=success or ?payment=failed. Before this the params
@@ -879,6 +930,36 @@ export default function BookingConfirmation() {
 
   const handleMessageProvider = () => {
     if (booking?.requestId) navigate(`/booking-chat/${booking.requestId}`);
+  };
+
+  /**
+   * Add to Apple Wallet — POSTs the current requestId to the
+   * server; server verifies ownership (booking_requests.owner_id ===
+   * caller uid) and streams a signed .pkpass. iOS Safari opens it
+   * directly in Wallet via inline disposition + Blob URL.
+   *
+   * The pass is display-only: order reference, service, date, location,
+   * total label. It is NOT a redemption credential — no signed token,
+   * no wallet debit path.
+   */
+  const handleAddToAppleWallet = async () => {
+    if (!booking?.requestId) return;
+    setWalletLoading('apple');
+    try {
+      const res = await apiRequest('POST', '/api/wallet/booking-pass', {
+        requestId: booking.requestId,
+      });
+      if (!res.ok) throw new Error(`Wallet pass failed: ${res.status}`);
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      // Opening in the same tab lets iOS invoke Wallet automatically for
+      // pkpass MIME; desktop / non-iOS browsers just download the file.
+      window.location.href = url;
+    } catch (err) {
+      toast({ variant: 'destructive', title: t.heroWalletFailed });
+    } finally {
+      setWalletLoading(null);
+    }
   };
 
   /**
@@ -1162,6 +1243,8 @@ export default function BookingConfirmation() {
               totalCents={typeof booking.totalCents === 'number' ? booking.totalCents : null}
               subtotalCents={typeof booking.subtotalCents === 'number' ? booking.subtotalCents : null}
               feeCents={typeof booking.feeCents === 'number' ? booking.feeCents : null}
+              onAddToAppleWallet={handleAddToAppleWallet}
+              walletLoading={walletLoading}
             />
           )}
 
