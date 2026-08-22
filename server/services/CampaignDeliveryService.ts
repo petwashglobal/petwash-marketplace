@@ -146,11 +146,22 @@ export async function assertMarketingConsent(
   // silently suppress a legitimately-consented send.
   try {
     const { rows } = await pool.query(
-      `SELECT suppression_list, communication_preferences FROM users WHERE id = $1 LIMIT 1`,
+      `SELECT suppression_list, communication_preferences, marketing_consent
+         FROM users WHERE id = $1 LIMIT 1`,
       [userId],
     );
     const u = rows[0];
     if (u) {
+      // A-32 (2026-08-22) — CAN-SPAM / DMA-13 unification.
+      // PR #2060 landed the customer-facing /unsubscribe click that
+      // writes the FLAT `users.marketing_consent` boolean to false.
+      // Prior to this line, this veto layer only inspected the LEGACY
+      // JSON path `communication_preferences.marketingConsent` — so a
+      // real customer who clicked "Unsubscribe" in a marketing email
+      // continued to receive marketing until their JSON prefs were
+      // also updated. Any one veto now blocks the send.
+      if (u.marketing_consent === false) return false;
+
       const list  = (u.suppression_list as any) || {};
       const prefs = (u.communication_preferences as any) || {};
       const key = channel === 'sms' ? 'sms' : channel === 'email' ? 'email' : 'push';
