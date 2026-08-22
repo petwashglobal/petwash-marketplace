@@ -120,7 +120,29 @@ router.get('/profile', async (req: AuthenticatedRequest, res: Response) => {
       }
     }
 
-    res.json(profile);
+    // DTO round 3 (2026-08-22): previously echoed the full loyaltyProfiles
+    // row. Self-only so cross-user leak was impossible, but the raw shape
+    // ships internal segmentation flags (`isVip`, `conciergeAccess`,
+    // `prioritySupport`, `xp`, `tierThreshold`) that a client can game or
+    // that leak our tiering algorithm. Public-safe allowlist below —
+    // everything the customer UI actually renders.
+    res.json({
+      userId: profile.userId,
+      tier: profile.tier ?? 'bronze',
+      tierSince: profile.tierSince ?? null,
+      tierProgress: profile.tierProgress ?? 0,
+      // tierThreshold is the internal number we use to promote — drop it
+      // from the public shape so callers can't reverse-engineer it.
+      points: profile.points ?? 0,
+      lifetimePoints: profile.lifetimePoints ?? 0,
+      level: profile.level ?? 1,
+      totalWashes: profile.totalWashes ?? 0,
+      currentStreak: profile.currentStreak ?? 0,
+      longestStreak: profile.longestStreak ?? 0,
+      averageWashInterval: profile.averageWashInterval ?? null,
+      // isVip/conciergeAccess/prioritySupport are internal segmentation
+      // flags — the UI shows a member's status via the `tier`, not these.
+    });
   } catch (error) {
     logger.error('Error fetching loyalty profile:', error);
     res.status(500).json({ error: 'Failed to fetch loyalty profile' });
