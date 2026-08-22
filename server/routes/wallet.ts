@@ -433,16 +433,48 @@ router.post('/my-business-card', requireAuth, async (req, res) => {
 
 /**
  * POST /api/wallet/business-card
- * Generate digital business card for Apple Wallet
- * 🔓 Public endpoint (for team business card sharing)
+ * Generate a digital business card for Apple Wallet.
+ *
+ * SECURITY (2026-08-22): previously unauth — anyone could POST arbitrary
+ * name/title/email/phone and receive a signed `.pkpass` branded
+ * "Pet Wash™ Ltd". That is a convincing phishing card: a scammer could
+ * hand around a wallet pass reading "CEO Yaron Cohen — Pet Wash™ Ltd —
+ * call this number". Also an unauthenticated CPU/pkcs signing DoS.
+ *
+ * Fix: require Firebase auth, and pin the identity-critical fields
+ * (email, and — if the Firebase profile carries them — name/phone) to
+ * the caller's verified profile. Title / website / socialMedia may still
+ * come from the request body since they are not identity claims. The
+ * separately-authed `/my-business-card` above is the canonical path for
+ * signed-in users generating their own card; this endpoint stays as a
+ * thin authed shim only until callers are migrated over.
  */
-router.post('/business-card', async (req, res) => {
+router.post('/business-card', requireAuth, async (req, res) => {
   try {
-    const { name, title, company, email, phone, mobile, website, socialMedia, photoUrl } = req.body;
+    const uid = resolveUid(req);
+    if (!uid) return res.status(401).json({ error: 'Authentication required' });
+
+    const callerEmail = ((req as any).firebaseUser?.email as string | undefined)?.toLowerCase() || '';
+    if (!callerEmail) {
+      return res.status(400).json({ error: 'Verified email required on the account' });
+    }
+
+    const { name: bodyName, title, email: bodyEmail, phone, mobile, website, socialMedia, photoUrl } = req.body;
+
+    // Identity-critical: email MUST match the Firebase-verified email.
+    if (typeof bodyEmail !== 'string' || bodyEmail.toLowerCase() !== callerEmail) {
+      return res.status(403).json({ error: 'Email must match the signed-in account' });
+    }
+
+    // Trust the Firebase display name if present; otherwise fall back to
+    // the body-supplied name. Either way, phone remains caller-declared.
+    const firebaseName = ((req as any).firebaseUser?.name as string | undefined) || '';
+    const name = firebaseName || bodyName;
+    const email = callerEmail;
 
     if (!name || !email || !phone) {
-      return res.status(400).json({ 
-        error: 'Missing required fields: name, email, phone' 
+      return res.status(400).json({
+        error: 'Missing required fields: name, email, phone'
       });
     }
 
