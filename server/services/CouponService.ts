@@ -739,6 +739,25 @@ export class CouponService {
       const status = pref.pushDevicePermissionStatus ?? 'not_determined';
       if (status !== 'granted') return { allowed: false, reason: `PUSH_DEVICE_PERMISSION_${status.toUpperCase()}` };
     }
+
+    // A-32 (2026-08-22) — honor the flat `users.marketing_consent` boolean
+    // that the customer-facing /unsubscribe click (PR #2060) toggles. Any
+    // one veto blocks the send; a customer who clicked "Unsubscribe" from
+    // a marketing email must never receive another.
+    try {
+      const { rows } = await pool.query(
+        `SELECT marketing_consent FROM users WHERE id = $1 LIMIT 1`,
+        [userId],
+      );
+      if (rows[0]?.marketing_consent === false) {
+        return { allowed: false, reason: 'USER_UNSUBSCRIBED_FLAT' };
+      }
+    } catch {
+      // Fail-open on transient DB error — the hard-consent check above
+      // already passed, so a users-table hiccup should not silently
+      // suppress an otherwise-legitimate send.
+    }
+
     return { allowed: true };
   }
 
