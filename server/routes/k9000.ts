@@ -132,7 +132,34 @@ router.post('/wash/start_cycle', async (req, res) => {
     // Get station info from middleware
     const stationInfo = (req as any).k9000Station;
     const clientIP = stationInfo?.clientIP || 'unknown';
-    
+
+    // SECURITY (2026-08-22): HMAC middleware verifies the SIGNED kiosk id
+    // in the X-K9000-ID header, but this handler previously trusted the
+    // body-supplied `machineId` for everything downstream — revenue,
+    // VAT, SUMIT receipt, stations.totalWashes, alert routing. A signed
+    // kiosk A could therefore inflate station B's revenue and tax
+    // invoice, or clear alerts against a station it doesn't own. Enforce
+    // equality with the HMAC-verified id before doing anything.
+    const signedKioskId = String(stationInfo?.kioskId || '');
+    if (!signedKioskId) {
+      return res.status(401).json({
+        error: 'Missing signed kiosk identity (X-K9000-ID)',
+        correlationId,
+      });
+    }
+    if (String(machineId || '') !== signedKioskId) {
+      logger.warn('[K9000 Wash] REJECT — body.machineId does not match HMAC header X-K9000-ID', {
+        bodyMachineId: String(machineId || ''),
+        signedKioskId,
+        clientIP,
+        correlationId,
+      });
+      return res.status(403).json({
+        error: 'machineId does not match signed kiosk identity',
+        correlationId,
+      });
+    }
+
     logger.info('[K9000 Wash] Activation request received', {
       machineId,
       transactionId,
@@ -141,7 +168,7 @@ router.post('/wash/start_cycle', async (req, res) => {
       clientIP,
       stationId: stationInfo?.stationId,
     });
-    
+
     // === STEP 1: PAYMENT VERIFICATION ===
     // Verify payment was successful (either direct payment or QR redemption)
     
@@ -983,6 +1010,30 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
     const { scannedCode, kioskId, side, redemptionType, washType } = parsed.data;
     const stationInfo = (req as any).k9000Station;
 
+    // SECURITY (2026-08-22): validateKioskAllowlist only checks the kiosk
+    // exists+active. It does NOT confirm body.kioskId equals the
+    // HMAC-verified X-K9000-ID header. Without this check a signed kiosk
+    // A could burn a customer's wallet against kiosk B (cross-station
+    // wallet drain, wrong bay activated).
+    const signedKioskId = String(stationInfo?.kioskId || '');
+    if (!signedKioskId) {
+      return res.status(401).json({
+        error: 'Missing signed kiosk identity (X-K9000-ID)',
+        correlationId,
+      });
+    }
+    if (kioskId !== signedKioskId) {
+      logger.warn('[K9000 Redeem] REJECT — body.kioskId does not match HMAC header X-K9000-ID', {
+        bodyKioskId: kioskId,
+        signedKioskId,
+        correlationId,
+      });
+      return res.status(403).json({
+        error: 'kioskId does not match signed kiosk identity',
+        correlationId,
+      });
+    }
+
     logger.info('[K9000 Redeem] Scan received', {
       kioskId,
       side,
@@ -1477,6 +1528,25 @@ router.post('/heartbeat', async (req, res) => {
 
     if (!kioskId) {
       return res.status(400).json({ ok: false, error: 'kioskId required' });
+    }
+
+    // SECURITY (2026-08-22): heartbeat previously trusted the body-supplied
+    // kioskId. A signed kiosk A could therefore mark kiosk B as ONLINE,
+    // auto-clear kiosk B's `offline` alerts, and re-enable activations on
+    // faulted equipment — leading to paid-but-not-delivered washes on the
+    // real station B. Enforce equality with the HMAC-verified header.
+    const stationInfo = (req as any).k9000Station;
+    const signedKioskId = String(stationInfo?.kioskId || '');
+    if (!signedKioskId) {
+      return res.status(401).json({ ok: false, error: 'Missing signed kiosk identity' });
+    }
+    if (kioskId !== signedKioskId) {
+      logger.warn('[K9000 Heartbeat] REJECT — body.kioskId does not match HMAC header', {
+        bodyKioskId: kioskId,
+        signedKioskId,
+        correlationId,
+      });
+      return res.status(403).json({ ok: false, error: 'kioskId does not match signed kiosk identity' });
     }
 
     const now = new Date();
