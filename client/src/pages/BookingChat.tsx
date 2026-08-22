@@ -1081,12 +1081,28 @@ export default function BookingChat() {
                   Block this user
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem className="flex items-center gap-2.5 text-sm cursor-pointer py-2.5 text-gray-400">
-                  <Phone className="w-4 h-4" />
+                {/* DEAD-ONCLICK-CLEANUP (2026-08-22): these two menu items
+                    were text-gray-400 placeholders with no onClick — clicking
+                    "Contact Support" or "View booking details" did nothing.
+                    Wired to real, in-app routes. Both routes are declared in
+                    client/src/App.tsx (/support:1334, /booking/confirmation:
+                    1280) and are the canonical destinations already used
+                    elsewhere (e.g. superAppNotifications actionUrl for
+                    booking-accepted). Kept the DropdownMenu container closed
+                    on click via Radix's default behaviour, so the menu does
+                    not linger after navigation. */}
+                <DropdownMenuItem
+                  className="flex items-center gap-2.5 text-sm cursor-pointer py-2.5"
+                  onClick={() => setLocation("/support")}
+                >
+                  <Phone className="w-4 h-4 text-[#D4AF37]" />
                   Contact Support
                 </DropdownMenuItem>
-                <DropdownMenuItem className="flex items-center gap-2.5 text-sm cursor-pointer py-2.5 text-gray-400">
-                  <FileText className="w-4 h-4" />
+                <DropdownMenuItem
+                  className="flex items-center gap-2.5 text-sm cursor-pointer py-2.5"
+                  onClick={() => bookingId && setLocation(`/booking/confirmation/${bookingId}`)}
+                >
+                  <FileText className="w-4 h-4 text-[#D4AF37]" />
                   View booking details
                 </DropdownMenuItem>
               </DropdownMenuContent>
