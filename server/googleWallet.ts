@@ -539,12 +539,48 @@ END:VCARD`;
         textModulesData,
       };
 
+      // Inline the Generic Class so the JWT works even if the class has
+      // not been pre-created in Google Wallet Console yet. Google accepts
+      // both `genericClasses` and `genericObjects` in the same claims
+      // payload — the class is created on first save and re-used
+      // thereafter. Without this, the very first customer to click "Add
+      // to Google Wallet" hits an "invalid class id" error from
+      // pay.google.com.
+      const genericClass = {
+        id: classId,
+        classTemplateInfo: {
+          cardTemplateOverride: {
+            cardRowTemplateInfos: [
+              {
+                twoItems: {
+                  startItem: {
+                    firstValue: {
+                      fields: [{ fieldPath: 'object.textModulesData["line_0"]' }],
+                    },
+                  },
+                  endItem: {
+                    firstValue: {
+                      fields: [{ fieldPath: 'object.textModulesData["line_1"]' }],
+                    },
+                  },
+                },
+              },
+            ],
+          },
+        },
+        hexBackgroundColor: '#0C0C0C',
+      };
+
       const claims = {
         iss: process.env.GOOGLE_WALLET_SERVICE_ACCOUNT_EMAIL,
         aud: 'google',
         origins: ['https://petwash.co.il'],
         typ: 'savetowallet',
         payload: {
+          // Inline the class alongside the object — Google Wallet API
+          // upserts the class on first save. Prevents the "invalid class
+          // id" pay.google.com failure on the first ever save call.
+          genericClasses: [genericClass],
           genericObjects: [genericObject],
         },
       };
