@@ -21,6 +21,7 @@ import {
   Dog, Users, ChevronRight,
 } from 'lucide-react';
 import { BookingFinancialSummary } from '@/components/wallet/BookingFinancialSummary';
+import { QRCodeSVG } from 'qrcode.react';
 
 /* ── Service route map ────────────────────────────────────────────────── */
 const SERVICE_TO_ROUTE: Record<string, string> = {
@@ -225,6 +226,13 @@ const labels = {
     date:             'תאריך',
     time:             'שעה',
     paymentStartFailed: 'לא הצלחנו להתחיל את התשלום. נסו שוב.',
+    heroBookingConfirmed: 'ההזמנה אושרה',
+    heroThankYouTemplate: 'תודה {name}, ההזמנה שלך אושרה ושלחנו אישור לכתובת {email}.',
+    heroThankYouNoEmail:  'תודה {name}, ההזמנה שלך אושרה.',
+    heroOrderReference:   'מספר הזמנה',
+    heroOrderSummary:     'סיכום הזמנה',
+    heroTotal:            'סה"כ',
+    heroLocation:         'מיקום',
   },
   en: {
     title:            'Booking Confirmation',
@@ -306,12 +314,235 @@ const labels = {
     date:             'Date',
     time:             'Time',
     paymentStartFailed: 'Could not start payment. Please try again.',
+    heroBookingConfirmed: 'Booking Confirmed',
+    heroThankYouTemplate: 'Thank you {name}, your booking is confirmed and we’ve emailed the receipt to {email}.',
+    heroThankYouNoEmail:  'Thank you {name}, your booking is confirmed.',
+    heroOrderReference:   'Order Reference',
+    heroOrderSummary:     'Order Summary',
+    heroTotal:            'Total',
+    heroLocation:         'Location',
   },
 };
 
 /* ── Helper: format a date for Google Calendar ────────────────────────── */
 function toGCalDate(d: Date) {
   return d.toISOString().replace(/-|:|\.\d{3}/g, '').slice(0, 15) + 'Z';
+}
+
+/* ── Booking Confirmed Hero ─────────────────────────────────────────────
+   Ticket-shape hero shown only when the booking is fully confirmed. The
+   goal is a top-tier confirmation moment: real crown logo, one clear
+   "Booking Confirmed" title, a personal thank-you naming the customer +
+   email, the service/provider header, an in-page ticket block with the
+   QR of the requestId, and a compact line-itemed order summary.
+
+   Palette pinned to white + black + gold (#D4AF37) per brand rules; no
+   Pet-Passport green here. RTL-aware — the layout mirrors in Hebrew, the
+   Order Reference and money numerals stay LTR inside their labels. The
+   ticket-notch effect is CSS masks (no SVG, no image asset).
+──────────────────────────────────────────────────────────────────────── */
+function BookingConfirmedHero({
+  t,
+  isRTL,
+  firstName,
+  email,
+  serviceLabel,
+  providerName,
+  providerAddress,
+  dateLabel,
+  timeLabel,
+  requestId,
+  totalCents,
+  subtotalCents,
+  feeCents,
+}: {
+  t: any;
+  isRTL: boolean;
+  firstName: string | null;
+  email: string | null;
+  serviceLabel: string;
+  providerName: string | null;
+  providerAddress: string | null;
+  dateLabel: string;
+  timeLabel: string;
+  requestId: string;
+  totalCents: number | null;
+  subtotalCents: number | null;
+  feeCents: number | null;
+}) {
+  const nameToken = firstName ? (isRTL ? firstName : firstName) : (isRTL ? 'לקוח יקר' : 'there');
+  const thanks = email
+    ? String(t.heroThankYouTemplate).replace('{name}', nameToken).replace('{email}', email)
+    : String(t.heroThankYouNoEmail).replace('{name}', nameToken);
+
+  const ils = (cents: number | null | undefined) =>
+    typeof cents === 'number' ? `₪${(cents / 100).toFixed(2)}` : '—';
+
+  return (
+    <div
+      className="mb-4 rounded-3xl overflow-hidden bg-white"
+      style={{ border: '1px solid rgba(0,0,0,0.08)', boxShadow: '0 2px 24px rgba(0,0,0,0.04)' }}
+      data-testid="booking-confirmed-hero"
+    >
+      {/* Crest / crown */}
+      <div className="pt-8 pb-2 flex flex-col items-center">
+        <img
+          src="/brand/petwash-logo-official.png"
+          alt="Pet Wash"
+          className="h-10 w-auto object-contain"
+          style={{ maxWidth: '60%' }}
+        />
+      </div>
+
+      {/* Title + thank-you */}
+      <div className="px-6 pt-4 pb-6 text-center">
+        <h1
+          className="text-black tracking-tight"
+          style={{
+            fontFamily: `'Playfair Display', 'Cormorant Garamond', Georgia, serif`,
+            fontSize: 'clamp(24px, 6.5vw, 32px)',
+            fontWeight: 700,
+            lineHeight: 1.15,
+            textWrap: 'balance' as any,
+          }}
+        >
+          {t.heroBookingConfirmed}
+        </h1>
+        <div
+          className="mx-auto mt-3 h-px w-16"
+          style={{ background: '#D4AF37' }}
+        />
+        <p
+          className="mt-4 text-sm text-gray-700 leading-relaxed"
+          style={{ maxWidth: '38ch', margin: '16px auto 0' }}
+        >
+          {thanks}
+        </p>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-gray-100 mx-6" />
+
+      {/* Service / provider block */}
+      <div className="px-6 py-5 grid grid-cols-2 gap-y-4 gap-x-4">
+        <LabelValue label={t.service.toUpperCase()} value={serviceLabel} />
+        {providerName ? (
+          <LabelValue label={t.provider.toUpperCase()} value={providerName} />
+        ) : (
+          <span />
+        )}
+        <LabelValue label={t.date.toUpperCase()} value={`${dateLabel} · ${timeLabel}`} />
+        {providerAddress ? (
+          <LabelValue label={t.heroLocation.toUpperCase()} value={providerAddress} />
+        ) : (
+          <span />
+        )}
+      </div>
+
+      {/* Ticket block — QR + Order Reference. Notch effect via CSS. */}
+      <div className="px-6 pb-6">
+        <div
+          className="relative mx-auto bg-white flex flex-col items-center py-5 px-4"
+          style={{
+            maxWidth: 320,
+            border: '1px solid rgba(0,0,0,0.08)',
+            borderRadius: 16,
+            // The two "punch-through" ticket notches on the sides.
+            backgroundImage: `
+              radial-gradient(circle at 0 50%, transparent 8px, transparent 8.5px),
+              radial-gradient(circle at 100% 50%, transparent 8px, transparent 8.5px)
+            `,
+          }}
+        >
+          <div className="p-3 rounded-lg" style={{ background: 'white' }}>
+            <QRCodeSVG
+              value={String(requestId || 'PETWASH')}
+              size={140}
+              level="M"
+              includeMargin={false}
+              bgColor="#ffffff"
+              fgColor="#000000"
+            />
+          </div>
+          <p
+            className="mt-3 text-[10px] uppercase tracking-[0.15em] text-gray-400 font-semibold"
+          >
+            {t.heroOrderReference}
+          </p>
+          <p
+            className="mt-1 text-sm font-bold text-black font-mono"
+            dir="ltr"
+            data-testid="booking-order-reference"
+          >
+            {requestId}
+          </p>
+        </div>
+      </div>
+
+      {/* Divider */}
+      <div className="h-px bg-gray-100 mx-6" />
+
+      {/* Order summary — compact line items */}
+      {(typeof subtotalCents === 'number' || typeof totalCents === 'number') && (
+        <div className="px-6 py-5">
+          <p
+            className="text-[11px] uppercase tracking-[0.18em] font-semibold mb-3"
+            style={{ color: '#B8932F' }}
+          >
+            {t.heroOrderSummary}
+          </p>
+          <dl className="space-y-2 text-sm text-gray-800">
+            {typeof subtotalCents === 'number' && (
+              <div className="flex items-baseline justify-between">
+                <dt className="text-gray-700">{t.subtotal}</dt>
+                <dd className="font-medium text-black font-mono" dir="ltr">{ils(subtotalCents)}</dd>
+              </div>
+            )}
+            {typeof feeCents === 'number' && (
+              <div className="flex items-baseline justify-between">
+                <dt className="text-gray-700">{t.fee}</dt>
+                <dd className="font-medium text-black font-mono" dir="ltr">{ils(feeCents)}</dd>
+              </div>
+            )}
+            {typeof totalCents === 'number' && (
+              <>
+                <div className="h-px bg-gray-200 my-2" />
+                <div className="flex items-baseline justify-between">
+                  <dt
+                    className="text-[13px] uppercase tracking-[0.18em] font-bold"
+                    style={{ color: '#B8932F' }}
+                  >
+                    {t.heroTotal}
+                  </dt>
+                  <dd
+                    className="text-lg font-bold font-mono"
+                    dir="ltr"
+                    style={{ color: '#B8932F' }}
+                  >
+                    {ils(totalCents)}
+                  </dd>
+                </div>
+              </>
+            )}
+          </dl>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ── LabelValue helper (uppercase small-caps label + strong value) ─── */
+function LabelValue({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="min-w-0">
+      <p className="text-[10px] uppercase tracking-[0.18em] font-semibold text-gray-400 mb-1">
+        {label}
+      </p>
+      <p className="text-sm text-black font-semibold leading-snug break-words">
+        {value}
+      </p>
+    </div>
+  );
 }
 
 /* ── Detail chip ──────────────────────────────────────────────────────── */
@@ -894,7 +1125,41 @@ export default function BookingConfirmation() {
           )}
 
           {/* ══════════════════════════════════════════════════════════
-              TABIT-STYLE HERO CARD
+              BOOKING CONFIRMED HERO — luxury ticket-style block shown
+              only when the booking is confirmed. This is the moment
+              equivalent (in effort put into it) to what a cinema chain
+              or premium airline shows on a confirmation page: real
+              logo, one clear title, personal thank-you naming the
+              customer + email, service + provider + date + location
+              grid, in-page ticket block with QR of the requestId, and
+              a compact line-itemed order summary. Everything below it
+              (chips row, greeting, quick actions, financial summary,
+              rebook) is preserved for parity with the previous flow.
+          ══════════════════════════════════════════════════════════ */}
+          {confirmed && (
+            <BookingConfirmedHero
+              t={t}
+              isRTL={isRTL}
+              firstName={firstName}
+              email={booking.customerEmail || booking.email || user?.email || null}
+              serviceLabel={(isRTL ? SERVICE_NAMES_HE[booking.serviceType] : SERVICE_NAMES_EN[booking.serviceType]) || (booking.serviceType ?? '—')}
+              providerName={booking.providerName || null}
+              providerAddress={booking.providerAddress || booking.pickupAddress || null}
+              dateLabel={dateLabel}
+              timeLabel={timeLabel}
+              requestId={String(booking.requestId || '')}
+              totalCents={typeof booking.totalCents === 'number' ? booking.totalCents : null}
+              subtotalCents={typeof booking.subtotalCents === 'number' ? booking.subtotalCents : null}
+              feeCents={typeof booking.feeCents === 'number' ? booking.feeCents : null}
+            />
+          )}
+
+          {/* ══════════════════════════════════════════════════════════
+              TABIT-STYLE HERO CARD — kept for pre-confirmed states.
+              Once the booking is confirmed the ticket hero above owns
+              the "you're confirmed" moment; this darker header still
+              carries the important-info list, quick actions, and
+              modify/cancel controls that the ticket doesn't repeat.
           ══════════════════════════════════════════════════════════ */}
           <div className="rounded-3xl overflow-hidden border border-gray-100 shadow-sm mb-4">
 
