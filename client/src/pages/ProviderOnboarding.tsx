@@ -11,6 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { DatePicker } from '@/components/ui/date-picker';
 import { GooglePlacesAutocomplete, type PlaceDetails } from '@/components/ui/google-places-autocomplete';
+import { CityPicker, type CityPickerSelection } from '@/components/location/CityPicker';
 import { useToast } from '@/hooks/use-toast';
 import {
   CheckCircle2,
@@ -148,6 +149,7 @@ export default function ProviderOnboarding() {
   const [dob, setDob] = useState('');
   const [city, setCity] = useState('');
   const [country, setCountry] = useState('IL');
+  const [cityPickerOpen, setCityPickerOpen] = useState(false);
 
   // Light client-side Israeli-ID checksum (the backend is the source of truth;
   // this is only to give immediate feedback). Mirrors server/lib/israeliId.ts.
@@ -1083,20 +1085,66 @@ export default function ProviderOnboarding() {
                 <div className="grid md:grid-cols-2 gap-4">
                   <div>
                     <Label htmlFor="city">{t.city}</Label>
-                    <GooglePlacesAutocomplete
-                      value={city}
-                      onChange={(value, details) => {
-                        setCity(details?.city || value);
-                        if (details?.country === 'Israel') setCountry('IL');
-                        else if (details?.country === 'United States') setCountry('USA');
-                        else if (details?.country === 'United Kingdom') setCountry('UK');
-                        else if (details?.country === 'Australia') setCountry('AUS');
-                        else if (details?.country === 'Canada') setCountry('CAN');
-                      }}
-                      placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city...'}
-                      country={['il', 'us', 'gb', 'au', 'ca']}
-                      inputClassName="bg-white !text-gray-900 border-2 border-gray-200 rounded-xl placeholder:text-gray-400 px-4 py-4 text-base min-h-[48px]"
-                    />
+                    {country === 'IL' ? (
+                      <>
+                        {/* Israel: pick from the mapped city registry
+                            (shared/data/israel-cities.ts, gabmic seed).
+                            Same picker MyAccount / Shop / booker use so the
+                            provider's city becomes a canonical value the
+                            search + admin surfaces can trust. */}
+                        <button
+                          type="button"
+                          onClick={() => setCityPickerOpen(true)}
+                          className="w-full h-12 rounded-xl border-2 border-gray-200 bg-white text-base text-left px-4 flex items-center justify-between hover:border-amber-400 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 transition"
+                          dir={isHebrew ? 'rtl' : 'ltr'}
+                          data-testid="provider-onboarding-city-picker-open"
+                        >
+                          <span className={city ? 'text-gray-900' : 'text-gray-400'}>
+                            {city || (isHebrew ? 'בחר עיר…' : 'Choose city…')}
+                          </span>
+                          <span className="text-xs text-gray-400">▾</span>
+                        </button>
+                        <CityPicker
+                          open={cityPickerOpen}
+                          onOpenChange={setCityPickerOpen}
+                          value={null}
+                          language={isHebrew ? 'he' : 'en'}
+                          onChange={(sel: CityPickerSelection) => {
+                            const displayCity = isHebrew
+                              ? sel.hebrewName
+                              : (sel.englishName || sel.hebrewName);
+                            setCity(displayCity);
+                            setCityPickerOpen(false);
+                          }}
+                        />
+                      </>
+                    ) : (
+                      // Non-Israel providers keep the free-text Google Places
+                      // autocomplete restricted to the country picker's value
+                      // so a US provider doesn't get IL city suggestions and
+                      // vice-versa. Country restrictions map to lowercase ISO
+                      // 3166-1 alpha-2 codes per the Places API.
+                      <GooglePlacesAutocomplete
+                        value={city}
+                        onChange={(value, details) => {
+                          setCity(details?.city || value);
+                          if (details?.country === 'Israel') setCountry('IL');
+                          else if (details?.country === 'United States') setCountry('USA');
+                          else if (details?.country === 'United Kingdom') setCountry('UK');
+                          else if (details?.country === 'Australia') setCountry('AUS');
+                          else if (details?.country === 'Canada') setCountry('CAN');
+                        }}
+                        placeholder={isHebrew ? 'התחל להקליד עיר...' : 'Start typing city...'}
+                        country={
+                          country === 'USA' ? ['us']
+                            : country === 'UK' ? ['gb']
+                            : country === 'AUS' ? ['au']
+                            : country === 'CAN' ? ['ca']
+                            : ['us', 'gb', 'au', 'ca']
+                        }
+                        inputClassName="bg-white !text-gray-900 border-2 border-gray-200 rounded-xl placeholder:text-gray-400 px-4 py-4 text-base min-h-[48px]"
+                      />
+                    )}
                   </div>
                   <div>
                     <Label htmlFor="country">{t.country}</Label>
