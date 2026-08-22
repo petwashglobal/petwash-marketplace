@@ -393,6 +393,7 @@ export default function BookTrip() {
                           onChange={handlePickupSelect}
                           placeholder={isHebrew ? 'מאיפה לאסוף?' : 'Where to pick up?'}
                           isHebrew={isHebrew}
+                          showCitySuggestion
                           className="w-full"
                         />
                       </div>
@@ -414,6 +415,7 @@ export default function BookTrip() {
                           placeholder={isHebrew ? 'לאן להגיע?' : 'Where to drop off?'}
                           isHebrew={isHebrew}
                           autoSelectDefault={false}
+                          showCitySuggestion
                           className="w-full"
                         />
                       </div>

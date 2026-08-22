@@ -126,3 +126,34 @@ export function searchIsraelStreets(query: string, limit = 6): Array<{ street: s
   }
   return out;
 }
+
+/**
+ * Return the streets that live in a specific city, optionally filtered by a
+ * name prefix. Powers the "street picker" the AddressPicker shows once the
+ * user picks a city from the CityPicker — a real dropdown against the baked
+ * data.gov.il registry, not free-text autocomplete. Returns [] while the
+ * async loader is still populating INDEX (caller renders a spinner).
+ */
+export function getStreetsForCity(
+  cityName: string,
+  prefix = '',
+  limit = 200,
+): string[] {
+  if (!loadStarted) void loadAsync();
+  const idx = INDEX;
+  if (!idx || idx.length === 0) return [];
+  const nCity = normalizeStreet(cityName);
+  if (!nCity) return [];
+  const nPrefix = normalizeStreet(prefix);
+  const out: string[] = [];
+  const seen = new Set<string>();
+  for (const row of idx) {
+    if (row.nCity !== nCity) continue;
+    if (nPrefix && !row.nStreet.includes(nPrefix)) continue;
+    if (seen.has(row.street)) continue;
+    seen.add(row.street);
+    out.push(row.street);
+    if (out.length >= limit) break;
+  }
+  return out.sort((a, b) => a.localeCompare(b, 'he'));
+}

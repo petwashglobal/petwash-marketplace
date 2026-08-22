@@ -14,7 +14,7 @@ import { Router, type Request, type Response } from 'express';
 import rateLimit from 'express-rate-limit';
 import { logger } from '../lib/logger';
 import { searchIsraelCities } from '@shared/data/israel-cities';
-import { searchIsraelStreets } from '../lib/israelStreets';
+import { searchIsraelStreets, getStreetsForCity } from '../lib/israelStreets';
 
 const router = Router();
 
@@ -253,6 +253,25 @@ router.get('/reverse', suggestLimiter, async (req: Request, res: Response) => {
     return res.json({ formattedAddress: '', lat, lng });
   } finally {
     clearTimeout(timeout);
+  }
+});
+
+// GET /api/geocode/streets?city=<hebrew or english city name>&q=<optional prefix>
+// Returns the list of streets that live in the given city, drawn from the baked
+// data.gov.il registry (server/data/israel-streets.json). Powers the client
+// AddressPicker's street picker sheet — a real dropdown against the official
+// Israel Post keys instead of free-text autocomplete. Empty response is safe;
+// the client falls back to typing an address freehand into Photon.
+router.get('/streets', suggestLimiter, async (req: Request, res: Response) => {
+  const city = String(req.query.city || '').trim();
+  const q = String(req.query.q || '').trim();
+  if (!city) return res.json({ streets: [] });
+  try {
+    const streets = getStreetsForCity(city, q, 200);
+    return res.json({ streets });
+  } catch (err: any) {
+    logger.warn('[geocode/streets] failed (soft)', { error: err?.message });
+    return res.json({ streets: [] });
   }
 });
 

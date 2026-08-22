@@ -324,6 +324,28 @@ export function AddressPicker({
               <span className="text-xs text-amber-500">▾</span>
             </button>
           )}
+          {showCitySuggestion && pickedCityLabel && (
+            <StreetCombo
+              city={pickedCityLabel}
+              isHebrew={isHebrew}
+              onPick={(street) => {
+                const seeded = `${street}, ${pickedCityLabel}`;
+                const rec = pickedCitySymbol
+                  ? findIsraelCityBySymbol(pickedCitySymbol)
+                  : null;
+                const seededDetails: PlaceDetails = {
+                  formattedAddress: seeded,
+                  street,
+                  city: pickedCityLabel,
+                  postalCode:
+                    rec && rec.postcodes.length === 1
+                      ? rec.postcodes[0]
+                      : undefined,
+                };
+                onChange(seeded, seededDetails);
+              }}
+            />
+          )}
           <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wider px-1 mb-1.5">
             {isHebrew ? "הזן כתובת חדשה" : "Enter a new address"}
           </p>
@@ -386,6 +408,109 @@ export function AddressPicker({
             setCityPickerOpen(false);
           }}
         />
+      )}
+    </div>
+  );
+}
+
+// ── StreetCombo ────────────────────────────────────────────────────────────
+// Compact inline picker that queries /api/geocode/streets for the picked city
+// and lets the user select a street from the baked data.gov.il registry.
+// Shows up between the CityPicker chip and the free-text search input. When
+// the dataset has nothing for a city (edge villages), the list is empty and
+// the user still has the free-text search below as the fallback.
+interface StreetComboProps {
+  city: string;
+  isHebrew: boolean;
+  onPick: (street: string) => void;
+}
+function StreetCombo({ city, isHebrew, onPick }: StreetComboProps) {
+  const [q, setQ] = useState("");
+  const [open, setOpen] = useState(false);
+  const [streets, setStreets] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(() => {
+    setQ("");
+    setStreets([]);
+  }, [city]);
+
+  useEffect(() => {
+    if (!open) return;
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(async () => {
+      setLoading(true);
+      try {
+        const params = new URLSearchParams({ city, q });
+        const res = await fetch(`/api/geocode/streets?${params}`, {
+          credentials: "include",
+        });
+        const data = await res.json().catch(() => ({ streets: [] }));
+        setStreets(Array.isArray(data?.streets) ? data.streets : []);
+      } catch {
+        setStreets([]);
+      } finally {
+        setLoading(false);
+      }
+    }, 150);
+    return () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    };
+  }, [city, q, open]);
+
+  return (
+    <div className="mb-2" data-testid="address-picker-street-combo">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2.5 rounded-xl border border-amber-200 bg-white text-sm text-gray-700 hover:bg-amber-50/40"
+      >
+        <MapPin className="w-4 h-4 shrink-0 text-amber-500" />
+        <span className="flex-1 text-right truncate text-gray-500">
+          {isHebrew ? "בחר רחוב מהרשימה" : "Choose street from list"}
+        </span>
+        <span className="text-xs text-amber-500">{open ? "▴" : "▾"}</span>
+      </button>
+      {open && (
+        <div className="mt-1 rounded-xl border border-amber-100 bg-white shadow-sm p-2 space-y-2">
+          <input
+            type="text"
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder={isHebrew ? "חיפוש רחוב…" : "Filter streets…"}
+            className="w-full px-3 py-2 rounded-lg border border-gray-200 text-sm outline-none focus:border-amber-400"
+            dir={isHebrew ? "rtl" : "ltr"}
+          />
+          <div className="max-h-56 overflow-y-auto divide-y divide-gray-100">
+            {loading && (
+              <div className="text-center text-xs text-gray-400 py-3">
+                {isHebrew ? "טוען…" : "Loading…"}
+              </div>
+            )}
+            {!loading && streets.length === 0 && (
+              <div className="text-center text-xs text-gray-400 py-3">
+                {isHebrew
+                  ? "אין רחובות מהרשימה — הקלד למטה"
+                  : "No streets on file — type below"}
+              </div>
+            )}
+            {!loading &&
+              streets.map((s) => (
+                <button
+                  type="button"
+                  key={s}
+                  onClick={() => {
+                    onPick(s);
+                    setOpen(false);
+                  }}
+                  className="w-full text-right px-3 py-2 text-sm hover:bg-amber-50/60 rounded-lg"
+                >
+                  {s}
+                </button>
+              ))}
+          </div>
+        </div>
       )}
     </div>
   );
