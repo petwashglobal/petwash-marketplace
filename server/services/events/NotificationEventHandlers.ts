@@ -568,7 +568,8 @@ export function registerNotificationEventHandlers() {
           channelsOverride: ['push', 'in_app'],
           variables: {
             ...bookingVars,
-            deepLink: `/my-bookings`,
+            // Deeplinks-round-2 (2026-08-22): /my-bookings is a 404 — real route is /bookings
+            deepLink: `/bookings`,
           },
         });
       }

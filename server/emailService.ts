@@ -3517,7 +3517,7 @@ export class EmailService {
       <table width="100%" cellpadding="0" cellspacing="8" style="margin-bottom:28px;">
         <tr>
           <td style="width:50%;padding-${opp}:6px;">
-            <a href="https://petwash.co.il/bookings/${bookingId}" style="display:block;text-align:center;padding:12px;background:#FF6B6B;color:#ffffff;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;">
+            <a href="https://petwash.co.il/booking/confirmation/${bookingId}" style="display:block;text-align:center;padding:12px;background:#FF6B6B;color:#ffffff;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;">
               ${isHebrew ? '📋 צפה בהזמנה' : '📋 View Booking'}
             </a>
           </td>
@@ -3529,7 +3529,7 @@ export class EmailService {
         </tr>
         <tr>
           <td style="width:50%;padding-${opp}:6px;padding-top:8px;">
-            <a href="https://petwash.co.il/bookings/${bookingId}/modify" style="display:block;text-align:center;padding:12px;background:#F4F6F8;color:#1a1a1a;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;border:1px solid #E0E0E0;">
+            <a href="https://petwash.co.il/bookings" style="display:block;text-align:center;padding:12px;background:#F4F6F8;color:#1a1a1a;text-decoration:none;border-radius:8px;font-size:12px;font-weight:700;letter-spacing:1px;border:1px solid #E0E0E0;">
               ${isHebrew ? '✏️ שנה הזמנה' : '✏️ Modify Booking'}
             </a>
           </td>

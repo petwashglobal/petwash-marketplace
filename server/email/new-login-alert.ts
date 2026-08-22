@@ -53,7 +53,9 @@ function buildBodyHtml(p: NewLoginAlertParams): string {
   const browserDisplay = p.browser || 'Unknown';
   const osDisplay      = p.os      || 'Unknown';
 
-  const ctaUrl = `${SITE}/account/security`;
+  // Deeplinks-round-2 (2026-08-22): `/account/security` is a 404 in App.tsx.
+  // The real route added by PR-AUTH-SECURITY-9 is `/security/status`.
+  const ctaUrl = `${SITE}/security/status`;
 
   const rowStyle = `
     padding:10px 0;

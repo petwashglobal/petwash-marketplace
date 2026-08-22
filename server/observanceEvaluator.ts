@@ -111,7 +111,10 @@ async function sendObservanceMessage(
       };
       
       messageData.ctaText = userLocale === 'he' ? 'השתמש בקופון' : 'Use Coupon';
-      messageData.ctaUrl = '/payment';
+      // Deeplinks-round-2 (2026-08-22): /payment is a 404 (only /payment-success
+      // and /payment-failed exist). Send the customer to the shop where the
+      // coupon becomes applicable, not a phantom checkout URL.
+      messageData.ctaUrl = '/shop';
     }
     
     // Send to user's inbox

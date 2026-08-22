@@ -128,10 +128,17 @@ export class NayaxOnlinePaymentService {
     }
 
     try {
+      // Deeplinks-round-2 fix (2026-08-22): `/bookings/:id/success` and
+      // `/bookings/:id/cancel` are 404s in App.tsx. Route customers back
+      // to the real confirmation page (`/booking/confirmation/:requestId`)
+      // and let the `?payment=success|failed` query param drive the
+      // banner logic that BookingConfirmation.tsx already handles.
       const returnUrl =
-        params.returnUrl || `${APP_URL}/bookings/${params.bookingId}/success`;
+        params.returnUrl ||
+        `${APP_URL}/booking/confirmation/${params.bookingId}?payment=success`;
       const cancelUrl =
-        params.cancelUrl || `${APP_URL}/bookings/${params.bookingId}/cancel`;
+        params.cancelUrl ||
+        `${APP_URL}/booking/confirmation/${params.bookingId}?payment=failed`;
 
       const requestBody = {
         merchant_id: NAYAX_MERCHANT_ID,

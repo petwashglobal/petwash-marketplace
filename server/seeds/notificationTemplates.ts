@@ -259,7 +259,8 @@ const defaultTemplates: InsertNotificationTemplate[] = [
             <p><strong>Provider:</strong> {{booking.providerName}}</p>
             <hr style="margin: 20px 0; border: 0; border-top: 1px solid #dee2e6;">
             <p style="margin-top: 20px;">
-              <a href="https://petwash.co.il/bookings/{{booking.id}}" 
+              <!-- Deeplinks-round-2 (2026-08-22): /bookings/:id is a 404. Route to the confirmation page. -->
+              <a href="https://petwash.co.il/booking/confirmation/{{booking.id}}"
                  style="background: #28a745; color: white; padding: 12px 24px; text-decoration: none; border-radius: 4px; display: inline-block;">
                 View Booking
               </a>
