@@ -162,39 +162,58 @@ router.post('/', validateFirebaseToken, async (req, res) => {
   }
 });
 
-// Update pet
+// Update pet.
+//
+// SECURITY (2026-08-22): previously spread `req.body` into the Firestore
+// update after only stripping `uid / id / createdAt / deletedAt`. Ownership
+// is structural (`PETS(uid, petId)` scopes to the caller's own bucket), so
+// cross-user IDOR is not possible — but the caller could inject arbitrary
+// unknown fields (e.g. `isVerifiedVIP`, `medicalWaiverAccepted`,
+// `internalNote`, `temperamentArchived`) onto their own pet doc, silently
+// planting trust flags that later flow through into provider-visible
+// screens. Fix: run req.body through `insertPetProfileSchema.partial()` and
+// write only fields the shared Zod contract knows about.
 router.patch('/:petId', validateFirebaseToken, async (req, res) => {
   try {
     const uid = req.firebaseUser!.uid;
     const { petId } = req.params;
-    
+
     const petRef = firestore.doc(FIRESTORE_PATHS.PETS(uid, petId));
     const doc = await petRef.get();
-    
+
     if (!doc.exists || doc.data()?.deletedAt) {
       return res.status(404).json({ error: 'Pet not found' });
     }
-    
-    // Validate birthday format if provided
-    if (req.body.birthday && !/^\d{4}-\d{2}-\d{2}$/.test(req.body.birthday)) {
-      return res.status(400).json({ error: 'Birthday must be in YYYY-MM-DD format' });
+
+    // Allowlist the writable field set to what the shared Zod schema
+    // recognises. Anything not on the schema (mystery `isVerifiedVIP`,
+    // `internalNote`, etc.) is dropped by `.parse()` on a strict shape or
+    // simply ignored on a lax one — either way, silent trust-flag
+    // escalation is impossible.
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = insertPetProfileSchema.partial().parse(req.body ?? {}) as Record<string, unknown>;
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid pet data', details: err.errors });
+      }
+      throw err;
     }
-    
+
+    // uid is not a schema field the owner can flip via .partial() either
+    // (schema defaults require it on Create, and Firestore path already
+    // pins it), but defence-in-depth: never let a body-supplied uid land.
+    delete (parsed as any).uid;
+
     const updates = {
-      ...req.body,
+      ...parsed,
       updatedAt: new Date(),
     };
-    
-    // Don't allow changing uid or id
-    delete updates.uid;
-    delete updates.id;
-    delete updates.createdAt;
-    delete updates.deletedAt;
-    
+
     await petRef.update(updates);
-    
+
     logger.info('Pet profile updated', { uid, petId, updates: Object.keys(updates) });
-    
+
     res.json({ success: true });
   } catch (error) {
     logger.error('Error updating pet', error);
