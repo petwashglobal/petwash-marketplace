@@ -1,6 +1,7 @@
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '../../../shared/support-contact';
 import { PETWASH_LOGO_BASE64 } from './logo-base64';
 import { TIER_CONFIGS, type LoyaltyTier } from '../../../shared/schema-loyalty';
+import { buildUnsubscribeUrl } from '../../lib/unsubToken';
 
 type AccentKey = 'gold' | 'diamond' | 'emerald' | 'sapphire' | 'platinum';
 
@@ -28,6 +29,11 @@ export interface LuxuryClubEmailParams {
   kind: ClubEmailEventKind;
   recipientName?: string;
   recipientEmail: string;
+  /** Firebase UID — used to sign the CAN-SPAM unsubscribe URL. When
+   * missing the footer falls back to the mailto: support fallback so
+   * the email never carries an un-tokenised /unsubscribe link that a
+   * regulator would flag as inoperative. */
+  recipientUserId?: string;
   language?: 'he' | 'en';
 
   heroTitle?: string;
@@ -271,7 +277,9 @@ export function generateLuxuryClubEmail(params: LuxuryClubEmailParams): { subjec
   const heroTitle = params.heroTitle || defaults.heroTitle;
   const heroSubtitle = params.heroSubtitle || defaults.heroSubtitle;
   const ctaLabel = params.primaryCtaLabel || defaults.ctaLabel;
-  const ctaUrl = params.primaryCtaUrl || 'https://petwash.co.il/app/loyalty';
+  // Deeplinks-round-2 (2026-08-22): `/app/loyalty` was a 404 on the client.
+  // The real Prestige entry point is `/prestige-pass`.
+  const ctaUrl = params.primaryCtaUrl || 'https://petwash.co.il/prestige-pass';
   const secondaryCtaUrl = params.secondaryCtaUrl || '';
   const secondaryCtaLabel = params.secondaryCtaLabel || (lang === 'he' ? 'צפו בהטבות' : 'View benefits');
 
@@ -293,8 +301,13 @@ export function generateLuxuryClubEmail(params: LuxuryClubEmailParams): { subjec
   const brandName = 'Pet Wash\u2122';
   const programName = 'Prestige Club';
   const supportEmail = CANONICAL_SUPPORT_EMAIL;
-  const unsubscribeUrl = 'https://petwash.co.il/unsubscribe';
-  const viewInBrowserUrl = 'https://petwash.co.il/app/loyalty';
+  // CAN-SPAM / DMA-13: link MUST be individually addressable — the token
+  // binds this email to this recipient. Falls back to a support mailto
+  // when no uid is available so we never emit a dead /unsubscribe URL.
+  const unsubscribeUrl = params.recipientUserId
+    ? buildUnsubscribeUrl(params.recipientUserId)
+    : `mailto:${supportEmail}?subject=${encodeURIComponent(lang === 'he' ? 'ביטול הרשמה למיילים שיווקיים' : 'Unsubscribe from marketing emails')}`;
+  const viewInBrowserUrl = 'https://petwash.co.il/prestige-pass';
   const footerLine1 = lang === 'he'
     ? `${brandName} · ${programName} — כל הזכויות שמורות © ${new Date().getFullYear()}`
     : `${brandName} · ${programName} — All rights reserved © ${new Date().getFullYear()}`;

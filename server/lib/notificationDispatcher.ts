@@ -18,6 +18,7 @@ import { COMPANY_TAX_ID } from '@shared/finance-identity';
 import { isSendGridConfigured } from './sendgrid';
 import { sendGuardedEmail } from './guarded-sendgrid';
 import { twilioSMSService } from '../services/TwilioSMSService';
+import { buildUnsubscribeUrl } from './unsubToken';
 
 export type NotificationChannel = 'inbox' | 'email' | 'sms' | 'push';
 export type NotificationMessageType = 'voucher' | 'system' | 'receipt' | 'promo';
@@ -108,7 +109,7 @@ function stripHtml(html: string): string {
 /**
  * Wrap bodyHtml in a minimal PetWash™ branded email shell.
  */
-function buildEmailHtml(title: string, bodyHtml: string, ctaText?: string, ctaUrl?: string): string {
+function buildEmailHtml(title: string, bodyHtml: string, ctaText?: string, ctaUrl?: string, uid?: string): string {
   const cta = ctaText && ctaUrl
     ? `<div style="text-align:center;margin:32px 0"><a href="${ctaUrl}" style="background:#000;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-size:15px;font-weight:600">${ctaText}</a></div>`
     : '';
@@ -130,7 +131,7 @@ function buildEmailHtml(title: string, bodyHtml: string, ctaText?: string, ctaUr
         </td></tr>
         <tr><td style="background:#f9f9f9;padding:16px 32px;text-align:center;font-size:12px;color:#888">
           PetWash™ Ltd · VAT ${COMPANY_TAX_ID} · <a href="https://petwash.co.il" style="color:#888">petwash.co.il</a><br>
-          <a href="https://petwash.co.il/unsubscribe" style="color:#aaa">Unsubscribe</a>
+          <a href="${uid ? buildUnsubscribeUrl(uid) : 'mailto:support@petwash.co.il?subject=Unsubscribe'}" style="color:#aaa">Unsubscribe</a>
         </td></tr>
       </table>
     </td></tr>
@@ -234,7 +235,7 @@ export async function dispatchNotification(opts: DispatchOptions): Promise<{
       } else if (!isSendGridConfigured()) {
         errors.push('SendGrid not configured — email skipped');
       } else {
-        const htmlBody = buildEmailHtml(title, bodyHtml, ctaText, ctaUrl);
+        const htmlBody = buildEmailHtml(title, bodyHtml, ctaText, ctaUrl, uid);
         const plainText = bodyText || stripHtml(bodyHtml) + (ctaText && ctaUrl ? `\n\n${ctaText}: ${ctaUrl}` : '');
 
         // Route through sendGuardedEmail so EmailSpendGuard (hourly / daily

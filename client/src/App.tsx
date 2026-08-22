@@ -79,6 +79,7 @@ const AccessPending = lazy(() => import("@/pages/AccessPending"));
 const BlockedPage = lazy(() => import("@/pages/BlockedPage"));
 const VerifyEmail = lazy(() => import("@/pages/VerifyEmail"));
 const AccountActivation = lazy(() => import("@/pages/AccountActivation"));
+const Unsubscribe = lazy(() => import("@/pages/Unsubscribe"));
 // SignIn (the old white "WELCOME BACK" modal) KILLED 2026-06-28 — every login
 // route now renders the premium SignUpLuxury screen. Do NOT reintroduce it.
 const SignUpLuxury = lazy(() => import("@/pages/SignUpLuxury"));
@@ -1025,6 +1026,9 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/blocked">{() => <BlockedPage />}</Route>
         <Route path="/verify-email">{() => <VerifyEmail />}</Route>
         <Route path="/activate-account">{() => <AccountActivation />}</Route>
+        {/* CAN-SPAM / DMA-13 marketing unsubscribe landing. Deliberately
+            unauthenticated — the ?token= HMAC IS the credential. */}
+        <Route path="/unsubscribe">{() => <Unsubscribe />}</Route>
 
         {/* Internal onboarding - STRICTLY for invited staff/contractors/franchisees ONLY */}
         {/* NOT accessible via public sign-up - requires valid invitation token */}
