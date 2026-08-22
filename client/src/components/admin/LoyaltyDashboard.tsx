@@ -87,9 +87,25 @@ export function LoyaltyDashboard() {
     refetchInterval: 30000,
   });
 
+  // queryKey drop fix: default queryFn used queryKey[0] verbatim, so the
+  // three filter fields were silently dropped from the URL — the full
+  // customer PII list was pulled on every render regardless of admin
+  // input. Client-side JS then re-filtered (see filteredCustomers below).
+  // Explicit queryFn passes the filters as query params so the server can
+  // narrow the result set; JS filter stays as belt-and-braces.
   const { data: customers, isLoading: customersLoading } = useQuery<LoyaltyCustomer[]>({
     queryKey: ["/api/admin/loyalty/customers", searchTerm, tierFilter, sortBy],
     refetchInterval: 30000,
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (searchTerm) params.set('q', searchTerm);
+      if (tierFilter && tierFilter !== 'all') params.set('tier', tierFilter);
+      if (sortBy) params.set('sortBy', sortBy);
+      const qs = params.toString();
+      const res = await fetch(`/api/admin/loyalty/customers${qs ? `?${qs}` : ''}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Failed to load loyalty customers: ${res.status}`);
+      return res.json();
+    },
   });
 
   const filteredCustomers = customers?.filter(customer => {

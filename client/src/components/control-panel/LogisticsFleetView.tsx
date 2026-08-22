@@ -69,9 +69,23 @@ export default function LogisticsFleetView() {
   const [vehicleForm, setVehicleForm] = useState({ label: "", type: "van", plateNumber: "", capacityKg: "" });
   const { toast } = useToast();
 
-  // Fetch logistics tasks
-  const { data: tasksData, isLoading: tasksLoading } = useQuery({
+  // Fetch logistics tasks.
+  // queryKey drop fix: default queryFn used queryKey[0] verbatim so the
+  // status/type filters were silently dropped from the URL — dispatcher
+  // saw ALL tasks and filtered client-side. Same bug family as
+  // pages/LogisticsFleetView.tsx (fixed in PR #2036); this is a
+  // separate file living under components/control-panel/.
+  const { data: tasksData, isLoading: tasksLoading } = useQuery<{ tasks: LogisticsTask[] }>({
     queryKey: ["/api/logistics/tasks", statusFilter, typeFilter],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter && statusFilter !== 'all') params.set('status', statusFilter);
+      if (typeFilter && typeFilter !== 'all') params.set('type', typeFilter);
+      const qs = params.toString();
+      const res = await fetch(`/api/logistics/tasks${qs ? `?${qs}` : ''}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Failed to load logistics tasks: ${res.status}`);
+      return res.json();
+    },
   });
 
   // Fetch vehicles
