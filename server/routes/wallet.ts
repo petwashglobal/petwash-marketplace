@@ -1022,10 +1022,40 @@ router.get('/user-passes/:userId', requireAuth, async (req, res) => {
       .orderBy('createdAt', 'desc')
       .get();
 
-    const passes = passesSnapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data()
-    }));
+    // DTO round 1 (2026-08-22): previously spread `...doc.data()` which
+    // shipped the Apple Wallet `authenticationToken` — the HMAC-like
+    // secret Apple uses to authenticate its own Web Service callbacks
+    // (register/unregister/getSerialNumbers/getLatestPass). Any XSS /
+    // log capture that read this response could forge Apple Wallet
+    // callbacks or hijack the pass. Explicit projection ships only the
+    // display fields the client actually renders. `serialNumber` is the
+    // public per-pass id — safe to keep.
+    const passes = passesSnapshot.docs.map(doc => {
+      const d = doc.data() as any;
+      return {
+        id: doc.id,
+        serialNumber: d.serialNumber ?? null,
+        type: d.type ?? null,
+        // e-voucher fields
+        voucherId: d.voucherId ?? null,
+        amount: typeof d.amount === 'number' ? d.amount : null,
+        currency: d.currency ?? null,
+        expiryDate: d.expiryDate ?? null,
+        description: d.description ?? null,
+        // VIP-card fields
+        tier: d.tier ?? null,
+        // booking-pass fields (from PR #2058 generator)
+        requestId: d.requestId ?? null,
+        serviceLabel: d.serviceLabel ?? null,
+        providerName: d.providerName ?? null,
+        scheduledAt: d.scheduledAt ?? null,
+        totalCents: typeof d.totalCents === 'number' ? d.totalCents : null,
+        // display metadata
+        userName: d.userName ?? null,
+        createdAt: d.createdAt ?? null,
+        updatedAt: d.updatedAt ?? null,
+      };
+    });
 
     res.json({ passes });
 
