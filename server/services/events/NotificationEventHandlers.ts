@@ -341,7 +341,8 @@ export function registerNotificationEventHandlers() {
               customer: {
                 name: event.data.customerName,
               },
-              reviewUrl: `https://petwash.co.il/review/${event.data.bookingId}`,
+              // Was /review/:id (404). App.tsx routes reviews to /marketplace/review/:bookingId.
+              reviewUrl: `https://petwash.co.il/marketplace/review/${event.data.bookingId}`,
               timestamp: new Date().toLocaleString('he-IL'),
             },
           });

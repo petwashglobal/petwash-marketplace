@@ -373,7 +373,7 @@ export class BookingConfirmationEmailService {
           <tr>
             <td style="padding:16px 20px;font-size:13px;color:#92400e;line-height:1.7;">
               <p style="margin:0;">📬 אישור נוסף ישלח כשנותן השירות יאשר את ההזמנה.</p>
-              <p style="margin:6px 0 0;">📱 תוכל/י לנהל את ההזמנה <a href="${SITE_URL}/bookings/${params.booking.id}" style="color:#b45309;font-weight:bold;">בלחיצה כאן</a>.</p>
+              <p style="margin:6px 0 0;">📱 תוכל/י לנהל את ההזמנה <a href="${SITE_URL}/bookings" style="color:#b45309;font-weight:bold;">בלחיצה כאן</a>.</p>
               <p style="margin:6px 0 0;">❓ שאלות? פנה/י אל <a href="mailto:${SUPPORT_EMAIL}" style="color:#b45309;font-weight:bold;">${SUPPORT_EMAIL}</a></p>
             </td>
           </tr>
@@ -384,7 +384,7 @@ export class BookingConfirmationEmailService {
     <!-- ── CTA BUTTON ── -->
     <tr>
       <td style="padding:16px 36px 24px;text-align:center;">
-        <a href="${SITE_URL}/bookings/${params.booking.id}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;border-radius:50px;padding:14px 36px;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;letter-spacing:0.5px;">נהל הזמנה / Manage Booking</a>
+        <a href="${SITE_URL}/bookings" style="display:inline-block;background:#000;color:#fff;text-decoration:none;border-radius:50px;padding:14px 36px;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;letter-spacing:0.5px;">נהל הזמנה / Manage Booking</a>
       </td>
     </tr>
 
@@ -630,7 +630,7 @@ export class BookingConfirmationEmailService {
     <!-- ── CTA ── -->
     <tr>
       <td style="padding:16px 36px 24px;text-align:center;">
-        <a href="${SITE_URL}/provider/bookings/${params.booking.id}" style="display:inline-block;background:#000;color:#fff;text-decoration:none;border-radius:50px;padding:14px 36px;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;margin-bottom:10px;">אשר הזמנה / Confirm Booking</a>
+        <a href="${SITE_URL}/provider/bookings" style="display:inline-block;background:#000;color:#fff;text-decoration:none;border-radius:50px;padding:14px 36px;font-size:14px;font-weight:bold;font-family:Arial,sans-serif;margin-bottom:10px;">אשר הזמנה / Confirm Booking</a>
         <p style="margin:10px 0 0;font-size:12px;color:#9ca3af;">שאלות? <a href="mailto:${SUPPORT_EMAIL}" style="color:#555;">${SUPPORT_EMAIL}</a></p>
       </td>
     </tr>
