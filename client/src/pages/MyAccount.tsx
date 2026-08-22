@@ -547,6 +547,32 @@ function PrestigeAccountCommandCenter({
   );
 }
 
+// Renders a native <datalist> the Street input links to via list=. Fetches all
+// streets for the picked city from /api/geocode/streets (baked data.gov.il).
+// Browsers auto-render this as a dropdown — no extra popover component needed,
+// works on mobile Safari + Chrome, RTL-correct out of the box.
+function MyAccountStreetSuggestions({ city }: { city: string }) {
+  const [streets, setStreets] = useState<string[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    if (!city) { setStreets([]); return; }
+    (async () => {
+      try {
+        const params = new URLSearchParams({ city });
+        const res = await fetch(`/api/geocode/streets?${params}`, { credentials: 'include' });
+        const data = await res.json().catch(() => ({ streets: [] }));
+        if (!cancelled) setStreets(Array.isArray(data?.streets) ? data.streets : []);
+      } catch { if (!cancelled) setStreets([]); }
+    })();
+    return () => { cancelled = true; };
+  }, [city]);
+  return (
+    <datalist id="my-account-street-suggestions">
+      {streets.map((s) => <option key={s} value={s} />)}
+    </datalist>
+  );
+}
+
 export default function MyAccount() {
   const { user } = useFirebaseAuth();
   const firebaseUser = user;
@@ -2259,7 +2285,13 @@ export default function MyAccount() {
                               className="h-10 text-sm rounded-xl border-gray-200 focus:border-amber-400 focus:ring-amber-400/20 bg-white"
                               style={{ fontSize: '16px' }}
                               dir="rtl"
+                              list={editedProfile.city ? 'my-account-street-suggestions' : undefined}
+                              autoComplete="off"
+                              data-testid="my-account-street-input"
                             />
+                            {editedProfile.city && (
+                              <MyAccountStreetSuggestions city={editedProfile.city} />
+                            )}
                           </div>
                           <div className="space-y-1">
                             <label className="text-[10px] font-semibold text-gray-500 uppercase tracking-wider block">
