@@ -40,7 +40,12 @@ router.post('/add-booking', requireAuth, async (req, res) => {
     if (result) {
       res.json({ success: true, eventId: result.eventId, htmlLink: result.htmlLink });
     } else {
-      res.json({ success: false, message: 'Calendar not connected or event creation failed' });
+      // False-success round 1 (2026-08-22): previously returned HTTP 200
+      // with `{ success:false }` — clients that branched on `res.ok`
+      // rendered "event added to calendar" while the provider's Google
+      // Calendar had nothing → missed booking. 422 signals the target
+      // system (Calendar) refused the write, distinct from a 5xx crash.
+      res.status(422).json({ success: false, message: 'Calendar not connected or event creation failed' });
     }
   } catch (error) {
     logger.error('[Calendar API] Add booking error', error);

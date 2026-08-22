@@ -30,6 +30,15 @@ router.post('/command', requireAuth, async (req, res) => {
       employeeUid
     );
 
+    // False-success round 1 (2026-08-22): VoiceCommandService returns
+    // `{ success: false, action: 'UNKNOWN'|'ERROR', executed: false }`
+    // when a K9000 command (start wash, dispense shampoo) could not
+    // fire. Streaming that at HTTP 200 lets the staff app render
+    // "command executed" while the physical machine never ran.
+    // 422 = "target refused"; distinguishes from a 5xx crash.
+    if (!result?.success || result?.executed === false) {
+      return res.status(422).json(result);
+    }
     res.json(result);
   } catch (error) {
     logger.error('[Voice API] Command processing failed', error);

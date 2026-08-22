@@ -675,7 +675,12 @@ router.post('/send-platform-copy', async (req: Request, res: Response) => {
       });
     } else {
       logger.warn('[Platform Copy] Email not sent - SendGrid may not be configured');
-      return res.json({
+      // False-success round 1 (2026-08-22): previously HTTP 200 with
+      // `{ success:false }` — client rendered "Luxury platform copy
+      // sent to X" while the email never went out. 503 = service
+      // unavailable (SendGrid unconfigured). The previewHtml still
+      // ships so admin can copy-paste manually if needed.
+      return res.status(503).json({
         success: false,
         message: 'Email service not configured',
         previewHtml: html

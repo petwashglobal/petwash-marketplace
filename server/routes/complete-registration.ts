@@ -170,7 +170,13 @@ router.get('/onboarding-status', async (req: Request, res: Response) => {
       .limit(1);
 
     if (!onboardingCase) {
-      return res.json({
+      // False-success round 1 (2026-08-22): previously HTTP 200 with
+      // `{ success:false, found:false }` — clients that branched on
+      // `res.ok` and read `redirectTo` (undefined) would follow an
+      // empty redirect. Peer branches in this file already use 500 on
+      // failure; treat "not found" as a proper 404 so clients that
+      // check status short-circuit correctly.
+      return res.status(404).json({
         success: false,
         found: false,
         message: 'No onboarding record found',
