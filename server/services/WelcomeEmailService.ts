@@ -99,7 +99,9 @@ function getWelcomeHtml(audience: WelcomeAudience, membershipNumber: string, lan
              <p style="margin:0;color:#92400e;font-size:13px;">⚠️ Staff dashboard access requires authorization from a manager.</p>
            </div>`,
       cta: isHe ? 'בדקו סטטוס הבקשה' : 'Check Request Status',
-      ctaUrl: 'https://petwash.co.il/staff/request-access',
+      // Was /staff/request-access (404). App.tsx has /staff/pending (once
+      // approved) and /careers (public). The applicant flow starts on /careers.
+      ctaUrl: 'https://petwash.co.il/careers',
     },
   };
 

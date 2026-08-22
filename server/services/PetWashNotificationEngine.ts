@@ -408,7 +408,7 @@ export function buildEgiftPurchasedSms(params: {
     `PetWash™ - כרטיס מתנה נרכש 🎁\n` +
     `מס' מתנה: ${params.giftRef}\n` +
     `שווי${to}: ${params.giftValue} ₪\n` +
-    `מימוש: https://petwash.co.il/egift/redeem`
+    `מימוש: https://petwash.co.il/egift`
   );
 }
 

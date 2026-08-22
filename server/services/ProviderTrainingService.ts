@@ -646,7 +646,11 @@ class ProviderTrainingService {
         issuedAt: new Date(),
         expiresAt,
         verificationHash,
-        verificationUrl: `https://petwash.com/verify/${certificateId}`,
+        // Was petwash.com/verify/:id (wrong TLD + 404). Our domain is .co.il;
+        // App.tsx has /verify. Passing certId as query param so the /verify
+        // page can look it up. If a dedicated /certificates/:id route lands
+        // later, swap this back.
+        verificationUrl: `https://petwash.co.il/verify?cert=${certificateId}`,
         status: 'active',
       };
 

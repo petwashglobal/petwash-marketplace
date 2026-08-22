@@ -174,7 +174,9 @@ async function runAbandonedBookingRecovery() {
           <p>ההזמנה עדיין ממתינה — לחץ להשלמת ההזמנה.</p>
         `,
         ctaText: 'להשלמת ההזמנה',
-        ctaUrl: `https://petwash.co.il/booking/${booking.requestId}`,
+        // Was /booking/:requestId bare (404). App.tsx routes to
+        // /booking/confirmation/:requestId for the customer confirmation page.
+        ctaUrl: `https://petwash.co.il/booking/confirmation/${booking.requestId}`,
         channels: ['email'],
         locale: 'he',
       });
