@@ -122,45 +122,53 @@ const dashText: Record<string, Record<string, string>> = {
     fr: 'Points disponibles',
     ru: 'Доступные баллы',
   },
-  savedCarers: {
-    en: 'Saved Carers',
-    he: 'מטפלים שמורים',
-    ar: 'مقدمي الرعاية المحفوظين',
-    es: 'Cuidadores Guardados',
-    fr: 'Soignants Enregistrés',
-    ru: 'Сохранённые Опекуны',
+  petsCountLabel: {
+    en: 'My Pets',
+    he: 'החיות שלי',
+    ar: 'حيواناتي',
+    es: 'Mis Mascotas',
+    fr: 'Mes Animaux',
+    ru: 'Мои Питомцы',
   },
-  lifetimeValue: {
-    en: 'Lifetime Value',
-    he: 'ערך מצטבר',
-    ar: 'القيمة الكلية',
-    es: 'Valor Acumulado',
-    fr: 'Valeur Cumulée',
-    ru: 'Общая Стоимость',
+  petsCountCaption: {
+    en: 'in your family',
+    he: 'במשפחה שלך',
+    ar: 'في عائلتك',
+    es: 'en tu familia',
+    fr: 'dans votre famille',
+    ru: 'в семье',
   },
-  totalSpending: {
-    en: 'Total spending',
-    he: 'סה"כ הוצאות',
-    ar: 'إجمالي الإنفاق',
-    es: 'Gasto total',
-    fr: 'Dépenses totales',
-    ru: 'Общие расходы',
+  upcomingLabel: {
+    en: 'Upcoming',
+    he: 'הקרובים',
+    ar: 'القادمة',
+    es: 'Próximas',
+    fr: 'À Venir',
+    ru: 'Предстоящие',
   },
-  savedCards: {
-    en: 'Saved Cards',
-    he: 'כרטיסים שמורים',
-    ar: 'البطاقات المحفوظة',
-    es: 'Tarjetas Guardadas',
-    fr: 'Cartes Enregistrées',
-    ru: 'Сохранённые Карты',
+  upcomingCaption: {
+    en: 'bookings',
+    he: 'הזמנות',
+    ar: 'حجوزات',
+    es: 'reservas',
+    fr: 'réservations',
+    ru: 'бронирования',
   },
-  paymentMethods: {
-    en: 'Payment methods',
-    he: 'אמצעי תשלום',
-    ar: 'طرق الدفع',
-    es: 'Métodos de pago',
-    fr: 'Méthodes de paiement',
-    ru: 'Способы оплаты',
+  loyaltyPointsLabel: {
+    en: 'Loyalty Points',
+    he: 'נקודות נאמנות',
+    ar: 'نقاط الولاء',
+    es: 'Puntos de Fidelidad',
+    fr: 'Points de Fidélité',
+    ru: 'Баллы Лояльности',
+  },
+  loyaltyPointsCaption: {
+    en: 'balance',
+    he: 'יתרה',
+    ar: 'الرصيد',
+    es: 'saldo',
+    fr: 'solde',
+    ru: 'баланс',
   },
   comingSoon: {
     en: 'Coming Soon',
@@ -815,27 +823,44 @@ export default function Dashboard() {
             </div>
           </motion.div>
 
+          {/* ── Four real stat tiles ─────────────────────────────────────────
+                DASHBOARD-TRUTH round 2 (2026-08-22): the previous four tiles
+                were "Saved Carers = 0" (hardcoded), "Lifetime Value = ₪
+                loyaltyPoints * 10" (invented multiplier — the same class of
+                lie killed in #2024 that regressed), "Saved Cards = 0"
+                (never fetched), and "Wash Credits" (real). Replaced with
+                four values sourced from real server responses:
+                  1. Pets       — activityData.petsCount (from /api/user/activity/summary)
+                  2. Upcoming   — activityData.upcomingBookings.length
+                  3. Points     — loyaltyPoints (raw balance, no multiplier)
+                  4. Washes     — wallet.washPackageCredits (unchanged)
+                No number is invented; every stat is a real column read.
+                Screens that need a real "Saved Carers" list belong on
+                /paw-finder saved carers UI, and payment-methods count
+                belongs on a real Payment Methods page — neither exists
+                yet, so we do NOT display a placeholder zero for them. */}
           <div className="grid grid-cols-2 gap-3 sm:gap-4 mb-4">
             <LuxuryCard delay={0.3}>
               <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
-                  {tx('savedCarers', language)}
+                  {tx('petsCountLabel', language)}
                 </p>
-                <p className="text-xl sm:text-2xl font-light" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  0
+                <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
+                  {activityData?.petsCount ?? 0}
                 </p>
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('petsCountCaption', language)}</p>
               </div>
             </LuxuryCard>
 
             <LuxuryCard delay={0.35}>
               <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
-                  {tx('lifetimeValue', language)}
+                  {tx('upcomingLabel', language)}
                 </p>
                 <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  <span className="text-sm" style={goldText}>&#8362;</span>{formatCurrency(loyaltyPoints * 10)}
+                  {activityData?.upcomingBookings?.length ?? 0}
                 </p>
-                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('totalSpending', language)}</p>
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('upcomingCaption', language)}</p>
               </div>
             </LuxuryCard>
           </div>
@@ -844,12 +869,12 @@ export default function Dashboard() {
             <LuxuryCard delay={0.4}>
               <div className="px-4 py-4 sm:px-5 sm:py-5 text-center">
                 <p className="text-[10px] sm:text-xs tracking-[0.1em] uppercase font-medium mb-2" style={goldText}>
-                  {tx('savedCards', language)}
+                  {tx('loyaltyPointsLabel', language)}
                 </p>
                 <p className="text-xl sm:text-2xl font-light mb-1" style={{ fontFamily: "'Playfair Display', serif", color: '#111111' }}>
-                  0
+                  {loyaltyPoints}
                 </p>
-                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('paymentMethods', language)}</p>
+                <p className="text-[9px] sm:text-[10px]" style={{ color: '#555555' }}>{tx('loyaltyPointsCaption', language)}</p>
               </div>
             </LuxuryCard>
 
