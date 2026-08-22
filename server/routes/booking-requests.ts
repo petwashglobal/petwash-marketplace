@@ -2061,7 +2061,11 @@ router.post('/:requestId/meet-greet', async (req, res) => {
       }
       statusHistory.push(transition.historyEntry);
       const noteParts = [`type: ${meetType}`, date ? `preferred: ${date}` : null, notes].filter(Boolean);
-      await db.update(bookingRequests)
+      // ATOMIC (Lane C audit 2026-08-22): guard the UPDATE with the expected
+      // source status so a concurrent double-tap can't apply the transition
+      // twice. Loser sees zero rows updated and returns idempotent success —
+      // same pattern /start (L2792-2810) and /complete (L2897-2926) already use.
+      const upd = await db.update(bookingRequests)
         .set({
           status: 'meet_greet_requested',
           meetGreetLocation: location || null,
@@ -2069,7 +2073,16 @@ router.post('/:requestId/meet-greet', async (req, res) => {
           statusHistory,
           updatedAt: new Date(),
         })
-        .where(eq(bookingRequests.requestId, requestId));
+        .where(and(
+          eq(bookingRequests.requestId, requestId),
+          eq(bookingRequests.status, booking.status),
+        ))
+        .returning({ id: bookingRequests.id });
+
+      if (upd.length === 0) {
+        logger.info('[BookingRequests] Meet & Greet request lost race — idempotent success', { requestId });
+        return res.json({ success: true, message: 'Meet & Greet requested', idempotent: true });
+      }
 
       logBookingEvent('meet_greet_requested', buildEventPayload({ ...booking, status: 'meet_greet_requested' }), {
         customerRequestedAt: new Date().toISOString(),
@@ -2119,8 +2132,9 @@ router.post('/:requestId/meet-greet', async (req, res) => {
       }
 
       statusHistory.push(transition.historyEntry);
-      
-      await db.update(bookingRequests)
+
+      // Same atomic guard as /request above (Lane C audit 2026-08-22).
+      const upd = await db.update(bookingRequests)
         .set({
           status: 'meet_greet_scheduled',
           meetGreetDate: new Date(date),
@@ -2129,7 +2143,16 @@ router.post('/:requestId/meet-greet', async (req, res) => {
           statusHistory,
           updatedAt: new Date(),
         })
-        .where(eq(bookingRequests.requestId, requestId));
+        .where(and(
+          eq(bookingRequests.requestId, requestId),
+          eq(bookingRequests.status, booking.status),
+        ))
+        .returning({ id: bookingRequests.id });
+
+      if (upd.length === 0) {
+        logger.info('[BookingRequests] Meet & Greet schedule lost race — idempotent success', { requestId });
+        return res.json({ success: true, message: 'Meet & Greet scheduled!', idempotent: true });
+      }
 
       logBookingEvent('meet_greet_scheduled', buildEventPayload({ ...booking, status: 'meet_greet_scheduled' }), {
         customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
@@ -2196,8 +2219,13 @@ router.post('/:requestId/meet-greet', async (req, res) => {
       }
 
       statusHistory.push(transition.historyEntry);
-      
-      await db.update(bookingRequests)
+
+      // Same atomic guard as /request and /schedule above (Lane C audit
+      // 2026-08-22). Duplicate-completion was previously possible — this
+      // guard makes the transition exactly-once. Winner fires notifications
+      // and event logs (below); loser returns idempotent success WITHOUT
+      // re-firing anything.
+      const upd = await db.update(bookingRequests)
         .set({
           status: 'meet_greet_completed',
           meetGreetCompletedAt: new Date(),
@@ -2205,7 +2233,16 @@ router.post('/:requestId/meet-greet', async (req, res) => {
           statusHistory,
           updatedAt: new Date(),
         })
-        .where(eq(bookingRequests.requestId, requestId));
+        .where(and(
+          eq(bookingRequests.requestId, requestId),
+          eq(bookingRequests.status, booking.status),
+        ))
+        .returning({ id: bookingRequests.id });
+
+      if (upd.length === 0) {
+        logger.info('[BookingRequests] Meet & Greet complete lost race — idempotent success (no re-fire)', { requestId });
+        return res.json({ success: true, message: 'Meet & Greet marked complete', idempotent: true });
+      }
 
       logBookingEvent('meet_greet_completed', buildEventPayload({ ...booking, status: 'meet_greet_completed' }), {
         customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
