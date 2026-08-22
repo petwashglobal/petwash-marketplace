@@ -128,11 +128,19 @@ function serviceLabel(t: string | null | undefined, isHe: boolean): string {
 
 /** State-aware primary action per CEO §"BOOKING CARD"/"Provider Booking Card". */
 type PrimaryAction =
-  | { kind: 'start';               label: string; endpoint: 'start' }
-  | { kind: 'arriving';            label: string; endpoint: 'arriving' }
-  | { kind: 'complete';            label: string; endpoint: 'complete' }
-  | { kind: 'meet_greet_complete'; label: string; endpoint: 'meet-greet' }
-  | { kind: 'view';                label: string; endpoint: null };
+  | { kind: 'start';                label: string; endpoint: 'start' }
+  | { kind: 'arriving';             label: string; endpoint: 'arriving' }
+  | { kind: 'complete';             label: string; endpoint: 'complete' }
+  | { kind: 'meet_greet_complete';  label: string; endpoint: 'meet-greet' }
+  // New first-class actions (Lane C audit 2026-08-22 highest-leverage #6):
+  // server emitted ACCEPT / DECLINE / SCHEDULE_MEET_GREET but the client
+  // collapsed all three to "View details", forcing a second tap into
+  // /provider/jobs/:id. Surface them here so Rover/MadPaws-style one-tap
+  // accept works from Today.
+  | { kind: 'accept';               label: string; endpoint: 'accept' }
+  | { kind: 'decline';              label: string; endpoint: 'decline' }
+  | { kind: 'schedule_meet_greet';  label: string; endpoint: 'meet-greet-schedule' }
+  | { kind: 'view';                 label: string; endpoint: null };
 
 /**
  * Bridge server-authoritative `primaryAction` (CEO §P1-17, shipped in
@@ -158,17 +166,16 @@ function primaryFromServer(b: UpcomingBooking, isHe: boolean): PrimaryAction | n
       return { kind: 'arriving', endpoint: 'arriving', label: isHe ? 'בדרך' : "I'M ON THE WAY" };
     case 'COMPLETE_MEET_GREET':
       return { kind: 'meet_greet_complete', endpoint: 'meet-greet', label: isHe ? 'סיים היכרות' : 'COMPLETE MEET & GREET' };
+    case 'ACCEPT':
+      return { kind: 'accept', endpoint: 'accept', label: isHe ? 'אשר הזמנה' : 'ACCEPT' };
+    case 'DECLINE':
+      return { kind: 'decline', endpoint: 'decline', label: isHe ? 'דחה' : 'DECLINE' };
+    case 'SCHEDULE_MEET_GREET':
+      return { kind: 'schedule_meet_greet', endpoint: 'meet-greet-schedule', label: isHe ? 'קבע פגישת היכרות' : 'SCHEDULE MEET & GREET' };
     case 'VIEW_DETAILS':
     case 'MESSAGE':
-    case 'ACCEPT':
-    case 'DECLINE':
-    case 'SCHEDULE_MEET_GREET':
     default:
-      // Server said "no active step" — surface View. The other
-      // enum values (ACCEPT / DECLINE / SCHEDULE_MEET_GREET) don't
-      // have first-class buttons on the ProviderToday focus card
-      // yet; falling to View sends the provider into the full job
-      // page where those actions already live.
+      // Genuinely no active step — surface View.
       return { kind: 'view', endpoint: null, label: isHe ? 'פרטי הזמנה' : 'View details' };
   }
 }
@@ -262,10 +269,16 @@ export default function ProviderToday() {
       id, endpoint, body,
     }: {
       id: string;
-      endpoint: 'start' | 'arriving' | 'complete' | 'meet-greet';
+      endpoint: 'start' | 'arriving' | 'complete' | 'meet-greet' | 'accept' | 'decline' | 'meet-greet-schedule';
       body?: unknown;
     }) => {
-      const res = await apiRequest('POST', `/api/booking-requests/${id}/${endpoint}`, body ?? {});
+      // The accept/decline/meet-greet-schedule endpoints all live under
+      // /api/booking-requests/:id/... and share the same auth + idempotency
+      // wrappers as start/complete/etc — see booking-requests.ts.
+      // meet-greet-schedule reuses the same /meet-greet route with
+      // action:'schedule' in the body.
+      const path = endpoint === 'meet-greet-schedule' ? 'meet-greet' : endpoint;
+      const res = await apiRequest('POST', `/api/booking-requests/${id}/${path}`, body ?? {});
       const payload = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(payload?.error || payload?.message || `Action failed (${res.status})`);
       return payload;
@@ -295,6 +308,14 @@ export default function ProviderToday() {
     const pathId = b.requestId || b.id;
     if (action.endpoint === 'meet-greet') {
       actionMutation.mutate({ id: pathId, endpoint: 'meet-greet', body: { action: 'complete' } });
+      return;
+    }
+    if (action.endpoint === 'meet-greet-schedule') {
+      // Schedule needs a date/location — hand off to the full job page
+      // where the calendar picker lives. (First-class inline schedule
+      // form is a bigger UX change; ship the ACCEPT/DECLINE fast-paths
+      // now and route SCHEDULE to the existing UI.)
+      navigate(`/provider/jobs/${b.id}`);
       return;
     }
     actionMutation.mutate({ id: pathId, endpoint: action.endpoint });
