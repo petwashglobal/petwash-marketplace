@@ -17,6 +17,7 @@ import multer from 'multer';
 import crypto from 'crypto';
 import { Storage } from '@google-cloud/storage';
 import { requireAdmin } from '../adminAuth';
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 
 const router = Router();
 
@@ -116,18 +117,34 @@ router.get('/positions/:identifier', async (req: Request, res: Response) => {
 
 // =================== USER APPLICATIONS API ===================
 
-// Get user's applications by email (for applicant dashboard)
-router.get('/my-applications', async (req: Request, res: Response) => {
+// Get user's applications by email (for applicant dashboard).
+//
+// PII enumeration fix (Lane D audit 2026-08-22): previously this endpoint
+// took a raw `email` query param with NO auth — any anonymous caller could
+// probe an email and confirm whether that person applied, plus see their
+// first/last name, application status, and uploaded document filenames.
+// Israeli Privacy Law + GDPR both forbid this.
+//
+// Fix: require Firebase auth AND enforce req.firebaseUser.email matches
+// the requested email (case-insensitive). Callers who want to view their
+// own applications must be signed in with the same email they applied with.
+router.get('/my-applications', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
     const { email } = req.query;
-    
+
     if (!email || typeof email !== 'string') {
       return res.status(400).json({ error: 'Email is required' });
     }
-    
+
     // Validate email format (bounded character classes prevent ReDoS)
     if (!/^[^@\s]{1,64}@[^@\s.]{1,63}(?:\.[^@\s.]{1,63})+$/.test(email)) {
       return res.status(400).json({ error: 'Invalid email format' });
+    }
+
+    // Caller must be the owner of the queried email.
+    const callerEmail = (req.firebaseUser?.email || '').toLowerCase();
+    if (!callerEmail || callerEmail !== email.toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
     
     // Get applications for this email with position details
@@ -182,14 +199,20 @@ router.get('/my-applications', async (req: Request, res: Response) => {
   }
 });
 
-// Get single application details with all step progress
-router.get('/my-applications/:applicationId', async (req: Request, res: Response) => {
+// Get single application details with all step progress.
+// Same PII fix as /my-applications above — require auth + email match.
+router.get('/my-applications/:applicationId', validateFirebaseToken, async (req: Request, res: Response) => {
   try {
     const { applicationId } = req.params;
     const { email } = req.query;
-    
+
     if (!email || typeof email !== 'string') {
       return res.status(400).json({ error: 'Email is required for verification' });
+    }
+
+    const callerEmail = (req.firebaseUser?.email || '').toLowerCase();
+    if (!callerEmail || callerEmail !== email.toLowerCase()) {
+      return res.status(403).json({ error: 'Forbidden' });
     }
     
     const [application] = await db

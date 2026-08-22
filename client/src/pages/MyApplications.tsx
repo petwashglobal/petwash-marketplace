@@ -20,6 +20,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { getApiUrl } from '@/lib/apiConfig';
+import { apiRequest } from '@/lib/queryClient';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -77,7 +78,12 @@ export default function MyApplications() {
   const { data: applications, isLoading, refetch, isRefetching } = useQuery<Application[]>({
     queryKey: ['/api/careers/my-applications', searchedEmail],
     queryFn: async () => {
-      const response = await fetch(getApiUrl(`/api/careers/my-applications?email=${encodeURIComponent(searchedEmail)}`));
+      // PII enumeration fix (Lane D audit 2026-08-22): server now requires
+      // Firebase auth on this endpoint AND caller.email must match the
+      // queried email. Use apiRequest which forwards the Firebase token; a
+      // raw fetch would 401. Callers must be signed in with the same email
+      // they applied with.
+      const response = await apiRequest('GET', `/api/careers/my-applications?email=${encodeURIComponent(searchedEmail)}`);
       if (!response.ok) {
         throw new Error('Failed to fetch applications');
       }
