@@ -136,9 +136,11 @@ export default function Careers() {
     onSuccess: async (data: any) => {
       setApplicationId(data.applicationId);
       setSessionId(data.sessionId);
-      // Try to load any existing draft data for this application
-      if (data.applicationId) {
-        await loadDraftProgress(data.applicationId);
+      // Try to load any existing draft data for this application. Pass
+      // sessionId explicitly — the server now requires it as ownership
+      // proof on /progress and state setters have not settled yet.
+      if (data.applicationId && data.sessionId) {
+        await loadDraftProgress(data.applicationId, data.sessionId);
       }
     },
     onError: (error: any) => {
@@ -167,9 +169,11 @@ export default function Careers() {
   });
   
   // Load draft data when application is started (rehydration)
-  const loadDraftProgress = useCallback(async (appId: number) => {
+  const loadDraftProgress = useCallback(async (appId: number, sid: string) => {
     try {
-      const response = await fetch(getApiUrl(`/api/careers/applications/${appId}/progress`));
+      const response = await fetch(
+        getApiUrl(`/api/careers/applications/${appId}/progress?sessionId=${encodeURIComponent(sid)}`),
+      );
       if (!response.ok) return;
       
       const data = await response.json();
@@ -370,7 +374,12 @@ export default function Careers() {
       const formDataUpload = new FormData();
       formDataUpload.append('document', resumeFile);
       formDataUpload.append('documentType', 'resume');
-      
+      // Server requires the sessionId from /start-application as ownership
+      // proof (see server/routes/careers.ts documents endpoint hardening).
+      if (sessionId) {
+        formDataUpload.append('sessionId', sessionId);
+      }
+
       const response = await fetch(getApiUrl(`/api/careers/applications/${submittedApplicationId}/documents`), {
         method: 'POST',
         body: formDataUpload,
