@@ -45,14 +45,28 @@ router.get('/user', validateFirebaseToken, async (req, res) => {
     }
     
     const snapshot = await query.get();
-    const messages = snapshot.docs.map(doc => ({
-      id: doc.id,
-      ...doc.data(),
-      createdAt: doc.data().createdAt?.toDate(),
-      readAt: doc.data().readAt?.toDate() || null,
-      meta: doc.data().meta || {},
-    }));
-    
+    // DTO round 2 (2026-08-22): previously spread `...doc.data()` on every
+    // message — any future admin-added campaign-internal field (suppression
+    // tags, template internals, HMAC tracking-pixel keys) would auto-ship
+    // to the recipient. Explicit allowlist: only fields the client renders.
+    const messages = snapshot.docs.map(doc => {
+      const d = doc.data() as any;
+      return {
+        id: doc.id,
+        type: d.type ?? null,
+        title: d.title ?? null,
+        body: d.body ?? null,
+        bodyHtml: d.bodyHtml ?? null,
+        ctaText: d.ctaText ?? null,
+        ctaUrl: d.ctaUrl ?? null,
+        priority: typeof d.priority === 'number' ? d.priority : null,
+        read: d.read === true,
+        meta: d.meta || {},
+        createdAt: d.createdAt?.toDate?.() ?? d.createdAt ?? null,
+        readAt: d.readAt?.toDate?.() ?? d.readAt ?? null,
+      };
+    });
+
     res.json({ messages });
   } catch (error) {
     logger.error('Error fetching user inbox', error);
@@ -73,12 +87,21 @@ router.get('/user/:messageId', validateFirebaseToken, async (req, res) => {
       return res.status(404).json({ error: 'Message not found' });
     }
     
-    const data = doc.data()!;
+    // DTO round 2 (2026-08-22): same allowlist as the list handler above.
+    const data = doc.data() as any;
     res.json({
       id: doc.id,
-      ...data,
-      createdAt: data.createdAt?.toDate(),
-      readAt: data.readAt?.toDate() || null,
+      type: data.type ?? null,
+      title: data.title ?? null,
+      body: data.body ?? null,
+      bodyHtml: data.bodyHtml ?? null,
+      ctaText: data.ctaText ?? null,
+      ctaUrl: data.ctaUrl ?? null,
+      priority: typeof data.priority === 'number' ? data.priority : null,
+      read: data.read === true,
+      meta: data.meta || {},
+      createdAt: data.createdAt?.toDate?.() ?? data.createdAt ?? null,
+      readAt: data.readAt?.toDate?.() ?? data.readAt ?? null,
     });
   } catch (error) {
     logger.error('Error fetching inbox message', error);

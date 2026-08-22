@@ -414,14 +414,28 @@ router.get('/transactions', async (req, res) => {
       .orderBy('createdAt', 'desc')
       .limit(50)
       .get();
+    // DTO round 2 (2026-08-22): previously spread `...data` — any
+    // sumitCustomerId, stripeCustomerId, feeSnapshot, processor-debug
+    // field on a transaction doc leaked to the buyer. Sibling handler
+    // `/purchases` at line 466 already uses an explicit whitelist;
+    // this one now matches it.
     const transactions = snap.docs.map(d => {
-      const data = d.data();
+      const data = d.data() as any;
       return {
         id: d.id,
-        ...data,
         invoiceNumber: data.invoiceNumber || `PW-${new Date().getFullYear()}-${d.id.slice(-6).toUpperCase()}`,
-        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt,
-        completedAt: data.completedAt?.toDate?.()?.toISOString() || data.completedAt,
+        type: data.type ?? null,
+        description: data.description ?? null,
+        amountCents: typeof data.amountCents === 'number' ? data.amountCents : null,
+        currency: data.currency ?? 'ILS',
+        status: data.status ?? null,
+        method: data.method ?? null,
+        cardBrand: data.cardBrand ?? null,
+        cardLast4: data.cardLast4 ?? null,
+        bookingId: data.bookingId ?? null,
+        stationId: data.stationId ?? null,
+        createdAt: data.createdAt?.toDate?.()?.toISOString() || data.createdAt || null,
+        completedAt: data.completedAt?.toDate?.()?.toISOString() || data.completedAt || null,
       };
     });
     return res.json(transactions);

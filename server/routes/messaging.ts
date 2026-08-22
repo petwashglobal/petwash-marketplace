@@ -79,14 +79,26 @@ router.get('/conversations', async (req: Request, res: Response) => {
       .orderBy('lastMessageAt', 'desc')
       .get();
 
+    // DTO round 2 (2026-08-22): previously spread `...data` on every
+    // conversation. Any admin-added moderation / riskScore / routing
+    // internals on the doc would silently ship to the participant.
+    // Explicit allowlist below — only fields the client renders.
     const conversations: any[] = [];
     conversationsSnapshot.forEach((doc) => {
-      const data = doc.data();
+      const data = doc.data() as any;
       conversations.push({
-        ...data,
         id: doc.id,
-        createdAt: data.createdAt?.toDate(),
-        lastMessageAt: data.lastMessageAt?.toDate(),
+        participants: Array.isArray(data.participants) ? data.participants : [],
+        participantNames: data.participantNames || {},
+        participantPhotos: data.participantPhotos || {},
+        bookingId: data.bookingId ?? null,
+        serviceType: data.serviceType ?? null,
+        status: data.status ?? null,
+        lastMessage: data.lastMessage ?? null,
+        lastMessageBy: data.lastMessageBy ?? null,
+        unreadCount: data.unreadCount || {},
+        createdAt: data.createdAt?.toDate?.() ?? data.createdAt ?? null,
+        lastMessageAt: data.lastMessageAt?.toDate?.() ?? data.lastMessageAt ?? null,
       });
     });
 

@@ -269,7 +269,35 @@ router.get(
         return res.status(403).json({ error: 'Unauthorized access to booking' });
       }
 
-      res.json(booking);
+      // DTO round 2 (2026-08-22): previously echoed the raw booking row.
+      // Auth allows customer OR provider — the same shape leaked
+      // provider `commissionRate`/`internalNotes` to the customer, or
+      // customer `stripeCustomerId`/`sumitCustomerId` to the provider.
+      // Explicit projection: fields both roles legitimately consume.
+      const b = booking as any;
+      const iso = (v: any) => v?.toDate ? v.toDate().toISOString() : v ?? null;
+      res.json({
+        id: b.id ?? bookingId,
+        requestId: b.requestId ?? b.id ?? bookingId,
+        platformId: b.platformId,
+        userId: b.userId,
+        providerId: b.providerId ?? null,
+        providerName: b.providerName ?? null,
+        providerAddress: b.providerAddress ?? null,
+        pickupAddress: b.pickupAddress ?? null,
+        serviceType: b.serviceType ?? null,
+        petCount: b.petCount ?? null,
+        petIds: Array.isArray(b.petIds) ? b.petIds : [],
+        status: b.status ?? null,
+        serviceDate: iso(b.serviceDate),
+        startDate: b.startDate || iso(b.serviceDate),
+        endDate: b.endDate || iso(b.serviceDate),
+        subtotalCents: typeof b.subtotalCents === 'number' ? b.subtotalCents : null,
+        feeCents: typeof b.feeCents === 'number' ? b.feeCents : null,
+        totalCents: typeof b.totalCents === 'number' ? b.totalCents : null,
+        currency: b.currency ?? 'ILS',
+        createdAt: iso(b.createdAt),
+      });
     } catch (error: any) {
       logger.error('Failed to fetch booking', {
         error: error.message,
