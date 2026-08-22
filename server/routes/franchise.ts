@@ -675,13 +675,35 @@ router.patch('/support/tickets/:ticketId', requireFranchiseAuth, async (req, res
       return res.status(404).json({ error: 'Ticket not found' });
     }
 
+    // False-mass-assign fix (2026-08-22): previously spread `req.body`
+    // directly into the Firestore update. Callers could inject
+    // arbitrary fields (`franchiseId`, `ticketId`, `internalNote`,
+    // etc.) into the doc — bypassing the state machine, spoofing
+    // franchise ownership, or planting hidden admin flags. Run the
+    // patch through the shared insert schema (as .partial()) so only
+    // known ticket fields are accepted.
+    let parsed: Record<string, unknown>;
+    try {
+      parsed = insertServiceTicketSchema.partial().parse(req.body ?? {}) as Record<string, unknown>;
+    } catch (err) {
+      if (err instanceof z.ZodError) {
+        return res.status(400).json({ error: 'Invalid ticket data', details: err.errors });
+      }
+      throw err;
+    }
+    // Never let a body-supplied franchiseId cross owner boundaries —
+    // the doc's path already pins the franchise; strip defence-in-depth.
+    delete (parsed as any).franchiseId;
+
     const updates: any = {
-      ...req.body,
+      ...parsed,
       updatedAt: new Date(),
     };
 
-    // If status is being set to resolved or closed, set resolvedAt
-    if ((req.body.status === 'resolved' || req.body.status === 'closed') && !doc.data()?.resolvedAt) {
+    // If status is being set to resolved or closed, set resolvedAt.
+    // Read the parsed value (not raw req.body) so an unrelated field
+    // named `status` can't sneak past the allowlist.
+    if ((parsed.status === 'resolved' || parsed.status === 'closed') && !doc.data()?.resolvedAt) {
       updates.resolvedAt = new Date();
     }
 
