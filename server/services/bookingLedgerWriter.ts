@@ -89,6 +89,15 @@ export async function writeBookingLedgerEntries(booking: BookingForLedger): Prom
   // Provider payout = their full service price; their own VAT is their own
   // fiscal affair (disclosed agent — we never withhold it).
   const providerPayoutCents = providerGrossCents;
+  // DISCLOSED-AGENT: PetWash withholds ZERO VAT from provider share.
+  // Providers who are Osek Murshe issue their own tax invoice for their gross;
+  // Osek Patur owe no VAT. Either way our `pw_provider_payouts.vatInShareCents`
+  // is 0 — the value must exist here because the INSERT below (line ~131)
+  // reads it. Before this fix `providerVatCents` was undefined, so every
+  // completion silently threw ReferenceError and was swallowed by the outer
+  // try/catch (line 155) — provider payout row was NEVER written on any
+  // marketplace booking. Lane B audit 2026-08-22 root cause.
+  const providerVatCents = 0;
   const netRevenueCents   = platformFeeCents; // PetWash revenue = commission
   const commissionCents   = platformFeeCents;
 
