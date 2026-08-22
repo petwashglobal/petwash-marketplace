@@ -98,13 +98,19 @@ router.get('/metrics', async (req, res) => {
     }
     
     // STEP 5: Get today's stats
+    // TZ FIX (Lane D audit 2026-08-22 round 3): CURRENT_DATE is session TZ
+    // (UTC on Cloud Run). Between 21:00-23:59 IST "today" was already
+    // tomorrow in UTC, and the tile missed the last 3h of the Israel day.
+    // Bucket both operands in Asia/Jerusalem so the tile always matches
+    // the Israeli business day.
     const todayResult = await db.execute(sql`
-      SELECT 
+      SELECT
         SUM(amount_cents) / 100 as today_revenue,
         COUNT(*) as today_transactions
       FROM payment_intents
       WHERE status IN ('succeeded', 'captured')
-      AND created_at::date = CURRENT_DATE
+      AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date
+        = (NOW() AT TIME ZONE 'Asia/Jerusalem')::date
     `);
     
     const todayData = todayResult.rows[0] as any;
@@ -180,15 +186,18 @@ router.get('/metrics', async (req, res) => {
  */
 router.get('/revenue-chart', async (req, res) => {
   try {
+    // TZ FIX (Lane D audit 2026-08-22 round 3): bucket by Israel calendar
+    // day, not raw UTC day. Late-evening Israel revenue was landing in the
+    // wrong bucket on the 30-day chart.
     const result = await db.execute(sql`
-      SELECT 
-        created_at::date as date,
+      SELECT
+        (created_at AT TIME ZONE 'Asia/Jerusalem')::date as date,
         SUM(amount_cents) / 100 as revenue,
         COUNT(*) as transactions
       FROM payment_intents
       WHERE status IN ('succeeded', 'captured')
       AND created_at > NOW() - INTERVAL '30 days'
-      GROUP BY created_at::date
+      GROUP BY (created_at AT TIME ZONE 'Asia/Jerusalem')::date
       ORDER BY date ASC
     `);
     
