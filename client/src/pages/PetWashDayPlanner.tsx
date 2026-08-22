@@ -83,7 +83,18 @@ export default function PetWashDayPlanner() {
   const [searchInput, setSearchInput] = useState('Tel Aviv');
 
   const { data, isLoading, error } = useQuery<PlannerData>({
+    // Default queryFn (queryClient.ts:191) uses queryKey[0] verbatim as the
+    // URL, silently dropping queryKey[1]. Server (routes/weather.ts:159-164)
+    // requires ?location=... and 400s without it — the planner page was
+    // broken for every user. Send filters via URLSearchParams explicitly.
+    // (Lane D audit 2026-08-22.)
     queryKey: ['/api/weather/7-day-planner', location],
+    queryFn: async () => {
+      const params = new URLSearchParams({ location });
+      const res = await fetch(`/api/weather/7-day-planner?${params}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Weather planner ${res.status}`);
+      return res.json();
+    },
     enabled: !!location,
   });
 

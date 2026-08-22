@@ -708,7 +708,18 @@ export default function BookingConfirmation() {
   });
 
   const { data: bookingData, isLoading } = useQuery({
+    // Default queryFn hits GET /api/booking-requests (the LIST endpoint,
+    // returns { bookings: [] }) instead of GET /api/booking-requests/:id
+    // (returns { booking }). Consequence: `booking` was always undefined,
+    // the whole confirm/pay/cancel branch never fired — user saw a blank
+    // confirmation. Explicit queryFn hits the detail route.
+    // (Lane D audit 2026-08-22.)
     queryKey: ['/api/booking-requests', requestId],
+    queryFn: async () => {
+      const res = await fetch(`/api/booking-requests/${requestId}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Booking ${res.status}`);
+      return res.json();
+    },
     enabled: !!requestId,
   });
   const booking = (bookingData as any)?.booking;

@@ -24,7 +24,18 @@ export default function MobileStationHub() {
   const [touchStart, setTouchStart] = useState(0);
 
   const { data, isLoading, refetch } = useQuery<{ stations: Station[] }>({
+    // Default queryFn drops queryKey[1] — server accepts ?status. Build the
+    // URL explicitly so the status filter isn't silently dropped and the
+    // page over-fetches all stations. (Lane D audit 2026-08-22.)
     queryKey: ['/api/admin/stations', statusFilter !== 'all' ? statusFilter : null],
+    queryFn: async () => {
+      const params = new URLSearchParams();
+      if (statusFilter !== 'all') params.set('status', statusFilter);
+      const qs = params.toString();
+      const res = await fetch(`/api/admin/stations${qs ? `?${qs}` : ''}`, { credentials: 'include' });
+      if (!res.ok) throw new Error(`Admin stations ${res.status}`);
+      return res.json();
+    },
   });
 
   const handleTouchStart = (e: React.TouchEvent) => {
