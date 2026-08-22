@@ -803,7 +803,15 @@ export default function BookingChat() {
       try {
         const token = await user.getIdToken();
         socket.send(JSON.stringify({ type: "auth_messaging", payload: { firebaseToken: token } }));
-      } catch {}
+      } catch (err) {
+        // Firebase token fetch failed OR socket.send threw. Previously
+        // silently swallowed (Lane D audit 2026-08-22 §8) — chat appeared
+        // "connected" but stayed un-authed forever, so no messages routed
+        // and every send silently no-op'd. Close the socket so the
+        // onclose handler runs the reconnect (5s backoff via reconnectRef).
+        try { socket.close(); } catch { /* already closed */ }
+        setWsAuthed(false);
+      }
     };
 
     socket.onmessage = (event) => {
