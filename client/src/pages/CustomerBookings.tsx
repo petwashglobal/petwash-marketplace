@@ -539,6 +539,19 @@ function BookingCard({
 
   const handleReview = (e: React.MouseEvent) => {
     e.preventDefault(); e.stopPropagation();
+    // Route by rail (Lane C audit 2026-08-22 §5): Flow-B marketplace
+    // bookings review through /marketplace/review/:bookingId (writes
+    // marketplace_reviews). Flow-A booking_requests rows use the
+    // confirmation page's embedded rating form (writes owner_rating
+    // on the request row itself). Before this fix, marketplace
+    // bookings landed on /booking/confirmation/:requestId which knows
+    // nothing about marketplace_reviews — the marketplace_reviews row
+    // was never created, and the /reviewed status transition on
+    // bookings never fired for Flow-B.
+    if (booking.kind === 'marketplace') {
+      navigate(`/marketplace/review/${booking.requestId}`);
+      return;
+    }
     navigate(`/booking/confirmation/${booking.requestId}`);
   };
 
