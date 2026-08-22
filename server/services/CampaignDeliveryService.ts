@@ -30,6 +30,7 @@ import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { SUPPORT_EMAIL as CANONICAL_SUPPORT_EMAIL } from '@shared/support-contact';
 import { logNotificationEvent } from './notificationAudit';
+import { buildUnsubscribeUrl } from '../lib/unsubToken';
 
 // ─────────────────────────────────────────────────────────────
 // TYPES
@@ -201,7 +202,7 @@ function buildPushPayload(campaignType: CampaignType, couponCode: string, discou
   }
 }
 
-function buildEmailHtml(campaignType: CampaignType, couponCode: string, discountSummary: string, firstName: string): string {
+function buildEmailHtml(campaignType: CampaignType, couponCode: string, discountSummary: string, firstName: string, uid?: string): string {
   const greeting = firstName ? `שלום ${firstName},` : 'שלום,';
   const campaignMessages: Record<string, string> = {
     birthday:        `🎂 <strong>יום הולדת שמח!</strong><br>קיבלת קופון מיוחד ביום הולדתך.`,
@@ -238,7 +239,7 @@ function buildEmailHtml(campaignType: CampaignType, couponCode: string, discount
     </div>
     <p style="font-size:12px;color:#999;border-top:1px solid #eee;padding-top:16px;margin-top:24px">
       קיבלת הודעה זו מכיוון שנתת הסכמה לקבל הצעות שיווקיות מ-PetWash.<br>
-      להסרה מרשימת תפוצה: <a href="https://petwash.co.il/unsubscribe" style="color:#999">לחץ כאן</a><br><br>
+      להסרה מרשימת תפוצה: <a href="${uid ? buildUnsubscribeUrl(uid) : 'mailto:support@petwash.co.il?subject=' + encodeURIComponent('ביטול הרשמה למיילים שיווקיים')}" style="color:#999">לחץ כאן</a><br><br>
       פט וואש בע&quot;מ / PET WASH LTD | ח.פ. 517145033 | ${CANONICAL_SUPPORT_EMAIL}
     </p>
   </div>
@@ -376,7 +377,7 @@ export class CampaignDeliveryService {
         const firstName     = user.first_name ?? '';
         const smsText       = bodySms  ?? buildSmsText(campaignType, couponCode, discountSummary);
         const emailSubject_ = subject  ?? buildEmailSubject(campaignType, discountSummary);
-        const emailHtml_    = bodyHtml ?? buildEmailHtml(campaignType, couponCode, discountSummary, firstName);
+        const emailHtml_    = bodyHtml ?? buildEmailHtml(campaignType, couponCode, discountSummary, firstName, userId);
         const push_         = buildPushPayload(campaignType, couponCode, discountSummary);
         const idempotencyKey = `campaign:${campaignType}:${couponId}:${userId}`;
 

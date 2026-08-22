@@ -144,6 +144,7 @@ import onboardingRouter from './routes/onboarding';
 import providerConsoleRouter from './routes/provider-console';
 import moneyFlowRouter from './routes/finance/money-flow';
 import careersRoutes from "./routes/careers";
+import marketingUnsubscribeRoutes from "./routes/marketing-unsubscribe";
 import vatRoutes from "./routes/vat";
 import feesRoutes from "./routes/fees";
 import escrowRoutes from "./routes/escrow";
@@ -12937,6 +12938,9 @@ self.addEventListener('notificationclick', (event) => {
   
   // 💼 CAREERS PORTAL - SEEK-inspired HR application system with fraud prevention
   app.use('/api/careers', apiLimiter, careersRoutes);
+  // Marketing unsubscribe (CAN-SPAM / DMA-13). Token-authenticated —
+  // the endpoint verifies the HMAC token inline, no session required.
+  app.use('/api/marketing', apiLimiter, marketingUnsubscribeRoutes);
   
   
   // ⁦Pet Wash Academy™⁩ - Professional trainer marketplace (2025 unified ecosystem)
