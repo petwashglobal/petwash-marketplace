@@ -126,14 +126,27 @@ router.post('/join', async (req: Request, res: Response) => {
         }).catch((e: any) => logger.warn('[PrestigeJoin] Points tx failed (non-fatal)', { error: e?.message }));
 
         // Firebase custom claims
-        await fbAdminAuth.setCustomUserClaims(userId, {
-          ...((await fbAdminAuth.getUser(userId)).customClaims || {}),
-          accountType: 'pet_parent',
-          role: 'public',
-          loyaltyTier: 'bronze',
-          loyaltyMember: true,
-          program: 'PetWash Privilege',
-        }).catch((e: any) => logger.warn('[PrestigeJoin] Custom claims failed (non-fatal)', { error: e?.message }));
+        // ROLE-CLOBBER-FIX (2026-08-23 auth-audit item #2): same pattern as
+        // loyalty.ts:220. accountType/role live at the same key level, so
+        // spreading existingClaims and then re-writing them wiped any
+        // super_admin / admin / provider claim on the account. Preserve
+        // whatever was there; only default when unset. Loyalty claims
+        // (loyaltyTier / loyaltyMember / program) stay additive.
+        try {
+          const existingClaims = (await fbAdminAuth.getUser(userId)).customClaims || {};
+          const preservedAccountType = existingClaims.accountType || 'pet_parent';
+          const preservedRole = existingClaims.role || 'public';
+          await fbAdminAuth.setCustomUserClaims(userId, {
+            ...existingClaims,
+            accountType: preservedAccountType,
+            role: preservedRole,
+            loyaltyTier: existingClaims.loyaltyTier || 'bronze',
+            loyaltyMember: true,
+            program: 'PetWash Privilege',
+          });
+        } catch (e: any) {
+          logger.warn('[PrestigeJoin] Custom claims failed (non-fatal)', { error: e?.message });
+        }
       }
     } catch (loyaltyErr: any) {
       // For a NEW enrollment the loyalty profile IS the Prestige experience —
