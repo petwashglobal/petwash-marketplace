@@ -6,6 +6,8 @@ import { Router } from 'express';
 import { GPSTrackingService } from '../services/GPSTrackingService';
 import { requireAuth } from '../customAuth';
 import { logger } from '../lib/logger';
+import { db as firestoreDb } from '../lib/firebase-admin';
+import { isSuperAdmin } from '../middleware/rbac';
 
 const router = Router();
 
@@ -130,17 +132,50 @@ router.post('/walk/end', requireAuth, async (req, res) => {
 /**
  * Get real-time location of active walk (for owner tracking)
  * GET /api/gps/walk/:sessionId/location
+ *
+ * OWNER-CHECK (2026-08-23 auth-audit CRIT #3): previously only required
+ * `requireAuth`. Any authenticated user could pass ANY sessionId (stale
+ * link, guessed, enumerated) and stream a walker's live GPS trail plus
+ * the owner's tracking session. Now checks the walk_sessions doc up
+ * front and rejects if the caller is neither the walker, the owner,
+ * nor an authorized super-admin. 404 on missing session (unchanged),
+ * 403 on wrong-party access (do not disclose whether the session
+ * exists to a non-participant).
  */
 router.get('/walk/:sessionId/location', requireAuth, async (req, res) => {
   try {
     const { sessionId } = req.params;
-    
+    const uid = req.user!.uid;
+
+    // Read the participants BEFORE returning any location data.
+    const sessionSnap = await firestoreDb
+      .collection('walk_sessions')
+      .doc(sessionId)
+      .get();
+
+    if (!sessionSnap.exists) {
+      return res.status(404).json({ error: 'Active session not found' });
+    }
+
+    const session = sessionSnap.data() as { walkerId?: string; ownerId?: string } | undefined;
+    const isWalker = !!session?.walkerId && session.walkerId === uid;
+    const isOwner = !!session?.ownerId && session.ownerId === uid;
+    const isAdmin = isSuperAdmin(req.user?.email || '');
+
+    if (!isWalker && !isOwner && !isAdmin) {
+      logger.warn('[GPS API] Unauthorized location read blocked', {
+        uid,
+        sessionId,
+      });
+      return res.status(403).json({ error: 'Not a participant in this walk' });
+    }
+
     const location = await GPSTrackingService.getCurrentLocation(sessionId);
-    
+
     if (!location) {
       return res.status(404).json({ error: 'Active session not found' });
     }
-    
+
     res.json({
       success: true,
       ...location,
