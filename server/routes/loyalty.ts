@@ -219,18 +219,44 @@ router.post('/auto-enroll', async (req: AuthenticatedRequest, res: Response) => 
 
     try {
       const existingClaims = (await adminAuth.getUser(userId)).customClaims || {};
-      // Never elevate accountType/role here — auto-enroll only writes loyalty
-      // claims. Provider status is set by the vetted approval flow, not by
-      // any client-callable endpoint.
+      // ROLE-CLOBBER-FIX (2026-08-23 auth-audit item #2):
+      //
+      // Previously this block wrote `accountType:'pet_parent', role:'public'`
+      // AFTER the spread, so those fields overwrote any pre-existing
+      // super_admin / admin / staff / provider claim. Result:
+      //   1. An admin logs in → custom claims include `role:'super_admin'`.
+      //   2. Auto-enroll to loyalty fires (idempotent, called from many
+      //      client-facing pages).
+      //   3. This code overwrites `role` to `'public'` and `accountType`
+      //      to `'pet_parent'`.
+      //   4. Next `getIdTokenResult(true)` on the client reads `role:'public'`
+      //      and hides all admin chrome.
+      //   5. Every protected admin route then 403s.
+      //   6. User sees "hi Nir" (name still resolves) but every action bounces
+      //      to sign-in — exact symptom the CEO reported 2026-08-23.
+      //
+      // Fix: only set accountType / role when they are NOT already set.
+      // Loyalty claims (loyaltyTier / loyaltyMember / program) are always
+      // safe to add — they're additive, not identity.
+      //
+      // The doc-comment above already said "Never elevate accountType/role
+      // here" — but the code did. This makes the code match the comment.
+      const preservedAccountType = existingClaims.accountType || 'pet_parent';
+      const preservedRole = existingClaims.role || 'public';
       await adminAuth.setCustomUserClaims(userId, {
         ...existingClaims,
-        accountType: 'pet_parent',
-        role: 'public',
-        loyaltyTier: 'bronze',
+        accountType: preservedAccountType,
+        role: preservedRole,
+        loyaltyTier: existingClaims.loyaltyTier || 'bronze',
         loyaltyMember: true,
         program: 'PetWash Privilege',
       });
-      logger.info('[Loyalty] Custom claims set for user', { userId, accountType: userRole });
+      logger.info('[Loyalty] Custom claims set for user', {
+        userId,
+        preservedAccountType,
+        preservedRole,
+        loyaltyMember: true,
+      });
     } catch (claimsErr) {
       logger.warn('[Loyalty] Failed to set custom claims (non-blocking)', { claimsErr, userId });
     }
