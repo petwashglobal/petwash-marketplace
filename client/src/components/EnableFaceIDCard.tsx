@@ -67,25 +67,50 @@ export default function EnableFaceIDCard({
   };
 
   return (
-    <Card className="bg-gradient-to-br from-black/40 to-black/20 border-gold/30 backdrop-blur-md">
-      <CardHeader className="text-center">
-        <div className="flex justify-center mb-2">
-          <div className="p-3 rounded-full bg-gold/20">
-            <Fingerprint className="h-8 w-8 text-gold" />
+    // FACE-ID-CONTRAST-FIX (2026-08-23): was
+    //   bg-gradient-to-br from-black/40 to-black/20 border-gold/30
+    // which relies on the parent page being dark to render as a
+    // dark card. When this card is mounted on a light-background
+    // route (e.g. post-signup on the marketing shell), 20-40%
+    // black on white collapses to LIGHT GREY, the gold text and
+    // black-on-gold button lose all contrast, and the whole card
+    // reads as "disabled". Fixed to an opaque near-black background
+    // with a strong gold border, guaranteed high-contrast text/button
+    // regardless of the parent's page color.
+    <Card
+      className="border-2 rounded-2xl overflow-hidden"
+      style={{
+        backgroundColor: '#0B0B0B',
+        borderColor: 'rgba(217, 184, 76, 0.55)',
+        boxShadow: '0 8px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px rgba(217, 184, 76, 0.1)',
+      }}
+    >
+      <CardHeader className="text-center pt-6 pb-2">
+        <div className="flex justify-center mb-3">
+          <div
+            className="p-3 rounded-full"
+            style={{ backgroundColor: 'rgba(217, 184, 76, 0.18)' }}
+          >
+            <Fingerprint className="h-8 w-8" style={{ color: '#D9B84C' }} />
           </div>
         </div>
-        <CardTitle className="text-gold text-xl">
+        <CardTitle className="text-xl" style={{ color: '#D9B84C' }}>
           {t('faceID.title', language)}
         </CardTitle>
-        <CardDescription className="text-gray-300">
+        <CardDescription style={{ color: '#E5E7EB' }}>
           {t('faceID.description', language)}
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-4 pb-6">
         <Button
           onClick={handleEnableFaceID}
           disabled={busy || done}
-          className="w-full bg-gold hover:bg-gold/90 text-black font-semibold h-12 rounded-full transition-all"
+          className="w-full font-semibold h-12 rounded-full transition-all"
+          style={{
+            backgroundColor: done ? '#16A34A' : '#D9B84C',
+            color: '#000000',
+            border: 'none',
+          }}
           data-testid="button-enable-face-id"
         >
           {done ? (
