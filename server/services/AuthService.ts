@@ -246,29 +246,103 @@ export class AuthService {
     // at /complete-profile. Writing it here, when the row is born, keeps it.
     dateOfBirth?: string;
   }): Promise<{ user: any; isNewUser: boolean } | null> {
+    // SYNC-RESULT-NULL FIX (2026-08-23 auth-audit CRIT #4):
+    //
+    // Before this change, this function had ONE try/catch around the whole
+    // getUserById + createUser flow. When getUserById threw (Redis outage,
+    // Redis timeout during the 8-second DB_BOOTSTRAP_TIMEOUT_MS race,
+    // transient network blip on the cache layer) for a returning user
+    // whose row already exists, the catch returned null → routes.ts:1613
+    // treated that as "sync failed" → returned 502 { code:
+    // 'DB_UNAVAILABLE' } to the client → session cookie never set →
+    // client bounced back to sign-in. Matches the CEO's exact
+    // "logged in but kicked out" pattern.
+    //
+    // Fix: split the failure modes.
+    //   1. Fast path: getUserById (Redis-cached → Postgres). If it
+    //      succeeds, use its result.
+    //   2. If step 1 THROWS (Redis unavailable, cache-layer glitch),
+    //      fall back to a DIRECT Postgres SELECT that bypasses Redis
+    //      entirely. A returning user's row is still there — the cache
+    //      was just unreachable. Return the row as existing.
+    //   3. Only if BOTH step 1 AND step 2 throw is it a genuine DB
+    //      outage → return null (the route's 502 gate is correct then).
+    //   4. If both steps confirm no row exists, this is a truly new user
+    //      → createUser. If createUser throws (23505 unique conflict from
+    //      a race), retry step 2 to fetch the row a concurrent request
+    //      created, and treat it as an existing user.
+
+    let existing: typeof users.$inferSelect | undefined | null = null;
+    let cacheFailed = false;
     try {
-      const existing = await this.getUserById(firebaseUid);
-      if (existing) {
-        await this.ensureLoyaltyProfile(existing.id);
-        // Idempotent — skips if wallet already exists. Covers users created before
-        // ensureWalletAccount was introduced, and social-OAuth users whose signup
-        // path did not previously call this (Google/Apple/Facebook).
-        await this.ensureWalletAccount(existing.id);
-        return { user: existing, isNewUser: false };
-      }
+      existing = await this.getUserById(firebaseUid) as any;
+    } catch (cacheErr: any) {
+      cacheFailed = true;
+      logger.warn('[AuthService] getUserById (cached path) threw — falling back to direct DB', {
+        uid: firebaseUid,
+        error: cacheErr?.message,
+      });
+    }
 
-      if (!email) {
-        logger.warn('[AuthService] Creating PostgreSQL user without email (TikTok/Instagram/Apple provider) — email can be updated via complete-profile', { uid: firebaseUid });
+    if (!existing && cacheFailed) {
+      try {
+        const [row] = await db
+          .select()
+          .from(users)
+          .where(eq(users.id, firebaseUid))
+          .limit(1);
+        if (row) existing = row;
+      } catch (directErr: any) {
+        // Genuine Postgres outage — cache AND primary both unreachable.
+        // Now the 502 in routes.ts is the correct response.
+        logger.error('[AuthService] ensureUserInPostgres — both cache AND direct DB unavailable', {
+          uid: firebaseUid,
+          error: directErr?.message,
+        });
+        return null;
       }
+    }
 
+    if (existing) {
+      // Non-critical side effects — never let them poison the caller.
+      try { await this.ensureLoyaltyProfile(existing.id); } catch (e: any) {
+        logger.warn('[AuthService] ensureLoyaltyProfile failed for returning user (non-blocking)', { uid: firebaseUid, error: e?.message });
+      }
+      try { await this.ensureWalletAccount(existing.id); } catch (e: any) {
+        logger.warn('[AuthService] ensureWalletAccount failed for returning user (non-blocking)', { uid: firebaseUid, error: e?.message });
+      }
+      return { user: existing, isNewUser: false };
+    }
+
+    // Row genuinely does not exist — this is a new user.
+    if (!email) {
+      logger.warn('[AuthService] Creating PostgreSQL user without email (TikTok/Instagram/Apple provider) — email can be updated via complete-profile', { uid: firebaseUid });
+    }
+
+    try {
       const newUser = await this.createUser({
         id: firebaseUid,
         email: email || null,
         ...extraData,
       });
       return { user: newUser, isNewUser: true };
-    } catch (error) {
-      logger.error('[AuthService] ensureUserInPostgres failed:', error);
+    } catch (createErr: any) {
+      // 23505 = unique_violation: a concurrent request already created the row.
+      // Read it back and return as existing. This turns a race into a success
+      // instead of a 502.
+      if (createErr?.code === '23505') {
+        try {
+          const [row] = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, firebaseUid))
+            .limit(1);
+          if (row) return { user: row, isNewUser: false };
+        } catch (readErr: any) {
+          logger.warn('[AuthService] ON CONFLICT read-back failed', { uid: firebaseUid, error: readErr?.message });
+        }
+      }
+      logger.error('[AuthService] ensureUserInPostgres createUser failed:', createErr);
       return null;
     }
   }
