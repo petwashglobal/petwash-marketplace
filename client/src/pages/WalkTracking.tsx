@@ -551,15 +551,8 @@ export default function WalkTracking() {
                             {walk.booking.pickupAddress}
                           </p>
                         )}
-                        <div className="grid grid-cols-2 gap-2">
-                          <a
-                            href={`https://waze.com/ul?ll=${lat},${lng}&navigate=yes`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-[#09B4FF]/10 border border-[#09B4FF]/30 text-[#09B4FF] text-xs font-semibold hover:bg-[#09B4FF]/20 transition-colors"
-                          >
-                            🚗 Waze
-                          </a>
+                        {/* WAZE-KILL (CEO 2026-08-23): Waze button removed. */}
+                        <div className="max-w-xs">
                           <a
                             href={`https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`}
                             target="_blank"

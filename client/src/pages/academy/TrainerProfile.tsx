@@ -100,13 +100,17 @@ export default function TrainerProfile() {
 
   const { trainer, reviews } = trainerData;
 
-  // Generate Waze deep link for navigation to trainer location
+  // WAZE-KILL (CEO 2026-08-23): was `getWazeNavigationLink` that returned
+  // a `https://waze.com/ul?…` URL. Renamed + repointed to Google Maps
+  // per CEO order — "kill the waze it's need new pet wash waze, not
+  // good mislead people". Callsite (line ~415) reads through this fn
+  // so no downstream JSX change needed.
   const getWazeNavigationLink = () => {
     if (trainer.location) {
-      return `https://waze.com/ul?ll=${trainer.location.lat},${trainer.location.lng}&navigate=yes`;
+      return `https://www.google.com/maps/dir/?api=1&destination=${trainer.location.lat},${trainer.location.lng}`;
     }
     // Fallback to city search if no GPS coordinates
-    return `https://waze.com/ul?q=${encodeURIComponent(trainer.city + ', Israel')}&navigate=yes`;
+    return `https://www.google.com/maps/dir/?api=1&destination=${encodeURIComponent(trainer.city + ', Israel')}`;
   };
 
   return (
