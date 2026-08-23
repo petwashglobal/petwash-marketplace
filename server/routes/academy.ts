@@ -817,6 +817,18 @@ router.post('/bookings/:id/confirm', requireAuth, async (req, res) => {
       customerUserId: booking.userId,
     });
 
+    // ACADEMY-CHAT-COVERAGE (2026-08-23): open the customer↔trainer
+    // per-booking chat as soon as the trainer confirms. This mirrors what
+    // the walk-my-pet + sitter-suite rails already do (see
+    // server/lib/booking-chat-sync.ts:79). Non-blocking best-effort: chat
+    // failures never roll back the money-truth transition above.
+    try {
+      const { syncChatToBookingStatus } = await import('../lib/booking-chat-sync');
+      await syncChatToBookingStatus(bookingId, 'confirmed', 'pet_wash_academy');
+    } catch (chatErr: any) {
+      logger.warn('[Academy] Chat sync on confirm failed (non-blocking)', { bookingId, error: chatErr?.message });
+    }
+
     res.json(confirmed);
   } catch (error) {
     logger.error('[Academy] Error confirming booking', error);
