@@ -367,68 +367,138 @@ export default function Contact({ language }: ContactProps) {
             </div>
           </div>
 
-          {/* Get Directions Section */}
-          <div className="luxury-glass-card luxury-shadow-lg p-8 mt-8 luxury-animate-fade-in luxury-delay-3">
-            <div className="text-center mb-8">
-              <div className="flex items-center justify-center gap-3 mb-4">
-                <div className="w-12 h-12 rounded-full bg-[#D4AF37] flex items-center justify-center">
-                  <Navigation className="h-6 w-6 text-white" />
+          {/* Get Directions Section — KFAR-SABA-STATIONS-FIX (2026-08-23):
+                previous section had ONE set of buttons with an opaque
+                maps.app.goo.gl short-link (destination not verifiable from
+                source) and two `?q=Pet+Wash+Ltd+Israel` text-searches. Google
+                / Waze / Apple all resolved those to whatever their search
+                index thought "Pet Wash Ltd" was — the CEO's exact "google
+                link takes them to wrong places" report.
+                Now: two named station cards with per-station lat/lng-anchored
+                links to each of Google Maps, Waze, and Apple Maps. Ground
+                truth pins provided by the CEO 2026-08-23.
+                All links `target="_blank" rel="noopener noreferrer"` so the
+                customer's PetWash tab (session, cart, half-typed OTP) is
+                never blown away when they tap Directions. */}
+          {(() => {
+            const stations = [
+              {
+                key: 'wald',
+                lat: 32.179964,
+                lng: 34.925016,
+                nameEn: 'K9000 — Yitzhak Wald Park, Kfar Saba',
+                nameHe: 'K9000 — פארק יצחק ולד, כפר סבא',
+                addressEn: 'Yitzhak Wald Park, Kfar Saba',
+                addressHe: 'פארק יצחק ולד, כפר סבא',
+                directionsEn: 'Enter from the Weizmann side, turn right after the park entrance — the machine is inside the fenced dog garden.',
+                directionsHe: 'הכניסה של ויצמן, פונים ימינה לאחר הכניסה לפארק — המכונה בתוך גינת הכלבים.',
+              },
+              {
+                key: 'park80',
+                lat: 32.1982242,
+                lng: 34.892436,
+                nameEn: 'K9000 — Green Kfar Saba, Park 80',
+                nameHe: 'K9000 — כפר סבא הירוקה, פארק 80',
+                addressEn: 'Park 80, Green Kfar Saba',
+                addressHe: 'פארק 80, כפר סבא הירוקה',
+                directionsEn: 'Right next to the twago coffee cart.',
+                directionsHe: 'צמוד לעגלת הקפה twago.',
+              },
+            ];
+            return (
+              <div className="luxury-glass-card luxury-shadow-lg p-8 mt-8 luxury-animate-fade-in luxury-delay-3">
+                <div className="text-center mb-8">
+                  <div className="flex items-center justify-center gap-3 mb-4">
+                    <div className="w-12 h-12 rounded-full bg-[#D4AF37] flex items-center justify-center">
+                      <Navigation className="h-6 w-6 text-white" />
+                    </div>
+                    <h2 className="luxury-heading-lg">
+                      {currentLanguage === 'en' ? 'Our Stations' : 'התחנות שלנו'}
+                    </h2>
+                  </div>
+                  <p className="luxury-text-body">
+                    {currentLanguage === 'en'
+                      ? 'Two K9000 self-service stations, both in Kfar Saba. Pick the closer one and tap your preferred navigation app.'
+                      : 'שתי תחנות K9000 בשירות עצמי — שתיהן בכפר סבא. בחרו את הקרובה אליכם וגעו באפליקציית הניווט המועדפת.'}
+                  </p>
                 </div>
-                <h2 className="luxury-heading-lg">
-                  {currentLanguage === 'en' ? 'Get Directions' : 'קבל הוראות הגעה'}
-                </h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {stations.map((s) => {
+                    const nav = navigator.userAgent || '';
+                    const isIOS = /iPad|iPhone|iPod/.test(nav);
+                    const label = currentLanguage === 'en' ? s.nameEn : s.nameHe;
+                    const addr = currentLanguage === 'en' ? s.addressEn : s.addressHe;
+                    const guide = currentLanguage === 'en' ? s.directionsEn : s.directionsHe;
+                    // All three deep-links are lat/lng anchored — no text search.
+                    const gmaps = `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
+                    const waze = `https://www.waze.com/ul?ll=${s.lat}%2C${s.lng}&navigate=yes`;
+                    const apple = `https://maps.apple.com/?ll=${s.lat},${s.lng}&q=${encodeURIComponent(label)}`;
+                    return (
+                      <div
+                        key={s.key}
+                        className="rounded-2xl p-6 border"
+                        style={{
+                          background: 'linear-gradient(180deg,#FFFFFF 0%,#FFFCF4 100%)',
+                          borderColor: 'rgba(212,175,55,0.35)',
+                          boxShadow: '0 6px 24px rgba(0,0,0,0.06)',
+                          direction: currentLanguage === 'en' ? 'ltr' : 'rtl',
+                        }}
+                        data-testid={`station-card-${s.key}`}
+                      >
+                        <div className="flex items-center gap-2 mb-2">
+                          <MapPin className="h-4 w-4" style={{ color: '#8A6A1B' }} />
+                          <h3 className="luxury-heading-md" style={{ fontSize: '1.05rem' }}>{label}</h3>
+                        </div>
+                        <p className="luxury-text-small" style={{ color: '#555', marginBottom: 8 }}>{addr}</p>
+                        <p className="luxury-text-body" style={{ fontSize: '0.92rem', marginBottom: 16 }}>{guide}</p>
+
+                        <div className="flex flex-wrap gap-2">
+                          <a
+                            href={gmaps}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="luxury-btn-primary flex-1 min-w-[130px] flex items-center justify-center gap-2"
+                            data-testid={`button-directions-google-${s.key}`}
+                          >
+                            <MapPin className="h-4 w-4" />
+                            <span>{currentLanguage === 'en' ? 'Google Maps' : 'גוגל מפות'}</span>
+                          </a>
+                          <a
+                            href={waze}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="luxury-btn-secondary flex-1 min-w-[130px] flex items-center justify-center gap-2"
+                            data-testid={`button-directions-waze-${s.key}`}
+                          >
+                            <Navigation className="h-4 w-4" />
+                            <span>Waze</span>
+                          </a>
+                          {isIOS && (
+                            <a
+                              href={apple}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="luxury-btn-secondary flex-1 min-w-[130px] flex items-center justify-center gap-2"
+                              data-testid={`button-directions-apple-${s.key}`}
+                            >
+                              <MapPin className="h-4 w-4" />
+                              <span>{currentLanguage === 'en' ? 'Apple Maps' : 'אפל מפות'}</span>
+                            </a>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                <p className="text-center luxury-text-small mt-6">
+                  {currentLanguage === 'en'
+                    ? 'Both stations are open 24/7 — tap any button above for turn-by-turn directions.'
+                    : 'שתי התחנות פתוחות 24/7 — הקישו על כל כפתור לקבלת ניווט מדויק.'}
+                </p>
               </div>
-              <p className="luxury-text-body">
-                {currentLanguage === 'en' 
-                  ? 'Navigate to ⁦PetWash™⁩ using your preferred map service' 
-                  : 'נווט ל-⁦PetWash™⁩ באמצעות שירות המפות המועדף עליך'}
-              </p>
-            </div>
-            
-            <div className="flex flex-wrap gap-4 justify-center">
-              {/* Google Maps */}
-              <a
-                href="https://maps.app.goo.gl/yrWXbYi6eMqxntRX8?g_st=ipc"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="luxury-btn-primary flex-1 min-w-[180px] max-w-[240px] flex items-center justify-center gap-3"
-                data-testid="button-directions-google"
-              >
-                <MapPin className="h-5 w-5" />
-                <span>{currentLanguage === 'en' ? 'Google Maps' : 'גוגל מפות'}</span>
-              </a>
-
-              {/* Apple Maps */}
-              <a
-                href="https://maps.apple.com/?q=Pet+Wash+Ltd+Israel"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="luxury-btn-secondary flex-1 min-w-[180px] max-w-[240px] flex items-center justify-center gap-3"
-                data-testid="button-directions-apple"
-              >
-                <MapPin className="h-5 w-5" />
-                <span>{currentLanguage === 'en' ? 'Apple Maps' : 'אפל מפות'}</span>
-              </a>
-
-              {/* Waze */}
-              <a
-                href="https://waze.com/ul?q=Pet+Wash+Ltd+Israel"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="luxury-btn-primary flex-1 min-w-[180px] max-w-[240px] flex items-center justify-center gap-3"
-                data-testid="button-directions-waze"
-              >
-                <Navigation className="h-5 w-5" />
-                <span>Waze</span>
-              </a>
-            </div>
-            
-            <p className="text-center luxury-text-small mt-6">
-              {currentLanguage === 'en' 
-                ? 'Choose your preferred navigation app to get turn-by-turn directions' 
-                : 'בחר את אפליקציית הניווט המועדפת עליך לקבלת הוראות הגעה צעד אחר צעד'}
-            </p>
-          </div>
+            );
+          })()}
         </div>
       </div>
       </div>
