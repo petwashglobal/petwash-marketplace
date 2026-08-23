@@ -56,12 +56,21 @@ describe('marketing surfaces stay out of the native apps', () => {
     expect(app).toMatch(/showPromoPopup = !isNativeApp/);
   });
 
-  it('the "under development" beta notice is GONE — the site is live (CEO 2026-07-25)', () => {
-    // A live business must never label its whole site as unfinished. If a
-    // site-wide "under development / in testing" strip ever comes back, this
-    // fails on purpose — readiness is gated per-feature, not with a global label.
-    expect(layout).not.toMatch(/devNoticeDismissed/);
-    expect(layout).not.toMatch(/בפיתוח|under development/i);
+  it('the "under development" honest notice is PRESENT and dismissible (CEO 2026-08-23)', () => {
+    // Reversal of the 2026-07-25 removal: the CEO ordered a small honest
+    // one-line strip put back so every walk-up visitor sees ONE truthful
+    // "we're still building, no live payments yet" line above any flow
+    // that isn't fully live. Feature surfaces still gate their own
+    // live/test state — this is the site-wide honest signal above them.
+    // If a future edit removes the strip, this test flips red so the
+    // legal/honesty commitment stays in the diff.
+    expect(layout).toMatch(/data-testid="under-dev-notice"/);
+    expect(layout).toMatch(/בפיתוח/); // HE copy present
+    expect(layout).toMatch(/under development/i); // EN copy present
+    expect(layout).toMatch(/no live payments/i);
+    expect(layout).toMatch(/aria-label=\{isRTL \? 'סגור הודעה' : 'Dismiss notice'\}/);
+    // Dismiss key is versioned so wording bumps re-show the strip once.
+    expect(layout).toMatch(/UNDER_DEV_DISMISS_KEY/);
   });
 });
 
