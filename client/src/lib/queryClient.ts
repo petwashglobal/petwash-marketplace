@@ -2,12 +2,20 @@ import { QueryClient, QueryFunction } from "@tanstack/react-query";
 import { getAppCheckToken } from "./firebase";
 import { getApiUrl } from "./apiConfig";
 
-export async function getFirebaseBearerToken(): Promise<string | null> {
+// TOKEN-REFRESH (2026-08-23): forceRefresh flag added. Firebase caches the
+// ID token client-side and getIdToken() returns the CACHED token until it
+// is within ~5 min of expiry. When a request wakes after a long idle (tab
+// backgrounded on mobile, laptop closed) the cached token can already be
+// server-expired even though getIdToken() happily returns it. Passing
+// `forceRefresh` when the caller signals "the last attempt 401'd" makes
+// the SDK actually round-trip Firebase Auth to mint a fresh token.
+// Default remains soft (cached) so hot paths stay fast.
+export async function getFirebaseBearerToken(forceRefresh: boolean = false): Promise<string | null> {
   try {
     const { auth } = await import("./firebase");
     const user = auth?.currentUser;
     if (user) {
-      return await user.getIdToken();
+      return await user.getIdToken(forceRefresh);
     }
   } catch (error) {
     console.warn('[QueryClient] Failed to get Firebase ID token', error);
@@ -147,7 +155,23 @@ export async function apiRequest(
     headers["X-Firebase-AppCheck"] = appCheckToken;
   }
 
-  if (!headers["Authorization"]) {
+  // TOKEN-REFRESH-401-RETRY (2026-08-23): if the FIRST request comes back
+  // 401 AND the Authorization header wasn't caller-supplied, treat it as a
+  // "cached token was stale" case: force-refresh the ID token once and
+  // retry the same request exactly once. If the second attempt still 401s,
+  // that's a real "not signed in" — bubble it up as usual.
+  //
+  // Why: Firebase caches ID tokens client-side and getIdToken() returns
+  // the cached copy until ~5 min before expiry. On mobile / after a long
+  // tab-background, the cached token can already be server-expired but the
+  // SDK still hands it out. Without this retry the customer sees "Session
+  // expired. Please sign in again." on every action — the "hi Nir …
+  // struggle to login" pattern the CEO reported on 2026-08-23. The
+  // retry is single-shot and gated on !caller-supplied-Authorization so
+  // callers that intentionally send a specific token (e.g. cross-device
+  // link handoff) still see the raw 401 and are not silently overridden.
+  const callerSuppliedAuth = !!headers["Authorization"];
+  if (!callerSuppliedAuth) {
     const bearerToken = await getFirebaseBearerToken();
     if (bearerToken) {
       headers["Authorization"] = `Bearer ${bearerToken}`;
@@ -160,6 +184,21 @@ export async function apiRequest(
     body,
     credentials: "include",
   });
+
+  if (res.status === 401 && !callerSuppliedAuth) {
+    const freshToken = await getFirebaseBearerToken(/* forceRefresh */ true);
+    if (freshToken) {
+      const retryHeaders = { ...headers, Authorization: `Bearer ${freshToken}` };
+      const retryRes = await fetchWithRetry(getApiUrl(url), {
+        method,
+        headers: retryHeaders,
+        body,
+        credentials: "include",
+      });
+      await throwIfResNotOk(retryRes);
+      return retryRes;
+    }
+  }
 
   await throwIfResNotOk(res);
   return res;
@@ -192,6 +231,29 @@ export const getQueryFn: <T>(options: {
       credentials: "include",
       headers,
     });
+
+    // TOKEN-REFRESH-401-RETRY (2026-08-23): same one-shot force-refresh
+    // retry that apiRequest() uses. Only fires when the query is being
+    // configured to THROW on 401 (i.e. the caller wants to know about a
+    // real auth failure). When on401 === "returnNull" the caller is
+    // deliberately probing the session (e.g. /whoami on Landing) and
+    // silently returning null is the desired behaviour — we do NOT
+    // want to spin up an extra token refresh for every guest page load.
+    if (res.status === 401 && unauthorizedBehavior === "throw" && bearerToken) {
+      const freshToken = await getFirebaseBearerToken(/* forceRefresh */ true);
+      if (freshToken && freshToken !== bearerToken) {
+        const retryHeaders = { ...headers, Authorization: `Bearer ${freshToken}` };
+        const retryRes = await fetchWithRetry(getApiUrl(queryKey[0] as string), {
+          credentials: "include",
+          headers: retryHeaders,
+        });
+        if (retryRes.ok) {
+          return await retryRes.json();
+        }
+        await throwIfResNotOk(retryRes);
+        return await retryRes.json();
+      }
+    }
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {
       return null;
