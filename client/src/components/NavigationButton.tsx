@@ -1,9 +1,16 @@
 /**
  * Unified Navigation Button Component
- * 
+ *
  * Smart navigation across all Pet Wash platforms.
- * Supports Waze, Google Maps, and Apple Maps with automatic device detection.
- * 
+ * Supports Google Maps + Apple Maps (iOS) with automatic device detection.
+ *
+ * WAZE-KILL (CEO 2026-08-23): Waze support removed by explicit CEO order —
+ * "kill the waze, its need new pet wash waze, not good mislead people".
+ * The Waze dropdown item + Waze branch in NavigationLink are removed;
+ * `provider='waze'` on NavigationLink now falls back to Google Maps so
+ * existing callers do not break. Reinstate after a new verified
+ * PetWash Waze Places listing is set up.
+ *
  * Used by: Academy, Walk My Pet, PetTrek, Sitter Suite, K9000 Stations,
  *          Plush Lab, Main Wash Services, Franchise Locations
  */
@@ -53,11 +60,9 @@ export function NavigationButton({
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
   const q = encodeURIComponent(address || placeName || '');
 
+  // WAZE-KILL (CEO 2026-08-23): `wazeLink` removed. See file header.
   // Generate navigation links — by coordinates when available (most precise),
   // otherwise by address text query.
-  const wazeLink = hasCoords
-    ? `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes&zoom=17`
-    : `https://waze.com/ul?q=${q}&navigate=yes`;
   const googleMapsLink = hasCoords
     ? `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}&destination_place_id=${encodeURIComponent(label)}`
     : `https://www.google.com/maps/dir/?api=1&destination=${q}`;
@@ -89,25 +94,8 @@ export function NavigationButton({
       </DropdownMenuTrigger>
 
       <DropdownMenuContent align="end" className="w-56">
-        {/* Waze - Most popular in Israel */}
-        <DropdownMenuItem
-          onClick={() => handleNavigation(wazeLink, 'Waze')}
-          className="cursor-pointer"
-        >
-          <div className="flex items-center gap-3 w-full">
-            <div className="w-8 h-8 rounded-full bg-[#33ccff] flex items-center justify-center">
-              <MapPin className="h-4 w-4 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="font-semibold text-sm">{t('Open in Waze')}</div>
-              <div className="text-xs text-gray-600 dark:text-gray-400">
-                {t('Turn-by-turn navigation')}
-              </div>
-            </div>
-          </div>
-        </DropdownMenuItem>
-
-        <DropdownMenuSeparator />
+        {/* WAZE-KILL (CEO 2026-08-23): the Waze dropdown item was removed here.
+            See file header. Google Maps + Apple Maps stay. */}
 
         {/* Google Maps */}
         <DropdownMenuItem
@@ -182,6 +170,10 @@ interface NavigationLinkProps {
   longitude: number;
   address?: string;
   placeName?: string;
+  // WAZE-KILL (CEO 2026-08-23): `'waze'` value accepted for BACKWARD
+  // COMPATIBILITY with existing callers, but internally coerced to
+  // Google Maps below so no Waze URL is ever emitted. Kept in the
+  // union type so TypeScript compiles unchanged for legacy callsites.
   provider?: 'waze' | 'google' | 'apple';
   className?: string;
   children?: React.ReactNode;
@@ -192,22 +184,25 @@ export function NavigationLink({
   longitude,
   address,
   placeName,
-  provider = 'waze',
+  provider = 'google',
   className = '',
   children,
 }: NavigationLinkProps) {
   const { t } = useLanguage();
   const label = placeName || address || t('Navigate');
 
+  // WAZE-KILL (CEO 2026-08-23): coerce legacy provider='waze' → 'google'.
+  const effectiveProvider: 'google' | 'apple' =
+    provider === 'apple' ? 'apple' : 'google';
+
   const links = {
-    waze: `https://waze.com/ul?ll=${latitude},${longitude}&navigate=yes&zoom=17`,
     google: `https://www.google.com/maps/dir/?api=1&destination=${latitude},${longitude}`,
     apple: `maps://?daddr=${latitude},${longitude}&q=${encodeURIComponent(label)}`,
   };
 
   return (
     <a
-      href={links[provider]}
+      href={links[effectiveProvider]}
       target="_blank"
       rel="noopener noreferrer"
       className={`inline-flex items-center gap-2 text-[#B8932F] hover:text-[#B8932F] dark:text-[#D4AF37] dark:hover:text-[#D4AF37] ${className}`}
@@ -215,7 +210,7 @@ export function NavigationLink({
       {children || (
         <>
           <Navigation className="h-4 w-4" />
-          <span>{t('Navigate with')} {provider === 'waze' ? 'Waze' : provider === 'google' ? 'Google Maps' : 'Apple Maps'}</span>
+          <span>{t('Navigate with')} {effectiveProvider === 'google' ? 'Google Maps' : 'Apple Maps'}</span>
           <ExternalLink className="h-3 w-3" />
         </>
       )}

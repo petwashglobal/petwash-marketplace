@@ -825,15 +825,9 @@ export default function WalkBookingFlow() {
                 <p className="text-xs font-semibold text-gray-400 uppercase tracking-wider text-center mb-2">
                   ניווט לנקודת האיסוף
                 </p>
-                <div className="grid grid-cols-2 gap-2">
-                  <a
-                    href={`https://waze.com/ul?ll=${pickupDetails?.lat ?? (walker as any)?.latitude},${pickupDetails?.lng ?? (walker as any)?.longitude}&navigate=yes&zoom=17`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-[#D4AF37] border border-[#D4AF37] text-[#B8932F] text-sm font-semibold hover:bg-[#D4AF37] transition-colors"
-                  >
-                    🚗 Waze
-                  </a>
+                {/* WAZE-KILL (CEO 2026-08-23): Waze button removed here.
+                    See client/src/components/NavigationButton.tsx file header. */}
+                <div className="max-w-xs mx-auto">
                   <a
                     href={`https://www.google.com/maps/dir/?api=1&destination=${pickupDetails?.lat ?? (walker as any)?.latitude},${pickupDetails?.lng ?? (walker as any)?.longitude}`}
                     target="_blank"

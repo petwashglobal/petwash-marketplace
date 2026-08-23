@@ -193,6 +193,10 @@ export default function MobileStationSheet() {
     toast({ title: 'Address copied!' });
   };
 
+  // WAZE-KILL (CEO 2026-08-23): `'waze'` value is accepted in the union for
+  // backward-compat with existing callers, but is COERCED to `'google'`
+  // below so no Waze URL is ever opened. Reinstate once the new PetWash
+  // Waze Places listing is verified — see NavigationButton.tsx file header.
   const openMap = (type: 'google' | 'apple' | 'waze') => {
     if (!station.geo) {
       toast({ title: 'No coordinates available', variant: 'destructive' });
@@ -200,19 +204,10 @@ export default function MobileStationSheet() {
     }
 
     const { lat, lng } = station.geo;
-    let url = '';
-
-    switch (type) {
-      case 'google':
-        url = `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`;
-        break;
-      case 'apple':
-        url = `http://maps.apple.com/?daddr=${lat},${lng}`;
-        break;
-      case 'waze':
-        url = `https://waze.com/ul?ll=${lat},${lng}&navigate=yes`;
-        break;
-    }
+    const effectiveType: 'google' | 'apple' = type === 'apple' ? 'apple' : 'google';
+    const url = effectiveType === 'google'
+      ? `https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}`
+      : `http://maps.apple.com/?daddr=${lat},${lng}`;
 
     window.open(url, '_blank');
   };
