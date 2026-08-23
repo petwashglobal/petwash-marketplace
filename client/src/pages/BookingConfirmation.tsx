@@ -70,7 +70,7 @@ const IMPORTANT_INFO_HE: Record<string, string[]> = {
   ],
   dog_walking: [
     'המוליך/ה יגיע/תגיע לכתובת שנקבעה בדיוק בזמן.',
-    'עדכוני מיקום GPS חיים זמינים באפליקציה בזמן הטיול.',
+    'מעקב GPS חי זמין במסך "המעקב שלי" ברגע שהטיול מתחיל.',
     'במזג אוויר קיצוני יתכן שינוי מסלול — תישלח הודעה מראש.',
     'נשיכה או אירוע חריג ידווח מיידית ויתועד לפי חוק.',
   ],
@@ -114,7 +114,7 @@ const IMPORTANT_INFO_EN: Record<string, string[]> = {
   ],
   dog_walking: [
     'Your walker will arrive at the agreed address exactly on time.',
-    'Live GPS tracking is available in the app during the walk.',
+    'Live GPS tracking is available on your "Track My Walk" screen once the walk starts.',
     'In extreme weather, route may be adjusted — you will be notified.',
     'Any incident will be reported immediately and documented per law.',
   ],
