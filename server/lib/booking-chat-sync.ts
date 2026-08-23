@@ -1,10 +1,11 @@
 import { db } from '../db';
-import { 
-  bookingConversations, 
-  bookingMessages, 
+import {
+  bookingConversations,
+  bookingMessages,
   bookings,
   walkBookings,
-  sitterBookings
+  sitterBookings,
+  trainerBookings,
 } from '@shared/schema';
 import { eq, and } from 'drizzle-orm';
 import { nanoid } from 'nanoid';
@@ -109,6 +110,22 @@ export async function syncChatToBookingStatus(
         if (bookingData) {
           customerId = bookingData.ownerId;
           providerId = bookingData.sitterId?.toString() || null;
+        }
+      } else if (platform === 'pet_wash_academy' || platform === 'academy' || platform === 'trainer') {
+        // ACADEMY-CHAT-COVERAGE (2026-08-23): sync helper now knows how to
+        // auto-open a chat for an Academy (trainer) booking when the caller
+        // hands it a 'confirmed' or 'in_progress' status. Accepts three
+        // platform aliases so callers using any naming (canonical
+        // `pet_wash_academy`, short `academy`, or the trainer role name
+        // used in booking_requests.providerType) all route here.
+        [bookingData] = await db
+          .select()
+          .from(trainerBookings)
+          .where(eq(trainerBookings.bookingId, bookingId))
+          .limit(1);
+        if (bookingData) {
+          customerId = bookingData.userId;
+          providerId = bookingData.trainerUserId;
         }
       }
 
