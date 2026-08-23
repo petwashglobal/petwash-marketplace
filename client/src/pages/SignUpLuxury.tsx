@@ -381,6 +381,17 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
   const [sent, setSent] = useState(false);
   const [busy, setBusy] = useState(false);
   const [inlineError, setInlineError] = useState<string | null>(null);
+  // SIGNUP-EMAIL-IN-USE MSG (2026-08-23, CEO audit CRIT #5):
+  // When signup is refused because the email OR phone already has an
+  // account (EMAIL_HAS_ACCOUNT / EMAIL_IN_USE / PHONE_IN_USE), the OTP
+  // has already been consumed and can't be replayed. The pre-fix UX
+  // was: silent mode-flip to /login with a flash inlineError toast the
+  // user couldn't reliably read before it faded — matching the CEO's
+  // "nipa_co@hotmail.com went dead" report on 2026-08-23. This state
+  // holds the user's typed email so the mode-flip to login can
+  // pre-fill it AND render a persistent explanation banner (see JSX
+  // around the login form) instead of only a toast.
+  const [emailConflictInfo, setEmailConflictInfo] = useState<{ email: string; kind: 'email' | 'phone' } | null>(null);
   // CACHED email sessionToken (2026-08-21). The OTP verify chain is 4 calls:
   // /email/verify → /email-session → signInWithCustomToken → /api/auth/session.
   // Step 1 CONSUMES the 6-digit code — it can't be replayed. If any of the
@@ -777,12 +788,24 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
 
       // DUPLICATE GUARD: this email already has an account — clear cached
       // token and route to sign-in (a fresh SMS will be needed on retry).
+      // SIGNUP-EMAIL-IN-USE MSG (2026-08-23): also remember the email the
+      // user typed, so the login form is pre-filled and a persistent
+      // banner tells them WHY the mode flipped. Previously this was a
+      // toast-only message that faded before the user could read it,
+      // and the login form was empty — the CEO's exact
+      // "nipa_co@hotmail.com went dead" report on 2026-08-23.
       if (sd.code === 'EMAIL_HAS_ACCOUNT') {
         setCachedPhoneVerificationToken(null);
+        const conflictingEmail = (email || '').trim();
+        setEmailConflictInfo({ email: conflictingEmail, kind: 'email' });
         setAuthMode('login');
         setMethod('email');
         setSent(false);
-        fail(sd.error || (he ? 'לאימייל הזה כבר יש חשבון — התחברו כדי להוסיף את מספר הנייד.' : 'This email already has an account — sign in to add your mobile number.'));
+        fail(
+          he
+            ? `כתובת האימייל ${conflictingEmail} כבר רשומה — התחברו כאן להוסיף את מספר הנייד.`
+            : `The email ${conflictingEmail} is already registered — sign in here to add your mobile number.`
+        );
         return;
       }
       if (!sd?.customToken) {
@@ -950,6 +973,26 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
         }
         const ad = await a.json().catch(() => ({} as any));
         if (!ad.ok) {
+          // SIGNUP-EMAIL-IN-USE MSG (2026-08-23 audit CRIT #5): the
+          // server sends { code: 'EMAIL_IN_USE' } when this email is
+          // already linked to another Firebase account. Route the user
+          // to sign-in with a persistent banner + pre-filled email so
+          // they don't retype and can't miss the reason. Same treatment
+          // as the sibling EMAIL_HAS_ACCOUNT path above.
+          if (ad.code === 'EMAIL_IN_USE') {
+            const conflictingEmail = (email || '').trim();
+            setEmailConflictInfo({ email: conflictingEmail, kind: 'email' });
+            setCachedEmailSessionToken(null);
+            setAuthMode('login');
+            setMethod('email');
+            setSent(false);
+            fail(
+              he
+                ? `כתובת האימייל ${conflictingEmail} כבר קשורה לחשבון קיים — התחברו כאן.`
+                : `The email ${conflictingEmail} is already linked to an existing account — sign in here.`
+            );
+            return;
+          }
           fail(ad.error || ad.message || (he ? 'שמירת האימייל נכשלה. נסה שוב.' : 'Email attach failed. Try again.'));
           return;
         }
@@ -1850,12 +1893,39 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
                       so nobody is ever locked out. */}
                   {method === 'email' && (
                     <>
+                      {/* SIGNUP-EMAIL-IN-USE MSG (2026-08-23 audit CRIT #5):
+                          persistent gold-bordered banner shown after signup
+                          bounced with EMAIL_HAS_ACCOUNT / EMAIL_IN_USE. Tells
+                          the user WHY they landed on login with their email
+                          pre-filled — no toast that fades before they can
+                          read it. Only rendered on the login path so it can
+                          never appear on a fresh signup attempt. */}
+                      {emailConflictInfo && (
+                        <div
+                          role="status"
+                          style={{
+                            margin: '4px 0 12px',
+                            padding: '10px 12px',
+                            border: '1px solid rgba(217, 184, 76, 0.55)',
+                            background: 'rgba(217, 184, 76, 0.08)',
+                            borderRadius: 10,
+                            color: '#7A5A00',
+                            fontSize: 13,
+                            lineHeight: 1.45,
+                            textAlign: he ? 'right' : 'left',
+                          }}
+                        >
+                          {he
+                            ? `כתובת האימייל ${emailConflictInfo.email} כבר רשומה במערכת. התחברו כאן כדי להמשיך.`
+                            : `The email ${emailConflictInfo.email} is already registered. Sign in here to continue.`}
+                        </div>
+                      )}
                       <div className="sl-field">
                         <label className="sl-label">{t.emailLabel}</label>
                         <div className="sl-inputWrap">
                           <FaEnvelope className="sl-inputIcon" aria-hidden />
                           <input className="sl-input sl-input--icon" type="email" inputMode="email" autoComplete="username email" autoCapitalize="off" autoCorrect="off" spellCheck={false}
-                            value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); }} placeholder={t.emailPh} />
+                            value={email} onChange={(e) => { setEmail(e.target.value); setCachedEmailSessionToken(null); if (emailConflictInfo) setEmailConflictInfo(null); }} placeholder={t.emailPh} />
                         </div>
                         <div className="sl-hint">{he ? 'כל כתובת אימייל — Gmail, Outlook, Yahoo, Walla או עסקית.' : 'Any email — Gmail, Outlook, Yahoo, Walla or business.'}</div>
                       </div>
