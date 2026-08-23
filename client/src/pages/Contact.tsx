@@ -425,15 +425,19 @@ export default function Contact({ language }: ContactProps) {
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   {stations.map((s) => {
-                    const nav = navigator.userAgent || '';
-                    const isIOS = /iPad|iPhone|iPod/.test(nav);
                     const label = currentLanguage === 'en' ? s.nameEn : s.nameHe;
                     const addr = currentLanguage === 'en' ? s.addressEn : s.addressHe;
                     const guide = currentLanguage === 'en' ? s.directionsEn : s.directionsHe;
-                    // All three deep-links are lat/lng anchored — no text search.
-                    const gmaps = `https://www.google.com/maps/search/?api=1&query=${s.lat},${s.lng}`;
-                    const waze = `https://www.waze.com/ul?ll=${s.lat}%2C${s.lng}&navigate=yes`;
-                    const apple = `https://maps.apple.com/?ll=${s.lat},${s.lng}&q=${encodeURIComponent(label)}`;
+                    // NO NAVIGATION LINKS (CEO 2026-08-23): the Google Maps /
+                    // Waze / Apple Maps deep-links were removed by explicit CEO
+                    // order — "take out google navigation and waze, its taking
+                    // them wrong place when they click on it, safer not to
+                    // have — its just information". Cards now render as
+                    // information-only until the CEO validates each pin drops
+                    // on the correct bay in every map app. Written directions
+                    // stay so a customer who wants to open their own map app
+                    // can type "פארק יצחק ולד" / "פארק 80 כפר סבא הירוקה" and
+                    // find the site by name.
                     return (
                       <div
                         key={s.key}
@@ -451,42 +455,7 @@ export default function Contact({ language }: ContactProps) {
                           <h3 className="luxury-heading-md" style={{ fontSize: '1.05rem' }}>{label}</h3>
                         </div>
                         <p className="luxury-text-small" style={{ color: '#555', marginBottom: 8 }}>{addr}</p>
-                        <p className="luxury-text-body" style={{ fontSize: '0.92rem', marginBottom: 16 }}>{guide}</p>
-
-                        <div className="flex flex-wrap gap-2">
-                          <a
-                            href={gmaps}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="luxury-btn-primary flex-1 min-w-[130px] flex items-center justify-center gap-2"
-                            data-testid={`button-directions-google-${s.key}`}
-                          >
-                            <MapPin className="h-4 w-4" />
-                            <span>{currentLanguage === 'en' ? 'Google Maps' : 'גוגל מפות'}</span>
-                          </a>
-                          <a
-                            href={waze}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="luxury-btn-secondary flex-1 min-w-[130px] flex items-center justify-center gap-2"
-                            data-testid={`button-directions-waze-${s.key}`}
-                          >
-                            <Navigation className="h-4 w-4" />
-                            <span>Waze</span>
-                          </a>
-                          {isIOS && (
-                            <a
-                              href={apple}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="luxury-btn-secondary flex-1 min-w-[130px] flex items-center justify-center gap-2"
-                              data-testid={`button-directions-apple-${s.key}`}
-                            >
-                              <MapPin className="h-4 w-4" />
-                              <span>{currentLanguage === 'en' ? 'Apple Maps' : 'אפל מפות'}</span>
-                            </a>
-                          )}
-                        </div>
+                        <p className="luxury-text-body" style={{ fontSize: '0.92rem', marginBottom: 0 }}>{guide}</p>
                       </div>
                     );
                   })}
