@@ -353,22 +353,12 @@ export default function Locations() {
                       )}
                       <p className="text-[10px] text-gray-400 mt-1 font-mono tracking-wide" dir="ltr">{a.code}</p>
                     </div>
-                    <div className="flex flex-col gap-2">
-                      <Button
-                        className="luxury-btn-outline"
-                        onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${a.lat},${a.lng}`, '_blank')}
-                      >
-                        <MapPin className="w-5 h-5 mr-2" /> View on map · במפה
-                      </Button>
-                      {/* Walking route — a park pin is hard to reach by car, so give
-                          people the on-foot leg from wherever they parked. */}
-                      <Button
-                        className="luxury-btn-outline"
-                        onClick={() => window.open(`https://www.google.com/maps/dir/?api=1&destination=${a.lat},${a.lng}&travelmode=walking`, '_blank')}
-                      >
-                        <Navigation className="w-5 h-5 mr-2" /> Walk here · הליכה
-                      </Button>
-                    </div>
+                    {/* NAV BUTTONS REMOVED (CEO 2026-08-23): "View on map"
+                        and "Walk here" removed by explicit CEO order — the
+                        map pins were landing customers on wrong places.
+                        Written arrival copy below (arrivalHe / arrivalEn)
+                        stays as the sole guide until each pin is verified
+                        in every map app. */}
                   </div>
 
                   {/* How to actually find it — entrance, car park, landmarks. */}
@@ -437,13 +427,10 @@ export default function Locations() {
                       <Waves className="w-5 h-5 mr-2" />
                       Station details · לעמוד התחנה
                     </Button>
-                    <Button
-                      className="luxury-btn-outline"
-                      onClick={() => window.open(`https://www.google.com/maps/search/?api=1&query=${lat},${lng}`, '_blank')}
-                    >
-                      <MapPin className="w-5 h-5 mr-2" />
-                      Navigate · ניווט
-                    </Button>
+                    {/* NAV BUTTON REMOVED (CEO 2026-08-23): "Navigate · ניווט"
+                        opened Google Maps at lat/lng, but the pin landed
+                        customers on wrong places. Removed by CEO order until
+                        each pin is verified in every map app. */}
                   </div>
                 </div>
               </div>
