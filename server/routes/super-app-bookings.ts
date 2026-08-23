@@ -52,31 +52,6 @@ const requirePlatformContext = (req: any, res: any, next: any) => {
   next();
 };
 
-// Booking creation schema validation
-const createBookingSchema = z.object({
-  // SECURITY: platformId comes from route params, not body
-  providerId: z.number().optional(),
-  stationId: z.number().optional(),
-  pickupLocationId: z.number().optional(),
-  dropoffLocationId: z.number().optional(),
-  startTime: z.string().datetime(),
-  endTime: z.string().datetime(),
-  timezone: z.string().optional().default('Asia/Jerusalem'),
-  petIds: z.array(z.number()).optional(),
-  items: z.array(z.object({
-    itemType: z.string(),
-    name: z.string(),
-    nameHe: z.string().optional(),
-    description: z.string().optional(),
-    quantity: z.number().optional().default(1),
-    unitPrice: z.number().positive()
-  })),
-  serviceType: z.string().optional(),
-  serviceDescription: z.string().optional(),
-  specialRequests: z.string().optional(),
-  platformData: z.any().optional()
-});
-
 // Payment intent creation schema validation
 const createPaymentIntentSchema = z.object({
   amountCents: z.number().int().positive().optional(), // Optional - defaults to booking total
@@ -90,82 +65,24 @@ const createPaymentIntentSchema = z.object({
 // booking behaviour. Canonical rails: POST /api/booking-requests (provider
 // services) and the marketplace checkout rail. GET on this router is untouched
 // (/:platformId/providers is live).
+//
+// DEAD-CODE-CLEANUP (2026-08-22): the previous version kept ~65 lines of the
+// original create-booking implementation under an `// eslint-disable-next-line
+// no-unreachable` comment after the 410. That unreachable body still resolved
+// imports (createBookingSchema, bookingService.createBooking) and referenced
+// business logic that no longer matches the live rails, so any grep for
+// "createBooking" or a call-graph audit surfaced it as live code and wasted
+// investigation time. Removed the unreachable body outright.
 router.post(
   '/:platformId/bookings',
   requireAuth,
   requirePlatformContext,
   apiLimiter,
-  async (req: any, res: any) => {
+  async (_req: any, res: any) => {
     return res.status(410).json({
       error: 'This booking engine is sealed. Use POST /api/booking-requests or the marketplace checkout rail.',
       code: 'BOOKING_ENGINE_SEALED',
     });
-    // eslint-disable-next-line no-unreachable
-    try {
-      const userId = req.firebaseUser?.uid || req.user?.uid;
-      if (!userId) {
-        return res.status(401).json({ error: 'User not authenticated' });
-      }
-
-      // Validate request body
-      const validatedData = createBookingSchema.parse(req.body);
-
-      // SECURITY: Use platformId from route params (verified by middleware)
-      const platformId = req.platformContext.platformId;
-
-      // ============================================================
-      // K9000 SAFETY FENCE — DO NOT REMOVE
-      // K9000 is a self-service IoT wash station. It NEVER creates
-      // booking rows, NEVER uses escrow, and NEVER triggers provider
-      // payout. K9000 live flows use /api/k9000/start-session,
-      // /api/k9000/end-session, and /api/k9000/generate-qr instead.
-      // Allowing a booking row here would contaminate K9000 with
-      // marketplace-booking escrow and payout logic.
-      // ============================================================
-      if (platformId === 'k9000') {
-        logger.warn('[K9000 Safety Fence] Blocked booking-row creation attempt on K9000 platform', {
-          userId,
-          platformId,
-        });
-        return res.status(403).json({
-          error: 'k9000_booking_not_allowed',
-          message:
-            'K9000 self-service washes do not use the booking system. ' +
-            'Use /api/k9000/generate-qr for member QR redeem or /api/k9000/start-session for terminal wash.',
-        });
-      }
-
-      // Create booking
-      const booking = await bookingService.createBooking({
-        ...validatedData,
-        platformId, // From route params, not body
-        userId
-      });
-
-      // Audit log
-      logger.info('Booking created', {
-        bookingId: booking.id,
-        bookingNumber: booking.bookingNumber,
-        platformId,
-        userId,
-        providerId: booking.providerId,
-        stationId: booking.stationId,
-        total: booking.total,
-        status: booking.status
-      });
-
-      res.status(201).json(booking);
-    } catch (error: any) {
-      logger.error('Booking creation failed', {
-        error: error.message,
-        userId: req.firebaseUser?.uid || req.user?.uid,
-        platformId: req.platformContext?.platformId
-      });
-
-      res.status(400).json({ 
-        error: error.message || 'Failed to create booking'
-      });
-    }
   }
 );
 
