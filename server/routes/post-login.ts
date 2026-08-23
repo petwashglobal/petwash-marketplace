@@ -126,7 +126,7 @@ async function computeUserStatus(user: any, userId: string, cachedProviderApp?: 
   return 'profile_complete';
 }
 
-function buildRoutingResponse(user: any, role: string, userStatus: string, missingFields: string[], providerApp?: any, staffReq?: any): PostLoginResponse {
+function buildRoutingResponse(user: any, role: string, userStatus: string, missingFields: string[], providerApp?: any, staffReq?: any, intent?: string | null): PostLoginResponse {
   if (user.blocked) {
     return { nextUrl: '/blocked', reason: 'BLOCKED', profileStatus: 'blocked', role, userStatus };
   }
@@ -142,6 +142,26 @@ function buildRoutingResponse(user: any, role: string, userStatus: string, missi
   // unverified impostor. Checked FIRST so nothing below (email-verify bounce,
   // missing-fields, provider/staff routing) can trap it.
   if (role === 'super_admin') {
+    // MULTI-ROLE (CEO 2026-08-23): a super_admin account is ALSO a real
+    // customer / member / (potential) provider — the CEO logs in from the
+    // same email to test provider flows, loyalty flows, or admin flows,
+    // and the previous unconditional fast-path forced /admin/dashboard
+    // every time with no way to say "this session I want to see the
+    // provider side" without losing the super_admin claim. Now:
+    //   intent === 'provider' → /provider-os
+    //   intent === 'loyalty' | 'customer' | 'member' → /prestige/home
+    //   intent === 'admin' (or absent) → /admin/dashboard (default)
+    // The super_admin CLAIM is untouched — the header mode-switch
+    // (client/src/lib/uiMode.ts) still lets the user jump to any surface
+    // mid-session. This just picks the LANDING surface honestly.
+    const wantsProviderView = intent === 'provider';
+    const wantsMemberView = intent === 'loyalty' || intent === 'customer' || intent === 'member';
+    if (wantsProviderView) {
+      return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
+    }
+    if (wantsMemberView) {
+      return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
+    }
     return { nextUrl: '/admin/dashboard', reason: 'OK', profileStatus: 'approved', role: 'super_admin', userStatus };
   }
 
@@ -920,7 +940,13 @@ export async function postLoginDecider(req: Request, res: Response) {
       metadata: { userStatus, intent: (u as any).signupIntent, role: effectiveRole },
     });
 
-    const response = buildRoutingResponse(u, effectiveRole, userStatus, missingFields, providerApp, staffReq);
+    // MULTI-ROLE (CEO 2026-08-23): pass the request intent through so the
+    // super_admin branch can honor `intent=provider|loyalty|customer|member`
+    // and land the same account on the surface it asked for this session.
+    // Falls back to the stored signupIntent for a returning user who set
+    // their preference at signup time.
+    const routingIntent = (typeof intent === 'string' && intent) || (u as any)?.signupIntent || null;
+    const response = buildRoutingResponse(u, effectiveRole, userStatus, missingFields, providerApp, staffReq, routingIntent);
     logger.info(`[PostLogin] User ${userId} → ${response.nextUrl} (role=${effectiveRole}, status=${userStatus}, reason=${response.reason})`);
     return res.json({
       ...response,
