@@ -264,13 +264,19 @@ const sseClients = new Map<string, Response>();
 // ─────────────────────────────────────────────────────────
 // CONSTANTS
 // ─────────────────────────────────────────────────────────
-const _RAW_QR_SECRET = process.env.PRESTIGE_QR_SECRET;
-if (!_RAW_QR_SECRET) {
+// Lazy getter — DO NOT throw at module load. This file is statically imported
+// by server/routes.ts, which is imported by server/index.ts. A top-level throw
+// here killed Cloud Run boot when PRESTIGE_QR_SECRET wasn't set in Secret
+// Manager — the whole app went down (not just Prestige QR). Fail-loud at
+// REQUEST time instead: rest of the app boots, and the exact user hitting a
+// QR endpoint gets a clear 500 that surfaces in logs. /health/strict + ops
+// runbook still track missing secrets as a warn.
+if (!process.env.PRESTIGE_QR_SECRET) {
   if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[Prestige Pass] FATAL: PRESTIGE_QR_SECRET env var is not set. ' +
-      'QR tokens are HMAC-signed — a missing secret allows anyone to forge valid tokens. ' +
-      'Set PRESTIGE_QR_SECRET in Cloud Run secrets before deploying.'
+    logger.error(
+      '[Prestige Pass] PRESTIGE_QR_SECRET env var is not set in production. ' +
+      'QR sign/verify will throw at request time. ' +
+      'Set PRESTIGE_QR_SECRET in Cloud Run secrets to restore QR functionality.'
     );
   } else {
     logger.warn(
@@ -279,7 +285,17 @@ if (!_RAW_QR_SECRET) {
     );
   }
 }
-const QR_SECRET = _RAW_QR_SECRET ?? 'dev-only-insecure-prestige-qr-secret-do-not-use-in-prod';
+function getQrSecret(): string {
+  const s = process.env.PRESTIGE_QR_SECRET;
+  if (s) return s;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'PRESTIGE_QR_SECRET is not set — QR token signing/verification is unavailable. ' +
+      'Set PRESTIGE_QR_SECRET in Cloud Run Secret Manager.'
+    );
+  }
+  return 'dev-only-insecure-prestige-qr-secret-do-not-use-in-prod';
+}
 const QR_TTL_SECONDS = 45;
 
 // Tier → card variant
@@ -348,7 +364,7 @@ interface QrPayload {
 
 function signPayload(payload: QrPayload): string {
   const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
-  const sig  = createHmac('sha256', QR_SECRET).update(data).digest('hex');
+  const sig  = createHmac('sha256', getQrSecret()).update(data).digest('hex');
   return `${data}.${sig}`;
 }
 
@@ -356,7 +372,7 @@ function verifyToken(token: string): QrPayload | null {
   try {
     const [data, sig] = token.split('.');
     if (!data || !sig) return null;
-    const expected = createHmac('sha256', QR_SECRET).update(data).digest('hex');
+    const expected = createHmac('sha256', getQrSecret()).update(data).digest('hex');
     if (expected !== sig) return null;
     const payload: QrPayload = JSON.parse(Buffer.from(data, 'base64url').toString());
     if (Date.now() / 1000 > payload.exp) return null; // expired
