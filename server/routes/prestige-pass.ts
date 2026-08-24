@@ -11096,7 +11096,9 @@ async function runReplay(replayType: string, dryRun: boolean, initiatedBy: strin
   } catch (err: any) {
     await db.execute(sql`
       UPDATE finance_replay_runs SET completed_at = NOW(), status = 'failed' WHERE id = ${runId}
-    `).catch(() => {});
+    `).catch((markErr: any) => {
+      logger.error('[Replay] failed to mark finance_replay_runs as failed — row stays in-flight', { runId, markErr: markErr?.message });
+    });
     logger.error('[Replay] background error', { error: err.message, runId });
   }
 }
@@ -14929,10 +14931,18 @@ router.post('/admin/wallet/approval-workload/reassign', async (req: Request, res
       [targetApproverUid, parseInt(requestId, 10), 'pending'],
     );
     if (!result.rows.length) return res.status(404).json({ error: 'Approval request not found or not pending' });
+    // HIGH-6 fix (save-integrity audit 2026-08-24): was .catch(() => {}).
+    // finance_audit_log is a compliance record — silent drops mean auditors
+    // can't reconstruct who reassigned an approval. Log at error and keep
+    // response 200 (the reassignment itself already succeeded).
     await pool.query(
       'INSERT INTO finance_audit_log (event_type, actor_uid, detail_json) VALUES ($1, $2, $3::jsonb)',
       ['approval_reassigned', 'system', JSON.stringify({ requestId: parseInt(requestId, 10), targetApproverUid, reason: reason ?? '' })],
-    ).catch(() => {});
+    ).catch((auditErr: any) => {
+      logger.error('[FinanceAudit] approval_reassigned INSERT failed — compliance log missing this action', {
+        error: auditErr?.message, requestId, targetApproverUid,
+      });
+    });
     return res.json({ ok: true, request: result.rows[0] });
   } catch (err: any) {
     return res.status(500).json({ error: 'Reassignment failed', detail: err.message });
