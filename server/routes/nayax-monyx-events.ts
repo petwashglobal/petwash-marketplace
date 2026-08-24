@@ -135,14 +135,33 @@ async function evaluateLoyaltyAward(
 // linked PetWash Firebase UID (the key both stores use).
 async function awardLoyaltyPoints(userId: string, points: number, sourceId: string): Promise<void> {
   // Wallet-side balance (unchanged — powers pass + redemption + me-status).
-  await db.update(walletAccounts)
+  // HIGH-3 fix (save-integrity audit 2026-08-24): kiosk-first users have no
+  // wallet_accounts row until they hit the web app, so the .update() below
+  // matched 0 rows and silently no-op'd — points logged as "awarded" here but
+  // never in the wallet. Bootstrap the wallet row when missing, then update.
+  const walletUpdated = await db.update(walletAccounts)
     .set({ loyaltyPointsBalance: sql`loyalty_points_balance + ${points}` })
-    .where(eq(walletAccounts.userId, userId));
+    .where(eq(walletAccounts.userId, userId))
+    .returning({ id: walletAccounts.id });
+
+  if (walletUpdated.length === 0) {
+    logger.warn('[Monyx.awardLoyaltyPoints] wallet_accounts row missing — bootstrapping then re-awarding', { userId, points });
+    const { authService } = await import('../services/AuthService');
+    await authService.ensureWalletAccount(userId);
+    await db.update(walletAccounts)
+      .set({ loyaltyPointsBalance: sql`loyalty_points_balance + ${points}` })
+      .where(eq(walletAccounts.userId, userId));
+  }
 
   // Denormalized user field (dashboard display).
-  await db.update(users)
+  const userUpdated = await db.update(users)
     .set({ loyaltyPoints: sql`loyalty_points + ${points}` })
-    .where(eq(users.id, userId));
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+
+  if (userUpdated.length === 0) {
+    logger.warn('[Monyx.awardLoyaltyPoints] users row missing — kiosk points not mirrored to user dashboard field', { userId, points });
+  }
 
   // Canonical Prestige store — moves the tier ladder. DARK until Phase 16
   // (see KIOSK_PRESTIGE_SYNC_ENABLED): at launch the bay runs Nayax's Monyx 5+1
@@ -174,13 +193,28 @@ async function reverseAwardedPoints(
 
   const pointsToReverse = original.loyaltyPointsAwarded;
 
-  await db.update(walletAccounts)
+  // HIGH-3 fix: same missing-row guard on the refund-reversal path.
+  const walletReversed = await db.update(walletAccounts)
     .set({ loyaltyPointsBalance: sql`GREATEST(0, loyalty_points_balance - ${pointsToReverse})` })
-    .where(eq(walletAccounts.userId, userId));
+    .where(eq(walletAccounts.userId, userId))
+    .returning({ id: walletAccounts.id });
 
-  await db.update(users)
+  if (walletReversed.length === 0) {
+    logger.warn('[Monyx.reverseAwardedPoints] wallet_accounts row missing — refund reversal skipped for wallet side', {
+      userId, originalTxId, pointsToReverse,
+    });
+  }
+
+  const userReversed = await db.update(users)
     .set({ loyaltyPoints: sql`GREATEST(0, loyalty_points - ${pointsToReverse})` })
-    .where(eq(users.id, userId));
+    .where(eq(users.id, userId))
+    .returning({ id: users.id });
+
+  if (userReversed.length === 0) {
+    logger.warn('[Monyx.reverseAwardedPoints] users row missing — refund reversal skipped for user dashboard field', {
+      userId, originalTxId, pointsToReverse,
+    });
+  }
 
   // Symmetric reversal from the canonical Prestige store — only when the mirror
   // is enabled (else there is no canonical credit to unwind). Idempotent per

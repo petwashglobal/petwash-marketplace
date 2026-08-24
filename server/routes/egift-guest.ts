@@ -144,7 +144,17 @@ router.get('/guest/return', async (req: Request, res: Response) => {
   } catch (e: any) {
     // Paid but not issued — record for manual reconcile; NEVER silently drop a paid order.
     logger.error('[GuestEgift] issue FAILED after payment — needs manual reconcile', { ext, txnId, err: e?.message });
-    await db.update(egiftGuestOrders).set({ status: 'failed', sumitTransactionId: txnId }).where(eq(egiftGuestOrders.externalId, ext)).catch(() => {});
+    // HIGH-2 fix (save-integrity audit 2026-08-24): was .catch(() => {}). If
+    // this UPDATE errors, the order stays 'pending' forever while the customer
+    // has ALREADY been charged. Money-adjacent — log the failure at error level.
+    await db.update(egiftGuestOrders)
+      .set({ status: 'failed', sumitTransactionId: txnId })
+      .where(eq(egiftGuestOrders.externalId, ext))
+      .catch((updateErr: any) => {
+        logger.error('[GuestEgift] mark-failed UPDATE errored — order stuck in pending after paid; needs manual reconcile', {
+          ext, txnId, updateErr: updateErr?.message,
+        });
+      });
     return res.redirect(`${base}/egift?status=issue_failed&ref=${encodeURIComponent(ext)}`);
   }
 });

@@ -510,12 +510,23 @@ router.post('/wash/start_cycle', async (req, res) => {
         ipAddress: clientIP, userAgent: req.headers['user-agent'] || null, previousHash: null,
       }).catch((e: any) => logger.error('[K9000 Wash] fail audit error', { error: e?.message }));
 
+      // HIGH-1 fix (save-integrity audit 2026-08-24): was .catch(() => {}) —
+      // if the ops alert dispatch fails we would silently drop the "paid but
+      // machine didn't start" page. Combined with the two audit-log catches
+      // above (which just logger.error), a customer could be charged, no
+      // machine activate, and ops never be paged. Log at critical severity so
+      // it surfaces even when the alert dispatch itself is down.
       await alertManager.triggerAlert({
         name: 'K9000_PAID_WASH_NOT_STARTED',
         message: `Machine ${machineId} took payment (txn ${transactionId}) but did NOT start. Customer refund DUE — no auto-refund rail, credit manually.`,
         severity: 'critical', timestamp: new Date(),
         metadata: { machineId, side: resolvedSide, washType, transactionId, washId, correlationId },
-      }).catch(() => {});
+      }).catch((alertErr: any) => {
+        logger.error('[K9000 Wash] CRITICAL: paid-wash-not-started alert dispatch FAILED — ops NOT paged, manual follow-up REQUIRED', {
+          error: alertErr?.message,
+          machineId, side: resolvedSide, washType, transactionId, washId, correlationId, customerUid,
+        });
+      });
 
       // Honest response — NOT success. Kiosk shows an error; no revenue recorded.
       return res.status(502).json({
