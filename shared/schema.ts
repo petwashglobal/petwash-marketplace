@@ -142,6 +142,10 @@ export const users = pgTable("users", {
   legalHold: boolean("legal_hold").default(false),
   lastLoginAt: timestamp("last_login_at"),
   softDeleteAt: timestamp("soft_delete_at"),
+  // Soft-delete audit trail (migration 0123). Recorded when admin
+  // /api/admin/customers/:id/deactivate flips activation_status='deleted'.
+  deactivatedBy: varchar("deactivated_by", { length: 128 }),
+  deactivationReason: text("deactivation_reason"),
   deviceId: varchar("device_id"),
   membershipNumber: varchar("membership_number", { length: 20 }).unique(), // PWM-XXXXXXX
 

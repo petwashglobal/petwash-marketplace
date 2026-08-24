@@ -10777,13 +10777,32 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // Delete customer (soft delete - mark as inactive)
+  // Delete customer (soft delete — set activation_status='deleted' + soft_delete_at)
+  //
+  // FULL WIRE-UP 2026-08-24 (CEO "big things not done"). Previous handler
+  // returned 501 with CUSTOMER_SOFT_DELETE_NOT_WIRED. Now:
+  //   • Flips users.activation_status = 'deleted'
+  //   • Records soft_delete_at = NOW()
+  //   • Records deactivated_by (admin uid) + deactivation_reason (from body)
+  //     for the audit trail (migration 0123)
+  //   • Uses .returning() so a non-existent id returns 404 instead of silent OK
+  //   • Revokes Firebase refresh tokens so the deactivated user is signed out
+  //     across every device on next token refresh
+  //   • Audit log write stays (independent of the state change)
+  //
+  // Hard-delete of the customer record (with cascading FK cleanup across
+  // ~20 tables) remains a DBA task — this is the operational deactivation
+  // admins actually need.
   app.delete('/api/admin/customers/:id', requireAdmin, async (req: any, res) => {
     try {
       const customerId = req.params.id;
       const adminUser = req.adminUser;
+      const reason: string | undefined = typeof req.body?.reason === 'string' && req.body.reason.trim()
+        ? req.body.reason.trim().slice(0, 2000)
+        : undefined;
 
-      // Log the deletion activity
+      // Log the deletion activity (independent — writes even if the update fails,
+      // so we always know an admin attempted the action).
       await storage.createAdminActivityLog({
         adminId: adminUser.id,
         action: "delete_customer",
@@ -10792,20 +10811,56 @@ self.addEventListener('notificationclick', (event) => {
         userAgent: req.get("User-Agent"),
       });
 
-      // HONEST: this endpoint never actually deactivated the customer — it wrote
-      // an audit-log row and returned "marked as inactive", a fake success. No
-      // soft-delete column is updated anywhere on this path. Report the truth so
-      // an admin doesn't believe a customer was removed. TODO: wire a real
-      // soft-delete (set status/is_active on the users row) then return success.
-      logger.warn('[Admin] delete_customer requested but soft-delete is NOT wired — no change made', { customerId, adminId: adminUser.id });
-      res.status(501).json({
-        success: false,
-        error: 'Customer deactivation is not implemented yet — no change was made.',
-        errorCode: 'CUSTOMER_SOFT_DELETE_NOT_WIRED',
+      const now = new Date();
+      const affected = await db.update(users)
+        .set({
+          activationStatus: 'deleted',
+          softDeleteAt: now,
+          deactivatedBy: adminUser.id,
+          deactivationReason: reason ?? null,
+          updatedAt: now,
+        })
+        .where(eq(users.id, customerId))
+        .returning({ id: users.id, email: users.email });
+
+      if (affected.length === 0) {
+        return res.status(404).json({
+          success: false,
+          error: 'Customer not found',
+          errorCode: 'CUSTOMER_NOT_FOUND',
+        });
+      }
+
+      // Revoke Firebase refresh tokens — signs the user out on every device
+      // the next time an app polls its token. Non-blocking best-effort.
+      try {
+        const { auth: fbAdminAuth } = await import('./lib/firebase-admin');
+        await fbAdminAuth.revokeRefreshTokens(customerId);
+      } catch (revokeErr: any) {
+        logger.warn('[Admin] delete_customer soft-delete succeeded but Firebase token revoke failed — user may keep session until token expiry', {
+          customerId, adminId: adminUser.id, error: revokeErr?.message,
+        });
+      }
+
+      // Bust auth caches so subsequent requests see the deactivated state.
+      try {
+        const { authService } = await import('./services/AuthService');
+        await authService.invalidateUserCache(customerId);
+      } catch (_) { /* non-blocking */ }
+
+      logger.info('[Admin] ✅ Customer soft-deleted', {
+        customerId, adminId: adminUser.id, email: affected[0].email, reason: reason ?? null,
+      });
+
+      res.json({
+        success: true,
+        message: 'Customer deactivated (soft-delete). Firebase sessions revoked. Hard-delete requires a DBA action.',
+        customerId,
+        deactivatedAt: now.toISOString(),
       });
     } catch (error) {
-      logger.error('Error deleting customer:', error);
-      res.status(500).json({ message: "Failed to delete customer" });
+      logger.error('Error deactivating customer:', error);
+      res.status(500).json({ message: "Failed to deactivate customer" });
     }
   });
 
