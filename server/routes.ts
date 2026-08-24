@@ -1698,26 +1698,78 @@ self.addEventListener('notificationclick', (event) => {
     }
   });
 
-  // POST /api/auth/signout - Clear server-side session cookie on logout
+  // POST /api/auth/signout - Clear server-side session cookie AND revoke
+  // Firebase refresh tokens on logout.
+  //
+  // SIGNOUT-REVOKE-BEARER (2026-08-23 auth-audit CRIT #1):
+  // Pre-fix, refresh-token revocation ONLY fired when a `pw_session` cookie
+  // was present. Native app / mobile clients authenticate purely with
+  // Bearer tokens (no `__session` / `pw_session` cookie is ever set on those
+  // channels), so signout returned { ok: true } while the Firebase refresh
+  // token stayed valid for up to 30 days — the "signed-out phone" could
+  // keep minting fresh ID tokens and quietly hit protected APIs, and the
+  // user's "sign out everywhere" gesture was silently only "sign out
+  // browser". Now we ALSO look for a Bearer token (Authorization: Bearer
+  // <ID_TOKEN>) and revoke refresh tokens for THAT uid too. Either
+  // channel — or both — trigger a revoke. All revocations are best-effort:
+  // signout always returns 200 to the client so a broken Firebase call
+  // never blocks the user from ending their session in the UI.
   app.post('/api/auth/signout', async (req, res) => {
     try {
       const { clearSessionCookie } = await import('./lib/sessionCookies');
       clearSessionCookie(res, req);
-      
+
+      const revokedUids = new Set<string>();
+
+      // Channel 1: cookie-based session (web).
       const token = req.cookies?.pw_session;
       if (token) {
         try {
           const decoded = await fbAdminAuth.verifySessionCookie(token);
           await fbAdminAuth.revokeRefreshTokens(decoded.uid);
-          logger.info('[Auth] Session revoked for user:', decoded.uid);
+          revokedUids.add(decoded.uid);
+          logger.info('[Auth] Session revoked (cookie path) for user:', decoded.uid);
         } catch (revokeErr) {
-          logger.debug('[Auth] Token revocation skipped (token may already be expired)');
+          logger.debug('[Auth] Cookie-path revocation skipped (token may already be expired)');
         }
       }
-      
-      res.json({ ok: true });
+
+      // Channel 2: Bearer token (mobile / native app / SDK / any header-only client).
+      // Accept a stale/expired token here (checkRevoked=false) — we're revoking, not
+      // verifying access. Even a just-expired token still tells us which uid to revoke.
+      const authHeader = typeof req.headers?.authorization === 'string' ? req.headers.authorization : '';
+      const bearer = authHeader.toLowerCase().startsWith('bearer ') ? authHeader.slice(7).trim() : '';
+      if (bearer) {
+        try {
+          const decoded = await fbAdminAuth.verifyIdToken(bearer, false);
+          if (!revokedUids.has(decoded.uid)) {
+            await fbAdminAuth.revokeRefreshTokens(decoded.uid);
+            revokedUids.add(decoded.uid);
+            logger.info('[Auth] Session revoked (bearer path) for user:', decoded.uid);
+          }
+        } catch (revokeErr) {
+          logger.debug('[Auth] Bearer-path revocation skipped (token invalid or already expired)');
+        }
+      }
+
+      // Channel 3: authenticated request context (any middleware that set req.user).
+      // Cheap belt-and-braces so a caller that reached us via App Check + a mid-request
+      // Firebase Admin verify (populating req.firebaseUser) still gets revoked.
+      const contextUid = (req as any).firebaseUser?.uid || (req as any).user?.uid;
+      if (contextUid && !revokedUids.has(contextUid)) {
+        try {
+          await fbAdminAuth.revokeRefreshTokens(contextUid);
+          revokedUids.add(contextUid);
+          logger.info('[Auth] Session revoked (context path) for user:', contextUid);
+        } catch (revokeErr) {
+          logger.debug('[Auth] Context-path revocation skipped');
+        }
+      }
+
+      res.json({ ok: true, revokedCount: revokedUids.size });
     } catch (error) {
       logger.error('[Auth] Signout error', error);
+      // Always return 200 — signout must never leave the client stuck.
       res.json({ ok: true });
     }
   });
