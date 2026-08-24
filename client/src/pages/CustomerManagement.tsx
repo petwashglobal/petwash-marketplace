@@ -183,22 +183,38 @@ export default function CustomerManagement() {
     enabled: isAdminAuthenticated,
   });
 
+  // Client-audit HIGH-6 (2026-08-24): queryKey used `${selectedCustomer?.id}`
+  // which renders as `.../undefined/...` when no customer is selected. Even
+  // with `enabled: !!selectedCustomer`, TanStack Query stores the key and
+  // will fire that URL on any programmatic refetch/invalidate. Also,
+  // switching customers didn't clear the cache because "customers/undefined
+  // /wash-history" was one shared bucket. Fix: build the URL string only
+  // when we have an id; skip the query entirely otherwise via a stable
+  // "no-customer" sentinel key.
+  const selectedCustomerId = selectedCustomer?.id;
+
   // Fetch customer wash history
   const { data: customerWashHistory, isLoading: historyLoading } = useQuery({
-    queryKey: [`/api/admin/customers/${selectedCustomer?.id}/wash-history`],
-    enabled: !!selectedCustomer && isAdminAuthenticated,
+    queryKey: selectedCustomerId
+      ? [`/api/admin/customers/${selectedCustomerId}/wash-history`]
+      : ['no-customer:wash-history'],
+    enabled: !!selectedCustomerId && isAdminAuthenticated,
   });
 
   // Fetch customer communications
   const { data: customerCommunications, isLoading: communicationsLoading } = useQuery({
-    queryKey: [`/api/admin/customers/${selectedCustomer?.id}/communications`],
-    enabled: !!selectedCustomer && isAdminAuthenticated,
+    queryKey: selectedCustomerId
+      ? [`/api/admin/customers/${selectedCustomerId}/communications`]
+      : ['no-customer:communications'],
+    enabled: !!selectedCustomerId && isAdminAuthenticated,
   });
 
   // Fetch customer pet information
   const { data: customerPets, isLoading: petsLoading } = useQuery({
-    queryKey: [`/api/admin/customers/${selectedCustomer?.id}/pets`],
-    enabled: !!selectedCustomer && isAdminAuthenticated,
+    queryKey: selectedCustomerId
+      ? [`/api/admin/customers/${selectedCustomerId}/pets`]
+      : ['no-customer:pets'],
+    enabled: !!selectedCustomerId && isAdminAuthenticated,
   });
 
   // Update customer mutation
