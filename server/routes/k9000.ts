@@ -254,34 +254,54 @@ router.post('/wash/start_cycle', async (req, res) => {
       });
     }
 
-    // === IDEMPOTENCY CHECK: prevent double-activation for same transaction ===
+    // === IDEMPOTENCY CLAIM: atomic transition on nayaxTransactions.status ==
+    // Previous impl scanned last 50 audit_ledger rows in JavaScript — non-atomic,
+    // no unique constraint, and truncated at 50. Two concurrent webhook retries
+    // (or a card double-tap) could both pass, both send START_PUMP, both burn
+    // the wash. Now: race one atomic UPDATE ... WHERE status='authorized' — the
+    // winner sees rowCount=1 and proceeds, the loser sees rowCount=0 and 409s.
     if (transactionId) {
-      const existingWash = await db
-        .select({ id: auditLedger.id, metadata: auditLedger.metadata })
-        .from(auditLedger)
-        .where(eq(auditLedger.eventType, 'k9000_wash_activated'))
-        .limit(50);
+      const claim = await db
+        .update(nayaxTransactions)
+        .set({ status: 'vend_pending', vendAttemptedAt: new Date() })
+        .where(and(
+          eq(nayaxTransactions.id, transactionId),
+          eq(nayaxTransactions.status, 'authorized'),
+        ))
+        .returning({ id: nayaxTransactions.id });
 
-      const duplicate = existingWash.find((row) => {
-        try {
-          const meta = typeof row.metadata === 'string'
-            ? JSON.parse(row.metadata)
-            : row.metadata;
-          return meta?.transactionId === transactionId;
-        } catch {
-          return false;
+      if (claim.length === 0) {
+        // Either the transaction doesn't exist, is in the wrong state, or another
+        // caller already claimed it. Read back once to distinguish for a clean error.
+        const [current] = await db
+          .select({ status: nayaxTransactions.status })
+          .from(nayaxTransactions)
+          .where(eq(nayaxTransactions.id, transactionId))
+          .limit(1);
+        if (!current) {
+          logger.warn('[K9000 Wash] Unknown transactionId — cannot activate', { transactionId });
+          return res.status(404).json({
+            error: 'עסקה לא נמצאה. אנא נסה שוב.',
+            errorEn: 'Transaction not found.',
+            status: 'TRANSACTION_NOT_FOUND',
+            transactionId,
+          });
         }
-      });
-
-      if (duplicate) {
-        logger.warn('[K9000 Wash] Duplicate activation attempt blocked', {
-          transactionId,
-          existingAuditId: duplicate.id,
-        });
+        if (['vend_pending', 'vend_success', 'settled'].includes(String(current.status))) {
+          logger.warn('[K9000 Wash] Duplicate activation attempt blocked (atomic race lost)', {
+            transactionId, currentStatus: current.status,
+          });
+          return res.status(409).json({
+            error: 'עסקה זו כבר שימשה להפעלת עמדת שטיפה.',
+            errorEn: 'This payment has already been used to start a wash cycle.',
+            status: 'ALREADY_ACTIVATED',
+            transactionId,
+          });
+        }
         return res.status(409).json({
-          error: 'עסקה זו כבר שימשה להפעלת עמדת שטיפה.',
-          errorEn: 'This payment has already been used to start a wash cycle.',
-          status: 'ALREADY_ACTIVATED',
+          error: 'עסקה במצב לא מתאים להפעלה.',
+          errorEn: `Transaction in unexpected state: ${current.status}`,
+          status: 'TRANSACTION_INVALID_STATE',
           transactionId,
         });
       }
