@@ -466,25 +466,33 @@ export async function getProblematicFAQs(language?: 'he' | 'en'): Promise<{
   topic: string;
 }[]> {
   try {
+    // Firestore permits an inequality on ONLY ONE field per query. The prior
+    // code chained `.where('timesAsked','>',5)` + `.where('avgSatisfaction','<',
+    // 0.5)` — two inequalities on different fields — and threw INVALID_ARGUMENT
+    // on every call. Keep the range on timesAsked (needed for the orderBy),
+    // filter avgSatisfaction in-memory after fetch. Bounded by limit(200) so
+    // the memory filter is cheap.
     let query = adminDb
       .collection('ai_faq_learning')
-      .where('timesAsked', '>', 5) // Asked frequently
-      .where('avgSatisfaction', '<', 0.5) // Low satisfaction
+      .where('timesAsked', '>', 5)
       .orderBy('timesAsked', 'desc')
-      .limit(20);
-    
+      .limit(200);
+
     if (language) {
       query = query.where('language', '==', language) as any;
     }
-    
+
     const snapshot = await query.get();
-    
-    return snapshot.docs.map(doc => ({
-      question: doc.data().question,
-      timesAsked: doc.data().timesAsked,
-      avgSatisfaction: doc.data().avgSatisfaction,
-      topic: doc.data().topic
-    }));
+
+    return snapshot.docs
+      .map(doc => ({
+        question: doc.data().question,
+        timesAsked: doc.data().timesAsked,
+        avgSatisfaction: doc.data().avgSatisfaction,
+        topic: doc.data().topic,
+      }))
+      .filter(row => typeof row.avgSatisfaction === 'number' && row.avgSatisfaction < 0.5)
+      .slice(0, 20);
   } catch (error) {
     logger.error('[AI Learning] Failed to get problematic FAQs', error);
     return [];
