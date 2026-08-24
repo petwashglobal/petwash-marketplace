@@ -420,7 +420,33 @@ const egiftPurchaseSchema = z.object({
   idempotencyKey: z.string().min(1),
 });
 
-router.post("/v1/egift/purchase", requireAuth, async (req: Request, res: Response) => {
+// SEV-1 MONEY-MINT KILL 2026-08-24 (money-audit F1):
+// This endpoint accepted a client-supplied `amountCents` and `userId` and
+// credited wallet_accounts.egift_balance_cents / wrote octopus_ledger with
+// NO gateway verification. Any authenticated caller could mint unlimited
+// wallet balance and then redeem it for real washes via /pass-redeem or
+// /unified-vouchers/redeem/station. Same pattern as the /v1/brain/redeem
+// hole killed by PR-DANGER-1 (see the sentinel a few lines above).
+//
+// Grep confirmed ZERO client callers (only reference is server/lib/
+// eventMatrix.ts metadata). Fail-CLOSED 410 the route entirely. Real
+// eGift purchase MUST come through the SUMIT-verified path — the client
+// completes checkout on pay.sumit.co.il, the /sumit-return handler
+// verifies via getTransaction, and the wallet credit runs off the
+// server-verified amount, not the request body.
+router.all("/v1/egift/purchase", (_req: Request, res: Response) => {
+  return res.status(410).json({
+    error: 'ENDPOINT_REMOVED',
+    message:
+      'This endpoint minted wallet balance without gateway verification (SEV-1). ' +
+      'Use the SUMIT-verified checkout flow: create a SUMIT session, redirect the ' +
+      'customer to the hosted page, then the /sumit-return handler credits the wallet ' +
+      'off the server-verified transaction amount.',
+    canonical: 'POST /api/booking-requests/:id/pay (SUMIT-verified) → /sumit-return',
+  });
+});
+
+router.post("/v1/egift/purchase-DISABLED-SEE-410-ABOVE", requireAuth, async (req: Request, res: Response) => {
   try {
     const body = egiftPurchaseSchema.parse(req.body);
     const result = await egiftFinancialService.purchaseEgift(body);
