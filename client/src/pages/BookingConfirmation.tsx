@@ -765,7 +765,13 @@ export default function BookingConfirmation() {
     // the whole confirm/pay/cancel branch never fired — user saw a blank
     // confirmation. Explicit queryFn hits the detail route.
     // (Lane D audit 2026-08-22.)
-    queryKey: ['/api/booking-requests', requestId],
+    //
+    // Client-audit HIGH-7 (2026-08-24): key now includes user?.uid so that
+    // when User A signs out and User B signs in on the same device (shared
+    // phone/kiosk), React Query does NOT serve A's cached booking to B for
+    // the split second before the fresh fetch resolves. Same requestId +
+    // different uid = separate cache entry = no cross-user flash.
+    queryKey: ['/api/booking-requests', requestId, user?.uid ?? 'anon'],
     queryFn: async () => {
       const res = await fetch(`/api/booking-requests/${requestId}`, { credentials: 'include' });
       if (!res.ok) throw new Error(`Booking ${res.status}`);
