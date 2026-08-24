@@ -346,9 +346,22 @@ async function authorizeNayaxSession(params: {
   amountCents: number;
   currency: string;
 }): Promise<{ success: boolean; nayaxSessionId?: string; message?: string }> {
-  // No terminal configured → dev mode (no physical machine present)
+  const IS_PROD = process.env.NODE_ENV === 'production';
+
+  // No terminal configured. In production this is a hard fail — a real bay must have a real terminal.
+  // In non-prod, permit a dev mode session so local flow tests can proceed without hardware.
   if (!params.nayaxTerminalId) {
-    logger.warn('[QRActivation] No Nayax terminal ID — dev mode authorization');
+    if (IS_PROD) {
+      logger.error('[QRActivation] Refusing to authorize: machine has no nayaxTerminalId in production', {
+        machineId: params.machineId,
+        sessionId: params.sessionId,
+      });
+      return {
+        success: false,
+        message: 'MACHINE_NOT_PROVISIONED: this bay is missing a Nayax terminal ID',
+      };
+    }
+    logger.warn('[QRActivation] No Nayax terminal ID — dev mode authorization (non-prod only)');
     return {
       success: true,
       nayaxSessionId: `nayax_dev_${crypto.randomUUID()}`,
@@ -359,9 +372,21 @@ async function authorizeNayaxSession(params: {
   const NAYAX_API_KEY  = process.env.NAYAX_API_KEY;
   const NAYAX_BASE_URL = process.env.NAYAX_BASE_URL || 'https://api.spark.nayax.com';
 
-  // Without a real API key → use demo session ID so the machine flow can proceed in testing
+  // Without a real API key we CANNOT authorize a physical bay. In production this is a hard fail
+  // so bays never open without a paid, reconciled Nayax transaction. In non-prod, return a demo
+  // session so integration flows can be exercised without live credentials.
   if (!NAYAX_API_KEY) {
-    logger.warn('[QRActivation] NAYAX_API_KEY not configured — using demo session for terminal present');
+    if (IS_PROD) {
+      logger.error('[QRActivation] Refusing to authorize: NAYAX_API_KEY missing in production', {
+        machineId: params.machineId,
+        sessionId: params.sessionId,
+      });
+      return {
+        success: false,
+        message: 'NAYAX_API_KEY_MISSING_IN_PRODUCTION: cannot open bay without payment authorization',
+      };
+    }
+    logger.warn('[QRActivation] NAYAX_API_KEY not configured — demo session (non-prod only)');
     return {
       success: true,
       nayaxSessionId: `nayax_demo_${crypto.randomUUID()}`,

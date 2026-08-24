@@ -11453,11 +11453,9 @@ self.addEventListener('notificationclick', (event) => {
           //   data: { ...recipient, ...customData }
           // });
 
-          // Update communication status
-          await storage.updateCommunication(communication.id, {
-            status: 'sent',
-            sentAt: new Date(),
-          });
+          // DO NOT stamp status='sent' — nothing left the server. Leaving the row at
+          // 'not_sent_feature_disabled' keeps the CRM audit trail honest (previous
+          // code lied to the audit log while returning 501 to the caller).
 
           results.push({
             recipient: recipient.email,
