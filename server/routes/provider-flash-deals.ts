@@ -235,6 +235,28 @@ if (process.env.NODE_ENV !== 'production') {
   seedDemoDeals();
 }
 
+// CRIT-1 (save-integrity audit 2026-08-24): the DEALS_STORE Map above is
+// process-scoped, so in a horizontally-scaled Cloud Run deploy every provider
+// deal written on instance A is invisible on instance B and vanishes on the
+// next restart. Until the Redis-backed store lands (see PRODUCTION ROADMAP at
+// the top of this file), fail-CLOSED on every write path in production unless
+// FLASH_DEALS_ENABLED is explicitly true. Prevents providers from creating
+// deals that will silently disappear.
+const FLASH_DEALS_ENABLED_PROD = process.env.FLASH_DEALS_ENABLED === 'true';
+
+function requireFlashDealsEnabled(_req: any, res: any, next: () => void) {
+  if (process.env.NODE_ENV === 'production' && !FLASH_DEALS_ENABLED_PROD) {
+    return res.status(503).json({
+      error: 'FLASH_DEALS_NOT_ENABLED',
+      message:
+        'Flash deals is behind a feature flag in production. ' +
+        'Contact ops to enable FLASH_DEALS_ENABLED once the Redis-backed store ' +
+        'is deployed (in-memory Map cannot survive scale/restart).',
+    });
+  }
+  next();
+}
+
 // ── GET /api/flash-deals — list active deals ──────────────────────────────────
 router.get('/', (req, res) => {
   const { serviceType, petType, location } = req.query;
@@ -289,7 +311,7 @@ const claimSchema = z.object({
   numPets: z.number().int().min(1).max(3).default(1),
 });
 
-router.post('/:id/claim', validateFirebaseToken, async (req: any, res) => {
+router.post('/:id/claim', requireFlashDealsEnabled, validateFirebaseToken, async (req: any, res) => {
   const deal = DEALS_STORE.get(req.params.id);
   if (!deal || !isDealActive(deal)) {
     return res.status(404).json({ error: 'Deal not found or no longer active' });
@@ -359,7 +381,7 @@ const createDealSchema = z.object({
   location: z.string().min(2),
 });
 
-router.post('/', validateFirebaseToken, async (req: any, res) => {
+router.post('/', requireFlashDealsEnabled, validateFirebaseToken, async (req: any, res) => {
   const parsed = createDealSchema.safeParse(req.body);
   if (!parsed.success) return res.status(400).json({ error: 'Validation failed', details: parsed.error.errors });
 
@@ -393,7 +415,7 @@ router.post('/', validateFirebaseToken, async (req: any, res) => {
 });
 
 // ── DELETE /api/flash-deals/:id — deactivate deal ─────────────────────────────
-router.delete('/:id', validateFirebaseToken, async (req: any, res) => {
+router.delete('/:id', requireFlashDealsEnabled, validateFirebaseToken, async (req: any, res) => {
   const deal = DEALS_STORE.get(req.params.id);
   if (!deal) return res.status(404).json({ error: 'Deal not found' });
   deal.isActive = false;
