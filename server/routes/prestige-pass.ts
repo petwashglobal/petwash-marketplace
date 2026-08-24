@@ -12577,7 +12577,11 @@ router.post('/admin/wallet/policy-simulation/run', async (req: Request, res: Res
     const original = parseFloat(originalValue ?? '0') || 0;
 
     if (policyKey === 'refund_auto_approve_limit') {
-      const refundsRaw: any = await db.execute(sql`SELECT COUNT(*) as cnt, SUM(amount_cents) as total FROM refund_requests WHERE amount_cents <= ${proposed} AND status = 'pending'`);
+      // SCHEMA-DRIFT FIX 2026-08-24: was `refund_requests` — a table that does
+      // NOT exist in this DB. Real canonical refund ledger is
+      // `refund_transactions` (migrations/0097_refund_rail.sql), column
+      // `refund_cents`, status enum pending|approved|executing|succeeded|failed|rejected.
+      const refundsRaw: any = await db.execute(sql`SELECT COUNT(*) as cnt, SUM(refund_cents) as total FROM refund_transactions WHERE refund_cents <= ${proposed} AND status = 'pending'`);
       const r = (refundsRaw?.rows ?? refundsRaw)?.[0];
       affectedEntities = parseInt(r?.cnt ?? '0', 10);
       wouldSaveCents = parseInt(r?.total ?? '0', 10);
@@ -13087,7 +13091,7 @@ router.get('/admin/wallet/governance-report', async (req: Request, res: Response
     // Cross-entity aggregation
     const [walletRaw, refundRaw, payoutRaw, disputeRaw, approvalRaw, closedRaw] = await Promise.all([
       db.execute(sql`SELECT COUNT(*) as total_wallets, SUM(available_balance_cents) as total_available, SUM(pending_balance_cents) as total_pending FROM wallets`),
-      db.execute(sql`SELECT COUNT(*) as total_refunds, SUM(amount_cents) as total_refund_value, COUNT(*) FILTER (WHERE status='completed') as completed_refunds FROM refund_requests`),
+      db.execute(sql`SELECT COUNT(*) as total_refunds, SUM(refund_cents) as total_refund_value, COUNT(*) FILTER (WHERE status='succeeded') as completed_refunds FROM refund_transactions`),
       db.execute(sql`SELECT COUNT(*) as total_batches, SUM(total_amount_cents) as total_payout_value, COUNT(*) FILTER (WHERE status='paid') as paid_batches FROM payout_batches`),
       db.execute(sql`SELECT COUNT(*) as total_disputes, COUNT(*) FILTER (WHERE status='resolved') as resolved_disputes, COUNT(*) FILTER (WHERE status='open') as open_disputes FROM dispute_cases`),
       db.execute(sql`SELECT COUNT(*) as total_requests, COUNT(*) FILTER (WHERE status='approved') as approved, COUNT(*) FILTER (WHERE status='rejected') as rejected, COUNT(*) FILTER (WHERE status='pending') as pending FROM approval_requests`),
@@ -13172,7 +13176,10 @@ async function executeApprovalAction(approvalReq: any): Promise<{ success: boole
 
     if (entityType === 'refund_request') {
       const refundId = parseInt(approvalReq.entity_id, 10);
-      await db.execute(sql`UPDATE refund_requests SET status='approved', resolved_at=NOW() WHERE id = ${refundId} AND status='pending'`);
+      // SCHEMA-DRIFT FIX 2026-08-24: table was nonexistent `refund_requests`,
+      // so every admin refund-approve click was silent no-op. Real table is
+      // `refund_transactions`, column `updated_at` (not resolved_at).
+      await db.execute(sql`UPDATE refund_transactions SET status='approved', updated_at=NOW() WHERE id = ${refundId} AND status='pending'`);
       await db.execute(sql`
         INSERT INTO finance_audit_log (event_type, entity_type, entity_id, actor_uid, payload)
         VALUES ('refund_auto_approved', 'refund_request', ${String(refundId)}, 'system:approval_engine', ${JSON.stringify({ approvalRequestId: approvalReq.id })})
@@ -13442,7 +13449,7 @@ router.post('/admin/wallet/forecast-backtests/run', async (req: Request, res: Re
     const [revenueRaw, payoutsRaw, refundsRaw] = await Promise.all([
       db.execute(sql`SELECT COALESCE(SUM(amount_cents),0) as total FROM wallet_transactions WHERE type='credit' AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date BETWEEN ${periodStart} AND ${periodEnd}`),
       db.execute(sql`SELECT COALESCE(SUM(total_amount_cents),0) as total FROM payout_batches WHERE status='paid' AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date BETWEEN ${periodStart} AND ${periodEnd}`),
-      db.execute(sql`SELECT COALESCE(SUM(amount_cents),0) as total FROM refund_requests WHERE status='completed' AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date BETWEEN ${periodStart} AND ${periodEnd}`),
+      db.execute(sql`SELECT COALESCE(SUM(refund_cents),0) as total FROM refund_transactions WHERE status='succeeded' AND (created_at AT TIME ZONE 'Asia/Jerusalem')::date BETWEEN ${periodStart} AND ${periodEnd}`),
     ]);
 
     const actualRevenue   = parseInt((revenueRaw  as any)?.rows?.[0]?.total ?? '0', 10);
@@ -13589,7 +13596,7 @@ router.get('/admin/wallet/assistant/actions', async (req: Request, res: Response
 async function buildGovernancePack(packType: string, periodKey: string): Promise<any> {
   const [walletRaw, refundRaw, payoutRaw, disputeRaw, approvalRaw, exceptionRaw] = await Promise.all([
     db.execute(sql`SELECT COUNT(*) as total_wallets, SUM(available_balance_cents) as total_available, SUM(pending_balance_cents) as total_pending FROM wallets`),
-    db.execute(sql`SELECT COUNT(*) as total_refunds, SUM(amount_cents) as total_refund_value, COUNT(*) FILTER (WHERE status='completed') as completed_refunds FROM refund_requests`),
+    db.execute(sql`SELECT COUNT(*) as total_refunds, SUM(refund_cents) as total_refund_value, COUNT(*) FILTER (WHERE status='succeeded') as completed_refunds FROM refund_transactions`),
     db.execute(sql`SELECT COUNT(*) as total_batches, SUM(total_amount_cents) as total_payout_value, COUNT(*) FILTER (WHERE status='paid') as paid_batches FROM payout_batches`),
     db.execute(sql`SELECT COUNT(*) as total_disputes, COUNT(*) FILTER (WHERE status='resolved') as resolved_disputes, COUNT(*) FILTER (WHERE status='open') as open_disputes FROM dispute_cases`),
     db.execute(sql`SELECT COUNT(*) as total_requests, COUNT(*) FILTER (WHERE status='approved') as approved, COUNT(*) FILTER (WHERE status='rejected') as rejected, COUNT(*) FILTER (WHERE status='pending') as pending_count FROM approval_requests`),
