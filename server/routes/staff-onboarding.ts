@@ -899,8 +899,11 @@ export function registerStaffOnboardingRoutes(app: Express) {
       const orderId = parseInt(req.params.id);
       const { paymentMethod, paymentReference } = req.body;
 
-      // Update order to paid status
-      await db.update(franchiseOrders)
+      // CRIT-7 (save-integrity audit 2026-08-24): money reconciliation drift.
+      // The prior UPDATE had no rowsAffected check — an admin could confirm
+      // payment on a nonexistent orderId and get success, silently. Fixed to
+      // .returning() + 404 so bad ids surface loudly.
+      const affected = await db.update(franchiseOrders)
         .set({
           paymentStatus: 'paid',
           orderStatus: 'processing',
@@ -910,7 +913,12 @@ export function registerStaffOnboardingRoutes(app: Express) {
           processedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(franchiseOrders.id, orderId));
+        .where(eq(franchiseOrders.id, orderId))
+        .returning({ id: franchiseOrders.id });
+
+      if (affected.length === 0) {
+        return res.status(404).json({ error: 'FRANCHISE_ORDER_NOT_FOUND', orderId });
+      }
 
       logger.info('[API] ✅ Franchise payment confirmed - order processing', {
         orderId,

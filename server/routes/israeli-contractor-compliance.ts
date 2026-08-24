@@ -431,7 +431,12 @@ router.post('/admin/verify-tax/:providerId', async (req, res) => {
       adminUid,
     });
 
-    await db.update(providerTaxCompliance)
+    // CRIT-8 (save-integrity audit 2026-08-24): the prior UPDATE had no
+    // rowsAffected check. If no compliance row existed for the providerId
+    // yet, verification silently no-op'd — but the audit log INSERT below
+    // still landed → audit "approved," compliance table "unverified." Now
+    // fails loudly instead of leaving them out of sync.
+    const affected = await db.update(providerTaxCompliance)
       .set({
         verificationStatus: data.approved ? 'verified' : 'rejected',
         verifiedAt: data.approved ? new Date() : null,
@@ -440,7 +445,16 @@ router.post('/admin/verify-tax/:providerId', async (req, res) => {
         isCompliant: data.approved,
         updatedAt: new Date(),
       })
-      .where(eq(providerTaxCompliance.providerId, providerId));
+      .where(eq(providerTaxCompliance.providerId, providerId))
+      .returning({ id: providerTaxCompliance.id });
+
+    if (affected.length === 0) {
+      return res.status(404).json({
+        error: 'PROVIDER_TAX_COMPLIANCE_NOT_FOUND',
+        providerId,
+        hint: 'Provider must first submit tax registration data before it can be verified.',
+      });
+    }
 
     await db.insert(complianceVerificationLogs).values({
       providerId,
