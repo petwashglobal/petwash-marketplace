@@ -155,6 +155,29 @@ export function validateProductionPaymentSecrets(
   // Step 3: deprecation warnings (do not affect errors).
   collectDeprecationWarnings(env, deprecationWarnings);
 
+  // Step 4: booking-card-rail visibility (CEO "nail it" 2026-08-24).
+  //
+  // WHY: server/routes/booking-requests.ts /pay picks the rail via
+  //   BOOKING_CARD_RAIL || 'nayax'. In prod the Nayax online rail runs in
+  //   DEMO_MODE (no NAYAX_API_KEY / NAYAX_MERCHANT_ID) and returns
+  //   ONLINE_CARD_NOT_LIVE for every /pay call — so every booking dead-ends
+  //   at "accepted, pay to confirm". SUMIT is live + verified. The default
+  //   is deliberately not auto-switched (see sumitBookingRail.regression.test
+  //   invariant "flag-gated — no silent switch"); this warning tells ops
+  //   exactly which env var to flip to activate real payments.
+  if (isProd && !env.BOOKING_CARD_RAIL) {
+    const nayaxDark = !env.NAYAX_API_KEY || !env.NAYAX_MERCHANT_ID;
+    const sumitWired = env.SUMIT_ENABLED === 'true' && !!env.SUMIT_API_KEY;
+    if (nayaxDark && sumitWired) {
+      deprecationWarnings.push(
+        'BOOKING_CARD_RAIL is unset — defaults to `nayax`, which is DARK ' +
+        '(NAYAX_API_KEY / NAYAX_MERCHANT_ID missing). Every booking /pay ' +
+        'call returns ONLINE_CARD_NOT_LIVE. SUMIT is wired and verified — ' +
+        'set BOOKING_CARD_RAIL=sumit in Cloud Run to activate real payments.',
+      );
+    }
+  }
+
   return { errors, deprecationWarnings, mode };
 }
 
