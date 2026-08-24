@@ -181,6 +181,83 @@
       ]
     },
     {
+      "collectionGroup": "ai_faq_learning",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "topic", "order": "ASCENDING"},
+        {"fieldPath": "language", "order": "ASCENDING"},
+        {"fieldPath": "avgSatisfaction", "order": "DESCENDING"},
+        {"fieldPath": "timesAsked", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "vaccine_reminders",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "petId", "order": "ASCENDING"},
+        {"fieldPath": "vaccineType", "order": "ASCENDING"},
+        {"fieldPath": "vaccineDate", "order": "ASCENDING"},
+        {"fieldPath": "sentAt", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "transactions",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "clientId", "order": "ASCENDING"},
+        {"fieldPath": "date", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "nayax_terminals",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "isActive", "order": "ASCENDING"},
+        {"fieldPath": "status", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "station_alerts",
+      "queryScope": "COLLECTION",
+      "fields": [
+        {"fieldPath": "stationId", "order": "ASCENDING"},
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "active", "order": "ASCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "franchise_inbox",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "category", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "user_inbox",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "type", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "deletedAt", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
+    },
+    {
+      "collectionGroup": "service_tickets",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {"fieldPath": "status", "order": "ASCENDING"},
+        {"fieldPath": "createdAt", "order": "DESCENDING"}
+      ]
+    },
+    {
       "collectionGroup": "station_events",
       "queryScope": "COLLECTION",
       "fields": [
