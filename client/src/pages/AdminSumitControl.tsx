@@ -64,13 +64,11 @@ function CountChip({ label, value }: { label: string; value: number | undefined 
 }
 
 export default function AdminSumitControl() {
+  // Client-audit D-07 (2026-08-24): bare fetch had no Bearer/credentials —
+  // 401'd in prod. Drop the custom queryFn so the default (getQueryFn →
+  // apiRequest) handles auth.
   const { data, isLoading } = useQuery<HealthResponse>({
     queryKey: ["/api/admin/sumit/health"],
-    queryFn: async () => {
-      const res = await fetch("/api/admin/sumit/health");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
     refetchInterval: 30_000,
   });
 

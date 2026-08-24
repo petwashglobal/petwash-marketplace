@@ -100,13 +100,11 @@ function StatusLine({ inv }: { inv: InvoiceRow }) {
 }
 
 export default function ProviderMyInvoices() {
+  // Client-audit D-07 (2026-08-24): bare fetch had no Bearer/credentials —
+  // 401'd in prod. Drop the custom queryFn so the default (getQueryFn →
+  // apiRequest) handles auth.
   const { data, isLoading, isFetching, refetch } = useQuery<ListResponse>({
     queryKey: ["/api/provider/my-invoices"],
-    queryFn: async () => {
-      const res = await fetch("/api/provider/my-invoices");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
     refetchInterval: 60_000,
   });
 

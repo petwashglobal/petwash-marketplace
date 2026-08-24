@@ -249,10 +249,14 @@ export default function AdminSupplierInvoices() {
       const fd = new FormData();
       fd.append("file", file);
       if (supplierIdInput.trim()) fd.append("supplierId", supplierIdInput.trim());
-      const res = await fetch("/api/supplier-invoices", {
+      // Client-audit D-07 CRIT (2026-08-24): bare fetch used credentials:
+      // 'same-origin' with NO Bearer — 401 on any subdomain deploy (staging
+      // /prod). Route through apiRequest so Bearer + credentials: 'include'
+      // + App Check + 401 retry all apply. FormData bodies are passed as-is
+      // (no JSON.stringify — see queryClient.ts:131 special-case).
+      const res = await apiRequest("/api/supplier-invoices", {
         method: "POST",
         body: fd,
-        credentials: "same-origin",
       });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
