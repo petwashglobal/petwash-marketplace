@@ -104,9 +104,17 @@ export default function StaffPending() {
     async function fetchApp() {
       setFetchState('ok');
       try {
+        // Client-audit HIGH-5 (2026-08-24): add credentials:'include' so the
+        // Firebase session cookie ALSO reaches the server. Bearer alone works
+        // in most paths, but requireAuth on this route falls back to the
+        // session cookie when the Bearer channel misses — see server/
+        // middleware/auth.ts. Without credentials:'include' the request
+        // silently 401'd on any cross-origin subdomain deploy and users saw
+        // the "no application" dead-end (PR-AUTH-FIX-STAFFPENDING-DEADEND).
         const token = user ? await user.getIdToken() : null;
         const res = await fetch('/api/staff/applications/mine', {
           headers: token ? { Authorization: `Bearer ${token}` } : {},
+          credentials: 'include',
         });
         if (!res.ok) throw new Error('Failed to fetch');
         const data = await res.json();
