@@ -607,8 +607,14 @@ router.post('/:quoteId/checkout', requireAuth, requireStrictIdempotency, async (
       // fell back to GMV VAT (total − total/1.18), so EVERY marketplace receipt
       // overstated VAT and disagreed with the escrow ledger (which correctly uses
       // taxCents at ~line 418). Use taxCents, with the same commission fallback.
+      // Money-audit F9 (2026-08-24): the fallback used `platformFeeCents * 0.18`
+      // — forward-additive rate — but Israeli VAT is BACKED OUT of a
+      // VAT-inclusive price (VAT = amount * 18/118). The fallback overstated
+      // VAT by ~15% on every commission-fee receipt where quote.taxCents was
+      // missing. Match the canonical formula (see admin-escrow-reconciliation
+      // .ts:383).
       const vatCentsCalc = (quote.taxCents as number)
-        ?? Math.round((quote.platformFeeCents || 0) * 0.18);
+        ?? Math.round(((quote.platformFeeCents || 0) * 18) / 118);
       EmailService.sendBookingConfirmation({
         email: customer.email,
         customerName,

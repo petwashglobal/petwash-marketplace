@@ -2671,19 +2671,39 @@ router.get('/:requestId/sumit-return', async (req, res) => {
     }
 
     // Atomic flip to confirmed with the real transaction id.
+    //
+    // Concurrency-audit P1-4 (2026-08-24): the previous UPDATE lacked a
+    // status-predicate. Two concurrent /sumit-return calls (refresh, back
+    // button, SUMIT redirect + user back nav) both passed the status gate
+    // above and both ran the flip + side-effects → duplicate calendar
+    // events + duplicate confirmation emails to customer + provider.
+    //
+    // Fix: predicate the UPDATE on status='payment_pending' and use
+    // .returning() to see how many rows actually changed. If 0, another
+    // concurrent request won the flip — return ok() WITHOUT firing calendar
+    // creation, provider notification, owner notification, or bridge
+    // write-back below. The winner will do those exactly once.
     const statusHistory = ((booking.statusHistory as any[]) ?? []);
     statusHistory.push({
       status: 'confirmed',
       timestamp: new Date().toISOString(),
       note: `Payment of ₪${(booking.totalCents / 100).toFixed(2)} confirmed by SUMIT. Held in escrow. txId: ${txnId}`,
     });
-    await db.update(bookingRequests).set({
+    const flipped = await db.update(bookingRequests).set({
       status: 'confirmed',
       paymentTransactionId: String(txnId),
       paymentHeldAt: new Date(),
       statusHistory,
       updatedAt: new Date(),
-    } as any).where(eq(bookingRequests.requestId, requestId));
+    } as any).where(and(
+      eq(bookingRequests.requestId, requestId),
+      eq(bookingRequests.status, 'payment_pending'),
+    )).returning({ requestId: bookingRequests.requestId });
+
+    if (flipped.length === 0) {
+      logger.info('[BookingRequests] SUMIT-return lost concurrent flip race — another handler already confirmed. Skipping side-effects, returning ok()', { requestId, txnId });
+      return ok();
+    }
 
     logger.info('[BookingRequests] ✅ Booking confirmed via real SUMIT payment', { requestId, txnId });
 
