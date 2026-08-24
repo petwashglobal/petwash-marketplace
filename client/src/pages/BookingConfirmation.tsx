@@ -1313,7 +1313,23 @@ export default function BookingConfirmation() {
                 {infoItems.map((item, idx) => (
                   <li key={idx} className="flex gap-2 text-sm text-gray-700 leading-relaxed">
                     <span className="font-bold text-gray-400 flex-shrink-0 w-4">{idx + 1}.</span>
-                    <span dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+                    {/*
+                      Client-audit CRIT (2026-08-24): previously
+                        <span dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
+                      `item` is a hardcoded constant TODAY (IMPORTANT_INFO_HE/EN),
+                      but if any value ever becomes server-sourced (e.g. a per-
+                      station blurb) that path turns into stored XSS on the
+                      confirmation page. Replaced with a safe segment renderer:
+                      splits on **…** and wraps each captured segment in a real
+                      React <strong>. No HTML string ever reaches the DOM.
+                    */}
+                    <span>
+                      {item.split(/(\*\*[^*]+\*\*)/g).map((seg, i) => (
+                        seg.startsWith('**') && seg.endsWith('**')
+                          ? <strong key={i}>{seg.slice(2, -2)}</strong>
+                          : <span key={i}>{seg}</span>
+                      ))}
+                    </span>
                   </li>
                 ))}
               </ol>
