@@ -198,8 +198,14 @@ async function collectAllUserData(userId: string, email: string | null) {
     }
 
     // 14. Firestore - Bookings (all platforms)
+    // Firestore-audit fix (2026-08-24): the `bookings` collection stores
+    // customerId + providerId, NOT userId. Querying by 'userId' silently
+    // returned zero results, so GDPR data export handed users an empty
+    // bookings array while their real bookings sat in Firestore. Query
+    // by customerId (canonical field per firestore.indexes.json bookings
+    // composite indexes) so exports include the user's actual history.
     try {
-      const bookingsSnapshot = await firestore.collection('bookings').where('userId', '==', userId).get();
+      const bookingsSnapshot = await firestore.collection('bookings').where('customerId', '==', userId).get();
       userData.bookings = bookingsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
     } catch (error) {
       logger.warn('Failed to fetch bookings', { userId, error });

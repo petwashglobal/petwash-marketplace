@@ -177,7 +177,17 @@ router.patch('/settings/profile', async (req, res) => {
 
     if (Object.keys(updateData).length > 0) {
       if (existingUser) {
-        await db.update(users).set(updateData).where(eq(users.id, uid));
+        // CRIT-5 (save-integrity audit 2026-08-24): guard against silent no-op.
+        // A .update().where() that matches ZERO rows still resolves — no throw,
+        // no diagnostic. This is exactly the "profile edit doesn't stick"
+        // symptom users have reported: the row was raced-deleted or the uid
+        // was miscomputed, so nothing changes, and the API responds success:true.
+        // .returning() + rowsAffected check makes the failure visible.
+        const affected = await db.update(users).set(updateData).where(eq(users.id, uid)).returning({ id: users.id });
+        if (affected.length === 0) {
+          logger.warn('[ProfileSettings] update matched 0 rows — user row disappeared between preflight and write', { uid });
+          return res.status(404).json({ error: 'User row not found; profile change was NOT saved.' });
+        }
       } else {
         await db.insert(users).values({
           id: uid,
