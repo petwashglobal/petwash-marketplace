@@ -640,11 +640,33 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     // Persist the member's 2-step-login CHOICE (CEO 2026-07-31 "one-way or two-way
     // verification"). Only when explicitly provided; the column defaults false, so
     // opting out — or an older client that doesn't send it — is a safe no-op.
+    // HONESTY FIX 2026-08-24: opt-IN is a security control — silently swallowing
+    // the write meant later logins would not enforce 2FA even though the user asked
+    // for it. When the user explicitly opted IN and the write fails, surface it so
+    // the client can retry via the Security page. Opt-OUT failure remains non-blocking
+    // (column default is already false).
+    let twoFactorPersisted: boolean | 'failed' | 'skipped' = 'skipped';
     if (typeof twoFactorEnabled === 'boolean') {
       try {
-        await pool.query(`UPDATE users SET two_factor_enabled = $1 WHERE id = $2`, [twoFactorEnabled, uid]);
+        const r = await pool.query(
+          `UPDATE users SET two_factor_enabled = $1 WHERE id = $2 RETURNING id`,
+          [twoFactorEnabled, uid],
+        );
+        twoFactorPersisted = r.rowCount && r.rowCount > 0 ? twoFactorEnabled : 'failed';
+        if (twoFactorPersisted === 'failed') {
+          logger.error('[Signup] verify-signup-email 2FA UPDATE matched 0 rows (user row missing)', { uid });
+        }
       } catch (e: any) {
-        logger.warn('[Signup] verify-signup-email set-2fa-pref failed (non-blocking)', { error: e?.message });
+        twoFactorPersisted = 'failed';
+        logger.error('[Signup] verify-signup-email set-2fa-pref threw', { uid, error: e?.message });
+      }
+      if (twoFactorEnabled === true && twoFactorPersisted !== true) {
+        return res.status(500).json({
+          ok: false,
+          error: 'Email verified, but we could not save your 2-step login preference. Enable it later from Account Security.',
+          code: 'TWO_FACTOR_PREF_NOT_SAVED',
+          emailVerified: true,
+        });
       }
     }
     // Best-effort DB flag (email_verified column may not exist → harmless skip).
