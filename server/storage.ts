@@ -1020,6 +1020,35 @@ export class DatabaseStorage implements IStorage {
       .set({ ...updates, updatedAt: new Date() })
       .where(eq(users.id, id))
       .returning();
+
+    // STORAGE-CACHE-INVALIDATE (2026-08-23 auth-audit HIGH #10):
+    // Every writer that mutates the users row MUST bust the Redis
+    // auth cache used by AuthService.getUserById / getUserByEmail
+    // (TTL 600s = 10 min). Pre-fix, this method wrote to Postgres
+    // and returned — the Redis entry stayed stale for up to 10 min.
+    // A user promoted to super_admin, or a customer whose signupIntent
+    // just flipped, would see the OLD state on every subsequent
+    // /whoami / getUserById call until either the cache expired or
+    // someone happened to call AuthService.updateUser (which has its
+    // own invalidate call). Most writers on the codebase go through
+    // THIS storage.updateUser, not AuthService.updateUser — so this
+    // is the correct place to close the leak.
+    //
+    // Lazy-imported to avoid a circular dependency between storage
+    // and AuthService (AuthService historically imports from storage).
+    // Best-effort try/catch — a cache-invalidate failure is never
+    // allowed to fail the write itself.
+    try {
+      const { authService } = await import('./services/AuthService');
+      await authService.invalidateUserCache(id);
+    } catch (cacheErr: any) {
+      // eslint-disable-next-line no-console
+      console.warn('[Storage] updateUser cache-invalidate failed (non-blocking)', {
+        userId: id,
+        error: cacheErr?.message,
+      });
+    }
+
     return user;
   }
 
