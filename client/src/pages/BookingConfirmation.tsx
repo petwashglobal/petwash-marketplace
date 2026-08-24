@@ -1310,19 +1310,20 @@ export default function BookingConfirmation() {
                 {t.importantInfo}
               </h2>
               <ol className="space-y-2">
+                {/*
+                  Client-audit CRIT (2026-08-24): the previous render used
+                  dangerouslySetInnerHTML after a **bold** -> strong replace on
+                  each item. `item` is a hardcoded constant TODAY (IMPORTANT_
+                  INFO_HE / IMPORTANT_INFO_EN), but any future path threading
+                  a station name / provider blurb / user-editable string into
+                  IMPORTANT_INFO_* would turn into stored XSS on the confirmation
+                  page. Replaced with a safe segment renderer: split on the
+                  literal **...** markers and wrap each captured segment in a
+                  real React strong. No HTML string ever reaches the DOM.
+                */}
                 {infoItems.map((item, idx) => (
                   <li key={idx} className="flex gap-2 text-sm text-gray-700 leading-relaxed">
                     <span className="font-bold text-gray-400 flex-shrink-0 w-4">{idx + 1}.</span>
-                    {/*
-                      Client-audit CRIT (2026-08-24): previously
-                        <span dangerouslySetInnerHTML={{ __html: item.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>') }} />
-                      `item` is a hardcoded constant TODAY (IMPORTANT_INFO_HE/EN),
-                      but if any value ever becomes server-sourced (e.g. a per-
-                      station blurb) that path turns into stored XSS on the
-                      confirmation page. Replaced with a safe segment renderer:
-                      splits on **…** and wraps each captured segment in a real
-                      React <strong>. No HTML string ever reaches the DOM.
-                    */}
                     <span>
                       {item.split(/(\*\*[^*]+\*\*)/g).map((seg, i) => (
                         seg.startsWith('**') && seg.endsWith('**')
