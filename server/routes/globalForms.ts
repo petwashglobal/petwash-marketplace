@@ -293,7 +293,13 @@ router.post('/hr-application', async (req, res) => {
   try {
     const data = hrJobApplicationSchema.parse(req.body);
     const appId = `HR-${Date.now()}`;
-    await GoogleSheetsService.appendToSheet('HR Job Applications', {
+    // CRIT-2 (save-integrity audit 2026-08-24): appendToSheet returns a
+    // boolean and can return false (sheet misconfigured, connector offline,
+    // duplicate suppressed). Previously we ignored the return value and told
+    // the user "Application received" while nothing was persisted anywhere.
+    // Log at error and fail HTTP 503 so the applicant retries / uses email
+    // fallback instead of quietly disappearing.
+    const sheetOk = await GoogleSheetsService.appendToSheet('HR Job Applications', {
       Timestamp: new Date().toISOString(),
       'Application ID': appId,
       'First Name': data.firstName,
@@ -316,6 +322,13 @@ router.post('/hr-application', async (req, res) => {
       'Start Date': data.startDate || '',
       'Status': 'New',
     });
+    if (!sheetOk) {
+      logger.error('[GlobalForms] HR application persistence FAILED — appendToSheet returned false; no DB fallback', { appId, email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not save your application right now. Please try again in a few minutes or email hr@petwash.co.il directly.',
+      });
+    }
     await EmailService.send({
       to: 'hr@petwash.co.il',
       subject: `New Job Application: ${data.firstName} ${data.lastName} — ${data.position}`,
@@ -352,7 +365,8 @@ router.post('/sales-lead', async (req, res) => {
   try {
     const data = salesLeadSchema.parse(req.body);
     const leadId = `LEAD-${Date.now()}`;
-    await GoogleSheetsService.appendToSheet('Sales Leads', {
+    // CRIT-2: check the appendToSheet return value; see /hr-application above.
+    const sheetOk = await GoogleSheetsService.appendToSheet('Sales Leads', {
       Timestamp: new Date().toISOString(),
       'Lead ID': leadId,
       'Lead Type': data.inquiryType,
@@ -370,6 +384,13 @@ router.post('/sales-lead', async (req, res) => {
       'Stage': 'New Lead',
       'Status': 'Open',
     });
+    if (!sheetOk) {
+      logger.error('[GlobalForms] sales-lead persistence FAILED — appendToSheet returned false', { leadId, email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not save your lead right now. Please try again or email sales@petwash.co.il directly.',
+      });
+    }
     await EmailService.send({
       to: 'sales@petwash.co.il',
       subject: `New Sales Lead: ${data.contactName} — ${data.serviceInterest}`,
@@ -405,7 +426,10 @@ router.post('/refund-request', async (req, res) => {
   try {
     const data = refundRequestSchema.parse(req.body);
     const requestId = `REF-${Date.now()}`;
-    await GoogleSheetsService.appendToSheet('Refund Requests', {
+    // CRIT-2: check the appendToSheet return value; see /hr-application above.
+    // Money-adjacent — fail LOUD, do not tell the customer their refund
+    // request was received when nothing was saved.
+    const sheetOk = await GoogleSheetsService.appendToSheet('Refund Requests', {
       Timestamp: new Date().toISOString(),
       'Request ID': requestId,
       'Booking ID': data.bookingId,
@@ -422,6 +446,13 @@ router.post('/refund-request', async (req, res) => {
       'Refund Method': data.refundMethod,
       'Status': 'Pending Review',
     });
+    if (!sheetOk) {
+      logger.error('[GlobalForms] refund-request persistence FAILED — appendToSheet returned false', { requestId, bookingId: data.bookingId, email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not record your refund request right now. Please try again or email finance@petwash.co.il directly.',
+      });
+    }
     await EmailService.send({
       to: 'finance@petwash.co.il',
       subject: `Refund Request ${requestId}: ${data.fullName} — ₪${data.refundAmount}`,
@@ -465,7 +496,8 @@ router.post('/customer-onboarding', async (req, res) => {
   try {
     const data = customerOnboardingSchema.parse(req.body);
     const petId = `PET-${Date.now()}`;
-    await GoogleSheetsService.appendToSheet('Pet Profiles', {
+    // CRIT-2: check the appendToSheet return value; see /hr-application above.
+    const sheetOk = await GoogleSheetsService.appendToSheet('Pet Profiles', {
       Timestamp: new Date().toISOString(),
       'Pet ID': petId,
       'Owner ID': '',
@@ -487,6 +519,13 @@ router.post('/customer-onboarding', async (req, res) => {
       'Vaccinations': data.vaccinationsUpToDate,
       'Status': 'Active',
     });
+    if (!sheetOk) {
+      logger.error('[GlobalForms] customer-onboarding persistence FAILED — appendToSheet returned false', { petId, email: data.email });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not register your pet right now. Please try again in a few minutes.',
+      });
+    }
     await EmailService.send({
       to: data.email,
       subject: `Welcome to PetWash™ — ${data.petName} is registered!`,
