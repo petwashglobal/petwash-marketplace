@@ -858,7 +858,12 @@ export class CouponService {
 
   // Legacy method — kept for backward compat
   async redeemCoupon(input: { couponId: number; userId: string; orderType: OrderType; orderId?: string; amountBeforeCents: number; discountAmountCents: number }): Promise<{ redemptionId: number }> {
-    const idempotencyKey = `legacy-${input.couponId}-${input.userId}-${Date.now()}`;
+    // Money-audit F4 (2026-08-24): key used to include Date.now() — a client
+    // double-tap generated two DIFFERENT keys, so the atomic idempotency guard
+    // did nothing and the coupon redeemed twice. Deterministic on the
+    // semantic identity (coupon + user + order) so a retry dedupes.
+    const orderKey = input.orderId ?? `no-order:${input.orderType}:${input.amountBeforeCents}`;
+    const idempotencyKey = `legacy-${input.couponId}-${input.userId}-${input.orderType}-${orderKey}`;
     return this.redeemAtomic({ ...input, idempotencyKey });
   }
 

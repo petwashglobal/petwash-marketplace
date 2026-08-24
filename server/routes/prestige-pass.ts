@@ -4081,7 +4081,16 @@ router.post('/admin/wallet/adjust', auditLogMiddleware('CREDIT_WALLET_ADJUST'), 
 
     const { walletService } = await import('../services/WalletService');
     const wallet = await walletService.getOrCreateWallet(userId);
-    const idempotencyKey = `wallet:admin:adjust:${type}:${userId}:${Date.now()}`;
+    // Money-audit F4 (2026-08-24): idempotency key used to include Date.now()
+    // — a client double-tap in the same session produced two DIFFERENT keys
+    // and moved money twice. Now: prefer client-supplied idempotencyKey; else
+    // derive from the semantic content (type + userId + amount + reason hash).
+    // Identical intentional replays dedupe; distinct intents don't collide.
+    const bodyKey = typeof req.body?.idempotencyKey === 'string' && req.body.idempotencyKey.trim()
+      ? req.body.idempotencyKey.trim().slice(0, 128)
+      : null;
+    const semanticKey = bodyKey || `wallet:admin:adjust:${type}:${userId}:${amountCents}:${(await import('crypto')).createHash('sha256').update(String(reason ?? '')).digest('hex').slice(0, 12)}`;
+    const idempotencyKey = semanticKey;
 
     const { adminAdjustWallet } = await import('../services/WalletLedger');
     const result = await adminAdjustWallet({
@@ -4781,7 +4790,11 @@ router.post('/admin/wallet/academy/:id/force-cancel', async (req: Request, res: 
         bookingId,
         divisionCode:         'academy',
         ipAddress:            req.ip,
-        idempotencyKeySuffix: `admin-cancel:${uid}:${Date.now()}`,
+        // Money-audit F4: was `admin-cancel:${uid}:${Date.now()}` — every
+        // click generated a distinct key so a client double-tap double-refunded.
+        // Deterministic on the semantic identity (booking + admin + amount)
+        // so retries dedupe.
+        idempotencyKeySuffix: `admin-cancel:${uid}:${bookingId}:${Number(booking.wallet_debited_cents)}`,
         metadata:             { adminId: uid, reason, actorSource: 'admin_override' },
         reason:               reason,
       });
