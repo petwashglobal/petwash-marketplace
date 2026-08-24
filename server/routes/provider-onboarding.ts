@@ -52,6 +52,16 @@ import {
 
 const router = Router();
 
+// HIGH-5 (save-integrity audit 2026-08-24): ~30 fire-and-forget audit /
+// event / queue writes in this file used `.catch(() => {})`. Silent drops
+// there meant provider approval decisions vanished from the review queue,
+// audit rows were lost, and the admin still saw success — precisely how
+// approvals get "forgotten." Shared handler logs each drop at warn with a
+// callsite tag so future ops sees the failure.
+const logDrop = (op: string) => (err: any) => {
+  logger.warn(`[ProviderOnboarding] fire-and-forget dropped: ${op}`, { error: err?.message });
+};
+
 /**
  * Encrypt a biometric/KYC file buffer before writing to GCS.
  * Uses DocumentEncryption (AES-256-GCM) if DOCUMENT_ENCRYPTION_KEY is set.
@@ -1357,7 +1367,7 @@ router.post('/apply', upload.fields([
               decisionReason.length > 200 ? decisionReason.slice(0, 200) : decisionReason,
               applicationId,
             ]
-          ).catch(() => {});
+          ).catch(logDrop('provider-onboarding fire-and-forget'));
 
           // ── 5. Audit + Queue + Monitoring (non-blocking, fire-and-forget) ─
           const dbAppRow = await pool.query(
@@ -1382,7 +1392,7 @@ router.post('/apply', upload.fields([
                 flags: forceReviewFlags,
                 reason: decisionReason,
               },
-            }).catch(() => {});
+            }).catch(logDrop('provider-onboarding fire-and-forget'));
 
             // Emit monitoring event
             emitProviderEvent({
@@ -1390,7 +1400,7 @@ router.post('/apply', upload.fields([
               eventName: `provider_kyc_${outcomeStatus}`,
               severity: outcomeStatus === 'rejected' ? 'warning' : outcomeStatus === 'pending_review' || outcomeStatus === 'pending_resubmission' ? 'info' : 'info',
               payload: { faceScore, livenessPass, fraudRiskLevel, flags: forceReviewFlags },
-            }).catch(() => {});
+            }).catch(logDrop('provider-onboarding fire-and-forget'));
 
             // Push into review queue if human review is required
             if (outcomeStatus === 'pending_review' || outcomeStatus === 'pending_resubmission') {
@@ -1400,7 +1410,7 @@ router.post('/apply', upload.fields([
                 priority: queuePriority as any,
                 reviewReasons: forceReviewFlags,
                 dueHours: outcomeStatus === 'pending_resubmission' ? 120 : 48,
-              }).catch(() => {});
+              }).catch(logDrop('provider-onboarding fire-and-forget'));
 
               // Log system message in the communication thread
               logSystemMessage({
@@ -1409,9 +1419,9 @@ router.post('/apply', upload.fields([
                   ? `KYC2026 automated decision: documents need re-upload. Reasons: ${forceReviewFlags.join(', ')}`
                   : `KYC2026 automated decision: pending manual review. Flags: ${forceReviewFlags.join(', ')}`,
                 providerVisible: false,
-              }).catch(() => {});
+              }).catch(logDrop('provider-onboarding fire-and-forget'));
             } else if (outcomeStatus === 'approved') {
-              completeQueueItem(dbAppId).catch(() => {});
+              completeQueueItem(dbAppId).catch(logDrop('provider-onboarding fire-and-forget'));
             }
           }
 
@@ -1542,7 +1552,7 @@ router.post('/apply', upload.fields([
               eventName: 'kyc_exception_rescued',
               severity: 'critical',
               payload: { applicationId, error: asyncErr?.message?.slice(0, 500) },
-            }).catch(() => {});
+            }).catch(logDrop('provider-onboarding fire-and-forget'));
             // Write audit event
             writeProviderAudit({
               applicationId: (application as any).id,
@@ -1550,7 +1560,7 @@ router.post('/apply', upload.fields([
               actorUserId: 'system',
               actorRole: 'system',
               payload: { error: asyncErr?.message?.slice(0, 500) },
-            }).catch(() => {});
+            }).catch(logDrop('provider-onboarding fire-and-forget'));
           } catch (rescueErr: any) {
             logger.error('[KYC2026] Rescue to pending_review also failed', { applicationId, error: rescueErr?.message });
           }
@@ -1901,7 +1911,7 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
           actorUserId: adminUid || 'admin',
           actorRole: 'admin',
           payload: { services: seeded.map((s) => s.serviceType), level: 'waitlist', via: 'kyc_review_approve' },
-        }).catch(() => {});
+        }).catch(logDrop('provider-onboarding fire-and-forget'));
         logger.info('[Provider Onboarding] provider_services seeded at waitlist', {
           userId: application.userId, services: seeded.map((s) => s.serviceType),
         });
@@ -2111,13 +2121,13 @@ router.post('/admin/applications/:numericId/promote-trainee', requireAdmin, asyn
       actorUserId: adminUid || 'admin',
       actorRole: 'admin',
       payload: { providerId: app.approved_as_provider_id, promotedBy: adminEmail },
-    }).catch(() => {});
+    }).catch(logDrop('provider-onboarding fire-and-forget'));
 
     logSystemMessage({
       applicationId: numericId,
       body: `Trainee promoted to full provider by admin ${adminEmail || adminUid}.`,
       providerVisible: false,
-    }).catch(() => {});
+    }).catch(logDrop('provider-onboarding fire-and-forget'));
 
     res.json({ success: true, message: 'Trainee promoted to full provider' });
   } catch (err: any) {
@@ -2134,7 +2144,7 @@ router.post('/admin/applications/:numericId/assign', requireSupport, async (req:
     const { adminUid } = req.body;
     if (!assignedTo) return res.status(400).json({ error: 'assignedTo required' });
     await (await import('../services/providerQueue')).assignQueueItem({ applicationId, assignedTo });
-    writeProviderAudit({ applicationId, eventType: 'queue_assigned', actorUserId: adminUid, actorRole: 'admin', payload: { assignedTo } }).catch(() => {});
+    writeProviderAudit({ applicationId, eventType: 'queue_assigned', actorUserId: adminUid, actorRole: 'admin', payload: { assignedTo } }).catch(logDrop('provider-onboarding fire-and-forget'));
     res.json({ success: true });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] queue assign error', { error: err?.message });
@@ -2192,8 +2202,8 @@ router.post('/admin/applications/:numericId/resubmit-request', requireSupport, a
     );
 
     // Log audit + monitoring
-    writeProviderAudit({ applicationId, eventType: 'resubmission_requested', actorUserId: adminUid, actorRole: 'admin', payload: { reasons, token: token.slice(0, 8) + '...' } }).catch(() => {});
-    emitProviderEvent({ applicationId, eventName: 'resubmission_requested', severity: 'info', payload: { reasons } }).catch(() => {});
+    writeProviderAudit({ applicationId, eventType: 'resubmission_requested', actorUserId: adminUid, actorRole: 'admin', payload: { reasons, token: token.slice(0, 8) + '...' } }).catch(logDrop('provider-onboarding fire-and-forget'));
+    emitProviderEvent({ applicationId, eventName: 'resubmission_requested', severity: 'info', payload: { reasons } }).catch(logDrop('provider-onboarding fire-and-forget'));
 
     // Log message in thread
     logProviderMessage({
@@ -2203,7 +2213,7 @@ router.post('/admin/applications/:numericId/resubmit-request', requireSupport, a
       body: `Admin requested resubmission. Reasons: ${reasons.join(', ')}`,
       sentBy: adminEmail || adminUid || 'admin',
       providerVisible: false,
-    }).catch(() => {});
+    }).catch(logDrop('provider-onboarding fire-and-forget'));
 
     // Email applicant
     const appUrl = process.env.APP_URL || 'https://app.petwash.co.il';
@@ -2222,7 +2232,7 @@ router.post('/admin/applications/:numericId/resubmit-request', requireSupport, a
         replyTo: PROVIDER_SENDER.replyTo,
         subject: resubRequestEmail.subject,
         html: resubRequestEmail.html,
-      }).catch(() => {});
+      }).catch(logDrop('provider-onboarding fire-and-forget'));
     }
 
     res.json({ success: true, expiresAt: expiresAt.toISOString() });
@@ -2251,7 +2261,7 @@ router.get('/admin/applications/:numericId/messages', requireSupport, async (req
     const applicationId = parseInt(req.params.numericId);
     const { getThreadMessages, clearUnreadCount } = await import('../services/providerMessageLog');
     const messages = await getThreadMessages(applicationId, true);
-    clearUnreadCount(applicationId).catch(() => {});
+    clearUnreadCount(applicationId).catch(logDrop('provider-onboarding fire-and-forget'));
     res.json({ messages });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] admin messages fetch error', { error: err?.message });
@@ -2294,10 +2304,10 @@ router.post('/admin/applications/:numericId/message', requireSupport, async (req
         replyTo: PROVIDER_SENDER.replyTo,
         subject: supportEmail.subject,
         html: supportEmail.html,
-      }).catch(() => {});
+      }).catch(logDrop('provider-onboarding fire-and-forget'));
     }
 
-    writeProviderAudit({ applicationId, eventType: 'message_sent', actorUserId: adminUid, actorRole: 'admin', payload: { direction, channel, providerVisible } }).catch(() => {});
+    writeProviderAudit({ applicationId, eventType: 'message_sent', actorUserId: adminUid, actorRole: 'admin', payload: { direction, channel, providerVisible } }).catch(logDrop('provider-onboarding fire-and-forget'));
     res.json({ success: true });
   } catch (err: any) {
     logger.error('[ProviderOnboarding] admin message send error', { error: err?.message });
@@ -2592,7 +2602,7 @@ router.post(
              (application_id, file_type, storage_path, mime_type, version, uploaded_at)
            VALUES ($1, 'selfie', $2, $3, $4, NOW())`,
           [numericAppId, path, f.mimetype, version]
-        ).catch(() => {});
+        ).catch(logDrop('provider-onboarding fire-and-forget'));
       }
 
       if (files?.governmentId?.[0]) {
@@ -2609,7 +2619,7 @@ router.post(
              (application_id, file_type, storage_path, mime_type, version, uploaded_at)
            VALUES ($1, 'government_id', $2, $3, $4, NOW())`,
           [numericAppId, path, f.mimetype, version]
-        ).catch(() => {});
+        ).catch(logDrop('provider-onboarding fire-and-forget'));
       }
 
       if (filesUploaded === 0) {
@@ -2647,14 +2657,14 @@ router.post(
           govIdReplaced: !!files?.governmentId?.[0],
           requestReasons,
         },
-      }).catch(() => {});
+      }).catch(logDrop('provider-onboarding fire-and-forget'));
 
       emitProviderEvent({
         applicationId: numericAppId,
         eventName: 'resubmission_uploaded',
         severity: 'info',
         payload: { applicationId, version, filesUploaded },
-      }).catch(() => {});
+      }).catch(logDrop('provider-onboarding fire-and-forget'));
 
       logProviderMessage({
         applicationId: numericAppId,
@@ -2663,7 +2673,7 @@ router.post(
         body: `Applicant uploaded replacement documents (v${version}). Files: ${[files?.selfiePhoto?.[0] && 'selfie', files?.governmentId?.[0] && 'government_id'].filter(Boolean).join(', ')}.`,
         sentBy: userId,
         providerVisible: false,
-      }).catch(() => {});
+      }).catch(logDrop('provider-onboarding fire-and-forget'));
 
       // ── 6. Send confirmation email to applicant ───────────────────────────
       if (isSendGridConfigured() && app.email) {
@@ -2677,7 +2687,7 @@ router.post(
           replyTo: PROVIDER_SENDER.replyTo,
           subject: docsEmail.subject,
           html: docsEmail.html,
-        }).catch(() => {});
+        }).catch(logDrop('provider-onboarding fire-and-forget'));
       }
 
       // ── 7. Respond before triggering async KYC ────────────────────────────
@@ -2775,22 +2785,22 @@ router.post(
               actorUserId: 'system-kyc2026',
               actorRole: 'system',
               payload: { faceScore, livenessPass, ocrConfidence, flags: forceReviewFlags, reason: decisionReason, version },
-            }).catch(() => {});
+            }).catch(logDrop('provider-onboarding fire-and-forget'));
 
             emitProviderEvent({
               applicationId: numericAppId,
               eventName: `resubmission_kyc_${outcomeStatus}`,
               severity: outcomeStatus === 'rejected' ? 'warning' : 'info',
               payload: { faceScore, livenessPass, outcomeStatus, version },
-            }).catch(() => {});
+            }).catch(logDrop('provider-onboarding fire-and-forget'));
 
             if (outcomeStatus === 'pending_review') {
               const { upsertReviewQueue, logSystemMessage } = await import('../services/providerQueue');
-              upsertReviewQueue({ applicationId: numericAppId, priority: 'high', reviewReasons: forceReviewFlags, dueHours: 24 }).catch(() => {});
-              logSystemMessage({ applicationId: numericAppId, body: `Resubmission v${version} reviewed — pending manual review. Flags: ${forceReviewFlags.join(', ')}`, providerVisible: false }).catch(() => {});
+              upsertReviewQueue({ applicationId: numericAppId, priority: 'high', reviewReasons: forceReviewFlags, dueHours: 24 }).catch(logDrop('provider-onboarding fire-and-forget'));
+              logSystemMessage({ applicationId: numericAppId, body: `Resubmission v${version} reviewed — pending manual review. Flags: ${forceReviewFlags.join(', ')}`, providerVisible: false }).catch(logDrop('provider-onboarding fire-and-forget'));
             } else if (outcomeStatus === 'approved') {
               const { completeQueueItem } = await import('../services/providerQueue');
-              completeQueueItem(numericAppId).catch(() => {});
+              completeQueueItem(numericAppId).catch(logDrop('provider-onboarding fire-and-forget'));
             }
 
             logger.info(`[KYC2026] Resubmission KYC complete: ${outcomeStatus}`, { applicationId, version, faceScore, livenessPass });
@@ -2810,7 +2820,7 @@ router.post(
                  ON CONFLICT (application_id) DO NOTHING`,
                 [numericAppId, JSON.stringify(['resubmission_kyc_exception'])]
               );
-              emitProviderEvent({ applicationId: numericAppId, eventName: 'resubmission_kyc_exception', severity: 'critical', payload: { error: kycErr?.message?.slice(0, 400) } }).catch(() => {});
+              emitProviderEvent({ applicationId: numericAppId, eventName: 'resubmission_kyc_exception', severity: 'critical', payload: { error: kycErr?.message?.slice(0, 400) } }).catch(logDrop('provider-onboarding fire-and-forget'));
             } catch { /* last-ditch — already logged */ }
           }
         });
