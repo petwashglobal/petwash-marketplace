@@ -74,6 +74,28 @@ export async function requestRefund(input: RequestRefundInput): Promise<RefundRe
     return { refundId: "", status: "failed", executed: false, idempotent: false, skipped: "zero" };
   }
 
+  // Money-audit F3 (2026-08-24): treasury-drain guard. Previously the service
+  // trusted the caller to pass a sane refundCents. Any bug/coercion at a call
+  // site with an inflated refundCents ran refundToWallet blind. Now: when the
+  // caller supplied chargedCents, enforce refundCents ≤ chargedCents. If the
+  // caller omitted chargedCents (some legacy paths still do), we cannot
+  // enforce here — log at warn so the missing context is visible in Cloud Run
+  // and the ops "no cap" surface stays discoverable.
+  if (typeof input.chargedCents === "number" && input.chargedCents > 0) {
+    if (refundCents > input.chargedCents) {
+      logger.error("[RefundService] REJECTED over-refund attempt: refundCents > chargedCents", {
+        sourceType, sourceId, userId, refundCents, chargedCents: input.chargedCents, initiatedBy: input.initiatedBy,
+      });
+      throw new Error(
+        `REFUND_EXCEEDS_CHARGE: refundCents (${refundCents}) > chargedCents (${input.chargedCents})`,
+      );
+    }
+  } else {
+    logger.warn("[RefundService] refund proceeding without chargedCents context — over-refund guard cannot enforce a cap on this call", {
+      sourceType, sourceId, userId, refundCents, initiatedBy: input.initiatedBy,
+    });
+  }
+
   // Idempotency — already recorded?
   const [existing] = await db
     .select()
