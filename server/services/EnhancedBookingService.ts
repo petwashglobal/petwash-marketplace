@@ -332,60 +332,60 @@ export class EnhancedBookingService {
 
   async processPayment(
     bookingId: string,
-    paymentMethod: string,
-    gateway: string = "nayax",
-    requiredPlatformId?: string
+    _paymentMethod: string,
+    _gateway: string = "nayax",
+    _requiredPlatformId?: string,
   ): Promise<{ success: boolean; paymentId?: string; error?: string }> {
-    const [booking] = await db
-      .select()
-      .from(bookings)
-      .where(eq(bookings.id, bookingId))
-      .limit(1);
-
-    if (!booking) {
-      return { success: false, error: "Booking not found" };
-    }
-
-    if (requiredPlatformId && booking.platformId !== requiredPlatformId) {
-      return { success: false, error: "Booking belongs to another platform" };
-    }
-
-    const paymentId = `pay_${crypto.randomBytes(12).toString("hex")}`;
-
-    await db.insert(superAppPayments).values({
-      bookingId,
-      userId: booking.userId,
-      gateway,
-      amount: booking.total,
-      currency: booking.currency || "ILS",
-      status: "pending",
-      paymentMethod,
-      metadata: {
-        platformId: booking.platformId,
-        bookingNumber: booking.bookingNumber,
-      },
-    });
-
-    await db
-      .update(bookings)
-      .set({
-        paymentStatus: PAYMENT_STATUS.IN_ESCROW,
-        paymentMethod,
-        updatedAt: sql`NOW()`,
-      })
-      .where(eq(bookings.id, bookingId));
-
-    await this.logEvent("booking.payment_processed", "booking", bookingId, {
-      paymentId,
-      amount: booking.total,
-      gateway,
-    });
-
-    return { success: true, paymentId };
+    // Money-audit F2 (2026-08-24): FAIL-CLOSED. The prior implementation
+    // fabricated a paymentId locally with crypto.randomBytes and flipped the
+    // booking to paymentStatus='IN_ESCROW' with NO gateway call — no charge,
+    // no verification. Downstream scheduleEscrowRelease then created a
+    // provider payout row against zero real money-in. External platforms
+    // hitting POST /platform-api/bookings/:id/pay could confirm bookings
+    // and trigger payouts without any customer money ever moving.
+    //
+    // Canonical online-payment path is server/routes/booking-requests.ts
+    // /pay → SUMIT hosted checkout → /sumit-return which verifies the SUMIT
+    // transaction (getTransaction) server-side and only then flips status.
+    // Kiosk/terminal payments go through the Nayax verified webhook rail.
+    //
+    // This method is retained as a hard failure so the platform-api caller
+    // returns a clean PAYMENT_NOT_WIRED error instead of the previous
+    // "success:true, fake paymentId" lie.
+    logger.error(
+      "[EnhancedBookingService.processPayment] REFUSED — no real gateway wired; use booking-requests.ts /pay (SUMIT) or Nayax webhook rail",
+      { bookingId },
+    );
+    return {
+      success: false,
+      error:
+        "PAYMENT_NOT_WIRED: this endpoint does not integrate a real payment gateway. " +
+        "Use the SUMIT-verified checkout flow (POST /api/booking-requests/:id/pay) " +
+        "or the Nayax kiosk webhook rail.",
+    };
   }
 
   private async scheduleEscrowRelease(booking: typeof bookings.$inferSelect) {
     if (!booking.providerId) return;
+
+    // Money-audit F2 companion (2026-08-24): DO NOT create a payout row
+    // unless the booking's payment has actually reached IN_ESCROW. The prior
+    // code fired scheduleEscrowRelease on every COMPLETED booking regardless
+    // of paymentStatus, so a booking that reached COMPLETED via an admin
+    // state push (or the fake-payment path processPayment used to run)
+    // generated provider payouts against zero real money.
+    //
+    // IN_ESCROW is the canonical "customer money captured, waiting for
+    // provider release" state — the only legitimate state to create a
+    // provider payout from. PENDING/FAILED means no money in; PAID/RELEASED
+    // means payout already sent — a second row on either would be wrong.
+    if (booking.paymentStatus !== PAYMENT_STATUS.IN_ESCROW) {
+      logger.warn(
+        "[EnhancedBooking] Refusing to create payout — booking.paymentStatus is not IN_ESCROW; skipping (no money-in proof)",
+        { bookingId: booking.id, providerId: booking.providerId, paymentStatus: booking.paymentStatus },
+      );
+      return;
+    }
 
     const escrowReleaseDate = new Date(Date.now() + 72 * 60 * 60 * 1000);
 
