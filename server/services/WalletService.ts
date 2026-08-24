@@ -76,8 +76,17 @@ class WalletService {
 
     if (existing) return existing;
 
+    // Concurrency-audit P0 (2026-08-24): the prior code was check-then-insert
+    // with NO unique constraint on wallet_accounts.user_id — a signup burst
+    // or a wallet-topup return racing signup could both pass the SELECT and
+    // both INSERT, ending with TWO wallets for one user. Later reads picked
+    // one at random; credits landed in the "wrong" wallet and appeared lost.
+    //
+    // Fix: migration 0124 adds UNIQUE(user_id). This insert uses
+    // .onConflictDoNothing() so a lost race no longer throws; the follow-up
+    // SELECT below returns the winning row. Idempotent + race-safe.
     const walletId = `WALLET-${nanoid(10).toUpperCase()}`;
-    const [newWallet] = await db.insert(walletAccounts)
+    const inserted = await db.insert(walletAccounts)
       .values({
         walletId,
         userId,
@@ -92,10 +101,24 @@ class WalletService {
         autoApplyCredits: true,
         isActive: true,
       })
+      .onConflictDoNothing({ target: walletAccounts.userId })
       .returning();
 
-    logger.info('[Wallet] Created new wallet', { walletId, userId });
-    return newWallet;
+    if (inserted.length > 0) {
+      logger.info('[Wallet] Created new wallet', { walletId, userId });
+      return inserted[0];
+    }
+
+    // Concurrent creator won — re-select the winning row.
+    const [winner] = await db.select()
+      .from(walletAccounts)
+      .where(eq(walletAccounts.userId, userId))
+      .limit(1);
+    if (!winner) {
+      throw new Error(`WALLET_CREATE_LOST_RACE: no wallet row found for user ${userId} after ON CONFLICT DO NOTHING`);
+    }
+    logger.info('[Wallet] Wallet already existed (concurrent creation)', { userId, walletId: winner.walletId });
+    return winner;
   }
 
   async getWalletSummary(userId: string): Promise<WalletSummary> {
