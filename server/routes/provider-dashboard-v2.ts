@@ -1041,11 +1041,20 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
           logger.error('[ProviderDashboardV2] Wallet lifecycle error on provider response', {
             requestId: requestIdStr, action, error: walletErr.message,
           });
+          // HIGH-7 fix (save-integrity audit 2026-08-24): was .catch(() => {}).
+          // If the failed-state marker UPDATE errored, the booking stayed at its
+          // prior financeState ('holding') forever — ops couldn't see the wallet
+          // debit/release had failed, and no reconciliation job would pick it up.
+          // Log at error with the recovery context so it surfaces.
           const failedState = action === 'accept' ? 'debit_failed' : 'release_failed';
           await db.update(bookingRequests)
             .set({ financeState: failedState, updatedAt: new Date() })
             .where(eq(bookingRequests.requestId, requestIdStr))
-            .catch(() => {});
+            .catch((markErr: any) => {
+              logger.error('[ProviderDashboardV2] CRITICAL: failed to mark booking financeState as ' + failedState + ' after wallet error — booking stuck at prior state, manual reconcile needed', {
+                requestId: requestIdStr, action, walletError: walletErr.message, markError: markErr?.message,
+              });
+            });
         }
       });
     }
@@ -1255,7 +1264,14 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
               endDate: booking.end_date,
               serviceCompletedAt: now,
             }))
-            .catch(() => {});
+            .catch((emailErr: any) => {
+              // HIGH-7 companion fix: was .catch(() => {}). Owner never got the
+              // "confirm end of stay" prompt — silently — so bookings could
+              // linger without owner confirmation. Log so ops sees the drop.
+              logger.warn('[ProviderDashboardV2] sendConfirmEndOfStay failed — owner did NOT receive end-of-stay prompt', {
+                requestId, ownerId, providerId: user.uid, error: emailErr?.message,
+              });
+            });
         });
 
         // 3) SMS wire (email covered by branded template above — matches
