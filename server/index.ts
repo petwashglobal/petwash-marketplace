@@ -1680,12 +1680,48 @@ if (isProduction) {
       // Serve static files from the DIST directory with explicit configuration
       // MOUNTED AFTER API ROUTES for proper request handling order
       app.use(express.static(DIST_PUBLIC_PATH, {
-        maxAge: '1d', // Cache static assets for 1 day
+        // INDEX-HTML-NO-CACHE (CEO 2026-08-23):
+        // Previously this served EVERY file — including index.html —
+        // with `Cache-Control: max-age=86400` (1 day). That broke
+        // deploys: a browser that fetched index.html an hour ago
+        // still had it cached pointing at the OLD Vite asset hashes
+        // (index-CSjpXYZ.js). After a new deploy renamed those to
+        // index-DIFFERENT.js, the browser fetched the OLD names →
+        // 404 → white-screen or "cannot load assets" error the CEO
+        // reported. Standard Vite/SPA hosting pattern:
+        //
+        //   • index.html         → no-store   (always fetch fresh)
+        //   • assets/*.js|css    → immutable  (hashed, safe to
+        //                          cache forever — the hash IS the
+        //                          cache-buster)
+        //   • other statics      → 1 day     (photos, favicons)
+        //
+        // maxAge remains the default 1-day; setHeaders overrides it
+        // per-file below so the shortest-lived resource (index.html)
+        // is never stuck stale.
+        maxAge: '1d',
         etag: true,
         lastModified: true,
         index: false, // Don't serve index.html for directory requests - let SPA handle routing
         setHeaders: (res, filePath) => {
-          // Set correct MIME types for images
+          // index.html — never cache. This is the CRITICAL rule that
+          // makes SPA deploys safe: the SHELL is always fresh, and
+          // it always points at the current-deploy asset hashes.
+          if (filePath.endsWith('/index.html') || filePath.endsWith('\\index.html')) {
+            res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+            res.setHeader('Pragma', 'no-cache');
+            res.setHeader('Expires', '0');
+            return;
+          }
+          // Hashed Vite assets under /assets/ — safe to cache forever.
+          // Vite content-hashes every file (index-abc123.js); the hash
+          // changes on any content change, so the URL itself is the
+          // cache-buster. `immutable` tells the browser it never
+          // needs to revalidate.
+          if (filePath.includes('/assets/') || filePath.includes('\\assets\\')) {
+            res.setHeader('Cache-Control', 'public, max-age=31536000, immutable');
+          }
+          // MIME hints for common image types (unchanged from before).
           if (filePath.endsWith('.png')) {
             res.setHeader('Content-Type', 'image/png');
           } else if (filePath.endsWith('.jpg') || filePath.endsWith('.jpeg')) {
@@ -1946,6 +1982,15 @@ if (isProduction) {
           console.error('[SPA] Firebase config injection failed, falling back to sendFile:', injectErr);
         }
       }
+      // INDEX-HTML-NO-CACHE (CEO 2026-08-23): matching the direct-static
+      // rule above — index.html served through the SPA fallback must ALSO
+      // be no-store, otherwise a browser that fell through to sendFile
+      // (Firebase-config injection failed → catch block above → this
+      // fallback) still caches for 1 day and points at old asset hashes
+      // after the next deploy.
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate');
+      res.setHeader('Pragma', 'no-cache');
+      res.setHeader('Expires', '0');
       res.sendFile(indexPath, (err) => {
         if (err) {
           console.error('❌ CRITICAL: Could not serve index.html from:', indexPath);
