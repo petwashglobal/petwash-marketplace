@@ -384,55 +384,89 @@ export async function adminManualCredit(params: {
 }): Promise<{ txnId: string; idempotent?: boolean }> {
   const wallet = await getOrCreateWallet(params.userId);
 
-  // Audit #28: idempotency guard. If a credit was already recorded for this
-  // (wallet, source=admin, idempotencyKey), return it without re-crediting.
-  // Mirrors WalletService.addCredits' dedup pattern. Best-effort sequential
-  // protection (the realistic double-submit vector); a fully concurrency-proof
-  // guarantee would need a unique index on (wallet_id, source_type, source_id).
-  if (params.idempotencyKey) {
-    const [existing] = await db
-      .select({ transactionId: creditTransactions.transactionId })
-      .from(creditTransactions)
-      .where(and(
-        eq(creditTransactions.walletId, wallet.walletId),
-        eq(creditTransactions.sourceType, 'admin'),
-        eq(creditTransactions.sourceId, params.idempotencyKey),
-      ))
-      .limit(1);
-    if (existing) {
-      return { txnId: existing.transactionId, idempotent: true };
-    }
-  }
-
-  const updates: Partial<typeof walletAccounts.$inferSelect> = { updatedAt: new Date() };
-
-  if (params.creditType === 'promo' && params.amountCents) {
-    updates.promoBalanceCents = sql`${walletAccounts.promoBalanceCents} + ${params.amountCents}` as any;
-  } else if (params.creditType === 'egift' && params.amountCents) {
-    updates.egiftBalanceCents = sql`${walletAccounts.egiftBalanceCents} + ${params.amountCents}` as any;
-  } else if (params.creditType === 'cash' && params.amountCents) {
-    updates.cashWalletBalanceCents = sql`${walletAccounts.cashWalletBalanceCents} + ${params.amountCents}` as any;
-  } else if (params.creditType === 'wash_package' && params.units) {
-    updates.washPackageCredits = sql`${walletAccounts.washPackageCredits} + ${params.units}` as any;
-  }
-
-  await db.update(walletAccounts).set(updates).where(eq(walletAccounts.userId, params.userId));
-
+  // Concurrency-audit P0-1 (2026-08-24): the prior sequence was
+  //   1. SELECT existing txn (idempotency check)
+  //   2. UPDATE wallet_accounts balance += amount     ← runs BEFORE step 3
+  //   3. INSERT into credit_transactions (unique on wallet+source+sourceId)
+  //
+  // Two concurrent admin double-clicks with the same idempotencyKey both
+  // passed step 1, both ran step 2 (balance += 2×amount), then the unique
+  // index rejected one row at step 3. Net effect: DOUBLE CREDIT to the
+  // wallet, single audit row. Silent money leak.
+  //
+  // Fix: run the whole sequence in a serializable transaction, and rely
+  // on the (wallet_id, source_type, source_id) UNIQUE index at
+  // creditTransactions to be the race guard — the INSERT runs FIRST, so
+  // the second concurrent request sees a 23505, catches it, re-selects
+  // the winner, and returns idempotent. The balance UPDATE only runs on
+  // the winning path.
   const txnId = `TXN-ADM-${Date.now().toString(36).toUpperCase()}-${randomBytes(3).toString('hex').toUpperCase()}`;
 
-  await db.insert(creditTransactions).values({
-    transactionId:   txnId,
-    walletId:        wallet.walletId,
-    creditType:      params.creditType === 'wash_package' ? 'wash_package' : params.creditType,
-    transactionType: 'adjust',
-    amountCents:     params.amountCents ?? null,
-    amountUnits:     params.units ?? null,
-    sourceType:      'admin',
-    sourceId:        params.idempotencyKey ?? null,
-    initiatedBy:     'admin',
-    initiatedByUserId: params.adminUserId,
-    description:     `Admin credit — ${params.reason}`,
-  });
+  return await db.transaction(async (tx) => {
+    // Pre-check for the fast path (already recorded).
+    if (params.idempotencyKey) {
+      const [existing] = await tx
+        .select({ transactionId: creditTransactions.transactionId })
+        .from(creditTransactions)
+        .where(and(
+          eq(creditTransactions.walletId, wallet.walletId),
+          eq(creditTransactions.sourceType, 'admin'),
+          eq(creditTransactions.sourceId, params.idempotencyKey),
+        ))
+        .limit(1);
+      if (existing) {
+        return { txnId: existing.transactionId, idempotent: true };
+      }
+    }
 
-  return { txnId };
+    // Race guard first — insert the audit row. UNIQUE(wallet_id,
+    // source_type, source_id) rejects the concurrent duplicate.
+    try {
+      await tx.insert(creditTransactions).values({
+        transactionId:   txnId,
+        walletId:        wallet.walletId,
+        creditType:      params.creditType === 'wash_package' ? 'wash_package' : params.creditType,
+        transactionType: 'adjust',
+        amountCents:     params.amountCents ?? null,
+        amountUnits:     params.units ?? null,
+        sourceType:      'admin',
+        sourceId:        params.idempotencyKey ?? null,
+        initiatedBy:     'admin',
+        initiatedByUserId: params.adminUserId,
+        description:     `Admin credit — ${params.reason}`,
+      });
+    } catch (err: any) {
+      if (err?.code === '23505' && params.idempotencyKey) {
+        const [existing] = await tx
+          .select({ transactionId: creditTransactions.transactionId })
+          .from(creditTransactions)
+          .where(and(
+            eq(creditTransactions.walletId, wallet.walletId),
+            eq(creditTransactions.sourceType, 'admin'),
+            eq(creditTransactions.sourceId, params.idempotencyKey),
+          ))
+          .limit(1);
+        if (existing) {
+          return { txnId: existing.transactionId, idempotent: true };
+        }
+      }
+      throw err;
+    }
+
+    // Only the winning path reaches here → apply balance update once.
+    const updates: Partial<typeof walletAccounts.$inferSelect> = { updatedAt: new Date() };
+    if (params.creditType === 'promo' && params.amountCents) {
+      updates.promoBalanceCents = sql`${walletAccounts.promoBalanceCents} + ${params.amountCents}` as any;
+    } else if (params.creditType === 'egift' && params.amountCents) {
+      updates.egiftBalanceCents = sql`${walletAccounts.egiftBalanceCents} + ${params.amountCents}` as any;
+    } else if (params.creditType === 'cash' && params.amountCents) {
+      updates.cashWalletBalanceCents = sql`${walletAccounts.cashWalletBalanceCents} + ${params.amountCents}` as any;
+    } else if (params.creditType === 'wash_package' && params.units) {
+      updates.washPackageCredits = sql`${walletAccounts.washPackageCredits} + ${params.units}` as any;
+    }
+
+    await tx.update(walletAccounts).set(updates).where(eq(walletAccounts.userId, params.userId));
+
+    return { txnId };
+  });
 }

@@ -11768,7 +11768,9 @@ export const RedeemablePlatform = pgEnum("redeemable_platform", [
 export const walletAccounts = pgTable("wallet_accounts", {
   id: serial("id").primaryKey(),
   walletId: varchar("wallet_id", { length: 50 }).unique().notNull(), // WALLET-XXXXX
-  userId: varchar("user_id").notNull(),
+  // Concurrency-P0 (migration 0124): UNIQUE prevents the check-then-insert
+  // race in WalletService.getOrCreateWallet from creating two wallets per user.
+  userId: varchar("user_id").notNull().unique(),
   
   // Aggregate balances (cached for performance, recalculated from transactions)
   cashWalletBalanceCents: integer("cash_wallet_balance_cents").default(0).notNull(), // Paid-in cash balance (was in Firestore — now PostgreSQL for atomicity)

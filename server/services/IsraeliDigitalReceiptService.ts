@@ -455,7 +455,14 @@ export class IsraeliDigitalReceiptService {
         issuedAt: issuedAt.toISOString(),
       });
 
-      const [receipt] = await db.insert(digitalReceipts).values({
+      // Concurrency-P0 (migration 0124): the partial UNIQUE index on
+      // (booking_id) WHERE customer_payment AND NOT is_voided now enforces
+      // one active receipt per booking at DB layer. If a concurrent request
+      // beats us to the INSERT, catch the 23505 and return the winning row
+      // — never burn a second gapless ITA sequence number.
+      let receipt: any;
+      try {
+        [receipt] = await db.insert(digitalReceipts).values({
         receiptNumber,
         receiptType: 'customer_payment',
         platform: params.platform,
@@ -489,7 +496,32 @@ export class IsraeliDigitalReceiptService {
         issuedAt,
         accountingRecorded: true,
       }).returning();
-      return { receipt, receiptNumber };
+      } catch (err: any) {
+        if (err?.code === '23505' && params.bookingId) {
+          const [winner] = await db.select()
+            .from(digitalReceipts)
+            .where(and(
+              eq(digitalReceipts.bookingId, params.bookingId),
+              eq(digitalReceipts.receiptType, 'customer_payment'),
+              eq(digitalReceipts.isVoided, false),
+            ))
+            .orderBy(desc(digitalReceipts.issuedAt))
+            .limit(1);
+          if (winner) {
+            logger.warn('[Digital Receipt] Concurrent duplicate rejected by uq_digital_receipts_active_customer_payment — returning winning row (this receipt number is wasted)', {
+              bookingId: params.bookingId,
+              attemptedReceiptNumber: receiptNumber,
+              winningReceiptNumber: winner.receiptNumber,
+            });
+            receipt = winner;
+          } else {
+            throw err;
+          }
+        } else {
+          throw err;
+        }
+      }
+      return { receipt, receiptNumber: receipt.receiptNumber };
       });
 
       if (shaamRequired) {
