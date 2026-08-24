@@ -451,10 +451,17 @@ let _initError: string | null = null;
 // a pipeline passed. _getBuildInfo() is a pure, never-throws helper (reads only env),
 // so embedding it keeps this ultra-early handler bulletproof for the Cloud Run
 // startup probe while restoring the deploy-identity observability.
+// FAIL-CLOSED: when init has actually errored (_initError set), return 503 so
+// the Cloud Run startup probe FAILS and the broken revision is NOT promoted.
+// Previously we returned 200 with body {status:'DEGRADED'} — the probe checks
+// status code only, so failed revisions passed and served 503s to real users.
+// During normal startup (_initError still null, _initPhase not yet 'ready'),
+// we return 200 so the probe's short interval + high failureThreshold budget
+// can absorb legitimate cold-start time without rejecting healthy deploys.
 const _earlyHealthHandler = (_req: any, res: any) => {
-  const isDegraded = !!_initError;
-  res.status(200).json({
-    status: isDegraded ? 'DEGRADED' : 'OK',
+  const hasBooted = !!_initError;
+  res.status(hasBooted ? 503 : 200).json({
+    status: hasBooted ? 'DEGRADED' : 'OK',
     phase: _initPhase,
     elapsedMs: Date.now() - _initStartedTs,
     error: _initError,
