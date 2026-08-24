@@ -1866,6 +1866,88 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
       });
     }
 
+    // ═════════════════════════════════════════════════════════════════════
+    // CRIT-1 fix (provider-audit 2026-08-24): make the approved provider
+    // ACTUALLY SEARCHABLE + PAYABLE.
+    //
+    // Before this fix, admin approve flipped provider_applications.status
+    // to 'approved' but NEVER inserted a row into the `providers` table
+    // that providerSearchService.ts reads — approved walkers, sitters,
+    // drivers, trainers were invisible to every customer search. Payout
+    // gates that check `providers.payout_enabled` also failed. AND
+    // requireProviderActive (Postgres-based) rejected the provider because
+    // users.role was never flipped either.
+    //
+    // This block synchronously:
+    //   1. Inserts the searchable `providers` row (platformId per type)
+    //   2. Flips users.role='provider' so requireProviderActive passes
+    //      immediately (Firebase claim setter below covers the OTHER auth
+    //      channel).
+    //
+    // Idempotent on both — INSERT uses ON CONFLICT DO NOTHING keyed by
+    // user_id + platform_id; UPDATE uses SET role='provider' unconditional.
+    // Failures log at error but do NOT fail the approval (application row
+    // already flipped); admin sees the warn and can re-run.
+    if (application.userId) {
+      const providerTypeToPlatformId: Record<string, string> = {
+        walker: 'walk_my_pet',
+        sitter: 'sitter_suite',
+        driver: 'pet_trek',
+        trainer: 'academy',
+        station_operator: 'k9000',
+      };
+      const platformId = providerTypeToPlatformId[application.providerType];
+      if (platformId) {
+        try {
+          await pool.query(
+            `INSERT INTO providers (
+                user_id, platform_id, business_name,
+                verification_status, background_check_status, background_check_date,
+                insurance_provider, insurance_policy_number, insurance_expiry_date,
+                is_available, accepting_new_clients, is_active,
+                created_at, updated_at
+              )
+              VALUES ($1, $2, $3, 'verified', 'passed', NOW(),
+                      $4, $5, $6,
+                      TRUE, TRUE, TRUE,
+                      NOW(), NOW())
+              ON CONFLICT DO NOTHING`,
+            [
+              application.userId,
+              platformId,
+              [application.firstName, application.lastName].filter(Boolean).join(' ') || null,
+              (application as any).insurance_provider || null,
+              (application as any).insurance_policy_number || null,
+              (application as any).insurance_expires_at || null,
+            ],
+          );
+          logger.info('[Provider Onboarding] ✅ providers row inserted — provider now searchable', {
+            applicationId, userId: application.userId, platformId,
+          });
+        } catch (insertErr: any) {
+          logger.error('[Provider Onboarding] providers-row INSERT failed — approved provider will NOT be searchable until manual reconcile', {
+            applicationId, userId: application.userId, platformId, error: insertErr?.message,
+          });
+        }
+
+        try {
+          await pool.query(
+            `UPDATE users SET role = 'provider', updated_at = NOW() WHERE id = $1 AND (role IS NULL OR role != 'provider')`,
+            [application.userId],
+          );
+        } catch (roleErr: any) {
+          logger.warn('[Provider Onboarding] users.role update failed (Firebase claim below still applies)', {
+            userId: application.userId, error: roleErr?.message,
+          });
+        }
+      } else {
+        logger.warn('[Provider Onboarding] No platformId mapping for providerType — providers row NOT inserted', {
+          applicationId, providerType: application.providerType,
+        });
+      }
+    }
+    // ═════════════════════════════════════════════════════════════════════
+
     // Audit + queue completion
     writeProviderAudit({
       applicationId: (application as any).id,
