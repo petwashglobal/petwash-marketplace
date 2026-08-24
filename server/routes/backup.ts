@@ -359,13 +359,21 @@ router.post('/full', validateFirebaseToken, requireBackupAdmin, async (req: Requ
     } catch (e) { logger.warn('[Backup] System events backup skipped'); }
 
     try {
+      // SCHEMA-DRIFT FIX 2026-08-24: `wallet_ledger` table doesn't exist.
+      // The canonical financial-truth ledger is `wallet_ledger_entries`
+      // (shared/schema.ts:12075). Money backup has been silently skipped
+      // since this landed. Now exports real ledger + real column names.
       const walletRows = await db.execute(sql`
-        SELECT id, user_uid, entry_type, amount_cents, balance_cents_after,
-               reference_id, description, created_at
-        FROM wallet_ledger ORDER BY created_at DESC LIMIT 5000
+        SELECT id, entry_id, wallet_id, user_id, event_type, direction,
+               amount_cents, currency, bucket, division_code, source_type,
+               idempotency_key, booking_id, kiosk_id, provider_id,
+               created_by, entry_hash, previous_hash, created_at
+        FROM wallet_ledger_entries ORDER BY created_at DESC LIMIT 5000
       `);
-      if (walletRows.rows.length > 0) tables.push({ name: 'wallet_ledger', data: walletRows.rows as any[] });
-    } catch (e) { logger.warn('[Backup] Wallet ledger backup skipped'); }
+      if (walletRows.rows.length > 0) tables.push({ name: 'wallet_ledger_entries', data: walletRows.rows as any[] });
+    } catch (e) {
+      logger.error('[Backup] wallet_ledger_entries backup FAILED — money records not in this run', e as Error);
+    }
 
     if (tables.length === 0) {
       return res.json({
@@ -465,10 +473,19 @@ async function runDailyBackup(): Promise<void> {
       logger.warn('[AutoBackup] system_events backup skipped', { error: (err as Error)?.message });
     }
     try {
-      const ledger = await db.execute(sql`SELECT id, user_uid, entry_type, amount_cents, balance_cents_after, reference_id, description, created_at FROM wallet_ledger ORDER BY created_at DESC LIMIT 10000`);
-      if (ledger.rows.length) tables.push({ name: 'wallet_ledger', data: ledger.rows as any[] });
+      // SCHEMA-DRIFT FIX 2026-08-24: `wallet_ledger` doesn't exist. Real table
+      // is `wallet_ledger_entries` (shared/schema.ts:12075). Auto-backup has
+      // been silently skipping money records since this landed.
+      const ledger = await db.execute(sql`
+        SELECT id, entry_id, wallet_id, user_id, event_type, direction,
+               amount_cents, currency, bucket, division_code, source_type,
+               idempotency_key, booking_id, kiosk_id, provider_id,
+               created_by, entry_hash, previous_hash, created_at
+        FROM wallet_ledger_entries ORDER BY created_at DESC LIMIT 10000
+      `);
+      if (ledger.rows.length) tables.push({ name: 'wallet_ledger_entries', data: ledger.rows as any[] });
     } catch (err) {
-      logger.error('[AutoBackup] wallet_ledger backup failed — money records not backed up this run', err as Error);
+      logger.error('[AutoBackup] wallet_ledger_entries backup failed — money records not backed up this run', err as Error);
     }
 
     if (tables.length === 0) {
