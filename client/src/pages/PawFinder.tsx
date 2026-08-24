@@ -1249,6 +1249,10 @@ export default function PawFinder({ language }: PawFinderProps) {
   const [selectedId, setSelectedId] = useState<number | null>(null);
   const [mySubTab, setMySubTab] = useState<'posts' | 'contacts' | 'notifications'>('posts');
 
+  // Client-audit MED (2026-08-24): was bare fetch with no credentials; race
+  // condition when refetch fired before Firebase auth was ready would cache
+  // a 401 for authenticated views. Route through apiRequest so both public
+  // and signed-in reads carry the right auth state.
   const { data, isLoading, isFetching } = useQuery<{ rows: PawPost[] }>({
     queryKey: ['/api/paw-finder/posts', filterType, filterCity, filterPet, filterBreed, filterReward],
     queryFn: async () => {
@@ -1258,7 +1262,8 @@ export default function PawFinder({ language }: PawFinderProps) {
       if (filterPet) q.set('petType', filterPet);
       if (filterBreed.trim()) q.set('breed', filterBreed.trim());
       if (filterReward) q.set('hasReward', 'true');
-      const r = await fetch(`/api/paw-finder/posts?${q}`);
+      const r = await apiRequest(`/api/paw-finder/posts?${q}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     },
   });
