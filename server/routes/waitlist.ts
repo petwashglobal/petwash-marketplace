@@ -91,7 +91,16 @@ router.patch('/admin/:id', requireAdmin, async (req: Request, res: Response) => 
     if (!(WAITLIST_STATUSES as readonly string[]).includes(status)) {
       return res.status(400).json({ error: 'INVALID_STATUS', allowed: WAITLIST_STATUSES });
     }
-    await db.update(waitlistEntries).set({ status, updatedAt: new Date() }).where(eq(waitlistEntries.id, id));
+    // CRIT-6 (save-integrity audit 2026-08-24): was silent no-op on bad ids.
+    // Returned success:true even when the id didn't exist. Admin panel showed
+    // "moved to contacted" while the row was unchanged.
+    const affected = await db.update(waitlistEntries)
+      .set({ status, updatedAt: new Date() })
+      .where(eq(waitlistEntries.id, id))
+      .returning({ id: waitlistEntries.id });
+    if (affected.length === 0) {
+      return res.status(404).json({ error: 'WAITLIST_ENTRY_NOT_FOUND', id });
+    }
     return res.json({ success: true });
   } catch (e: any) {
     logger.error('[Waitlist] admin status update failed', { error: e?.message });
