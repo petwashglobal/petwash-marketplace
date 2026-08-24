@@ -12614,12 +12614,54 @@ self.addEventListener('notificationclick', (event) => {
       }
       const redemptionType = rawType as RedemptionType;
 
-      // Resolve wallet for the user so we can embed the walletId as passSerial
+      // Resolve wallet for the user so we can embed the walletId as passSerial.
+      // Also pull the balance columns needed to VALIDATE the requested redemptionType
+      // before we issue a QR that promises credits the user doesn't have.
       const [wallet] = await db
-        .select({ walletId: walletAccountsTable.walletId })
+        .select({
+          walletId:              walletAccountsTable.walletId,
+          washPackageCredits:    walletAccountsTable.washPackageCredits,
+          egiftBalanceCents:     walletAccountsTable.egiftBalanceCents,
+          cashWalletBalanceCents: walletAccountsTable.cashWalletBalanceCents,
+          promoBalanceCents:     walletAccountsTable.promoBalanceCents,
+          loyaltyPointsBalance:  walletAccountsTable.loyaltyPointsBalance,
+        })
         .from(walletAccountsTable)
         .where(eq(walletAccountsTable.userId, userId))
         .limit(1);
+
+      // Balance gate — refuse to mint a QR that claims credit the user does not have.
+      // Previously creditsApplied.washPackages was hard-coded to 1 for any wash_package
+      // request, so a user with zero package credit could scan a QR at the bay, see
+      // "package will be used", and then either double-spend or hit INSUFFICIENT_CREDITS
+      // on the actual redeem call (audit lie).
+      const WASH_PRICE_CENTS = 5500;
+      const LOYALTY_WASH_COST_POINTS = 200;
+      const balanceOk = (() => {
+        if (!wallet) return false;
+        switch (redemptionType) {
+          case 'wash_package':    return (wallet.washPackageCredits ?? 0) >= 1;
+          case 'gift_credit':     return (wallet.egiftBalanceCents ?? 0) >= WASH_PRICE_CENTS;
+          case 'wallet_balance':  return (wallet.cashWalletBalanceCents ?? 0) >= WASH_PRICE_CENTS;
+          case 'promo_coupon':    return (wallet.promoBalanceCents ?? 0) >= WASH_PRICE_CENTS;
+          case 'loyalty_benefit': return (wallet.loyaltyPointsBalance ?? 0) >= LOYALTY_WASH_COST_POINTS;
+          default: return false;
+        }
+      })();
+      if (!balanceOk) {
+        return res.status(400).json({
+          error: 'INSUFFICIENT_CREDITS',
+          message: 'You do not have enough credit of the selected type to open a bay.',
+          redemptionType,
+          walletBalance: wallet ? {
+            washPackageCredits:     wallet.washPackageCredits ?? 0,
+            egiftBalanceCents:      wallet.egiftBalanceCents ?? 0,
+            cashWalletBalanceCents: wallet.cashWalletBalanceCents ?? 0,
+            promoBalanceCents:      wallet.promoBalanceCents ?? 0,
+            loyaltyPointsBalance:   wallet.loyaltyPointsBalance ?? 0,
+          } : null,
+        });
+      }
 
       const passSerial = wallet?.walletId ?? userId;
       const TTL_SECONDS = 45;
