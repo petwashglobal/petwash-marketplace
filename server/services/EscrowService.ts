@@ -560,8 +560,30 @@ class EscrowService {
         // completed-but-stuck escrows still pass the gate and release here.
         await this.releaseEscrowPayment(escrow.id, "system_auto_release", { enforceGate: true });
         releasedCount++;
-      } catch (error) {
-        console.error(`[Escrow] Failed to auto-release ${escrow.id}:`, error);
+      } catch (error: any) {
+        // BOOKING_NOT_FOUND (2026-08-24): escrow references a Firestore
+        // booking doc that no longer exists (booking wiped by GDPR, admin
+        // hard-delete, or migration cleanup). Every 5-min cron run re-tries
+        // the same orphan — flooding logs + Sentry alerts, and this noise
+        // has been drowning real deploy diagnostics. Mark the escrow row
+        // 'booking_orphaned' so the cron skips it next pass; a human still
+        // sees it in the admin reconcile dashboard.
+        const isOrphan = error?.code === 'PAYOUT_HELD_GATE' && error?.gateReason === 'BOOKING_NOT_FOUND';
+        if (isOrphan) {
+          try {
+            await this.db.collection('escrow_payments').doc(escrow.id).update({
+              status: 'booking_orphaned',
+              orphanedAt: new Date(),
+              orphanedReason: 'booking_not_found_at_auto_release',
+              updatedAt: new Date(),
+            });
+            console.warn(`[Escrow] Escrow ${escrow.id} marked booking_orphaned — booking ${(error as any)?.bookingId || 'unknown'} vanished; auto-release cron will skip on future runs`);
+          } catch (markErr: any) {
+            console.error(`[Escrow] Failed to mark escrow ${escrow.id} as booking_orphaned; will keep looping until manual reconcile`, markErr?.message);
+          }
+        } else {
+          console.error(`[Escrow] Failed to auto-release ${escrow.id}:`, error);
+        }
       }
     }
 
