@@ -159,6 +159,16 @@ function buildEventPayload(booking: any): BookingEventPayload {
 
 const router = Router();
 
+// HIGH-4 (save-integrity audit 2026-08-24): dozens of fire-and-forget
+// audit / event / notification writes in this file were `.catch(() => {})`.
+// If any one errored, the audit trail / lead pipeline / analytics silently
+// lost the event — matches the CEO complaint "history disappears". Bulk
+// replacement uses this shared handler so every drop is logged at warn
+// with a callsite tag, without changing the response path.
+const logDrop = (op: string) => (err: any) => {
+  logger.warn(`[BookingRequests] fire-and-forget dropped: ${op}`, { error: err?.message });
+};
+
 /**
  * POST /api/booking-requests - Create a new booking request
  */
@@ -831,7 +841,7 @@ router.post('/', async (req, res) => {
 
     logBookingEvent('created', buildEventPayload(booking), {
       customerRequestedAt: new Date().toISOString(),
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
 
     eventPublisher.publishEvent(
       DomainEventType.BOOKING_CREATED,
@@ -1960,7 +1970,7 @@ router.post('/:requestId/respond', async (req, res) => {
     logBookingEvent(eventType as any, buildEventPayload(updatedBooking), {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       providerRespondedAt: new Date().toISOString(),
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
 
     // Real-time intelligence event — provider.accepted (spec §6.2)
     if (data.action === 'accept') {
@@ -1976,7 +1986,7 @@ router.post('/:requestId/respond', async (req, res) => {
           serviceType: booking.serviceType,
           newStatus,
         },
-      }).catch(() => {});
+      }).catch(logDrop('booking-requests fire-and-forget'));
 
       // Advance owner journey state to 'booked' on acceptance
       if (booking.ownerId) {
@@ -1992,7 +2002,7 @@ router.post('/:requestId/respond', async (req, res) => {
         customerUserId: booking.ownerId,
         providerUserId: booking.providerId ?? null,
         side: 'provider',
-      }).catch(() => {});
+      }).catch(logDrop('booking-requests fire-and-forget'));
     }
     recordStatusEvent({
       bookingId: requestId,
@@ -2001,7 +2011,7 @@ router.post('/:requestId/respond', async (req, res) => {
       changedBy: userId || booking.providerId,
       actorRole: 'provider',
       reason: data.action === 'accept' ? 'provider_accepted' : 'provider_declined',
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
 
     res.json({
       success: true,
@@ -2086,7 +2096,7 @@ router.post('/:requestId/meet-greet', async (req, res) => {
 
       logBookingEvent('meet_greet_requested', buildEventPayload({ ...booking, status: 'meet_greet_requested' }), {
         customerRequestedAt: new Date().toISOString(),
-      }).catch(() => {});
+      }).catch(logDrop('booking-requests fire-and-forget'));
 
       // Notify the other party (best-effort, non-blocking)
       const otherId = actor === 'owner' ? booking.providerId : booking.ownerId;
@@ -2103,7 +2113,7 @@ router.post('/:requestId/meet-greet', async (req, res) => {
             bodyText: `PetWash: Meet & Greet requested (${meetType})${date ? ` — preferred ${date}` : ''}. Open the app to confirm a time.`,
             channels: ['inbox', 'email', 'sms'],
             priority: 7,
-          })).catch(() => {});
+          })).catch(logDrop('booking-requests fire-and-forget'));
       }
 
       return res.json({ success: true, message: 'Meet & Greet requested' });
@@ -2156,7 +2166,7 @@ router.post('/:requestId/meet-greet', async (req, res) => {
 
       logBookingEvent('meet_greet_scheduled', buildEventPayload({ ...booking, status: 'meet_greet_scheduled' }), {
         customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
-      }).catch(() => {});
+      }).catch(logDrop('booking-requests fire-and-forget'));
 
       // Notify the counterparty (2026-08-18): before this, the schedule
       // action silently updated the row without telling the other party.
@@ -2189,7 +2199,7 @@ router.post('/:requestId/meet-greet', async (req, res) => {
               channels: ['inbox', 'email', 'sms'],
               priority: 7,
               meta: { bookingId: requestId },
-            })).catch(() => {});
+            })).catch(logDrop('booking-requests fire-and-forget'));
         }
       }
 
@@ -2246,7 +2256,7 @@ router.post('/:requestId/meet-greet', async (req, res) => {
 
       logBookingEvent('meet_greet_completed', buildEventPayload({ ...booking, status: 'meet_greet_completed' }), {
         customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
-      }).catch(() => {});
+      }).catch(logDrop('booking-requests fire-and-forget'));
 
       // Notify the customer that Meet & Greet is done and PAYMENT is the
       // next step (2026-08-18). Without this, customers whose provider just
@@ -2271,7 +2281,7 @@ router.post('/:requestId/meet-greet', async (req, res) => {
             channels: ['inbox', 'email', 'sms', 'push'],
             priority: 8,
             meta: { bookingId: requestId, actionType: 'complete_payment' },
-          })).catch(() => {});
+          })).catch(logDrop('booking-requests fire-and-forget'));
       }
 
       res.json({
@@ -2529,7 +2539,7 @@ router.post('/:requestId/pay', async (req, res) => {
     logBookingEvent('payment_initiated', buildEventPayload({ ...booking, status: 'payment_pending' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       paymentInitiatedAt: new Date().toISOString(),
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
 
     // ── Deal Gate (§B/§L): record customer acceptance (payment authorising) + audit ──
     recordAcceptance({
@@ -2543,7 +2553,7 @@ router.post('/:requestId/pay', async (req, res) => {
       amountTotalCents: booking.totalCents ?? undefined,
       ipAddress: (req.headers['x-forwarded-for'] as string) || req.ip,
       language: 'he',
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
     recordStatusEvent({
       bookingId: requestId,
       oldStatus: booking.status,
@@ -2551,7 +2561,7 @@ router.post('/:requestId/pay', async (req, res) => {
       changedBy: userId || booking.ownerId,
       actorRole: 'customer',
       reason: 'payment_initiated',
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
 
     res.json({
       success: true,
@@ -2849,7 +2859,7 @@ router.post('/:requestId/start', async (req, res) => {
     logBookingEvent('service_started', buildEventPayload({ ...booking, status: 'in_progress' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
       serviceStartedAt: now.toISOString(),
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
 
     // Notify the customer that their service just started (2026-08-18):
     // before this, /start silently flipped the row — customers had no
@@ -2873,7 +2883,7 @@ router.post('/:requestId/start', async (req, res) => {
           channels: ['inbox', 'email', 'push'],
           priority: 7,
           meta: { bookingId: requestId, actionType: 'service_started' },
-        })).catch(() => {});
+        })).catch(logDrop('booking-requests fire-and-forget'));
     }
 
     res.json({ success: true, message: 'Service started!' });
@@ -2966,7 +2976,7 @@ router.post('/:requestId/complete', async (req, res) => {
       customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
       serviceStartedAt: booking.serviceStartedAt?.toISOString() || undefined,
       serviceCompletedAt: now.toISOString(),
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
 
     // Notify owner to approve or dispute within 24 hours
     try {
@@ -3011,7 +3021,7 @@ router.post('/:requestId/complete', async (req, res) => {
           endDate: booking.endDate,
           serviceCompletedAt: now,
         }))
-        .catch(() => {});
+        .catch(logDrop('booking-requests fire-and-forget'));
     });
 
     // KEEP-IN-LOOP (2026-07-09): the in-app row above reaches the customer ONLY
@@ -3148,7 +3158,7 @@ router.post('/:requestId/arriving', async (req, res) => {
         serviceType: booking.serviceType,
         eta: eta ?? null,
       },
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
 
     logger.info('[BookingRequests] Provider arriving signal emitted', { requestId, userId });
 
@@ -3177,7 +3187,7 @@ router.post('/:requestId/arriving', async (req, res) => {
           channels: ['inbox', 'push'],
           priority: 8,
           meta: { bookingId: requestId, etaMinutes, actionType: 'provider_arriving' },
-        })).catch(() => {});
+        })).catch(logDrop('booking-requests fire-and-forget'));
     }
 
     return res.json({ success: true, message: 'Arrival signal sent to customer' });
@@ -3359,7 +3369,7 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           message: `Earning record could not be created for booking ${requestId} — payout blocked, completion refused (fail-closed). Needs settlement repair.`,
           severity: 'critical', timestamp: new Date(),
           metadata: { requestId, providerId: booking.providerId, error: earningError?.message },
-        }).catch(() => {});
+        }).catch(logDrop('booking-requests fire-and-forget'));
       } catch { /* alerting best-effort */ }
       try {
         const { openIncident } = await import('../services/incidentService');
@@ -3575,7 +3585,7 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
           petDetails: booking.petDetails,
           endDate: booking.endDate,
         }))
-        .catch(() => {});
+        .catch(logDrop('booking-requests fire-and-forget'));
     });
 
     // Send inbox + email + push notifications to the provider on customer confirm.
@@ -3806,12 +3816,12 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
       actorRole: 'customer',
       reason: 'owner_confirmed_completion',
       metadata: { finalStatus },
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
     // Booking Rescue: a completed booking closes its lead as CONVERTED.
     {
       const lt = serviceToLeadType(booking.serviceType);
       if (lt && booking.ownerId) {
-        closeLead({ userId: booking.ownerId, leadType: lt, relatedBookingId: requestId, outcome: 'CONVERTED' }).catch(() => {});
+        closeLead({ userId: booking.ownerId, leadType: lt, relatedBookingId: requestId, outcome: 'CONVERTED' }).catch(logDrop('booking-requests fire-and-forget'));
       }
     }
 
@@ -3897,7 +3907,7 @@ async function handleConfirmCompletion(req: any, res: any): Promise<void> {
       serviceCompletedAt: booking.serviceCompletedAt?.toISOString() || undefined,
       ownerConfirmedAt: new Date().toISOString(),
       paymentReleasedAt: new Date().toISOString(),
-    }, { rating, review }).catch(() => {});
+    }, { rating, review }).catch(logDrop('booking-requests fire-and-forget'));
 
     // ── Non-blocking: Google Sheets sync on owner confirmation / payment release ─
     setImmediate(async () => {
@@ -4056,7 +4066,7 @@ router.post('/:requestId/dispute', async (req, res) => {
     logBookingEvent('dispute_opened' as any, buildEventPayload({ ...booking, status: 'disputed' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
       disputeOpenedAt: now.toISOString(),
-    }, { reason: rawReason, openedBy: 'owner' }).catch(() => {});
+    }, { reason: rawReason, openedBy: 'owner' }).catch(logDrop('booking-requests fire-and-forget'));
 
     logger.info('[BookingRequests] Dispute opened by customer', { requestId, userId });
     return res.json({
@@ -4304,7 +4314,7 @@ router.post('/:requestId/provider-emergency-cancel', async (req, res) => {
     logBookingEvent('cancelled' as any, buildEventPayload({ ...booking, status: 'cancelled' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || now.toISOString(),
       cancelledAt: now.toISOString(),
-    }, { cancelledBy: 'provider', reason: rawReason, emergencyCancel: true, offenseCount: offenseCount + 1, penaltyCents, accountAction }).catch(() => {});
+    }, { cancelledBy: 'provider', reason: rawReason, emergencyCancel: true, offenseCount: offenseCount + 1, penaltyCents, accountAction }).catch(logDrop('booking-requests fire-and-forget'));
 
     logger.info('[BookingRequests] Emergency cancel processed', {
       requestId, userId, offenseCount: offenseCount + 1, penaltyCents, accountAction,
@@ -4488,12 +4498,12 @@ router.post('/:requestId/cancel', async (req, res) => {
       actorRole: cancelledBy === 'provider' ? 'provider' : 'customer',
       reason: reason || cancellationTier,
       metadata: { cancellationTier, refundCents, cancellationPenaltyCents, hoursUntilService },
-    }).catch(() => {});
+    }).catch(logDrop('booking-requests fire-and-forget'));
     // Booking Rescue: a cancelled booking closes its lead as LOST.
     {
       const lt = serviceToLeadType(booking.serviceType);
       if (lt && booking.ownerId) {
-        closeLead({ userId: booking.ownerId, leadType: lt, relatedBookingId: requestId, outcome: 'LOST' }).catch(() => {});
+        closeLead({ userId: booking.ownerId, leadType: lt, relatedBookingId: requestId, outcome: 'LOST' }).catch(logDrop('booking-requests fire-and-forget'));
       }
     }
     if (refundCents > 0 || cancellationPenaltyCents > 0) {
@@ -4507,7 +4517,7 @@ router.post('/:requestId/cancel', async (req, res) => {
         refundAmountCents: refundCents,
         refundProvider: 'NAYAX',
         policyVersion: 'tiered-v1',
-      }).catch(() => {});
+      }).catch(logDrop('booking-requests fire-and-forget'));
     }
 
     // Free the provider's calendar slot — a cancelled booking must release its
@@ -4703,7 +4713,7 @@ router.post('/:requestId/cancel', async (req, res) => {
     logBookingEvent('cancelled', buildEventPayload({ ...booking, status: 'cancelled' }), {
       customerRequestedAt: booking.createdAt?.toISOString() || new Date().toISOString(),
       cancelledAt: new Date().toISOString(),
-    }, { cancelledBy, reason, refundCents }).catch(() => {});
+    }, { cancelledBy, reason, refundCents }).catch(logDrop('booking-requests fire-and-forget'));
     
     res.json({
       success: true,
@@ -4792,7 +4802,7 @@ router.post('/:requestId/photo-update', async (req, res) => {
           channels: ['inbox', 'push'],
           priority: 6,
           meta: { bookingId: requestId, actionType: 'photo_update' },
-        })).catch(() => {});
+        })).catch(logDrop('booking-requests fire-and-forget'));
     }
 
     res.json({ success: true, message: 'Photo update sent to owner!' });
