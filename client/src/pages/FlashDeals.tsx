@@ -93,10 +93,16 @@ export default function FlashDeals() {
   });
 
   const claimMutation = useMutation({
-    mutationFn: async ({ dealId, numPets }: { dealId: string; numPets: number }) => {
+    mutationFn: async ({ dealId, numPets, petType }: { dealId: string; numPets: number; petType: 'dog' | 'cat' }) => {
+      // Client-audit CRIT (2026-08-24): body previously hardcoded
+      // `userId: 'guest-user'` + `petType: 'dog'`. The server-side handler
+      // ignores userId (it uses req.user.uid from the authenticated Firebase
+      // token — see server/routes/provider-flash-deals.ts:301), but the
+      // hardcoded 'dog' petType silently broke every cat-only deal claim and
+      // mismatched the audit log. Now the client passes the deal's own
+      // petType so the row is correctly attributed.
       return apiRequest('POST', `/api/flash-deals/${dealId}/claim`, {
-        userId: 'guest-user',
-        petType: 'dog',
+        petType,
         numPets,
       });
     },
@@ -323,7 +329,20 @@ export default function FlashDeals() {
                         </div>
                       ) : (
                         <button
-                          onClick={() => claimMutation.mutate({ dealId: deal.id, numPets: 1 })}
+                          onClick={() => {
+                            // Pick a petType this deal accepts. Deal.petTypes may be
+                            // ['dog'], ['cat'], ['dog','cat'], or ['all'] — prefer the
+                            // active petFilter if it's one the deal accepts; else the
+                            // deal's first non-'all' entry; else 'dog' as neutral fallback.
+                            const accepted = deal.petTypes || [];
+                            const petType: 'dog' | 'cat' =
+                              (petFilter !== 'all' && (accepted.includes(petFilter) || accepted.includes('all')))
+                                ? petFilter
+                                : accepted.includes('cat') && !accepted.includes('dog')
+                                  ? 'cat'
+                                  : 'dog';
+                            claimMutation.mutate({ dealId: deal.id, numPets: 1, petType });
+                          }}
                           disabled={claimMutation.isPending || deal.slotsRemaining === 0}
                           style={{
                             touchAction: 'manipulation',
