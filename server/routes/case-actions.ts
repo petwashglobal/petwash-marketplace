@@ -641,20 +641,23 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
       const bookingRow: any = bookingR.rows[0] ?? {};
       const customerId: string | null = bookingRow.user_id ?? bookingRow.customer_id ?? null;
       if (customerId) {
-        const { NotificationService } = await import('../services/NotificationService');
         const outcomeMessage =
           escrowOutcome === 'refunded' ? 'Your dispute has been resolved and a refund is being processed.' :
           escrowOutcome === 'released' ? 'Your dispute has been reviewed and closed.' :
           escrowOutcome === 'manual_review' ? 'Your dispute has been closed. Our finance team will follow up on any pending refund.' :
           'Your dispute has been closed.';
-        await NotificationService.sendNotification({
+        const userR = await db.execute(sql`
+          SELECT phone, email FROM users WHERE id = ${customerId} LIMIT 1
+        `);
+        const userRow: any = userR.rows[0] ?? {};
+        const { dispatchNotifications } = await import('../services/PetWashNotificationEngine');
+        await dispatchNotifications({
           userId: customerId,
-          type: 'payment',
-          title: 'Dispute Closed',
-          message: outcomeMessage,
-          priority: 'high',
-          channel: 'all',
-          data: { disputeId, bookingId, escrowOutcome, reasonCode },
+          eventType: 'dispute_closed',
+          templateKey: 'dispute-closed-outcome',
+          channels: ['sms'],
+          sms: userRow.phone ? { to: String(userRow.phone), text: `PetWash: ${outcomeMessage}` } : undefined,
+          idempotencyKey: `dispute-closed-${disputeId}`,
         });
       }
     } catch (notifyErr: any) {
