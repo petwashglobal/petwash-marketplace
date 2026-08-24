@@ -6,6 +6,7 @@ import { PetWashIcon } from '@/components/PetWashIcon';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/lib/languageStore';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 
 interface GreetingResponse {
   ok: boolean;
@@ -15,6 +16,7 @@ interface GreetingResponse {
 
 export function PersonalizedGreeting() {
   const { language } = useLanguage();
+  const { user } = useFirebaseAuth();
   const [isVisible, setIsVisible] = useState(true);
   const [isDismissed, setIsDismissed] = useState(false);
 
@@ -27,11 +29,18 @@ export function PersonalizedGreeting() {
     }
   }, []);
 
-  // Fetch personalized greeting
+  // Fetch personalized greeting.
+  //
+  // Client-audit HIGH-10 (2026-08-24): key used to be ['/api/greeting',
+  // language] with staleTime:Infinity — after a logout the previous user's
+  // greeting stayed in cache and flashed on the next login before the fresh
+  // fetch resolved (the "hi Nir vanishes" symptom CEO reported earlier).
+  // Include user?.uid in the key (separate cache bucket per user) and drop
+  // staleTime to 5 minutes so a fresh session always fetches once.
   const { data, isLoading } = useQuery<GreetingResponse>({
-    queryKey: ['/api/greeting', language],
+    queryKey: ['/api/greeting', language, user?.uid ?? 'anon'],
     enabled: !isDismissed,
-    staleTime: Infinity, // Only fetch once per session
+    staleTime: 5 * 60 * 1000,
   });
 
   // Auto-dismiss after 8 seconds

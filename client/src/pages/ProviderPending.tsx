@@ -81,9 +81,13 @@ export default function ProviderPending() {
   const fetchApplication = async () => {
     if (!user) return;
     try {
+      // Client-audit HIGH-5 (2026-08-24): add credentials:'include' so the
+      // Firebase session cookie ALSO reaches the server. Same rationale as
+      // StaffPending.tsx — Bearer alone silently 401'd on subdomain deploys.
       const token = await user.getIdToken();
       const res = await fetch("/api/provider-applications/my", {
         headers: { Authorization: `Bearer ${token}` },
+        credentials: 'include',
       });
       if (res.ok) {
         const data = await res.json();
@@ -134,6 +138,7 @@ export default function ProviderPending() {
         method: "POST",
         headers: { Authorization: `Bearer ${token}` },
         body: formData,
+        credentials: 'include',
       });
       const data = await res.json();
       if (res.ok) {
