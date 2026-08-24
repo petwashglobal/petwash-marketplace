@@ -11492,11 +11492,11 @@ self.addEventListener('notificationclick', (event) => {
           //   data: { ...recipient, ...customData }
           // });
 
-          // Update communication status
-          await storage.updateCommunication(communication.id, {
-            status: 'sent',
-            sentAt: new Date(),
-          });
+          // HONESTY 2026-08-24: previous code flipped the communication row to
+          // status:'sent' with sentAt=now — right after the block above logged
+          // "not wired". Admin audit log read as 'sent' while nothing was
+          // actually dispatched. Keep the initial status ('not_sent_feature_
+          // disabled') so audit truth matches the response body.
 
           results.push({
             recipient: recipient.phone,
@@ -17217,33 +17217,15 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
   // ==================================================================
 
   // Get all wash schedules for a user
-  app.get('/api/pet-care/wash-schedules', requireAuth, async (req, res) => {
-    try {
-      // SECURITY 2026-06-25: was anonymous + returns MOCK data ("Buddy", fixed date,
-      // fake weather). Gated with requireAuth so it's not a public fake-data surface;
-      // TODO replace the mock body with real per-user schedules before launch.
-      const mockSchedules = [
-        {
-          id: 1,
-          petId: 1,
-          petName: 'Buddy',
-          scheduledDate: '2025-11-15',
-          status: 'pending',
-          weather: {
-            temperature: 22,
-            description: 'partly cloudy',
-            condition: 'clouds',
-            recommendation: '✅ IDEAL WASH DAY! 22°C and partly cloudy.',
-            icon: 'cloud',
-          },
-        },
-      ];
-
-      res.json(mockSchedules);
-    } catch (error: any) {
-      logger.error('[PetCare] Fetch wash schedules failed', error);
-      res.status(500).json({ error: error.message });
-    }
+  //
+  // HONESTY 2026-08-24: this endpoint used to return a hardcoded mock schedule
+  // ({ petId:1, petName:'Buddy', … }) to EVERY authenticated user. Real users
+  // saw a phantom pet named "Buddy" they never added. No wash-schedule table
+  // is wired here yet, so return an empty array — the honest answer for a
+  // user with no saved schedules. When the persistence path lands, swap the
+  // return for the real per-user query.
+  app.get('/api/pet-care/wash-schedules', requireAuth, async (_req, res) => {
+    res.json([]);
   });
 
   // Schedule a wash with ADVANCED AI decision engine (weather + pollen + coat condition)
