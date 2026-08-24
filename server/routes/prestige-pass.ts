@@ -12997,8 +12997,15 @@ router.post('/admin/wallet/exception-suggestions/generate', async (req: Request,
     }
 
     // Scan for negative wallet balances
+    // SCHEMA-DRIFT FIX 2026-08-24: was querying nonexistent `wallets` table
+    // with column `available_balance_cents`. Real table is `wallet_accounts`
+    // with `cash_wallet_balance_cents`. The query silently threw before
+    // (uncaught here — anomaly detection scan was broken entirely).
     const negRaw: any = await db.execute(sql`
-      SELECT user_uid, available_balance_cents FROM wallets WHERE available_balance_cents < 0 LIMIT 10
+      SELECT user_id AS user_uid, cash_wallet_balance_cents AS available_balance_cents
+        FROM wallet_accounts
+       WHERE cash_wallet_balance_cents < 0
+       LIMIT 10
     `);
     const negBalances = negRaw?.rows ?? negRaw;
     for (const w of negBalances) {
@@ -17083,16 +17090,28 @@ router.post('/admin/wallet/run-money-checks', async (req, res) => {
     const now = new Date().toISOString();
 
     // Check 1: No negative wallet balances (unless explicitly allowed)
+    // SCHEMA-DRIFT FIX 2026-08-24: the prior query hit `wallets` — a table
+    // that does NOT exist in this database. The .catch(()=>({rows:[]})) then
+    // silently returned zero results, so this admin money-safety check has
+    // been reporting PASS for every run regardless of the real balance state.
+    // Real table is `wallet_accounts` with cents columns named
+    // cash_wallet_balance_cents / egift_balance_cents / pending_balance_cents.
     const negWallets = await pool.query(`
-      SELECT id, available_cents, pending_cents FROM wallets
-      WHERE available_cents < 0 OR pending_cents < 0
+      SELECT id,
+             cash_wallet_balance_cents,
+             egift_balance_cents,
+             pending_balance_cents
+        FROM wallet_accounts
+       WHERE cash_wallet_balance_cents < 0
+          OR egift_balance_cents < 0
+          OR pending_balance_cents < 0
     `).catch(() => ({ rows: [] }));
     for (const w of negWallets.rows) {
       const rec = {
         check_type: 'negative_wallet_balance',
         entity_id: String(w.id),
         expected_value: '0.00',
-        actual_value: String(Math.min(w.available_cents, w.pending_cents) / 100),
+        actual_value: String(Math.min(w.cash_wallet_balance_cents, w.egift_balance_cents, w.pending_balance_cents) / 100),
         status: 'fail',
       };
       await pool.query(`
