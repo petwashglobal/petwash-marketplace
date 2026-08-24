@@ -4,6 +4,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -353,7 +354,9 @@ export default function PawFinderAdmin() {
     refetchInterval: 30_000,
   });
 
-  // All posts query
+  // All posts query — client-audit HIGH-8 (2026-08-24): bare fetch had no
+  // Bearer/credentials; would 401 on subdomain deploy. Route through
+  // apiRequest so auth carries.
   const allPostsQ = useQuery<{ rows: AdminPost[]; count: number }>({
     queryKey: ['/api/admin/paw-finder/posts', filterStatus, filterCity, filterType],
     enabled: tab === 'all',
@@ -363,7 +366,8 @@ export default function PawFinderAdmin() {
       if (filterCity)   params.set('city', filterCity);
       if (filterType)   params.set('postType', filterType);
       params.set('limit', '200');
-      const r = await fetch(`/api/admin/paw-finder/posts?${params}`);
+      const r = await apiRequest(`/api/admin/paw-finder/posts?${params}`);
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
       return r.json();
     },
   });
@@ -424,9 +428,11 @@ export default function PawFinderAdmin() {
       <div className="bg-white border-b px-6 py-4">
         <div className="max-w-5xl mx-auto flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <a href="/admin/dashboard" className="text-slate-400 hover:text-slate-700">
+            {/* Client-audit HIGH-8 (2026-08-24): <a href> triggered a full-
+                page nav, wiping admin auth context; use wouter Link. */}
+            <Link href="/admin/dashboard" className="text-slate-400 hover:text-slate-700">
               <ChevronLeft className="w-5 h-5" />
-            </a>
+            </Link>
             <div>
               <h1 className="text-lg font-semibold text-slate-800">Paw Finder™ Moderation</h1>
               <p className="text-xs text-slate-400">Lost & Found Pet Platform</p>
