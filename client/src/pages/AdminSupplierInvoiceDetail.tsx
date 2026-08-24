@@ -134,13 +134,12 @@ export default function AdminSupplierInvoiceDetail() {
   const [rejectReason, setRejectReason] = useState("");
   const [confirming, setConfirming] = useState<null | "approve" | "reject">(null);
 
+  // Client-audit D-07 (2026-08-24): the previous queryFn used a bare
+  // `fetch(url)` with no Bearer and no credentials — 401'd in prod. Removed
+  // the custom queryFn so the default (getQueryFn → apiRequest → Bearer +
+  // credentials + App Check + 401 retry) handles auth.
   const { data, isLoading, refetch } = useQuery<DetailResponse>({
     queryKey: [`/api/supplier-invoices/${id}`],
-    queryFn: async () => {
-      const res = await fetch(`/api/supplier-invoices/${id}`);
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
     enabled: Number.isInteger(id) && id > 0,
   });
 

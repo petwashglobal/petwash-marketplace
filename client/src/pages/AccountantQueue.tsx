@@ -112,13 +112,11 @@ function MarkEnteredForm({
 }
 
 export default function AccountantQueue() {
+  // Client-audit D-07 (2026-08-24): bare fetch had no Bearer/credentials —
+  // 401'd in prod. Drop the custom queryFn so the default (getQueryFn →
+  // apiRequest) handles auth.
   const { data, isLoading, isFetching, refetch } = useQuery<QueueResponse>({
     queryKey: ["/api/accountant/queue"],
-    queryFn: async () => {
-      const res = await fetch("/api/accountant/queue");
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
-    },
     refetchInterval: 60_000,
   });
 
