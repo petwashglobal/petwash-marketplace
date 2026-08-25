@@ -660,14 +660,16 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
         twoFactorPersisted = 'failed';
         logger.error('[Signup] verify-signup-email set-2fa-pref threw', { uid, error: e?.message });
       }
-      if (twoFactorEnabled === true && twoFactorPersisted !== true) {
-        return res.status(500).json({
-          ok: false,
-          error: 'Email verified, but we could not save your 2-step login preference. Enable it later from Account Security.',
-          code: 'TWO_FACTOR_PREF_NOT_SAVED',
-          emailVerified: true,
-        });
-      }
+      // Correction (2026-08-24 signup audit CRIT #10): the earlier 500 return
+      // here blocked completion of an otherwise-successful email verification.
+      // The client's mutation onError treated it as a full failure ("Email attach
+      // failed. Try again"), causing the user to retry the same code (already
+      // consumed) and get stuck in a loop. Email verification IS the primary
+      // control of this endpoint; 2FA-opt-in is a bolt-on preference that
+      // Account Security can fix later. Downgrade to a WARNING carried in the
+      // 200 response so the client can complete signup + surface a follow-up
+      // toast to visit Account Security.
+      // (twoFactorPersisted is echoed in the final res.json — see bottom of handler.)
     }
     // Best-effort DB flag (email_verified column may not exist → harmless skip).
     try {
@@ -686,7 +688,13 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     } catch (vErr: any) {
       logger.warn('[Signup] verify-signup-email activation advance failed (non-blocking)', { error: vErr?.message });
     }
-    return res.json({ ok: true });
+    // Include twoFactorPersisted so the client can surface a follow-up toast
+    // when the 2FA preference didn't stick (rather than being blocked entirely).
+    const twoFactorWarning =
+      typeof twoFactorEnabled === 'boolean' && twoFactorEnabled === true && twoFactorPersisted !== true
+        ? 'TWO_FACTOR_PREF_NOT_SAVED'
+        : undefined;
+    return res.json({ ok: true, emailVerified: true, twoFactorPersisted, twoFactorWarning });
   } catch (e: any) {
     logger.error('[Signup] verify-signup-email error', { error: e?.message });
     return res.status(500).json({ ok: false, error: 'Email verification failed.' });
