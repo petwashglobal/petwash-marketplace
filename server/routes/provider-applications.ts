@@ -1,6 +1,6 @@
 import { Router, Request, Response } from 'express';
 import multer from 'multer';
-import { db } from '../db';
+import { db, pool } from '../db';
 import { SUPPORT_EMAIL, SUPPORT_MAILTO_URL } from '@shared/support-contact';
 import { 
   providerApplicants, 
@@ -1481,13 +1481,34 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
             } as any)
             .onConflictDoNothing({ target: [providers.userId, providers.platformId] as any });
         }
-        // Flip users.role → 'provider' so dashboard access + capability lookups
-        // resolve correctly (idempotent on already-provider users).
-        await db
-          .update(users)
-          .set({ role: 'provider', updatedAt: new Date() } as any)
-          .where(eq(users.id, application.userId));
-        logger.info('[ProviderApplication] providers row inserted + users.role=provider', {
+        // Multi-role fix (CEO 2026-08-24): do NOT destructively overwrite
+        // users.role='provider' — that pinned scalar 'provider' on users who
+        // were also customers, causing every requireCustomer/requireLoyaltyMember
+        // check to reject them. Instead:
+        //   - Only fill role when currently NULL
+        //   - Additively add 'provider' to the users.roles JSONB array
+        // Multi-role gates read the roles[] array; legacy single-role gates
+        // keep working via the untouched role='customer' scalar.
+        await pool.query(
+          `UPDATE users
+             SET role = 'provider', updated_at = NOW()
+           WHERE id = $1 AND role IS NULL`,
+          [application.userId],
+        );
+        await pool.query(
+          `UPDATE users
+             SET roles = (
+               CASE
+                 WHEN roles IS NULL OR roles = 'null'::jsonb THEN '["provider"]'::jsonb
+                 WHEN roles @> '["provider"]'::jsonb THEN roles
+                 ELSE roles || '["provider"]'::jsonb
+               END
+             ),
+               updated_at = NOW()
+           WHERE id = $1`,
+          [application.userId],
+        );
+        logger.info('[ProviderApplication] providers row inserted + users.roles now contains "provider"', {
           userId: application.userId,
           platformIds: Array.from(platformIds),
         });
