@@ -730,14 +730,15 @@ router.post('/apply', wrapUpload(upload.fields([
       enhancedVerificationReasons,
     );
 
-    // Capture IP for the legal record (best-effort; trust proxy already on).
-    const selfDeclarationIp =
-      (req.ip ||
-        (req.headers['x-forwarded-for'] as string | undefined) ||
-        req.socket?.remoteAddress ||
-        '')
-        .toString()
-        .slice(0, 64);
+    // Capture IP for the legal record. ONLY trust req.ip (Express + trust
+    // proxy resolves this to the real client IP based on the configured
+    // hop count). Never fall back to req.headers['x-forwarded-for'] —
+    // that would sign an attacker-controlled left-most XFF value into a
+    // tamper-evident legal declaration, forging the "IP of record" used
+    // later in provider disputes. Fall back to socket peer only.
+    const selfDeclarationIp = (req.ip || req.socket?.remoteAddress || '')
+      .toString()
+      .slice(0, 64);
     const selfDeclarationAt = new Date();
 
     // AUTO-APPROVAL FLOW: No invite code required
@@ -1784,11 +1785,37 @@ router.get('/admin/applications/:applicationId', requireSupport, async (req: Req
     let idSignedUrl: string | null = null;
 
     if (app.selfiePhotoUrl) {
-      try {
-        const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || process.env.GCS_BUCKET_NAME || '');
-        const [url] = await bucket.file(app.selfiePhotoUrl).getSignedUrl({ action: 'read', expires: Date.now() + 30 * 60 * 1000 });
-        selfieSignedUrl = url;
-      } catch { /* non-fatal */ }
+      // PRIVACY: viewing the biometric selfie is a sensitive access under
+      // Israeli Privacy Law — same class as the ID-document viewer below.
+      // Prior code minted the signed URL with NO reason and NO audit event,
+      // so any support-role admin could pull every applicant's biometric
+      // selfie with zero forensic trail. Now requires an explicit access
+      // reason and writes an audit row before issuing the URL.
+      const selfieAccessReason = typeof req.query.selfieAccessReason === 'string'
+        ? req.query.selfieAccessReason.trim().slice(0, 500)
+        : '';
+      if (!selfieAccessReason) {
+        selfieSignedUrl = null;
+        (app as any).selfieAccessReasonRequired = true;
+      } else {
+        try {
+          const bucket = storage.bucket(process.env.FIREBASE_STORAGE_BUCKET || process.env.GCS_BUCKET_NAME || '');
+          const [url] = await bucket.file(app.selfiePhotoUrl).getSignedUrl({ action: 'read', expires: Date.now() + 30 * 60 * 1000 });
+          selfieSignedUrl = url;
+          writeProviderAudit({
+            applicationId: (app as any).id,
+            eventType: 'selfie_photo_viewed',
+            actorUserId: (req.body?.adminUid as string) || null,
+            actorRole: (req.body?.adminRole as string) || 'support',
+            payload: {
+              applicationId,
+              documentType: 'biometric_selfie',
+              reason: selfieAccessReason,
+              actorEmail: (req.body?.adminEmail as string) || null,
+            },
+          }).catch((err) => logger.warn('[Provider Onboarding] selfie_photo_viewed audit failed', { applicationId, err: err?.message }));
+        } catch { /* non-fatal */ }
+      }
     }
 
     if (app.governmentIdUrl) {

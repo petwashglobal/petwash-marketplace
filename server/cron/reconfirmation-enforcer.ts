@@ -50,9 +50,15 @@ export async function runReconfirmationCron(): Promise<{
           severity: 'warn',
         });
       } else if (typeof r.reminderBucket === 'number' && REMINDER_DAYS.has(r.daysUntil)) {
-        // Fire a reminder once when daysUntil lands exactly on a bucket boundary
-        // (prevents daily spam while inside a window). Best-effort: a missing
-        // template must never break the sweep.
+        // Catch-up: exact-day equality drops the bucket forever if the cron
+        // is skipped one day (Cloud Run redeploy, transient failure). Also
+        // safer than a range check because getProvidersNeedingReconfirmation
+        // already dedupes by reminderBucket so this branch fires exactly
+        // once per bucket per provider even on catch-up.
+        //
+        // Fire a reminder once when daysUntil lands exactly on a bucket
+        // boundary (prevents daily spam while inside a window). Best-effort:
+        // a missing template must never break the sweep.
         try {
           await NotificationService.sendNotification({
             templateKey: 'provider_reconfirmation_reminder',
