@@ -855,7 +855,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       // another request already claimed it → 409.
       const claimResult = await db
         .update(walkBookings)
-        .set({ status: 'payment_processing', updatedAt: new Date() })
+        .set({ status: 'payment_pending', updatedAt: new Date() })
         .where(and(
           eq(walkBookings.bookingId, bookingId),
           eq(walkBookings.status, 'pending_provider'),
@@ -911,7 +911,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         })
         .where(and(
           eq(walkBookings.bookingId, bookingId),
-          eq(walkBookings.status, 'payment_processing'),
+          eq(walkBookings.status, 'payment_pending'),
         ));
 
       await syncChatToBookingStatus(bookingId, 'confirmed', 'walk_my_pet');
