@@ -56,9 +56,21 @@ export default function ProviderRegistrationForm() {
     try {
       const res = await apiRequest('POST', '/api/global-forms/provider-registration', form);
       const body = await res.json().catch(() => ({} as any));
-      setSuccess(body?.applicationId || `PRV-${Date.now().toString(36).toUpperCase()}`);
-    } catch {
-      toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again or email providers@petwash.co.il' });
+      // Honesty fix (2026-08-24): never fabricate a PRV-<local-time> "success"
+      // ID on the client. If the server didn't return an applicationId, the
+      // submit did not persist — show the real error instead of a fake receipt
+      // that the user cannot look up later.
+      if (!body?.applicationId) {
+        const msg = body?.message || body?.error || 'The submission did not go through. Please try again or email providers@petwash.co.il.';
+        toast({ variant: 'destructive', title: 'Submission failed', description: msg });
+        return;
+      }
+      setSuccess(body.applicationId);
+    } catch (err: any) {
+      const description = err?.message
+        ? String(err.message)
+        : 'Please try again or email providers@petwash.co.il';
+      toast({ variant: 'destructive', title: 'Submission failed', description });
     } finally { setLoading(false); }
   };
 
