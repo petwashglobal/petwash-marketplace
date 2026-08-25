@@ -1725,7 +1725,18 @@ export default function MultiPetBookingWizard() {
       if (!res.ok) throw new Error(json.error || "Booking failed");
 
       toast({ title: "ההזמנה נשלחה! 🎉", description: "נותן השירות יאשר בקרוב" });
-      setLocation(`/bookings`);
+      // Audit CRIT #1 fix (2026-08-24): previously dumped the user on
+      // /bookings (a raw list with no Pay CTA). The server's own emails
+      // link to /booking/confirmation/${requestId} — send the customer
+      // to the same place so the confirmation state and payment CTA
+      // are visible immediately. Fall back to /bookings if we somehow
+      // didn't get an id back.
+      const requestId = json?.requestId || json?.id || json?.bookingId;
+      if (requestId) {
+        setLocation(`/booking/confirmation/${requestId}`);
+      } else {
+        setLocation(`/bookings`);
+      }
     } catch (e: any) {
       toast({ title: "שגיאה", description: e.message || "נסה שוב", variant: "destructive" });
     } finally {

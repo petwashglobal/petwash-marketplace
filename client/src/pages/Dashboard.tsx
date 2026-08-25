@@ -15,6 +15,7 @@ import { useEffect } from 'react';
 import type { ReactNode } from 'react';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
+import { useUiMode } from '@/lib/uiMode';
 
 interface ActivitySummary {
   success: boolean;
@@ -476,6 +477,11 @@ export default function Dashboard() {
   const { language } = useLanguage();
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  // Multi-role uiMode preference (CEO 2026-08-18 §7). A user who is BOTH a
+  // provider and a customer may explicitly choose 'customer' mode to view
+  // /dashboard as their booker self (pets, wallet, upcoming bookings). Only
+  // redirect to /provider-os when the user's stored preference says provider.
+  const [uiMode] = useUiMode();
   const he = language === 'he';
 
   // Providers must use /provider-os — never the customer dashboard.
@@ -486,10 +492,14 @@ export default function Dashboard() {
   // moment a provider account hit /dashboard. The early return is now BELOW
   // all hooks (see the block right before the JSX return).
   useEffect(() => {
-    if (!whoamiLoading && serverRole === 'provider') {
+    // Only redirect providers whose UI-mode preference is 'provider'.
+    // Multi-role users in customer mode keep access to the customer dashboard
+    // (audit CRIT #2 fix — Dashboard used to hard-redirect any provider to
+    // /provider-os regardless of the intentional uiMode toggle).
+    if (!whoamiLoading && serverRole === 'provider' && uiMode === 'provider') {
       setLocation('/provider-os');
     }
-  }, [whoamiLoading, serverRole, setLocation]);
+  }, [whoamiLoading, serverRole, uiMode, setLocation]);
 
   const sendWalletEmailMutation = useMutation({
     mutationFn: () => apiRequest('POST', '/api/prestige-pass/resend-wallet-email', {}),
@@ -646,7 +656,9 @@ export default function Dashboard() {
 
   // Provider safety net (see the useEffect above). Placed AFTER all hooks so
   // React sees a consistent hook count across renders when whoami resolves.
-  if (!whoamiLoading && serverRole === 'provider') return null;
+  // Same uiMode gate: providers who chose 'customer' mode still see the
+  // customer dashboard (multi-role support).
+  if (!whoamiLoading && serverRole === 'provider' && uiMode === 'provider') return null;
 
   if (loading) {
     return (
