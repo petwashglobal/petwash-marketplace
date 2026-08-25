@@ -138,8 +138,8 @@ export default function AcademyBookingFlow() {
       setStep("confirmation");
 
       toast({
-        title: "הזמנה נקלטה בהצלחה! 🎓",
-        description: "המאמן/ת יקבל/תקבל הודעה. התשלום יתואם לאחר ההזמנה.",
+        title: "בקשת הזמנה נשלחה",
+        description: "ממתין לאישור המאמן/ת. חיוב יתבצע רק לאחר שהמאמן/ת יאשר/תאשר.",
       });
     } catch (error: any) {
       const errorMsg = error.message || "";
@@ -460,12 +460,26 @@ export default function AcademyBookingFlow() {
         {step === "confirmation" && (
           <div className="py-12 luxury-fade-in">
             <div className="text-center mb-6">
-              <div className="w-24 h-24 rounded-full bg-gradient-to-r from-[#D4AF37] to-[#B8932F] mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
-                <Check className="h-12 w-12 text-white" />
+              {/* Honesty fix (booking audit CRIT #5): the server writes
+                 bookingStatus='pending' and waits for the trainer to accept
+                 via /bookings/:id/confirm. The old screen showed a green
+                 check + "ההזמנה נקלטה" which read as "the trainer confirmed"
+                 — but nothing was confirmed yet, and the trainer inbox was
+                 silent. Now: amber "awaiting trainer confirmation" state
+                 with a clear next-step line, plus a link into the customer
+                 bookings list where the accept notification will surface. */}
+              <div className="w-24 h-24 rounded-full bg-gradient-to-r from-amber-400 to-amber-600 mx-auto flex items-center justify-center mb-6 luxury-shadow-xl">
+                <Clock className="h-12 w-12 text-white" />
               </div>
-              <h2 className="luxury-heading-lg mb-4">ההזמנה נקלטה בהצלחה!</h2>
+              <h2 className="luxury-heading-lg mb-3">בקשת ההזמנה נשלחה — ממתין לאישור המאמן/ת</h2>
               <p className="luxury-text-body max-w-md mx-auto mb-2">
-                המאמן/ת יקבל/תקבל את פרטי ההזמנה. מספר הזמנה: {bookingId || "בבדיקה"}
+                המאמן/ת יקבל/תקבל את פרטי ההזמנה כעת. חיוב יבוצע רק לאחר שהמאמן/ת יאשר/תאשר את הפגישה.
+              </p>
+              <p className="luxury-text-body max-w-md mx-auto mb-2 text-slate-500">
+                מספר הזמנה: <strong className="text-slate-800">{bookingId || "בבדיקה"}</strong>
+              </p>
+              <p className="luxury-text-body max-w-md mx-auto text-xs text-amber-700">
+                תקבל/י התראה ברגע שהמאמן/ת יאשר/תאשר או ידחה/תדחה את ההזמנה.
               </p>
             </div>
 
