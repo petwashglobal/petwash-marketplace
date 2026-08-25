@@ -1,7 +1,7 @@
 import { db } from '../db';
 import { users, walletAccounts } from '@shared/schema';
 import { loyaltyProfiles, pointsTransactions } from '../../shared/schema-loyalty';
-import { eq } from 'drizzle-orm';
+import { eq, and } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { redis } from './redis';
 import { auth as firebaseAdmin } from '../lib/firebase-admin';
@@ -103,6 +103,15 @@ export class AuthService {
         dateOfBirth: data.dateOfBirth || null,
         loyaltyPoints: 0,
         loyaltyTier: 'bronze',
+        // Audit F3 (2026-08-24) fix: every downstream loyalty/PetFinder gate
+        // reads users.is_club_member and it used to default false forever
+        // because nothing on the ordinary signup path flipped it true. Only
+        // the Prestige/privilege enrollment flow set it. That meant 100% of
+        // new signups were blocked from PetFinder posting, loyalty redeems,
+        // and any middleware guarded by requireVerifiedClubMember.
+        // Every PetWash account is a free-tier loyalty member on signup;
+        // Prestige is a paid TIER upgrade, not a gate for basic club access.
+        isClubMember: true,
         marketingConsent: data.marketingConsent ?? false,
         createdAt: new Date(),
         updatedAt: new Date(),
@@ -157,6 +166,21 @@ export class AuthService {
         .limit(1);
 
       if (existing) {
+        // Audit F3 backfill (2026-08-24): lazy-flip is_club_member for
+        // legacy users who signed up before the createUser fix above set
+        // it true by default. Idempotent — the SET is a no-op when the
+        // column is already true. Runs whenever ensureLoyaltyProfile
+        // fires, which covers every returning-user login path.
+        try {
+          const { users: usersTbl } = await import('@shared/schema');
+          await db.update(usersTbl)
+            .set({ isClubMember: true, updatedAt: new Date() } as any)
+            .where(and(eq(usersTbl.id, userId), eq(usersTbl.isClubMember, false)));
+        } catch (backfillErr: any) {
+          logger.warn('[AuthService] is_club_member backfill failed (non-blocking)', {
+            userId, err: backfillErr?.message,
+          });
+        }
         return;
       }
 
