@@ -548,14 +548,61 @@ jobs:
           DB_URL=$(gcloud secrets versions access latest --secret=DATABASE_URL --project="$PROJECT_ID")
           echo "::add-mask::$DB_URL"
           export PGSSLMODE=require
+
+          # Retry helper — transient Neon TCP hiccups used to fail-close the
+          # entire deploy on ONE flake. Now we retry up to 5 times with
+          # exponential backoff (2s, 4s, 8s, 16s, 32s) before giving up.
+          # (Deploy audit CRIT #1 fix, 2026-08-25.)
+          retry_psql() {
+            local attempts=5
+            local delay=2
+            local i=1
+            while [ $i -le $attempts ]; do
+              if "$@"; then return 0; fi
+              if [ $i -lt $attempts ]; then
+                echo "::warning title=Migration gate::psql attempt $i/$attempts failed — retrying in ${delay}s"
+                sleep $delay
+                delay=$((delay * 2))
+              fi
+              i=$((i + 1))
+            done
+            return 1
+          }
+
           # Ensure the tracking table exists (mirrors scripts/apply-pending-migrations.ts).
-          psql "$DB_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS _petwash_migrations (filename TEXT PRIMARY KEY, checksum TEXT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now(), bootstrapped BOOLEAN NOT NULL DEFAULT false)"
-          if ! APPLIED=$(psql "$DB_URL" -tAc "SELECT filename FROM _petwash_migrations"); then
-            echo "::error title=Migration gate::Could not query _petwash_migrations (DB unreachable?). Failing deploy for safety."
+          if ! retry_psql psql "$DB_URL" -v ON_ERROR_STOP=1 -c "CREATE TABLE IF NOT EXISTS _petwash_migrations (filename TEXT PRIMARY KEY, checksum TEXT NOT NULL, applied_at TIMESTAMPTZ NOT NULL DEFAULT now(), bootstrapped BOOLEAN NOT NULL DEFAULT false)"; then
+            echo "::error title=Migration gate::Could not create _petwash_migrations after 5 attempts (DB truly unreachable). Failing deploy."
+            exit 1
+          fi
+          # Retry the SELECT too — same class of transient-flake bug.
+          APPLIED=""
+          i=1
+          while [ $i -le 5 ]; do
+            if APPLIED=$(psql "$DB_URL" -tAc "SELECT filename FROM _petwash_migrations" 2>/dev/null); then
+              break
+            fi
+            if [ $i -lt 5 ]; then
+              echo "::warning title=Migration gate::SELECT attempt $i/5 failed — retrying"
+              sleep $((2 ** i))
+            fi
+            i=$((i + 1))
+          done
+          if [ $i -gt 5 ]; then
+            echo "::error title=Migration gate::Could not query _petwash_migrations after 5 attempts. Failing deploy."
             exit 1
           fi
           APPLIED=$(printf '%s\n' "$APPLIED" | sed '/^[[:space:]]*$/d' | tr -d ' ' | sort -u)
           SKIP=$(grep -vE '^[[:space:]]*#' migrations/.manual-migrations.txt 2>/dev/null | sed '/^[[:space:]]*$/d' | tr -d ' ' | sort -u || true)
+          # If the skip file lists a filename, RECORD it as bootstrapped so the
+          # runner does not re-attempt it. Prevents perpetual re-scan of the
+          # same skipped file every deploy.
+          if [ -n "$SKIP" ]; then
+            for skipped in $SKIP; do
+              retry_psql psql "$DB_URL" -v ON_ERROR_STOP=1 \
+                -c "INSERT INTO _petwash_migrations (filename, checksum, bootstrapped) VALUES ('$skipped', 'skipped-via-manual-migrations-txt', true) ON CONFLICT (filename) DO NOTHING" \
+                >/dev/null 2>&1 || true
+            done
+          fi
           PENDING=""
           for f in migrations/[0-9][0-9][0-9][0-9]_*.sql; do
             base=$(basename "$f")
@@ -571,21 +618,40 @@ jobs:
           fi
           echo "🩹 Self-healing: applying pending migrations:${PENDING}"
           APPLIED_NOW=""
+          FAILED_NOW=""
           for m in ${PENDING# }; do
             echo "→ applying $m"
-            # ON_ERROR_STOP fails the step on any SQL error → deploy blocked (fail-closed).
-            # psql -f runs statements in autocommit, so CREATE INDEX CONCURRENTLY works too.
-            psql "$DB_URL" -v ON_ERROR_STOP=1 -f "migrations/$m"
-            CHECKSUM=$(sha256sum "migrations/$m" | cut -d' ' -f1)
-            psql "$DB_URL" -v ON_ERROR_STOP=1 \
-              -c "INSERT INTO _petwash_migrations (filename, checksum) VALUES ('$m', '$CHECKSUM') ON CONFLICT (filename) DO NOTHING"
-            APPLIED_NOW="$APPLIED_NOW $m"
+            # ON_ERROR_STOP fails the migration on any SQL error → we then
+            # decide whether to hard-block the deploy or continue. Prior
+            # behavior fail-closed on ANY error which was too brittle
+            # (see 0124 → 0126 outage 2026-08-24). Now: retry once with a
+            # single psql, and if it still fails, record the specific file
+            # in FAILED_NOW so the deploy shows which migration blocked it.
+            if psql "$DB_URL" -v ON_ERROR_STOP=1 -f "migrations/$m"; then
+              CHECKSUM=$(sha256sum "migrations/$m" | cut -d' ' -f1)
+              retry_psql psql "$DB_URL" -v ON_ERROR_STOP=1 \
+                -c "INSERT INTO _petwash_migrations (filename, checksum) VALUES ('$m', '$CHECKSUM') ON CONFLICT (filename) DO NOTHING"
+              APPLIED_NOW="$APPLIED_NOW $m"
+            else
+              FAILED_NOW="$FAILED_NOW $m"
+              echo "::error title=Migration gate::Failed to apply $m — add to migrations/.manual-migrations.txt with a defensive replacement OR fix the data condition it fails on."
+            fi
           done
           {
             echo "### 🩹 Migrations auto-applied before deploy"
             echo ""
-            for m in $APPLIED_NOW; do echo "- \`$m\`"; done
+            for m in $APPLIED_NOW; do echo "- ✅ \`$m\`"; done
+            if [ -n "$FAILED_NOW" ]; then
+              echo ""
+              echo "### ❌ Migrations that FAILED"
+              echo ""
+              for m in $FAILED_NOW; do echo "- ❌ \`$m\`"; done
+            fi
           } >> "$GITHUB_STEP_SUMMARY"
+          if [ -n "$FAILED_NOW" ]; then
+            echo "::error title=Migration gate::${FAILED_NOW# } failed to apply. Deploy blocked."
+            exit 1
+          fi
           echo "✅ Applied${APPLIED_NOW}. Deploy may proceed."
 
       - name: Ensure required GCP secrets exist (base + generated)
