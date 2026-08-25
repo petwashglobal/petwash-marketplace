@@ -1420,14 +1420,21 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
       }
     }
 
-    // Set Firebase custom claims so the provider can access /provider/dashboard
+    // Set Firebase custom claims so the provider can access /provider/dashboard.
+    // Additive capability model (CEO §1/§28): preserve existing customer scalar
+    // identity, add 'provider' to roles[] rather than clobbering it.
     if (application.userId) {
       try {
         const existingClaims = (await firebaseAuth.getUser(application.userId)).customClaims || {};
+        const preservedRole = (existingClaims.role && existingClaims.role !== 'public') ? existingClaims.role : 'provider';
+        const preservedAccountType = (existingClaims.accountType && existingClaims.accountType !== 'pet_parent') ? existingClaims.accountType : 'provider';
+        const priorRoles = Array.isArray(existingClaims.roles) ? existingClaims.roles.filter((r: string) => typeof r === 'string') : [];
+        const nextRoles = Array.from(new Set([...priorRoles, 'provider']));
         await firebaseAuth.setCustomUserClaims(application.userId, {
           ...existingClaims,
-          role: 'provider',
-          accountType: 'provider',
+          role: preservedRole,
+          accountType: preservedAccountType,
+          roles: nextRoles,
           providerApprovedAt: new Date().toISOString(),
           // Per-service approval metadata (waitlist at approval time). The global
           // role is kept so existing provider-dashboard access is unchanged; this
@@ -1715,10 +1722,16 @@ router.post('/admin/:applicationId/service/:serviceType/approve', async (req: Re
       const { providerServices } = await import('@shared/schema-provider-services');
       const allRows = await db.select().from(providerServices).where(eq(providerServices.providerId, application.userId));
       const existingClaims = (await firebaseAuth.getUser(application.userId)).customClaims || {};
+      // Additive (CEO §1/§28): don't overwrite existing customer identity.
+      const preservedRole = (existingClaims.role && existingClaims.role !== 'public') ? existingClaims.role : 'provider';
+      const preservedAccountType = (existingClaims.accountType && existingClaims.accountType !== 'pet_parent') ? existingClaims.accountType : 'provider';
+      const priorRoles = Array.isArray(existingClaims.roles) ? existingClaims.roles.filter((r: string) => typeof r === 'string') : [];
+      const nextRoles = Array.from(new Set([...priorRoles, 'provider']));
       await firebaseAuth.setCustomUserClaims(application.userId, {
         ...existingClaims,
-        role: 'provider',
-        accountType: 'provider',
+        role: preservedRole,
+        accountType: preservedAccountType,
+        roles: nextRoles,
         approvedServices: allRows.map((r) => ({
           serviceType: r.serviceType,
           serviceStatus: r.serviceStatus,
