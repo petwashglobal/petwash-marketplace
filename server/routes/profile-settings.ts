@@ -811,8 +811,18 @@ router.delete('/settings/profile/photo', async (req, res) => {
       try {
         const bucket = admin.storage().bucket();
         const urlParts = dbUser.profileImageUrl.split(`${bucket.name}/`);
-        if (urlParts[1]) {
-          await bucket.file(urlParts[1]).delete().catch(() => {});
+        const relPath = urlParts[1];
+        // Path-prefix guard: the DELETE key MUST live under this user's own
+        // profile-photos/{uid}/ prefix. Without this a corrupted DB row (or
+        // an SQL-injected profileImageUrl update elsewhere) would let an
+        // authed request delete an arbitrary object anywhere in the bucket.
+        const expectedPrefix = `profile-photos/${uid}/`;
+        if (relPath && relPath.startsWith(expectedPrefix)) {
+          await bucket.file(relPath).delete().catch(() => {});
+        } else if (relPath) {
+          logger.warn('[ProfileSettings] Refusing GCS delete outside user prefix', {
+            uid, requested: relPath, expectedPrefix,
+          });
         }
       } catch (e) {
         logger.warn('[ProfileSettings] Failed to delete old photo from storage:', e);
