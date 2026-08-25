@@ -2320,18 +2320,30 @@ router.post('/admin/applications/:numericId/promote-trainee', requireAdmin, asyn
     if (app.user_id) {
       try {
         const existingClaims = (await auth.getUser(app.user_id)).customClaims || {};
-        // Clear trainee claim, ensure role is full provider
+        // Additive capability model (CEO 2026-08-25 directive §1, §28):
+        // ONE canonical account can hold BOTH customer + provider capabilities.
+        // Only fill role / accountType when they're currently unset OR already
+        // 'public'/'pet_parent' — never demote a customer's scalar identity to
+        // 'provider'. The multi-role gates read the roles[] array, which is
+        // grown additively below.
+        const preservedRole = (existingClaims.role && existingClaims.role !== 'public') ? existingClaims.role : 'provider';
+        const preservedAccountType = (existingClaims.accountType && existingClaims.accountType !== 'pet_parent') ? existingClaims.accountType : 'provider';
+        const priorRoles = Array.isArray(existingClaims.roles) ? existingClaims.roles.filter((r: string) => typeof r === 'string') : [];
+        const nextRoles = Array.from(new Set([...priorRoles, 'provider']));
         const newClaims = {
           ...existingClaims,
-          role: 'provider',
-          accountType: 'provider',
+          role: preservedRole,
+          accountType: preservedAccountType,
+          roles: nextRoles,
           isTrainee: false,
           providerVerified: true,
           providerPromotedAt: new Date().toISOString(),
           promotedBy: adminEmail || adminUid,
         };
         await auth.setCustomUserClaims(app.user_id, newClaims);
-        logger.info('[ProviderOnboarding] Trainee promoted to full provider', { userId: app.user_id, applicationId: app.application_id });
+        logger.info('[ProviderOnboarding] Trainee promoted — provider capability added, prior identity preserved', {
+          userId: app.user_id, applicationId: app.application_id, roles: nextRoles, preservedRole,
+        });
       } catch (claimsErr: any) {
         logger.error('[ProviderOnboarding] Failed to update claims on trainee promote', { error: claimsErr?.message });
         return res.status(500).json({ error: 'Failed to update role claims', errorCode: 'CLAIMS_UPDATE_500' });
