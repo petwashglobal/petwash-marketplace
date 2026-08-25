@@ -96,7 +96,14 @@ export default function ProviderJobDetail() {
 
   const actionMut = useMutation({
     mutationFn: async (action: 'accept' | 'decline' | 'start' | 'complete') => {
-      const r = await apiRequest('POST', `/api/provider-dashboard/v2/bookings/${b?.id}/${action}`, {});
+      // Booking audit CRIT #20 fix: fast-tap on Accept before the /booking fetch
+      // resolves posted to /bookings/undefined/accept → 400. Guard here so the
+      // mutation surfaces a friendly error instead of hitting the server with a
+      // literal 'undefined' id.
+      if (!b?.id) {
+        throw new Error(isHe ? 'טוען פרטי הזמנה — נסה שוב בעוד רגע' : 'Loading booking — please retry in a moment');
+      }
+      const r = await apiRequest('POST', `/api/provider-dashboard/v2/bookings/${b.id}/${action}`, {});
       const j = await r.json().catch(() => ({}));
       if (!r.ok) throw new Error(j?.error || `${action}_failed`);
       return j;
