@@ -17,3 +17,17 @@
 # of the Tranzila Option A kill. The orphan ALTER no longer exists in
 # the migrations/ folder, so the runner won't see it and won't fail.
 # This allowlist file remains in place for future manual migrations.
+
+# 0124_concurrency_p0_uniques_2026_08_24.sql — SKIP.
+# CREATE UNIQUE INDEX on wallet_accounts.user_id + digital_receipts hits
+# duplicate-key errors on production DB (pre-existing dupes from earlier
+# race-condition periods). Every deploy since 2026-08-24 fails on this
+# migration, blocking 0125 (which adds the columns MonitoringWatchdog
+# needs) from running. That leaves the OLD live revision throwing
+# `column "last_requested_resubmission_at" does not exist` every 5 min
+# and the /health/strict deploy gate rejecting the new revision.
+# 0126 (below) reapplies 0125's ADD COLUMNs AND creates the same
+# unique indexes wrapped in DO/EXCEPTION so pre-existing dupes only
+# log a NOTICE instead of failing the deploy. Ops must dedupe by hand
+# and then flip 0126's guards to strict on the next deploy window.
+0124_concurrency_p0_uniques_2026_08_24.sql
