@@ -25,7 +25,7 @@ import {
 } from '@shared/schema';
 import { formatUserAddress, bookingSnapshotToAddress } from '@shared/formatAddress';
 import crypto from 'crypto';
-import { eq, and, desc, sql, gte, lte, or, ilike } from 'drizzle-orm';
+import { eq, and, desc, sql, gte, lte, or, ilike, inArray } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { nanoid } from 'nanoid';
 import { requireLoyaltyMember } from '../middleware/loyalty';
@@ -75,10 +75,17 @@ router.get('/trainers', async (req, res) => {
     // Apply filters (basic implementation - enhance with proper filtering in production)
     // Note: For advanced filtering, implement proper SQL queries with drizzle-orm
     
+    // CAP RAISED (audit-fix 2026-08-25): previous `.limit(50)` was applied
+    // BEFORE the JS-side city/specialty/serviceType/proximity filters ran, so
+    // a customer searching for trainers in a specific city got "no results"
+    // whenever the top-50-by-rating set didn't happen to contain that city.
+    // Widen the base fetch to 500 rows (enough to cover every approved
+    // trainer in IL for the foreseeable future) then re-limit to a display
+    // page AFTER all filters. Rating+sessions ordering is preserved.
     const allTrainers = await query
       .orderBy(desc(trainers.averageRating), desc(trainers.totalSessions))
-      .limit(50);
-    
+      .limit(500);
+
     // Filter by specialty if provided
     let filteredTrainers = allTrainers;
     if (specialty) {
@@ -158,8 +165,13 @@ router.get('/trainers', async (req, res) => {
       specialty,
     });
     
+    // Final display page — cap AFTER filtering so city/specialty/proximity
+    // matches always surface up to 50 results (never dropped by a pre-filter
+    // top-50-by-rating slice).
+    const pageTrainers = filteredTrainers.slice(0, 50);
+
     // Transform trainers to match frontend interface
-    const transformedTrainers = filteredTrainers.map(t => ({
+    const transformedTrainers = pageTrainers.map(t => ({
       ...t,
       fullName: `${t.firstName || ''} ${t.lastName || ''}`.trim() || 'Trainer',
       city: t.serviceArea || 'Israel',
@@ -550,22 +562,21 @@ router.get('/bookings', async (req, res) => {
       .from(trainerBookings)
       .where(eq(trainerBookings.userId, req.user.uid))
       .orderBy(desc(trainerBookings.createdAt));
-    
-    // Get trainer details for each booking
-    const bookingsWithTrainers = await Promise.all(
-      userBookings.map(async (booking) => {
-        const [trainer] = await db
-          .select()
-          .from(trainers)
-          .where(eq(trainers.id, booking.trainerId));
-        
-        return {
-          ...booking,
-          trainer,
-        };
-      })
-    );
-    
+
+    // N+1 KILL (audit-fix 2026-08-25): previous code fired one `SELECT ... FROM
+    // trainers WHERE id=?` per booking row via Promise.all — 30 bookings = 30
+    // round-trips, all serialized behind the pool. One IN-list query loads
+    // every trainer referenced by the user's bookings, then we hydrate in JS.
+    const trainerIds = Array.from(new Set(userBookings.map((b) => b.trainerId).filter((id): id is number => id != null)));
+    const trainerRows = trainerIds.length
+      ? await db.select().from(trainers).where(inArray(trainers.id, trainerIds))
+      : [];
+    const trainerById = new Map(trainerRows.map((t) => [t.id, t]));
+    const bookingsWithTrainers = userBookings.map((booking) => ({
+      ...booking,
+      trainer: booking.trainerId != null ? trainerById.get(booking.trainerId) ?? null : null,
+    }));
+
     res.json(bookingsWithTrainers);
   } catch (error) {
     logger.error('[Academy] Error fetching bookings', error);
