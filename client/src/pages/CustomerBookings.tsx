@@ -1086,7 +1086,15 @@ export default function CustomerBookings() {
     onSuccess: () => {
       setCancelTarget(null);
       setCancelReason('');
+      // Bridged bookings live in FOUR separate query caches — invalidating
+      // only /api/booking-requests left the cancelled sitter/walk/academy/
+      // marketplace row visible on My Bookings until a hard refresh. Now
+      // invalidate every list source the page reads.
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/walk-my-pet/walks/mine'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/marketplace-bookings/my-bookings'] });
       toast({
         title: isRTL ? 'ההזמנה בוטלה' : 'Booking cancelled',
         description: isRTL ? 'ההזמנה בוטלה בהצלחה.' : 'Your booking has been cancelled.',

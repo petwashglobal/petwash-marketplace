@@ -107,10 +107,24 @@ export default function FlashDeals() {
       });
     },
     onSuccess: (data: any, vars) => {
+      // apiRequest throws on non-2xx, but the server can still return 200
+      // with { success: false, reason: 'sold_out' } when the deal filled
+      // between fetch and claim. Without this check the customer saw a
+      // green "Deal claimed! You saved ₪undefined" toast when nothing
+      // actually happened.
+      if (data && data.success === false) {
+        toast({
+          title: 'Could not claim deal',
+          description: data.message || data.reason || 'This deal may have filled up.',
+          variant: 'destructive',
+        });
+        refetch();
+        return;
+      }
       setClaimedId(vars.dealId);
       toast({
         title: 'Deal claimed!',
-        description: data.message || `You saved ₪${data.totalSavings}`,
+        description: data.message || (data.totalSavings != null ? `You saved ₪${data.totalSavings}` : undefined),
       });
       refetch();
     },

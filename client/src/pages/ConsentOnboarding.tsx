@@ -78,10 +78,11 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
     )) return;
     setLoading(true);
     try {
-      const res = await fetch(getApiUrl('/api/account/delete'), {
-        method: 'DELETE',
-        credentials: 'include',
-      });
+      // Send the Firebase Bearer token so the server can auth the delete;
+      // cookies alone are not sufficient once session-cookie fallback is
+      // stricter. apiRequest attaches the token automatically.
+      const { apiRequest } = await import('@/lib/queryClient');
+      const res = await apiRequest('DELETE', '/api/account/delete');
       if (!res.ok) throw new Error('delete_failed');
     } catch {
       alert(
@@ -92,6 +93,13 @@ export default function ConsentOnboarding({ language = 'he' }: ConsentOnboarding
       setLoading(false);
       return;
     }
+    // Fully sign the Firebase client out — otherwise the auth listener
+    // rehydrates the deleted UID on next reload into a half-live state.
+    try {
+      const { auth } = await import('@/lib/firebase');
+      const { signOut } = await import('firebase/auth');
+      await signOut(auth);
+    } catch { /* best-effort */ }
     localStorage.clear();
     navigate('/');
   };

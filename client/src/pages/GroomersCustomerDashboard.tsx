@@ -63,13 +63,13 @@ function ServiceGlyph({ svc, size, label }: { svc: { emoji: string; iconKey?: st
   return <span style={{ fontSize: `${size}px` }}>{svc.emoji}</span>;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
-  pending: { label: 'Awaiting Groomer', color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
-  accepted: { label: 'Confirmed', color: 'bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]' },
-  confirmed: { label: 'Ready', color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-300' },
-  in_progress: { label: '✂️ Grooming Now', color: 'bg-[#D4AF37] text-black dark:bg-[#B8932F]/30 dark:text-[#D4AF37]' },
-  completed: { label: 'Done', color: 'bg-white text-gray-700 dark:bg-white/40 dark:text-black' },
-  cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-300' },
+const STATUS_CONFIG: Record<string, { labelEn: string; labelHe: string; color: string }> = {
+  pending:     { labelEn: 'Awaiting Groomer', labelHe: 'ממתין למספרה',    color: 'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300' },
+  accepted:    { labelEn: 'Confirmed',        labelHe: 'אושר',            color: 'bg-[#D4AF37] text-black dark:bg-white dark:text-[#D4AF37]' },
+  confirmed:   { labelEn: 'Ready',            labelHe: 'מוכן',            color: 'bg-green-100 text-green-800 dark:bg-white dark:text-green-300' },
+  in_progress: { labelEn: '✂️ Grooming Now',  labelHe: '✂️ בהליך טיפוח',  color: 'bg-[#D4AF37] text-black dark:bg-[#B8932F]/30 dark:text-[#D4AF37]' },
+  completed:   { labelEn: 'Done',             labelHe: 'הושלם',           color: 'bg-white text-gray-700 dark:bg-white/40 dark:text-black' },
+  cancelled:   { labelEn: 'Cancelled',        labelHe: 'בוטל',            color: 'bg-red-100 text-red-800 dark:bg-white dark:text-red-300' },
 };
 
 function fmt(cents: number) { return `₪${(cents / 100).toFixed(0)}`; }
@@ -97,7 +97,18 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
     mutationFn: (requestId: string) => apiRequest('POST', `/api/booking-requests/${requestId}/confirm`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', 'owner', 'groomers'] });
-      toast({ title: 'Service confirmed! Payment released to groomer.' });
+      toast({
+        title: isHebrew ? 'השירות אושר! התשלום שוחרר למספרה.' : 'Service confirmed! Payment released to groomer.',
+      });
+    },
+    onError: (err: any) => {
+      // Previously had no onError — a 4xx/5xx returned silently, so the
+      // customer tapped Confirm again thinking money moved when it didn't.
+      toast({
+        title: isHebrew ? 'שגיאה באישור השירות' : 'Failed to confirm service',
+        description: err?.body?.error || err?.message || (isHebrew ? 'נסה שוב.' : 'Please try again.'),
+        variant: 'destructive',
+      });
     },
   });
 
@@ -109,7 +120,14 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
       setRatingBookingId(null);
       setReviewText('');
       setRating(5);
-      toast({ title: 'Review submitted! Thank you.' });
+      toast({ title: isHebrew ? 'הביקורת נשלחה! תודה.' : 'Review submitted! Thank you.' });
+    },
+    onError: (err: any) => {
+      toast({
+        title: isHebrew ? 'שגיאה בשליחת ביקורת' : 'Failed to submit review',
+        description: err?.body?.error || err?.message,
+        variant: 'destructive',
+      });
     },
   });
 
@@ -117,7 +135,14 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
     mutationFn: (requestId: string) => apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { cancelledBy: 'owner' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', 'owner', 'groomers'] });
-      toast({ title: 'Booking cancelled.' });
+      toast({ title: isHebrew ? 'ההזמנה בוטלה.' : 'Booking cancelled.' });
+    },
+    onError: (err: any) => {
+      toast({
+        title: isHebrew ? 'שגיאה בביטול' : 'Cancellation failed',
+        description: err?.body?.error || err?.message,
+        variant: 'destructive',
+      });
     },
   });
 
@@ -189,7 +214,7 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
               <p className="text-sm text-gray-500 flex items-center gap-1"><PawPrint className="w-3.5 h-3.5" />{petName}</p>
             </div>
           </div>
-          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusCfg.color}`}>{statusCfg.label}</span>
+          <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${statusCfg.color}`}>{isHebrew ? statusCfg.labelHe : statusCfg.labelEn}</span>
         </div>
 
         <div className="grid grid-cols-2 gap-3 text-sm mb-4">

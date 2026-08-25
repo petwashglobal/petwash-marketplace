@@ -408,7 +408,7 @@ export default function MyWallet() {
                 </div>
                 <div className="text-xl font-bold text-gray-900">
                   {(wallet?.loyaltyPointsBalance || 0).toLocaleString()}
-                  <span className="text-sm font-normal text-gray-400 ml-1">pts</span>
+                  <span className="text-sm font-normal text-gray-400 ml-1">{isHebrew ? "נק'" : 'pts'}</span>
                 </div>
                 <p className="text-[10px] text-gray-400 mt-0.5">
                   ≈ {formatCurrency((wallet?.loyaltyPointsBalance || 0) * 10)}
