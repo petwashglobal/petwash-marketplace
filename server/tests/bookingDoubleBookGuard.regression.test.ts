@@ -19,7 +19,11 @@ const walk = read('walk-my-pet.ts');
 
 describe('Academy double-booking guard (P0-2)', () => {
   it('acquires a slot lock before creating the trainer booking', () => {
-    expect(academy).toMatch(/acquireSlotLock\(db,\s*\{/);
+    // Matches both the legacy `acquireSlotLock(db, {` and the newer, correct
+    // `acquireSlotLock(tx, {` used inside a db.transaction((tx) => …) block
+    // (see PR #2147 — lock + insert now share a tx so a failed insert
+    // rolls back the lock instead of leaving a ghost row on the calendar).
+    expect(academy).toMatch(/acquireSlotLock\(\w+,\s*\{/);
     const lockAt = academy.indexOf('acquireSlotLock(');
     const insertAt = academy.indexOf('.insert(trainerBookings)');
     expect(lockAt).toBeGreaterThan(-1);
@@ -74,5 +78,24 @@ describe('Walk My Pet persistent double-booking guard (P1)', () => {
   });
   it('releases the lock on decline', () => {
     expect(walk).toMatch(/releaseSlotLock\(db,\s*bookingId\)/);
+  });
+});
+
+// PR #2147 — the lock and the booking insert must live in one transaction
+// so a failed insert rolls the lock back. Pin the pattern so no future
+// edit regresses to `acquireSlotLock(db, …)` + separate `db.insert(…)`
+// which silently leaked ghost locks onto provider calendars.
+describe('Slot lock + insert share a transaction (PR #2147)', () => {
+  it('sitter wraps acquireSlotLock + insert in db.transaction((tx) => …)', () => {
+    expect(sitter).toMatch(/db\.transaction\s*\(\s*async\s*\(\s*tx\s*\)/);
+    expect(sitter).toMatch(/acquireSlotLock\(\s*tx\s*,/);
+  });
+  it('walk wraps acquireSlotLock + insert in db.transaction((tx) => …)', () => {
+    expect(walk).toMatch(/db\.transaction\s*\(\s*async\s*\(\s*tx\s*\)/);
+    expect(walk).toMatch(/acquireSlotLock\(\s*tx\s*,/);
+  });
+  it('academy wraps acquireSlotLock + insert in db.transaction((tx) => …)', () => {
+    expect(academy).toMatch(/db\.transaction\s*\(\s*async\s*\(\s*tx\s*\)/);
+    expect(academy).toMatch(/acquireSlotLock\(\s*tx\s*,/);
   });
 });
