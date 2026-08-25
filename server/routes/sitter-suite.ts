@@ -878,13 +878,52 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
     // booking_requests — so a sitter cannot be double-booked ACROSS platforms
     // (marketplace / walk / academy) for the same window either.
     const sitterLockProviderId = sitter.userId || `sitter:${sitterId}`;
+    // ATOMIC LOCK+INSERT — marketplaceSlotLock.ts:10 explicitly says the
+    // lock MUST live in the same transaction as the booking insert. Prior
+    // code called acquireSlotLock(db, …) then ran the sitterBookings
+    // insert as a separate statement — a failure between them (unique
+    // violation, address-column drift, …) left the lock row alive with
+    // no matching booking, making the sitter's window silently
+    // unbookable forever.
+    let newBooking: any = null;
     try {
-      await acquireSlotLock(db, {
-        providerId: sitterLockProviderId,
-        startAt: start,
-        endAt: end,
-        bookingRef: bookingId,
-        serviceType: 'pet_sitting',
+      newBooking = await db.transaction(async (tx) => {
+        await acquireSlotLock(tx, {
+          providerId: sitterLockProviderId,
+          startAt: start,
+          endAt: end,
+          bookingRef: bookingId,
+          serviceType: 'pet_sitting',
+        });
+        const [row] = await tx
+          .insert(sitterBookings)
+          .values({
+            bookingId,
+            ownerId,
+            sitterId,
+            petId,
+            startDate: start,
+            endDate: end,
+            totalDays,
+            basePriceCents: Math.round(pricing.subtotal * 100),
+            platformServiceFeeCents: Math.round(pricing.platformFee * 100),
+            brokerCutCents: Math.round(pricing.platformFee * 100),
+            sitterPayoutCents: Math.round(pricing.sitterPayout * 100),
+            totalChargeCents: Math.round(pricing.totalPrice * 100),
+            paymentStatus: 'pending',
+            urgencyScore: triageResult.urgencyScore,
+            aiTriageNotes: triageResult.triageNotes,
+            specialInstructions,
+            status: 'pending_provider',
+            // Address snapshot — coordinates are the truth, never blocked by missing postcode
+            serviceAddressText: resolvedAddressText,
+            serviceAddressLat: addressLat != null ? String(addressLat) : null,
+            serviceAddressLng: addressLng != null ? String(addressLng) : null,
+            // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
+            serviceSource: 'pet_sitting',
+          })
+          .returning();
+        return row;
       });
       slotLockRef = bookingId;
     } catch (lockErr) {
@@ -896,37 +935,6 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
       }
       throw lockErr;
     }
-
-    // ON-DEMAND: Create booking in pending_provider status (NOT confirmed yet)
-    // Payment is NOT captured until provider accepts
-    const [newBooking] = await db
-      .insert(sitterBookings)
-      .values({
-        bookingId,
-        ownerId,
-        sitterId,
-        petId,
-        startDate: start,
-        endDate: end,
-        totalDays,
-        basePriceCents: Math.round(pricing.subtotal * 100),
-        platformServiceFeeCents: Math.round(pricing.platformFee * 100),
-        brokerCutCents: Math.round(pricing.platformFee * 100),
-        sitterPayoutCents: Math.round(pricing.sitterPayout * 100),
-        totalChargeCents: Math.round(pricing.totalPrice * 100),
-        paymentStatus: 'pending',
-        urgencyScore: triageResult.urgencyScore,
-        aiTriageNotes: triageResult.triageNotes,
-        specialInstructions,
-        status: 'pending_provider',
-        // Address snapshot — coordinates are the truth, never blocked by missing postcode
-        serviceAddressText: resolvedAddressText,
-        serviceAddressLat: addressLat != null ? String(addressLat) : null,
-        serviceAddressLng: addressLng != null ? String(addressLng) : null,
-        // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
-        serviceSource: 'pet_sitting',
-      })
-      .returning();
     
     // BRIDGE (2026-07-24): mirror into booking_requests so the provider job
     // inbox (/provider-os) can actually SEE and accept this. Without it the

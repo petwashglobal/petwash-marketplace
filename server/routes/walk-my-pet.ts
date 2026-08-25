@@ -622,13 +622,26 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
     // keyed on the walker's canonical Firebase userId, so it also blocks a clash
     // with that person's sitter/marketplace bookings. Released on decline/cancel.
     const walkLockProviderId = walkerProfile.userId || `walker:${walkerId}`;
+    // ATOMIC LOCK+INSERT — marketplaceSlotLock.ts:10 explicitly says the
+    // lock MUST live in the same transaction as the booking insert. Prior
+    // code called acquireSlotLock(db, …) as its own statement, then ran
+    // db.insert as a second statement — if the insert failed the lock
+    // survived (no rollback), and the walker's time was silently
+    // unbookable forever until manual DB cleanup. Wrapping both in one
+    // transaction fixes that AND preserves the EXCLUDE-constraint
+    // cross-platform double-book invariant.
+    let newBooking: any = null;
     try {
-      await acquireSlotLock(db, {
-        providerId: walkLockProviderId,
-        startAt: startDateTime,
-        endAt: endDateTime,
-        bookingRef: bookingId,
-        serviceType: 'dog_walking',
+      newBooking = await db.transaction(async (tx) => {
+        await acquireSlotLock(tx, {
+          providerId: walkLockProviderId,
+          startAt: startDateTime,
+          endAt: endDateTime,
+          bookingRef: bookingId,
+          serviceType: 'dog_walking',
+        });
+        const [row] = await tx.insert(walkBookings).values(bookingData).returning();
+        return row;
       });
       slotLockRef = bookingId;
     } catch (lockErr) {
@@ -642,8 +655,6 @@ router.post('/walks/book', requireAuth, requireLoyaltyMember, async (req, res) =
       }
       throw lockErr;
     }
-
-    const [newBooking] = await db.insert(walkBookings).values(bookingData).returning();
 
     // BRIDGE (2026-07-24): mirror into booking_requests so the provider job
     // inbox (/provider-os) can SEE and accept this walk. Without it the booking
