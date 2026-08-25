@@ -649,6 +649,14 @@ export default function ProviderOnboarding() {
           title: t.applicationSuccess,
           description: t.successMessage
         });
+        // Route the user to the canonical pending screen so a refresh
+        // lands on the right URL. Prior behavior left the URL stuck on
+        // /provider-onboarding after submit — an admin who opened the
+        // same URL again would see the empty form. /provider/pending is
+        // the state-aware landing that BecomeProviderResume routes to
+        // (audit-fix C5) on every subsequent visit.
+        // Delay slightly so the confetti card is visible before nav.
+        setTimeout(() => navigate('/provider/pending'), 2500);
       } else {
         console.error('[ProviderOnboarding] Submit failed:', { traceId, status: response.status, error: data.error });
         toast({

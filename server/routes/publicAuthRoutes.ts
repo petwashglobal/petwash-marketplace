@@ -834,7 +834,19 @@ publicAuthRouter.post("/api/auth/login/2fa/verify", apiLimiter, async (req, res)
  */
 publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
   try {
-    const { verificationToken } = req.body;
+    // firstName / lastName are optional but STRONGLY recommended: without
+    // them the users row lands with nulls, MEMBER_REQUIRED_FIELDS then
+    // rejects the account, and post-login dumps every phone signup on
+    // /complete-profile forever. The client (SignUpLuxury) collects both
+    // fields before phone verification; pass them here to finish the
+    // journey to the actual home page.
+    const {
+      verificationToken,
+      firstName: firstNameRaw,
+      lastName: lastNameRaw,
+    } = req.body || {};
+    const firstName = typeof firstNameRaw === 'string' ? firstNameRaw.trim().slice(0, 80) : null;
+    const lastName  = typeof lastNameRaw  === 'string' ? lastNameRaw.trim().slice(0, 80)  : null;
     
     if (!verificationToken) {
       return res.status(400).json({
@@ -980,6 +992,8 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
             id: user.uid,
             email: null,
             phone: formattedPhone,
+            firstName,
+            lastName,
             role: 'customer',
             authProvider: 'phone',
             language: 'he',
