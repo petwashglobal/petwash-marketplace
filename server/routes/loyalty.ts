@@ -461,18 +461,26 @@ router.post('/points/add', requireAdmin, async (req: AuthenticatedRequest, res: 
       return res.status(404).json({ error: 'Loyalty profile not found' });
     }
 
-    // Atomic SQL increment — read-then-write on `points` is a lost-update
-    // race with any concurrent award (see loyaltyEarn.ts for the same fix).
-    const newLifetimePoints = profile.lifetimePoints + (amount > 0 ? amount : 0);
+    // Atomic SQL increment with RETURNING — read-then-write on `points` is
+    // a lost-update race with any concurrent award (see loyaltyEarn.ts for
+    // the same fix). RETURNING gives us the committed post-increment
+    // values in one round-trip so pointsTransactions.balance + the tier
+    // upgrade email reflect the atomic truth, not a stale JS-computed one.
     const lifetimeDelta = amount > 0 ? amount : 0;
-    await db
+    const [updated] = await db
       .update(loyaltyProfiles)
       .set({
         points:         sql`${loyaltyProfiles.points} + ${amount}`,
         lifetimePoints: sql`${loyaltyProfiles.lifetimePoints} + ${lifetimeDelta}`,
         updatedAt: new Date(),
       })
-      .where(eq(loyaltyProfiles.userId, userId));
+      .where(eq(loyaltyProfiles.userId, userId))
+      .returning({
+        points: loyaltyProfiles.points,
+        lifetimePoints: loyaltyProfiles.lifetimePoints,
+      });
+    const newBalance = updated?.points ?? profile.points + amount;
+    const newLifetimePoints = updated?.lifetimePoints ?? profile.lifetimePoints + lifetimeDelta;
 
     const tierCheck = detectTierUpgrade(profile.lifetimePoints, newLifetimePoints);
     if (tierCheck.upgraded) {
@@ -657,7 +665,9 @@ router.post('/badges/unlock', requireAdmin, async (req: AuthenticatedRequest, re
         // Atomic SQL increment (see loyaltyEarn.ts). A badge unlock and a
         // concurrent spend-based award both reading the same `points` value
         // and writing back a computed sum would silently drop one award.
-        await db
+        // RETURNING gives us the committed post-increment balance for the
+        // pointsTransactions row (not a stale JS-computed number).
+        const [updatedProfile] = await db
           .update(loyaltyProfiles)
           .set({
             points:         sql`${loyaltyProfiles.points} + ${badge.pointsReward}`,
@@ -665,7 +675,8 @@ router.post('/badges/unlock', requireAdmin, async (req: AuthenticatedRequest, re
             xp:             sql`${loyaltyProfiles.xp} + ${badge.xpReward}`,
             updatedAt: new Date(),
           })
-          .where(eq(loyaltyProfiles.userId, userId));
+          .where(eq(loyaltyProfiles.userId, userId))
+          .returning({ points: loyaltyProfiles.points });
 
         // Log points transaction
         if (badge.pointsReward > 0) {
@@ -673,7 +684,7 @@ router.post('/badges/unlock', requireAdmin, async (req: AuthenticatedRequest, re
             userId,
             type: 'bonus',
             amount: badge.pointsReward,
-            balance: profile.points + badge.pointsReward,
+            balance: updatedProfile?.points ?? profile.points + badge.pointsReward,
             source: 'badge_unlock',
             sourceId: badge.id.toString(),
             description: `Badge unlocked: ${badge.name}`,
