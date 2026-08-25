@@ -521,11 +521,18 @@ router.post(
                 localAmount: (local.amount || 0) / 100,
               });
             } else {
-              // Mark local payment_intent as settled
+              // Mark local payment_intent as settled. Guard the UPDATE on
+              // the current status so a transactionId collision with an
+              // unrelated legacy/test row cannot silently flip an already-
+              // refunded / cancelled intent back to 'settled'. Only rows
+              // still in a pre-settlement state may transition here.
               await db
                 .update(paymentIntents)
                 .set({ status: 'settled' })
-                .where(eq(paymentIntents.transactionId, nayaxTx.transactionId || nayaxTx.id));
+                .where(and(
+                  eq(paymentIntents.transactionId, nayaxTx.transactionId || nayaxTx.id),
+                  inArray(paymentIntents.status as any, ['succeeded', 'captured', 'pending_settlement', 'authorized']),
+                ) as any);
               matchedCount++;
             }
           }
