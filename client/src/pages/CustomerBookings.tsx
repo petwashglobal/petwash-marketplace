@@ -1041,10 +1041,14 @@ export default function CustomerBookings() {
     };
   };
 
+  // All three bridged sources are guarded by requireAuth. Raw fetch with
+  // cookie-only creds silently 401'd on mobile/token-only sessions → the
+  // customer saw "My Bookings" empty even when they had active jobs.
+  // apiRequest attaches Authorization: Bearer <firebase-token>.
   const sitterQuery = useQuery<SitterRow[] | { bookings?: SitterRow[] }>({
     queryKey: ['/api/sitter-suite/bookings', { role: 'owner' }],
     queryFn: () =>
-      fetch('/api/sitter-suite/bookings?role=owner', { credentials: 'include' })
+      apiRequest('GET', '/api/sitter-suite/bookings?role=owner')
         .then((r) => (r.ok ? r.json() : [])),
     enabled: !!user,
     retry: false,
@@ -1053,7 +1057,7 @@ export default function CustomerBookings() {
   const walkerQuery = useQuery<{ success: boolean; bookings: WalkerRow[] }>({
     queryKey: ['/api/walk-my-pet/walks/mine'],
     queryFn: () =>
-      fetch('/api/walk-my-pet/walks/mine', { credentials: 'include' })
+      apiRequest('GET', '/api/walk-my-pet/walks/mine')
         .then((r) => (r.ok ? r.json() : { success: false, bookings: [] })),
     enabled: !!user,
     retry: false,
@@ -1062,7 +1066,7 @@ export default function CustomerBookings() {
   const academyQuery = useQuery<AcademyRow[]>({
     queryKey: ['/api/academy/bookings'],
     queryFn: () =>
-      fetch('/api/academy/bookings', { credentials: 'include' })
+      apiRequest('GET', '/api/academy/bookings')
         .then((r) => (r.ok ? r.json() : [])),
     enabled: !!user,
     retry: false,

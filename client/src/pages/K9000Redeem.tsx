@@ -119,7 +119,10 @@ export default function K9000Redeem() {
     enabled: step === 'qr' && !!redemption?.sessionId && secondsLeft > 0,
     refetchInterval: secondsLeft > 0 ? 3000 : false,
     queryFn: async () => {
-      const res = await fetch(`/api/credit-wallet/redemptions/${redemption!.sessionId}/status`, { credentials: 'include' });
+      // apiRequest attaches Bearer token — server /status route requires
+      // req.user.uid, else 401 → the wallet-redeem QR screen never advanced
+      // to 'completed' and users re-scanned after their money already moved.
+      const res = await apiRequest('GET', `/api/credit-wallet/redemptions/${redemption!.sessionId}/status`);
       if (!res.ok) throw new Error('Failed to fetch status');
       return res.json();
     },

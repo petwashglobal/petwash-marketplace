@@ -773,7 +773,10 @@ export default function BookingConfirmation() {
     // different uid = separate cache entry = no cross-user flash.
     queryKey: ['/api/booking-requests', requestId, user?.uid ?? 'anon'],
     queryFn: async () => {
-      const res = await fetch(`/api/booking-requests/${requestId}`, { credentials: 'include' });
+      // apiRequest attaches Authorization: Bearer <firebase-token> — the
+      // server requires req.user?.uid. Raw fetch with cookie-only creds
+      // 401'd on mobile/token-only sessions → blank confirmation page.
+      const res = await apiRequest('GET', `/api/booking-requests/${requestId}`);
       if (!res.ok) throw new Error(`Booking ${res.status}`);
       return res.json();
     },
@@ -861,11 +864,21 @@ export default function BookingConfirmation() {
       toast({ title: t.paymentStartFailed ?? 'Could not start payment', variant: 'destructive' });
     },
     onError: (err: any) => {
-      // Surface the server's honest reason (e.g. online card rail not live yet)
-      // instead of a generic failure — the booking is saved, nothing was charged.
-      // apiRequest throws ApiError with the parsed JSON on `.body`.
-      // Key preserved in the ref so a retry of the SAME payment attempt reuses it.
-      const msg = err?.body?.error || (t.paymentStartFailed ?? 'Could not start payment');
+      // Surface the server's honest reason (e.g. online card rail not live
+      // yet, OR "Meet & Greet must be completed first" for a booking still
+      // in meet_greet_requested state) instead of a generic failure. The
+      // booking is saved, nothing was charged. apiRequest throws ApiError
+      // with parsed JSON on `.body`. Key preserved in the ref so a retry
+      // of the SAME payment attempt reuses the same idempotency key.
+      const code: string | undefined = err?.body?.code;
+      let msg: string;
+      if (code === 'MEET_GREET_REQUIRED' || /meet.?&?.?greet/i.test(err?.body?.error || '')) {
+        msg = isRTL
+          ? 'צריך להשלים פגישת היכרות עם הספק לפני התשלום.'
+          : 'Meet & Greet with the provider must be completed before paying.';
+      } else {
+        msg = err?.body?.error || (t.paymentStartFailed ?? 'Could not start payment');
+      }
       toast({ title: msg, variant: 'destructive' });
     },
   });
@@ -873,9 +886,12 @@ export default function BookingConfirmation() {
   const cancelMutation = useMutation({
     mutationFn: async () => {
       if (!cancelKeyRef.current) cancelKeyRef.current = safeUuid();
+      // Server only reads req.body.reason on the cancel route. Prior body
+      // sent { cancelledBy:'customer' } which was silently dropped and every
+      // customer cancellation was recorded with reason=null (audit gap).
       const res = await apiRequest(`/api/booking-requests/${requestId}/cancel`, {
         method: 'POST',
-        body: { cancelledBy: 'customer' },
+        body: { reason: 'customer_cancelled', cancelledBy: 'customer' },
         headers: { 'Idempotency-Key': cancelKeyRef.current },
       });
       return res.json();

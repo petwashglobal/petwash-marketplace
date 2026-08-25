@@ -81,7 +81,10 @@ export default function ProviderJobDetail() {
   const { data, isLoading, refetch } = useQuery({
     queryKey: ['/api/booking-requests', requestId],
     queryFn: async () => {
-      const r = await fetch(getApiUrl(`/api/booking-requests/${requestId}`), { credentials: 'include' });
+      // apiRequest attaches Bearer token; raw fetch with cookie-only creds
+      // 401'd on push-notif deep links (no session cookie yet) → blank
+      // provider job screen.
+      const r = await apiRequest('GET', `/api/booking-requests/${requestId}`);
       if (!r.ok) throw new Error(`load_failed_${r.status}`);
       return r.json();
     },

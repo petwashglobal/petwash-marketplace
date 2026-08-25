@@ -132,7 +132,12 @@ export default function GroomersCustomerDashboard({ language: langProp }: Groome
   });
 
   const cancelMutation = useMutation({
-    mutationFn: (requestId: string) => apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, { cancelledBy: 'owner' }),
+    mutationFn: (requestId: string) => apiRequest('POST', `/api/booking-requests/${requestId}/cancel`, {
+      // Server reads req.body.reason; { cancelledBy:'owner' } was silently
+      // dropped so every groomer-side cancellation logged reason=null.
+      reason: 'owner_cancelled',
+      cancelledBy: 'owner',
+    }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', 'owner', 'groomers'] });
       toast({ title: isHebrew ? 'ההזמנה בוטלה.' : 'Booking cancelled.' });
