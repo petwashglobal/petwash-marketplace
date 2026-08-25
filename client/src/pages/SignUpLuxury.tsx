@@ -777,7 +777,11 @@ export default function SignUpLuxury({ language = 'en', onLanguageChange }: Prop
       try {
         s = await fetch(getApiUrl('/api/auth/phone-session'), {
           method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-          body: JSON.stringify({ verificationToken, dateOfBirth: dob, email }),
+          // Pass firstName/lastName so the users row lands with the required
+          // MEMBER_REQUIRED_FIELDS filled. Without these, post-login dumps
+          // every phone signup on /complete-profile forever (audit-fix
+          // 2026-08-25).
+          body: JSON.stringify({ verificationToken, dateOfBirth: dob, email, firstName, lastName }),
         });
       } catch (netErr) {
         logger.error('[signup] phone-session network', netErr);

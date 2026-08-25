@@ -79,6 +79,7 @@ import paymentsSumitRoutes from "./routes/payments-sumit";
 import saveCardRoutes from "./routes/save-card";
 import egiftGuestRoutes from "./routes/egift-guest";
 import legalConsentRoutes from "./routes/legal-consent";
+import legalAcceptancesRoutes from "./routes/legal-acceptances";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
 import adminStaffRoutes from "./routes/admin-staff";
@@ -12803,6 +12804,12 @@ self.addEventListener('notificationclick', (event) => {
   // Guest eGift checkout — PUBLIC (no signup). Gated by PETWASH_EGIFT_PURCHASE_ENABLED (off), pay-then-issue.
   app.use('/api/egift', egiftGuestRoutes);
   app.use('/api/legal', apiLimiter, legalConsentRoutes);
+  // Canonical legal-evidence ledger (CEO directive §11-§12, migration 0127).
+  // POST /accept + GET /my-acceptances require Firebase token; the admin
+  // sub-route enforces super_admin inside the handler. Every passive
+  // legal display page will migrate to POST here so we build a real
+  // evidence trail (who / what / version / lang / IP / device / snapshot).
+  app.use('/api/legal-acceptances', validateFirebaseToken, apiLimiter, legalAcceptancesRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
   app.use('/api/admin/staff', apiLimiter, adminStaffRoutes);
