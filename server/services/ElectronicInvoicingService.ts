@@ -167,7 +167,9 @@ class ElectronicInvoicingService {
         vatAmount: amounts.vatAmount.toString(),
         totalAmount: amounts.totalAmount.toString(),
         currency: params.currency || 'ILS',
-        dueDate: new Date().toISOString().split('T')[0],
+        // Israel accounting-day date, NOT UTC. Late-night IL invoices were
+        // stamped with yesterday's date under .toISOString().split('T')[0].
+        dueDate: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }),
         paymentStatus: 'paid',
         description: params.lineItems.map(i => i.description).join(', '),
         platform: params.serviceType,
