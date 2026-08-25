@@ -962,9 +962,17 @@ app.use(
   session({
     name: 'pw.sid', // Custom session cookie name (obscure default)
     secret: process.env.SESSION_SECRET || process.env.COOKIE_SECRET || (() => {
+      // Same rule as CSRF (index.ts:724-733): hard-fail in production so a
+      // misconfigured revision is marked unhealthy by Cloud Run instead of
+      // silently issuing per-instance random session keys. On scale-out
+      // every replica would generate its own key → session cookies from
+      // replica A are invalid on replica B → users randomly logged out.
+      if (process.env.NODE_ENV === 'production') {
+        console.error('[startup] FATAL: SESSION_SECRET and COOKIE_SECRET are both unset in production. Set one in Secret Manager and redeploy — refusing to boot with a per-instance session key.');
+        throw new Error('SESSION_SECRET_REQUIRED_IN_PRODUCTION');
+      }
       const fallback = crypto.randomBytes(32).toString('hex');
-      // Do not throw — crashing here kills the process before port binds (Cloud Run startup probe failure).
-      console.error('[startup] SECURITY: SESSION_SECRET and COOKIE_SECRET are both unset — sessions use an ephemeral key and will not persist across restarts; set one immediately.');
+      console.error('[startup] SECURITY: SESSION_SECRET and COOKIE_SECRET are both unset — sessions use an ephemeral key. Fine for dev/tests; MUST be set in production.');
       return fallback;
     })(),
     resave: false,
