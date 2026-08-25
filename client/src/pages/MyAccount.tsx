@@ -4952,7 +4952,15 @@ export default function MyAccount() {
                               <div className="mt-3 pt-3 border-t border-gray-100">
                                 <div
                                   className="text-sm text-gray-700 leading-relaxed prose prose-sm max-w-none"
-                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.bodyHtml || '', { allowedTags: sanitizeHtml.defaults.allowedTags, allowedAttributes: sanitizeHtml.defaults.allowedAttributes }) }}
+                                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(msg.bodyHtml || '', {
+                                    // Tightened from sanitize-html defaults (which allow <a href>, <img>,
+                                    // etc.) to a narrow inbox-safe allowlist. A compromised marketing tool
+                                    // could otherwise craft a message body with a spoofed <a> link styled
+                                    // as PetWash Payment Portal and phish customer credentials.
+                                    allowedTags: ['b', 'i', 'em', 'strong', 'u', 'br', 'p', 'ul', 'ol', 'li', 'span'],
+                                    allowedAttributes: {},
+                                    allowedSchemes: [],
+                                  }) }}
                                 />
                                 {msg.meta?.voucherCode && (
                                   <div className="mt-3 flex items-center gap-2">

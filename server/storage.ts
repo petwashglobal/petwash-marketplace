@@ -5057,7 +5057,14 @@ export class DatabaseStorage implements IStorage {
     
     const currentPaid = parseFloat(receivable.paidAmount || '0');
     const newPaidAmount = currentPaid + amount;
-    const totalAmount = parseFloat(receivable.totalAmount);
+    // Guard against null/undefined totalAmount — parseFloat(null) yields NaN,
+    // NaN.toFixed(2) is the literal "NaN", and Postgres numeric column
+    // rejects "NaN" with "invalid input syntax for type numeric" — aborting
+    // the payment application entirely. Fall back to 0 so the write proceeds.
+    const totalAmount = parseFloat(receivable.totalAmount || '0');
+    if (!Number.isFinite(totalAmount)) {
+      throw new Error(`receivable ${id} has non-numeric totalAmount — cannot apply payment`);
+    }
     const newBalanceDue = totalAmount - newPaidAmount;
     
     let newStatus = receivable.paymentStatus;

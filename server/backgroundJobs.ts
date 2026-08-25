@@ -490,8 +490,12 @@ export class BackgroundJobProcessor {
           await updateAllStationStatuses(); // Apply 5-state machine (heartbeat-based)
           await updateAllStationUptime();   // Calculate daily/weekly uptime %
         } catch (error) {
-          // Silently handle Firestore errors in background jobs
-          logger.debug('[Stations] Status update skipped', { error: error instanceof Error ? error.message : 'Unknown error' });
+          // Was logger.debug — silenced in prod, so ops never saw when the
+          // station status pipeline was actually stuck (Nayax token expired,
+          // Firestore permission denied). K9000 dashboards read "online"
+          // for days when the check was actually failing. Warn is visible
+          // in default prod log level.
+          logger.warn('[Stations] Status update FAILED', { error: error instanceof Error ? error.message : 'Unknown error' });
         } finally {
           this.releaseLock('stationMonitoring');
         }
@@ -523,7 +527,7 @@ export class BackgroundJobProcessor {
         const { checkLowStockAlerts } = await import('./lib/stationsAlertService');
         await checkLowStockAlerts();
       } catch (error) {
-        logger.debug('[Stations] Low stock check skipped', { error: error instanceof Error ? error.message : 'Unknown error' });
+        logger.warn('[Stations] Low stock check FAILED', { error: error instanceof Error ? error.message : 'Unknown error' });
       }
     }, {
       timezone: 'Asia/Jerusalem'
@@ -535,7 +539,7 @@ export class BackgroundJobProcessor {
         const { checkUtilityRenewalAlerts } = await import('./lib/stationsAlertService');
         await checkUtilityRenewalAlerts();
       } catch (error) {
-        logger.debug('[Stations] Utility renewal check skipped', { error: error instanceof Error ? error.message : 'Unknown error' });
+        logger.warn('[Stations] Utility renewal check FAILED', { error: error instanceof Error ? error.message : 'Unknown error' });
       }
     }, {
       timezone: 'Asia/Jerusalem'
@@ -547,7 +551,7 @@ export class BackgroundJobProcessor {
         const { syncStationsToGoogleSheets } = await import('./lib/stationsAlertService');
         await syncStationsToGoogleSheets();
       } catch (error) {
-        logger.debug('[Stations] Google Sheets sync skipped', { error: error instanceof Error ? error.message : 'Unknown error' });
+        logger.warn('[Stations] Google Sheets sync FAILED', { error: error instanceof Error ? error.message : 'Unknown error' });
       }
     }, {
       timezone: 'Asia/Jerusalem'
@@ -1276,11 +1280,18 @@ export class BackgroundJobProcessor {
         errors: result.errors,
       });
 
-      // Record cron execution metrics
-      await recordCronExecution('autoReleaseEscrows', result.released > 0 ? 'success' : 'idle', {
-        releasedCount: result.released,
-        failedCount: result.failed,
-      });
+      // Record cron execution metrics.
+      // Signature is (jobName, success: boolean, errorMessage?: string) —
+      // prior code passed the strings 'success'/'idle' (always truthy →
+      // ALWAYS recorded as success even when result.failed > 0) and an
+      // object where a string was expected. Real escrow-release failures
+      // were invisible on ops dashboards. Now the boolean reflects "no
+      // failed releases", and the error string carries the failed count.
+      await recordCronExecution(
+        'autoReleaseEscrows',
+        result.failed === 0,
+        result.failed > 0 ? `${result.failed} escrow release(s) failed` : undefined,
+      );
 
       if (result.failed > 0) {
         logger.error('[BackgroundJobs] Some escrow releases failed', {
@@ -1290,9 +1301,11 @@ export class BackgroundJobProcessor {
       }
     } catch (error) {
       logger.error('[BackgroundJobs] Auto-release escrow job error', error);
-      await recordCronExecution('autoReleaseEscrows', 'failed', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      await recordCronExecution(
+        'autoReleaseEscrows',
+        false,
+        error instanceof Error ? error.message : 'Unknown error',
+      );
     }
   }
 
