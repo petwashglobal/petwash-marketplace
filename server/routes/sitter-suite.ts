@@ -1098,11 +1098,11 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       .select()
       .from(sitterBookings)
       .where(eq(sitterBookings.bookingId, bookingId));
-    
+
     if (!booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-    
+
     if (booking.status !== 'pending_provider') {
       return res.status(400).json({ error: `Booking is already ${booking.status}` });
     }
@@ -1112,16 +1112,39 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       .select()
       .from(sitterProfiles)
       .where(eq(sitterProfiles.id, booking.sitterId));
-    
+
     if (!sitter || sitter.userId !== providerUid) {
       return res.status(403).json({ error: 'Only the assigned provider can respond to this booking' });
     }
-    
+
     if (action === 'accept') {
+      // ── ATOMIC CLAIM ─────────────────────────────────────────────────────
+      // Before this claim, the read-then-charge pattern above let a sitter's
+      // double-click (or web + phone racing) both pass the pending_provider
+      // check and both call processBookingPayment — customer charged twice
+      // for one booking. Now flip pending_provider → payment_processing in a
+      // SINGLE UPDATE that returns the affected row; if we get 0 rows back
+      // another request already claimed it — return 409.
+      const claimResult = await db
+        .update(sitterBookings)
+        .set({ status: 'payment_processing', updatedAt: new Date() })
+        .where(and(
+          eq(sitterBookings.bookingId, bookingId),
+          eq(sitterBookings.status, 'pending_provider'),
+        ))
+        .returning({ id: sitterBookings.id });
+      if (claimResult.length === 0) {
+        logger.warn('[Sitter Suite] concurrent accept — atomic claim lost', { bookingId, providerUid });
+        return res.status(409).json({
+          error: 'ALREADY_CLAIMED',
+          message: 'This booking is already being processed — please refresh.',
+        });
+      }
+
       // PROVIDER ACCEPTED - Process payment using owner's stored payment method
       // Provider does NOT supply payment token - we use the owner's Nayax account
       const pricePerDayCents = Math.round(booking.totalChargeCents / booking.totalDays);
-      
+
       let paymentResult = { success: false, nayaxTransactionId: '', error: '' };
       try {
         paymentResult = await nayaxSitterMarketplace.processBookingPayment({
@@ -1138,6 +1161,9 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       // Only confirm if payment was successful
       if (!paymentResult.success) {
         logger.error('[Sitter Suite] Cannot confirm booking - payment capture failed', { bookingId });
+        // Guard the failed flip on the payment_processing state we just
+        // claimed — never overwrite a confirmed record (defence-in-depth
+        // for out-of-order webhook races).
         await db
           .update(sitterBookings)
           .set({
@@ -1145,8 +1171,11 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
             paymentStatus: 'failed',
             updatedAt: new Date(),
           })
-          .where(eq(sitterBookings.bookingId, bookingId));
-        
+          .where(and(
+            eq(sitterBookings.bookingId, bookingId),
+            eq(sitterBookings.status, 'payment_processing'),
+          ));
+
         return res.status(400).json({
           success: false,
           status: 'payment_failed',
