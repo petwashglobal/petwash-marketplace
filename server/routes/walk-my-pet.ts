@@ -1249,23 +1249,34 @@ router.get('/walks/:bookingId', requireAuth, async (req, res) => {
       return res.status(401).json({ error: 'Authentication required' });
     }
 
-    const [booking] = await db
-      .select()
+    // Single LEFT-JOIN read — previously two sequential SELECTs. This
+    // endpoint is polled every 5s per open tracking tab (see
+    // WalkTracking.tsx:99-102), so a two-round-trip read = 24 DB
+    // round-trips/min/tab. One join is 12, and the auth check + response
+    // can both be served from the same row.
+    const [row] = await db
+      .select({
+        booking: walkBookings,
+        walker: {
+          walkerId: walkerProfiles.walkerId,
+          userId: walkerProfiles.userId,
+          displayName: walkerProfiles.displayName,
+          profilePhotoUrl: walkerProfiles.profilePhotoUrl,
+          averageRating: walkerProfiles.averageRating,
+          totalWalks: walkerProfiles.totalWalks,
+          hasBodyCamera: walkerProfiles.hasBodyCamera,
+          hasDroneAccess: walkerProfiles.hasDroneAccess,
+        },
+      })
       .from(walkBookings)
+      .leftJoin(walkerProfiles, eq(walkerProfiles.walkerId, walkBookings.walkerId))
       .where(eq(walkBookings.bookingId, bookingId))
       .limit(1);
 
-    if (!booking) {
+    if (!row?.booking) {
       return res.status(404).json({ error: 'Booking not found' });
     }
-
-    // Walker profile is needed both to check the walker-side auth path and
-    // to return the walker's public card in the response.
-    const [walker] = await db
-      .select()
-      .from(walkerProfiles)
-      .where(eq(walkerProfiles.walkerId, booking.walkerId))
-      .limit(1);
+    const { booking, walker } = row;
 
     const isOwner = booking.ownerId === callerUid;
     const isWalker = walker?.userId === callerUid;
@@ -1277,7 +1288,7 @@ router.get('/walks/:bookingId', requireAuth, async (req, res) => {
 
     res.json({
       booking,
-      walker: walker ? {
+      walker: walker && walker.walkerId ? {
         walkerId: walker.walkerId,
         displayName: walker.displayName,
         profilePhotoUrl: walker.profilePhotoUrl,
