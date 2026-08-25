@@ -28,11 +28,36 @@ export default function FranchiseReports() {
     }
   };
 
+  // Admin-audit CRIT #5 fix (2026-08-25): both Monthly and Daily buttons used
+  // to pass `period=monthly` hard-coded to the server, so the Daily card
+  // downloaded a MONTHLY spreadsheet. Now we infer period from the date string
+  // shape (YYYY-MM = monthly, YYYY-MM-DD = daily) and use Israel-local time
+  // for the date to avoid the UTC-truncation off-by-one during 02:00-03:00
+  // (audit CRIT #19).
   const handleDownload = (type: 'excel' | 'pdf', period: string) => {
     if (!franchiseId) return;
+    // Israel-local YYYY-MM-DD / YYYY-MM slice (was ISO/UTC → yesterday between
+    // 02:00–03:00 Israel time).
+    const scope = period.length === 10 ? 'daily' : 'monthly';
     trackFranchiseReportDownloaded(franchiseId, type, period);
-    window.open(`/api/franchise/reports/export/${type}?franchiseId=${franchiseId}&period=monthly&date=${period}`, '_blank');
+    window.open(
+      `/api/franchise/reports/export/${type}?franchiseId=${franchiseId}&period=${scope}&date=${period}`,
+      '_blank',
+    );
   };
+
+  const israelLocalDate = (): string => {
+    // Format today's date in Israel time — YYYY-MM-DD
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jerusalem',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const y = parts.find(p => p.type === 'year')?.value ?? '';
+    const m = parts.find(p => p.type === 'month')?.value ?? '';
+    const d = parts.find(p => p.type === 'day')?.value ?? '';
+    return `${y}-${m}-${d}`;
+  };
+  const israelLocalMonth = (): string => israelLocalDate().slice(0, 7);
 
   return (
     <div className="min-h-screen luxury-bg-mesh p-4 md:p-6" dir={dir}>
@@ -86,14 +111,14 @@ export default function FranchiseReports() {
             </CardHeader>
             <CardContent className="space-y-3">
               <button
-                onClick={() => handleDownload('excel', new Date().toISOString().slice(0, 7))}
+                onClick={() => handleDownload('excel', israelLocalMonth())}
                 className="w-full luxury-btn-primary flex items-center justify-center gap-2"
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 {t('reports.downloadExcel', language)}
               </button>
               <button
-                onClick={() => handleDownload('pdf', new Date().toISOString().slice(0, 7))}
+                onClick={() => handleDownload('pdf', israelLocalMonth())}
                 className="w-full luxury-btn-secondary flex items-center justify-center gap-2"
               >
                 <FileText className="h-4 w-4" />
@@ -113,14 +138,14 @@ export default function FranchiseReports() {
             </CardHeader>
             <CardContent className="space-y-3">
               <button
-                onClick={() => handleDownload('excel', new Date().toISOString().slice(0, 10))}
+                onClick={() => handleDownload('excel', israelLocalDate())}
                 className="w-full luxury-btn-primary flex items-center justify-center gap-2"
               >
                 <FileSpreadsheet className="h-4 w-4" />
                 {t('reports.downloadExcel', language)}
               </button>
               <button
-                onClick={() => handleDownload('pdf', new Date().toISOString().slice(0, 10))}
+                onClick={() => handleDownload('pdf', israelLocalDate())}
                 className="w-full luxury-btn-secondary flex items-center justify-center gap-2"
               >
                 <FileText className="h-4 w-4" />

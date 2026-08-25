@@ -12897,8 +12897,17 @@ self.addEventListener('notificationclick', (event) => {
   
   // Performance Monitoring - Database, API, and system metrics
   // Admin-gate the metrics reset (2026-08-06 sweep) — was unauthenticated
-  // observability tampering. Health/read endpoints stay public; only /reset is gated.
+  // observability tampering.
   app.use('/api/monitoring/reset', validateFirebaseToken, requireAdmin);
+  // Admin-gate DB internals routes (audit CRIT #12, 2026-08-25) — the sub-
+  // routes /database/connections, /database/slow-queries, and /performance
+  // were previously reachable behind apiLimiter alone, letting any
+  // authenticated customer enumerate live DB queries and connection counts.
+  // Public /health-style tiles that don't leak internals stay on the base
+  // router below; anything that reveals DB or process state gates on admin.
+  app.use('/api/monitoring/database', validateFirebaseToken, requireAdmin);
+  app.use('/api/monitoring/performance', validateFirebaseToken, requireAdmin);
+  app.use('/api/monitoring/slow-queries', validateFirebaseToken, requireAdmin);
   app.use('/api/monitoring', apiLimiter, monitoringRoutes);
   
   // Gemini AI Watchdog - Real-time monitoring, user struggle detection, auto-fix engine
