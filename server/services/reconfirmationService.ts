@@ -102,7 +102,13 @@ export function computeReconfirmationDue(
   if (!anchor) return null;
 
   const dueAt = addMonths(anchor, RECONFIRMATION_INTERVAL_MONTHS);
-  const daysUntil = Math.floor((dueAt.getTime() - now.getTime()) / MS_PER_DAY);
+  // Compute daysUntil against the ISRAEL civil day, not UTC. Prior code
+  // (dueAt - now) / MS_PER_DAY floored in UTC could shift a provider into
+  // 'overdue' up to a civil day early for anchors created outside 00-22
+  // UTC. Same class of bug as the IL-day audit for admin-live-ops.
+  const ilDateStr = (d: Date) => d.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+  const ilDayMs = (s: string) => new Date(`${s}T00:00:00.000Z`).getTime();
+  const daysUntil = Math.round((ilDayMs(ilDateStr(dueAt)) - ilDayMs(ilDateStr(now))) / MS_PER_DAY);
   const overdue = dueAt.getTime() <= now.getTime();
 
   return {
