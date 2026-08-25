@@ -199,9 +199,9 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
     if (daysUntilDue <= 0) {
       return { type: 'overdue', days: Math.abs(daysUntilDue), message: isHebrew ? '✅ מוכן עכשיו! הזמן לרחצה טרייה.' : '✅ READY NOW! Your pet is due for a fresh wash.' };
     } else if (daysUntilDue <= 3) {
-      return { type: 'due-soon', days: daysUntilDue, message: isHebrew ? `⚠️ קרוב! רחצה נדרשת תוך ${daysUntilDue} ימים.` : `⚠️ DUE SOON! Wash is due in ${daysUntilDue} days.` };
+      return { type: 'due-soon', days: daysUntilDue, message: isHebrew ? `⚠️ קרוב! רחצה נדרשת תוך ${daysUntilDue} ${daysUntilDue === 1 ? 'יום' : 'ימים'}.` : `⚠️ DUE SOON! Wash is due in ${daysUntilDue} ${daysUntilDue === 1 ? 'day' : 'days'}.` };
     }
-    return { type: 'on-track', days: daysUntilDue, message: isHebrew ? `🗓️ במסלול! רחצה הבאה בעוד ${daysUntilDue} ימים.` : `🗓️ On track! Next wash in ${daysUntilDue} days.` };
+    return { type: 'on-track', days: daysUntilDue, message: isHebrew ? `🗓️ במסלול! רחצה הבאה בעוד ${daysUntilDue} ${daysUntilDue === 1 ? 'יום' : 'ימים'}.` : `🗓️ On track! Next wash in ${daysUntilDue} ${daysUntilDue === 1 ? 'day' : 'days'}.` };
   };
 
   const generateNayaxQRCode = () => {
@@ -447,7 +447,7 @@ export default function PetCarePlanner({ language = 'en' }: { language?: string 
                             {vaccineStatus.type === 'due-soon' && (
                               <Badge className="gap-2 px-4 py-2 text-sm font-bold bg-metallic-gold text-white border-0 animate-pulse">
                                 <AlertCircle className="h-4 w-4" />
-                                ⏰ {isHebrew ? `${vaccineStatus.days} ימים` : `${vaccineStatus.days} days`}
+                                ⏰ {isHebrew ? `${vaccineStatus.days} ${vaccineStatus.days === 1 ? 'יום' : 'ימים'}` : `${vaccineStatus.days} ${vaccineStatus.days === 1 ? 'day' : 'days'}`}
                               </Badge>
                             )}
                             {vaccineStatus.type === 'current' && (

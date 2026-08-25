@@ -910,7 +910,9 @@ function ProviderCard({ provider, serviceType, isHebrew }: { provider: Provider;
           })}
           {provider.maxPets > 1 && (
             <Badge variant="outline" className="text-xs">
-              {isHebrew ? `עד ${provider.maxPets} חיות` : `Up to ${provider.maxPets} pets`}
+              {isHebrew
+                ? `עד ${provider.maxPets} ${provider.maxPets === 1 ? 'חיה' : 'חיות'}`
+                : `Up to ${provider.maxPets} ${provider.maxPets === 1 ? 'pet' : 'pets'}`}
             </Badge>
           )}
         </div>

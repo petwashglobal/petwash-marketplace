@@ -267,7 +267,7 @@ export function CreditWalletCard({
             <CreditItem
               icon={<Sparkles className="w-4 h-4 sm:w-5 sm:h-5" />}
               label="Wash Packages"
-              value={`${wallet.washPackageCredits} washes`}
+              value={`${wallet.washPackageCredits} ${wallet.washPackageCredits === 1 ? 'wash' : 'washes'}`}
               color="from-[#D4AF37]/20 to-[#D4AF37]/10"
               iconColor="text-[#D4AF37]"
             />

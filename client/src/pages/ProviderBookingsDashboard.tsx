@@ -598,7 +598,9 @@ function UpcomingBookingCard({
       toast({
         title: isHebrew ? '🚗 הלקוח קיבל התראה!' : '🚗 Customer notified!',
         description: etaMinutes
-          ? (isHebrew ? `ETA: ${etaMinutes} דקות` : `ETA: ${etaMinutes} minutes`)
+          ? (isHebrew
+              ? `ETA: ${etaMinutes} ${Number(etaMinutes) === 1 ? 'דקה' : 'דקות'}`
+              : `ETA: ${etaMinutes} ${Number(etaMinutes) === 1 ? 'minute' : 'minutes'}`)
           : undefined,
       });
       setShowArrivingInput(false);
