@@ -1257,6 +1257,15 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
   const correlationId = nanoid(10);
   const isMonetary = session.source !== 'wash_package' && session.source !== 'loyalty_benefit';
   const refundCents = isMonetary ? WASH_PRICE_ILS_CENTS : null;
+  // K9000 audit #15: loyalty_benefit compensation used to write amountCents:null AND
+  // amountUnits:null (unit branch only checked 'wash_package'). Drift-detector,
+  // finance reports, and CS dashboards were blind to loyalty refunds because both
+  // magnitude columns were null. Compute the correct unit count per source so at
+  // least one column always tells the truth.
+  const refundUnits =
+    session.source === 'wash_package'    ? 1 :
+    session.source === 'loyalty_benefit' ? LOYALTY_WASH_COST_POINTS :
+    null;
 
   await db.transaction(async (tx) => {
     // ATOMIC CLAIM (H2, go-live audit #19/#20): flip →timed_out FIRST, guarded
@@ -1333,7 +1342,7 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
       creditType:       creditTypeForRedemption(session.source as K9000RedemptionType),
       transactionType:  'compensation',
       amountCents:      refundCents,
-      amountUnits:      session.source === 'wash_package' ? 1 : null,
+      amountUnits:      refundUnits,
       sourceType:       'k9000_auto_compensation',
       platform:         'k9000',
       description:      `Auto-compensation: START_PUMP never ACKed — session ${sessionId}`,
