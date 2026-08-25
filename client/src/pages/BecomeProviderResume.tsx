@@ -65,7 +65,20 @@ export function resumeTargetFromApplication(
   if (status === 'approved' || application.stage === 'approved') return '/provider/today';
   if (status === 'rejected' || application.stage === 'rejected') return '/provider/rejected';
   if (status === 'withdrawn') return onboardingHref(providerType);
-  if (status === 'pending_review' || status === 'under_review') return '/provider/pending';
+  // Audit fix C5 (2026-08-24): the canonical /apply INSERT (server/routes/
+  // provider-onboarding.ts) writes status='pending'. Missing this branch
+  // meant every applicant who submitted through the canonical flow was
+  // bounced back into the blank onboarding form when they re-opened
+  // /become-provider — the exact "fail to register new providers" the CEO
+  // reported. 'processing' and 'pending_resubmission' are also live
+  // server states the pending page handles.
+  if (
+    status === 'pending' ||
+    status === 'pending_review' ||
+    status === 'under_review' ||
+    status === 'processing' ||
+    status === 'pending_resubmission'
+  ) return '/provider/pending';
   // draft OR unrecognized status → resume the onboarding flow.
   return onboardingHref(providerType);
 }
