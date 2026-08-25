@@ -1292,7 +1292,11 @@ router.post('/redeem-wash', validateKioskAllowlist, requireActive, async (req, r
         remainingUnit,
         redemptionType,
       }),
-    }).catch(() => {});
+    }).catch((e: any) =>
+      logger.warn('[K9000 Redeem] Apple Wallet push-update loopback failed (non-fatal)', {
+        userId, passSerial, error: e?.message,
+      })
+    );
 
     // ── Respond to kiosk ───────────────────────────────────────────────────
     logger.info('[K9000 Redeem] Wash authorised ✅', {

@@ -690,7 +690,11 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
       }
     }
 
-    // Immutable legal stamp — booking completion event
+    // Immutable legal stamp — booking completion event.
+    // Log a stamp failure loudly: this is the immutable-audit trail that
+    // regulators and finance rely on to prove a booking actually completed.
+    // Silently swallowing means a completed booking with no stamp — which
+    // reads as never-completed on any post-hoc audit.
     void ImmutableStampService.createStamp({
       entityType: 'booking',
       entityId: bookingId,
@@ -698,7 +702,11 @@ router.post("/:bookingId/complete", requireAuth, async (req, res) => {
       actorUid: userId,
       actorRole: 'user',
       metadata: { platform: booking?.platform ?? 'unknown', completedAt: new Date().toISOString() },
-    }).catch(() => {});
+    }).catch((e: any) =>
+      logger.error('[Bookings] ImmutableStamp booking_completed failed — audit trail incomplete', {
+        bookingId, userId, error: e?.message,
+      })
+    );
 
     // Settlement engine — fire-and-forget, non-blocking, idempotent.
     // Source of truth: PostgreSQL bookings table (Drizzle).

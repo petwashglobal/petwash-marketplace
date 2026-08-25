@@ -1060,7 +1060,13 @@ router.post('/bookings/:bookingId/cancel', requireAuth, requireLoyaltyMember, as
       return res.status(400).json({ error: 'CONFIRMED_BOOKING', message: 'This booking is already accepted. Please contact PetWash support to cancel it.' });
     }
     await db.update(sitterBookings).set({ status: 'cancelled', updatedAt: new Date() }).where(eq(sitterBookings.bookingId, bookingId));
-    await releaseSlotLock(db, bookingId).catch(() => {});
+    // Log the failure — a silently-swallowed releaseSlotLock leaves the slot
+    // locked forever, blocking every future booking on that provider/time.
+    await releaseSlotLock(db, bookingId).catch((e: any) =>
+      logger.error('[Sitter Suite] releaseSlotLock failed on customer-cancel — slot may stay locked', {
+        bookingId, error: e?.message,
+      })
+    );
     try {
       await db.execute(sql`UPDATE booking_requests SET status = 'cancelled', updated_at = NOW()
         WHERE quote_breakdown->'legacyRef'->>'id' = ${bookingId} AND status = 'pending'`);
@@ -1211,7 +1217,11 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         startTime: new Date(booking.startDate),
         endTime: new Date(booking.endDate),
         providerName: `${sitter.firstName} ${sitter.lastName}`,
-      }).catch(() => {});
+      }).catch((e: any) =>
+        logger.warn('[Sitter Suite] calendar event create failed (non-fatal, booking already confirmed)', {
+          bookingId: booking.bookingId, error: e?.message,
+        })
+      );
 
       // Generate Israeli digital receipt (non-blocking).
       // SIMULATED payments never get a fiscal document (2026-07-30 audit): in
