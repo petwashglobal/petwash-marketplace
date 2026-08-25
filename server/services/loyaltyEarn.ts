@@ -83,15 +83,24 @@ export async function awardLoyaltyPoints(input: AwardPointsInput): Promise<Award
     // different sourceId path) both read the same balance and one write
     // wins, losing the other's points. Same pattern as
     // server/routes/nayax-monyx-events.ts:143.
-    await db
+    //
+    // Use RETURNING to read back the post-increment values in a single
+    // round-trip — the pointsTransactions insert below persists the
+    // committed balance, and the caller receives the atomic newBalance.
+    const [updated] = await db
       .update(loyaltyProfiles)
       .set({
         points:         sql`${loyaltyProfiles.points} + ${amount}`,
         lifetimePoints: sql`${loyaltyProfiles.lifetimePoints} + ${amount}`,
         updatedAt: new Date(),
       })
-      .where(eq(loyaltyProfiles.userId, userId));
-    const newLifetime = profile.lifetimePoints + amount;
+      .where(eq(loyaltyProfiles.userId, userId))
+      .returning({
+        points: loyaltyProfiles.points,
+        lifetimePoints: loyaltyProfiles.lifetimePoints,
+      });
+    const newBalance = updated?.points ?? profile.points + amount;
+    const newLifetime = updated?.lifetimePoints ?? profile.lifetimePoints + amount;
 
     const tierCheck = detectTierUpgrade(profile.lifetimePoints, newLifetime);
     if (tierCheck.upgraded) {

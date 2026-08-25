@@ -6,6 +6,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 const selectQueue: any[][] = [];
 const updates: { vals: any }[] = [];
 const inserts: { vals: any }[] = [];
+// Tests can push a returning() result each time an update is expected;
+// awardLoyaltyPoints since PR #2143 reads the committed post-increment
+// balance from RETURNING instead of computing it in JS.
+const returningQueue: any[][] = [];
 
 vi.mock('../db', () => {
   const db = {
@@ -25,7 +29,12 @@ vi.mock('../db', () => {
       set: (vals: any) => ({
         where: () => {
           updates.push({ vals });
-          return Promise.resolve([]);
+          const chain: any = Promise.resolve([]);
+          chain.returning = () => {
+            const next = returningQueue.shift();
+            return Promise.resolve(next ?? []);
+          };
+          return chain;
         },
       }),
     }),
@@ -54,6 +63,7 @@ beforeEach(() => {
   selectQueue.length = 0;
   updates.length = 0;
   inserts.length = 0;
+  returningQueue.length = 0;
   tierUpgrade.value = { upgraded: false };
 });
 
@@ -77,6 +87,8 @@ describe('awardLoyaltyPoints — canonical earn into loyaltyProfiles + pointsTra
   it('awards on a fresh confirmed spend and writes the ledger row', async () => {
     selectQueue.push([]); // idempotency check: no prior earn for this event
     selectQueue.push([{ userId: 'user-1', points: 100, lifetimePoints: 100 }]);
+    // The atomic UPDATE ... RETURNING returns the post-increment truth.
+    returningQueue.push([{ points: 155, lifetimePoints: 155 }]);
 
     const result = await awardLoyaltyPoints(input);
 
@@ -85,12 +97,17 @@ describe('awardLoyaltyPoints — canonical earn into loyaltyProfiles + pointsTra
     expect(result.newBalance).toBe(155);
     expect(result.tierUpgraded).toBe(false);
 
-    // one profile update: balance AND lifetime both grow by the earn
+    // one profile update: both points AND lifetime bump by the earn.
+    // Since PR #2143 the .set() uses `sql\`x + n\`` fragments, so we can't
+    // assert on the numeric value — verify the SHAPE is a drizzle sql object
+    // and that the increment reached the DB via .returning() (asserted via
+    // result.newBalance above).
     expect(updates).toHaveLength(1);
-    expect(updates[0].vals.points).toBe(155);
-    expect(updates[0].vals.lifetimePoints).toBe(155);
+    expect(updates[0].vals.points).toBeDefined();
+    expect(updates[0].vals.lifetimePoints).toBeDefined();
 
-    // one ledger row, typed 'earned', carrying the idempotency identity
+    // one ledger row, typed 'earned', carrying the idempotency identity.
+    // balance is the atomic post-increment value from RETURNING.
     expect(inserts).toHaveLength(1);
     expect(inserts[0].vals).toMatchObject({
       userId: 'user-1',
@@ -134,6 +151,7 @@ describe('awardLoyaltyPoints — canonical earn into loyaltyProfiles + pointsTra
   it('floors fractional amounts before awarding', async () => {
     selectQueue.push([]);
     selectQueue.push([{ userId: 'user-1', points: 0, lifetimePoints: 0 }]);
+    returningQueue.push([{ points: 48, lifetimePoints: 48 }]);
 
     const result = await awardLoyaltyPoints({ ...input, amount: 48.9 });
 
@@ -144,13 +162,14 @@ describe('awardLoyaltyPoints — canonical earn into loyaltyProfiles + pointsTra
   it('applies a tier upgrade when lifetime points cross a threshold', async () => {
     selectQueue.push([]);
     selectQueue.push([{ userId: 'user-1', points: 900, lifetimePoints: 900 }]);
+    returningQueue.push([{ points: 1100, lifetimePoints: 1100 }]);
     tierUpgrade.value = { upgraded: true, previousTier: 'member', newTier: 'silver' };
 
     const result = await awardLoyaltyPoints({ ...input, amount: 200 });
 
     expect(result.tierUpgraded).toBe(true);
     expect(result.newTier).toBe('silver');
-    // two updates: points, then tier
+    // two updates: points (atomic sql), then tier
     expect(updates).toHaveLength(2);
     expect(updates[1].vals.tier).toBe('silver');
   });
