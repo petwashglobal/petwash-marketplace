@@ -829,12 +829,35 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       .select()
       .from(walkerProfiles)
       .where(eq(walkerProfiles.walkerId, booking.walkerId));
-    
+
     if (!walker || walker.userId !== providerUid) {
       return res.status(403).json({ error: 'Only the assigned walker can respond' });
     }
-    
+
     if (action === 'accept') {
+      // ── ATOMIC CLAIM ─────────────────────────────────────────────────────
+      // Before this claim, the read-then-charge pattern above let a walker's
+      // double-click (or web + phone racing) both pass the pending_provider
+      // check and both call confirmBooking → parseFloat(totalCost) escrow
+      // holds placed twice on the same booking. Now flip pending_provider
+      // → payment_processing in ONE UPDATE with a WHERE guard; 0 rows means
+      // another request already claimed it → 409.
+      const claimResult = await db
+        .update(walkBookings)
+        .set({ status: 'payment_processing', updatedAt: new Date() })
+        .where(and(
+          eq(walkBookings.bookingId, bookingId),
+          eq(walkBookings.status, 'pending_provider'),
+        ))
+        .returning({ id: walkBookings.id });
+      if (claimResult.length === 0) {
+        logger.warn('[Walk My Pet] concurrent accept — atomic claim lost', { bookingId, providerUid });
+        return res.status(409).json({
+          error: 'ALREADY_CLAIMED',
+          message: 'This booking is already being processed — please refresh.',
+        });
+      }
+
       // Confirm booking with luxury engine (escrow + audit trail)
       try {
         const pricing = {
@@ -875,8 +898,11 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           status: 'confirmed',
           updatedAt: new Date(),
         })
-        .where(eq(walkBookings.bookingId, bookingId));
-      
+        .where(and(
+          eq(walkBookings.bookingId, bookingId),
+          eq(walkBookings.status, 'payment_processing'),
+        ));
+
       await syncChatToBookingStatus(bookingId, 'confirmed', 'walk_my_pet');
       
       logger.info(`[Walk My Pet] Walker ACCEPTED booking ${bookingId}`);
