@@ -16,19 +16,33 @@ const router = express.Router();
 // =================== EMPLOYEES ===================
 
 // GET /api/enterprise/hr/employees - Get all employees
+// Admin-audit CRIT #17 fix (2026-08-25): filter + department were mutually
+// exclusive via if/else-if. `?filter=active&department=Ops` silently dropped
+// `department`; HR saw every active employee across every department.
+// Now we always start from a base list and layer both filters — active
+// gates from getAllEmployees; department gates from the active list when
+// both are present. Falls back to storage helpers when a helper covers the
+// exact combo (one round-trip).
 router.get("/employees", requireAdmin, async (req, res) => {
   try {
     const { filter, department } = req.query;
-    let employees;
-    
-    if (filter === "active") {
+    const wantActive = filter === "active";
+    const wantDept = typeof department === "string" && department.length > 0;
+
+    let employees: any[];
+    if (wantActive && wantDept) {
+      // Compose both filters — active AND department. In-memory intersect
+      // because storage exposes them as separate helpers.
+      const active = await storage.getActiveEmployees();
+      employees = active.filter((e: any) => e.department === department);
+    } else if (wantActive) {
       employees = await storage.getActiveEmployees();
-    } else if (department) {
+    } else if (wantDept) {
       employees = await storage.getEmployeesByDepartment(department as string);
     } else {
       employees = await storage.getAllEmployees();
     }
-    
+
     res.json(employees);
   } catch (error: any) {
     console.error("[Enterprise HR] Error fetching employees:", error);

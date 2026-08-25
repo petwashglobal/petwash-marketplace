@@ -571,17 +571,18 @@ export function registerStaffOnboardingRoutes(app: Express) {
   app.get('/api/staff/applications', requireAdmin, async (req, res) => {
     try {
       const { status, type } = req.query;
-      
-      let query = db.select().from(staffApplications);
-      
-      if (status) {
-        query = query.where(eq(staffApplications.status, status as string)) as any;
-      }
-      
-      if (type) {
-        query = query.where(eq(staffApplications.applicationType, type as string)) as any;
-      }
-      
+
+      // Admin-audit CRIT #9 fix (2026-08-25): Drizzle's `.where(A).where(B)`
+      // silently OVERWRITES the first predicate — filter status=pending AND
+      // type=cleaner used to return everything matching only type=cleaner.
+      // Build a single AND clause instead.
+      const conditions: any[] = [];
+      if (status) conditions.push(eq(staffApplications.status, status as string));
+      if (type)   conditions.push(eq(staffApplications.applicationType, type as string));
+
+      const query = conditions.length > 0
+        ? db.select().from(staffApplications).where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        : db.select().from(staffApplications);
       const applications = await query.orderBy(desc(staffApplications.submittedAt));
 
       res.json({
@@ -734,21 +735,16 @@ export function registerStaffOnboardingRoutes(app: Express) {
   app.get('/api/staff/expenses', requireAdmin, async (req, res) => {
     try {
       const { employeeId, status, verificationStatus } = req.query;
-      
-      let query = db.select().from(staffExpenses);
-      
-      if (employeeId) {
-        query = query.where(eq(staffExpenses.employeeId, employeeId as string)) as any;
-      }
-      
-      if (status) {
-        query = query.where(eq(staffExpenses.status, status as string)) as any;
-      }
-      
-      if (verificationStatus) {
-        query = query.where(eq(staffExpenses.receiptVerificationStatus, verificationStatus as string)) as any;
-      }
-      
+
+      // Admin-audit CRIT #9 fix: combined AND clause (was chained .where()).
+      const conditions: any[] = [];
+      if (employeeId)         conditions.push(eq(staffExpenses.employeeId, employeeId as string));
+      if (status)             conditions.push(eq(staffExpenses.status, status as string));
+      if (verificationStatus) conditions.push(eq(staffExpenses.receiptVerificationStatus, verificationStatus as string));
+
+      const query = conditions.length > 0
+        ? db.select().from(staffExpenses).where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        : db.select().from(staffExpenses);
       const expenses = await query.orderBy(desc(staffExpenses.submittedAt));
 
       res.json({
@@ -884,17 +880,15 @@ export function registerStaffOnboardingRoutes(app: Express) {
   app.get('/api/staff/logbook', requireAdmin, async (req, res) => {
     try {
       const { employeeId, status } = req.query;
-      
-      let query = db.select().from(staffLogbook);
-      
-      if (employeeId) {
-        query = query.where(eq(staffLogbook.employeeId, employeeId as string)) as any;
-      }
-      
-      if (status) {
-        query = query.where(eq(staffLogbook.status, status as string)) as any;
-      }
-      
+
+      // Admin-audit CRIT #9 fix: combined AND clause.
+      const conditions: any[] = [];
+      if (employeeId) conditions.push(eq(staffLogbook.employeeId, employeeId as string));
+      if (status)     conditions.push(eq(staffLogbook.status, status as string));
+
+      const query = conditions.length > 0
+        ? db.select().from(staffLogbook).where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        : db.select().from(staffLogbook);
       const entries = await query.orderBy(desc(staffLogbook.startTime));
 
       res.json({
@@ -1004,21 +998,16 @@ export function registerStaffOnboardingRoutes(app: Express) {
   app.get('/api/franchise/orders', requireAdmin, async (req, res) => {
     try {
       const { franchiseId, paymentStatus, orderStatus } = req.query;
-      
-      let query = db.select().from(franchiseOrders);
-      
-      if (franchiseId) {
-        query = query.where(eq(franchiseOrders.franchiseId, parseInt(franchiseId as string))) as any;
-      }
-      
-      if (paymentStatus) {
-        query = query.where(eq(franchiseOrders.paymentStatus, paymentStatus as string)) as any;
-      }
-      
-      if (orderStatus) {
-        query = query.where(eq(franchiseOrders.orderStatus, orderStatus as string)) as any;
-      }
-      
+
+      // Admin-audit CRIT #9 fix: combined AND clause.
+      const conditions: any[] = [];
+      if (franchiseId)   conditions.push(eq(franchiseOrders.franchiseId, parseInt(franchiseId as string)));
+      if (paymentStatus) conditions.push(eq(franchiseOrders.paymentStatus, paymentStatus as string));
+      if (orderStatus)   conditions.push(eq(franchiseOrders.orderStatus, orderStatus as string));
+
+      const query = conditions.length > 0
+        ? db.select().from(franchiseOrders).where(conditions.length === 1 ? conditions[0] : and(...conditions))
+        : db.select().from(franchiseOrders);
       const orders = await query.orderBy(desc(franchiseOrders.createdAt));
 
       res.json({

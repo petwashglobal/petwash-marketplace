@@ -268,11 +268,36 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
                 </div>
               </div>
 
+              {/* Client-audit HIGH #2 fix (2026-08-25): summary tiles were
+                 hardcoded English (Date/Time/Pet/Address) even in the Hebrew
+                 branch. Use isHebrew for both labels and the date locale. */}
               {[
-                { icon: Calendar, label: 'Date', value: selectedDate ? format(new Date(selectedDate), 'MMMM d, yyyy') : '—' },
-                { icon: Clock, label: 'Time', value: selectedTime || '—' },
-                { icon: PawPrint, label: 'Pet', value: `${petName || 'Your pet'} · ${petBreed || 'Unknown breed'} · ${petSize}` },
-                { icon: MapPin, label: 'Address', value: address || 'Not specified' },
+                {
+                  icon: Calendar,
+                  label: isHebrew ? 'תאריך' : 'Date',
+                  value: selectedDate
+                    ? new Date(selectedDate).toLocaleDateString(isHebrew ? 'he-IL' : 'en-IL', {
+                        year: 'numeric', month: 'long', day: 'numeric',
+                      })
+                    : '—',
+                },
+                {
+                  icon: Clock,
+                  label: isHebrew ? 'שעה' : 'Time',
+                  value: selectedTime || '—',
+                },
+                {
+                  icon: PawPrint,
+                  label: isHebrew ? 'חיית מחמד' : 'Pet',
+                  value: isHebrew
+                    ? `${petName || 'החיה שלך'} · ${petBreed || 'גזע לא ידוע'} · ${petSize}`
+                    : `${petName || 'Your pet'} · ${petBreed || 'Unknown breed'} · ${petSize}`,
+                },
+                {
+                  icon: MapPin,
+                  label: isHebrew ? 'כתובת' : 'Address',
+                  value: address || (isHebrew ? 'לא צוין' : 'Not specified'),
+                },
               ].map(({ icon: Icon, label, value }) => (
                 <div key={label} className="flex items-start gap-3">
                   <div className="w-8 h-8 rounded-lg bg-[#D4AF37] dark:bg-white flex items-center justify-center flex-shrink-0">
@@ -293,18 +318,27 @@ export default function GroomersBook({ language: langProp }: GroomersBookProps) 
               )}
             </div>
 
+            {/* Client-audit HIGH #1 fix (2026-08-25): panel was hardcoded English
+               AND hardcoded 15% commission. If server commission != 15%, total
+               shown != what user is charged. Since this page routes to the
+               canonical /booking/new/grooming/:userId wizard (which fetches a
+               server-computed quote), the honest UI here is "server will confirm
+               final price at payment" — do not display an invented total. */}
             <div className="luxury-glass-card p-4">
               <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-500">Service</span><span>₪{selectedSvc.price}</span>
+                <span className="text-gray-500">{isHebrew ? 'שירות' : 'Service'}</span>
+                <span>₪{selectedSvc.price}</span>
               </div>
-              <div className="flex justify-between text-sm mb-2">
-                <span className="text-gray-500">Platform fee (15%)</span><span>₪{Math.round(selectedSvc.price * 0.15)}</span>
-              </div>
-              <div className="flex justify-between font-bold text-base pt-2 border-t border-gray-100 dark:border-gray-700">
-                <span>Total</span><span className="text-[#B8932F] dark:text-[#D4AF37]">₪{Math.round(selectedSvc.price * 1.15)}</span>
-              </div>
+              <p className="text-xs text-gray-500 mt-2 text-center">
+                {isHebrew
+                  ? 'סה"כ סופי כולל דמי פלטפורמה ומע"מ יוצג בשלב התשלום, לאחר תיאום עם המספרה'
+                  : 'Final total including platform fee + VAT is confirmed at payment (after groomer accepts).'}
+              </p>
               <p className="text-xs text-gray-400 mt-2 text-center flex items-center justify-center gap-1">
-                <Sparkles className="w-3 h-3" />Payment held in 72hr escrow — released on completion
+                <Sparkles className="w-3 h-3" />
+                {isHebrew
+                  ? 'התשלום מוחזק ב-72 שעות אסקרו — משוחרר עם השלמת השירות'
+                  : 'Payment held in 72hr escrow — released on completion'}
               </p>
             </div>
           </div>
