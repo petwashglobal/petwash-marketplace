@@ -1987,13 +1987,42 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
           });
         }
 
+        // Multi-role fix (CEO 2026-08-24: "provider vs booker user role to
+        // each action multi roles"). Previously this UPDATE overwrote
+        // users.role='provider' destructively — a user who was ALSO a
+        // customer (bookings, wallet, pets) got 'provider' pinned as their
+        // scalar role, and every customer-facing gate that reads users.role
+        // ended up rejecting them.
+        //
+        // New behavior:
+        //   - Only fill users.role when it is NULL (never demote 'customer' to
+        //     'provider'). Legacy scalar stays 'customer' for existing users.
+        //   - Additively append 'provider' to the users.roles JSONB array
+        //     (dedup — array_contains via COALESCE + subquery). Gates that
+        //     understand multi-role read this array; single-role gates keep
+        //     working via users.role='customer'.
         try {
           await pool.query(
-            `UPDATE users SET role = 'provider', updated_at = NOW() WHERE id = $1 AND (role IS NULL OR role != 'provider')`,
+            `UPDATE users
+               SET role = 'provider', updated_at = NOW()
+             WHERE id = $1 AND role IS NULL`,
+            [application.userId],
+          );
+          await pool.query(
+            `UPDATE users
+               SET roles = (
+                 CASE
+                   WHEN roles IS NULL OR roles = 'null'::jsonb THEN '["provider"]'::jsonb
+                   WHEN roles @> '["provider"]'::jsonb THEN roles
+                   ELSE roles || '["provider"]'::jsonb
+                 END
+               ),
+                 updated_at = NOW()
+             WHERE id = $1`,
             [application.userId],
           );
         } catch (roleErr: any) {
-          logger.warn('[Provider Onboarding] users.role update failed (Firebase claim below still applies)', {
+          logger.warn('[Provider Onboarding] users.roles additive update failed (Firebase claim below still applies)', {
             userId: application.userId, error: roleErr?.message,
           });
         }
