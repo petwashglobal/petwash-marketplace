@@ -555,13 +555,20 @@ class AdminProviderReviewService {
 
         if (firebaseUid) {
           const existingClaims = (await firebaseAuth.getUser(firebaseUid)).customClaims || {};
+          // Additive (CEO §1/§28): preserve customer identity — never demote
+          // an existing customer scalar to 'provider'. roles[] grows.
+          const preservedRole = (existingClaims.role && existingClaims.role !== 'public') ? existingClaims.role : 'provider';
+          const preservedAccountType = (existingClaims.accountType && existingClaims.accountType !== 'pet_parent') ? existingClaims.accountType : 'provider';
+          const priorRoles = Array.isArray(existingClaims.roles) ? existingClaims.roles.filter((r: string) => typeof r === 'string') : [];
+          const nextRoles = Array.from(new Set([...priorRoles, 'provider']));
           await firebaseAuth.setCustomUserClaims(firebaseUid, {
             ...existingClaims,
-            role: 'provider',
-            accountType: 'provider',
+            role: preservedRole,
+            accountType: preservedAccountType,
+            roles: nextRoles,
             providerApprovedAt: new Date().toISOString(),
           });
-          logger.info('[AdminReview] Firebase claims set for approved provider', { firebaseUid, platform });
+          logger.info('[AdminReview] Firebase claims set for approved provider (additive)', { firebaseUid, platform, roles: nextRoles });
 
           // Insert the now-APPROVED provider into SUMIT with their full fiscal details.
           // Non-blocking + fail-safe (enqueue failure cannot fail the approval) and gated

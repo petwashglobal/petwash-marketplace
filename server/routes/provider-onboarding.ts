@@ -2081,16 +2081,23 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
     if (application.userId) {
       try {
         const existingClaims = (await auth.getUser(application.userId)).customClaims || {};
+        // Additive capability model (CEO §1/§28): preserve customer scalar
+        // identity, add 'provider' to roles[] rather than clobbering.
+        const preservedRole = (existingClaims.role && existingClaims.role !== 'public') ? existingClaims.role : 'provider';
+        const preservedAccountType = (existingClaims.accountType && existingClaims.accountType !== 'pet_parent') ? existingClaims.accountType : 'provider';
+        const priorRoles = Array.isArray(existingClaims.roles) ? existingClaims.roles.filter((r: string) => typeof r === 'string') : [];
+        const nextRoles = Array.from(new Set([...priorRoles, 'provider']));
         await auth.setCustomUserClaims(application.userId, {
           ...existingClaims,
-          role: 'provider',
-          accountType: 'provider',
+          role: preservedRole,
+          accountType: preservedAccountType,
+          roles: nextRoles,
           providerType: application.providerType,
           providerId,
           providerVerified: true,
           providerApprovedAt: new Date().toISOString(),
         });
-        logger.info(`[Provider Onboarding] Custom claims set for approved provider`, { userId: application.userId, providerType: application.providerType });
+        logger.info(`[Provider Onboarding] Custom claims set for approved provider (additive)`, { userId: application.userId, providerType: application.providerType, roles: nextRoles });
       } catch (claimsErr) {
         logger.warn('[Provider Onboarding] Failed to set custom claims', { claimsErr });
       }
