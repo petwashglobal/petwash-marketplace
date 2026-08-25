@@ -671,7 +671,7 @@ export default function BrowseDrivers() {
                           {driver.name}
                         </h3>
                         <p className="luxury-text-small">
-                          {driver.yearsExperience} years experience
+                          {driver.yearsExperience} {driver.yearsExperience === 1 ? 'year' : 'years'} experience
                         </p>
                       </div>
                       <div className="luxury-badge-gold flex items-center gap-1">

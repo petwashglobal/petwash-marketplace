@@ -266,9 +266,9 @@ export default function POSProfile() {
                 {profile.ratingAvg.toFixed(1)}
               </span>
             )}
-            <span className="text-xs text-gray-400">{profile?.ratingCount ?? 0} reviews</span>
+            <span className="text-xs text-gray-400">{profile?.ratingCount ?? 0} {(profile?.ratingCount ?? 0) === 1 ? 'review' : 'reviews'}</span>
             <span className="text-xs text-gray-400">·</span>
-            <span className="text-xs text-gray-400">{profile?.completedBookingsCount ?? 0} jobs</span>
+            <span className="text-xs text-gray-400">{profile?.completedBookingsCount ?? 0} {(profile?.completedBookingsCount ?? 0) === 1 ? 'job' : 'jobs'}</span>
           </div>
         </div>
         <button onClick={() => setActiveTab('basic')} className="p-1.5 hover:bg-white rounded-xl transition-colors">
@@ -841,7 +841,7 @@ export default function POSProfile() {
                             <Star key={s} className={`w-3 h-3 ${s <= Math.round(avgRating ?? 0) ? 'text-yellow-400 fill-yellow-400' : 'text-gray-200'}`} />
                           ))}
                         </div>
-                        <p className="text-[10px] text-gray-400 mt-0.5">{totalCount} reviews</p>
+                        <p className="text-[10px] text-gray-400 mt-0.5">{totalCount} {totalCount === 1 ? 'review' : 'reviews'}</p>
                       </div>
                       <div className="flex-1 space-y-1">
                         {[5,4,3,2,1].map(star => {

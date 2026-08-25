@@ -506,7 +506,9 @@ export default function BrowseWalkers() {
                   instantBook={true}
                   available={true}
                   specialties={[
-                    isHebrew ? `${walker.yearsExperience} שנות ניסיון` : `${walker.yearsExperience} years exp.`,
+                    isHebrew
+                      ? `${walker.yearsExperience} ${walker.yearsExperience === 1 ? 'שנת ניסיון' : 'שנות ניסיון'}`
+                      : `${walker.yearsExperience} ${walker.yearsExperience === 1 ? 'year' : 'years'} exp.`,
                     isHebrew ? 'GPS בזמן אמת' : 'Live GPS'
                   ]}
                   // ID-SPACE FIX (2026-07-30): walker.id here is providers.id, but
