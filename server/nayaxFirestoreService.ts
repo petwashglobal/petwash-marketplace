@@ -533,39 +533,43 @@ export async function redeemVoucher(
   terminalId: string
 ): Promise<{ success: boolean; message?: string }> {
   try {
-    const doc = await db.collection('nayax_vouchers').doc(voucherId).get();
-    
-    if (!doc.exists) {
-      return { success: false, message: 'Voucher not found' };
+    // Atomic Firestore transaction — the prior read → check → update
+    // pattern let two concurrent terminal taps on a 1-wash voucher both
+    // pass the `washesRemaining > 0` check, both decrement to 0, both
+    // return success — one free wash per race. Firestore runTransaction
+    // guarantees the read snapshot is validated at commit time; contended
+    // writes retry the transaction body against a fresh read.
+    const docRef = db.collection('nayax_vouchers').doc(voucherId);
+    const result = await db.runTransaction(async (tx: any) => {
+      const doc = await tx.get(docRef);
+      if (!doc.exists) return { success: false, message: 'Voucher not found' };
+
+      const voucher = doc.data() as any;
+      if (voucher.status !== 'active') {
+        return { success: false, message: `Voucher is ${voucher.status}` };
+      }
+      if (voucher.washesRemaining <= 0) {
+        return { success: false, message: 'No washes remaining' };
+      }
+
+      const nextRemaining = voucher.washesRemaining - 1;
+      const updates: any = {
+        washesRemaining: nextRemaining,
+        terminalId,
+        updatedAt: new Date().toISOString(),
+      };
+      if (nextRemaining === 0) {
+        updates.status = 'redeemed';
+        updates.redeemedAt = new Date().toISOString();
+      }
+      tx.update(docRef, updates);
+      return { success: true, washesRemaining: nextRemaining };
+    });
+
+    if (result.success) {
+      logger.info('Voucher redeemed', { voucherId, washesRemaining: (result as any).washesRemaining });
     }
-
-    const voucher = doc.data() as any;
-
-    if (voucher.status !== 'active') {
-      return { success: false, message: `Voucher is ${voucher.status}` };
-    }
-
-    if (voucher.washesRemaining <= 0) {
-      return { success: false, message: 'No washes remaining' };
-    }
-
-    // Decrease wash count or mark as redeemed
-    const updates: any = {
-      washesRemaining: voucher.washesRemaining - 1,
-      terminalId,
-      updatedAt: new Date().toISOString()
-    };
-
-    if (updates.washesRemaining === 0) {
-      updates.status = 'redeemed';
-      updates.redeemedAt = new Date().toISOString();
-    }
-
-    await db.collection('nayax_vouchers').doc(voucherId).update(updates);
-
-    logger.info('Voucher redeemed', { voucherId, washesRemaining: updates.washesRemaining });
-
-    return { success: true };
+    return result;
   } catch (error) {
     logger.error('Error redeeming voucher', error);
     return { success: false, message: 'Redemption failed' };
@@ -893,84 +897,113 @@ export async function startK9000Session(request: K9000SessionRequest): Promise<K
 
       // Handle different voucher types
       switch (voucher.voucherType) {
-        case 'single_use':
-          if (voucher.washesRemaining && voucher.washesRemaining > 0) {
-            // Decrement wash count
-            const newRemaining = voucher.washesRemaining - 1;
-            await db.collection('nayax_vouchers').doc(voucher.id).update({
+        case 'single_use': {
+          // Atomic Firestore transaction — the prior read-then-update let two
+          // concurrent terminal taps on a 1-wash voucher both pass the
+          // washesRemaining>0 check and both auth a wash (free-wash race).
+          const voucherRef = db.collection('nayax_vouchers').doc(voucher.id);
+          const claimed = await db.runTransaction(async (tx: any) => {
+            const snap = await tx.get(voucherRef);
+            if (!snap.exists) return { ok: false as const, message: 'Voucher not found' };
+            const cur = snap.data() as any;
+            if (!cur.washesRemaining || cur.washesRemaining <= 0) {
+              return { ok: false as const, message: 'Voucher has no washes remaining' };
+            }
+            if (cur.status !== 'active') {
+              return { ok: false as const, message: `Voucher is ${cur.status}` };
+            }
+            const newRemaining = cur.washesRemaining - 1;
+            tx.update(voucherRef, {
               washesRemaining: newRemaining,
               status: newRemaining === 0 ? 'redeemed' : 'active',
-              redeemedAt: newRemaining === 0 ? now : voucher.redeemedAt,
+              redeemedAt: newRemaining === 0 ? now : cur.redeemedAt,
               lastUsedAt: now,
-              terminalId: request.terminalId
-            });
-
-            // Create transaction record
-            await db.collection('nayax_transactions').add({
-              id: sessionId,
-              uid: voucher.uid,
-              packageId: voucher.packageId,
-              type: 'voucher_redemption',
-              paymentMethod: 'qr_voucher',
-              amount: 0, // Prepaid
-              currency: 'ILS',
-              status: 'approved',
-              voucherId: voucher.id,
-              stationId: request.stationId,
               terminalId: request.terminalId,
-              createdAt: now,
-              updatedAt: now
             });
-
-            return {
-              success: true,
-              sessionId,
-              message: 'Voucher redeemed successfully',
-              amountCharged: 0,
-              voucherInfo: {
-                type: 'single_use',
-                washesRemaining: newRemaining
-              }
-            };
-          } else {
-            return {
-              success: false,
-              sessionId,
-              message: 'Voucher has no washes remaining',
-              amountCharged: 0
-            };
-          }
-
-        case 'egift':
-          if (!voucher.balanceILS || voucher.balanceILS <= 0) {
-            return {
-              success: false,
-              sessionId,
-              message: 'E-gift balance is zero',
-              amountCharged: 0
-            };
-          }
-
-          // Deduct wash price from balance
-          const deductionAmount = Math.min(K9000_WASH_PRICE, voucher.balanceILS);
-          const newBalance = voucher.balanceILS - deductionAmount;
-
-          await db.collection('nayax_vouchers').doc(voucher.id).update({
-            balanceILS: newBalance,
-            status: newBalance === 0 ? 'redeemed' : 'active',
-            redeemedAt: newBalance === 0 ? now : voucher.redeemedAt,
-            lastUsedAt: now,
-            terminalId: request.terminalId,
-            redemptionHistory: [
-              ...(voucher.redemptionHistory || []),
-              {
-                amount: deductionAmount,
-                terminalId: request.terminalId,
-                stationId: request.stationId,
-                timestamp: new Date(now)
-              }
-            ]
+            return { ok: true as const, newRemaining };
           });
+
+          if (!claimed.ok) {
+            return { success: false, sessionId, message: claimed.message, amountCharged: 0 };
+          }
+
+          // Create transaction record (post-commit — losing the tx race means
+          // no double-decrement AND no double transaction row).
+          await db.collection('nayax_transactions').add({
+            id: sessionId,
+            uid: voucher.uid,
+            packageId: voucher.packageId,
+            type: 'voucher_redemption',
+            paymentMethod: 'qr_voucher',
+            amount: 0, // Prepaid
+            currency: 'ILS',
+            status: 'approved',
+            voucherId: voucher.id,
+            stationId: request.stationId,
+            terminalId: request.terminalId,
+            createdAt: now,
+            updatedAt: now,
+          });
+
+          return {
+            success: true,
+            sessionId,
+            message: 'Voucher redeemed successfully',
+            amountCharged: 0,
+            voucherInfo: {
+              type: 'single_use',
+              washesRemaining: claimed.newRemaining,
+            },
+          };
+        }
+
+        case 'egift': {
+          // Atomic Firestore transaction — same class of free-wash race:
+          // two concurrent taps on an eGift with 50₪ balance and a 40₪ wash
+          // would both read balanceILS=50, both pass the check, both deduct
+          // to 10 → one free wash consumed. runTransaction re-reads and
+          // retries on conflict so a burst of concurrent taps drains the
+          // balance monotonically.
+          if (!voucher.balanceILS || voucher.balanceILS <= 0) {
+            return { success: false, sessionId, message: 'E-gift balance is zero', amountCharged: 0 };
+          }
+          const voucherRef = db.collection('nayax_vouchers').doc(voucher.id);
+          const claimed = await db.runTransaction(async (tx: any) => {
+            const snap = await tx.get(voucherRef);
+            if (!snap.exists) return { ok: false as const, message: 'Voucher not found', deductionAmount: 0, newBalance: 0 };
+            const cur = snap.data() as any;
+            if (!cur.balanceILS || cur.balanceILS <= 0) {
+              return { ok: false as const, message: 'E-gift balance is zero', deductionAmount: 0, newBalance: 0 };
+            }
+            if (cur.status !== 'active') {
+              return { ok: false as const, message: `Voucher is ${cur.status}`, deductionAmount: 0, newBalance: 0 };
+            }
+            const deductionAmount = Math.min(K9000_WASH_PRICE, cur.balanceILS);
+            const newBalance = cur.balanceILS - deductionAmount;
+            tx.update(voucherRef, {
+              balanceILS: newBalance,
+              status: newBalance === 0 ? 'redeemed' : 'active',
+              redeemedAt: newBalance === 0 ? now : cur.redeemedAt,
+              lastUsedAt: now,
+              terminalId: request.terminalId,
+              redemptionHistory: [
+                ...(cur.redemptionHistory || []),
+                {
+                  amount: deductionAmount,
+                  terminalId: request.terminalId,
+                  stationId: request.stationId,
+                  timestamp: new Date(now),
+                },
+              ],
+            });
+            return { ok: true as const, deductionAmount, newBalance };
+          });
+
+          if (!claimed.ok) {
+            return { success: false, sessionId, message: claimed.message, amountCharged: 0 };
+          }
+          const deductionAmount = claimed.deductionAmount;
+          const newBalance = claimed.newBalance;
 
           // Create transaction record
           await db.collection('nayax_transactions').add({
@@ -1005,6 +1038,7 @@ export async function startK9000Session(request: K9000SessionRequest): Promise<K
               remainingBalance: newBalance
             }
           };
+        }
 
         case 'loyalty_discount':
           if (!voucher.discountRate || !request.amount) {
