@@ -353,6 +353,29 @@ router.get('/return', async (req: Request, res: Response) => {
     logger.error('[SumitPay] fulfilment THREW after verified payment — paid, not delivered; needs reconcile', { txnId, ext, err: e?.message });
   }
 
+  // A verified paid + failed fulfilment is a paid-not-delivered case that
+  // must be surfaced to ops explicitly, not left buried in the log. Fire a
+  // deduped admin alert so ops sees + reconciles it manually. Best-effort:
+  // the customer redirect must still succeed even if the alert insert fails.
+  if (!fulfilOk) {
+    try {
+      const { createOrUpdateAlert } = await import('../services/AlertEngine');
+      await createOrUpdateAlert({
+        dedupeKey: `sumit_fulfil_pending:${txnId}`,
+        category: 'money' as any,
+        severity: 'critical' as any,
+        title: 'SUMIT payment verified but fulfilment failed — paid, not delivered',
+        message: `Customer paid successfully (txn ${txnId}) but the wallet-credit / wash-package activation did NOT complete. Manual reconciliation required.`,
+        linkedEntityType: 'sumit_transaction',
+        linkedEntityId: txnId,
+        source: 'sumit_return',
+        metadata: { txnId, ext },
+      });
+    } catch (alertErr: any) {
+      logger.error('[SumitPay] Failed to open reconciliation alert (non-blocking)', { txnId, err: alertErr?.message });
+    }
+  }
+
   // Always land on success (the money DID clear); when fulfilment didn't complete,
   // flag it so the success page tells the truth ("being processed") + carries a ref.
   const suffix = fulfilOk ? '' : '&fulfil=pending';
