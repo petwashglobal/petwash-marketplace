@@ -8836,49 +8836,57 @@ self.addEventListener('notificationclick', (event) => {
         triggeredBy: req.user?.email 
       });
       
-      // Get all transactions (we'll check each one for missing metadata)
-      const transactionsSnapshot = await db.collection('nayax_transactions').get();
-      
+      // Get all transactions (we'll check each one for missing metadata).
+      // Prior version loaded ALL nayax_transactions into memory AND collected
+      // every needed update into ONE batch that exceeded Firestore's 500-op
+      // limit — the endpoint 500'd and no rates were ever backfilled. Now
+      // stream in bounded 400-doc pages via startAfter cursor, commit each
+      // page's writes as its own bounded batch, keep resident memory small.
+      const PAGE_SIZE = 400;
       let updatedCount = 0;
       let skippedCount = 0;
-      const batch = db.batch();
-      
-      transactionsSnapshot.docs.forEach(doc => {
-        const tx = doc.data();
-        
-        // CRITICAL: Only update if BOTH rates are missing (consistent state)
-        const hasVatRate = tx.vatRateUsed !== null && tx.vatRateUsed !== undefined;
-        const hasMerchantFeeRate = tx.merchantFeeRateUsed !== null && tx.merchantFeeRateUsed !== undefined;
-        const hasCompleteRates = hasVatRate && hasMerchantFeeRate;
-        const hasMissingRates = !hasVatRate && !hasMerchantFeeRate;
-        
-        if (hasMissingRates) {
-          // Both rates missing - safe to backfill
-          batch.update(doc.ref, {
-            vatRateUsed: VAT_RATE,
-            merchantFeeRateUsed: MERCHANT_FEE_RATE
-          });
-          updatedCount++;
-        } else if (hasCompleteRates) {
-          // Both rates exist - skip, preserve historical values
-          skippedCount++;
-        } else {
-          // Partial metadata detected - log anomaly for manual review
-          logger.warn('[NAYAX BACKFILL] Partial metadata detected - skipping for safety', {
-            transactionId: tx.id,
-            hasVatRate,
-            hasMerchantFeeRate
-          });
-          skippedCount++;
-        }
-        
-        // Firestore batch limit is 500
-        if (updatedCount % 500 === 0 && updatedCount > 0) {
-          logger.info('[NAYAX BACKFILL] Batch commit', { updatedCount, skippedCount });
-        }
-      });
-      
-      await batch.commit();
+      let cursor: any = null;
+      let pageIdx = 0;
+
+      while (true) {
+        let pageQuery: any = db.collection('nayax_transactions')
+          .orderBy('createdAt')
+          .limit(PAGE_SIZE);
+        if (cursor) pageQuery = pageQuery.startAfter(cursor);
+        const page = await pageQuery.get();
+        if (page.empty) break;
+
+        const pageBatch = db.batch();
+        let pageWrites = 0;
+        page.docs.forEach((doc: any) => {
+          const tx = doc.data();
+          const hasVatRate = tx.vatRateUsed !== null && tx.vatRateUsed !== undefined;
+          const hasMerchantFeeRate = tx.merchantFeeRateUsed !== null && tx.merchantFeeRateUsed !== undefined;
+          const hasCompleteRates = hasVatRate && hasMerchantFeeRate;
+          const hasMissingRates = !hasVatRate && !hasMerchantFeeRate;
+
+          if (hasMissingRates) {
+            pageBatch.update(doc.ref, {
+              vatRateUsed: VAT_RATE,
+              merchantFeeRateUsed: MERCHANT_FEE_RATE,
+            });
+            pageWrites++;
+            updatedCount++;
+          } else if (hasCompleteRates) {
+            skippedCount++;
+          } else {
+            logger.warn('[NAYAX BACKFILL] Partial metadata detected - skipping for safety', {
+              transactionId: tx.id, hasVatRate, hasMerchantFeeRate,
+            });
+            skippedCount++;
+          }
+        });
+        if (pageWrites > 0) await pageBatch.commit();
+        cursor = page.docs[page.docs.length - 1];
+        pageIdx++;
+        logger.info('[NAYAX BACKFILL] Page committed', { pageIdx, pageWrites, updatedCount, skippedCount });
+        if (page.size < PAGE_SIZE) break;
+      }
       
       logger.info('[NAYAX BACKFILL] Metadata backfill completed', { 
         updatedCount,

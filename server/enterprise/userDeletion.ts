@@ -98,32 +98,33 @@ async function deleteUserFirestoreData(uid: string): Promise<string[]> {
     }
     
     // 3. Delete user references in other collections
-    // Birthday vouchers
-    const vouchersSnapshot = await firestoreDb
-      .collection('birthday_vouchers')
-      .where('userId', '==', uid)
-      .get();
-    
-    const batch = firestoreDb.batch();
-    vouchersSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-    await batch.commit();
-    
-    if (vouchersSnapshot.size > 0) {
-      deletedCollections.push(`birthday_vouchers (${vouchersSnapshot.size} docs)`);
+    // Firestore batches are capped at 500 ops. A user with >500 birthday
+    // vouchers or >500 kyc docs would previously throw INVALID_ARGUMENT
+    // and leave the account half-deleted — a GDPR right-to-erasure gap.
+    // Helper below chunks the deletions into 400-op batches (headroom).
+    async function chunkedDelete(collection: string) {
+      const snap = await firestoreDb
+        .collection(collection)
+        .where('userId', '==', uid)
+        .get();
+      if (snap.size === 0) return 0;
+      const CHUNK = 400;
+      for (let i = 0; i < snap.docs.length; i += CHUNK) {
+        const b = firestoreDb.batch();
+        for (const doc of snap.docs.slice(i, i + CHUNK)) b.delete(doc.ref);
+        await b.commit();
+      }
+      return snap.size;
     }
-    
-    // KYC documents
-    const kycSnapshot = await firestoreDb
-      .collection('kyc')
-      .where('userId', '==', uid)
-      .get();
-    
-    const kycBatch = firestoreDb.batch();
-    kycSnapshot.docs.forEach(doc => kycBatch.delete(doc.ref));
-    await kycBatch.commit();
-    
-    if (kycSnapshot.size > 0) {
-      deletedCollections.push(`kyc (${kycSnapshot.size} docs)`);
+
+    const vouchersDeleted = await chunkedDelete('birthday_vouchers');
+    if (vouchersDeleted > 0) {
+      deletedCollections.push(`birthday_vouchers (${vouchersDeleted} docs)`);
+    }
+
+    const kycDeleted = await chunkedDelete('kyc');
+    if (kycDeleted > 0) {
+      deletedCollections.push(`kyc (${kycDeleted} docs)`);
     }
     
     logger.info(`[UserDeletion] Firestore data deleted for UID: ${uid}`, { 
