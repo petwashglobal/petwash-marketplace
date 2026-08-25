@@ -40,6 +40,7 @@ import cronComplianceRoutes from "./routes/cron-compliance";
 import cronNayaxSumitRoutes from "./routes/cron-nayax-sumit";
 import cronSocialRoutes from "./routes/cron-social";
 import cronBookingRemindersRoutes from "./routes/cron-booking-reminders";
+import cronHostStayRemindersRoutes from "./routes/cron-host-stay-reminders";
 import cronAuditVerifyRoutes from "./routes/cron-audit-verify";
 import cronSyntheticMoneyRoutes from "./routes/cron-synthetic-money";
 import supplierFraudFlagsRoutes from "./routes/supplier-fraud-flags";
@@ -11770,6 +11771,12 @@ self.addEventListener('notificationclick', (event) => {
   // Booking reminders T-24h/T-2h (email+SMS+inbox; fires the orphaned
   // booking-reminder-2026 template). Same x-cron-secret pattern. No money.
   app.use('/api/cron', cronBookingRemindersRoutes);
+  // Host-Stay Safety reminders — Pet Sitter overnight bookings: nudge the
+  // owner/provider to complete safety checklist BEFORE stay starts, open a
+  // CARE case if a critical item is still missing at T-24h. Same x-cron-secret
+  // pattern; writes notifications + (maybe) a CARE case; NO money moved.
+  // Recovered from the orphan list (CEO archaeology directive §5).
+  app.use('/api/cron', cronHostStayRemindersRoutes);
   // Nightly audit-chain integrity verify (money-integrity). x-cron-secret; read-only.
   app.use('/api/cron', cronAuditVerifyRoutes);
   // P0-7: synthetic money-path check — Cloud Scheduler pings this; alerts + 500 on a
