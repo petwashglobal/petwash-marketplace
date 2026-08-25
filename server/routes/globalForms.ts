@@ -615,7 +615,13 @@ router.post('/provider-registration', async (req, res) => {
   try {
     const data = providerRegistrationSchema.parse(req.body);
     const applicationId = `PRV-${Date.now().toString(36).toUpperCase()}`;
-    await GoogleSheetsService.appendToSheet('Provider Applications', [
+    // Honesty fix (2026-08-24, audit CRIT-3): appendToSheet return value was
+    // ignored. When GOOGLE_SERVICE_ACCOUNT_JSON was missing or the sheet was
+    // offline the endpoint still returned {success:true, applicationId} and
+    // nothing touched Postgres / admin queue / email — the CEO's exact
+    // "fail to register new providers" complaint. Now: fail loud with 503 so
+    // the client can retry or route the user to a manual email.
+    const sheetOk = await GoogleSheetsService.appendToSheet('Provider Applications', [
       new Date().toISOString(), applicationId, data.platform,
       data.firstName, data.lastName, data.email, data.phone,
       data.city || '', data.businessName || '', data.vatNumber || '',
@@ -623,6 +629,16 @@ router.post('/provider-registration', async (req, res) => {
       data.selfieUrl ? 'YES' : 'NO', data.idDocUrl ? 'YES' : 'NO',
       data.certDocUrl ? 'YES' : 'NO', 'PENDING',
     ]);
+    if (!sheetOk) {
+      logger.error('[GlobalForms] Provider registration persistence FAILED — appendToSheet returned false', {
+        applicationId, email: data.email, phone: data.phone,
+      });
+      return res.status(503).json({
+        error: 'FORM_PERSIST_UNAVAILABLE',
+        message: 'We could not record your provider application right now. Please try again in a minute or email providers@petwash.co.il directly.',
+        messageHe: 'לא הצלחנו לרשום את הבקשה כרגע. אנא נסה שוב או שלח מייל ל-providers@petwash.co.il.',
+      });
+    }
     res.json({ success: true, applicationId });
     setImmediate(() => {
       petWashOrchestrator.handleProviderRegistration({

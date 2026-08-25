@@ -724,6 +724,12 @@ export async function redeemVoucher(params: RedeemParams): Promise<RedeemResult>
   });
 
   // ── 9. Wallet bridge: credit egift balance for PLATFORM_CREDIT vouchers ──
+  // K9000 audit #6 fix: bridge failures used to log-and-forget, so a deadlock,
+  // restart, or network hiccup between the voucher-tx commit and this call
+  // meant the voucher was spent but the wallet was never credited — customer
+  // permanently lost the ILS. Now on failure we persist a wallet_anomaly_alerts
+  // row so ops can retry the bridge write by hand; voucher ledger is already
+  // correct at this point, only the wallet mirror needs re-application.
   if (
     voucher.voucherType === "PLATFORM_CREDIT" &&
     deltaValue > 0 &&
@@ -748,13 +754,35 @@ export async function redeemVoucher(params: RedeemParams): Promise<RedeemResult>
           voucherId: voucher.id,
         });
       } catch (walletErr: any) {
-        logger.error("[UnifiedVoucher] Wallet bridge FAILED (non-fatal)", {
-          traceId,
-          userId,
-          amountCents,
-          voucherId: voucher.id,
-          error: walletErr?.message,
+        logger.error("[UnifiedVoucher] Wallet bridge FAILED — logging anomaly for ops reconcile", {
+          traceId, userId, amountCents, voucherId: voucher.id, error: walletErr?.message,
         });
+        try {
+          const { pool } = await import("../db");
+          await pool.query(
+            `INSERT INTO wallet_anomaly_alerts
+               (alert_id, user_id, alert_type, severity, context_json, detected_at, resolved)
+             VALUES ($1, $2, 'voucher_wallet_credit_failed', 'critical', $3, NOW(), false)
+             ON CONFLICT DO NOTHING`,
+            [
+              `VOUCHER-BRIDGE-${voucher.id}-${Date.now()}`,
+              userId,
+              JSON.stringify({
+                voucherId: voucher.id,
+                serialNumber: voucher.serialNumber,
+                amountCents,
+                channel: params.channel,
+                origin: "unifiedVoucherService.redeem",
+                error: String(walletErr?.message || "unknown"),
+                traceId,
+              }),
+            ],
+          );
+        } catch (anomalyErr: any) {
+          logger.error("[UnifiedVoucher] Anomaly log write ALSO failed — manual ops intervention required", {
+            traceId, userId, voucherId: voucher.id, error: anomalyErr?.message,
+          });
+        }
       }
     }
   }

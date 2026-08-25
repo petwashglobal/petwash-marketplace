@@ -164,33 +164,55 @@ export class MembershipCardService {
   // ── Admin controls ─────────────────────────────────────────────────────────
 
   static async setStatus(userId: string, status: string, reason?: string): Promise<void> {
-    await db
+    const rows = await db
       .update(membershipCards)
       .set({ cardStatus: status, frozenReason: reason ?? null, updatedAt: new Date() })
-      .where(eq(membershipCards.userId, userId));
+      .where(eq(membershipCards.userId, userId))
+      .returning({ id: membershipCards.id });
+    if (rows.length === 0) {
+      // Silent no-op used to lie back "ok:true, status:frozen" while nothing changed.
+      // A fraud-freeze lever that quietly does nothing is worse than one that errors.
+      logger.error("[MembershipCard] setStatus targeted a user with no card row", { userId, status });
+      throw new Error("MEMBERSHIP_CARD_NOT_FOUND");
+    }
     logger.info("[MembershipCard] status changed", { userId, status, reason });
   }
 
   static async regenerateQr(userId: string): Promise<string> {
     const qrToken = crypto.randomBytes(24).toString("base64url");
-    await db.update(membershipCards).set({ qrToken, updatedAt: new Date() }).where(eq(membershipCards.userId, userId));
+    const rows = await db
+      .update(membershipCards)
+      .set({ qrToken, updatedAt: new Date() })
+      .where(eq(membershipCards.userId, userId))
+      .returning({ id: membershipCards.id });
+    if (rows.length === 0) throw new Error("MEMBERSHIP_CARD_NOT_FOUND");
     return qrToken;
   }
 
   static async regenerateBarcode(userId: string): Promise<string> {
     const [card] = await db.select().from(membershipCards).where(eq(membershipCards.userId, userId)).limit(1);
-    if (!card) throw new Error("Card not found");
+    if (!card) throw new Error("MEMBERSHIP_CARD_NOT_FOUND");
     const digits = randomDigits(6);
     const code = card.memberId.split("-")[1] ?? "STD";
     const barcodeValue = `PW${code}${digits}${checkChars(`${code}${digits}`)}`;
-    await db.update(membershipCards).set({ barcodeValue, updatedAt: new Date() }).where(eq(membershipCards.userId, userId));
+    const rows = await db
+      .update(membershipCards)
+      .set({ barcodeValue, updatedAt: new Date() })
+      .where(eq(membershipCards.userId, userId))
+      .returning({ id: membershipCards.id });
+    if (rows.length === 0) throw new Error("MEMBERSHIP_CARD_NOT_FOUND");
     return barcodeValue;
   }
 
   static async linkNayax(userId: string, nayaxCustomerId?: string | null, nayaxCardId?: string | null): Promise<void> {
-    await db
+    const rows = await db
       .update(membershipCards)
       .set({ linkedNayaxCustomerId: nayaxCustomerId ?? null, linkedNayaxCardId: nayaxCardId ?? null, updatedAt: new Date() })
-      .where(eq(membershipCards.userId, userId));
+      .where(eq(membershipCards.userId, userId))
+      .returning({ id: membershipCards.id });
+    if (rows.length === 0) {
+      logger.error("[MembershipCard] linkNayax targeted a user with no card row", { userId });
+      throw new Error("MEMBERSHIP_CARD_NOT_FOUND");
+    }
   }
 }

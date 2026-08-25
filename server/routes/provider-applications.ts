@@ -13,7 +13,7 @@ import {
   insertProviderDocumentSchema,
   insertProviderStageTransitionSchema
 } from '@shared/schema-enterprise';
-import { providerApplications } from '@shared/schema';
+import { providerApplications, providers, users } from '@shared/schema';
 import { eq, desc, and, sql } from 'drizzle-orm';
 import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
@@ -1425,6 +1425,77 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
         logger.info('[ProviderApplication] Firebase claims set for approved provider', { userId: application.userId });
       } catch (claimsErr) {
         logger.warn('[ProviderApplication] Could not set Firebase claims (non-fatal)', { claimsErr, userId: application.userId });
+      }
+    }
+
+    // CRIT (2026-08-24 audit C4): approving here flipped Firebase claims + seeded
+    // provider_services, but the customer-facing search (providerSearchService)
+    // reads from the `providers` table which was NEVER populated by this legacy
+    // path. Result: admin sees "approved", provider gets the email, and every
+    // customer search returns "no providers". Mirror the fix already applied to
+    // provider-onboarding.ts: INSERT one providers row per approved service
+    // type (idempotent on (user_id, platform_id)), and flip users.role.
+    if (application.userId) {
+      const providerTypeToPlatformId: Record<string, string> = {
+        walker:            'walk_my_pet',
+        sitter:            'sitter_suite',
+        driver:            'pet_trek',
+        trainer:           'academy',
+        groomer:           'pet_wash_hub',
+        station_operator:  'k9000',
+      };
+      const seededTypes = approvedServices.map((s) => s.serviceType);
+      const platformIds = new Set<string>();
+      for (const t of seededTypes) {
+        const pid = providerTypeToPlatformId[t];
+        if (pid) platformIds.add(pid);
+      }
+      // Fallback: if seedProviderServicesOnApproval returned nothing, try to
+      // resolve from the application record itself.
+      if (platformIds.size === 0) {
+        try {
+          const resolved = resolveApplicationServiceTypes(application);
+          for (const t of resolved) {
+            const pid = providerTypeToPlatformId[t];
+            if (pid) platformIds.add(pid);
+          }
+        } catch {
+          /* leave empty — an admin can add platforms manually later */
+        }
+      }
+      try {
+        for (const platformId of Array.from(platformIds)) {
+          await db
+            .insert(providers)
+            .values({
+              userId: application.userId,
+              platformId,
+              businessName: (application as any).businessName || null,
+              verificationStatus: 'verified',
+              backgroundCheckStatus: 'passed',
+              isActive: true,
+              isAvailable: true,
+              acceptingNewClients: true,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+            } as any)
+            .onConflictDoNothing({ target: [providers.userId, providers.platformId] as any });
+        }
+        // Flip users.role → 'provider' so dashboard access + capability lookups
+        // resolve correctly (idempotent on already-provider users).
+        await db
+          .update(users)
+          .set({ role: 'provider', updatedAt: new Date() } as any)
+          .where(eq(users.id, application.userId));
+        logger.info('[ProviderApplication] providers row inserted + users.role=provider', {
+          userId: application.userId,
+          platformIds: Array.from(platformIds),
+        });
+      } catch (providerRowErr: any) {
+        logger.error('[ProviderApplication] CRITICAL: failed to insert providers row — provider is APPROVED but INVISIBLE to search', {
+          userId: application.userId,
+          error: providerRowErr?.message,
+        });
       }
     }
     

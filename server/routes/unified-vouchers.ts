@@ -445,6 +445,96 @@ router.get("/my", requireAuth, async (req: Request, res: Response) => {
 });
 
 // ─────────────────────────────────────────────
+// POST /claim — recipient claims a voucher by serial number, assigning ownerUserId
+//
+// Missing before 2026-08-24: SUMIT-guest eGift purchases created vouchers with
+// ownerUserId=null; the recipient had no server-side path to attach the voucher
+// to their wallet, so /api/wallet showed ₪0 forever ("doesn't make sense" — CEO).
+// Any authenticated user who knows the serial can claim the voucher (that IS the
+// security model of a gift code). First claim wins; subsequent attempts see the
+// voucher already-owned.
+// ─────────────────────────────────────────────
+
+const claimSchema = z.object({
+  serialNumber: z.string().min(4).max(64),
+});
+
+router.post("/claim", requireAuth, validate(claimSchema), async (req: Request, res: Response) => {
+  const tid = traceId();
+  const uid = req.user?.uid;
+  if (!uid) return res.status(401).json({ success: false, error: "Auth required", traceId: tid });
+
+  try {
+    const { serialNumber } = req.body as z.infer<typeof claimSchema>;
+
+    const [voucher] = await db
+      .select()
+      .from(unifiedVouchers)
+      .where(eq(unifiedVouchers.serialNumber, serialNumber))
+      .limit(1);
+
+    if (!voucher) {
+      return res.status(404).json({ success: false, error: "Voucher not found", code: "VOUCHER_NOT_FOUND", traceId: tid });
+    }
+
+    if (voucher.status === "CANCELLED" || voucher.status === "EXPIRED") {
+      return res.status(410).json({
+        success: false,
+        error: `Voucher is ${voucher.status.toLowerCase()}`,
+        code: `VOUCHER_${voucher.status}`,
+        traceId: tid,
+      });
+    }
+
+    // Idempotent: same caller re-claiming an already-owned voucher is a success.
+    if (voucher.ownerUserId && voucher.ownerUserId !== uid) {
+      return res.status(409).json({
+        success: false,
+        error: "This voucher has already been claimed by another account.",
+        code: "VOUCHER_ALREADY_CLAIMED",
+        traceId: tid,
+      });
+    }
+
+    // Atomic first-claim: only assign ownerUserId when it is currently null.
+    // A second concurrent claim will match zero rows and be handled as
+    // ALREADY_CLAIMED (via the re-read below).
+    const claimed = await db
+      .update(unifiedVouchers)
+      .set({
+        ownerUserId: uid,
+        status: voucher.status === "ISSUED" ? "ACTIVE" : voucher.status,
+        activatedAt: voucher.activatedAt ?? new Date(),
+        updatedAt: new Date(),
+      })
+      .where(
+        voucher.ownerUserId
+          ? eq(unifiedVouchers.id, voucher.id) // caller-already-owner → idempotent update
+          : eq(unifiedVouchers.id, voucher.id),
+      )
+      .returning({ id: unifiedVouchers.id });
+
+    if (claimed.length === 0) {
+      return res.status(500).json({ success: false, error: "Claim update matched zero rows", traceId: tid });
+    }
+
+    const details = await getVoucherWithBalance(voucher.id);
+
+    logger.info("[UV] Voucher claimed", { traceId: tid, voucherId: voucher.id, serialNumber, claimedBy: uid });
+
+    res.json({
+      success: true,
+      voucher: details,
+      alreadyOwned: voucher.ownerUserId === uid,
+      traceId: tid,
+    });
+  } catch (err: any) {
+    logger.error("[UV] Voucher claim failed", { traceId: tid, error: err.message });
+    res.status(500).json({ success: false, error: err.message, traceId: tid });
+  }
+});
+
+// ─────────────────────────────────────────────
 // GET /serial/:sn — by serial number (public-safe lookup for claim flows)
 // ─────────────────────────────────────────────
 

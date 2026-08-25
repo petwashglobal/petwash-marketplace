@@ -1814,24 +1814,23 @@ router.post('/notify-pass-update', async (req, res) => {
       results.apnsNote = 'Set these secrets in Cloud Run to enable live push. Pass will refresh on next manual open.';
       logger.warn('[Wallet Notify] APNS credentials not configured — push skipped', { deviceCount: devicesSnap.size });
     } else {
-      // Dynamic import: node-apn (install if missing)
-      // In production this block executes; dev machines skip above via credential check.
-      for (const doc of devicesSnap.docs) {
-        const { pushToken } = doc.data() as { pushToken: string };
-        try {
-          // Lightweight APNS HTTP/2 push using native https
-          const { default: https } = await import('https');
-          const { default: http2 } = await import('http2');
-          // Note: full APNS HTTP/2 implementation requires signed JWT from p8 key.
-          // Log intent — real push fires once APNS_KEY_P8 is configured in Cloud Run.
-          logger.info('[Wallet Notify] Would push APNS to device', { pushToken: pushToken.slice(0, 8) + '…' });
-          pushCount++;
-        } catch (pushErr: any) {
-          pushErrors.push(pushErr.message);
-        }
-      }
-      results.apnsPush = `${pushCount} devices notified`;
-      if (pushErrors.length) results.apnsErrors = pushErrors;
+      // Silent-lie audit #4 fix (2026-08-24): the previous block returned
+      // `${n} devices notified` while the actual push was replaced with
+      // `logger.info('[Wallet Notify] Would push APNS…')` — nothing left the
+      // server, but the response told the client the push had happened.
+      //
+      // Real APNs push needs a signed JWT built from the p8 key and an
+      // HTTP/2 POST to https://api.push.apple.com/3/device/<token>. That
+      // wire-level work is not implemented here yet. Rather than dress up a
+      // no-op as a success, report the honest status so the caller can
+      // decide (retry queue / manual open / operator alert).
+      pushCount = 0;
+      results.apnsPush = `SKIPPED — APNs HTTP/2 sender not implemented in router (${devicesSnap.size} device(s) queued)`;
+      results.apnsNote =
+        'Router-scope APNs sender needs signed-JWT + HTTP/2. Until it lands, the pass will refresh on the next manual open of Apple Wallet.';
+      logger.warn('[Wallet Notify] APNs push NOT sent — router path is not wired to a real APNs client', {
+        passSerial, deviceCount: devicesSnap.size,
+      });
     }
   } catch (err: any) {
     results.apnsError = err.message;

@@ -875,6 +875,7 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
     });
 
     // 7. Credit wallet for non-escrow refund (pet-wash-hub and walk-my-pet cash payments — runs only after processor confirmed above)
+    let refundStatus: "credited" | "pending" | "not_applicable" = "not_applicable";
     if (netRefundCents > 0 && booking.platform !== "sitter-suite") {
       const customerId: string | null = booking.userId ?? booking.customerId ?? null;
       if (customerId) {
@@ -889,9 +890,39 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
                    updated_at = NOW()`,
             [`WALLET-${customerId.slice(0, 20)}`, customerId, netRefundCents],
           );
+          refundStatus = "credited";
           logger.info("[Bookings] Wallet refund credited (atomic UPSERT)", { customerId, netRefundCents, bookingId });
         } catch (walletErr: any) {
-          logger.error("[Bookings] Wallet credit failed", { bookingId, error: walletErr.message });
+          // Do NOT tell the customer "refund credited" when the write failed. Persist an
+          // anomaly row so ops can reconcile and retry, and surface refundStatus=pending
+          // to the client so the UI shows the correct state.
+          refundStatus = "pending";
+          logger.error("[Bookings] Wallet credit failed — logging anomaly for ops reconcile", {
+            bookingId, customerId, netRefundCents, error: walletErr?.message,
+          });
+          try {
+            await pool.query(
+              `INSERT INTO wallet_anomaly_alerts
+                 (alert_id, user_id, alert_type, severity, context_json, detected_at, resolved)
+               VALUES
+                 ($1, $2, 'refund_write_failed', 'critical', $3, NOW(), false)
+               ON CONFLICT DO NOTHING`,
+              [
+                `REFUND-FAIL-${bookingId}`,
+                customerId,
+                JSON.stringify({
+                  bookingId,
+                  netRefundCents,
+                  error: String(walletErr?.message || "unknown"),
+                  origin: "bookings.cancel",
+                }),
+              ],
+            );
+          } catch (anomalyErr: any) {
+            logger.error("[Bookings] Wallet anomaly log ALSO failed — manual ops intervention required", {
+              bookingId, customerId, error: anomalyErr?.message,
+            });
+          }
         }
       }
     }
@@ -941,14 +972,20 @@ router.post("/:bookingId/cancel", requireAuth, bookingLimiter, async (req, res) 
       policyTier: cancellationResult.policyTier,
     });
 
+    const messageForCustomer =
+      netRefundILS <= 0
+        ? "ההזמנה בוטלה. אין החזר לפי מדיניות הביטול."
+        : refundStatus === "credited"
+        ? `ההזמנה בוטלה. זיכוי של ₪${netRefundILS.toFixed(2)} נוסף לארנק.`
+        : `ההזמנה בוטלה. החזר של ₪${netRefundILS.toFixed(2)} בעיבוד — צוות התמיכה יוודא זיכוי לארנק בהקדם.`;
+
     return res.json({
       success: true,
       refundAmount: netRefundILS,
       refundPolicy: cancellationResult.policyTier,
       refundMethod: netRefundILS > 0 ? "wallet" : "none",
-      message: netRefundILS > 0
-        ? `ההזמנה בוטלה. זיכוי של ₪${netRefundILS.toFixed(2)} נוסף לארנק.`
-        : "ההזמנה בוטלה. אין החזר לפי מדיניות הביטול.",
+      refundStatus, // "credited" | "pending" | "not_applicable" — customer UI honors this
+      message: messageForCustomer,
     });
   } catch (error: any) {
     // PR-BOOKINGS-500-ERROR-SAFE — generic mapped error; details go to logs only.

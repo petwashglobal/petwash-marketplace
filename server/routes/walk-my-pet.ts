@@ -1483,29 +1483,58 @@ router.post('/walks/:bookingId/gps', requireAuth, async (req, res) => {
       recordedAt: new Date(),
     });
 
-    // Geofence violation check
+    // Geofence violation check — EVERY exit alerts the owner. Silently swallowing 2nd+
+    // violations was a pet-safety bug: a walker who repeatedly leaves the safe zone
+    // is a red flag, not a de-duped notification.
     if (!isInsideGeofence) {
       const currentViolations = booking.geofenceViolationCount || 0;
       await db
         .update(walkBookings)
-        .set({ 
+        .set({
           geofenceViolationCount: currentViolations + 1,
-          updatedAt: new Date()
+          updatedAt: new Date(),
         })
         .where(eq(walkBookings.bookingId, bookingId));
 
-      // Send alert to owner
-      if (currentViolations === 0) { // First violation only
-        await db.insert(walkAlerts).values({
-          alertId: `ALERT-${crypto.randomUUID()}`,
-          bookingId,
-          alertType: 'geofence_exit',
-          severity: 'warning',
-          title: 'Geofence Alert',
-          message: `Walker has left the designated safe zone (${distanceMeters.toFixed(0)}m away)`,
-          actionRequired: false,
-          sentToOwner: true,
-          isRead: false,
+      const severity = currentViolations === 0 ? 'warning' : 'critical';
+      const alertId = `ALERT-${crypto.randomUUID()}`;
+      await db.insert(walkAlerts).values({
+        alertId,
+        bookingId,
+        alertType: 'geofence_exit',
+        severity,
+        title: currentViolations === 0 ? 'Geofence Alert' : `Repeated Geofence Exit (#${currentViolations + 1})`,
+        message: `Walker has left the designated safe zone (${distanceMeters.toFixed(0)}m away)`,
+        actionRequired: currentViolations >= 2,
+        sentToOwner: false, // flipped to true only after dispatch succeeds
+        isRead: false,
+      });
+
+      // Actually dispatch the alert. Previous version wrote sentToOwner:true without
+      // ever contacting the owner — permanent lie in the audit ledger.
+      try {
+        const [ownerRow] = await db
+          .select({ ownerId: walkBookings.ownerId })
+          .from(walkBookings)
+          .where(eq(walkBookings.bookingId, bookingId))
+          .limit(1);
+        if (ownerRow?.ownerId) {
+          await dispatchNotifications({
+            event: 'walk_geofence_exit',
+            entityId: bookingId,
+            channels: ['sms', 'push'],
+            userId: ownerRow.ownerId,
+            smsBody: `PetWash: your dog walker left the designated zone (${distanceMeters.toFixed(0)}m). Booking ${bookingId.slice(0, 8).toUpperCase()}.`,
+            idempotencyKey: `walk-geofence-${bookingId}-${currentViolations + 1}`,
+          });
+          await db
+            .update(walkAlerts)
+            .set({ sentToOwner: true })
+            .where(eq(walkAlerts.alertId, alertId));
+        }
+      } catch (dispatchErr: any) {
+        console.error('[Walk My Pet] Geofence owner-alert dispatch failed', {
+          bookingId, alertId, error: dispatchErr?.message,
         });
       }
     }

@@ -6,6 +6,7 @@ import { GooglePlacesAutocomplete } from '@/components/ui/google-places-autocomp
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
+import { useFirebaseAuth } from '@/auth/AuthProvider';
 
 const PLATFORMS = ['Sitter Suite', 'Walk My Pet', 'PetTrek Guide', 'Academy Trainer', 'Plush Lab Groomer', 'Mobile Groomer', 'Other'];
 const EXPERIENCE = ['Under 1 year', '1–2 years', '3–5 years', '5–10 years', '10+ years'];
@@ -13,6 +14,12 @@ const EXPERIENCE = ['Under 1 year', '1–2 years', '3–5 years', '5–10 years'
 export default function ProviderRegistrationForm() {
   const { toast } = useToast();
   const [, nav] = useLocation();
+  // Firebase storage rules require /providers/{userId}/... — using a userId-less
+  // path (e.g. 'providers/selfies') was default-denied and every upload spun
+  // then alerted "Upload failed. Try again." (audit CRIT C1). Route uploads
+  // to the owner-scoped bucket namespace.
+  const { user } = useFirebaseAuth();
+  const uid = user?.uid || 'anon';
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState('');
@@ -56,9 +63,21 @@ export default function ProviderRegistrationForm() {
     try {
       const res = await apiRequest('POST', '/api/global-forms/provider-registration', form);
       const body = await res.json().catch(() => ({} as any));
-      setSuccess(body?.applicationId || `PRV-${Date.now().toString(36).toUpperCase()}`);
-    } catch {
-      toast({ variant: 'destructive', title: 'Submission failed', description: 'Please try again or email providers@petwash.co.il' });
+      // Honesty fix (2026-08-24): never fabricate a PRV-<local-time> "success"
+      // ID on the client. If the server didn't return an applicationId, the
+      // submit did not persist — show the real error instead of a fake receipt
+      // that the user cannot look up later.
+      if (!body?.applicationId) {
+        const msg = body?.message || body?.error || 'The submission did not go through. Please try again or email providers@petwash.co.il.';
+        toast({ variant: 'destructive', title: 'Submission failed', description: msg });
+        return;
+      }
+      setSuccess(body.applicationId);
+    } catch (err: any) {
+      const description = err?.message
+        ? String(err.message)
+        : 'Please try again or email providers@petwash.co.il';
+      toast({ variant: 'destructive', title: 'Submission failed', description });
     } finally { setLoading(false); }
   };
 
@@ -180,7 +199,7 @@ export default function ProviderRegistrationForm() {
               labelHe="צלם סלפי"
               capture="user"
               accept="image/*"
-              storagePath="providers/selfies"
+              storagePath={`providers/${uid}/biometric`}
               hint="Look directly at the camera with good lighting. No sunglasses."
               required
               onUploaded={(url) => set('selfieUrl', url)}
@@ -218,7 +237,7 @@ export default function ProviderRegistrationForm() {
               labelHe="תעודת זהות או דרכון"
               capture="environment"
               accept="image/*,application/pdf"
-              storagePath="providers/id-documents"
+              storagePath={`providers/${uid}/biometric`}
               hint="Clear photo of both sides of your Teudat Zehut, or your passport photo page."
               required
               onUploaded={(url) => set('idDocUrl', url)}
@@ -238,7 +257,7 @@ export default function ProviderRegistrationForm() {
               labelHe="מסמך הסמכה"
               capture="environment"
               accept="image/*,application/pdf"
-              storagePath="providers/certificates"
+              storagePath={`providers/${uid}/biometric`}
               hint="Photo or PDF of your certificate"
               onUploaded={(url) => set('certDocUrl', url)}
               onClear={() => set('certDocUrl', '')}

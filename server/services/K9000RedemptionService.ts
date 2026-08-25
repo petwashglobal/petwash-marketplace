@@ -1112,23 +1112,23 @@ async function debitAndLog(input: DebitInput): Promise<DebitResult> {
   });
 
   // ── Audit ledger (append-only hash-chain, outside main tx) ──────────────
-  const auditId   = `audit_k9000_${Date.now()}_${nanoid(8)}`;
-  const hashInput = `${auditId}:${userId}:${washId}:${redemptionType}:${bay.side}:${correlationId}`;
-  const currentHash = crypto.createHash('sha256').update(hashInput).digest('hex');
-
+  // FIX 2026-08-24: previous version passed id=string into serial column and
+  // omitted NOT NULL blockNumber — every insert threw and the compliance record
+  // was lost. Now delegated to AuditLedgerService.recordEvent which allocates
+  // blockNumber under SERIALIZABLE FOR UPDATE lock and chains previousHash.
+  let auditBlockNumber: number | null = null;
   try {
-    await db.insert(auditLedger).values({
-      id: auditId,
-      eventType: 'k9000_wallet_redemption',
+    const { AuditLedgerService } = await import('./AuditLedgerService');
+    auditBlockNumber = await AuditLedgerService.recordEvent({
+      eventType: 'package_redeemed',
       userId,
-      entityType: 'wash_credit',
+      entityType: 'wash_package',
       entityId: washId,
       action: 'redeemed',
-      currentHash,
-      previousHash: null,
       previousState: { redemptionType, bayId: bay.id, side: bay.side },
       newState: { remainingBalance, washId, sessionId },
       metadata: {
+        subType: 'k9000_wallet_redemption',
         redemptionType,
         kioskId,
         bayId: bay.id,
@@ -1140,24 +1140,24 @@ async function debitAndLog(input: DebitInput): Promise<DebitResult> {
       },
     });
   } catch (auditErr: any) {
-    // The audit-ledger row is the legal/compliance hash record of a completed
-    // wallet redemption (money already debited + wash run). It's intentionally
-    // outside the money tx so a ledger failure can't block the wash — but it must
-    // NOT be silently lost. Make it loud + recoverable (payload below + the
-    // deterministic auditId/currentHash allow a safe manual replay).
     logger.error('[K9000Redemption] CRITICAL: audit-ledger write failed — compliance record lost', {
-      auditId, error: auditErr.message, correlationId, userId, washId, redemptionType, side: bay.side, currentHash,
+      error: auditErr?.message, correlationId, userId, washId, redemptionType, side: bay.side,
     });
     import('./alerts').then(({ sendSecurityAlert }) => sendSecurityAlert(
       'K9000 audit-ledger record FAILED (wallet redemption)',
       `<p>A completed K9000 wallet redemption's audit-ledger (compliance hash) row failed to insert.</p>
-       <ul><li>auditId: ${auditId}</li><li>userId: ${userId}</li><li>washId: ${washId}</li>
-       <li>type: ${redemptionType}</li><li>side: ${bay.side}</li><li>hash: ${currentHash}</li>
-       <li>error: ${auditErr.message}</li></ul>`
+       <ul><li>userId: ${userId}</li><li>washId: ${washId}</li>
+       <li>type: ${redemptionType}</li><li>side: ${bay.side}</li>
+       <li>error: ${auditErr?.message}</li></ul>`
     )).catch(() => {});
   }
 
-  return { sessionId, remainingBalance, remainingUnit, auditId };
+  return {
+    sessionId,
+    remainingBalance,
+    remainingUnit,
+    auditId: auditBlockNumber != null ? `block_${auditBlockNumber}` : 'audit_failed',
+  };
 }
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
@@ -1257,6 +1257,15 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
   const correlationId = nanoid(10);
   const isMonetary = session.source !== 'wash_package' && session.source !== 'loyalty_benefit';
   const refundCents = isMonetary ? WASH_PRICE_ILS_CENTS : null;
+  // K9000 audit #15: loyalty_benefit compensation used to write amountCents:null AND
+  // amountUnits:null (unit branch only checked 'wash_package'). Drift-detector,
+  // finance reports, and CS dashboards were blind to loyalty refunds because both
+  // magnitude columns were null. Compute the correct unit count per source so at
+  // least one column always tells the truth.
+  const refundUnits =
+    session.source === 'wash_package'    ? 1 :
+    session.source === 'loyalty_benefit' ? LOYALTY_WASH_COST_POINTS :
+    null;
 
   await db.transaction(async (tx) => {
     // ATOMIC CLAIM (H2, go-live audit #19/#20): flip →timed_out FIRST, guarded
@@ -1333,7 +1342,7 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
       creditType:       creditTypeForRedemption(session.source as K9000RedemptionType),
       transactionType:  'compensation',
       amountCents:      refundCents,
-      amountUnits:      session.source === 'wash_package' ? 1 : null,
+      amountUnits:      refundUnits,
       sourceType:       'k9000_auto_compensation',
       platform:         'k9000',
       description:      `Auto-compensation: START_PUMP never ACKed — session ${sessionId}`,
@@ -1341,29 +1350,39 @@ export async function autoCompensateSession(sessionId: string): Promise<void> {
       createdAt:        now,
     } as any);
 
-    // ── Write a compensation audit entry ─────────────────────────────────────
-    const auditId = `AUD-COMP-${Date.now()}-${nanoid(6)}`;
-    await tx.insert(auditLedger).values({
-      auditId,
-      userId:    session.userId,
-      eventType: 'k9000_auto_compensation',
-      platform:  'k9000',
-      metadata: JSON.stringify({
+    // Compensation audit-ledger write MOVED OUT OF THIS TRANSACTION.
+    // Previously used non-existent columns (auditId, platform, hashChain) with
+    // missing NOT NULL fields — the insert threw and rolled back the wallet refund
+    // AND the timed_out status flip. Money was silently lost on every retry.
+    // Session is already claimed as timed_out inside the tx above.
+  });
+
+  // ── Write compensation audit entry AFTER the money-tx commits ──────────
+  // If this fails, the compensation still happened; we log loudly and never
+  // roll back the refund.
+  try {
+    const { AuditLedgerService } = await import('./AuditLedgerService');
+    await AuditLedgerService.recordEvent({
+      eventType: 'package_redeemed',
+      userId:    session.userId!,
+      entityType: 'wash_package',
+      entityId:  String(sessionId),
+      action:    'updated',
+      newState: {
+        subType: 'k9000_auto_compensation',
         sessionId,
-        source:     session.source,
+        source: session.source,
         refundCents,
         txnId,
-        reason:     'start_pump_ack_timeout_auto_reversed',
-      }),
-      hashChain: crypto
-        .createHash('sha256')
-        .update(`${auditId}|${session.userId}|k9000_auto_compensation|${sessionId}`)
-        .digest('hex'),
-      createdAt: now,
-    } as any);
-
-    // Session was already claimed as compensated at the top of this transaction.
-  });
+        reason: 'start_pump_ack_timeout_auto_reversed',
+      },
+      metadata: { sessionId, txnId, correlationId },
+    });
+  } catch (auditErr: any) {
+    logger.error('[AutoCompensation] audit-ledger write failed AFTER refund committed — compliance record lost, money is safe', {
+      sessionId, userId: session.userId, refundCents, txnId, error: auditErr?.message,
+    });
+  }
 
   logger.info('[AutoCompensation] ✅ Credit auto-restored', {
     sessionId,

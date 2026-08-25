@@ -42,6 +42,70 @@ const SHEETS_API_ERRORS = 'API Error Log';
 
 const router = express.Router();
 
+/**
+ * runAfterAck — run a side-effect (loyalty ledger, calendar sync, customer
+ * notification, receipt log, …) AFTER the webhook's 200 ACK, but never lose
+ * a failure to the void. Nayax does not retry after our 200; any thrown
+ * exception inside a bare setImmediate previously disappeared into the log
+ * only, so a network hiccup on a loyalty award or a notification dispatch
+ * left permanent silent drift.
+ *
+ * On any error we:
+ *   1. logger.error at critical severity with the op name + context
+ *   2. persist a wallet_anomaly_alerts row (alert_type=webhook_side_effect_failed)
+ *      keyed by (op, correlationId or hash) so ops can retry from a dashboard
+ *
+ * The webhook itself is unaffected — the 200 has already been sent.
+ * (Silent-lie audit #13 fix, 2026-08-24.)
+ */
+function runAfterAck(
+  op: string,
+  fn: () => Promise<unknown> | unknown,
+  context?: Record<string, unknown>,
+): void {
+  setImmediate(async () => {
+    try {
+      await fn();
+    } catch (err: any) {
+      logger.error(`[NayaxWebhook] post-ack side effect FAILED (${op})`, {
+        op,
+        error: err?.message,
+        stack: err?.stack,
+        ...context,
+      });
+      try {
+        const { pool } = await import('../db');
+        const correlationSeed =
+          (context?.transactionId as string | undefined) ??
+          (context?.bookingId as string | undefined) ??
+          crypto.randomBytes(6).toString('hex');
+        await pool.query(
+          `INSERT INTO wallet_anomaly_alerts
+             (alert_id, user_id, alert_type, severity, context_json, detected_at, resolved)
+           VALUES ($1, $2, 'webhook_side_effect_failed', 'critical', $3, NOW(), false)
+           ON CONFLICT DO NOTHING`,
+          [
+            `NAYAX-POSTACK-${op}-${correlationSeed}`,
+            (context?.userId as string | undefined) ?? 'system',
+            JSON.stringify({
+              op,
+              error: String(err?.message || 'unknown'),
+              origin: 'nayax-webhooks.runAfterAck',
+              ...context,
+            }),
+          ],
+        );
+      } catch (anomalyErr: any) {
+        // Even the anomaly log failed. Nothing left to do but scream — pager
+        // should catch a critical-severity logger.error above.
+        logger.error(`[NayaxWebhook] anomaly log write ALSO failed (${op})`, {
+          op, error: anomalyErr?.message,
+        });
+      }
+    }
+  });
+}
+
 // ==================== RAW BODY CAPTURE ====================
 
 /**
@@ -816,7 +880,7 @@ router.post(
         });
 
         // ── [Ops] Fire-and-forget: Sheets receipt + live feed ─────────────────
-        setImmediate(() => {
+        runAfterAck('nayax-webhook-postack', () => {
           const amountILS = (payload.amountCents / 100).toFixed(2);
           Promise.all([
             logReceipt({
@@ -883,7 +947,7 @@ router.post(
         // didn't complete and the slot was released, so they can retry. Dynamic
         // imports match this file's pattern; fully wrapped so it can never affect
         // the webhook's money path.
-        setImmediate(async () => {
+        runAfterAck('nayax-webhook-postack', async () => {
           try {
             const { users: usersTbl } = await import('@shared/schema');
             const { dispatchNotification } = await import('../lib/notificationDispatcher');
@@ -917,7 +981,7 @@ router.post(
         });
 
         // ── [Ops] Fire-and-forget: API errors sheet + live feed ───────────────
-        setImmediate(() => {
+        runAfterAck('nayax-webhook-postack', () => {
           Promise.all([
             appendFormSubmission(SHEETS_API_ERRORS, {
               errorId: `nayax-fail-${payload.transactionId}`,
@@ -979,7 +1043,7 @@ router.post(
         });
 
         // ── [Ops] Fire-and-forget: API errors sheet + live feed ───────────────
-        setImmediate(() => {
+        runAfterAck('nayax-webhook-postack', () => {
           Promise.all([
             appendFormSubmission(SHEETS_API_ERRORS, {
               errorId: `nayax-expired-${payload.bookingId}`,
@@ -1039,7 +1103,7 @@ router.post(
         });
 
         // ── [Ops] Fire-and-forget: live feed ─────────────────────────────────
-        setImmediate(() => {
+        runAfterAck('nayax-webhook-postack', () => {
           logOpsLiveFeed({
             eventType: 'payment.cancelled',
             source: 'nayax_webhook',
@@ -1334,7 +1398,7 @@ router.post(
         // wash-package purchase earned points, so tiers never moved. Non-blocking
         // + idempotent per washHistoryId so a webhook retry can't double-award.
         // (Prestige earn engine, task #13.)
-        setImmediate(async () => {
+        runAfterAck('nayax-webhook-postack', async () => {
           try {
             const { awardLoyaltyPoints, pointsForSpend } = await import('../services/loyaltyEarn');
             await awardLoyaltyPoints({
@@ -1350,7 +1414,7 @@ router.post(
         });
 
         // Log discount usage to loyalty ledger (fire-and-forget)
-        setImmediate(async () => {
+        runAfterAck('nayax-webhook-postack', async () => {
           try {
             if (discountAmount > 0 && discountPercent > 0) {
               if (discountType === 'birthday_coupon' && birthdayYear) {
@@ -1707,7 +1771,7 @@ router.post(
         // booking-requests.ts belongs to /complete — service completion — not
         // payment confirmation). Fire-and-forget: must never delay or fail the
         // webhook's 200 response or roll back the just-committed status update.
-        setImmediate(async () => {
+        runAfterAck('nayax-webhook-postack', async () => {
           try {
             const [owner] = await db.select().from(users).where(eq(users.id, booking.ownerId)).limit(1);
             const [provider] = await db.select().from(users).where(eq(users.id, booking.providerId)).limit(1);
@@ -1818,7 +1882,7 @@ router.post(
         // call never delays or rolls back the payment confirmation. The
         // already-confirmed early-return above + createBookingEvent's own
         // petwash_booking_id lookup make webhook redelivery idempotent.
-        setImmediate(async () => {
+        runAfterAck('nayax-webhook-postack', async () => {
           try {
             const { calendarIntegrationService } = await import('../services/CalendarIntegrationService');
             const { bookingRequests: bookingRequestsTbl, users: usersTbl } = await import('@shared/schema');

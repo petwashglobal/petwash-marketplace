@@ -373,7 +373,8 @@ import {
   stationBays,
   baySessions,
   kioskMachines,
-  userConsents
+  userConsents,
+  pets
 } from "@shared/schema";
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
@@ -11453,11 +11454,9 @@ self.addEventListener('notificationclick', (event) => {
           //   data: { ...recipient, ...customData }
           // });
 
-          // Update communication status
-          await storage.updateCommunication(communication.id, {
-            status: 'sent',
-            sentAt: new Date(),
-          });
+          // DO NOT stamp status='sent' — nothing left the server. Leaving the row at
+          // 'not_sent_feature_disabled' keeps the CRM audit trail honest (previous
+          // code lied to the audit log while returning 501 to the caller).
 
           results.push({
             recipient: recipient.email,
@@ -12616,12 +12615,54 @@ self.addEventListener('notificationclick', (event) => {
       }
       const redemptionType = rawType as RedemptionType;
 
-      // Resolve wallet for the user so we can embed the walletId as passSerial
+      // Resolve wallet for the user so we can embed the walletId as passSerial.
+      // Also pull the balance columns needed to VALIDATE the requested redemptionType
+      // before we issue a QR that promises credits the user doesn't have.
       const [wallet] = await db
-        .select({ walletId: walletAccountsTable.walletId })
+        .select({
+          walletId:              walletAccountsTable.walletId,
+          washPackageCredits:    walletAccountsTable.washPackageCredits,
+          egiftBalanceCents:     walletAccountsTable.egiftBalanceCents,
+          cashWalletBalanceCents: walletAccountsTable.cashWalletBalanceCents,
+          promoBalanceCents:     walletAccountsTable.promoBalanceCents,
+          loyaltyPointsBalance:  walletAccountsTable.loyaltyPointsBalance,
+        })
         .from(walletAccountsTable)
         .where(eq(walletAccountsTable.userId, userId))
         .limit(1);
+
+      // Balance gate — refuse to mint a QR that claims credit the user does not have.
+      // Previously creditsApplied.washPackages was hard-coded to 1 for any wash_package
+      // request, so a user with zero package credit could scan a QR at the bay, see
+      // "package will be used", and then either double-spend or hit INSUFFICIENT_CREDITS
+      // on the actual redeem call (audit lie).
+      const WASH_PRICE_CENTS = 5500;
+      const LOYALTY_WASH_COST_POINTS = 200;
+      const balanceOk = (() => {
+        if (!wallet) return false;
+        switch (redemptionType) {
+          case 'wash_package':    return (wallet.washPackageCredits ?? 0) >= 1;
+          case 'gift_credit':     return (wallet.egiftBalanceCents ?? 0) >= WASH_PRICE_CENTS;
+          case 'wallet_balance':  return (wallet.cashWalletBalanceCents ?? 0) >= WASH_PRICE_CENTS;
+          case 'promo_coupon':    return (wallet.promoBalanceCents ?? 0) >= WASH_PRICE_CENTS;
+          case 'loyalty_benefit': return (wallet.loyaltyPointsBalance ?? 0) >= LOYALTY_WASH_COST_POINTS;
+          default: return false;
+        }
+      })();
+      if (!balanceOk) {
+        return res.status(400).json({
+          error: 'INSUFFICIENT_CREDITS',
+          message: 'You do not have enough credit of the selected type to open a bay.',
+          redemptionType,
+          walletBalance: wallet ? {
+            washPackageCredits:     wallet.washPackageCredits ?? 0,
+            egiftBalanceCents:      wallet.egiftBalanceCents ?? 0,
+            cashWalletBalanceCents: wallet.cashWalletBalanceCents ?? 0,
+            promoBalanceCents:      wallet.promoBalanceCents ?? 0,
+            loyaltyPointsBalance:   wallet.loyaltyPointsBalance ?? 0,
+          } : null,
+        });
+      }
 
       const passSerial = wallet?.walletId ?? userId;
       const TTL_SECONDS = 45;
@@ -17495,10 +17536,39 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       // it must not tell the user their wash was "scheduled". saved:false makes
       // that explicit; the client should present this as a recommendation. To
       // make it a real booking, persist via the canonical booking rail.
+      //
+      // Fixed 2026-08-24 (silent-lie audit #1):
+      //   - id was Date.now() (fake numeric id that looks like a real DB row) →
+      //     now advisory_<uuid> so no client caches it as a persistent id
+      //   - petName was hard-coded 'Pet' → now looked up + ownership-checked
+      //     against pets.userId so the response references the real pet
+      const callerUid = (req as any).userId || (req as any).user?.uid;
+      let petName = 'Pet';
+      try {
+        const petIdNum = Number(petId);
+        if (Number.isFinite(petIdNum) && callerUid) {
+          const [petRow] = await db
+            .select({ name: pets.name, userId: pets.userId })
+            .from(pets)
+            .where(eq(pets.id, petIdNum))
+            .limit(1);
+          if (petRow) {
+            if (petRow.userId !== callerUid) {
+              return res.status(403).json({ error: 'PET_NOT_OWNED', message: 'You do not own this pet.' });
+            }
+            petName = petRow.name || 'Pet';
+          }
+        }
+      } catch (petLookupErr: any) {
+        logger.warn('[PetCare] Pet lookup failed for advisory — using placeholder name', {
+          petId, error: petLookupErr?.message,
+        });
+      }
+
       const newSchedule = {
-        id: Date.now(),
+        id: `advisory_${crypto.randomUUID()}`,
         petId,
-        petName: 'Pet', // advisory only — pet name not fetched
+        petName,
         scheduledDate: date,
         status: 'advisory',
         saved: false,

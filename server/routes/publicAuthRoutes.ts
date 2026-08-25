@@ -640,12 +640,36 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     // Persist the member's 2-step-login CHOICE (CEO 2026-07-31 "one-way or two-way
     // verification"). Only when explicitly provided; the column defaults false, so
     // opting out — or an older client that doesn't send it — is a safe no-op.
+    // HONESTY FIX 2026-08-24: opt-IN is a security control — silently swallowing
+    // the write meant later logins would not enforce 2FA even though the user asked
+    // for it. When the user explicitly opted IN and the write fails, surface it so
+    // the client can retry via the Security page. Opt-OUT failure remains non-blocking
+    // (column default is already false).
+    let twoFactorPersisted: boolean | 'failed' | 'skipped' = 'skipped';
     if (typeof twoFactorEnabled === 'boolean') {
       try {
-        await pool.query(`UPDATE users SET two_factor_enabled = $1 WHERE id = $2`, [twoFactorEnabled, uid]);
+        const r = await pool.query(
+          `UPDATE users SET two_factor_enabled = $1 WHERE id = $2 RETURNING id`,
+          [twoFactorEnabled, uid],
+        );
+        twoFactorPersisted = r.rowCount && r.rowCount > 0 ? twoFactorEnabled : 'failed';
+        if (twoFactorPersisted === 'failed') {
+          logger.error('[Signup] verify-signup-email 2FA UPDATE matched 0 rows (user row missing)', { uid });
+        }
       } catch (e: any) {
-        logger.warn('[Signup] verify-signup-email set-2fa-pref failed (non-blocking)', { error: e?.message });
+        twoFactorPersisted = 'failed';
+        logger.error('[Signup] verify-signup-email set-2fa-pref threw', { uid, error: e?.message });
       }
+      // Correction (2026-08-24 signup audit CRIT #10): the earlier 500 return
+      // here blocked completion of an otherwise-successful email verification.
+      // The client's mutation onError treated it as a full failure ("Email attach
+      // failed. Try again"), causing the user to retry the same code (already
+      // consumed) and get stuck in a loop. Email verification IS the primary
+      // control of this endpoint; 2FA-opt-in is a bolt-on preference that
+      // Account Security can fix later. Downgrade to a WARNING carried in the
+      // 200 response so the client can complete signup + surface a follow-up
+      // toast to visit Account Security.
+      // (twoFactorPersisted is echoed in the final res.json — see bottom of handler.)
     }
     // Best-effort DB flag (email_verified column may not exist → harmless skip).
     try {
@@ -664,7 +688,13 @@ publicAuthRouter.post("/api/auth/verify-signup-email", apiLimiter, async (req, r
     } catch (vErr: any) {
       logger.warn('[Signup] verify-signup-email activation advance failed (non-blocking)', { error: vErr?.message });
     }
-    return res.json({ ok: true });
+    // Include twoFactorPersisted so the client can surface a follow-up toast
+    // when the 2FA preference didn't stick (rather than being blocked entirely).
+    const twoFactorWarning =
+      typeof twoFactorEnabled === 'boolean' && twoFactorEnabled === true && twoFactorPersisted !== true
+        ? 'TWO_FACTOR_PREF_NOT_SAVED'
+        : undefined;
+    return res.json({ ok: true, emailVerified: true, twoFactorPersisted, twoFactorWarning });
   } catch (e: any) {
     logger.error('[Signup] verify-signup-email error', { error: e?.message });
     return res.status(500).json({ ok: false, error: 'Email verification failed.' });

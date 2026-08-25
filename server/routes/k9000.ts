@@ -254,34 +254,54 @@ router.post('/wash/start_cycle', async (req, res) => {
       });
     }
 
-    // === IDEMPOTENCY CHECK: prevent double-activation for same transaction ===
+    // === IDEMPOTENCY CLAIM: atomic transition on nayaxTransactions.status ==
+    // Previous impl scanned last 50 audit_ledger rows in JavaScript — non-atomic,
+    // no unique constraint, and truncated at 50. Two concurrent webhook retries
+    // (or a card double-tap) could both pass, both send START_PUMP, both burn
+    // the wash. Now: race one atomic UPDATE ... WHERE status='authorized' — the
+    // winner sees rowCount=1 and proceeds, the loser sees rowCount=0 and 409s.
     if (transactionId) {
-      const existingWash = await db
-        .select({ id: auditLedger.id, metadata: auditLedger.metadata })
-        .from(auditLedger)
-        .where(eq(auditLedger.eventType, 'k9000_wash_activated'))
-        .limit(50);
+      const claim = await db
+        .update(nayaxTransactions)
+        .set({ status: 'vend_pending', vendAttemptedAt: new Date() })
+        .where(and(
+          eq(nayaxTransactions.id, transactionId),
+          eq(nayaxTransactions.status, 'authorized'),
+        ))
+        .returning({ id: nayaxTransactions.id });
 
-      const duplicate = existingWash.find((row) => {
-        try {
-          const meta = typeof row.metadata === 'string'
-            ? JSON.parse(row.metadata)
-            : row.metadata;
-          return meta?.transactionId === transactionId;
-        } catch {
-          return false;
+      if (claim.length === 0) {
+        // Either the transaction doesn't exist, is in the wrong state, or another
+        // caller already claimed it. Read back once to distinguish for a clean error.
+        const [current] = await db
+          .select({ status: nayaxTransactions.status })
+          .from(nayaxTransactions)
+          .where(eq(nayaxTransactions.id, transactionId))
+          .limit(1);
+        if (!current) {
+          logger.warn('[K9000 Wash] Unknown transactionId — cannot activate', { transactionId });
+          return res.status(404).json({
+            error: 'עסקה לא נמצאה. אנא נסה שוב.',
+            errorEn: 'Transaction not found.',
+            status: 'TRANSACTION_NOT_FOUND',
+            transactionId,
+          });
         }
-      });
-
-      if (duplicate) {
-        logger.warn('[K9000 Wash] Duplicate activation attempt blocked', {
-          transactionId,
-          existingAuditId: duplicate.id,
-        });
+        if (['vend_pending', 'vend_success', 'settled'].includes(String(current.status))) {
+          logger.warn('[K9000 Wash] Duplicate activation attempt blocked (atomic race lost)', {
+            transactionId, currentStatus: current.status,
+          });
+          return res.status(409).json({
+            error: 'עסקה זו כבר שימשה להפעלת עמדת שטיפה.',
+            errorEn: 'This payment has already been used to start a wash cycle.',
+            status: 'ALREADY_ACTIVATED',
+            transactionId,
+          });
+        }
         return res.status(409).json({
-          error: 'עסקה זו כבר שימשה להפעלת עמדת שטיפה.',
-          errorEn: 'This payment has already been used to start a wash cycle.',
-          status: 'ALREADY_ACTIVATED',
+          error: 'עסקה במצב לא מתאים להפעלה.',
+          errorEn: `Transaction in unexpected state: ${current.status}`,
+          status: 'TRANSACTION_INVALID_STATE',
           transactionId,
         });
       }
@@ -502,13 +522,26 @@ router.post('/wash/start_cycle', async (req, res) => {
           .catch((e: any) => logger.error('[K9000 Wash] mark txn failed error', { error: e?.message }));
       }
 
-      await db.insert(auditLedger).values({
-        id: `audit_wash_fail_${Date.now()}_${nanoid(12)}`,
-        eventType: 'k9000_wash_activation_failed_refund_due',
-        customerUid: customerUid || null,
-        metadata: JSON.stringify({ machineId, side: resolvedSide, washType, transactionId, washId, reason: 'machine_activation_failed', refundStatus: 'refund_pending' }),
-        ipAddress: clientIP, userAgent: req.headers['user-agent'] || null, previousHash: null,
-      }).catch((e: any) => logger.error('[K9000 Wash] fail audit error', { error: e?.message }));
+      try {
+        const { AuditLedgerService } = await import('../services/AuditLedgerService');
+        await AuditLedgerService.recordEvent({
+          eventType: 'package_redeemed',
+          userId: customerUid || 'anonymous',
+          entityType: 'wash_package',
+          entityId: String(washId),
+          action: 'updated',
+          newState: {
+            subType: 'k9000_wash_activation_failed_refund_due',
+            machineId, side: resolvedSide, washType, transactionId, washId,
+            reason: 'machine_activation_failed', refundStatus: 'refund_pending',
+          },
+          metadata: { transactionId, washId },
+          ipAddress: clientIP,
+          userAgent: req.headers['user-agent'] || undefined,
+        });
+      } catch (e: any) {
+        logger.error('[K9000 Wash] fail audit error', { error: e?.message });
+      }
 
       // HIGH-1 fix (save-integrity audit 2026-08-24): was .catch(() => {}) —
       // if the ops alert dispatch fails we would silently drop the "paid but
@@ -570,27 +603,37 @@ router.post('/wash/start_cycle', async (req, res) => {
     
     // === STEP 4: AUDIT LOG ===
     
-    await db.insert(auditLedger).values({
-      id: `audit_wash_${Date.now()}_${nanoid(12)}`,
-      eventType: 'k9000_wash_activated',
-      customerUid: customerUid || null,
-      metadata: JSON.stringify({
-        machineId,
-        side: resolvedSide,      // REQUIRED: which bay's terminal fired
-        bayId: resolvedBay?.id,  // FK to station_bays, null if not yet registered
-        washType,
-        transactionId,
-        qrCode: qrCode ? '***REDACTED***' : null,
-        isFreeWash,
-        discountPercent,
-        washId,
-        machineCommandSent,      // false = demo mode / MACHINE_ACTIVATION_URL not set
-        machineActivationMode: machineActivationUrl ? 'live' : 'demo',
-      }),
-      ipAddress: clientIP,
-      userAgent: req.headers['user-agent'] || null,
-      previousHash: null,
-    });
+    try {
+      const { AuditLedgerService } = await import('../services/AuditLedgerService');
+      await AuditLedgerService.recordEvent({
+        eventType: 'package_redeemed',
+        userId: customerUid || 'anonymous',
+        entityType: 'wash_package',
+        entityId: String(washId),
+        action: 'redeemed',
+        newState: {
+          subType: 'k9000_wash_activated',
+          machineId,
+          side: resolvedSide,
+          bayId: resolvedBay?.id,
+          washType,
+          transactionId,
+          qrCode: qrCode ? '***REDACTED***' : null,
+          isFreeWash,
+          discountPercent,
+          washId,
+          machineCommandSent,
+          machineActivationMode: machineActivationUrl ? 'live' : 'demo',
+        },
+        metadata: { transactionId, washId, machineId },
+        ipAddress: clientIP,
+        userAgent: req.headers['user-agent'] || undefined,
+      });
+    } catch (e: any) {
+      logger.error('[K9000 Wash] activation audit-ledger write failed', {
+        error: e?.message, washId, transactionId,
+      });
+    }
     
     // === STEP 4.5: PUBLISH DOMAIN EVENT ===
     

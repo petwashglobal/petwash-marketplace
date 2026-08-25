@@ -577,7 +577,96 @@ router.post('/closure-approve', requireAuth, async (req: Request, res: Response)
 
     await touchLastAction('dispute', String(disputeId));
 
-    res.json({ success: true, disputeId, bookingId, newStatus: 'closed' });
+    // HONESTY FIX 2026-08-24: previously the endpoint stamped status='closed' and
+    // walked away — no escrow release / refund action, no customer notification.
+    // Escrow money stayed locked and the customer never learned the outcome.
+    // Reason-code drives the money direction:
+    //   - customer-favor / provider-no-show → REFUND (return card money)
+    //   - provider-favor / service-complete → RELEASE (pay provider)
+    // Anything else stays untouched and is flagged for manual finance review.
+    const reasonCode: string = String(dispute.closure_reason_code || '').toLowerCase();
+    const releaseCodes = new Set(['service_complete', 'provider_favor', 'complaint_unfounded']);
+    const refundCodes  = new Set(['customer_favor', 'provider_no_show', 'service_not_rendered', 'safety_issue']);
+    let escrowOutcome: 'released' | 'refunded' | 'no_action' | 'manual_review' = 'no_action';
+    try {
+      const escrowSvcMod = await import('../services/EscrowService');
+      const escrowSvc = (escrowSvcMod as any).default ?? escrowSvcMod;
+      const escrows: any[] = typeof escrowSvc.getEscrowsByBooking === 'function'
+        ? await escrowSvc.getEscrowsByBooking(bookingId)
+        : [];
+      const held = (escrows || []).filter((e) => e && e.status === 'held');
+      if (held.length === 0) {
+        escrowOutcome = 'no_action';
+      } else if (refundCodes.has(reasonCode)) {
+        for (const e of held) {
+          await escrowSvc.refundEscrowPayment(e.id, `Dispute closure: ${reasonCode}`, ctx.uid ?? 'system');
+        }
+        escrowOutcome = 'refunded';
+      } else if (releaseCodes.has(reasonCode)) {
+        for (const e of held) {
+          await escrowSvc.releaseEscrowPayment(e.id, ctx.uid ?? 'system', `Dispute closure: ${reasonCode}`);
+        }
+        escrowOutcome = 'released';
+      } else {
+        escrowOutcome = 'manual_review';
+        logger.warn('[CaseActions] closure-approve: unmapped reason_code — escrow left held for manual review', {
+          disputeId, bookingId, reasonCode, heldCount: held.length,
+        });
+        await db.execute(sql`
+          INSERT INTO case_notes (case_type, case_ref_id, author_uid, author_role, note_text)
+          VALUES ('dispute', ${String(disputeId)}, 'system', 'system',
+            ${`ESCROW MANUAL REVIEW: reason_code="${reasonCode}" does not map to auto refund/release. ${held.length} held escrow(s) require finance action.`})
+        `);
+      }
+    } catch (escrowErr: any) {
+      // Do not let escrow failure roll back the dispute-close audit trail; surface it in
+      // the response and log an escalation event so ops sees the money-half-done state.
+      escrowOutcome = 'manual_review';
+      logger.error('[CaseActions] closure-approve: escrow action FAILED — manual review required', {
+        disputeId, bookingId, error: escrowErr?.message,
+      });
+      await db.execute(sql`
+        INSERT INTO case_escalation_log (case_type, case_ref_id, event_type, from_uid, to_uid, note)
+        VALUES ('dispute', ${String(disputeId)}, 'escrow_action_failed',
+          ${ctx.uid ?? 'admin'}, NULL,
+          ${`Escrow action failed during closure-approve: ${String(escrowErr?.message || 'unknown')}`})
+      `);
+    }
+
+    // Notify the customer about the outcome (previously silent).
+    try {
+      const bookingR = await db.execute(sql`
+        SELECT user_id, customer_id FROM bookings WHERE id = ${bookingId} LIMIT 1
+      `);
+      const bookingRow: any = bookingR.rows[0] ?? {};
+      const customerId: string | null = bookingRow.user_id ?? bookingRow.customer_id ?? null;
+      if (customerId) {
+        const outcomeMessage =
+          escrowOutcome === 'refunded' ? 'Your dispute has been resolved and a refund is being processed.' :
+          escrowOutcome === 'released' ? 'Your dispute has been reviewed and closed.' :
+          escrowOutcome === 'manual_review' ? 'Your dispute has been closed. Our finance team will follow up on any pending refund.' :
+          'Your dispute has been closed.';
+        const userR = await db.execute(sql`
+          SELECT phone, email FROM users WHERE id = ${customerId} LIMIT 1
+        `);
+        const userRow: any = userR.rows[0] ?? {};
+        const { dispatchNotifications } = await import('../services/PetWashNotificationEngine');
+        await dispatchNotifications({
+          userId: customerId,
+          eventType: 'dispute_closed',
+          templateKey: 'dispute-closed-outcome',
+          channels: ['sms'],
+          sms: userRow.phone ? { to: String(userRow.phone), text: `PetWash: ${outcomeMessage}` } : undefined,
+          idempotencyKey: `dispute-closed-${disputeId}`,
+        });
+      }
+    } catch (notifyErr: any) {
+      logger.warn('[CaseActions] closure-approve customer notify failed (non-blocking)', {
+        disputeId, bookingId, error: notifyErr?.message,
+      });
+    }
+
+    res.json({ success: true, disputeId, bookingId, newStatus: 'closed', escrowOutcome });
   } catch (err: any) {
     logger.error('[CaseActions] closure-approve error', { error: err.message });
     res.status(500).json({ error: 'closure_approve_error' });

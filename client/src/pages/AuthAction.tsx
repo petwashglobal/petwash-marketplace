@@ -90,9 +90,38 @@ export default function AuthAction() {
   const handleEmailVerification = async (code: string) => {
     try {
       await applyActionCode(auth, code);
+      // Audit CRIT #1 (2026-08-24 signup audit) fix: previous code only marked
+      // Firebase emailVerified=true and NEVER persisted the flag to Postgres.
+      // The post-login gate at server/routes/post-login.ts:459-468 keeps
+      // bouncing authProvider='email' users to /verify-email while
+      // users.email_verified is false — infinite loop after every "verified"
+      // link. Best-effort POST to /api/auth/email/mark-verified so the Postgres
+      // mirror lands. If the user is not currently signed in on this device,
+      // the mark-verified call will 401 and be a no-op — that's fine, because
+      // signing in later re-runs applyActionCode's Firebase state and this
+      // page will be re-hit if they follow the same link, or Firebase's
+      // reload() in VerifyEmail.tsx will trip a manual "I've verified" path.
+      try {
+        const bearer = await auth.currentUser?.getIdToken?.().catch(() => null);
+        if (bearer) {
+          await fetch('/api/auth/email/mark-verified', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${bearer}` },
+          }).catch(() => { /* non-blocking */ });
+        } else {
+          // Fall through: post-login on the next sign-in will observe
+          // Firebase emailVerified=true and can catch-up if wired.
+          await fetch('/api/auth/email/mark-verified', {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+          }).catch(() => { /* non-blocking */ });
+        }
+      } catch { /* non-blocking — Firebase side is already verified */ }
       setSuccess('Your email has been verified successfully! You can now sign in.');
       setLoading(false);
-      
+
       // Redirect to login after 3 seconds
       setTimeout(() => {
         setLocation('/login');

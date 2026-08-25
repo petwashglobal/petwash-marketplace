@@ -480,6 +480,19 @@ function ContactModal({ post, onClose }: { post: PawPost; onClose: () => void })
       toast({ variant: 'destructive', title: 'הודעה קצרה מדי', description: 'נא לכתוב לפחות 5 תווים' });
       return;
     }
+    // Demo/featured cards seeded with id=-1/-2/-3 have no server row. Contacting
+    // them used to POST /api/paw-finder/posts/-1/contact → 404 POST_NOT_FOUND
+    // with a generic error toast (audit F7). Give the user a clear message
+    // instead of a broken button.
+    if (typeof post.id === 'number' && post.id < 0) {
+      toast({
+        variant: 'destructive',
+        title: 'זו דוגמה בלבד',
+        description: 'הפוסט הזה מוצג להמחשה. אנא בחר פוסט אמיתי כדי לשלוח הודעה.',
+      });
+      onClose();
+      return;
+    }
     setSubmitting(true);
     try {
       const bt = await getFirebaseBearerToken(); // Bearer → CSRF-exempt (cookie-only POST was 403'ing in prod)
@@ -489,11 +502,24 @@ function ContactModal({ post, onClose }: { post: PawPost; onClose: () => void })
         credentials: 'include',
         body: JSON.stringify({ messageText: message.trim() }),
       });
-      if (!r.ok) throw new Error('failed');
+      if (!r.ok) {
+        // Surface the real server error instead of a generic "failed" — auth
+        // failures, rate limits, and validation errors all deserve a real message.
+        let serverMsg = '';
+        try {
+          const body = await r.json();
+          serverMsg = String(body?.message || body?.error || '');
+        } catch { /* ignore */ }
+        throw new Error(serverMsg || `HTTP ${r.status}`);
+      }
       toast({ title: '✅ הבקשה נשלחה', description: 'בעל הפוסט יקבל את הודעתך.' });
       onClose();
-    } catch {
-      toast({ variant: 'destructive', title: 'שגיאה', description: 'לא הצלחנו לשלוח את הבקשה. נסה שוב.' });
+    } catch (err: any) {
+      toast({
+        variant: 'destructive',
+        title: 'שגיאה',
+        description: err?.message ? String(err.message) : 'לא הצלחנו לשלוח את הבקשה. נסה שוב.',
+      });
     } finally {
       setSubmitting(false);
     }

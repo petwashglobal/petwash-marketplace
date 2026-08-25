@@ -136,7 +136,7 @@ const upload = multer({
       logger.warn(`[Upload] Rejected file type: ${file.mimetype} for ${file.fieldname}`);
       return callback(new Error(`Invalid file type: ${file.mimetype}. Allowed: JPEG, PNG, WebP, HEIC, PDF`));
     }
-    
+
     // Check file extension matches MIME type
     const ext = file.originalname.split('.').pop()?.toLowerCase();
     const validExtensions = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'pdf'];
@@ -144,10 +144,67 @@ const upload = multer({
       logger.warn(`[Upload] Rejected file extension: ${ext} for ${file.fieldname}`);
       return callback(new Error(`Invalid file extension. Allowed: ${validExtensions.join(', ')}`));
     }
-    
+
     callback(null, true);
   }
 });
+
+/**
+ * wrapUpload — run a multer middleware, but map its errors to JSON 400 so the
+ * provider signup UI can display a real error message instead of the express
+ * default 500 HTML page.
+ *
+ * Fixes CEO complaint (2026-08-24): "load images, save not easy or possible,
+ * fail to register new providers". A rejected file type or oversize file used
+ * to throw and hit express's default error handler → the client got an HTML
+ * blob and the mutation onError showed "Please try again" with no useful info.
+ * Now:
+ *   - MulterError LIMIT_FILE_SIZE   → 413 FILE_TOO_LARGE + Hebrew/English msg
+ *   - MulterError LIMIT_UNEXPECTED_FILE → 400 UNEXPECTED_FILE_FIELD
+ *   - fileFilter Error              → 400 INVALID_FILE_TYPE
+ *   - anything else                 → 500 UPLOAD_FAILED with sanitized message
+ */
+function wrapUpload(mw: (req: Request, res: Response, next: (err?: any) => void) => void) {
+  return (req: Request, res: Response, next: (err?: any) => void) => {
+    mw(req, res, (err?: any) => {
+      if (!err) return next();
+      const isMulterErr = err && err.name === 'MulterError';
+      const code: string = err?.code || '';
+      logger.warn('[Provider Onboarding] Upload rejected', {
+        name: err?.name, code, field: err?.field, message: err?.message,
+      });
+      if (isMulterErr && code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          error: 'קובץ גדול מדי. הגודל המרבי המותר הוא 15MB.',
+          errorEn: 'File too large. Maximum allowed size is 15MB.',
+          errorCode: 'FILE_TOO_LARGE',
+          field: err?.field,
+        });
+      }
+      if (isMulterErr && code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({
+          error: 'שדה קובץ לא צפוי בטופס.',
+          errorEn: 'Unexpected file field in the form.',
+          errorCode: 'UNEXPECTED_FILE_FIELD',
+          field: err?.field,
+        });
+      }
+      if (typeof err?.message === 'string' && /invalid file/i.test(err.message)) {
+        return res.status(400).json({
+          error: 'סוג קובץ לא נתמך. אנא השתמש ב-JPEG, PNG, WebP, HEIC או PDF.',
+          errorEn: err.message,
+          errorCode: 'INVALID_FILE_TYPE',
+        });
+      }
+      return res.status(500).json({
+        error: 'שגיאה בהעלאת הקובץ. אנא נסה שוב.',
+        errorEn: 'File upload failed. Please try again.',
+        errorCode: 'UPLOAD_FAILED',
+        detail: process.env.NODE_ENV === 'production' ? undefined : err?.message,
+      });
+    });
+  };
+}
 
 // Admin authentication middleware - supports super admins and database role assignments
 async function requireAdmin(req: Request, res: Response, next: Function) {
@@ -439,14 +496,14 @@ router.post('/validate-invite-code', async (req: Request, res: Response) => {
 // =================== PROVIDER APPLICATION SUBMISSION ===================
 
 // Submit provider application (with biometric KYC)
-router.post('/apply', upload.fields([
+router.post('/apply', wrapUpload(upload.fields([
   { name: 'selfiePhoto', maxCount: 1 },
   { name: 'governmentId', maxCount: 1 },
   { name: 'insuranceCert', maxCount: 1 },
   { name: 'businessLicense', maxCount: 1 },
   { name: 'petFirstAidCert', maxCount: 1 },
   { name: 'drivingLicenseFile', maxCount: 1 }
-]), requireValidFileContent(ALLOWED_MIME_TYPES), async (req: Request, res: Response) => {
+])), requireValidFileContent(ALLOWED_MIME_TYPES), async (req: Request, res: Response) => {
   try {
     // SECURITY: Verify Firebase authentication
     const authHeader = req.headers.authorization;

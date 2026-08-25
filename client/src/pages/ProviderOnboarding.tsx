@@ -1180,9 +1180,38 @@ export default function ProviderOnboarding() {
                   </div>
                 </div>
 
+                {/* Step 1 live-missing checklist — CEO 2026-08-24: "all steps
+                    become provider" was blocked by a silent disabled Next button. */}
+                {(() => {
+                  const missing: string[] = [];
+                  if (!firstName)                                  missing.push(isHebrew ? 'שם פרטי' : 'First name');
+                  if (!lastName)                                   missing.push(isHebrew ? 'שם משפחה' : 'Last name');
+                  if (!phoneNumber)                                missing.push(isHebrew ? 'מספר טלפון' : 'Phone number');
+                  if (phoneNumber && !phoneVerified)               missing.push(isHebrew ? 'אימות הטלפון (SMS)' : 'Phone verification (SMS code)');
+                  if (!idNumber)                                   missing.push(isHebrew ? 'מספר תעודת זהות / דרכון' : 'ID / passport number');
+                  if (idNumber && israeliIdInvalid)                missing.push(isHebrew ? 'מספר תעודת זהות ישראלי תקין' : 'Valid Israeli ID checksum');
+                  if (!ageConfirmed18Plus)                         missing.push(isHebrew ? 'אישור גיל 18+' : '18+ age confirmation');
+                  if (!city)                                       missing.push(isHebrew ? 'עיר מגורים' : 'City');
+                  if (providerTypes.length === 0)                  missing.push(isHebrew ? 'לפחות תפקיד ספק אחד' : 'At least one provider role');
+                  if (missing.length === 0) return null;
+                  return (
+                    <div className="my-3 p-3 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-900/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-200" />
+                        <strong className="text-amber-900 dark:text-amber-100 text-xs">
+                          {isHebrew ? 'עדיין חסר כדי להמשיך:' : 'Still needed to continue:'}
+                        </strong>
+                      </div>
+                      <ul className="list-disc ml-6 space-y-0.5 text-xs text-amber-900 dark:text-amber-100">
+                        {missing.map((m, i) => <li key={i}>{m}</li>)}
+                      </ul>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex gap-4">
-                  <Button 
-                    onClick={() => setStep(2)} 
+                  <Button
+                    onClick={() => setStep(2)}
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={!firstName || !lastName || !phoneNumber || !phoneVerified || !idNumber || israeliIdInvalid || !ageConfirmed18Plus || !city || providerTypes.length === 0}
                     data-testid="button-next-step2"
@@ -1397,6 +1426,30 @@ export default function ProviderOnboarding() {
                   {/* Removed 2026-06-18: Station-Operator business-license upload (the
                       operator provider type is no longer offered to the public). */}
                 </div>
+
+                {/* Step 2 live-missing checklist. Note that photo uploads are
+                    OPTIONAL by design (CEO 2026-07-03 privacy-first — see server
+                    provider-onboarding.ts:531). Only ID number + document type
+                    are required to advance. */}
+                {(() => {
+                  const missing: string[] = [];
+                  if (!idNumber)         missing.push(isHebrew ? 'מספר תעודת זהות / דרכון' : 'ID / passport number');
+                  if (!idDocumentType)   missing.push(isHebrew ? 'סוג המסמך (תעודת זהות / דרכון / רישיון)' : 'Document type (ID / passport / license)');
+                  if (missing.length === 0) return null;
+                  return (
+                    <div className="my-3 p-3 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-900/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-200" />
+                        <strong className="text-amber-900 dark:text-amber-100 text-xs">
+                          {isHebrew ? 'עדיין חסר כדי להמשיך:' : 'Still needed to continue:'}
+                        </strong>
+                      </div>
+                      <ul className="list-disc ml-6 space-y-0.5 text-xs text-amber-900 dark:text-amber-100">
+                        {missing.map((m, i) => <li key={i}>{m}</li>)}
+                      </ul>
+                    </div>
+                  );
+                })()}
 
                 <div className="flex gap-4">
                   <Button onClick={() => setStep(1)} className="luxury-btn-secondary" data-testid="button-back-step1">
@@ -1683,12 +1736,66 @@ export default function ProviderOnboarding() {
                   </div>
                 </div>
 
+                {/* Live "missing requirements" checklist so users know EXACTLY why
+                    the submit button is disabled — CEO 2026-08-24 fix: "declarations
+                    all not as said go". Previously the button just sat greyed-out
+                    with no signal about which checkbox was still missing. */}
+                {(() => {
+                  const missing: string[] = [];
+                  if (residentialHistory.filter(a => a.trim()).length === 0) {
+                    missing.push(isHebrew ? 'לפחות כתובת מגורים אחת' : 'At least one residential address');
+                  }
+                  if (!backgroundCheckConsent) {
+                    missing.push(isHebrew ? 'הסכמה לבדיקת רקע' : 'Background-check consent');
+                  }
+                  if (!declarationAccurateInfo) {
+                    missing.push(isHebrew ? 'הצהרה שהמידע נכון ומדויק' : 'Declaration that information is accurate');
+                  }
+                  if (!declarationAcceptTerms) {
+                    missing.push(isHebrew ? 'הסכמה לתנאי השימוש והסכם קבלן' : 'Terms of Service + Contractor Agreement');
+                  }
+                  if (!selfDeclarationNoConvictions) {
+                    missing.push(isHebrew ? 'הצהרה עצמית — ללא הרשעות רלוונטיות' : 'Self-declaration (no relevant convictions)');
+                  }
+                  if (hasProviderType('driver')) {
+                    if (!declarationValidLicense)          missing.push(isHebrew ? 'רישיון נהיגה בתוקף (נהג)' : 'Valid driving license (driver)');
+                    if (!declarationNoSuspension)          missing.push(isHebrew ? 'רישיון לא נשלל (נהג)' : 'License not suspended (driver)');
+                    if (!declarationUnderPointsLimit)      missing.push(isHebrew ? 'מתחת ל-12 נקודות (נהג)' : 'Under 12 points on license (driver)');
+                    if (!declarationNoDrugsAlcohol)        missing.push(isHebrew ? 'התחייבות ללא סמים/אלכוהול (נהג)' : 'No-drugs/alcohol commitment (driver)');
+                    if (!declarationValidVehicleInsurance) missing.push(isHebrew ? 'ביטוח רכב בתוקף (נהג)' : 'Valid vehicle insurance (driver)');
+                    if (!declarationVehicleInspection)     missing.push(isHebrew ? 'טסט שנתי בתוקף (נהג)' : 'Valid annual inspection (driver)');
+                  }
+                  if (hasProviderType('trainer')) {
+                    if (!declarationTrainingCertification) missing.push(isHebrew ? 'תעודת/ניסיון אילוף (מאמן)' : 'Training certification/experience (trainer)');
+                    if (!declarationAccreditedCourses)     missing.push(isHebrew ? 'קורסים מוסמכים (מאמן)' : 'Accredited courses completed (trainer)');
+                    if (!declarationLiabilityInsurance)    missing.push(isHebrew ? 'ביטוח אחריות מקצועית (מאמן)' : 'Professional liability insurance (trainer)');
+                  }
+                  if (hasProviderType('walker') || hasProviderType('sitter')) {
+                    if (!declarationPhysicallyFit)         missing.push(isHebrew ? 'כשירות פיזית (שמרטף/מטייל)' : 'Physically fit (walker/sitter)');
+                    if (!declarationAnimalExperience)      missing.push(isHebrew ? 'ניסיון עם חיות מחמד (שמרטף/מטייל)' : 'Experience with pets (walker/sitter)');
+                  }
+                  if (missing.length === 0) return null;
+                  return (
+                    <div className="my-4 p-4 rounded-xl border border-amber-400/40 bg-amber-50 dark:bg-amber-900/20">
+                      <div className="flex items-center gap-2 mb-2">
+                        <AlertTriangle className="w-4 h-4 text-amber-700 dark:text-amber-200" />
+                        <strong className="text-amber-900 dark:text-amber-100 text-sm">
+                          {isHebrew ? 'עדיין חסרים כדי להגיש:' : 'Still needed before you can submit:'}
+                        </strong>
+                      </div>
+                      <ul className="list-disc ml-6 space-y-1 text-xs text-amber-900 dark:text-amber-100">
+                        {missing.map((m, i) => <li key={i}>{m}</li>)}
+                      </ul>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex gap-4">
                   <Button onClick={() => setStep(2)} className="luxury-btn-secondary" data-testid="button-back-step2">
                     {t.back}
                   </Button>
-                  <Button 
-                    onClick={handleSubmit} 
+                  <Button
+                    onClick={handleSubmit}
                     className="luxury-btn-primary luxury-shadow-xl flex-1"
                     disabled={
                       loading ||

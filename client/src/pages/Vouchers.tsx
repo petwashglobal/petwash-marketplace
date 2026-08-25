@@ -15,7 +15,12 @@ import type { PetWashVoucher2025 } from '@shared/petwashVoucher2025';
 import { useSEO, pageSEO } from '@/lib/seo';
 
 interface VoucherWithHistory extends Omit<PetWashVoucher2025, 'rules' | 'visual' | 'owner' | 'security' | 'usage'> {
-  // Database fields (snake_case)
+  // Server DTO (toSafeVoucherView in server/routes/unified-vouchers.ts) uses
+  // camelCase `serialNumber` — NOT snake_case public_code. The client was reading
+  // voucher.public_code (always undefined) and passing it to the redeem POST,
+  // guaranteeing a 403 "voucher not found". Keep BOTH names for compatibility with
+  // the older PetWashVoucher2025 legacy consumers.
+  serialNumber: string;
   type: string;
   valueType: string;
   tier: string;
@@ -126,7 +131,9 @@ export default function Vouchers() {
   // Convert DB format to PetWashVoucher2025 format for VoucherCard2025
   const convertToVoucherFormat = (dbVoucher: VoucherWithHistory): PetWashVoucher2025 => ({
     voucher_id: dbVoucher.id,
-    public_code: dbVoucher.public_code,
+    // Server DTO uses serialNumber — mirror onto the legacy public_code slot so
+    // any downstream reader that still expects public_code keeps working.
+    public_code: dbVoucher.serialNumber,
     type: dbVoucher.type as any,
     visual: {
       tier: '7star_metal',
@@ -261,7 +268,9 @@ export default function Vouchers() {
                   <VoucherCard2025
                     voucher={voucher}
                     onUse={() => {
-                      redeemMutation.mutate(voucher.public_code);
+                      // Server ownership check runs against serialNumber; passing
+                      // undefined public_code was making every redeem attempt 403.
+                      redeemMutation.mutate(voucher.serialNumber);
                     }}
                     showActions={true}
                   />

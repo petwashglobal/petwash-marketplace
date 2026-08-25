@@ -51,9 +51,45 @@ const upload = multer({
   },
 });
 
-// Upload KYC document  
+/**
+ * Map multer errors to JSON 400 so the KYC upload UI can render a real error
+ * instead of the express default 500 HTML page (silent-lie audit fix,
+ * 2026-08-24: CEO complaint about "load images fail to register providers").
+ */
+function wrapUpload(mw: (req: Request, res: Response, next: (err?: any) => void) => void) {
+  return (req: Request, res: Response, next: (err?: any) => void) => {
+    mw(req, res, (err?: any) => {
+      if (!err) return next();
+      const isMulterErr = err && err.name === 'MulterError';
+      const code: string = err?.code || '';
+      logger.warn('[KYC upload] rejected', { name: err?.name, code, field: err?.field, message: err?.message });
+      if (isMulterErr && code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({
+          error: 'Image too large. Maximum allowed size is 10MB.',
+          errorHe: 'הקובץ גדול מדי. הגודל המרבי המותר הוא 10MB.',
+          code: 'FILE_TOO_LARGE', field: err?.field,
+        });
+      }
+      if (isMulterErr && code === 'LIMIT_UNEXPECTED_FILE') {
+        return res.status(400).json({
+          error: `Unexpected file field "${err?.field}". Expected field name is "file".`,
+          errorHe: 'שדה קובץ לא צפוי בטופס.',
+          code: 'UNEXPECTED_FILE_FIELD', field: err?.field,
+        });
+      }
+      return res.status(500).json({
+        error: 'File upload failed. Please try again.',
+        errorHe: 'שגיאה בהעלאת הקובץ.',
+        code: 'UPLOAD_FAILED',
+        detail: process.env.NODE_ENV === 'production' ? undefined : err?.message,
+      });
+    });
+  };
+}
+
+// Upload KYC document
 // SECURITY: Requires Firebase authentication - users can only upload their own KYC
-router.post('/upload', upload.single('file'), async (req: Request, res: Response) => {
+router.post('/upload', wrapUpload(upload.single('file')), async (req: Request, res: Response) => {
   try {
     // SECURITY: Verify Firebase authentication
     const authHeader = req.headers.authorization;
