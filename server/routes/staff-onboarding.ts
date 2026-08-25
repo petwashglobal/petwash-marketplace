@@ -36,6 +36,60 @@ function getAuthenticatedUserId(req: any): string | null {
   return userId ? String(userId) : null;
 }
 
+/**
+ * Admin-audit CRIT #3 + #4 fix (2026-08-25).
+ *
+ * Application-detail routes below did:
+ *   if (!isAdmin && application.userId !== userId && application.email !== req.user?.email)
+ *
+ * Two bugs:
+ *   1. `isAdmin` is never populated by requireAuth OR adminAuth in this file —
+ *      every real admin got the 403 unless they hit the email-match path.
+ *   2. The email-match path used `req.user.email` — Firebase reports its email
+ *      even when it is UNVERIFIED. Anyone could sign up as
+ *      victim@example.com (no verification), open GET /api/staff/applications/<id>,
+ *      and get the full row: bank, tax ID, DOB, address, KYC.
+ *
+ * assertStaffAppReadable centralizes the correct three-way check:
+ *   ✔ super admin allowlist (rbac.isSuperAdmin)
+ *   ✔ Firebase claim role in {'admin','super_admin','staff_manager'}
+ *   ✔ owner match by Firebase UID
+ *   ✔ owner match by email — ONLY when Firebase reports email_verified=true
+ * and returns a boolean the caller uses to short-circuit with a plain 403.
+ */
+async function assertStaffAppReadable(
+  req: any,
+  application: { userId?: string | null; email?: string | null },
+): Promise<boolean> {
+  const uid = getAuthenticatedUserId(req);
+  if (!uid) return false;
+  if (application.userId && application.userId === uid) return true;
+
+  const fbUser = req.firebaseUser ?? req.user ?? {};
+  const claims = (fbUser?.customClaims ?? fbUser ?? {}) as Record<string, any>;
+  const claimRole = String(claims.role || claims.accountType || '').toLowerCase();
+  if (['admin', 'super_admin', 'staff_manager', 'staff_admin', 'hr_manager'].includes(claimRole)) {
+    return true;
+  }
+
+  try {
+    const { isSuperAdmin } = await import('../middleware/rbac');
+    const claimEmail = String(fbUser?.email || '').toLowerCase();
+    if (claimEmail && isSuperAdmin(claimEmail)) return true;
+  } catch { /* rbac helper absent → fall through */ }
+
+  const emailVerified = fbUser?.email_verified === true;
+  if (
+    emailVerified &&
+    typeof application.email === 'string' &&
+    typeof fbUser?.email === 'string' &&
+    application.email.toLowerCase() === fbUser.email.toLowerCase()
+  ) {
+    return true;
+  }
+  return false;
+}
+
 function requireOwnEmployeeId(req: any, res: any, employeeId: string): boolean {
   const userId = getAuthenticatedUserId(req);
 
@@ -271,8 +325,9 @@ export function registerStaffOnboardingRoutes(app: Express) {
         });
       }
 
-      // Authorization: User must own the application OR be an admin
-      if (!isAdmin && application.userId !== userId && application.email !== (req as any).user?.email) {
+      // Authorization: helper enforces admin OR verified-email owner. See
+      // assertStaffAppReadable at the top of this file for the full rule set.
+      if (!(await assertStaffAppReadable(req, application))) {
         return res.status(403).json({
           success: false,
           error: 'Unauthorized - you can only view your own applications',
@@ -315,8 +370,9 @@ export function registerStaffOnboardingRoutes(app: Express) {
         });
       }
 
-      // Authorization: User must own the application OR be an admin
-      if (!isAdmin && application.userId !== userId && application.email !== (req as any).user?.email) {
+      // Authorization: helper enforces admin OR verified-email owner. See
+      // assertStaffAppReadable at the top of this file for the full rule set.
+      if (!(await assertStaffAppReadable(req, application))) {
         return res.status(403).json({
           success: false,
           error: 'Unauthorized - you can only view your own applications',
@@ -369,8 +425,9 @@ export function registerStaffOnboardingRoutes(app: Express) {
         });
       }
 
-      // Authorization: User must own the application OR be an admin
-      if (!isAdmin && application.userId !== userId && application.email !== (req as any).user?.email) {
+      // Authorization: helper enforces admin OR verified-email owner.
+      // See assertStaffAppReadable at the top of this file.
+      if (!(await assertStaffAppReadable(req, application))) {
         return res.status(403).json({
           success: false,
           error: 'Unauthorized - you can only upload documents for your own application',
@@ -428,8 +485,9 @@ export function registerStaffOnboardingRoutes(app: Express) {
         });
       }
 
-      // Authorization: User must own the application OR be an admin
-      if (!isAdmin && application.userId !== userId && application.email !== (req as any).user?.email) {
+      // Authorization: helper enforces admin OR verified-email owner.
+      // See assertStaffAppReadable at the top of this file.
+      if (!(await assertStaffAppReadable(req, application))) {
         return res.status(403).json({
           success: false,
           error: 'Unauthorized - you can only verify biometrics for your own application',
@@ -482,8 +540,9 @@ export function registerStaffOnboardingRoutes(app: Express) {
         });
       }
 
-      // Authorization: User must own the application OR be an admin
-      if (!isAdmin && application.userId !== userId && application.email !== (req as any).user?.email) {
+      // Authorization: helper enforces admin OR verified-email owner.
+      // See assertStaffAppReadable at the top of this file.
+      if (!(await assertStaffAppReadable(req, application))) {
         return res.status(403).json({
           success: false,
           error: 'Unauthorized - you can only request e-signatures for your own application',

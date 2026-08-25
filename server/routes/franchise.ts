@@ -448,12 +448,19 @@ router.get('/reports/export/excel', requireFranchiseAuth, async (req, res) => {
       .orderBy(desc(payments.createdAt));
 
     // Add transaction rows with VAT calculations
+    // Admin-audit CRIT #6 fix (2026-08-25): payments.amount is stored VAT-INCLUSIVE
+    // gross. The old formula `amount * VAT_RATE` produced wrong VAT (over-reports)
+    // and wrong net (under-reports). Correct Israeli-VAT extraction from a
+    // gross amount is `gross * rate / (1 + rate)`. Every franchise owner's
+    // report has been showing wrong numbers.
+    //   ₪100 gross → VAT = 100 × 0.18/1.18 = ₪15.25, net = ₪84.75
+    //   (old buggy: VAT=₪18.00, net=₪82.00)
     const VAT_RATE_EXCEL = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE));
     transactionRecords.forEach(tx => {
       const amount = parseFloat(String(tx.amount));
-      const vat = amount * VAT_RATE_EXCEL;
+      const vat = amount * VAT_RATE_EXCEL / (1 + VAT_RATE_EXCEL);
       const net = amount - vat;
-      
+
       worksheet.addRow({
         date: format(tx.createdAt, 'yyyy-MM-dd HH:mm'),
         bookingNumber: tx.bookingNumber,
@@ -549,11 +556,13 @@ router.get('/reports/export/pdf', requireFranchiseAuth, async (req, res) => {
       .orderBy(desc(payments.createdAt));
 
     // Add transaction summary
+    // Admin-audit CRIT #6 fix (2026-08-25): payments.amount is VAT-inclusive
+    // gross — use backward-add extraction `gross * rate / (1 + rate)`.
     const VAT_RATE_PDF = parseFloat(process.env.VAT_RATE || String(ISRAEL_VAT_RATE));
-    const totalRevenue = transactionRecords.reduce((sum, tx) => 
+    const totalRevenue = transactionRecords.reduce((sum, tx) =>
       sum + parseFloat(String(tx.amount)), 0
     );
-    const totalVat = totalRevenue * VAT_RATE_PDF;
+    const totalVat = totalRevenue * VAT_RATE_PDF / (1 + VAT_RATE_PDF);
     const totalNet = totalRevenue - totalVat;
 
     doc.fontSize(14).text('Summary', { underline: true });
