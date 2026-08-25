@@ -15,7 +15,7 @@
  */
 
 import { Router, type Request, type Response } from 'express';
-import { desc, gte, sql } from 'drizzle-orm';
+import { desc, sql } from 'drizzle-orm';
 import { db } from '../db';
 import { bookings, sitterBookings, walkBookings, bookingRequests } from '@shared/schema';
 import { adminAlerts } from '@shared/schema-admin-alerts';
@@ -49,6 +49,11 @@ type SourceResult = {
   revenueTodayIls: number;
   reason?: string;
   rows: NormalizedBooking[];
+  // KPIs (today count, today revenue, active-now count) are computed via SQL
+  // aggregates over the FULL dataset — NOT derived from the capped `rows`
+  // feed. This flag says whether the aggregate query succeeded; when false
+  // the UI-level numbers may only reflect the capped recent rows.
+  aggregatesFromDb: boolean;
 };
 
 function startOfTodayUtc(): Date {
@@ -65,8 +70,8 @@ router.get('/', async (_req: Request, res: Response) => {
 
   // ── Source 1: unified `bookings` table (K9000 wash, shop, unified flows) ─────
   try {
-    const rows = await db
-      .select({
+    const [rows, agg] = await Promise.all([
+      db.select({
         refId: bookings.bookingNumber,
         platformId: bookings.platformId,
         status: bookings.status,
@@ -75,10 +80,14 @@ router.get('/', async (_req: Request, res: Response) => {
         userId: bookings.userId,
         providerId: bookings.providerId,
         createdAt: bookings.createdAt,
-      })
-      .from(bookings)
-      .orderBy(desc(bookings.createdAt))
-      .limit(200);
+      }).from(bookings).orderBy(desc(bookings.createdAt)).limit(200),
+      db.select({
+        totalRows:     sql<number>`count(*)::int`,
+        todayCount:    sql<number>`count(*) filter (where ${bookings.createdAt} >= ${since})::int`,
+        todayRevenue:  sql<number>`coalesce(sum(${bookings.total}) filter (where ${bookings.createdAt} >= ${since}), 0)::float`,
+        activeCount:   sql<number>`count(*) filter (where lower(${bookings.status}) = any(${ACTIVE_STATUSES}::text[]))::int`,
+      }).from(bookings),
+    ]);
     const norm: NormalizedBooking[] = rows.map((b) => ({
       platform: 'PetWash (unified)',
       platformKey: b.platformId || 'unified',
@@ -91,16 +100,16 @@ router.get('/', async (_req: Request, res: Response) => {
       createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
       traceUrl: `/booking-trace/${b.refId}`,
     }));
-    sources.push(summarize('unified', 'PetWash (unified)', norm, since));
+    sources.push(summarizeWithAgg('unified', 'PetWash (unified)', norm, agg[0]));
   } catch (err: any) {
     logger.error('[LiveOps] unified bookings source failed', { error: err?.message });
-    sources.push({ key: 'unified', label: 'PetWash (unified)', available: false, total: 0, active: 0, today: 0, revenueTodayIls: 0, reason: 'bookings table not reachable', rows: [] });
+    sources.push({ key: 'unified', label: 'PetWash (unified)', available: false, total: 0, active: 0, today: 0, revenueTodayIls: 0, reason: 'bookings table not reachable', rows: [], aggregatesFromDb: false });
   }
 
   // ── Source 2: pet-sitting (sitter_bookings) ─────────────────────────────────
   try {
-    const rows = await db
-      .select({
+    const [rows, agg] = await Promise.all([
+      db.select({
         refId: sitterBookings.bookingId,
         status: sitterBookings.status,
         paymentStatus: sitterBookings.paymentStatus,
@@ -108,10 +117,14 @@ router.get('/', async (_req: Request, res: Response) => {
         ownerId: sitterBookings.ownerId,
         sitterId: sitterBookings.sitterId,
         createdAt: sitterBookings.createdAt,
-      })
-      .from(sitterBookings)
-      .orderBy(desc(sitterBookings.createdAt))
-      .limit(200);
+      }).from(sitterBookings).orderBy(desc(sitterBookings.createdAt)).limit(200),
+      db.select({
+        totalRows:    sql<number>`count(*)::int`,
+        todayCount:   sql<number>`count(*) filter (where ${sitterBookings.createdAt} >= ${since})::int`,
+        todayRevenue: sql<number>`coalesce(sum(${sitterBookings.totalChargeCents}) filter (where ${sitterBookings.createdAt} >= ${since}), 0)::float / 100.0`,
+        activeCount:  sql<number>`count(*) filter (where lower(${sitterBookings.status}) = any(${ACTIVE_STATUSES}::text[]))::int`,
+      }).from(sitterBookings),
+    ]);
     const norm: NormalizedBooking[] = rows.map((b) => ({
       platform: 'Pet Sitting',
       platformKey: 'sitter-suite',
@@ -124,26 +137,30 @@ router.get('/', async (_req: Request, res: Response) => {
       createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
       traceUrl: null,
     }));
-    sources.push(summarize('sitter-suite', 'Pet Sitting', norm, since));
+    sources.push(summarizeWithAgg('sitter-suite', 'Pet Sitting', norm, agg[0]));
   } catch (err: any) {
     logger.error('[LiveOps] sitter source failed', { error: err?.message });
-    sources.push({ key: 'sitter-suite', label: 'Pet Sitting', available: false, total: 0, active: 0, today: 0, revenueTodayIls: 0, reason: 'sitter_bookings not reachable', rows: [] });
+    sources.push({ key: 'sitter-suite', label: 'Pet Sitting', available: false, total: 0, active: 0, today: 0, revenueTodayIls: 0, reason: 'sitter_bookings not reachable', rows: [], aggregatesFromDb: false });
   }
 
   // ── Source 3: dog-walking (walk_bookings) ───────────────────────────────────
   try {
-    const rows = await db
-      .select({
+    const [rows, agg] = await Promise.all([
+      db.select({
         refId: walkBookings.bookingId,
         status: walkBookings.status,
         totalCost: walkBookings.totalCost,
         ownerId: walkBookings.ownerId,
         walkerId: walkBookings.walkerId,
         createdAt: walkBookings.createdAt,
-      })
-      .from(walkBookings)
-      .orderBy(desc(walkBookings.createdAt))
-      .limit(200);
+      }).from(walkBookings).orderBy(desc(walkBookings.createdAt)).limit(200),
+      db.select({
+        totalRows:    sql<number>`count(*)::int`,
+        todayCount:   sql<number>`count(*) filter (where ${walkBookings.createdAt} >= ${since})::int`,
+        todayRevenue: sql<number>`coalesce(sum(${walkBookings.totalCost}) filter (where ${walkBookings.createdAt} >= ${since}), 0)::float`,
+        activeCount:  sql<number>`count(*) filter (where lower(${walkBookings.status}) = any(${ACTIVE_STATUSES}::text[]))::int`,
+      }).from(walkBookings),
+    ]);
     const norm: NormalizedBooking[] = rows.map((b) => ({
       platform: 'Dog Walking',
       platformKey: 'walk-my-pet',
@@ -156,16 +173,16 @@ router.get('/', async (_req: Request, res: Response) => {
       createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
       traceUrl: null,
     }));
-    sources.push(summarize('walk-my-pet', 'Dog Walking', norm, since));
+    sources.push(summarizeWithAgg('walk-my-pet', 'Dog Walking', norm, agg[0]));
   } catch (err: any) {
     logger.error('[LiveOps] walk source failed', { error: err?.message });
-    sources.push({ key: 'walk-my-pet', label: 'Dog Walking', available: false, total: 0, active: 0, today: 0, revenueTodayIls: 0, reason: 'walk_bookings not reachable', rows: [] });
+    sources.push({ key: 'walk-my-pet', label: 'Dog Walking', available: false, total: 0, active: 0, today: 0, revenueTodayIls: 0, reason: 'walk_bookings not reachable', rows: [], aggregatesFromDb: false });
   }
 
   // ── Source 4: marketplace requests (booking_requests: trainer/driver/etc.) ───
   try {
-    const rows = await db
-      .select({
+    const [rows, agg] = await Promise.all([
+      db.select({
         refId: bookingRequests.requestId,
         providerType: bookingRequests.providerType,
         serviceType: bookingRequests.serviceType,
@@ -174,10 +191,14 @@ router.get('/', async (_req: Request, res: Response) => {
         ownerId: bookingRequests.ownerId,
         providerId: bookingRequests.providerId,
         createdAt: bookingRequests.createdAt,
-      })
-      .from(bookingRequests)
-      .orderBy(desc(bookingRequests.createdAt))
-      .limit(200);
+      }).from(bookingRequests).orderBy(desc(bookingRequests.createdAt)).limit(200),
+      db.select({
+        totalRows:    sql<number>`count(*)::int`,
+        todayCount:   sql<number>`count(*) filter (where ${bookingRequests.createdAt} >= ${since})::int`,
+        todayRevenue: sql<number>`coalesce(sum(${bookingRequests.totalCents}) filter (where ${bookingRequests.createdAt} >= ${since}), 0)::float / 100.0`,
+        activeCount:  sql<number>`count(*) filter (where lower(${bookingRequests.status}) = any(${ACTIVE_STATUSES}::text[]))::int`,
+      }).from(bookingRequests),
+    ]);
     const norm: NormalizedBooking[] = rows.map((b) => ({
       platform: `Marketplace — ${b.providerType ?? b.serviceType ?? 'request'}`,
       platformKey: 'booking-requests',
@@ -190,10 +211,10 @@ router.get('/', async (_req: Request, res: Response) => {
       createdAt: b.createdAt ? new Date(b.createdAt).toISOString() : null,
       traceUrl: null,
     }));
-    sources.push(summarize('booking-requests', 'Marketplace requests', norm, since));
+    sources.push(summarizeWithAgg('booking-requests', 'Marketplace requests', norm, agg[0]));
   } catch (err: any) {
     logger.error('[LiveOps] booking_requests source failed', { error: err?.message });
-    sources.push({ key: 'booking-requests', label: 'Marketplace requests', available: false, total: 0, active: 0, today: 0, revenueTodayIls: 0, reason: 'booking_requests not reachable', rows: [] });
+    sources.push({ key: 'booking-requests', label: 'Marketplace requests', available: false, total: 0, active: 0, today: 0, revenueTodayIls: 0, reason: 'booking_requests not reachable', rows: [], aggregatesFromDb: false });
   }
 
   // ── Open alerts (traffic light) ─────────────────────────────────────────────
@@ -245,18 +266,40 @@ router.get('/', async (_req: Request, res: Response) => {
   });
 });
 
-function summarize(key: string, label: string, rows: NormalizedBooking[], since: Date): SourceResult {
-  const sinceIso = since.toISOString();
-  const todayRows = rows.filter((r) => r.createdAt && r.createdAt >= sinceIso);
+function summarizeWithAgg(
+  key: string,
+  label: string,
+  rows: NormalizedBooking[],
+  agg: { totalRows: number; todayCount: number; todayRevenue: number; activeCount: number } | undefined,
+): SourceResult {
+  // KPIs come from the SQL aggregate (whole dataset). The `rows` array is only
+  // the capped tail for the activity feed. Before this the "today" numbers
+  // were counted off the capped rows, silently under-reporting for any table
+  // with > 200 rows in the window (audit CRIT #7).
+  if (agg) {
+    return {
+      key,
+      label,
+      available: true,
+      total: Number(agg.totalRows ?? 0),
+      active: Number(agg.activeCount ?? 0),
+      today: Number(agg.todayCount ?? 0),
+      revenueTodayIls: Math.round(Number(agg.todayRevenue ?? 0) * 100) / 100,
+      rows,
+      aggregatesFromDb: true,
+    };
+  }
+  // Fallback: aggregate query returned nothing — degrade to row-derived numbers.
   return {
     key,
     label,
     available: true,
-    total: rows.length, // capped at 200 — labelled in UI as "recent"
+    total: rows.length,
     active: rows.filter((r) => ACTIVE_STATUSES.includes((r.status || '').toLowerCase())).length,
-    today: todayRows.length,
-    revenueTodayIls: Math.round(todayRows.reduce((s, r) => s + (r.amountIls || 0), 0) * 100) / 100,
+    today: 0,
+    revenueTodayIls: 0,
     rows,
+    aggregatesFromDb: false,
   };
 }
 

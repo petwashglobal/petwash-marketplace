@@ -19,7 +19,7 @@
  */
 
 import { Router, type Request, type Response, type NextFunction } from 'express';
-import { eq, ilike, and } from 'drizzle-orm';
+import { eq, ilike, and, desc } from 'drizzle-orm';
 import { db } from '../db';
 import { suppliers } from '../../shared/schema-corporate';
 import { systemConfig } from '../services/SystemConfig';
@@ -76,16 +76,17 @@ router.get('/', ...requireFinanceOrAdmin, async (req: Request, res: Response) =>
       conditions.push(ilike(suppliers.companyName, `%${nameSearch}%`));
     }
 
-    const baseQuery = db.select().from(suppliers).$dynamic();
+    // ORDER BY at SQL level — sorting AFTER pagination only reorders the
+    // returned page, not the full dataset, so page 2 would silently drop
+    // the newest rows into invisible "middle" positions. Prior implementation
+    // sorted rows in JS after `.limit(...).offset(...)` — deleted below.
+    const baseQuery = db
+      .select()
+      .from(suppliers)
+      .orderBy(desc(suppliers.createdAt))
+      .$dynamic();
     const filtered = conditions.length > 0 ? baseQuery.where(and(...conditions)) : baseQuery;
     const rows = await filtered.limit(limit).offset(offset);
-
-    // Newest first for predictable UI; cheap in-app sort, no index hop.
-    rows.sort((a, b) => {
-      const aT = a.createdAt ? new Date(a.createdAt).getTime() : 0;
-      const bT = b.createdAt ? new Date(b.createdAt).getTime() : 0;
-      return bT - aT;
-    });
 
     return res.json({ rows, limit, offset });
   } catch (err) {

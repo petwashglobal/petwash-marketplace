@@ -20,6 +20,17 @@ let requestMetrics = {
   startTime: Date.now(),
 };
 
+// Lifetime counters — survive a /reset call so an operator does not lose the
+// "since process start" total when they zero the current window. Displayed
+// alongside the current-window numbers by consumers of /reset.
+const lifetimeCounters = {
+  totalRequests: 0,
+  totalErrors: 0,
+  processStart: Date.now(),
+  lastResetAt: null as number | null,
+  resetCount: 0,
+};
+
 // Middleware to track requests (should be added to server)
 export function trackRequestMetrics(req: any, res: any, next: any) {
   const startTime = Date.now();
@@ -231,6 +242,21 @@ router.get('/database/slow-queries', async (req, res) => {
  * Reset metrics (for testing)
  */
 router.post('/reset', async (req, res) => {
+  // Roll the current-window counters into lifetime counters BEFORE zeroing
+  // so an operator can still see the "since process start" numbers after a
+  // reset. Prior behavior wiped the counters silently — audit CRIT #14.
+  lifetimeCounters.totalRequests += requestMetrics.totalRequests;
+  lifetimeCounters.totalErrors += requestMetrics.totalErrors;
+  lifetimeCounters.lastResetAt = Date.now();
+  lifetimeCounters.resetCount += 1;
+
+  const prior = {
+    totalRequests: requestMetrics.totalRequests,
+    totalErrors: requestMetrics.totalErrors,
+    windowStartedAt: requestMetrics.startTime,
+    windowDurationMs: Date.now() - requestMetrics.startTime,
+  };
+
   requestMetrics = {
     totalRequests: 0,
     recentRequests: [],
@@ -240,7 +266,12 @@ router.post('/reset', async (req, res) => {
     startTime: Date.now(),
   };
 
-  res.json({ success: true, message: 'Metrics reset' });
+  res.json({
+    success: true,
+    message: 'Metrics reset',
+    prior,
+    lifetime: lifetimeCounters,
+  });
 });
 
 export default router;
