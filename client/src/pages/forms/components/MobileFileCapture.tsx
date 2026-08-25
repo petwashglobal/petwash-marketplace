@@ -62,7 +62,26 @@ export function MobileFileCapture({
       task.on(
         'state_changed',
         (snap) => setProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
-        (err) => { console.error(err); setUploading(false); alert('Upload failed. Try again.'); },
+        (err: any) => {
+          console.error(err);
+          setUploading(false);
+          // Firebase Storage errors carry a machine-readable code — surface it
+          // so the user knows whether to sign in, pick a smaller file, or
+          // request access. Silent-lie audit fix (2026-08-24): the previous
+          // "Upload failed. Try again." alert was the same message for auth,
+          // ACL, size, and network errors, so users just retried forever.
+          const code: string = err?.code || err?.serverResponse || '';
+          const map: Record<string, string> = {
+            'storage/unauthenticated': 'You need to be signed in to upload. Please sign in and try again.',
+            'storage/unauthorized':    'Your account is not permitted to upload here. Try signing out and back in, or contact support.',
+            'storage/quota-exceeded':  'The upload service is temporarily full. Please try again in a few minutes.',
+            'storage/canceled':        'Upload cancelled.',
+            'storage/retry-limit-exceeded': 'Upload timed out. Please check your connection and try again.',
+            'storage/invalid-checksum':'The uploaded file was corrupted in transit. Please try again.',
+          };
+          const humanMsg = map[code] || (err?.message ? `Upload failed: ${err.message}` : 'Upload failed. Please try again.');
+          alert(humanMsg);
+        },
         async () => {
           const url = await getDownloadURL(task.snapshot.ref);
           onUploaded(url, file.name);
