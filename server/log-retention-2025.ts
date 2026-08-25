@@ -214,10 +214,17 @@ async function archiveLogsByType(
   const sizeMB = (compressed.length / 1024 / 1024).toFixed(2);
   logger.info(`[Log Retention] Archived ${logs.length} ${logType} logs (${sizeMB} MB) to ${fileName}`);
   
-  // Delete from Firestore after successful archival
-  const batch = adminDb.batch();
-  logsSnapshot.docs.forEach(doc => batch.delete(doc.ref));
-  await batch.commit();
+  // Delete from Firestore after successful archival.
+  // Firestore batches cap at 500 ops. Any real traffic day has >500 log
+  // rows, so a single batch.commit() would throw INVALID_ARGUMENT and
+  // leave the logs archived-to-GCS but never removed from Firestore —
+  // the collection would grow unboundedly. Chunk to 400 for headroom.
+  const CHUNK = 400;
+  for (let i = 0; i < logsSnapshot.docs.length; i += CHUNK) {
+    const b = adminDb.batch();
+    for (const doc of logsSnapshot.docs.slice(i, i + CHUNK)) b.delete(doc.ref);
+    await b.commit();
+  }
   
   return {
     type: logType,
