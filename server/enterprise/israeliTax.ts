@@ -216,7 +216,11 @@ export async function generateTaxInvoice(
     const invoicePayload = {
       Invoice_Id: data.invoiceNumber,
       Supplier_Id: COMPANY_ID,
-      Invoice_Date: new Date().toISOString().split('T')[0],
+      // Israel accounting-day date, NOT UTC. Invoices created after ~22:00 UTC
+      // (01:00-03:00 Israel time) were being stamped with yesterday's date under
+      // .toISOString().split('T')[0]. The Israel Tax Authority expects the local
+      // accounting day. Same helper pattern used in server/routes/bookings.ts.
+      Invoice_Date: new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' }),
       Invoice_Total: data.amountBeforeVAT,
       Invoice_VAT: data.vatAmount,
       Invoice_Total_With_VAT: data.totalAmount,

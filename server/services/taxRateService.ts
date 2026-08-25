@@ -15,7 +15,12 @@ export interface ActiveTaxRate {
 export class TaxRateService {
   async getCurrentTaxRates(asOfDate?: Date): Promise<ActiveTaxRate[]> {
     const queryDate = asOfDate || new Date();
-    const queryDateStr = queryDate.toISOString().split('T')[0];
+    // Israel accounting-day date. Tax rate effectivity windows are set on the
+    // Israel civil day; UTC.split('T')[0] would look up yesterday's rate for
+    // any query made after ~22:00 UTC (late evening IL). VAT rate changes
+    // (18% → 19% on Jan 1) would be applied a day late for late-night
+    // invoices if we used UTC here.
+    const queryDateStr = queryDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
 
     const rates = await db
       .select()
@@ -45,7 +50,12 @@ export class TaxRateService {
 
   async getCurrentVATRate(category: string = 'standard', asOfDate?: Date): Promise<number> {
     const queryDate = asOfDate || new Date();
-    const queryDateStr = queryDate.toISOString().split('T')[0];
+    // Israel accounting-day date. Tax rate effectivity windows are set on the
+    // Israel civil day; UTC.split('T')[0] would look up yesterday's rate for
+    // any query made after ~22:00 UTC (late evening IL). VAT rate changes
+    // (18% → 19% on Jan 1) would be applied a day late for late-night
+    // invoices if we used UTC here.
+    const queryDateStr = queryDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
 
     const rates = await db
       .select()
