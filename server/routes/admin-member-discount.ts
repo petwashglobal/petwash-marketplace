@@ -191,7 +191,12 @@ router.get('/applications', async (req: Request, res: Response) => {
   try {
     const conds = [] as any[];
     if (userId) conds.push(eq(memberDiscountApplications.userId, userId));
-    if (status) conds.push(eq(memberDiscountApplications.status, status));
+    // Whitelist status: an arbitrary value hits an enum/CHECK column and 500s
+    // the endpoint. Match the pattern already used at line 155 for the sibling
+    // GET /. Unknown status silently ignored (same behavior as sibling).
+    if (status && ['pending', 'approved', 'rejected', 'revoked', 'more_info'].includes(status)) {
+      conds.push(eq(memberDiscountApplications.status, status));
+    }
 
     const rows = await db
       .select()

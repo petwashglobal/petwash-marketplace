@@ -128,6 +128,7 @@ router.get('/', async (req: Request, res: Response) => {
       .limit(limit)
       .offset(offset);
 
+    let unlinkedCount = 0;
     const services = rows.map((r) => {
       const providerName =
         [r.firstName, r.lastName].filter(Boolean).join(' ').trim() || null;
@@ -138,6 +139,15 @@ router.get('/', async (req: Request, res: Response) => {
       else if (r.serviceStatus === 'suspended') blockPayoutReason = 'suspended';
       else if (r.serviceStatus === 'needs_reconfirmation') blockPayoutReason = 'needs_reconfirmation';
       else if (r.bookingEnabled && !r.payoutEnabled) blockPayoutReason = 'awaiting_payout_approval';
+
+      // Data-quality signal: provider_services row exists but the leftJoin
+      // to provider_applicants returned NULL because the applicant record
+      // was never bound to this Firebase UID. Without this signal the row
+      // shows in the admin table with no name/email/phone/applicationId and
+      // reads as a broken row — the ladder mutation immediately throws
+      // "no linked application" (audit CRIT: dead-row on unlinked cohort).
+      const noLinkedApplication = r.applicationId == null;
+      if (noLinkedApplication) unlinkedCount += 1;
 
       return {
         serviceId: r.serviceId,
@@ -156,12 +166,21 @@ router.get('/', async (req: Request, res: Response) => {
         pausedByProvider: r.pausedByProvider,
         blockPayoutReason,
         reconfirmationDue: r.reconfirmationDue ?? null,
+        // Explicit data-quality flag so the UI can render a "link applicant"
+        // hint instead of a silent unactionable row.
+        dataQualityIssue: noLinkedApplication ? 'no_linked_application' : null,
         createdAt: r.createdAt,
         updatedAt: r.updatedAt,
       };
     });
 
-    return res.json({ ok: true, services, ladder: LADDER_STATUSES, pagination: { limit, offset } });
+    return res.json({
+      ok: true,
+      services,
+      ladder: LADDER_STATUSES,
+      pagination: { limit, offset },
+      dataQuality: { unlinkedApplications: unlinkedCount },
+    });
   } catch (err: any) {
     logger.error('[AdminProviderControl] list failed', { err: err?.message });
     return res.status(500).json({ error: 'provider_control_list_failed' });

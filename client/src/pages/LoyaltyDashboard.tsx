@@ -146,10 +146,14 @@ const MainLoyaltyWidget = ({
           </Badge>
           {nextTierConfig && (
             <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
-              {isHebrew 
-                ? `עוד ${(maxPoints - points).toLocaleString()} נקודות ל-${nextTierConfig.nameHe}`
-                : `${(maxPoints - points).toLocaleString()} points to ${nextTierConfig.name}`
-              }
+              {(() => {
+                const remaining = maxPoints - points;
+                const ptsHe = remaining === 1 ? 'נקודה' : 'נקודות';
+                const ptsEn = remaining === 1 ? 'point' : 'points';
+                return isHebrew
+                  ? `עוד ${remaining.toLocaleString()} ${ptsHe} ל-${nextTierConfig.nameHe}`
+                  : `${remaining.toLocaleString()} ${ptsEn} to ${nextTierConfig.name}`;
+              })()}
             </p>
           )}
         </div>

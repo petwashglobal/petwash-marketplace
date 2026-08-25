@@ -4437,7 +4437,14 @@ export default function MyAccount() {
                         {petFormData.birthday && (
                           <p className="text-xs text-gray-400 mt-1.5 flex items-center gap-1">
                             <CalendarCheck className="w-3.5 h-3.5" />
-                            {isHebrew ? `יום הולדת הבא: ${nextBirthdayDate(petFormData.birthday)} (${daysUntilBirthday(petFormData.birthday)} ימים)` : `Next birthday: ${nextBirthdayDate(petFormData.birthday)} (${daysUntilBirthday(petFormData.birthday)} days)`}
+                            {(() => {
+                              const d = daysUntilBirthday(petFormData.birthday);
+                              const dayHe = d === 1 ? 'יום' : 'ימים';
+                              const dayEn = d === 1 ? 'day' : 'days';
+                              return isHebrew
+                                ? `יום הולדת הבא: ${nextBirthdayDate(petFormData.birthday)} (${d} ${dayHe})`
+                                : `Next birthday: ${nextBirthdayDate(petFormData.birthday)} (${d} ${dayEn})`;
+                            })()}
                           </p>
                         )}
                       </div>

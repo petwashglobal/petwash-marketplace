@@ -417,7 +417,9 @@ export function BookingWizard({ platform, onComplete, onClose }: BookingWizardPr
                 <div className="flex items-center gap-2">
                   <Gem className="w-5 h-5 text-amber-600" />
                   <span className="font-semibold text-amber-800 dark:text-amber-300">
-                    {isHebrew ? `סה"כ: ${getTotalPets()} חיות מחמד` : `Total: ${getTotalPets()} pets`}
+                    {isHebrew
+                      ? `סה"כ: ${getTotalPets()} ${getTotalPets() === 1 ? 'חיה' : 'חיות מחמד'}`
+                      : `Total: ${getTotalPets()} ${getTotalPets() === 1 ? 'pet' : 'pets'}`}
                   </span>
                 </div>
               </div>
