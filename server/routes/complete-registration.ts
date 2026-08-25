@@ -80,23 +80,36 @@ router.post('/complete-registration', async (req: Request, res: Response) => {
     const normalizedEmail = email.toLowerCase().trim();
 
     const { emailToken, smsToken } = req.body as CompleteRegistrationRequest;
-    if (emailToken) {
-      const emailCheck = peekEmailVerificationToken(emailToken);
-      if (!emailCheck.valid) {
-        logger.warn('[CompleteRegistration] Invalid email verification token', { traceId });
-        return res.status(400).json({ success: false, message: 'Email verification token is invalid or expired' });
-      }
-      if (emailCheck.email && emailCheck.email !== normalizedEmail) {
-        logger.warn('[CompleteRegistration] Email mismatch with token', { traceId });
-        return res.status(400).json({ success: false, message: 'Email does not match verified email' });
-      }
+    // Audit F5 fix (2026-08-24): both token checks were `if (token)` guards, so a
+    // caller who omitted BOTH tokens passed validation. That let anyone spawn
+    // onboarding_cases rows and fire welcome emails to arbitrary addresses.
+    // Both tokens are now mandatory — a request without proven contact-owner
+    // possession never touches the database or the mailer.
+    if (!emailToken || !smsToken) {
+      logger.warn('[CompleteRegistration] Missing verification tokens — refusing to spawn onboarding row', {
+        traceId,
+        hasEmailToken: !!emailToken,
+        hasSmsToken: !!smsToken,
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Email and phone verification tokens are both required to complete registration.',
+        code: 'MISSING_VERIFICATION_TOKENS',
+      });
     }
-    if (smsToken) {
-      const smsCheck = twilioSMSService.validateVerificationToken(smsToken);
-      if (!smsCheck.valid) {
-        logger.warn('[CompleteRegistration] Invalid SMS verification token', { traceId });
-        return res.status(400).json({ success: false, message: 'Phone verification token is invalid or expired' });
-      }
+    const emailCheck = peekEmailVerificationToken(emailToken);
+    if (!emailCheck.valid) {
+      logger.warn('[CompleteRegistration] Invalid email verification token', { traceId });
+      return res.status(400).json({ success: false, message: 'Email verification token is invalid or expired' });
+    }
+    if (emailCheck.email && emailCheck.email !== normalizedEmail) {
+      logger.warn('[CompleteRegistration] Email mismatch with token', { traceId });
+      return res.status(400).json({ success: false, message: 'Email does not match verified email' });
+    }
+    const smsCheck = twilioSMSService.validateVerificationToken(smsToken);
+    if (!smsCheck.valid) {
+      logger.warn('[CompleteRegistration] Invalid SMS verification token', { traceId });
+      return res.status(400).json({ success: false, message: 'Phone verification token is invalid or expired' });
     }
 
     const membershipNumber = await generateMembershipId(MEMBERSHIP_CLASS[userType]);
@@ -204,7 +217,21 @@ router.post('/send-welcome-email', async (req: Request, res: Response) => {
   const traceId = crypto.randomUUID().slice(0, 8);
 
   try {
-    const { audience, toEmail, membershipNumber, userId, language } = req.body;
+    // Audit F5 sibling fix (2026-08-24): this route was completely open — any
+    // caller could POST toEmail=<victim>+membershipNumber and cause a welcome
+    // email to be dispatched to arbitrary addresses (email-bomb + phishing
+    // hazard using PetWash-branded copy). Same tokens as /complete-registration
+    // above are now required so only a caller who proved possession of BOTH
+    // contacts can trigger a send.
+    const { audience, toEmail, membershipNumber, userId, language, emailToken, smsToken } = req.body as {
+      audience?: string;
+      toEmail?: string;
+      membershipNumber?: string;
+      userId?: string;
+      language?: string;
+      emailToken?: string;
+      smsToken?: string;
+    };
 
     if (!audience || !toEmail || !membershipNumber) {
       return res.status(400).json({
@@ -220,9 +247,33 @@ router.post('/send-welcome-email', async (req: Request, res: Response) => {
       });
     }
 
+    if (!emailToken || !smsToken) {
+      logger.warn('[SendWelcomeEmail] Missing verification tokens — refusing send', {
+        traceId, hasEmailToken: !!emailToken, hasSmsToken: !!smsToken,
+      });
+      return res.status(400).json({
+        success: false,
+        message: 'Email and phone verification tokens are both required to dispatch a welcome email.',
+        code: 'MISSING_VERIFICATION_TOKENS',
+      });
+    }
+    const normalizedTo = String(toEmail).toLowerCase().trim();
+    const emailCheck = peekEmailVerificationToken(emailToken);
+    if (!emailCheck.valid) {
+      return res.status(400).json({ success: false, message: 'Email verification token is invalid or expired' });
+    }
+    if (emailCheck.email && emailCheck.email !== normalizedTo) {
+      logger.warn('[SendWelcomeEmail] toEmail did not match email-token subject', { traceId });
+      return res.status(400).json({ success: false, message: 'toEmail does not match the verified email' });
+    }
+    const smsCheck = twilioSMSService.validateVerificationToken(smsToken);
+    if (!smsCheck.valid) {
+      return res.status(400).json({ success: false, message: 'Phone verification token is invalid or expired' });
+    }
+
     const result = await WelcomeEmailService.sendWelcomeEmail({
-      audience,
-      toEmail,
+      audience: audience as 'public_customer' | 'provider_applicant' | 'staff_request',
+      toEmail: normalizedTo,
       membershipNumber,
       userId,
       language: language || 'he',
