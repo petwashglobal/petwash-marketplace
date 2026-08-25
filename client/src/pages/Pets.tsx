@@ -172,8 +172,8 @@ function PetHealthPanel({ petId, petName, petBirthdate, language, authToken, use
             <span className="font-semibold text-amber-800">
               {birthdayCountdown === 0
                 ? (isHe ? `🎂 יום הולדת שמח, ${petName}!` : `🎂 Happy Birthday, ${petName}!`)
-                : isHe ? `יום הולדת בעוד ${birthdayCountdown} ימים 🎉`
-                        : `Birthday in ${birthdayCountdown} days 🎉`}
+                : isHe ? `יום הולדת בעוד ${birthdayCountdown} ${birthdayCountdown === 1 ? 'יום' : 'ימים'} 🎉`
+                        : `Birthday in ${birthdayCountdown} ${birthdayCountdown === 1 ? 'day' : 'days'} 🎉`}
             </span>
             {birthdayCountdown <= 7 && (
               <span className="block text-xs text-amber-600 mt-0.5">

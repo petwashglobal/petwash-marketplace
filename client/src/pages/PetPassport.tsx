@@ -252,7 +252,10 @@ export default function PetPassport() {
                       </div>
                       {care.timeline.daysSinceLastWash != null && (
                         <div className="text-[10px] text-amber-300/60 mt-0.5">
-                          {tr(`${care.timeline.daysSinceLastWash} days ago`, `לפני ${care.timeline.daysSinceLastWash} ימים`)}
+                          {tr(
+                            `${care.timeline.daysSinceLastWash} ${care.timeline.daysSinceLastWash === 1 ? 'day' : 'days'} ago`,
+                            `לפני ${care.timeline.daysSinceLastWash} ${care.timeline.daysSinceLastWash === 1 ? 'יום' : 'ימים'}`,
+                          )}
                         </div>
                       )}
                     </div>
@@ -267,8 +270,8 @@ export default function PetPassport() {
                       {care.timeline.suggestedNextWashIsHeuristic && care.timeline.suggestedNextWashDate && (
                         <div className="text-[10px] text-amber-300/60 mt-0.5">
                           {tr(
-                            `Estimate · every ${care.timeline.nextWashIntervalDays} days`,
-                            `הערכה · כל ${care.timeline.nextWashIntervalDays} ימים`,
+                            `Estimate · every ${care.timeline.nextWashIntervalDays} ${care.timeline.nextWashIntervalDays === 1 ? 'day' : 'days'}`,
+                            `הערכה · כל ${care.timeline.nextWashIntervalDays} ${care.timeline.nextWashIntervalDays === 1 ? 'יום' : 'ימים'}`,
                           )}
                         </div>
                       )}
@@ -283,8 +286,8 @@ export default function PetPassport() {
                         {care.timeline.daysUntilBirthday === 0
                           ? tr('Birthday is today! 🎉', 'יום ההולדת היום! 🎉')
                           : tr(
-                              `Birthday in ${care.timeline.daysUntilBirthday} days`,
-                              `יום הולדת בעוד ${care.timeline.daysUntilBirthday} ימים`,
+                              `Birthday in ${care.timeline.daysUntilBirthday} ${care.timeline.daysUntilBirthday === 1 ? 'day' : 'days'}`,
+                              `יום הולדת בעוד ${care.timeline.daysUntilBirthday} ${care.timeline.daysUntilBirthday === 1 ? 'יום' : 'ימים'}`,
                             )}
                       </span>
                     </div>

@@ -163,8 +163,8 @@ export function ProviderSearchCard({ item }: Props) {
               {item.completedBookings > 0 && (
                 <span className="text-sm text-zinc-400">
                   {isHebrew
-                    ? `${item.completedBookings} הזמנות`
-                    : `${item.completedBookings} bookings`}
+                    ? `${item.completedBookings} ${item.completedBookings === 1 ? 'הזמנה' : 'הזמנות'}`
+                    : `${item.completedBookings} ${item.completedBookings === 1 ? 'booking' : 'bookings'}`}
                 </span>
               )}
               {/* Response time */}

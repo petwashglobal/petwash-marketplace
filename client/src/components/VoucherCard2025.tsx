@@ -43,7 +43,7 @@ export function VoucherCard2025({ voucher, onUse, showActions = true }: VoucherC
   // Display values
   const mainValue = isCurrency 
     ? `₪${voucher.rules.value_remaining}`
-    : `${voucher.rules.washes_remaining} washes`;
+    : `${voucher.rules.washes_remaining} ${voucher.rules.washes_remaining === 1 ? 'wash' : 'washes'}`;
   
   const subtitle = isCurrency
     ? `${voucher.rules.currency} Gift Card`

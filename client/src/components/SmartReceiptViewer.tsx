@@ -141,7 +141,7 @@ export function SmartReceiptViewer() {
                 <p className="luxury-text-small">Duration</p>
                 <p className="font-semibold flex items-center gap-2 text-gray-900">
                   <Clock className="h-4 w-4 text-amber-500" />
-                  {receipt.washDuration} minutes
+                  {receipt.washDuration} {receipt.washDuration === 1 ? 'minute' : 'minutes'}
                 </p>
               </div>
             </div>
@@ -204,7 +204,7 @@ export function SmartReceiptViewer() {
             <div className="flex items-center justify-between">
               <span className="luxury-text-small">Points Earned:</span>
               <span className="luxury-badge bg-green-100 text-green-700">
-                +{receipt.loyaltyPointsEarned} points
+                +{receipt.loyaltyPointsEarned} {receipt.loyaltyPointsEarned === 1 ? 'point' : 'points'}
               </span>
             </div>
 

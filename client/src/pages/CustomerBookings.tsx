@@ -569,7 +569,7 @@ function BookingCard({
         ? (isRTL ? 'היום!' : 'Today!')
         : daysTil === 1
         ? (isRTL ? 'מחר' : 'Tomorrow')
-        : isRTL ? `בעוד ${daysTil} ימים` : `In ${daysTil} days`}
+        : isRTL ? `בעוד ${daysTil} ${daysTil === 1 ? 'יום' : 'ימים'}` : `In ${daysTil} ${daysTil === 1 ? 'day' : 'days'}`}
     </span>
   ) : null;
 
