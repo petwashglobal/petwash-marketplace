@@ -742,11 +742,35 @@ export class AppleWalletService {
 
   /**
    * Send push notification to update pass
-   * Uses Apple Push Notification service (APNs) to notify devices of pass updates
+   *
+   * Return contract (silent-lie audit #4 fix, 2026-08-24):
+   *   {
+   *     attempted: number,   // devices we tried to notify
+   *     pushed:    number,   // devices APNs accepted
+   *     skipped:   number,   // devices we did NOT contact (config missing)
+   *     failed:    number,   // devices APNs rejected
+   *     reason?:   string,   // why we skipped (APNS_NOT_CONFIGURED, MODULE_MISSING)
+   *   }
+   *
+   * Previously this method logged "Push notifications sent" for every call
+   * — even when the entire body was a `// TODO: implement APNs` placeholder.
+   * The caller /api/wallet/notify-pass-update then returned {ok:true} to the
+   * client so wallet balances never refreshed on any iPhone and no one saw
+   * a signal.
+   *
+   * Now: attempt the real APNs push when node-apn is installed AND the
+   * three env vars are set (APPLE_APNS_KEY, APPLE_APNS_KEY_ID,
+   * APPLE_TEAM_ID). Otherwise return a truthful skipped payload so callers
+   * stop reporting success.
    */
-  private static async sendPassUpdateNotification(serialNumber: string): Promise<void> {
+  private static async sendPassUpdateNotification(serialNumber: string): Promise<{
+    attempted: number;
+    pushed:    number;
+    skipped:   number;
+    failed:    number;
+    reason?:   string;
+  }> {
     try {
-      // Get all registered devices for this pass
       const registrations = await db
         .collection('wallet_device_registrations')
         .where('serialNumber', '==', serialNumber)
@@ -754,50 +778,102 @@ export class AppleWalletService {
 
       if (registrations.empty) {
         logger.warn('[Apple Wallet] No registered devices found', { serialNumber });
-        return;
+        return { attempted: 0, pushed: 0, skipped: 0, failed: 0 };
       }
 
-      // Send push notification to each device
-      const pushPromises = registrations.docs.map(async (doc) => {
-        const { pushToken, deviceID } = doc.data();
-        
-        // Note: Actual APNs push requires APNs certificate and dedicated connection
-        // This is a placeholder for the push notification logic
-        // Production implementation should use a library like 'node-apn' or 'apns2'
-        
-        logger.info('[Apple Wallet] Sending push notification', {
+      const APPLE_APNS_KEY    = process.env.APPLE_APNS_KEY;
+      const APPLE_APNS_KEY_ID = process.env.APPLE_APNS_KEY_ID;
+      const APPLE_TEAM_ID     = process.env.APPLE_TEAM_ID;
+      const APPLE_PASS_TOPIC  = process.env.APPLE_PASS_TYPE_ID;
+      const apnsConfigured =
+        !!APPLE_APNS_KEY && !!APPLE_APNS_KEY_ID && !!APPLE_TEAM_ID && !!APPLE_PASS_TOPIC;
+
+      if (!apnsConfigured) {
+        logger.error('[Apple Wallet] APNs credentials missing — pass update push NOT sent', {
           serialNumber,
-          deviceID,
-          pushToken: pushToken.substring(0, 10) + '...' // Log partial token for security
+          deviceCount: registrations.size,
+          missing: [
+            !APPLE_APNS_KEY    ? 'APPLE_APNS_KEY'    : null,
+            !APPLE_APNS_KEY_ID ? 'APPLE_APNS_KEY_ID' : null,
+            !APPLE_TEAM_ID     ? 'APPLE_TEAM_ID'     : null,
+            !APPLE_PASS_TOPIC  ? 'APPLE_PASS_TYPE_ID' : null,
+          ].filter(Boolean),
         });
+        return {
+          attempted: 0,
+          pushed:    0,
+          skipped:   registrations.size,
+          failed:    0,
+          reason:    'APNS_NOT_CONFIGURED',
+        };
+      }
 
-        // TODO: Implement actual APNs push when certificates are available
-        // const apn = require('apn');
-        // const provider = new apn.Provider({
-        //   token: {
-        //     key: process.env.APPLE_APNS_KEY,
-        //     keyId: process.env.APPLE_APNS_KEY_ID,
-        //     teamId: process.env.APPLE_TEAM_ID
-        //   },
-        //   production: process.env.NODE_ENV === 'production'
-        // });
-        // 
-        // const notification = new apn.Notification();
-        // notification.payload = {}; // Silent push - no payload needed
-        // notification.topic = process.env.APPLE_PASS_TYPE_ID;
-        // 
-        // await provider.send(notification, pushToken);
+      // Dynamically import 'apn' so an unconfigured deploy doesn't fail on
+      // module load. When the dep isn't installed, we degrade to a truthful
+      // skipped payload rather than pretending the push worked.
+      let apn: any;
+      try {
+        apn = await import('apn' as any);
+      } catch (modErr: any) {
+        logger.error('[Apple Wallet] node-apn module missing — pass update push NOT sent', {
+          serialNumber, deviceCount: registrations.size, error: modErr?.message,
+        });
+        return {
+          attempted: 0,
+          pushed:    0,
+          skipped:   registrations.size,
+          failed:    0,
+          reason:    'APNS_MODULE_MISSING',
+        };
+      }
+
+      const provider = new (apn.default?.Provider ?? apn.Provider)({
+        token: {
+          key:    APPLE_APNS_KEY,
+          keyId:  APPLE_APNS_KEY_ID,
+          teamId: APPLE_TEAM_ID,
+        },
+        production: process.env.NODE_ENV === 'production',
       });
 
-      await Promise.all(pushPromises);
-      logger.info('[Apple Wallet] Push notifications sent', { 
-        serialNumber, 
-        deviceCount: registrations.size 
-      });
+      let pushed = 0;
+      let failed = 0;
+      let attempted = 0;
+      try {
+        await Promise.all(registrations.docs.map(async (doc) => {
+          const { pushToken, deviceID } = doc.data();
+          if (!pushToken) return;
+          attempted += 1;
+          const notification = new (apn.default?.Notification ?? apn.Notification)();
+          notification.payload = {}; // silent push — Apple Wallet re-fetches the pass
+          notification.topic = APPLE_PASS_TOPIC;
+          try {
+            const result: any = await provider.send(notification, pushToken);
+            const okCount = Array.isArray(result?.sent) ? result.sent.length : 0;
+            const failCount = Array.isArray(result?.failed) ? result.failed.length : 0;
+            pushed += okCount;
+            failed += failCount;
+            if (failCount > 0) {
+              logger.warn('[Apple Wallet] APNs push rejected for device', {
+                serialNumber, deviceID, failures: result?.failed,
+              });
+            }
+          } catch (sendErr: any) {
+            failed += 1;
+            logger.warn('[Apple Wallet] APNs push threw', { serialNumber, deviceID, error: sendErr?.message });
+          }
+        }));
+      } finally {
+        try { provider.shutdown?.(); } catch { /* no-op */ }
+      }
 
-    } catch (error) {
+      logger.info('[Apple Wallet] Pass update push summary', {
+        serialNumber, attempted, pushed, failed,
+      });
+      return { attempted, pushed, skipped: 0, failed };
+    } catch (error: any) {
       logger.error('[Apple Wallet] Error sending push notifications:', error);
-      // Don't throw - push failures shouldn't break the update flow
+      return { attempted: 0, pushed: 0, skipped: 0, failed: 0, reason: 'INTERNAL_ERROR' };
     }
   }
 
