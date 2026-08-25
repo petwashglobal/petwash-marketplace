@@ -887,13 +887,44 @@ router.post('/bulk', requireAuth, async (req: Request, res: Response) => {
     }
 
     if (action === 'close_cases') {
-      if (!assertOperatingControl(req, res, {
-        actionType: 'BANK_MATCH_CLOSE',
-        route: 'POST /api/case-actions/bulk:close_cases',
-        targetId: `bulk-dispute-closure:${cases.length}`,
-      })) {
-        return;
-      }
+      // Admin-audit CRIT #1 + #2 fix (2026-08-25). The bulk close_cases
+      // branch below did a raw UPDATE that:
+      //   - skipped per-dispute assertDisputeClosureControl (CRIT #2)
+      //   - skipped escrow release/refund based on closure_reason_code (CRIT #1)
+      //   - skipped customer notification (CRIT #1)
+      //   - marked results.succeeded++ regardless of actual row count
+      // Result: CEO taps "select all → close" and money stays locked in
+      // escrow, customers never learn the outcome.
+      //
+      // The single-dispute /closure-approve endpoint (line 507+) does all of
+      // the above correctly via a reason_code → escrowSvc.releaseEscrowPayment
+      // / refundEscrowPayment mapping. Refactoring it into a shared helper is
+      // the correct long-term fix but out of scope for a hotfix — a wrong
+      // shared helper could break the audited single-dispute path too.
+      //
+      // Defensive block: bulk close_cases is REJECTED with 400 until the
+      // shared helper lands. Ops must close disputes one-at-a-time via
+      // /closure-approve so escrow money is released and customers notified.
+      return res.status(400).json({
+        error: 'BULK_CLOSE_DISABLED_FOR_MONEY_SAFETY',
+        message:
+          'Bulk close is temporarily disabled — bulk path skipped escrow release + customer notification. Close each dispute via /api/case-actions/closure-approve so money is released and the customer is notified.',
+        recommended: {
+          endpoint: 'POST /api/case-actions/closure-approve',
+          per_dispute: true,
+          required_body: ['bookingId', 'note (optional)'],
+        },
+      });
+    }
+
+    // Admin-audit CRIT #18 fix (2026-08-25): assign_to_me silently skipped
+    // every case when callerUid was null (admin-secret path). Response was
+    // 200 {succeeded:0, skipped:N}. UI treated that as a win. Fail-fast
+    // instead so ops sees the actual issue.
+    if (action === 'assign_to_me' && !callerUid) {
+      return res.status(400).json({
+        error: 'assign_to_me requires a caller Firebase UID (admin-secret paths cannot self-assign — use POST /assign with an explicit assigneeId)',
+      });
     }
 
     const results = { succeeded: 0, failed: 0, skipped: 0 };
