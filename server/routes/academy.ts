@@ -331,24 +331,12 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
     const slotStart = validatedData.sessionDate as Date;
     const slotEnd = new Date(slotStart.getTime() + validatedData.sessionDuration * 60_000);
     const slotProviderId = trainer.userId || `trainer:${trainer.id}`;
-    try {
-      await acquireSlotLock(db, {
-        providerId: slotProviderId,
-        startAt: slotStart,
-        endAt: slotEnd,
-        bookingRef: validatedData.bookingId,
-        serviceType: 'academy',
-      });
-      slotLockRef = validatedData.bookingId;
-    } catch (lockErr) {
-      if (lockErr instanceof BookingSlotConflictError) {
-        return res.status(409).json({
-          error: 'This trainer is already booked at the selected time. Please pick another slot.',
-          errorCode: 'SLOT_TAKEN',
-        });
-      }
-      throw lockErr;
-    }
+    // Lock is acquired here but INSERT of trainerBookings happens further
+    // down (after the wallet hold). We wrap them together in a shared
+    // transaction below (`bookingTx`) so a failed insert rolls back the
+    // slot lock — the prior implementation left the lock alive after any
+    // downstream failure, making the trainer's slot silently unbookable.
+    // See marketplaceSlotLock.ts:10 for the contract.
 
     // Calculate pricing
     const durationHours = validatedData.sessionDuration / 60;
@@ -384,29 +372,53 @@ router.post('/bookings', requireAuth, requireLoyaltyMember, async (req, res) => 
       }
     }
 
-    // Create booking with pricing
-    const [newBooking] = await db
-      .insert(trainerBookings)
-      .values({
-        ...validatedData,
-        trainerUserId: trainer.userId,
-        hourlyRate: trainer.hourlyRate,
-        totalAmount: totalAmount.toFixed(2),
-        platformFee: platformFee.toFixed(2),
-        trainerPayout: trainerPayout.toFixed(2),
-        currency: 'ILS',
-        bookingStatus: 'pending',
-        paymentStatus: 'pending',
-        escrowStatus: 'pending',
-        autoReleaseAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72 hours
-        // Wallet lifecycle
-        walletHoldCents: holdResult?.heldCents ?? 0,
-        walletHoldKey: holdResult?.holdKey ?? null,
-        financeState: holdResult ? 'hold_active' : 'none',
-        // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
-        serviceSource: 'pet_training',
-      })
-      .returning();
+    // Atomic slot-lock + booking insert (see comment above at
+    // slotProviderId). If the insert fails for any reason the slot lock
+    // rolls back with it — no ghost locks on the trainer's calendar.
+    let newBooking: any = null;
+    try {
+      newBooking = await db.transaction(async (tx) => {
+        await acquireSlotLock(tx, {
+          providerId: slotProviderId,
+          startAt: slotStart,
+          endAt: slotEnd,
+          bookingRef: validatedData.bookingId,
+          serviceType: 'academy',
+        });
+        const [row] = await tx
+          .insert(trainerBookings)
+          .values({
+            ...validatedData,
+            trainerUserId: trainer.userId,
+            hourlyRate: trainer.hourlyRate,
+            totalAmount: totalAmount.toFixed(2),
+            platformFee: platformFee.toFixed(2),
+            trainerPayout: trainerPayout.toFixed(2),
+            currency: 'ILS',
+            bookingStatus: 'pending',
+            paymentStatus: 'pending',
+            escrowStatus: 'pending',
+            autoReleaseAt: new Date(Date.now() + 72 * 60 * 60 * 1000), // 72 hours
+            // Wallet lifecycle
+            walletHoldCents: holdResult?.heldCents ?? 0,
+            walletHoldKey: holdResult?.holdKey ?? null,
+            financeState: holdResult ? 'hold_active' : 'none',
+            // Legal source tag (booking-hardening 2026-06-20) — prove platform of origin.
+            serviceSource: 'pet_training',
+          })
+          .returning();
+        return row;
+      });
+      slotLockRef = validatedData.bookingId;
+    } catch (lockErr) {
+      if (lockErr instanceof BookingSlotConflictError) {
+        return res.status(409).json({
+          error: 'This trainer is already booked at the selected time. Please pick another slot.',
+          errorCode: 'SLOT_TAKEN',
+        });
+      }
+      throw lockErr;
+    }
 
     // Bridge into booking_requests so the trainer sees + accepts this from the
     // canonical /provider-os inbox (provider-dashboard-v2 reads booking_requests
