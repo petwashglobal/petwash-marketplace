@@ -30,7 +30,7 @@ import {
 import PaymentGatewayService, { type WebhookPayload } from '../services/PaymentGatewayService';
 import { db } from '../db';
 import { paymentIntents, bookings, bookingStatusHistory, availabilitySlots, escrowHoldings, users } from '@shared/schema';
-import { eq, and, sql } from 'drizzle-orm';
+import { eq, and, sql, inArray } from 'drizzle-orm';
 import { createIPAllowlist } from '../middleware/ipAllowlist';
 import { NayaxOnlinePaymentService } from '../services/NayaxOnlinePaymentService';
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from '../services/googleSheetsIntegration';
@@ -912,13 +912,25 @@ router.post(
 
       } else if (payload.event === 'payment.failed') {
         // ── [7] Failed ────────────────────────────────────────────────────────
+        // Guard against retried / out-of-order webhooks flipping a paid
+        // booking to failed. If the booking already reached a paid/confirmed
+        // state a subsequent payment.failed webhook MUST be a no-op, otherwise:
+        //   - the customer was charged, the booking silently downgrades to
+        //     'payment_failed' AND the slot is released back to the pool
+        //   - support gets a "my booking disappeared" ticket with no trace
+        // Only allow the failed state to overwrite still-pending records.
         await db
           .update(bookings)
           .set({ status: 'payment_failed', paymentStatus: 'failed', updatedAt: new Date() } as any)
-          .where(eq(bookings.id, payload.bookingId));
+          .where(and(
+            eq(bookings.id, payload.bookingId),
+            inArray(bookings.status, ['pending', 'pending_payment', 'pending_confirmation'] as any),
+          ) as any);
 
         // ── [P1-FIX] Release the booked slot so it can be re-booked ─────────
-        // Without this the slot stays 'booked' forever even though no payment happened.
+        // Same guard: only release the slot if it is still linked to a
+        // NON-confirmed booking. A slot associated with an already-confirmed
+        // booking must not be handed to a new customer.
         await db
           .update(availabilitySlots)
           .set({
@@ -929,7 +941,12 @@ router.post(
             lockedByUid: null,
             updatedAt: new Date(),
           } as any)
-          .where(eq(availabilitySlots.bookingId, payload.bookingId));
+          .where(and(
+            eq(availabilitySlots.bookingId, payload.bookingId),
+            // Only release if the guarded UPDATE above actually flipped the
+            // booking — verified by re-reading the booking status.
+            sql`EXISTS (SELECT 1 FROM ${bookings} WHERE ${bookings.id} = ${payload.bookingId} AND ${bookings.status} = 'payment_failed')`,
+          ) as any);
 
         // ── [P1-FIX] Void the escrow record — payment never captured ─────────
         await db

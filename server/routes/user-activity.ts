@@ -61,7 +61,10 @@ router.get('/summary', async (req: any, res) => {
         .from(customerPets)
         .where(eq(customerPets.ownerUid, uid))
         .limit(5);
-    } catch { pets = []; }
+    } catch (e: any) {
+      logger.warn('[UserActivity] pets query failed', { uid, error: e?.message });
+      pets = [];
+    }
 
     // Upcoming sitter bookings
     let sitterUpcoming: any[] = [];
@@ -80,7 +83,10 @@ router.get('/summary', async (req: any, res) => {
         .where(and(eq(sitterBookings.ownerId, uid), gte(sitterBookings.startDate, now)))
         .orderBy(sitterBookings.startDate)
         .limit(3);
-    } catch { sitterUpcoming = []; }
+    } catch (e: any) {
+      logger.warn('[UserActivity] sitterUpcoming query failed', { uid, error: e?.message });
+      sitterUpcoming = [];
+    }
 
     // Upcoming walk bookings
     let walkUpcoming: any[] = [];
@@ -96,10 +102,22 @@ router.get('/summary', async (req: any, res) => {
           amountCents: sql<number>`(${walkBookings.totalCost} * 100)::int`,
         })
         .from(walkBookings)
-        .where(and(eq(walkBookings.ownerId, uid), gte(walkBookings.scheduledDate, now.toISOString().split('T')[0])))
+        // Israel civil day, NOT UTC — during 00:00-03:00 IL the UTC day is
+        // still yesterday, so a walk scheduled today (IL) was filtered as
+        // "past" and disappeared from the customer's Upcoming rail.
+        .where(and(
+          eq(walkBookings.ownerId, uid),
+          gte(walkBookings.scheduledDate, now.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' })),
+        ))
         .orderBy(walkBookings.scheduledDate)
         .limit(3);
-    } catch { walkUpcoming = []; }
+    } catch (e: any) {
+      // Log the DB failure — a silent empty-list here reads to the customer
+      // as "you have no upcoming walks" when the real cause is a Postgres
+      // error the ops team needs to see.
+      logger.warn('[UserActivity] walkUpcoming query failed', { uid, error: e?.message });
+      walkUpcoming = [];
+    }
 
     // ── Upcoming Academy (trainer) sessions ────────────────────────────────
     // Was silently omitted from the dashboard's upcoming rail: a customer
@@ -126,7 +144,10 @@ router.get('/summary', async (req: any, res) => {
         .where(and(eq(trainerBookings.userId, uid), gte(trainerBookings.sessionDate, now)))
         .orderBy(trainerBookings.sessionDate)
         .limit(3);
-    } catch { academyUpcoming = []; }
+    } catch (e: any) {
+      logger.warn('[UserActivity] academyUpcoming query failed', { uid, error: e?.message });
+      academyUpcoming = [];
+    }
 
     // Recent wallet transactions
     let recentTransactions: any[] = [];

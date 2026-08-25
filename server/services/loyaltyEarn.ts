@@ -15,7 +15,7 @@
 import { db } from '../db';
 import { loyaltyProfiles, pointsTransactions } from '@shared/schema-loyalty';
 import { detectTierUpgrade } from '../email/luxury-email-service';
-import { eq, and } from 'drizzle-orm';
+import { eq, and, sql } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 
 /** Repo-wide earn rate: 1 loyalty point per ₪1 of confirmed spend. */
@@ -77,13 +77,21 @@ export async function awardLoyaltyPoints(input: AwardPointsInput): Promise<Award
       .limit(1);
     if (!profile) return { awarded: false, skipped: 'no_profile' };
 
-    const newBalance = profile.points + amount;
-    const newLifetime = profile.lifetimePoints + amount;
-
+    // Atomic SQL increment — do NOT compute newBalance in JS and write it
+    // back, that's a classic lost-update: two concurrent awards for the same
+    // user (spend-based hook + badge unlock, or a webhook retry that took a
+    // different sourceId path) both read the same balance and one write
+    // wins, losing the other's points. Same pattern as
+    // server/routes/nayax-monyx-events.ts:143.
     await db
       .update(loyaltyProfiles)
-      .set({ points: newBalance, lifetimePoints: newLifetime, updatedAt: new Date() })
+      .set({
+        points:         sql`${loyaltyProfiles.points} + ${amount}`,
+        lifetimePoints: sql`${loyaltyProfiles.lifetimePoints} + ${amount}`,
+        updatedAt: new Date(),
+      })
       .where(eq(loyaltyProfiles.userId, userId));
+    const newLifetime = profile.lifetimePoints + amount;
 
     const tierCheck = detectTierUpgrade(profile.lifetimePoints, newLifetime);
     if (tierCheck.upgraded) {

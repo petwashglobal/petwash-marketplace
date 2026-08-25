@@ -370,7 +370,10 @@ export async function updateTransactionStatus(
 
     await db.collection('nayax_transactions').doc(transactionId).update(updates);
 
-    // Sync status update to PostgreSQL non-blocking
+    // Sync status update to PostgreSQL — non-blocking, but LOG on failure.
+    // A silent swallow means Firestore records the transaction as approved
+    // while Postgres never learns money moved. Receipts, payouts, and
+    // reports built off PG are silently wrong; ops has no signal.
     syncTransactionStatusToPostgres(
       transactionId,
       status,
@@ -380,7 +383,11 @@ export async function updateTransactionStatus(
         vatAmount: updates.vatAmount,
         netAfterFees: updates.netAfterFees,
       }
-    ).catch(() => {});
+    ).catch((e: any) =>
+      logger.error('[NayaxFirestore] Postgres sync FAILED — Firestore has status but PG does not', {
+        transactionId, status, nayaxTransactionId, error: e?.message,
+      })
+    );
     
     logger.info('Transaction status updated', { transactionId, status, ratesPreserved: hasAnyRateMetadata });
   } catch (error) {

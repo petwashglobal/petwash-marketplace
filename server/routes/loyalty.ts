@@ -2,7 +2,7 @@ import { getVertexAIConfig } from '../lib/gemini-client';
 import { Router, type Request, type Response } from 'express';
 import { randomBytes } from 'crypto';
 import { db } from '../db';
-import { eq, desc, and, gte, lte, gt } from 'drizzle-orm';
+import { eq, desc, and, gte, lte, gt, sql } from 'drizzle-orm';
 import { authService } from '../services/AuthService';
 import {
   loyaltyProfiles,
@@ -461,15 +461,15 @@ router.post('/points/add', requireAdmin, async (req: AuthenticatedRequest, res: 
       return res.status(404).json({ error: 'Loyalty profile not found' });
     }
 
-    const newBalance = profile.points + amount;
+    // Atomic SQL increment — read-then-write on `points` is a lost-update
+    // race with any concurrent award (see loyaltyEarn.ts for the same fix).
     const newLifetimePoints = profile.lifetimePoints + (amount > 0 ? amount : 0);
-
-    // Update profile
+    const lifetimeDelta = amount > 0 ? amount : 0;
     await db
       .update(loyaltyProfiles)
       .set({
-        points: newBalance,
-        lifetimePoints: newLifetimePoints,
+        points:         sql`${loyaltyProfiles.points} + ${amount}`,
+        lifetimePoints: sql`${loyaltyProfiles.lifetimePoints} + ${lifetimeDelta}`,
         updatedAt: new Date(),
       })
       .where(eq(loyaltyProfiles.userId, userId));
@@ -654,12 +654,15 @@ router.post('/badges/unlock', requireAdmin, async (req: AuthenticatedRequest, re
         .limit(1);
 
       if (profile) {
+        // Atomic SQL increment (see loyaltyEarn.ts). A badge unlock and a
+        // concurrent spend-based award both reading the same `points` value
+        // and writing back a computed sum would silently drop one award.
         await db
           .update(loyaltyProfiles)
           .set({
-            points: profile.points + badge.pointsReward,
-            lifetimePoints: profile.lifetimePoints + badge.pointsReward,
-            xp: profile.xp + badge.xpReward,
+            points:         sql`${loyaltyProfiles.points} + ${badge.pointsReward}`,
+            lifetimePoints: sql`${loyaltyProfiles.lifetimePoints} + ${badge.pointsReward}`,
+            xp:             sql`${loyaltyProfiles.xp} + ${badge.xpReward}`,
             updatedAt: new Date(),
           })
           .where(eq(loyaltyProfiles.userId, userId));
