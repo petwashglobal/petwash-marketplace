@@ -218,6 +218,20 @@ export default function SitterBookingFlow() {
   async function handleConfirmBooking() {
     if (!sitter || !checkInDate || !checkOutDate) return;
 
+    // Honesty fix (booking audit CRIT #4): the sitter-suite schema stores one
+    // pet per booking (sitterBookings.petId). Multi-select on the pet picker
+    // silently dropped every pet after the first. Warn + block confirmation
+    // so the user books each pet separately (or the picker enforces single-
+    // select — TODO: convert to radio when schema supports multi-pet stays).
+    if (selectedPetIds.length > 1) {
+      toast({
+        title: 'ניתן להזמין רק חיה אחת בכל פעם',
+        description: 'רשת ה-Sitter Suite כרגע תומכת בהזמנת חיה אחת בכל שהות. אנא בטל את הבחירה של החיות הנוספות והזמן אותן בהזמנה נפרדת.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     try {
       setIsSubmitting(true);
 

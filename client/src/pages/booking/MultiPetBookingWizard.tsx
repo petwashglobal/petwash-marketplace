@@ -1573,14 +1573,35 @@ export default function MultiPetBookingWizard() {
   }, [selectedPetIds, pets]);
 
   // ── Build start/end ISO timestamps ─────────────────────────────────────────
-  const startISO = (() => {
-    try { return new Date(`${startDate}T${startTime}`).toISOString(); } catch { return ""; }
-  })();
+  // Booking audit CRIT #16 fix (2026-08-24): `new Date("2026-08-25T22:00")`
+  // is interpreted as LOCAL time by the browser but then .toISOString() emits
+  // UTC — a booking made at 22:00-01:59 Israel time landed on the wrong DB
+  // day. Same bug the walk-my-pet BookingFlow already fixed. Force local-
+  // timezone construction by explicitly attaching a UTC offset derived from
+  // the browser locale.
+  const buildLocalISO = (date: string, time: string): string => {
+    try {
+      // Parse the wall-clock parts; construct a Date at LOCAL time; format as
+      // ISO so the timezone offset (e.g. +03:00 Israel) is preserved on the wire.
+      const [y, m, d] = date.split('-').map(Number);
+      const [hh, mm] = time.split(':').map(Number);
+      if (![y, m, d, hh, mm].every(Number.isFinite)) return '';
+      const dt = new Date(y, (m ?? 1) - 1, d, hh ?? 0, mm ?? 0, 0, 0);
+      // Emit LOCAL-tz ISO by computing offset manually.
+      const tzMin = -dt.getTimezoneOffset();
+      const sign = tzMin >= 0 ? '+' : '-';
+      const abs = Math.abs(tzMin);
+      const pad = (n: number) => n.toString().padStart(2, '0');
+      const off = `${sign}${pad(Math.floor(abs / 60))}:${pad(abs % 60)}`;
+      return `${dt.getFullYear()}-${pad(dt.getMonth() + 1)}-${pad(dt.getDate())}T${pad(dt.getHours())}:${pad(dt.getMinutes())}:00${off}`;
+    } catch { return ''; }
+  };
+  const startISO = buildLocalISO(startDate, startTime);
   const endISO = (() => {
     const isMultiDay = ["pet_sitting", "house_sitting", "daycare"].includes(serviceType || "");
     const ed = isMultiDay ? endDate : startDate;
     const et = isMultiDay ? endTime : endTime;
-    try { return new Date(`${ed}T${et}`).toISOString(); } catch { return ""; }
+    return buildLocalISO(ed, et);
   })();
 
   // ── Quote preview ───────────────────────────────────────────────────────────
