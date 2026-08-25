@@ -373,7 +373,8 @@ import {
   stationBays,
   baySessions,
   kioskMachines,
-  userConsents
+  userConsents,
+  pets
 } from "@shared/schema";
 import { z } from "zod";
 import { generateGiftCardCode as utilsGenerateGiftCardCode, calculateDiscount as utilsCalculateDiscount } from "./utils";
@@ -17535,10 +17536,39 @@ Select exactly ${boxType.itemCount} products that match the pet's profile, age, 
       // it must not tell the user their wash was "scheduled". saved:false makes
       // that explicit; the client should present this as a recommendation. To
       // make it a real booking, persist via the canonical booking rail.
+      //
+      // Fixed 2026-08-24 (silent-lie audit #1):
+      //   - id was Date.now() (fake numeric id that looks like a real DB row) →
+      //     now advisory_<uuid> so no client caches it as a persistent id
+      //   - petName was hard-coded 'Pet' → now looked up + ownership-checked
+      //     against pets.userId so the response references the real pet
+      const callerUid = (req as any).userId || (req as any).user?.uid;
+      let petName = 'Pet';
+      try {
+        const petIdNum = Number(petId);
+        if (Number.isFinite(petIdNum) && callerUid) {
+          const [petRow] = await db
+            .select({ name: pets.name, userId: pets.userId })
+            .from(pets)
+            .where(eq(pets.id, petIdNum))
+            .limit(1);
+          if (petRow) {
+            if (petRow.userId !== callerUid) {
+              return res.status(403).json({ error: 'PET_NOT_OWNED', message: 'You do not own this pet.' });
+            }
+            petName = petRow.name || 'Pet';
+          }
+        }
+      } catch (petLookupErr: any) {
+        logger.warn('[PetCare] Pet lookup failed for advisory — using placeholder name', {
+          petId, error: petLookupErr?.message,
+        });
+      }
+
       const newSchedule = {
-        id: Date.now(),
+        id: `advisory_${crypto.randomUUID()}`,
         petId,
-        petName: 'Pet', // advisory only — pet name not fetched
+        petName,
         scheduledDate: date,
         status: 'advisory',
         saved: false,
