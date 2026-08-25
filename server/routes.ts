@@ -4303,7 +4303,13 @@ self.addEventListener('notificationclick', (event) => {
 
     try {
       const { adminAuth } = await import('./lib/firebase-admin');
+      // Preserve existing claims — the /provision-owner endpoint promotes an
+      // already-authorized user to super_admin-owner, it must not wipe their
+      // roles[] array (multi-role capability model, CEO §1) or any 2FA /
+      // Prestige / loyalty claims that were previously set.
+      const existingOwnerClaims = (await adminAuth.getUser(ownerFirebaseUid)).customClaims || {};
       await adminAuth.setCustomUserClaims(ownerFirebaseUid, {
+        ...existingOwnerClaims,
         role: 'admin',
         accountType: 'internal',
       });
