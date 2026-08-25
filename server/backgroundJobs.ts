@@ -315,9 +315,13 @@ export class BackgroundJobProcessor {
       timezone: 'Asia/Jerusalem'
     });
 
-    // Clean up old logs every hour
+    // Clean up old logs every hour — leader-elect so Cloud Run replicas do
+    // not both scan and delete concurrently.
     cron.schedule('0 * * * *', async () => {
-      await this.cleanupOldLogs();
+      if (await this.acquireLock('cleanupOldLogs')) {
+        try { await this.cleanupOldLogs(); }
+        finally { this.releaseLock('cleanupOldLogs'); }
+      }
     });
 
     // Auto-release expired escrows and process provider payouts (every hour)
@@ -346,9 +350,14 @@ export class BackgroundJobProcessor {
       }
     });
 
-    // Daily Firestore backup at midnight Israel time
+    // Daily Firestore backup at midnight Israel time.
+    // Leader-elect so two Cloud Run replicas don't concurrently fire
+    // pg_dump / Firestore export and overwrite the same GCS backup file.
     cron.schedule('0 0 * * *', async () => {
-      await this.performDailyBackup();
+      if (await this.acquireLock('performDailyBackup')) {
+        try { await this.performDailyBackup(); }
+        finally { this.releaseLock('performDailyBackup'); }
+      }
     }, {
       timezone: 'Asia/Jerusalem'
     });
@@ -365,7 +374,11 @@ export class BackgroundJobProcessor {
     // Set DAILY_REVENUE_REPORT_ENABLED=true to bring it back.
     if (String(process.env.DAILY_REVENUE_REPORT_ENABLED).toLowerCase().trim() === 'true') {
       cron.schedule('0 9 * * *', async () => {
-        await this.generateDailyRevenueReport();
+        // Leader-elect so scale-out doesn't email the report N times.
+        if (await this.acquireLock('generateDailyRevenueReport')) {
+          try { await this.generateDailyRevenueReport(); }
+          finally { this.releaseLock('generateDailyRevenueReport'); }
+        }
       }, {
         timezone: 'Asia/Jerusalem'
       });
@@ -377,19 +390,28 @@ export class BackgroundJobProcessor {
     // Provider 6-month re-confirmation sweep — daily 7 AM Israel time.
     // Sends reminders + audits overdue providers. Enforcement is dynamic
     // (payoutGate gate g + booking-accept), behind RECONFIRMATION_ENFORCE.
+    // Leader-elect so replica scale-out doesn't double-send reminders.
     cron.schedule('0 7 * * *', async () => {
-      try {
-        await runReconfirmationCron();
-      } catch (err: any) {
-        console.error('[BackgroundJobs] reconfirmation sweep failed', err?.message);
+      if (await this.acquireLock('runReconfirmationCron')) {
+        try {
+          await runReconfirmationCron();
+        } catch (err: any) {
+          logger.error('[BackgroundJobs] reconfirmation sweep failed', { error: err?.message });
+        } finally {
+          this.releaseLock('runReconfirmationCron');
+        }
       }
     }, {
       timezone: 'Asia/Jerusalem'
     });
 
-    // Monthly revenue report on 1st of each month at 10 AM Israel time
+    // Monthly revenue report on 1st of each month at 10 AM Israel time.
+    // Leader-elect so the CPA doesn't receive N duplicate reports at scale.
     cron.schedule('0 10 1 * *', async () => {
-      await this.generateMonthlyRevenueReport();
+      if (await this.acquireLock('generateMonthlyRevenueReport')) {
+        try { await this.generateMonthlyRevenueReport(); }
+        finally { this.releaseLock('generateMonthlyRevenueReport'); }
+      }
     }, {
       timezone: 'Asia/Jerusalem'
     });
@@ -409,16 +431,24 @@ export class BackgroundJobProcessor {
       timezone: 'Asia/Jerusalem'
     });
 
-    // Yearly revenue report on January 1st at 11 AM Israel time
+    // Yearly revenue report on January 1st at 11 AM Israel time.
+    // Leader-elect so only one replica sends the year-end pack.
     cron.schedule('0 11 1 1 *', async () => {
-      await this.generateYearlyRevenueReport();
+      if (await this.acquireLock('generateYearlyRevenueReport')) {
+        try { await this.generateYearlyRevenueReport(); }
+        finally { this.releaseLock('generateYearlyRevenueReport'); }
+      }
     }, {
       timezone: 'Asia/Jerusalem'
     });
 
-    // Weekly data integrity check on Sunday at midnight Israel time
+    // Weekly data integrity check on Sunday at midnight Israel time.
+    // Leader-elect so replicas don't concurrently scan the same tables.
     cron.schedule('0 0 * * 0', async () => {
-      await this.runDataIntegrityCheck();
+      if (await this.acquireLock('runDataIntegrityCheck')) {
+        try { await this.runDataIntegrityCheck(); }
+        finally { this.releaseLock('runDataIntegrityCheck'); }
+      }
     }, {
       timezone: 'Asia/Jerusalem'
     });
