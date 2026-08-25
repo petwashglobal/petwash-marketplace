@@ -1135,7 +1135,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       // another request already claimed it — return 409.
       const claimResult = await db
         .update(sitterBookings)
-        .set({ status: 'payment_processing', updatedAt: new Date() })
+        .set({ status: 'payment_pending', updatedAt: new Date() })
         .where(and(
           eq(sitterBookings.bookingId, bookingId),
           eq(sitterBookings.status, 'pending_provider'),
@@ -1181,7 +1181,7 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
           })
           .where(and(
             eq(sitterBookings.bookingId, bookingId),
-            eq(sitterBookings.status, 'payment_processing'),
+            eq(sitterBookings.status, 'payment_pending'),
           ));
 
         return res.status(400).json({
