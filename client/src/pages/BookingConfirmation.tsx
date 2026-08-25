@@ -825,7 +825,15 @@ export default function BookingConfirmation() {
     onSuccess: (data: any) => {
       confirmKeyRef.current = null;
       setConfirmed(true);
+      // Invalidate BOTH the single-request cache and the parent list caches
+      // used by /bookings — prefix matching only cascades to children, so
+      // the parent lists otherwise still show the old status until refresh.
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/booking-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/walk-my-pet/walks/mine'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/marketplace-bookings/my-bookings'] });
       toast({
         title: '✅ ' + t.confirmed,
         description: [data.smsSent ? t.smsSent : null, data.emailSent ? t.emailSent : null, t.payoutNote].filter(Boolean).join('. '),
@@ -875,7 +883,15 @@ export default function BookingConfirmation() {
     onSuccess: () => {
       cancelKeyRef.current = null;
       setShowCancelConfirm(false);
+      // Invalidate BOTH the single-request cache and the parent list caches
+      // used by /bookings — prefix matching only cascades to children, so
+      // the parent lists otherwise still show the old status until refresh.
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/booking-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/walk-my-pet/walks/mine'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/marketplace-bookings/my-bookings'] });
       toast({ title: t.cancelSuccess });
     },
     onError: () => toast({ title: 'Error', description: 'Failed to cancel booking', variant: 'destructive' }),
@@ -895,7 +911,15 @@ export default function BookingConfirmation() {
     },
     onSuccess: () => {
       meetGreetKeyRef.current = null;
+      // Invalidate BOTH the single-request cache and the parent list caches
+      // used by /bookings — prefix matching only cascades to children, so
+      // the parent lists otherwise still show the old status until refresh.
       queryClient.invalidateQueries({ queryKey: ['/api/booking-requests', requestId] });
+      queryClient.invalidateQueries({ queryKey: ['/api/booking-requests'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/sitter-suite/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/walk-my-pet/walks/mine'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/academy/bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/marketplace-bookings/my-bookings'] });
       toast({
         title: isRTL ? 'בקשת פגישת היכרות נשלחה' : 'Meet & Greet requested',
         description: isRTL ? 'הספק יאשר זמן בקרוב.' : 'The provider will confirm a time soon.',
