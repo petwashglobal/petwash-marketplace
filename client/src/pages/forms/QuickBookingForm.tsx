@@ -50,9 +50,23 @@ export default function QuickBookingForm() {
 
   const services = form.platform ? (SERVICE_MAP[form.platform] || []) : [];
 
-  const minDate = new Date();
-  minDate.setDate(minDate.getDate() + 1);
-  const minDateStr = minDate.toISOString().split('T')[0];
+  // Client-audit CRIT #16 fix (2026-08-25): `.toISOString().split('T')[0]`
+  // returns UTC; between 22:01 IST and midnight UTC the "tomorrow" min-date
+  // was already "today UTC", letting the Israeli user pick TODAY as the
+  // booking date instead of tomorrow-only. Use Israel-local formatting.
+  const israelTomorrow = (() => {
+    const now = new Date();
+    now.setDate(now.getDate() + 1);
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jerusalem',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(now);
+    const y = parts.find(p => p.type === 'year')?.value ?? '';
+    const m = parts.find(p => p.type === 'month')?.value ?? '';
+    const d = parts.find(p => p.type === 'day')?.value ?? '';
+    return `${y}-${m}-${d}`;
+  })();
+  const minDateStr = israelTomorrow;
 
   const next = () => {
     if (step === 1 && (!form.platform || !form.serviceType || !form.date || !form.time)) {

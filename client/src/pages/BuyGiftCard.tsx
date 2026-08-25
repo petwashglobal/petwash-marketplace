@@ -51,7 +51,12 @@ export default function BuyGiftCard({ language, onLanguageChange }: BuyGiftCardP
     // Gift details
     amount: "",
     message: "",
-    deliveryDate: new Date().toISOString().split('T')[0],
+    // Client-audit #18: use Israel-local date (was UTC → yesterday between
+    // 22:00 and midnight IST).
+    deliveryDate: new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jerusalem',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(new Date()),
   });
 
   // Pre-fill sender + address from profile (best-effort — works if logged in)

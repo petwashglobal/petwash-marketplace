@@ -50,11 +50,25 @@ export default function NewExpense() {
     queryKey: ['/api/expenses/tax-rates'],
   });
 
+  // Client-audit CRIT #17 fix (2026-08-25): default expenseDate used UTC via
+  // `.toISOString().split('T')[0]` — an expense created between 22:00 and
+  // midnight Israel time defaulted to YESTERDAY (real accounting bug). Use
+  // Israel-local date instead.
+  const israelToday = (() => {
+    const parts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Jerusalem',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).formatToParts(new Date());
+    const y = parts.find(p => p.type === 'year')?.value ?? '';
+    const m = parts.find(p => p.type === 'month')?.value ?? '';
+    const d = parts.find(p => p.type === 'day')?.value ?? '';
+    return `${y}-${m}-${d}`;
+  })();
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseFormSchema),
     mode: 'onChange',
     defaultValues: {
-      expenseDate: new Date().toISOString().split('T')[0],
+      expenseDate: israelToday,
       totalAmountILS: '',
       category: 'other',
       description: '',
