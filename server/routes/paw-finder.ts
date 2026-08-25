@@ -366,7 +366,13 @@ router.get('/posts/:id', async (req, res) => {
  *   - Max 5 posts per user per UTC day
  *   - Image hash duplicate detection (same image + same user = blocked)
  */
-router.post('/posts', requireAuth, requireVerifiedClubMember, async (req, res) => {
+// CEO 2026-08-24 fix: PetFinder is a public-safety feature. Locking BOTH
+// "lost" and "found" reports to phone-verified club members meant a good
+// samaritan who found a stray dog could not report it, and every new signup
+// (where users.is_club_member never flips true, audit F3) was blocked from
+// even reporting their OWN lost pet. Now: requireAuth only. Rate limits,
+// image-hash dupe detection, and daily post caps still apply.
+router.post('/posts', requireAuth, async (req, res) => {
   try {
     const userId = uid(req);
     if (!userId) return res.status(401).json({ error: 'not_authenticated' });
@@ -449,10 +455,11 @@ router.post('/posts', requireAuth, requireVerifiedClubMember, async (req, res) =
  *   - Same requester + same post: max 1 pending request at a time
  *   - Same requester: max 10 requests across all posts in 24h
  */
-// VERIFIED MEMBERS ONLY (CEO 2026-07-31): contacting a poster was open to any
-// logged-in user; now gated like posting (requireVerifiedClubMember = loyalty
-// member + club + phone-verified) so PetFinder really is members-only end-to-end.
-router.post('/posts/:id/contact', requireAuth, requireVerifiedClubMember, async (req, res) => {
+// CEO 2026-08-24 reversal: contact was gated to verified club members which
+// meant a free user who FOUND a pet could not reply to the owner's post.
+// Pet safety trumps membership tier. Now: requireAuth only. The 10-per-24h
+// abuse cap + duplicate-pending guard below still prevent spam.
+router.post('/posts/:id/contact', requireAuth, async (req, res) => {
   try {
     const userId = uid(req);
     if (!userId) return res.status(401).json({ error: 'not_authenticated' });
