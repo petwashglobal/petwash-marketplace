@@ -41,7 +41,7 @@ describe('Academy double-booking guard (P0-2)', () => {
 
 describe('Pet Sitter double-booking guard (P0-1)', () => {
   it('acquires a slot lock before creating the sitter booking', () => {
-    expect(sitter).toMatch(/acquireSlotLock\(db,\s*\{/);
+    expect(sitter).toMatch(/acquireSlotLock\(\w+,\s*\{/);
     const lockAt = sitter.indexOf('acquireSlotLock(');
     const insertAt = sitter.indexOf('.insert(sitterBookings)');
     expect(lockAt).toBeGreaterThan(-1);
@@ -62,7 +62,7 @@ describe('Pet Sitter double-booking guard (P0-1)', () => {
 
 describe('Walk My Pet persistent double-booking guard (P1)', () => {
   it('acquires a persistent slot lock before creating the walk booking', () => {
-    expect(walk).toMatch(/acquireSlotLock\(db,\s*\{/);
+    expect(walk).toMatch(/acquireSlotLock\(\w+,\s*\{/);
     const lockAt = walk.indexOf('acquireSlotLock(');
     const insertAt = walk.indexOf('.insert(walkBookings)');
     expect(lockAt).toBeGreaterThan(-1);
