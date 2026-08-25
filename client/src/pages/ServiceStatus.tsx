@@ -303,7 +303,7 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
                       <AlertCircle className="w-4 h-4 text-gray-400" />
                     )}
                     <span className={service.backend ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                      {isHebrew ? 'Backend' : 'Backend'}
+                      {isHebrew ? 'שרת' : 'Backend'}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
@@ -313,7 +313,7 @@ export default function ServiceStatus({ language }: ServiceStatusProps) {
                       <AlertCircle className="w-4 h-4 text-gray-400" />
                     )}
                     <span className={service.frontend ? 'text-green-600 font-medium' : 'text-gray-400'}>
-                      {isHebrew ? 'Frontend' : 'Frontend'}
+                      {isHebrew ? 'ממשק משתמש' : 'Frontend'}
                     </span>
                   </div>
                 </div>

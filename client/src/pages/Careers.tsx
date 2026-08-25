@@ -995,9 +995,9 @@ export default function Careers() {
                   <SelectContent>
                     {[0, 1, 2, 3, 5, 10].map(years => (
                       <SelectItem key={years} value={years.toString()}>
-                        {years === 0 ? (isRTL ? 'ללא ניסיון' : 'No experience') : 
+                        {years === 0 ? (isRTL ? 'ללא ניסיון' : 'No experience') :
                          years === 10 ? (isRTL ? '10+ שנים' : '10+ years') :
-                         (isRTL ? `${years} שנים` : `${years} years`)}
+                         (isRTL ? `${years} ${years === 1 ? 'שנה' : 'שנים'}` : `${years} ${years === 1 ? 'year' : 'years'}`)}
                       </SelectItem>
                     ))}
                   </SelectContent>

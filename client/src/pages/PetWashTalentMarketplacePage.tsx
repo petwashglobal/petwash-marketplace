@@ -408,7 +408,7 @@ function ContractorCard({
               </span>
             </div>
             <div className="text-[11px] text-slate-500">
-              {profile.reviews} reviews
+              {profile.reviews} {profile.reviews === 1 ? 'review' : 'reviews'}
             </div>
           </div>
         </div>
