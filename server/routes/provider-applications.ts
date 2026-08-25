@@ -14,7 +14,7 @@ import {
   insertProviderStageTransitionSchema
 } from '@shared/schema-enterprise';
 import { providerApplications, providers, users } from '@shared/schema';
-import { eq, desc, and, sql } from 'drizzle-orm';
+import { eq, desc, and, sql, inArray } from 'drizzle-orm';
 import { createHash, randomBytes } from 'crypto';
 import { z } from 'zod';
 import { logger } from '../lib/logger';
@@ -1353,7 +1353,12 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
     
     const previousStage = application.stage;
     
-    await db.update(providerApplicants)
+    // Atomic status-guard on the UPDATE — the sibling handler in
+    // provider-onboarding.ts already had this pattern; without it two
+    // concurrent admin approvals both succeed → double invitation
+    // tokens, duplicate emails, duplicated claim/providers writes,
+    // duplicated audit chain. RETURNING lets us detect the loser.
+    const claimed = await db.update(providerApplicants)
       .set({
         stage: 'approved',
         status: 'approved',
@@ -1365,7 +1370,19 @@ router.post('/admin/:id/approve', async (req: Request, res: Response) => {
         lastUpdatedAt: new Date(),
         stageChangedAt: new Date()
       })
-      .where(eq(providerApplicants.id, applicationId));
+      .where(and(
+        eq(providerApplicants.id, applicationId),
+        // Only flip records that are still awaiting a decision.
+        // Already-approved / declined records must NOT be re-approved.
+        inArray(providerApplicants.status as any, ['pending', 'under_review', 'in_review', 'submitted']),
+      ))
+      .returning({ id: providerApplicants.id });
+    if (claimed.length === 0) {
+      return res.status(409).json({
+        error: 'ALREADY_DECIDED',
+        message: 'This application has already been approved or declined by another reviewer.',
+      });
+    }
 
     // ── PER-SERVICE APPROVAL SEED (legal-spec core rule) ─────────────────────
     // Approval at the application level only grants WAITLIST per service. Booking

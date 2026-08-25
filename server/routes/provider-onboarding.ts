@@ -1973,9 +1973,14 @@ router.post('/admin/applications/approve', requireAdmin, async (req: Request, re
               application.userId,
               platformId,
               [application.firstName, application.lastName].filter(Boolean).join(' ') || null,
-              (application as any).insurance_provider || null,
-              (application as any).insurance_policy_number || null,
-              (application as any).insurance_expires_at || null,
+              // Drizzle rows are camelCase, not snake_case. Prior code read
+              // insurance_provider/insurance_policy_number/insurance_expires_at
+              // which are always undefined → every approved provider was
+              // stored insurance-less. Read both shapes for safety, prefer
+              // camelCase (the actual Drizzle row shape).
+              (application as any).insuranceProvider ?? (application as any).insurance_provider ?? null,
+              (application as any).insurancePolicyNumber ?? (application as any).insurance_policy_number ?? null,
+              (application as any).insuranceExpiresAt ?? (application as any).insurance_expires_at ?? null,
             ],
           );
           logger.info('[Provider Onboarding] ✅ providers row inserted — provider now searchable', {
@@ -2205,8 +2210,31 @@ router.post('/admin/applications/reject', requireAdmin, async (req: Request, res
 
     logger.info(`[Provider Onboarding] Application rejected: ${applicationId} by admin ${adminUid}`);
 
-    res.json({ 
-      success: true, 
+    // Revoke the Firebase 'provider' claim on rejection — otherwise a
+    // previously-promoted provider retains role='provider' indefinitely and
+    // any claim-based gate (routes.ts, mobile-auth.ts) continues to trust
+    // them even after they've been rejected. Best-effort: log on failure.
+    if (application.userId) {
+      try {
+        const { auth: fbAdminAuth } = await import('../lib/firebase-admin');
+        const existing = (await fbAdminAuth.getUser(application.userId)).customClaims || {};
+        const next: Record<string, any> = { ...existing };
+        if (next.role === 'provider') next.role = 'public';
+        if (next.accountType === 'provider') next.accountType = 'pet_parent';
+        if (Array.isArray(next.roles)) next.roles = next.roles.filter((r: string) => r !== 'provider');
+        await fbAdminAuth.setCustomUserClaims(application.userId, next);
+        logger.info('[Provider Onboarding] Firebase provider claim revoked on rejection', {
+          applicationId, userId: application.userId,
+        });
+      } catch (claimErr: any) {
+        logger.error('[Provider Onboarding] Failed to revoke provider claim on rejection (non-fatal)', {
+          applicationId, userId: application.userId, error: claimErr?.message,
+        });
+      }
+    }
+
+    res.json({
+      success: true,
       message: 'Application rejected'
     });
   } catch (error: any) {
@@ -2441,8 +2469,15 @@ router.get('/admin/applications/:numericId/messages', requireSupport, async (req
 router.post('/admin/applications/:numericId/message', requireSupport, async (req: Request, res: Response) => {
   try {
     const applicationId = parseInt(req.params.numericId);
-    const { body, direction = 'internal_note', channel = 'internal_note', providerVisible = false, adminUid, adminEmail } = req.body;
+    const { body, direction = 'internal_note', channel = 'internal_note', adminUid, adminEmail } = req.body;
     if (!body?.trim()) return res.status(400).json({ error: 'body required' });
+
+    // providerVisible is DERIVED from direction, NOT accepted from the body.
+    // Prior code read providerVisible straight from req.body — a support
+    // agent (or a bug in the admin UI) sending an "internal note" with
+    // providerVisible:true would immediately email the note to the
+    // applicant, leaking internal KYC / fraud notes.
+    const providerVisible = direction === 'outbound';
 
     // Fetch applicant email if sending outbound visible message
     let toAddress: string | null = null;
@@ -2460,7 +2495,7 @@ router.post('/admin/applications/:numericId/message', requireSupport, async (req
       toAddress,
       sentBy: adminEmail || adminUid || 'admin',
       deliveryStatus: 'sent',
-      providerVisible: !!providerVisible,
+      providerVisible,
     });
 
     // Emit outbound email if visible to provider
