@@ -56,16 +56,26 @@ type SourceResult = {
   aggregatesFromDb: boolean;
 };
 
-function startOfTodayUtc(): Date {
-  // Server stores timestamps in UTC; "today" is a coarse 24h window — good enough
-  // for an at-a-glance ops screen (not an accounting cut).
-  const d = new Date();
-  d.setUTCHours(0, 0, 0, 0);
-  return d;
+function startOfTodayIsrael(): Date {
+  // The UI labels this "today" (היום), so it must be the Israel civil day,
+  // not the UTC day. A UTC cutoff would count bookings from 00:00-03:00 IL
+  // (which are still yesterday's UTC day) as "yesterday" in the KPIs.
+  // Build the Asia/Jerusalem YYYY-MM-DD, then re-parse as start-of-day at
+  // the current IL offset.
+  const now = new Date();
+  const ilDate = now.toLocaleDateString('en-CA', { timeZone: 'Asia/Jerusalem' });
+  // en-CA yields YYYY-MM-DD. Compute the current IL offset (in minutes) from
+  // the difference between UTC and Asia/Jerusalem for `now`, then treat
+  // 00:00 IL as (00:00 UTC minus offset).
+  const ilNow = new Date(now.toLocaleString('en-US', { timeZone: 'Asia/Jerusalem' }));
+  const offsetMs = ilNow.getTime() - now.getTime();
+  // Midnight IL on `ilDate` in UTC = midnight-in-that-date-treated-as-UTC minus offset.
+  const midnightUtc = new Date(`${ilDate}T00:00:00.000Z`);
+  return new Date(midnightUtc.getTime() - offsetMs);
 }
 
 router.get('/', async (_req: Request, res: Response) => {
-  const since = startOfTodayUtc();
+  const since = startOfTodayIsrael();
   const sources: SourceResult[] = [];
 
   // ── Source 1: unified `bookings` table (K9000 wash, shop, unified flows) ─────
