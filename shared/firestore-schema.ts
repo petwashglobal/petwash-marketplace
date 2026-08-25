@@ -67,7 +67,11 @@ export const petProfileSchema = z.object({
   weightKg: z.number().positive().optional(),
   // Pet Passport fields the create form collects (were silently dropped before — these
   // must match the keys MyAccount sends on POST /api/pets, same set the EDIT path keeps).
-  weight: z.string().optional(),        // user-typed weight string, e.g. "12 kg"
+  // Weight may arrive as either a formatted user string ("12 kg" from
+  // MyAccount) or a raw number (Pets.tsx uses react-hook-form + a numeric
+  // input). Both shapes coexist in Firestore — accept both here so a
+  // number-typed weight is not silently 400'd by the schema.
+  weight: z.union([z.string(), z.number()]).optional(),
   color: z.string().optional(),
   favoriteFoods: z.string().optional(),
   dislikedFoods: z.string().optional(),
@@ -79,6 +83,14 @@ export const petProfileSchema = z.object({
   preferredShampoo: z.string().optional(),
   microchip: z.string().optional(),
   vetName: z.string().optional(),
+  // Simple legacy vaccine fields — the pre-Passport /pets page (Pets.tsx)
+  // writes flat "when was last" and "when is next" strings rather than the
+  // per-vaccine map below. Both shapes are supported so the older UI keeps
+  // saving instead of silently dropping the field on POST/PATCH.
+  lastVaccineDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "lastVaccineDate must be YYYY-MM-DD" }).optional().or(z.literal('')),
+  nextVaccineDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "nextVaccineDate must be YYYY-MM-DD" }).optional().or(z.literal('')),
+  enableVaccineReminders: z.boolean().optional(),
+  medicalNotes: z.string().optional(),
   // ── PET CARE PROFILE (Phase 1, 2026-06-20) ──────────────────────────────────
   // SCHEMA-ADD [FLAG]: additive Zod fields. Pets are stored in Firestore
   // (users/{uid}/pets/{petId}) which is schemaless — NO SQL migration is needed.
@@ -91,11 +103,27 @@ export const petProfileSchema = z.object({
   escapeRisk: z.boolean().optional(),                  // owner-declared safety flag
   feedingInstructions: z.string().max(1000).optional(),
   handlingInstructions: z.string().max(1000).optional(),
-  vaccineDates: z.object({
-    rabies: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" }).optional(), // YYYY-MM-DD
-    dhpp: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" }).optional(),
-    lepto: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" }).optional(),
-  }).optional(),
+  // Vaccine dates — each vaccine key can be either:
+  //   (a) a bare YYYY-MM-DD string (legacy — "date last given") or
+  //   (b) a rich object { lastGiven, dueDate } — this is what MyAccount
+  //       actually writes so the Pet Passport can render "given / due"
+  //       side-by-side and offer a Google-Calendar reminder for dueDate.
+  // Before 2026-08-25 the schema only allowed shape (a); MyAccount's edit
+  // page sent shape (b), and PATCH /api/pets/:petId silently 400'd the
+  // whole vaccineDates block via ZodError → users saw "save failed" every
+  // time they touched vaccine data. Widening this to a union preserves
+  // backwards-compat with any legacy string values already in Firestore
+  // while accepting the richer shape the UI has been sending for months.
+  vaccineDates: z.record(
+    z.enum(['rabies', 'dhpp', 'lepto']),
+    z.union([
+      z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "Date must be in YYYY-MM-DD format" }),
+      z.object({
+        lastGiven: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "lastGiven must be YYYY-MM-DD" }).optional(),
+        dueDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, { message: "dueDate must be YYYY-MM-DD" }).optional(),
+      }),
+    ]),
+  ).optional(),
   reminderEnabled: z.boolean().default(false),
   createdAt: z.date(),
   updatedAt: z.date(),
