@@ -131,6 +131,11 @@ const createPostSchema = z.object({
     }),
     mimeType: z.string().optional(),
     mediaRole: z.enum(['primary', 'extra']).default('primary'),
+    // Hash returned by /api/paw-finder/upload — pass it back on /posts so
+    // dedupe works on multi-instance Cloud Run (the upload container may
+    // not be the same as the posts container; local-disk lookup then
+    // silently no-ops). 64-hex sha256 shape.
+    hash: z.string().regex(/^[0-9a-f]{64}$/).optional(),
   })).min(1).max(8),
 });
 
@@ -398,29 +403,42 @@ router.post('/posts', requireAuth, async (req, res) => {
       return res.status(400).json({ error: 'validation_error', details: parsed.error.flatten() });
     }
 
-    // Image hash duplicate check
+    // Image hash duplicate check.
+    //
+    // Multi-instance Cloud Run fix (2026-08-25): previously the only
+    // source of the hash was `sha256File(path.join(cwd(), filePath))` —
+    // if the /upload landed on container A and /posts on container B,
+    // container B's disk had no such file, `fs.existsSync` returned
+    // false, and dedupe silently no-oped. Now:
+    //   1. Trust the client-supplied hash if it arrived from /upload
+    //      (which computed it authoritatively while it owned the file).
+    //   2. Fall back to re-hashing from local disk when the file
+    //      happens to be here — keeps old clients working.
     let imageHash: string | null = null;
     const primaryMedia = parsed.data.mediaFiles.find(m => m.mediaRole === 'primary');
     if (primaryMedia) {
-      const diskPath = path.join(process.cwd(), primaryMedia.filePath);
-      // Verify the resolved path is inside UPLOAD_DIR before touching the filesystem
-      const resolvedDiskPath = path.resolve(diskPath);
-      const uploadDirPrefix = UPLOAD_DIR + path.sep;
-      const isSafe = resolvedDiskPath.startsWith(uploadDirPrefix);
-      if (isSafe && fs.existsSync(resolvedDiskPath)) {
-        imageHash = sha256File(resolvedDiskPath);
-        if (imageHash) {
-          const { rows: dupRows } = await pool.query(
-            `SELECT id, post_key FROM paw_finder_posts WHERE image_hash = $1 AND user_id = $2 LIMIT 1`,
-            [imageHash, userId],
-          );
-          if (dupRows.length) {
-            return res.status(409).json({
-              error: 'DUPLICATE_IMAGE',
-              message: 'This image was already used in one of your posts.',
-              existingPostKey: dupRows[0].post_key,
-            });
-          }
+      if (primaryMedia.hash) {
+        imageHash = primaryMedia.hash;
+      } else {
+        const diskPath = path.join(process.cwd(), primaryMedia.filePath);
+        const resolvedDiskPath = path.resolve(diskPath);
+        const uploadDirPrefix = UPLOAD_DIR + path.sep;
+        const isSafe = resolvedDiskPath.startsWith(uploadDirPrefix);
+        if (isSafe && fs.existsSync(resolvedDiskPath)) {
+          imageHash = sha256File(resolvedDiskPath);
+        }
+      }
+      if (imageHash) {
+        const { rows: dupRows } = await pool.query(
+          `SELECT id, post_key FROM paw_finder_posts WHERE image_hash = $1 AND user_id = $2 LIMIT 1`,
+          [imageHash, userId],
+        );
+        if (dupRows.length) {
+          return res.status(409).json({
+            error: 'DUPLICATE_IMAGE',
+            message: 'This image was already used in one of your posts.',
+            existingPostKey: dupRows[0].post_key,
+          });
         }
       }
     }
