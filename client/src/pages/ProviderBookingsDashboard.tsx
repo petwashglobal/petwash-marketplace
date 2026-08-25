@@ -349,10 +349,33 @@ function PendingBookingCard({
       setShowAcceptModal(false);
       onRefresh();
     },
-    onError: () => {
+    onError: (err: any) => {
+      // Surface the specific compliance blocker instead of a generic
+      // "Failed to update request" — the server returns codes like
+      // BACKGROUND_CHECK_REQUIRED, SERVICE_NOT_APPROVED_FOR_BOOKING,
+      // DECLARATIONS_REQUIRED. Without this the provider retapped Accept
+      // forever with no idea they were compliance-blocked.
+      const code: string | undefined = err?.body?.code;
+      const messages: Record<string, { he: string; en: string }> = {
+        BACKGROUND_CHECK_REQUIRED: {
+          he: 'נדרש להשלים בדיקת רקע לפני קבלת הזמנות. פתח את מסך הציות.',
+          en: 'Background check required before accepting bookings. Open the Compliance screen.',
+        },
+        SERVICE_NOT_APPROVED_FOR_BOOKING: {
+          he: 'השירות הזה עדיין לא אושר לקבלת הזמנות (עדיין ברמת פרופיל בלבד).',
+          en: 'This service is not yet approved to accept bookings (profile-only level).',
+        },
+        DECLARATIONS_REQUIRED: {
+          he: 'עליך לחתום על הצהרות ספק חסרות לפני קבלת הזמנות.',
+          en: 'Sign the missing provider declarations before accepting bookings.',
+        },
+      };
+      const specific = code && messages[code];
       toast({
         title: isHebrew ? 'שגיאה' : 'Error',
-        description: isHebrew ? 'לא ניתן לעדכן את הבקשה' : 'Failed to update request',
+        description: specific
+          ? (isHebrew ? specific.he : specific.en)
+          : (err?.body?.error || (isHebrew ? 'לא ניתן לעדכן את הבקשה' : 'Failed to update request')),
         variant: 'destructive',
       });
     },
