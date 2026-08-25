@@ -1074,7 +1074,17 @@ publicAuthRouter.post("/api/auth/phone-session", async (req, res) => {
  */
 publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) => {
   try {
-    const { sessionToken } = req.body;
+    // firstName / lastName are optional but STRONGLY recommended: without
+    // them the row lands nameless and post-login MEMBER_REQUIRED_FIELDS
+    // dumps the user on /complete-profile every time until they fill it
+    // in. The client (SignUpLuxury) collects both at signup.
+    const {
+      sessionToken,
+      firstName: firstNameRaw,
+      lastName: lastNameRaw,
+    } = req.body || {};
+    const firstName = typeof firstNameRaw === 'string' ? firstNameRaw.trim().slice(0, 80) : null;
+    const lastName  = typeof lastNameRaw  === 'string' ? lastNameRaw.trim().slice(0, 80)  : null;
     const check = validateEmailVerifiedToken(sessionToken);
     if (!check.valid || !check.email) {
       logger.warn('[EmailAuth] Invalid or expired email session token', { reason: check.reason });
@@ -1108,7 +1118,7 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
         try {
           const { logNewUserRegistration } = await import('../services/bookingEventLogger');
           logNewUserRegistration({
-            userId: user.uid, firstName: 'User', lastName: '', email,
+            userId: user.uid, firstName: firstName || 'User', lastName: lastName || '', email,
             phone: '', country: 'IL', registrationSource: 'email_code', language: 'he',
           }).catch(() => {});
         } catch (logErr) {
@@ -1145,6 +1155,8 @@ publicAuthRouter.post("/api/auth/email-session", apiLimiter, async (req, res) =>
           await storage.upsertUser({
             id: user.uid, email, phone: null, role: 'customer', authProvider: 'email',
             language: 'he', country: 'IL', userStatus: 'new', signupIntent: 'customer',
+            ...(firstName ? { firstName } : {}),
+            ...(lastName ? { lastName } : {}),
           } as any);
           // Persist DOB NOW that the row exists (see note at createUser above).
           await persistDob(user.uid, ageCheck.iso!);

@@ -1233,11 +1233,22 @@ router.post('/walks/holds', requireAuth, async (req, res) => {
   }
 });
 
-// Get booking details
-router.get('/walks/:bookingId', async (req, res) => {
+// Get booking details.
+// AUTH (P0 audit-fix 2026-08-25): this endpoint powers WalkTracking.tsx —
+// live 5s poll for geofence, walker position, walk state. Before this fix
+// it accepted ANY caller with a bookingId (no requireAuth, no owner check)
+// so a leaked or guessed WALK-YYYY-NNNNNN kept streaming a stranger's live
+// location. Now: Firebase-authed caller MUST be the booking's owner, the
+// assigned walker, or a verified super_admin. Everyone else gets 404 (not
+// 403) so we don't leak whether the id exists.
+router.get('/walks/:bookingId', requireAuth, async (req, res) => {
   try {
     const { bookingId } = req.params;
-    
+    const callerUid = (req as any).user?.uid;
+    if (!callerUid) {
+      return res.status(401).json({ error: 'Authentication required' });
+    }
+
     const [booking] = await db
       .select()
       .from(walkBookings)
@@ -1248,14 +1259,23 @@ router.get('/walks/:bookingId', async (req, res) => {
       return res.status(404).json({ error: 'Booking not found' });
     }
 
-    // Get walker details
+    // Walker profile is needed both to check the walker-side auth path and
+    // to return the walker's public card in the response.
     const [walker] = await db
       .select()
       .from(walkerProfiles)
       .where(eq(walkerProfiles.walkerId, booking.walkerId))
       .limit(1);
 
-    res.json({ 
+    const isOwner = booking.ownerId === callerUid;
+    const isWalker = walker?.userId === callerUid;
+    const isAdmin = await isSuperAdminVerified((req as any).user?.email || '').catch(() => false);
+    if (!isOwner && !isWalker && !isAdmin) {
+      logger.warn('[Walk My Pet] Unauthorized booking read', { bookingId, callerUid });
+      return res.status(404).json({ error: 'Booking not found' });
+    }
+
+    res.json({
       booking,
       walker: walker ? {
         walkerId: walker.walkerId,
@@ -1268,7 +1288,7 @@ router.get('/walks/:bookingId', async (req, res) => {
       } : null
     });
   } catch (error: any) {
-    console.error('[Walk My Pet] Get booking error:', error);
+    logger.error('[Walk My Pet] Get booking error', { error: error?.message });
     res.status(500).json({ error: 'Failed to fetch booking' });
   }
 });
