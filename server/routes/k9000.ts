@@ -587,10 +587,14 @@ router.post('/wash/start_cycle', async (req, res) => {
     
     if (stationInfo?.stationId) {
       try {
+        // Drizzle's `db` has no `.raw(...)` — the try/catch was swallowing
+        // the TypeError, so stations.totalWashes / lastWashAt were never
+        // updated (K9000 station stats permanently frozen). Use the sql
+        // template for a proper atomic increment.
         await db
           .update(stations)
           .set({
-            totalWashes: db.raw('total_washes + 1'),
+            totalWashes: sql`${stations.totalWashes} + 1`,
             lastWashAt: new Date(),
           })
           .where(eq(stations.id, stationInfo.stationId));

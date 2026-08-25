@@ -610,13 +610,39 @@ router.post(
         reason,
       });
 
-      // Update payment intent status to refunded
+      // Fetch the original intent to compare the refunded amount to what
+      // was actually captured. Prior code unconditionally flipped the
+      // intent to 'refunded' without any amount check — a partial ₪1
+      // refund on a fully-paid tx would mark it as fully voided in books
+      // (customer keeps service; PetWash "loses" the remaining balance
+      // on the reconciler side). Deep audit item #4.
+      const [existing] = await db.select().from(paymentIntents)
+        .where(eq(paymentIntents.transactionId, transactionId)).limit(1);
+
+      if (!existing) {
+        logger.warn('[NayaxWebhook] Refund for unknown transactionId', { transactionId, refundId });
+        // ACK 200 so Nayax stops retrying, but note the mismatch.
+        await inbox?.markCompleted?.();
+        return res.status(200).json({ received: true, refundId, note: 'unknown_transaction' });
+      }
+
+      const capturedCents = Number((existing as any).amountCents ?? existing.amount ?? 0);
+      const refundedCents = Number(amount ?? 0);
+      const isFullRefund = capturedCents > 0 && refundedCents >= capturedCents;
+
       await db.update(paymentIntents)
         .set({
-          status: 'refunded',
+          // Only mark 'refunded' when the refund actually covers the full
+          // captured amount. Partial refunds get 'partially_refunded' so
+          // finance reconciliation still sees the remaining balance.
+          status: isFullRefund ? 'refunded' : 'partially_refunded',
           updatedAt: new Date(),
-        })
+        } as any)
         .where(eq(paymentIntents.transactionId, transactionId));
+
+      logger.info('[NayaxWebhook] Refund applied', {
+        transactionId, refundId, capturedCents, refundedCents, isFullRefund,
+      });
 
       await inbox?.markCompleted?.();
       res.status(200).json({
@@ -1347,6 +1373,15 @@ router.post(
           logger.error('[CheckoutWebhook] Amount mismatch — possible fraud', {
             washHistoryId, expected: expectedCents, received: payload.amountCents,
           });
+          // Roll the atomic claim BACK so wash_history doesn't stay
+          // stuck in 'processing' with no downstream credit. Retries
+          // are already dedup'd via checkoutMarkFailedFinal, so without
+          // this rollback the customer paid, no wallet credit ever
+          // arrived, and no future retry could recover the row. Move
+          // to 'failed' explicitly so ops can see + act.
+          await db.update(washHistoryTable)
+            .set({ status: 'failed' } as any)
+            .where(eq(washHistoryTable.id, washHistoryId));
           await checkoutMarkFailedFinal('amount_mismatch');
           return res.status(400).json({ error: 'Amount mismatch', expected: expectedCents, received: payload.amountCents });
         }

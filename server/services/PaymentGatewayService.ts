@@ -22,7 +22,7 @@ import { NayaxWalkMarketplaceService } from "./NayaxWalkMarketplaceService";
 import { K9000TransactionService, type K9000TransactionRequest } from "./K9000TransactionService";
 import { db } from "../db";
 import { paymentIntents, bookings, superAppPayouts, users } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, sql, and, inArray } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { nanoid } from "nanoid";
 import {
@@ -447,15 +447,28 @@ export class PaymentGatewayService {
         throw new Error(`Payment intent not found for transaction ${payload.transactionId}`);
       }
 
-      // Update status to succeeded
-      await db.update(paymentIntents)
+      // Update status to succeeded — guarded so a stale/retried Nayax
+      // webhook can't revive a previously refunded / cancelled intent
+      // back to 'succeeded'. Only pending intents may transition here.
+      // Same class of guard as nayax-webhooks.ts payment.failed (PR #2143).
+      const claimed = await db.update(paymentIntents)
         .set({
           status: 'succeeded',
           nayaxCaptureId: payload.transactionId,
           transactionId: payload.transactionId,
           updatedAt: new Date(),
         })
-        .where(eq(paymentIntents.id, paymentIntent.id));
+        .where(and(
+          eq(paymentIntents.id, paymentIntent.id),
+          inArray(paymentIntents.status as any, ['pending', 'processing', 'authorized', 'pending_confirmation']),
+        ) as any)
+        .returning({ id: paymentIntents.id });
+      if (claimed.length === 0) {
+        logger.warn('[PaymentGateway] Ignored stale/retry succeeded webhook — intent already in terminal state', {
+          paymentIntentId: paymentIntent.id, transactionId: payload.transactionId,
+        });
+        return;
+      }
 
       logger.info('[PaymentGateway] Payment intent status updated to succeeded', {
         paymentIntentId: paymentIntent.id,
@@ -548,8 +561,13 @@ export class PaymentGatewayService {
           paymentIntentId: paymentIntent.id,
           confirmedAt: new Date(),
           updatedAt: new Date(),
-        })
-        .where(eq(bookings.id, paymentIntent.bookingId));
+        } as any)
+        .where(and(
+          eq(bookings.id, paymentIntent.bookingId),
+          // Same guard: only pending bookings may flip to confirmed here.
+          // A late webhook must not overwrite a cancelled/refunded booking.
+          inArray(bookings.status as any, ['pending', 'pending_payment', 'pending_confirmation', 'payment_pending']),
+        ) as any);
 
       logger.info('[PaymentGateway] Booking status updated to confirmed', {
         bookingId: booking.id,
