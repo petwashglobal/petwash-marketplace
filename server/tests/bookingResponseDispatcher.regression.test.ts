@@ -4,7 +4,18 @@
  * while the feature flag is off, and the resolver must be a pure
  * function.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+
+// Mock declineSitterBookingCore BEFORE importing the dispatcher, so the
+// dispatcher's dynamic import picks up the stub instead of the real
+// db-backed function. This lets the dispatcher tests run without a live
+// Postgres — the real core is exercised by
+// declineSitterBookingCore.regression.test.ts.
+const declineSitterMock = vi.fn();
+vi.mock('../services/booking-response/declineSitterBookingCore', () => ({
+  declineSitterBookingCore: (...a: any[]) => declineSitterMock(...a),
+}));
+
 import {
   resolveBookingSource,
 } from '../services/booking-response/bookingSourceResolver';
@@ -69,7 +80,9 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     expect(r.ok).toBe(false);
     expect(r.errorCode).toBe('DISPATCHER_NOT_ENABLED');
   });
-  it('flag ON + sitter → NOT_YET_IMPLEMENTED (money-safe until extraction lands)', async () => {
+  beforeEach(() => { declineSitterMock.mockReset(); });
+
+  it('flag ON + sitter + accept → NOT_YET_IMPLEMENTED (money path still gated)', async () => {
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
     const r = await dispatchAcceptForSource({
       requestId: 'BR-2', providerUid: 'p2',
@@ -78,6 +91,42 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     });
     expect(r.ok).toBe(false);
     expect(r.errorCode).toBe('NOT_YET_IMPLEMENTED_SITTER');
+    // ACCEPT must NEVER reach the decline core — that would be a
+    // wrong-branch bug that could silently short-circuit a payment.
+    expect(declineSitterMock).not.toHaveBeenCalled();
+  });
+
+  it('flag ON + sitter + decline → delegates to declineSitterBookingCore with the legacyBookingId', async () => {
+    process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    declineSitterMock.mockResolvedValueOnce({ ok: true, status: 'declined', message: 'ok' });
+    const r = await dispatchAcceptForSource({
+      requestId: 'BR-2D', providerUid: 'p2d',
+      quoteBreakdown: { legacyRef: { table: 'sitter_bookings', id: 'SIT-2D' } },
+      decision: 'decline',
+    });
+    expect(r.ok).toBe(true);
+    expect(r.source).toBe('SITTER_SUITE');
+    expect(r.legacyBookingId).toBe('SIT-2D');
+    expect(declineSitterMock).toHaveBeenCalledTimes(1);
+    // The dispatcher MUST pass the RESOLVED legacyBookingId (sitter_bookings.bookingId)
+    // and the providerUid unchanged — a substitution would let one provider
+    // decline another's booking.
+    expect(declineSitterMock).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingId: 'SIT-2D', providerUid: 'p2d' }),
+    );
+  });
+
+  it('flag ON + sitter + decline + core returns FORBIDDEN → PIPELINE_ERROR (never masks failure as ok)', async () => {
+    process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    declineSitterMock.mockResolvedValueOnce({ ok: false, errorCode: 'FORBIDDEN', message: 'Only the assigned provider can respond to this booking' });
+    const r = await dispatchAcceptForSource({
+      requestId: 'BR-2E', providerUid: 'wrong-p',
+      quoteBreakdown: { legacyRef: { table: 'sitter_bookings', id: 'SIT-2E' } },
+      decision: 'decline',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errorCode).toBe('PIPELINE_ERROR');
+    expect(r.message).toContain('FORBIDDEN');
   });
   it('flag ON + walk → NOT_YET_IMPLEMENTED', async () => {
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';

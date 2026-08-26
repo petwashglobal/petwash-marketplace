@@ -88,10 +88,36 @@ export async function dispatchAcceptForSource(input: DispatchInput): Promise<Dis
   }
   const res = resolveBookingSource(input.quoteBreakdown);
   switch (res.source) {
-    case 'SITTER_SUITE':
+    case 'SITTER_SUITE': {
+      // §22-24 partial delegation: the DECLINE branch was extracted
+      // first (money-safe — no Nayax/SUMIT/escrow side effects), so
+      // the dispatcher can route decline events to the real core
+      // today while accept still waits for its extraction. This
+      // matches the CEO deploy-package rule: money-side wiring never
+      // ships ahead of the tests that pin it.
+      if (input.decision === 'decline') {
+        if (!res.legacyBookingId) {
+          return { ok: false, source: res.source,
+            errorCode: 'BOOKING_SOURCE_UNRESOLVED',
+            message: 'SITTER_SUITE resolved without a legacyBookingId — refusing to guess.' };
+        }
+        const { declineSitterBookingCore } = await import('./declineSitterBookingCore');
+        const core = await declineSitterBookingCore({
+          bookingId: res.legacyBookingId,
+          providerUid: input.providerUid,
+        });
+        if (!core.ok) {
+          return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
+            errorCode: 'PIPELINE_ERROR',
+            message: `declineSitterBookingCore ${core.errorCode}: ${core.message}` };
+        }
+        return { ok: true, source: res.source, legacyBookingId: res.legacyBookingId };
+      }
+      // Accept path — still pending extraction.
       return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
         errorCode: 'NOT_YET_IMPLEMENTED_SITTER',
         message: 'acceptSitterBookingCore extraction pending — see design note.' };
+    }
     case 'WALK':
       return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
         errorCode: 'NOT_YET_IMPLEMENTED_WALK',
