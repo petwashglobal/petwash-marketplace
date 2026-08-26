@@ -21,6 +21,7 @@ import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { queryClient, apiRequest } from '@/lib/queryClient';
+import { AttentionList } from '@/components/AttentionList';
 import {
   Bell, MessageCircle, Power, ShieldCheck, Star, ChevronRight, TrendingUp,
   Briefcase, CalendarDays, Wallet as WalletIcon, ClipboardList, FileText, User,
@@ -184,6 +185,12 @@ export default function ProviderHome() {
             </button>
           </section>
         )}
+
+        {/* "What's waiting for you" — server-owned attention feed
+            (CEO 2026-08-26 §28). Provider sees the next real action
+            (accept/decline, start, complete, ...) top-of-fold before
+            any static tiles. Hides itself when the feed is empty. */}
+        <AttentionList actor="provider" />
 
         {/* Greeting + provider ID card (metallic green) */}
         <section className="px-4 pt-1">

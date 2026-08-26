@@ -23,6 +23,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
+import { AttentionList } from '@/components/AttentionList';
 import { getTierDisplay } from '@/lib/loyalty';
 import {
   Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
@@ -248,6 +249,12 @@ export default function PrestigeHome() {
             </div>
           </div>
         </header>
+
+        {/* "What's waiting for you" — server-owned attention projection
+            (CEO 2026-08-26 §27). Renders top-of-fold so the Pet Parent
+            sees the next real action (pay, confirm, track, review, ...)
+            before any static tiles. Hides itself when the feed is empty. */}
+        <AttentionList actor="pet_parent" />
 
         {/* Phase 3: campaign offer banner — the user's own code, ready to use */}
         {offer && (
