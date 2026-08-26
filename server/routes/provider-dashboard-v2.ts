@@ -990,6 +990,21 @@ router.post('/bookings/:id/:action', async (req: Request, res: Response) => {
         const { applyBridgeDecision } = await import('../services/legacyBookingBridge');
         await applyBridgeDecision(booking.quote_breakdown, action);
       } catch { /* canonical row already updated */ }
+
+      // Shadow-observe the intended dispatch (CEO §23-24 deploy-ready
+      // package Phase 1). Never invokes a pipeline while the feature
+      // flag is off — just records what the new dispatcher WOULD have
+      // done so ops can pair legacy writes with intent and confirm
+      // agreement before the money cut-over. Fail-quiet.
+      try {
+        const { observeIntendedDispatch } = await import('../services/booking-response/BookingResponseDispatcher');
+        observeIntendedDispatch({
+          requestId: booking.request_id,
+          providerUid: user.uid,
+          quoteBreakdown: booking.quote_breakdown,
+          decision: action,
+        });
+      } catch { /* observability must never break the primary flow */ }
     }
     // COMPLETION sync (2026-07-31): when the provider marks the job complete,
     // write 'completed' back to the legacy customer-side row too — otherwise the
