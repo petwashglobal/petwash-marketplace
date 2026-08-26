@@ -137,7 +137,10 @@ function buildRoutingResponse(
   providerApp?: any,
   staffReq?: any,
   intent?: string | null,
-  hasPrestige?: boolean,
+  // Kept in the signature for callers that still pass it — used ONLY by
+  // downstream tile/badge rendering. Does NOT gate the picker (CEO
+  // 2026-08-26 §1-3: every approved provider is also a Pet Parent).
+  _hasPrestige?: boolean,
 ): PostLoginResponse {
   if (user.blocked) {
     return { nextUrl: '/blocked', reason: 'BLOCKED', profileStatus: 'blocked', role, userStatus };
@@ -214,23 +217,36 @@ function buildRoutingResponse(
       return { nextUrl: '/provider/rejected', reason: 'PROVIDER_REJECTED', profileStatus: 'rejected', role, userStatus };
     }
     if (providerApp.status === 'approved') {
-      // ROLE-MODE PICKER (CEO 2026-08-26 §"no place for mix"): when the
-      // same account is BOTH an approved provider AND an enrolled Prestige
-      // member, we don't guess which dashboard they want — we ASK.
-      // Explicit intent from the caller wins (URL param, seed cookie,
-      // in-app "Switch mode"). Absent an explicit choice we route to the
-      // /mode picker so the two surfaces never mix. Single-role providers
-      // (no Prestige) keep landing straight on /provider-os as before.
-      if (hasPrestige) {
-        if (intent === 'provider') {
-          return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
-        }
-        if (intent === 'loyalty' || intent === 'customer' || intent === 'member') {
-          return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'approved', role, userStatus };
-        }
-        return { nextUrl: '/mode', reason: 'MULTI_ROLE_PICK', profileStatus: 'approved', role, userStatus };
+      // ROLE-MODE MODEL — CORRECTED (CEO 2026-08-26 §1-7):
+      //
+      // Prestige is NOT a workspace / role — it is an entitlement that
+      // travels with the human account. The two workspaces are:
+      //   • Pet Parent (customer) — always present for every human user
+      //   • Provider (approved provider application)
+      //
+      // Every approved provider is ALSO a Pet Parent (they can own pets,
+      // book other providers, buy from Shop, hold a wallet, redeem a
+      // Prestige benefit if enrolled). So the picker shows for ANY
+      // approved provider — not just provider+prestige. Prestige, when
+      // present, surfaces inside the Pet Parent tile/home as a benefit
+      // badge, never as an identity.
+      //
+      // Explicit intent still wins:
+      //   • intent === 'provider'                           → /provider-os
+      //   • intent === 'customer'|'pet_parent'|'loyalty'|'member'
+      //                                                     → /prestige/home
+      //   • no intent                                       → /mode picker
+      const wantsProvider = intent === 'provider';
+      const wantsCustomer =
+        intent === 'customer' || intent === 'pet_parent' ||
+        intent === 'loyalty' || intent === 'member';
+      if (wantsProvider) {
+        return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
       }
-      return { nextUrl: '/provider-os', reason: 'OK', profileStatus: 'approved', role, userStatus };
+      if (wantsCustomer) {
+        return { nextUrl: '/prestige/home', reason: 'OK', profileStatus: 'approved', role, userStatus };
+      }
+      return { nextUrl: '/mode', reason: 'MULTI_ROLE_PICK', profileStatus: 'approved', role, userStatus };
     }
   }
 
