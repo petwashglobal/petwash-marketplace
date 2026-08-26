@@ -183,10 +183,52 @@ function safePretty(raw: string | null | undefined): string {
   }
 }
 
-// Render the 14 role-specific onboarding-form declaration checkboxes from
+// Friendly Hebrew + English labels for the onboarding-form declaration keys
+// stashed inside internal_notes.declarations. Keys come from the wizard's
+// `declarations` object in ProviderOnboarding.tsx (see the FormData block
+// around line 578). This is a display-only map — DeclarationList still
+// passes every key through, mapped or not, so a NEW declaration key added
+// to the wizard shows up here immediately as its raw name (never silently
+// dropped) and only its label is missing until this dictionary catches up.
+// Lane A audit 2026-08-26 — pure UI, no schema change, no key allow-list.
+const DECLARATION_LABELS: Record<string, { he: string; en: string }> = {
+  // Universal
+  declarationAccurateInfo:            { he: 'הפרטים שמסרתי מדויקים ומלאים',              en: 'Information provided is accurate and complete' },
+  declarationAcceptTerms:             { he: 'קראתי ואני מסכים/ה לתנאי השירות',          en: 'I have read and accept the Terms of Service' },
+  // Driver (PetTrek)
+  declarationValidLicense:            { he: 'רישיון נהיגה בתוקף',                        en: 'Valid driving licence' },
+  declarationNoSuspension:            { he: 'רישיון הנהיגה לא הוגבל / הותלה',            en: 'No licence suspension or restriction' },
+  declarationUnderPointsLimit:        { he: 'מספר הנקודות ברישיון מתחת לתקרה',           en: 'Under the demerit-points limit' },
+  declarationNoDrugsAlcohol:          { he: 'לא נהיגה תחת השפעת סמים או אלכוהול',        en: 'No driving under influence of drugs or alcohol' },
+  declarationValidVehicleInsurance:   { he: 'ביטוח רכב בתוקף',                           en: 'Valid vehicle insurance' },
+  declarationVehicleInspection:       { he: 'רכב עם רישוי / טסט בתוקף',                  en: 'Vehicle roadworthy / current inspection' },
+  // Trainer (Academy)
+  declarationTrainingCertification:   { he: 'תעודת מאלף בתוקף',                          en: 'Valid trainer certification' },
+  declarationAccreditedCourses:       { he: 'קורסים מוכרים בלבד',                        en: 'Only accredited courses offered' },
+  declarationLiabilityInsurance:      { he: 'ביטוח אחריות מקצועית בתוקף',                en: 'Valid professional liability insurance' },
+  // Sitter / Walker
+  declarationPhysicallyFit:           { he: 'כשירות גופנית לטיפול בכלבים',               en: 'Physically fit to handle dogs' },
+  declarationAnimalExperience:        { he: 'ניסיון קודם עם בעלי חיים',                  en: 'Prior experience working with animals' },
+  declarationFirstAidTraining:        { he: 'הכשרת עזרה ראשונה לבעלי חיים',              en: 'Pet first-aid training completed' },
+  // Israel-safe self-declaration (some wizards write it into the same blob)
+  selfDeclarationNoRelevantConvictions: { he: 'אין רישום פלילי רלוונטי לתפקיד',          en: 'No relevant criminal convictions' },
+};
+
+// Turn a raw camelCase key into a readable fallback: "declarationValidLicense"
+// -> "Declaration valid license". Keeps unmapped keys visible instead of
+// hiding them; the mapping table above is only for polish.
+function humanizeDeclarationKey(k: string): string {
+  const spaced = k.replace(/([A-Z])/g, ' $1').trim();
+  return spaced.charAt(0).toUpperCase() + spaced.slice(1).toLowerCase();
+}
+
+// Render the role-specific onboarding-form declaration checkboxes from
 // `internal_notes` JSON. Server stores them as { declarations: {key: bool} }
-// (with additional keys like providerTypes[] we skip). Displays each key with
-// a ✓ / ✗. Falls back to raw JSON block if the shape isn't what we expect.
+// (with additional keys like providerTypes[] we skip). Displays each key
+// with a ✓ / ✗ and a friendly bilingual label. Unknown keys render with a
+// humanized fallback label so a NEW declaration added to the wizard is
+// never silently dropped from admin review. Falls back to raw JSON block
+// if the shape isn't what we expect.
 function DeclarationList({ raw }: { raw: string }) {
   let parsed: any = null;
   try { parsed = JSON.parse(raw); } catch { /* fall through */ }
@@ -199,13 +241,24 @@ function DeclarationList({ raw }: { raw: string }) {
     return <div className="text-xs text-muted-foreground bg-white rounded px-3 py-2">No declarations captured</div>;
   }
   return (
-    <div className="grid grid-cols-2 gap-2 text-sm">
-      {keys.map((k) => (
-        <div key={k} className="flex items-center justify-between bg-white rounded px-3 py-2">
-          <span className="text-muted-foreground text-xs">{k}</span>
-          {decl[k] ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-400" />}
-        </div>
-      ))}
+    <div className="grid grid-cols-1 gap-2 text-sm">
+      {keys.map((k) => {
+        const mapped = DECLARATION_LABELS[k];
+        const en = mapped?.en ?? humanizeDeclarationKey(k);
+        const he = mapped?.he ?? null;
+        return (
+          <div key={k} className="flex items-center justify-between bg-white rounded px-3 py-2 gap-3">
+            <div className="min-w-0 flex-1">
+              <div className="text-sm text-slate-800 truncate">{en}</div>
+              {he && <div dir="rtl" className="text-xs text-muted-foreground truncate">{he}</div>}
+              <div className="text-[10px] text-muted-foreground/70 font-mono truncate">{k}</div>
+            </div>
+            {decl[k]
+              ? <CheckCircle2 className="h-4 w-4 text-green-500 shrink-0" />
+              : <XCircle className="h-4 w-4 text-red-400 shrink-0" />}
+          </div>
+        );
+      })}
     </div>
   );
 }
