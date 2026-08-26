@@ -85,6 +85,10 @@ import legalAcceptancesRoutes from "./routes/legal-acceptances";
 // provider_application, franchise, admin). Booking chats keep using
 // booking-chat.ts.
 import threadChatRoutes from "./routes/thread-chat";
+// Payment-preview composer — the ONE customer-facing endpoint that
+// answers "what does this customer owe RIGHT NOW?" for every surface.
+// READ-ONLY. Never captures, reserves, or mutates.
+import paymentPreviewRoutes from "./routes/payment-preview";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
 import adminStaffRoutes from "./routes/admin-staff";
@@ -12828,6 +12832,7 @@ self.addEventListener('notificationclick', (event) => {
   // evidence trail (who / what / version / lang / IP / device / snapshot).
   app.use('/api/legal-acceptances', validateFirebaseToken, apiLimiter, legalAcceptancesRoutes);
   app.use('/api/threads', apiLimiter, threadChatRoutes);
+  app.use('/api/payment-preview', apiLimiter, paymentPreviewRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
   app.use('/api/admin/staff', apiLimiter, adminStaffRoutes);
