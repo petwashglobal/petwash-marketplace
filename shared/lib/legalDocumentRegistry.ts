@@ -66,14 +66,26 @@ export type LegalDocumentProvenance =
   | 'none';                    // no legacy authority — canonical is authoritative from day one
 
 /**
- * Migration status per document — CEO §6 vocabulary:
- *   LEGACY-ONLY            — canonical writer not wired yet
- *   DUAL-WRITE-SHADOW      — legacy is authoritative; canonical writer is
- *                            fire-and-forget best-effort (default today)
- *   DUAL-WRITE-RECONCILED  — every legacy row provably has a canonical row
- *                            (verified by the reconciliation cron)
- *   CANONICAL-AUTHORITY    — canonical row is the source of truth; legacy
- *                            is either backfilled or deprecated
+ * Migration status per document — CEO §6 + correction pass #2 §3
+ * vocabulary. Time does NOT reconcile data; a status only advances
+ * when the definition below is provably true for the tested
+ * population/window.
+ *
+ *   LEGACY-ONLY            — canonical writer not wired yet.
+ *   DUAL-WRITE-SHADOW      — both writers active but equality NOT yet
+ *                            proven. Legacy is authoritative; canonical
+ *                            is a best-effort shadow (structured
+ *                            {ok:false} result on failure emits the
+ *                            LEGAL_ACCEPTANCE_SHADOW_MISSING signal).
+ *   DUAL-WRITE-RECONCILED  — for the tested population/window: legacy
+ *                            acceptance exists AND canonical acceptance
+ *                            exists AND (key, version, language, hash)
+ *                            passes the expected rules. A cron may
+ *                            MEASURE this — it does NOT magically
+ *                            promote a status because N days passed.
+ *   CANONICAL-AUTHORITY    — all runtime readers/gates have migrated
+ *                            to the canonical source AND rollback +
+ *                            reconciliation are proven for that doc.
  */
 export type LegalDocumentMigrationStatus =
   | 'LEGACY-ONLY'

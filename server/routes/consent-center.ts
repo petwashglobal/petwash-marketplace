@@ -164,6 +164,10 @@ router.post('/marketing', async (req: any, res) => {
     // (userId, marketing_consent, docVersion) — a re-grant of the
     // same channel/version is a no-op.
     if (granted) {
+      // SHADOW policy (CEO §1, §9-10): consent_ledger + notification_prefs
+      // remain authoritative for the marketing state machine (grant /
+      // withdraw / re-grant); the canonical ledger stores GRANT EVIDENCE
+      // ONLY. Structured result — branch on ok.
       recordLegalAcceptance({
         userId,
         documentKey: 'marketing_consent',
@@ -174,8 +178,14 @@ router.post('/marketing', async (req: any, res) => {
         source: 'client',
         actorRole: 'self',
         metadata: { channel, origin: '/api/consent-center/marketing' },
+      }).then((r) => {
+        if (!r.ok) {
+          logger.warn('[ConsentCenter] canonical shadow write failed — legacy authority stands', {
+            userId, channel, errorCode: r.errorCode,
+          });
+        }
       }).catch((err: any) => {
-        logger.warn('[ConsentCenter] canonical ledger dual-write failed (non-blocking)', {
+        logger.error('[ConsentCenter] canonical shadow write threw unexpectedly', {
           userId, channel, err: err?.message,
         });
       });

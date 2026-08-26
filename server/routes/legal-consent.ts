@@ -64,6 +64,8 @@ router.post('/accept-terms', validateFirebaseToken, async (req: Request, res: Re
         ? req.body.language as 'he' | 'en' | 'ar' | 'ru' | 'fr' | 'es'
         : 'he';
       const actualLang = customerTosDoc.languages.includes(requestedLang) ? requestedLang : 'he';
+      // SHADOW policy (CEO §1): legacy users.acceptedTermsAt is
+      // authoritative for the gate. Structured result — branch on ok.
       recordLegalAcceptance({
         userId: uid,
         documentKey: 'customer_tos',
@@ -79,8 +81,14 @@ router.post('/accept-terms', validateFirebaseToken, async (req: Request, res: Re
           actualLanguage: actualLang,
           migrationStatus: customerTosDoc.migrationStatus,
         },
+      }).then((r) => {
+        if (!r.ok) {
+          logger.warn('[LegalConsent] canonical shadow write failed — legacy authority stands', {
+            uid, errorCode: r.errorCode,
+          });
+        }
       }).catch((err: any) => {
-        logger.warn('[LegalConsent] canonical ledger dual-write failed (non-blocking)', {
+        logger.error('[LegalConsent] canonical shadow write threw unexpectedly', {
           uid, err: err?.message,
         });
       });

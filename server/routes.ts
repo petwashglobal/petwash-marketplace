@@ -2212,35 +2212,48 @@ self.addEventListener('notificationclick', (event) => {
         storageBackend: stored ? 'success' : 'failed',
       });
 
-      // Canonical-ledger dual-write (CEO 2026-08-26 §12). Each granted
-      // consent lands as its own row in the append-only
-      // legal_acceptances table. Fire-and-forget; idempotent per
-      // (userId, documentKey, docVersion). Anonymous callers (no
-      // firebaseUser) are skipped — the canonical ledger is user-
-      // scoped and 'anonymous' is not a real user.
+      // SHADOW policy (CEO 2026-08-26 correction pass §1): the Firestore
+      // /  PG consent_snapshots writes above are authoritative for this
+      // path. Structured result — branch on r.ok because the service
+      // catches its own DB errors and returns { ok:false } (a
+      // `.catch()`-only pattern would NEVER fire for a normal DB
+      // failure). emitShadowFailure inside the service is the observable
+      // signal; this log is an additional breadcrumb pairing origin +
+      // errorCode. Version resolved from the registry, not hardcoded.
       if (firebaseUser?.uid) {
         const { recordLegalAcceptance } = await import('./services/LegalAcceptanceService');
+        const { getLegalDocument } = await import('@shared/lib/legalDocumentRegistry');
+        const language = 'he' as const;
         const commonArgs = {
           userId: firebaseUser.uid,
-          docVersion: 'v1',
-          language: 'he' as const,
+          language,
           ipAddress: ip || null,
           userAgent: userAgent || null,
           source: 'client' as const,
           actorRole: 'self' as const,
           metadata: { origin: '/api/consent/onboarding', evidenceHash, source: source || 'onboarding' },
         };
+        const shadowHandle = (docKey: string, docVersion: string, extras: Record<string, unknown> = {}) => (r: any) => {
+          if (!r?.ok) {
+            logger.warn('[Consent] canonical shadow write failed — legacy authority stands', {
+              uid: firebaseUser.uid, docKey, docVersion, errorCode: r?.errorCode, ...extras,
+            });
+          }
+        };
         if (termsOfService) {
-          recordLegalAcceptance({ ...commonArgs, documentKey: 'customer_tos' })
-            .catch((err: any) => logger.warn('[Consent] canonical dual-write (customer_tos) failed', { err: err?.message }));
+          const d = getLegalDocument('customer_tos');
+          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'customer_tos', docVersion: d.currentVersion })
+            .then(shadowHandle('customer_tos', d.currentVersion));
         }
         if (privacyPolicy) {
-          recordLegalAcceptance({ ...commonArgs, documentKey: 'privacy_policy' })
-            .catch((err: any) => logger.warn('[Consent] canonical dual-write (privacy_policy) failed', { err: err?.message }));
+          const d = getLegalDocument('privacy_policy');
+          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'privacy_policy', docVersion: d.currentVersion })
+            .then(shadowHandle('privacy_policy', d.currentVersion));
         }
         if (emailCommunication) {
-          recordLegalAcceptance({ ...commonArgs, documentKey: 'marketing_consent', docVersion: 'v1-email' })
-            .catch((err: any) => logger.warn('[Consent] canonical dual-write (marketing_consent) failed', { err: err?.message }));
+          const d = getLegalDocument('marketing_consent');
+          if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'marketing_consent', docVersion: `${d.currentVersion}-email` })
+            .then(shadowHandle('marketing_consent', `${d.currentVersion}-email`, { channel: 'email' }));
         }
       }
 

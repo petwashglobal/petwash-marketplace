@@ -116,7 +116,11 @@ router.post('/accept', async (req: Request, res: Response) => {
     });
   }
 
-  const acceptance = await recordLegalAcceptance({
+  // AUTHORITATIVE policy at this endpoint (CEO §1): this is the user
+  // explicitly accepting via /api/legal/accept — failure must not
+  // silently succeed. Any write error returns 500 and the client is
+  // expected to retry; we never mint a false "you accepted" UI.
+  const writeResult = await recordLegalAcceptance({
     userId,
     documentKey,
     docVersion: doc.currentVersion,
@@ -143,12 +147,18 @@ router.post('/accept', async (req: Request, res: Response) => {
     },
   });
 
-  if (!acceptance) {
-    return res.status(500).json({ ok: false, error: 'Could not record acceptance' });
+  if (!writeResult.ok) {
+    return res.status(500).json({
+      ok: false,
+      error: 'Could not record acceptance',
+      errorCode: writeResult.errorCode,
+    });
   }
+  const acceptance = writeResult.row;
 
   return res.json({
     ok: true,
+    alreadyAccepted: writeResult.alreadyAccepted,
     acceptance: {
       id: acceptance.id,
       documentKey: acceptance.documentKey,

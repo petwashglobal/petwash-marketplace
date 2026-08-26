@@ -47,24 +47,52 @@ export interface LegalAcceptanceRow {
 }
 
 /**
- * Idempotent: same (userId, documentKey, docVersion) → single row.
- * Re-submitting the same version returns the existing row unchanged
- * (does NOT bump acceptedAt) so a page refresh doesn't rewrite history.
- * A NEW docVersion accumulates as its own row (version history preserved).
+ * Structured result of a canonical ledger write. Never a raw DB error;
+ * `errorCode` is a stable machine-readable classification the caller
+ * uses to decide policy (SHADOW / AUTHORITATIVE — see file header).
  *
- * NEVER THROWS on evidence-only paths — legal-recovery must not block a
- * user flow if the ledger write fails; the caller decides whether to
- * treat that as a fatal error (e.g. legal signature required to submit).
+ * CEO 2026-08-26 correction pass #2 §1: this function used to swallow
+ * DB failures and return `null`, which meant `.catch()` in callers
+ * NEVER fired for a normal DB error. Callers now MUST branch on
+ * `result.ok` — a mistaken `.catch()`-only pattern is now visibly
+ * wrong at the type level.
+ */
+export type LegalAcceptanceWriteError =
+  | 'MISSING_FIELDS'
+  | 'DB_INSERT_FAILED'
+  | 'DB_READBACK_FAILED';
+
+export type LegalAcceptanceWriteResult =
+  | { ok: true;  row: LegalAcceptanceRow;   alreadyAccepted: boolean }
+  | { ok: false; errorCode: LegalAcceptanceWriteError; message: string };
+
+/**
+ * A caller either treats this write as SHADOW (best-effort; failure
+ * feeds the observability signal but the primary flow proceeds) or
+ * AUTHORITATIVE (failure is fatal; the primary flow must not claim
+ * acceptance). One function; two policies at the call site — never
+ * ambiguous.
+ *
+ * Idempotent: same (userId, documentKey, docVersion) → single row.
+ * A NEW docVersion accumulates as its own row (version history
+ * preserved). Re-submitting the same version returns alreadyAccepted=true
+ * with the ORIGINAL row (does NOT bump acceptedAt) — the legally
+ * meaningful moment is the first acceptance.
+ *
+ * Observability (CEO §2): failed writes emit a
+ * LEGAL_ACCEPTANCE_SHADOW_MISSING signal via emitShadowFailure() so a
+ * dashboard / alert / reconciliation queue can see divergence rather
+ * than just a console warning. Signal never contains snapshotText.
  */
 export async function recordLegalAcceptance(
   input: RecordLegalAcceptanceInput,
-): Promise<LegalAcceptanceRow | null> {
+): Promise<LegalAcceptanceWriteResult> {
   if (!input.userId || !input.documentKey || !input.docVersion || !input.language) {
     logger.warn('[LegalAcceptance] recordLegalAcceptance called with missing required fields', {
       hasUserId: !!input.userId, hasDoc: !!input.documentKey,
       hasVersion: !!input.docVersion, hasLang: !!input.language,
     });
-    return null;
+    return { ok: false, errorCode: 'MISSING_FIELDS', message: 'Missing required input fields' };
   }
 
   const snapshotHash = input.snapshotText
@@ -103,32 +131,87 @@ export async function recordLegalAcceptance(
     );
 
     if (result.rowCount === 0) {
-      // Idempotent no-op: the same (user, doc, version) already exists.
-      // Return the existing row so the caller can still confirm.
-      const existing = await pool.query(
-        `SELECT id, user_id, document_key, doc_version, language,
-                accepted_at, ip_address, user_agent, snapshot_hash,
-                snapshot_url, source, actor_role
-           FROM legal_acceptances
-          WHERE user_id = $1 AND document_key = $2 AND doc_version = $3
-          LIMIT 1`,
-        [input.userId, input.documentKey, input.docVersion],
-      );
-      return existing.rows[0] ? mapRow(existing.rows[0]) : null;
+      // Idempotent no-op: return the ORIGINAL row (not overwrite it).
+      try {
+        const existing = await pool.query(
+          `SELECT id, user_id, document_key, doc_version, language,
+                  accepted_at, ip_address, user_agent, snapshot_hash,
+                  snapshot_url, source, actor_role
+             FROM legal_acceptances
+            WHERE user_id = $1 AND document_key = $2 AND doc_version = $3
+            LIMIT 1`,
+          [input.userId, input.documentKey, input.docVersion],
+        );
+        if (!existing.rows[0]) {
+          emitShadowFailure('DB_READBACK_FAILED', input);
+          return {
+            ok: false, errorCode: 'DB_READBACK_FAILED',
+            message: 'ON CONFLICT hit but readback returned no row',
+          };
+        }
+        return { ok: true, row: mapRow(existing.rows[0]), alreadyAccepted: true };
+      } catch (err: any) {
+        emitShadowFailure('DB_READBACK_FAILED', input, err?.message);
+        return {
+          ok: false, errorCode: 'DB_READBACK_FAILED',
+          message: err?.message || 'readback failed',
+        };
+      }
     }
 
     logger.info('[LegalAcceptance] Recorded', {
       userId: input.userId, documentKey: input.documentKey, docVersion: input.docVersion,
       language: input.language, source: input.source ?? 'client',
     });
-    return mapRow(result.rows[0]);
+    return { ok: true, row: mapRow(result.rows[0]), alreadyAccepted: false };
   } catch (err: any) {
-    logger.error('[LegalAcceptance] Insert failed', {
-      userId: input.userId, documentKey: input.documentKey,
-      docVersion: input.docVersion, error: err?.message,
-    });
-    return null;
+    emitShadowFailure('DB_INSERT_FAILED', input, err?.message);
+    return {
+      ok: false, errorCode: 'DB_INSERT_FAILED',
+      message: err?.message || 'insert failed',
+    };
   }
+}
+
+/**
+ * LEGAL_ACCEPTANCE_SHADOW_MISSING observability signal (CEO §2).
+ * Non-PII: never logs snapshotText, never logs raw IP/user-agent (they
+ * live on the failed row's audit anyway). Emits at error level so the
+ * app's existing log-based alerting picks it up; a future PR can wire
+ * this into the admin alerts / reconciliation queue when those APIs
+ * settle.
+ */
+function emitShadowFailure(
+  errorCode: LegalAcceptanceWriteError,
+  input: RecordLegalAcceptanceInput,
+  cause?: string,
+): void {
+  logger.error('LEGAL_ACCEPTANCE_SHADOW_MISSING', {
+    signal: 'LEGAL_ACCEPTANCE_SHADOW_MISSING',
+    errorCode,
+    documentKey: input.documentKey,
+    docVersion: input.docVersion,
+    language: input.language,
+    source: input.source ?? 'client',
+    // userId truncated for log-search safety (still identifiable to
+    // admins with full-row access to the audit trail).
+    userIdTail: input.userId.slice(-6),
+    cause,
+  });
+}
+
+/**
+ * Back-compat convenience for callers that only need the row (no
+ * shadow/authoritative distinction). Prefer `recordLegalAcceptance`
+ * directly at every new call site so the failure policy is visible.
+ * @deprecated pass-through — new call sites should branch on
+ *             `recordLegalAcceptance(...)`'s structured result.
+ */
+export async function recordLegalAcceptanceOrNull(
+  input: RecordLegalAcceptanceInput,
+): Promise<LegalAcceptanceRow | null> {
+  const r = await recordLegalAcceptance(input);
+  return r.ok ? r.row : null;
 }
 
 /**

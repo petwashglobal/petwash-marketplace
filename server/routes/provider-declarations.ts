@@ -338,6 +338,10 @@ router.post('/:key/accept', requireAuth, async (req, res) => {
       const displayedTitle = actualLang === 'en' ? doc.titleEn : doc.titleHe;
       const displayedBody  = actualLang === 'en' ? doc.bodyEn  : doc.bodyHe;
 
+      // SHADOW policy (CEO §1): legacy signing_sessions is authoritative
+      // for the onboarding gate; this write is best-effort. Structured
+      // result — `.catch()` is NOT enough because the service catches
+      // its own DB errors and returns { ok:false } — branch on ok.
       recordLegalAcceptance({
         userId: providerUid,
         documentKey: canonicalDoc.key,
@@ -357,8 +361,21 @@ router.post('/:key/accept', requireAuth, async (req, res) => {
           actualLanguage: actualLang,
           migrationStatus: canonicalDoc.migrationStatus,
         },
+      }).then((r) => {
+        if (!r.ok) {
+          // emitShadowFailure already fired inside the service; this
+          // extra breadcrumb records the LEGACY authority that DID
+          // land so a reconciliation query can pair it up.
+          logger.warn('[ProviderDeclarations] canonical shadow write failed — legacy authority stands', {
+            providerUid, registryKey: doc.key, canonicalKey: canonicalDoc.key,
+            errorCode: r.errorCode, signingSessionId: submissionId,
+          });
+        }
       }).catch((err: any) => {
-        logger.warn('[ProviderDeclarations] canonical ledger dual-write failed (non-blocking)', {
+        // Unexpected synchronous throw (should be impossible given
+        // the service's contract). Log so the emitShadowFailure
+        // signal is never the only breadcrumb.
+        logger.error('[ProviderDeclarations] canonical shadow write threw unexpectedly', {
           providerUid, key: doc.key, err: err?.message,
         });
       });

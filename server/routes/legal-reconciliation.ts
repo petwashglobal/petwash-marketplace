@@ -4,19 +4,28 @@
  * READ-ONLY reconciliation endpoint over the views defined in
  * migration 0129_legal_reconciliation_view.sql (CEO 2026-08-26 §7).
  *
+ * MEASURES divergence — does NOT change any acceptance status.
+ * Correction pass #2 §3-4: a cron that reads this NEVER "promotes"
+ * a document from DUAL-WRITE-SHADOW to DUAL-WRITE-RECONCILED because
+ * N days passed. Promotion requires the definitions in the registry's
+ * MigrationStatus docstring to hold for the tested population/window,
+ * and that judgement is a separate operational decision.
+ *
  * Returns counts per (source, document_key) of:
  *   • legacyMissingCanonical — a legacy acceptance row has no
- *                              matching canonical legal_acceptances
- *                              row. Growth week-over-week means a
- *                              wired dual-write regressed.
+ *                              matching canonical row.
  *   • canonicalMissingLegacy — a canonical row exists but no legacy
- *                              source. Should be near-zero; > 0
+ *                              source (should be near-zero; > 0
  *                              means the legacy write failed after
- *                              the canonical succeeded.
+ *                              the canonical succeeded, so a
+ *                              legacy-driven reconciliation would
+ *                              miss it).
  *   • duplicates             — should always be 0 (partial unique
- *                              index enforces this).
+ *                              index enforces this); > 0 is a
+ *                              schema regression.
  *
- * The endpoint is admin-only. Never mutates any row.
+ * Admin-only. Never mutates any row. Never mutates status. Never
+ * mutates provider gates.
  */
 
 import { Router, type Request, type Response } from 'express';

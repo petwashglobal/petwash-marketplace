@@ -3,11 +3,17 @@
 -- READ-ONLY reconciliation view for the canonical `legal_acceptances`
 -- ledger (migration 0127) vs. legacy acceptance surfaces (CEO
 -- 2026-08-26 §7). The view answers "which legacy acceptances have
--- NO matching canonical row?" — the nightly cron alerts on growth
--- so a dual-write regression is visible before it becomes historic.
+-- NO matching canonical row?" — the reader (admin dashboard / cron)
+-- MEASURES divergence; it never promotes a document's migration
+-- status. Time does not reconcile data (correction pass #2 §3).
 --
 -- No table mutations. No writes. Purely a projection over existing
 -- rows so it can be re-run against production safely.
+--
+-- APPLY STATUS: BLOCKED-CEO-MERGE/DEPLOY (correction pass #2 §5).
+-- A CREATE VIEW is still a schema change and must not be applied to
+-- production without approval. The file is checked in so source review
+-- + tests can proceed; deploy is a separate approval.
 --
 -- IMPORTANT: Firestore-backed surfaces (`onboarding_consent`,
 -- `notification_preferences`) are OUT OF SCOPE for this view — they
