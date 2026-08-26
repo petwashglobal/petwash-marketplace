@@ -190,7 +190,13 @@ const CUSTOMER_DOCS: readonly LegalDocumentDefinition[] = [
     key: 'wallet_egift_terms', actor: 'customer', scope: 'account',
     currentVersion: 'v1', languages: ['he', 'en'],
     textSource: { kind: 'staticClientPage', clientPath: 'client/src/pages/legal/WalletEGiftTerms.tsx' },
-    provenance: 'none', migrationStatus: 'LEGACY-ONLY',
+    // /api/credit-wallet/topup dual-writes a canonical row on every
+    // successful top-up (server/routes/credit-wallet.ts, Lane D §D9).
+    // Other wallet-crediting surfaces (admin manual credit, egift
+    // redeem) still write only legacy — promotion to
+    // DUAL-WRITE-RECONCILED waits until reconciliation is proven and
+    // every credit surface is covered.
+    provenance: 'none', migrationStatus: 'DUAL-WRITE-SHADOW',
     labelEn: 'Wallet & eGift terms', requiredFor: 'wallet_topup',
   },
   {
