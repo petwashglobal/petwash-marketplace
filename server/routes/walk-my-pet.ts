@@ -1018,71 +1018,31 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
         message: 'הטיול אושר! הלקוח/ה קיבל/ה הודעה.',
       });
     } else {
-      await db
-        .update(walkBookings)
-        .set({
-          status: 'cancelled',
-          updatedAt: new Date(),
-        })
-        .where(eq(walkBookings.bookingId, bookingId));
-
-      // Free the walker's calendar — the request is dead (P1 fix).
-      await releaseSlotLock(db, bookingId).catch((relErr) =>
-        logger.warn('[Walk My Pet] slot-lock release on decline skipped', { bookingId, error: String(relErr) }),
+      // WALKER DECLINED — delegated to declineWalkBookingCore (Lane C).
+      // The core owns every side effect previously inlined here: status
+      // flip to 'cancelled' (walk semantic — NOT 'declined'), slot-lock
+      // release, chat sync, octopus CANCELLATION ledger, defensive
+      // receipt void. Single implementation shared with the
+      // BookingResponseDispatcher.
+      const { declineWalkBookingCore } = await import(
+        '../services/booking-response/declineWalkBookingCore'
       );
-
-      await syncChatToBookingStatus(bookingId, 'cancelled', 'walk_my_pet');
-
-      // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
-      // Payment has NOT been captured at decline time (capture happens on accept).
-      // We still write a CANCELLATION entry for a complete audit trail.
-      // The octopus_bookings row is found via idempotencyKey = bookingId.
-      try {
-        const [octopusRecord] = await db.select().from(octopusBookings)
-          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
-        if (octopusRecord) {
-          await db.update(octopusBookings)
-            .set({ status: 'CANCELLED', updatedAt: new Date() })
-            .where(eq(octopusBookings.id, octopusRecord.id));
-          await db.insert(octopusLedger).values({
-            id: `OL-${crypto.randomBytes(4).toString('hex').toUpperCase()}`,
-            type: 'CANCELLATION',
-            bookingId: octopusRecord.id,
-            amount: 0,
-            platform: 'walk_my_pet',
-            metadata: {
-              reason: declineReason || 'Walker declined',
-              cancelledBy: 'provider',
-              cancelledAt: new Date().toISOString(),
-            },
-          });
-        }
-      } catch (octopusErr) {
-        logger.warn('[Walk My Pet] Octopus cancellation ledger entry failed (non-blocking)', octopusErr);
-      }
-
-      // ── Void any stale receipts for this booking ───────────────────────────
-      try {
-        const existingReceipts = await IsraeliDigitalReceiptService.getReceiptByBookingId(bookingId);
-        for (const r of existingReceipts) {
-          if (!r.isVoided) {
-            await IsraeliDigitalReceiptService.voidReceipt({
-              receiptId: r.id,
-              voidReason: `Walk declined by walker: ${declineReason || 'no reason given'}`,
-            });
-          }
-        }
-      } catch (voidErr) {
-        logger.warn('[Walk My Pet] Receipt void on decline failed (non-blocking)', voidErr);
-      }
-      
-      logger.info(`[Walk My Pet] Walker DECLINED booking ${bookingId}, reason: ${declineReason}`);
-      
-      res.json({
-        success: true,
-        status: 'declined',
-        message: 'הטיול נדחה. הלקוח/ה יקבל/תקבל הודעה.',
+      const coreResult = await declineWalkBookingCore({
+        bookingId,
+        providerUid,
+        declineReason,
       });
+      if (!coreResult.ok) {
+        if (coreResult.errorCode === 'FORBIDDEN') return res.status(403).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_NOT_FOUND') return res.status(404).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_WRONG_STATE') return res.status(400).json({ error: coreResult.message });
+        return res.status(500).json({ error: coreResult.message });
+      }
+      // Response shape preserved: {success:true, status:'declined', message}.
+      // Note the client-facing `status:'declined'` label differs from the
+      // DB `status:'cancelled'` flip — the DB uses walk's semantic, the
+      // client message says "declined" for user clarity. Same as before.
+      res.json({ success: true, status: 'declined', message: coreResult.message });
     }
   } catch (error: any) {
     console.error('[Walk My Pet] Provider respond error:', error);
