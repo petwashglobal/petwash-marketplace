@@ -57,7 +57,7 @@ import { logger } from '../../lib/logger';
 import { calendarIntegrationService } from '../CalendarIntegrationService';
 import { syncChatToBookingStatus } from '../../lib/booking-chat-sync';
 import { backupFinancialDocument } from '../gcsBackupService';
-import { advancedBookingEngine as walkEliteBookingEngine } from '../WalkEliteBookingEngine';
+import { walkEliteBookingEngine } from '../booking-engines/walk/WalkEliteBookingEngine';
 import { pool } from '../../db';
 
 export type AcceptWalkOutcome =
