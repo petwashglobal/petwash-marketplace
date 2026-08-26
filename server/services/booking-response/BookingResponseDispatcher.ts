@@ -125,14 +125,12 @@ export async function dispatchAcceptForSource(input: DispatchInput): Promise<Dis
       return { ok: true, source: res.source, legacyBookingId: res.legacyBookingId };
     }
     case 'WALK': {
-      // Same partial-delegation pattern as SITTER_SUITE: decline is
-      // extracted first (money-safe), accept still gated on extraction.
+      if (!res.legacyBookingId) {
+        return { ok: false, source: res.source,
+          errorCode: 'BOOKING_SOURCE_UNRESOLVED',
+          message: 'WALK resolved without a legacyBookingId — refusing to guess.' };
+      }
       if (input.decision === 'decline') {
-        if (!res.legacyBookingId) {
-          return { ok: false, source: res.source,
-            errorCode: 'BOOKING_SOURCE_UNRESOLVED',
-            message: 'WALK resolved without a legacyBookingId — refusing to guess.' };
-        }
         const { declineWalkBookingCore } = await import('./declineWalkBookingCore');
         const core = await declineWalkBookingCore({
           bookingId: res.legacyBookingId,
@@ -145,14 +143,19 @@ export async function dispatchAcceptForSource(input: DispatchInput): Promise<Dis
         }
         return { ok: true, source: res.source, legacyBookingId: res.legacyBookingId };
       }
-      // Accept path — still pending extraction AND still missing a real
-      // payment rail (§24). Even after extraction, this needs to route
-      // through PAYMENT_RAIL_MISSING until the escrow → capture wiring
-      // is real; today the walk accept branch confirms a booking with
-      // no money actually held.
+      // Accept path — CEO §24 policy refusal. acceptWalkBookingCore IS
+      // extracted (see acceptWalkBookingCore.ts) but its own return
+      // payload carries `paymentRail: 'MISSING'` because the current
+      // rail invokes NO payment (escrow doc only, no card capture, no
+      // wallet debit, no SUMIT/ITA document). The dispatcher must
+      // therefore refuse — a confirmed walk with no money held is a
+      // known compliance gap the extraction preserved 1:1 so a
+      // refactor cannot hide it. When a real payment rail lands, drop
+      // the MISSING marker from the core and switch this branch to
+      // delegate the way SITTER_SUITE now does.
       return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
-        errorCode: 'NOT_YET_IMPLEMENTED_WALK',
-        message: 'acceptWalkBookingCore extraction pending — see design note.' };
+        errorCode: 'PAYMENT_RAIL_MISSING',
+        message: 'Walk accept path has no verified payment rail today (escrow doc only). Dispatcher refuses until wired.' };
     }
     case 'ACADEMY':
       // §10: Academy is non-symmetric today — solo /confirm verb, no

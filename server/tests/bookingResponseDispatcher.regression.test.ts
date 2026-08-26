@@ -177,14 +177,22 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     expect(r.errorCode).toBe('PIPELINE_ERROR');
     expect(r.message).toContain('FORBIDDEN');
   });
-  it('flag ON + walk + accept → NOT_YET_IMPLEMENTED (money path still gated, no payment rail)', async () => {
+  it('flag ON + walk + accept → PAYMENT_RAIL_MISSING (§24 policy refusal — extracted but no rail)', async () => {
+    // acceptWalkBookingCore.ts EXISTS but its ok payload marks
+    // paymentRail: 'MISSING'. The dispatcher refuses to route here
+    // even flag-on until a real rail lands, so a confirmed walk with
+    // no money captured never leaves through this gate. This test
+    // pins the refusal — a refactor that "wires the extracted core"
+    // without also landing the payment rail would silently confirm
+    // paperless walks in prod.
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
     const r = await dispatchAcceptForSource({
       requestId: 'BR-3', providerUid: 'p3',
       quoteBreakdown: { legacyRef: { table: 'walk_bookings', id: 'W-3' } },
       decision: 'accept',
     });
-    expect(r.errorCode).toBe('NOT_YET_IMPLEMENTED_WALK');
+    expect(r.ok).toBe(false);
+    expect(r.errorCode).toBe('PAYMENT_RAIL_MISSING');
     expect(declineWalkMock).not.toHaveBeenCalled();
   });
 
