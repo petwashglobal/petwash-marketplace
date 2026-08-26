@@ -1126,234 +1126,53 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
     }
 
     if (action === 'accept') {
-      // ── ATOMIC CLAIM ─────────────────────────────────────────────────────
-      // Before this claim, the read-then-charge pattern above let a sitter's
-      // double-click (or web + phone racing) both pass the pending_provider
-      // check and both call processBookingPayment — customer charged twice
-      // for one booking. Now flip pending_provider → payment_processing in a
-      // SINGLE UPDATE that returns the affected row; if we get 0 rows back
-      // another request already claimed it — return 409.
-      const claimResult = await db
-        .update(sitterBookings)
-        .set({ status: 'payment_pending', updatedAt: new Date() })
-        .where(and(
-          eq(sitterBookings.bookingId, bookingId),
-          eq(sitterBookings.status, 'pending_provider'),
-        ))
-        .returning({ id: sitterBookings.id });
-      if (claimResult.length === 0) {
-        logger.warn('[Sitter Suite] concurrent accept — atomic claim lost', { bookingId, providerUid });
-        return res.status(409).json({
-          error: 'ALREADY_CLAIMED',
-          message: 'This booking is already being processed — please refresh.',
-        });
-      }
-
-      // PROVIDER ACCEPTED - Process payment using owner's stored payment method
-      // Provider does NOT supply payment token - we use the owner's Nayax account
-      const pricePerDayCents = Math.round(booking.totalChargeCents / booking.totalDays);
-
-      let paymentResult = { success: false, nayaxTransactionId: '', error: '' };
-      try {
-        paymentResult = await nayaxSitterMarketplace.processBookingPayment({
-          bookingId: booking.bookingId,
-          ownerId: booking.ownerId,
-          sitterId: booking.sitterId,
-          pricePerDayCents,
-          totalDays: booking.totalDays,
-        });
-      } catch (paymentErr: any) {
-        logger.error('[Sitter Suite] Payment capture on accept failed', { bookingId, error: paymentErr.message });
-      }
-
-      // Only confirm if payment was successful
-      if (!paymentResult.success) {
-        logger.error('[Sitter Suite] Cannot confirm booking - payment capture failed', { bookingId });
-        // Guard the failed flip on the payment_processing state we just
-        // claimed — never overwrite a confirmed record (defence-in-depth
-        // for out-of-order webhook races).
-        await db
-          .update(sitterBookings)
-          .set({
-            status: 'payment_failed',
-            paymentStatus: 'failed',
-            updatedAt: new Date(),
-          })
-          .where(and(
-            eq(sitterBookings.bookingId, bookingId),
-            eq(sitterBookings.status, 'payment_pending'),
-          ));
-
-        return res.status(400).json({
-          success: false,
-          status: 'payment_failed',
-          message: 'חיוב התשלום נכשל. ההזמנה לא אושרה.',
-          error: paymentResult.error || 'Payment capture failed',
-        });
-      }
-
-      // Payment succeeded - confirm booking with escrow
-      // Pass sitter.userId so EscrowService can release funds to the real provider
-      await sitterAdvancedBookingEngine.confirmBooking(
-        booking.bookingId,
-        {
-          subtotal: booking.basePriceCents / 100,
-          platformFee: booking.platformServiceFeeCents / 100,
-          providerPayout: booking.sitterPayoutCents / 100,
-          totalPrice: booking.totalChargeCents / 100,
-          loyaltyDiscount: 0,
-          currency: 'ILS',
-          breakdown: [],
-        },
-        booking.ownerId,
-        sitter.userId
+      // PROVIDER ACCEPTED — delegated to acceptSitterBookingCore (Lane C).
+      // The core owns EVERY money-side side effect previously inlined here:
+      // atomic status claim, Nayax payment capture, payment-failure flip,
+      // escrow confirm (with sitter.userId, not sitterProfile.id), status
+      // → confirmed, chat sync, octopus PAYMENT_CAPTURED ledger, calendar,
+      // fiscal receipt (SIM-safe), GCS backup, audit. ONE implementation
+      // across the route handler and the BookingResponseDispatcher — no
+      // drift, no duplication. 12 core regression tests pin every rule.
+      //
+      // Pre-existing auth + status guards above are defence-in-depth for
+      // fast rejection; the core's own guards catch any race between them.
+      const { acceptSitterBookingCore } = await import(
+        '../services/booking-response/acceptSitterBookingCore'
       );
-
-      await db
-        .update(sitterBookings)
-        .set({
-          status: 'confirmed',
-          paymentStatus: 'captured',
-          nayaxTransactionId: paymentResult.nayaxTransactionId || null,
-          confirmedAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(sitterBookings.bookingId, bookingId));
-      
-      await syncChatToBookingStatus(bookingId, 'confirmed', 'sitter_suite');
-      
-      // Update Octopus Brain: DRAFT → CONFIRMED + escrow ledger entry
-      try {
-        const [octopusRecord] = await db.select().from(octopusBookings)
-          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
-        if (octopusRecord) {
-          await db.update(octopusBookings)
-            .set({ status: 'CONFIRMED', updatedAt: new Date() })
-            .where(eq(octopusBookings.id, octopusRecord.id));
-          await db.insert(octopusLedger).values({
-            id: `OL-${nanoid(8)}`,
-            type: 'PAYMENT_CAPTURED',
-            bookingId: octopusRecord.id,
-            amount: octopusRecord.price,
-            platform: 'PETSITTER',
-            metadata: { nayaxTransactionId: paymentResult.nayaxTransactionId, escrowHoldHours: 72 },
-          });
-          logger.info('[Octopus Brain] Sitter booking confirmed + payment captured', { octopusId: octopusRecord.id });
-        }
-      } catch (octopusErr) {
-        logger.warn('[Octopus Brain] Failed to update sitter booking status (non-blocking)', octopusErr);
-      }
-
-      logger.info('[Sitter Suite] ✅ Provider ACCEPTED booking - payment captured', { bookingId, sitterId: sitter.id });
-
-      calendarIntegrationService.createBookingEvent({
-        platform: 'sitter-suite',
-        bookingId: booking.bookingId,
-        title: `⁦The Sitter Suite™⁩ - Pet Sitting (${booking.totalDays} days)`,
-        description: `Pet sitting booking confirmed for ${booking.totalDays} day(s)`,
-        startTime: new Date(booking.startDate),
-        endTime: new Date(booking.endDate),
-        providerName: `${sitter.firstName} ${sitter.lastName}`,
-      }).catch((e: any) =>
-        logger.warn('[Sitter Suite] calendar event create failed (non-fatal, booking already confirmed)', {
-          bookingId: booking.bookingId, error: e?.message,
-        })
-      );
-
-      // Generate Israeli digital receipt (non-blocking).
-      // SIMULATED payments never get a fiscal document (2026-07-30 audit): in
-      // non-production NODE_ENV the Nayax client returns Status:'SUCCESS' with a
-      // 'SIM_…' transaction id without charging anyone — issuing a real SUMIT/ITA
-      // חשבונית for that is a false tax document (money-invariants §2: receipts
-      // only at a VERIFIED fiscal event).
-      if (paymentResult.nayaxTransactionId?.startsWith('SIM_')) {
-        logger.warn('[Sitter Suite] Simulated payment (SIM_) — booking confirmed for testing, NO fiscal receipt issued', {
-          bookingId: booking.bookingId, txId: paymentResult.nayaxTransactionId,
-        });
-      } else try {
-        // Resolve the real customer so the receipt actually reaches them (was '',
-        // so the receipt email silently went nowhere). ownerId is the Firebase uid.
-        const [owner] = await db
-          .select({ email: users.email, first: users.firstName, last: users.lastName })
-          .from(users)
-          .where(eq(users.id, booking.ownerId))
-          .limit(1);
-        await IsraeliDigitalReceiptService.generateReceipt({
-          platform: 'sitter-suite',
-          paymentClass: 'PROVIDER_BOOKING_COMMISSION',
-          bookingId: booking.bookingId,
-          nayaxTransactionId: paymentResult.nayaxTransactionId,
-          customerEmail: owner?.email || '',
-          customerName: [owner?.first, owner?.last].filter(Boolean).join(' '),
-          serviceAddress: formatUserAddress(bookingSnapshotToAddress(booking), { lang: 'he' }) || undefined,
-          providerName: `${sitter.firstName} ${sitter.lastName}`,
-          providerId: sitter.id.toString(),
-          providerType: 'sitter',
-          serviceDescription: `Pet sitting - ${booking.totalDays} day(s)`,
-          serviceDescriptionHe: `שמרטפות - ${booking.totalDays} ${booking.totalDays === 1 ? 'יום' : 'ימים'}`,
-          subtotalAmount: booking.basePriceCents / 100,
-          platformFeeAmount: booking.platformServiceFeeCents / 100,
-          totalAmount: booking.totalChargeCents / 100,
-          paymentMethod: 'Nayax Card Payment',
-          providerPayoutAmount: booking.sitterPayoutCents / 100,
-          brokerCommissionAmount: booking.platformServiceFeeCents / 100,
-        });
-      } catch (receiptErr) {
-        logger.warn('[Sitter Suite] Receipt generation after accept failed (non-blocking)', receiptErr);
-      }
-
-      // Backup financial records to Google Cloud Storage (non-blocking)
-      (async () => {
-        try {
-          await backupFinancialDocument({
-            documentType: 'escrow_record',
-            bookingId: booking.bookingId,
-            platform: 'PETSITTER',
-            content: JSON.stringify({
-              bookingId: booking.bookingId,
-              ownerId: booking.ownerId,
-              sitterId: booking.sitterId,
-              totalChargeCents: booking.totalChargeCents,
-              platformServiceFeeCents: booking.platformServiceFeeCents,
-              sitterPayoutCents: booking.sitterPayoutCents,
-              nayaxTransactionId: paymentResult.nayaxTransactionId,
-              confirmedAt: new Date().toISOString(),
-              escrowHoldHours: 72,
-            }, null, 2),
-            metadata: {
-              nayaxTransactionId: paymentResult.nayaxTransactionId || '',
-              totalDays: booking.totalDays.toString(),
-            },
-          });
-        } catch (gcsErr) {
-          logger.warn('[GCS] Sitter financial backup failed (non-blocking)', gcsErr);
-        }
-      })();
-
-      // PR-D-BOOKING-AUDIT-WIRING: append-only provider_response_changed
-      // event for the ACCEPT branch. Records who accepted and that
-      // payment capture succeeded (status=confirmed). INSERT-only.
-      void logAuditEvent({
-        actorUserId: providerUid,
-        actionType: 'provider_response_changed',
-        targetType: 'booking',
-        targetId: bookingId,
-        severity: 'info',
+      const coreResult = await acceptSitterBookingCore({
+        bookingId,
+        providerUid,
         traceId: (req as any).traceId,
-        metadata: {
-          response: 'accept',
-          newStatus: 'confirmed',
-          platform: 'sitter_suite',
-        },
-      }).catch(() => { /* helper already swallows; double-guard */ });
-
+      });
+      if (!coreResult.ok) {
+        // Failure translation matches the response codes the inline
+        // implementation used, so no client behaviour changes.
+        if (coreResult.errorCode === 'FORBIDDEN') return res.status(403).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_NOT_FOUND') return res.status(404).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_WRONG_STATE') return res.status(400).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'ALREADY_CLAIMED') {
+          return res.status(409).json({ error: 'ALREADY_CLAIMED', message: coreResult.message });
+        }
+        if (coreResult.errorCode === 'PAYMENT_FAILED') {
+          return res.status(400).json({
+            success: false, status: 'payment_failed',
+            message: (coreResult.details as any)?.hebrewMessage ?? 'חיוב התשלום נכשל. ההזמנה לא אושרה.',
+            error: coreResult.message,
+          });
+        }
+        return res.status(500).json({ error: coreResult.message });
+      }
       res.json({
         success: true,
         status: 'confirmed',
         message: 'ההזמנה אושרה! הלקוח/ה קיבל/ה הודעה.',
+        // Preserve the response shape callers depend on: stale booking
+        // snapshot with confirmed status stitched on. The core's write
+        // is the source of truth; the client should re-fetch for fresh
+        // data (this field is a UX hint, not authority).
         booking: { ...booking, status: 'confirmed', confirmedAt: new Date() },
       });
-      
     } else {
       // PROVIDER DECLINED — delegated to declineSitterBookingCore (Lane C).
       // The core owns the same side effects previously inlined here:
