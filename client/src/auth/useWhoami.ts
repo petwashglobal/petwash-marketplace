@@ -24,7 +24,12 @@ export interface WhoamiResponse {
   profileStatus?: 'complete' | 'incomplete';
   providerStatus?: 'none' | 'pending' | 'approved';
   prestigeStatus?: 'none' | 'active';
-  activeFlow?: 'prestige' | 'provider' | 'guest' | 'booking' | 'general';
+  // activeFlow — origin surface, not identity. 'prestige' was the legacy
+  // customer-flow value; renamed to 'customer' (CEO 2026-08-26 role
+  // model — Prestige is a membership, not a flow). Server continues to
+  // accept legacy 'prestige' input and normalises to 'customer' so old
+  // sessions keep working; new emissions use 'customer' only.
+  activeFlow?: 'customer' | 'provider' | 'guest' | 'booking' | 'general';
   roles?: string[];
   session: {
     ageSeconds: number;

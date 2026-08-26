@@ -2741,10 +2741,22 @@ self.addEventListener('notificationclick', (event) => {
         providerApproved ? 'approved' : providerPending ? 'pending' : 'none';
       const prestigeStatus: 'none' | 'active' =
         (claims.program === 'prestige' || claims.loyaltyMember === true) ? 'active' : 'none';
+      // activeFlow — the surface the account was minted from. Historically
+      // the customer/loyalty value was 'prestige' — that framed Prestige
+      // as a workspace flow, which contradicts the CEO 2026-08-26 role
+      // model (Prestige is a membership entitlement, not a workspace).
+      // The value is now 'customer' for pet-parent-first flows. The old
+      // 'prestige' input is silently mapped to 'customer' so existing DB
+      // rows with the legacy intent continue to route correctly.
       const rawIntent = (pgUser as any)?.signupIntent;
-      const activeFlow: 'prestige' | 'provider' | 'guest' | 'booking' | 'general' =
-        rawIntent === 'prestige' || rawIntent === 'provider' || rawIntent === 'guest' || rawIntent === 'booking'
-          ? rawIntent : 'general';
+      const normalizedIntent =
+        rawIntent === 'prestige' ? 'customer' :
+        rawIntent === 'loyalty'  ? 'customer' :
+        rawIntent;
+      const activeFlow: 'customer' | 'provider' | 'guest' | 'booking' | 'general' =
+        normalizedIntent === 'customer' || normalizedIntent === 'provider' ||
+        normalizedIntent === 'guest' || normalizedIntent === 'booking'
+          ? normalizedIntent : 'general';
 
       // roles[] — ONE IDENTITY across all journeys. Derived from the
       // canonical additive capability aggregator so every true capability
