@@ -1,0 +1,43 @@
+{
+  "$comment": [
+    "Realistic SUMIT payment-success webhook payload template used by the",
+    "shop-checkout e2e specs. Field names mirror the SumitClient extractor",
+    "in server/routes/sumit-webhook.ts (extractEventId / extractEventType /",
+    "extractTransactionId / extractExternalRef).",
+    "",
+    "The real receiver endpoint is POST /api/sumit/webhook (see routes/",
+    "sumit-webhook.ts). Signature is HMAC-SHA256 of the raw JSON body using",
+    "SUMIT_WEBHOOK_SECRET, sent as one of:",
+    "  x-sumit-signature | x-signature | x-hub-signature-256",
+    "",
+    "This file MUST NOT contain a real signature — the placeholder is",
+    "replaced at run time by the spec, which computes the HMAC over the",
+    "serialised payload using the test-only SUMIT_WEBHOOK_SECRET env var.",
+    "When SUMIT_WEBHOOK_SECRET is not set, the receiver 401s deterministically",
+    "and the corresponding specs skip. Never ship a real secret here."
+  ],
+  "EventId": "evt_test_shop_00001",
+  "EventType": "payment.succeeded",
+  "TransactionID": "TXN_TEST_SHOP_9001",
+  "ExternalIdentifier": "shop-CART_ID_PLACEHOLDER",
+  "Data": {
+    "TransactionID": "TXN_TEST_SHOP_9001",
+    "ExternalIdentifier": "shop-CART_ID_PLACEHOLDER",
+    "Amount": 157.00,
+    "AmountCents": 15700,
+    "Currency": "ILS",
+    "Status": "approved",
+    "CapturedAt": "2026-08-26T09:00:00.000Z"
+  },
+  "Payment": {
+    "ID": "TXN_TEST_SHOP_9001",
+    "Method": "credit_card",
+    "Last4": "4242"
+  },
+  "$signaturePlaceholder": "SIGNATURE_PLACEHOLDER",
+  "$signatureHeaderCandidates": [
+    "x-sumit-signature",
+    "x-signature",
+    "x-hub-signature-256"
+  ]
+}
