@@ -2240,20 +2240,34 @@ self.addEventListener('notificationclick', (event) => {
             });
           }
         };
+        // Explicit .catch() on every shadow write (Lane D §D5). The service
+        // is designed to trap its own DB errors and return a structured
+        // { ok:false } result, so this should only ever fire on a truly
+        // unexpected throw (module-load failure, oom, etc.). Without it
+        // such a throw becomes an unhandled rejection and vanishes from
+        // the ops trail while legacy authority still stands.
+        const shadowCatch = (docKey: string, docVersion: string) => (err: any) => {
+          logger.warn('[Consent] canonical shadow write threw — legacy authority stands', {
+            uid: firebaseUser.uid, docKey, docVersion, errorMessage: err?.message ?? String(err),
+          });
+        };
         if (termsOfService) {
           const d = getLegalDocument('customer_tos');
           if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'customer_tos', docVersion: d.currentVersion })
-            .then(shadowHandle('customer_tos', d.currentVersion));
+            .then(shadowHandle('customer_tos', d.currentVersion))
+            .catch(shadowCatch('customer_tos', d.currentVersion));
         }
         if (privacyPolicy) {
           const d = getLegalDocument('privacy_policy');
           if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'privacy_policy', docVersion: d.currentVersion })
-            .then(shadowHandle('privacy_policy', d.currentVersion));
+            .then(shadowHandle('privacy_policy', d.currentVersion))
+            .catch(shadowCatch('privacy_policy', d.currentVersion));
         }
         if (emailCommunication) {
           const d = getLegalDocument('marketing_consent');
           if (d) recordLegalAcceptance({ ...commonArgs, documentKey: 'marketing_consent', docVersion: `${d.currentVersion}-email` })
-            .then(shadowHandle('marketing_consent', `${d.currentVersion}-email`, { channel: 'email' }));
+            .then(shadowHandle('marketing_consent', `${d.currentVersion}-email`, { channel: 'email' }))
+            .catch(shadowCatch('marketing_consent', `${d.currentVersion}-email`));
         }
       }
 
