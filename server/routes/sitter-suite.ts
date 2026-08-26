@@ -1355,98 +1355,33 @@ router.patch('/bookings/:bookingId/provider-respond', requireAuth, async (req, r
       });
       
     } else {
-      // PROVIDER DECLINED
-      await db
-        .update(sitterBookings)
-        .set({
-          status: 'declined',
-          cancellationReason: declineReason || 'Provider declined the booking request',
-          cancelledAt: new Date(),
-          updatedAt: new Date(),
-        })
-        .where(eq(sitterBookings.bookingId, bookingId));
-
-      // Free the sitter's calendar — the request is dead (P0-1 fix).
-      await releaseSlotLock(db, bookingId).catch((relErr) =>
-        logger.warn('[Sitter Suite] slot-lock release on decline skipped', { bookingId, error: String(relErr) }),
+      // PROVIDER DECLINED — delegated to declineSitterBookingCore (Lane C).
+      // The core owns the same side effects previously inlined here:
+      // status flip to 'declined', slot-lock release, chat sync, octopus
+      // CANCELLATION ledger, defensive receipt void, provider_response_changed
+      // audit. Single implementation across the route handler and the
+      // BookingResponseDispatcher — no drift, no duplication.
+      //
+      // The auth check (sitter.userId === providerUid) and the wrong-state
+      // guard have already fired above, so the core's own checks below
+      // are defence-in-depth. A concurrent update between our check and
+      // the core's check is more correct behaviour, not a regression.
+      const { declineSitterBookingCore } = await import(
+        '../services/booking-response/declineSitterBookingCore'
       );
-
-      await syncChatToBookingStatus(bookingId, 'cancelled', 'sitter_suite');
-
-      // ── Accounting: write CANCELLATION to octopus_ledger ──────────────────
-      // Even though no payment was captured (payment happens at accept, not request),
-      // we write a CANCELLATION entry for a complete audit trail.
-      // The octopus_bookings row is found via idempotencyKey, which is set to the
-      // sitter booking's bookingId (string) when the octopus record is first created.
-      try {
-        const [octopusRecord] = await db.select().from(octopusBookings)
-          .where(eq(octopusBookings.idempotencyKey, bookingId)).limit(1);
-        if (octopusRecord) {
-          await db.update(octopusBookings)
-            .set({ status: 'CANCELLED', updatedAt: new Date() })
-            .where(eq(octopusBookings.id, octopusRecord.id));
-          await db.insert(octopusLedger).values({
-            id: `OL-${nanoid(8)}`,
-            type: 'CANCELLATION',
-            bookingId: octopusRecord.id,
-            amount: 0, // No funds were captured yet at decline time
-            platform: 'PETSITTER',
-            metadata: {
-              reason: declineReason || 'Provider declined',
-              cancelledBy: 'provider',
-              cancelledAt: new Date().toISOString(),
-            },
-          });
-        }
-      } catch (octopusErr) {
-        logger.warn('[Sitter Suite] Octopus cancellation ledger entry failed (non-blocking)', octopusErr);
-      }
-
-      // ── Void any receipts already issued for this booking ─────────────────
-      // In this flow, payment is NOT captured until accept, so customer_payment
-      // receipts should not exist at decline time. But defensively void any
-      // stale records (e.g. from a retry or race condition).
-      try {
-        const existingReceipts = await IsraeliDigitalReceiptService.getReceiptByBookingId(bookingId);
-        for (const r of existingReceipts) {
-          if (!r.isVoided) {
-            await IsraeliDigitalReceiptService.voidReceipt({
-              receiptId: r.id,
-              voidReason: `Booking declined by provider: ${declineReason || 'no reason given'}`,
-            });
-          }
-        }
-      } catch (voidErr) {
-        logger.warn('[Sitter Suite] Receipt void on decline failed (non-blocking)', voidErr);
-      }
-      
-      logger.info('[Sitter Suite] ❌ Provider DECLINED booking', { bookingId, reason: declineReason });
-
-      // PR-D-BOOKING-AUDIT-WIRING: append-only provider_response_changed
-      // event for the DECLINE branch. Mirrors the ACCEPT branch shape so
-      // downstream queries can filter by `metadata.response`. INSERT-only.
-      void logAuditEvent({
-        actorUserId: providerUid,
-        actionType: 'provider_response_changed',
-        targetType: 'booking',
-        targetId: bookingId,
-        severity: 'info',
+      const coreResult = await declineSitterBookingCore({
+        bookingId,
+        providerUid,
+        declineReason,
         traceId: (req as any).traceId,
-        metadata: {
-          response: 'decline',
-          newStatus: 'declined',
-          platform: 'sitter_suite',
-          // declineReason is a free-form business field (not a secret).
-          // Truncated defensively.
-          reason: typeof declineReason === 'string' ? declineReason.slice(0, 200) : null,
-        },
-      }).catch(() => { /* helper already swallows; double-guard */ });
-
-      res.json({
-        success: true,
-        status: 'declined',
-        message: 'ההזמנה נדחתה. הלקוח/ה יקבל/תקבל הודעה.',
       });
+      if (!coreResult.ok) {
+        if (coreResult.errorCode === 'FORBIDDEN') return res.status(403).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_NOT_FOUND') return res.status(404).json({ error: coreResult.message });
+        if (coreResult.errorCode === 'BOOKING_WRONG_STATE') return res.status(400).json({ error: coreResult.message });
+        return res.status(500).json({ error: coreResult.message });
+      }
+      res.json({ success: true, status: 'declined', message: coreResult.message });
     }
   } catch (error) {
     logger.error('[Sitter Suite] Provider respond error', error);
