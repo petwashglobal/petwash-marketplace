@@ -12,6 +12,7 @@ import {
   dispatchAcceptForSource,
   isDispatcherEnabled,
   observeIntendedDispatch,
+  emitLegacyBridgeFailure,
 } from '../services/booking-response/BookingResponseDispatcher';
 
 describe('resolveBookingSource — pure function', () => {
@@ -32,12 +33,21 @@ describe('resolveBookingSource — pure function', () => {
     expect(resolveBookingSource(null)).toEqual({ source: 'UNIFIED_REQUEST' });
     expect(resolveBookingSource(undefined)).toEqual({ source: 'UNIFIED_REQUEST' });
   });
-  it('unknown legacy table → UNIFIED_REQUEST (fail-safe, never guess)', () => {
-    expect(resolveBookingSource({ legacyRef: { table: 'garbage', id: 'X' } }))
-      .toEqual({ source: 'UNIFIED_REQUEST' });
-    // Missing id → UNIFIED_REQUEST (also fail-safe).
-    expect(resolveBookingSource({ legacyRef: { table: 'sitter_bookings' } }))
-      .toEqual({ source: 'UNIFIED_REQUEST' });
+  it('unknown legacy table → UNKNOWN_SOURCE (fail-safe, never guess UNIFIED)', () => {
+    // CEO §2: a legacyRef PRESENT but malformed/unknown must NOT be
+    // silently treated as UNIFIED_REQUEST — that would route unknown
+    // money through the wrong pipeline. Refuse to dispatch instead.
+    const r1 = resolveBookingSource({ legacyRef: { table: 'garbage', id: 'X' } });
+    expect(r1.source).toBe('UNKNOWN_SOURCE');
+    expect(r1.unresolvedRef).toEqual({ table: 'garbage', id: 'X' });
+    // Missing id → UNKNOWN_SOURCE too.
+    const r2 = resolveBookingSource({ legacyRef: { table: 'sitter_bookings' } });
+    expect(r2.source).toBe('UNKNOWN_SOURCE');
+    expect(r2.unresolvedRef).toEqual({ table: 'sitter_bookings', id: null });
+    // Missing table → UNKNOWN_SOURCE.
+    const r3 = resolveBookingSource({ legacyRef: { id: 'X' } });
+    expect(r3.source).toBe('UNKNOWN_SOURCE');
+    expect(r3.unresolvedRef).toEqual({ table: null, id: 'X' });
   });
 });
 
@@ -97,21 +107,50 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     expect(r.ok).toBe(true);
     expect(r.source).toBe('UNIFIED_REQUEST');
   });
+  it('flag ON + unknown source → BOOKING_SOURCE_UNRESOLVED, never dispatch', async () => {
+    process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    const r = await dispatchAcceptForSource({
+      requestId: 'BR-6', providerUid: 'p6',
+      quoteBreakdown: { legacyRef: { table: 'unknown_x', id: 'ABC' } },
+      decision: 'accept',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.source).toBe('UNKNOWN_SOURCE');
+    expect(r.errorCode).toBe('BOOKING_SOURCE_UNRESOLVED');
+  });
 });
 
 describe('observeIntendedDispatch — pure observation, never mutates', () => {
   it('returns the resolution and does not throw for any shape', () => {
-    // No matter what the caller passes, observability must be
-    // side-effect-safe: never crash a live provider-response.
     expect(() => observeIntendedDispatch({
-      requestId: 'BR-6', providerUid: 'p6',
-      quoteBreakdown: { legacyRef: { table: 'sitter_bookings', id: 'S-6' } },
+      requestId: 'BR-A', providerUid: 'pa',
+      quoteBreakdown: { legacyRef: { table: 'sitter_bookings', id: 'S-A' } },
       decision: 'accept',
     })).not.toThrow();
     expect(() => observeIntendedDispatch({
-      requestId: 'BR-7', providerUid: 'p7',
+      requestId: 'BR-B', providerUid: 'pb',
       quoteBreakdown: null as any,
       decision: 'decline',
+    })).not.toThrow();
+    // Unknown source path also must not throw.
+    expect(() => observeIntendedDispatch({
+      requestId: 'BR-C', providerUid: 'pc',
+      quoteBreakdown: { legacyRef: { table: 'garbage', id: 'X' } },
+      decision: 'accept',
+    })).not.toThrow();
+  });
+});
+
+describe('emitLegacyBridgeFailure — split-brain observability (§5)', () => {
+  it('does not throw for any input, including a malformed quote', () => {
+    expect(() => emitLegacyBridgeFailure({
+      requestId: 'BR-D', providerUid: 'pd', decision: 'accept',
+      quoteBreakdown: { legacyRef: { table: 'sitter_bookings', id: 'S-D' } },
+      errorMessage: 'connection refused',
+    })).not.toThrow();
+    expect(() => emitLegacyBridgeFailure({
+      requestId: 'BR-E', providerUid: 'pe', decision: 'decline',
+      quoteBreakdown: null as any,
     })).not.toThrow();
   });
 });

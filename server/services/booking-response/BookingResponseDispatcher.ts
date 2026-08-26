@@ -60,6 +60,7 @@ export interface DispatchOutcome {
   legacyBookingId?: string;
   errorCode?:
     | 'DISPATCHER_NOT_ENABLED'
+    | 'BOOKING_SOURCE_UNRESOLVED'  // CEO §2: malformed legacyRef — refuse dispatch
     | 'NOT_YET_IMPLEMENTED_SITTER'
     | 'NOT_YET_IMPLEMENTED_WALK'
     | 'NOT_YET_IMPLEMENTED_ACADEMY'
@@ -99,7 +100,34 @@ export async function dispatchAcceptForSource(input: DispatchInput): Promise<Dis
       // The current v2 route handles unified requests correctly today;
       // the dispatcher explicitly does NOT intercept them.
       return { ok: true, source: res.source };
+    case 'UNKNOWN_SOURCE':
+      // CEO §2: NEVER dispatch an unknown source. Never move money.
+      // Emit the reconciliation signal so ops can chase the malformed
+      // legacyRef down.
+      emitUnknownSourceSignal(input, res);
+      return {
+        ok: false, source: res.source,
+        errorCode: 'BOOKING_SOURCE_UNRESOLVED',
+        message: 'Malformed legacyRef — dispatch refused. Reconciliation signal emitted.',
+      };
   }
+}
+
+/**
+ * BOOKING_SOURCE_UNRESOLVED observability. Never dispatches, never
+ * mutates. Non-PII: logs the raw legacy table/id we couldn't
+ * resolve but not the full quote_breakdown (which may carry pricing
+ * detail we don't want in log-search).
+ */
+function emitUnknownSourceSignal(input: DispatchInput, res: import('./bookingSourceResolver').BookingSourceResolution) {
+  logger.error('BOOKING_SOURCE_UNRESOLVED', {
+    signal: 'BOOKING_SOURCE_UNRESOLVED',
+    requestId: input.requestId,
+    providerUidTail: input.providerUid.slice(-6),
+    decision: input.decision,
+    unresolvedTable: res.unresolvedRef?.table ?? null,
+    unresolvedId: res.unresolvedRef?.id ?? null,
+  });
 }
 
 /**
@@ -124,4 +152,34 @@ export function observeIntendedDispatch(input: DispatchInput): BookingSourceReso
     dispatcherEnabled: isDispatcherEnabled(),
   });
   return res;
+}
+
+/**
+ * Record a legacy-bridge write failure with a structured signal so a
+ * silent-catch doesn't hide a split-brain state where canonical says
+ * accepted but the native row didn't change (CEO 2026-08-26
+ * correction pass #3 §5). Non-PII: no snapshot, no full quote,
+ * providerUid truncated.
+ *
+ * The caller's primary flow (customer-facing success) MUST NOT depend
+ * on this signal — this is observability only. The reconciliation
+ * cron and admin dashboards read the resulting log line.
+ */
+export function emitLegacyBridgeFailure(input: {
+  requestId: string;
+  providerUid: string;
+  decision: DispatchDecision;
+  quoteBreakdown: unknown;
+  errorMessage?: string;
+}): void {
+  const res = resolveBookingSource(input.quoteBreakdown);
+  logger.error('LEGACY_BRIDGE_WRITE_FAILED', {
+    signal: 'LEGACY_BRIDGE_WRITE_FAILED',
+    requestId: input.requestId,
+    providerUidTail: input.providerUid.slice(-6),
+    decision: input.decision,
+    resolvedSource: res.source,
+    legacyBookingId: res.legacyBookingId ?? null,
+    errorMessage: input.errorMessage ?? null,
+  });
 }
