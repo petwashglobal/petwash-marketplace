@@ -149,6 +149,9 @@ export async function recordLegalAcceptance(
             message: 'ON CONFLICT hit but readback returned no row',
           };
         }
+        // Success — the row already existed, meaning a prior write
+        // succeeded. Clear any lingering shadow alerts (Lane D §D8).
+        void clearLegalShadowAlertsFor(input.userId, input.documentKey, input.docVersion);
         return { ok: true, row: mapRow(existing.rows[0]), alreadyAccepted: true };
       } catch (err: any) {
         emitShadowFailure('DB_READBACK_FAILED', input, err?.message);
@@ -163,6 +166,17 @@ export async function recordLegalAcceptance(
       userId: input.userId, documentKey: input.documentKey, docVersion: input.docVersion,
       language: input.language, source: input.source ?? 'client',
     });
+    // Success-side clearance for LEGAL_ACCEPTANCE_SHADOW_MISSING
+    // admin alerts (Lane D §D8 gap remediation). emitShadowFailure fires
+    // create-if-missing on a failed write and it's dedup-keyed with the
+    // errorCode, so a retry that succeeds ONLY clears if we explicitly
+    // resolve the previously-open alert here. Otherwise the alert stays
+    // 'open' forever even though the condition is gone.
+    //
+    // Non-fatal: never let the alert clearance break the primary flow.
+    // Also non-blocking: fire-and-forget so a slow alert-DB doesn't
+    // slow the acceptance response.
+    void clearLegalShadowAlertsFor(input.userId, input.documentKey, input.docVersion);
     return { ok: true, row: mapRow(result.rows[0]), alreadyAccepted: false };
   } catch (err: any) {
     emitShadowFailure('DB_INSERT_FAILED', input, err?.message);
@@ -170,6 +184,49 @@ export async function recordLegalAcceptance(
       ok: false, errorCode: 'DB_INSERT_FAILED',
       message: err?.message || 'insert failed',
     };
+  }
+}
+
+/**
+ * Success-side clearance for legal_shadow_missing admin alerts (Lane D §D8).
+ * Called after a successful recordLegalAcceptance write. The dedupe-key
+ * pattern is:
+ *   legal_shadow_missing:<userId>:<documentKey>:<docVersion>:<errorCode>
+ * so we resolve every alert whose prefix matches
+ *   legal_shadow_missing:<userId>:<documentKey>:<docVersion>:
+ * regardless of errorCode — the shadow write succeeded, so ALL prior
+ * failure modes for this (user, doc, version) are gone.
+ *
+ * Uses `resolveClearedByPrefix` from AlertEngine, which correctly
+ * resolves any auto-created alert whose dedupeKey starts with the prefix
+ * but is NOT in the "currently offending" set — we pass an empty set
+ * because for this specific (user, doc, version) tuple nothing is
+ * offending any more.
+ *
+ * Best-effort: never throws, never blocks the primary flow.
+ */
+async function clearLegalShadowAlertsFor(
+  userId: string,
+  documentKey: string,
+  docVersion: string,
+): Promise<void> {
+  try {
+    const { resolveClearedByPrefix } = await import('./AlertEngine');
+    const prefix = `legal_shadow_missing:${userId}:${documentKey}:${docVersion}:`;
+    // Empty currentKeys array means "nothing is offending under this
+    // prefix any more" — resolveClearedByPrefix will close every open
+    // alert matching the prefix.
+    const n = await resolveClearedByPrefix(prefix, []);
+    if (n > 0) {
+      logger.info('[LegalAcceptance] Cleared legal_shadow_missing alerts', {
+        prefix, resolvedCount: n,
+      });
+    }
+  } catch (clearErr: any) {
+    logger.warn('[LegalAcceptance] Alert clearance failed (non-blocking)', {
+      userId, documentKey, docVersion,
+      errorMessage: clearErr?.message ?? String(clearErr),
+    });
   }
 }
 
