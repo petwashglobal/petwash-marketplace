@@ -32,7 +32,13 @@ const PRIORITY_ORDER: Record<AttentionItem['priority'], number> = {
   informational: 2,
 };
 
-function bookingItem(
+/**
+ * Pure mapper — booking row → AttentionItem for the requested actor.
+ * Exported so behavioral tests can pin the CEO §14-15 matrix (each
+ * status × each actor → exact nextAction / destination / priority)
+ * without needing a DB fixture.
+ */
+export function bookingItem(
   actor: AttentionActor,
   row: typeof bookingRequests.$inferSelect,
   he: boolean,

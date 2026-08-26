@@ -194,11 +194,15 @@ const CUSTOMER_DOCS: readonly LegalDocumentDefinition[] = [
     labelEn: 'Wallet & eGift terms', requiredFor: 'wallet_topup',
   },
   {
-    key: 'reviews_content_policy', actor: 'customer', scope: 'account',
+    key: 'reviews_content_policy', actor: 'customer', scope: 'transaction',
     currentVersion: 'v1', languages: ['he', 'en'],
     textSource: { kind: 'staticClientPage', clientPath: 'client/src/pages/legal/ReviewsContentPolicy.tsx' },
     provenance: 'none', migrationStatus: 'LEGACY-ONLY',
-    labelEn: 'Reviews content policy', requiredFor: null,
+    labelEn: 'Reviews content policy',
+    // Per docs/design/2026-08-26-legal-scope-classification.md — the
+    // reviewer accepts at review-submit time; scopeId = reviewId.
+    // Requires the `scope_type`/`scope_id` schema follow-up before wiring.
+    requiredFor: null,
   },
   {
     key: 'community_guidelines', actor: 'customer', scope: 'account',
