@@ -152,6 +152,54 @@ router.post('/provider/reconfirm', requireAuth, async (req: any, res) => {
 
     const result = await recordReconfirmation(providerId, consentRecordId);
 
+    // Canonical-ledger SHADOW dual-write (Lane D task 5). Legacy
+    // reconfirmation_records + consent_ledger stay authoritative for
+    // the provider gate today; this best-effort write feeds the
+    // canonical evidence ledger so `provider_reconfirmation` starts
+    // accumulating rows without a cutover. The primary re-confirmation
+    // has already landed above — this MUST NOT fail it. Structured
+    // result: branch on `.ok` because the service traps its own DB
+    // errors and returns { ok:false } (a `.catch()`-only pattern would
+    // never fire for a normal DB failure). Version resolves from the
+    // ONE registry so a doc bump lands here automatically.
+    void (async () => {
+      try {
+        const { recordLegalAcceptance } = await import('../services/LegalAcceptanceService');
+        const { getLegalDocument } = await import('@shared/lib/legalDocumentRegistry');
+        const doc = getLegalDocument('provider_reconfirmation');
+        if (!doc) return;
+        const requestedLang = req.headers['accept-language']?.toString().startsWith('en') ? 'en' : 'he';
+        const actualLang = doc.languages.includes(requestedLang as any) ? (requestedLang as 'he' | 'en') : 'he';
+        const r = await recordLegalAcceptance({
+          userId: providerId,
+          documentKey: 'provider_reconfirmation',
+          docVersion: doc.currentVersion,
+          language: actualLang,
+          ipAddress: (req.ip || req.headers['x-forwarded-for'] || '').toString() || null,
+          userAgent: (req.headers['user-agent'] || '').toString() || null,
+          source: 'client',
+          actorRole: 'self',
+          metadata: {
+            origin: '/api/provider/reconfirm',
+            consentRecordId,
+            legacyRecordId: result.recordId ?? null,
+            alreadyRecorded: !!result.alreadyRecorded,
+            requestedLanguage: requestedLang,
+            actualLanguage: actualLang,
+          },
+        });
+        if (!r.ok) {
+          logger.warn('[Reconfirmation Routes] canonical shadow write failed — legacy authority stands', {
+            providerId, errorCode: r.errorCode,
+          });
+        }
+      } catch (shadowErr: any) {
+        logger.warn('[Reconfirmation Routes] canonical shadow write threw — legacy authority stands', {
+          providerId, errorMessage: shadowErr?.message ?? String(shadowErr),
+        });
+      }
+    })();
+
     // Compute the new due date to echo back to the UI.
     const next = computeReconfirmationDue({
       approvedAt: null,

@@ -261,7 +261,10 @@ function providerStaticPage(key: string, path: string, labelEn: string): LegalDo
 const PROVIDER_STATIC_DOCS: readonly LegalDocumentDefinition[] = [
   providerStaticPage('provider_self_declaration_no_convictions', 'client/src/pages/legal/ProviderTruthDeclaration.tsx', 'No-convictions self declaration'),
   providerStaticPage('provider_background_check_consent',        'client/src/pages/legal/ProviderDocumentUpload.tsx',   'Background-check consent'),
-  providerStaticPage('provider_reconfirmation',                  'client/src/pages/legal/ProviderReconfirmation.tsx',    'Annual reconfirmation'),
+  // Overridden below with DUAL-WRITE-SHADOW: server/routes/admin-reconfirmation.ts
+  // /api/provider/reconfirm now dual-writes to legal_acceptances (Lane D task 5).
+  { ...providerStaticPage('provider_reconfirmation', 'client/src/pages/legal/ProviderReconfirmation.tsx', 'Annual reconfirmation'),
+    migrationStatus: 'DUAL-WRITE-SHADOW' },
   providerStaticPage('provider_truth_declaration',               'client/src/pages/legal/ProviderTruthDeclaration.tsx',  'Truth of statements'),
   providerStaticPage('provider_confidentiality',                 'client/src/pages/legal/ProviderConfidentiality.tsx',   'Confidentiality'),
   providerStaticPage('provider_brand_use',                       'client/src/pages/legal/ProviderBrandUse.tsx',          'Brand-use terms'),
