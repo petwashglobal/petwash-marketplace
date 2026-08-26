@@ -601,7 +601,12 @@ export default function ProviderKycReview() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-muted-foreground shrink-0" />
-                      <span>{app.submittedAt ? new Date(app.submittedAt).toLocaleDateString('he-IL') : '—'}</span>
+                      {/* Lane A audit 2026-08-26: date digits in an he-IL string
+                          can flip inside an RTL page (dd/mm/yyyy → yyyy/mm/dd).
+                          Force LTR on the numeric span so the day/month/year
+                          ordering is stable regardless of the page direction.
+                          No shared formatDate helper exists in client/src/lib. */}
+                      <span dir="ltr">{app.submittedAt ? new Date(app.submittedAt).toLocaleDateString('he-IL') : '—'}</span>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 pt-1 flex-wrap">
