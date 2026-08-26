@@ -22,6 +22,7 @@ import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { useLanguage } from '@/lib/languageStore';
 import { queryClient, apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
+import { ProviderMoneyCard } from '@/components/ProviderMoneyCard';
 import {
   Bell, MessageCircle, Power, ShieldCheck, Star, ChevronRight, TrendingUp,
   Briefcase, CalendarDays, Wallet as WalletIcon, ClipboardList, FileText, User,
@@ -191,6 +192,13 @@ export default function ProviderHome() {
             (accept/decline, start, complete, ...) top-of-fold before
             any static tiles. Hides itself when the feed is empty. */}
         <AttentionList actor="provider" />
+
+        {/* "Your money" — canonical expected/pending/available/paid
+            buckets from /api/provider/earnings-truth (CEO 2026-08-26
+            §17, §31). Renders below the attention feed so the provider
+            sees "what to do next" first, then "what did I earn". Hides
+            itself for new providers who haven't earned yet. */}
+        <ProviderMoneyCard />
 
         {/* Greeting + provider ID card (metallic green) */}
         <section className="px-4 pt-1">
