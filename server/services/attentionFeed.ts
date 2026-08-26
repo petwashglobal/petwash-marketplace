@@ -47,6 +47,16 @@ export function bookingItem(
   const status = String(row.status ?? '');
 
   // Actor-scoped derivation — CEO §14 next-action engine.
+  //
+  // §23 destination discipline: every URL emitted here MUST resolve to
+  // a mounted client route. Pet-parent bookings live at:
+  //   • /bookings                    — CustomerBookings list (highlights
+  //                                    the row via ?requestId=…)
+  //   • /booking/confirmation/:id    — confirmation / track / pay landing
+  //   • /marketplace/review/:id      — leave-a-review page
+  // The old `/bookings/:id` and `/bookings/:id/review` paths never had
+  // routes mounted; a tap dead-ended in the SPA 404. Fixed here to
+  // route through the pages that actually exist.
   if (actor === 'pet_parent') {
     switch (status) {
       case 'pending':
@@ -56,7 +66,7 @@ export function bookingItem(
           title: he ? 'ממתין לתגובת ספק' : 'Waiting for provider',
           reason: he ? 'הבקשה שלחת — נעדכן ברגע שהספק יגיב' : 'Your request is in — you\'ll get pinged the moment the provider responds',
           nextAction: 'view',
-          destination: `/bookings/${row.requestId}`,
+          destination: `/bookings?requestId=${row.requestId}`,
         };
       case 'payment_pending':
         return {
@@ -65,7 +75,7 @@ export function bookingItem(
           title: he ? 'שלמו כדי לאשר את ההזמנה' : 'Pay to confirm your booking',
           reason: he ? 'הספק אישר — הזמנתכם ממתינה לתשלום' : 'The provider accepted — your booking is waiting on payment',
           nextAction: 'pay',
-          destination: `/bookings/${row.requestId}`,
+          destination: `/booking/confirmation/${row.requestId}`,
           moneySummary: row.totalCents ? {
             amountCents: Number(row.totalCents),
             currency: 'ILS',
@@ -80,7 +90,7 @@ export function bookingItem(
           title: he ? 'ההזמנה מאושרת' : 'Booking confirmed',
           reason: he ? 'עקבו אחרי השירות בזמן אמת' : 'Track the service in real time',
           nextAction: 'track',
-          destination: `/bookings/${row.requestId}`,
+          destination: `/booking/confirmation/${row.requestId}`,
         };
       case 'provider_marked_complete':
         return {
@@ -89,7 +99,7 @@ export function bookingItem(
           title: he ? 'הספק סימן שסיים — אשרו וכתבו ביקורת' : 'Provider marked done — confirm & review',
           reason: he ? 'סיום השירות ממתין לאישורכם' : 'The service is done pending your confirmation',
           nextAction: 'confirm',
-          destination: `/bookings/${row.requestId}`,
+          destination: `/booking/confirmation/${row.requestId}`,
         };
       case 'completed':
         return {
@@ -98,7 +108,7 @@ export function bookingItem(
           title: he ? 'השאירו ביקורת' : 'Leave a review',
           reason: he ? 'עזרו להורים אחרים לבחור' : 'Help other pet parents choose',
           nextAction: 'review',
-          destination: `/bookings/${row.requestId}/review`,
+          destination: `/marketplace/review/${row.requestId}`,
         };
       default:
         return null;
