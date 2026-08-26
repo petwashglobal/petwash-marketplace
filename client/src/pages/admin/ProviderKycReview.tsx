@@ -97,6 +97,12 @@ interface KycApplication {
   declarationSignatureSha256?: string | null;
   // Onboarding-form declarations JSON blob (was hidden — 14 checkboxes)
   internalNotes?: string | null;           // JSON string containing declarations + providerTypes[]
+  // Animal safety (Lane A audit 2026-08-26): pet-first-aid cert row was
+  // persisted at intake but never surfaced. Serial number lives in
+  // internalNotes.petFirstAidNumber because the schema column was
+  // mis-titled pet_first_aid_provider; expiry is a real column below.
+  petFirstAidExpiresAt?: string | null;
+  petFirstAidCertUrl?: string | null;
 }
 
 interface KycDetail {
@@ -598,9 +604,33 @@ export default function ProviderKycReview() {
                       <span>{app.submittedAt ? new Date(app.submittedAt).toLocaleDateString('he-IL') : '—'}</span>
                     </div>
                   </div>
-                  <div className="flex items-center gap-2 pt-1">
+                  <div className="flex items-center gap-2 pt-1 flex-wrap">
                     <span className="font-medium">Provider type:</span>
                     <Badge variant="outline" className="capitalize">{app.providerType?.replace('_', ' ')}</Badge>
+                    {/* Lane A audit follow-up: applicant may have selected
+                        multiple provider types in Step 5. The scalar
+                        providerType stores ONLY the first one; the full
+                        array lives in internal_notes.providerTypes.
+                        Surface every type so approval knows what capabilities
+                        the applicant claimed — a wizard that picked
+                        {sitter, walker, trainer} but shows only 'sitter'
+                        here has lost information the reviewer needs. */}
+                    {(() => {
+                      try {
+                        const notes = app.internalNotes ? JSON.parse(app.internalNotes) : null;
+                        const types: unknown = notes?.providerTypes;
+                        if (!Array.isArray(types) || types.length <= 1) return null;
+                        const extras = types.filter((t) => typeof t === 'string' && t !== app.providerType);
+                        if (extras.length === 0) return null;
+                        return extras.map((t) => (
+                          <Badge key={String(t)} variant="secondary" className="capitalize">
+                            {String(t).replace('_', ' ')}
+                          </Badge>
+                        ));
+                      } catch {
+                        return null;
+                      }
+                    })()}
                   </div>
                 </CardContent>
               </Card>
@@ -688,6 +718,35 @@ export default function ProviderKycReview() {
                       <span className="text-muted-foreground">Country</span>
                       <span className="font-medium">{app.country || '—'}</span>
                     </div>
+                    {/* Lane A audit follow-up: pet-first-aid serial (Step 6)
+                        is captured in internal_notes.petFirstAidNumber
+                        because the schema column was mis-titled
+                        pet_first_aid_provider. Surfacing the serial + expiry
+                        here so admin can verify insurer traceability without
+                        opening the raw JSON blob. Schema rename is a
+                        CEO-approval item; UI extraction is safe today. */}
+                    {(() => {
+                      let serial: string | null = null;
+                      try {
+                        const notes = app.internalNotes ? JSON.parse(app.internalNotes) : null;
+                        const raw = notes?.petFirstAidNumber;
+                        if (typeof raw === 'string' && raw.trim()) serial = raw.trim();
+                      } catch { /* fall through */ }
+                      return (
+                        <>
+                          <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                            <span className="text-muted-foreground">Pet first-aid serial</span>
+                            <span className="font-medium">{serial || '—'}</span>
+                          </div>
+                          <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                            <span className="text-muted-foreground">Pet first-aid expires</span>
+                            <span className="font-medium">
+                              {app.petFirstAidExpiresAt ? new Date(app.petFirstAidExpiresAt).toLocaleDateString() : '—'}
+                            </span>
+                          </div>
+                        </>
+                      );
+                    })()}
                   </div>
                 </CardContent>
               </Card>
