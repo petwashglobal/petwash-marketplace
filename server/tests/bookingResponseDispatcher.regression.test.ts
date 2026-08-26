@@ -21,6 +21,11 @@ vi.mock('../services/booking-response/declineWalkBookingCore', () => ({
   declineWalkBookingCore: (...a: any[]) => declineWalkMock(...a),
 }));
 
+const acceptSitterMock = vi.fn();
+vi.mock('../services/booking-response/acceptSitterBookingCore', () => ({
+  acceptSitterBookingCore: (...a: any[]) => acceptSitterMock(...a),
+}));
+
 import {
   resolveBookingSource,
 } from '../services/booking-response/bookingSourceResolver';
@@ -85,20 +90,59 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     expect(r.ok).toBe(false);
     expect(r.errorCode).toBe('DISPATCHER_NOT_ENABLED');
   });
-  beforeEach(() => { declineSitterMock.mockReset(); declineWalkMock.mockReset(); });
+  beforeEach(() => {
+    declineSitterMock.mockReset();
+    declineWalkMock.mockReset();
+    acceptSitterMock.mockReset();
+  });
 
-  it('flag ON + sitter + accept → NOT_YET_IMPLEMENTED (money path still gated)', async () => {
+  it('flag ON + sitter + accept → delegates to acceptSitterBookingCore with the legacyBookingId', async () => {
+    // Extraction landed — accept is now wired. Money is still gated on
+    // the feature flag; when flag is OFF at the top of dispatchAcceptForSource
+    // it returns DISPATCHER_NOT_ENABLED and never reaches any core.
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    acceptSitterMock.mockResolvedValueOnce({ ok: true, status: 'confirmed', nayaxTransactionId: 'TX-1', bookingId: 'SIT-2' });
     const r = await dispatchAcceptForSource({
       requestId: 'BR-2', providerUid: 'p2',
       quoteBreakdown: { legacyRef: { table: 'sitter_bookings', id: 'SIT-2' } },
       decision: 'accept',
     });
-    expect(r.ok).toBe(false);
-    expect(r.errorCode).toBe('NOT_YET_IMPLEMENTED_SITTER');
+    expect(r.ok).toBe(true);
+    expect(r.source).toBe('SITTER_SUITE');
+    expect(r.legacyBookingId).toBe('SIT-2');
     // ACCEPT must NEVER reach the decline core — that would be a
     // wrong-branch bug that could silently short-circuit a payment.
     expect(declineSitterMock).not.toHaveBeenCalled();
+    expect(acceptSitterMock).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingId: 'SIT-2', providerUid: 'p2' }),
+    );
+  });
+
+  it('flag ON + sitter + accept + core PAYMENT_FAILED → PIPELINE_ERROR (never masks payment failure as ok)', async () => {
+    process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    acceptSitterMock.mockResolvedValueOnce({ ok: false, errorCode: 'PAYMENT_FAILED', message: 'card declined' });
+    const r = await dispatchAcceptForSource({
+      requestId: 'BR-2F', providerUid: 'p2f',
+      quoteBreakdown: { legacyRef: { table: 'sitter_bookings', id: 'SIT-2F' } },
+      decision: 'accept',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errorCode).toBe('PIPELINE_ERROR');
+    expect(r.message).toContain('PAYMENT_FAILED');
+    expect(r.message).toContain('card declined');
+  });
+
+  it('flag ON + sitter + accept + core ALREADY_CLAIMED → PIPELINE_ERROR', async () => {
+    process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    acceptSitterMock.mockResolvedValueOnce({ ok: false, errorCode: 'ALREADY_CLAIMED', message: 'concurrent accept' });
+    const r = await dispatchAcceptForSource({
+      requestId: 'BR-2G', providerUid: 'p2g',
+      quoteBreakdown: { legacyRef: { table: 'sitter_bookings', id: 'SIT-2G' } },
+      decision: 'accept',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errorCode).toBe('PIPELINE_ERROR');
+    expect(r.message).toContain('ALREADY_CLAIMED');
   });
 
   it('flag ON + sitter + decline → delegates to declineSitterBookingCore with the legacyBookingId', async () => {
