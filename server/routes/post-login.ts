@@ -984,11 +984,12 @@ export async function postLoginDecider(req: Request, res: Response) {
     // their preference at signup time.
     const routingIntent = (typeof intent === 'string' && intent) || (u as any)?.signupIntent || null;
 
-    // Prestige membership signal — powers the /mode picker for a
-    // provider+prestige dual-role account (CEO 2026-08-26 §"no place for
-    // mix"). Fail-soft: on lookup error we treat prestige as absent, so a
-    // Postgres blip does NOT accidentally send a single-role provider to
-    // the picker.
+    // Prestige membership signal — used ONLY for tile/badge rendering
+    // (CEO 2026-08-26 role-model: Prestige is a membership, not a role).
+    // Does NOT gate the picker — every approved provider is also a Pet
+    // Parent, so the picker always fires for approved providers regardless
+    // of Prestige. Fail-soft: a lookup blip treats prestige as absent so
+    // we never render a "Prestige" badge for someone who isn't enrolled.
     let hasPrestige = false;
     if ((u as any).email) {
       try {

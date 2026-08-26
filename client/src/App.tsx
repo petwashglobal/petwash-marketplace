@@ -71,9 +71,11 @@ const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
 const ChoosePath = lazy(() => import("@/pages/ChoosePath"));
 const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
-// Role-mode picker for provider+prestige dual-role accounts. Post-login
-// decider routes here when the user needs to pick a mode (no explicit
-// intent supplied). CEO 2026-08-26: "no place for mix."
+// Pet Parent ↔ Provider workspace picker for any approved provider (every
+// human is also a Pet Parent — the customer capability is implicit).
+// Post-login decider routes here when no explicit intent was supplied.
+// Prestige is not a mode; enrolled members see a badge inside the Pet
+// Parent tile. CEO 2026-08-26 role-model directive.
 const ChooseMode = lazy(() => import("@/pages/ChooseMode"));
 const BecomeProviderResume = lazy(() => import("@/pages/BecomeProviderResume"));
 const ProviderRejected = lazy(() => import("@/pages/ProviderRejected"));

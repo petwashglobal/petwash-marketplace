@@ -41,10 +41,11 @@ import { accountButtonView, accountLabel } from "../lib/accountButton";
 import { useAppFlavor } from "../lib/appFlavor";
 import { isStickyAccountPath } from "../lib/sticky-account-paths";
 import { PetWashIcon } from "@/components/PetWashIcon";
-// Dual-role mode-switcher — renders NOTHING for single-role accounts
-// (self-gates on hasCustomerCapability && hasProviderCapability). CEO
-// 2026-08-26 "no place for mix" — a provider+prestige account uses this
-// pill to flip between Provider workspace and Prestige member surfaces.
+// Pet Parent ↔ Provider mode-switcher — renders NOTHING for single-role
+// accounts (self-gates on hasCustomerCapability && hasProviderCapability).
+// CEO 2026-08-26: every human is a Pet Parent by default; only accounts
+// that ALSO hold provider capability see this pill. Prestige is not a
+// mode — enrolled members see a badge inside the Pet Parent surface.
 import { ModeSwitch } from "@/components/ModeSwitch";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
@@ -570,9 +571,12 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           </nav>
 
           <div className="pw-header-right">
-            {/* Provider ↔ Prestige mode switcher — visible only for the
-                small set of accounts holding BOTH capabilities. Absent for
-                single-role users, so the header stays uncluttered. */}
+            {/* Pet Parent ↔ Provider mode switcher — visible only for
+                accounts that hold BOTH the customer and provider
+                capabilities. Absent for single-workspace users, so the
+                header stays uncluttered. Prestige, when enrolled,
+                surfaces as a badge inside the Pet Parent surface (not
+                here — that would repeat the "Prestige is a mode" bug). */}
             {user && (
               <ModeSwitch
                 className="pw-header-mode-switch"
