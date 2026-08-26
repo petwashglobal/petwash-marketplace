@@ -786,7 +786,32 @@ export default function ProviderKycReview() {
                     </div>
                     <div className="flex items-center justify-between bg-white rounded px-3 py-2">
                       <span className="text-muted-foreground">Expires</span>
-                      <span className="font-medium">{app.insuranceExpiresAt ? new Date(app.insuranceExpiresAt).toLocaleDateString() : '—'}</span>
+                      {/* Lane A audit 2026-08-26: countdown badge so a reviewer
+                          sees at a glance whether the applicant's insurance is
+                          still valid — approving a provider whose policy lapses
+                          next week is a payout-eligibility landmine. Pure UI. */}
+                      {(() => {
+                        if (!app.insuranceExpiresAt) {
+                          return <span className="font-medium">—</span>;
+                        }
+                        const expiry = new Date(app.insuranceExpiresAt);
+                        const nowMs = Date.now();
+                        const days = Math.floor((expiry.getTime() - nowMs) / 86_400_000);
+                        const dateLabel = expiry.toLocaleDateString();
+                        let badgeClass = 'bg-green-100 text-green-800 border-green-300';
+                        let label = `${dateLabel} · ${days}d left`;
+                        if (days < 0) {
+                          badgeClass = 'bg-red-100 text-red-800 border-red-300';
+                          label = `${dateLabel} · expired ${Math.abs(days)}d ago`;
+                        } else if (days <= 30) {
+                          badgeClass = 'bg-amber-100 text-amber-800 border-amber-300';
+                        }
+                        return (
+                          <span dir="ltr" className={`text-xs font-medium border rounded px-2 py-0.5 ${badgeClass}`}>
+                            {label}
+                          </span>
+                        );
+                      })()}
                     </div>
                     <div className="flex items-center justify-between bg-white rounded px-3 py-2">
                       <span className="text-muted-foreground">Coverage</span>
