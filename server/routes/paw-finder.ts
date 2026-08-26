@@ -626,17 +626,46 @@ router.post('/my/contacts/:id/accept', requireAuth, async (req, res) => {
     if (!rows.length) return res.status(404).json({ error: 'not_found_or_already_handled' });
 
     const cr = rows[0];
+    // Include the phone in the acceptance notification when the post's
+    // contact_preference actually calls for phone reveal — otherwise the
+    // requester gets "your request was accepted" with no path to follow
+    // up (audit-fix 2026-08-26: previously the finder was congratulated
+    // and stranded). Falls back to the inbox / no-phone shape for the
+    // default 'inbox_first' posts so we do not accidentally leak a phone
+    // the owner did not opt to share.
     const { rows: postRows } = await pool.query(
-      `SELECT pet_name, post_type FROM paw_finder_posts WHERE id = $1`,
+      `SELECT pet_name, post_type, contact_preference, contact_phone
+         FROM paw_finder_posts WHERE id = $1`,
       [cr.post_id],
     );
     if (postRows[0]) {
+      const post = postRows[0] as {
+        pet_name: string | null;
+        post_type: string | null;
+        contact_preference: string | null;
+        contact_phone: string | null;
+      };
+      const willRevealPhone =
+        post.contact_preference === 'reveal_phone_after_accept' ||
+        post.contact_preference === 'public_phone';
+      const phone = willRevealPhone ? (post.contact_phone || null) : null;
+
+      const nameForCopy = post.pet_name || 'החיה';
+      const title = phone ? '✅ הבקשה התקבלה — הנה מספר הטלפון' : '✅ בקשת הקשר שלך התקבלה!';
+      const body = phone
+        ? `בעל/ת ${nameForCopy} שיתפ/ה מספר: ${phone}`
+        : `בעל/ת ${nameForCopy} קיבל/ה את הבקשה שלך`;
+
       await pushNotification(
         cr.requester_user_id, cr.post_id,
         'contact_accepted',
-        '✅ בקשת הקשר שלך התקבלה!',
-        `בעל/ת ${postRows[0].pet_name || 'החיה'} קיבל/ה את הבקשה שלך`,
-        { contactRequestId: crId },
+        title,
+        body,
+        {
+          contactRequestId: crId,
+          revealMode: willRevealPhone ? 'phone' : 'inbox',
+          ...(phone ? { revealedPhone: phone } : {}),
+        },
       );
     }
     res.json({ ok: true });

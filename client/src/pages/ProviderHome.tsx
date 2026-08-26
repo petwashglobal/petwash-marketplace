@@ -316,9 +316,22 @@ export default function ProviderHome() {
                         </div>
                       </div>
                     </div>
+                    {/* SINGLE primary CTA (audit-fix 2026-08-26): previously
+                        two buttons "Details" and "Start" navigated to the SAME
+                        URL — the "Start" green button did NOT start a job, it
+                        just opened the details page. That is a broken promise
+                        to the provider. Collapse to one honest CTA — the
+                        details page owns the real Start / En-route / Complete
+                        state-machine buttons. */}
                     <div className="flex gap-2 mt-3">
-                      <button onClick={() => navigate(reqId ? `/provider/jobs/${reqId}` : '/provider-os?m=jobs')} className="flex-1 text-center text-xs font-medium border border-gray-200 rounded-lg py-2 text-gray-700">{isHe ? 'פרטים' : 'Details'}</button>
-                      <button onClick={() => navigate(reqId ? `/provider/jobs/${reqId}` : '/provider-os?m=jobs')} className="flex-1 text-center text-xs font-medium rounded-lg py-2 text-white" style={{ background: '#0e7a54' }}>{isHe ? 'התחל' : 'Start'}</button>
+                      <button
+                        onClick={() => navigate(reqId ? `/provider/jobs/${reqId}` : '/provider-os?m=jobs')}
+                        className="flex-1 text-center text-xs font-semibold rounded-lg py-2 text-white"
+                        style={{ background: '#0e7a54' }}
+                        data-testid="button-provider-home-open-job"
+                      >
+                        {isHe ? 'פתח עבודה' : 'Open job'}
+                      </button>
                     </div>
                   </div>
                 );

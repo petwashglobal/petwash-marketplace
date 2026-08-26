@@ -41,6 +41,11 @@ import { accountButtonView, accountLabel } from "../lib/accountButton";
 import { useAppFlavor } from "../lib/appFlavor";
 import { isStickyAccountPath } from "../lib/sticky-account-paths";
 import { PetWashIcon } from "@/components/PetWashIcon";
+// Dual-role mode-switcher — renders NOTHING for single-role accounts
+// (self-gates on hasCustomerCapability && hasProviderCapability). CEO
+// 2026-08-26 "no place for mix" — a provider+prestige account uses this
+// pill to flip between Provider workspace and Prestige member surfaces.
+import { ModeSwitch } from "@/components/ModeSwitch";
 import goldUserIcon from "@assets/IMG_3329_1771419021263.jpeg";
 
 type LangDir = "ltr" | "rtl";
@@ -565,6 +570,16 @@ export const PetWashHeader: React.FC<PetWashHeaderProps> = ({
           </nav>
 
           <div className="pw-header-right">
+            {/* Provider ↔ Prestige mode switcher — visible only for the
+                small set of accounts holding BOTH capabilities. Absent for
+                single-role users, so the header stays uncluttered. */}
+            {user && (
+              <ModeSwitch
+                className="pw-header-mode-switch"
+                testId="header-mode-switch"
+                navigateOnFlip
+              />
+            )}
             {/* My Pass — quick access to the in-app member pass (QR), visible when logged in */}
             {user && (
               <button
