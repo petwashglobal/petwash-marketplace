@@ -80,6 +80,11 @@ import saveCardRoutes from "./routes/save-card";
 import egiftGuestRoutes from "./routes/egift-guest";
 import legalConsentRoutes from "./routes/legal-consent";
 import legalAcceptancesRoutes from "./routes/legal-acceptances";
+// Thread-scoped chat (chat_threads spine) — send/read/list for every
+// non-booking thread (PAW_FINDER, support, incident, K9000, shop, gift,
+// provider_application, franchise, admin). Booking chats keep using
+// booking-chat.ts.
+import threadChatRoutes from "./routes/thread-chat";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
 import adminStaffRoutes from "./routes/admin-staff";
@@ -12810,6 +12815,7 @@ self.addEventListener('notificationclick', (event) => {
   // legal display page will migrate to POST here so we build a real
   // evidence trail (who / what / version / lang / IP / device / snapshot).
   app.use('/api/legal-acceptances', validateFirebaseToken, apiLimiter, legalAcceptancesRoutes);
+  app.use('/api/threads', apiLimiter, threadChatRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
   app.use('/api/admin/staff', apiLimiter, adminStaffRoutes);

@@ -629,17 +629,17 @@ router.post('/my/contacts/:id/accept', requireAuth, async (req, res) => {
     // Include the phone in the acceptance notification when the post's
     // contact_preference actually calls for phone reveal — otherwise the
     // requester gets "your request was accepted" with no path to follow
-    // up (audit-fix 2026-08-26: previously the finder was congratulated
-    // and stranded). Falls back to the inbox / no-phone shape for the
-    // default 'inbox_first' posts so we do not accidentally leak a phone
-    // the owner did not opt to share.
+    // up. Default 'inbox_first' posts now get a REAL inbox thread (see
+    // below) so the finder taps into a conversation instead of a dead
+    // toast — no privacy default is weakened.
     const { rows: postRows } = await pool.query(
-      `SELECT pet_name, post_type, contact_preference, contact_phone
+      `SELECT id, pet_name, post_type, contact_preference, contact_phone
          FROM paw_finder_posts WHERE id = $1`,
       [cr.post_id],
     );
     if (postRows[0]) {
       const post = postRows[0] as {
+        id: number;
         pet_name: string | null;
         post_type: string | null;
         contact_preference: string | null;
@@ -650,11 +650,65 @@ router.post('/my/contacts/:id/accept', requireAuth, async (req, res) => {
         post.contact_preference === 'public_phone';
       const phone = willRevealPhone ? (post.contact_phone || null) : null;
 
+      // INBOX-FIRST wiring (CEO 2026-08-26 §22-24): for the default
+      // `inbox_first` preference the owner has explicitly chosen "chat,
+      // don't share my phone". Create a chat_threads spine thread via the
+      // existing service (PAW_FINDER type, caseId = 'PFC-<contactId>'),
+      // seed it with the requester's original message, and pass the
+      // threadId in the push so the finder deep-links into the
+      // conversation. Fail-soft: on any thread-create error we still
+      // deliver the "accepted" push so the flow is not blocked.
+      let threadId: string | null = null;
+      const isInboxMode = !willRevealPhone;
+      if (isInboxMode) {
+        try {
+          const { getOrCreateThread } = await import('../services/chatThreadService');
+          const thread = await getOrCreateThread({
+            threadType: 'PAW_FINDER',
+            caseId: `PFC-${crId}`,
+            petId: String(post.id),
+            customerUserId: userId,               // owner (owner-side of thread)
+            providerUserId: cr.requester_user_id, // finder (peer)
+          });
+          threadId = thread.threadId;
+
+          // Seed the thread with the requester's original message so the
+          // owner sees why the request came in the moment they open the
+          // chat, and the finder sees it as the opening turn.
+          const { rows: firstMsg } = await pool.query(
+            `SELECT message_text FROM paw_finder_contact_requests WHERE id = $1`,
+            [crId],
+          );
+          const openingText = String(firstMsg[0]?.message_text ?? '').trim();
+          if (openingText) {
+            const { db } = await import('../db');
+            const { chatThreadMessages } = await import('@shared/schema-chat');
+            await db.insert(chatThreadMessages).values({
+              threadId: thread.threadId,
+              senderUid: cr.requester_user_id,
+              senderRole: 'user',
+              body: openingText.slice(0, 4000),
+              attachments: [],
+            });
+          }
+        } catch (threadErr: any) {
+          logger.warn('[PawFinder] thread create failed — accept still notified', {
+            crId, err: String(threadErr?.message ?? threadErr),
+          });
+        }
+      }
+
       const nameForCopy = post.pet_name || 'החיה';
-      const title = phone ? '✅ הבקשה התקבלה — הנה מספר הטלפון' : '✅ בקשת הקשר שלך התקבלה!';
+      const title = phone
+        ? '✅ הבקשה התקבלה — הנה מספר הטלפון'
+        : threadId
+          ? '✅ הבקשה התקבלה — פתחו את הצ׳אט'
+          : '✅ בקשת הקשר שלך התקבלה!';
       const body = phone
         ? `בעל/ת ${nameForCopy} שיתפ/ה מספר: ${phone}`
-        : `בעל/ת ${nameForCopy} קיבל/ה את הבקשה שלך`;
+        : threadId
+          ? `בעל/ת ${nameForCopy} פתח/ה שיחה — פתחו את הצ׳אט להמשך`
+          : `בעל/ת ${nameForCopy} קיבל/ה את הבקשה שלך`;
 
       await pushNotification(
         cr.requester_user_id, cr.post_id,
@@ -665,6 +719,7 @@ router.post('/my/contacts/:id/accept', requireAuth, async (req, res) => {
           contactRequestId: crId,
           revealMode: willRevealPhone ? 'phone' : 'inbox',
           ...(phone ? { revealedPhone: phone } : {}),
+          ...(threadId ? { threadId } : {}),
         },
       );
     }

@@ -6,10 +6,12 @@ import {
   jsonb,
   index,
   serial,
+  bigserial,
   integer,
   boolean,
   foreignKey,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 import { users } from "./schema";
 import { stationRegistry } from "./schema-corporate";
 import { franchisees } from "./schema-franchise";
@@ -396,3 +398,34 @@ export const CHAT_THREAD_TYPES = [
   "PAW_FINDER", "SHOP_ORDER", "GIFT", "PROVIDER_APPLICATION", "FRANCHISE", "ADMIN",
 ] as const;
 export type ChatThreadType = (typeof CHAT_THREAD_TYPES)[number];
+
+/**
+ * Messages on a chat_threads spine thread — the missing half of the
+ * Communication Hub introduced by migration 0084. Any non-booking thread
+ * (support / incident / K9000 / PAW_FINDER / shop / gift / provider
+ * application / franchise / admin) reads and writes here. Booking chats
+ * still use the older, booking-scoped bookingMessages table (its
+ * unique(booking_id) FK + booking-status gating do not port cleanly).
+ *
+ * Migration: /migrations/0128_chat_thread_messages.sql
+ */
+export const chatThreadMessages = pgTable("chat_thread_messages", {
+  id: bigserial("id", { mode: 'number' }).primaryKey(),
+  threadId: varchar("thread_id").notNull().references(() => chatThreads.threadId, { onDelete: 'cascade' }),
+  senderUid: varchar("sender_uid").notNull(),           // Firebase UID
+  senderRole: varchar("sender_role").notNull().default('user'), // 'user' | 'system' | 'admin'
+  body: text("body").notNull(),
+  attachments: jsonb("attachments").notNull().default(sql`'[]'::jsonb`), // [{url,mime,sizeBytes,name}]
+  readAt: timestamp("read_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  threadCreatedIdx: index("idx_chat_thread_messages_thread_created").on(table.threadId, table.createdAt),
+  senderCreatedIdx: index("idx_chat_thread_messages_sender_created").on(table.senderUid, table.createdAt),
+}));
+
+export const insertChatThreadMessageSchema = createInsertSchema(chatThreadMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertChatThreadMessage = z.infer<typeof insertChatThreadMessageSchema>;
+export type ChatThreadMessage = typeof chatThreadMessages.$inferSelect;
