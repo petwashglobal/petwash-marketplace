@@ -28,6 +28,7 @@ import { requireAuth, getUserId } from '../middleware/gates';
 import { logAuditEvent } from '../middleware/auditLog';
 import { getClientIP } from '../services/alerts';
 import { logger } from '../lib/logger';
+import { recordLegalAcceptance } from '../services/LegalAcceptanceService';
 
 const router = Router();
 router.use(requireAuth);
@@ -154,6 +155,31 @@ router.post('/marketing', async (req: any, res) => {
       userAgent: ua,
       metadata: { channel },
     });
+
+    // Canonical-ledger dual-write (CEO 2026-08-26 §12): record every
+    // marketing consent GRANT in the append-only legal_acceptances
+    // ledger. Withdrawals stay in the marketing-preferences ledger
+    // above (the legal_acceptances shape is grant-only per migration
+    // 0127). Fire-and-forget; idempotent per
+    // (userId, marketing_consent, docVersion) — a re-grant of the
+    // same channel/version is a no-op.
+    if (granted) {
+      recordLegalAcceptance({
+        userId,
+        documentKey: 'marketing_consent',
+        docVersion: `v${CONSENT_VERSION}-${channel}`,
+        language: (req.body?.locale === 'en' || req.body?.locale === 'ar' || req.body?.locale === 'ru' || req.body?.locale === 'fr' || req.body?.locale === 'es') ? req.body.locale : 'he',
+        ipAddress: ip || null,
+        userAgent: ua || null,
+        source: 'client',
+        actorRole: 'self',
+        metadata: { channel, origin: '/api/consent-center/marketing' },
+      }).catch((err: any) => {
+        logger.warn('[ConsentCenter] canonical ledger dual-write failed (non-blocking)', {
+          userId, channel, err: err?.message,
+        });
+      });
+    }
 
     logger.info('[ConsentCenter] Marketing consent change', { userId, channel, granted });
     res.json({ success: true, channel, granted });
