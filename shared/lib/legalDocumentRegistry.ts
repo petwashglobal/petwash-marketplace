@@ -292,12 +292,27 @@ export function getLegalDocument(key: string): LegalDocumentDefinition | undefin
 export function legalDocumentStats() {
   const total = LEGAL_DOCUMENTS.length;
   const byActor = { customer: 0, provider: 0 } as Record<LegalDocumentActor, number>;
-  const byScope = { account: 0, provider: 0, service: 0, booking: 0, pet: 0, transaction: 0 } as Record<LegalDocumentScope, number>;
-  const byStatus = { 'LEGACY-ONLY': 0, 'DUAL-WRITE-SHADOW': 0, 'DUAL-WRITE-RECONCILED': 0, 'CANONICAL-AUTHORITY': 0 } as Record<LegalDocumentMigrationStatus, number>;
+  const SCOPES: readonly LegalDocumentScope[] = ['account', 'provider', 'service', 'booking', 'pet', 'transaction'];
+  const STATUSES: readonly LegalDocumentMigrationStatus[] = [
+    'LEGACY-ONLY', 'DUAL-WRITE-SHADOW', 'DUAL-WRITE-RECONCILED', 'CANONICAL-AUTHORITY',
+  ];
+  const byScope = Object.fromEntries(SCOPES.map((s) => [s, 0])) as Record<LegalDocumentScope, number>;
+  const byStatus = Object.fromEntries(STATUSES.map((s) => [s, 0])) as Record<LegalDocumentMigrationStatus, number>;
+  // 2D grid: rows = scope, cols = migrationStatus. Zero-filled so the
+  // admin dashboard can render every cell (including empties) without
+  // guessing the schema at the client. Consumers rely on the full
+  // matrix being present — do NOT lazy-initialise the inner map.
+  const byMigrationStatus = Object.fromEntries(
+    SCOPES.map((s) => [
+      s,
+      Object.fromEntries(STATUSES.map((st) => [st, 0])) as Record<LegalDocumentMigrationStatus, number>,
+    ]),
+  ) as Record<LegalDocumentScope, Record<LegalDocumentMigrationStatus, number>>;
   for (const d of LEGAL_DOCUMENTS) {
     byActor[d.actor]++;
     byScope[d.scope]++;
     byStatus[d.migrationStatus]++;
+    byMigrationStatus[d.scope][d.migrationStatus]++;
   }
-  return { total, byActor, byScope, byStatus };
+  return { total, byActor, byScope, byStatus, byMigrationStatus };
 }

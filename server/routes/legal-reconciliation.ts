@@ -75,7 +75,11 @@ router.get('/legal-reconciliation', async (req: Request, res: Response) => {
         total: stats.total,
         byActor: stats.byActor,
         byScope: stats.byScope,
-        byMigrationStatus: stats.byStatus,
+        byStatus: stats.byStatus,
+        // scope × migrationStatus grid for the admin "migration progress"
+        // dashboard — every cell present and zero-filled so the client
+        // never has to guess a missing (scope, status) pair.
+        byMigrationStatus: stats.byMigrationStatus,
       },
       documents: LEGAL_DOCUMENTS.map((d) => ({
         key: d.key, actor: d.actor, scope: d.scope,
