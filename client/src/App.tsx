@@ -71,6 +71,10 @@ const StaffOnboarding = lazy(() => import("@/pages/admin/StaffOnboarding"));
 const CompleteProfile = lazy(() => import("@/pages/CompleteProfile"));
 const ChoosePath = lazy(() => import("@/pages/ChoosePath"));
 const ProviderPending = lazy(() => import("@/pages/ProviderPending"));
+// Role-mode picker for provider+prestige dual-role accounts. Post-login
+// decider routes here when the user needs to pick a mode (no explicit
+// intent supplied). CEO 2026-08-26: "no place for mix."
+const ChooseMode = lazy(() => import("@/pages/ChooseMode"));
 const BecomeProviderResume = lazy(() => import("@/pages/BecomeProviderResume"));
 const ProviderRejected = lazy(() => import("@/pages/ProviderRejected"));
 const StaffPending = lazy(() => import("@/pages/StaffPending"));
@@ -983,6 +987,13 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <ProviderPending />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/mode">
+          {() => (
+            <RequireAuth>
+              <ChooseMode />
             </RequireAuth>
           )}
         </Route>
