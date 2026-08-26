@@ -723,6 +723,32 @@ export default function ProviderKycReview() {
                       <span className="text-muted-foreground">Country</span>
                       <span className="font-medium">{app.country || '—'}</span>
                     </div>
+                    {/* Lane A audit 2026-08-26: phone-verified visibility.
+                        The status DTO from /api/provider-onboarding/application/status
+                        does NOT carry a `phoneVerified` scalar — that's a
+                        schema-adjacent add. If the wizard stashed the
+                        verified flag inside internal_notes.phoneVerified we
+                        surface it; otherwise render an em-dash so the
+                        reviewer knows it is unknown, not false. Pure UI. */}
+                    {(() => {
+                      let verified: boolean | null = null;
+                      try {
+                        const notes = app.internalNotes ? JSON.parse(app.internalNotes) : null;
+                        if (typeof notes?.phoneVerified === 'boolean') verified = notes.phoneVerified;
+                      } catch { /* fall through */ }
+                      return (
+                        <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                          <span className="text-muted-foreground">Phone verified</span>
+                          {verified === true ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-500" />
+                          ) : verified === false ? (
+                            <XCircle className="h-4 w-4 text-red-400" />
+                          ) : (
+                            <span className="font-medium">—</span>
+                          )}
+                        </div>
+                      );
+                    })()}
                     {/* Lane A audit follow-up: pet-first-aid serial (Step 6)
                         is captured in internal_notes.petFirstAidNumber
                         because the schema column was mis-titled
