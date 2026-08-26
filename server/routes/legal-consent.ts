@@ -16,6 +16,15 @@ import { db } from '../db';
 import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
+import { recordLegalAcceptance } from '../services/LegalAcceptanceService';
+
+/**
+ * The canonical customer_tos version this endpoint stamps into the
+ * `legal_acceptances` ledger (CEO 2026-08-26 §12). Bump when the
+ * displayed Terms text materially changes so the ledger has a new
+ * row per version and evidence stays honest.
+ */
+const CUSTOMER_TOS_VERSION = 'v1';
 
 const router = Router();
 
@@ -44,6 +53,29 @@ router.post('/accept-terms', validateFirebaseToken, async (req: Request, res: Re
     const now = new Date();
     await db.update(users).set({ acceptedTermsAt: now }).where(eq(users.id, uid));
     logger.info('[LegalConsent] terms accepted', { uid });
+
+    // Canonical-ledger dual-write (CEO 2026-08-26 §12). Fire-and-forget;
+    // failure does not block the legacy users.accepted_terms_at stamp.
+    // Idempotent per (userId, customer_tos, CUSTOMER_TOS_VERSION).
+    const language = (typeof req.body?.language === 'string' && ['he','en','ar','ru','fr','es'].includes(req.body.language))
+      ? req.body.language as 'he' | 'en' | 'ar' | 'ru' | 'fr' | 'es'
+      : 'he';
+    recordLegalAcceptance({
+      userId: uid,
+      documentKey: 'customer_tos',
+      docVersion: CUSTOMER_TOS_VERSION,
+      language,
+      ipAddress: req.ip || null,
+      userAgent: req.get('user-agent') || null,
+      source: 'client',
+      actorRole: 'self',
+      metadata: { origin: '/api/legal/accept-terms' },
+    }).catch((err: any) => {
+      logger.warn('[LegalConsent] canonical ledger dual-write failed (non-blocking)', {
+        uid, err: err?.message,
+      });
+    });
+
     return res.json({ acceptedAt: now.toISOString(), alreadyAccepted: false });
   } catch (err: any) {
     logger.error('[LegalConsent] accept failed', { uid, err: err?.message });

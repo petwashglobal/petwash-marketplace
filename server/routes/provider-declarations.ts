@@ -25,6 +25,35 @@ import { logAuditEvent } from '../middleware/auditLog';
 import {
   PROVIDER_DECLARATION_BY_KEY,
 } from '@shared/providerProtectionDeclarations';
+import { recordLegalAcceptance } from '../services/LegalAcceptanceService';
+
+/**
+ * Provider-declaration key → canonical KNOWN_DOCUMENT_KEY map (CEO
+ * 2026-08-26 §12 canonical `legal_acceptances` ledger). The registry
+ * uses shorter historical names ('walking_protocol' vs
+ * 'provider_dog_walking_safety'); this table lets us dual-write to the
+ * canonical evidence ledger without renaming any registry keys.
+ *
+ * A key with no mapping simply skips the dual-write (nothing breaks;
+ * the legacy signing_sessions row still lands). Add a new row here
+ * whenever a new declaration is added.
+ */
+const CANONICAL_KEY_FOR_DECLARATION: Record<string, string> = {
+  independent_provider:        'provider_independent_status',
+  no_franchise_no_agency:      'provider_no_franchise_no_agency',
+  provider_service_agreement:  'provider_agreement',
+  safety_manual_acceptance:    'provider_safety_manual',
+  insurance_disclosure:        'provider_insurance_disclosure',
+  tax_business_status:         'provider_tax_business_status',
+  privacy_data_handling:       'provider_privacy_data',
+  off_platform_payment:        'provider_off_platform_payment',
+  incident_reporting:          'provider_incident_reporting',
+  home_hosting_protocol:       'provider_home_hosting',
+  owner_home_visit_protocol:   'provider_owner_home_visit',
+  walking_protocol:            'provider_dog_walking_safety',
+  academy_protocol:            'provider_academy_trainer',
+  pettrek_transport_protocol:  'provider_pettrek_transport',
+};
 import {
   getProviderDeclarationStatus,
   declarationDocType,
@@ -287,6 +316,44 @@ router.post('/:key/accept', requireAuth, async (req, res) => {
       userAgent: req.headers['user-agent'],
       metadata: { contentHash, signerName },
     });
+
+    // ── CANONICAL LEDGER DUAL-WRITE (CEO 2026-08-26 §12) ────────────────
+    // Also record the acceptance in the canonical `legal_acceptances`
+    // ledger (migration 0127) so a single evidence table answers
+    // "what has this user accepted, when, from where" across every
+    // legal surface. Fire-and-forget: the service is idempotent per
+    // (userId, documentKey, docVersion) so a re-post is safe, and a
+    // failure here does NOT block the legacy signing_sessions row —
+    // the legacy path stays authoritative for the provider onboarding
+    // gate until every consumer migrates.
+    const canonicalKey = CANONICAL_KEY_FOR_DECLARATION[doc.key];
+    if (canonicalKey) {
+      recordLegalAcceptance({
+        userId: providerUid,
+        documentKey: canonicalKey,
+        docVersion: doc.version,
+        language: (language === 'en' || language === 'he' || language === 'ar' || language === 'ru' || language === 'fr' || language === 'es') ? language : 'he',
+        ipAddress: req.ip || null,
+        userAgent: req.headers['user-agent'] || null,
+        snapshotText: `${doc.titleEn} — v${doc.version}\n\n${doc.bodyEn}`,
+        source: 'client',
+        actorRole: 'self',
+        metadata: {
+          registryKey: doc.key,
+          signerName,
+          contentHash,
+          submissionId,
+        },
+      }).catch((err: any) => {
+        logger.warn('[ProviderDeclarations] canonical ledger dual-write failed (non-blocking)', {
+          providerUid, key: doc.key, err: err?.message,
+        });
+      });
+    } else {
+      logger.warn('[ProviderDeclarations] no canonical key mapping for declaration — canonical ledger skipped', {
+        key: doc.key,
+      });
+    }
 
     logger.info('[ProviderDeclarations] in-app acceptance recorded', {
       providerUid, declarationKey: doc.key, declarationVersion: doc.version,
