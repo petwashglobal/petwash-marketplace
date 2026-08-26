@@ -137,6 +137,36 @@ function emitUnknownSourceSignal(input: DispatchInput, res: import('./bookingSou
     unresolvedTable: res.unresolvedRef?.table ?? null,
     unresolvedId: res.unresolvedRef?.id ?? null,
   });
+  // Admin-alert surface (Lane D §D8). Malformed legacyRef means we
+  // WOULD have moved money down an unknown pipeline — never silent.
+  // Dedup keys the specific unresolved (table, id) pair so a stuck
+  // row shows exactly once; ops resolves the underlying booking_requests
+  // row and the alert stays resolved unless a NEW malformed ref appears.
+  void (async () => {
+    try {
+      const { createOrUpdateAlert } = await import('../AlertEngine');
+      await createOrUpdateAlert({
+        dedupeKey: `booking_source_unresolved:${res.unresolvedRef?.table ?? 'null'}:${res.unresolvedRef?.id ?? 'null'}:${input.requestId}`,
+        category: 'system',
+        severity: 'critical',
+        title: 'Booking source unresolved — money-safe refusal',
+        message: `Dispatcher refused to route booking ${input.requestId}: legacyRef table=${res.unresolvedRef?.table ?? 'null'} id=${res.unresolvedRef?.id ?? 'null'} does not match any known pipeline. Inspect booking_requests.quote_breakdown.legacyRef and correct the mirror.`,
+        linkedEntityType: 'booking_request',
+        linkedEntityId: input.requestId,
+        source: 'auto_sweep',
+        metadata: {
+          signal: 'BOOKING_SOURCE_UNRESOLVED',
+          decision: input.decision,
+          unresolvedTable: res.unresolvedRef?.table ?? null,
+          unresolvedId: res.unresolvedRef?.id ?? null,
+        },
+      });
+    } catch (alertErr: any) {
+      logger.warn('[BookingResponseDispatcher] Alert wiring for unresolved source failed', {
+        errorMessage: alertErr?.message ?? String(alertErr),
+      });
+    }
+  })();
 }
 
 /**
@@ -191,4 +221,36 @@ export function emitLegacyBridgeFailure(input: {
     legacyBookingId: res.legacyBookingId ?? null,
     errorMessage: input.errorMessage ?? null,
   });
+  // Admin-alert surface (Lane D §D8). A legacy-bridge write failure
+  // means canonical booking_requests says "accepted" but the native
+  // sitter/walk/academy row didn't flip — split-brain. Dedup keys
+  // (requestId, resolvedSource, legacyBookingId) so the same stuck
+  // pairing shows exactly once; ops fixes it and the alert stays
+  // resolved unless the native row diverges from canonical again.
+  void (async () => {
+    try {
+      const { createOrUpdateAlert } = await import('../AlertEngine');
+      await createOrUpdateAlert({
+        dedupeKey: `legacy_bridge_write_failed:${input.requestId}:${res.source}:${res.legacyBookingId ?? 'null'}`,
+        category: 'system',
+        severity: 'critical',
+        title: `Legacy bridge write failed (${res.source})`,
+        message: `Canonical booking_requests ${input.requestId} decided '${input.decision}' but the ${res.source} mirror (${res.legacyBookingId ?? 'unknown id'}) did not update. Reconcile the native row before customer-visible state diverges further.`,
+        linkedEntityType: 'booking_request',
+        linkedEntityId: input.requestId,
+        source: 'auto_sweep',
+        metadata: {
+          signal: 'LEGACY_BRIDGE_WRITE_FAILED',
+          decision: input.decision,
+          resolvedSource: res.source,
+          legacyBookingId: res.legacyBookingId ?? null,
+          errorMessage: input.errorMessage ?? null,
+        },
+      });
+    } catch (alertErr: any) {
+      logger.warn('[BookingResponseDispatcher] Alert wiring for bridge failure failed', {
+        errorMessage: alertErr?.message ?? String(alertErr),
+      });
+    }
+  })();
 }

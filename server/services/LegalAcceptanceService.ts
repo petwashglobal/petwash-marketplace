@@ -198,6 +198,51 @@ function emitShadowFailure(
     userIdTail: input.userId.slice(-6),
     cause,
   });
+  // Admin-alert surface (Lane D §D8). The log line above is the ops
+  // trail; this creates a deduplicated, actionable card in the Admin
+  // Alerts Center so a shadow write failure is not just something
+  // grep can find. Dedup key groups the same (user, document,
+  // version, errorCode) — a retry that hits the same wall does NOT
+  // spam the queue; a resolved alert stays resolved unless a NEW
+  // failure of a different shape appears. Best-effort import so a
+  // test env without AlertEngine wired never blocks the primary
+  // acceptance flow.
+  //
+  // Non-PII: title is document + errorCode, message never carries the
+  // raw userId (only the tail already logged above).
+  void (async () => {
+    try {
+      const { createOrUpdateAlert } = await import('./AlertEngine');
+      await createOrUpdateAlert({
+        dedupeKey: `legal_shadow_missing:${input.userId}:${input.documentKey}:${input.docVersion}:${errorCode}`,
+        // 'system' is the generic bucket in the alerts schema — no
+        // 'compliance' category exists yet. A future PR can add one
+        // if legal-shadow-missing gets its own filter chip.
+        category: 'system',
+        severity: 'warning',
+        title: `Legal acceptance shadow missing (${input.documentKey})`,
+        message: `Canonical legal_acceptances write failed for ${input.documentKey}@${input.docVersion} (${errorCode}). Legacy surface still holds authority; reconciliation required.`,
+        linkedEntityType: 'user',
+        linkedEntityId: input.userId,
+        source: 'auto_sweep',
+        metadata: {
+          signal: 'LEGAL_ACCEPTANCE_SHADOW_MISSING',
+          errorCode,
+          documentKey: input.documentKey,
+          docVersion: input.docVersion,
+          language: input.language,
+          origin: input.source ?? 'client',
+          cause: cause ?? null,
+        },
+      });
+    } catch (alertErr: any) {
+      // Never let the alert emitter break the primary flow — its
+      // own log line is the last-resort breadcrumb.
+      logger.warn('[LegalAcceptance] Alert wiring for shadow failure failed', {
+        errorMessage: alertErr?.message ?? String(alertErr),
+      });
+    }
+  })();
 }
 
 /**
