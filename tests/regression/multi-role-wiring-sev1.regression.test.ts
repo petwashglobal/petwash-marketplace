@@ -122,19 +122,28 @@ describe('multi-role wiring SEV-1 fixes (2026-08-20)', () => {
   });
 
   it('SEV-1 #6 — shared aggregator exports rolesFromCapabilities in the correct fixed order', () => {
-    // The customer/loyalty/provider/staff/admin order is a client contract:
+    // The customer/provider/staff/admin order is a client contract:
     // consumers can slice or filter and rely on it. The single-file source
     // must define the helper and push tokens in that precise order.
+    //
+    // ROLE MODEL (CEO 2026-08-26): Prestige is NOT a role — it used to be
+    // emitted as `'loyalty'` here, which made every downstream
+    // roles.includes('loyalty') check treat Prestige as a workspace peer
+    // to provider/staff. Callers that need to know Prestige enrollment
+    // read `capabilities.prestige.enrolled` directly.
     const marker = SHARED_AGGREGATOR.indexOf('export function rolesFromCapabilities');
     expect(marker).toBeGreaterThan(-1);
     const body = SHARED_AGGREGATOR.slice(marker, marker + 800);
-    const positions = ['customer', 'loyalty', 'provider', 'staff', 'admin']
+    const positions = ['customer', 'provider', 'staff', 'admin']
       .map((r) => body.indexOf(`'${r}'`));
-    // Each token appears (>-1) and each appears AFTER the previous one.
     for (let i = 0; i < positions.length; i++) {
       expect(positions[i]).toBeGreaterThan(-1);
       if (i > 0) expect(positions[i]).toBeGreaterThan(positions[i - 1]);
     }
+    // Prestige-as-role is REMOVED from the emitter — the body must NOT
+    // push a 'loyalty' role token any more. It's fine for the word to
+    // appear in a comment; check the actual push statement.
+    expect(body).not.toMatch(/push\(\s*'loyalty'\s*\)/);
   });
 
   // #7 — ONE shape file exists; the other imports (or re-exports) it -------

@@ -178,8 +178,8 @@ describe('walker / sitter / trainer service predicates', () => {
   });
 });
 
-describe('multi-role user (customer + provider + prestige) — the CEO §6 scenario', () => {
-  it('all three capabilities can co-exist and each predicate reads independently', () => {
+describe('multi-role user: customer + provider, with Prestige entitlement — CEO 2026-08-26 scenario', () => {
+  it('provider capability co-exists with Pet Parent (customer); Prestige rides as an entitlement', () => {
     const caps: UserCapabilities = {
       ...emptyCapabilities('multi-role-uid'),
       identity: { emailVerified: true, mobileVerified: true, activated: true },

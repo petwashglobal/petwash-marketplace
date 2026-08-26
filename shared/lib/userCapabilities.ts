@@ -125,14 +125,21 @@ export const hasTrainerCapability       = (c: UserCapabilities): boolean =>
 
 /**
  * Canonical roles list for a capability set. Order is fixed:
- * `['customer','loyalty','provider','staff','admin']` — only the true
- * capabilities appear. Used by /api/session/whoami so callers see every
- * capability the user actually holds, not the single mutable users.role.
+ * `['customer','provider','staff','admin']` — only the true capabilities
+ * appear. Used by /api/session/whoami so callers see every capability
+ * the user actually holds, not the single mutable users.role.
+ *
+ * ROLE MODEL (CEO 2026-08-26): Prestige is NOT a role — it is a
+ * membership entitlement. It used to be emitted as `'loyalty'` here,
+ * which made every downstream `roles.includes('loyalty')` check treat
+ * Prestige as a workspace peer to provider/staff. That was the same
+ * anti-pattern that put "Prestige" in the mode picker and gave enrolled
+ * members a separate destination. Callers that need to know Prestige
+ * enrollment read `capabilities.prestige.enrolled` directly.
  */
 export function rolesFromCapabilities(c: UserCapabilities): string[] {
   const out: string[] = [];
   if (hasCustomerCapability(c))  out.push('customer');
-  if (hasPrestigeCapability(c))  out.push('loyalty');
   if (hasProviderCapability(c))  out.push('provider');
   if (hasStaffCapability(c))     out.push('staff');
   if (hasAdminCapability(c))     out.push('admin');

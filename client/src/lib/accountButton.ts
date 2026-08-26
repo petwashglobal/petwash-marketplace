@@ -6,6 +6,14 @@
  * via useWhoami), never from localStorage. PetWashHeader / MobileBottomNav wire
  * it to the existing icon (no redesign).
  *
+ * ROLE MODEL (CEO 2026-08-26): Prestige is NOT a role. Prestige is a
+ * membership entitlement that travels with the human account. Workspaces
+ * are Pet Parent (customer, present for every user) and Provider. The old
+ * `'prestige'` account state routed enrolled members to a separate
+ * dashboard with its own label — that was the Prestige-as-workspace bug.
+ * An enrolled Prestige member is a Pet Parent whose account button
+ * carries a Prestige badge in the label; the destination stays /account.
+ *
  * ROUTING (canonical paths — all real today; ideal names alias to real pages):
  *   guest                → /signup?flow=general&returnTo=<url>
  *   guest in checkout ctx → /signup?flow=guest&returnTo=<url>
@@ -13,11 +21,12 @@
  *   profile incomplete   → /profile/complete   (alias → /complete-profile)
  *   provider pending     → /provider/onboarding (alias → /provider-onboarding)
  *   provider approved    → /provider/dashboard
- *   prestige active      → /prestige/dashboard (alias → /loyalty/dashboard)
  *   customer             → /account            (alias → /my-account)
+ *                          — Prestige-enrolled Pet Parents get a badge in
+ *                            the label, not a separate destination.
  *
  * Priority (authenticated): admin > incomplete > provider(pending) >
- *   provider(approved) > prestige > customer. (Admin always wins; incomplete
+ *   provider(approved) > customer. (Admin always wins; incomplete
  *   beats dashboards unless admin — per spec.)
  *
  * iOS-Safari resilience: when the whoami session cookie is dropped (ITP) but
@@ -35,8 +44,10 @@ export type AccountState =
   | 'incomplete'
   | 'provider_pending'
   | 'provider_approved'
-  | 'prestige'
   | 'customer';
+  // 'prestige' state removed (CEO 2026-08-26): an enrolled Prestige
+  // member is a Pet Parent — the account button carries a Prestige
+  // badge in its label, not a separate destination.
 
 export interface AccountView {
   state: AccountState;
@@ -104,10 +115,17 @@ export function accountButtonView(whoami: WhoamiResponse | null, ctx: AccountCtx
   if (whoami?.providerStatus === 'approved' || dash.includes('provider')) {
     return { state: 'provider_approved', to: '/provider/dashboard', labelEn: 'Provider Dashboard', labelHe: 'דשבורד ספק' };
   }
-  if (whoami?.prestigeStatus === 'active' || claims?.loyaltyMember === true || claims?.program === 'prestige') {
-    return { state: 'prestige', to: '/prestige/dashboard', labelEn: 'Prestige', labelHe: 'Prestige׳' };
-  }
-  return { state: 'customer', to: '/account', labelEn: 'My Profile', labelHe: 'הפרופיל שלי' };
+  // Pet Parent — the base state for every human user. Prestige, when
+  // enrolled, decorates the label as a badge but does NOT change the
+  // destination (the Prestige-as-workspace bug is fixed elsewhere).
+  const prestigeEnrolled =
+    whoami?.prestigeStatus === 'active' || claims?.loyaltyMember === true || claims?.program === 'prestige';
+  return {
+    state: 'customer',
+    to: '/account',
+    labelEn: prestigeEnrolled ? 'My Profile · Prestige' : 'My Profile',
+    labelHe: prestigeEnrolled ? 'הפרופיל שלי · Prestige' : 'הפרופיל שלי',
+  };
 }
 
 export function accountLabel(view: AccountView, lang: string): string {
