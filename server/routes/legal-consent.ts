@@ -17,14 +17,12 @@ import { users } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 import { logger } from '../lib/logger';
 import { recordLegalAcceptance } from '../services/LegalAcceptanceService';
+import { getLegalDocument } from '@shared/lib/legalDocumentRegistry';
 
-/**
- * The canonical customer_tos version this endpoint stamps into the
- * `legal_acceptances` ledger (CEO 2026-08-26 §12). Bump when the
- * displayed Terms text materially changes so the ledger has a new
- * row per version and evidence stays honest.
- */
-const CUSTOMER_TOS_VERSION = 'v1';
+// CUSTOMER_TOS_VERSION constant intentionally REMOVED (CEO 2026-08-26
+// §4-5): version resolves from the canonical registry every request.
+// Bumping the displayed Terms bumps ONE place — the registry — and
+// this endpoint automatically stamps the new version.
 
 const router = Router();
 
@@ -54,27 +52,39 @@ router.post('/accept-terms', validateFirebaseToken, async (req: Request, res: Re
     await db.update(users).set({ acceptedTermsAt: now }).where(eq(users.id, uid));
     logger.info('[LegalConsent] terms accepted', { uid });
 
-    // Canonical-ledger dual-write (CEO 2026-08-26 §12). Fire-and-forget;
-    // failure does not block the legacy users.accepted_terms_at stamp.
-    // Idempotent per (userId, customer_tos, CUSTOMER_TOS_VERSION).
-    const language = (typeof req.body?.language === 'string' && ['he','en','ar','ru','fr','es'].includes(req.body.language))
-      ? req.body.language as 'he' | 'en' | 'ar' | 'ru' | 'fr' | 'es'
-      : 'he';
-    recordLegalAcceptance({
-      userId: uid,
-      documentKey: 'customer_tos',
-      docVersion: CUSTOMER_TOS_VERSION,
-      language,
-      ipAddress: req.ip || null,
-      userAgent: req.get('user-agent') || null,
-      source: 'client',
-      actorRole: 'self',
-      metadata: { origin: '/api/legal/accept-terms' },
-    }).catch((err: any) => {
-      logger.warn('[LegalConsent] canonical ledger dual-write failed (non-blocking)', {
-        uid, err: err?.message,
+    // Canonical-ledger DUAL-WRITE-SHADOW (CEO 2026-08-26 §6):
+    // legacy users.acceptedTermsAt stays authoritative for the gate;
+    // this best-effort write feeds the canonical evidence ledger.
+    // Version resolves from the registry per §4-5 so a Terms bump
+    // (which lives in ONE place — the registry) automatically starts
+    // stamping the new version here without touching this file.
+    const customerTosDoc = getLegalDocument('customer_tos');
+    if (customerTosDoc) {
+      const requestedLang = (typeof req.body?.language === 'string' && ['he','en','ar','ru','fr','es'].includes(req.body.language))
+        ? req.body.language as 'he' | 'en' | 'ar' | 'ru' | 'fr' | 'es'
+        : 'he';
+      const actualLang = customerTosDoc.languages.includes(requestedLang) ? requestedLang : 'he';
+      recordLegalAcceptance({
+        userId: uid,
+        documentKey: 'customer_tos',
+        docVersion: customerTosDoc.currentVersion,
+        language: actualLang,
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null,
+        source: 'client',
+        actorRole: 'self',
+        metadata: {
+          origin: '/api/legal/accept-terms',
+          requestedLanguage: requestedLang,
+          actualLanguage: actualLang,
+          migrationStatus: customerTosDoc.migrationStatus,
+        },
+      }).catch((err: any) => {
+        logger.warn('[LegalConsent] canonical ledger dual-write failed (non-blocking)', {
+          uid, err: err?.message,
+        });
       });
-    });
+    }
 
     return res.json({ acceptedAt: now.toISOString(), alreadyAccepted: false });
   } catch (err: any) {
