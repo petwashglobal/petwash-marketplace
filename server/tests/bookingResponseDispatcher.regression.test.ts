@@ -16,6 +16,11 @@ vi.mock('../services/booking-response/declineSitterBookingCore', () => ({
   declineSitterBookingCore: (...a: any[]) => declineSitterMock(...a),
 }));
 
+const declineWalkMock = vi.fn();
+vi.mock('../services/booking-response/declineWalkBookingCore', () => ({
+  declineWalkBookingCore: (...a: any[]) => declineWalkMock(...a),
+}));
+
 import {
   resolveBookingSource,
 } from '../services/booking-response/bookingSourceResolver';
@@ -80,7 +85,7 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     expect(r.ok).toBe(false);
     expect(r.errorCode).toBe('DISPATCHER_NOT_ENABLED');
   });
-  beforeEach(() => { declineSitterMock.mockReset(); });
+  beforeEach(() => { declineSitterMock.mockReset(); declineWalkMock.mockReset(); });
 
   it('flag ON + sitter + accept → NOT_YET_IMPLEMENTED (money path still gated)', async () => {
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
@@ -128,7 +133,7 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     expect(r.errorCode).toBe('PIPELINE_ERROR');
     expect(r.message).toContain('FORBIDDEN');
   });
-  it('flag ON + walk → NOT_YET_IMPLEMENTED', async () => {
+  it('flag ON + walk + accept → NOT_YET_IMPLEMENTED (money path still gated, no payment rail)', async () => {
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
     const r = await dispatchAcceptForSource({
       requestId: 'BR-3', providerUid: 'p3',
@@ -136,6 +141,36 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
       decision: 'accept',
     });
     expect(r.errorCode).toBe('NOT_YET_IMPLEMENTED_WALK');
+    expect(declineWalkMock).not.toHaveBeenCalled();
+  });
+
+  it('flag ON + walk + decline → delegates to declineWalkBookingCore with the legacyBookingId', async () => {
+    process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    declineWalkMock.mockResolvedValueOnce({ ok: true, status: 'cancelled', message: 'ok' });
+    const r = await dispatchAcceptForSource({
+      requestId: 'BR-3D', providerUid: 'p3d',
+      quoteBreakdown: { legacyRef: { table: 'walk_bookings', id: 'W-3D' } },
+      decision: 'decline',
+    });
+    expect(r.ok).toBe(true);
+    expect(r.source).toBe('WALK');
+    expect(r.legacyBookingId).toBe('W-3D');
+    expect(declineWalkMock).toHaveBeenCalledWith(
+      expect.objectContaining({ bookingId: 'W-3D', providerUid: 'p3d' }),
+    );
+  });
+
+  it('flag ON + walk + decline + core BOOKING_WRONG_STATE → PIPELINE_ERROR', async () => {
+    process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
+    declineWalkMock.mockResolvedValueOnce({ ok: false, errorCode: 'BOOKING_WRONG_STATE', message: 'Booking is already cancelled', currentStatus: 'cancelled' });
+    const r = await dispatchAcceptForSource({
+      requestId: 'BR-3E', providerUid: 'p3e',
+      quoteBreakdown: { legacyRef: { table: 'walk_bookings', id: 'W-3E' } },
+      decision: 'decline',
+    });
+    expect(r.ok).toBe(false);
+    expect(r.errorCode).toBe('PIPELINE_ERROR');
+    expect(r.message).toContain('BOOKING_WRONG_STATE');
   });
   it('flag ON + academy → SERVICE_NOT_ACTIVE (non-symmetric today; §10)', async () => {
     // Academy is not "not yet implemented" — it has a solo /confirm verb,

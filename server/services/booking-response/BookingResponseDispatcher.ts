@@ -118,10 +118,36 @@ export async function dispatchAcceptForSource(input: DispatchInput): Promise<Dis
         errorCode: 'NOT_YET_IMPLEMENTED_SITTER',
         message: 'acceptSitterBookingCore extraction pending — see design note.' };
     }
-    case 'WALK':
+    case 'WALK': {
+      // Same partial-delegation pattern as SITTER_SUITE: decline is
+      // extracted first (money-safe), accept still gated on extraction.
+      if (input.decision === 'decline') {
+        if (!res.legacyBookingId) {
+          return { ok: false, source: res.source,
+            errorCode: 'BOOKING_SOURCE_UNRESOLVED',
+            message: 'WALK resolved without a legacyBookingId — refusing to guess.' };
+        }
+        const { declineWalkBookingCore } = await import('./declineWalkBookingCore');
+        const core = await declineWalkBookingCore({
+          bookingId: res.legacyBookingId,
+          providerUid: input.providerUid,
+        });
+        if (!core.ok) {
+          return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
+            errorCode: 'PIPELINE_ERROR',
+            message: `declineWalkBookingCore ${core.errorCode}: ${core.message}` };
+        }
+        return { ok: true, source: res.source, legacyBookingId: res.legacyBookingId };
+      }
+      // Accept path — still pending extraction AND still missing a real
+      // payment rail (§24). Even after extraction, this needs to route
+      // through PAYMENT_RAIL_MISSING until the escrow → capture wiring
+      // is real; today the walk accept branch confirms a booking with
+      // no money actually held.
       return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
         errorCode: 'NOT_YET_IMPLEMENTED_WALK',
         message: 'acceptWalkBookingCore extraction pending — see design note.' };
+    }
     case 'ACADEMY':
       // §10: Academy is non-symmetric today — solo /confirm verb, no
       // accept/decline pair, no atomic status claim, wallet-only. The
