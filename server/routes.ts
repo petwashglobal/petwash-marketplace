@@ -89,6 +89,9 @@ import threadChatRoutes from "./routes/thread-chat";
 // answers "what does this customer owe RIGHT NOW?" for every surface.
 // READ-ONLY. Never captures, reserves, or mutates.
 import paymentPreviewRoutes from "./routes/payment-preview";
+// Attention feed — the "what needs my attention" projection for each
+// workspace home. READ-ONLY. Actor-scoped: /pet-parent and /provider.
+import attentionRoutes from "./routes/attention";
 import adminOctopusRoutes from "./routes/admin-octopus";
 import adminBookkeepingRoutes from "./routes/admin-bookkeeping";
 import adminStaffRoutes from "./routes/admin-staff";
@@ -12833,6 +12836,7 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/legal-acceptances', validateFirebaseToken, apiLimiter, legalAcceptancesRoutes);
   app.use('/api/threads', apiLimiter, threadChatRoutes);
   app.use('/api/payment-preview', apiLimiter, paymentPreviewRoutes);
+  app.use('/api/attention', validateFirebaseToken, apiLimiter, attentionRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
   app.use('/api/admin/staff', apiLimiter, adminStaffRoutes);

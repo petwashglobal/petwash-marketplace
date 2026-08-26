@@ -38,6 +38,10 @@ import { useUiMode } from '@/lib/uiMode';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { getApiUrl } from '@/lib/apiConfig';
 import { logger } from '@/lib/logger';
+import {
+  readReturnToFromLocation,
+  workspaceFromPath,
+} from '@/lib/workspaceFromPath';
 
 type Mode = 'petParent' | 'provider';
 
@@ -84,6 +88,26 @@ export default function ChooseMode() {
         // NO provider capability → nothing to pick. Every human has Pet
         // Parent — send them straight there.
         if (!providerActive) { navigate(CUSTOMER_FALLBACK); return; }
+
+        // DEEP LINK OVERRIDE (CEO 2026-08-26 §41): if the caller
+        // landed on /mode with a returnTo=... query pointing at a
+        // provider-scoped or customer-scoped URL, the workspace is
+        // already implied — auto-route without a picker so the
+        // original destination isn't lost. Only kicks in when the
+        // implied workspace matches a capability the user actually
+        // holds.
+        const returnTo = readReturnToFromLocation();
+        const implied = workspaceFromPath(returnTo);
+        if (implied === 'provider' && providerActive) {
+          setUiMode('provider');
+          navigate(returnTo || PROVIDER_FALLBACK);
+          return;
+        }
+        if (implied === 'petParent') {
+          setUiMode('customer');
+          navigate(returnTo || CUSTOMER_FALLBACK);
+          return;
+        }
       } catch (err: any) {
         logger.warn('[ChooseMode] capabilities load failed', { error: String(err?.message ?? err) });
       } finally {
@@ -91,7 +115,7 @@ export default function ChooseMode() {
       }
     })();
     return () => { cancelled = true; };
-  }, [navigate]);
+  }, [navigate, setUiMode]);
 
   async function pick(mode: Mode) {
     if (busy) return;
