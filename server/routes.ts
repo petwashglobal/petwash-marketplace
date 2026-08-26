@@ -2208,6 +2208,38 @@ self.addEventListener('notificationclick', (event) => {
         storageBackend: stored ? 'success' : 'failed',
       });
 
+      // Canonical-ledger dual-write (CEO 2026-08-26 §12). Each granted
+      // consent lands as its own row in the append-only
+      // legal_acceptances table. Fire-and-forget; idempotent per
+      // (userId, documentKey, docVersion). Anonymous callers (no
+      // firebaseUser) are skipped — the canonical ledger is user-
+      // scoped and 'anonymous' is not a real user.
+      if (firebaseUser?.uid) {
+        const { recordLegalAcceptance } = await import('./services/LegalAcceptanceService');
+        const commonArgs = {
+          userId: firebaseUser.uid,
+          docVersion: 'v1',
+          language: 'he' as const,
+          ipAddress: ip || null,
+          userAgent: userAgent || null,
+          source: 'client' as const,
+          actorRole: 'self' as const,
+          metadata: { origin: '/api/consent/onboarding', evidenceHash, source: source || 'onboarding' },
+        };
+        if (termsOfService) {
+          recordLegalAcceptance({ ...commonArgs, documentKey: 'customer_tos' })
+            .catch((err: any) => logger.warn('[Consent] canonical dual-write (customer_tos) failed', { err: err?.message }));
+        }
+        if (privacyPolicy) {
+          recordLegalAcceptance({ ...commonArgs, documentKey: 'privacy_policy' })
+            .catch((err: any) => logger.warn('[Consent] canonical dual-write (privacy_policy) failed', { err: err?.message }));
+        }
+        if (emailCommunication) {
+          recordLegalAcceptance({ ...commonArgs, documentKey: 'marketing_consent', docVersion: 'v1-email' })
+            .catch((err: any) => logger.warn('[Consent] canonical dual-write (marketing_consent) failed', { err: err?.message }));
+        }
+      }
+
       res.json({ ok: true, evidenceHash });
     } catch (error) {
       logger.error('[Consent] Failed to save onboarding consent:', error);
