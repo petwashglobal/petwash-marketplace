@@ -63,7 +63,11 @@ export interface DispatchOutcome {
     | 'BOOKING_SOURCE_UNRESOLVED'  // CEO §2: malformed legacyRef — refuse dispatch
     | 'NOT_YET_IMPLEMENTED_SITTER'
     | 'NOT_YET_IMPLEMENTED_WALK'
-    | 'NOT_YET_IMPLEMENTED_ACADEMY'
+    | 'SERVICE_NOT_ACTIVE'         // §10: academy today is non-symmetric (no accept/decline pair,
+                                    //      no atomic claim, wallet-only) — refuse until unified
+    | 'PAYMENT_RAIL_MISSING'       // §24: walk currently accepts w/o a payment rail; a future
+                                    //      extracted walk core will use this to make the honest
+                                    //      state observable instead of a silent success
     | 'PIPELINE_ERROR';
   message?: string;
 }
@@ -93,9 +97,14 @@ export async function dispatchAcceptForSource(input: DispatchInput): Promise<Dis
         errorCode: 'NOT_YET_IMPLEMENTED_WALK',
         message: 'acceptWalkBookingCore extraction pending — see design note.' };
     case 'ACADEMY':
+      // §10: Academy is non-symmetric today — solo /confirm verb, no
+      // accept/decline pair, no atomic status claim, wallet-only. The
+      // dispatcher must refuse to move money through this pipeline until
+      // it's been unified with the sitter/walk contract. This is NOT a
+      // "not-yet-implemented" — it's a policy refusal.
       return { ok: false, source: res.source, legacyBookingId: res.legacyBookingId,
-        errorCode: 'NOT_YET_IMPLEMENTED_ACADEMY',
-        message: 'acceptAcademyBookingCore extraction pending — see design note.' };
+        errorCode: 'SERVICE_NOT_ACTIVE',
+        message: 'Academy uses solo /confirm verb, no atomic claim, wallet-only; dispatcher refuses until unified.' };
     case 'UNIFIED_REQUEST':
       // The current v2 route handles unified requests correctly today;
       // the dispatcher explicitly does NOT intercept them.

@@ -114,10 +114,16 @@ SELECT
   COALESCE(l.locale, 'he')                                           AS language,
   l.accepted_at                                                      AS legacy_at
 FROM (
+  -- Deterministic tiebreak on same-timestamp rows (Lane D §D2). Without
+  -- these extra ORDER BY keys, DISTINCT ON returns an arbitrary row when
+  -- two consent rows share (user_id, consent_type, accepted_at) — which
+  -- can flip "accepted=true wins" to "accepted=false wins" between reads.
+  -- Preferred winner: latest accepted_at, then accepted=true, then
+  -- highest id (deterministic tie-break of last resort).
   SELECT DISTINCT ON (user_id, consent_type)
          user_id, consent_type, consent_version, accepted, locale, accepted_at
   FROM user_consents
-  ORDER BY user_id, consent_type, accepted_at DESC
+  ORDER BY user_id, consent_type, accepted_at DESC, accepted DESC, id DESC
 ) l
 LEFT JOIN legal_acceptances la
        ON la.user_id     = l.user_id

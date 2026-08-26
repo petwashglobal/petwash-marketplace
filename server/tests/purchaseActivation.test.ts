@@ -34,6 +34,34 @@ vi.mock('../utils/auditSignature', () => ({
 const sendAlert = vi.fn(async () => {});
 vi.mock('../monitoring', () => ({ sendAlert: (...a: any[]) => sendAlert(...a) }));
 
+// ShopService mock — the SHOP_ORDER activation path dynamically imports it
+// and does capture-then-create. These stubs let the tests exercise the
+// two failure branches that must NOT strand a captured payment:
+//   (a) cart drifted between price+charge and activation
+//   (b) createOrder throws (stock race etc.) after capture
+const validateCartForCheckout = vi.fn(async () => ({ id: 'CART-1', subtotalCents: 5000 }));
+const createOrder = vi.fn(async () => ({ id: 'ORD-1', orderNumber: 'SO-1', items: [], deliveryAddress: null }));
+const generateTaxInvoice = vi.fn(async () => {});
+const getUserProfile = vi.fn(async () => ({ email: 'buyer@petwash.co.il', displayName: 'Buyer' }));
+vi.mock('../services/ShopService', () => ({
+  ShopService: class {
+    validateCartForCheckout(...a: any[]) { return validateCartForCheckout(...a); }
+    createOrder(...a: any[]) { return createOrder(...a); }
+    generateTaxInvoice(...a: any[]) { return generateTaxInvoice(...a); }
+    getUserProfile(...a: any[]) { return getUserProfile(...a); }
+  },
+}));
+
+// Email templates + luxury email service are dynamically imported inside
+// the SHOP_ORDER branch as best-effort — stub them so the "happy path"
+// test doesn't reach for a real SMTP transport.
+vi.mock('../email/templates/shop-order-confirmation-2026', () => ({
+  shopOrderConfirmation: () => '<html></html>',
+}));
+vi.mock('../email/luxury-email-service', () => ({
+  sendLuxuryEmail: vi.fn(async () => {}),
+}));
+
 // In-memory DB state the stub reads/writes.
 interface PurchaseRow {
   id: string;
@@ -164,6 +192,12 @@ beforeEach(() => {
   isWired.mockReset();
   isWired.mockReturnValue(false);
   getTransaction.mockResolvedValue({ wired: true, valid: true });
+  validateCartForCheckout.mockReset();
+  validateCartForCheckout.mockResolvedValue({ id: 'CART-1', subtotalCents: 5000 });
+  createOrder.mockReset();
+  createOrder.mockResolvedValue({ id: 'ORD-1', orderNumber: 'SO-1', items: [], deliveryAddress: null });
+  generateTaxInvoice.mockClear();
+  getUserProfile.mockClear();
 });
 
 describe('activateFromVerifiedPayment — idempotency', () => {
@@ -291,6 +325,79 @@ describe('activateFromVerifiedPayment — durability (lock does not strand an un
     const second = await activateFromVerifiedPayment({ providerReference: 'evt-11', transactionId: 'txn-11', externalRef: 'ext-11' });
     expect(second.outcome).toBe('already_processed');
     expect(addCredits).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('SHOP_ORDER — capture-then-create safety (Lane B §B7-B8)', () => {
+  // The shop card charges the card BEFORE the shop_orders row is written.
+  // These invariants pin the two failure branches that must NOT strand a
+  // captured payment: the charge lands on the customer either way, so the
+  // service must either create the order OR flip to activation_pending +
+  // alert. It must never silently succeed with a mismatched order and it
+  // must never leave the row in a state that hides a paid-but-un-fulfilled
+  // charge from ops.
+
+  it('cart drift after capture → activation_pending, NO createOrder, NO invoice, alert fires', async () => {
+    // priced+charged 5000, cart now says 6500 — the customer changed the
+    // cart between the SUMIT redirect and the callback. The service MUST
+    // NOT build an order at the drifted price.
+    validateCartForCheckout.mockResolvedValueOnce({ id: 'CART-1', subtotalCents: 6500 });
+    const row = seed({
+      id: 'PUR-SHOP-DRIFT', surface: 'shop', surfaceRefId: 'ext-shop-1',
+      productType: 'SHOP_ORDER', amountCents: 5000,
+      metadataJson: { cartId: 'CART-1', subtotalCents: 5000, totalCents: 5000 },
+    });
+
+    const r = await activateFromVerifiedPayment({
+      providerReference: 'txn-shop-1', transactionId: 'txn-shop-1', externalRef: 'ext-shop-1',
+    });
+    expect(r.outcome).toBe('pending');
+    expect(createOrder).not.toHaveBeenCalled();
+    expect(generateTaxInvoice).not.toHaveBeenCalled();
+    expect(row.status).toBe('paid'); // recoverable — money captured, order deferred, ops alerted
+    expect(row.metadataJson.activation).toBe('pending');
+    expect(sendAlert).toHaveBeenCalled();
+  });
+
+  it('createOrder throws (OUT_OF_STOCK race) after capture → activation_pending, NO invoice, alert fires', async () => {
+    // Stock re-check inside createOrder fails after the money already
+    // landed. This is exactly the case markActivationPending exists for.
+    createOrder.mockRejectedValueOnce(new Error('OUT_OF_STOCK'));
+    const row = seed({
+      id: 'PUR-SHOP-OOS', surface: 'shop', surfaceRefId: 'ext-shop-2',
+      productType: 'SHOP_ORDER', amountCents: 5000,
+      metadataJson: { cartId: 'CART-1', subtotalCents: 5000, totalCents: 5000 },
+    });
+
+    const r = await activateFromVerifiedPayment({
+      providerReference: 'txn-shop-2', transactionId: 'txn-shop-2', externalRef: 'ext-shop-2',
+    });
+    expect(r.outcome).toBe('pending');
+    expect(createOrder).toHaveBeenCalledTimes(1);
+    expect(generateTaxInvoice).not.toHaveBeenCalled();
+    expect(row.status).toBe('paid');
+    expect(row.metadataJson.activation).toBe('pending');
+    expect(sendAlert).toHaveBeenCalled();
+  });
+
+  it('missing cartId (tampered metadata) → activation_pending, NO ShopService call, NO addCredits', async () => {
+    // A shop_order productType without a cartId in metadata cannot be
+    // fulfilled — must never fall back to crediting the wallet or
+    // silently succeed. Recoverable: money captured, order deferred.
+    const row = seed({
+      id: 'PUR-SHOP-NOCART', surface: 'shop', surfaceRefId: 'ext-shop-3',
+      productType: 'SHOP_ORDER', amountCents: 5000,
+      metadataJson: {},
+    });
+
+    const r = await activateFromVerifiedPayment({
+      providerReference: 'txn-shop-3', transactionId: 'txn-shop-3', externalRef: 'ext-shop-3',
+    });
+    expect(r.outcome).toBe('pending');
+    expect(validateCartForCheckout).not.toHaveBeenCalled();
+    expect(createOrder).not.toHaveBeenCalled();
+    expect(addCredits).not.toHaveBeenCalled();
+    expect(row.status).toBe('paid');
   });
 });
 

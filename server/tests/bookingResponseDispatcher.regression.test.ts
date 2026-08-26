@@ -88,14 +88,20 @@ describe('dispatchAcceptForSource — feature-flag safety', () => {
     });
     expect(r.errorCode).toBe('NOT_YET_IMPLEMENTED_WALK');
   });
-  it('flag ON + academy → NOT_YET_IMPLEMENTED', async () => {
+  it('flag ON + academy → SERVICE_NOT_ACTIVE (non-symmetric today; §10)', async () => {
+    // Academy is not "not yet implemented" — it has a solo /confirm verb,
+    // no accept/decline pair, no atomic status claim, and is wallet-only.
+    // The dispatcher REFUSES until the pipeline is unified. This test
+    // pins the honest error so a future "just wire it up" PR is forced
+    // to unify first.
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
     const r = await dispatchAcceptForSource({
       requestId: 'BR-4', providerUid: 'p4',
       quoteBreakdown: { legacyRef: { table: 'trainer_bookings', id: 'T-4' } },
       decision: 'accept',
     });
-    expect(r.errorCode).toBe('NOT_YET_IMPLEMENTED_ACADEMY');
+    expect(r.ok).toBe(false);
+    expect(r.errorCode).toBe('SERVICE_NOT_ACTIVE');
   });
   it('flag ON + unified request → ok (the v2 route already handles these)', async () => {
     process.env.BOOKING_ACCEPT_DISPATCHER_ENABLED = 'true';
