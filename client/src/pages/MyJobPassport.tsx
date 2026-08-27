@@ -361,6 +361,25 @@ export default function MyJobPassport() {
           </div>
         )}
 
+        {/* §33 cross-link — Job → Transaction. Only surfaces for
+            booking-type sources that also carry a fiscal transaction. */}
+        {p.booking?.source && p.booking?.sourceId && (
+          <button
+            type="button"
+            onClick={() => navigate(`/account/transactions/${p.booking.source}/${encodeURIComponent(p.booking.sourceId)}`)}
+            className="mt-4 w-full inline-flex items-center justify-between rounded-[16px] bg-white px-4 py-3 text-start"
+            style={{ border: `1px solid ${BORDER}` }}
+          >
+            <span className="flex items-center gap-2">
+              <RefreshCw className="w-4 h-4" style={{ color: GREEN }} />
+              <span className="text-sm font-bold" style={{ color: INK }}>
+                {tr('View transaction / receipt', 'צפייה בקבלה / עסקה')}
+              </span>
+            </span>
+            <span style={{ color: MUTED }}>›</span>
+          </button>
+        )}
+
         {/* Footer */}
         <div className="mt-4 flex items-center justify-between text-[11px]" style={{ color: MUTED }}>
           <span dir="ltr" className="font-mono">{p.correlationId}</span>
