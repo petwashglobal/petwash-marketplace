@@ -5,6 +5,7 @@ import { Layout } from '@/components/Layout';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { GlassmorphismCard } from '@/components/luxury/GlassmorphismCard';
+import { HandoffPinTile } from '@/components/handoff/HandoffPinTile';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { PhoneInput } from '@/components/PhoneInput';
@@ -1275,23 +1276,37 @@ export default function BookingConfirmation() {
               rebook) is preserved for parity with the previous flow.
           ══════════════════════════════════════════════════════════ */}
           {confirmed && (
-            <BookingConfirmedHero
-              t={t}
-              isRTL={isRTL}
-              firstName={firstName}
-              email={booking.customerEmail || booking.email || user?.email || null}
-              serviceLabel={(isRTL ? SERVICE_NAMES_HE[booking.serviceType] : SERVICE_NAMES_EN[booking.serviceType]) || (booking.serviceType ?? '—')}
-              providerName={booking.providerName || null}
-              providerAddress={booking.providerAddress || booking.pickupAddress || null}
-              dateLabel={dateLabel}
-              timeLabel={timeLabel}
-              requestId={String(booking.requestId || '')}
-              totalCents={typeof booking.totalCents === 'number' ? booking.totalCents : null}
-              subtotalCents={typeof booking.subtotalCents === 'number' ? booking.subtotalCents : null}
-              feeCents={typeof booking.feeCents === 'number' ? booking.feeCents : null}
-              onAddToAppleWallet={handleAddToAppleWallet}
-              walletLoading={walletLoading}
-            />
+            <>
+              <BookingConfirmedHero
+                t={t}
+                isRTL={isRTL}
+                firstName={firstName}
+                email={booking.customerEmail || booking.email || user?.email || null}
+                serviceLabel={(isRTL ? SERVICE_NAMES_HE[booking.serviceType] : SERVICE_NAMES_EN[booking.serviceType]) || (booking.serviceType ?? '—')}
+                providerName={booking.providerName || null}
+                providerAddress={booking.providerAddress || booking.pickupAddress || null}
+                dateLabel={dateLabel}
+                timeLabel={timeLabel}
+                requestId={String(booking.requestId || '')}
+                totalCents={typeof booking.totalCents === 'number' ? booking.totalCents : null}
+                subtotalCents={typeof booking.subtotalCents === 'number' ? booking.subtotalCents : null}
+                feeCents={typeof booking.feeCents === 'number' ? booking.feeCents : null}
+                onAddToAppleWallet={handleAddToAppleWallet}
+                walletLoading={walletLoading}
+              />
+              {/* Handoff PIN — customer surface for /api/jobs/handoff/*. Live
+                  green-marble tile below the ticket hero; §46 discipline is
+                  enforced entirely server-side. */}
+              {booking.requestId && (
+                <div className="mt-4">
+                  <HandoffPinTile
+                    source="booking_requests"
+                    bookingId={String(booking.requestId)}
+                    purpose="START"
+                  />
+                </div>
+              )}
+            </>
           )}
 
           {/* ══════════════════════════════════════════════════════════

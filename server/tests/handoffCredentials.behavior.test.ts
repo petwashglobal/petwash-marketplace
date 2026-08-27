@@ -5,6 +5,11 @@
  * BEHAVIOURAL, not source-pin — this service is a pure in-memory
  * function surface, so we can drive it end-to-end.
  */
+// Seed a stable HMAC secret BEFORE importing the service — the module
+// reads env at hash time, but the test harness may pre-import; stable
+// value + reset store keeps every case deterministic.
+process.env.HANDOFF_HMAC_SECRET = 'x'.repeat(64);
+
 import { describe, it, expect, beforeEach } from 'vitest';
 import {
   issueHandoff,

@@ -31,6 +31,32 @@
 import crypto from 'node:crypto';
 import { logger } from '../../lib/logger';
 
+// ─── Server-secret HMAC (§46 storage hardening) ─────────────────────
+//
+// The stored hash used to be plain sha256(code:nonce). A 4-digit code
+// has 10 000 possible values — with DB read access + a known nonce an
+// attacker can brute-force every code offline in milliseconds. HMAC
+// with a server-secret keeps the nonce+code fast to verify server-side
+// but useless without the secret. Mirrors server/lib/unsubToken.ts.
+function getHandoffSecret(): string {
+  const raw = (process.env.HANDOFF_HMAC_SECRET ?? '').trim();
+  if (!raw) {
+    if (process.env.NODE_ENV === 'production') {
+      logger.error('[Handoff] HANDOFF_HMAC_SECRET is missing in production');
+      // Fail loud in prod — refuse to run without a secret, so no code
+      // is ever stored under a well-known constant.
+      throw new Error('HANDOFF_HMAC_SECRET is required in production');
+    }
+    // Dev/test convenience — a constant secret is fine outside prod.
+    return 'dev-handoff-secret-do-not-use-in-prod';
+  }
+  if (raw.length < 32 && process.env.NODE_ENV === 'production') {
+    logger.error('[Handoff] HANDOFF_HMAC_SECRET must be >= 32 chars in production');
+    throw new Error('HANDOFF_HMAC_SECRET must be >= 32 chars in production');
+  }
+  return raw;
+}
+
 // ─── Types ───────────────────────────────────────────────────────────
 
 /**
@@ -100,7 +126,9 @@ const RATE_MAX_IN_WINDOW = 10;
 interface StoredRecord {
   jobRef: string;
   purpose: HandoffPurpose;
-  /** SHA-256 of `${code}:${nonce}` — never store plaintext. */
+  /** HMAC-SHA256(HANDOFF_HMAC_SECRET, `${code}:${nonce}`) — never
+   *  store plaintext. Even a DB leak plus the nonce cannot brute-force
+   *  the 4-digit code without also learning the server secret. */
   hash: string;
   nonce: string;
   expiresAt: number; // ms
@@ -134,9 +162,19 @@ function generateNonce(): string {
 
 function hashCode(code: string, nonce: string): string {
   return crypto
-    .createHash('sha256')
+    .createHmac('sha256', getHandoffSecret())
     .update(`${code}:${nonce}`)
     .digest('hex');
+}
+
+function safeCompareHex(a: string, b: string): boolean {
+  // Length guard first — crypto.timingSafeEqual throws on unequal lengths.
+  if (a.length !== b.length) return false;
+  try {
+    return crypto.timingSafeEqual(Buffer.from(a, 'hex'), Buffer.from(b, 'hex'));
+  } catch {
+    return false;
+  }
 }
 
 // ─── Public API ─────────────────────────────────────────────────────
@@ -224,7 +262,7 @@ export function verifyHandoff(input: {
   }
 
   const expected = hashCode(input.code, rec.nonce);
-  if (expected !== rec.hash) {
+  if (!safeCompareHex(expected, rec.hash)) {
     return { ok: false, errorCode: 'CODE_NOT_FOUND', message: 'Wrong code' };
   }
 

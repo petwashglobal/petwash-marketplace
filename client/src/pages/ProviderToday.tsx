@@ -46,8 +46,9 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Clock, MapPin, Dog, ChevronRight, Loader2, CalendarDays, RefreshCw,
-  PlayCircle, Flag, Navigation2, Info, Handshake,
+  PlayCircle, Flag, Navigation2, Info, Handshake, KeyRound,
 } from 'lucide-react';
+import { HandoffPinVerifyDialog } from '@/components/handoff/HandoffPinVerifyDialog';
 
 const IMMINENT_MINUTES = 15; // "starting soon" window per CEO spec
 
@@ -513,8 +514,37 @@ function FocusCard({
           {busy ? <Loader2 className="me-2 h-5 w-5 animate-spin" /> : <Icon className="me-2 h-5 w-5" />}
           {primary.label}
         </Button>
+
+        {/* Secondary: verify the customer's handoff PIN. Never charges,
+            never moves money — operational evidence only (§46). */}
+        <VerifyPinButton bookingId={booking.id} isHe={isHe} />
       </CardContent>
     </Card>
+  );
+}
+
+function VerifyPinButton({ bookingId, isHe }: { bookingId: string; isHe: boolean }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => setOpen(true)}
+        className="mt-2 h-10 w-full text-sm font-semibold"
+        data-testid="provider-today-verify-pin"
+      >
+        <KeyRound className="me-2 h-4 w-4" />
+        {isHe ? 'אימות קוד העברה' : 'Verify handoff PIN'}
+      </Button>
+      <HandoffPinVerifyDialog
+        open={open}
+        onOpenChange={setOpen}
+        source="booking_requests"
+        bookingId={bookingId}
+        purpose="START"
+      />
+    </>
   );
 }
 
