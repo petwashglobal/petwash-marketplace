@@ -18,6 +18,7 @@ import { getApiUrl } from '@/lib/apiConfig';
 import { useFirebaseAuth } from '@/auth/AuthProvider';
 import { logger } from '@/lib/logger';
 import { Package, Loader2, ChevronDown, ChevronUp, Sparkles, Truck } from 'lucide-react';
+import { HandoffPinTile } from '@/components/handoff/HandoffPinTile';
 
 interface ShopOrdersProps { language: Language; onLanguageChange?: (l: Language) => void; }
 
@@ -230,6 +231,19 @@ export default function ShopOrders({ language, onLanguageChange }: ShopOrdersPro
                                   ? <a href={d.tracking_url} target="_blank" rel="noopener noreferrer" className="underline"><bdi dir="ltr">{d.tracking_number}</bdi></a>
                                   : <bdi dir="ltr">{d.tracking_number}</bdi>}
                               </p>
+                            )}
+                            {/* Shop pickup PIN — §15 customer shows to staff.
+                                Only surfaces once the order is ready to hand over. */}
+                            {['paid', 'shipped', 'fulfilled', 'ready_for_pickup'].includes(o.status) && (
+                              <div className="mt-2">
+                                <HandoffPinTile
+                                  source="shop_orders"
+                                  bookingId={String(o.id)}
+                                  purpose="PICKUP"
+                                  labelEn="Pickup PIN"
+                                  labelHe="קוד איסוף"
+                                />
+                              </div>
                             )}
                             {CANCELLABLE.has(o.status) && (
                               confirmCancelId === o.id ? (
