@@ -285,6 +285,8 @@ export default function MyTransactions() {
 
 // ─── Detail view ─────────────────────────────────────────────────────
 
+const BOOKING_SOURCES = new Set(['sitter_bookings', 'walk_bookings', 'trainer_bookings', 'booking_requests']);
+
 export function MyTransactionDetail() {
   const { source, sourceId } = useParams<{ source: string; sourceId: string }>();
   const [, navigate] = useLocation();
@@ -375,6 +377,27 @@ export function MyTransactionDetail() {
             </div>
           </div>
         </div>
+
+        {/* Link across to the JobPassport for booking-source transactions.
+            Wire-only sweep 2026-08-27: the JobPassport route is real (see
+            server/routes/job-passport.ts) but nothing but /provider/jobs
+            linked to it. Now the customer's receipt links across too. */}
+        {source && BOOKING_SOURCES.has(source) && (
+          <button
+            type="button"
+            onClick={() => navigate(`/jobs/by-booking/${source}/${encodeURIComponent(String(sourceId))}`)}
+            className="mt-4 w-full inline-flex items-center justify-between rounded-[16px] bg-white px-4 py-3 text-start"
+            style={{ border: `1px solid ${BORDER}` }}
+          >
+            <span className="flex items-center gap-2">
+              <ShieldCheck className="w-4 h-4" style={{ color: GREEN }} />
+              <span className="text-sm font-bold" style={{ color: INK }}>
+                {tr('Open Job Passport', 'פתיחת דרכון עבודה')}
+              </span>
+            </span>
+            <ChevronRight className="w-4 h-4" style={{ color: MUTED, transform: isHe ? 'scaleX(-1)' : undefined }} />
+          </button>
+        )}
 
         {/* Money */}
         <div className="mt-4 rounded-[22px] bg-white p-5" style={{ border: `1px solid ${BORDER}` }}>
