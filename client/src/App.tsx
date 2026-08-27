@@ -184,6 +184,7 @@ const BuyGiftCard = lazy(() => import("@/pages/BuyGiftCard"));
 const PetWashInbox = lazy(() => import("@/pages/PetWashInbox")); // unified luxury inbox (Messages + Concierge + Alerts) — replaced the old Inbox.tsx
 const Pets = lazy(() => import("@/pages/Pets"));
 const PetPassport = lazy(() => import("@/pages/PetPassport"));
+const PetPassportPrint = lazy(() => import("@/pages/PetPassportPrint"));
 // Pet Owner / Passport / Consent Phase 1 (2026-06-20)
 const PetCareProfile = lazy(() => import("@/pages/PetCareProfile"));
 const PetDocuments = lazy(() => import("@/pages/PetDocuments"));
@@ -1488,6 +1489,14 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <PetPassport />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* Print / Save-as-PDF cover — same green-marble tokens */}
+        <Route path="/pets/:petId/passport/print">
+          {() => (
+            <RequireAuth>
+              <PetPassportPrint />
             </RequireAuth>
           )}
         </Route>

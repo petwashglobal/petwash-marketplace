@@ -1,0 +1,112 @@
+{
+  "formatVersion": 1,
+  "passTypeIdentifier": "pass.co.petwash.petpassport",
+  "teamIdentifier": "PETWASH_TEAM_ID",
+  "webServiceURL": "https://petwash.co.il/api/wallet/apple/pet-passport",
+  "authenticationToken": "__REPLACED_SET_APPLE_WALLET_AUTH_TOKEN_IN_SECRETS__",
+  "serialNumber": "PWP-PENDING",
+  "barcodes": [
+    {
+      "message": "PWP-PENDING",
+      "format": "PKBarcodeFormatQR",
+      "messageEncoding": "iso-8859-1",
+      "altText": "PWP-PENDING"
+    }
+  ],
+  "organizationName": "PetWash™",
+  "description": "PetWash™ Pet Passport",
+  "logoText": "PetWash™",
+  "foregroundColor": "rgb(214, 181, 109)",
+  "backgroundColor": "rgb(6, 59, 34)",
+  "labelColor": "rgb(214, 181, 109)",
+  "sharingProhibited": true,
+  "generic": {
+    "headerFields": [
+      {
+        "key": "species",
+        "label": "SPECIES",
+        "value": "—"
+      }
+    ],
+    "primaryFields": [
+      {
+        "key": "name",
+        "label": "PET",
+        "value": "—"
+      }
+    ],
+    "secondaryFields": [
+      {
+        "key": "breed",
+        "label": "BREED",
+        "value": "—"
+      },
+      {
+        "key": "birthday",
+        "label": "BORN",
+        "value": "—",
+        "dateStyle": "PKDateStyleMedium"
+      }
+    ],
+    "auxiliaryFields": [
+      {
+        "key": "microchip",
+        "label": "MICROCHIP",
+        "value": "—"
+      },
+      {
+        "key": "vet",
+        "label": "VET",
+        "value": "—"
+      }
+    ],
+    "backFields": [
+      {
+        "key": "owner",
+        "label": "Owner",
+        "value": "—"
+      },
+      {
+        "key": "gender",
+        "label": "Gender",
+        "value": "—"
+      },
+      {
+        "key": "weight",
+        "label": "Weight",
+        "value": "—"
+      },
+      {
+        "key": "rabies",
+        "label": "Rabies vaccine",
+        "value": "—"
+      },
+      {
+        "key": "dhpp",
+        "label": "DHPP vaccine",
+        "value": "—"
+      },
+      {
+        "key": "lepto",
+        "label": "Lepto vaccine",
+        "value": "—"
+      },
+      {
+        "key": "verify_url",
+        "label": "Verify online",
+        "value": "https://petwash.co.il/pets/PWP-PENDING/passport",
+        "attributedValue": "<a href=\"https://petwash.co.il/pets/PWP-PENDING/passport\">petwash.co.il/pets/…/passport</a>"
+      },
+      {
+        "key": "issuer",
+        "label": "Issuer",
+        "value": "PetWash™ · Israel"
+      },
+      {
+        "key": "legal",
+        "label": "About this pass",
+        "value": "This is a digital pet passport issued by PetWash™. It reflects data the owner entered in the PetWash™ app. Not a substitute for a veterinary certificate."
+      }
+    ]
+  }
+}
