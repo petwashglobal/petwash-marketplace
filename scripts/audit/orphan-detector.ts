@@ -18,9 +18,12 @@
  *   npx tsx scripts/audit/orphan-detector.ts
  *   npx tsx scripts/audit/orphan-detector.ts --json > scratchpad/orphans.json
  */
-import { readdir, readFile, stat } from 'node:fs/promises';
+import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..', '..');
 const ALLOW_INTENTIONAL: Array<string | RegExp> = [
   // Files that are honestly wire-blocked pending CEO or Phase 2.
@@ -99,22 +102,38 @@ async function scanRoutes(allFiles: string[]): Promise<Finding[]> {
   const routes = allFiles.filter((f) =>
     f.includes('/server/routes/') && f.endsWith('.ts') && !f.endsWith('.test.ts'),
   );
-  const mountingFile = path.join(ROOT, 'server', 'routes.ts');
-  const mountingSrc = await readFile(mountingFile, 'utf8').catch(() => '');
+
+  // Load every server file that plausibly mounts routes: routes.ts,
+  // server/index.ts, sub-services that dynamic-import routes.
+  const serverFiles = allFiles.filter((f) =>
+    f.startsWith(path.join(ROOT, 'server')) && (f.endsWith('.ts') || f.endsWith('.js')) && !f.endsWith('.test.ts'),
+  );
+  const cache = new Map<string, string>();
+  async function srcOf(f: string): Promise<string> {
+    let s = cache.get(f);
+    if (s === undefined) { s = await readFile(f, 'utf8').catch(() => ''); cache.set(f, s); }
+    return s;
+  }
 
   for (const routeFile of routes) {
     const rel = path.relative(ROOT, routeFile);
     if (isAllowed(rel)) continue;
     const base = path.basename(routeFile, '.ts');
-    // Both bare basename and its camelCase form are commonly used as var names.
-    const camel = base.replace(/-([a-z])/g, (_, c) => c.toUpperCase());
-    const patterns = [base, camel, camel + 'Routes'];
-    const mounted = patterns.some((p) => mountingSrc.includes(p));
-    if (!mounted) {
+    // Referenced by any server file? Match either the basename in a
+    // from/require/import(...) form OR a dedicated variable name.
+    let referenced = false;
+    for (const src of serverFiles) {
+      if (src === routeFile) continue;
+      const body = await srcOf(src);
+      if (new RegExp(`(from|import|require)\\(?\\s*['\"][^'\"]*\\b${base}['\"]`).test(body)) {
+        referenced = true; break;
+      }
+    }
+    if (!referenced) {
       findings.push({
         category: 'ROUTE_UNMOUNTED',
         file: rel,
-        hint: `${base}.ts is not mounted in server/routes.ts. Mount it or delete it.`,
+        hint: `${base}.ts is not imported from any other server file. Mount it or delete it.`,
       });
     }
   }
@@ -126,17 +145,37 @@ async function scanClientPages(allFiles: string[]): Promise<Finding[]> {
   const pages = allFiles.filter((f) =>
     f.includes('/client/src/pages/') && f.endsWith('.tsx') && !f.includes('.test.') && !f.includes('.regression.'),
   );
-  const appTsx = await readFile(path.join(ROOT, 'client', 'src', 'App.tsx'), 'utf8').catch(() => '');
+  // Pages can be routed FROM App.tsx OR rendered from a parent shell
+  // (e.g. POSDashboard rendered inside ProviderOS). Treat any client-side
+  // reference as legitimate.
+  const clientFiles = allFiles.filter((f) =>
+    f.startsWith(path.join(ROOT, 'client')) && (f.endsWith('.tsx') || f.endsWith('.ts')) &&
+    !f.includes('.test.') && !f.includes('.regression.'),
+  );
+  const cache = new Map<string, string>();
+  async function srcOf(f: string): Promise<string> {
+    let s = cache.get(f);
+    if (s === undefined) { s = await readFile(f, 'utf8').catch(() => ''); cache.set(f, s); }
+    return s;
+  }
 
   for (const page of pages) {
     const rel = path.relative(ROOT, page);
     if (isAllowed(rel)) continue;
     const base = path.basename(page, '.tsx');
-    if (!appTsx.includes(base)) {
+    let referenced = false;
+    for (const other of clientFiles) {
+      if (other === page) continue;
+      const body = await srcOf(other);
+      if (new RegExp(`(from|import)\\(?\\s*['\"][^'\"]*\\b${base}['\"]`).test(body)) {
+        referenced = true; break;
+      }
+    }
+    if (!referenced) {
       findings.push({
         category: 'PAGE_UNROUTED',
         file: rel,
-        hint: `${base} is not referenced from client/src/App.tsx. Wire it or delete it.`,
+        hint: `${base}.tsx is not referenced from any other client file. Route it or delete it.`,
       });
     }
   }
