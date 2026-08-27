@@ -17,10 +17,6 @@ const HOME = fs.readFileSync(path.join(ROOT, 'PetPassportHome.tsx'), 'utf8');
 const DETAIL = fs.readFileSync(path.join(ROOT, 'PetPassport.tsx'), 'utf8');
 const ADD = fs.readFileSync(path.join(ROOT, 'AddPetPassport.tsx'), 'utf8');
 const PRINT = fs.readFileSync(path.join(ROOT, 'PetPassportPrint.tsx'), 'utf8');
-const WALLET = fs.readFileSync(
-  path.resolve(__dirname, '..', '..', '..', 'server', 'apple-wallet-pet-passport-template.json'),
-  'utf8',
-);
 
 // ─── Green-marble token pins ───────────────────────────────────────
 
@@ -64,14 +60,14 @@ describe('green-marble palette — every passport surface uses the same 5 tokens
     expect(PRINT).toContain(TOKENS.ink);
   });
 
-  it('Apple Wallet pet-passport template uses green background + gold ink (rgb form)', () => {
-    // rgb(6, 59, 34) === #063B22, rgb(214, 181, 109) === #D6B56D.
-    expect(WALLET).toContain('rgb(6, 59, 34)');
-    expect(WALLET).toContain('rgb(214, 181, 109)');
-    // Passport pass, not loyalty card.
-    expect(WALLET).toContain('pass.co.petwash.petpassport');
-    expect(WALLET).toContain('Pet Passport');
-  });
+  // Apple Wallet pet-passport pass: the JSON template was deleted in the
+  // 2026-08-27 wire-only sweep because a signed .pkpass needs a model
+  // DIRECTORY (pass.json + logo/icon PNGs) — a lone JSON file cannot be
+  // signed by passkit-generator. Follow-up ticket ships:
+  //   wallet/pet-passport-model.pass/  (pass.json + icon@2x + logo@2x + strip@2x)
+  //   server route  GET /api/wallet/apple/pet-passport/:petId
+  //   using the existing AppleWalletService pattern.
+  // Until then the pin only covers the client surfaces above.
 });
 
 // ─── No off-brand accent creep ─────────────────────────────────────
@@ -87,8 +83,4 @@ describe('passport surfaces do not spray amber/indigo/red brand accents (§visua
     expect(HOME).not.toMatch(/indigo-|purple-|violet-/);
   });
 
-  it('Apple Wallet passport template does not reuse the loyalty-card indigo (#667EEA)', () => {
-    expect(WALLET).not.toMatch(/rgb\(102,\s*126,\s*234\)/);
-    expect(WALLET).not.toContain('pass.com.petwash.loyalty');
-  });
 });
