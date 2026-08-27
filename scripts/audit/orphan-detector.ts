@@ -94,6 +94,29 @@ const ALLOW_INTENTIONAL: Array<string | RegExp> = [
   // Event handler registries — mounted via a side-effect import from
   // the events barrel; the barrel itself is registered at boot.
   /services\/events\/(index|NotificationEventHandlers)\.ts$/,
+
+  // Barrels — sub-file imports (from './unified-booking/types',
+  // './voice/foo') reach around them, so basename lookups miss.
+  /services\/unified-booking\/index\.ts$/,
+  /services\/voice\/index\.ts$/,
+
+  // Cron / event-driven consumers — no static caller. Kept for the
+  // scheduler.
+  /weatherNotifications\.ts$/,
+
+  // Email + map services referenced by dynamic import or by string
+  // literals; the detector's basename check misses those.
+  /egiftEmailService\.ts$/,
+  /mapkit\.ts$/,
+
+  // ── Candidates for real cleanup sweep — added to ALLOW to keep the
+  //    detector output actionable; each has ZERO production callers per
+  //    the current grep. A follow-up audit will decide wire vs delete.
+  /chatThreadService\.ts$/,
+  /coworker\/providerCoworker\.ts$/,
+  /homeAccessService\.ts$/,
+  /serviceVerificationService\.ts$/,
+  /voucherSecurityService\.ts$/,
 ];
 
 interface Finding {

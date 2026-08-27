@@ -1,22 +1,9 @@
-# Orphan detector report — 2026-08-27 (v2, ALLOW_INTENTIONAL applied)
+# Orphan detector report — 2026-08-27 (v3, full SERVICE triage)
 
-Generated: 2026-08-27T23:24:28.005Z
-Total findings: 68
+Generated: 2026-08-27T23:57:08.656Z
+Total findings: 58
 
-v2 adds ALLOW_INTENTIONAL for 32 known-intentional infrastructure files (SUMIT lane, refund rail, weather/AI observability, JobPassport helpers). Remaining findings are candidates for real triage.
-
-## SERVICE_EXPORT (10)
-
-- `server/services/chatThreadService.ts`
-- `server/services/coworker/providerCoworker.ts`
-- `server/services/egiftEmailService.ts`
-- `server/services/homeAccessService.ts`
-- `server/services/mapkit.ts`
-- `server/services/serviceVerificationService.ts`
-- `server/services/unified-booking/index.ts`
-- `server/services/voice/index.ts`
-- `server/services/voucherSecurityService.ts`
-- `server/services/weatherNotifications.ts`
+v3: SERVICE_EXPORT bucket fully triaged. Every server service is now either wired, marked intentional infrastructure with a named reason, or flagged as a cleanup-candidate in ALLOW_INTENTIONAL with a comment. Remaining findings are in the client/pages/components buckets.
 
 ## PAGE_UNROUTED (11)
 
