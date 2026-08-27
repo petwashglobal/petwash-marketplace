@@ -185,6 +185,10 @@ const PetWashInbox = lazy(() => import("@/pages/PetWashInbox")); // unified luxu
 const Pets = lazy(() => import("@/pages/Pets"));
 const PetPassport = lazy(() => import("@/pages/PetPassport"));
 const PetPassportPrint = lazy(() => import("@/pages/PetPassportPrint"));
+const MyTransactions = lazy(() => import("@/pages/MyTransactions"));
+const MyTransactionDetail = lazy(() =>
+  import("@/pages/MyTransactions").then((m) => ({ default: m.MyTransactionDetail })),
+);
 // Pet Owner / Passport / Consent Phase 1 (2026-06-20)
 const PetCareProfile = lazy(() => import("@/pages/PetCareProfile"));
 const PetDocuments = lazy(() => import("@/pages/PetDocuments"));
@@ -3983,6 +3987,23 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
         <Route path="/status/uptime" component={StatusDashboard} />
         
         <Route path="/receipt/:transactionId" component={ReceiptPage} />
+        {/* Fiscal transaction passport — customer surface. Consumes
+            /api/fiscal/my/transactions + /api/fiscal/transactions/by-source
+            (see server/routes/fiscal-passport.ts). */}
+        <Route path="/account/transactions">
+          {() => (
+            <RequireAuth>
+              <MyTransactions />
+            </RequireAuth>
+          )}
+        </Route>
+        <Route path="/account/transactions/:source/:sourceId">
+          {() => (
+            <RequireAuth>
+              <MyTransactionDetail />
+            </RequireAuth>
+          )}
+        </Route>
         <Route path="/founder-member" component={FounderMember} />
         <Route path="/wash/qr" component={QrActivatePage} />
         <Route path="/buy-gift-card">
