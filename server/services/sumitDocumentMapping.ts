@@ -114,3 +114,68 @@ export function getSumitDocumentMapping(paymentClass: PetWashPaymentClass): Sumi
     }
   }
 }
+
+// ─── Funding-aware CPA lookup (§18-20 CEO 2026-08-27) ───────────────
+//
+// FUNDING SOURCE ≠ COMMERCIAL EVENT.
+//
+//   eGift is a FUNDING SOURCE.
+//   K9000 / SHOP / SITTER / WALK / ACADEMY / PETTREK are COMMERCIAL
+//   EVENTS.
+//
+// The commercial mapping OWNS the tax answer. Funding an existing
+// commercial event with eGift value does NOT re-classify the sale.
+// Concretely:
+//
+//   Shop towel ₪50 funded by eGift ₪20 + card ₪30
+//     → commercial sale stays SHOP_ITEM ₪50 (FULL_VAT, PetWash principal).
+//   Walk booking ₪100 funded by eGift ₪40 + card ₪60
+//     → commercial event stays PROVIDER_BOOKING_COMMISSION
+//       (VAT_ON_COMMISSION_ONLY, PetWash disclosed agent).
+//
+// The pre-existing EGIFT_REDEMPTION class only applies when eGift value
+// is consumed as a STANDALONE PetWash principal service (K9000/PetWash-
+// side wash paid entirely from stored value) — that stays PETWASH_PRINCIPAL /
+// VAT_AT_REDEMPTION as the CPA already ruled.
+
+/**
+ * Funding rails an eGift-funded transaction can use as legs. This is a
+ * client-visible taxonomy; the CPA answer NEVER depends on which rail
+ * covered which cents — it depends on the COMMERCIAL class.
+ */
+export type FundingRail = 'CARD' | 'WALLET' | 'EGIFT' | 'PROMO' | 'REFERRAL' | 'WASH_CREDIT' | 'CASH';
+
+/**
+ * Given the COMMERCIAL event's payment class + the mix of funding rails
+ * a caller intends to use, return the CPA-authoritative SUMIT mapping.
+ *
+ * §19 marketplace protection: PROVIDER_BOOKING_COMMISSION funded by
+ * eGift stays disclosed-agent; the mapping ALWAYS reflects the
+ * commercial event. This function's ONLY job is to enforce that rule
+ * explicitly so no caller can accidentally reach for EGIFT_REDEMPTION
+ * on a marketplace booking.
+ *
+ * Marketplace + eGift MUST NOT be activated on the fiscal path until
+ * the CEO has explicitly approved the new funding-vs-commercial split.
+ * Callers can compute the mapping for design/preview, but the wired
+ * money paths (composer + admin explorer) still consume ONLY
+ * getSumitDocumentMapping() until CEO clears MARKETPLACE_EGIFT_FISCAL_ACTIVATION.
+ */
+export function getFundingAwareSumitMapping(input: {
+  commercialClass: PetWashPaymentClass;
+  fundingRails: FundingRail[];
+}): SumitDocumentMapping & { activationBlocked?: 'MARKETPLACE_EGIFT_FISCAL_ACTIVATION' } {
+  const base = getSumitDocumentMapping(input.commercialClass);
+  const hasEgift = input.fundingRails.includes('EGIFT');
+  const isMarketplace = input.commercialClass === 'PROVIDER_BOOKING_COMMISSION'
+    || input.commercialClass === 'PROVIDER_BOOKING_PRINCIPAL';
+
+  // Fiscal-path activation guard: marketplace + eGift is NOT yet wired
+  // on the money path per CEO 2026-08-27 §20. Return the honest CPA
+  // answer AND flag activationBlocked so callers show, not act on it.
+  if (isMarketplace && hasEgift) {
+    return { ...base, activationBlocked: 'MARKETPLACE_EGIFT_FISCAL_ACTIVATION' };
+  }
+  return base;
+}
+
