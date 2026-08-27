@@ -78,6 +78,7 @@ import passRedeemRoutes    from "./routes/pass-redeem";
 import paymentsSumitRoutes from "./routes/payments-sumit";
 import saveCardRoutes from "./routes/save-card";
 import egiftGuestRoutes from "./routes/egift-guest";
+import egiftBalanceRoutes from "./routes/egift-balance";
 import legalConsentRoutes from "./routes/legal-consent";
 import legalAcceptancesRoutes from "./routes/legal-acceptances";
 // Thread-scoped chat (chat_threads spine) — send/read/list for every
@@ -12905,6 +12906,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/payments', apiLimiter, saveCardRoutes);
   // Guest eGift checkout — PUBLIC (no signup). Gated by PETWASH_EGIFT_PURCHASE_ENABLED (off), pay-then-issue.
   app.use('/api/egift', egiftGuestRoutes);
+  // eGift balance projection — READ-ONLY (CEO 2026-08-27 §21-23, §31).
+  // Available / Reserved / Redeemed / Restored derived from ledger.
+  app.use('/api/egift', validateFirebaseToken, apiLimiter, egiftBalanceRoutes);
   app.use('/api/legal', apiLimiter, legalConsentRoutes);
   // Canonical legal-evidence ledger (CEO directive §11-§12, migration 0127).
   // POST /accept + GET /my-acceptances require Firebase token; the admin
