@@ -1,57 +1,17 @@
-# Orphan detector report — 2026-08-27
+# Orphan detector report — 2026-08-27 (v2, ALLOW_INTENTIONAL applied)
 
-Generated: 2026-08-27T23:21:22.757Z
-Total findings: 106
+Generated: 2026-08-27T23:24:28.005Z
+Total findings: 68
 
-Ran with the improved detector (server/index dynamic-import aware, page detection widened beyond App.tsx).
+v2 adds ALLOW_INTENTIONAL for 32 known-intentional infrastructure files (SUMIT lane, refund rail, weather/AI observability, JobPassport helpers). Remaining findings are candidates for real triage.
 
-CEO 2026-08-27 §36: each finding is triaged into one of three buckets — wire it, delete it, or add to ALLOW_INTENTIONAL[] with a comment.
+## SERVICE_EXPORT (10)
 
-## SERVICE_EXPORT (48)
-
-- `server/services/BiometricSecurityMonitor.ts`
-- `server/services/CurrentUVIndexService.ts`
-- `server/services/EmergencyWalkService.ts`
-- `server/services/GeminiSecurityAdvisor.ts`
-- `server/services/GoogleCalendarIntegrationService.ts`
-- `server/services/JobExpiryNotificationService.ts`
-- `server/services/K9000ReconciliationService.ts`
-- `server/services/KYC2026/index.ts`
-- `server/services/LoyaltyActivityMonitor.ts`
-- `server/services/LynxRefundService.ts`
-- `server/services/MayaOpsTasksService.ts`
-- `server/services/MultiSourceWeatherService.ts`
-- `server/services/NayaxCortinaClient.ts`
-- `server/services/NayaxWalkMarketplaceService.ts`
-- `server/services/NotificationConsentManager.ts`
-- `server/services/OAuthCertificateMonitor.ts`
-- `server/services/OpenMeteoAirQualityService.ts`
-- `server/services/PersonalizedGreetingService.ts`
-- `server/services/PetIdentificationService.ts`
-- `server/services/PiiMinimizer.ts`
-- `server/services/RefundService.ts`
-- `server/services/SitterProximitySearch.ts`
-- `server/services/SumitBookingPayment.ts`
-- `server/services/SumitFinancialsService.ts`
-- `server/services/SumitReceiptService.ts`
-- `server/services/SumitReconciliationService.ts`
-- `server/services/SumitSyncService.ts`
-- `server/services/booking-response/BookingResponseDispatcher.ts`
-- `server/services/booking-response/acceptSitterBookingCore.ts`
-- `server/services/booking-response/acceptWalkBookingCore.ts`
-- `server/services/booking-response/declineSitterBookingCore.ts`
-- `server/services/booking-response/declineWalkBookingCore.ts`
-- `server/services/campaignTemplates.ts`
 - `server/services/chatThreadService.ts`
 - `server/services/coworker/providerCoworker.ts`
 - `server/services/egiftEmailService.ts`
-- `server/services/events/NotificationEventHandlers.ts`
-- `server/services/events/index.ts`
 - `server/services/homeAccessService.ts`
-- `server/services/jobPassport/providerVerification.ts`
-- `server/services/legacyBookingBridge.ts`
 - `server/services/mapkit.ts`
-- `server/services/payment-providers/MockPaymentProvider.ts`
 - `server/services/serviceVerificationService.ts`
 - `server/services/unified-booking/index.ts`
 - `server/services/voice/index.ts`

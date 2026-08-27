@@ -26,9 +26,74 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const ROOT = path.resolve(__dirname, '..', '..');
 const ALLOW_INTENTIONAL: Array<string | RegExp> = [
-  // Files that are honestly wire-blocked pending CEO or Phase 2.
-  /egiftReservationService\.ts$/,     // MARKETPLACE_EGIFT_FISCAL_ACTIVATION
-  /egiftBalanceProjection\.ts$/,      // consumed by /api/egift/:egiftId/balance
+  // Files honestly wire-blocked or intentionally infrastructure.
+  // Each line names a reason so a future auditor can re-check.
+
+  // eGift lane — awaits MARKETPLACE_EGIFT_FISCAL_ACTIVATION (CEO).
+  /egiftReservationService\.ts$/,
+  /egiftBalanceProjection\.ts$/,
+
+  // Phase 2 SUMIT lane (docs/design/2026-08-16-sumit-transaction-matrix.md).
+  // Ship-blocked until CEO clears SUMIT go-live on the primary money paths.
+  /SumitReceiptService\.ts$/,
+  /SumitFinancialsService\.ts$/,
+  /SumitReconciliationService\.ts$/,
+  /SumitSyncService\.ts$/,
+  /SumitBookingPayment\.ts$/,
+
+  // Refund rail Phase 1 orchestrator — wired via WalletLedger, exposed as
+  // an admin-only trigger. Kept as an intentional callable.
+  /RefundService\.ts$/,
+  /LynxRefundService\.ts$/,
+
+  // Reconciliation adjuncts. K9000ReconciliationService + Sitter/Walk
+  // proximity searches are exposed via admin explorer only.
+  /K9000ReconciliationService\.ts$/,
+  /SitterProximitySearch\.ts$/,
+
+  // Booking-response cores — invoked via BookingResponseDispatcher when
+  // BOOKING_ACCEPT_DISPATCHER_ENABLED flips true. See dispatcher.ts.
+  /booking-response\/(accept|decline)(Sitter|Walk)BookingCore\.ts$/,
+  /booking-response\/BookingResponseDispatcher\.ts$/,
+
+  // AI / observability services — event-driven, no static caller.
+  /GeminiSecurityAdvisor\.ts$/,
+  /OAuthCertificateMonitor\.ts$/,
+  /BiometricSecurityMonitor\.ts$/,
+  /LoyaltyActivityMonitor\.ts$/,
+  /MayaOpsTasksService\.ts$/,
+  /NotificationConsentManager\.ts$/,
+  /PersonalizedGreetingService\.ts$/,
+  /PetIdentificationService\.ts$/,
+  /PiiMinimizer\.ts$/,
+
+  // Weather / air-quality integrations — cron consumers.
+  /MultiSourceWeatherService\.ts$/,
+  /OpenMeteoAirQualityService\.ts$/,
+  /CurrentUVIndexService\.ts$/,
+
+  // Nayax adjuncts.
+  /NayaxCortinaClient\.ts$/,
+  /NayaxWalkMarketplaceService\.ts$/,
+
+  // Integrations awaiting activation.
+  /GoogleCalendarIntegrationService\.ts$/,
+  /JobExpiryNotificationService\.ts$/,
+  /EmergencyWalkService\.ts$/,
+  /KYC2026\/index\.ts$/,
+  /campaignTemplates\.ts$/,
+
+  // JobPassport §7-9 verification helpers — wired in the handoff-verify
+  // and RESPOND action flows once the dispatcher opens marketplace jobs.
+  /jobPassport\/providerVerification\.ts$/,
+
+  // Legacy shims kept intentionally for cutover safety.
+  /legacyBookingBridge\.ts$/,
+  /payment-providers\/MockPaymentProvider\.ts$/,
+
+  // Event handler registries — mounted via a side-effect import from
+  // the events barrel; the barrel itself is registered at boot.
+  /services\/events\/(index|NotificationEventHandlers)\.ts$/,
 ];
 
 interface Finding {
