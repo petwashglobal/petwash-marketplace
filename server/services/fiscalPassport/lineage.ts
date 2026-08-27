@@ -131,8 +131,11 @@ export async function composeProviderCommissionLineage(input: {
  */
 export async function composeRefundLineage(input: {
   originalTransactionRef: string;
-  /** Internal opaque handle the refund table joins on — usually the
-   *  correlationId or the source object's id. */
+  /** correlationId form (`shop:${orderId}` etc.) OR (sourceType, sourceId)
+   *  pair. The composer passes correlationId today; the helper parses it
+   *  into the sourceType/sourceId shape the actual refund_transactions
+   *  table uses. §34-36 discipline: NEVER invent a refund row.
+   */
   originalRefundKey: string;
 }): Promise<RefundLineage> {
   const empty: RefundLineage = {
@@ -141,13 +144,31 @@ export async function composeRefundLineage(input: {
     totalRefundedCents: 0,
     hasOrphanRefundWarning: false,
   };
+  // Parse the correlationId form 'sourceKind:sourceId' into the pair
+  // refund_transactions actually stores (source_type + source_id).
+  const [rawKind, ...idParts] = input.originalRefundKey.split(':');
+  const sourceId = idParts.join(':');
+  if (!rawKind || !sourceId) return empty;
+  const sourceType = correlationKindToSourceType(rawKind);
+  if (!sourceType) return empty;
+
   try {
+    // Real columns per shared/schema.ts refundTransactions (line ~14394):
+    //   refund_id, source_type, source_id, refund_cents, rail_ref,
+    //   sumit_credit_doc_ref, status, created_at, updated_at.
+    // Composer only surfaces rows that actually moved (status='succeeded'
+    // OR 'approved' when the rail_ref lands) — 'pending' obligations don't
+    // count as money-moved yet per §85 discipline.
     const { rows } = await pool.query(
-      `SELECT id, amount_cents, external_refund_ref, credit_document_id, created_at
+      `SELECT refund_id AS id, refund_cents AS amount_cents,
+              rail_ref AS external_refund_ref,
+              sumit_credit_doc_ref AS credit_document_id,
+              status, created_at
          FROM refund_transactions
-        WHERE original_ref = $1
+        WHERE source_type = $1 AND source_id = $2
+          AND status IN ('succeeded', 'approved', 'executing')
         ORDER BY created_at ASC`,
-      [input.originalRefundKey],
+      [sourceType, sourceId],
     );
     if (rows.length === 0) return empty;
 
@@ -176,15 +197,29 @@ export async function composeRefundLineage(input: {
       hasOrphanRefundWarning: orphan,
     };
   } catch (err: any) {
-    if (err?.code === '42P01') {
-      // Fresh env — no refund table yet. Empty projection is honest.
-      return empty;
-    }
+    if (err?.code === '42P01') return empty;
     logger.error('[FiscalLineage] refund lineage read failed', {
       originalTransactionRef: input.originalTransactionRef,
       error: err?.message,
     });
     return empty;
+  }
+}
+
+/**
+ * Map the composer's correlationId kind prefix onto the RefundService
+ * source_type taxonomy the refund_transactions table uses. Returns
+ * null for a prefix that has no refund path today (walk — no rail).
+ */
+function correlationKindToSourceType(kind: string): string | null {
+  switch (kind) {
+    case 'shop':            return 'shop_orders';
+    case 'k9000':           return 'k9000_wash_events';
+    case 'egift-purchase':  return 'egift_guest_orders';
+    case 'wallet-topup':    return 'credit_transactions';
+    case 'sitter':          return 'sitter_bookings';
+    case 'academy':         return 'trainer_bookings';
+    default:                return null;
   }
 }
 

@@ -51,10 +51,26 @@ describe('provider commission lineage — §22 literal-equality gates', () => {
 });
 
 describe('refund lineage — §36 credit-document linkage', () => {
-  it('SQL is parameterised on the original refund key', () => {
-    expect(SRC).toMatch(/WHERE original_ref = \$1/);
-    expect(SRC).toMatch(/pool\.query\([\s\S]*?,\s*\[input\.originalRefundKey\]/);
-    expect(SRC).not.toMatch(/WHERE original_ref = \$\{input\./);
+  it('SQL is parameterised on (source_type, source_id) — matches the real refund_transactions columns', () => {
+    // 2026-08-27 fix: refund_transactions actually stores source_type +
+    // source_id as separate columns (per shared/schema.ts line ~14394).
+    // Composer parses the correlationId ('shop:X') and passes both.
+    expect(SRC).toMatch(/WHERE source_type = \$1 AND source_id = \$2/);
+    expect(SRC).toMatch(/pool\.query\([\s\S]*?,\s*\[sourceType,\s*sourceId\]/);
+    // Ban template interpolation of the parsed values.
+    expect(SRC).not.toMatch(/WHERE source_type = \$\{/);
+    expect(SRC).not.toMatch(/WHERE source_id = \$\{/);
+  });
+
+  it('correlationKindToSourceType maps every composer branch — no invented source types', () => {
+    // Every kind prefix the composer emits (shop:, k9000:, egift-purchase:,
+    // wallet-topup:, sitter:, academy:) must map to a real refund_transactions
+    // source_type value. Walk intentionally has no rail (§24) so it's absent.
+    expect(SRC).toMatch(/case 'shop':\s*return 'shop_orders'/);
+    expect(SRC).toMatch(/case 'k9000':\s*return 'k9000_wash_events'/);
+    expect(SRC).toMatch(/case 'egift-purchase':\s*return 'egift_guest_orders'/);
+    expect(SRC).toMatch(/case 'sitter':\s*return 'sitter_bookings'/);
+    expect(SRC).toMatch(/case 'academy':\s*return 'trainer_bookings'/);
   });
 
   it('42P01 (table missing) returns an empty projection — no 500 in fresh envs', () => {
