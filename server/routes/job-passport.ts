@@ -61,7 +61,18 @@ router.get('/by-booking/:source/:bookingId', async (req: Request, res: Response)
   }
   const source = String(req.params.source);
   const bookingId = String(req.params.bookingId);
-  if (!['sitter_bookings', 'walk_bookings', 'booking_requests'].includes(source)) {
+  // Whitelist matches the composer's dispatch switch. Adding a new
+  // platform composer means adding its table here — no wildcard.
+  const KNOWN_SOURCES = [
+    'sitter_bookings',
+    'walk_bookings',
+    'booking_requests',
+    'trainer_bookings',
+    'shop_orders',
+    'k9000_wash_events',
+    'egift_guest_orders',
+  ];
+  if (!KNOWN_SOURCES.includes(source)) {
     return res.status(400).json({ ok: false, error: 'UNKNOWN_SOURCE' });
   }
 
