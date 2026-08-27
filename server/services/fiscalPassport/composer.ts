@@ -28,6 +28,7 @@ import {
 } from '@shared/schema';
 import { logger } from '../../lib/logger';
 import { getSumitDocumentMapping } from '../sumitDocumentMapping';
+import { composeProviderCommissionLineage } from './lineage';
 import {
   paymentClassForEvent,
   type FiscalEventCode,
@@ -608,7 +609,7 @@ interface BookingFiscalArgs {
   externalTxn: string | null;
 }
 
-function buildBookingFiscal(a: BookingFiscalArgs): FiscalPassportEnvelope {
+async function buildBookingFiscal(a: BookingFiscalArgs): Promise<FiscalPassportEnvelope> {
   // §20 disclosed-agent VAT — commission line only carries VAT.
   const items: TransactionLineItem[] = [
     { ...(getLineItem(a.itemCode)!),
@@ -622,7 +623,31 @@ function buildBookingFiscal(a: BookingFiscalArgs): FiscalPassportEnvelope {
     },
   ];
 
-  const payoutState: PayoutState = a.paid ? 'PENDING' : 'NOT_APPLICABLE';
+  // §22 provider money — resolve the real per-booking lineage from
+  // contractor_earnings when the viewer is entitled to see it. Before
+  // 2026-08-27 this block hard-coded pendingCents/availableCents/paidCents
+  // to zero, which lied to every provider passport.
+  const providerUid = a.fulfillerActor.uid;
+  let providerMoney: FiscalTransactionPassport['providerMoney'];
+  let payoutState: PayoutState = a.paid ? 'PENDING' : 'NOT_APPLICABLE';
+  if ((a.isProvider || a.isStaff) && providerUid) {
+    const lineage = await composeProviderCommissionLineage({
+      bookingId: a.sourceId,
+      providerUid,
+      providerGrossCents: a.providerExpected,
+      petwashCommissionCents: Math.max(0, a.total - a.providerExpected),
+    });
+    providerMoney = lineage.providerMoney;
+    if (providerMoney.paidCents > 0) payoutState = 'PAID';
+    else if (providerMoney.availableCents > 0) payoutState = 'AVAILABLE';
+  } else if (a.isProvider || a.isStaff) {
+    providerMoney = {
+      expectedCents: a.providerExpected,
+      pendingCents: 0,
+      availableCents: 0,
+      paidCents: 0,
+    };
+  }
 
   const passport: FiscalTransactionPassport = {
     correlationId: a.correlationId,
@@ -639,14 +664,7 @@ function buildBookingFiscal(a: BookingFiscalArgs): FiscalPassportEnvelope {
     fundingLegs: a.paid ? [{ rail: 'CARD', amountCents: a.total, currency: 'ILS', label: 'Card', externalRef: a.externalTxn ?? undefined }] : [],
     payment: buildPaymentBlock(a.paid, false, 'CARD', a.externalTxn),
     fiscalDocument: fiscalDocumentFromCPA(a.event, a.paid ? 'PENDING' : 'NOT_REQUIRED'),
-    // §22 — provider money slots. Composer surfaces them for the
-    // provider viewer (or admin/staff) only.
-    providerMoney: (a.isProvider || a.isStaff) ? {
-      expectedCents: a.providerExpected,
-      pendingCents: 0,
-      availableCents: 0,
-      paidCents: 0,
-    } : undefined,
+    providerMoney,
     commercialState: a.paid ? 'BOOKED' : 'DRAFT',
     fulfilmentState: 'NOT_STARTED',
     payoutState,
