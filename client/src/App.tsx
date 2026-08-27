@@ -189,6 +189,7 @@ const MyTransactions = lazy(() => import("@/pages/MyTransactions"));
 const MyTransactionDetail = lazy(() =>
   import("@/pages/MyTransactions").then((m) => ({ default: m.MyTransactionDetail })),
 );
+const MyJobPassport = lazy(() => import("@/pages/MyJobPassport"));
 // Pet Owner / Passport / Consent Phase 1 (2026-06-20)
 const PetCareProfile = lazy(() => import("@/pages/PetCareProfile"));
 const PetDocuments = lazy(() => import("@/pages/PetDocuments"));
@@ -4001,6 +4002,16 @@ function Router({ language, onLanguageChange }: { language: Language; onLanguage
           {() => (
             <RequireAuth>
               <MyTransactionDetail />
+            </RequireAuth>
+          )}
+        </Route>
+        {/* JobPassport — customer + provider surface. Consumes
+            /api/jobs/by-booking/:source/:bookingId (see
+            server/routes/job-passport.ts). */}
+        <Route path="/jobs/by-booking/:source/:bookingId">
+          {() => (
+            <RequireAuth>
+              <MyJobPassport />
             </RequireAuth>
           )}
         </Route>
