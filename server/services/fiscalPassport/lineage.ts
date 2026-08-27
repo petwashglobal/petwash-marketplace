@@ -212,13 +212,16 @@ export async function composeRefundLineage(input: {
  * null for a prefix that has no refund path today (walk — no rail).
  */
 function correlationKindToSourceType(kind: string): string | null {
+  // Mirrors the source_type taxonomy RefundService.requestRefund writes
+  // (server/services/RefundService.ts:32 —
+  //  'booking | escrow | marketplace | academy | k9000 | egift').
   switch (kind) {
-    case 'shop':            return 'shop_orders';
-    case 'k9000':           return 'k9000_wash_events';
-    case 'egift-purchase':  return 'egift_guest_orders';
-    case 'wallet-topup':    return 'credit_transactions';
-    case 'sitter':          return 'sitter_bookings';
-    case 'academy':         return 'trainer_bookings';
+    case 'shop':            return 'shop';
+    case 'k9000':           return 'k9000';
+    case 'egift-purchase':  return 'egift';
+    case 'wallet-topup':    return 'wallet';
+    case 'sitter':          return 'booking';
+    case 'academy':         return 'academy';
     default:                return null;
   }
 }

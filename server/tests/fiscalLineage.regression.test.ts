@@ -62,15 +62,17 @@ describe('refund lineage — §36 credit-document linkage', () => {
     expect(SRC).not.toMatch(/WHERE source_id = \$\{/);
   });
 
-  it('correlationKindToSourceType maps every composer branch — no invented source types', () => {
-    // Every kind prefix the composer emits (shop:, k9000:, egift-purchase:,
-    // wallet-topup:, sitter:, academy:) must map to a real refund_transactions
-    // source_type value. Walk intentionally has no rail (§24) so it's absent.
-    expect(SRC).toMatch(/case 'shop':\s*return 'shop_orders'/);
-    expect(SRC).toMatch(/case 'k9000':\s*return 'k9000_wash_events'/);
-    expect(SRC).toMatch(/case 'egift-purchase':\s*return 'egift_guest_orders'/);
-    expect(SRC).toMatch(/case 'sitter':\s*return 'sitter_bookings'/);
-    expect(SRC).toMatch(/case 'academy':\s*return 'trainer_bookings'/);
+  it('correlationKindToSourceType maps every composer branch — mirrors RefundService taxonomy', () => {
+    // The source_type values must match RefundService.requestRefund's
+    // writer contract (RefundService.ts:32 —
+    // 'booking | escrow | marketplace | academy | k9000 | egift').
+    // Any drift silently breaks the join. Walk intentionally has no
+    // entry (§24 no payment rail).
+    expect(SRC).toMatch(/case 'shop':\s*return 'shop'/);
+    expect(SRC).toMatch(/case 'k9000':\s*return 'k9000'/);
+    expect(SRC).toMatch(/case 'egift-purchase':\s*return 'egift'/);
+    expect(SRC).toMatch(/case 'sitter':\s*return 'booking'/);
+    expect(SRC).toMatch(/case 'academy':\s*return 'academy'/);
   });
 
   it('42P01 (table missing) returns an empty projection — no 500 in fresh envs', () => {
