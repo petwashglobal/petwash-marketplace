@@ -18,7 +18,9 @@ import { generateRefundRef } from '@shared/lib/fiscalPassport/idNamespace';
 import type {
   ProviderMoneyBlock,
   FiscalDocumentRef,
+  RefundLineage,
 } from '@shared/lib/fiscalPassport/FiscalTransactionPassport';
+export type { RefundLineage } from '@shared/lib/fiscalPassport/FiscalTransactionPassport';
 
 // ─── Provider commission lineage (§32) ──────────────────────────────
 
@@ -113,27 +115,9 @@ export async function composeProviderCommissionLineage(input: {
 
 /**
  * Result of resolving refund lineage for one original transaction.
- * §36: the credit document must maintain lineage back to the original
- * SUMIT document id.
+ * §36 shape moved to shared/lib/fiscalPassport/FiscalTransactionPassport.ts
+ * so the client can consume the same interface. Re-exported above.
  */
-export interface RefundLineage {
-  originalTransactionRef: string;
-  /** Ordered list of refund transactions in occurrence order. */
-  refunds: Array<{
-    refundRef: string;
-    refundIndex: number;
-    amountCents: number;
-    /** External refund transaction id (Nayax / wallet ledger / SUMIT credit doc). */
-    externalRefundRef?: string;
-    creditDocumentId?: string;
-    createdAt: string;
-  }>;
-  totalRefundedCents: number;
-  /** TRUE when at least one refund exists but its SUMIT credit
-   *  document is missing — surfaced as a §87 REFUND_NO_CREDIT_DOCUMENT
-   *  alert by the composer / admin explorer. */
-  hasOrphanRefundWarning: boolean;
-}
 
 /**
  * Read refund events for an original transaction. The current repo

@@ -28,8 +28,10 @@ import {
 } from '@shared/schema';
 import { logger } from '../../lib/logger';
 import { getSumitDocumentMapping } from '../sumitDocumentMapping';
-import { composeProviderCommissionLineage } from './lineage';
+import { composeProviderCommissionLineage, composeRefundLineage } from './lineage';
+import { collectWarnings, type ReconciliationSignal } from './reconciliation';
 import {
+  fiscalEventKey,
   paymentClassForEvent,
   type FiscalEventCode,
 } from '@shared/lib/fiscalPassport/eventRegistry';
@@ -188,6 +190,64 @@ function baseReconciliation(paid: boolean, docIssued: boolean): ReconciliationBl
   };
 }
 
+/**
+ * Compose the refund lineage AND live reconciliation warnings for one
+ * event. The composer branches use this helper INSTEAD of the raw
+ * baseReconciliation() so real §87 signals (Nayax/wallet/SUMIT/refund)
+ * surface without invention.
+ *
+ * §15 discipline: only pass hints the branch actually has evidence for
+ * — never guess Nayax IDs for wallet-only shop orders, never invent a
+ * wallet transaction id for K9000 machine-authorised events.
+ */
+async function enrichReconciliation(input: {
+  event: FiscalEventCode;
+  businessObjectId: string;
+  correlationId: string;
+  transactionRef: string;
+  paid: boolean;
+  commercialTotalCents: number;
+  nayaxTxId?: string | null;
+  walletTransactionId?: string | null;
+  payout?: { contractorId: string; earningId: number };
+}): Promise<{ reconciliation: ReconciliationBlock; refundLineage?: import('@shared/lib/fiscalPassport/FiscalTransactionPassport').RefundLineage }> {
+  const eventKey = fiscalEventKey({ event: input.event, businessObjectId: input.businessObjectId });
+  const [warnings, refundLineage] = await Promise.all([
+    collectWarnings({
+      fiscalEventKey: eventKey,
+      commercialTotalCents: input.commercialTotalCents,
+      paid: input.paid,
+      nayaxTxId: input.nayaxTxId ?? undefined,
+      walletTransactionId: input.walletTransactionId ?? undefined,
+      payout: input.payout,
+    }),
+    composeRefundLineage({
+      originalTransactionRef: input.transactionRef,
+      originalRefundKey: input.correlationId,
+    }),
+  ]);
+
+  const signals: ReconciliationSignal[] = warnings.map((w) => w.signal);
+  // If the refund side has an orphan (money moved, credit doc not yet
+  // issued), surface REFUND_NO_CREDIT_DOCUMENT on the same signal axis
+  // so admin explorer + customer detail render one honest list.
+  if (refundLineage.hasOrphanRefundWarning && !signals.includes('REFUND_NO_CREDIT_DOCUMENT')) {
+    signals.push('REFUND_NO_CREDIT_DOCUMENT');
+  }
+
+  return {
+    reconciliation: {
+      paymentMatched: input.paid,
+      documentMatched: false, // filled once sumit_documents is queried by collectWarnings
+      ledgerMatched: input.paid,
+      warnings: signals,
+    },
+    refundLineage: refundLineage.refunds.length > 0 || refundLineage.hasOrphanRefundWarning
+      ? refundLineage
+      : undefined,
+  };
+}
+
 // ─── SHOP (§94.8) ────────────────────────────────────────────────────
 
 async function composeShopFiscal(orderId: string, viewer: FiscalActor): Promise<FiscalPassportEnvelope | null> {
@@ -221,6 +281,12 @@ async function composeShopFiscal(orderId: string, viewer: FiscalActor): Promise<
 
   const items = [line('SHOP_ITEM_GENERIC', 1, subtotal, 'FULL_VAT', 'shop_orders', String(order.id))];
 
+  const { reconciliation, refundLineage } = await enrichReconciliation({
+    event, businessObjectId: String(order.id), correlationId, transactionRef,
+    paid, commercialTotalCents: total,
+    // Shop is card-only via SUMIT — no Nayax rail, no wallet ledger entry.
+  });
+
   const passport: FiscalTransactionPassport = {
     correlationId,
     transactionRef,
@@ -239,7 +305,8 @@ async function composeShopFiscal(orderId: string, viewer: FiscalActor): Promise<
     commercialState: shopCommercialState(order.status),
     fulfilmentState: shopFulfilmentState(order.status),
     payoutState: 'NOT_APPLICABLE',
-    reconciliation: baseReconciliation(paid, false),
+    reconciliation,
+    refundLineage,
     composedAt: new Date().toISOString(),
   };
 
@@ -296,6 +363,14 @@ async function composeK9000Fiscal(eventId: string, viewer: FiscalActor): Promise
   const rail: FundingLeg['rail'] = isPublicCard ? 'MACHINE_NAYAX' : (event.redemptionSource === 'egift' ? 'EGIFT' : 'WALLET');
   const items = [line(isPublicCard ? 'K9000_PUBLIC_CARD_WASH' : 'K9000_SELF_SERVICE_WASH', 1, total, 'FULL_VAT', 'k9000_wash_events', event.id)];
 
+  // §55 K9000: Nayax rail exists ONLY when this is a public-card event.
+  // A wallet/eGift-authorised wash has no Nayax transaction to reconcile.
+  const { reconciliation, refundLineage } = await enrichReconciliation({
+    event: evt, businessObjectId: String(event.id), correlationId, transactionRef,
+    paid, commercialTotalCents: total,
+    nayaxTxId: isPublicCard ? event.nayaxTransactionId ?? undefined : undefined,
+  });
+
   const passport: FiscalTransactionPassport = {
     correlationId,
     transactionRef,
@@ -317,7 +392,8 @@ async function composeK9000Fiscal(eventId: string, viewer: FiscalActor): Promise
     commercialState: paid ? 'FULFILLED' : 'DRAFT',
     fulfilmentState: paid ? 'CUSTOMER_CONFIRMED' : 'NOT_STARTED',
     payoutState: 'NOT_APPLICABLE',
-    reconciliation: baseReconciliation(paid, false),
+    reconciliation,
+    refundLineage,
     composedAt: new Date().toISOString(),
   };
   return { passport, viewFor: { actor: viewer, showsProviderMoney: false, showsExternalIds: isStaff } };
@@ -341,6 +417,11 @@ async function composeEgiftPurchaseFiscal(externalId: string, viewer: FiscalActo
   const correlationId = `egift-purchase:${order.externalId}`;
   const transactionRef = generateTransactionRef({ stableId: correlationId, stableIsoDate: order.createdAt?.toISOString() ?? null });
 
+  const { reconciliation, refundLineage } = await enrichReconciliation({
+    event, businessObjectId: String(order.externalId), correlationId, transactionRef,
+    paid, commercialTotalCents: total,
+  });
+
   const passport: FiscalTransactionPassport = {
     correlationId, transactionRef,
     eventType: event,
@@ -359,7 +440,8 @@ async function composeEgiftPurchaseFiscal(externalId: string, viewer: FiscalActo
     commercialState: refunded ? 'CANCELLED' : paid ? 'FULFILLED' : 'DRAFT',
     fulfilmentState: paid ? 'CUSTOMER_CONFIRMED' : 'NOT_STARTED',
     payoutState: 'NOT_APPLICABLE',
-    reconciliation: baseReconciliation(paid, false),
+    reconciliation,
+    refundLineage,
     composedAt: new Date().toISOString(),
   };
   return { passport, viewFor: { actor: viewer, showsProviderMoney: false, showsExternalIds: isStaff } };
@@ -394,6 +476,12 @@ async function composeEgiftRedemptionFiscal(ledgerId: string, viewer: FiscalActo
   const correlationId = `egift-redemption:${row.transaction_id}`;
   const transactionRef = generateTransactionRef({ stableId: correlationId, stableIsoDate: row.created_at ?? null });
 
+  const { reconciliation } = await enrichReconciliation({
+    event, businessObjectId: String(row.transaction_id), correlationId, transactionRef,
+    paid: true, commercialTotalCents: total,
+    walletTransactionId: String(row.transaction_id),
+  });
+
   const passport: FiscalTransactionPassport = {
     correlationId, transactionRef,
     eventType: event,
@@ -411,7 +499,7 @@ async function composeEgiftRedemptionFiscal(ledgerId: string, viewer: FiscalActo
     commercialState: 'FULFILLED',
     fulfilmentState: 'CUSTOMER_CONFIRMED',
     payoutState: 'NOT_APPLICABLE',
-    reconciliation: baseReconciliation(true, false),
+    reconciliation,
     composedAt: new Date().toISOString(),
   };
   return { passport, viewFor: { actor: viewer, showsProviderMoney: false, showsExternalIds: isStaff } };
@@ -441,6 +529,15 @@ async function composeWalletTopupFiscal(ledgerId: string, viewer: FiscalActor): 
   const correlationId = `wallet-topup:${row.transaction_id}`;
   const transactionRef = generateTransactionRef({ stableId: correlationId, stableIsoDate: row.created_at ?? null });
 
+  // Wallet topup: source_id is the Nayax/SUMIT external tx id;
+  // transaction_id is the ledger id.
+  const { reconciliation, refundLineage } = await enrichReconciliation({
+    event, businessObjectId: String(row.transaction_id), correlationId, transactionRef,
+    paid: true, commercialTotalCents: total,
+    nayaxTxId: row.source_type === 'nayax' ? row.source_id ?? undefined : undefined,
+    walletTransactionId: String(row.transaction_id),
+  });
+
   const passport: FiscalTransactionPassport = {
     correlationId, transactionRef,
     eventType: event,
@@ -458,7 +555,8 @@ async function composeWalletTopupFiscal(ledgerId: string, viewer: FiscalActor): 
     commercialState: 'FULFILLED',
     fulfilmentState: 'CUSTOMER_CONFIRMED',
     payoutState: 'NOT_APPLICABLE',
-    reconciliation: baseReconciliation(true, false),
+    reconciliation,
+    refundLineage,
     composedAt: new Date().toISOString(),
   };
   return { passport, viewFor: { actor: viewer, showsProviderMoney: false, showsExternalIds: isStaff } };
@@ -501,6 +599,7 @@ async function composeSitterFiscal(bookingId: string, viewer: FiscalActor): Prom
     sourceId: b.bookingId,
     payDate: (b.confirmedAt ?? b.createdAt)?.toISOString() ?? null,
     externalTxn: b.nayaxTransactionId ?? null,
+    nayaxTxId: b.nayaxTransactionId ?? null,
   });
 }
 
@@ -607,6 +706,10 @@ interface BookingFiscalArgs {
   sourceId: string;
   payDate: string | null;
   externalTxn: string | null;
+  /** Real Nayax transaction id (when this booking rail was a Nayax card). */
+  nayaxTxId?: string | null;
+  /** Wallet ledger transaction id backing the booking, if any. */
+  walletTransactionId?: string | null;
 }
 
 async function buildBookingFiscal(a: BookingFiscalArgs): Promise<FiscalPassportEnvelope> {
@@ -649,6 +752,17 @@ async function buildBookingFiscal(a: BookingFiscalArgs): Promise<FiscalPassportE
     };
   }
 
+  // Live reconciliation + refund lineage. Booking events use the same
+  // signal aggregator as shop/k9000 — hints are the real Nayax/wallet
+  // txn ids the branch passed in, never guessed.
+  const { reconciliation, refundLineage } = await enrichReconciliation({
+    event: a.event, businessObjectId: a.sourceId,
+    correlationId: a.correlationId, transactionRef: a.transactionRef,
+    paid: a.paid, commercialTotalCents: a.total,
+    nayaxTxId: a.nayaxTxId ?? undefined,
+    walletTransactionId: a.walletTransactionId ?? undefined,
+  });
+
   const passport: FiscalTransactionPassport = {
     correlationId: a.correlationId,
     transactionRef: a.transactionRef,
@@ -668,7 +782,8 @@ async function buildBookingFiscal(a: BookingFiscalArgs): Promise<FiscalPassportE
     commercialState: a.paid ? 'BOOKED' : 'DRAFT',
     fulfilmentState: 'NOT_STARTED',
     payoutState,
-    reconciliation: baseReconciliation(a.paid, false),
+    reconciliation,
+    refundLineage,
     composedAt: new Date().toISOString(),
   };
 

@@ -146,6 +146,31 @@ export interface ProviderMoneyBlock {
   payoutReference?: string;
 }
 
+// ─── Refund lineage (§34-36) ────────────────────────────────────────
+
+/**
+ * §36 credit-document lineage over the original transaction. When a
+ * refund has landed but the credit fiscal document hasn't been issued
+ * yet (SUMIT down, retry pending), `hasOrphanRefundWarning` is true and
+ * the composer ALSO emits 'REFUND_NO_CREDIT_DOCUMENT' into
+ * reconciliation.warnings — same signal, two surfaces.
+ */
+export interface RefundLineageEntry {
+  refundRef: string;
+  refundIndex: number;
+  amountCents: number;
+  externalRefundRef?: string;
+  creditDocumentId?: string;
+  createdAt: string;
+}
+
+export interface RefundLineage {
+  originalTransactionRef: string;
+  refunds: RefundLineageEntry[];
+  totalRefundedCents: number;
+  hasOrphanRefundWarning: boolean;
+}
+
 // ─── Reconciliation (§54-58, §87) ───────────────────────────────────
 
 export interface ReconciliationBlock {
@@ -194,6 +219,9 @@ export interface FiscalTransactionPassport {
 
   /** Only present when the actor is provider / staff / admin. */
   providerMoney?: ProviderMoneyBlock;
+
+  /** §34-36 credit-document lineage. Empty when no refund exists. */
+  refundLineage?: RefundLineage;
 
   commercialState: CommercialState;
   fulfilmentState: FulfilmentState;

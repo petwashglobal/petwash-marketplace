@@ -81,6 +81,19 @@ interface FiscalPassport {
     originalDocumentId?: string;
     creditDocumentId?: string;
   };
+  refundLineage?: {
+    originalTransactionRef: string;
+    refunds: Array<{
+      refundRef: string;
+      refundIndex: number;
+      amountCents: number;
+      externalRefundRef?: string;
+      creditDocumentId?: string;
+      createdAt: string;
+    }>;
+    totalRefundedCents: number;
+    hasOrphanRefundWarning: boolean;
+  };
   commercialState: string;
   fulfilmentState: string;
   payoutState: string;
@@ -457,6 +470,47 @@ export function MyTransactionDetail() {
             {p.fiscalDocument.creditDocumentId && (
               <Kv k={tr('Credit doc', 'זיכוי')} v={p.fiscalDocument.creditDocumentId} mono />
             )}
+          </div>
+        )}
+
+        {/* Refund lineage — §34-36. Renders each refund event with amount,
+            external ref, credit-doc id. Amber tint when the credit fiscal
+            document is still missing on any refund. */}
+        {p.refundLineage && (p.refundLineage.refunds.length > 0 || p.refundLineage.hasOrphanRefundWarning) && (
+          <div className="mt-4 rounded-[22px] bg-white p-5" style={{ border: `1px solid ${BORDER}` }}>
+            <div className="flex items-center gap-2 mb-3">
+              <RefreshCw className="w-4 h-4" style={{ color: GREEN }} />
+              <span className="text-[11px] uppercase tracking-[0.18em] font-bold" style={{ color: GREEN }}>
+                {tr('Refunds', 'זיכויים')}
+              </span>
+            </div>
+            <Kv k={tr('Total refunded', 'סה״כ הוחזר')} v={fmtCents(p.refundLineage.totalRefundedCents, isHe)} bold />
+            <div className="mt-3 space-y-2">
+              {p.refundLineage.refunds.map((r) => (
+                <div
+                  key={r.refundRef}
+                  className="rounded-xl px-3 py-2.5"
+                  style={{ background: MARBLE, border: `1px solid ${BORDER}` }}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="text-[13px] font-semibold font-mono" style={{ color: INK }} dir="ltr">
+                      {r.refundRef}
+                    </span>
+                    <span className="text-[14px] font-extrabold" style={{ color: INK }} dir="ltr">
+                      {fmtCents(r.amountCents, isHe)}
+                    </span>
+                  </div>
+                  <div className="mt-1 flex items-center justify-between text-[11px]" style={{ color: MUTED }}>
+                    <span dir="ltr">{fmtDate(r.createdAt, isHe)}</span>
+                    {r.creditDocumentId
+                      ? <span className="font-mono" dir="ltr">Doc {r.creditDocumentId}</span>
+                      : <span style={{ color: '#8A5A00', fontWeight: 700 }}>
+                          {tr('Credit doc pending', 'זיכוי פיסקלי בהמתנה')}
+                        </span>}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         )}
 
