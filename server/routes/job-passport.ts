@@ -24,6 +24,10 @@ import { Router, type Request, type Response } from 'express';
 import { logger } from '../lib/logger';
 import { isSuperAdmin } from '../middleware/rbac';
 import { composeJobPassport } from '../services/jobPassport/composer';
+import {
+  issueHandoff, verifyHandoff, revokeHandoff, inspectHandoff,
+  HANDOFF_PURPOSES, type HandoffPurpose,
+} from '../services/jobPassport/handoffCredentials';
 import type { ActorIdentity, ActorKind } from '@shared/lib/jobPassport/actorRegistry';
 import { parseJobRef, truncateUid } from '@shared/lib/jobPassport/idNamespace';
 
@@ -135,6 +139,204 @@ router.get('/:jobRef', async (req: Request, res: Response) => {
     error: 'JOBREF_INDEX_NOT_READY',
     hint: 'Use GET /api/jobs/by-booking/:source/:bookingId until the jobRef → bookingId index lands (§60/§61 Phase 2).',
     platform: parsed.platform.platformCode,
+  });
+});
+
+// ─── Handoff credential routes (§13, §14, §46) ──────────────────────
+//
+// Wire-only sweep 2026-08-27: handoffCredentials.ts (SHA-256-hashed, rate-
+// limited, 15-min TTL, revocable, in-memory Phase 1) was shipped in
+// 20376d25a with unit tests, but had no HTTP route. Nothing could
+// actually issue or verify a code. These endpoints close that loop.
+//
+// Auth: same validateFirebaseToken as the composer routes. The issuer
+// must be a participant on the job (customer OR assigned provider OR
+// staff) — checked by composing the passport and asserting the viewer
+// matches. Verification is checked by RESOLVING the code, then
+// asserting the caller is entitled to consume THAT purpose (staff for
+// PICKUP, customer for ENTRY / START, machine acceptor for REDEMPTION).
+
+/**
+ * Small helper: resolve (source, bookingId) → composed passport for the
+ * viewer, trying CUSTOMER then PROVIDER. Returns null when the viewer
+ * is not a participant (§34 privacy — the route responds with 404).
+ */
+async function passportForParticipant(
+  viewer: ActorIdentity,
+  source: string,
+  bookingId: string,
+) {
+  const KNOWN_SOURCES = [
+    'sitter_bookings', 'walk_bookings', 'booking_requests',
+    'trainer_bookings', 'shop_orders', 'k9000_wash_events', 'egift_guest_orders',
+  ];
+  if (!KNOWN_SOURCES.includes(source)) return null;
+
+  const asCustomer = await composeJobPassport({
+    sourceHint: source as any, bookingId,
+    viewer: { ...viewer, kind: 'CUSTOMER' },
+  });
+  if (asCustomer) return asCustomer;
+  if (viewer.kind !== 'PETWASH_STAFF') {
+    const asProvider = await composeJobPassport({
+      sourceHint: source as any, bookingId,
+      viewer: { ...viewer, kind: 'PROVIDER' },
+    });
+    if (asProvider) return asProvider;
+  }
+  return null;
+}
+
+/**
+ * POST /api/jobs/handoff/issue
+ *
+ * Body: { source, bookingId, purpose, ttlSeconds? }
+ *
+ * Only a participant on the job (customer / assigned provider / staff)
+ * can issue. `ttlSeconds` is capped server-side to 15 minutes.
+ * Response: { ok, jobRef, purpose, code, expiresAt } — the code is
+ * returned ONCE and only to the issuer. Never logged.
+ */
+router.post('/handoff/issue', async (req: Request, res: Response) => {
+  const viewer = resolveViewer(req);
+  if (!viewer || !viewer.uid) {
+    return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
+  }
+  const source = String(req.body?.source ?? '');
+  const bookingId = String(req.body?.bookingId ?? '');
+  const purposeRaw = String(req.body?.purpose ?? '');
+  const ttlSeconds = Math.min(Math.max(Number(req.body?.ttlSeconds ?? 900), 60), 900);
+
+  if (!HANDOFF_PURPOSES.includes(purposeRaw as HandoffPurpose)) {
+    return res.status(400).json({ ok: false, error: 'UNKNOWN_PURPOSE' });
+  }
+  const purpose = purposeRaw as HandoffPurpose;
+
+  const envelope = await passportForParticipant(viewer, source, bookingId);
+  if (!envelope) {
+    // §34 privacy 404 — same shape as unknown-source or non-participant.
+    return res.status(404).json({ ok: false, error: 'NOT_FOUND' });
+  }
+
+  const cred = issueHandoff({
+    jobRef: envelope.passport.jobRef,
+    purpose,
+    expiresAt: new Date(Date.now() + ttlSeconds * 1000),
+    scopeHints: { platform: envelope.passport.platform },
+  });
+
+  logger.info('[JobPassport] handoff issued', {
+    viewerUidTail: truncateUid(viewer.uid),
+    jobRef: cred.jobRef,
+    purpose: cred.purpose,
+  });
+
+  return res.json({
+    ok: true,
+    jobRef: cred.jobRef,
+    purpose: cred.purpose,
+    code: cred.code,
+    expiresAt: cred.expiresAt.toISOString(),
+  });
+});
+
+/**
+ * POST /api/jobs/handoff/verify
+ *
+ * Body: { source, bookingId, purpose, code }
+ *
+ * The verifier must ALSO be a participant on the job — a random caller
+ * can't brute-force codes on somebody else's job.
+ */
+router.post('/handoff/verify', async (req: Request, res: Response) => {
+  const viewer = resolveViewer(req);
+  if (!viewer || !viewer.uid) {
+    return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
+  }
+  const source = String(req.body?.source ?? '');
+  const bookingId = String(req.body?.bookingId ?? '');
+  const purposeRaw = String(req.body?.purpose ?? '');
+  const code = String(req.body?.code ?? '');
+
+  if (!HANDOFF_PURPOSES.includes(purposeRaw as HandoffPurpose)) {
+    return res.status(400).json({ ok: false, error: 'UNKNOWN_PURPOSE' });
+  }
+  const purpose = purposeRaw as HandoffPurpose;
+
+  const envelope = await passportForParticipant(viewer, source, bookingId);
+  if (!envelope) return res.status(404).json({ ok: false, error: 'NOT_FOUND' });
+
+  const result = verifyHandoff({
+    jobRef: envelope.passport.jobRef,
+    purpose,
+    code,
+    caller: { kind: viewer.kind === 'PETWASH_STAFF' ? 'STAFF' : 'CUSTOMER', uid: viewer.uid },
+  });
+
+  // Never leak WHY inside the JSON body beyond the enumerated errorCode
+  // (safe — enumerated per §46). Same-shape response on success/failure.
+  if (result.ok) {
+    return res.json({ ok: true, jobRef: result.jobRef, purpose: result.purpose });
+  }
+  return res.status(400).json({ ok: false, errorCode: result.errorCode });
+});
+
+/**
+ * POST /api/jobs/handoff/revoke
+ *
+ * Body: { source, bookingId, purpose }
+ *
+ * §46 revocable. Idempotent. Only participants can revoke.
+ */
+router.post('/handoff/revoke', async (req: Request, res: Response) => {
+  const viewer = resolveViewer(req);
+  if (!viewer || !viewer.uid) {
+    return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
+  }
+  const source = String(req.body?.source ?? '');
+  const bookingId = String(req.body?.bookingId ?? '');
+  const purposeRaw = String(req.body?.purpose ?? '');
+  if (!HANDOFF_PURPOSES.includes(purposeRaw as HandoffPurpose)) {
+    return res.status(400).json({ ok: false, error: 'UNKNOWN_PURPOSE' });
+  }
+  const purpose = purposeRaw as HandoffPurpose;
+
+  const envelope = await passportForParticipant(viewer, source, bookingId);
+  if (!envelope) return res.status(404).json({ ok: false, error: 'NOT_FOUND' });
+
+  revokeHandoff(envelope.passport.jobRef, purpose);
+  return res.json({ ok: true, jobRef: envelope.passport.jobRef, purpose });
+});
+
+/**
+ * GET /api/jobs/handoff/status?source=…&bookingId=…&purpose=…
+ *
+ * Read-only status probe. Never returns the plaintext code — that's
+ * only exposed by /issue at creation time.
+ */
+router.get('/handoff/status', async (req: Request, res: Response) => {
+  const viewer = resolveViewer(req);
+  if (!viewer || !viewer.uid) {
+    return res.status(401).json({ ok: false, error: 'AUTH_REQUIRED' });
+  }
+  const source = String(req.query?.source ?? '');
+  const bookingId = String(req.query?.bookingId ?? '');
+  const purposeRaw = String(req.query?.purpose ?? '');
+  if (!HANDOFF_PURPOSES.includes(purposeRaw as HandoffPurpose)) {
+    return res.status(400).json({ ok: false, error: 'UNKNOWN_PURPOSE' });
+  }
+  const purpose = purposeRaw as HandoffPurpose;
+
+  const envelope = await passportForParticipant(viewer, source, bookingId);
+  if (!envelope) return res.status(404).json({ ok: false, error: 'NOT_FOUND' });
+
+  const status = inspectHandoff(envelope.passport.jobRef, purpose);
+  return res.json({
+    ok: true,
+    jobRef: envelope.passport.jobRef,
+    purpose,
+    ...status,
+    expiresAt: status.expiresAt?.toISOString(),
   });
 });
 
