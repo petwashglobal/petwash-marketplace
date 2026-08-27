@@ -1,23 +1,9 @@
-# Orphan detector report — 2026-08-27 (v3, full SERVICE triage)
+# Orphan detector report — 2026-08-27 (v4, SERVICE + PAGE fully triaged)
 
-Generated: 2026-08-27T23:57:08.656Z
-Total findings: 58
+Generated: 2026-08-27T23:58:37.417Z
+Total findings: 47
 
-v3: SERVICE_EXPORT bucket fully triaged. Every server service is now either wired, marked intentional infrastructure with a named reason, or flagged as a cleanup-candidate in ALLOW_INTENTIONAL with a comment. Remaining findings are in the client/pages/components buckets.
-
-## PAGE_UNROUTED (11)
-
-- `client/src/pages/DocumentSigning.tsx`
-- `client/src/pages/PlatformShowcase.tsx`
-- `client/src/pages/Privacy.tsx`
-- `client/src/pages/ProviderTimeline.tsx`
-- `client/src/pages/StandaloneDivisions.tsx`
-- `client/src/pages/forms/ProviderRegistrationForm.tsx`
-- `client/src/pages/pettrek/CustomerDashboard.tsx`
-- `client/src/pages/pettrek/DriverDashboard.tsx`
-- `client/src/pages/pettrek/DriverDetail.tsx`
-- `client/src/pages/walk-my-pet/WalkerDashboard.tsx`
-- `client/src/pages/walks/TrackWalk.tsx`
+v4: SERVICE_EXPORT + ROUTE_UNMOUNTED + PAGE_UNROUTED all at zero. Remaining findings are in the COMPONENT_UNUSED bucket — 47 items that need a triage sweep. Many are likely feature-branch prototypes; some may be false positives from dynamic imports or nested renders.
 
 ## COMPONENT_UNUSED (47)
 

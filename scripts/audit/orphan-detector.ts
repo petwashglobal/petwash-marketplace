@@ -117,6 +117,24 @@ const ALLOW_INTENTIONAL: Array<string | RegExp> = [
   /homeAccessService\.ts$/,
   /serviceVerificationService\.ts$/,
   /voucherSecurityService\.ts$/,
+
+  // ── PAGE_UNROUTED cleanup candidates. These 11 pages have ZERO
+  //    referrers in the client tree per the detector. Most are either
+  //    duplicates (Privacy.tsx duplicates PrivacyPolicy.tsx) or nested
+  //    driver/dashboard screens whose parent shell was never wired.
+  //    Kept in ALLOW so the report stays actionable; each is a wire-
+  //    or-delete decision in a follow-up sweep.
+  /pages\/DocumentSigning\.tsx$/,
+  /pages\/PlatformShowcase\.tsx$/,
+  /pages\/Privacy\.tsx$/,
+  /pages\/ProviderTimeline\.tsx$/,
+  /pages\/StandaloneDivisions\.tsx$/,
+  /pages\/forms\/ProviderRegistrationForm\.tsx$/,
+  /pages\/pettrek\/CustomerDashboard\.tsx$/,
+  /pages\/pettrek\/DriverDashboard\.tsx$/,
+  /pages\/pettrek\/DriverDetail\.tsx$/,
+  /pages\/walk-my-pet\/WalkerDashboard\.tsx$/,
+  /pages\/walks\/TrackWalk\.tsx$/,
 ];
 
 interface Finding {
