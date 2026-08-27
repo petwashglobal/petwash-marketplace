@@ -27,6 +27,7 @@ import {
   ArrowLeft, Receipt, ShoppingBag, Droplets, Gift, Wallet, Dog, Footprints,
   GraduationCap, Loader2, ChevronRight, FileText, ShieldCheck, RefreshCw,
 } from 'lucide-react';
+import { EgiftBalanceCard } from '@/components/egift/EgiftBalanceCard';
 
 const GREEN = '#063B22';
 const GOLD = '#D6B56D';
@@ -410,6 +411,15 @@ export function MyTransactionDetail() {
             </span>
             <ChevronRight className="w-4 h-4" style={{ color: MUTED, transform: isHe ? 'scaleX(-1)' : undefined }} />
           </button>
+        )}
+
+        {/* eGift live balance — CEO §31: reserved value MUST be visible.
+            Only surfaces on the customer's own eGift purchase row where
+            the sourceId is the egift external id. */}
+        {source === 'egift_guest_orders_purchase' && sourceId && (
+          <div className="mt-4">
+            <EgiftBalanceCard egiftId={String(sourceId)} />
+          </div>
         )}
 
         {/* Money */}
