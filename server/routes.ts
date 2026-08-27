@@ -105,6 +105,9 @@ import adminProviderReconRoutes from "./routes/admin-provider-recon";
 // PetWash JobPassport — CEO 2026-08-27 chain-of-custody workstream.
 // READ-ONLY composer over existing authorities (§60 Phase 1).
 import jobPassportRoutes from "./routes/job-passport";
+// PetWash FiscalTransactionPassport — CEO 2026-08-27 fiscal directive.
+// READ-ONLY composer over existing SUMIT / booking / order authorities.
+import fiscalPassportRoutes from "./routes/fiscal-passport";
 // Provider earnings — canonical expected/pending/available/paid buckets.
 // READ-ONLY. Coexists with /api/provider-dashboard/v2/earnings.
 import providerEarningsTruthRoutes from "./routes/provider-earnings-truth";
@@ -12919,6 +12922,8 @@ self.addEventListener('notificationclick', (event) => {
   // /api/jobs/* — READ-ONLY JobPassport composer. Authenticated only;
   // the composer's per-vertical joins enforce participant scope.
   app.use('/api/jobs', validateFirebaseToken, apiLimiter, jobPassportRoutes);
+  // /api/fiscal/* — customer + admin fiscal passport read model.
+  app.use('/api/fiscal', validateFirebaseToken, apiLimiter, fiscalPassportRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
   app.use('/api/admin/staff', apiLimiter, adminStaffRoutes);
