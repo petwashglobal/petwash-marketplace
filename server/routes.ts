@@ -102,6 +102,9 @@ import legalReconciliationRoutes from "./routes/legal-reconciliation";
 // symptom is "approved provider is invisible to search/booking". Repair
 // is a separate CEO-approved dry-run/apply command.
 import adminProviderReconRoutes from "./routes/admin-provider-recon";
+// PetWash JobPassport — CEO 2026-08-27 chain-of-custody workstream.
+// READ-ONLY composer over existing authorities (§60 Phase 1).
+import jobPassportRoutes from "./routes/job-passport";
 // Provider earnings — canonical expected/pending/available/paid buckets.
 // READ-ONLY. Coexists with /api/provider-dashboard/v2/earnings.
 import providerEarningsTruthRoutes from "./routes/provider-earnings-truth";
@@ -12913,6 +12916,9 @@ self.addEventListener('notificationclick', (event) => {
   app.use('/api/admin', validateFirebaseToken, apiLimiter, legalReconciliationRoutes);
   // /api/admin/approved-provider-recon — READ-ONLY §21 diagnostic.
   app.use('/api/admin', validateFirebaseToken, apiLimiter, adminProviderReconRoutes);
+  // /api/jobs/* — READ-ONLY JobPassport composer. Authenticated only;
+  // the composer's per-vertical joins enforce participant scope.
+  app.use('/api/jobs', validateFirebaseToken, apiLimiter, jobPassportRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminOctopusRoutes);
   app.use('/api/admin/octopus', apiLimiter, adminBookkeepingRoutes);
   app.use('/api/admin/staff', apiLimiter, adminStaffRoutes);
