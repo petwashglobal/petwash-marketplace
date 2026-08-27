@@ -19,7 +19,7 @@ import { PetWashLogo } from '@/components/brand/PetWashLogo';
 import { useLanguage } from '@/lib/languageStore';
 import {
   ArrowLeft, Loader2, ShieldCheck, Syringe, Cake, Stethoscope, Cpu,
-  Droplets, CalendarClock, Sparkles,
+  Droplets, CalendarClock, Sparkles, Printer,
 } from 'lucide-react';
 
 const GREEN = '#063B22';
@@ -346,6 +346,16 @@ export default function PetPassport() {
             </p>
           </div>
         )}
+
+        {/* Print / Save as PDF — routes to the printable cover */}
+        <button
+          onClick={() => navigate(`/pets/${pet.id}/passport/print`)}
+          className="mt-4 w-full flex items-center justify-center gap-2 rounded-full py-3 font-bold"
+          style={{ background: GREEN, color: GOLD }}
+        >
+          <Printer className="w-4 h-4" />
+          {tr('Print / Save as PDF', 'הדפסה / שמירה כ־PDF')}
+        </button>
 
         {/* Passport ID footer */}
         <div className="mt-4 text-center">

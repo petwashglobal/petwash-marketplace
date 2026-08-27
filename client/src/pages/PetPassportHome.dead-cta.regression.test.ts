@@ -4,12 +4,16 @@ import { join } from 'path';
 
 const SRC = readFileSync(join(__dirname, 'PetPassportHome.tsx'), 'utf8');
 
-// Updated 2026-08-18 COMPETITIVE (WhatIDog gap): Vaccines / Reminders / Vet
-// now navigate to /pets where the per-pet PetHealthPanel already implements
-// nextVaccineDate + enableVaccineReminders + /api/pets/:id/health-events.
-// Insurance and Clinics stay on the honest coming-soon toast until we ship
-// those surfaces.
-describe('PetPassportHome.tsx CTA wiring', () => {
+/**
+ * 2026-08-27 wire-only sweep: the earlier discipline was "unmapped tiles show
+ * an honest toast, never bait-and-switch to /pets". That was the right
+ * transitional stance. This turn we finish the job: every tile that had no
+ * real destination is REMOVED entirely, so no user ever clicks into nothing.
+ *
+ * Insurance tile and Clinics quick-action are GONE. This test pins that they
+ * stay gone until real destinations ship.
+ */
+describe('PetPassportHome.tsx CTA wiring — every visible tile lands on a real screen', () => {
   it('Vaccines tile navigates to /pets (real PetHealthPanel is there)', () => {
     expect(SRC).toMatch(/label=\{tr\('חיסונים', 'Vaccines'\)\}\s*onClick=\{\(\) => navigate\(['"]\/pets['"]\)\}/);
   });
@@ -22,15 +26,32 @@ describe('PetPassportHome.tsx CTA wiring', () => {
     expect(SRC).toMatch(/label=\{tr\('וטרינר', 'Vet'\)\}\s*onClick=\{\(\) => navigate\(['"]\/pets['"]\)\}/);
   });
 
-  it('Insurance tile stays on honest coming-soon toast', () => {
-    expect(SRC).toMatch(/label=\{tr\('ביטוחים', 'Insurance'\)\}\s*onClick=\{\(\) => notReady\('ביטוחים', 'Insurance'\)\}/);
+  it('Medical records tile navigates to /documents (real document vault)', () => {
+    expect(SRC).toMatch(/label=\{tr\('רשומות רפואיות', 'Medical records'\)\}\s*onClick=\{\(\) => navigate\(['"]\/documents['"]\)\}/);
   });
 
-  it('Clinics quick-action stays on honest coming-soon toast', () => {
-    expect(SRC).toMatch(/label=\{tr\('בתי חולים', 'Clinics'\)\}\s*onClick=\{\(\) => notReady\('בתי חולים', 'Clinics'\)\}/);
+  it('Shop quick-action navigates to /shop (real store)', () => {
+    expect(SRC).toMatch(/label=\{tr\('חנות', 'Shop'\)\}\s*onClick=\{\(\) => navigate\(['"]\/shop['"]\)\}/);
   });
 
-  it('notReady helper still surfaces a bilingual coming-soon toast', () => {
-    expect(SRC).toMatch(/description: tr\('בקרוב — עדיין בפיתוח', 'Coming soon — still in development'\)/);
+  // ── Anti-regression: the deleted tiles must not come back as toast-gated
+  //    dead-ends. If either returns, it must return with a real navigate().
+  it('Insurance tile is removed (no dead notReady/coming-soon)', () => {
+    expect(SRC).not.toMatch(/label=\{tr\('ביטוחים', 'Insurance'\)\}/);
+  });
+
+  it('Clinics quick-action is removed (no dead notReady/coming-soon)', () => {
+    expect(SRC).not.toMatch(/label=\{tr\('בתי חולים', 'Clinics'\)\}/);
+  });
+
+  it('No notReady helper survives — every tile must go somewhere real', () => {
+    // The helper function definition and every call site are gone. Comments
+    // in-file may still reference the word to explain the deletion; only
+    // executable syntax (a `const notReady =`, `function notReady`, or an
+    // `onClick={... => notReady(`) is banned.
+    expect(SRC).not.toMatch(/const\s+notReady\s*=/);
+    expect(SRC).not.toMatch(/function\s+notReady\b/);
+    expect(SRC).not.toMatch(/onClick=\{[^}]*notReady\s*\(/);
+    expect(SRC).not.toMatch(/description:\s*tr\(['"]בקרוב/);
   });
 });
