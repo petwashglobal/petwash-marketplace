@@ -42,15 +42,32 @@ describe('petwash-preflight — CTA scanner (CEO §73)', () => {
     }
   });
 
-  it('pins the ProviderOnboarding.tsx anchors (submit + background consent + bank section + IBAN)', () => {
+  it('pins the ProviderOnboarding.tsx anchors (submit + background consent + bank section + IBAN + driving licence)', () => {
     for (const anchor of [
       'button-submit-application',
       'checkbox-background-consent',
       'section-bank-payout',
       'input-bank-iban',
+      // CEO §35 driving-licence conditional block.
+      'section-driving-license',
+      'input-driving-license-number',
+      'input-driving-license-expiry',
     ]) {
       expect(SCANNER).toContain(anchor);
     }
+  });
+
+  it('pins the Pets.tsx medical-share consent toggle (CEO §22)', () => {
+    // Without this control the KYA server enforcement chain is dark.
+    expect(SCANNER).toContain('consent-toggle-');
+    expect(SCANNER).toContain('consent-row-');
+  });
+
+  it('pins the booking-flow booking-scoped share checkboxes (CEO §5)', () => {
+    expect(SCANNER).toContain('section-booking-scoped-share-walker');
+    expect(SCANNER).toContain('checkbox-booking-scoped-share-walker');
+    expect(SCANNER).toContain('section-booking-scoped-share-sitter');
+    expect(SCANNER).toContain('checkbox-booking-scoped-share-sitter');
   });
 
   it('pins the ChooseMode CUSTOMER_FALLBACK guard against a /prestige/home regression', () => {

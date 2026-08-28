@@ -272,6 +272,37 @@ async function checkSignupOnboardingCTAs(): Promise<GuardResult> {
         { key: 'data-testid="checkbox-background-consent"', why: 'background-check consent (§73 #10)' },
         { key: 'data-testid="section-bank-payout"',      why: 'bank / payout section (§73 #12)' },
         { key: 'data-testid="input-bank-iban"',          why: 'IBAN input (§73 #12)' },
+        // CEO §35 (2026-08-28) — driving-license inputs must remain
+        // present for driver applicants; a refactor that drops the
+        // section leaves drivers submitting empty licence data again.
+        { key: 'data-testid="section-driving-license"',        why: 'driver-only licence section (§35)' },
+        { key: 'data-testid="input-driving-license-number"',   why: 'driver licence number input (§35)' },
+        { key: 'data-testid="input-driving-license-expiry"',   why: 'driver licence expiry input (§35)' },
+      ],
+    },
+    {
+      path: './client/src/pages/Pets.tsx',
+      anchors: [
+        // CEO §22 (2026-08-28) — owner medical-share consent toggle.
+        // The whole KYA server enforcement chain is inert if this
+        // control disappears from the pet card.
+        { key: 'data-testid={`consent-toggle-${pet.id}`}', why: 'medical-share consent toggle (§22)' },
+        { key: 'data-testid={`consent-row-${pet.id}`}',    why: 'consent row anchor (§22 E2E)' },
+      ],
+    },
+    {
+      path: './client/src/pages/walk-my-pet/BookingFlow.tsx',
+      anchors: [
+        // CEO §5 (2026-08-28) — booking-scoped medical share checkbox.
+        { key: 'data-testid="section-booking-scoped-share-walker"',  why: 'booking-scoped share section (§5)' },
+        { key: 'data-testid="checkbox-booking-scoped-share-walker"', why: 'booking-scoped share checkbox (§5)' },
+      ],
+    },
+    {
+      path: './client/src/pages/sitter-suite/BookingFlow.tsx',
+      anchors: [
+        { key: 'data-testid="section-booking-scoped-share-sitter"',  why: 'booking-scoped share section (§5)' },
+        { key: 'data-testid="checkbox-booking-scoped-share-sitter"', why: 'booking-scoped share checkbox (§5)' },
       ],
     },
     {
