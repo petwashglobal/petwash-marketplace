@@ -339,24 +339,36 @@ export default function SitterBookingFlow() {
         description: "השמרטף/ית יקבל/תקבל הודעה. ממתינים לאישור.",
       });
     } catch (error: any) {
-      const errorMsg = error.message || "";
-      if (errorMsg.includes("Authentication") || errorMsg.includes("401") || errorMsg.includes("sign in")) {
+      // CEO §60 (2026-08-28) — read the stable errorCode off the
+      // ApiError body. Never render error.message verbatim (it carries
+      // "400: ..." + the server's copy). CEO §5 CARE_INFO_REQUIRED has
+      // its own friendly HE/EN copy so the customer knows why the
+      // booking couldn't proceed.
+      const status = Number(error?.status || 0);
+      const code = String(error?.body?.errorCode || '');
+      if (status === 401) {
         toast({
           title: "יש להתחבר תחילה",
           description: "כדי לבצע הזמנה, יש להתחבר לחשבון שלך.",
           variant: "destructive",
         });
         setTimeout(() => setLocation("/signin"), 2000);
-      } else if (errorMsg.includes("loyalty") || errorMsg.includes("403")) {
+      } else if (status === 403) {
         toast({
           title: "נדרשת חברות במועדון",
           description: "שירות זה זמין לחברי מועדון ⁦PetWash™⁩. הצטרפו עכשיו!",
           variant: "destructive",
         });
+      } else if (code === 'CARE_INFO_REQUIRED') {
+        toast({
+          title: "נדרש שיתוף מידע רפואי",
+          description: "השירות הזה דורש שיתוף פרטים רפואיים לשם השירות. סמן/י את שיתוף המידע הרפואי לשהות זו ונסה/י שוב, או בחר/י שירות אחר. Sharing medical information is required for this service — tick the booking-scoped share option and try again, or pick another service.",
+          variant: "destructive",
+        });
       } else {
         toast({
           title: "שגיאה ביצירת הזמנה",
-          description: errorMsg || "אירעה שגיאה. אין חיוב. נסו שוב.",
+          description: "אירעה שגיאה. אין חיוב. נסו שוב.",
           variant: "destructive",
         });
       }

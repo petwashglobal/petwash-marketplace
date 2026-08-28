@@ -375,11 +375,19 @@ export default function WalkBookingFlow() {
         description: "ממתינים לאישור המוליך/ה. תקבל/י התראה כשיהיה התאמה.",
       });
     } catch (error: any) {
-      toast({
-        title: "שגיאה ביצירת הזמנה",
-        description: error.message || "אירעה שגיאה. אין חיוב. נסה/י שוב.",
-        variant: "destructive",
-      });
+      // CEO §60 (2026-08-28) — never render `error.message` verbatim.
+      // Read the stable errorCode from the ApiError body and map to
+      // friendly HE/EN copy. Unknown codes fall back to a neutral
+      // message. CEO §5 CARE_INFO_REQUIRED has its own copy so the
+      // customer knows why the booking couldn't proceed.
+      const code = String(error?.body?.errorCode || '');
+      let title = "שגיאה ביצירת הזמנה";
+      let description = "אירעה שגיאה. אין חיוב. נסה/י שוב.";
+      if (code === 'CARE_INFO_REQUIRED') {
+        title = "נדרש שיתוף מידע רפואי";
+        description = "השירות הזה דורש שיתוף פרטים רפואיים לשם ההליכה. סמן/י \"שיתוף פרטים רפואיים לטיול הזה בלבד\" ונסה/י שוב, או בחר/י שירות אחר. Sharing medical information is required for this service — tick \"Share medical details for this walk only\" and try again, or pick another service.";
+      }
+      toast({ title, description, variant: "destructive" });
     } finally {
       setIsSubmitting(false);
     }
