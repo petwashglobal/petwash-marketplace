@@ -306,6 +306,17 @@ async function checkSignupOnboardingCTAs(): Promise<GuardResult> {
       ],
     },
     {
+      // CEO §46 (2026-08-28) — per-section state list on the
+      // applicant's status page. Without this the applicant loses
+      // section-by-section visibility and reverts to a single opaque
+      // "under review" state.
+      path: './client/src/pages/ProviderApplicationStatus.tsx',
+      anchors: [
+        { key: 'data-testid="section-status-list"', why: 'per-section state list (§46)' },
+        { key: 'data-testid={`section-status-row-${key}`}', why: 'per-row section state anchor (§46)' },
+      ],
+    },
+    {
       path: './client/src/pages/ChooseMode.tsx',
       anchors: [
         // Prestige is an ENTITLEMENT, not a workspace. The customer

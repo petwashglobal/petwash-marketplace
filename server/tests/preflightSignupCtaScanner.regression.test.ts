@@ -70,6 +70,11 @@ describe('petwash-preflight — CTA scanner (CEO §73)', () => {
     expect(SCANNER).toContain('checkbox-booking-scoped-share-sitter');
   });
 
+  it('pins the ProviderApplicationStatus per-section state list (CEO §46)', () => {
+    expect(SCANNER).toContain('section-status-list');
+    expect(SCANNER).toContain('section-status-row-');
+  });
+
   it('pins the ChooseMode CUSTOMER_FALLBACK guard against a /prestige/home regression', () => {
     // The regex must exist (case sensitive) so a re-introduction of the
     // old string trips the scanner.
