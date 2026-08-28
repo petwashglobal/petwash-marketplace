@@ -27,7 +27,9 @@ describe('Attention feed — Pet Parent side (§14)', () => {
     const it0 = must(bookingItem('pet_parent', row('pending'), false));
     expect(it0.nextAction).toBe('view');
     expect(it0.priority).toBe('due_soon');
-    expect(it0.destination).toBe('/bookings/BR-TEST-1');
+    // CEO §23 destination discipline — the mounted route is
+    // /bookings, with ?requestId=… highlighting the row.
+    expect(it0.destination).toBe('/bookings?requestId=BR-TEST-1');
     expect(it0.moneySummary).toBeUndefined();
   });
 
@@ -35,7 +37,8 @@ describe('Attention feed — Pet Parent side (§14)', () => {
     const it0 = must(bookingItem('pet_parent', row('payment_pending'), false));
     expect(it0.nextAction).toBe('pay');
     expect(it0.priority).toBe('urgent');
-    expect(it0.destination).toBe('/bookings/BR-TEST-1');
+    // §23: /booking/confirmation/:id is the pay/track/confirmation landing.
+    expect(it0.destination).toBe('/booking/confirmation/BR-TEST-1');
     expect(it0.moneySummary?.amountCents).toBe(12000);
     expect(it0.moneySummary?.currency).toBe('ILS');
   });
@@ -43,13 +46,13 @@ describe('Attention feed — Pet Parent side (§14)', () => {
   it('C. confirmed → TRACK / booking details', () => {
     const it0 = must(bookingItem('pet_parent', row('confirmed'), false));
     expect(it0.nextAction).toBe('track');
-    expect(it0.destination).toBe('/bookings/BR-TEST-1');
+    expect(it0.destination).toBe('/booking/confirmation/BR-TEST-1');
   });
 
   it('E. service in-progress → TRACK', () => {
     const it0 = must(bookingItem('pet_parent', row('in_progress'), false));
     expect(it0.nextAction).toBe('track');
-    expect(it0.destination).toBe('/bookings/BR-TEST-1');
+    expect(it0.destination).toBe('/booking/confirmation/BR-TEST-1');
   });
 
   it('F. provider marked complete → CONFIRM (urgent)', () => {
@@ -62,7 +65,9 @@ describe('Attention feed — Pet Parent side (§14)', () => {
     const it0 = must(bookingItem('pet_parent', row('completed'), false));
     expect(it0.nextAction).toBe('review');
     expect(it0.priority).toBe('informational');
-    expect(it0.destination).toBe('/bookings/BR-TEST-1/review');
+    // §23: /marketplace/review/:id is the mounted review page (the
+    // old /bookings/:id/review was never mounted).
+    expect(it0.destination).toBe('/marketplace/review/BR-TEST-1');
   });
 
   it('H. unsupported status → null (empty state — CEO §14 H)', () => {

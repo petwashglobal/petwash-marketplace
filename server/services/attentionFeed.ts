@@ -16,9 +16,9 @@
  * refactor needed later.
  */
 
-import { and, eq, inArray, desc } from 'drizzle-orm';
+import { and, eq, gt, inArray, desc, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { bookingRequests } from '@shared/schema';
+import { bookingRequests, eVouchers, providerApplications } from '@shared/schema';
 import { logger } from '../lib/logger';
 import type {
   AttentionActor,
@@ -222,15 +222,156 @@ function sortItems(items: AttentionItem[]): AttentionItem[] {
   });
 }
 
+/**
+ * CEO §80 Phase 1 Journey Brain probe — eGift value the pet parent owns
+ * and can still redeem. Reads canonical e_vouchers (owner_uid = userId,
+ * status CLAIMED/ACTIVE, remaining_amount > 0). NEVER mutates. NEVER
+ * invents balance — a bad row → dropped from the projection, so the
+ * client can't render "you have money" for money that isn't there.
+ */
+async function petParentEgiftItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const rows = await db
+      .select({
+        id: eVouchers.id,
+        remainingAmount: eVouchers.remainingAmount,
+        currency: eVouchers.currency,
+        expiresAt: eVouchers.expiresAt,
+        status: eVouchers.status,
+        codeLast4: eVouchers.codeLast4,
+      })
+      .from(eVouchers)
+      .where(and(
+        eq(eVouchers.ownerUid, userId),
+        inArray(eVouchers.status, ['CLAIMED', 'ACTIVE'] as any),
+        gt(eVouchers.remainingAmount, '0' as any),
+      ))
+      .orderBy(desc(eVouchers.createdAt))
+      .limit(10);
+    const nowMs = Date.now();
+    return rows
+      .map((r): AttentionItem | null => {
+        const remainingIls = Number(r.remainingAmount);
+        if (!Number.isFinite(remainingIls) || remainingIls <= 0) return null;
+        const amountCents = Math.round(remainingIls * 100);
+        const expiresAt = r.expiresAt ? new Date(r.expiresAt).toISOString() : undefined;
+        const expiringSoon = r.expiresAt
+          ? (new Date(r.expiresAt).getTime() - nowMs) < 30 * 24 * 60 * 60 * 1000
+          : false;
+        const priority: AttentionItem['priority'] = expiringSoon ? 'due_soon' : 'informational';
+        return {
+          id: `egift:${r.id}`,
+          actor: 'pet_parent',
+          domain: 'egift',
+          entityId: r.id,
+          priority,
+          title: he
+            ? (expiringSoon ? 'eGift שתוקפו פג בקרוב' : 'יש לך יתרת eGift')
+            : (expiringSoon ? 'eGift expires soon' : 'You have eGift balance'),
+          reason: he
+            ? `יתרה זמינה: ₪${remainingIls.toFixed(2)}${expiresAt ? ' — יש לנצל לפני התפוגה' : ''}`
+            : `Available: ₪${remainingIls.toFixed(2)}${expiresAt ? ' — use it before it expires' : ''}`,
+          nextAction: 'view',
+          destination: `/egift/balance/${r.id}`,
+          dueAt: expiresAt,
+          moneySummary: {
+            amountCents,
+            currency: 'ILS',
+            label: he ? 'יתרת eGift' : 'eGift balance',
+          },
+        };
+      })
+      .filter((x): x is AttentionItem => x !== null);
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] pet-parent egift probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
+/**
+ * CEO §51 provider document expiry probe. Insurance + KYC doc expiry
+ * within 30 days becomes a due_soon item; already expired becomes
+ * urgent. Reads provider_applications by user_id and picks the most
+ * recent row so a resubmission doesn't double-alert.
+ */
+async function providerDocExpiryItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const rows = await db
+      .select({
+        id: providerApplications.id,
+        applicationId: providerApplications.applicationId,
+        insuranceExpiresAt: providerApplications.insuranceExpiresAt,
+        kycDocumentExpiry: providerApplications.kycDocumentExpiry,
+      })
+      .from(providerApplications)
+      .where(eq(providerApplications.userId, userId))
+      .orderBy(desc(providerApplications.createdAt))
+      .limit(1);
+    if (!rows.length) return [];
+    const r = rows[0];
+    const nowMs = Date.now();
+    const items: AttentionItem[] = [];
+    const emitExpiry = (
+      label: 'insurance' | 'kyc_document',
+      when: Date | string | null,
+    ): void => {
+      if (!when) return;
+      const t = new Date(when).getTime();
+      if (!Number.isFinite(t)) return;
+      const diffMs = t - nowMs;
+      const withinDays = diffMs / (24 * 60 * 60 * 1000);
+      // Only surface once inside 30 days OR already expired.
+      if (withinDays > 30) return;
+      const isExpired = diffMs <= 0;
+      const dueAtIso = new Date(t).toISOString();
+      const daysCopy = Math.max(0, Math.round(withinDays));
+      const isInsurance = label === 'insurance';
+      items.push({
+        id: `kyc:${r.id}:${label}`,
+        actor: 'provider',
+        domain: 'kyc',
+        entityId: String(r.applicationId ?? r.id),
+        priority: isExpired ? 'urgent' : 'due_soon',
+        title: he
+          ? (isInsurance
+              ? (isExpired ? 'ביטוח שלכם פג תוקף' : 'ביטוח שלכם עומד לפוג')
+              : (isExpired ? 'מסמך זיהוי פג תוקף' : 'מסמך זיהוי עומד לפוג'))
+          : (isInsurance
+              ? (isExpired ? 'Your insurance has expired' : 'Your insurance expires soon')
+              : (isExpired ? 'Your ID document has expired' : 'Your ID document expires soon')),
+        reason: he
+          ? (isExpired ? 'יש לחדש כדי להמשיך לקבל הזמנות' : `נשארו ${daysCopy} ימים — חדשו כדי להמשיך לקבל הזמנות`)
+          : (isExpired ? 'Renew to keep receiving bookings' : `${daysCopy} days left — renew to keep receiving bookings`),
+        nextAction: 'upload',
+        destination: '/provider-application/status',
+        dueAt: dueAtIso,
+      });
+    };
+    emitExpiry('insurance', r.insuranceExpiresAt as any);
+    emitExpiry('kyc_document', r.kycDocumentExpiry as any);
+    return items;
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] provider doc-expiry probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
 export async function composeAttentionFeed(actor: AttentionActor, userId: string, he: boolean): Promise<AttentionFeed> {
   if (!userId) {
     return { actor, items: [], composedAt: new Date().toISOString() };
   }
+  // CEO §2 + §80 Phase 1 — one composer, many probes. Each probe is
+  // independently fail-CLOSED (returns [] on error) so a partial DB
+  // outage never nukes the whole feed. Client contract is stable: the
+  // items array is always well-formed.
   const items = actor === 'pet_parent'
-    ? await petParentBookingItems(userId, he)
-    : await providerBookingItems(userId, he);
-  // TODO(next-domain-probes): walk / sitting / academy / shop / wallet
-  // / egift / prestige / paw_finder / pet_passport / kyc. Each probe
-  // returns AttentionItem[]; the composer concatenates + sorts.
+    ? [
+        ...await petParentBookingItems(userId, he),
+        ...await petParentEgiftItems(userId, he),
+      ]
+    : [
+        ...await providerBookingItems(userId, he),
+        ...await providerDocExpiryItems(userId, he),
+      ];
   return { actor, items: sortItems(items), composedAt: new Date().toISOString() };
 }
