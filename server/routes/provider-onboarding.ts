@@ -6,6 +6,15 @@ import { randomBytes, randomInt, createHash } from 'crypto';
 import { SUPPORT_EMAIL } from '@shared/support-contact';
 import { db } from '../db';
 import { providerInviteCodes, providerApplications, providerApprovalQueue, users } from '@shared/schema';
+// Provider onboarding lives across TWO tables (historical split, CEO §36
+// review 2026-08-28): drafts land in `provider_applicants` via
+// /api/provider-applications/draft, submissions land in
+// `provider_applications` here. Once a submission succeeds the draft row
+// is stale — it will re-hydrate the wizard on a second visit with data
+// the applicant has already sent, and (worse) admins reviewing the app
+// would see two conflicting records for one person. Import the draft
+// table so the /apply success path can delete it.
+import { providerApplicants } from '@shared/schema-enterprise';
 import { systemRoles, userRoleAssignments } from '@shared/schema-enterprise';
 import { eq, and, desc, sql, inArray, ne } from 'drizzle-orm';
 import { auth, storage } from '../lib/firebase-admin';
@@ -1263,6 +1272,35 @@ router.post('/apply', wrapUpload(upload.fields([
       status: 'pending',
       message: 'Application submitted. Your documents are being reviewed - we will get back to you within 24 hours.',
     });
+
+    // CEO §36 (2026-08-28): the wizard writes drafts to `provider_applicants`
+    // via /api/provider-applications/draft (a DIFFERENT table from the one
+    // we just inserted into). Once the submit lands, that draft row is
+    // stale — a second visit would re-hydrate the wizard with the
+    // already-submitted data and give the applicant a false "there's more
+    // to do" impression, and admins would see two conflicting records for
+    // the same person. Clean up the draft, keyed on Firebase UID so it
+    // only touches THIS user's row. Fire-and-forget (response already
+    // sent) with a code-guarded catch so a missing table on an older
+    // deploy never surfaces as an error.
+    db.delete(providerApplicants)
+      .where(eq(providerApplicants.userId, authenticatedUser.uid))
+      .then(() => {
+        logger.info('[Provider Onboarding] Draft cleaned up after submit', {
+          uid: authenticatedUser.uid, applicationId,
+        });
+      })
+      .catch((cleanupErr: any) => {
+        if (cleanupErr?.code === '42P01') {
+          logger.warn('[Provider Onboarding] Draft cleanup skipped — provider_applicants table absent (older deploy)', {
+            uid: authenticatedUser.uid,
+          });
+        } else {
+          logger.error('[Provider Onboarding] Draft cleanup failed after submit', {
+            uid: authenticatedUser.uid, applicationId, code: cleanupErr?.code, error: cleanupErr?.message,
+          });
+        }
+      });
 
     // ── KYC2026 async verification (fire-and-forget) ──────────────────────────
     // Capture request context before async boundary
