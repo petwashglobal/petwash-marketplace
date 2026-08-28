@@ -115,6 +115,14 @@ interface KycApplication {
   kycDocumentExpiry?: string | null;
   drivingRecordNotes?: string | null;      // JSON string
   drivingRecordUrl?: string | null;
+  // CEO §73 #12 (2026-08-28): bank / payout target. Migration 0133.
+  // Approvals used to write a payout row with a null IBAN — every
+  // approved provider needed a manual DB touch to become payable.
+  bankName?: string | null;
+  bankBranchCode?: string | null;
+  bankIban?: string | null;
+  bankAccountHolder?: string | null;
+  bankDetailsAt?: string | null;
 }
 
 interface KycDetail {
@@ -936,6 +944,43 @@ export default function ProviderKycReview() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* CEO §73 #12 (2026-08-28): Bank / Payout target. Populated
+                  at intake via /apply; super_app_payouts.provider_bank_iban
+                  /provider_bank_name derive from these. Absent-fields show
+                  as em-dashes so reviewers can quickly see who is missing
+                  bank details and cannot yet be paid out. */}
+              {(app.bankIban || app.bankName || app.bankBranchCode || app.bankAccountHolder) && (
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm text-muted-foreground uppercase tracking-wide">Bank / Payout</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                        <span className="text-muted-foreground">Bank</span>
+                        <span className="font-medium">{app.bankName || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2">
+                        <span className="text-muted-foreground">Branch code</span>
+                        <span className="font-medium">{app.bankBranchCode || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2 col-span-2">
+                        <span className="text-muted-foreground">IBAN</span>
+                        <span dir="ltr" className="font-mono text-xs">{app.bankIban || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2 col-span-2">
+                        <span className="text-muted-foreground">Account holder</span>
+                        <span className="font-medium">{app.bankAccountHolder || '—'}</span>
+                      </div>
+                      <div className="flex items-center justify-between bg-white rounded px-3 py-2 col-span-2">
+                        <span className="text-muted-foreground">Submitted</span>
+                        <span className="font-medium">{app.bankDetailsAt ? new Date(app.bankDetailsAt).toLocaleString() : '—'}</span>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
 
               {/* CEO §73 #16 (2026-08-28): driving-license card. Blob lives
                   in driving_record_notes as {licenseNumber, licenseClass,

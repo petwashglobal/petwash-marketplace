@@ -560,8 +560,37 @@ router.post('/apply', wrapUpload(upload.fields([
       drivingLicenseNumber,
       drivingLicenseClass,
       drivingLicenseExpiry,
+      // CEO §73 #12 (2026-08-28): bank / payout target. Client wizard
+      // section is a follow-up; server accepts the fields now so a
+      // rolling client update can land without a second deploy.
+      bankName: rawBankName,
+      bankBranchCode: rawBankBranchCode,
+      bankIban: rawBankIban,
+      bankAccountHolder: rawBankAccountHolder,
       traceId,
     } = req.body;
+
+    // ── Bank field normalisation ─────────────────────────────────────────
+    // IBAN: strip spaces + uppercase (canonical wire format is contiguous
+    // uppercase). Israeli IBANs are 23 chars — enforce a soft ceiling of
+    // 40 so a paste with a hidden prefix doesn't blow past the varchar,
+    // but stay lenient about country code (accept EU IBANs for future
+    // cross-border payouts). The 42P01/42703 pattern covers a missing
+    // column on an older deploy.
+    const bankIban: string | null = typeof rawBankIban === 'string' && rawBankIban.trim()
+      ? rawBankIban.replace(/\s+/g, '').toUpperCase().slice(0, 40)
+      : null;
+    const bankName: string | null = typeof rawBankName === 'string' && rawBankName.trim()
+      ? rawBankName.trim().slice(0, 120) : null;
+    const bankBranchCode: string | null = typeof rawBankBranchCode === 'string' && rawBankBranchCode.trim()
+      ? rawBankBranchCode.trim().slice(0, 20) : null;
+    const bankAccountHolder: string | null = typeof rawBankAccountHolder === 'string' && rawBankAccountHolder.trim()
+      ? rawBankAccountHolder.trim().slice(0, 200) : null;
+    // Stamp bankDetailsAt only when at least one bank field arrived —
+    // an empty submission (client not yet updated) leaves the timestamp
+    // null so admin can filter "bank details missing" via IS NULL.
+    const bankDetailsAt: Date | null =
+      (bankIban || bankName || bankBranchCode || bankAccountHolder) ? new Date() : null;
 
     const files = req.files as { [fieldname: string]: Express.Multer.File[] };
 
@@ -1151,6 +1180,40 @@ router.post('/apply', wrapUpload(upload.fields([
         } else {
           logger.error('[Provider Onboarding] Identity-hardening persist FAILED (not a migration issue) — encrypted ID / DOB NOT saved', {
             applicationId, code: identityPersistErr?.code, error: identityPersistErr?.message,
+          });
+        }
+      }
+    }
+
+    // ── Persist bank / payout target (best-effort, AFTER insert) ──
+    // Migration 0133 adds bank_name / bank_branch_code / bank_iban /
+    // bank_account_holder / bank_details_at to provider_applications.
+    // Same migration-window pattern as the attestation + identity blocks
+    // above: 42703 (undefined_column) → warn (columns will land soon);
+    // anything else → error (real persist failure). If the client
+    // hasn't been updated yet all four fields are null and the write
+    // is a no-op — bankDetailsAt only stamps when at least one field
+    // is present (see the normalisation block above).
+    if (application?.id && (bankIban || bankName || bankBranchCode || bankAccountHolder)) {
+      try {
+        await db
+          .update(providerApplications)
+          .set({
+            bankName,
+            bankBranchCode,
+            bankIban,
+            bankAccountHolder,
+            bankDetailsAt,
+          })
+          .where(eq(providerApplications.id, application.id));
+      } catch (bankPersistErr: any) {
+        if (bankPersistErr?.code === '42703') {
+          logger.warn('[Provider Onboarding] Bank/payout persist skipped — columns not migrated yet', {
+            applicationId, error: bankPersistErr?.message,
+          });
+        } else {
+          logger.error('[Provider Onboarding] Bank/payout persist FAILED (not a migration issue) — payout target NOT saved', {
+            applicationId, code: bankPersistErr?.code, error: bankPersistErr?.message,
           });
         }
       }

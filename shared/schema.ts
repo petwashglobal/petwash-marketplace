@@ -5316,6 +5316,16 @@ export const providerApplications = pgTable("provider_applications", {
   // osek_patur (עוסק פטור) | osek_murshe (עוסק מורשה) | company (חברה בע״מ) | not_registered.
   taxStatus: varchar("tax_status", { length: 20 }),
 
+  // CEO §73 #12 (2026-08-28): Bank / payout target for approved providers.
+  // Populated by the wizard at intake; super_app_payouts.provider_bank_iban /
+  // provider_bank_name derive from these. Migration 0133 — all nullable, so
+  // rolling deploys land server before client update.
+  bankName:            varchar("bank_name", { length: 120 }),
+  bankBranchCode:      varchar("bank_branch_code", { length: 20 }),
+  bankIban:            varchar("bank_iban", { length: 40 }),
+  bankAccountHolder:   varchar("bank_account_holder", { length: 200 }),
+  bankDetailsAt:       timestamp("bank_details_at"),
+
   // Additional Certifications
   certificationUrls: text("certification_urls").array(), // Pet first aid, training certs, etc
   certificationExpiryDates: text("certification_expiry_dates").array(), // Parallel array with expiry dates
