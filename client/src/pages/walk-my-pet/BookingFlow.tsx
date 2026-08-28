@@ -247,17 +247,32 @@ export default function WalkBookingFlow() {
       // leash. Send a structured petSafetySnapshot alongside the primary
       // fields so the server writes it into the booking record (and the
       // provider's Today card can render it).
-      const petSafetySnapshot = {
+      //
+      // PRIVACY GATE (CEO §22 medical share consent): the SAFETY fields —
+      // aggression / escape risk / handling — protect the walker from
+      // physical harm and are ALWAYS sent. The MEDICAL fields —
+      // allergies, medications, vet contact — leave the owner's browser
+      // ONLY when medicalShareConsent === true. Mirrors the pattern
+      // sitter-suite.ts already applies at the availability engine
+      // (line 820: `pet.medicalShareConsent ? pet.specialNeeds : ...`).
+      const medicalConsented = primaryPet?.medicalShareConsent === true;
+      const petSafetySnapshot: Record<string, unknown> = {
         aggressionWarning:      primaryPet?.aggressionWarning ?? null,
         escapeRisk:             !!primaryPet?.escapeRisk,
         behaviourNotes:         primaryPet?.behaviourNotes ?? '',
         feedingInstructions:    primaryPet?.feedingInstructions ?? '',
         handlingInstructions:   primaryPet?.handlingInstructions ?? '',
         sensitiveSkin:          !!primaryPet?.sensitiveSkin,
-        allergies:              primaryPet?.allergies ?? '',
-        medicationNotes:        primaryPet?.medications ?? primaryPet?.medicalNotes ?? '',
-        vetName:                primaryPet?.vetName ?? '',
-        vetPhone:               primaryPet?.vetPhone ?? '',
+        // Signal whether the medical block is present, so the walker's
+        // Today card can render "medical data withheld — ask owner"
+        // instead of hallucinating empty allergies.
+        medicalConsented,
+        ...(medicalConsented ? {
+          allergies:            primaryPet?.allergies ?? '',
+          medicationNotes:      primaryPet?.medications ?? primaryPet?.medicalNotes ?? '',
+          vetName:              primaryPet?.vetName ?? '',
+          vetPhone:             primaryPet?.vetPhone ?? '',
+        } : {}),
       };
 
       const payload = {

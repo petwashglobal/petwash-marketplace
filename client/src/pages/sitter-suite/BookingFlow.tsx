@@ -238,17 +238,27 @@ export default function SitterBookingFlow() {
       // travelled; the structured safety flags on the KYA pet doc were
       // silently invisible. Mirrors the walk-my-pet payload change.
       const primaryPet: any = pets.find((p: any) => p.id === selectedPetIds[0]);
-      const petSafetySnapshot = {
+      // PRIVACY GATE (CEO §22): SAFETY fields go every time; MEDICAL
+      // fields (allergies / medications / vet contact) leave the
+      // browser only under medicalShareConsent. Same rule as
+      // walk-my-pet/BookingFlow.tsx and as sitter-suite.ts already
+      // applies at the availability engine (medicalShareConsent
+      // === true).
+      const medicalConsented = primaryPet?.medicalShareConsent === true;
+      const petSafetySnapshot: Record<string, unknown> = {
         aggressionWarning:      primaryPet?.aggressionWarning ?? null,
         escapeRisk:             !!primaryPet?.escapeRisk,
         behaviourNotes:         primaryPet?.behaviourNotes ?? '',
         feedingInstructions:    primaryPet?.feedingInstructions ?? '',
         handlingInstructions:   primaryPet?.handlingInstructions ?? '',
         sensitiveSkin:          !!primaryPet?.sensitiveSkin,
-        allergies:              primaryPet?.allergies ?? '',
-        medicationNotes:        primaryPet?.medications ?? primaryPet?.medicalNotes ?? '',
-        vetName:                primaryPet?.vetName ?? '',
-        vetPhone:               primaryPet?.vetPhone ?? '',
+        medicalConsented,
+        ...(medicalConsented ? {
+          allergies:            primaryPet?.allergies ?? '',
+          medicationNotes:      primaryPet?.medications ?? primaryPet?.medicalNotes ?? '',
+          vetName:              primaryPet?.vetName ?? '',
+          vetPhone:             primaryPet?.vetPhone ?? '',
+        } : {}),
       };
 
       const payload = {
