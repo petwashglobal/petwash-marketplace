@@ -250,6 +250,42 @@ export interface KyaSafetySnapshot {
 }
 
 /**
+ * CEO §8 (2026-08-28) — read-time re-projection of a stored safety
+ * snapshot against CURRENT owner consent.
+ *
+ * A booking created when medicalShareConsent=true may have persisted
+ * allergies / medications / vet contact into booking_requests
+ * .pet_details.safety. If the owner later WITHDRAWS consent, walker
+ * reads must stop returning those fields — the stored blob is
+ * evidence, not a permanent grant.
+ *
+ * This is the pragmatic separation of "stored evidence" (kept for
+ * audit) from "current display permission" (what the walker sees).
+ * Callers pass the stored blob + the CURRENT canonical pet row (or
+ * null if the pet was deleted). Returns a copy with medical fields
+ * removed when consent is now false.
+ */
+export function projectStoredSafetyForProvider(
+  storedSafety: unknown,
+  canonicalPetOrNull: AnyPet | null,
+): Record<string, unknown> | null {
+  if (!storedSafety || typeof storedSafety !== 'object' || Array.isArray(storedSafety)) {
+    return null;
+  }
+  const s = { ...(storedSafety as Record<string, unknown>) };
+  const nowConsented =
+    canonicalPetOrNull != null && providerHasMedicalConsent(canonicalPetOrNull);
+  if (!nowConsented) {
+    delete s.allergies;
+    delete s.medicationNotes;
+    delete s.vetName;
+    delete s.vetPhone;
+    s.medicalConsented = false;
+  }
+  return s;
+}
+
+/**
  * Compose a server-authoritative safety snapshot.
  *
  * @param canonicalPet the pet row loaded from Postgres/Firestore by an

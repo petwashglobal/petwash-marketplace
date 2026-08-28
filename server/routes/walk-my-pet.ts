@@ -2146,29 +2146,50 @@ router.get('/walker/requests', requireAuth, async (req, res) => {
       .orderBy(desc(bookingRequests.createdAt))
       .limit(50);
 
-    const formatted = requests.map(r => ({
-      id: r.requestId,
-      dbId: r.id,
-      ownerName: (r.petDetails as any)?.ownerName || 'Pet Owner',
-      ownerPhoto: null,
-      ownerPhone: '',
-      petName: (r.petDetails as any)?.petName || 'Pet',
-      petType: (r.petDetails as any)?.petType || 'dog',
-      petBreed: (r.petDetails as any)?.petBreed || '',
-      scheduledTime: r.startDate,
-      duration: Math.round(Number(r.totalHours || 1) * 60),
-      pickupAddress: (r.petDetails as any)?.address || '',
-      dropoffAddress: (r.petDetails as any)?.address || '',
-      status: 'scheduled',
-      earnings: (r.subtotalCents || 0) / 100,
-      currency: r.currency || 'ILS',
-      specialInstructions: r.ownerMessage || null,
-      // CEO §12: the KYA safety snapshot the owner sent at booking
-      // time — aggression, escape risk, allergies, medications, vet
-      // contact, feeding/handling notes. Client renders these on the
-      // walker's Today card BEFORE the walker grabs the leash.
-      petSafety: (r.petDetails as any)?.safety ?? null,
-      distance: 0,
+    // CEO §8 (2026-08-28): read-time re-projection of the stored safety
+    // snapshot against CURRENT owner consent. Bookings that persisted
+    // medical fields under an older consent must stop returning them
+    // once the owner withdraws consent. Load the canonical pet row per
+    // owner+name for each request and let projectStoredSafetyForProvider
+    // strip medical when appropriate. Best-effort; a lookup failure
+    // downgrades to safety-only so the walker still sees warnings.
+    const { projectStoredSafetyForProvider } = await import('../lib/petPrivacy');
+    const formatted = await Promise.all(requests.map(async (r) => {
+      const stored = (r.petDetails as any)?.safety ?? null;
+      const ownerId = r.ownerId as string | undefined;
+      const petName = (r.petDetails as any)?.petName as string | undefined;
+      let canonicalPet: any = null;
+      if (ownerId && petName) {
+        try {
+          const [row] = await db.select().from(pets)
+            .where(and(eq(pets.userId, ownerId), eq(pets.name, petName)))
+            .limit(1);
+          canonicalPet = row ?? null;
+        } catch { /* fall through — medical stripped */ }
+      }
+      const petSafety = projectStoredSafetyForProvider(stored, canonicalPet);
+      return {
+        id: r.requestId,
+        dbId: r.id,
+        ownerName: (r.petDetails as any)?.ownerName || 'Pet Owner',
+        ownerPhoto: null,
+        ownerPhone: '',
+        petName: petName || 'Pet',
+        petType: (r.petDetails as any)?.petType || 'dog',
+        petBreed: (r.petDetails as any)?.petBreed || '',
+        scheduledTime: r.startDate,
+        duration: Math.round(Number(r.totalHours || 1) * 60),
+        pickupAddress: (r.petDetails as any)?.address || '',
+        dropoffAddress: (r.petDetails as any)?.address || '',
+        status: 'scheduled',
+        earnings: (r.subtotalCents || 0) / 100,
+        currency: r.currency || 'ILS',
+        specialInstructions: r.ownerMessage || null,
+        // Safety subset always present; medical fields present only if
+        // owner's current consent still allows it (see projection above).
+        petSafety,
+        distance: 0,
+      };
     }));
 
     res.json(formatted);
@@ -2196,13 +2217,28 @@ router.get('/walker/active', requireAuth, async (req, res) => {
 
     if (!active) return res.json(null);
 
+    // CEO §8 read-time re-projection — same rule as /walker/requests.
+    const { projectStoredSafetyForProvider: projActive } = await import('../lib/petPrivacy');
+    const activeOwnerId = active.ownerId as string | undefined;
+    const activePetName = (active.petDetails as any)?.petName as string | undefined;
+    let activeCanonicalPet: any = null;
+    if (activeOwnerId && activePetName) {
+      try {
+        const [row] = await db.select().from(pets)
+          .where(and(eq(pets.userId, activeOwnerId), eq(pets.name, activePetName)))
+          .limit(1);
+        activeCanonicalPet = row ?? null;
+      } catch { /* fall through — medical stripped */ }
+    }
+    const activePetSafety = projActive((active.petDetails as any)?.safety ?? null, activeCanonicalPet);
+
     res.json({
       id: active.requestId,
       dbId: active.id,
       ownerName: (active.petDetails as any)?.ownerName || 'Pet Owner',
       ownerPhoto: null,
       ownerPhone: '',
-      petName: (active.petDetails as any)?.petName || 'Pet',
+      petName: activePetName || 'Pet',
       petType: (active.petDetails as any)?.petType || 'dog',
       petBreed: (active.petDetails as any)?.petBreed || '',
       scheduledTime: active.startDate,
@@ -2213,9 +2249,9 @@ router.get('/walker/active', requireAuth, async (req, res) => {
       earnings: (active.subtotalCents || 0) / 100,
       currency: active.currency || 'ILS',
       specialInstructions: active.ownerMessage || null,
-      // CEO §12: KYA safety flags for the leash-holder — see the
-      // parallel block on /walker/requests above.
-      petSafety: (active.petDetails as any)?.safety ?? null,
+      // Safety subset always; medical only if owner's CURRENT consent
+      // still allows (see projection above).
+      petSafety: activePetSafety,
       distance: 0,
     });
   } catch (error) {
