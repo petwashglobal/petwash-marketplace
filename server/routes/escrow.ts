@@ -5,8 +5,95 @@ import { requireAdmin } from "../adminAuth";
 import { logger } from "../lib/logger";
 import { logReceipt, appendFormSubmission, logOpsLiveFeed } from "../services/googleSheetsIntegration";
 import { db } from "../db";
-import { bookingDisputes } from "@shared/schema";
-import { and, eq } from "drizzle-orm";
+import { bookingDisputes, users } from "@shared/schema";
+import { and, eq, inArray } from "drizzle-orm";
+
+/**
+ * Customer payment-history DTO — the shape client dashboards
+ * (sitter-suite/OwnerDashboard, walk-my-pet/OwnerDashboard,
+ * academy/OwnerDashboard) rely on.
+ *
+ * The raw EscrowPayment shape (see EscrowService.ts:39) uses a
+ * Firestore-oriented status enum (held / released / refunded /
+ * disputed) and does not carry a provider display name. If we returned
+ * it raw, the client reads `payment.date` (undefined → "Invalid Date"),
+ * `payment.sitterName` (undefined → blank), and the `totalSpent`
+ * accumulator only counts status === 'completed' → always ₪0. Every
+ * customer sees a broken Payments tab.
+ *
+ * Rules:
+ *   held      → 'pending'   (money is out of the card, not yet released)
+ *   released  → 'completed' (paid out to the provider)
+ *   refunded  → 'refunded'
+ *   disputed  → 'pending'   (money still held while resolution runs)
+ *
+ * providerName is looked up via a single batched IN query against
+ * users.firstName / users.lastName. Missing rows fall back to '—'.
+ */
+interface CustomerPaymentDTO {
+  id: string;
+  bookingId: string;
+  amount: number;
+  currency: 'ILS' | 'USD' | 'EUR';
+  /** ISO string — safe for `new Date(dto.date)` on the client. */
+  date: string;
+  status: 'pending' | 'completed' | 'refunded';
+  providerName: string;
+}
+
+function mapEscrowStatus(raw: EscrowPayment['status']): CustomerPaymentDTO['status'] {
+  if (raw === 'released') return 'completed';
+  if (raw === 'refunded') return 'refunded';
+  // 'held' + 'disputed' both = money-out-of-customer-card but not yet
+  // finalised. Surfaces as pending on the customer's Payments tab.
+  return 'pending';
+}
+
+async function projectCustomerPayments(userId: string): Promise<CustomerPaymentDTO[]> {
+  const raw = await EscrowService.getUserPayments(userId);
+  if (raw.length === 0) return [];
+
+  const providerUids = Array.from(new Set(raw.map((p) => p.providerId).filter(Boolean)));
+  const nameByUid = new Map<string, string>();
+  if (providerUids.length > 0) {
+    try {
+      const rows = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+        })
+        .from(users)
+        .where(inArray(users.id, providerUids));
+      for (const r of rows) {
+        const name = `${r.firstName ?? ''} ${r.lastName ?? ''}`.trim();
+        nameByUid.set(r.id, name);
+      }
+    } catch (err: any) {
+      // Fresh env or missing users row — every payment falls back to '—'
+      // so the tab still renders instead of 500'ing.
+      logger.warn('[Escrow] Provider-name join failed; falling back', { error: err?.message });
+    }
+  }
+
+  return raw.map((p) => {
+    const iso =
+      p.createdAt instanceof Date
+        ? p.createdAt.toISOString()
+        : typeof (p.createdAt as any)?.toDate === 'function'
+        ? (p.createdAt as any).toDate().toISOString()
+        : String(p.createdAt ?? '');
+    return {
+      id: p.id,
+      bookingId: p.bookingId,
+      amount: Number(p.amount ?? 0),
+      currency: (p.currency ?? 'ILS') as CustomerPaymentDTO['currency'],
+      date: iso,
+      status: mapEscrowStatus(p.status),
+      providerName: nameByUid.get(p.providerId) || '—',
+    };
+  });
+}
 
 const SHEETS_DISPUTE_CASES = 'Dispute Cases';
 
@@ -243,7 +330,13 @@ router.post("/:escrowId/dispute", requireAuth, async (req, res) => {
 router.get("/payments", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.uid;
-    const payments = await EscrowService.getUserPayments(userId);
+    // Returns the CustomerPaymentDTO shape the client dashboards read
+    // (`{ id, bookingId, amount, currency, date, status, providerName }`),
+    // NOT the raw Firestore EscrowPayment shape. The raw shape's status
+    // enum (held/released/refunded/disputed) never matched the client's
+    // completed/pending/refunded expectation — every row's stat card
+    // showed ₪0 and every row rendered "Invalid Date" + blank name.
+    const payments = await projectCustomerPayments(userId);
     res.json({ payments });
   } catch (error: any) {
     logger.error("[Escrow] Error fetching payments", { error: error.message });

@@ -61,9 +61,13 @@ interface PaymentHistory {
   bookingId: string;
   amount: number;
   currency: string;
+  /** ISO string — server sends the DTO shape from
+   *  server/routes/escrow.ts projectCustomerPayments(). */
   date: string;
   status: 'completed' | 'pending' | 'refunded';
-  sitterName: string;
+  /** Was `sitterName` (server never returned it — everyone saw blank).
+   *  Server now sends a joined providerName. */
+  providerName: string;
 }
 
 export default function OwnerDashboard() {
@@ -104,8 +108,11 @@ export default function OwnerDashboard() {
   );
   const pendingBookings = bookings.filter(b => b.status === 'pending');
 
+  // Money is out of the customer's card the moment escrow holds it —
+  // 'pending' rows count toward totalSpent alongside 'completed'.
+  // 'refunded' rows explicitly do NOT count (money came back).
   const totalSpent = payments
-    .filter(p => p.status === 'completed')
+    .filter(p => p.status === 'completed' || p.status === 'pending')
     .reduce((sum, p) => sum + p.amount, 0);
 
   const statusLabels: Record<string, string> = {
@@ -525,8 +532,10 @@ export default function OwnerDashboard() {
                         }`} />
                       </div>
                       <div>
-                        <p className="font-bold text-gray-900">{payment.sitterName}</p>
-                        <p className="text-xs text-gray-400 font-medium">{format(new Date(payment.date), 'MMM d, yyyy')}</p>
+                        <p className="font-bold text-gray-900">{payment.providerName || '—'}</p>
+                        <p className="text-xs text-gray-400 font-medium">
+                          {payment.date ? format(new Date(payment.date), 'MMM d, yyyy') : '—'}
+                        </p>
                       </div>
                     </div>
                     <div className="text-right">
