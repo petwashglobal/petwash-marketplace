@@ -20,7 +20,7 @@
 
 import { and, eq, gt, inArray, desc, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { bookingRequests, eVouchers, pets, privilegeMembers, providerApplications, providerPayoutEntries, walletAccounts } from '@shared/schema';
+import { bookingRequests, eVouchers, pets, privilegeMembers, providerApplications, providerPayoutEntries, refundTransactions, walletAccounts } from '@shared/schema';
 import { logger } from '../lib/logger';
 import type {
   AttentionActor,
@@ -286,6 +286,66 @@ async function petParentEgiftItems(userId: string, he: boolean): Promise<Attenti
       .filter((x): x is AttentionItem => x !== null);
   } catch (e: any) {
     logger.warn('[AttentionFeed] pet-parent egift probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
+/**
+ * CEO §16 + §47 + §70 refund-pending probe. Reads canonical
+ * refund_transactions WHERE user_id = userId AND status IN (pending,
+ * approved, executing). Emits ONE informational item summing the
+ * refundable amount so the customer sees "we received your request;
+ * money is on the way" instead of a silent void (CEO §70 failure UX).
+ *
+ * Never mutates the refund ledger. Never fabricates a refund total.
+ * Approved / executing status is INCLUDED — those are refunds in
+ * flight, not settled. The card disappears once status flips to
+ * succeeded or fails to failed / rejected.
+ */
+async function petParentRefundItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const rows = await db
+      .select({
+        refundId: refundTransactions.refundId,
+        refundCents: refundTransactions.refundCents,
+        status: refundTransactions.status,
+      })
+      .from(refundTransactions)
+      .where(and(
+        eq(refundTransactions.userId, userId),
+        inArray(refundTransactions.status, ['pending', 'approved', 'executing'] as any),
+      ))
+      .limit(10);
+    if (!rows.length) return [];
+    let sumCents = 0;
+    let count = 0;
+    for (const r of rows) {
+      const c = Number(r.refundCents ?? 0);
+      if (Number.isFinite(c) && c > 0) {
+        sumCents += c;
+        count += 1;
+      }
+    }
+    if (count === 0 || sumCents <= 0) return [];
+    const ils = sumCents / 100;
+    return [{
+      id: `refund:${userId}`,
+      actor: 'pet_parent',
+      domain: 'wallet',
+      entityId: userId,
+      priority: 'informational',
+      title: he
+        ? (count === 1 ? 'החזר בתהליך' : `${count} החזרים בתהליך`)
+        : (count === 1 ? 'Refund in progress' : `${count} refunds in progress`),
+      reason: he
+        ? `סכום כולל: ₪${ils.toFixed(2)} — הכסף בדרך; אין צורך לפעול`
+        : `Total: ₪${ils.toFixed(2)} — money is on the way; no action needed`,
+      nextAction: 'view',
+      destination: '/my-wallet',
+      moneySummary: { amountCents: sumCents, currency: 'ILS', label: he ? 'סכום בהחזר' : 'Amount refunding' },
+    }];
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] pet-parent refund probe failed', { userId, err: e?.message });
     return [];
   }
 }
@@ -612,6 +672,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
   const items = actor === 'pet_parent'
     ? [
         ...await petParentBookingItems(userId, he),
+        ...await petParentRefundItems(userId, he),
         ...await petParentEgiftItems(userId, he),
         ...await petParentWalletItems(userId, he),
         ...await petParentPrestigeItems(userId, he),

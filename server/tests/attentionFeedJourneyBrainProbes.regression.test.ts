@@ -22,11 +22,11 @@ const SRC = fs.readFileSync(
 );
 
 describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () => {
-  it('composer concatenates BOTH the booking probe AND the eGift probe on the pet-parent path', () => {
+  it('composer chains the pet-parent probes in the canonical order', () => {
     // Regression: a re-ordering that dropped one probe would silently
-    // hide a whole domain from the customer's home feed. Pin both
-    // reads on the same actor branch.
-    expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),/);
+    // hide a whole domain from the customer's home feed. Pin the full
+    // canonical chain so any drop trips CI.
+    expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentRefundItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),\s*\n\s*\.\.\.await petParentWalletItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),\s*\n\s*\.\.\.await petParentKyaStaleItems\(userId, he\),/);
   });
 
   it('composer concatenates the booking + payout + doc-expiry probes on the provider path', () => {
@@ -194,5 +194,31 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
 
   it('provider payout destination is /provider/earnings (mounted client route)', () => {
     expect(SRC).toContain("destination: '/provider/earnings'");
+  });
+
+  it('refund probe reads canonical refund_transactions WHERE status IN (pending, approved, executing)', () => {
+    // Ownership: user_id must equal the caller.
+    expect(SRC).toMatch(/eq\(refundTransactions\.userId, userId\)/);
+    // In-flight statuses only — settled 'succeeded' / 'failed' /
+    // 'rejected' must NOT surface (nothing to do).
+    expect(SRC).toMatch(/inArray\(refundTransactions\.status, \['pending', 'approved', 'executing'\] as any\)/);
+    // Aggregation defense-in-depth: non-finite / non-positive drops.
+    expect(SRC).toMatch(/if \(Number\.isFinite\(c\) && c > 0\)/);
+    // Zero-signal short-circuit — no home spam when nothing refundable.
+    expect(SRC).toMatch(/if \(count === 0 \|\| sumCents <= 0\) return \[\];/);
+    // AttentionItem uses the wallet domain (refunds land in wallet).
+    expect(SRC).toMatch(/id: `refund:\$\{userId\}`,[\s\S]{0,200}?domain: 'wallet',/);
+  });
+
+  it('refund probe copy switches singular / plural correctly', () => {
+    // 1 refund → "Refund in progress" / "החזר בתהליך"
+    // 2+ refunds → "N refunds in progress" / "N החזרים בתהליך"
+    expect(SRC).toMatch(/count === 1 \? 'החזר בתהליך' : `\$\{count\} החזרים בתהליך`/);
+    expect(SRC).toMatch(/count === 1 \? 'Refund in progress' : `\$\{count\} refunds in progress`/);
+  });
+
+  it('refund probe fails-CLOSED on DB error', () => {
+    expect(SRC).toMatch(/\[AttentionFeed\] pet-parent refund probe failed/);
+    expect(SRC).toMatch(/logger\.warn\('\[AttentionFeed\] pet-parent refund probe failed'[\s\S]*?return \[\];\s*\n\s*\}/);
   });
 });
