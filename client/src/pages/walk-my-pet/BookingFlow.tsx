@@ -40,6 +40,11 @@ export default function WalkBookingFlow() {
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
   const [duration, setDuration] = useState<number>(60); // minutes
   const [notes, setNotes] = useState("");
+  // CEO §5 (2026-08-28) — booking-scoped medical share. Owner ticks
+  // this at checkout to authorise medical (allergies / medications /
+  // vet contact) for THIS booking only. Server enforces authority.
+  // Default off — never inherit from a previous booking.
+  const [bookingScopedShare, setBookingScopedShare] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [bookingId, setBookingId] = useState<string | null>(null);
   const [appliedCredits, setAppliedCredits] = useState<{ redemptionSessionId: string; totalCreditsAppliedCents: number; cashDueCents: number } | null>(null);
@@ -292,6 +297,8 @@ export default function WalkBookingFlow() {
         petWeight: primaryPetWeight,
         petSpecialNeeds: primaryPet?.specialNeeds ?? primaryPet?.medicalNotes ?? notes ?? '',
         petSafetySnapshot,
+        // Booking-scoped medical share — CEO §5. Server IS authority.
+        bookingScopedShare,
         notes,
         petIds: selectedPetIds,
         pricing: {
@@ -610,6 +617,38 @@ export default function WalkBookingFlow() {
                 placeholder="התנהגות הכלב, רגישויות, מסלול מועדף, וכו׳"
                 data-testid="textarea-notes"
               />
+            </section>
+
+            {/* CEO §5 (2026-08-28) — booking-scoped medical share.
+                Neutral phrasing; no legal-wall UX (§25). Owner
+                explicitly opts in ONLY for this booking. Server is
+                authority — flipping this on doesn't force medical
+                fields; it only ALLOWS the server to include them if
+                the pet has them. */}
+            <section
+              className="mb-6 luxury-glass-card luxury-shadow-xl luxury-stagger-item p-6"
+              data-testid="section-booking-scoped-share-walker"
+            >
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bookingScopedShare}
+                  onChange={(e) => setBookingScopedShare(e.target.checked)}
+                  className="mt-1"
+                  data-testid="checkbox-booking-scoped-share-walker"
+                />
+                <span className="text-sm">
+                  <div className="font-semibold text-slate-800">
+                    שיתוף פרטים רפואיים לטיול הזה בלבד
+                    <span className="text-slate-500 font-normal"> / Share medical details for this walk only</span>
+                  </div>
+                  <div className="text-slate-500 text-xs mt-1">
+                    אלרגיות, תרופות, פרטי וטרינר. חל רק להזמנה הנוכחית ולא לטיולים עתידיים.
+                    <br />
+                    Allergies, medications, vet contact. Applies to THIS booking only, not future ones.
+                  </div>
+                </span>
+              </label>
             </section>
 
             {/* Owner Instructions (codes, locations, etc.) */}

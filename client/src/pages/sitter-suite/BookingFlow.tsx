@@ -62,6 +62,9 @@ export default function SitterBookingFlow() {
   const [checkOutTime, setCheckOutTime] = useState("10:00");
   const [calendarRange, setCalendarRange] = useState<DateRange | undefined>();
   const [notes, setNotes] = useState("");
+  // CEO §5 (2026-08-28) — booking-scoped medical share. Same rule as
+  // the walk-my-pet flow. Default off; server is authority.
+  const [bookingScopedShare, setBookingScopedShare] = useState(false);
   const [address, setAddress] = useState("");
   const [addressCity, setAddressCity] = useState("");
   const [addressPostal, setAddressPostal] = useState("");
@@ -274,6 +277,8 @@ export default function SitterBookingFlow() {
         addressLng: addressLng ?? undefined,
         petIds: selectedPetIds,
         petSafetySnapshot,
+        // Booking-scoped medical share — CEO §5.
+        bookingScopedShare,
         pricing: {
           currency: "ILS",
           baseAmount: pricing.baseAmount,
@@ -647,6 +652,36 @@ export default function SitterBookingFlow() {
                 style={{ fontSize: '16px' }}
                 data-testid="textarea-notes"
               />
+            </section>
+
+            {/* CEO §5 (2026-08-28) — booking-scoped medical share for
+                THIS sitting only. Server IS authority — this checkbox
+                only ALLOWS the server to include medical fields if
+                the pet has them. Default off. */}
+            <section
+              className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5"
+              data-testid="section-booking-scoped-share-sitter"
+            >
+              <label className="flex items-start gap-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={bookingScopedShare}
+                  onChange={(e) => setBookingScopedShare(e.target.checked)}
+                  className="mt-1"
+                  data-testid="checkbox-booking-scoped-share-sitter"
+                />
+                <span className="text-sm">
+                  <div className="font-semibold text-slate-800">
+                    שיתוף פרטים רפואיים לשהות הזו בלבד
+                    <span className="text-slate-500 font-normal"> / Share medical details for this stay only</span>
+                  </div>
+                  <div className="text-slate-500 text-xs mt-1">
+                    אלרגיות, תרופות, פרטי וטרינר. חל רק להזמנה הנוכחית ולא לשהיות עתידיות.
+                    <br />
+                    Allergies, medications, vet contact. Applies to THIS booking only, not future ones.
+                  </div>
+                </span>
+              </label>
             </section>
 
             {/* Owner Instructions */}
