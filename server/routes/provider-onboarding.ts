@@ -3067,6 +3067,88 @@ router.get('/my/status', async (req: Request, res: Response) => {
       },
     };
 
+    // CEO §23 (2026-08-28) — granular provider readiness DTO. sectionStatus
+    // above is UI checklist copy. `readiness` is the machine-readable
+    // eligibility bitmap the search + booking gates read at runtime:
+    //   * identityReady   — KYC docs + document type + not-expired
+    //   * insuranceReady  — policy present + not-expired
+    //   * backgroundReady — consent to check + self-declaration signed
+    //   * payoutReady     — bank IBAN + account holder present
+    //   * agreementsReady — provider-declarations bundle recorded
+    //   * profileReady    — first/last/city minimally present
+    //   * serviceApproved — application decided approved by ops
+    //   * pricingReady    — at least one active provider_services row
+    //                       with bookingEnabled = true
+    //   * availabilityReady — at least one future availability slot
+    //                       (best-effort; missing table → false, never true)
+    //   * searchEligible  — serviceApproved && identityReady &&
+    //                       insuranceReady && backgroundReady &&
+    //                       payoutReady && agreementsReady && profileReady
+    //   * bookingEligible — searchEligible && pricingReady &&
+    //                       availabilityReady
+    // Fail-CLOSED: any lookup error leaves the flag FALSE. Never invents
+    // eligibility from partial state.
+    const nowMs = Date.now();
+    const notExpired = (d: unknown): boolean => {
+      if (!d) return false;
+      const t = new Date(d as any).getTime();
+      return Number.isFinite(t) && t > nowMs;
+    };
+    const identityReady =
+      hasIdentityDocs && (app.kyc_document_expiry ? notExpired(app.kyc_document_expiry) : true);
+    const insuranceReady =
+      !!(app.insurance_policy_number && app.insurance_provider) && notExpired(app.insurance_expires_at);
+    const backgroundReady = hasBackgroundConsent;
+    const payoutReady = hasBank;
+    const agreementsReady = hasDeclarations;
+    const profileReady = !!(app.first_name && app.last_name && app.city);
+    const serviceApproved = app.status === 'approved';
+
+    let pricingReady = false;
+    let availabilityReady = false;
+    if (serviceApproved && app.approved_as_provider_id) {
+      try {
+        const priceRow = await pool.query<{ cnt: string }>(
+          `SELECT COUNT(*)::text AS cnt
+             FROM provider_services
+            WHERE provider_id = $1
+              AND booking_enabled = TRUE
+              AND paused_by_provider = FALSE
+              AND paused_by_admin = FALSE`,
+          [String(app.approved_as_provider_id)],
+        );
+        pricingReady = Number(priceRow.rows[0]?.cnt || '0') > 0;
+      } catch { pricingReady = false; }
+      try {
+        const availRow = await pool.query<{ cnt: string }>(
+          `SELECT COUNT(*)::text AS cnt
+             FROM provider_availability
+            WHERE provider_id = $1
+              AND is_available = TRUE
+              AND date >= CURRENT_DATE`,
+          [String(app.approved_as_provider_id)],
+        );
+        availabilityReady = Number(availRow.rows[0]?.cnt || '0') > 0;
+      } catch { availabilityReady = false; }
+    }
+    const searchEligible =
+      serviceApproved && identityReady && insuranceReady && backgroundReady &&
+      payoutReady && agreementsReady && profileReady;
+    const bookingEligible = searchEligible && pricingReady && availabilityReady;
+    const readiness = {
+      identityReady,
+      insuranceReady,
+      backgroundReady,
+      payoutReady,
+      agreementsReady,
+      profileReady,
+      serviceApproved,
+      pricingReady,
+      availabilityReady,
+      searchEligible,
+      bookingEligible,
+    };
+
     const appUrl = process.env.APP_URL || 'https://app.petwash.co.il';
     res.json({
       application: {
@@ -3074,6 +3156,7 @@ router.get('/my/status', async (req: Request, res: Response) => {
         kycDecisionFlags: (() => { try { return JSON.parse(app.kyc_decision_flags || '[]'); } catch { return []; } })(),
       },
       sectionStatus,
+      readiness,
       resubmissionToken,
       resubmitUrl: resubmissionToken ? `${appUrl}/provider-application/resubmit?token=${resubmissionToken}` : null,
     });
