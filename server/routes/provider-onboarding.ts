@@ -1835,7 +1835,41 @@ router.get('/application/status', async (req: Request, res: Response) => {
       .orderBy(desc(providerApplications.createdAt))
       .limit(10);
 
-    res.json({ applications });
+    // CEO §46 (2026-08-28) — per-section readiness DTO. Applicants
+    // need to know exactly which section is checked / approved /
+    // action-required so they can go straight to what's missing. The
+    // per-section rules read the SAME fields the admin surface reads,
+    // so a section marked "action_required" here matches the "missing"
+    // reasons the reviewer sees on their queue.
+    const sectionStatus = applications.map((app: any) => {
+      const isDecided = app.status === 'approved' || app.status === 'rejected';
+      const isReviewing = ['pending_review', 'under_review'].includes(app.status);
+      const status = (fieldsComplete: boolean): 'complete' | 'checking' | 'action_required' => {
+        if (!fieldsComplete) return 'action_required';
+        if (app.status === 'approved') return 'complete';
+        if (isReviewing || app.status === 'pending')  return 'checking';
+        return 'action_required';
+      };
+      let declarations: Record<string, unknown> = {};
+      try {
+        const notes = app.internalNotes ? JSON.parse(app.internalNotes) : null;
+        declarations = (notes && typeof notes === 'object' && notes.declarations) || {};
+      } catch { /* ignore */ }
+      return {
+        applicationId: app.applicationId,
+        overall: isDecided ? app.status : (isReviewing ? 'checking' : 'action_required'),
+        sections: {
+          profile:      status(!!(app.firstName && app.lastName && app.city)),
+          identity:     status(!!(app.selfiePhotoUrl && app.governmentIdUrl && app.kycDocumentType)),
+          insurance:    status(!!(app.insurancePolicyNumber && app.insuranceProvider && app.insuranceExpiresAt)),
+          background:   status(!!(app.criminalCheckConsent && app.selfDeclarationNoRelevantConvictions)),
+          bank:         status(!!(app.bankIban && app.bankAccountHolder)),
+          declarations: status(Object.keys(declarations).length > 0),
+        },
+      };
+    });
+
+    res.json({ applications, sectionStatus });
   } catch (error: any) {
     logger.error('[Provider Onboarding] Get application status error', { error: error.message });
     res.status(500).json({ error: 'Failed to fetch application status', errorCode: 'STATUS_CHECK_FAILED' });
