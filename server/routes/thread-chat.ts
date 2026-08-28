@@ -25,7 +25,13 @@ import { z } from 'zod';
 import { and, asc, eq, or, sql as dsql } from 'drizzle-orm';
 import { db } from '../db';
 import { chatThreads, chatThreadMessages } from '@shared/schema-chat';
-import { validateFirebaseToken } from '../customAuth';
+// customAuth.ts exports only setupCustomAuth + requireAuth. The real
+// validateFirebaseToken middleware lives at ../middleware/firebase-auth
+// (used by routes.ts:12066 and every other Bearer-validated route).
+// The old import path was a broken alias that only surfaced when the
+// production build actually resolved it — smoke-test-routes-load caught
+// it on 2026-08-28 after PR #2166 introduced this route mount.
+import { validateFirebaseToken } from '../middleware/firebase-auth';
 import { logger } from '../lib/logger';
 import { isSuperAdminVerified } from '../middleware/rbac';
 

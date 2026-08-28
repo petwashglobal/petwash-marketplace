@@ -33,7 +33,7 @@
 import { useEffect, useState } from 'react';
 import { useLocation } from 'wouter';
 import { auth } from '@/lib/firebase';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { useLanguage } from '@/lib/languageStore';
 import { useUiMode } from '@/lib/uiMode';
 import { resolvePostLogin } from '@/lib/postLoginCoordinator';
 import { getApiUrl } from '@/lib/apiConfig';
