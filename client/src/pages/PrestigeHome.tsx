@@ -24,6 +24,7 @@ import { useWhoami } from '@/auth/useWhoami';
 import { useLanguage } from '@/lib/languageStore';
 import { apiRequest } from '@/lib/queryClient';
 import { AttentionList } from '@/components/AttentionList';
+import { JourneyConcierge } from '@/components/JourneyConcierge';
 import { getTierDisplay } from '@/lib/loyalty';
 import {
   Bell, MessageCircle, Crown, Copy, Check, Sun, ChevronRight, QrCode,
@@ -255,6 +256,16 @@ export default function PrestigeHome() {
             sees the next real action (pay, confirm, track, review, ...)
             before any static tiles. Hides itself when the feed is empty. */}
         <AttentionList actor="pet_parent" />
+
+        {/* "Your next steps" — CEO MASTER 2026-08-28 §36 §37 §65 §61.
+            NextBestAction is the forward-looking recommender (rebook a
+            favourite, use a Prestige benefit, still-looking?, resume a
+            saved booking). Distinct from attention: attention is what
+            NEEDS action now; next-best-action is what would help NEXT.
+            Every card carries a reasonCode ("Why am I seeing this?"),
+            money paths gate behind a confirm modal. LLM never touches
+            this render path. Hides itself when the feed is empty. */}
+        <JourneyConcierge actor="pet_parent" />
 
         {/* Phase 3: campaign offer banner — the user's own code, ready to use */}
         {offer && (
