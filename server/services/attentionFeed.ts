@@ -1,24 +1,26 @@
 /**
  * attentionFeed composer — the "what needs my attention" projection
- * each workspace home renders (CEO 2026-08-26 §27-29).
+ * each workspace home renders (CEO 2026-08-26 §27-29, CEO MASTER
+ * DIRECTIVE 2026-08-28 §2 §80 Journey Brain Phase 1).
  *
- * READ-ONLY. Never captures, reserves, or mutates.
+ * READ-ONLY. Never captures, reserves, or mutates. Each per-domain
+ * probe reads CANONICAL truth (wallet_accounts, e_vouchers,
+ * privilege_members, provider_applications, pets, booking_requests),
+ * fails-CLOSED to [] on any DB error, and returns AttentionItem[].
+ * The composer concatenates + sorts urgent → due_soon → informational.
  *
- * MVP scope (this PR): a stable shape + a working projection over the
- * booking_requests table for both actors, plus a Pet Passport reminder
- * probe for vaccinations due in the next 30 days. Every OTHER domain
- * (walk, sitting, academy, shop, wallet, egift, prestige benefits,
- * paw_finder, kyc) returns zero items today — the composer is designed
- * so a follow-up per-domain probe can be added without a client change.
+ * Domain coverage today:
+ *   pet_parent → booking, egift, wallet, prestige, pet_passport (kya-stale)
+ *   provider   → booking, kyc (insurance + document expiry)
  *
- * The point is to give the client home ONE endpoint that already
- * exists, so the next domain probe just extends the array. No client
- * refactor needed later.
+ * Still to land in Phase 1: shop (needs Phase 2 JourneyCheckpoint),
+ * saved-search continue (needs Phase 3 table), refund pending, review
+ * available (already partially covered by bookingItem 'completed').
  */
 
 import { and, eq, gt, inArray, desc, or, sql } from 'drizzle-orm';
 import { db } from '../db';
-import { bookingRequests, eVouchers, pets, privilegeMembers, providerApplications, walletAccounts } from '@shared/schema';
+import { bookingRequests, eVouchers, pets, privilegeMembers, providerApplications, providerPayoutEntries, walletAccounts } from '@shared/schema';
 import { logger } from '../lib/logger';
 import type {
   AttentionActor,
@@ -483,6 +485,55 @@ async function petParentPrestigeItems(userId: string, he: boolean): Promise<Atte
 }
 
 /**
+ * CEO §16 + §52 + §80 provider-payout probe. Reads canonical
+ * provider_payout_entries WHERE provider_uid = userId AND status =
+ * 'earned' AND payout_batch_id IS NULL AND paid_at IS NULL — i.e.
+ * money the provider has EARNED but NOT YET been paid. Sums net_cents
+ * SERVER-SIDE (never client) and emits ONE informational item.
+ *
+ * The reader is the payout LEDGER — a canonical projection. The AI /
+ * attention feed NEVER mutates it (CEO §46). A refactor that started
+ * writing here reintroduces the whole class of bugs the CEO
+ * §37-§46 §71 discipline is designed to prevent.
+ */
+async function providerPayoutItems(userId: string, he: boolean): Promise<AttentionItem[]> {
+  try {
+    const rows = await db
+      .select({ netCents: providerPayoutEntries.netCents })
+      .from(providerPayoutEntries)
+      .where(and(
+        eq(providerPayoutEntries.providerUid, userId),
+        eq(providerPayoutEntries.status, 'earned'),
+      ));
+    if (!rows.length) return [];
+    let sum = 0;
+    for (const r of rows) {
+      const c = Number(r.netCents ?? 0);
+      if (Number.isFinite(c) && c > 0) sum += c;
+    }
+    if (sum <= 0) return [];
+    const ils = sum / 100;
+    return [{
+      id: `payout:${userId}`,
+      actor: 'provider',
+      domain: 'wallet',
+      entityId: userId,
+      priority: 'informational',
+      title: he ? 'תשלום ממתין' : 'Payout available',
+      reason: he
+        ? `סה"כ להעברה: ₪${ils.toFixed(2)} — המערכת תעביר לפי לוח התשלומים`
+        : `Ready to release: ₪${ils.toFixed(2)} — the payout batch runs on schedule`,
+      nextAction: 'view',
+      destination: '/provider/earnings',
+      moneySummary: { amountCents: sum, currency: 'ILS', label: he ? 'סכום להעברה' : 'Amount available' },
+    }];
+  } catch (e: any) {
+    logger.warn('[AttentionFeed] provider payout probe failed', { userId, err: e?.message });
+    return [];
+  }
+}
+
+/**
  * CEO §51 provider document expiry probe. Insurance + KYC doc expiry
  * within 30 days becomes a due_soon item; already expired becomes
  * urgent. Reads provider_applications by user_id and picks the most
@@ -568,6 +619,7 @@ export async function composeAttentionFeed(actor: AttentionActor, userId: string
       ]
     : [
         ...await providerBookingItems(userId, he),
+        ...await providerPayoutItems(userId, he),
         ...await providerDocExpiryItems(userId, he),
       ];
   return { actor, items: sortItems(items), composedAt: new Date().toISOString() };

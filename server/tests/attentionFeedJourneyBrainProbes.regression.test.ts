@@ -29,8 +29,8 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
     expect(SRC).toMatch(/\.\.\.await petParentBookingItems\(userId, he\),\s*\n\s*\.\.\.await petParentEgiftItems\(userId, he\),/);
   });
 
-  it('composer concatenates BOTH the booking probe AND the doc-expiry probe on the provider path', () => {
-    expect(SRC).toMatch(/\.\.\.await providerBookingItems\(userId, he\),\s*\n\s*\.\.\.await providerDocExpiryItems\(userId, he\),/);
+  it('composer concatenates the booking + payout + doc-expiry probes on the provider path', () => {
+    expect(SRC).toMatch(/\.\.\.await providerBookingItems\(userId, he\),\s*\n\s*\.\.\.await providerPayoutItems\(userId, he\),\s*\n\s*\.\.\.await providerDocExpiryItems\(userId, he\),/);
   });
 
   it('eGift probe reads owner_uid + status IN (CLAIMED, ACTIVE) + remaining > 0 — never invents balance', () => {
@@ -169,5 +169,30 @@ describe('attentionFeed — Journey Brain Phase 1 probes (CEO §2 + §80)', () =
 
   it('composer concatenates the Wallet probe between eGift and Prestige on the pet-parent branch', () => {
     expect(SRC).toMatch(/\.\.\.await petParentEgiftItems\(userId, he\),\s*\n\s*\.\.\.await petParentWalletItems\(userId, he\),\s*\n\s*\.\.\.await petParentPrestigeItems\(userId, he\),/);
+  });
+
+  it('provider payout probe reads canonical provider_payout_entries WHERE status=earned + unpaid — never mutates', () => {
+    // Ownership: provider_uid must equal the caller. Status filter:
+    // only 'earned' (not 'paid' or 'held' or 'reversed'). The sum is
+    // computed server-side from netCents. A refactor that started
+    // writing to this table reintroduces the whole class of CEO §46
+    // "AI never edits the ledger" bugs.
+    expect(SRC).toMatch(/eq\(providerPayoutEntries\.providerUid, userId\)/);
+    expect(SRC).toMatch(/eq\(providerPayoutEntries\.status, 'earned'\)/);
+    // Aggregation is defensive: non-finite / non-positive net drops
+    // instead of throwing.
+    expect(SRC).toMatch(/if \(Number\.isFinite\(c\) && c > 0\) sum \+= c;/);
+    expect(SRC).toMatch(/if \(sum <= 0\) return \[\];/);
+    // Domain contract.
+    expect(SRC).toMatch(/domain: 'wallet',\s*\n\s*entityId: userId,\s*\n\s*priority: 'informational',/);
+  });
+
+  it('provider payout probe fails-CLOSED on DB error', () => {
+    expect(SRC).toMatch(/\[AttentionFeed\] provider payout probe failed/);
+    expect(SRC).toMatch(/logger\.warn\('\[AttentionFeed\] provider payout probe failed'[\s\S]*?return \[\];\s*\n\s*\}/);
+  });
+
+  it('provider payout destination is /provider/earnings (mounted client route)', () => {
+    expect(SRC).toContain("destination: '/provider/earnings'");
   });
 });
