@@ -224,6 +224,19 @@ export default function ProviderOnboarding() {
   // Israel-safe self-declaration (2026 spec). Mandatory for every provider.
   const [selfDeclarationNoConvictions, setSelfDeclarationNoConvictions] = useState(false);
 
+  // CEO §73 #12 (2026-08-28): bank / payout target. Server side (migration
+  // 0133 + /apply Zod + admin ProviderKycReview card) landed in commit
+  // 22d8f24b1; this is the CLIENT wizard section that actually collects
+  // the fields. All optional at intake — approval still needs manual
+  // review — but a submit without an IBAN is a payout dead-end, so the
+  // "Still needed" checklist below prompts before submit for anyone
+  // who left it blank. Providers can also add it later via the
+  // dashboard's payout settings.
+  const [bankName, setBankName] = useState('');
+  const [bankBranchCode, setBankBranchCode] = useState('');
+  const [bankIban, setBankIban] = useState('');
+  const [bankAccountHolder, setBankAccountHolder] = useState('');
+
   // Provider can also opt into high-risk services explicitly. The defaults
   // derived from providerTypes are unioned with these picks server-side.
   const [enhancedReasons, setEnhancedReasons] = useState<EnhancedVerificationReason[]>([]);
@@ -318,6 +331,16 @@ export default function ProviderOnboarding() {
             declarationAccurateInfo,
             declarationAcceptTerms,
           },
+          // CEO §73 #12 (2026-08-28): bank / payout target. These live at
+          // the top level of the blob (not under step2/step3) because they
+          // are collected on their own section at the end of step 3.
+          // Mirror in the mount hydrate below.
+          bank: {
+            bankName,
+            bankBranchCode,
+            bankIban,
+            bankAccountHolder,
+          },
         };
 
         const res = await fetch(getApiUrl('/api/provider-applications/draft'), {
@@ -363,6 +386,8 @@ export default function ProviderOnboarding() {
     declarationTrainingCertification, declarationAccreditedCourses, declarationLiabilityInsurance,
     declarationPhysicallyFit, declarationAnimalExperience, declarationFirstAidTraining,
     declarationAccurateInfo, declarationAcceptTerms,
+    // Bank / payout target fields — CEO §73 #12.
+    bankName, bankBranchCode, bankIban, bankAccountHolder,
   ]);
 
   // Clean up the pending debounce on unmount so a fetch never fires against
@@ -448,6 +473,16 @@ export default function ProviderOnboarding() {
           // Two universal declarations
           if (s3.declarationAccurateInfo)          setDeclarationAccurateInfo((v) => v || !!s3.declarationAccurateInfo);
           if (s3.declarationAcceptTerms)           setDeclarationAcceptTerms((v) => v || !!s3.declarationAcceptTerms);
+        }
+        // CEO §73 #12: bank / payout target hydrates off draftStep2Step3.bank.
+        // Same v-guarded setters as step2/step3 so an in-progress edit is
+        // never clobbered by a stale draft read.
+        const bk = d.draftStep2Step3?.bank;
+        if (bk && typeof bk === 'object') {
+          if (bk.bankName)          setBankName((v)          => v || bk.bankName);
+          if (bk.bankBranchCode)    setBankBranchCode((v)    => v || bk.bankBranchCode);
+          if (bk.bankIban)          setBankIban((v)          => v || bk.bankIban);
+          if (bk.bankAccountHolder) setBankAccountHolder((v) => v || bk.bankAccountHolder);
         }
       } catch { /* best-effort load */ }
     })();
@@ -843,6 +878,15 @@ export default function ProviderOnboarding() {
       if (drivingLicenseNumber) formData.append('drivingLicenseNumber', drivingLicenseNumber);
       if (drivingLicenseClass) formData.append('drivingLicenseClass', drivingLicenseClass);
       if (drivingLicenseExpiry) formData.append('drivingLicenseExpiry', drivingLicenseExpiry);
+      // CEO §73 #12 bank/payout — server (provider-onboarding.ts) reads
+      // these off the request, canonicalises the IBAN (uppercase + strip
+      // whitespace), and persists via the migration-window post-INSERT
+      // UPDATE. Optional at intake so a rolling wizard update against an
+      // older server never blocks submit.
+      if (bankName)            formData.append('bankName',            bankName.trim());
+      if (bankBranchCode)      formData.append('bankBranchCode',      bankBranchCode.trim());
+      if (bankIban)            formData.append('bankIban',            bankIban.replace(/\s+/g, '').toUpperCase());
+      if (bankAccountHolder)   formData.append('bankAccountHolder',   bankAccountHolder.trim());
       
       if (businessLicense) formData.append('businessLicense', businessLicense);
       formData.append('traceId', traceId);
@@ -1987,6 +2031,82 @@ export default function ProviderOnboarding() {
                       <span className="text-sm text-yellow-800 dark:text-yellow-300">
                         {t.consentText}
                       </span>
+                    </label>
+                  </div>
+                </div>
+
+                {/* CEO §73 #12 (2026-08-28): Bank / Payout target.
+                    Optional at intake — Israeli payouts must have this
+                    before the first booking releases, but the applicant
+                    can also fill it in via the dashboard's payout
+                    settings later. Server persists via the
+                    migration-window post-INSERT UPDATE (see
+                    server/routes/provider-onboarding.ts). IBAN is
+                    normalised on submit (strip whitespace, uppercase). */}
+                <div className="luxury-glass-card luxury-shadow-md p-6" data-testid="section-bank-payout">
+                  <h3 className="luxury-heading-sm mb-4" style={{ color: '#063B22' }}>
+                    {isHebrew ? 'פרטי חשבון בנק לתשלום' : 'Bank / Payout details'}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mb-4">
+                    {isHebrew
+                      ? 'לצורך העברת תשלומי הזמנות. אפשר להוסיף גם מאוחר יותר בהגדרות התשלום.'
+                      : 'Where PetWash sends your booking payouts. Optional now — you can also add it later from your payout settings.'}
+                  </p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <label className="block">
+                      <span className="block text-xs font-semibold mb-1">
+                        {isHebrew ? 'שם הבנק' : 'Bank name'}
+                      </span>
+                      <input
+                        type="text"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        onBlur={scheduleDraftSave}
+                        placeholder={isHebrew ? 'בנק הפועלים' : 'e.g. Bank Hapoalim'}
+                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                        data-testid="input-bank-name"
+                      />
+                    </label>
+                    <label className="block">
+                      <span className="block text-xs font-semibold mb-1">
+                        {isHebrew ? 'קוד סניף' : 'Branch code'}
+                      </span>
+                      <input
+                        type="text"
+                        value={bankBranchCode}
+                        onChange={(e) => setBankBranchCode(e.target.value)}
+                        onBlur={scheduleDraftSave}
+                        placeholder={isHebrew ? 'למשל 604' : 'e.g. 604'}
+                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                        data-testid="input-bank-branch"
+                      />
+                    </label>
+                    <label className="block md:col-span-2">
+                      <span className="block text-xs font-semibold mb-1">IBAN</span>
+                      <input
+                        type="text"
+                        dir="ltr"
+                        value={bankIban}
+                        onChange={(e) => setBankIban(e.target.value)}
+                        onBlur={scheduleDraftSave}
+                        placeholder="IL62 0080 4000 0000 1234 567"
+                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm font-mono outline-none focus:border-[#D6B56D]"
+                        data-testid="input-bank-iban"
+                      />
+                    </label>
+                    <label className="block md:col-span-2">
+                      <span className="block text-xs font-semibold mb-1">
+                        {isHebrew ? 'שם בעל החשבון' : 'Account holder name'}
+                      </span>
+                      <input
+                        type="text"
+                        value={bankAccountHolder}
+                        onChange={(e) => setBankAccountHolder(e.target.value)}
+                        onBlur={scheduleDraftSave}
+                        placeholder={isHebrew ? 'כפי שמופיע במסמכי הבנק' : 'Exactly as on the bank record'}
+                        className="w-full rounded-xl border border-[#ECE6D8] bg-white px-4 py-3 text-sm outline-none focus:border-[#D6B56D]"
+                        data-testid="input-bank-holder"
+                      />
                     </label>
                   </div>
                 </div>
